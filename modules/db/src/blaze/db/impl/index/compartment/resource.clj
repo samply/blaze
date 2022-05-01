@@ -35,7 +35,7 @@
    (bb/set-position! buf (unchecked-add-int (bb/position buf) codec/c-hash-size))
    (let [id-size (long (bb/size-up-to-null buf))]
      (bb/set-position! buf (+ (bb/position buf) id-size 1 codec/tid-size))
-     (bs/from-byte-buffer buf))))
+     (bs/from-byte-buffer! buf))))
 
 
 (def ^:private remove-deleted-xf
@@ -59,7 +59,7 @@
         (bb/put-byte! 0)
         (bb/put-int! tid)
         bb/flip!
-        bs/from-byte-buffer)))
+        bs/from-byte-buffer!)))
 
 
 (defn- encode-key-buf
@@ -78,7 +78,7 @@
 (defn- encode-key
   "Encodes the full key."
   [compartment tid id]
-  (-> (encode-key-buf compartment tid id) bb/flip! bs/from-byte-buffer))
+  (-> (encode-key-buf compartment tid id) bb/flip! bs/from-byte-buffer!))
 
 
 (defn resource-handles!

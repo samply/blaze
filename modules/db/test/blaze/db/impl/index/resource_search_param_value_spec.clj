@@ -4,6 +4,7 @@
     [blaze.byte-string-spec]
     [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
     [blaze.db.kv.spec]
+    [blaze.fhir.hash-spec]
     [clojure.spec.alpha :as s]))
 
 

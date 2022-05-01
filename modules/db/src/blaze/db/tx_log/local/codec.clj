@@ -1,8 +1,8 @@
 (ns blaze.db.tx-log.local.codec
   (:require
     [blaze.byte-buffer :as bb]
-    [blaze.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
+    [blaze.fhir.hash :as hash]
     [jsonista.core :as j]
     [taoensso.timbre :as log])
   (:import
@@ -18,7 +18,7 @@
   (j/object-mapper
     {:factory (CBORFactory.)
      :decode-key-fn true
-     :modules [bs/object-mapper-module]}))
+     :modules [hash/object-mapper-module]}))
 
 
 (defn encode-key [t]
@@ -46,7 +46,7 @@
 
 (defn- decode-hash [{:keys [hash] :as tx-cmd}]
   (if hash
-    (assoc tx-cmd :hash (bs/from-byte-array hash))
+    (assoc tx-cmd :hash (hash/from-byte-buffer! (bb/wrap hash)))
     tx-cmd))
 
 

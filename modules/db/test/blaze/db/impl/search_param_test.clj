@@ -80,13 +80,13 @@
             :type := "Patient"
             :v-hash := (codec/v-hash "profile-uri-141443")
             :id := "id-140855"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "ResourceSearchParamValue key"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Patient"
             :id := "id-140855"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "_profile"
             :v-hash := (codec/v-hash "profile-uri-141443")))))
 
@@ -116,13 +116,13 @@
             :type := "ActivityDefinition"
             :v-hash := (codec/v-hash "url-111854")
             :id := "id-111846"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "ResourceSearchParamValue key"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "ActivityDefinition"
             :id := "id-111846"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "url"
             :v-hash := (codec/v-hash "url-111854")))))
 
@@ -144,13 +144,13 @@
               :type := "List"
               :v-hash := (codec/v-hash "0")
               :id := "id-121825"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "first ResourceSearchParamValue key is about `id`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "List"
               :id := "id-121825"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "item"
               :v-hash := (codec/v-hash "0")))
 
@@ -160,13 +160,13 @@
               :type := "List"
               :v-hash := (codec/v-hash "Patient/0")
               :id := "id-121825"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "second ResourceSearchParamValue key is about `type/id`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
               :type := "List"
               :id := "id-121825"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "item"
               :v-hash := (codec/v-hash "Patient/0")))
 
@@ -177,13 +177,13 @@
               :v-hash := (codec/tid-id (codec/tid "Patient")
                                        (codec/id-byte-string "0"))
               :id := "id-121825"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "third ResourceSearchParamValue key is about `tid` and `id`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
               :type := "List"
               :id := "id-121825"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "item"
               :v-hash := (codec/tid-id (codec/tid "Patient")
                                        (codec/id-byte-string "0"))))))
@@ -210,13 +210,13 @@
               :type := "List"
               :v-hash := (codec/v-hash "value-122931")
               :id := "id-123058"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "first ResourceSearchParamValue key is about `value`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "List"
               :id := "id-123058"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "item:identifier"
               :v-hash := (codec/v-hash "value-122931")))
 
@@ -226,13 +226,13 @@
               :type := "List"
               :v-hash := (codec/v-hash "system-122917|")
               :id := "id-123058"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "second ResourceSearchParamValue key is about `system|`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
               :type := "List"
               :id := "id-123058"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "item:identifier"
               :v-hash := (codec/v-hash "system-122917|")))
 
@@ -242,13 +242,13 @@
               :type := "List"
               :v-hash := (codec/v-hash "system-122917|value-122931")
               :id := "id-123058"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "third ResourceSearchParamValue key is about `system|value`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
               :type := "List"
               :id := "id-123058"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "item:identifier"
               :v-hash := (codec/v-hash "system-122917|value-122931")))))
 
@@ -271,12 +271,12 @@
               :type := "List"
               :v-hash := (codec/v-hash "http://foo.com/bar-141221")
               :id := "id-121825"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "first ResourceSearchParamValue key is about `id`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "List"
               :id := "id-121825"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "item"
               :v-hash := (codec/v-hash "http://foo.com/bar-141221"))))))))

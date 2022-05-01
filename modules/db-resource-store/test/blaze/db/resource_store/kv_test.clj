@@ -1,7 +1,6 @@
 (ns blaze.db.resource-store.kv-test
   (:refer-clojure :exclude [hash])
   (:require
-    [blaze.byte-string :as bs]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem]
     [blaze.db.kv.mem-spec]
@@ -46,7 +45,7 @@
 
 (defn hash [s]
   (assert (= 1 (count s)))
-  (bs/from-hex (str/repeat s 64)))
+  (hash/from-hex (str/repeat s 64)))
 
 
 (defn invalid-content
@@ -145,14 +144,14 @@
     (let [content {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate content)]
       (with-system [{store ::rs/kv kv-store ::kv/mem} system]
-        (kv/put! kv-store (bs/to-byte-array hash) (fhir-spec/unform-cbor content))
+        (kv/put! kv-store (hash/to-byte-array hash) (fhir-spec/unform-cbor content))
 
         (is (= content @(rs/get store hash))))))
 
   (testing "parsing error"
     (let [hash (hash "0")]
       (with-system [{store ::rs/kv kv-store ::kv/mem} system]
-        (kv/put! kv-store (bs/to-byte-array hash) (invalid-content))
+        (kv/put! kv-store (hash/to-byte-array hash) (invalid-content))
 
         (given-failed-future (rs/get store hash)
           ::anom/message :# "Error while parsing resource content(.|\\s)*"))))
@@ -160,7 +159,7 @@
   (testing "conforming error"
     (let [hash (hash "0")]
       (with-system [{store ::rs/kv kv-store ::kv/mem} system]
-        (kv/put! kv-store (bs/to-byte-array hash) (j/write-value-as-bytes {} cbor-object-mapper))
+        (kv/put! kv-store (hash/to-byte-array hash) (j/write-value-as-bytes {} cbor-object-mapper))
 
         (given-failed-future (rs/get store hash)
           ::anom/message :# "Error while conforming resource content with hash `0000000000000000000000000000000000000000000000000000000000000000`."))))
@@ -180,7 +179,7 @@
     (let [content {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate content)]
       (with-system [{store ::rs/kv kv-store ::kv/mem} system]
-        (kv/put! kv-store (bs/to-byte-array hash) (fhir-spec/unform-cbor content))
+        (kv/put! kv-store (hash/to-byte-array hash) (fhir-spec/unform-cbor content))
 
         (is (= {hash content} @(rs/multi-get store [hash]))))))
 
@@ -190,8 +189,8 @@
           content-1 {:fhir/type :fhir/Patient :id "1"}
           hash-1 (hash/generate content-1)]
       (with-system [{store ::rs/kv kv-store ::kv/mem} system]
-        (kv/put! kv-store (bs/to-byte-array hash-0) (fhir-spec/unform-cbor content-0))
-        (kv/put! kv-store (bs/to-byte-array hash-1) (fhir-spec/unform-cbor content-1))
+        (kv/put! kv-store (hash/to-byte-array hash-0) (fhir-spec/unform-cbor content-0))
+        (kv/put! kv-store (hash/to-byte-array hash-1) (fhir-spec/unform-cbor content-1))
 
         (is (= {hash-0 content-0 hash-1 content-1}
                @(rs/multi-get store [hash-0 hash-1]))))))
@@ -199,7 +198,7 @@
   (testing "parsing error"
     (let [hash (hash "0")]
       (with-system [{store ::rs/kv kv-store ::kv/mem} system]
-        (kv/put! kv-store (bs/to-byte-array hash) (invalid-content))
+        (kv/put! kv-store (hash/to-byte-array hash) (invalid-content))
 
         (given-failed-future (rs/multi-get store [hash])
           ::anom/message :# "Error while parsing resource content(.|\\s)*"))))

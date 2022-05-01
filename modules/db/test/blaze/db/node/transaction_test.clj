@@ -5,6 +5,7 @@
     [blaze.db.node.transaction :as tx]
     [blaze.db.node.transaction-spec]
     [blaze.fhir.spec.type]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [cognitect.anomalies :as anom]
@@ -12,6 +13,7 @@
 
 
 (st/instrument)
+(tu/init-fhir-specs)
 
 
 (defn- fixture [f]
@@ -37,9 +39,9 @@
         [0 0 :op] := "create"
         [0 0 :type] := "Observation"
         [0 0 :id] := "0"
-        [0 0 :hash] := #blaze/byte-string"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
+        [0 0 :hash] := #blaze/hash"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
         [0 0 :refs] := [["Patient" "0"]]
-        [1 0 0] := #blaze/byte-string"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
+        [1 0 0] := #blaze/hash"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
         [1 0 1] := {:fhir/type :fhir/Observation :id "0"
                     :subject #fhir/Reference{:reference "Patient/0"}})
 
@@ -65,8 +67,8 @@
       [0 0 :op] := "put"
       [0 0 :type] := "Patient"
       [0 0 :id] := "0"
-      [0 0 :hash] := #blaze/byte-string"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"
-      [1 0 0] := #blaze/byte-string"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"
+      [0 0 :hash] := #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"
+      [1 0 0] := #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"
       [1 0 1] := {:fhir/type :fhir/Patient :id "0"})
 
     (testing "with references"
@@ -77,9 +79,9 @@
         [0 0 :op] := "put"
         [0 0 :type] := "Observation"
         [0 0 :id] := "0"
-        [0 0 :hash] := #blaze/byte-string"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
+        [0 0 :hash] := #blaze/hash"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
         [0 0 :refs] := [["Patient" "0"]]
-        [1 0 0] := #blaze/byte-string"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
+        [1 0 0] := #blaze/hash"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"
         [1 0 1] := {:fhir/type :fhir/Observation :id "0"
                     :subject #fhir/Reference{:reference "Patient/0"}})
 

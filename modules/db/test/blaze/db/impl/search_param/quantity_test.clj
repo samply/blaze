@@ -163,13 +163,13 @@
               :type := "Observation"
               :v-hash := (codec/quantity nil 140M)
               :id := "id-155558"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "first ResourceSearchParamValue key is about `value`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "Observation"
               :id := "id-155558"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "value-quantity"
               :v-hash := (codec/quantity nil 140M)))
 
@@ -179,13 +179,13 @@
               :type := "Observation"
               :v-hash := (codec/quantity "mm[Hg]" 140M)
               :id := "id-155558"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "second ResourceSearchParamValue key is about `code value`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
               :type := "Observation"
               :id := "id-155558"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "value-quantity"
               :v-hash := (codec/quantity "mm[Hg]" 140M)))
 
@@ -195,13 +195,13 @@
               :type := "Observation"
               :v-hash := (codec/quantity "http://unitsofmeasure.org|mm[Hg]" 140M)
               :id := "id-155558"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "third ResourceSearchParamValue key is about `system|code value`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
               :type := "Observation"
               :id := "id-155558"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "value-quantity"
               :v-hash := (codec/quantity "http://unitsofmeasure.org|mm[Hg]" 140M)))))
 
@@ -226,13 +226,13 @@
               :type := "Observation"
               :v-hash := (codec/quantity nil 140M)
               :id := "id-155558"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "first ResourceSearchParamValue key is about `value`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "Observation"
               :id := "id-155558"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "value-quantity"
               :v-hash := (codec/quantity nil 140M)))
 
@@ -242,13 +242,13 @@
               :type := "Observation"
               :v-hash := (codec/quantity "mmHg" 140M)
               :id := "id-155558"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "second ResourceSearchParamValue key is about `unit value`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
               :type := "Observation"
               :id := "id-155558"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "value-quantity"
               :v-hash := (codec/quantity "mmHg" 140M)))))
 
@@ -274,13 +274,13 @@
               :type := "Observation"
               :v-hash := (codec/quantity nil 120M)
               :id := "id-155558"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "first ResourceSearchParamValue key is about `value`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "Observation"
               :id := "id-155558"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "value-quantity"
               :v-hash := (codec/quantity nil 120M)))
 
@@ -290,13 +290,13 @@
               :type := "Observation"
               :v-hash := (codec/quantity "mm[Hg]" 120M)
               :id := "id-155558"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "second ResourceSearchParamValue key is about `code value`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
               :type := "Observation"
               :id := "id-155558"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "value-quantity"
               :v-hash := (codec/quantity "mm[Hg]" 120M)))))
 
@@ -322,13 +322,13 @@
               :type := "Observation"
               :v-hash := (codec/quantity nil 120M)
               :id := "id-155558"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "first ResourceSearchParamValue key is about `value`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "Observation"
               :id := "id-155558"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "value-quantity"
               :v-hash := (codec/quantity nil 120M)))
 
@@ -338,13 +338,13 @@
               :type := "Observation"
               :v-hash := (codec/quantity "mm[Hg]" 120M)
               :id := "id-155558"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "second ResourceSearchParamValue key is about `code value`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
               :type := "Observation"
               :id := "id-155558"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "value-quantity"
               :v-hash := (codec/quantity "mm[Hg]" 120M)))
 
@@ -354,13 +354,13 @@
               :type := "Observation"
               :v-hash := (codec/quantity "mmHg" 120M)
               :id := "id-155558"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "third ResourceSearchParamValue key is about `unit value`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
               :type := "Observation"
               :id := "id-155558"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "value-quantity"
               :v-hash := (codec/quantity "mmHg" 120M))))))
 

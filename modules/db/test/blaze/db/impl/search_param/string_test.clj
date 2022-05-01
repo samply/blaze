@@ -82,13 +82,13 @@
             :type := "Patient"
             :v-hash := (codec/string (phonetics/soundex "family-102508"))
             :id := "id-122929"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "ResourceSearchParamValue key"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Patient"
             :id := "id-122929"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "phonetic"
             :v-hash := (codec/string (phonetics/soundex "family-102508"))))))
 
@@ -111,13 +111,13 @@
               :type := "Patient"
               :v-hash := (codec/string "line 120252")
               :id := "id-122929"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "ResourceSearchParamValue key"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "Patient"
               :id := "id-122929"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "address"
               :v-hash := (codec/string "line 120252"))))
 
@@ -128,13 +128,13 @@
               :type := "Patient"
               :v-hash := (codec/string "city 105431")
               :id := "id-122929"
-              :hash-prefix (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "ResourceSearchParamValue key"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
               :type := "Patient"
               :id := "id-122929"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "address"
               :v-hash := (codec/string "city 105431"))))))
 
@@ -154,13 +154,13 @@
             :type := "ActivityDefinition"
             :v-hash := (codec/string "desc 121328")
             :id := "id-121344"
-            :hash-prefix (codec/hash-prefix hash)))
+            :hash-prefix := (hash/prefix hash)))
 
         (testing "ResourceSearchParamValue key"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "ActivityDefinition"
             :id := "id-121344"
-            :hash-prefix := (codec/hash-prefix hash)
+            :hash-prefix := (hash/prefix hash)
             :code := "description"
             :v-hash := (codec/string "desc 121328")))))
 

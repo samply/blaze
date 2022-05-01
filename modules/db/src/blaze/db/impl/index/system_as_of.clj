@@ -6,7 +6,8 @@
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.iterators :as i])
+    [blaze.db.impl.iterators :as i]
+    [blaze.fhir.hash :as hash])
   (:import
     [com.google.common.primitives Longs]))
 
@@ -24,7 +25,7 @@
 
 
 (def ^:private ^:const ^long value-size
-  (+ codec/hash-size codec/state-size))
+  (+ hash/size codec/state-size))
 
 
 (defn- key-valid? [^long end-t]

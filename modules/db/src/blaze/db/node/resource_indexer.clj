@@ -2,7 +2,6 @@
   (:require
     [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
-    [blaze.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.compartment.resource :as cr]
     [blaze.db.impl.search-param :as search-param]
@@ -76,7 +75,7 @@
 
 (defn- skip-indexing-compartments-msg [hash message]
   (format "Skip indexing compartments of resource with hash `%s` because of: %s"
-          (bs/hex hash) (or message "<unknown>")))
+          hash (or message "<unknown>")))
 
 
 (defn- linked-compartments [search-param-registry hash resource]
@@ -106,7 +105,7 @@
 
 
 (defn- index-resource [context [hash resource]]
-  (log/trace "Index resource with hash" (bs/hex hash))
+  (log/trace "Index resource with hash" hash)
   (with-open [_ (prom/timer duration-seconds "index-resource")]
     (let [entries (index-resource* context hash resource)]
       (prom/observe! index-entries (name (:fhir/type resource)) (count entries))

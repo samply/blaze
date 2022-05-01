@@ -54,14 +54,6 @@
          (apply codec/descending-long [(apply codec/descending-long [t])])))))
 
 
-(deftest hash-prefix-test
-  (satisfies-prop 1000
-    (prop/for-all [hash (s/gen :blaze.resource/hash)]
-      (= (bs/subs hash 0 4)
-         (codec/hash-prefix hash)
-         (apply codec/hash-prefix [hash])))))
-
-
 (deftest tid-test
   (check `codec/tid))
 
