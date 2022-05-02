@@ -321,6 +321,7 @@
    {:num-threads #blaze/cfg ["DB_RESOURCE_STORE_KV_THREADS" pos-int? 4]}
 
    :blaze.db.resource-store.kv/resource-bytes {}
+   :blaze.db.resource-store.kv/duration-seconds {}
 
    ;;
    ;; In-Memory, Volatile Key-Value Store Resource Store Backend
@@ -482,6 +483,7 @@
    {:num-threads #blaze/cfg ["DB_RESOURCE_STORE_KV_THREADS" pos-int? 4]}
 
    :blaze.db.resource-store.kv/resource-bytes {}
+   :blaze.db.resource-store.kv/duration-seconds {}
 
    ;;
    ;; RocksDB Key-Value Store Resource Store Backend

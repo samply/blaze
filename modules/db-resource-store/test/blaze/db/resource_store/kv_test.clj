@@ -109,6 +109,11 @@
     (is (s/valid? :blaze.metrics/collector collector))))
 
 
+(deftest duration-seconds-collector-init-test
+  (with-system [{collector ::rs-kv/duration-seconds} {::rs-kv/duration-seconds {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+
 (def system
   {::rs/kv
    {:kv-store (ig/ref ::kv/mem)

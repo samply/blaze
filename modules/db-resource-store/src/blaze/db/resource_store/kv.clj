@@ -26,11 +26,20 @@
 
 
 (defhistogram resource-bytes
-  "Stored resource sizes in bytes in key-value resource store."
+  "Stored resource sizes in key-value resource store."
   {:namespace "blaze"
    :subsystem "db"
    :name "resource_store_kv_resource_bytes"}
   (take 16 (iterate #(* 2 %) 32)))
+
+
+(defhistogram duration-seconds
+  "Durations in key-value resource store."
+  {:namespace "blaze"
+   :subsystem "db"
+   :name "resource_store_kv_duration_seconds"}
+  (take 16 (iterate #(* 2 %) 1e-6))
+  "op")
 
 
 (defn- parse-msg [hash cause-msg]
@@ -60,8 +69,9 @@
 
 
 (defn- parse-and-conform-cbor [bytes hash]
-  (when-ok [x (parse-cbor bytes hash)]
-    (conform-cbor x hash)))
+  (with-open [_ (prom/timer duration-seconds "parse-resource")]
+    (when-ok [x (parse-cbor bytes hash)]
+      (conform-cbor x hash))))
 
 
 (def ^:private entry-thawer
@@ -83,11 +93,13 @@
 
 
 (defn- get-content [kv-store hash]
-  (kv/get kv-store (hash/to-byte-array hash)))
+  (with-open [_ (prom/timer duration-seconds "get-resource")]
+    (kv/get kv-store (hash/to-byte-array hash))))
 
 
 (defn- multi-get-content [kv-store hashes]
-  (kv/multi-get kv-store (mapv hash/to-byte-array hashes)))
+  (with-open [_ (prom/timer duration-seconds "get-resources")]
+    (kv/multi-get kv-store (mapv hash/to-byte-array hashes))))
 
 
 (deftype KvResourceStore [kv-store executor]
@@ -101,7 +113,6 @@
   (-multi-get [_ hashes]
     (log/trace "multi-get" (count hashes) "hash(es)")
     (ac/supply-async
-      ;; TODO - make thawing parallel
       #(transduce entry-thawer conj {} (multi-get-content kv-store hashes))
       executor))
 
@@ -152,3 +163,7 @@
 
 (reg-collector ::resource-bytes
   resource-bytes)
+
+
+(reg-collector ::duration-seconds
+  duration-seconds)
