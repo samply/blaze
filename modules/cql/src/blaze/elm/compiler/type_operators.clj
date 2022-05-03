@@ -124,7 +124,11 @@
   (p/convert-quantity x unit))
 
 
-;; TODO 22.7. ConvertsToBoolean
+;; 22.7. ConvertsToBoolean
+(defunop converts-to-boolean [operand]
+  (when (some? operand)
+    (some? (p/to-boolean operand))))
+
 
 ;; TODO 22.8. ConvertsToDate
 
