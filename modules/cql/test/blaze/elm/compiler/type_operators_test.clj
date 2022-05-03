@@ -295,7 +295,89 @@
 ;; If the input is a Decimal, the result is true if the decimal is 1.0 or 0.0.
 ;;
 ;; If the argument is null the result is null.
+(deftest compile-converts-to-boolean-test
+  (testing "String"
+    (are [x] (true? (tu/compile-unop elm/converts-to-boolean elm/string x))
+      "true"
+      "t"
+      "yes"
+      "y"
+      "1"
+      "True"
+      "T"
+      "TRUE"
+      "YES"
+      "Yes"
+      "Y"
+      "false"
+      "f"
+      "no"
+      "n"
+      "0"
+      "False"
+      "F"
+      "FALSE"
+      "NO"
+      "No"
+      "N")
 
+    (are [x] (false? (tu/compile-unop elm/converts-to-boolean elm/string x))
+      "foo"
+      "bar"
+      ""))
+
+  (testing "integer"
+    (is (true? (tu/compile-unop elm/converts-to-boolean elm/integer "1")))
+
+    (is (true? (tu/compile-unop elm/converts-to-boolean elm/integer "0")))
+
+    (are [x] (false? (tu/compile-unop elm/converts-to-boolean elm/integer x))
+      "2"
+      "-1"))
+
+  (testing "long"
+    (is (true? (tu/compile-unop elm/converts-to-boolean elm/long "1")))
+
+    (is (true? (tu/compile-unop elm/converts-to-boolean elm/long "0")))
+
+    (are [x] (false? (tu/compile-unop elm/converts-to-boolean elm/long x))
+      "2"
+      "-1"))
+
+  (testing "decimal"
+    (are [x] (true? (tu/compile-unop elm/converts-to-boolean elm/decimal x))
+      "1"
+      "1.0"
+      "1.00"
+      "1.00000000"
+      "0"
+      "0.0"
+      "0.00"
+      "0.00000000")
+
+    (are [x] (false? (tu/compile-unop elm/converts-to-boolean elm/decimal x))
+      "0.1"
+      "-1.0"
+      "2.0"
+      "1.1"
+      "0.9"))
+
+  (testing "boolean"
+    (is (true? (tu/compile-unop elm/converts-to-boolean elm/boolean "true")))
+
+    (is (true? (tu/compile-unop elm/converts-to-boolean elm/boolean "false"))))
+
+  (testing "dynamic"
+    (are [x res] (= res (tu/dynamic-compile-eval (elm/converts-to-boolean x)))
+      #elm/parameter-ref "A" false))
+
+  (tu/testing-unary-null elm/converts-to-boolean)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/converts-to-boolean #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(converts-to-boolean (param-ref "x")) (core/-form expr))))))
 
 ;; TODO 22.8. ConvertsToDate
 ;;
@@ -646,7 +728,8 @@
           expr (c/compile compile-ctx elm)]
       (is (= '(to-boolean (param-ref "x")) (core/-form expr))))))
 
-;; TODO 22.20. ToChars
+
+;; 22.20. ToChars
 ;;
 ;; The ToChars operator takes a string and returns a list with one string for
 ;; each character in the input, in the order in which they appear in the
