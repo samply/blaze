@@ -123,14 +123,14 @@
 
 
 (defn- zipmap-found [hashes resources]
-  (loop [map {}
+  (loop [map (transient {})
          [hash & hashes] hashes
          [resource & resources] resources]
     (if hash
       (if resource
-        (recur (assoc map hash resource) hashes resources)
+        (recur (assoc! map hash resource) hashes resources)
         (recur map hashes resources))
-      map)))
+      (persistent! map))))
 
 
 (deftype CassandraResourceStore [session get-statement put-statement]

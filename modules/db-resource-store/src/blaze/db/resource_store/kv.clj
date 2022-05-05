@@ -2,8 +2,7 @@
   "A resource store implementation that uses a kev-value store as backend."
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
-    [blaze.async.comp :as ac]
-    [blaze.byte-buffer :as bb]
+    [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.coll.core :as coll]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
@@ -74,16 +73,6 @@
       (conform-cbor x hash))))
 
 
-(def ^:private entry-thawer
-  (comp
-    (map
-      (fn [[k v]]
-        (let [hash (hash/from-byte-buffer! (bb/wrap k))]
-          (when-ok [resource (parse-and-conform-cbor v hash)]
-            [hash resource]))))
-    (halt-when ba/anomaly?)))
-
-
 (def ^:private entry-freezer
   (map
     (fn [[hash resource]]
@@ -97,24 +86,39 @@
     (kv/get kv-store (hash/to-byte-array hash))))
 
 
-(defn- multi-get-content [kv-store hashes]
-  (with-open [_ (prom/timer duration-seconds "get-resources")]
-    (kv/multi-get kv-store (mapv hash/to-byte-array hashes))))
+(defn- get-and-parse [kv-store hash]
+  (some-> (get-content kv-store hash) (parse-and-conform-cbor hash)))
+
+
+(defn- get-and-parse-async [kv-store executor hash]
+  (ac/supply-async #(get-and-parse kv-store hash) executor))
+
+
+(defn- multi-get-and-parse-async [kv-store executor hashes]
+  (mapv (partial get-and-parse-async kv-store executor) hashes))
+
+
+(defn- zipmap-found [hashes resources]
+  (loop [map (transient {})
+         [hash & hashes] hashes
+         [resource & resources] resources]
+    (if hash
+      (if resource
+        (recur (assoc! map hash resource) hashes resources)
+        (recur map hashes resources))
+      (persistent! map))))
 
 
 (deftype KvResourceStore [kv-store executor]
   rs/ResourceStore
   (-get [_ hash]
-    (ac/supply-async
-      #(some-> (get-content kv-store hash)
-               (parse-and-conform-cbor hash))
-      executor))
+    (get-and-parse-async kv-store executor hash))
 
   (-multi-get [_ hashes]
     (log/trace "multi-get" (count hashes) "hash(es)")
-    (ac/supply-async
-      #(transduce entry-thawer conj {} (multi-get-content kv-store hashes))
-      executor))
+    (let [futures (multi-get-and-parse-async kv-store executor hashes)]
+      (do-sync [_ (ac/all-of futures)]
+        (zipmap-found hashes (map deref futures)))))
 
   (-put [_ entries]
     (ac/supply-async

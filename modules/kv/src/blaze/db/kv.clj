@@ -217,7 +217,9 @@
 
 
 (defn multi-get
-  "Returns a map of key to value of all found entries."
+  "Returns a map of key to value of all found entries of `keys`.
+
+  Blocks the current thread."
   ([store keys]
    (-multi-get store keys)))
 
