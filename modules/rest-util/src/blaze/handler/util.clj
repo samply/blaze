@@ -192,7 +192,7 @@
 
 
 (defn not-found-handler [_]
-  (-> (ring/not-found not-found-outcome) ac/completed-future))
+  (ring/not-found not-found-outcome))
 
 
 (defn- method-not-allowed-msg [{:keys [uri request-method]}]
@@ -213,24 +213,11 @@
 
 (defn method-not-allowed-handler [request]
   (-> (ring/response (method-not-allowed-outcome request))
-      (ring/status 405)
-      ac/completed-future))
-
-
-(def ^:private not-acceptable-issue
-  {:severity #fhir/code"error"
-   :code #fhir/code"structure"})
-
-
-(def ^:private not-acceptable-outcome
-  {:fhir/type :fhir/OperationOutcome
-   :issue [not-acceptable-issue]})
+      (ring/status 405)))
 
 
 (defn not-acceptable-handler [_]
-  (-> (ring/response not-acceptable-outcome)
-      (ring/status 406)
-      ac/completed-future))
+  (ring/status 406))
 
 
 (def default-handler

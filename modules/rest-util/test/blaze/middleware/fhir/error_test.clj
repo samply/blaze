@@ -1,7 +1,8 @@
 (ns blaze.middleware.fhir.error-test
+  (:refer-clojure :exclude [error-handler])
   (:require
-    [blaze.async.comp :as ac]
     [blaze.middleware.fhir.error :refer [wrap-error]]
+    [blaze.test-util.ring :refer [call]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]))
@@ -19,10 +20,18 @@
 (test/use-fixtures :each fixture)
 
 
+(defn- identity-handler [request respond _]
+  (respond request))
+
+
+(defn- error-handler [_ _ raise]
+  (raise (Exception.)))
+
+
 (deftest wrap-error-test
   (testing "without error"
-    (is (= {} @((wrap-error ac/completed-future) {}))))
+    (is (= {} (call (wrap-error identity-handler) {}))))
 
   (testing "with error"
-    (given @((wrap-error (fn [_] (ac/failed-future (Exception.)))) {})
+    (given (call (wrap-error error-handler) {})
       :status := 500)))

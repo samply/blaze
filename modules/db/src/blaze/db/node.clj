@@ -236,10 +236,12 @@
     (db/db node (:t @state)))
 
   (-sync [node]
+    (log/trace "sync on last t")
     (-> (tx-log/last-t tx-log)
         (ac/then-compose #(np/-sync node %))))
 
   (-sync [node t]
+    (log/trace "sync on t =" t)
     (let [{current-t :t current-error-t :error-t} @state]
       (if (<= t (max current-t current-error-t))
         (ac/completed-future (db/db node current-t))

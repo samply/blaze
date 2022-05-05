@@ -36,7 +36,7 @@
           [:put {:fhir/type :fhir/Observation :id "0"
                  :subject
                  #fhir/Reference
-                     {:reference "Patient/0"}}]]]
+                         {:reference "Patient/0"}}]]]
 
         (let [db (d/db node)
               include-defs {:direct {:forward {"Observation" [{:code "subject"}]}}}
@@ -50,7 +50,7 @@
         [[[:put {:fhir/type :fhir/Observation :id "0"
                  :subject
                  #fhir/Reference
-                     {:reference "Patient/0"}}]]
+                         {:reference "Patient/0"}}]]
          [[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [db (d/db node)
@@ -66,7 +66,7 @@
           [:put {:fhir/type :fhir/Observation :id "0"
                  :subject
                  #fhir/Reference
-                     {:reference "Patient/0"}}]]]
+                         {:reference "Patient/0"}}]]]
 
         (let [db (d/db node)
               include-defs {:direct
@@ -82,14 +82,14 @@
         [:put {:fhir/type :fhir/Encounter :id "1"
                :subject
                #fhir/Reference
-                   {:reference "Patient/0"}}]
+                       {:reference "Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "2"
                :subject
                #fhir/Reference
-                   {:reference "Patient/0"}
+                       {:reference "Patient/0"}
                :encounter
                #fhir/Reference
-                   {:reference "Encounter/1"}}]]]
+                       {:reference "Encounter/1"}}]]]
 
       (let [db (d/db node)
             include-defs {:direct
@@ -108,7 +108,7 @@
         [:put {:fhir/type :fhir/Observation :id "1"
                :subject
                #fhir/Reference
-                   {:reference "Patient/0"}}]]]
+                       {:reference "Patient/0"}}]]]
 
       (let [db (d/db node)
             include-defs {:direct

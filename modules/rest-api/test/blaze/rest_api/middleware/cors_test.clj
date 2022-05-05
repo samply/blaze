@@ -1,11 +1,10 @@
 (ns blaze.rest-api.middleware.cors-test
   (:require
-    [blaze.async.comp :as ac]
     [blaze.rest-api.middleware.cors :refer [wrap-cors]]
+    [blaze.test-util.ring :refer [call]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest]]
-    [juxt.iota :refer [given]]
-    [ring.util.response :as ring]))
+    [juxt.iota :refer [given]]))
 
 
 (st/instrument)
@@ -21,5 +20,5 @@
 
 
 (deftest wrap-cors-test
-  (given @((wrap-cors (fn [_] (ac/completed-future (ring/response nil)))) nil)
+  (given (call (wrap-cors (fn [_ respond _] (respond nil))) nil)
     [:headers "Access-Control-Allow-Origin"] := "*"))

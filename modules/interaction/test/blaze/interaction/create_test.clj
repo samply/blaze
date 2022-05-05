@@ -12,8 +12,8 @@
     [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
     [blaze.interaction.create]
+    [blaze.interaction.test-util :refer [wrap-error]]
     [blaze.interaction.util-spec]
-    [blaze.middleware.fhir.error :refer [wrap-error]]
     [blaze.test-util :as tu :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -345,9 +345,9 @@
     (with-system [{handler :blaze.interaction/create} (create-system {:enforce-referential-integrity false})]
       (let [{:keys [status headers body]}
             @((-> handler wrap-defaults wrap-error)
-               {::reitit/match observation-match
-                :body {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "Patient/0"}}})]
+              {::reitit/match observation-match
+               :body {:fhir/type :fhir/Observation :id "0"
+                      :subject #fhir/Reference{:reference "Patient/0"}}})]
 
         (is (= 201 status))
 

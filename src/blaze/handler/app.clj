@@ -1,6 +1,5 @@
 (ns blaze.handler.app
   (:require
-    [blaze.async.comp :as ac]
     [blaze.handler.health.spec]
     [blaze.rest-api.spec]
     [clojure.spec.alpha :as s]
@@ -10,9 +9,10 @@
     [taoensso.timbre :as log]))
 
 
-(defn- options-handler [_]
+(defn- options-handler [_ respond _]
   (-> (ring/response nil)
-      (ring/status 405)))
+      (ring/status 405)
+      respond))
 
 
 (defn- router [health-handler]
@@ -32,16 +32,6 @@
     rest-api))
 
 
-(defn- wrap-sync [handler]
-  (fn [request respond raise]
-    (-> (handler request)
-        (ac/when-complete
-          (fn [response e]
-            (if response
-              (respond response)
-              (raise e)))))))
-
-
 (defmethod ig/pre-init-spec :blaze.handler/app [_]
   (s/keys :req-un [:blaze/rest-api :blaze/health-handler]))
 
@@ -49,4 +39,4 @@
 (defmethod ig/init-key :blaze.handler/app
   [_ {:keys [rest-api health-handler]}]
   (log/info "Init app handler")
-  (wrap-sync (handler rest-api health-handler)))
+  (handler rest-api health-handler))

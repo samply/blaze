@@ -2,6 +2,8 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-system]]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.interaction.delete]
+    [blaze.interaction.read]
     [blaze.interaction.search-type]
     [blaze.interaction.transaction]
     [blaze.page-store.protocols :as pp]
@@ -9,6 +11,7 @@
     [blaze.system :as system]
     [blaze.system-spec]
     [blaze.test-util :refer [with-system]]
+    [blaze.test-util.ring :refer [call]]
     [buddy.auth.protocols :as ap]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -80,11 +83,17 @@
      :transaction-handler (ig/ref :blaze.interaction/transaction)
      :resource-patterns
      [#:blaze.rest-api.resource-pattern
-         {:type :default
-          :interactions
-          {:search-type
-           #:blaze.rest-api.interaction
-               {:handler (ig/ref :blaze.interaction/search-type)}}}]}
+             {:type :default
+              :interactions
+              {:read
+               #:blaze.rest-api.interaction
+                       {:handler (ig/ref :blaze.interaction/read)}
+               :delete
+               #:blaze.rest-api.interaction
+                       {:handler (ig/ref :blaze.interaction/delete)}
+               :search-type
+               #:blaze.rest-api.interaction
+                       {:handler (ig/ref :blaze.interaction/search-type)}}}]}
     :blaze.db/search-param-registry
     {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
     :blaze.fhir/structure-definition-repo {}
@@ -95,6 +104,10 @@
      :executor (ig/ref :blaze.test/executor)
      :clock (ig/ref :blaze.test/clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+    :blaze.interaction/read {}
+    :blaze.interaction/delete
+    {:node (ig/ref :blaze.db/node)
+     :executor (ig/ref :blaze.test/executor)}
     :blaze.interaction/search-type
     {:clock (ig/ref :blaze.test/clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
@@ -123,7 +136,7 @@
   (ByteArrayInputStream. bs))
 
 
-(def bundle
+(def search-bundle
   {:fhir/type :fhir/Bundle
    :type #fhir/code "batch"
    :entry
@@ -135,16 +148,61 @@
 
 
 (deftest auth-test
-  (log/set-level! :debug)
   (with-system [{:blaze/keys [rest-api]} system]
     (testing "Patient search"
-      (given @(rest-api {:request-method :get :uri "/Patient"})
+      (given (call rest-api {:request-method :get :uri "/Patient"})
         :status := 200))
 
     (testing "Patient search as batch request"
-      (given @(rest-api {:request-method :post
-                         :uri ""
-                         :headers {"content-type" "application/fhir+json"}
-                         :body (input-stream (fhir-spec/unform-json bundle))})
+      (given (call rest-api {:request-method :post :uri ""
+                             :headers {"content-type" "application/fhir+json"}
+                             :body (input-stream (fhir-spec/unform-json search-bundle))})
         :status := 200
         [:body fhir-spec/parse-json :entry 0 :response :status] := "200"))))
+
+
+(deftest not-acceptable-test
+  (with-system [{:blaze/keys [rest-api]} system]
+    (given (call rest-api {:request-method :get :uri "/Patient"
+                           :headers {"accept" "text/plain"}})
+      :status := 406
+      :body := nil)))
+
+
+(deftest read-test
+  (with-system [{:blaze/keys [rest-api]} system]
+    (given (call rest-api {:request-method :get :uri "/Patient/0"})
+      :status := 404
+      [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
+
+
+(def read-bundle
+  {:fhir/type :fhir/Bundle
+   :type #fhir/code "batch"
+   :entry
+   [{:fhir/type :fhir.Bundle/entry
+     :request
+     {:fhir/type :fhir.Bundle.entry/request
+      :method #fhir/code"GET"
+      :url #fhir/uri"/Patient/0"}}]})
+
+
+(deftest batch-read-test
+  (with-system [{:blaze/keys [rest-api]} system]
+    (given (call rest-api {:request-method :post :uri ""
+                           :headers {"content-type" "application/fhir+json"}
+                           :body (input-stream (fhir-spec/unform-json read-bundle))})
+      :status := 200
+      [:body fhir-spec/parse-json :entry 0 :response :status] := "404"
+      [:body fhir-spec/parse-json :entry 0 :response :outcome :resourceType] := "OperationOutcome")))
+
+
+(deftest delete-test
+  (with-system [{:blaze/keys [rest-api]} system]
+    (given (call rest-api {:request-method :delete :uri "/Patient/0"})
+      :status := 204
+      :body := nil)
+
+    (given (call rest-api {:request-method :get :uri "/Patient/0"})
+      :status := 410
+      [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
