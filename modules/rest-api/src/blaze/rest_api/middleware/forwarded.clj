@@ -33,5 +33,5 @@
 
 
 (defn wrap-forwarded [handler default-base-url]
-  (fn [request]
-    (handler (forwarded-request request default-base-url))))
+  (fn [request respond raise]
+    (handler (forwarded-request request default-base-url) respond raise)))

@@ -13,12 +13,12 @@
     [blaze.interaction.delete]
     [blaze.interaction.read]
     [blaze.interaction.search-type]
+    [blaze.interaction.test-util :refer [wrap-error]]
     [blaze.interaction.transaction]
     [blaze.interaction.update]
     [blaze.interaction.util-spec]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
-    [blaze.middleware.fhir.error :refer [wrap-error]]
     [blaze.page-store-spec]
     [blaze.page-store.local]
     [blaze.test-util :as tu :refer [given-thrown]]
@@ -1199,7 +1199,7 @@
                        {:fhir/type :fhir/Observation :id "0"
                         :subject
                         #fhir/Reference
-                            {:reference "Patient/0"}}
+                                {:reference "Patient/0"}}
                        :request
                        {:fhir/type :fhir.Bundle.entry/request
                         :method #fhir/code"POST"

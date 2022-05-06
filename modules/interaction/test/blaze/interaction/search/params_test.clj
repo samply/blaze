@@ -37,19 +37,19 @@
 
   (testing "decoding clauses from query params"
     (given @(params/decode
-             page-store
-             :blaze.preference.handling/strict
-             {"foo" "bar"})
+              page-store
+              :blaze.preference.handling/strict
+              {"foo" "bar"})
       :clauses := [["foo" "bar"]]
       :token := nil))
 
   (testing "decoding clauses from token"
     (given @(params/decode
-             (reify p/PageStore
-               (-get [_ token]
-                 (assert (= (str/repeat "A" 32) token))
-                 (ac/completed-future [["foo" "bar"]])))
-             :blaze.preference.handling/strict
-             {"__token" (str/repeat "A" 32)})
+              (reify p/PageStore
+                (-get [_ token]
+                  (assert (= (str/repeat "A" 32) token))
+                  (ac/completed-future [["foo" "bar"]])))
+              :blaze.preference.handling/strict
+              {"__token" (str/repeat "A" 32)})
       :clauses := [["foo" "bar"]]
       :token := (str/repeat "A" 32))))

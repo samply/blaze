@@ -83,6 +83,7 @@
 
 
 (defn- entries [context matches includes]
+  (log/trace "build entries")
   (-> (mapv #(search-util/entry context %) matches)
       (into (map #(search-util/entry context % search-util/include)) includes)))
 

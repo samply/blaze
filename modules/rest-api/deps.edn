@@ -14,6 +14,10 @@
   buddy/buddy-auth
   {:mvn/version "3.0.323"}
 
+  metosin/muuntaja
+  {:mvn/version "0.6.8"
+   :exclusions [com.cognitect/transit-clj]}
+
   org.clojure/data.xml
   {:mvn/version "0.2.0-alpha6"}}
 

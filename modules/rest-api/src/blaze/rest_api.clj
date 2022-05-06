@@ -6,13 +6,12 @@
     [blaze.executors :as ex]
     [blaze.fhir.structure-definition-repo :as sdr]
     [blaze.handler.util :as handler-util]
-    [blaze.middleware.fhir.error :refer [wrap-error]]
     [blaze.middleware.fhir.metrics :as metrics]
     [blaze.module :refer [reg-collector]]
     [blaze.rest-api.capabilities :as capabilities]
     [blaze.rest-api.middleware.cors :as cors]
     [blaze.rest-api.middleware.log :refer [wrap-log]]
-    [blaze.rest-api.middleware.output :as output :refer [wrap-output]]
+    [blaze.rest-api.middleware.output :as output]
     [blaze.rest-api.middleware.resource :as resource]
     [blaze.rest-api.routes :as routes]
     [blaze.rest-api.spec]
@@ -24,7 +23,6 @@
     [reitit.core :as reitit]
     [reitit.ring]
     [reitit.ring.spec]
-    [ring.middleware.params :refer [wrap-params]]
     [ring.util.response :as ring]
     [taoensso.timbre :as log]))
 
@@ -44,7 +42,7 @@
        :syntax :bracket
        :reitit.middleware/transform
        (fn [middleware]
-         (filterv (comp not #{:resource :auth-guard} :name) middleware))})
+         (filterv (comp not #{:resource :auth-guard :output :sync :forwarded :error} :name) middleware))})
     handler-util/default-batch-handler))
 
 
@@ -87,9 +85,6 @@
          (cond-> [wrap-cors]
            (seq auth-backends)
            (conj #(apply wrap-authentication % auth-backends)))})
-      wrap-error
-      wrap-output
-      wrap-params
       wrap-log))
 
 

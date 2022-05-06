@@ -31,7 +31,7 @@
              :id "0"
              :subject
              #fhir/Reference
-                 {:reference "urn:uuid:d7bd0ece-fe3c-4755-b7c9-5b86f42e304a"}}
+                     {:reference "urn:uuid:d7bd0ece-fe3c-4755-b7c9-5b86f42e304a"}}
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Observation"}}
@@ -60,7 +60,7 @@
              :id "0"
              :generalPractitioner
              [#fhir/Reference
-                 {:reference "urn:uuid:44dded80-aaf1-4988-ace4-5f3a2c9935a7"}]}
+                     {:reference "urn:uuid:44dded80-aaf1-4988-ace4-5f3a2c9935a7"}]}
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Patient"}}]]
@@ -83,7 +83,7 @@
              :diagnosis
              [{:diagnosisReference
                #fhir/Reference
-                   {:reference "urn:uuid:69857788-8691-45b9-bc97-654fb93ba615"}}]}
+                       {:reference "urn:uuid:69857788-8691-45b9-bc97-654fb93ba615"}}]}
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Claim"}}]]
@@ -114,7 +114,7 @@
            [{:fhir/type :fhir/ServiceRequest :id "0"
              :subject
              #fhir/Reference
-                 {:reference "urn:uuid:48aacf48-ba32-4aa8-ac0d-b095ac54201b"}}]}
+                     {:reference "urn:uuid:48aacf48-ba32-4aa8-ac0d-b095ac54201b"}}]}
           :request
           {:method #fhir/code"POST"
            :url #fhir/uri"ExplanationOfBenefit"}}]]

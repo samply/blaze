@@ -1,8 +1,8 @@
 (ns blaze.handler.app-test
   (:require
-    [blaze.async.comp :as ac]
     [blaze.handler.app]
     [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.test-util.ring :refer [call]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
@@ -56,12 +56,12 @@
       [:explain ::s/problems 1 :val] := ::invalid)))
 
 
-(defn- rest-api [_]
-  (ac/completed-future (ring/response ::rest-api)))
+(defn- rest-api [_ respond _]
+  (respond (ring/response ::rest-api)))
 
 
-(defn- health-handler [_]
-  (ac/completed-future (ring/response ::health-handler)))
+(defn- health-handler [_ respond _]
+  (respond (ring/response ::health-handler)))
 
 
 (def system
@@ -71,20 +71,17 @@
 (deftest handler-test
   (testing "rest-api"
     (with-system [{handler :blaze.handler/app} system]
-      @(handler
-         {:uri "/" :request-method :get}
-         (fn [response]
-           (given response
-             :status := 200
-             :body := ::rest-api))
-         identity)))
+      (given (call handler {:uri "/" :request-method :get})
+        :status := 200
+        :body := ::rest-api)))
 
   (testing "health-handler"
     (with-system [{handler :blaze.handler/app} system]
-      @(handler
-         {:uri "/health" :request-method :get}
-         (fn [response]
-           (given response
-             :status := 200
-             :body := ::health-handler))
-         identity))))
+      (given (call handler {:uri "/health" :request-method :get})
+        :status := 200
+        :body := ::health-handler)))
+
+  (testing "options request"
+    (with-system [{handler :blaze.handler/app} system]
+      (given (call handler {:uri "/health" :request-method :options})
+        :status := 405))))

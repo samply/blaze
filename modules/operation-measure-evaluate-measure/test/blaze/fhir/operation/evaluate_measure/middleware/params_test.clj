@@ -2,7 +2,7 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.fhir.operation.evaluate-measure.middleware.params :as params]
-    [blaze.middleware.fhir.error :refer [wrap-error]]
+    [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]

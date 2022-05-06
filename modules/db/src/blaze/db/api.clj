@@ -12,7 +12,8 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.protocols :as p]
-    [blaze.db.node.protocols :as np])
+    [blaze.db.node.protocols :as np]
+    [taoensso.timbre :as log])
   (:import
     [java.lang AutoCloseable]))
 
@@ -103,6 +104,7 @@
 
   Please use `pull` to obtain the full resource."
   [db type id]
+  (log/trace "fetch resource handle of " type "" id)
   (p/-resource-handle db (codec/tid type) (codec/id-byte-string id)))
 
 
@@ -147,6 +149,7 @@
 
   Please use `pull-many` to obtain the full resources."
   ([db type clauses]
+   (log/trace "type query on" type)
    (when-ok [query (p/-compile-type-query db type clauses)]
      (p/-execute-query db query)))
   ([db type clauses start-id]

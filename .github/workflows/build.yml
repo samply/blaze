@@ -463,6 +463,9 @@ jobs:
     - name: Prometheus Metrics
       run: curl -f http://localhost:8081/metrics
 
+    - name: Not Acceptable
+      run: .github/scripts/not-acceptable.sh
+
   not-enforcing-referential-integrity-test:
     needs: build
     runs-on: ubuntu-20.04
@@ -888,6 +891,9 @@ jobs:
 
     - name: Prometheus Metrics - Blaze 2
       run: curl -f http://localhost:8082/metrics
+
+    - name: Not Acceptable
+      run: .github/scripts/not-acceptable.sh
 
     - name: Docker Stats
       run: docker stats --no-stream

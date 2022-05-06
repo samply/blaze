@@ -2,6 +2,7 @@
   (:require
     [blaze.handler.health]
     [blaze.test-util :refer [with-system]]
+    [blaze.test-util.ring :refer [call]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest]]
     [juxt.iota :refer [given]]
@@ -27,6 +28,6 @@
 
 (deftest handler-test
   (with-system [{handler :blaze.handler/health} system]
-    (given @(handler {})
+    (given (call handler {})
       :status := 200
       :body := "OK")))
