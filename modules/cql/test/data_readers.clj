@@ -70,9 +70,11 @@
  elm/as blaze.elm.literal/as
  elm/can-convert-quantity blaze.elm.literal/can-convert-quantity
  elm/convert-quantity blaze.elm.literal/convert-quantity
+ elm/converts-to-boolean blaze.elm.literal/converts-to-boolean
  elm/children blaze.elm.literal/children
  elm/descendents blaze.elm.literal/descendents
  elm/to-boolean blaze.elm.literal/to-boolean
+ elm/to-chars blaze.elm.literal/to-chars
  elm/to-date blaze.elm.literal/to-date
  elm/to-date-time blaze.elm.literal/to-date-time
  elm/to-decimal blaze.elm.literal/to-decimal

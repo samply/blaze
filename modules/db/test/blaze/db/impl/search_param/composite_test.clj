@@ -169,13 +169,13 @@
               [:v-hash split-value 0] := observation-code
               [:v-hash split-value 1] := value
               :id := "id-155558"
-              :hash-prefix := (codec/hash-prefix hash)))
+              :hash-prefix := (hash/prefix hash)))
 
           (testing "ResourceSearchParamValue key"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "Observation"
               :id := "id-155558"
-              :hash-prefix := (codec/hash-prefix hash)
+              :hash-prefix := (hash/prefix hash)
               :code := "code-value-quantity"
               [:v-hash split-value 0] := observation-code
               [:v-hash split-value 1] := value)))

@@ -99,7 +99,7 @@
                            (date-lb (LocalDate/of 2020 2 4))
                            (date-ub (LocalDate/of 2020 2 4)))
               :id := "id-142629"
-              :hash-prefix (codec/hash-prefix hash)))))
+              :hash-prefix := (hash/prefix hash)))))
 
       (testing "death-date"
         (let [patient
@@ -124,7 +124,7 @@
                              (OffsetDateTime/of 2019 11 17 0 14 29 0
                                                 (ZoneOffset/ofHours 1))))
               :id := "id-142629"
-              :hash-prefix (codec/hash-prefix hash))))))
+              :hash-prefix := (hash/prefix hash))))))
 
     (testing "Encounter"
       (testing "date"
@@ -153,7 +153,7 @@
                              (OffsetDateTime/of 2019 11 17 0 44 29 0
                                                 (ZoneOffset/ofHours 1))))
               :id := "id-160224"
-              :hash-prefix (codec/hash-prefix hash))))
+              :hash-prefix := (hash/prefix hash))))
 
         (testing "without start"
           (let [encounter
@@ -176,7 +176,7 @@
                              codec/date-min-bound
                              (date-ub (LocalDate/of 2019 11 17)))
                 :id := "id-160224"
-                :hash-prefix (codec/hash-prefix hash)))))
+                :hash-prefix := (hash/prefix hash)))))
 
         (testing "Encounter date without end"
           (let [encounter
@@ -201,7 +201,7 @@
                                                   (ZoneOffset/ofHours 1)))
                              codec/date-max-bound)
                 :id := "id-160224"
-                :hash-prefix (codec/hash-prefix hash)))))))
+                :hash-prefix := (hash/prefix hash)))))))
 
     (testing "DiagnosticReport"
       (testing "issued"
@@ -226,7 +226,7 @@
                              (OffsetDateTime/of 2019 11 17 0 14 29 917
                                                 (ZoneOffset/ofHours 1))))
               :id := "id-155607"
-              :hash-prefix (codec/hash-prefix hash))))))
+              :hash-prefix := (hash/prefix hash))))))
 
     (testing "FHIRPath evaluation problem"
       (let [resource {:fhir/type :fhir/DiagnosticReport :id "foo"}

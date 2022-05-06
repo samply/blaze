@@ -242,7 +242,7 @@
 
 
 (defn eval-duration [duration]
-  (type/map->Extension
+  (type/extension
     {:url "https://samply.github.io/blaze/fhir/StructureDefinition/eval-duration"
      :value
      (type/map->Quantity

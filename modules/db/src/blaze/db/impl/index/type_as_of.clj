@@ -6,7 +6,8 @@
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.iterators :as i]))
+    [blaze.db.impl.iterators :as i]
+    [blaze.fhir.hash :as hash]))
 
 
 (set! *warn-on-reflection* true)
@@ -22,7 +23,7 @@
 
 
 (def ^:private ^:const ^long value-size
-  (+ codec/hash-size codec/state-size))
+  (+ hash/size codec/state-size))
 
 
 (defn- key-valid? [^long tid ^long end-t]
@@ -78,7 +79,7 @@
         (bb/put-int! tid)
         (bb/put-long! (codec/descending-long ^long start-t))
         bb/flip!
-        bs/from-byte-buffer)))
+        bs/from-byte-buffer!)))
 
 
 (defn type-history

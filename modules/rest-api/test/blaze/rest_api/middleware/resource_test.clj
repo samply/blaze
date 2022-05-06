@@ -3,7 +3,7 @@
     [blaze.async.comp :as ac]
     [blaze.executors :as ex]
     [blaze.fhir.spec :as fhir-spec]
-    [blaze.middleware.fhir.error :refer [wrap-error]]
+    [blaze.handler.util :as handler-util]
     [blaze.rest-api.middleware.resource :refer [wrap-resource]]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
@@ -30,6 +30,12 @@
 
 
 (def executor (ex/single-thread-executor))
+
+
+(defn wrap-error [handler]
+  (fn [request]
+    (-> (handler request)
+        (ac/exceptionally handler-util/error-response))))
 
 
 (def resource-handler

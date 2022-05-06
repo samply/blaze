@@ -2,8 +2,8 @@
   (:refer-clojure :exclude [hash])
   (:require
     [blaze.byte-buffer :as bb]
-    [blaze.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
+    [blaze.fhir.hash :as hash]
     [blaze.fhir.spec.type.protocols :as p])
   (:import
     [clojure.lang ILookup Numbers]))
@@ -68,7 +68,7 @@
 
   The type of that handle will be the keyword `:fhir/<resource-type>`."
   [tid id t value-buffer]
-  (let [hash (bs/from-byte-buffer value-buffer codec/hash-size)
+  (let [hash (hash/from-byte-buffer! value-buffer)
         state (bb/get-long! value-buffer)]
     (ResourceHandle.
       tid

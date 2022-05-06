@@ -7,7 +7,8 @@
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.search-param-value-resource :as sp-vr]
-    [blaze.db.impl.iterators :as i]))
+    [blaze.db.impl.iterators :as i]
+    [blaze.fhir.hash :as hash]))
 
 
 (set! *unchecked-math* :warn-on-boxed)
@@ -40,7 +41,7 @@
         (bb/put-int! tid)
         (bb/put-byte-string! value)
         bb/flip!
-        bs/from-byte-buffer)))
+        bs/from-byte-buffer!)))
 
 
 (defn prefix-keys!
@@ -60,7 +61,7 @@
   (let [co-c-hash (coll/nth compartment 0)
         co-res-id (coll/nth compartment 1)]
     (-> (bb/allocate (+ (key-size co-res-id value)
-                        (bs/size id) 2 codec/hash-prefix-size))
+                        (bs/size id) 2 hash/prefix-size))
         (bb/put-int! co-c-hash)
         (bb/put-byte-string! co-res-id)
         (bb/put-byte! 0)
@@ -70,7 +71,7 @@
         (bb/put-byte! 0)
         (bb/put-byte-string! id)
         (bb/put-byte! (bs/size id))
-        (bb/put-byte-string! (codec/hash-prefix hash))
+        (hash/prefix-into-byte-buffer! (hash/prefix hash))
         bb/array)))
 
 

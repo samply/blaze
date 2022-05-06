@@ -6,7 +6,8 @@
     [blaze.coll.core :as coll]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.iterators :as i]))
+    [blaze.db.impl.iterators :as i]
+    [blaze.fhir.hash :as hash]))
 
 
 (set! *warn-on-reflection* true)
@@ -24,13 +25,13 @@
   ([buf]
    (bb/set-position! buf (unchecked-add-int (bb/position buf) codec/tid-size))
    (let [id-size (long (bb/size-up-to-null buf))]
-     (bb/set-position! buf (+ (bb/position buf) id-size 1 codec/hash-prefix-size
+     (bb/set-position! buf (+ (bb/position buf) id-size 1 hash/prefix-size
                               codec/c-hash-size))
-     (bs/from-byte-buffer buf))))
+     (bs/from-byte-buffer! buf))))
 
 
 (defn- key-size ^long [id]
-  (+ codec/tid-size 1 (bs/size id) codec/hash-prefix-size codec/c-hash-size))
+  (+ codec/tid-size 1 (bs/size id) hash/prefix-size codec/c-hash-size))
 
 
 (defn- encode-key-buf-1 [size tid id hash c-hash]
@@ -38,7 +39,7 @@
       (bb/put-int! tid)
       (bb/put-byte-string! id)
       (bb/put-byte! 0)
-      (bb/put-byte-string! (codec/hash-prefix hash))
+      (hash/prefix-into-byte-buffer! (hash/prefix hash))
       (bb/put-int! c-hash)))
 
 
@@ -52,9 +53,9 @@
 
 (defn- encode-key
   ([tid id hash c-hash]
-   (-> (encode-key-buf tid id hash c-hash) bb/flip! bs/from-byte-buffer))
+   (-> (encode-key-buf tid id hash c-hash) bb/flip! bs/from-byte-buffer!))
   ([tid id hash c-hash value]
-   (-> (encode-key-buf tid id hash c-hash value) bb/flip! bs/from-byte-buffer)))
+   (-> (encode-key-buf tid id hash c-hash value) bb/flip! bs/from-byte-buffer!)))
 
 
 (defn next-value!

@@ -798,6 +798,11 @@
   {:type "ConvertQuantity" :operand ops})
 
 
+;; 22.7. ConvertsToBoolean
+(defn converts-to-boolean [operand]
+  {:type "ConvertsToBoolean" :operand operand})
+
+
 ;; 22.17. Descendents
 (defn descendents [source]
   {:type "Descendents" :source source})
@@ -806,6 +811,11 @@
 ;; 22.19. ToBoolean
 (defn to-boolean [operand]
   {:type "ToBoolean" :operand operand})
+
+
+;; 22.20. ToChars
+(defn to-chars [operand]
+  {:type "ToChars" :operand operand})
 
 
 ;; 22.22. ToDate

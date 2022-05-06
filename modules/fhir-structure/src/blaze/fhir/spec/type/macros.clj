@@ -3,6 +3,8 @@
     [blaze.coll.core :as coll]
     [blaze.fhir.spec.type.protocols :as p]
     [blaze.fhir.spec.type.system :as system]
+    [clojure.data.xml.node :as xml-node]
+    [clojure.string :as str]
     [cuerdas.core :refer [capital kebab]])
   (:import
     [com.google.common.hash PrimitiveSink]
@@ -39,8 +41,33 @@
   `(.serialize ~(with-meta serializer {:tag `JsonSerializer}) ~x ~gen ~provider))
 
 
+(defmacro defprimitivetype
+  [name [& _fields] & {:keys [hash-num interned] :or {interned false}}]
+  `(deftype ~name [~'value]
+     p/FhirType
+     (~'-type [~'_] ~(keyword "fhir" (str (str/lower-case (subs (str name) 0 1))
+                                          (subs (str name) 1))))
+     (~'-interned [~'_] ~interned)
+     (~'-value [~'_] ~'value)
+     (~'-to-xml [~'_] (xml-node/element nil {:value ~'value}))
+     (~'-hash-into [~'_ ~'sink]
+       (.putByte ~(with-meta 'sink {:tag `PrimitiveSink}) (byte ~hash-num))
+       (.putByte ~(with-meta 'sink {:tag `PrimitiveSink}) (byte 2))
+       (system/-hash-into ~'value ~'sink))
+     (~'-references [~'_])
+     Object
+     (~'equals [~'this ~'x]
+       (or (identical? ~'this ~'x)
+           (and (instance? ~name ~'x) (.equals ~'value (.value ~(with-meta 'x {:tag name}))))))
+     (~'hashCode [~'_]
+       (.hashCode ~'value))
+     (~'toString [~'_]
+       ~'value)))
+
+
 (defmacro defcomplextype
-  [name [& fields] & {:keys [fhir-type hash-num references field-serializers]}]
+  [name [& fields] & {:keys [fhir-type hash-num interned references field-serializers]
+                      :or {interned false}}]
   (let [sink-sym (gensym "sink")
         sink-sym-tag (with-meta sink-sym {:tag `PrimitiveSink})
         value-sym (gensym "value")
@@ -49,6 +76,7 @@
        (defrecord ~name [~@fields]
          p/FhirType
          (~'-type [~'_] ~(or fhir-type (keyword "fhir" (str name))))
+         (~'-interned [~'_] ~interned)
          (~'-hash-into [~'_ ~sink-sym]
            (.putByte ~sink-sym-tag (byte ~hash-num))
            ~@(map-indexed
@@ -58,15 +86,17 @@
                     (~(if (= 'id field) `system/-hash-into `p/-hash-into)
                       ~field ~sink-sym)))
                fields))
-         ~(or references
-              `(~'-references [~'_]
-                            (-> (transient [])
-                                ~@(keep
-                                    (fn [field]
-                                      (when-not (= 'id field)
-                                        `(into! (p/-references ~field))))
-                                    fields)
-                                (persistent!)))))
+         ~(if references
+            `(~'-references [~'_]
+               ~references)
+            `(~'-references [~'_]
+               (-> (transient [])
+                   ~@(keep
+                       (fn [field]
+                         (when-not (= 'id field)
+                           `(into! (p/-references ~field))))
+                       fields)
+                   (persistent!)))))
 
        (defmethod print-method ~name [x# ~(with-meta 'w {:tag `Writer})]
          (.write ~'w ~(str "#fhir/" name))

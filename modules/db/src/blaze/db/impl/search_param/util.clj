@@ -5,6 +5,7 @@
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
+    [blaze.fhir.hash :as hash]
     [blaze.fhir.spec :as fhir-spec]
     [clojure.string :as str]))
 
@@ -42,8 +43,8 @@
 
 
 (defn- contains-hash-prefix-pred [resource-handle]
-  (let [hash-prefix (codec/hash-prefix (rh/hash resource-handle))]
-    (fn [tuple] (= (coll/nth tuple 1) hash-prefix))))
+  (let [hash-prefix (hash/prefix (rh/hash resource-handle))]
+    (fn [tuple] (= (long (coll/nth tuple 1)) hash-prefix))))
 
 
 (defn- resource-handle-mapper* [{:keys [resource-handle]} tid]
@@ -78,7 +79,7 @@
     (map bs/as-read-only-byte-buffer)
     (keep
       #(let [tid (bb/get-int! %)
-             id (bs/from-byte-buffer %)]
+             id (bs/from-byte-buffer! %)]
          (non-deleted-resource-handle resource-handle tid id)))))
 
 

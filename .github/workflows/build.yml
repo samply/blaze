@@ -258,7 +258,7 @@ jobs:
         severity: 'CRITICAL,HIGH'
 
     - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@codeql-bundle-20220401
+      uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: trivy-results.sarif
 
@@ -462,6 +462,9 @@ jobs:
 
     - name: Prometheus Metrics
       run: curl -f http://localhost:8081/metrics
+
+    - name: Not Acceptable
+      run: .github/scripts/not-acceptable.sh
 
   not-enforcing-referential-integrity-test:
     needs: build
@@ -888,6 +891,9 @@ jobs:
 
     - name: Prometheus Metrics - Blaze 2
       run: curl -f http://localhost:8082/metrics
+
+    - name: Not Acceptable
+      run: .github/scripts/not-acceptable.sh
 
     - name: Docker Stats
       run: docker stats --no-stream

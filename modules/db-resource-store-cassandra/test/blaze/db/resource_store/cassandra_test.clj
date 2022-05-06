@@ -3,7 +3,6 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.byte-buffer :as bb]
-    [blaze.byte-string :as bs]
     [blaze.cassandra :as cass]
     [blaze.cassandra-spec]
     [blaze.db.resource-store :as rs]
@@ -52,7 +51,7 @@
 
 (defn hash [s]
   (assert (= 1 (count s)))
-  (bs/from-hex (str/repeat s 64)))
+  (hash/from-hex (str/repeat s 64)))
 
 
 (def bound-get-statement (reify BoundStatement))
@@ -115,7 +114,7 @@
             (^PreparedStatement prepare [_ ^SimpleStatement statement]
               (cond
                 (= statement/get-statement statement)
-                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
@@ -139,7 +138,7 @@
             (^PreparedStatement prepare [_ ^SimpleStatement statement]
               (cond
                 (= statement/get-statement statement)
-                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
@@ -162,7 +161,7 @@
             (^PreparedStatement prepare [_ ^SimpleStatement statement]
               (cond
                 (= statement/get-statement statement)
-                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
@@ -183,7 +182,7 @@
             (^PreparedStatement prepare [_ ^SimpleStatement statement]
               (cond
                 (= statement/get-statement statement)
-                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
@@ -206,7 +205,7 @@
             (^PreparedStatement prepare [_ ^SimpleStatement statement]
               (cond
                 (= statement/get-statement statement)
-                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
@@ -231,7 +230,7 @@
             (^PreparedStatement prepare [_ ^SimpleStatement statement]
               (cond
                 (= statement/get-statement statement)
-                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
@@ -255,7 +254,7 @@
             (^PreparedStatement prepare [_ ^SimpleStatement statement]
               (cond
                 (= statement/get-statement statement)
-                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
@@ -280,7 +279,7 @@
             (^PreparedStatement prepare [_ ^SimpleStatement statement]
               (cond
                 (= statement/get-statement statement)
-                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
@@ -303,7 +302,7 @@
             (^PreparedStatement prepare [_ ^SimpleStatement statement]
               (cond
                 (= statement/get-statement statement)
-                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 nil
                 :else
@@ -343,10 +342,10 @@
             (^PreparedStatement prepare [_ ^SimpleStatement statement]
               (cond
                 (= statement/get-statement statement)
-                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 (prepared-statement-with
-                  [(bs/hex hash) encoded-resource]
+                  [(str hash) encoded-resource]
                   bound-put-statement)
                 :else
                 (throw (Error.))))
@@ -368,10 +367,10 @@
             (^PreparedStatement prepare [_ ^SimpleStatement statement]
               (cond
                 (= statement/get-statement statement)
-                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 (prepared-statement-with
-                  [(bs/hex hash) encoded-resource]
+                  [(str hash) encoded-resource]
                   bound-put-statement)
                 :else
                 (throw (Error.))))
@@ -397,10 +396,10 @@
             (^PreparedStatement prepare [_ ^SimpleStatement statement]
               (cond
                 (= statement/get-statement statement)
-                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 (prepared-statement-with
-                  [(bs/hex hash) encoded-resource]
+                  [(str hash) encoded-resource]
                   bound-put-statement)
                 :else
                 (throw (Error.))))
@@ -426,10 +425,10 @@
             (^PreparedStatement prepare [_ ^SimpleStatement statement]
               (cond
                 (= statement/get-statement statement)
-                (prepared-statement-with [(bs/hex hash)] bound-get-statement)
+                (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 (prepared-statement-with
-                  [(bs/hex hash) encoded-resource]
+                  [(str hash) encoded-resource]
                   bound-put-statement)
                 :else
                 (throw (Error.))))

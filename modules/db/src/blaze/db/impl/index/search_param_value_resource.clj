@@ -6,7 +6,8 @@
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.search-param-value-resource.impl :as impl]
-    [blaze.db.impl.iterators :as i]))
+    [blaze.db.impl.iterators :as i]
+    [blaze.fhir.hash :as hash]))
 
 
 (set! *unchecked-math* :warn-on-boxed)
@@ -25,12 +26,12 @@
   ([buf]
    (let [id-size (impl/id-size buf)
          all-size (bb/remaining buf)
-         all (bs/from-byte-buffer buf)
-         hash-prefix-start (unchecked-subtract-int all-size codec/hash-prefix-size)
-         id-start (unchecked-dec-int (unchecked-subtract-int hash-prefix-start id-size))]
-     [(bs/subs all 0 (unchecked-dec-int id-start))
-      (bs/subs all id-start (unchecked-dec-int hash-prefix-start))
-      (bs/subs all hash-prefix-start)])))
+         prefix-size (- all-size 2 id-size hash/prefix-size)
+         prefix (bs/from-byte-buffer! buf prefix-size)
+         _ (bb/get-byte! buf)
+         id (bs/from-byte-buffer! buf id-size)]
+     (bb/get-byte! buf)
+     [prefix id (hash/prefix-from-byte-buffer! buf)])))
 
 
 (defn keys!
@@ -62,14 +63,14 @@
        (bb/put-int! c-hash)
        (bb/put-int! tid)
        bb/flip!
-       bs/from-byte-buffer))
+       bs/from-byte-buffer!))
   ([c-hash tid value]
    (-> (bb/allocate (key-size value))
        (bb/put-int! c-hash)
        (bb/put-int! tid)
        (bb/put-byte-string! value)
        bb/flip!
-       bs/from-byte-buffer))
+       bs/from-byte-buffer!))
   ([c-hash tid value id]
    (-> (bb/allocate (key-size value id))
        (bb/put-int! c-hash)
@@ -79,7 +80,7 @@
        (bb/put-byte-string! id)
        (bb/put-byte! (bs/size id))
        bb/flip!
-       bs/from-byte-buffer)))
+       bs/from-byte-buffer!)))
 
 
 (def ^:private bs-ff
@@ -100,12 +101,12 @@
    (let [id-size (impl/id-size buf)
          _ (bb/set-position! buf base-key-size)
          all-size (bb/remaining buf)
-         all (bs/from-byte-buffer buf)
-         hash-prefix-start (unchecked-subtract-int all-size codec/hash-prefix-size)
-         id-start (unchecked-dec-int (unchecked-subtract-int hash-prefix-start id-size))]
-     [(bs/subs all 0 (unchecked-dec-int id-start))
-      (bs/subs all id-start (unchecked-dec-int hash-prefix-start))
-      (bs/subs all hash-prefix-start)])))
+         value-size (- all-size 2 id-size hash/prefix-size)
+         value (bs/from-byte-buffer! buf value-size)
+         _ (bb/get-byte! buf)
+         id (bs/from-byte-buffer! buf id-size)]
+     (bb/get-byte! buf)
+     [value id (hash/prefix-from-byte-buffer! buf)])))
 
 
 (defn all-keys!
@@ -129,11 +130,11 @@
   ([] (bb/allocate-direct key-buffer-capacity))
   ([buf]
    (let [id-size (impl/id-size buf)
-         all-size (unchecked-inc-int (unchecked-add-int id-size codec/hash-prefix-size))
+         all-size (unchecked-inc-int (unchecked-add-int id-size hash/prefix-size))
          _ (bb/set-position! buf (unchecked-subtract-int (bb/limit buf) all-size))
-         id (bs/from-byte-buffer buf id-size)]
+         id (bs/from-byte-buffer! buf id-size)]
      (bb/get-byte! buf)
-     [id (bs/from-byte-buffer buf codec/hash-prefix-size)])))
+     [id (hash/prefix-from-byte-buffer! buf)])))
 
 
 (defn prefix-keys!
@@ -199,14 +200,14 @@
 
 
 (defn encode-key [c-hash tid value id hash]
-  (-> (bb/allocate (unchecked-add-int (key-size value id) codec/hash-prefix-size))
+  (-> (bb/allocate (unchecked-add-int (key-size value id) hash/prefix-size))
       (bb/put-int! c-hash)
       (bb/put-int! tid)
       (bb/put-byte-string! value)
       (bb/put-byte! 0)
       (bb/put-byte-string! id)
       (bb/put-byte! (bs/size id))
-      (bb/put-byte-string! (codec/hash-prefix hash))
+      (hash/prefix-into-byte-buffer! (hash/prefix hash))
       bb/array))
 
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.17.1
+
+### Performance Improvements
+
+* Implement Parallel Multi-Get in KV Resource Store ([#699](https://github.com/samply/blaze/pull/699))
+
+* Intern Some Extensions ([#696](https://github.com/samply/blaze/pull/696))
+
+### Operation
+
+* Add Metrics to KV Resource Store ([#698](https://github.com/samply/blaze/pull/698))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/39?closed=1).
+
 ## v0.17.0
 
 ### New Features

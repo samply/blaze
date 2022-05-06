@@ -73,7 +73,7 @@
 
 
 (deftest method-not-found-handler-test
-  (given @(handler-util/not-found-handler {})
+  (given (handler-util/not-found-handler {})
     :status := 404
     [:body :fhir/type] := :fhir/OperationOutcome
     [:body :issue 0 :severity] := #fhir/code"error"
@@ -81,7 +81,7 @@
 
 
 (deftest method-not-allowed-handler-test
-  (given @(handler-util/method-not-allowed-handler
+  (given (handler-util/method-not-allowed-handler
             {:uri "/Patient" :request-method :put})
     :status := 405
     [:body :fhir/type] := :fhir/OperationOutcome
@@ -91,11 +91,9 @@
 
 
 (deftest not-acceptable-handler-test
-  (given @(handler-util/not-acceptable-handler {})
+  (given (handler-util/not-acceptable-handler {})
     :status := 406
-    [:body :fhir/type] := :fhir/OperationOutcome
-    [:body :issue 0 :severity] := #fhir/code"error"
-    [:body :issue 0 :code] := #fhir/code"structure"))
+    :body := nil))
 
 
 (deftest method-not-allowed-batch-handler-test

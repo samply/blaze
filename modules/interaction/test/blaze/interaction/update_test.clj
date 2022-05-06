@@ -11,8 +11,8 @@
     [blaze.executors :as ex]
     [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
+    [blaze.interaction.test-util :refer [wrap-error]]
     [blaze.interaction.update]
-    [blaze.middleware.fhir.error :refer [wrap-error]]
     [blaze.test-util :as tu :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -388,10 +388,10 @@
     (with-system [{handler :blaze.interaction/update} (create-system {:enforce-referential-integrity false})]
       (let [{:keys [status headers body]}
             @((-> handler wrap-defaults wrap-error)
-               {:path-params {:id "0"}
-                ::reitit/match observation-match
-                :body {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference "Patient/0"}}})]
+              {:path-params {:id "0"}
+               ::reitit/match observation-match
+               :body {:fhir/type :fhir/Observation :id "0"
+                      :subject #fhir/Reference{:reference "Patient/0"}}})]
 
         (testing "Returns 201"
           (is (= 201 status)))

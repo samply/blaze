@@ -142,7 +142,28 @@
 
 
 ;; TODO 22.2. CanConvert
-
+;;
+;; The CanConvert operator returns true if the given value can be converted to
+;; a specific type, and false otherwise.
+;;
+;; This operator returns true for conversion:
+;;
+;; Between String and each of Boolean, Integer, Long, Decimal, Quantity, Ratio,
+;; Date, DateTime, and Time,
+;;
+;; as well as:
+;;
+;; From Integer to Long, Decimal, or Quantity
+;; From Decimal to Quantity
+;; Between Date and DateTime
+;; From Code to Concept
+;; Between Concept and List<Code>
+;;
+;; Conversion between String and Date/DateTime/Time is checked using the
+;; ISO-8601 standard format: YYYY-MM-DDThh:mm:ss(+|-)hh:mm.
+;;
+;; See Formatting Strings for a description of the formatting strings used in
+;; this specification.
 
 ;; 22.3. CanConvertQuantity
 ;;
@@ -199,7 +220,32 @@
 
 
 ;; TODO 22.5. Convert
-
+;;
+;; The Convert operator converts a value to a specific type. The result of the
+;; operator is the value of the argument converted to the target type, if
+;; possible.
+;;
+;; If no valid conversion exists from the actual value to the target type, the
+;; result is null.
+;;
+;; This operator supports conversion:
+;;
+;; Between String and each of Boolean, Integer, Long, Decimal, Quantity, Ratio,
+;; Date, DateTime, and Time
+;;
+;; as well as:
+;;
+;; From Integer to Long, Decimal, or Quantity
+;; From Decimal to Quantity
+;; Between Date and DateTime
+;; From Code to Concept
+;; Between Concept and List<Code>
+;;
+;; Conversion between String and Date/DateTime/Time is performed using the
+;; ISO-8601 standard format: YYYY-MM-DDThh:mm:ss(+|-)hh:mm.
+;;
+;; See Formatting Strings for a description of the formatting strings used in
+;; this specification.
 
 ;; 22.6. ConvertQuantity
 ;;
@@ -232,34 +278,323 @@
 
 
 ;; TODO 22.7. ConvertsToBoolean
+;;
+;; The ConvertsToBoolean operator returns true if the value of its argument is
+;; or can be converted to a Boolean value.
+;;
+;; The operator accepts 'true', 't', 'yes', 'y', and '1' as string
+;; representations of true, and 'false', 'f', 'no', 'n', and '0' as string
+;; representations of false, ignoring case.
+;;
+;; If the input cannot be interpreted as a valid Boolean value, the result is
+;; false.
+;;
+;; If the input is an Integer or Long, the result is true if the integer is 1
+;; or 0.
+;;
+;; If the input is a Decimal, the result is true if the decimal is 1.0 or 0.0.
+;;
+;; If the argument is null the result is null.
+(deftest compile-converts-to-boolean-test
+  (testing "String"
+    (are [x] (true? (tu/compile-unop elm/converts-to-boolean elm/string x))
+      "true"
+      "t"
+      "yes"
+      "y"
+      "1"
+      "True"
+      "T"
+      "TRUE"
+      "YES"
+      "Yes"
+      "Y"
+      "false"
+      "f"
+      "no"
+      "n"
+      "0"
+      "False"
+      "F"
+      "FALSE"
+      "NO"
+      "No"
+      "N")
 
+    (are [x] (false? (tu/compile-unop elm/converts-to-boolean elm/string x))
+      "foo"
+      "bar"
+      ""))
+
+  (testing "integer"
+    (is (true? (tu/compile-unop elm/converts-to-boolean elm/integer "1")))
+
+    (is (true? (tu/compile-unop elm/converts-to-boolean elm/integer "0")))
+
+    (are [x] (false? (tu/compile-unop elm/converts-to-boolean elm/integer x))
+      "2"
+      "-1"))
+
+  (testing "long"
+    (is (true? (tu/compile-unop elm/converts-to-boolean elm/long "1")))
+
+    (is (true? (tu/compile-unop elm/converts-to-boolean elm/long "0")))
+
+    (are [x] (false? (tu/compile-unop elm/converts-to-boolean elm/long x))
+      "2"
+      "-1"))
+
+  (testing "decimal"
+    (are [x] (true? (tu/compile-unop elm/converts-to-boolean elm/decimal x))
+      "1"
+      "1.0"
+      "1.00"
+      "1.00000000"
+      "0"
+      "0.0"
+      "0.00"
+      "0.00000000")
+
+    (are [x] (false? (tu/compile-unop elm/converts-to-boolean elm/decimal x))
+      "0.1"
+      "-1.0"
+      "2.0"
+      "1.1"
+      "0.9"))
+
+  (testing "boolean"
+    (is (true? (tu/compile-unop elm/converts-to-boolean elm/boolean "true")))
+
+    (is (true? (tu/compile-unop elm/converts-to-boolean elm/boolean "false"))))
+
+  (testing "dynamic"
+    (are [x res] (= res (tu/dynamic-compile-eval (elm/converts-to-boolean x)))
+      #elm/parameter-ref "A" false))
+
+  (tu/testing-unary-null elm/converts-to-boolean)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/converts-to-boolean #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(converts-to-boolean (param-ref "x")) (core/-form expr))))))
 
 ;; TODO 22.8. ConvertsToDate
-
+;;
+;; The ConvertsToDate operator returns true if the value of its argument is or
+;; can be converted to a Date value.
+;;
+;; For String values, The operator expects the string to be formatted using the
+;; ISO-8601 date representation:
+;;
+;; YYYY-MM-DD
+;;
+;; See Formatting Strings for a description of the formatting strings used in
+;; this specification.
+;;
+;; In addition, the string must be interpretable as a valid date value.
+;;
+;; Note that the operator can take time formatted strings and will ignore the
+;; time portions.
+;;
+;; If the input string is not formatted correctly, or does not represent a
+;; valid date value, the result is false.
+;;
+;; As with date literals, date values may be specified to any precision.
+;;
+;; If the argument is null, the result is null.
 
 ;; TODO 22.9. ConvertsToDateTime
+;;
+;; The ConvertsToDateTime operator returns true if the value of its argument is
+;; or can be converted to a DateTime value.
+;;
+;; For String values, the operator expects the string to be formatted using the
+;; ISO-8601 datetime representation:
+;;
+;; YYYY-MM-DDThh:mm:ss.fff(Z|+|-)hh:mm
+;;
+;; See Formatting Strings for a description of the formatting strings used in
+;; this specification.
+;;
+;; In addition, the string must be interpretable as a valid DateTime value.
+;;
+;; If the input string is not formatted correctly, or does not represent a
+;; valid DateTime value, the result is false.
+;;
+;; As with Date and Time literals, DateTime values may be specified to any
+;; precision. If no timezone offset is supplied, the timezone offset of the
+;; evaluation request timestamp is assumed.
+;;
+;; If the argument is null, the result is null.
 
 
 ;; TODO 22.10. ConvertsToDecimal
+;;
+;; The ConvertsToDecimal operator returns true if the value of its argument is
+;; or can be converted to a Decimal value. The operator accepts strings using
+;; the following format:
+;;
+;; (+|-)?#0(.0#)?
+;;
+;; Meaning an optional polarity indicator, followed by any number of digits
+;; (including none), followed by at least one digit, followed optionally by a
+;; decimal point, at least one digit, and any number of additional digits
+;; (including none).
+;;
+;; See Formatting Strings for a description of the formatting strings used in
+;; this specification.
+;;
+;; Note that for this operator to return true, the input value must be limited
+;; in precision and scale to the maximum precision and scale representable for
+;; Decimal values within CQL.
+;;
+;; If the input string is not formatted correctly, or cannot be interpreted as
+;; a valid Decimal value, the result is false.
+;;
+;; If the input is a Boolean, the result is true.
+;;
+;; If the argument is null, the result is null.
 
 
 ;; TODO 22.11. ConvertsToLong
-
+;;
+;; The ConvertsToLong operator returns true if the value of its argument is or
+;; can be converted to a Long value. The operator accepts strings using the
+;; following format:
+;;
+;; (+|-)?#0
+;;
+;; Meaning an optional polarity indicator, followed by any number of digits
+;; (including none), followed by at least one digit.
+;;
+;; See Formatting Strings for a description of the formatting strings used in
+;; this specification.
+;;
+;; Note that for this operator to return true, the input must be a valid value
+;; in the range representable for Long values in CQL.
+;;
+;; If the input string is not formatted correctly, or cannot be interpreted as
+;; a valid Long value, the result is false.
+;;
+;; If the input is a Boolean, the result is true.
+;;
+;; If the argument is null, the result is null.
 
 ;; TODO 22.12. ConvertsToInteger
-
+;;
+;; The ConvertsToInteger operator returns true if the value of its argument is
+;; or can be converted to an Integer value. The operator accepts strings using
+;; the following format:
+;;
+;; (+|-)?#0
+;;
+;; Meaning an optional polarity indicator, followed by any number of digits
+;; (including none), followed by at least one digit.
+;;
+;; See Formatting Strings for a description of the formatting strings used in
+;; this specification.
+;;
+;; Note that for this operator to return true, the input must be a valid value
+;; in the range representable for Integer values in CQL.
+;;
+;; If the input string is not formatted correctly, or cannot be interpreted as
+;; a valid Integer value, the result is false.
+;;
+;; If the input is a Boolean, the result is true
+;;
+;; If the argument is null, the result is null.
 
 ;; TODO 22.13. ConvertsToQuantity
-
+;;
+;; The ConvertsToQuantity operator returns true if the value of its argument is
+;; or can be converted to a Quantity value. The operator may be used with
+;; Integer, Decimal, Ratio, or String values.
+;;
+;; For String values, the operator accepts strings using the following format:
+;;
+;; (+|-)?#0(.0#)?('<unit>')?
+;;
+;; Meaning an optional polarity indicator, followed by any number of digits
+;; (including none) followed by at least one digit, optionally followed by a
+;; decimal point, at least one digit, and any number of additional digits, all
+;; optionally followed by a unit designator as a string literal specifying a
+;; valid UCUM unit of measure or calendar duration keyword, singular or plural.
+;; Spaces are allowed between the quantity value and the unit designator.
+;;
+;; See Formatting Strings for a description of the formatting strings used in
+;; this specification.
+;;
+;; Note that the decimal value of the quantity returned by this operator must
+;; be a valid value in the range representable for Decimal values in CQL.
+;;
+;; If the input string is not formatted correctly, or cannot be interpreted as
+;; a valid Quantity value, the result is false.
+;;
+;; For Integer, Decimal, and Ratio values, the operator simply returns true.
+;;
+;; If the argument is null, the result is null.
 
 ;; TODO 22.14. ConvertsToRatio
-
+;;
+;; The ConvertsToRatio operator returns true if the value of its argument is or
+;; can be converted to a Ratio value. The operator accepts strings using the
+;; following format:
+;;
+;; <quantity>:<quantity>
+;;
+;; Meaning a quantity, followed by a colon (:), followed by another quantity.
+;; The operator accepts quantity strings using the same format as the
+;; ToQuantity operator.
+;;
+;; If the input string is not formatted correctly, or cannot be interpreted as
+;; a valid Ratio value, the result is false.
+;;
+;; If the argument is null, the result is null.
 
 ;; TODO 22.15. ConvertsToString
-
+;;
+;; The ConvertsToString operator returns true if the value of its argument is
+;; or can be converted to a String value.
+;;
+;; The operator returns true if the argument is any of the following types:
+;;
+;; Boolean
+;; Integer
+;; Long
+;; Decimal
+;; DateTime
+;; Date
+;; Time
+;; Quantity
+;; Ratio
+;; String
+;;
+;; If the argument is null, the result is null.
 
 ;; TODO 22.16. ConvertsToTime
-
+;;
+;; The ConvertsToTime operator returns true if the value of its argument is or
+;; can be converted to a Time value.
+;;
+;; For String values, the operator expects the string to be formatted using
+;; ISO-8601 time representation:
+;;
+;; hh:mm:ss.fff
+;;
+;; See Formatting Strings for a description of the formatting strings used in
+;; this specification.
+;;
+;; In addition, the string must be interpretable as a valid time-of-day value.
+;;
+;; If the input string is not formatted correctly, or does not represent a
+;; valid time-of-day value, the result is false.
+;;
+;; As with time-of-day literals, time-of-day values may be specified to any
+;; precision. If no timezone offset is supplied, the timezone offset of the
+;; evaluation request timestamp is assumed.
+;;
+;; If the argument is null, the result is null.
 
 ;; 22.17. Descendents
 ;;
@@ -284,7 +619,11 @@
 
 
 ;; TODO 22.18. Is
-
+;;
+;; The Is operator allows the type of a result to be tested. The language must
+;; support the ability to test against any type. If the run-time type of the
+;; argument is of the type being tested, the result of the operator is true;
+;; otherwise, the result is false.
 
 ;; 22.19. ToBoolean
 ;;
@@ -389,10 +728,49 @@
           expr (c/compile compile-ctx elm)]
       (is (= '(to-boolean (param-ref "x")) (core/-form expr))))))
 
-;; TODO 22.20. ToChars
 
+;; 22.20. ToChars
+;;
+;; The ToChars operator takes a string and returns a list with one string for
+;; each character in the input, in the order in which they appear in the
+;; string.
+;;
+;; If the argument is null, the result is null.
+(deftest compile-to-chars-test
+  (testing "String"
+    (are [x res] (= res (tu/compile-unop elm/to-chars elm/string x))
+      "A" '("A")
+      "ab" '("a" "b")
+      "" '()))
+
+  (testing "Integer"
+    (are [x] (nil? (tu/compile-unop elm/to-chars elm/integer x))
+      "1" ))
+
+  (testing "dynamic"
+    (are [x res] (= res (tu/dynamic-compile-eval (elm/to-chars x)))
+      #elm/parameter-ref "A" '("A")
+      #elm/parameter-ref "ab" '("a" "b")
+      #elm/parameter-ref "empty-string" '()))
+
+  (tu/testing-unary-null elm/to-chars)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/to-chars #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(to-chars (param-ref "x")) (core/-form expr))))))
 
 ;; TODO 22.21. ToConcept
+;;
+;; The ToConcept operator converts a value of type Code to a Concept value with
+;; the given Code as its primary and only Code. If the Code has a display
+;; value, the resulting Concept will have the same display value.
+;;
+;; If the input is a list of Codes, the resulting Concept will have all the
+;; input Codes, and will not have a display value.
+;;
+;; If the argument is null, the result is null.
 
 
 ;; 22.22. ToDate
@@ -747,6 +1125,20 @@
 
 
 ;; TODO 22.29. ToRatio
+;;
+;; The ToRatio operator converts the value of its argument to a Ratio value.
+;; The operator accepts strings using the following format:
+;;
+;; <quantity>:<quantity>
+;;
+;; Meaning a quantity, followed by a colon (:), followed by another quantity.
+;; The operator accepts quantity strings using the same format as the
+;; ToQuantity operator.
+;;
+;; If the input string is not formatted correctly, or cannot be interpreted as
+;; a valid Ratio value, the result is null.
+;;
+;; If the argument is null, the result is null.
 
 
 ;; 22.30. ToString
@@ -835,3 +1227,26 @@
 
 
 ;; TODO 22.31. ToTime
+;;
+;; The ToTime operator converts the value of its argument to a Time value.
+;;
+;; For String values, the operator expects the string to be formatted using
+;; ISO-8601 time representation:
+;;
+;; hh:mm:ss.fff
+;;
+;; See Formatting Strings for a description of the formatting strings used in
+;; this specification.
+;;
+;; In addition, the string must be interpretable as a valid time-of-day value.
+;;
+;; If the input string is not formatted correctly, or does not represent a
+;; valid time-of-day value, the result is null.
+;;
+;; As with time-of-day literals, time-of-day values may be specified to any
+;; precision.
+;;
+;; For DateTime values, the result is the same as extracting the Time component
+;; from the DateTime value.
+;;
+;; If the argument is null, the result is null.

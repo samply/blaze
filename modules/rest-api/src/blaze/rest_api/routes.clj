@@ -1,10 +1,13 @@
 (ns blaze.rest-api.routes
   (:require
+    [blaze.async.comp :as ac]
     [blaze.db.search-param-registry.spec]
     [blaze.middleware.fhir.db :as db]
+    [blaze.middleware.fhir.error :as error]
     [blaze.rest-api.middleware.auth-guard :as auth-guard]
     [blaze.rest-api.middleware.batch-handler :as batch-handler]
     [blaze.rest-api.middleware.forwarded :as forwarded]
+    [blaze.rest-api.middleware.output :as output]
     [blaze.rest-api.middleware.resource :as resource]
     [blaze.rest-api.spec]
     [blaze.rest-api.util :as u]
@@ -42,6 +45,29 @@
 (def ^:private wrap-db
   {:name :db
    :wrap db/wrap-db})
+
+
+(def ^:private wrap-sync
+  {:name :sync
+   :wrap
+   (fn [handler]
+     (fn [request respond raise]
+       (-> (handler request)
+           (ac/when-complete
+             (fn [response e]
+               (if e
+                 (raise e)
+                 (respond response)))))))})
+
+
+(def ^:private wrap-output
+  {:name :output
+   :wrap output/wrap-output})
+
+
+(def ^:private wrap-error
+  {:name :error
+   :wrap error/wrap-error})
 
 
 (defn resource-route
@@ -199,7 +225,7 @@
    batch-handler-promise]
   (-> [""
        {:middleware
-        (cond-> [wrap-params [wrap-forwarded base-url]]
+        (cond-> [wrap-params wrap-output wrap-error [wrap-forwarded base-url] wrap-sync]
           (seq auth-backends)
           (conj wrap-auth-guard))
         :blaze/context-path context-path}

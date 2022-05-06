@@ -4,7 +4,7 @@
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.index.resource-handle-spec]
     [blaze.fhir.hash :as hash]
-    [blaze.test-util :refer [satisfies-prop]]
+    [blaze.test-util :as tu :refer [satisfies-prop]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
@@ -12,6 +12,7 @@
 
 
 (st/instrument)
+(tu/init-fhir-specs)
 
 
 (defn- fixture [f]

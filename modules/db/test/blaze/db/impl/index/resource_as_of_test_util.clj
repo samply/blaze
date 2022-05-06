@@ -3,7 +3,8 @@
     [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-handle :as rh]))
+    [blaze.db.impl.index.resource-handle :as rh]
+    [blaze.fhir.hash :as hash]))
 
 
 (set! *unchecked-math* :warn-on-boxed)
@@ -15,14 +16,14 @@
    (let [tid (bb/get-int! buf)
          id-size (- (bb/remaining buf) codec/t-size)]
      {:type (codec/tid->type tid)
-      :id (codec/id-string (bs/from-byte-buffer buf id-size))
+      :id (codec/id-string (bs/from-byte-buffer! buf id-size))
       :t (codec/descending-long (bb/get-long! buf))})))
 
 
 (defn decode-value-human
-  ([] (bb/allocate-direct (+ codec/hash-size Long/BYTES)))
+  ([] (bb/allocate-direct (+ hash/size Long/BYTES)))
   ([buf]
-   (let [hash (bs/from-byte-buffer buf codec/hash-size)
+   (let [hash (bs/from-byte-buffer! buf hash/size)
          state (bb/get-long! buf)]
      {:hash hash
       :num-changes (rh/state->num-changes state)

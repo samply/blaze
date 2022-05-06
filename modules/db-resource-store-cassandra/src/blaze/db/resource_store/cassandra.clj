@@ -3,7 +3,6 @@
     [blaze.anomaly :as ba :refer [when-ok]]
     [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.byte-buffer :as bb]
-    [blaze.byte-string :as bs]
     [blaze.cassandra :as cass]
     [blaze.cassandra.spec]
     [blaze.db.resource-store :as rs]
@@ -47,7 +46,7 @@
 
 (defn- parse-msg [hash cause-msg]
   (format "Error while parsing resource content with hash `%s`: %s"
-          (bs/hex hash) cause-msg))
+          hash cause-msg))
 
 
 (defn- parse-cbor [bytes hash]
@@ -59,8 +58,7 @@
 
 
 (defn- conform-msg [hash]
-  (format "Error while conforming resource content with hash `%s`."
-          (bs/hex hash)))
+  (format "Error while conforming resource content with hash `%s`." hash))
 
 
 (defn- conform-cbor [x hash]
@@ -83,7 +81,7 @@
 
 
 (defn- execute-get* [session statement hash]
-  (-> (execute session "get" (cass/bind statement (bs/hex hash)))
+  (-> (execute session "get" (cass/bind statement (str hash)))
       (ac/then-apply-async #(read-content % hash))
       (ac/exceptionally (partial map-execute-get-error hash))))
 
@@ -100,7 +98,7 @@
 (defn- bind-put [statement hash resource]
   (let [content (bb/wrap (fhir-spec/unform-cbor resource))]
     (prom/observe! resource-bytes (.capacity content))
-    (cass/bind statement (bs/hex hash) content)))
+    (cass/bind statement (str hash) content)))
 
 
 (defn- map-execute-put-error [hash {:fhir/keys [type] :keys [id]} e]
@@ -125,14 +123,14 @@
 
 
 (defn- zipmap-found [hashes resources]
-  (loop [map {}
+  (loop [map (transient {})
          [hash & hashes] hashes
          [resource & resources] resources]
     (if hash
       (if resource
-        (recur (assoc map hash resource) hashes resources)
+        (recur (assoc! map hash resource) hashes resources)
         (recur map hashes resources))
-      map)))
+      (persistent! map))))
 
 
 (deftype CassandraResourceStore [session get-statement put-statement]

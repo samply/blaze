@@ -9,9 +9,9 @@
     [blaze.interaction.search.nav-spec]
     [blaze.interaction.search.params-spec]
     [blaze.interaction.search.util-spec]
+    [blaze.interaction.test-util :refer [wrap-error]]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
-    [blaze.middleware.fhir.error :refer [wrap-error]]
     [blaze.page-store-spec]
     [blaze.page-store.local]
     [blaze.test-util :as tu :refer [given-thrown]]
@@ -225,7 +225,7 @@
                 [:put {:fhir/type :fhir/Observation :id "0"
                        :subject
                        #fhir/Reference
-                           {:reference "Patient/0"}}]]]
+                               {:reference "Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -262,12 +262,12 @@
                        :status #fhir/code"final"
                        :subject
                        #fhir/Reference
-                           {:reference "Patient/0"}}]
+                               {:reference "Patient/0"}}]
                 [:put {:fhir/type :fhir/Observation :id "1"
                        :status #fhir/code"preliminary"
                        :subject
                        #fhir/Reference
-                           {:reference "Patient/0"}}]]]
+                               {:reference "Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -300,12 +300,12 @@
                        :status #fhir/code"final"
                        :subject
                        #fhir/Reference
-                           {:reference "Patient/0"}}]
+                               {:reference "Patient/0"}}]
                 [:put {:fhir/type :fhir/Observation :id "1"
                        :status #fhir/code"preliminary"
                        :subject
                        #fhir/Reference
-                           {:reference "Patient/0"}}]]]
+                               {:reference "Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -372,7 +372,7 @@
                 [:put {:fhir/type :fhir/Observation :id "0"
                        :subject
                        #fhir/Reference
-                           {:reference "Patient/0"}}]]]
+                               {:reference "Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler
@@ -441,12 +441,12 @@
                        :status #fhir/code"final"
                        :subject
                        #fhir/Reference
-                           {:reference "Patient/0"}}]
+                               {:reference "Patient/0"}}]
                 [:put {:fhir/type :fhir/Observation :id "1"
                        :status #fhir/code"preliminary"
                        :subject
                        #fhir/Reference
-                           {:reference "Patient/0"}}]]]
+                               {:reference "Patient/0"}}]]]
 
               (let [{:keys [status body]}
                     @(handler

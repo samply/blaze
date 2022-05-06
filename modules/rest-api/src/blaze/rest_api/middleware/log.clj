@@ -10,9 +10,9 @@
 
 (defn wrap-log
   [handler]
-  (fn [{:keys [uri query-string] :as request}]
+  (fn [{:keys [uri query-string] :as request} respond raise]
     (log/debug
       (if query-string
         (format "%s [base]%s?%s" (format-request-method request) uri query-string)
         (format "%s [base]%s" (format-request-method request) uri)))
-    (handler request)))
+    (handler request respond raise)))

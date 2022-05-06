@@ -462,6 +462,8 @@
      :modifier :json
      :spec-form
      (case key
+       :fhir.json/Extension
+       (json-object-spec-form "extension" child-spec-defs)
        :fhir.json/Coding
        (json-object-spec-form "coding" child-spec-defs)
        :fhir.json/CodeableConcept
@@ -469,7 +471,6 @@
        :fhir.json/Meta
        (json-object-spec-form "mk-meta" child-spec-defs)
        (:fhir.json/Attachment
-         :fhir.json/Extension
          :fhir.json/Quantity
          :fhir.json/Period
          :fhir.json/Identifier
@@ -641,6 +642,8 @@
      :modifier :cbor
      :spec-form
      (case key
+       :fhir.cbor/Extension
+       (cbor-object-spec-form "extension" child-spec-defs)
        :fhir.cbor/Coding
        (cbor-object-spec-form "coding" child-spec-defs)
        :fhir.cbor/CodeableConcept
@@ -648,7 +651,6 @@
        :fhir.cbor/Meta
        (cbor-object-spec-form "mk-meta" child-spec-defs)
        (:fhir.cbor/Attachment
-         :fhir.cbor/Extension
          :fhir.cbor/Quantity
          :fhir.cbor/Period
          :fhir.cbor/Identifier

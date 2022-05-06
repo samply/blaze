@@ -23,6 +23,7 @@
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec.type]
     [blaze.fhir.structure-definition-repo]
+    [blaze.metrics.spec]
     [blaze.test-util :refer [given-failed-future given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -238,7 +239,7 @@
             :hash hash}]})
 
       (testing "SearchParamValueResource index"
-        (is (every? #{["Condition" "id-204446" #blaze/byte-string"4AB29C7B"]}
+        (is (every? #{["Condition" "id-204446" #blaze/hash-prefix"4AB29C7B"]}
                     (sp-vr-tu/decode-index-entries
                       kv-store :type :id :hash-prefix)))
         (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
@@ -267,7 +268,7 @@
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
       (testing "ResourceSearchParamValue index"
-        (is (every? #{["Condition" "id-204446" #blaze/byte-string"4AB29C7B"]}
+        (is (every? #{["Condition" "id-204446" #blaze/hash-prefix"4AB29C7B"]}
                     (r-sp-v-tu/decode-index-entries
                       kv-store :type :id :hash-prefix)))
         (is (= (r-sp-v-tu/decode-index-entries kv-store :code :v-hash)
@@ -301,7 +302,7 @@
 
       (testing "CompartmentSearchParamValueResource index"
         (is (every? #{[["Patient" "id-145552"] "Condition" "id-204446"
-                       #blaze/byte-string"4AB29C7B"]}
+                       #blaze/hash-prefix"4AB29C7B"]}
                     (c-sp-vr-tu/decode-index-entries
                       kv-store :compartment :type :id :hash-prefix)))
         (is (= (c-sp-vr-tu/decode-index-entries kv-store :code :v-hash)
@@ -370,7 +371,7 @@
             :hash hash}]})
 
       (testing "SearchParamValueResource index"
-        (is (every? #{["Observation" "id-192702" #blaze/byte-string"651D1F37"]}
+        (is (every? #{["Observation" "id-192702" #blaze/hash-prefix"651D1F37"]}
                     (sp-vr-tu/decode-index-entries
                       kv-store :type :id :hash-prefix)))
         (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)

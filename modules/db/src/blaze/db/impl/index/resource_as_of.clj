@@ -7,7 +7,8 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.iterators :as i]
-    [blaze.db.kv :as kv])
+    [blaze.db.kv :as kv]
+    [blaze.fhir.hash :as hash])
   (:import
     [com.github.benmanes.caffeine.cache Cache]
     [com.google.common.primitives Ints]
@@ -27,7 +28,7 @@
 
 
 (def ^:private ^:const ^long value-size
-  (+ codec/hash-size codec/state-size))
+  (+ hash/size codec/state-size))
 
 
 (defn- key-reader [iter kb]
@@ -213,7 +214,7 @@
   ([tid start-id t]
    (-> (encode-key-buf tid start-id t)
        bb/flip!
-       bs/from-byte-buffer)))
+       bs/from-byte-buffer!)))
 
 
 (defn type-list
@@ -458,5 +459,5 @@
   "Returns the number of changes between `start-t` (inclusive) and `end-t`
   (inclusive) of the resource with `tid` and `id`."
   [resource-handle tid id start-t end-t]
-  (- ^long (:num-changes (resource-handle tid id start-t) 0)
-     ^long (:num-changes (resource-handle tid id end-t) 0)))
+  (- (long (:num-changes (resource-handle tid id start-t) 0))
+     (long (:num-changes (resource-handle tid id end-t) 0))))
