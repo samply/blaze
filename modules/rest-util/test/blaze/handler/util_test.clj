@@ -90,12 +90,6 @@
     [:body :issue 0 :diagnostics] := "Method PUT not allowed on `/Patient` endpoint."))
 
 
-(deftest not-acceptable-handler-test
-  (given (handler-util/not-acceptable-handler {})
-    :status := 406
-    :body := nil))
-
-
 (deftest method-not-allowed-batch-handler-test
   (given-failed-future (handler-util/method-not-allowed-batch-handler
                          {:uri "/Patient/0" :request-method :post})

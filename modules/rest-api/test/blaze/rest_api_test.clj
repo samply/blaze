@@ -341,6 +341,34 @@
       [:headers "Access-Control-Allow-Methods"] := "GET,OPTIONS")))
 
 
+(deftest not-found-test
+  (with-system [{:blaze/keys [rest-api]} system]
+    (given (call rest-api {:request-method :get :uri "/foo"})
+      :status := 404
+      [:body fhir-spec/parse-json :resourceType] := "OperationOutcome"))
+
+  (testing "with text/html accept header"
+    (with-system [{:blaze/keys [rest-api]} system]
+      (given (call rest-api {:request-method :get :uri "/foo"
+                             :headers {"accept" "text/html"}})
+        :status := 404
+        :body := nil))))
+
+
+(deftest method-not-allowed-test
+  (with-system [{:blaze/keys [rest-api]} system]
+    (given (call rest-api {:request-method :put :uri "/metadata"})
+      :status := 405
+      [:body fhir-spec/parse-json :resourceType] := "OperationOutcome"))
+
+  (testing "with text/html accept header"
+    (with-system [{:blaze/keys [rest-api]} system]
+      (given (call rest-api {:request-method :put :uri "/metadata"
+                             :headers {"accept" "text/html"}})
+        :status := 405
+        :body := nil))))
+
+
 (deftest not-acceptable-test
   (with-system [{:blaze/keys [rest-api]} system]
     (given (call rest-api {:request-method :get :uri "/metadata"

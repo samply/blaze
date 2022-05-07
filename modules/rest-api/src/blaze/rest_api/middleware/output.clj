@@ -70,19 +70,21 @@
         :json)))
 
 
-(defn- encode-response [request response]
+(defn- encode-response [opts request response]
   (case (request-format request)
     :json (encode-response-json response)
     :xml (encode-response-xml response)
-    nil))
+    (when (:accept-all? opts) (dissoc response :body))))
 
 
-(defn- handle-response [request {:keys [body] :as response}]
-  (cond->> response body (encode-response request)))
+(defn- handle-response [opts request {:keys [body] :as response}]
+  (cond->> response body (encode-response opts request)))
 
 
 (defn wrap-output
   "Middleware to output resources in JSON or XML."
-  [handler]
-  (fn [request respond raise]
-    (handler request #(respond (handle-response request %)) raise)))
+  ([handler]
+   (wrap-output handler {}))
+  ([handler opts]
+   (fn [request respond raise]
+     (handler request #(respond (handle-response opts request %)) raise))))
