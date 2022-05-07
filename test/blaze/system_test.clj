@@ -4,6 +4,7 @@
     [blaze.fhir.spec :as fhir-spec]
     [blaze.interaction.delete]
     [blaze.interaction.read]
+    [blaze.interaction.search-system]
     [blaze.interaction.search-type]
     [blaze.interaction.transaction]
     [blaze.page-store.protocols :as pp]
@@ -80,6 +81,7 @@
      :db-sync-timeout 10000
      :blaze.rest-api.json-parse/executor (ig/ref :blaze.rest-api.json-parse/executor)
      :auth-backends [(ig/ref ::auth-backend)]
+     :search-system-handler (ig/ref :blaze.interaction/search-system)
      :transaction-handler (ig/ref :blaze.interaction/transaction)
      :resource-patterns
      [#:blaze.rest-api.resource-pattern
@@ -108,6 +110,10 @@
     :blaze.interaction/delete
     {:node (ig/ref :blaze.db/node)
      :executor (ig/ref :blaze.test/executor)}
+    :blaze.interaction/search-system
+    {:clock (ig/ref :blaze.test/clock)
+     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+     :page-store (ig/ref ::page-store)}
     :blaze.interaction/search-type
     {:clock (ig/ref :blaze.test/clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
@@ -161,6 +167,13 @@
         [:body fhir-spec/parse-json :entry 0 :response :status] := "200"))))
 
 
+(deftest not-found-test
+  (with-system [{:blaze/keys [rest-api]} system]
+    (given (call rest-api {:request-method :get :uri "/"})
+      :status := 404
+      [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
+
+
 (deftest not-acceptable-test
   (with-system [{:blaze/keys [rest-api]} system]
     (given (call rest-api {:request-method :get :uri "/Patient"
@@ -206,3 +219,17 @@
     (given (call rest-api {:request-method :get :uri "/Patient/0"})
       :status := 410
       [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
+
+
+(deftest search-system-test
+  (with-system [{:blaze/keys [rest-api]} system]
+    (given (call rest-api {:request-method :get :uri ""})
+      :status := 200
+      [:body fhir-spec/parse-json :resourceType] := "Bundle")))
+
+
+(deftest redirect-slash-test
+  (with-system [{:blaze/keys [rest-api]} system]
+    (given (call rest-api {:request-method :get :uri "/Patient/"})
+      :status := 301
+      [:headers "Location"] := "/Patient")))
