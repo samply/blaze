@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.17.2
+
+### Bugfixes
+
+* Fix Server Errors Because of Unencoded Error Outputs ([#706](https://github.com/samply/blaze/pull/706))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/40?closed=1).
+
 ## v0.17.1
 
 ### Performance Improvements
