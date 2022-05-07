@@ -1,4 +1,11 @@
-{:deps
+{:paths ["src" "target/classes"]
+
+ :deps/prep-lib
+ {:alias :build
+  :fn compile
+  :ensure "target/classes"}
+
+ :deps
  {blaze/async
   {:local/root "../async"}
 
@@ -6,7 +13,12 @@
   {:local/root "../module-base"}
 
   org.eclipse.jetty/jetty-server
-  {:mvn/version "9.4.46.v20220331"}
+  {:mvn/version "10.0.9"
+   :exclusions
+   [org.slf4j/slf4j-api]}
+
+  org.slf4j/slf4j-api
+  {:mvn/version "1.7.36"}
 
   ring/ring-jetty-adapter
   {:mvn/version "1.9.5"
@@ -17,7 +29,14 @@
     crypto-random/crypto-random]}}
 
  :aliases
- {:test
+ {:build
+  {:deps
+   {io.github.clojure/tools.build
+    {:git/tag "v0.8.2" :git/sha "ba1a2bf"}}
+
+   :ns-default build}
+
+  :test
   {:extra-paths ["test"]
 
    :extra-deps
@@ -25,7 +44,10 @@
     {:local/root "../test-util"}
 
     hato/hato
-    {:mvn/version "0.8.2"}}}
+    {:mvn/version "0.8.2"}
+
+    org.slf4j/slf4j-nop
+    {:mvn/version "1.7.36"}}}
 
   :kaocha
   {:extra-deps

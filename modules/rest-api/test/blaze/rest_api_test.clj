@@ -2,13 +2,12 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-system]]
     [blaze.db.impl.search-param]
-    [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.structure-definition-repo]
     [blaze.fhir.structure-definition-repo.protocols :as sdrp]
     [blaze.handler.util :as handler-util]
     [blaze.rest-api :as rest-api]
     [blaze.test-util :refer [given-thrown with-system]]
-    [blaze.test-util.ring :refer [call]]
+    [blaze.test-util.ring :refer [call parse-json]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
@@ -321,7 +320,7 @@
     (with-system [{:blaze/keys [rest-api]} system]
       (given (call rest-api {:request-method :get :uri "/metadata"})
         :status := 200
-        [:body fhir-spec/parse-json :implementation :url] := "http://localhost:8080"))
+        [:body parse-json :implementation :url] := "http://localhost:8080"))
 
     (testing "with X-Forwarded-Host header"
       (with-system [{:blaze/keys [rest-api]} system]
@@ -330,7 +329,7 @@
                       :uri "/metadata"
                       :headers {"x-forwarded-host" "blaze.de"}})
           :status := 200
-          [:body fhir-spec/parse-json :implementation :url] := "http://blaze.de")))))
+          [:body parse-json :implementation :url] := "http://blaze.de")))))
 
 
 (deftest options-cors-test
@@ -345,7 +344,7 @@
   (with-system [{:blaze/keys [rest-api]} system]
     (given (call rest-api {:request-method :get :uri "/foo"})
       :status := 404
-      [:body fhir-spec/parse-json :resourceType] := "OperationOutcome"))
+      [:body parse-json :resourceType] := "OperationOutcome"))
 
   (testing "with text/html accept header"
     (with-system [{:blaze/keys [rest-api]} system]
@@ -359,7 +358,7 @@
   (with-system [{:blaze/keys [rest-api]} system]
     (given (call rest-api {:request-method :put :uri "/metadata"})
       :status := 405
-      [:body fhir-spec/parse-json :resourceType] := "OperationOutcome"))
+      [:body parse-json :resourceType] := "OperationOutcome"))
 
   (testing "with text/html accept header"
     (with-system [{:blaze/keys [rest-api]} system]

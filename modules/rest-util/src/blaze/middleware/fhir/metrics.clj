@@ -8,15 +8,15 @@
   "Number of requests to this service.
    Distinguishes between the returned status code, the handler being used to
    process the request together with the http method."
-  {:namespace "http"
-   :subsystem "fhir"}
+  {:namespace "blaze"
+   :subsystem "http"}
   "code" "interaction" "method")
 
 
 (prom/defhistogram request-duration-seconds
   "The HTTP request latencies in seconds."
-  {:namespace "http"
-   :subsystem "fhir"}
+  {:namespace "blaze"
+   :subsystem "http"}
   (take 19 (iterate #(* 2 %) 0.0001))
   "interaction" "method")
 
