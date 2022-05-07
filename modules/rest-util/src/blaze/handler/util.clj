@@ -216,15 +216,10 @@
       (ring/status 405)))
 
 
-(defn not-acceptable-handler [_]
-  (ring/status 406))
-
-
 (def default-handler
   (reitit.ring/create-default-handler
     {:not-found not-found-handler
-     :method-not-allowed method-not-allowed-handler
-     :not-acceptable not-acceptable-handler}))
+     :method-not-allowed method-not-allowed-handler}))
 
 
 (defn method-not-allowed-batch-handler [request]

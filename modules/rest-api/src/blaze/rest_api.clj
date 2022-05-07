@@ -80,7 +80,9 @@
   [{:keys [auth-backends] :as context}]
   (-> (reitit.ring/ring-handler
         (router context (capabilities/capabilities-handler context))
-        handler-util/default-handler
+        (reitit.ring/routes
+          (reitit.ring/redirect-trailing-slash-handler {:method :strip})
+          (output/wrap-output handler-util/default-handler {:accept-all? true}))
         {:middleware
          (cond-> [wrap-cors]
            (seq auth-backends)
