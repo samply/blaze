@@ -7,15 +7,18 @@
     [clojure.string :as str]
     [muuntaja.parse :as parse]
     [prometheus.alpha :as prom]
+    [ring.core.protocols :as p]
     [ring.util.response :as ring]
-    [taoensso.timbre :as log])
-  (:import
-    [java.io ByteArrayOutputStream]))
+    [taoensso.timbre :as log]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (prom/defhistogram generate-duration-seconds
   "FHIR generating latencies in seconds."
-  {:namespace "fhir"}
+  {:namespace "blaze"
+   :subsystem "http"}
   (take 17 (iterate #(* 2 %) 0.00001))
   "format")
 
@@ -24,22 +27,20 @@
 
 
 (defn- generate-json [body]
-  (log/trace "generate JSON")
-  (with-open [_ (prom/timer generate-duration-seconds "json")]
-    (fhir-spec/unform-json body)))
-
-
-(defn- generate-xml* [body]
-  (let [out (ByteArrayOutputStream.)]
-    (with-open [writer (io/writer out)]
-      (xml/emit (fhir-spec/unform-xml body) writer))
-    (.toByteArray out)))
+  (reify p/StreamableResponseBody
+    (write-body-to-stream [_ _ out]
+      (log/trace "generate JSON")
+      (with-open [_ (prom/timer generate-duration-seconds "json")]
+        (fhir-spec/unform-json body out)))))
 
 
 (defn- generate-xml [body]
-  (log/trace "generate XML")
-  (with-open [_ (prom/timer generate-duration-seconds "xml")]
-    (generate-xml* body)))
+  (reify p/StreamableResponseBody
+    (write-body-to-stream [_ _ out]
+      (log/trace "generate XML")
+      (with-open [_ (prom/timer generate-duration-seconds "xml")
+                  writer (io/writer out)]
+        (xml/emit (fhir-spec/unform-xml body) writer)))))
 
 
 (defn- encode-response-json [response]

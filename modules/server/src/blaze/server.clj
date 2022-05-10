@@ -1,10 +1,10 @@
 (ns blaze.server
   "HTTP Server."
   (:require
+    [blaze.server.jetty :as jetty]
     [blaze.server.spec]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
-    [ring.adapter.jetty :as ring-jetty]
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
@@ -28,7 +28,7 @@
   [_ {:keys [name port handler version async? min-threads max-threads]
       :or {name "main" async? false min-threads 8 max-threads 50}}]
   (log/info (format "Start %s server on port %d" name port))
-  (ring-jetty/run-jetty
+  (jetty/run-jetty
     (wrap-server handler (str "Blaze/" version))
     {:port port
      :async? async?

@@ -81,6 +81,14 @@
   (respond (ring/response "OK")))
 
 
+(defn no-content-handler [_]
+  {:status  204 :headers {}})
+
+
+(defn async-no-content-handler [_ respond _]
+  (respond {:status  204 :headers {}}))
+
+
 (defn error-handler [_]
   (throw (Exception. "msg-163147")))
 
@@ -122,6 +130,18 @@
           (given (hc/get (str "http://localhost:" port))
             :status := 200
             :body := "OK"
+            [:headers "server"] := "Blaze/1.0"))))
+
+    (testing "successful response without body"
+      (with-system [_ (system port no-content-handler)]
+        (given (hc/get (str "http://localhost:" port))
+          :status := 204
+          [:headers "server"] := "Blaze/1.0"))
+
+      (testing "async"
+        (with-system [_ (async-system port async-no-content-handler)]
+          (given (hc/get (str "http://localhost:" port))
+            :status := 204
             [:headers "server"] := "Blaze/1.0"))))
 
     (testing "error"

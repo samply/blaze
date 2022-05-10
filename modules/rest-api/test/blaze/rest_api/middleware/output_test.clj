@@ -3,14 +3,12 @@
     [blaze.fhir.spec-spec]
     [blaze.rest-api.middleware.output :refer [wrap-output]]
     [blaze.test-util :as tu]
-    [blaze.test-util.ring :refer [call]]
+    [blaze.test-util.ring :refer [call parse-json parse-xml]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [juxt.iota :refer [given]]
     [ring.util.response :as ring]
-    [taoensso.timbre :as log])
-  (:import
-    [java.nio.charset StandardCharsets]))
+    [taoensso.timbre :as log]))
 
 
 (st/instrument)
@@ -34,19 +32,15 @@
       (respond (ring/response {:fhir/type :fhir/Patient :id "0"})))))
 
 
-(defn- bytes->str [^bytes bs]
-  (String. bs StandardCharsets/UTF_8))
-
-
 (deftest json-test
   (testing "JSON is the default"
     (testing "without accept header"
       (given (call resource-handler {})
-        [:body bytes->str] := "{\"id\":\"0\",\"resourceType\":\"Patient\"}"))
+        [:body parse-json] := {:resourceType "Patient" :id "0"}))
 
     (testing "with accept header"
       (are [accept] (given (call resource-handler {:headers {"accept" accept}})
-        [:body bytes->str] := "{\"id\":\"0\",\"resourceType\":\"Patient\"}")
+        [:body parse-json] := {:resourceType "Patient" :id "0"})
         "*/*"
         "application/*"
         "text/*")))
@@ -54,7 +48,7 @@
   (testing "possible accept headers"
     (are [accept]
       (given (call resource-handler {:headers {"accept" accept}})
-        [:body bytes->str] := "{\"id\":\"0\",\"resourceType\":\"Patient\"}")
+        [:body parse-json] := {:resourceType "Patient" :id "0"})
       "application/fhir+json"
       "application/json"
       "text/json"
@@ -65,7 +59,7 @@
       (given (call resource-handler
                    {:headers {"accept" accept}
                     :query-params {"_format" format}})
-        [:body bytes->str] := "{\"id\":\"0\",\"resourceType\":\"Patient\"}")
+        [:body parse-json] := {:resourceType "Patient" :id "0"})
       "application/fhir+xml" "application/fhir+json"
       "application/fhir+xml" "application/json"
       "application/fhir+xml" "text/json"
@@ -80,8 +74,7 @@
   (testing "possible accept headers"
     (are [accept]
       (given (call resource-handler {:headers {"accept" accept}})
-        [:body bytes->str] :=
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Patient xmlns=\"http://hl7.org/fhir\"><id value=\"0\"/></Patient>")
+        [:body parse-xml] := {:fhir/type :fhir/Patient :id "0"})
       "application/fhir+xml"
       "application/xml"
       "text/xml"
@@ -92,8 +85,7 @@
       (given (call resource-handler
                    {:headers {"accept" accept}
                     :query-params {"_format" format}})
-        [:body bytes->str] :=
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Patient xmlns=\"http://hl7.org/fhir\"><id value=\"0\"/></Patient>")
+        [:body parse-xml] := {:fhir/type :fhir/Patient :id "0"})
       "application/fhir+json" "application/fhir+xml"
       "application/fhir+json" "application/xml"
       "application/fhir+json" "text/xml"

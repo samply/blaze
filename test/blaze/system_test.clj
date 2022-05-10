@@ -12,7 +12,7 @@
     [blaze.system :as system]
     [blaze.system-spec]
     [blaze.test-util :refer [with-system]]
-    [blaze.test-util.ring :refer [call]]
+    [blaze.test-util.ring :refer [call parse-json parse-xml]]
     [buddy.auth.protocols :as ap]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -164,14 +164,14 @@
                              :headers {"content-type" "application/fhir+json"}
                              :body (input-stream (fhir-spec/unform-json search-bundle))})
         :status := 200
-        [:body fhir-spec/parse-json :entry 0 :response :status] := "200"))))
+        [:body parse-json :entry 0 :response :status] := "200"))))
 
 
 (deftest not-found-test
   (with-system [{:blaze/keys [rest-api]} system]
     (given (call rest-api {:request-method :get :uri "/"})
       :status := 404
-      [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
+      [:body parse-json :resourceType] := "OperationOutcome")))
 
 
 (deftest not-acceptable-test
@@ -186,7 +186,7 @@
   (with-system [{:blaze/keys [rest-api]} system]
     (given (call rest-api {:request-method :get :uri "/Patient/0"})
       :status := 404
-      [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
+      [:body parse-json :resourceType] := "OperationOutcome")))
 
 
 (def read-bundle
@@ -206,8 +206,8 @@
                            :headers {"content-type" "application/fhir+json"}
                            :body (input-stream (fhir-spec/unform-json read-bundle))})
       :status := 200
-      [:body fhir-spec/parse-json :entry 0 :response :status] := "404"
-      [:body fhir-spec/parse-json :entry 0 :response :outcome :resourceType] := "OperationOutcome")))
+      [:body parse-json :entry 0 :response :status] := "404"
+      [:body parse-json :entry 0 :response :outcome :resourceType] := "OperationOutcome")))
 
 
 (deftest delete-test
@@ -218,14 +218,22 @@
 
     (given (call rest-api {:request-method :get :uri "/Patient/0"})
       :status := 410
-      [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
+      [:body parse-json :resourceType] := "OperationOutcome")))
 
 
 (deftest search-system-test
-  (with-system [{:blaze/keys [rest-api]} system]
-    (given (call rest-api {:request-method :get :uri ""})
-      :status := 200
-      [:body fhir-spec/parse-json :resourceType] := "Bundle")))
+  (testing "JSON"
+    (with-system [{:blaze/keys [rest-api]} system]
+      (given (call rest-api {:request-method :get :uri ""})
+        :status := 200
+        [:body parse-json :resourceType] := "Bundle")))
+
+  (testing "XML"
+    (with-system [{:blaze/keys [rest-api]} system]
+      (given (call rest-api {:request-method :get :uri ""
+                             :headers {"accept" "application/fhir+xml"}})
+        :status := 200
+        [:body parse-xml :fhir/type] := :fhir/Bundle))))
 
 
 (deftest redirect-slash-test

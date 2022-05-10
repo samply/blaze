@@ -5,7 +5,9 @@
     [blaze.fhir.spec.spec]
     [clojure.alpha.spec :as s2]
     [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]))
+    [cognitect.anomalies :as anom])
+  (:import
+    [java.io OutputStream]))
 
 
 (s/fdef fhir-spec/type-exists?
@@ -33,7 +35,7 @@
 
 
 (s/fdef fhir-spec/unform-json
-  :args (s/cat :resource any?)
+  :args (s/cat :resource any? :output-stream (s/? #(instance? OutputStream %)))
   :ret bytes?)
 
 
