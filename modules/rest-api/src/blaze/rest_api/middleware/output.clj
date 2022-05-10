@@ -4,7 +4,6 @@
     [blaze.fhir.spec :as fhir-spec]
     [clojure.data.xml :as xml]
     [clojure.java.io :as io]
-    [clojure.string :as str]
     [muuntaja.parse :as parse]
     [prometheus.alpha :as prom]
     [ring.util.response :as ring]
@@ -42,38 +41,48 @@
     (generate-xml* body)))
 
 
-(defn- encode-response-json [response]
+(defn- encode-response-json [response content-type]
   (-> (update response :body generate-json)
-      (ring/content-type "application/fhir+json;charset=utf-8")))
+      (ring/content-type content-type)))
 
 
-(defn- encode-response-xml [response]
+(defn- encode-response-xml [response content-type]
   (-> (update response :body generate-xml)
-      (ring/content-type "application/fhir+xml;charset=utf-8")))
-
-
-(defn- json-format? [format]
-  (or (str/includes? format "json") (#{"*/*" "application/*" "text/*"} format)))
+      (ring/content-type content-type)))
 
 
 (defn- format-key [format]
-  (cond
-    (json-format? format) :json
-    (str/includes? format "xml") :xml))
+  (condp = format
+    "application/fhir+json" :fhir+json
+    "application/fhir+xml" :fhir+xml
+    "application/json" :json
+    "application/xml" :xml
+    "text/json" :text-json
+    "text/xml" :text-xml
+    "*/*" :fhir+json
+    "application/*" :fhir+json
+    "text/*" :text-json
+    "json" :fhir+json
+    "xml" :fhir+xml
+    nil))
 
 
 (defn- request-format
   [{{:strs [accept]} :headers {format "_format"} :query-params}]
   (or (some-> format format-key)
-      (if-let [first-accept (first (parse-accept accept))]
-        (format-key first-accept)
-        :json)))
+      (if-let [accept (parse-accept accept)]
+        (some format-key accept)
+        :fhir+json)))
 
 
 (defn- encode-response [opts request response]
   (case (request-format request)
-    :json (encode-response-json response)
-    :xml (encode-response-xml response)
+    :fhir+json (encode-response-json response "application/fhir+json;charset=utf-8")
+    :fhir+xml (encode-response-xml response "application/fhir+xml;charset=utf-8")
+    :json (encode-response-json response "application/json;charset=utf-8")
+    :xml (encode-response-xml response "application/xml;charset=utf-8")
+    :text-json (encode-response-json response "text/json;charset=utf-8")
+    :text-xml (encode-response-xml response "text/xml;charset=utf-8")
     (when (:accept-all? opts) (dissoc response :body))))
 
 
