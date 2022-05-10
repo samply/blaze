@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.17.3
+
+### Bugfixes
+
+* Fix Content Negotiation ([#710](https://github.com/samply/blaze/pull/710))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/41?closed=1).
+
 ## v0.17.2
 
 ### Bugfixes
