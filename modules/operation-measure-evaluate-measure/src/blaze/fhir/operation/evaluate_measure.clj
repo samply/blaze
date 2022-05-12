@@ -1,6 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure
   "Main entry point into the $evaluate-measure operation."
   (:require
+    [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
     [blaze.coll.core :as coll]
     [blaze.db.api :as d]
@@ -17,7 +18,6 @@
     [blaze.module :refer [reg-collector]]
     [blaze.spec]
     [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
@@ -77,25 +77,42 @@
                           (d/resource-handle db-after "MeasureReport" id))))))))))))
 
 
+(defn- measure-with-id-not-found-msg [id]
+  (format "The Measure resource with id `%s` was not found." id))
+
+
+(defn- measure-with-reference-not-found-msg [reference]
+  (format "The Measure resource with reference `%s` was not found." reference))
+
+
 (defn- find-measure-handle*
   [db {{:keys [id]} :path-params {:keys [measure]} ::params}]
   (cond
     id
-    (d/resource-handle db "Measure" id)
+    (or (d/resource-handle db "Measure" id)
+        (ba/not-found (measure-with-id-not-found-msg id)))
 
     measure
-    (coll/first (d/type-query db "Measure" [["url" measure]]))))
+    (or (coll/first (d/type-query db "Measure" [["url" measure]]))
+        (ba/not-found (measure-with-reference-not-found-msg measure)
+                      :http/status 400))
+
+    :else
+    (ba/incorrect "The measure parameter is missing."
+                  :fhir/issue "required")))
+
+
+(defn- measure-deleted-msg [{:keys [id]}]
+  (format "The Measure resource with the id `%s` was deleted." id))
 
 
 (defn- find-measure-handle [db request]
-  (if-let [{:keys [op] :as measure-handle} (find-measure-handle* db request)]
+  (let [{:keys [op] :as measure-handle} (find-measure-handle* db request)]
     (if (identical? :delete op)
-      {::anom/category ::anom/not-found
-       :http/status 410
-       :fhir/issue "deleted"}
-      measure-handle)
-    {::anom/category ::anom/not-found
-     :fhir/issue "not-found"}))
+      (ba/not-found (measure-deleted-msg measure-handle)
+                    :http/status 410
+                    :fhir/issue "deleted")
+      measure-handle)))
 
 
 (defn- handler [context]
