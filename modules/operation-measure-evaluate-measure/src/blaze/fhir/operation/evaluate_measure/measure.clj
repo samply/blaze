@@ -138,7 +138,7 @@
     (if-let [library (find-library db library-ref)]
       (compile-library (d/node db) library)
       (ba/incorrect
-        (format "Can't find the library with canonical URI `%s`." library-ref)
+        (format "The Library resource with canonical URI `%s` was not found." library-ref)
         :fhir/issue "value"
         :fhir.issue/expression "Measure.library"))
     (ba/unsupported
