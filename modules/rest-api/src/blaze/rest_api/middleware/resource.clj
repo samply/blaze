@@ -1,7 +1,7 @@
 (ns blaze.rest-api.middleware.resource
   "JSON/XML deserialization middleware."
   (:require
-    [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.anomaly :as ba :refer [if-ok when-ok]]
     [blaze.async.comp :as ac]
     [blaze.fhir.spec :as fhir-spec]
     [clojure.data.xml :as xml]
@@ -19,11 +19,10 @@
   "format")
 
 
-(defn- json-request? [request]
-  (when-let [content-type (request/content-type request)]
-    (or (str/starts-with? content-type "application/fhir+json")
-        (str/starts-with? content-type "application/json")
-        (str/starts-with? content-type "text/json"))))
+(defn- json-request? [content-type]
+  (or (str/starts-with? content-type "application/fhir+json")
+      (str/starts-with? content-type "application/json")
+      (str/starts-with? content-type "text/json")))
 
 
 (defn- parse-json
@@ -44,16 +43,17 @@
       :fhir/operation-outcome "MSG_JSON_OBJECT")))
 
 
-(defn- handle-json [{:keys [body] :as request}]
-  (when-ok [x (parse-json body)
-            resource (conform-json x)]
-    (assoc request :body resource)))
+(defn- resource-request-json [{:keys [body] :as request}]
+  (if body
+    (when-ok [x (parse-json body)
+              resource (conform-json x)]
+      (assoc request :body resource))
+    (ba/incorrect "Missing HTTP body.")))
 
 
-(defn- xml-request? [request]
-  (when-let [content-type (request/content-type request)]
-    (or (str/starts-with? content-type "application/fhir+xml")
-        (str/starts-with? content-type "application/xml"))))
+(defn- xml-request? [content-type]
+  (or (str/starts-with? content-type "application/fhir+xml")
+      (str/starts-with? content-type "application/xml")))
 
 
 (defn- parse-and-conform-xml
@@ -68,27 +68,27 @@
     (ba/try-all ::anom/incorrect (fhir-spec/conform-xml (xml/parse reader)))))
 
 
-(defn- handle-xml [{:keys [body] :as request}]
-  (when-ok [resource (parse-and-conform-xml body)]
-    (assoc request :body resource)))
+(defn- resource-request-xml [{:keys [body] :as request}]
+  (if body
+    (when-ok [resource (parse-and-conform-xml body)]
+      (assoc request :body resource))
+    (ba/incorrect "Missing HTTP body.")))
 
 
-(defn- unknown-content-type-msg [request]
+(defn- unsupported-media-type-msg [media-type]
+  (format "Unsupported Media Type `%s` expect one of `application/fhir+json` or `application/fhir+xml`."
+          media-type))
+
+
+(defn- resource-request [request]
   (if-let [content-type (request/content-type request)]
-    (if (:body request)
-      (format "Unknown Content-Type `%s` expected one of application/fhir+json` or `application/fhir+xml`."
-              content-type)
-      "Missing HTTP body.")
-    "Content-Type header expected, but is missing. Please specify one of application/fhir+json` or `application/fhir+xml`."))
-
-
-(defn- handle-request [{:keys [body] :as request} executor]
-  (cond
-    (and (json-request? request) body)
-    (ac/supply-async #(handle-json request) executor)
-    (and (xml-request? request) body)
-    (ac/supply-async #(handle-xml request) executor)
-    :else (ac/completed-future (ba/incorrect (unknown-content-type-msg request)))))
+    (cond
+      (json-request? content-type) (resource-request-json request)
+      (xml-request? content-type) (resource-request-xml request)
+      :else
+      (ba/incorrect (unsupported-media-type-msg content-type)
+                    :http/status 415))
+    (ba/incorrect "Content-Type header expected, but is missing.")))
 
 
 (defn wrap-resource
@@ -100,7 +100,8 @@
 
   Returns an OperationOutcome in the internal format, skipping the handler, with
   an appropriate error on parsing and conforming errors."
-  [handler executor]
+  [handler]
   (fn [request]
-    (-> (handle-request request executor)
-        (ac/then-compose handler))))
+    (if-ok [request (resource-request request)]
+      (handler request)
+      ac/completed-future)))

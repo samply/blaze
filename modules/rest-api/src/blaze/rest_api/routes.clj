@@ -77,8 +77,7 @@
 
   Route data contains the resource type under :fhir.resource/type."
   {:arglists '([context resource-patterns structure-definition])}
-  [{:keys [node db-sync-timeout] parse-executor :blaze.rest-api.json-parse/executor}
-   resource-patterns
+  [{:keys [node db-sync-timeout]} resource-patterns
    {:keys [name] :as structure-definition}]
   (when-let
     [{:blaze.rest-api.resource-pattern/keys [interactions]}
@@ -92,7 +91,7 @@
                      :handler (-> interactions :search-type
                                   :blaze.rest-api.interaction/handler)})
         (contains? interactions :create)
-        (assoc :post {:middleware [[wrap-resource parse-executor]]
+        (assoc :post {:middleware [wrap-resource]
                       :handler (-> interactions :create
                                    :blaze.rest-api.interaction/handler)}))]
      ["/_history"
@@ -127,7 +126,7 @@
                       :handler (-> interactions :read
                                    :blaze.rest-api.interaction/handler)})
          (contains? interactions :update)
-         (assoc :put {:middleware [[wrap-resource parse-executor]]
+         (assoc :put {:middleware [wrap-resource]
                       :handler (-> interactions :update
                                    :blaze.rest-api.interaction/handler)})
          (contains? interactions :delete)
@@ -162,20 +161,19 @@
 
 
 (defn- operation-system-handler-route
-  [{:keys [node db-sync-timeout] parse-executor :blaze.rest-api.json-parse/executor}
+  [{:keys [node db-sync-timeout]}
    {:blaze.rest-api.operation/keys [code system-handler]}]
   (when system-handler
     [[(str "/$" code)
       {:middleware [[wrap-db node db-sync-timeout]]
        :get system-handler
-       :post {:middleware [[wrap-resource parse-executor]]
+       :post {:middleware [wrap-resource]
               :handler system-handler}}]]))
 
 
 (defn operation-type-handler-route
-  [{:keys [node db-sync-timeout] parse-executor :blaze.rest-api.json-parse/executor}
-   {:blaze.rest-api.operation/keys
-    [code resource-types type-handler]}]
+  [{:keys [node db-sync-timeout]}
+   {:blaze.rest-api.operation/keys [code resource-types type-handler]}]
   (when type-handler
     (map
       (fn [resource-type]
@@ -183,22 +181,21 @@
          {:conflicting true
           :middleware [[wrap-db node db-sync-timeout]]
           :get type-handler
-          :post {:middleware [[wrap-resource parse-executor]]
+          :post {:middleware [wrap-resource]
                  :handler type-handler}}])
       resource-types)))
 
 
 (defn operation-instance-handler-route
-  [{:keys [node db-sync-timeout] parse-executor :blaze.rest-api.json-parse/executor}
-   {:blaze.rest-api.operation/keys
-    [code resource-types instance-handler]}]
+  [{:keys [node db-sync-timeout]}
+   {:blaze.rest-api.operation/keys [code resource-types instance-handler]}]
   (when instance-handler
     (map
       (fn [resource-type]
         [(str "/" resource-type "/{id}/$" code)
          {:middleware [[wrap-db node db-sync-timeout]]
           :get instance-handler
-          :post {:middleware [[wrap-resource parse-executor]]
+          :post {:middleware [wrap-resource]
                  :handler instance-handler}}])
       resource-types)))
 
@@ -218,7 +215,6 @@
      resource-patterns
      compartments
      operations]
-    :blaze.rest-api.json-parse/keys [executor]
     :or {context-path ""}
     :as context}
    capabilities-handler
@@ -236,7 +232,7 @@
                        :handler search-system-handler})
           (some? transaction-handler)
           (assoc :post {:middleware
-                        [[wrap-resource executor]
+                        [wrap-resource
                          [wrap-batch-handler batch-handler-promise]]
                         :handler transaction-handler}))]
        ["/metadata"

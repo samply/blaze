@@ -3,7 +3,6 @@
     [blaze.async.comp :as ac]
     [blaze.db.search-param-registry.spec]
     [blaze.db.spec]
-    [blaze.executors :as ex]
     [blaze.fhir.structure-definition-repo :as sdr]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.metrics :as metrics]
@@ -90,24 +89,8 @@
       wrap-log))
 
 
-(defn- json-parse-executor-init-msg []
-  (format "Init JSON parse executor with %d threads"
-          (.availableProcessors (Runtime/getRuntime))))
-
-
-(defmethod ig/init-key :blaze.rest-api.json-parse/executor
-  [_ _]
-  (log/info (json-parse-executor-init-msg))
-  (ex/cpu-bound-pool "blaze-json-parse-%d"))
-
-
-(derive :blaze.rest-api.json-parse/executor :blaze.metrics/thread-pool-executor)
-
-
 (defmethod ig/pre-init-spec :blaze/rest-api [_]
   (s/keys
-    :req
-    [:blaze.rest-api.json-parse/executor]
     :req-un
     [:blaze/base-url
      :blaze/version
