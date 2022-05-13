@@ -6,12 +6,13 @@
     [blaze.fhir.structure-definition-repo]
     [blaze.fhir.structure-definition-repo.protocols :as sdrp]
     [blaze.handler.util :as handler-util]
+    [blaze.metrics.spec]
     [blaze.rest-api :as rest-api]
     [blaze.test-util :refer [given-thrown with-system]]
     [blaze.test-util.ring :refer [call]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest testing]]
+    [clojure.test :as test :refer [are deftest is testing]]
     [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
@@ -260,27 +261,45 @@
     (given-thrown (ig/init {:blaze/rest-api {}})
       :key := :blaze/rest-api
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :blaze.rest-api.json-parse/executor))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :version))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
 
   (testing "invalid enforce-referential-integrity"
     (given-thrown (ig/init {:blaze/rest-api {:enforce-referential-integrity ::invalid}})
       :key := :blaze/rest-api
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :blaze.rest-api.json-parse/executor))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
-      [:explain ::s/problems 7 :pred] := `boolean?
-      [:explain ::s/problems 7 :val] := ::invalid)))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :version))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
+      [:explain ::s/problems 6 :pred] := `boolean?
+      [:explain ::s/problems 6 :val] := ::invalid)))
+
+
+(deftest requests-total-collector-init-test
+  (with-system [{collector :blaze.rest-api/requests-total} {:blaze.rest-api/requests-total {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+
+(deftest request-duration-seconds-collector-init-test
+  (with-system [{collector :blaze.rest-api/request-duration-seconds} {:blaze.rest-api/request-duration-seconds {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+
+(deftest parse-duration-seconds-collector-init-test
+  (with-system [{collector :blaze.rest-api/parse-duration-seconds} {:blaze.rest-api/parse-duration-seconds {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+
+(deftest generate-duration-seconds-collector-init-test
+  (with-system [{collector :blaze.rest-api/generate-duration-seconds} {:blaze.rest-api/generate-duration-seconds {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
 
 
 (def system
@@ -291,13 +310,11 @@
      :structure-definition-repo (ig/ref ::empty-structure-definition-repo)
      :node (ig/ref :blaze.db/node)
      :search-param-registry (ig/ref :blaze.db/search-param-registry)
-     :db-sync-timeout 10000
-     :blaze.rest-api.json-parse/executor (ig/ref :blaze.rest-api.json-parse/executor)}
+     :db-sync-timeout 10000}
     :blaze.db/search-param-registry
     {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
     :blaze.fhir/structure-definition-repo {}
-    ::empty-structure-definition-repo {}
-    :blaze.rest-api.json-parse/executor {}))
+    ::empty-structure-definition-repo {}))
 
 
 (defmethod ig/init-key ::empty-structure-definition-repo

@@ -97,8 +97,6 @@
 
    :blaze.handler/health {}
 
-   :blaze.rest-api.json-parse/executor {}
-
    :blaze/rest-api
    {:base-url (->Cfg "BASE_URL" string? "http://localhost:8080")
     :version (ig/ref :blaze/version)
@@ -107,8 +105,7 @@
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :auth-backends (ig/refset :blaze.auth/backend)
     :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")
-    :db-sync-timeout (->Cfg "DB_SYNC_TIMEOUT" pos-int? 10000)
-    :blaze.rest-api.json-parse/executor (ig/ref :blaze.rest-api.json-parse/executor)}
+    :db-sync-timeout (->Cfg "DB_SYNC_TIMEOUT" pos-int? 10000)}
 
    :blaze.rest-api/requests-total {}
    :blaze.rest-api/request-duration-seconds {}

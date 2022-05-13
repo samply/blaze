@@ -1,7 +1,6 @@
 (ns blaze.rest-api.middleware.resource-test
   (:require
     [blaze.async.comp :as ac]
-    [blaze.executors :as ex]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.handler.util :as handler-util]
     [blaze.rest-api.middleware.resource :refer [wrap-resource]]
@@ -29,9 +28,6 @@
 (test/use-fixtures :each fixture)
 
 
-(def executor (ex/single-thread-executor))
-
-
 (defn wrap-error [handler]
   (fn [request]
     (-> (handler request)
@@ -41,7 +37,7 @@
 (def resource-handler
   "A handler which just returns the :body from the request."
   (-> (comp ac/completed-future :body)
-      (wrap-resource executor)
+      wrap-resource
       wrap-error))
 
 
@@ -159,20 +155,21 @@
         [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
         [:body :issue 0 :severity] := #fhir/code"error"
         [:body :issue 0 :code] := #fhir/code"invalid"
-        [:body :issue 0 :diagnostics] := "Content-Type header expected, but is missing. Please specify one of application/fhir+json` or `application/fhir+xml`."))
+        [:body :issue 0 :diagnostics] := "Content-Type header expected, but is missing."))
 
     (testing "with unknown content-type header"
       (given @(resource-handler {:headers {"content-type" "text/plain"} :body (input-stream "")})
-        :status := 400
+        :status := 415
         [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
         [:body :issue 0 :severity] := #fhir/code"error"
         [:body :issue 0 :code] := #fhir/code"invalid"
-        [:body :issue 0 :diagnostics] := "Unknown Content-Type `text/plain` expected one of application/fhir+json` or `application/fhir+xml`."))
+        [:body :issue 0 :diagnostics] := "Unsupported Media Type `text/plain` expect one of `application/fhir+json` or `application/fhir+xml`."))
 
     (testing "missing body"
-      (given @(resource-handler
-                {:headers {"content-type" "application/fhir+json"}})
-        [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
-        [:body :issue 0 :severity] := #fhir/code"error"
-        [:body :issue 0 :code] := #fhir/code"invalid"
-        [:body :issue 0 :diagnostics] := "Missing HTTP body."))))
+      (doseq [content-type ["application/fhir+json" "application/fhir+xml"]]
+        (given @(resource-handler
+                  {:headers {"content-type" content-type}})
+          [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
+          [:body :issue 0 :severity] := #fhir/code"error"
+          [:body :issue 0 :code] := #fhir/code"invalid"
+          [:body :issue 0 :diagnostics] := "Missing HTTP body.")))))
