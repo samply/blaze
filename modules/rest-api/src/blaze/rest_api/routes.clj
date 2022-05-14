@@ -6,6 +6,7 @@
     [blaze.middleware.fhir.error :as error]
     [blaze.rest-api.middleware.auth-guard :as auth-guard]
     [blaze.rest-api.middleware.batch-handler :as batch-handler]
+    [blaze.rest-api.middleware.ensure-form-body :as ensure-form-body]
     [blaze.rest-api.middleware.forwarded :as forwarded]
     [blaze.rest-api.middleware.output :as output]
     [blaze.rest-api.middleware.resource :as resource]
@@ -45,6 +46,11 @@
 (def ^:private wrap-db
   {:name :db
    :wrap db/wrap-db})
+
+
+(def ^:private wrap-ensure-form-body
+  {:name :ensure-form-body
+   :wrap ensure-form-body/wrap-ensure-form-body})
 
 
 (def ^:private wrap-sync
@@ -103,7 +109,8 @@
      ["/_search"
       (cond-> {:name (keyword name "search") :conflicting true}
         (contains? interactions :search-type)
-        (assoc :post {:middleware [[wrap-db node db-sync-timeout]]
+        (assoc :post {:middleware [wrap-ensure-form-body
+                                   [wrap-db node db-sync-timeout]]
                       :handler (-> interactions :search-type
                                    :blaze.rest-api.interaction/handler)}))]
      ["/__page"
