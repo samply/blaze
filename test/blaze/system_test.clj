@@ -211,8 +211,7 @@
 (deftest batch-unsupported-media-type-test
   (with-system [{:blaze/keys [rest-api]} system]
     (given (call rest-api {:request-method :post :uri ""
-                           :headers {"content-type" "text/plain"}
-                           :body ""})
+                           :headers {"content-type" "text/plain"}})
       :status := 415
       [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
 
@@ -233,6 +232,24 @@
     (given (call rest-api {:request-method :get :uri ""})
       :status := 200
       [:body fhir-spec/parse-json :resourceType] := "Bundle")))
+
+
+(deftest search-type-test
+  (testing "using POST"
+    (with-system [{:blaze/keys [rest-api]} system]
+      (given (call rest-api {:request-method :post :uri "/Patient/_search"
+                             :headers {"content-type" "application/x-www-form-urlencoded"}
+                             :body (input-stream (byte-array 0))})
+        :status := 200
+        [:body fhir-spec/parse-json :resourceType] := "Bundle"))
+
+    (testing "with unsupported media-type"
+      (with-system [{:blaze/keys [rest-api]} system]
+        (given (call rest-api {:request-method :post :uri "/Patient/_search"
+                               :headers {"content-type" "application/fhir+json"}
+                               :body (input-stream (byte-array 0))})
+          :status := 415
+          [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))))
 
 
 (deftest redirect-slash-test
