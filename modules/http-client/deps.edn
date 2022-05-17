@@ -2,6 +2,17 @@
  {blaze/module-base
   {:local/root "../module-base"}
 
+  cheshire/cheshire
+  {:mvn/version "5.10.2"
+   :exclusions
+   [com.fasterxml.jackson.dataformat/jackson-dataformat-cbor]}
+
+  com.fasterxml.jackson.core/jackson-core
+  {:mvn/version "2.13.3"}
+
+  com.fasterxml.jackson.dataformat/jackson-dataformat-smile
+  {:mvn/version "2.13.3"}
+
   hato/hato
   {:mvn/version "0.8.2"}}
 
