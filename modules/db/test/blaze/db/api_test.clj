@@ -1,7 +1,7 @@
 (ns blaze.db.api-test
   "Main high-level test of all database API functions."
   (:require
-    [blaze.anomaly :refer [when-ok]]
+    [blaze.anomaly :as ba :refer [when-ok]]
     [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.async.comp-spec]
@@ -482,7 +482,7 @@
     (with-redefs
       [resource-indexer/index-resources
        (fn [_ _]
-         (ac/failed-future (ex-info "" {::anom/category ::anom/fault ::x ::y})))]
+         (ac/failed-future (ex-info "" (ba/fault "" ::x ::y))))]
       (with-system [{:blaze.db/keys [node]} system]
         (given-failed-future
           (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])

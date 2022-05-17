@@ -1196,22 +1196,33 @@
         {:url "foo" :valueCode "bar"}
         #fhir/Extension{:url "foo" :value #fhir/code"bar"}
 
-        {:url "foo" :valueReference {}}
-        #fhir/Extension{:url "foo" :value #fhir/Reference{}}
+        {:url "foo" :valueReference {:reference "bar"}}
+        #fhir/Extension{:url "foo" :value #fhir/Reference{:reference "bar"}}
 
-        {:url "foo" :valueCodeableConcept {}}
-        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{}}))
+        {:url "foo" :valueCodeableConcept {:text "bar"}}
+        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text "bar"}}))
+
+    (testing "XML"
+      (are [xml fhir] (= fhir (s2/conform :fhir.xml/Extension xml))
+        (sexp [nil {:url "foo"} [::f/valueCode {:value "bar"}]])
+        #fhir/Extension{:url "foo" :value #fhir/code"bar"}
+
+        (sexp [nil {:url "foo"} [::f/valueReference {} [::f/reference {:value "bar"}]]])
+        #fhir/Extension{:url "foo" :value #fhir/Reference{:reference "bar"}}
+
+        (sexp [nil {:url "foo"} [::f/valueCodeableConcept {} [::f/text {:value "bar"}]]])
+        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text "bar"}}))
 
     (testing "CBOR"
       (are [json fhir] (= fhir (s2/conform :fhir.cbor/Extension json))
         {:url "foo" :valueCode "bar"}
         #fhir/Extension{:url "foo" :value #fhir/code"bar"}
 
-        {:url "foo" :valueReference {}}
-        #fhir/Extension{:url "foo" :value #fhir/Reference{}}
+        {:url "foo" :valueReference {:reference "bar"}}
+        #fhir/Extension{:url "foo" :value #fhir/Reference{:reference "bar"}}
 
-        {:url "foo" :valueCodeableConcept {}}
-        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{}})))
+        {:url "foo" :valueCodeableConcept {:text "bar"}}
+        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text "bar"}})))
 
   (testing "conformed instance size"
     (testing "JSON"

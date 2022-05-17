@@ -403,7 +403,7 @@
 
 (defn- remap-choice-conformer-form
   "Creates a conformer form which removes the type suffix of keys on conforming
-  and adds it back on unforming."
+  and adds it back on uniforming."
   [[internal-key child-spec-defs]]
   `(s/conformer
      (fn [~'m]
@@ -499,8 +499,8 @@
 (defn conform-xml
   "First step in conforming an XML `element` into the internal form.
 
-  Builds a map from child tags to either vector of childs or single-valued
-  childs."
+  Builds a map from child tags to either vector of children or single-valued
+  children."
   {:arglists '([element])}
   [{:keys [attrs content]}]
   (transduce
@@ -583,8 +583,8 @@
 (defn- special-xml-schema-spec-form [kind type-name child-spec-defs]
   (let [constructor-sym (symbol "blaze.fhir.spec.type" (str "map->" type-name))
         constructor (resolve constructor-sym)]
-    (conj (seq (remap-choice-conformer-forms child-spec-defs))
-          `(s/conformer ~constructor identity)
+    (conj (seq (conj (remap-choice-conformer-forms child-spec-defs)
+                     `(s/conformer ~constructor identity)))
           (schema-spec-form :xml child-spec-defs)
           `(s/conformer conform-xml
                         ~(xml-unformer kind (keyword type-name) child-spec-defs))

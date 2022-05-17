@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.17.4
+
+### Bugfixes
+
+* Return an Error on Incorrect Content-Type for Search Requests ([#524](https://github.com/samply/blaze/issues/524))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/42?closed=1).
+
 ## v0.17.3
 
 ### Bugfixes

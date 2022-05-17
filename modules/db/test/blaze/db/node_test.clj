@@ -1,5 +1,6 @@
 (ns blaze.db.node-test
   (:require
+    [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
     [blaze.async.comp-spec]
     [blaze.db.api :as d]
@@ -179,7 +180,7 @@
       (with-redefs
         [resource-indexer/index-resources
          (fn [_ _]
-           (ac/failed-future (ex-info "" {::anom/category ::anom/fault ::x ::y})))]
+           (ac/failed-future (ex-info "" (ba/fault "" ::x ::y))))]
 
         (testing "fetching the result immediately"
           (with-system [{:blaze.db/keys [node]} resource-store-slow-on-put]

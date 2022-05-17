@@ -174,7 +174,8 @@
 
           (given (-> body :issue first)
             :severity := #fhir/code"error"
-            :code := #fhir/code"not-found"))))
+            :code := #fhir/code"not-found"
+            :diagnostics := "The Measure resource with id `0` was not found."))))
 
     (testing "on type endpoint"
       (with-handler [handler]
@@ -186,13 +187,32 @@
                    "periodStart" "2014"
                    "periodEnd" "2015"}})]
 
-          (is (= 404 status))
+          (is (= 400 status))
 
           (is (= :fhir/OperationOutcome (:fhir/type body)))
 
           (given (-> body :issue first)
             :severity := #fhir/code"error"
-            :code := #fhir/code"not-found")))))
+            :code := #fhir/code"not-found"
+            :diagnostics := "The Measure resource with reference `url-181501` was not found.")))
+
+      (testing "with missing measure parameter"
+        (with-handler [handler]
+          []
+          (let [{:keys [status body]}
+                @(handler
+                   {:params
+                    {"periodStart" "2014"
+                     "periodEnd" "2015"}})]
+
+            (is (= 400 status))
+
+            (is (= :fhir/OperationOutcome (:fhir/type body)))
+
+            (given (-> body :issue first)
+              :severity := #fhir/code"error"
+              :code := #fhir/code"required"
+              :diagnostics := "The measure parameter is missing."))))))
 
   (testing "Returns Gone on Deleted Resource"
     (with-handler [handler]
@@ -210,7 +230,8 @@
 
         (given (-> body :issue first)
           :severity := #fhir/code"error"
-          :code := #fhir/code"deleted"))))
+          :code := #fhir/code"deleted"
+          :diagnostics := "The Measure resource with the id `0` was deleted."))))
 
   (testing "measure without library"
     (with-handler [handler]
@@ -254,7 +275,7 @@
         (given (-> body :issue first)
           :severity := #fhir/code"error"
           :code := #fhir/code"value"
-          :diagnostics := "Can't find the library with canonical URI `library-url-094115`."
+          :diagnostics := "The Library resource with canonical URI `library-url-094115` was not found."
           [:expression first] := "Measure.library"))))
 
   (testing "missing content in library"

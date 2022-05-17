@@ -8,4 +8,4 @@
   {:mvn/version "3.20.1"}
 
   com.fasterxml.jackson.core/jackson-databind
-  {:mvn/version "2.13.2.2"}}}
+  {:mvn/version "2.13.3"}}}

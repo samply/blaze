@@ -79,7 +79,6 @@
      :node (ig/ref :blaze.db/node)
      :search-param-registry (ig/ref :blaze.db/search-param-registry)
      :db-sync-timeout 10000
-     :blaze.rest-api.json-parse/executor (ig/ref :blaze.rest-api.json-parse/executor)
      :auth-backends [(ig/ref ::auth-backend)]
      :search-system-handler (ig/ref :blaze.interaction/search-system)
      :transaction-handler (ig/ref :blaze.interaction/transaction)
@@ -99,7 +98,6 @@
     :blaze.db/search-param-registry
     {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
     :blaze.fhir/structure-definition-repo {}
-    :blaze.rest-api.json-parse/executor {}
     ::auth-backend {}
     :blaze.interaction/transaction
     {:node (ig/ref :blaze.db/node)
@@ -210,6 +208,14 @@
       [:body fhir-spec/parse-json :entry 0 :response :outcome :resourceType] := "OperationOutcome")))
 
 
+(deftest batch-unsupported-media-type-test
+  (with-system [{:blaze/keys [rest-api]} system]
+    (given (call rest-api {:request-method :post :uri ""
+                           :headers {"content-type" "text/plain"}})
+      :status := 415
+      [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
+
+
 (deftest delete-test
   (with-system [{:blaze/keys [rest-api]} system]
     (given (call rest-api {:request-method :delete :uri "/Patient/0"})
@@ -226,6 +232,24 @@
     (given (call rest-api {:request-method :get :uri ""})
       :status := 200
       [:body fhir-spec/parse-json :resourceType] := "Bundle")))
+
+
+(deftest search-type-test
+  (testing "using POST"
+    (with-system [{:blaze/keys [rest-api]} system]
+      (given (call rest-api {:request-method :post :uri "/Patient/_search"
+                             :headers {"content-type" "application/x-www-form-urlencoded"}
+                             :body (input-stream (byte-array 0))})
+        :status := 200
+        [:body fhir-spec/parse-json :resourceType] := "Bundle"))
+
+    (testing "with unsupported media-type"
+      (with-system [{:blaze/keys [rest-api]} system]
+        (given (call rest-api {:request-method :post :uri "/Patient/_search"
+                               :headers {"content-type" "application/fhir+json"}
+                               :body (input-stream (byte-array 0))})
+          :status := 415
+          [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))))
 
 
 (deftest redirect-slash-test

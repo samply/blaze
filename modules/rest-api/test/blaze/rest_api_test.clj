@@ -1,22 +1,27 @@
 (ns blaze.rest-api-test
   (:require
+    [blaze.async.comp :as ac]
     [blaze.db.api-stub :refer [mem-node-system]]
     [blaze.db.impl.search-param]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.structure-definition-repo]
     [blaze.fhir.structure-definition-repo.protocols :as sdrp]
     [blaze.handler.util :as handler-util]
+    [blaze.metrics.spec]
     [blaze.rest-api :as rest-api]
     [blaze.test-util :refer [given-thrown with-system]]
     [blaze.test-util.ring :refer [call]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest testing]]
+    [clojure.test :as test :refer [are deftest is testing]]
     [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [reitit.ring]
-    [taoensso.timbre :as log]))
+    [ring.util.response :as response]
+    [taoensso.timbre :as log])
+  (:import
+    [java.io ByteArrayInputStream]))
 
 
 (st/instrument)
@@ -156,7 +161,7 @@
       "/Patient" :get [:params :output :error :forwarded :sync :db]
       "/Patient" :post [:params :output :error :forwarded :sync :resource]
       "/Patient/_history" :get [:params :output :error :forwarded :sync :db]
-      "/Patient/_search" :post [:params :output :error :forwarded :sync :db]
+      "/Patient/_search" :post [:params :output :error :forwarded :sync :ensure-form-body :db]
       "/Patient/0" :get [:params :output :error :forwarded :sync :db]
       "/Patient/0" :put [:params :output :error :forwarded :sync :resource]
       "/Patient/0" :delete [:params :output :error :forwarded :sync]
@@ -260,44 +265,79 @@
     (given-thrown (ig/init {:blaze/rest-api {}})
       :key := :blaze/rest-api
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :blaze.rest-api.json-parse/executor))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :version))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
 
   (testing "invalid enforce-referential-integrity"
     (given-thrown (ig/init {:blaze/rest-api {:enforce-referential-integrity ::invalid}})
       :key := :blaze/rest-api
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :blaze.rest-api.json-parse/executor))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
-      [:explain ::s/problems 7 :pred] := `boolean?
-      [:explain ::s/problems 7 :val] := ::invalid)))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :version))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
+      [:explain ::s/problems 6 :pred] := `boolean?
+      [:explain ::s/problems 6 :val] := ::invalid)))
 
 
-(def system
+(deftest requests-total-collector-init-test
+  (with-system [{collector :blaze.rest-api/requests-total} {:blaze.rest-api/requests-total {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+
+(deftest request-duration-seconds-collector-init-test
+  (with-system [{collector :blaze.rest-api/request-duration-seconds} {:blaze.rest-api/request-duration-seconds {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+
+(deftest parse-duration-seconds-collector-init-test
+  (with-system [{collector :blaze.rest-api/parse-duration-seconds} {:blaze.rest-api/parse-duration-seconds {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+
+(deftest generate-duration-seconds-collector-init-test
+  (with-system [{collector :blaze.rest-api/generate-duration-seconds} {:blaze.rest-api/generate-duration-seconds {}}]
+    (is (s/valid? :blaze.metrics/collector collector))))
+
+
+(def ^:private success-handler
+  (constantly (ac/completed-future (response/status 200))))
+
+
+(def ^:private system
   (assoc mem-node-system
     :blaze/rest-api
     {:base-url "http://localhost:8080"
      :version "0.1.0"
-     :structure-definition-repo (ig/ref ::empty-structure-definition-repo)
+     :structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)
      :node (ig/ref :blaze.db/node)
      :search-param-registry (ig/ref :blaze.db/search-param-registry)
      :db-sync-timeout 10000
-     :blaze.rest-api.json-parse/executor (ig/ref :blaze.rest-api.json-parse/executor)}
+     :auth-backends []
+     :search-system-handler success-handler
+     :transaction-handler success-handler
+     :resource-patterns
+     [#:blaze.rest-api.resource-pattern
+             {:type :default
+              :interactions
+              {:read
+               #:blaze.rest-api.interaction
+                       {:handler success-handler}
+               :delete
+               #:blaze.rest-api.interaction
+                       {:handler success-handler}
+               :search-type
+               #:blaze.rest-api.interaction
+                       {:handler success-handler}}}]}
     :blaze.db/search-param-registry
     {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
-    :blaze.fhir/structure-definition-repo {}
-    ::empty-structure-definition-repo {}
-    :blaze.rest-api.json-parse/executor {}))
+    :blaze.fhir/structure-definition-repo {}))
 
 
 (defmethod ig/init-key ::empty-structure-definition-repo
@@ -375,3 +415,45 @@
                            :headers {"accept" "text/plain"}})
       :status := 406
       :body := nil)))
+
+
+(defn empty-input-stream []
+  (ByteArrayInputStream. (byte-array 0)))
+
+
+(deftest search-type-test
+  (testing "using POST"
+    (with-system [{:blaze/keys [rest-api]} system]
+      (given (call rest-api {:request-method :post :uri "/Patient/_search"
+                             :headers {"content-type" "application/x-www-form-urlencoded"}
+                             :body (empty-input-stream)})
+        :status := 200))
+
+    (testing "without Content-Type header"
+      (with-system [{:blaze/keys [rest-api]} system]
+        (let [request {:request-method :post :uri "/Patient/_search"
+                       :body (empty-input-stream)}
+              {:keys [status body]} (call rest-api request)]
+
+          (is (= 415 status))
+
+          (given (fhir-spec/parse-json body)
+            :resourceType := "OperationOutcome"
+            [:issue 0 :severity] := "error"
+            [:issue 0 :code] := "invalid"
+            [:issue 0 :diagnostics] := "Missing Content-Type header. Please use `application/x-www-form-urlencoded`."))))
+
+    (testing "with unsupported media-type"
+      (with-system [{:blaze/keys [rest-api]} system]
+        (let [request {:request-method :post :uri "/Patient/_search"
+                       :headers {"content-type" "application/fhir+json"}
+                       :body (empty-input-stream)}
+              {:keys [status body]} (call rest-api request)]
+
+          (is (= 415 status))
+
+          (given (fhir-spec/parse-json body)
+            :resourceType := "OperationOutcome"
+            [:issue 0 :severity] := "error"
+            [:issue 0 :code] := "invalid"
+            [:issue 0 :diagnostics] := "Unsupported Content-Type header `application/fhir+json`. Please use `application/x-www-form-urlencoded`."))))))
