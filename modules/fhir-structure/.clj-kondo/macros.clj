@@ -1,7 +1,7 @@
 (ns macros)
 
 
-(defmacro defcomplextype
+(defmacro def-complex-type
   [name [& fields] & {:keys [fhir-type hash-num interned references field-serializers]
                       :or {interned false}}]
   `(defrecord ~name [~@fields]

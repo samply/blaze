@@ -16,10 +16,11 @@
     [java-time.core :as time-core])
   (:import
     [com.google.common.hash PrimitiveSink]
+    [java.io Writer]
     [java.nio.charset StandardCharsets]
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth]
-    [java.time.temporal Temporal TemporalUnit TemporalAccessor TemporalField]
-    [java.time.format DateTimeParseException]))
+    [java.time.format DateTimeFormatter DateTimeParseException]
+    [java.time.temporal Temporal TemporalAccessor TemporalField TemporalUnit]))
 
 
 (set! *warn-on-reflection* true)
@@ -28,6 +29,7 @@
 
 (defprotocol SystemType
   (-type [_])
+  (-to-string [_])
   (-hash-into [_ sink])
   (-equals [_ x]))
 
@@ -59,9 +61,12 @@
   Boolean
   (-type [_]
     :system/boolean)
+  (-to-string [b]
+    (.toString b))
   (-hash-into [b sink]
-    (.putByte ^PrimitiveSink sink (byte 0))
-    (.putBoolean ^PrimitiveSink sink b))
+    (doto ^PrimitiveSink sink
+      (.putByte (byte 0))
+      (.putBoolean b)))
   (-equals [b x]
     (some->> x (.equals b))))
 
@@ -77,9 +82,12 @@
   Integer
   (-type [_]
     :system/integer)
+  (-to-string [i]
+    (.toString i))
   (-hash-into [i sink]
-    (.putByte ^PrimitiveSink sink (byte 2))
-    (.putInt ^PrimitiveSink sink i))
+    (doto ^PrimitiveSink sink
+      (.putByte (byte 2))
+      (.putInt i)))
   (-equals [i x]
     (some->> x (.equals i))))
 
@@ -95,9 +103,12 @@
   Long
   (-type [_]
     :system/long)
+  (-to-string [i]
+    (.toString i))
   (-hash-into [l sink]
-    (.putByte ^PrimitiveSink sink (byte 3))
-    (.putInt ^PrimitiveSink sink l))
+    (doto ^PrimitiveSink sink
+      (.putByte (byte 3))
+      (.putInt l)))
   (-equals [l x]
     (some->> x (.equals l))))
 
@@ -113,9 +124,12 @@
   String
   (-type [_]
     :system/string)
+  (-to-string [s]
+    s)
   (-hash-into [s sink]
-    (.putByte ^PrimitiveSink sink (byte 1))
-    (.putString ^PrimitiveSink sink s StandardCharsets/UTF_8))
+    (doto ^PrimitiveSink sink
+      (.putByte (byte 1))
+      (.putString s StandardCharsets/UTF_8)))
   (-equals [s x]
     (some->> x (.equals s))))
 
@@ -131,9 +145,12 @@
   BigDecimal
   (-type [_]
     :system/decimal)
+  (-to-string [d]
+    (.toString d))
   (-hash-into [d sink]
-    (.putByte ^PrimitiveSink sink (byte 4))
-    (.putString ^PrimitiveSink sink (str d) StandardCharsets/UTF_8))
+    (doto ^PrimitiveSink sink
+      (.putByte (byte 4))
+      (.putString (str d) StandardCharsets/UTF_8)))
   (-equals [d x]
     (some->> x (.equals d))))
 
@@ -207,9 +224,12 @@
   SystemType
   (-type [_]
     :system/date-time)
+  (-to-string [_]
+    (str year))
   (-hash-into [_ sink]
-    (.putByte ^PrimitiveSink sink (byte 6))
-    (.putInt ^PrimitiveSink sink (.getValue ^Year year)))
+    (doto ^PrimitiveSink sink
+      (.putByte (byte 6))
+      (.putInt (.getValue ^Year year))))
   (-equals [_ x]
     (cond
       (instance? DateTimeYear x) (.equals year (.-year ^DateTimeYear x))
@@ -254,10 +274,13 @@
   SystemType
   (-type [_]
     :system/date-time)
+  (-to-string [_]
+    (str year-month))
   (-hash-into [_ sink]
-    (.putByte ^PrimitiveSink sink (byte 6))
-    (.putInt ^PrimitiveSink sink (.getYear ^YearMonth year-month))
-    (.putInt ^PrimitiveSink sink (.getMonthValue ^YearMonth year-month)))
+    (doto ^PrimitiveSink sink
+      (.putByte (byte 6))
+      (.putInt (.getYear ^YearMonth year-month))
+      (.putInt (.getMonthValue ^YearMonth year-month))))
   (-equals [_ x]
     (cond
       (instance? DateTimeYearMonth x)
@@ -306,11 +329,14 @@
   SystemType
   (-type [_]
     :system/date-time)
+  (-to-string [_]
+    (str date))
   (-hash-into [_ sink]
-    (.putByte ^PrimitiveSink sink (byte 6))
-    (.putInt ^PrimitiveSink sink (.getYear ^LocalDate date))
-    (.putInt ^PrimitiveSink sink (.getMonthValue ^LocalDate date))
-    (.putInt ^PrimitiveSink sink (.getDayOfMonth ^LocalDate date)))
+    (doto ^PrimitiveSink sink
+      (.putByte (byte 6))
+      (.putInt (.getYear ^LocalDate date))
+      (.putInt (.getMonthValue ^LocalDate date))
+      (.putInt (.getDayOfMonth ^LocalDate date))))
   (-equals [_ x]
     (cond
       (instance? DateTimeYearMonthDay x)
@@ -404,9 +430,12 @@
   Year
   (-type [_]
     :system/date)
+  (-to-string [date]
+    (str date))
   (-hash-into [date sink]
-    (.putByte ^PrimitiveSink sink (byte 5))
-    (.putInt ^PrimitiveSink sink (.getValue date)))
+    (doto ^PrimitiveSink sink
+      (.putByte (byte 5))
+      (.putInt (.getValue date))))
   (-equals [date x]
     (cond
       (instance? Year x) (.equals date x)
@@ -415,10 +444,13 @@
   YearMonth
   (-type [_]
     :system/date)
+  (-to-string [date]
+    (str date))
   (-hash-into [date sink]
-    (.putByte ^PrimitiveSink sink (byte 5))
-    (.putInt ^PrimitiveSink sink (.getYear date))
-    (.putInt ^PrimitiveSink sink (.getMonthValue date)))
+    (doto ^PrimitiveSink sink
+      (.putByte (byte 5))
+      (.putInt (.getYear date))
+      (.putInt (.getMonthValue date))))
   (-equals [date x]
     (cond
       (instance? YearMonth x) (.equals date x)
@@ -428,11 +460,14 @@
   LocalDate
   (-type [_]
     :system/date)
+  (-to-string [date]
+    (str date))
   (-hash-into [date sink]
-    (.putByte ^PrimitiveSink sink (byte 5))
-    (.putInt ^PrimitiveSink sink (.getYear date))
-    (.putInt ^PrimitiveSink sink (.getMonthValue date))
-    (.putInt ^PrimitiveSink sink (.getDayOfMonth date)))
+    (doto ^PrimitiveSink sink
+      (.putByte (byte 5))
+      (.putInt (.getYear date))
+      (.putInt (.getMonthValue date))
+      (.putInt (.getDayOfMonth date))))
   (-equals [date x]
     (cond
       (instance? LocalDate x) (.equals date x)
@@ -440,35 +475,47 @@
       (.equals date (.-date ^DateTimeYearMonthDay x))))
 
   LocalDateTime
-  (-type [_] :system/date-time)
+  (-type [_]
+    :system/date-time)
+  (-to-string [date-time]
+    (.format DateTimeFormatter/ISO_LOCAL_DATE_TIME date-time))
   (-hash-into [date-time sink]
-    (.putByte ^PrimitiveSink sink (byte 6))
-    (.putInt ^PrimitiveSink sink (.getYear date-time))
-    (.putInt ^PrimitiveSink sink (.getMonthValue date-time))
-    (.putInt ^PrimitiveSink sink (.getDayOfMonth date-time))
-    (.putInt ^PrimitiveSink sink (.getHour date-time))
-    (.putInt ^PrimitiveSink sink (.getMinute date-time))
-    (.putInt ^PrimitiveSink sink (.getSecond date-time))
-    (.putInt ^PrimitiveSink sink (.getNano date-time)))
+    (doto ^PrimitiveSink sink
+      (.putByte (byte 6))
+      (.putInt (.getYear date-time))
+      (.putInt (.getMonthValue date-time))
+      (.putInt (.getDayOfMonth date-time))
+      (.putInt (.getHour date-time))
+      (.putInt (.getMinute date-time))
+      (.putInt (.getSecond date-time))
+      (.putInt (.getNano date-time))))
   (-equals [date-time x]
     (cond
       (instance? LocalDateTime x) (.equals date-time x)))
 
   OffsetDateTime
-  (-type [_] :system/date-time)
+  (-type [_]
+    :system/date-time)
+  (-to-string [date-time]
+    (.format DateTimeFormatter/ISO_DATE_TIME date-time))
   (-hash-into [date-time sink]
-    (.putByte ^PrimitiveSink sink (byte 6))
-    (.putInt ^PrimitiveSink sink (.getYear date-time))
-    (.putInt ^PrimitiveSink sink (.getMonthValue date-time))
-    (.putInt ^PrimitiveSink sink (.getDayOfMonth date-time))
-    (.putInt ^PrimitiveSink sink (.getHour date-time))
-    (.putInt ^PrimitiveSink sink (.getMinute date-time))
-    (.putInt ^PrimitiveSink sink (.getSecond date-time))
-    (.putInt ^PrimitiveSink sink (.getNano date-time))
-    (.putInt ^PrimitiveSink sink (.getTotalSeconds (.getOffset date-time))))
+    (doto ^PrimitiveSink sink
+      (.putByte (byte 6))
+      (.putInt (.getYear date-time))
+      (.putInt (.getMonthValue date-time))
+      (.putInt (.getDayOfMonth date-time))
+      (.putInt (.getHour date-time))
+      (.putInt (.getMinute date-time))
+      (.putInt (.getSecond date-time))
+      (.putInt (.getNano date-time))
+      (.putInt (.getTotalSeconds (.getOffset date-time)))))
   (-equals [date-time x]
     (cond
       (instance? OffsetDateTime x) (.equals date-time x))))
+
+
+(defmethod print-method OffsetDateTime [^OffsetDateTime date-time ^Writer w]
+  (.write w (.toString date-time)))
 
 
 
@@ -476,13 +523,17 @@
 
 (extend-protocol SystemType
   LocalTime
-  (-type [_] :system/time)
+  (-type [_]
+    :system/time)
+  (-to-string [time]
+    (.format DateTimeFormatter/ISO_LOCAL_TIME time))
   (-hash-into [time sink]
-    (.putByte ^PrimitiveSink sink (byte 7))
-    (.putInt ^PrimitiveSink sink (.getHour time))
-    (.putInt ^PrimitiveSink sink (.getMinute time))
-    (.putInt ^PrimitiveSink sink (.getSecond time))
-    (.putInt ^PrimitiveSink sink (.getNano time)))
+    (doto ^PrimitiveSink sink
+      (.putByte (byte 7))
+      (.putInt (.getHour time))
+      (.putInt (.getMinute time))
+      (.putInt (.getSecond time))
+      (.putInt (.getNano time))))
   (-equals [time x]
     (some->> x (.equals time))))
 
@@ -493,10 +544,14 @@
 (extend-protocol SystemType
   Object
   (-type [_])
+  (-to-string [o]
+    (.toString o))
   (-hash-into [_ _])
   (-equals [_ _] false)
 
   nil
   (-type [_])
+  (-to-string [_]
+    "nil")
   (-hash-into [_ _])
   (-equals [_ _]))

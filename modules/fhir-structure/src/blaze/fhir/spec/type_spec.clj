@@ -22,6 +22,36 @@
   :ret (s/coll-of :blaze.fhir/local-ref-tuple))
 
 
-(s/fdef type/->Date
-  :args (s/cat :value string?)
-  :ret (s/or :date type/date? :invalid s2/invalid?))
+(s/fdef type/boolean
+  :args (s/cat :value (s/alt :value boolean? :extended map?))
+  :ret (s/or :value type/boolean? :invalid s2/invalid?))
+
+
+(s/fdef type/integer
+  :args (s/cat :value (s/alt :value int? :extended map?))
+  :ret (s/or :value type/integer? :invalid s2/invalid?))
+
+
+(s/fdef type/string
+  :args (s/cat :value (s/alt :value string? :extended map?))
+  :ret (s/or :value type/string? :invalid s2/invalid?))
+
+
+(s/fdef type/uri
+  :args (s/cat :value (s/alt :value string? :extended map?))
+  :ret (s/or :value type/uri :invalid s2/invalid?))
+
+
+(s/fdef type/instant
+  :args (s/cat :value (s/alt :value string? :extended map?))
+  :ret (s/or :value type/instant? :invalid s2/invalid?))
+
+
+(s/fdef type/date
+  :args (s/cat :value (s/alt :value string? :extended map?))
+  :ret (s/or :value type/date? :invalid s2/invalid?))
+
+
+(s/fdef type/dateTime
+  :args (s/cat :value (s/alt :value string? :extended map?))
+  :ret (s/or :value type/dateTime? :invalid s2/invalid?))

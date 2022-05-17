@@ -63,7 +63,7 @@
 
 (def slow-resource-store-system
   (-> (assoc-in system [:blaze.db/node :resource-store] (ig/ref ::slow-resource-store))
-      (assoc ::slow-resource-store {:resource-store (ig/ref :blaze.db/resource-store)})))
+      (assoc ::slow-resource-store {:resource-store (ig/ref ::rs/kv)})))
 
 
 (defmethod ig/init-key ::resource-store-failing-on-put [_ _]
@@ -244,6 +244,24 @@
             :id := "0"
             [:meta :versionId] := #fhir/id"1"
             [meta :blaze.db/op] := :put))))
+
+    (testing "one Patient with an Extension on birthDate"
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"
+                 :birthDate
+                 #fhir/date
+                         {:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]
+                          :value "2022"}}]]]
+
+        (testing "the Patient was created"
+          (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+            :fhir/type := :fhir/Patient
+            :id := "0"
+            [:meta :versionId] := #fhir/id"1"
+            [meta :blaze.db/op] := :put
+            [:birthDate :extension 0 :url] := "foo"
+            [:birthDate :extension 0 :value] := #fhir/code"bar"
+            [:birthDate :value] := #fhir/date"2022"))))
 
     (testing "one Patient with one Observation"
       (with-system-data [{:blaze.db/keys [node]} system]

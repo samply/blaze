@@ -2,7 +2,7 @@
   (:require
     [blaze.fhir.spec :as fhir-spec]
     [blaze.test-util :as tu]
-    [clojure.test :refer [are deftest testing]]
+    [clojure.test :refer [are deftest]]
     [criterium.core :as criterium]))
 
 
@@ -13,10 +13,10 @@
   (are [x mean] (< (:mean (criterium/quick-benchmark (fhir-spec/unform-json x) {}) mean))
     #fhir/HumanName{:family "Doe" :given ["John"]} 0.3
     #fhir/CodeableConcept
-        {:coding
-         [#fhir/Coding
-             {:system #fhir/uri"http://loinc.org"
-              :code #fhir/code"17861-6"}]} 0.4))
+            {:coding
+             [#fhir/Coding
+                     {:system #fhir/uri"http://loinc.org"
+                      :code #fhir/code"17861-6"}]} 0.4))
 
 
 (comment

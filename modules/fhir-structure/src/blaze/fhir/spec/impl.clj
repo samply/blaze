@@ -3,16 +3,17 @@
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.fhir.spec.impl.intern :as intern]
     [blaze.fhir.spec.impl.specs :as specs]
+    [blaze.fhir.spec.impl.util :as u]
     [blaze.fhir.spec.type :as type]
     [clojure.alpha.spec :as s]
     [clojure.data.xml.name :as xml-name]
     [clojure.data.xml.node :as xml-node]
     [cuerdas.core :as str])
   (:import
-    [java.net URLEncoder]
-    [java.nio.charset StandardCharsets]
     [clojure.data.xml.node Element]
-    [com.github.benmanes.caffeine.cache Caffeine CacheLoader LoadingCache]))
+    [com.github.benmanes.caffeine.cache CacheLoader Caffeine LoadingCache]
+    [java.net URLEncoder]
+    [java.nio.charset StandardCharsets]))
 
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
@@ -483,6 +484,7 @@
        (conj (seq (remap-choice-conformer-forms child-spec-defs))
              (json-type-conformer-form kind parent-path-parts path-part)
              (schema-spec-form :json child-spec-defs)
+             `(s/conformer u/update-extended-primitives identity)
              `s/and))}))
 
 
@@ -663,6 +665,7 @@
        (conj (seq (remap-choice-conformer-forms child-spec-defs))
              (json-type-conformer-form kind parent-path-parts path-part)
              (schema-spec-form :cbor child-spec-defs)
+             `(s/conformer u/update-extended-primitives identity)
              `s/and))}))
 
 
@@ -712,8 +715,8 @@
 
 (defn- internal-spec-form [name]
   (case name
-    "boolean" `boolean?
-    "integer" `(fn [~'x] (instance? Integer ~'x))
+    "boolean" `type/boolean?
+    "integer" `type/integer?
     "string" `type/string?
     "decimal" `type/decimal?
     "uri" `type/uri?
@@ -722,7 +725,7 @@
     "base64Binary" `type/base64Binary?
     "instant" `type/instant?
     "date" `type/date?
-    "dateTime" `type/date-time?
+    "dateTime" `type/dateTime?
     "time" `type/time?
     "code" `type/code?
     "oid" `type/oid?
@@ -730,7 +733,7 @@
     "markdown" `type/markdown?
     "unsignedInt" `type/unsignedInt?
     "positiveInt" `type/positiveInt?
-    "uuid" `uuid?
+    "uuid" `type/uuid?
     "xhtml" `type/xhtml?
     (throw (ex-info (format "Unknown primitive type `%s`." name) {}))))
 
@@ -739,32 +742,32 @@
   (some #(when (str/ends-with? (:path %) "value") (first (:type %))) element))
 
 
-(defn conform-decimal-json [x]
-  (cond (int? x) (BigDecimal/valueOf ^long x) (decimal? x) x :else ::s/invalid))
+(defn decimal-or-int? [x]
+  (or (decimal? x) (int? x)))
 
 
 (defn- json-spec-form [name {:keys [element]}]
   (let [pattern (type-regex (value-type element))]
     (case name
-      "boolean" `boolean?
-      "integer" `(s/and int? (s/conformer int identity))
-      "string" `(specs/regex ~pattern identity)
-      "decimal" `(s/conformer conform-decimal-json identity)
-      "uri" `(specs/regex ~pattern type/uri)
-      "url" `(specs/regex ~pattern type/->Url)
-      "canonical" `(specs/regex ~pattern type/canonical)
-      "base64Binary" `(specs/regex ~pattern type/->Base64Binary)
-      "instant" `(specs/regex ~pattern type/->Instant)
-      "date" `(specs/regex ~pattern type/->Date)
-      "dateTime" `(specs/regex ~pattern type/->DateTime)
-      "time" `(specs/regex ~pattern type/->Time)
-      "code" `(specs/regex ~pattern type/code)
-      "oid" `(specs/regex ~pattern type/->Oid)
-      "id" `(specs/regex ~pattern type/->Id)
-      "markdown" `(specs/regex ~pattern type/->Markdown)
-      "unsignedInt" `(s/and int? (s/conformer type/->UnsignedInt identity))
-      "positiveInt" `(s/and int? (s/conformer type/->PositiveInt identity))
-      "uuid" `(specs/regex ~pattern type/->Uuid)
+      "boolean" `(specs/json-pred-primitive boolean? type/boolean)
+      "integer" `(specs/json-pred-primitive int? type/integer)
+      "string" `(specs/json-regex-primitive ~pattern type/string)
+      "decimal" `(specs/json-pred-primitive decimal-or-int? type/decimal)
+      "uri" `(specs/json-regex-primitive ~pattern type/uri)
+      "url" `(specs/json-regex-primitive ~pattern type/url)
+      "canonical" `(specs/json-regex-primitive ~pattern type/canonical)
+      "base64Binary" `(specs/json-regex-primitive ~pattern type/base64Binary)
+      "instant" `(specs/json-regex-primitive ~pattern type/instant)
+      "date" `(specs/json-regex-primitive ~pattern type/date)
+      "dateTime" `(specs/json-regex-primitive ~pattern type/dateTime)
+      "time" `(specs/json-regex-primitive ~pattern type/time)
+      "code" `(specs/json-regex-primitive ~pattern type/code)
+      "oid" `(specs/json-regex-primitive ~pattern type/oid)
+      "id" `(specs/json-regex-primitive ~pattern type/id)
+      "markdown" `(specs/json-regex-primitive ~pattern type/markdown)
+      "unsignedInt" `(specs/json-pred-primitive int? type/unsignedInt)
+      "positiveInt" `(specs/json-pred-primitive int? type/positiveInt)
+      "uuid" `(specs/json-regex-primitive ~pattern type/uuid)
       "xhtml" `(s/and string? (s/conformer type/->Xhtml identity))
       (throw (ex-info (format "Unknown primitive type `%s`." name) {})))))
 
@@ -772,18 +775,22 @@
 (defn xml-value-matches?
   {:arglists '([regex element])}
   [regex {{:keys [value]} :attrs}]
-  (and (string? value) (.matches (re-matcher regex value))))
+  (or (nil? value) (and (string? value) (.matches (re-matcher regex value)))))
 
 
 (defn set-extension-tag [element]
   (some-> element (update :content (partial map #(assoc % :tag ::f/extension)))))
 
 
+(defn remove-character-content [element]
+  (update element :content (partial filter element?)))
+
+
 (defn- primitive-xml-form [regex constructor]
   `(s/and
      element?
      (fn [~'e] (xml-value-matches? ~regex ~'e))
-     (s/conformer identity set-extension-tag)
+     (s/conformer remove-character-content set-extension-tag)
      (s/schema {:content (s/coll-of :fhir.xml/Extension)})
      (s/conformer ~constructor type/to-xml)))
 
@@ -798,25 +805,25 @@
 
 (defn- cbor-spec-form [name _]
   (case name
-    "boolean" `any?
-    "integer" `(s/conformer int identity)
-    "string" `any?
-    "decimal" `any?
-    "uri" `(s/conformer type/uri identity)
-    "url" `(s/conformer type/->Url identity)
-    "canonical" `(s/conformer type/canonical identity)
-    "base64Binary" `(s/conformer type/->Base64Binary identity)
-    "instant" `(s/conformer type/->Instant identity)
-    "date" `(s/conformer type/->Date identity)
-    "dateTime" `(s/conformer type/->DateTime identity)
-    "time" `(s/conformer type/->Time identity)
-    "code" `(s/conformer type/code identity)
-    "oid" `(s/conformer type/->Oid identity)
-    "id" `(s/conformer type/->Id identity)
-    "markdown" `(s/conformer type/->Markdown identity)
-    "unsignedInt" `(s/conformer type/->UnsignedInt identity)
-    "positiveInt" `(s/conformer type/->PositiveInt identity)
-    "uuid" `(s/conformer type/->Uuid identity)
+    "boolean" `(specs/cbor-primitive type/boolean)
+    "integer" `(specs/cbor-primitive type/integer)
+    "string" `(specs/cbor-primitive type/string)
+    "decimal" `(specs/cbor-primitive type/decimal)
+    "uri" `(specs/cbor-primitive type/uri)
+    "url" `(specs/cbor-primitive type/url)
+    "canonical" `(specs/cbor-primitive type/canonical)
+    "base64Binary" `(specs/cbor-primitive type/base64Binary)
+    "instant" `(specs/cbor-primitive type/instant)
+    "date" `(specs/cbor-primitive type/date)
+    "dateTime" `(specs/cbor-primitive type/dateTime)
+    "time" `(specs/cbor-primitive type/time)
+    "code" `(specs/cbor-primitive type/code)
+    "oid" `(specs/cbor-primitive type/oid)
+    "id" `(specs/cbor-primitive type/id)
+    "markdown" `(specs/cbor-primitive type/markdown)
+    "unsignedInt" `(specs/cbor-primitive type/unsignedInt)
+    "positiveInt" `(specs/cbor-primitive type/positiveInt)
+    "uuid" `(specs/cbor-primitive type/uuid)
     "xhtml" `(s/conformer type/->Xhtml identity)
     (throw (ex-info (format "Unknown primitive type `%s`." name) {}))))
 
