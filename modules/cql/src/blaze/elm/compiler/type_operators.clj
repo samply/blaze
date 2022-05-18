@@ -144,7 +144,11 @@
 
 ;; TODO 22.14. ConvertsToRatio
 
-;; TODO 22.15. ConvertsToString
+;; 22.15. ConvertsToString
+(defunop converts-to-string [operand]
+  (when (some? operand)
+    (some? (p/to-string operand))))
+
 
 ;; TODO 22.16. ConvertsToTime
 
@@ -168,7 +172,7 @@
   (p/to-boolean x))
 
 
-;; TODO 22.20. ToChars
+;; 22.20. ToChars
 (defunop to-chars [operand]
   (when (string? operand)
     (map str operand)))

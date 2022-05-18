@@ -803,6 +803,11 @@
   {:type "ConvertsToBoolean" :operand operand})
 
 
+;; 22.15. ConvertsToString
+(defn converts-to-string [operand]
+  {:type "ConvertsToString" :operand operand})
+
+
 ;; 22.17. Descendents
 (defn descendents [source]
   {:type "Descendents" :source source})

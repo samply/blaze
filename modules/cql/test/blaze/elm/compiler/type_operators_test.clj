@@ -277,7 +277,7 @@
       (is (= '(convert-quantity (param-ref "q") "g") (core/-form expr))))))
 
 
-;; TODO 22.7. ConvertsToBoolean
+;; 22.7. ConvertsToBoolean
 ;;
 ;; The ConvertsToBoolean operator returns true if the value of its argument is
 ;; or can be converted to a Boolean value.
@@ -552,7 +552,7 @@
 ;;
 ;; If the argument is null, the result is null.
 
-;; TODO 22.15. ConvertsToString
+;; 22.15. ConvertsToString
 ;;
 ;; The ConvertsToString operator returns true if the value of its argument is
 ;; or can be converted to a String value.
@@ -571,6 +571,78 @@
 ;; String
 ;;
 ;; If the argument is null, the result is null.
+(deftest compile-converts-to-string-test
+  (testing "Boolean"
+    (are [x] (true? (core/-eval (tu/compile-unop elm/converts-to-string elm/boolean x)
+                                    {} nil nil))
+      "true"
+      "false"))
+
+  (testing "Integer"
+    (are [x] (true? (core/-eval (tu/compile-unop elm/converts-to-string elm/integer x)
+                                    {} nil nil))
+      "-1"
+      "0"
+      "1"))
+
+  (testing "Decimal"
+    (are [x] (true? (core/-eval (tu/compile-unop elm/converts-to-string elm/decimal x)
+                                    {} nil nil))
+      "-1"
+      "0"
+      "1"
+
+      "-1.1"
+      "0.0"
+      "1.1"
+
+      "0.0001"
+      "0.00001"
+      "0.000001"
+      "0.0000001"
+      "0.00000001"
+      "0.000000001"
+      "0.000000005"))
+
+  (testing "Quantity"
+    (are [x] (true? (core/-eval (tu/compile-unop elm/converts-to-string elm/quantity
+                                                     x)
+                                    {} nil nil))
+      [1 "m"]
+      [1M "m"]
+      [1.1M "m"]))
+
+  (testing "Date"
+    (are [x] (true? (core/-eval (tu/compile-unop elm/converts-to-string elm/date x)
+                                    {} nil nil))
+      "2019"
+      "2019-01"
+      "2019-01-01"))
+
+  (testing "DateTime"
+    (are [x] (true? (core/-eval (tu/compile-unop elm/converts-to-string elm/date-time
+                                                     x)
+                                    {} nil nil))
+      "2019-01-01T01:00"))
+
+  (testing "Time"
+    (are [x] (true? (core/-eval (tu/compile-unop elm/converts-to-string elm/time x)
+                                    {} nil nil))
+      "01:00"))
+
+  ;; TODO: Ratio
+
+  (testing "dynamic"
+    (are [x res] (= res (tu/dynamic-compile-eval (elm/converts-to-string x)))
+      #elm/parameter-ref "A" true))
+
+  (tu/testing-unary-null elm/converts-to-string)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/converts-to-string #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(converts-to-string (param-ref "x")) (core/-form expr))))))
 
 ;; TODO 22.16. ConvertsToTime
 ;;

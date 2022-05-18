@@ -71,6 +71,7 @@
  elm/can-convert-quantity blaze.elm.literal/can-convert-quantity
  elm/convert-quantity blaze.elm.literal/convert-quantity
  elm/converts-to-boolean blaze.elm.literal/converts-to-boolean
+ elm/converts-to-string blaze.elm.literal/converts-to-string
  elm/children blaze.elm.literal/children
  elm/descendents blaze.elm.literal/descendents
  elm/to-boolean blaze.elm.literal/to-boolean
