@@ -78,7 +78,7 @@
   (-> (assoc-in system [:blaze.db/node :resource-store]
                 (ig/ref ::resource-store-slow-on-put))
       (assoc ::resource-store-slow-on-put
-             {:resource-store (ig/ref :blaze.db/resource-store)})))
+             {:resource-store (ig/ref ::rs/kv)})))
 
 
 (deftest init-test

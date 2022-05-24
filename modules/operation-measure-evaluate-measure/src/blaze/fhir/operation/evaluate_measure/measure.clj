@@ -271,8 +271,8 @@
      :date now
      :period
      (type/map->Period
-       {:start (type/->DateTime (str start))
-        :end (type/->DateTime (str end))})}
+       {:start (type/dateTime (str start))
+        :end (type/dateTime (str end))})}
 
     subject-handle
     (assoc :subject (type/map->Reference {:reference (local-ref subject-handle)}))

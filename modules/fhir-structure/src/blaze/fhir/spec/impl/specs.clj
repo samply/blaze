@@ -2,12 +2,16 @@
   "Custom Specs for primitive and complex types."
   (:refer-clojure :exclude [meta])
   (:require
+    [blaze.fhir.spec.impl.util :as u]
     [clojure.alpha.spec :as s]
     [clojure.alpha.spec.protocols :as sp]))
 
 
 (set! *warn-on-reflection* true)
 
+
+
+;; ---- Regex Spec ------------------------------------------------------------
 
 (declare regex)
 
@@ -43,6 +47,147 @@
 
 
 
+;; ---- JSON Regex Primitive Spec ---------------------------------------------
+
+(declare json-regex-primitive)
+
+
+(defn- json-regex-primitive-impl
+  [pattern f-form]
+  (let [extended-spec
+        (delay
+          (s/resolve-spec
+            `(s/schema
+               {:id (s/nilable string?)
+                :extension (s/coll-of :fhir.json/Extension)
+                :value (s/nilable (regex ~pattern identity))})))
+        f (s/resolve-fn f-form)]
+    (reify
+      sp/Spec
+      (conform* [_ x _ _]
+        (cond
+          (and (string? x) (re-matches pattern x)) (f x)
+
+          (map? x)
+          (let [conformed (s/conform @extended-spec x)]
+            (if (or (s/invalid? conformed) (empty? conformed))
+              ::s/invalid
+              (f conformed)))
+
+          :else ::s/invalid))
+      (unform* [_ x] x)
+      (explain* [_ path via in x _ _]
+        (when-not (and (string? x) (re-matches pattern x))
+          [{:path path :pred pattern :val x :via via :in in}]))
+      (gen* [_ _ _ _])
+      (with-gen* [_ _])
+      (describe* [_] `(json-regex-primitive ~pattern ~f-form)))))
+
+
+(defmethod s/expand-spec `json-regex-primitive
+  [[_ pattern f-form]]
+  {:clojure.spec/op `json-regex-primitive
+   :pattern pattern
+   :f-form f-form})
+
+
+(defmethod s/create-spec `json-regex-primitive
+  [{:keys [pattern f-form]}]
+  (json-regex-primitive-impl pattern f-form))
+
+
+
+;; ---- JSON Pred Primitive Spec ----------------------------------------------
+
+(declare json-pred-primitive)
+
+
+(defn- json-pred-primitive-impl
+  [pred-sym f-form]
+  (let [pred (resolve pred-sym)
+        extended-spec
+        (delay
+          (s/resolve-spec
+            `(s/schema
+               {:id (s/nilable string?)
+                :extension (s/coll-of :fhir.json/Extension)
+                :value (s/nilable ~pred-sym)})))
+        f (s/resolve-fn f-form)]
+    (reify
+      sp/Spec
+      (conform* [_ x _ _]
+        (cond
+          (pred x) (f x)
+
+          (map? x)
+          (let [conformed (s/conform @extended-spec x)]
+            (if (or (s/invalid? conformed) (empty? conformed))
+              ::s/invalid
+              (f conformed)))
+
+          :else ::s/invalid))
+      (unform* [_ x] x)
+      (explain* [_ path via in x _ _]
+        (when-not (pred x)
+          [{:path path :pred pred :val x :via via :in in}]))
+      (gen* [_ _ _ _])
+      (with-gen* [_ _])
+      (describe* [_] `(json-pred-primitive ~pred-sym ~f-form)))))
+
+
+(defmethod s/expand-spec `json-pred-primitive
+  [[_ pred-sym f-form]]
+  {:clojure.spec/op `json-pred-primitive
+   :pred-sym pred-sym
+   :f-form f-form})
+
+
+(defmethod s/create-spec `json-pred-primitive
+  [{:keys [pred-sym f-form]}]
+  (json-pred-primitive-impl pred-sym f-form))
+
+
+
+;; ---- CBOR Pred Primitive Spec ----------------------------------------------
+
+(declare cbor-primitive)
+
+
+(defn- cbor-primitive-impl
+  [f-form]
+  (let [extended-spec
+        (delay
+          (s/resolve-spec
+            `(s/schema
+               {:id (s/nilable string?)
+                :extension (s/coll-of :fhir.cbor/Extension)
+                :value any?})))
+        f (s/resolve-fn f-form)]
+    (reify
+      sp/Spec
+      (conform* [_ x _ _]
+        (if (map? x)
+          (f (s/conform @extended-spec x))
+          (f x)))
+      (unform* [_ x] x)
+      (explain* [_ _ _ _ _ _ _])
+      (gen* [_ _ _ _])
+      (with-gen* [_ _])
+      (describe* [_] `(cbor-primitive ~f-form)))))
+
+
+(defmethod s/expand-spec `cbor-primitive
+  [[_ f-form]]
+  {:clojure.spec/op `cbor-primitive
+   :f-form f-form})
+
+
+(defmethod s/create-spec `cbor-primitive
+  [{:keys [f-form]}]
+  (cbor-primitive-impl f-form))
+
+
+
 ;; ---- Record Spec -----------------------------------------------------------
 
 (declare record)
@@ -50,8 +195,7 @@
 
 (defn- record-impl [class-sym spec-forms]
   (let [class (resolve class-sym)
-        specs (delay (into {} (map #(vector (key %) (s/resolve-spec (val %)))) spec-forms))
-        lookup #(get @specs %)]
+        specs (delay (update-vals spec-forms s/resolve-spec))]
     (reify
       sp/Spec
       (conform* [_ x _ settings]
@@ -59,7 +203,7 @@
           (loop [ret x [[k v] & ks] x]
             (if k
               (if (some? v)
-                (let [conformed (if-let [sp (lookup k)] (sp/conform* sp v k settings) v)]
+                (let [conformed (if-let [sp (@specs k)] (sp/conform* sp v k settings) v)]
                   (if (s/invalid? conformed)
                     ::s/invalid
                     (recur (if-not (identical? v conformed) (assoc ret k conformed) ret) ks)))
@@ -109,23 +253,24 @@
 
 (defn- json-object-impl [constructor-sym spec-forms key-map]
   (let [constructor (resolve constructor-sym)
-        specs (delay (into {} (map #(vector (key %) (s/resolve-spec (val %)))) spec-forms))
-        lookup #(get @specs %)
-        internal-key #(get key-map % %)]
+        specs (delay (update-vals spec-forms s/resolve-spec))
+        internal-key #(key-map % %)]
     (reify
       sp/Spec
       (conform* [_ x _ settings]
         (if (map? x)
-          (loop [ret x [[k v] & ks] x]
-            (if k
-              (let [conformed (if-let [sp (lookup k)] (sp/conform* sp v k settings) v)]
-                (if (s/invalid? conformed)
-                  ::s/invalid
-                  (let [k' (internal-key k)]
-                    (if (identical? k' k)
-                      (recur (if-not (identical? v conformed) (assoc ret k conformed) ret) ks)
-                      (recur (-> ret (dissoc k) (assoc k' conformed)) ks)))))
-              (constructor ret)))
+          (let [res (reduce-kv
+                      (fn [ret k v]
+                        (if-let [conformed (when-let [sp (@specs k)] (sp/conform* sp v k settings))]
+                          (if (s/invalid? conformed)
+                            (reduced ::s/invalid)
+                            (assoc ret (internal-key k) conformed))
+                          ret))
+                      {}
+                      (u/update-extended-primitives x))]
+            (if (s/invalid? res)
+              ::s/invalid
+              (constructor res)))
           ::s/invalid))
       (unform* [_ x] x)
       (explain* [_ path via in x _ settings]
@@ -133,7 +278,7 @@
           [{:path path :pred `map? :val x :via via :in in}]
           (reduce-kv
             (fn [p k v]
-              (if-let [sp (lookup k)]
+              (if-let [sp (@specs k)]
                 (into p (explain-1 (s/form sp) sp (conj path k) via (conj in k) v k settings))
                 p))
             [] x)))

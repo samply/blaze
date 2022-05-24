@@ -22,7 +22,7 @@
     :resource-handle-cache (ig/ref :blaze.db/resource-handle-cache)
     :tx-cache (ig/ref :blaze.db/tx-cache)
     :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
-    :resource-store (ig/ref :blaze.db/resource-store)
+    :resource-store (ig/ref ::rs/kv)
     :kv-store (ig/ref :blaze.db/index-kv-store)
     :resource-indexer (ig/ref :blaze.db.node/resource-indexer)
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
@@ -31,8 +31,10 @@
    ::tx-log/local
    {:kv-store (ig/ref :blaze.db/transaction-kv-store)
     :clock (ig/ref :blaze.test/clock)}
+
    [::kv/mem :blaze.db/transaction-kv-store]
    {:column-families {}}
+
    :blaze.test/clock {}
 
    :blaze.db/resource-handle-cache {}
@@ -61,8 +63,10 @@
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
     :executor (ig/ref ::rs-kv/executor)}
+
    [::kv/mem :blaze.db/resource-kv-store]
    {:column-families {}}
+
    ::rs-kv/executor {}
 
    :blaze.db.node/resource-indexer

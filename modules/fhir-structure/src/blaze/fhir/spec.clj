@@ -12,7 +12,7 @@
     [cognitect.anomalies :as anom]
     [jsonista.core :as j])
   (:import
-    [com.fasterxml.jackson.databind DeserializationFeature]
+    [com.fasterxml.jackson.databind DeserializationFeature ObjectMapper]
     [com.fasterxml.jackson.dataformat.cbor CBORFactory]
     [java.util.regex Pattern]))
 
@@ -22,11 +22,10 @@
 
 
 (def ^:private json-object-mapper
-  (-> (j/object-mapper
-        {:decode-key-fn true
-         :bigdecimals true
-         :modules [type/fhir-module]})
-      (.enable DeserializationFeature/FAIL_ON_TRAILING_TOKENS)))
+  (doto (ObjectMapper.)
+    (.registerModule type/fhir-module)
+    (.enable DeserializationFeature/USE_BIG_DECIMAL_FOR_FLOATS)
+    (.enable DeserializationFeature/FAIL_ON_TRAILING_TOKENS)))
 
 
 (defn parse-json
@@ -44,10 +43,8 @@
 
 
 (def ^:private cbor-object-mapper
-  (j/object-mapper
-    {:factory (CBORFactory.)
-     :decode-key-fn true
-     :modules [type/fhir-module]}))
+  (doto (ObjectMapper. (CBORFactory.))
+    (.registerModule type/fhir-module)))
 
 
 (defn parse-cbor
@@ -290,7 +287,7 @@
           (when-not (s2/invalid? resource)
             resource))))
     (ba/incorrect
-      "Invalid intermediate representation of a resource."
+      "Invalid JSON representation of a resource."
       :x x
       :fhir/issues (:fhir/issues (explain-data-json x)))))
 
@@ -309,6 +306,6 @@
           (when-not (s2/invalid? resource)
             resource))))
     (ba/incorrect
-      "Invalid intermediate representation of a resource."
+      "Invalid XML representation of a resource."
       :x x
       :fhir/issues (:fhir/issues (explain-data-xml x)))))
