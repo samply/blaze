@@ -26,7 +26,7 @@
       :resource-handle-cache (ig/ref :blaze.db/resource-handle-cache)
       :tx-cache (ig/ref :blaze.db/tx-cache)
       :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
-      :resource-store (ig/ref :blaze.db/resource-store)
+      :resource-store (ig/ref ::rs/kv)
       :kv-store (ig/ref :blaze.db/index-kv-store)
       :resource-indexer (ig/ref :blaze.db.node/resource-indexer)
       :search-param-registry (ig/ref :blaze.db/search-param-registry)}

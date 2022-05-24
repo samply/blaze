@@ -44,13 +44,7 @@
 
    :extra-deps
    {blaze/test-util
-    {:local/root "../test-util"}
-
-    criterium/criterium
-    {:mvn/version "0.4.6"}
-
-    org.openjdk.jol/jol-core
-    {:mvn/version "0.16"}}}
+    {:local/root "../test-util"}}}
 
   :kaocha
   {:extra-deps
@@ -77,4 +71,5 @@
    {cloverage/cloverage
     {:mvn/version "1.2.3"}}
 
-   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
+               "-e" ".*spec$"]}}}

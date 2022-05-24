@@ -77,6 +77,7 @@
         [0 :samples 0 :value] := 0.0
         [1 :name] := "thread_pool_executor_completed_tasks"
         [1 :type] := :counter
+        [1 :samples 0 :name] := "thread_pool_executor_completed_tasks_total"
         [1 :samples 0 :value] := 0.0
         [2 :name] := "thread_pool_executor_core_pool_size"
         [2 :type] := :gauge
@@ -95,7 +96,7 @@
         [6 :samples 0 :value] := 0.0))
 
     (testing "one active thread"
-      (ex/execute! pool #(Thread/sleep 100))
+      (ex/execute! pool #(Thread/sleep 1000))
       (given (metrics/collect collector)
         [0 :name] := "thread_pool_executor_active_count"
         [0 :samples 0 :value] := 1.0

@@ -541,13 +541,13 @@
   fhirpathParser$DateLiteralContext
   (-compile [ctx]
     (let [text (subs (.getText (.getSymbol (.DATE ctx))) 1)]
-      [(type/->Date text)]))
+      [(type/date text)]))
 
   fhirpathParser$DateTimeLiteralContext
   (-compile [ctx]
     (let [text (subs (.getText (.getSymbol (.DATETIME ctx))) 1)
           text (if (str/ends-with? text "T") (subs text 0 (dec (count text))) text)]
-      [(type/->DateTime text)]))
+      [(type/dateTime text)]))
 
   fhirpathParser$MemberInvocationContext
   (-compile [ctx]
