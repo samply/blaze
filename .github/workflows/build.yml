@@ -397,12 +397,6 @@ jobs:
     - name: Evaluate CQL Query 14 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14-query.cql 96
 
-    - name: Evaluate CQL Query 15
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql 31
-
-    - name: Evaluate CQL Query 15 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql 31
-
     - name: Evaluate CQL Query 17
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q17-query.cql 120
 
@@ -822,12 +816,6 @@ jobs:
 
     - name: Evaluate CQL Query 14 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14-query.cql 96
-
-    - name: Evaluate CQL Query 15
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql 31
-
-    - name: Evaluate CQL Query 15 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15-query.cql 31
 
     - name: Evaluate CQL Query 17
       run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q17-query.cql 120
