@@ -10,4 +10,4 @@
    :git/sha "32a46f5dca8a6b563a6dddf88bec887be3201b08"}
 
   prom-metrics/prom-metrics
-  {:mvn/version "0.6-alpha.3"}}}
+  {:mvn/version "0.6-alpha.5"}}}

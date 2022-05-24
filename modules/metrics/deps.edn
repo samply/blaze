@@ -2,8 +2,11 @@
  {blaze/module-base
   {:local/root "../module-base"}
 
+  com.rpl/proxy-plus
+  {:mvn/version "0.0.8"}
+
   io.prometheus/simpleclient_hotspot
-  {:mvn/version "0.11.0"}}
+  {:mvn/version "0.15.0"}}
 
  :aliases
  {:test
