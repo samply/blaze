@@ -8,7 +8,12 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import
+    [io.prometheus.client CollectorRegistry]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (st/instrument)
@@ -48,7 +53,7 @@
 
 
 (defn- samples [registry]
-  (mapv datafy/datafy (iterator-seq (.asIterator (.metricFamilySamples registry)))))
+  (mapv datafy/datafy (iterator-seq (.asIterator (.metricFamilySamples ^CollectorRegistry registry)))))
 
 
 (deftest registry-test
