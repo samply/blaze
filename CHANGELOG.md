@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.17.5
+
+### Bugfixes
+
+* Allow Extensions on Date Data Type ([#371](https://github.com/samply/blaze/issues/371))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/43?closed=1).
+
 ## v0.17.4
 
 ### Bugfixes
