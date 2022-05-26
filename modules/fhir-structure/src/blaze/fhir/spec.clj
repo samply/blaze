@@ -82,11 +82,11 @@
 
 
 (defn unform-json
-  "Returns the JSON representation of `resource`."
-  [resource]
-  (let [key (transform-type-key (type/type resource) "json")]
+  "Returns the JSON representation of `x` as byte array."
+  [x]
+  (let [key (transform-type-key (type/type x) "json")]
     (if-let [spec (s2/get-spec key)]
-      (j/write-value-as-bytes (s2/unform spec resource) json-object-mapper)
+      (j/write-value-as-bytes (s2/unform spec x) json-object-mapper)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
 
 

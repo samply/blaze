@@ -94,6 +94,7 @@
     #fhir/HumanName{} 64
 
     #fhir/Address{} 80
+    #fhir/Address{:extension [#fhir/Extension{:url "url-120620" :value #fhir/code"code-120656"}]} 320
     #fhir/Address{:text "text-212402"} 136
     #fhir/Address{:line ["line-212441"]} 200
 
@@ -103,6 +104,17 @@
     #fhir/Meta{:profile [#fhir/canonical"foo"]} 192
 
     #fhir/BundleEntrySearch{} 48)
+
+  (testing "interning"
+    (are [x y] (= (mem/total-size x) (mem/total-size x y))
+      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+
+      #fhir/Meta{:profile [#fhir/canonical"foo"]}
+      #fhir/Meta{:profile [#fhir/canonical"foo"]}
+
+      #fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}
+      #fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}))
 
   (testing "instant"
     (testing "backed by OffsetDateTime, taking into account shared offsets"

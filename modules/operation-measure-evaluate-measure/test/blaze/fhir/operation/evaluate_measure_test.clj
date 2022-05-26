@@ -400,7 +400,7 @@
                 [:extension 0 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/eval-duration"
                 [:extension 0 :value :code] := #fhir/code"s"
                 [:extension 0 :value :system] := #fhir/uri"http://unitsofmeasure.org"
-                [:extension 0 :value :unit] := "s"
+                [:extension 0 :value :unit] := #fhir/string"s"
                 [:extension 0 :value :value] :instanceof BigDecimal
                 :status := #fhir/code"complete"
                 :type := #fhir/code"summary"
@@ -429,7 +429,7 @@
                     :criteria (cql-expression "InInitialPopulation")}]
                   :stratifier
                   [{:fhir/type :fhir.Measure.group/stratifier
-                    :code #fhir/CodeableConcept{:text "gender"}
+                    :code #fhir/CodeableConcept{:text #fhir/string"gender"}
                     :criteria (cql-expression "Gender")}]}]}]
               [:put
                {:fhir/type :fhir/Library :id "0"
@@ -471,19 +471,19 @@
                 [:group 0 :population 0 :code :coding 0 :code]
                 := #fhir/code"initial-population"
                 [:group 0 :population 0 :count] := 3
-                [:group 0 :stratifier 0 :code 0 :text] := "gender"
+                [:group 0 :stratifier 0 :code 0 :text] := #fhir/string"gender"
                 [:group 0 :stratifier 0 :stratum 0 :population 0 :code :coding 0 :system]
                 := #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
                 [:group 0 :stratifier 0 :stratum 0 :population 0 :code :coding 0 :code]
                 := #fhir/code"initial-population"
                 [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := 2
-                [:group 0 :stratifier 0 :stratum 0 :value :text] := "female"
+                [:group 0 :stratifier 0 :stratum 0 :value :text] := #fhir/string"female"
                 [:group 0 :stratifier 0 :stratum 1 :population 0 :code :coding 0 :system]
                 := #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
                 [:group 0 :stratifier 0 :stratum 1 :population 0 :code :coding 0 :code]
                 := #fhir/code"initial-population"
                 [:group 0 :stratifier 0 :stratum 1 :population 0 :count] := 1
-                [:group 0 :stratifier 0 :stratum 1 :value :text] := "male")))))
+                [:group 0 :stratifier 0 :stratum 1 :value :text] := #fhir/string"male")))))
 
       (testing "as POST request"
         (with-handler [handler]

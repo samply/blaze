@@ -107,7 +107,7 @@
   ([version id]
    [:put {:fhir/type :fhir/Observation :id (str id)
           :subject #fhir/Reference{:reference "Patient/0"}
-          :method (type/map->CodeableConcept {:text (str version)})
+          :method (type/codeable-concept {:text (type/string (str version))})
           :code
           #fhir/CodeableConcept
               {:coding

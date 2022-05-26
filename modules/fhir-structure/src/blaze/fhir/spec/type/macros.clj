@@ -1,15 +1,22 @@
 (ns blaze.fhir.spec.type.macros
   (:require
     [blaze.fhir.spec.impl.intern :as intern]
+    [blaze.fhir.spec.type.json :as json]
     [blaze.fhir.spec.type.protocols :as p]
     [blaze.fhir.spec.type.system :as system]
     [clojure.data.xml.node :as xml-node]
     [clojure.string :as str]
-    [cuerdas.core :refer [capital]])
+    [cuerdas.core :refer [capital kebab]])
   (:import
-    [com.fasterxml.jackson.core JsonGenerator]
+    [com.fasterxml.jackson.core JsonGenerator SerializableString]
+    [com.fasterxml.jackson.core.io JsonStringEncoder]
     [com.google.common.hash PrimitiveSink]
-    [java.io Writer]))
+    [java.io Writer]
+    [java.nio.charset StandardCharsets]
+    [java.util Arrays]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (defn into! [to from]
@@ -24,10 +31,6 @@
   `(.writeEndObject ~(with-meta gen {:tag `JsonGenerator})))
 
 
-(defn- write-field-name [gen field-name-form]
-  `(.writeFieldName ~(with-meta gen {:tag `JsonGenerator}) ~(with-meta field-name-form {:tag `String})))
-
-
 (defn- write-string [gen s]
   `(.writeString ~(with-meta gen {:tag `JsonGenerator}) ~(with-meta s {:tag `String})))
 
@@ -40,8 +43,15 @@
     (#{'Integer 'int 'BigDecimal} (:tag (meta value)))
     `(.writeNumber ~(with-meta gen {:tag `JsonGenerator}) ~value)
 
+    (#{'String} (:tag (meta value)))
+    `(.writeString ~(with-meta gen {:tag `JsonGenerator}) ~value)
+
     :else
     (write-string gen `(system/-to-string ~value))))
+
+
+(defn- write-null [gen]
+  `(.writeNull ~(with-meta gen {:tag `JsonGenerator})))
 
 
 (defn- xml-value [value]
@@ -99,25 +109,54 @@
     `(.hashCode ~value-sym)))
 
 
+(defn- gen-serializable-string [value]
+  (let [unquoted-utf-8-bytes (with-meta 'unquoted-utf-8-bytes {:tag 'bytes})
+        quoted-utf-8-bytes (with-meta 'quoted-utf-8-bytes {:tag 'bytes})]
+    `[SerializableString
+      (~'getValue [~'_]
+        ~value)
+      (~'appendQuotedUTF8 [~'_ ~'buffer ~'offset]
+        (let [num-bytes# (alength ~quoted-utf-8-bytes)]
+          (if (> (unchecked-add-int ~'offset num-bytes#) (alength ~'buffer))
+            (int -1)
+            (do (System/arraycopy ~quoted-utf-8-bytes 0 ~'buffer ~'offset num-bytes#)
+                num-bytes#))))
+      (~'asUnquotedUTF8 [~'_]
+        (Arrays/copyOf ~unquoted-utf-8-bytes (alength ~unquoted-utf-8-bytes)))
+      (~'asQuotedUTF8 [~'_]
+        (Arrays/copyOf ~quoted-utf-8-bytes (alength ~quoted-utf-8-bytes)))]))
+
+
 (defn- gen-type
-  [name value {:keys [hash-num interned] :or {interned false}}]
+  [name value {:keys [fhir-type hash-num interned]
+               :or {fhir-type (fhir-type-kw name) interned false}}]
   `(do
-     (deftype ~name [~value]
+     (deftype
+       ~name
+       ~(cond-> [value]
+          (and interned (#{'String} (:tag (meta value))))
+          (conj 'unquoted-utf-8-bytes 'quoted-utf-8-bytes))
        p/FhirType
-       (~'-type [~'_] ~(fhir-type-kw name))
+       (~'-type [~'_] ~fhir-type)
        (~'-interned [~'_] ~interned)
        (~'-value [~'_] ~value)
-       (~'-serialize-json-as-field [~'_ ~'field-name ~'generator ~'_]
-         ~(write-field-name 'generator 'field-name)
-         ~(write-value 'generator value))
-       (~'-serialize-json [~'_ ~'generator ~'_]
-         ~(write-value 'generator value))
+       (~'-has-primary-content [~'_] true)
+       ~(if (and interned (#{'String} (:tag (meta value))))
+          `(~'-serialize-json [~'this ~'generator]
+             (.writeString ~(with-meta 'generator {:tag `JsonGenerator}) ~'this))
+          `(~'-serialize-json [~'_ ~'generator]
+             ~(write-value 'generator value)))
+       (~'-has-secondary-content [~'_] false)
+       (~'-serialize-json-secondary [~'_ ~'generator]
+         ~(write-null 'generator))
        (~'-to-xml [~'_] (xml-node/element nil {:value (system/-to-string ~value)}))
        (~'-hash-into [~'_ ~'sink]
          (.putByte ~tagged-sink (byte ~hash-num))
          (.putByte ~tagged-sink (byte ~value-tag))
          (system/-hash-into ~value ~'sink))
        (~'-references [~'_])
+       ~@(when (and interned (#{'String} (:tag (meta value))))
+           (gen-serializable-string value))
        Object
        (~'equals [~'this ~'x]
          (or (identical? ~'this ~'x)
@@ -133,8 +172,20 @@
        (print-method (.-value ~'x) ~'w))))
 
 
+(defn write-extended-attributes [^JsonGenerator generator id extension]
+  (.writeStartObject generator)
+  (when id
+    (.writeFieldName generator "id")
+    (p/-serialize-json id generator))
+  (when extension
+    (.writeFieldName generator "extension")
+    (p/-serialize-json extension generator))
+  (.writeEndObject generator))
+
+
 (defn- gen-extended-record
-  [name fhir-type value-sym {:keys [hash-num interned] :or {interned false}}]
+  [name value-sym {:keys [fhir-type hash-num interned value-form]
+                   :or {interned false}}]
   `(do
      (defrecord ~name [~'id ~'extension ~value-sym]
        p/FhirType
@@ -143,19 +194,16 @@
          ~(if interned
             `(and (p/-interned ~'extension) (nil? ~'id))
             `(and (nil? ~value-sym) (p/-interned ~'extension) (nil? ~'id))))
-       (~'-value [~'_] ~value-sym)
-       (~'-serialize-json-as-field [~'_ ~'field-name ~'generator ~'provider]
-         (when (some? ~value-sym)
-           ~(write-field-name 'generator 'field-name)
-           ~(write-value 'generator value-sym))
-         (when (or ~'id ~'extension)
-           ~(write-field-name 'generator `(str "_" ~'field-name))
-           ~(write-start-object 'generator)
-           (when ~'id
-             (p/-serialize-json-as-field ~'id "id" ~'generator ~'provider))
-           (when ~'extension
-             (p/-serialize-json-as-field ~'extension "extension" ~'generator ~'provider))
-           ~(write-end-object 'generator)))
+       (~'-value [~'_] ~(or value-form value-sym))
+       (~'-has-primary-content [~'_] (some? ~value-sym))
+       (~'-serialize-json [~'_ ~'generator]
+         (if (some? ~value-sym)
+           ~(write-value 'generator value-sym)
+           ~(write-null 'generator)))
+       (~'-has-secondary-content [~'_]
+         (or ~'id (seq ~'extension)))
+       (~'-serialize-json-secondary [~'_ ~'generator]
+         (write-extended-attributes ~'generator ~'id ~'extension))
        (~'-to-xml [~'_]
          (xml-node/element*
            nil
@@ -187,16 +235,26 @@
   `(do
      ~(gen-type name (primitive-tag value) opts)
 
-     ~(gen-extended-record (symbol (str "Extended" name)) (fhir-type-kw name)
-                           value opts)
+     ~(when (and interned (#{'String} (:tag (meta value))))
+        `(defn ~(symbol (str "create-" (lower-case-first name))) [~value]
+           (~(symbol (str name "."))
+             ~value
+             (.getBytes ~value StandardCharsets/UTF_8)
+             (.quoteAsUTF8 (JsonStringEncoder/getInstance) ~value))))
+
+     ~(gen-extended-record (symbol (str "Extended" name)) value
+                           (cond-> opts
+                             (nil? (:fhir-type opts))
+                             (assoc :fhir-type (fhir-type-kw name))))
 
      (defn ~(symbol (str (lower-case-first name) "?")) [~'x]
-       (identical? ~(fhir-type-kw name) (p/-type ~'x)))
+       (identical? ~(fhir-type-kw name) (blaze.fhir.spec.type/type ~'x)))
 
-     ~(let [map-create-extended (symbol (str "map->Extended" name))]
+     ~(let [fn-sym (symbol (lower-case-first name))
+            map-create-extended (symbol (str "map->Extended" name))]
         (if interned
-          (let [create (symbol (str "->" name))]
-            `(def ~(symbol (lower-case-first name))
+          (let [create (symbol (str "create-" (lower-case-first name)))]
+            `(def ~fn-sym
                (let [intern# (intern/intern-value ~create)
                      intern-extended# (intern/intern-value ~map-create-extended)]
                  (fn [x#]
@@ -213,7 +271,7 @@
                          :else
                          (~(symbol (str "Extended" name ".")) id# extension# (:value x#)))))))))
 
-          `(def ~(symbol (lower-case-first name))
+          `(def ~fn-sym
              (let [intern-extended# (intern/intern-value ~map-create-extended)]
                (fn [x#]
                  (if (map? x#)
@@ -240,42 +298,64 @@
                  (~(symbol (lower-case-first name)) ~(parse-value value value-sym)))))))))
 
 
-(defmacro defextended [name [_id _extension value] & {:keys [fhir-type] :as opts}]
-  (gen-extended-record name fhir-type value opts))
+(defmacro defextended [name [_id _extension value] & {:as opts}]
+  (gen-extended-record name value opts))
 
 
 (defn- field-name [field-sym]
   (if (:polymorph (meta field-sym))
-    `(str ~(str field-sym) (capital (name (p/-type ~field-sym))))
-    (str field-sym)))
+    `(json/field-name (str ~(str field-sym) (capital (name (blaze.fhir.spec.type/type ~field-sym)))))
+    (json/field-name (str field-sym))))
+
+
+(defn write-field [generator field-sym]
+  `(when (some? ~field-sym)
+     ~@(cond
+         (= 'String (:tag (meta field-sym)))
+         `[(.writeFieldName ~(with-meta generator {:tag `JsonGenerator}) ~(field-name field-sym))
+           (.writeString ~(with-meta generator {:tag `JsonGenerator}) ~field-sym)]
+
+         (:primitive-string (meta field-sym))
+         `[(json/write-primitive-string-field ~generator ~(field-name field-sym) ~field-sym)]
+
+         (:primitive (meta field-sym))
+         `[(json/write-field ~generator ~(field-name field-sym) ~field-sym)]
+
+         (:primitive-list (meta field-sym))
+         `[(json/write-primitive-list-field ~generator ~(field-name field-sym) ~field-sym)]
+
+         :else
+         `[(json/write-non-primitive-field ~generator ~(field-name field-sym) ~field-sym)])))
 
 
 (defmacro def-complex-type
-  [name [& fields] & {:keys [fhir-type hash-num interned references]
-                      :or {interned false}}]
-  (let [sink-sym (gensym "sink")
+  [name [& fields] & {:keys [fhir-type hash-num interned references]}]
+  (let [m-sym (gensym "m")
+        interned (or interned `(every? #(p/-interned %) (vals ~m-sym)))
+        sink-sym (gensym "sink")
         sink-sym-tag (with-meta sink-sym {:tag `PrimitiveSink})]
     `(do
        (defrecord ~name [~@fields]
          p/FhirType
          (~'-type [~'_] ~(or fhir-type (keyword "fhir" (str name))))
-         (~'-interned [~'_] ~interned)
-         (~'-serialize-json-as-field [~'this ~'field-name ~'gen ~'provider]
-           ~(write-field-name 'gen 'field-name)
-           (p/-serialize-json ~'this ~'gen ~'provider))
-         (~'-serialize-json [~'_ ~'gen ~'provider]
+         (~'-interned [~m-sym] ~interned)
+         (~'-value [~'_])
+         (~'-has-primary-content [~'_] true)
+         (~'-serialize-json [~'_ ~'gen]
            ~(write-start-object 'gen)
            ~@(map
                (fn [field]
-                 `(when ~field
-                    (p/-serialize-json-as-field ~field ~(field-name field) ~'gen ~'provider)))
+                 (write-field 'gen field))
                fields)
            ~(write-end-object 'gen))
+         (~'-has-secondary-content [~'_] false)
+         (~'-serialize-json-secondary [~'this ~'gen]
+           (throw (ex-info "A complex type has no secondary content." ~'this)))
          (~'-hash-into [~'_ ~sink-sym]
            (.putByte ~sink-sym-tag (byte ~hash-num))
            ~@(map-indexed
                (fn [idx field]
-                 `(when ~field
+                 `(when (some? ~field)
                     (.putByte ~sink-sym-tag (byte ~idx))
                     (~(if (= 'id field) `system/-hash-into `p/-hash-into)
                       ~field ~sink-sym)))
@@ -291,6 +371,13 @@
                            `(into! (p/-references ~field))))
                        fields)
                    (persistent!)))))
+
+       (def ~(symbol (kebab name))
+         (let [intern# (intern/intern-value ~(symbol (str "map->" name)))]
+           (fn ~(symbol (kebab name)) [{:keys [~@fields] :as ~m-sym}]
+             (if ~interned
+               (intern# ~m-sym)
+               (~(symbol (str name ".")) ~@fields)))))
 
        (defmethod print-method ~name [x# ~(with-meta 'w {:tag `Writer})]
          (.write ~'w ~(str "#fhir/" name))

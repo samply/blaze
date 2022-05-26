@@ -141,7 +141,7 @@
      #fhir/Quantity
          {:code #fhir/code"kg/m2"
           :system #fhir/uri"http://unitsofmeasure.org"
-          :unit "kg/m2"
+          :unit #fhir/string"kg/m2"
           :value 36.6M}
      :status #fhir/code"final"
      :effective #fhir/dateTime"2005-06-17"
