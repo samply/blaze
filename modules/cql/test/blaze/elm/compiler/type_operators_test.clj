@@ -14,6 +14,7 @@
     [blaze.elm.literal-spec]
     [blaze.elm.protocols :as p]
     [blaze.elm.quantity :as quantity]
+    [blaze.elm.quantity-spec]
     [blaze.fhir.spec.type.system :as system]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]))
@@ -277,7 +278,7 @@
       (is (= '(convert-quantity (param-ref "q") "g") (core/-form expr))))))
 
 
-;; TODO 22.7. ConvertsToBoolean
+;; 22.7. ConvertsToBoolean
 ;;
 ;; The ConvertsToBoolean operator returns true if the value of its argument is
 ;; or can be converted to a Boolean value.
@@ -429,7 +430,7 @@
 ;; If the argument is null, the result is null.
 
 
-;; TODO 22.10. ConvertsToDecimal
+;; 22.10. ConvertsToDecimal
 ;;
 ;; The ConvertsToDecimal operator returns true if the value of its argument is
 ;; or can be converted to a Decimal value. The operator accepts strings using
@@ -455,9 +456,44 @@
 ;; If the input is a Boolean, the result is true.
 ;;
 ;; If the argument is null, the result is null.
+(deftest compile-converts-to-decimal-test
+  (testing "String"
+    (are [x] (true? (tu/compile-unop elm/converts-to-decimal elm/string x))
+      (str decimal/min)
+      "-1"
+      "0"
+      "1"
+      (str decimal/max))
+
+    (are [x] (false? (tu/compile-unop elm/converts-to-decimal elm/string x))
+      (str (- decimal/min 1e-8M))
+      (str (+ decimal/max 1e-8M))
+      "a"))
+
+  (testing "Boolean"
+    (are [x] (true? (tu/compile-unop elm/converts-to-decimal elm/boolean x))
+      "true"))
+
+  (testing "Decimal"
+    (are [x] (true? (tu/compile-unop elm/converts-to-decimal elm/decimal x))
+      "1.1"))
+
+  (testing "dynamic"
+    (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-decimal x)))
+      #elm/parameter-ref "A")
+    (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-decimal x)))
+      #elm/parameter-ref "1"))
+
+  (tu/testing-unary-null elm/converts-to-decimal)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/converts-to-decimal #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(converts-to-decimal (param-ref "x")) (core/-form expr))))))
 
 
-;; TODO 22.11. ConvertsToLong
+;; 22.11. ConvertsToLong
 ;;
 ;; The ConvertsToLong operator returns true if the value of its argument is or
 ;; can be converted to a Long value. The operator accepts strings using the
@@ -480,8 +516,44 @@
 ;; If the input is a Boolean, the result is true.
 ;;
 ;; If the argument is null, the result is null.
+(deftest compile-converts-to-long-test
+  (testing "String"
+    (are [x] (true? (tu/compile-unop elm/converts-to-long elm/string x))
+      (str Long/MIN_VALUE)
+      "-1"
+      "0"
+      "1"
+      (str Long/MAX_VALUE))
 
-;; TODO 22.12. ConvertsToInteger
+    (are [x] (false? (tu/compile-unop elm/converts-to-long elm/string x))
+      (str (dec (bigint Long/MIN_VALUE)))
+      (str (inc (bigint Long/MAX_VALUE)))
+      "a"))
+
+  (testing "Boolean"
+    (are [x] (true? (tu/compile-unop elm/converts-to-long elm/boolean x))
+      "true"))
+
+  (testing "Long"
+    (are [x] (true? (tu/compile-unop elm/converts-to-long elm/long x))
+      "1"))
+
+  (testing "dynamic"
+    (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-long x)))
+      #elm/parameter-ref "A")
+    (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-long x)))
+      #elm/parameter-ref "1"))
+
+  (tu/testing-unary-null elm/converts-to-long)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/converts-to-long #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(converts-to-long (param-ref "x")) (core/-form expr))))))
+
+
+;; 22.12. ConvertsToInteger
 ;;
 ;; The ConvertsToInteger operator returns true if the value of its argument is
 ;; or can be converted to an Integer value. The operator accepts strings using
@@ -504,8 +576,43 @@
 ;; If the input is a Boolean, the result is true
 ;;
 ;; If the argument is null, the result is null.
+(deftest compile-converts-to-integer-test
+  (testing "String"
+    (are [x] (true? (tu/compile-unop elm/converts-to-integer elm/string x))
+      (str Integer/MIN_VALUE)
+      "-1"
+      "0"
+      "1"
+      (str Integer/MAX_VALUE))
+    (are [x] (false? (tu/compile-unop elm/converts-to-integer elm/string x))
+      (str (dec Integer/MIN_VALUE))
+      (str (inc Integer/MAX_VALUE))
+      "a"))
 
-;; TODO 22.13. ConvertsToQuantity
+  (testing "Boolean"
+    (are [x] (true? (tu/compile-unop elm/converts-to-integer elm/boolean x))
+      "true"))
+
+  (testing "Integer"
+    (are [x] (true? (tu/compile-unop elm/converts-to-integer elm/integer x))
+      "1"))
+
+  (testing "dynamic"
+    (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-integer x)))
+      #elm/parameter-ref "A")
+    (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-integer x)))
+      #elm/parameter-ref "1"))
+
+  (tu/testing-unary-null elm/converts-to-integer)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/converts-to-integer #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(converts-to-integer (param-ref "x")) (core/-form expr))))))
+
+
+;; 22.13. ConvertsToQuantity
 ;;
 ;; The ConvertsToQuantity operator returns true if the value of its argument is
 ;; or can be converted to a Quantity value. The operator may be used with
@@ -534,6 +641,45 @@
 ;; For Integer, Decimal, and Ratio values, the operator simply returns true.
 ;;
 ;; If the argument is null, the result is null.
+(deftest compile-converts-to-quantity-test
+  (testing "String"
+    (are [x] (true? (tu/compile-unop elm/converts-to-quantity elm/string x))
+      (str decimal/min "'m'")
+      "-1'm'"
+      "0'm'"
+      "1'm'"
+      (str decimal/max "'m'"))
+
+    (are [x] (false? (tu/compile-unop elm/converts-to-quantity elm/string x))
+      (str (- decimal/min 1e-8M))
+      (str (+ decimal/max 1e-8M))
+      (str (- decimal/min 1e-8M) "'m'")
+      (str (+ decimal/max 1e-8M) "'m'")
+      ""
+      "a"))
+
+  (testing "Integer"
+    (is (true? (tu/compile-unop elm/converts-to-quantity elm/integer "1"))))
+
+  (testing "Decimal"
+    (is (true? (tu/compile-unop elm/converts-to-quantity elm/decimal "1.1"))))
+
+  ;; TODO: Ratio
+
+  (testing "dynamic"
+    (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-quantity x)))
+      #elm/parameter-ref "A")
+    (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-quantity x)))
+      #elm/parameter-ref "1"))
+
+  (tu/testing-unary-null elm/converts-to-quantity)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/converts-to-quantity #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(converts-to-quantity (param-ref "x")) (core/-form expr))))))
+
 
 ;; TODO 22.14. ConvertsToRatio
 ;;
@@ -552,7 +698,7 @@
 ;;
 ;; If the argument is null, the result is null.
 
-;; TODO 22.15. ConvertsToString
+;; 22.15. ConvertsToString
 ;;
 ;; The ConvertsToString operator returns true if the value of its argument is
 ;; or can be converted to a String value.
@@ -571,6 +717,60 @@
 ;; String
 ;;
 ;; If the argument is null, the result is null.
+(deftest compile-converts-to-string-test
+  (testing "String"
+    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/string x))
+      "foo"))
+
+  (testing "Long"
+    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/long x))
+      "1"))
+
+  (testing "Boolean"
+    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/boolean x))
+      "true"))
+
+  (testing "Integer"
+    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/integer x))
+      "1"))
+
+  (testing "Decimal"
+    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/decimal x))
+      "1.1"))
+
+  (testing "Quantity"
+    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/quantity x))
+      [1M "m"]))
+
+  (testing "Date"
+    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/date x))
+      "2019-01-01"))
+
+  (testing "DateTime"
+    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/date-time x))
+      "2019-01-01T01:00"))
+
+  (testing "Time"
+    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/time x))
+      "01:00"))
+
+  ;; TODO: Ratio
+
+  (testing "Tuple"
+    (are [x] (false? (c/compile {} (elm/converts-to-string (elm/tuple x))))
+      {"foo" #elm/integer "1"}))
+
+  (testing "dynamic"
+    (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-string x)))
+      #elm/parameter-ref "A"))
+
+  (tu/testing-unary-null elm/converts-to-string)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/converts-to-string #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(converts-to-string (param-ref "x")) (core/-form expr))))))
 
 ;; TODO 22.16. ConvertsToTime
 ;;
@@ -881,8 +1081,8 @@
 
 ;; 22.24. ToDecimal
 ;;
-;; The ToDecimal operator converts the value of its argument to a Decimal value.
-;; The operator accepts strings using the following format:
+;; The ToDecimal operator converts the value of its argument to a Decimal
+;; value. The operator accepts strings using the following format:
 ;;
 ;; (+|-)?#0(.0#)?
 ;;
@@ -891,12 +1091,17 @@
 ;; decimal point, at least one digit, and any number of additional digits
 ;; (including none).
 ;;
-;; Note that the decimal value returned by this operator must be limited in
-;; precision and scale to the maximum precision and scale representable for
-;; Decimal values within CQL.
+;; See Formatting Strings for a description of the formatting strings used in
+;; this specification.
+;;
+;; Note that the Decimal value returned by this operator will be limited in
+;; precision and scale to the maximum precision and scale representable by the
+;; implementation (at least 28 digits of precision, and 8 digits of scale).
 ;;
 ;; If the input string is not formatted correctly, or cannot be interpreted as
 ;; a valid Decimal value, the result is null.
+;;
+;; If the input is Boolean, true will result in 1.0, false will result in 0.0.
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-decimal-test
@@ -912,6 +1117,11 @@
       (str (- decimal/min 1e-8M)) nil
       (str (+ decimal/max 1e-8M)) nil
       "a" nil))
+
+  (testing "Boolean"
+    (are [x res] (= res (tu/compile-unop elm/to-decimal elm/boolean x))
+      "true" 1.0
+      "false" 0.0))
 
   (tu/testing-unary-null elm/to-decimal)
 
@@ -1086,6 +1296,7 @@
     (are [x res] (p/equal res (core/-eval (tu/compile-unop elm/to-quantity
                                                            elm/string x)
                                           {} nil nil))
+      "-1" (quantity/quantity -1 "1")
       "1" (quantity/quantity 1 "1")
 
       "1'm'" (quantity/quantity 1 "m")
@@ -1098,6 +1309,10 @@
 
     (are [x] (nil? (core/-eval (tu/compile-unop elm/to-quantity elm/string x)
                                {} nil nil))
+      (str (- decimal/min 1e-8M))
+      (str (+ decimal/max 1e-8M))
+      (str (- decimal/min 1e-8M) "'m'")
+      (str (+ decimal/max 1e-8M) "'m'")
       ""
       "a"))
 

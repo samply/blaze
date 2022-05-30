@@ -13,8 +13,7 @@
     [blaze.fhir.spec.type OffsetInstant]
     [blaze.fhir.spec.type.system DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]
     [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth Instant]
-    [java.time.temporal ChronoField ChronoUnit Temporal TemporalAccessor]
-    [java.util Map]))
+    [java.time.temporal ChronoField ChronoUnit Temporal TemporalAccessor]))
 
 
 (set! *warn-on-reflection* true)
@@ -1325,15 +1324,39 @@
 
   String
   (to-date-time [s now]
-    (p/to-date-time (system/parse-date-time s) now))
-
-  ;; for the anomaly
-  Map
-  (to-date-time [_ _]))
+    (p/to-date-time (system/parse-date-time s) now)))
 
 
 ;; 22.30. ToString
 (extend-protocol p/ToString
   PrecisionLocalTime
   (to-string [{:keys [local-time]}]
-    (str local-time)))
+    (str local-time))
+
+  Year
+  (to-string [x]
+    (str x))
+
+  DateTimeYear
+  (to-string [x]
+    (str x))
+
+  YearMonth
+  (to-string [x]
+    (str x))
+
+  DateTimeYearMonth
+  (to-string [x]
+    (str x))
+
+  LocalDate
+  (to-string [x]
+    (str x))
+
+  DateTimeYearMonthDay
+  (to-string [x]
+    (str x))
+
+  LocalDateTime
+  (to-string [x]
+    (str x)))

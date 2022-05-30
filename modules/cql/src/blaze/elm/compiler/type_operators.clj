@@ -134,17 +134,37 @@
 
 ;; TODO 22.9. ConvertsToDateTime
 
-;; TODO 22.10. ConvertsToDecimal
+;; 22.10. ConvertsToDecimal
+(defunop converts-to-decimal [operand]
+  (when (some? operand)
+    (some? (p/to-decimal operand))))
 
-;; TODO 22.11. ConvertsToLong
 
-;; TODO 22.12. ConvertsToInteger
+;; 22.11. ConvertsToLong
+(defunop converts-to-long [operand]
+  (when (some? operand)
+    (some? (p/to-long operand))))
 
-;; TODO 22.13. ConvertsToQuantity
+
+;; 22.12. ConvertsToInteger
+(defunop converts-to-integer [operand]
+  (when (some? operand)
+    (some? (p/to-integer operand))))
+
+
+;; 22.13. ConvertsToQuantity
+(defunop converts-to-quantity [operand]
+  (when (some? operand)
+    (some? (p/to-quantity operand))))
+
 
 ;; TODO 22.14. ConvertsToRatio
 
-;; TODO 22.15. ConvertsToString
+;; 22.15. ConvertsToString
+(defunop converts-to-string [operand]
+  (when (some? operand)
+    (some? (p/to-string operand))))
+
 
 ;; TODO 22.16. ConvertsToTime
 
