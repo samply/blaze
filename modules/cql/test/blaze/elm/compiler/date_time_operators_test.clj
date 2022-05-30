@@ -849,11 +849,12 @@
 ;;
 ;; At least one component other than timezoneOffset must be specified, and no
 ;; component may be specified at a precision below an unspecified precision.
-;; For example, minute may be null, but if it is, second, and millisecond
-;; must all be null as well.
+;; For example, minute may be null, but if it is, second, and millisecond must
+;; all be null as well.
 ;;
-;; If timezoneOffset is not specified, it is defaulted to the timezone offset
-;; of the evaluation request.
+;; Although the milliseconds are specified with a separate component, seconds
+;; and milliseconds are combined and represented as a Decimal for the purposes
+;; of comparison.
 (deftest compile-time-test
   (testing "Static hour"
     (are [elm res] (= res (c/compile {} elm))

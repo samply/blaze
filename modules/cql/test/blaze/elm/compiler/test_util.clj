@@ -5,6 +5,7 @@
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [blaze.elm.spec]
+    [blaze.fhir.spec.type.system :as system]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :refer [is testing]])
@@ -60,13 +61,18 @@
       {:name "ab"}
       {:name "b"}
       {:name "ba"}
-      {:name "A"}]}}})
+      {:name "A"}
+      {:name "12:54:00"}
+      {:name "2020-01-02T03:04:05.006Z"}]}}})
 
 
 (def dynamic-eval-ctx
   {:parameters
    {"true" true "false" false "nil" nil "1" 1 "2" 2 "3" 3 "4" 4
-    "empty-string" "" "a" "a" "ab" "ab" "b" "b" "ba" "ba" "A" "A"}})
+    "empty-string" "" "a" "a" "ab" "ab" "b" "b" "ba" "ba" "A" "A"
+    "12:54:00" (system/time 12 54 00)
+    "2020-01-02T03:04:05.006Z" (system/date-time 2020 1 2 3 4 5 6 ZoneOffset/UTC)}
+   :now now})
 
 
 (defn dynamic-compile-eval [elm]

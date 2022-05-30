@@ -1233,14 +1233,6 @@
 
 ;; 22.22. ToDate
 (extend-protocol p/ToDate
-  nil
-  (to-date [_ _])
-
-  String
-  (to-date [s _]
-    (-> (system/parse-date s)
-        (ba/exceptionally (constantly nil))))
-
   Year
   (to-date [this _]
     this)
@@ -1277,9 +1269,6 @@
 
 ;; 22.23. ToDateTime
 (extend-protocol p/ToDateTime
-  nil
-  (to-date-time [_ _])
-
   Instant
   (to-date-time [this now]
     (-> (.atOffset this (.getOffset ^OffsetDateTime now))
@@ -1320,11 +1309,7 @@
   OffsetDateTime
   (to-date-time [this now]
     (-> (.withOffsetSameInstant this (.getOffset ^OffsetDateTime now))
-        (.toLocalDateTime)))
-
-  String
-  (to-date-time [s now]
-    (p/to-date-time (system/parse-date-time s) now)))
+        (.toLocalDateTime))))
 
 
 ;; 22.30. ToString
@@ -1360,3 +1345,23 @@
   LocalDateTime
   (to-string [x]
     (str x)))
+
+
+;; 22.31. ToTime
+(extend-protocol p/ToTime
+  LocalTime
+  (to-time [this _]
+    this)
+
+  LocalDateTime
+  (to-time [this _]
+    (.toLocalTime this))
+
+  OffsetDateTime
+  (to-time [this now]
+    (-> (.withOffsetSameInstant this (.getOffset ^OffsetDateTime now))
+        (.toLocalTime)))
+
+  PrecisionLocalTime
+  (to-time [this _]
+   (.-local_time this)))

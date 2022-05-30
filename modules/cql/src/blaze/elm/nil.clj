@@ -284,6 +284,18 @@
   (to-boolean [_]))
 
 
+;; 22.22. ToDate
+(extend-protocol p/ToDate
+  nil
+  (to-date [_ _]))
+
+
+;; 22.23. ToDateTime
+(extend-protocol p/ToDateTime
+  nil
+  (to-date-time [_ _]))
+
+
 ;; 22.24. ToDecimal
 (extend-protocol p/ToDecimal
   nil
@@ -312,3 +324,9 @@
 (extend-protocol p/ToString
   nil
   (to-string [_]))
+
+
+;; 22.31. ToTime
+(extend-protocol p/ToTime
+  nil
+  (to-time [_ _]))
