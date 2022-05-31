@@ -130,7 +130,7 @@
   The hash need to be cryptographic because otherwise it would be possible to
   introduce a resource into Blaze which has the same hash as the target
   resource, overwriting it."
-  [resource]
+  ^Hash [resource]
   (let [hasher (.newHasher (Hashing/sha256))]
     (type/hash-into resource hasher)
     (from-byte-buffer! (bb/wrap (.asBytes (.hash hasher))))))

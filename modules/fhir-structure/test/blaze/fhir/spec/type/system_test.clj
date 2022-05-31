@@ -12,6 +12,7 @@
                ZoneOffset LocalTime]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 

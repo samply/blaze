@@ -11,6 +11,9 @@
     [org.eclipse.jetty.server Server]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (defn- wrap-server [handler server]
   (fn
     ([request]

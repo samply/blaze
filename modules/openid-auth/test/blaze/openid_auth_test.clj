@@ -13,6 +13,7 @@
     [com.pgssoft.httpclient HttpClientMock]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 

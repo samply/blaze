@@ -22,6 +22,7 @@
     [java.time ZoneId]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 

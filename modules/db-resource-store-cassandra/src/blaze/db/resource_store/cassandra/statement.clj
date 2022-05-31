@@ -4,6 +4,9 @@
     [com.datastax.oss.driver.api.core.cql SimpleStatement]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (def get-statement
   "The get statement retrieves the content according to the `hash`.
 

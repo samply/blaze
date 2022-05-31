@@ -10,6 +10,9 @@
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 
 
+(set! *warn-on-reflection* true)
+
+
 (defn element? [x]
   (instance? Element x))
 

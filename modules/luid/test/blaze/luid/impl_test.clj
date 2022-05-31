@@ -6,6 +6,9 @@
     [java.time Instant]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (def millis-2020
   (.toEpochMilli (Instant/parse "2020-01-01T00:00:00Z")))
 

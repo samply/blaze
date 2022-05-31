@@ -8,6 +8,7 @@
     [java.util.concurrent SubmissionPublisher]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 

@@ -10,6 +10,9 @@
     [org.apache.kafka.common.record TimestampType]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (defn- record->t
   "Returns the point in time `t` of the transaction data received by a consumer.
 

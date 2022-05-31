@@ -14,7 +14,7 @@
   {:local/root "../module-base"}
 
   com.github.ben-manes.caffeine/caffeine
-  {:mvn/version "3.1.0"}
+  {:mvn/version "3.1.1"}
 
   com.google.guava/guava
   {:mvn/version "31.1-jre"}
@@ -69,7 +69,7 @@
   :coverage
   {:extra-deps
    {cloverage/cloverage
-    {:mvn/version "1.2.3"}}
+    {:mvn/version "1.2.4"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
                "-e" ".*spec$"]}}}

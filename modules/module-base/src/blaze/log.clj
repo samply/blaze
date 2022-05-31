@@ -4,6 +4,9 @@
     [taoensso.timbre :as log]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (defn- output-fn
   ([data] (output-fn nil data))
   ([opts data]

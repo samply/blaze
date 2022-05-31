@@ -13,6 +13,7 @@
     [java.util.concurrent ThreadLocalRandom]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 

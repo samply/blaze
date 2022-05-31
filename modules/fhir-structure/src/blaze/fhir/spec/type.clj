@@ -36,7 +36,7 @@
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 
 
-(set! *warn-on-reflection* true)
+;;(set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
 

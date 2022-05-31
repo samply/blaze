@@ -35,6 +35,7 @@
     [java.time Instant LocalDate ZoneId]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 

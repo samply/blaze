@@ -8,6 +8,9 @@
     [org.apache.http.message BasicHeaderValueParser]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (extend-protocol Datafiable
   HeaderElement
   (datafy [element]

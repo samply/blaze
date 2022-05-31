@@ -6,6 +6,9 @@
     [java.util Random]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (defn- entropy [rng]
   (bit-and (.nextLong ^Random rng) 0xFFFFFFFFF))
 

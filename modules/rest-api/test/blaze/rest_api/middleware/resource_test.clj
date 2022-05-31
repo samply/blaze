@@ -14,6 +14,7 @@
     [java.nio.charset StandardCharsets]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (tu/init-fhir-specs)
 (log/set-level! :trace)
@@ -42,9 +43,9 @@
 
 
 (defn input-stream
-  ([s]
+  ([^String s]
    (ByteArrayInputStream. (.getBytes s StandardCharsets/UTF_8)))
-  ([s closed?]
+  ([^String s closed?]
    (proxy [ByteArrayInputStream] [(.getBytes s StandardCharsets/UTF_8)]
      (close []
        (reset! closed? true)))))

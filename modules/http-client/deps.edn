@@ -3,7 +3,7 @@
   {:local/root "../module-base"}
 
   cheshire/cheshire
-  {:mvn/version "5.10.2"
+  {:mvn/version "5.11.0"
    :exclusions
    [com.fasterxml.jackson.dataformat/jackson-dataformat-cbor]}
 
@@ -34,6 +34,6 @@
   :coverage
   {:extra-deps
    {cloverage/cloverage
-    {:mvn/version "1.2.3"}}
+    {:mvn/version "1.2.4"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}
