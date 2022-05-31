@@ -4,13 +4,13 @@
     [blaze.fhir.spec.impl.intern :as intern]
     [blaze.fhir.spec.impl.specs :as specs]
     [blaze.fhir.spec.impl.util :as u]
+    [blaze.fhir.spec.impl.xml :as xml]
     [blaze.fhir.spec.type :as type]
     [clojure.alpha.spec :as s]
     [clojure.data.xml.name :as xml-name]
     [clojure.data.xml.node :as xml-node]
     [cuerdas.core :as str])
   (:import
-    [clojure.data.xml.node Element]
     [com.github.benmanes.caffeine.cache CacheLoader Caffeine LoadingCache]
     [java.net URLEncoder]
     [java.nio.charset StandardCharsets]))
@@ -20,6 +20,7 @@
 
 
 (set! *warn-on-reflection* true)
+
 
 (def ^:const fhir-namespace
   (str "xmlns." (URLEncoder/encode "http://hl7.org/fhir" StandardCharsets/UTF_8)))
@@ -50,7 +51,7 @@
 
 
 (def id-matcher-form
-  `(fn [~'s] (re-matches #"[A-Za-z0-9\-\.]{1,64}" ~'s)))
+  `(fn [~'s] (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" ~'s))))
 
 
 (def ^{:arglists '([s])} intern-string
@@ -60,10 +61,6 @@
 
 (def uri-matcher-form
   `(specs/regex #"\S*" intern-string))
-
-
-(defn element? [x]
-  (instance? Element x))
 
 
 (def conform-xml-value
@@ -80,15 +77,14 @@
 (defn id-string-spec [modifier]
   (case modifier
     (:json nil) `(s/and string? ~id-matcher-form)
-    :xml `(s/and element? (s/conformer conform-xml-value unform-xml-value) ~id-matcher-form)
+    :xml `(s/and xml/element? (s/conformer conform-xml-value unform-xml-value) ~id-matcher-form)
     :cbor `any?))
 
 
 (defn uri-string-spec [modifier]
   (case modifier
-    (:json nil) `(s/and string? ~uri-matcher-form)
-    :xml `(s/and element? (s/conformer conform-xml-value unform-xml-value) ~uri-matcher-form)
-    :xmlAttr `(s/and string? ~uri-matcher-form)
+    (:json nil :xmlAttr) `(s/and string? ~uri-matcher-form)
+    :xml `(s/and xml/element? (s/conformer conform-xml-value unform-xml-value) ~uri-matcher-form)
     :cbor `(s/conformer intern-string)))
 
 
@@ -97,7 +93,7 @@
     "id" (id-string-spec modifier)
     "uri" (uri-string-spec modifier)
     (if-let [regex (type-regex type)]
-      `(s/and string? (fn [~'s] (re-matches ~regex ~'s)))
+      `(s/and string? (fn [~'s] (.matches (re-matcher ~regex ~'s))))
       `string?)))
 
 
@@ -200,8 +196,9 @@
       :min min
       :max max
       :spec-form
-      (if (= "Quantity.unit" path)
-        `(specs/regex #"[ \r\n\t\S]+" intern-string)
+      (case path
+        ("Quantity.unit" "Coding.version" "Coding.display" "CodeableConcept.text")
+        `(specs/json-regex-primitive #"[ \r\n\t\S]+" type/intern-string)
         (keyword "fhir.json" (:code type)))}
      (cond->
        {:key (path-parts->key' "fhir.xml" (split-path path))
@@ -210,7 +207,11 @@
         :max max
         ;; it's a bit of an hack to use the JSON spec here, but it works for
         ;; string based values in XML attributes
-        :spec-form (keyword (if rep "fhir.json" "fhir.xml") (:code type))}
+        :spec-form
+        (case path
+          ("Quantity.unit" "Coding.version" "Coding.display" "CodeableConcept.text")
+          (xml/primitive-xml-form #"[ \r\n\t\S]+" `type/xml->InternedString)
+          (keyword (if rep "fhir.json" "fhir.xml") (:code type)))}
        rep
        (assoc :representation rep))
      {:key (path-parts->key' "fhir.cbor" (split-path path))
@@ -218,8 +219,9 @@
       :min min
       :max max
       :spec-form
-      (if (= "Quantity.unit" path)
-        `(s/conformer intern-string)
+      (case path
+        ("Quantity.unit" "Coding.version" "Coding.display" "CodeableConcept.text")
+        `(specs/cbor-primitive type/intern-string)
         (keyword "fhir.cbor" (:code type)))}]))
 
 
@@ -463,24 +465,20 @@
      :modifier :json
      :spec-form
      (case key
-       :fhir.json/Extension
-       (json-object-spec-form "extension" child-spec-defs)
-       :fhir.json/Coding
-       (json-object-spec-form "coding" child-spec-defs)
-       :fhir.json/CodeableConcept
-       (json-object-spec-form "codeable-concept" child-spec-defs)
-       :fhir.json/Meta
-       (json-object-spec-form "mk-meta" child-spec-defs)
-       (:fhir.json/Attachment
+       (:fhir.json/Extension
+         :fhir.json/Coding
+         :fhir.json/CodeableConcept
+         :fhir.json/Meta
+         :fhir.json/Attachment
          :fhir.json/Quantity
          :fhir.json/Period
          :fhir.json/Identifier
          :fhir.json/HumanName
          :fhir.json/Address
          :fhir.json/Reference)
-       (json-object-spec-form (str "map->" path-part) child-spec-defs)
+       (json-object-spec-form (str/kebab path-part) child-spec-defs)
        :fhir.json.Bundle.entry/search
-       (json-object-spec-form "map->BundleEntrySearch" child-spec-defs)
+       (json-object-spec-form "bundle-entry-search" child-spec-defs)
        (conj (seq (remap-choice-conformer-forms child-spec-defs))
              (json-type-conformer-form kind parent-path-parts path-part)
              (schema-spec-form :json child-spec-defs)
@@ -507,7 +505,7 @@
   [{:keys [attrs content]}]
   (transduce
     ;; remove mixed character content
-    (filter element?)
+    (filter xml/element?)
     (completing
       (fn [ret {:keys [tag] :as element}]
         (update ret (keyword (name tag)) append-child element)))
@@ -644,24 +642,20 @@
      :modifier :cbor
      :spec-form
      (case key
-       :fhir.cbor/Extension
-       (cbor-object-spec-form "extension" child-spec-defs)
-       :fhir.cbor/Coding
-       (cbor-object-spec-form "coding" child-spec-defs)
-       :fhir.cbor/CodeableConcept
-       (cbor-object-spec-form "codeable-concept" child-spec-defs)
-       :fhir.cbor/Meta
-       (cbor-object-spec-form "mk-meta" child-spec-defs)
-       (:fhir.cbor/Attachment
+       (:fhir.cbor/Extension
+         :fhir.cbor/Coding
+         :fhir.cbor/CodeableConcept
+         :fhir.cbor/Meta
+         :fhir.cbor/Attachment
          :fhir.cbor/Quantity
          :fhir.cbor/Period
          :fhir.cbor/Identifier
          :fhir.cbor/HumanName
          :fhir.cbor/Address
          :fhir.cbor/Reference)
-       (cbor-object-spec-form (str "map->" path-part) child-spec-defs)
+       (cbor-object-spec-form (str/kebab path-part) child-spec-defs)
        :fhir.cbor.Bundle.entry/search
-       (cbor-object-spec-form "map->BundleEntrySearch" child-spec-defs)
+       (cbor-object-spec-form "bundle-entry-search" child-spec-defs)
        (conj (seq (remap-choice-conformer-forms child-spec-defs))
              (json-type-conformer-form kind parent-path-parts path-part)
              (schema-spec-form :cbor child-spec-defs)
@@ -772,35 +766,12 @@
       (throw (ex-info (format "Unknown primitive type `%s`." name) {})))))
 
 
-(defn xml-value-matches?
-  {:arglists '([regex element])}
-  [regex {{:keys [value]} :attrs}]
-  (or (nil? value) (and (string? value) (.matches (re-matcher regex value)))))
-
-
-(defn set-extension-tag [element]
-  (some-> element (update :content (partial map #(assoc % :tag ::f/extension)))))
-
-
-(defn remove-character-content [element]
-  (update element :content (partial filter element?)))
-
-
-(defn- primitive-xml-form [regex constructor]
-  `(s/and
-     element?
-     (fn [~'e] (xml-value-matches? ~regex ~'e))
-     (s/conformer remove-character-content set-extension-tag)
-     (s/schema {:content (s/coll-of :fhir.xml/Extension)})
-     (s/conformer ~constructor type/to-xml)))
-
-
 (defn- xml-spec-form [name {:keys [element]}]
   (let [regex (type-regex (value-type element))
         constructor (str "xml->" (str/capital name))]
     (case name
-      "xhtml" `(s/and element? (s/conformer type/xml->Xhtml type/to-xml))
-      (primitive-xml-form regex (symbol "blaze.fhir.spec.type" constructor)))))
+      "xhtml" `(s/and xml/element? (s/conformer type/xml->Xhtml type/to-xml))
+      (xml/primitive-xml-form regex (symbol "blaze.fhir.spec.type" constructor)))))
 
 
 (defn- cbor-spec-form [name _]
@@ -883,7 +854,7 @@
 
 
 (defn conform-xml-resource [{:keys [content]}]
-  (some #(when (element? %) %) content))
+  (some #(when (xml/element? %) %) content))
 
 
 (defn unform-xml-resource [resource]

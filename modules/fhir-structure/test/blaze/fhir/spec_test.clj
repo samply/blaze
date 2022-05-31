@@ -3,7 +3,9 @@
     [blaze.anomaly :as ba]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec-spec]
+    [blaze.fhir.spec.generators :as fg]
     [blaze.fhir.spec.impl.util-spec]
+    [blaze.fhir.spec.impl.xml-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.test-util :as tu :refer [satisfies-prop]]
     [clojure.alpha.spec :as s2]
@@ -11,7 +13,6 @@
     [clojure.data.xml.prxml :as prxml]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.string :as str]
     [clojure.test :as test :refer [are deftest is testing]]
     [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as prop]
@@ -37,165 +38,6 @@
 
 
 (test/use-fixtures :each fixture)
-
-
-(def ^:private integer-value-gen
-  gen/small-integer)
-
-
-(def ^:private string-value-gen
-  (gen/such-that (partial re-matches #"[ \r\n\t\S]+") gen/string-ascii 100))
-
-
-(def ^:private decimal-value-gen
-  (gen/fmap #(BigDecimal/valueOf ^double %) (gen/double* {:infinite? false :NaN? false})))
-
-
-(def ^:private uri-value-gen
-  (gen/such-that (partial re-matches #"\S*") gen/string-ascii 100))
-
-
-(def ^:private url-value-gen
-  (gen/such-that (partial re-matches #"\S*") gen/string-ascii 100))
-
-
-(def ^:private canonical-value-gen
-  (gen/such-that (partial re-matches #"\S*") gen/string-ascii 100))
-
-
-(def ^:private base64Binary-value-gen
-  (->> (gen/vector gen/char-alphanumeric 4)
-       (gen/fmap str/join)
-       (gen/vector)
-       (gen/fmap str/join)
-       (gen/such-that (partial re-matches #"([0-9a-zA-Z\\+/=]{4})+"))))
-
-
-(def ^:private year-gen
-  (gen/choose 1900 2100))
-
-
-(def ^:private month-gen
-  (gen/choose 1 12))
-
-
-(def ^:private day-gen
-  (gen/choose 1 28))
-
-
-(def ^:private hour-gen
-  (gen/choose 0 23))
-
-
-(def ^:private minute-gen
-  (gen/choose 0 59))
-
-
-(def ^:private second-gen
-  (gen/choose 0 59))
-
-
-(def ^:private zone-offset-gen
-  (gen/fmap (partial apply format "%s%02d:00")
-            (gen/tuple (gen/elements ["+" "-"]) (gen/choose 1 14))))
-
-
-(def ^:private zone-gen
-  (gen/one-of [(gen/return "Z") zone-offset-gen]))
-
-
-(def ^:private instant-value-gen
-  (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
-            (gen/tuple year-gen month-gen day-gen hour-gen minute-gen second-gen zone-gen)))
-
-
-(def ^:private date-value-gen
-  (gen/one-of
-    [(gen/fmap (partial format "%04d") year-gen)
-     (gen/fmap (partial apply format "%04d-%02d")
-               (gen/tuple year-gen month-gen))
-     (gen/fmap (partial apply format "%04d-%02d-%02d")
-               (gen/tuple year-gen month-gen day-gen))]))
-
-
-(def ^:private dateTime-value-gen
-  (gen/one-of
-    [(gen/fmap (partial format "%04d") year-gen)
-     (gen/fmap (partial apply format "%04d-%02d")
-               (gen/tuple year-gen month-gen))
-     (gen/fmap (partial apply format "%04d-%02d-%02d")
-               (gen/tuple year-gen month-gen day-gen))
-     (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
-               (gen/tuple year-gen month-gen day-gen hour-gen minute-gen second-gen zone-gen))]))
-
-
-(def ^:private time-value-gen
-  (gen/fmap (partial apply format "%02d:%02d:%02d")
-            (gen/tuple hour-gen minute-gen second-gen)))
-
-
-(def ^:private code-value-gen
-  (gen/such-that (partial re-matches #"[^\s]+(\s[^\s]+)*") gen/string-ascii 100))
-
-
-(def ^:private char-digit
-  (gen/fmap char (gen/choose 48 57)))
-
-
-(def ^:private oid-value-gen
-  (gen/such-that (partial re-matches #"urn:oid:[0-2](\.(0|[1-9][0-9]*))+")
-                 (gen/fmap (partial str "urn:oid:0.")
-                           (gen/fmap str/join (gen/vector char-digit)))))
-
-
-(def ^:private id-value-gen
-  (gen/such-that (partial re-matches #"[A-Za-z0-9\-\.]{1,64}")
-                 (gen/fmap str/join (gen/vector gen/char-alphanumeric 1 64))))
-
-
-(def ^:private markdown-value-gen
-  (gen/such-that (partial re-matches #"[ \r\n\t\S]+") gen/string-alphanumeric 100))
-
-
-(def ^:private unsignedInt-value-gen
-  gen/nat)
-
-
-(def ^:private positiveInt-value-gen
-  (gen/fmap inc gen/nat))
-
-
-(def ^:private uuid-value-gen
-  (gen/fmap (partial str "urn:uuid:") gen/uuid))
-
-
-(def ^:private date-gen
-  (gen/fmap
-    (fn [[extension-url value]]
-      (type/date
-        (cond-> {:value value}
-          extension-url
-          (assoc :extension [(type/extension {:url extension-url})]))))
-    (gen/tuple (gen/one-of [uri-value-gen (gen/return nil)]) date-value-gen)))
-
-
-(def ^:private code-gen
-  (gen/fmap
-    (fn [[extension-url value]]
-      (type/code
-        (cond-> {:value value}
-          extension-url
-          (assoc :extension [(type/extension {:url extension-url})]))))
-    (gen/tuple (gen/one-of [uri-value-gen (gen/return nil)]) code-value-gen)))
-
-
-(def ^:private patient-gen
-  (gen/fmap
-    (fn [[gender birth-date]]
-      {:fhir/type :fhir/Patient
-       :gender gender
-       :birthDate birth-date})
-    (gen/tuple code-gen date-gen)))
 
 
 (deftest parse-json-test
@@ -430,7 +272,7 @@
                               #fhir/Coding
                                       {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
                                        :code #fhir/code"D"
-                                       :display "divers"}}]
+                                       :display #fhir/string"divers"}}]
                      :value "other"}}
            (conform-xml
              [:Patient
@@ -518,7 +360,7 @@
        :value
        #fhir/Quantity
                {:value 36.6M
-                :unit "kg/m^2"
+                :unit #fhir/string"kg/m^2"
                 :system #fhir/uri"http://unitsofmeasure.org"
                 :code #fhir/code"kg/m2"}}
       "{\"valueQuantity\":{\"value\":36.6,\"unit\":\"kg/m^2\",\"system\":\"http://unitsofmeasure.org\",\"code\":\"kg/m2\"},\"resourceType\":\"Observation\"}")))
@@ -584,7 +426,7 @@
        :value
        #fhir/Quantity
                {:value 36.6M
-                :unit "kg/m^2"
+                :unit #fhir/string"kg/m^2"
                 :system #fhir/uri"http://unitsofmeasure.org"
                 :code #fhir/code"kg/m2"}})))
 
@@ -833,14 +675,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value gen/boolean]
+          (prop/for-all [value fg/boolean-value]
             (= (type/boolean value) (s2/conform :fhir.json/boolean value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [gen/boolean (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/boolean-value (gen/return nil)])]
               (= (type/boolean {:id id
                                 :extension
                                 [(type/extension {:url extension-url})]
@@ -859,14 +701,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value gen/boolean]
+          (prop/for-all [value fg/boolean-value]
             (= (type/boolean value) (s2/conform :fhir.xml/boolean (sexp-value (str value))))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [gen/boolean (gen/return nil)])
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/boolean-value (gen/return nil)])
                            character-content gen/string-ascii]
               (= (type/boolean {:id id
                                 :extension
@@ -884,14 +726,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value gen/boolean]
+          (prop/for-all [value fg/boolean-value]
             (= (type/boolean value) (s2/conform :fhir.cbor/boolean value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [gen/boolean (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/boolean-value (gen/return nil)])]
               (= (type/boolean {:id id
                                 :extension
                                 [(type/extension {:url extension-url})]
@@ -905,20 +747,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value gen/boolean]
+        (prop/for-all [value fg/boolean-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/boolean value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value gen/boolean]
+          (prop/for-all [value fg/boolean-value]
             (= (sexp-value (str value)) (s2/unform :fhir.xml/boolean (type/boolean value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [gen/boolean (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/boolean-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) (some? value) (assoc :value (str value)))
                   [::f/extension {:url extension-url}]])
@@ -930,7 +772,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value gen/boolean]
+        (prop/for-all [value fg/boolean-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/boolean value)))))))))
 
 
@@ -939,14 +781,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value integer-value-gen]
+          (prop/for-all [value fg/integer-value]
             (= (type/integer value) (s2/conform :fhir.json/integer value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [integer-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/integer-value (gen/return nil)])]
               (= (type/integer {:id id
                                 :extension
                                 [(type/extension {:url extension-url})]
@@ -965,14 +807,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value integer-value-gen]
+          (prop/for-all [value fg/integer-value]
             (= (type/integer value) (s2/conform :fhir.xml/integer (sexp-value (str value))))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [integer-value-gen (gen/return nil)])
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/integer-value (gen/return nil)])
                            character-content gen/string-ascii]
               (= (type/integer {:id id
                                 :extension
@@ -990,14 +832,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value integer-value-gen]
+          (prop/for-all [value fg/integer-value]
             (= (type/integer value) (s2/conform :fhir.cbor/integer value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [integer-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/integer-value (gen/return nil)])]
               (= (type/integer {:id id
                                 :extension
                                 [(type/extension {:url extension-url})]
@@ -1011,20 +853,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value integer-value-gen]
+        (prop/for-all [value fg/integer-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/integer value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value integer-value-gen]
+          (prop/for-all [value fg/integer-value]
             (= (sexp-value (str value)) (s2/unform :fhir.xml/integer (type/integer value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [integer-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/integer-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) (some? value) (assoc :value (str value)))
                   [::f/extension {:url extension-url}]])
@@ -1036,7 +878,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value integer-value-gen]
+        (prop/for-all [value fg/integer-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/integer value)))))))))
 
 
@@ -1045,14 +887,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value string-value-gen]
+          (prop/for-all [value fg/string-value]
             (= (type/string value) (s2/conform :fhir.json/string value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [string-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/string-value (gen/return nil)])]
               (= (type/string {:id id
                                :extension
                                [(type/extension {:url extension-url})]
@@ -1071,14 +913,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value string-value-gen]
+          (prop/for-all [value fg/string-value]
             (= (type/string value) (s2/conform :fhir.xml/string (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [string-value-gen (gen/return nil)])
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/string-value (gen/return nil)])
                            character-content gen/string-ascii]
               (= (type/string {:id id
                                :extension
@@ -1096,14 +938,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value string-value-gen]
+          (prop/for-all [value fg/string-value]
             (= (type/string value) (s2/conform :fhir.cbor/string value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [string-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/string-value (gen/return nil)])]
               (= (type/string {:id id
                                :extension
                                [(type/extension {:url extension-url})]
@@ -1117,20 +959,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value string-value-gen]
+        (prop/for-all [value fg/string-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/string value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value string-value-gen]
+          (prop/for-all [value fg/string-value]
             (= (sexp-value value) (s2/unform :fhir.xml/string (type/string value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [string-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/string-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -1142,7 +984,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value string-value-gen]
+        (prop/for-all [value fg/string-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/string value)))))))))
 
 
@@ -1151,15 +993,15 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value decimal-value-gen]
+          (prop/for-all [value fg/decimal-value]
             (= (type/decimal value) (s2/conform :fhir.json/decimal value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [decimal-value-gen
-                                              integer-value-gen
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/decimal-value
+                                              fg/integer-value
                                               (gen/return nil)])]
               (= (type/decimal {:id id
                                 :extension
@@ -1179,14 +1021,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value decimal-value-gen]
+          (prop/for-all [value fg/decimal-value]
             (= (type/decimal value) (s2/conform :fhir.xml/decimal (sexp-value (str value))))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [decimal-value-gen (gen/return nil)])
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/decimal-value (gen/return nil)])
                            character-content gen/string-ascii]
               (= (type/decimal {:id id
                                 :extension
@@ -1204,14 +1046,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value decimal-value-gen]
+          (prop/for-all [value fg/decimal-value]
             (= (type/decimal value) (s2/conform :fhir.cbor/decimal value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [decimal-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/decimal-value (gen/return nil)])]
               (= (type/decimal {:id id
                                 :extension
                                 [(type/extension {:url extension-url})]
@@ -1225,20 +1067,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value decimal-value-gen]
+        (prop/for-all [value fg/decimal-value]
           (= value (bigdec (fhir-spec/parse-json (fhir-spec/unform-json (type/decimal value))))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value decimal-value-gen]
+          (prop/for-all [value fg/decimal-value]
             (= (sexp-value (str value)) (s2/unform :fhir.xml/decimal (type/decimal value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [decimal-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/decimal-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) (some? value) (assoc :value (str value)))
                   [::f/extension {:url extension-url}]])
@@ -1250,7 +1092,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value decimal-value-gen]
+        (prop/for-all [value fg/decimal-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/decimal value)))))))))
 
 
@@ -1259,14 +1101,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value uri-value-gen]
+          (prop/for-all [value fg/uri-value]
             (= (type/uri value) (s2/conform :fhir.json/uri value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [uri-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/uri-value (gen/return nil)])]
               (= (type/uri {:id id
                             :extension
                             [(type/extension {:url extension-url})]
@@ -1285,14 +1127,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value uri-value-gen]
+          (prop/for-all [value fg/uri-value]
             (= (type/uri value) (s2/conform :fhir.xml/uri (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [uri-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/uri-value (gen/return nil)])]
               (= (type/uri {:id id
                             :extension
                             [(type/extension {:url extension-url})]
@@ -1309,14 +1151,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value uri-value-gen]
+          (prop/for-all [value fg/uri-value]
             (= (type/uri value) (s2/conform :fhir.cbor/uri value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [uri-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/uri-value (gen/return nil)])]
               (= (type/uri {:id id
                             :extension
                             [(type/extension {:url extension-url})]
@@ -1330,20 +1172,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value uri-value-gen]
+        (prop/for-all [value fg/uri-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/uri value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value uri-value-gen]
+          (prop/for-all [value fg/uri-value]
             (= (sexp-value value) (s2/unform :fhir.xml/uri (type/uri value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [uri-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/uri-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -1355,7 +1197,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value uri-value-gen]
+        (prop/for-all [value fg/uri-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/uri value)))))))))
 
 
@@ -1364,14 +1206,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value url-value-gen]
+          (prop/for-all [value fg/url-value]
             (= (type/url value) (s2/conform :fhir.json/url value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [url-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/url-value (gen/return nil)])]
               (= (type/url {:id id
                             :extension
                             [(type/extension {:url extension-url})]
@@ -1390,14 +1232,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value url-value-gen]
+          (prop/for-all [value fg/url-value]
             (= (type/url value) (s2/conform :fhir.xml/url (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [url-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/url-value (gen/return nil)])]
               (= (type/url {:id id
                             :extension
                             [(type/extension {:url extension-url})]
@@ -1414,14 +1256,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value url-value-gen]
+          (prop/for-all [value fg/url-value]
             (= (type/url value) (s2/conform :fhir.cbor/url value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [url-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/url-value (gen/return nil)])]
               (= (type/url {:id id
                             :extension
                             [(type/extension {:url extension-url})]
@@ -1435,20 +1277,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value url-value-gen]
+        (prop/for-all [value fg/url-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/url value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value url-value-gen]
+          (prop/for-all [value fg/url-value]
             (= (sexp-value value) (s2/unform :fhir.xml/url (type/url value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [url-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/url-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -1460,7 +1302,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value url-value-gen]
+        (prop/for-all [value fg/url-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/url value)))))))))
 
 
@@ -1469,14 +1311,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value canonical-value-gen]
+          (prop/for-all [value fg/canonical-value]
             (= (type/canonical value) (s2/conform :fhir.json/canonical value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [canonical-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/canonical-value (gen/return nil)])]
               (= (type/canonical {:id id
                                   :extension
                                   [(type/extension {:url extension-url})]
@@ -1495,14 +1337,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value canonical-value-gen]
+          (prop/for-all [value fg/canonical-value]
             (= (type/canonical value) (s2/conform :fhir.xml/canonical (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [canonical-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/canonical-value (gen/return nil)])]
               (= (type/canonical {:id id
                                   :extension
                                   [(type/extension {:url extension-url})]
@@ -1519,14 +1361,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value canonical-value-gen]
+          (prop/for-all [value fg/canonical-value]
             (= (type/canonical value) (s2/conform :fhir.cbor/canonical value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [canonical-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/canonical-value (gen/return nil)])]
               (= (type/canonical {:id id
                                   :extension
                                   [(type/extension {:url extension-url})]
@@ -1540,20 +1382,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value canonical-value-gen]
+        (prop/for-all [value fg/canonical-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/canonical value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value canonical-value-gen]
+          (prop/for-all [value fg/canonical-value]
             (= (sexp-value value) (s2/unform :fhir.xml/canonical (type/canonical value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [canonical-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/canonical-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -1565,7 +1407,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value canonical-value-gen]
+        (prop/for-all [value fg/canonical-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/canonical value)))))))))
 
 
@@ -1574,14 +1416,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value base64Binary-value-gen]
+          (prop/for-all [value fg/base64Binary-value]
             (= (type/base64Binary value) (s2/conform :fhir.json/base64Binary value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [base64Binary-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/base64Binary-value (gen/return nil)])]
               (= (type/base64Binary {:id id
                                      :extension
                                      [(type/extension {:url extension-url})]
@@ -1600,14 +1442,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value base64Binary-value-gen]
+          (prop/for-all [value fg/base64Binary-value]
             (= (type/base64Binary value) (s2/conform :fhir.xml/base64Binary (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [base64Binary-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/base64Binary-value (gen/return nil)])]
               (= (type/base64Binary {:id id
                                      :extension
                                      [(type/extension {:url extension-url})]
@@ -1624,14 +1466,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value base64Binary-value-gen]
+          (prop/for-all [value fg/base64Binary-value]
             (= (type/base64Binary value) (s2/conform :fhir.cbor/base64Binary value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [base64Binary-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/base64Binary-value (gen/return nil)])]
               (= (type/base64Binary {:id id
                                      :extension
                                      [(type/extension {:url extension-url})]
@@ -1645,20 +1487,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value base64Binary-value-gen]
+        (prop/for-all [value fg/base64Binary-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/base64Binary value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value base64Binary-value-gen]
+          (prop/for-all [value fg/base64Binary-value]
             (= (sexp-value value) (s2/unform :fhir.xml/base64Binary (type/base64Binary value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url base64Binary-value-gen
-                         value (gen/one-of [base64Binary-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/base64Binary-value
+                         value (gen/one-of [fg/base64Binary-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -1670,7 +1512,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value base64Binary-value-gen]
+        (prop/for-all [value fg/base64Binary-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/base64Binary value)))))))))
 
 
@@ -1679,14 +1521,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value instant-value-gen]
+          (prop/for-all [value fg/instant-value]
             (= (type/instant value) (s2/conform :fhir.json/instant value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [instant-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/instant-value (gen/return nil)])]
               (= (type/instant {:id id
                                 :extension
                                 [(type/extension {:url extension-url})]
@@ -1706,14 +1548,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value instant-value-gen]
+          (prop/for-all [value fg/instant-value]
             (= (type/instant value) (s2/conform :fhir.xml/instant (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [instant-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/instant-value (gen/return nil)])]
               (= (type/instant {:id id
                                 :extension
                                 [(type/extension {:url extension-url})]
@@ -1731,14 +1573,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value instant-value-gen]
+          (prop/for-all [value fg/instant-value]
             (= (type/instant value) (s2/conform :fhir.cbor/instant value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [instant-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/instant-value (gen/return nil)])]
               (= (type/instant {:id id
                                 :extension
                                 [(type/extension {:url extension-url})]
@@ -1752,20 +1594,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value instant-value-gen]
+        (prop/for-all [value fg/instant-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/instant value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value instant-value-gen]
+          (prop/for-all [value fg/instant-value]
             (= (sexp-value value) (s2/unform :fhir.xml/instant (type/instant value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [instant-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/instant-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -1777,7 +1619,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value instant-value-gen]
+        (prop/for-all [value fg/instant-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/instant value)))))))))
 
 
@@ -1790,14 +1632,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value date-value-gen]
+          (prop/for-all [value fg/date-value]
             (= (type/date value) (s2/conform :fhir.json/date value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [date-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/date-value (gen/return nil)])]
               (= (type/date {:id id
                              :extension
                              [(type/extension {:url extension-url})]
@@ -1817,14 +1659,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value date-value-gen]
+          (prop/for-all [value fg/date-value]
             (= (type/date value) (s2/conform :fhir.xml/date (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [date-value-gen (gen/return nil)])
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/date-value (gen/return nil)])
                            character-content gen/string-ascii]
               (= (type/date {:id id
                              :extension
@@ -1843,14 +1685,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value date-value-gen]
+          (prop/for-all [value fg/date-value]
             (= (type/date value) (s2/conform :fhir.cbor/date value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [date-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/date-value (gen/return nil)])]
               (= (type/date {:id id
                              :extension
                              [(type/extension {:url extension-url})]
@@ -1864,20 +1706,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value date-value-gen]
+        (prop/for-all [value fg/date-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/date value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value date-value-gen]
+          (prop/for-all [value fg/date-value]
             (= (sexp-value value) (s2/unform :fhir.xml/date (type/date value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [date-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/date-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -1889,7 +1731,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value date-value-gen]
+        (prop/for-all [value fg/date-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/date value)))))))))
 
 
@@ -1898,14 +1740,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value dateTime-value-gen]
+          (prop/for-all [value fg/dateTime-value]
             (= (type/dateTime value) (s2/conform :fhir.json/dateTime value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [dateTime-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/dateTime-value (gen/return nil)])]
               (= (type/dateTime {:id id
                                  :extension
                                  [(type/extension {:url extension-url})]
@@ -1925,14 +1767,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value dateTime-value-gen]
+          (prop/for-all [value fg/dateTime-value]
             (= (type/dateTime value) (s2/conform :fhir.xml/dateTime (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [dateTime-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/dateTime-value (gen/return nil)])]
               (= (type/dateTime {:id id
                                  :extension
                                  [(type/extension {:url extension-url})]
@@ -1950,14 +1792,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value dateTime-value-gen]
+          (prop/for-all [value fg/dateTime-value]
             (= (type/dateTime value) (s2/conform :fhir.cbor/dateTime value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [dateTime-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/dateTime-value (gen/return nil)])]
               (= (type/dateTime {:id id
                                  :extension
                                  [(type/extension {:url extension-url})]
@@ -1971,20 +1813,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value dateTime-value-gen]
+        (prop/for-all [value fg/dateTime-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/dateTime value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value dateTime-value-gen]
+          (prop/for-all [value fg/dateTime-value]
             (= (sexp-value value) (s2/unform :fhir.xml/dateTime (type/dateTime value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [dateTime-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/dateTime-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -1996,7 +1838,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value dateTime-value-gen]
+        (prop/for-all [value fg/dateTime-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/dateTime value)))))))))
 
 
@@ -2005,14 +1847,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value time-value-gen]
+          (prop/for-all [value fg/time-value]
             (= (type/time value) (s2/conform :fhir.json/time value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [time-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/time-value (gen/return nil)])]
               (= (type/time {:id id
                              :extension
                              [(type/extension {:url extension-url})]
@@ -2032,14 +1874,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value time-value-gen]
+          (prop/for-all [value fg/time-value]
             (= (type/time value) (s2/conform :fhir.xml/time (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [time-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/time-value (gen/return nil)])]
               (= (type/time {:id id
                              :extension
                              [(type/extension {:url extension-url})]
@@ -2057,14 +1899,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value time-value-gen]
+          (prop/for-all [value fg/time-value]
             (= (type/time value) (s2/conform :fhir.cbor/time value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [time-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/time-value (gen/return nil)])]
               (= (type/time {:id id
                              :extension
                              [(type/extension {:url extension-url})]
@@ -2078,20 +1920,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value time-value-gen]
+        (prop/for-all [value fg/time-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/time value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value time-value-gen]
+          (prop/for-all [value fg/time-value]
             (= (sexp-value value) (s2/unform :fhir.xml/time (type/time value))))))
 
       (testing "with extension"
         (satisfies-prop 1000
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [time-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/time-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -2103,7 +1945,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value time-value-gen]
+        (prop/for-all [value fg/time-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/time value)))))))))
 
 
@@ -2112,14 +1954,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value code-value-gen]
+          (prop/for-all [value fg/code-value]
             (= (type/code value) (s2/conform :fhir.json/code value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [code-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/code-value (gen/return nil)])]
               (= (type/code {:id id
                              :extension
                              [(type/extension {:url extension-url})]
@@ -2138,14 +1980,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value code-value-gen]
+          (prop/for-all [value fg/code-value]
             (= (type/code value) (s2/conform :fhir.xml/code (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [code-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/code-value (gen/return nil)])]
               (= (type/code {:id id
                              :extension
                              [(type/extension {:url extension-url})]
@@ -2162,14 +2004,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value code-value-gen]
+          (prop/for-all [value fg/code-value]
             (= (type/code value) (s2/conform :fhir.cbor/code value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [code-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/code-value (gen/return nil)])]
               (= (type/code {:id id
                              :extension
                              [(type/extension {:url extension-url})]
@@ -2183,20 +2025,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value code-value-gen]
+        (prop/for-all [value fg/code-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/code value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value code-value-gen]
+          (prop/for-all [value fg/code-value]
             (= (sexp-value value) (s2/unform :fhir.xml/code (type/code value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [code-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/code-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -2208,7 +2050,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value code-value-gen]
+        (prop/for-all [value fg/code-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/code value)))))))))
 
 
@@ -2217,14 +2059,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value oid-value-gen]
+          (prop/for-all [value fg/oid-value]
             (= (type/oid value) (s2/conform :fhir.json/oid value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [oid-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/oid-value (gen/return nil)])]
               (= (type/oid {:id id
                             :extension
                             [(type/extension {:url extension-url})]
@@ -2243,14 +2085,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value oid-value-gen]
+          (prop/for-all [value fg/oid-value]
             (= (type/oid value) (s2/conform :fhir.xml/oid (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [oid-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/oid-value (gen/return nil)])]
               (= (type/oid {:id id
                             :extension
                             [(type/extension {:url extension-url})]
@@ -2267,14 +2109,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value oid-value-gen]
+          (prop/for-all [value fg/oid-value]
             (= (type/oid value) (s2/conform :fhir.cbor/oid value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [oid-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/oid-value (gen/return nil)])]
               (= (type/oid {:id id
                             :extension
                             [(type/extension {:url extension-url})]
@@ -2288,20 +2130,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value oid-value-gen]
+        (prop/for-all [value fg/oid-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/oid value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value oid-value-gen]
+          (prop/for-all [value fg/oid-value]
             (= (sexp-value value) (s2/unform :fhir.xml/oid (type/oid value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [oid-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/oid-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -2313,7 +2155,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value oid-value-gen]
+        (prop/for-all [value fg/oid-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/oid value)))))))))
 
 
@@ -2322,14 +2164,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value id-value-gen]
+          (prop/for-all [value fg/id-value]
             (= (type/id value) (s2/conform :fhir.json/id value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [id-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/id-value (gen/return nil)])]
               (= (type/id {:id id
                            :extension
                            [(type/extension {:url extension-url})]
@@ -2348,14 +2190,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value id-value-gen]
+          (prop/for-all [value fg/id-value]
             (= (type/id value) (s2/conform :fhir.xml/id (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [id-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/id-value (gen/return nil)])]
               (= (type/id {:id id
                            :extension
                            [(type/extension {:url extension-url})]
@@ -2372,14 +2214,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value id-value-gen]
+          (prop/for-all [value fg/id-value]
             (= (type/id value) (s2/conform :fhir.cbor/id value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [id-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/id-value (gen/return nil)])]
               (= (type/id {:id id
                            :extension
                            [(type/extension {:url extension-url})]
@@ -2393,20 +2235,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value id-value-gen]
+        (prop/for-all [value fg/id-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/id value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value id-value-gen]
+          (prop/for-all [value fg/id-value]
             (= (sexp-value value) (s2/unform :fhir.xml/id (type/id value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [id-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/id-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -2418,7 +2260,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value id-value-gen]
+        (prop/for-all [value fg/id-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/id value)))))))))
 
 
@@ -2427,14 +2269,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value markdown-value-gen]
+          (prop/for-all [value fg/markdown-value]
             (= (type/markdown value) (s2/conform :fhir.json/markdown value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [markdown-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/markdown-value (gen/return nil)])]
               (= (type/markdown {:id id
                                  :extension
                                  [(type/extension {:url extension-url})]
@@ -2453,14 +2295,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value markdown-value-gen]
+          (prop/for-all [value fg/markdown-value]
             (= (type/markdown value) (s2/conform :fhir.xml/markdown (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [markdown-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/markdown-value (gen/return nil)])]
               (= (type/markdown {:id id
                                  :extension
                                  [(type/extension {:url extension-url})]
@@ -2477,14 +2319,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value markdown-value-gen]
+          (prop/for-all [value fg/markdown-value]
             (= (type/markdown value) (s2/conform :fhir.cbor/markdown value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [markdown-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/markdown-value (gen/return nil)])]
               (= (type/markdown {:id id
                                  :extension
                                  [(type/extension {:url extension-url})]
@@ -2498,20 +2340,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value markdown-value-gen]
+        (prop/for-all [value fg/markdown-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/markdown value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value markdown-value-gen]
+          (prop/for-all [value fg/markdown-value]
             (= (sexp-value value) (s2/unform :fhir.xml/markdown (type/markdown value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [markdown-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/markdown-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -2523,7 +2365,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value markdown-value-gen]
+        (prop/for-all [value fg/markdown-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/markdown value)))))))))
 
 
@@ -2532,14 +2374,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value unsignedInt-value-gen]
+          (prop/for-all [value fg/unsignedInt-value]
             (= (type/unsignedInt value) (s2/conform :fhir.json/unsignedInt value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [unsignedInt-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/unsignedInt-value (gen/return nil)])]
               (= (type/unsignedInt {:id id
                                     :extension
                                     [(type/extension {:url extension-url})]
@@ -2558,14 +2400,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value unsignedInt-value-gen]
+          (prop/for-all [value fg/unsignedInt-value]
             (= (type/unsignedInt value) (s2/conform :fhir.xml/unsignedInt (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [unsignedInt-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/unsignedInt-value (gen/return nil)])]
               (= (type/unsignedInt {:id id
                                     :extension
                                     [(type/extension {:url extension-url})]
@@ -2582,14 +2424,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value unsignedInt-value-gen]
+          (prop/for-all [value fg/unsignedInt-value]
             (= (type/unsignedInt value) (s2/conform :fhir.cbor/unsignedInt value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [unsignedInt-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/unsignedInt-value (gen/return nil)])]
               (= (type/unsignedInt {:id id
                                     :extension
                                     [(type/extension {:url extension-url})]
@@ -2603,20 +2445,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value unsignedInt-value-gen]
+        (prop/for-all [value fg/unsignedInt-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/unsignedInt value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value unsignedInt-value-gen]
+          (prop/for-all [value fg/unsignedInt-value]
             (= (sexp-value value) (s2/unform :fhir.xml/unsignedInt (type/unsignedInt value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [unsignedInt-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/unsignedInt-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -2628,7 +2470,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value unsignedInt-value-gen]
+        (prop/for-all [value fg/unsignedInt-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/unsignedInt value)))))))))
 
 
@@ -2637,14 +2479,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value positiveInt-value-gen]
+          (prop/for-all [value fg/positiveInt-value]
             (= (type/positiveInt value) (s2/conform :fhir.json/positiveInt value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [positiveInt-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/positiveInt-value (gen/return nil)])]
               (= (type/positiveInt {:id id
                                     :extension
                                     [(type/extension {:url extension-url})]
@@ -2663,14 +2505,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value positiveInt-value-gen]
+          (prop/for-all [value fg/positiveInt-value]
             (= (type/positiveInt value) (s2/conform :fhir.xml/positiveInt (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [positiveInt-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/positiveInt-value (gen/return nil)])]
               (= (type/positiveInt {:id id
                                     :extension
                                     [(type/extension {:url extension-url})]
@@ -2687,14 +2529,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value positiveInt-value-gen]
+          (prop/for-all [value fg/positiveInt-value]
             (= (type/positiveInt value) (s2/conform :fhir.cbor/positiveInt value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [positiveInt-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/positiveInt-value (gen/return nil)])]
               (= (type/positiveInt {:id id
                                     :extension
                                     [(type/extension {:url extension-url})]
@@ -2708,20 +2550,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value positiveInt-value-gen]
+        (prop/for-all [value fg/positiveInt-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/positiveInt value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value positiveInt-value-gen]
+          (prop/for-all [value fg/positiveInt-value]
             (= (sexp-value value) (s2/unform :fhir.xml/positiveInt (type/positiveInt value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [positiveInt-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/positiveInt-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -2733,7 +2575,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value positiveInt-value-gen]
+        (prop/for-all [value fg/positiveInt-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/positiveInt value)))))))))
 
 
@@ -2742,14 +2584,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value uuid-value-gen]
+          (prop/for-all [value fg/uuid-value]
             (= (type/uuid value) (s2/conform :fhir.json/uuid value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [uuid-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/uuid-value (gen/return nil)])]
               (= (type/uuid {:id id
                              :extension
                              [(type/extension {:url extension-url})]
@@ -2768,14 +2610,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value uuid-value-gen]
+          (prop/for-all [value fg/uuid-value]
             (= (type/uuid value) (s2/conform :fhir.xml/uuid (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [uuid-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/uuid-value (gen/return nil)])]
               (= (type/uuid {:id id
                              :extension
                              [(type/extension {:url extension-url})]
@@ -2792,14 +2634,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value uuid-value-gen]
+          (prop/for-all [value fg/uuid-value]
             (= (type/uuid value) (s2/conform :fhir.cbor/uuid value))))
 
         (testing "with extension"
           (satisfies-prop 100
-            (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                           extension-url uri-value-gen
-                           value (gen/one-of [uuid-value-gen (gen/return nil)])]
+            (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                           extension-url fg/uri-value
+                           value (gen/one-of [fg/uuid-value (gen/return nil)])]
               (= (type/uuid {:id id
                              :extension
                              [(type/extension {:url extension-url})]
@@ -2813,20 +2655,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value uuid-value-gen]
+        (prop/for-all [value fg/uuid-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/uuid value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value uuid-value-gen]
+          (prop/for-all [value fg/uuid-value]
             (= (sexp-value value) (s2/unform :fhir.xml/uuid (type/uuid value))))))
 
       (testing "with extension"
         (satisfies-prop 100
-          (prop/for-all [id (gen/one-of [id-value-gen (gen/return nil)])
-                         extension-url uri-value-gen
-                         value (gen/one-of [uuid-value-gen (gen/return nil)])]
+          (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
+                         extension-url fg/uri-value
+                         value (gen/one-of [fg/uuid-value (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -2838,7 +2680,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value uuid-value-gen]
+        (prop/for-all [value fg/uuid-value]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/uuid value)))))))))
 
 
@@ -2879,13 +2721,40 @@
 (deftest attachment-test
   (testing "FHIR spec"
     (testing "valid"
-      (are [x] (s2/valid? :fhir/Attachment x)
-        #fhir/Attachment{}
-        #fhir/Attachment{:contentType #fhir/code"text/plain"}))
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/attachment)]
+          (s2/valid? :fhir/Attachment x))))
 
     (testing "invalid"
       (are [x] (not (s2/valid? :fhir/Attachment x))
-        #fhir/Attachment{:contentType "text/plain"})))
+        #fhir/Attachment{:contentType "foo"})))
+
+  (testing "transforming"
+    (testing "JSON"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/attachment)]
+          (= (->> x
+                  fhir-spec/unform-json
+                  fhir-spec/parse-json
+                  (s2/conform :fhir.json/Attachment))
+             x))))
+
+    (testing "XML"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/attachment)]
+          (= (->> x
+                  fhir-spec/unform-xml
+                  (s2/conform :fhir.xml/Attachment))
+             x))))
+
+    (testing "CBOR"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/attachment)]
+          (= (->> x
+                  fhir-spec/unform-cbor
+                  fhir-spec/parse-cbor
+                  (s2/conform :fhir.cbor/Attachment))
+             x)))))
 
   (testing "conforming"
     (testing "JSON"
@@ -2933,22 +2802,12 @@
         {:_creation {:extension [{:url "url-132312"}]}}
         #fhir/Attachment{:creation #fhir/dateTime{:extension [#fhir/Extension{:url "url-132312"}]}})
 
-      (testing "dateTime property"
-        (satisfies-prop 1000
-          (prop/for-all [dateTime-value dateTime-value-gen
-                         extension-url uri-value-gen]
-            (= (type/map->Attachment
-                 {:creation
-                  (type/dateTime
-                    {:extension
-                     [(type/extension {:url extension-url})]
-                     :value dateTime-value})})
-               (s2/conform :fhir.json/Attachment
-                           {:creation dateTime-value
-                            :_creation {:extension [{:url extension-url}]}})))))
-
       (testing "unknown keys are ignored"
         (is (= (s2/conform :fhir.json/Attachment {::unknown "unknown"})
+               #fhir/Attachment{})))
+
+      (testing "invalid underscore properties are ignored"
+        (is (= (s2/conform :fhir.json/Attachment {:_contentType "foo"})
                #fhir/Attachment{}))))
 
     (testing "XML"
@@ -3059,31 +2918,7 @@
 
         #fhir/Attachment{:creation #fhir/dateTime{:extension [#fhir/Extension{:url "url-132333"}] :value "2022"}}
         {:creation "2022"
-         :_creation {:extension [{:url "url-132333"}]}})
-
-      (testing "dateTime property"
-        (satisfies-prop 1000
-          (prop/for-all [dateTime-value dateTime-value-gen]
-            (= (fhir-spec/parse-json
-                 (fhir-spec/unform-json
-                   (type/map->Attachment
-                     {:creation (type/dateTime dateTime-value)})))
-               {:creation dateTime-value})))
-
-        (testing "with extension"
-          (satisfies-prop 1000
-            (prop/for-all [dateTime-value dateTime-value-gen
-                           extension-url uri-value-gen]
-              (= (fhir-spec/parse-json
-                   (fhir-spec/unform-json
-                     (type/map->Attachment
-                       {:creation
-                        (type/dateTime
-                          {:extension
-                           [(type/extension {:url extension-url})]
-                           :value dateTime-value})})))
-                 {:creation dateTime-value
-                  :_creation {:extension [{:url extension-url}]}}))))))
+         :_creation {:extension [{:url "url-132333"}]}}))
 
     (testing "XML"
       (are [fhir xml] (= xml (fhir-spec/unform-xml fhir))
@@ -3162,15 +2997,40 @@
 (deftest extension-test
   (testing "FHIR spec"
     (testing "valid"
-      (are [x] (s2/valid? :fhir/Extension x)
-        #fhir/Extension{}
-        #fhir/Extension{:value #fhir/code"bar"}
-        #fhir/Extension{:url "foo" :value #fhir/code"bar"}
-        #fhir/Extension{:url "foo" :value #fhir/string"bar"}))
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/extension)]
+          (s2/valid? :fhir/Extension x))))
 
     (testing "invalid"
       (are [x] (not (s2/valid? :fhir/Extension x))
         #fhir/Extension{:url 1})))
+
+  (testing "transforming"
+    (testing "JSON"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/extension)]
+          (= (->> x
+                  fhir-spec/unform-json
+                  fhir-spec/parse-json
+                  (s2/conform :fhir.json/Extension))
+             x))))
+
+    (testing "XML"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/extension)]
+          (= (->> x
+                  fhir-spec/unform-xml
+                  (s2/conform :fhir.xml/Extension))
+             x))))
+
+    (testing "CBOR"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/extension)]
+          (= (->> x
+                  fhir-spec/unform-cbor
+                  fhir-spec/parse-cbor
+                  (s2/conform :fhir.cbor/Extension))
+             x)))))
 
   (testing "conforming"
     (testing "JSON"
@@ -3185,7 +3045,7 @@
         #fhir/Extension{:url "foo" :value #fhir/Reference{:reference "bar"}}
 
         {:url "foo" :valueCodeableConcept {:text "bar"}}
-        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text "bar"}}))
+        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text #fhir/string"bar"}}))
 
     (testing "XML"
       (are [xml fhir] (= fhir (s2/conform :fhir.xml/Extension xml))
@@ -3199,7 +3059,7 @@
         #fhir/Extension{:url "foo" :value #fhir/Reference{:reference "bar"}}
 
         (sexp [nil {:url "foo"} [::f/valueCodeableConcept {} [::f/text {:value "bar"}]]])
-        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text "bar"}}))
+        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text #fhir/string"bar"}}))
 
     (testing "CBOR"
       (are [json fhir] (= fhir (s2/conform :fhir.cbor/Extension json))
@@ -3213,7 +3073,7 @@
         #fhir/Extension{:url "foo" :value #fhir/Reference{:reference "bar"}}
 
         {:url "foo" :valueCodeableConcept {:text "bar"}}
-        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text "bar"}})))
+        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text #fhir/string"bar"}})))
 
   (testing "unforming"
     (testing "JSON"
@@ -3239,7 +3099,7 @@
         #fhir/Extension{:value #fhir/CodeableConcept{}}
         {:valueCodeableConcept {}}
 
-        #fhir/Extension{:value #fhir/CodeableConcept{:text "text-104840"}}
+        #fhir/Extension{:value #fhir/CodeableConcept{:text #fhir/string"text-104840"}}
         {:valueCodeableConcept {:text "text-104840"}}
 
         #fhir/Extension
@@ -3285,13 +3145,40 @@
 (deftest coding-test
   (testing "FHIR spec"
     (testing "valid"
-      (are [x] (s2/valid? :fhir/Coding x)
-        #fhir/Coding{}
-        #fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}))
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/coding)]
+          (s2/valid? :fhir/Coding x))))
 
     (testing "invalid"
       (are [x] (not (s2/valid? :fhir/Coding x))
         #fhir/Coding{:system "foo"})))
+
+  (testing "transforming"
+    (testing "JSON"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/coding)]
+          (= (->> x
+                  fhir-spec/unform-json
+                  fhir-spec/parse-json
+                  (s2/conform :fhir.json/Coding))
+             x))))
+
+    (testing "XML"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/coding)]
+          (= (->> x
+                  fhir-spec/unform-xml
+                  (s2/conform :fhir.xml/Coding))
+             x))))
+
+    (testing "CBOR"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/coding)]
+          (= (->> x
+                  fhir-spec/unform-cbor
+                  fhir-spec/parse-cbor
+                  (s2/conform :fhir.cbor/Coding))
+             x)))))
 
   (testing "conforming"
     (testing "JSON"
@@ -3356,15 +3243,40 @@
 (deftest codeable-concept-test
   (testing "FHIR spec"
     (testing "valid"
-      (are [x] (s2/valid? :fhir/CodeableConcept x)
-        #fhir/CodeableConcept{}
-        #fhir/CodeableConcept{:coding []}
-        #fhir/CodeableConcept{:coding [#fhir/Coding{}]}
-        #fhir/CodeableConcept{:text "foo"}))
+      (satisfies-prop 100
+        (prop/for-all [x (fg/codeable-concept)]
+          (s2/valid? :fhir/CodeableConcept x))))
 
     (testing "invalid"
       (are [x] (not (s2/valid? :fhir/CodeableConcept x))
         #fhir/CodeableConcept{:text 1})))
+
+  (testing "transforming"
+    (testing "JSON"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/codeable-concept)]
+          (= (->> x
+                  fhir-spec/unform-json
+                  fhir-spec/parse-json
+                  (s2/conform :fhir.json/CodeableConcept))
+             x))))
+
+    (testing "XML"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/codeable-concept)]
+          (= (->> x
+                  fhir-spec/unform-xml
+                  (s2/conform :fhir.xml/CodeableConcept))
+             x))))
+
+    (testing "CBOR"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/codeable-concept)]
+          (= (->> x
+                  fhir-spec/unform-cbor
+                  fhir-spec/parse-cbor
+                  (s2/conform :fhir.cbor/CodeableConcept))
+             x)))))
 
   (testing "conforming"
     (testing "JSON"
@@ -3374,7 +3286,7 @@
         {:coding [{}]}
         #fhir/CodeableConcept{:coding [#fhir/Coding{}]}
         {:text "text-223528"}
-        #fhir/CodeableConcept{:text "text-223528"})))
+        #fhir/CodeableConcept{:text #fhir/string"text-223528"})))
 
   (testing "unforming"
     (testing "JSON"
@@ -3394,7 +3306,7 @@
         #fhir/CodeableConcept{:coding [#fhir/Coding{}]}
         {:coding [{}]}
 
-        #fhir/CodeableConcept{:text "text-223528"}
+        #fhir/CodeableConcept{:text #fhir/string"text-223528"}
         {:text "text-223528"}))))
 
 
@@ -3403,8 +3315,8 @@
     (testing "JSON"
       (testing "valid"
         (are [json fhir] (= fhir (s2/conform :fhir.json.Quantity/unit json))
-          " " " "
-          "unit-103640" "unit-103640"))
+          " " #fhir/string" "
+          "unit-103640" #fhir/string"unit-103640"))
 
       (testing "invalid"
         (are [json] (not (s2/valid? :fhir.json.Quantity/unit json))
@@ -3415,12 +3327,40 @@
 (deftest quantity-test
   (testing "FHIR spec"
     (testing "valid"
-      (are [x] (s2/valid? :fhir/Quantity x)
-        #fhir/Quantity{}))
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/quantity)]
+          (s2/valid? :fhir/Quantity x))))
 
     (testing "invalid"
       (are [x] (not (s2/valid? :fhir/Quantity x))
         #fhir/Quantity{:value "1"})))
+
+  (testing "transforming"
+    (testing "JSON"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/quantity)]
+          (= (->> x
+                  fhir-spec/unform-json
+                  fhir-spec/parse-json
+                  (s2/conform :fhir.json/Quantity))
+             x))))
+
+    (testing "XML"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/quantity)]
+          (= (->> x
+                  fhir-spec/unform-xml
+                  (s2/conform :fhir.xml/Quantity))
+             x))))
+
+    (testing "CBOR"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/quantity)]
+          (= (->> x
+                  fhir-spec/unform-cbor
+                  fhir-spec/parse-cbor
+                  (s2/conform :fhir.cbor/Quantity))
+             x)))))
 
   (testing "conforming"
     (testing "JSON"
@@ -3455,7 +3395,7 @@
         #fhir/Quantity{:comparator #fhir/code"code-153342"}
         {:comparator "code-153342"}
 
-        #fhir/Quantity{:unit "string-153351"}
+        #fhir/Quantity{:unit #fhir/string"string-153351"}
         {:unit "string-153351"}
 
         #fhir/Quantity{:system #fhir/uri"system-153337"}
@@ -3468,13 +3408,40 @@
 (deftest period-test
   (testing "FHIR spec"
     (testing "valid"
-      (are [x] (s2/valid? :fhir/Period x)
-        #fhir/Period{}
-        #fhir/Period{:start #fhir/dateTime"2020"}))
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/period)]
+          (s2/valid? :fhir/Period x))))
 
     (testing "invalid"
       (are [x] (not (s2/valid? :fhir/Period x))
         #fhir/Period{:start "2020"})))
+
+  (testing "transforming"
+    (testing "JSON"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/period)]
+          (= (->> x
+                  fhir-spec/unform-json
+                  fhir-spec/parse-json
+                  (s2/conform :fhir.json/Period))
+             x))))
+
+    (testing "XML"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/period)]
+          (= (->> x
+                  fhir-spec/unform-xml
+                  (s2/conform :fhir.xml/Period))
+             x))))
+
+    (testing "CBOR"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/period)]
+          (= (->> x
+                  fhir-spec/unform-cbor
+                  fhir-spec/parse-cbor
+                  (s2/conform :fhir.cbor/Period))
+             x)))))
 
   (testing "conforming"
     (testing "JSON"
@@ -3519,13 +3486,40 @@
 (deftest identifier-test
   (testing "FHIR spec"
     (testing "valid"
-      (are [x] (s2/valid? :fhir/Identifier x)
-        #fhir/Identifier{}
-        #fhir/Identifier{:use #fhir/code"usual"}))
+      (satisfies-prop 100
+        (prop/for-all [x (fg/identifier :assigner (fg/often-nil (fg/reference)))]
+          (s2/valid? :fhir/Identifier x))))
 
     (testing "invalid"
       (are [x] (not (s2/valid? :fhir/Identifier x))
         #fhir/Identifier{:use "usual"})))
+
+  (testing "transforming"
+    (testing "JSON"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/identifier :assigner (fg/often-nil (fg/reference)))]
+          (= (->> x
+                  fhir-spec/unform-json
+                  fhir-spec/parse-json
+                  (s2/conform :fhir.json/Identifier))
+             x))))
+
+    (testing "XML"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/identifier :assigner (fg/often-nil (fg/reference)))]
+          (= (->> x
+                  fhir-spec/unform-xml
+                  (s2/conform :fhir.xml/Identifier))
+             x))))
+
+    (testing "CBOR"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/identifier :assigner (fg/often-nil (fg/reference)))]
+          (= (->> x
+                  fhir-spec/unform-cbor
+                  fhir-spec/parse-cbor
+                  (s2/conform :fhir.cbor/Identifier))
+             x)))))
 
   (testing "conforming"
     (testing "JSON"
@@ -3535,6 +3529,9 @@
 
         {:use "usual"}
         #fhir/Identifier{:use #fhir/code"usual"}
+
+        {:value "value-151311"}
+        #fhir/Identifier{:value #fhir/string"value-151311"}
 
         {:use 1}
         ::s2/invalid)))
@@ -3608,13 +3605,40 @@
 (deftest human-name-test
   (testing "FHIR spec"
     (testing "valid"
-      (are [x] (s2/valid? :fhir/HumanName x)
-        #fhir/HumanName{}
-        #fhir/HumanName{:use #fhir/code"usual"}))
+      (satisfies-prop 100
+        (prop/for-all [x (fg/human-name)]
+          (s2/valid? :fhir/HumanName x))))
 
     (testing "invalid"
       (are [x] (not (s2/valid? :fhir/HumanName x))
         #fhir/HumanName{:use "usual"})))
+
+  (testing "transforming"
+    (testing "JSON"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/human-name)]
+          (= (->> x
+                  fhir-spec/unform-json
+                  fhir-spec/parse-json
+                  (s2/conform :fhir.json/HumanName))
+             x))))
+
+    (testing "XML"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/human-name)]
+          (= (->> x
+                  fhir-spec/unform-xml
+                  (s2/conform :fhir.xml/HumanName))
+             x))))
+
+    (testing "CBOR"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/human-name)]
+          (= (->> x
+                  fhir-spec/unform-cbor
+                  fhir-spec/parse-cbor
+                  (s2/conform :fhir.cbor/HumanName))
+             x)))))
 
   (testing "conforming"
     (testing "JSON"
@@ -3627,6 +3651,32 @@
 
         {:given ["given-212441"]}
         #fhir/HumanName{:given ["given-212441"]}
+
+        {:_given [{:extension [{:url "url-143610"}]}]}
+        #fhir/HumanName{:given [#fhir/string{:extension [#fhir/Extension{:url "url-143610"}]}]}
+
+        {:given ["given-143625"]
+         :_given [{:extension [{:url "url-143619"}]}]}
+        #fhir/HumanName{:given [#fhir/string{:extension [#fhir/Extension{:url "url-143619"}] :value "given-143625"}]}
+
+        {:given ["given-212448" "given-212454"]}
+        #fhir/HumanName{:given ["given-212448" "given-212454"]}
+
+        {:given ["given-143759" "given-143809"]
+         :_given [{:extension [{:url "url-143750"}]} {:extension [{:url "url-143806"}]}]}
+        #fhir/HumanName
+                {:given
+                 [#fhir/string{:extension [#fhir/Extension{:url "url-143750"}]
+                               :value "given-143759"}
+                  #fhir/string{:extension [#fhir/Extension{:url "url-143806"}]
+                               :value "given-143809"}]}
+
+        {:given ["given-143759" nil]
+         :_given [nil {:extension [{:url "url-143806"}]}]}
+        #fhir/HumanName
+                {:given
+                 [#fhir/string"given-143759"
+                  #fhir/string{:extension [#fhir/Extension{:url "url-143806"}]}]}
 
         {:use 1}
         ::s2/invalid))
@@ -3669,8 +3719,31 @@
         #fhir/HumanName{:given ["given-212441"]}
         {:given ["given-212441"]}
 
+        #fhir/HumanName{:given [#fhir/string{:extension [#fhir/Extension{:url "url-143610"}]}]}
+        {:_given [{:extension [{:url "url-143610"}]}]}
+
+        #fhir/HumanName{:given [#fhir/string{:extension [#fhir/Extension{:url "url-143619"}] :value "given-143625"}]}
+        {:given ["given-143625"]
+         :_given [{:extension [{:url "url-143619"}]}]}
+
         #fhir/HumanName{:given ["given-212448" "given-212454"]}
         {:given ["given-212448" "given-212454"]}
+
+        #fhir/HumanName
+                {:given
+                 [#fhir/string{:extension [#fhir/Extension{:url "url-143750"}]
+                               :value "given-143759"}
+                  #fhir/string{:extension [#fhir/Extension{:url "url-143806"}]
+                               :value "given-143809"}]}
+        {:given ["given-143759" "given-143809"]
+         :_given [{:extension [{:url "url-143750"}]} {:extension [{:url "url-143806"}]}]}
+
+        #fhir/HumanName
+                {:given
+                 [#fhir/string"given-143759"
+                  #fhir/string{:extension [#fhir/Extension{:url "url-143806"}]}]}
+        {:given ["given-143759" nil]
+         :_given [nil {:extension [{:url "url-143806"}]}]}
 
         #fhir/HumanName{:period #fhir/Period{}}
         {:period {}}))
@@ -3713,13 +3786,40 @@
 (deftest address-test
   (testing "FHIR spec"
     (testing "valid"
-      (are [x] (s2/valid? :fhir/Address x)
-        #fhir/Address{}
-        #fhir/Address{:use #fhir/code"usual"}))
+      (satisfies-prop 100
+        (prop/for-all [x (fg/address)]
+          (s2/valid? :fhir/Address x))))
 
     (testing "invalid"
       (are [x] (not (s2/valid? :fhir/Address x))
         #fhir/Address{:use "usual"})))
+
+  (testing "transforming"
+    (testing "JSON"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/address)]
+          (= (->> x
+                  fhir-spec/unform-json
+                  fhir-spec/parse-json
+                  (s2/conform :fhir.json/Address))
+             x))))
+
+    (testing "XML"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/address)]
+          (= (->> x
+                  fhir-spec/unform-xml
+                  (s2/conform :fhir.xml/Address))
+             x))))
+
+    (testing "CBOR"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/address)]
+          (= (->> x
+                  fhir-spec/unform-cbor
+                  fhir-spec/parse-cbor
+                  (s2/conform :fhir.cbor/Address))
+             x)))))
 
   (testing "conforming"
     (testing "JSON"
@@ -3828,13 +3928,40 @@
 (deftest reference-test
   (testing "FHIR spec"
     (testing "valid"
-      (are [x] (s2/valid? :fhir/Reference x)
-        #fhir/Reference{}
-        #fhir/Reference{:reference "Patient/1"}))
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/reference)]
+          (s2/valid? :fhir/Reference x))))
 
     (testing "invalid"
       (are [x] (not (s2/valid? :fhir/Reference x))
         #fhir/Reference{:reference 1})))
+
+  (testing "transforming"
+    (testing "JSON"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/reference)]
+          (= (->> x
+                  fhir-spec/unform-json
+                  fhir-spec/parse-json
+                  (s2/conform :fhir.json/Reference))
+             x))))
+
+    (testing "XML"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/reference)]
+          (= (->> x
+                  fhir-spec/unform-xml
+                  (s2/conform :fhir.xml/Reference))
+             x))))
+
+    (testing "CBOR"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/reference)]
+          (= (->> x
+                  fhir-spec/unform-cbor
+                  fhir-spec/parse-cbor
+                  (s2/conform :fhir.cbor/Reference))
+             x)))))
 
   (testing "conforming"
     (testing "JSON"
@@ -3856,9 +3983,6 @@
 
         #fhir/Reference{:id "id-155426"}
         {:id "id-155426"}
-
-        #fhir/Reference{:extension []}
-        {:extension []}
 
         #fhir/Reference{:extension [#fhir/Extension{}]}
         {:extension [{}]}
@@ -3882,14 +4006,40 @@
 (deftest meta-test
   (testing "FHIR spec"
     (testing "valid"
-      (are [x] (s2/valid? :fhir/Meta x)
-        #fhir/Meta{}
-        #fhir/Meta{:versionId #fhir/id"1"}
-        (type/mk-meta {:lastUpdated Instant/EPOCH})))
+      (satisfies-prop 100
+        (prop/for-all [x (fg/meta)]
+          (s2/valid? :fhir/Meta x))))
 
     (testing "invalid"
       (are [x] (not (s2/valid? :fhir/Meta x))
         #fhir/Identifier{:versionId "1"})))
+
+  (testing "transforming"
+    (testing "JSON"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/meta)]
+          (= (->> x
+                  fhir-spec/unform-json
+                  fhir-spec/parse-json
+                  (s2/conform :fhir.json/Meta))
+             x))))
+
+    (testing "XML"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/meta)]
+          (= (->> x
+                  fhir-spec/unform-xml
+                  (s2/conform :fhir.xml/Meta))
+             x))))
+
+    (testing "CBOR"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/meta)]
+          (= (->> x
+                  fhir-spec/unform-cbor
+                  fhir-spec/parse-cbor
+                  (s2/conform :fhir.cbor/Meta))
+             x)))))
 
   (testing "conforming"
     (testing "JSON"
@@ -3904,7 +4054,7 @@
         ::s2/invalid
 
         {:lastUpdated "1970-01-01T00:00:00Z"}
-        (type/mk-meta {:lastUpdated Instant/EPOCH}))))
+        (type/meta {:lastUpdated Instant/EPOCH}))))
 
   (testing "unforming"
     (testing "JSON"
@@ -3915,9 +4065,6 @@
         #fhir/Meta{:id "id-155426"}
         {:id "id-155426"}
 
-        #fhir/Meta{:extension []}
-        {:extension []}
-
         #fhir/Meta{:extension [#fhir/Extension{}]}
         {:extension [{}]}
 
@@ -3927,7 +4074,7 @@
         #fhir/Meta{:versionId #fhir/id"versionId-161812"}
         {:versionId "versionId-161812"}
 
-        (type/mk-meta {:lastUpdated Instant/EPOCH})
+        (type/meta {:lastUpdated Instant/EPOCH})
         {:lastUpdated "1970-01-01T00:00:00Z"}
 
         #fhir/Meta{:source #fhir/uri"source-162704"}
@@ -3936,17 +4083,11 @@
         #fhir/Meta{:profile [#fhir/canonical"profile-uri-145024"]}
         {:profile ["profile-uri-145024"]}
 
-        #fhir/Meta{:security []}
-        {:security []}
-
         #fhir/Meta{:security [#fhir/Coding{}]}
         {:security [{}]}
 
         #fhir/Meta{:security [#fhir/Coding{} #fhir/Coding{}]}
         {:security [{} {}]}
-
-        #fhir/Meta{:tag []}
-        {:tag []}
 
         #fhir/Meta{:tag [#fhir/Coding{}]}
         {:tag [{}]}
@@ -3956,6 +4097,33 @@
 
 
 (deftest bundle-entry-search-test
+  (testing "transforming"
+    (testing "JSON"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/bundle-entry-search)]
+          (= (->> x
+                  fhir-spec/unform-json
+                  fhir-spec/parse-json
+                  (s2/conform :fhir.json.Bundle.entry/search))
+             x))))
+
+    (testing "XML"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/bundle-entry-search)]
+          (= (->> x
+                  (s2/unform :fhir.xml.Bundle.entry/search)
+                  (s2/conform :fhir.xml.Bundle.entry/search))
+             x))))
+
+    (testing "CBOR"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/bundle-entry-search)]
+          (= (->> x
+                  fhir-spec/unform-cbor
+                  fhir-spec/parse-cbor
+                  (s2/conform :fhir.cbor.Bundle.entry/search))
+             x)))))
+
   (testing "conforming"
     (testing "JSON"
       (are [json fhir] (= fhir (s2/conform :fhir.json.Bundle.entry/search json))
@@ -3994,9 +4162,6 @@
         #fhir/BundleEntrySearch{:id "id-115229"}
         {:id "id-115229"}
 
-        #fhir/BundleEntrySearch{:extension []}
-        {:extension []}
-
         #fhir/BundleEntrySearch{:extension [#fhir/Extension{}]}
         {:extension [{}]}
 
@@ -4016,9 +4181,6 @@
 
         #fhir/BundleEntrySearch{:id "id-115229"}
         {:id "id-115229"}
-
-        #fhir/BundleEntrySearch{:extension []}
-        {:extension []}
 
         #fhir/BundleEntrySearch{:extension [#fhir/Extension{}]}
         {:extension [{}]}
@@ -4040,7 +4202,7 @@
   (testing "transforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [patient patient-gen]
+        (prop/for-all [patient (fg/patient)]
           (= (-> patient
                  fhir-spec/unform-json
                  fhir-spec/parse-json
@@ -4049,7 +4211,7 @@
 
     (testing "XML"
       (satisfies-prop 100
-        (prop/for-all [patient patient-gen]
+        (prop/for-all [patient (fg/patient)]
           (= (-> patient
                  fhir-spec/unform-xml
                  fhir-spec/conform-xml)
@@ -4057,7 +4219,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [patient patient-gen]
+        (prop/for-all [patient (fg/patient)]
           (= (-> patient
                  fhir-spec/unform-cbor
                  fhir-spec/parse-cbor
@@ -4079,116 +4241,122 @@
 
 
 (deftest observation-test
+  (testing "transforming"
+    (testing "JSON"
+      (satisfies-prop 10
+        (prop/for-all [observation (fg/observation)]
+          (= (-> observation
+                 fhir-spec/unform-json
+                 fhir-spec/parse-json
+                 fhir-spec/conform-json)
+             observation))))
+
+    (testing "XML"
+      (satisfies-prop 10
+        (prop/for-all [observation (fg/observation)]
+          (= (-> observation
+                 fhir-spec/unform-xml
+                 fhir-spec/conform-xml)
+             observation))))
+
+    (testing "CBOR"
+      (satisfies-prop 10
+        (prop/for-all [observation (fg/observation)]
+          (= (-> observation
+                 fhir-spec/unform-cbor
+                 fhir-spec/parse-cbor
+                 fhir-spec/conform-cbor)
+             observation)))))
+
   (testing "references"
     (are [x refs] (= refs (type/references x))
       {:fhir/type :fhir/Observation
        :subject #fhir/Reference{:reference "Patient/0"}}
-      [["Patient" "0"]]))
+      [["Patient" "0"]])))
 
-  (testing "unforming"
+
+(deftest procedure-test
+  (testing "transforming"
     (testing "JSON"
-      (testing "string property"
-        (satisfies-prop 100
-          (prop/for-all [value string-value-gen]
-            (= (fhir-spec/parse-json
-                 (fhir-spec/unform-json
-                   {:fhir/type :fhir/Observation
-                    :value value}))
-               {:resourceType "Observation"
-                :valueString value})))
-
-        (testing "with extension"
-          (satisfies-prop 100
-            (prop/for-all [value (gen/one-of [string-value-gen (gen/return nil)])
-                           extension-url uri-value-gen]
-              (= (fhir-spec/parse-json
-                   (fhir-spec/unform-json
-                     {:fhir/type :fhir/Observation
-                      :value
-                      (type/string
-                        {:extension
-                         [(type/extension {:url extension-url})]
-                         :value value})}))
-                 (cond->
-                   {:resourceType "Observation"
-                    :_valueString {:extension [{:url extension-url}]}}
-                   value (assoc :valueString value)))))))
-
-      (testing "boolean property"
-        (satisfies-prop 100
-          (prop/for-all [value gen/boolean]
-            (= (fhir-spec/parse-json
-                 (fhir-spec/unform-json
-                   {:fhir/type :fhir/Observation
-                    :value value}))
-               {:resourceType "Observation"
-                :valueBoolean value})))
-
-        (testing "with extension"
-          (satisfies-prop 100
-            (prop/for-all [value (gen/one-of [gen/boolean (gen/return nil)])
-                           extension-url uri-value-gen]
-              (= (fhir-spec/parse-json
-                   (fhir-spec/unform-json
-                     {:fhir/type :fhir/Observation
-                      :value
-                      (type/boolean
-                        {:extension
-                         [(type/extension {:url extension-url})]
-                         :value value})}))
-                 (cond->
-                   {:resourceType "Observation"
-                    :_valueBoolean {:extension [{:url extension-url}]}}
-                   (some? value) (assoc :valueBoolean value))))))))
+      (satisfies-prop 10
+        (prop/for-all [procedure (fg/procedure)]
+          (= (-> procedure
+                 fhir-spec/unform-json
+                 fhir-spec/parse-json
+                 fhir-spec/conform-json)
+             procedure))))
 
     (testing "XML"
-      (testing "string property"
-        (satisfies-prop 100
-          (prop/for-all [value string-value-gen]
-            (= (fhir-spec/unform-xml
-                 {:fhir/type :fhir/Observation
-                  :value value})
-               (sexp [::f/Observation {:xmlns "http://hl7.org/fhir"}
-                      [::f/valueString {:value value}]]))))
+      (satisfies-prop 10
+        (prop/for-all [procedure (fg/procedure)]
+          (= (-> procedure
+                 fhir-spec/unform-xml
+                 fhir-spec/conform-xml)
+             procedure))))
 
-        (testing "with extension"
-          (satisfies-prop 100
-            (prop/for-all [value (gen/one-of [string-value-gen (gen/return nil)])
-                           extension-url uri-value-gen]
-              (= (fhir-spec/unform-xml
-                   {:fhir/type :fhir/Observation
-                    :value
-                    (type/string
-                      {:extension
-                       [(type/extension {:url extension-url})]
-                       :value value})})
-                 (sexp [::f/Observation {:xmlns "http://hl7.org/fhir"}
-                        [::f/valueString (cond-> {} value (assoc :value value))
-                         [::f/extension {:url extension-url}]]]))))))
+    (testing "CBOR"
+      (satisfies-prop 10
+        (prop/for-all [procedure (fg/procedure)]
+          (= (-> procedure
+                 fhir-spec/unform-cbor
+                 fhir-spec/parse-cbor
+                 fhir-spec/conform-cbor)
+             procedure)))))
 
-      (testing "boolean property"
-        (satisfies-prop 100
-          (prop/for-all [value gen/boolean]
-            (= (fhir-spec/unform-xml
-                 {:fhir/type :fhir/Observation
-                  :value value})
-               (sexp [::f/Observation {:xmlns "http://hl7.org/fhir"}
-                      [::f/valueBoolean {:value (str value)}]]))))
+  (testing "references"
+    (are [x refs] (= refs (type/references x))
+      {:fhir/type :fhir/Procedure
+       :instantiatesCanonical
+       [#fhir/uri
+               {:extension
+                [#fhir/Extension
+                        {:value #fhir/Reference{:reference "Procedure/153904"}}]}
+        #fhir/uri
+                {:extension
+                 [#fhir/Extension
+                         {:value #fhir/Reference{:reference "Condition/153931"}}]}]
+       :instantiatesUri
+       [#fhir/uri
+               {:extension
+                [#fhir/Extension
+                        {:value #fhir/Reference{:reference "Patient/153540"}}]}
+        #fhir/uri
+               {:extension
+                [#fhir/Extension
+                        {:value #fhir/Reference{:reference "Observation/153628"}}]}]}
+      [["Procedure" "153904"]
+       ["Condition" "153931"]
+       ["Patient" "153540"]
+       ["Observation" "153628"]])))
 
-        (testing "with extension"
-          (satisfies-prop 100
-            (prop/for-all [value (gen/one-of [gen/boolean (gen/return nil)])
-                           extension-url uri-value-gen]
-              (= (fhir-spec/unform-xml
-                   {:fhir/type :fhir/Observation
-                    :value
-                    (type/boolean
-                      {:extension
-                       [(type/extension {:url extension-url})]
-                       :value value})})
-                 (sexp [::f/Observation {:xmlns "http://hl7.org/fhir"}
-                        [::f/valueBoolean (cond-> {} (some? value) (assoc :value (str value)))
-                         [::f/extension {:url extension-url}]]])))))))))
+
+(deftest allergy-intolerance-test
+  (testing "transforming"
+    (testing "JSON"
+      (satisfies-prop 10
+        (prop/for-all [allergy-intolerance (fg/allergy-intolerance)]
+          (= (-> allergy-intolerance
+                 fhir-spec/unform-json
+                 fhir-spec/parse-json
+                 fhir-spec/conform-json)
+             allergy-intolerance))))
+
+    (testing "XML"
+      (satisfies-prop 10
+        (prop/for-all [allergy-intolerance (fg/allergy-intolerance)]
+          (= (-> allergy-intolerance
+                 fhir-spec/unform-xml
+                 fhir-spec/conform-xml)
+             allergy-intolerance))))
+
+    (testing "CBOR"
+      (satisfies-prop 10
+        (prop/for-all [allergy-intolerance (fg/allergy-intolerance)]
+          (= (-> allergy-intolerance
+                 fhir-spec/unform-cbor
+                 fhir-spec/parse-cbor
+                 fhir-spec/conform-cbor)
+             allergy-intolerance))))))
 
 
 (deftest provenance-test

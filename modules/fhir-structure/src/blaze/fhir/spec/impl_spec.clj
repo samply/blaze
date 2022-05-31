@@ -1,14 +1,7 @@
 (ns blaze.fhir.spec.impl-spec
   (:require
     [blaze.fhir.spec.impl :as impl]
-    [clojure.spec.alpha :as s])
-  (:import
-    [java.util.regex Pattern]))
-
-
-(s/fdef impl/xml-value-matches?
-  :args (s/cat :regex #(instance? Pattern %) :element impl/element?)
-  :ret boolean?)
+    [clojure.spec.alpha :as s]))
 
 
 (s/fdef impl/primitive-type->spec-defs

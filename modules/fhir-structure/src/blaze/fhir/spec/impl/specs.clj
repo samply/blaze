@@ -22,7 +22,7 @@
     (reify
       sp/Spec
       (conform* [_ x _ _]
-        (if (and (string? x) (re-matches pattern x))
+        (if (and (string? x) (.matches (re-matcher pattern x)))
           (f x)
           ::s/invalid))
       (unform* [_ x] x)
@@ -66,7 +66,7 @@
       sp/Spec
       (conform* [_ x _ _]
         (cond
-          (and (string? x) (re-matches pattern x)) (f x)
+          (and (string? x) (.matches (re-matcher pattern x))) (f x)
 
           (map? x)
           (let [conformed (s/conform @extended-spec x)]
@@ -261,7 +261,7 @@
         (if (map? x)
           (let [res (reduce-kv
                       (fn [ret k v]
-                        (if-let [conformed (when-let [sp (@specs k)] (sp/conform* sp v k settings))]
+                        (if-some [conformed (when-let [sp (@specs k)] (sp/conform* sp v k settings))]
                           (if (s/invalid? conformed)
                             (reduced ::s/invalid)
                             (assoc ret (internal-key k) conformed))

@@ -4,6 +4,8 @@
     [blaze.fhir.spec.impl-spec]
     [blaze.fhir.spec.impl.specs :as specs]
     [blaze.fhir.spec.impl.util-spec]
+    [blaze.fhir.spec.impl.xml :as xml]
+    [blaze.fhir.spec.impl.xml-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.structure-definition-repo :as u]
     [blaze.test-util :refer [with-system]]
@@ -64,9 +66,9 @@
               {:key :fhir.xml/boolean
                :spec-form
                `(s2/and
-                  impl/element?
-                  (fn [~'e] (impl/xml-value-matches? "true|false" ~'e))
-                  (s2/conformer impl/remove-character-content impl/set-extension-tag)
+                  xml/element?
+                  (fn [~'e] (xml/value-matches? "true|false" ~'e))
+                  (s2/conformer xml/remove-character-content xml/set-extension-tag)
                   (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                   (s2/conformer type/xml->Boolean type/to-xml))}
               {:key :fhir.cbor/boolean
@@ -83,9 +85,9 @@
               {:key :fhir.xml/integer
                :spec-form
                `(s2/and
-                  impl/element?
-                  (fn [~'e] (impl/xml-value-matches? "-?([0]|([1-9][0-9]*))" ~'e))
-                  (s2/conformer impl/remove-character-content impl/set-extension-tag)
+                  xml/element?
+                  (fn [~'e] (xml/value-matches? "-?([0]|([1-9][0-9]*))" ~'e))
+                  (s2/conformer xml/remove-character-content xml/set-extension-tag)
                   (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                   (s2/conformer type/xml->Integer type/to-xml))}
               {:key :fhir.cbor/integer
@@ -102,9 +104,9 @@
               {:key :fhir.xml/string
                :spec-form
                `(s2/and
-                  impl/element?
-                  (fn [~'e] (impl/xml-value-matches? "[ \\r\\n\\t\\S]+" ~'e))
-                  (s2/conformer impl/remove-character-content impl/set-extension-tag)
+                  xml/element?
+                  (fn [~'e] (xml/value-matches? "[ \\r\\n\\t\\S]+" ~'e))
+                  (s2/conformer xml/remove-character-content xml/set-extension-tag)
                   (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                   (s2/conformer type/xml->String type/to-xml))}
               {:key :fhir.cbor/string
@@ -121,9 +123,9 @@
               {:key :fhir.xml/decimal
                :spec-form
                `(s2/and
-                  impl/element?
-                  (fn [~'e] (impl/xml-value-matches? "-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?" ~'e))
-                  (s2/conformer impl/remove-character-content impl/set-extension-tag)
+                  xml/element?
+                  (fn [~'e] (xml/value-matches? "-?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-]?[0-9]+)?" ~'e))
+                  (s2/conformer xml/remove-character-content xml/set-extension-tag)
                   (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                   (s2/conformer type/xml->Decimal type/to-xml))}
               {:key :fhir.cbor/decimal
@@ -139,9 +141,9 @@
               {:key :fhir.xml/uri
                :spec-form
                `(s2/and
-                  impl/element?
-                  (fn [~'e] (impl/xml-value-matches? "\\S*" ~'e))
-                  (s2/conformer impl/remove-character-content impl/set-extension-tag)
+                  xml/element?
+                  (fn [~'e] (xml/value-matches? "\\S*" ~'e))
+                  (s2/conformer xml/remove-character-content xml/set-extension-tag)
                   (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                   (s2/conformer type/xml->Uri type/to-xml))}
               {:key :fhir.cbor/uri
@@ -157,9 +159,9 @@
               {:key :fhir.xml/canonical
                :spec-form
                `(s2/and
-                  impl/element?
-                  (fn [~'e] (impl/xml-value-matches? "\\S*" ~'e))
-                  (s2/conformer impl/remove-character-content impl/set-extension-tag)
+                  xml/element?
+                  (fn [~'e] (xml/value-matches? "\\S*" ~'e))
+                  (s2/conformer xml/remove-character-content xml/set-extension-tag)
                   (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                   (s2/conformer type/xml->Canonical type/to-xml))}
               {:key :fhir.cbor/canonical
@@ -175,9 +177,9 @@
               {:key :fhir.xml/base64Binary
                :spec-form
                `(s2/and
-                  impl/element?
-                  (fn [~'e] (impl/xml-value-matches? "([0-9a-zA-Z\\\\+/=]{4})+" ~'e))
-                  (s2/conformer impl/remove-character-content impl/set-extension-tag)
+                  xml/element?
+                  (fn [~'e] (xml/value-matches? "([0-9a-zA-Z\\\\+/=]{4})+" ~'e))
+                  (s2/conformer xml/remove-character-content xml/set-extension-tag)
                   (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                   (s2/conformer type/xml->Base64Binary type/to-xml))}
               {:key :fhir.cbor/base64Binary
@@ -193,9 +195,9 @@
               {:key :fhir.xml/code
                :spec-form
                `(s2/and
-                  impl/element?
-                  (fn [~'e] (impl/xml-value-matches? "[^\\s]+(\\s[^\\s]+)*" ~'e))
-                  (s2/conformer impl/remove-character-content impl/set-extension-tag)
+                  xml/element?
+                  (fn [~'e] (xml/value-matches? "[^\\s]+(\\s[^\\s]+)*" ~'e))
+                  (s2/conformer xml/remove-character-content xml/set-extension-tag)
                   (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                   (s2/conformer type/xml->Code type/to-xml))}
               {:key :fhir.cbor/code
@@ -211,9 +213,9 @@
               {:key :fhir.xml/unsignedInt
                :spec-form
                `(s2/and
-                  impl/element?
-                  (fn [~'e] (impl/xml-value-matches? "[0]|([1-9][0-9]*)" ~'e))
-                  (s2/conformer impl/remove-character-content impl/set-extension-tag)
+                  xml/element?
+                  (fn [~'e] (xml/value-matches? "[0]|([1-9][0-9]*)" ~'e))
+                  (s2/conformer xml/remove-character-content xml/set-extension-tag)
                   (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                   (s2/conformer type/xml->UnsignedInt type/to-xml))}
               {:key :fhir.cbor/unsignedInt
@@ -229,9 +231,9 @@
               {:key :fhir.xml/positiveInt
                :spec-form
                `(s2/and
-                  impl/element?
-                  (fn [~'e] (impl/xml-value-matches? "[1-9][0-9]*" ~'e))
-                  (s2/conformer impl/remove-character-content impl/set-extension-tag)
+                  xml/element?
+                  (fn [~'e] (xml/value-matches? "[1-9][0-9]*" ~'e))
+                  (s2/conformer xml/remove-character-content xml/set-extension-tag)
                   (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                   (s2/conformer type/xml->PositiveInt type/to-xml))}
               {:key :fhir.cbor/positiveInt
@@ -247,9 +249,9 @@
               {:key :fhir.xml/uuid
                :spec-form
                `(s2/and
-                  impl/element?
-                  (fn [~'e] (impl/xml-value-matches? "urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" ~'e))
-                  (s2/conformer impl/remove-character-content impl/set-extension-tag)
+                  xml/element?
+                  (fn [~'e] (xml/value-matches? "urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" ~'e))
+                  (s2/conformer xml/remove-character-content xml/set-extension-tag)
                   (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                   (s2/conformer type/xml->Uuid type/to-xml))}
               {:key :fhir.cbor/uuid
@@ -267,7 +269,7 @@
               {:key :fhir.xml/xhtml
                :spec-form
                `(s2/and
-                  impl/element?
+                  xml/element?
                   (s2/conformer type/xml->Xhtml type/to-xml))}
               {:key :fhir.cbor/xhtml
                :spec-form `(s2/conformer type/->Xhtml identity)}])))))
@@ -354,15 +356,15 @@
     (testing "JSON representation of Bundle.id"
       (given (group-by :key (impl/struct-def->spec-def (resource structure-definition-repo "Bundle")))
         [:fhir.json.Bundle/id 0 :spec-form regexes->str]
-        := `(s2/and string? (fn [~'s] (re-matches "[A-Za-z0-9\\-\\.]{1,64}" ~'s)))))
+        := `(s2/and string? (fn [~'s] (.matches (re-matcher "[A-Za-z0-9\\-\\.]{1,64}" ~'s))))))
 
     (testing "XML representation of Bundle.id"
       (given (group-by :key (impl/struct-def->spec-def (resource structure-definition-repo "Bundle")))
         [:fhir.xml.Bundle/id 0 :spec-form regexes->str]
         := `(s2/and
-              impl/element?
+              xml/element?
               (s2/conformer impl/conform-xml-value impl/unform-xml-value)
-              (fn [~'s] (re-matches "[A-Za-z0-9\\-\\.]{1,64}" ~'s)))))
+              (fn [~'s] (.matches (re-matcher "[A-Za-z0-9\\-\\.]{1,64}" ~'s))))))
 
     (testing "JSON representation of Bundle.entry"
       (given (group-by :key (impl/struct-def->spec-def (resource structure-definition-repo "Bundle")))
@@ -473,12 +475,22 @@
     (testing "JSON representation of Quantity.unit"
       (given (group-by :key (impl/struct-def->spec-def (complex-type structure-definition-repo "Quantity")))
         [:fhir.json.Quantity/unit 0 :spec-form regexes->str]
-        := `(specs/regex "[ \\r\\n\\t\\S]+" impl/intern-string)))
+        := `(specs/json-regex-primitive "[ \\r\\n\\t\\S]+" type/intern-string)))
+
+    (testing "XML representation of Quantity.unit"
+      (given (group-by :key (impl/struct-def->spec-def (complex-type structure-definition-repo "Quantity")))
+        [:fhir.xml.Quantity/unit 0 :spec-form regexes->str]
+        := `(s2/and
+              xml/element?
+              (fn [~'e] (xml/value-matches? "[ \\r\\n\\t\\S]+" ~'e))
+              (s2/conformer xml/remove-character-content xml/set-extension-tag)
+              (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
+              (s2/conformer type/xml->InternedString type/to-xml))))
 
     (testing "CBOR representation of Quantity.unit"
       (given (group-by :key (impl/struct-def->spec-def (complex-type structure-definition-repo "Quantity")))
         [:fhir.cbor.Quantity/unit 0 :spec-form regexes->str]
-        := `(s2/conformer impl/intern-string)))))
+        := `(specs/cbor-primitive type/intern-string)))))
 
 
 (deftest elem-def->spec-def-test

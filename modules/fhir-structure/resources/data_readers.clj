@@ -1,5 +1,6 @@
 {blaze/hash blaze.fhir.hash/from-hex
  blaze/hash-prefix blaze.fhir.hash/prefix-from-hex
+ blaze/field-name blaze.fhir.spec.type.json/field-name
  fhir/boolean blaze.fhir.spec.type/boolean
  fhir/integer blaze.fhir.spec.type/integer
  fhir/long blaze.fhir.spec.type/long
@@ -21,17 +22,17 @@
  fhir/positiveInt blaze.fhir.spec.type/positiveInt
  fhir/uuid blaze.fhir.spec.type/uuid
  fhir/xhtml blaze.fhir.spec.type/->Xhtml
- fhir/Attachment blaze.fhir.spec.type/map->Attachment
+ fhir/Attachment blaze.fhir.spec.type/attachment
  fhir/Extension blaze.fhir.spec.type/extension
  fhir/Coding blaze.fhir.spec.type/coding
  fhir/CodeableConcept blaze.fhir.spec.type/codeable-concept
- fhir/Quantity blaze.fhir.spec.type/map->Quantity
- fhir/Period blaze.fhir.spec.type/map->Period
- fhir/Identifier blaze.fhir.spec.type/map->Identifier
- fhir/HumanName blaze.fhir.spec.type/map->HumanName
- fhir/Address blaze.fhir.spec.type/map->Address
- fhir/Reference blaze.fhir.spec.type/map->Reference
- fhir/Meta blaze.fhir.spec.type/mk-meta
- fhir/BundleEntrySearch blaze.fhir.spec.type/map->BundleEntrySearch
+ fhir/Quantity blaze.fhir.spec.type/quantity
+ fhir/Period blaze.fhir.spec.type/period
+ fhir/Identifier blaze.fhir.spec.type/identifier
+ fhir/HumanName blaze.fhir.spec.type/human-name
+ fhir/Address blaze.fhir.spec.type/address
+ fhir/Reference blaze.fhir.spec.type/reference
+ fhir/Meta blaze.fhir.spec.type/meta
+ fhir/BundleEntrySearch blaze.fhir.spec.type/bundle-entry-search
  system/date blaze.fhir.spec.type.system/parse-date
  system/date-time blaze.fhir.spec.type.system/parse-date-time}

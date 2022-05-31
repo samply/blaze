@@ -1,5 +1,7 @@
 (ns blaze.fhir.spec.type-test
   (:require
+    [blaze.byte-buffer :as bb]
+    [blaze.fhir.spec.generators :as fg]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type-spec]
     [blaze.fhir.spec.type.protocols :as p]
@@ -12,13 +14,15 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
+    [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as prop]
     [jsonista.core :as j])
   (:import
+    [com.fasterxml.jackson.core.io JsonStringEncoder]
     [com.fasterxml.jackson.databind ObjectMapper]
     [com.google.common.hash Hashing]
-    [java.time Instant LocalTime OffsetDateTime Year YearMonth
-               ZoneOffset]))
+    [java.nio.charset StandardCharsets]
+    [java.time Instant LocalTime OffsetDateTime ZoneOffset]))
 
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
@@ -49,7 +53,7 @@
 
 
 (defn- gen-json-string [x]
-  (j/write-value-as-string x object-mapper))
+  (String. ^bytes (j/write-value-as-bytes x object-mapper) StandardCharsets/UTF_8))
 
 
 (def ^:private sexp prxml/sexp-as-element)
@@ -208,9 +212,9 @@
     (testing "with extension"
       (are [x y] (not-interned? x y)
         (type/integer {:extension [internable-extension]
-                       :value #fhir/integer 165519})
+                       :value 165519})
         (type/integer {:extension [internable-extension]
-                       :value #fhir/integer 165519})
+                       :value 165519})
 
         (type/integer {:id "id-162329" :extension [internable-extension]})
         (type/integer {:id "id-162329" :extension [internable-extension]}))
@@ -220,7 +224,9 @@
         (type/integer {:extension [internable-extension]}))))
 
   (testing "value"
-    (is (= 1 (type/value #fhir/integer 1))))
+    (are [x] (= 1 (type/value x))
+      #fhir/integer 1
+      #fhir/integer{:id "foo" :value 1}))
 
   (testing "to-json"
     (is (= "1" (gen-json-string #fhir/integer 1))))
@@ -230,12 +236,15 @@
 
   (testing "hash-into"
     (are [i hex] (= hex (murmur3 i))
-      (int 0) "ab61a435"
-      (int 1) "f9ff6b7c"))
+      #fhir/integer 0 "ab61a435"
+      #fhir/integer 1 "f9ff6b7c"
+      #fhir/integer{:id "foo"} "667e7a1b"
+      #fhir/integer{:id "foo" :value 0} "fdd4f126"
+      #fhir/integer{:extension [#fhir/Extension{:url "foo"}]} "b353ef83"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
-      (int 0)
+      #fhir/integer 0
       nil)))
 
 
@@ -254,10 +263,26 @@
     (is (= #fhir/long{:value 1} #fhir/long 1)))
 
   (testing "interned"
-    (is (not-interned? 165519 165519)))
+    (is (not-interned? #fhir/long 165519 #fhir/long 165519))
+
+    (testing "with extension"
+      (are [x y] (not-interned? x y)
+        (type/long {:extension [internable-extension]
+                    :value 165519})
+        (type/long {:extension [internable-extension]
+                    :value 165519})
+
+        (type/long {:id "id-162329" :extension [internable-extension]})
+        (type/long {:id "id-162329" :extension [internable-extension]}))
+
+      (are [x y] (interned? x y)
+        (type/long {:extension [internable-extension]})
+        (type/long {:extension [internable-extension]}))))
 
   (testing "value"
-    (is (= 1 (type/value #fhir/long 1))))
+    (are [x] (= 1 (type/value x))
+      #fhir/long 1
+      #fhir/long{:id "foo" :value 1}))
 
   (testing "to-json"
     (is (= "1" (gen-json-string #fhir/long 1))))
@@ -267,12 +292,15 @@
 
   (testing "hash-into"
     (are [i hex] (= hex (murmur3 i))
-      0 "9bc977cc"
-      1 "fac0175c"))
+      #fhir/long 0 "9bc977cc"
+      #fhir/long 1 "fac0175c"
+      #fhir/long{:id "foo"} "943aa9b2"
+      #fhir/long{:id "foo" :value 0} "a5e71473"
+      #fhir/long{:extension [#fhir/Extension{:url "foo"}]} "589558b6"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
-      0
+      #fhir/long 0
       nil)))
 
 
@@ -293,6 +321,9 @@
   (testing "interned"
     (is (not-interned? (String. "165645") (String. "165645")))
 
+    (is (identical? (type/intern-string (String. "165645"))
+                    (type/intern-string (String. "165645"))))
+
     (testing "with extension"
       (are [x y] (not-interned? x y)
         (type/string {:extension [internable-extension] :value "174230"})
@@ -303,7 +334,9 @@
         (type/string {:extension [internable-extension]}))))
 
   (testing "value"
-    (is (= "175227" (type/value #fhir/string"175227"))))
+    (are [x] (= "175227" (type/value x))
+      #fhir/string"175227"
+      #fhir/string{:value "175227"}))
 
   (testing "to-json"
     (is (= "\"105406\"" (gen-json-string #fhir/string"105406"))))
@@ -318,12 +351,20 @@
     (are [s hex] (= hex (murmur3 s))
       #fhir/string"" "126916b"
       #fhir/string"foo" "ba7851a6"
-      #fhir/string{:value "foo"} "ba7851a6"))
+      #fhir/string{:value "foo"} "ba7851a6"
+      #fhir/string{:id "foo"} "88650112"
+      #fhir/string{:id "foo" :value "foo"} "28b14e8f"
+      #fhir/string{:extension [#fhir/Extension{:url "foo"}]} "b2f98d95"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
       "151736"
-      nil)))
+      nil))
+
+  (testing "toString"
+    (satisfies-prop 10
+      (prop/for-all [value fg/string-value]
+        (= value (str (type/string value)))))))
 
 
 (deftest decimal-test
@@ -344,7 +385,9 @@
     (is (not-interned? 165746M 165746M)))
 
   (testing "value"
-    (is (= 1M (type/value 1M))))
+    (are [x] (= 1M (type/value x))
+      #fhir/decimal 1M
+      #fhir/decimal{:id "foo" :value 1M}))
 
   (testing "to-json"
     (are [decimal json] (= json (gen-json-string decimal))
@@ -356,12 +399,16 @@
 
   (testing "hash-into"
     (are [d hex] (= hex (murmur3 d))
-      0M "7e564b82"
-      1M "f2f4ddc7"))
+      #fhir/decimal 0M "7e564b82"
+      #fhir/decimal 1M "f2f4ddc7"
+      #fhir/decimal{:value 1M} "f2f4ddc7"
+      #fhir/decimal{:id "foo"} "86b1bd0c"
+      #fhir/decimal{:id "foo" :value 0M} "4e9f9211"
+      #fhir/decimal{:extension [#fhir/Extension{:url "foo"}]} "df35c8c9"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
-      0M
+      #fhir/decimal 0M
       nil)))
 
 
@@ -398,7 +445,9 @@
         (type/uri {:extension [not-internable-extension] :value "185838"}))))
 
   (testing "value"
-    (is (= "105614" (type/value #fhir/uri"105614"))))
+    (are [x] (= "105614" (type/value x))
+      #fhir/uri"105614"
+      #fhir/uri{:id "foo" :value "105614"}))
 
   (testing "to-json"
     (is (= "\"105846\"" (gen-json-string #fhir/uri"105846"))))
@@ -414,7 +463,11 @@
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
       #fhir/uri"" "51a99a01"
-      #fhir/uri"foo" "dc60f982"))
+      #fhir/uri"foo" "dc60f982"
+      #fhir/uri{:value "foo"} "dc60f982"
+      #fhir/uri{:id "foo"} "7c797680"
+      #fhir/uri{:id "foo" :value "foo"} "52e1c640"
+      #fhir/uri{:extension [#fhir/Extension{:url "foo"}]} "435d07d9"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
@@ -424,7 +477,38 @@
   (testing "print"
     (are [uri s] (= (pr-str uri) s)
       #fhir/uri"142600" "#fhir/uri\"142600\""
-      #fhir/uri{:id "0"} "#fhir/uri{:id \"0\"}")))
+      #fhir/uri{:id "0"} "#fhir/uri{:id \"0\"}"))
+
+  (testing "toString"
+    (satisfies-prop 10
+      (prop/for-all [value fg/uri-value]
+        (= value (str (type/uri value))))))
+
+  (testing "SerializableString"
+    (testing "getValue"
+      (satisfies-prop 10
+        (prop/for-all [value fg/uri-value]
+          (= value (.getValue (type/uri value))))))
+
+    (testing "appendQuotedUTF8"
+      (satisfies-prop 100
+        (prop/for-all [value fg/uri-value]
+          (let [expected-buffer (.quoteAsUTF8 (JsonStringEncoder/getInstance) value)
+                buffer (byte-array (count expected-buffer))]
+            (.appendQuotedUTF8 (type/uri value) buffer 0)
+            (= (bb/wrap expected-buffer) (bb/wrap buffer))))))
+
+    (testing "asUnquotedUTF8"
+      (satisfies-prop 100
+        (prop/for-all [value fg/uri-value]
+          (= (bb/wrap (.encodeAsUTF8 (JsonStringEncoder/getInstance) ^String value))
+             (bb/wrap (.asUnquotedUTF8 (type/uri value)))))))
+
+    (testing "asQuotedUTF8"
+      (satisfies-prop 100
+        (prop/for-all [value fg/uri-value]
+          (= (bb/wrap (.quoteAsUTF8 (JsonStringEncoder/getInstance) value))
+             (bb/wrap (.asQuotedUTF8 (type/uri value)))))))))
 
 
 (deftest url-test
@@ -451,7 +535,9 @@
         (type/url {:extension [internable-extension]}))))
 
   (testing "value"
-    (is (= "105614" (type/value #fhir/url"105614"))))
+    (are [x] (= "105614" (type/value x))
+      #fhir/url"105614"
+      #fhir/url{:id "foo" :value "105614"}))
 
   (testing "to-json"
     (is (= "\"105846\"" (gen-json-string #fhir/url"105846"))))
@@ -468,7 +554,10 @@
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
       #fhir/url"" "39b10d82"
-      #fhir/url"foo" "7acc4e54"))
+      #fhir/url"foo" "7acc4e54"
+      #fhir/url{:id "foo"} "78133d84"
+      #fhir/url{:id "foo" :value "foo"} "43940bd2"
+      #fhir/url{:extension [#fhir/Extension{:url "foo"}]} "95f50bf4"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
@@ -487,7 +576,12 @@
       "#fhir/url{:id \"id-191655\", :value \"191802\"}"
 
       #fhir/url{:extension [#fhir/Extension{:url "url-191551"}]}
-      "#fhir/url{:extension [#fhir/Extension{:url \"url-191551\"}]}")))
+      "#fhir/url{:extension [#fhir/Extension{:url \"url-191551\"}]}"))
+
+  (testing "toString"
+    (satisfies-prop 10
+      (prop/for-all [value fg/url-value]
+        (= value (str (type/url value)))))))
 
 
 (deftest canonical-test
@@ -523,7 +617,9 @@
         (type/canonical {:extension [not-internable-extension] :value "185838"}))))
 
   (testing "value"
-    (is (= "105614" (type/value #fhir/canonical"105614"))))
+    (are [x] (= "105614" (type/value x))
+      #fhir/canonical"105614"
+      #fhir/canonical{:id "foo" :value "105614"}))
 
   (testing "to-json"
     (is (= "\"105846\"" (gen-json-string #fhir/canonical"105846"))))
@@ -539,7 +635,10 @@
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
       #fhir/canonical"" "53c915fd"
-      #fhir/canonical"foo" "e42e9c7e"))
+      #fhir/canonical"foo" "e42e9c7e"
+      #fhir/canonical{:id "foo"} "b039419d"
+      #fhir/canonical{:id "foo" :value "foo"} "83587524"
+      #fhir/canonical{:extension [#fhir/Extension{:url "foo"}]} "3f1c8be1"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
@@ -555,7 +654,38 @@
       "#fhir/canonical{:id \"211202\"}"
 
       #fhir/canonical{:value "213644"}
-      "#fhir/canonical\"213644\"")))
+      "#fhir/canonical\"213644\""))
+
+  (testing "toString"
+    (satisfies-prop 10
+      (prop/for-all [value fg/canonical-value]
+        (= value (str (type/canonical value))))))
+
+  (testing "SerializableString"
+    (testing "getValue"
+      (satisfies-prop 10
+        (prop/for-all [value fg/canonical-value]
+          (= value (.getValue (type/canonical value))))))
+
+    (testing "appendQuotedUTF8"
+      (satisfies-prop 100
+        (prop/for-all [value fg/canonical-value]
+          (let [expected-buffer (.quoteAsUTF8 (JsonStringEncoder/getInstance) value)
+                buffer (byte-array (count expected-buffer))]
+            (.appendQuotedUTF8 (type/canonical value) buffer 0)
+            (= (bb/wrap expected-buffer) (bb/wrap buffer))))))
+
+    (testing "asUnquotedUTF8"
+      (satisfies-prop 100
+        (prop/for-all [value fg/canonical-value]
+          (= (bb/wrap (.encodeAsUTF8 (JsonStringEncoder/getInstance) ^String value))
+             (bb/wrap (.asUnquotedUTF8 (type/canonical value)))))))
+
+    (testing "asQuotedUTF8"
+      (satisfies-prop 100
+        (prop/for-all [value fg/canonical-value]
+          (= (bb/wrap (.quoteAsUTF8 (JsonStringEncoder/getInstance) value))
+             (bb/wrap (.asQuotedUTF8 (type/canonical value)))))))))
 
 
 (deftest base64Binary-test
@@ -585,7 +715,9 @@
         (type/base64Binary {:extension [internable-extension]}))))
 
   (testing "value"
-    (is (= "MTA1NjE0Cg==" (type/value #fhir/base64Binary"MTA1NjE0Cg=="))))
+    (are [x] (= "MTA1NjE0Cg==" (type/value x))
+      #fhir/base64Binary"MTA1NjE0Cg=="
+      #fhir/base64Binary{:id "foo" :value "MTA1NjE0Cg=="}))
 
   (testing "to-json"
     (is (= "\"MTA1NjE0Cg==\"" (gen-json-string #fhir/base64Binary"MTA1NjE0Cg=="))))
@@ -604,7 +736,9 @@
     (are [x hex] (= hex (murmur3 x))
       #fhir/base64Binary"" "339ff20a"
       #fhir/base64Binary"YQo=" "ed565602"
-      #fhir/base64Binary"MTA1NjE0Cg===" "24568b10"))
+      #fhir/base64Binary"MTA1NjE0Cg===" "24568b10"
+      #fhir/base64Binary{:id "foo"} "331c84dc"
+      #fhir/base64Binary{:extension [#fhir/Extension{:url "foo"}]} "4d9fc231"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
@@ -612,7 +746,12 @@
       nil))
 
   (testing "print"
-    (is (= "#fhir/base64Binary\"YQo=\"" (pr-str #fhir/base64Binary"YQo=")))))
+    (is (= "#fhir/base64Binary\"YQo=\"" (pr-str #fhir/base64Binary"YQo="))))
+
+  (testing "toString"
+    (satisfies-prop 10
+      (prop/for-all [value fg/base64Binary-value]
+        (= value (str (type/base64Binary value)))))))
 
 
 (deftest instant-test
@@ -657,10 +796,13 @@
         (type/instant {:extension [internable-extension]}))))
 
   (testing "value is a System.DateTime which is a OffsetDateTime"
-    (is (= (OffsetDateTime/of 2020 1 1 0 0 0 0 (ZoneOffset/ofHours 2))
-           (type/value #fhir/instant"2020-01-01T00:00:00+02:00")))
-    (is (= (OffsetDateTime/of 1970 1 1 0 0 0 0 ZoneOffset/UTC)
-           (type/value Instant/EPOCH))))
+    (are [x] (= (OffsetDateTime/of 2020 1 1 0 0 0 0 (ZoneOffset/ofHours 2)) (type/value x))
+      #fhir/instant"2020-01-01T00:00:00+02:00"
+      #fhir/instant{:id "foo" :value "2020-01-01T00:00:00+02:00"})
+
+    (are [x] (= (OffsetDateTime/of 1970 1 1 0 0 0 0 ZoneOffset/UTC) (type/value x))
+      #fhir/instant"1970-01-01T00:00:00Z"
+      #fhir/instant{:id "foo" :value "1970-01-01T00:00:00Z"}))
 
   (testing "to-json"
     (are [instant json] (= json (gen-json-string instant))
@@ -689,7 +831,11 @@
       #fhir/instant"2020-01-01T00:00:00+01:00" "4225df0d"
       #fhir/instant"2020-01-01T00:00:00Z" "d81f6bc2"
       #fhir/instant"1970-01-01T00:00:00Z" "93344244"
-      Instant/EPOCH "93344244"))
+      #fhir/instant{:value "1970-01-01T00:00:00Z"} "93344244"
+      Instant/EPOCH "93344244"
+      #fhir/instant{:id "foo"} "b4705bd6"
+      #fhir/instant{:id "foo" :value "1970-01-01T00:00:00Z"} "e5a31add"
+      #fhir/instant{:extension [#fhir/Extension{:url "foo"}]} "8a7f7ddc"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
@@ -710,7 +856,7 @@
       #fhir/instant{:value "2020-01-01T00:00:00Z"}
       "#java/instant\"2020-01-01T00:00:00Z\""))
 
-  (testing "str"
+  (testing "toString"
     (is (= "2020-01-01T00:00:00Z" (str #fhir/instant"2020-01-01T00:00:00Z")))))
 
 
@@ -748,7 +894,9 @@
           (type/date {:extension [internable-extension]}))))
 
     (testing "value"
-      (is (= (Year/of 2020) (type/value #fhir/date"2020"))))
+      (are [x] (= (system/date 2020) (type/value x))
+        #fhir/date"2020"
+        #fhir/date{:id "foo" :value "2020"}))
 
     (testing "to-json"
       (is (= "\"2020\"" (gen-json-string #fhir/date"2020"))))
@@ -763,7 +911,11 @@
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/date"2020" "c92be432"))
+        #fhir/date"2020" "c92be432"
+        #fhir/date{:value "2020"} "c92be432"
+        #fhir/date{:id "foo"} "20832903"
+        #fhir/date{:id "foo" :value "2020"} "e983029c"
+        #fhir/date{:extension [#fhir/Extension{:url "foo"}]} "707470a9"))
 
     (testing "references"
       (are [x refs] (= refs (type/references x))
@@ -788,7 +940,9 @@
       (is (not-interned? #fhir/date"2020-01" #fhir/date"2020-01")))
 
     (testing "value"
-      (is (= (YearMonth/of 2020 1) (type/value #fhir/date"2020-01"))))
+      (are [x] (= (system/date 2020 1) (type/value x))
+        #fhir/date"2020-01"
+        #fhir/date{:id "foo" :value "2020-01"}))
 
     (testing "to-json"
       (is (= "\"2020-01\"" (gen-json-string #fhir/date"2020-01"))))
@@ -803,7 +957,11 @@
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/date"2020-01" "fbcdf97f"))
+        #fhir/date"2020-01" "fbcdf97f"
+        #fhir/date{:value "2020-01"} "fbcdf97f"
+        #fhir/date{:id "foo"} "20832903"
+        #fhir/date{:id "foo" :value "2020-01"} "4e6aead7"
+        #fhir/date{:extension [#fhir/Extension{:url "foo"}]} "707470a9"))
 
     (testing "references"
       (are [x refs] (= refs (type/references x))
@@ -828,9 +986,9 @@
       (is (not-interned? #fhir/date"2020-01-01" #fhir/date"2020-01-01")))
 
     (testing "value"
-      (satisfies-prop 100
-        (prop/for-all [date (s/gen :system/date)]
-          (= date (type/value date)))))
+      (are [x] (= (system/date 2020 1 2) (type/value x))
+        #fhir/date"2020-01-02"
+        #fhir/date{:id "foo" :value "2020-01-02"}))
 
     (testing "to-json"
       (satisfies-prop 100
@@ -851,7 +1009,11 @@
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/date"2020-01-01" "cd20e081"))
+        #fhir/date"2020-01-01" "cd20e081"
+        #fhir/date{:value "2020-01-01"} "cd20e081"
+        #fhir/date{:id "foo"} "20832903"
+        #fhir/date{:id "foo" :value "2020-01-01"} "ef736a41"
+        #fhir/date{:extension [#fhir/Extension{:url "foo"}]} "707470a9"))
 
     (testing "references"
       (is (nil? (type/references #fhir/date"2020-01-01"))))))
@@ -876,7 +1038,9 @@
       (is (not-interned? #fhir/dateTime"2020" #fhir/dateTime"2020")))
 
     (testing "value"
-      (is (= (system/date-time 2020) (type/value #fhir/dateTime"2020"))))
+      (are [x] (= (system/date-time 2020) (type/value x))
+        #fhir/dateTime"2020"
+        #fhir/dateTime{:id "foo" :value "2020"}))
 
     (testing "to-json"
       (is (= "\"2020\"" (gen-json-string #fhir/dateTime"2020"))))
@@ -891,7 +1055,11 @@
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020" "41e906ff"))
+        #fhir/dateTime"2020" "41e906ff"
+        #fhir/dateTime{:value "2020"} "41e906ff"
+        #fhir/dateTime{:id "foo"} "fde903da"
+        #fhir/dateTime{:id "foo" :value "2020"} "c7361227"
+        #fhir/dateTime{:extension [#fhir/Extension{:url "foo"}]} "15062059"))
 
     (testing "references"
       (are [x refs] (= refs (type/references x))
@@ -916,8 +1084,9 @@
       (is (not-interned? #fhir/dateTime"2022-05" #fhir/dateTime"2022-05")))
 
     (testing "value"
-      (is (= (system/date-time 2020 1)
-             (type/value #fhir/dateTime"2020-01"))))
+      (are [x] (= (system/date-time 2020 1) (type/value x))
+        #fhir/dateTime"2020-01"
+        #fhir/dateTime{:id "foo" :value "2020-01"}))
 
     (testing "to-json"
       (is (= "\"2020-01\"" (gen-json-string #fhir/dateTime"2020-01"))))
@@ -932,7 +1101,11 @@
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020-01" "9d6c5bd3"))
+        #fhir/dateTime"2020-01" "9d6c5bd3"
+        #fhir/dateTime{:value "2020-01"} "9d6c5bd3"
+        #fhir/dateTime{:id "foo"} "fde903da"
+        #fhir/dateTime{:id "foo" :value "2020-01"} "aa78aa13"
+        #fhir/dateTime{:extension [#fhir/Extension{:url "foo"}]} "15062059"))
 
     (testing "references"
       (are [x refs] (= refs (type/references x))
@@ -957,8 +1130,9 @@
       (is (not-interned? #fhir/dateTime"2022-05-23" #fhir/dateTime"2022-05-23")))
 
     (testing "value"
-      (is (= (system/date-time 2020 1 1)
-             (type/value #fhir/dateTime"2020-01-01"))))
+      (are [x] (= (system/date-time 2020 1 1) (type/value x))
+        #fhir/dateTime"2020-01-01"
+        #fhir/dateTime{:id "foo" :value "2020-01-01"}))
 
     (testing "to-json"
       (is (= "\"2020-01-01\"" (gen-json-string #fhir/dateTime"2020-01-01"))))
@@ -971,7 +1145,11 @@
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020-01-01" "39fe9bdb"))
+        #fhir/dateTime"2020-01-01" "39fe9bdb"
+        #fhir/dateTime{:value "2020-01-01"} "39fe9bdb"
+        #fhir/dateTime{:id "foo"} "fde903da"
+        #fhir/dateTime{:id "foo" :value "2020-01-01"} "7e36d416"
+        #fhir/dateTime{:extension [#fhir/Extension{:url "foo"}]} "15062059"))
 
     (testing "references"
       (are [x refs] (= refs (type/references x))
@@ -1009,7 +1187,9 @@
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020-01-01T00:00:00" "da537591"))
+        #fhir/dateTime"2020-01-01T00:00:00" "da537591"
+        #fhir/dateTime{:value "2020-01-01T00:00:00"} "da537591"
+        #fhir/dateTime{:id "foo" :value "2020-01-01T00:00:00"} "f33b7808"))
 
     (testing "references"
       (are [x refs] (= refs (type/references x))
@@ -1047,7 +1227,9 @@
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020-01-01T00:00:00.000" "da537591"))
+        #fhir/dateTime"2020-01-01T00:00:00.000" "da537591"
+        #fhir/dateTime{:value "2020-01-01T00:00:00.000"} "da537591"
+        #fhir/dateTime{:id "foo" :value "2020-01-01T00:00:00.000"} "f33b7808"))
 
     (testing "references"
       (are [x refs] (= refs (type/references x))
@@ -1085,7 +1267,9 @@
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020-01-01T00:00:00Z" "d541a45"))
+        #fhir/dateTime"2020-01-01T00:00:00Z" "d541a45"
+        #fhir/dateTime{:value "2020-01-01T00:00:00Z"} "d541a45"
+        #fhir/dateTime{:id "foo" :value "2020-01-01T00:00:00Z"} "14a5cd29"))
 
     (testing "references"
       (are [x refs] (= refs (type/references x))
@@ -1123,7 +1307,9 @@
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020-01-01T00:00:00+01:00" "9c535d0d"))
+        #fhir/dateTime"2020-01-01T00:00:00+01:00" "9c535d0d"
+        #fhir/dateTime{:value "2020-01-01T00:00:00+01:00"} "9c535d0d"
+        #fhir/dateTime{:id "foo" :value "2020-01-01T00:00:00+01:00"} "dbf5aa43"))
 
     (testing "references"
       (are [x refs] (= refs (type/references x))
@@ -1161,7 +1347,9 @@
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020-01-01T00:00:00-01:00" "839fd8a6"))
+        #fhir/dateTime"2020-01-01T00:00:00-01:00" "839fd8a6"
+        #fhir/dateTime{:value "2020-01-01T00:00:00-01:00"} "839fd8a6"
+        #fhir/dateTime{:id "foo" :value "2020-01-01T00:00:00-01:00"} "c3a7cc0e"))
 
     (testing "references"
       (are [x refs] (= refs (type/references x))
@@ -1203,7 +1391,9 @@
 
     (testing "hash-into"
       (are [x hex] (= hex (murmur3 x))
-        #fhir/dateTime"2020-01-01T00:00:00.001Z" "f46a0b1b"))
+        #fhir/dateTime"2020-01-01T00:00:00.001Z" "f46a0b1b"
+        #fhir/dateTime{:value "2020-01-01T00:00:00.001Z"} "f46a0b1b"
+        #fhir/dateTime{:id "foo" :value "2020-01-01T00:00:00.001Z"} "c6a5ea73"))
 
     (testing "references"
       (are [x refs] (= refs (type/references x))
@@ -1260,7 +1450,9 @@
     (is (not-interned? #fhir/time"13:53:21" #fhir/time"13:53:21")))
 
   (testing "value is a System.Time which is a LocalTime"
-    (is (= (LocalTime/of 13 53 21) (type/value #fhir/time"13:53:21"))))
+    (are [x] (= (LocalTime/of 13 53 21) (type/value x))
+      #fhir/time"13:53:21"
+      #fhir/time{:id "foo" :value "13:53:21"}))
 
   (testing "to-json"
     (is (= "\"13:53:21\"" (gen-json-string #fhir/time"13:53:21"))))
@@ -1276,7 +1468,11 @@
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/time"13:53:21" "faa37be9"))
+      #fhir/time"13:53:21" "faa37be9"
+      #fhir/time{:value "13:53:21"} "faa37be9"
+      #fhir/time{:id "foo"} "1547f086"
+      #fhir/time{:id "foo" :value "13:53:21"} "52a81d69"
+      #fhir/time{:extension [#fhir/Extension{:url "foo"}]} "9e94d20a"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
@@ -1330,9 +1526,10 @@
                                                  :value true}]
                                 :value "code-123745"}))))
 
-  (testing "value is a System.String which is a String"
-    (is (= "code-123745" (type/value #fhir/code"code-123745")))
-    (is (= "code-170217" (type/value #fhir/code{:value "code-170217"}))))
+  (testing "value"
+    (are [x] (= "code-123745" (type/value x))
+      #fhir/code"code-123745"
+      #fhir/code{:id "foo" :value "code-123745"}))
 
   (testing "to-json"
     (are [code json] (= json (gen-json-string code))
@@ -1351,9 +1548,10 @@
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
       #fhir/code"175726" "9c96c20f"
+      #fhir/code{:value "175726"} "9c96c20f"
       #fhir/code{:id "170837"} "70f42552"
-      #fhir/code{:extension [#fhir/Extension{:url "181911"}]} "838ce6ff"
-      #fhir/code{:value "170935"} "767a99da"))
+      #fhir/code{:id "170837" :value "175726"} "fc8af973"
+      #fhir/code{:extension [#fhir/Extension{:url "181911"}]} "838ce6ff"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
@@ -1367,7 +1565,38 @@
       [["Patient" "1"]]))
 
   (testing "print"
-    (is (= "#fhir/code\"175718\"" (pr-str #fhir/code"175718")))))
+    (is (= "#fhir/code\"175718\"" (pr-str #fhir/code"175718"))))
+
+  (testing "toString"
+    (satisfies-prop 10
+      (prop/for-all [value fg/code-value]
+        (= value (str (type/code value))))))
+
+  (testing "SerializableString"
+    (testing "getValue"
+      (satisfies-prop 10
+        (prop/for-all [value fg/code-value]
+          (= value (.getValue (type/code value))))))
+
+    (testing "appendQuotedUTF8"
+      (satisfies-prop 100
+        (prop/for-all [value fg/code-value]
+          (let [expected-buffer (.quoteAsUTF8 (JsonStringEncoder/getInstance) value)
+                buffer (byte-array (count expected-buffer))]
+            (.appendQuotedUTF8 (type/code value) buffer 0)
+            (= (bb/wrap expected-buffer) (bb/wrap buffer))))))
+
+    (testing "asUnquotedUTF8"
+      (satisfies-prop 100
+        (prop/for-all [value fg/code-value]
+          (= (bb/wrap (.encodeAsUTF8 (JsonStringEncoder/getInstance) ^String value))
+             (bb/wrap (.asUnquotedUTF8 (type/code value)))))))
+
+    (testing "asQuotedUTF8"
+      (satisfies-prop 100
+        (prop/for-all [value fg/code-value]
+          (= (bb/wrap (.quoteAsUTF8 (JsonStringEncoder/getInstance) value))
+             (bb/wrap (.asQuotedUTF8 (type/code value)))))))))
 
 
 (deftest oid-test
@@ -1387,8 +1616,10 @@
   (testing "interned"
     (is (not-interned? #fhir/oid"oid-123745" #fhir/oid"oid-123745")))
 
-  (testing "value is a System.String which is a String"
-    (is (= "oid-123745" (type/value #fhir/oid"oid-123745"))))
+  (testing "value"
+    (are [x] (= "oid-123745" (type/value x))
+      #fhir/oid"oid-123745"
+      #fhir/oid{:id "foo" :value "oid-123745"}))
 
   (testing "to-json"
     (is (= "\"oid-123745\"" (gen-json-string #fhir/oid"oid-123745"))))
@@ -1405,7 +1636,11 @@
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/oid"175726" "a73ea817"))
+      #fhir/oid"175726" "a73ea817"
+      #fhir/oid{:value "175726"} "a73ea817"
+      #fhir/oid{:id "foo"} "4daaecfb"
+      #fhir/oid{:id "foo" :value "175726"} "5e076060"
+      #fhir/oid{:extension [#fhir/Extension{:url "foo"}]} "c114dd42"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
@@ -1433,8 +1668,10 @@
   (testing "interned"
     (is (not-interned? #fhir/id"id-123745" #fhir/id"id-123745")))
 
-  (testing "value is a System.String which is a String"
-    (is (= "id-123745" (type/value #fhir/id"id-123745"))))
+  (testing "value"
+    (are [x] (= "id-123745" (type/value x))
+      #fhir/id"id-123745"
+      #fhir/id{:id "foo" :value "id-123745"}))
 
   (testing "to-json"
     (is (= "\"id-123745\"" (gen-json-string #fhir/id"id-123745"))))
@@ -1451,7 +1688,11 @@
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/id"175726" "e56cbac6"))
+      #fhir/id"175726" "e56cbac6"
+      #fhir/id{:value "175726"} "e56cbac6"
+      #fhir/id{:id "foo"} "59a2c68a"
+      #fhir/id{:id "foo" :value "175726"} "3dbaa84e"
+      #fhir/id{:extension [#fhir/Extension{:url "foo"}]} "1e8120f7"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
@@ -1480,8 +1721,10 @@
     (is (not-interned? #fhir/markdown"markdown-123745"
                        #fhir/markdown"markdown-123745")))
 
-  (testing "value is a System.String which is a String"
-    (is (= "markdown-123745" (type/value #fhir/markdown"markdown-123745"))))
+  (testing "value"
+    (are [x] (= "markdown-123745" (type/value x))
+      #fhir/markdown"markdown-123745"
+      #fhir/markdown{:id "foo" :value "markdown-123745"}))
 
   (testing "to-json"
     (is (= "\"markdown-123745\""
@@ -1499,7 +1742,11 @@
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/markdown"175726" "444928f7"))
+      #fhir/markdown"175726" "444928f7"
+      #fhir/markdown{:value "175726"} "444928f7"
+      #fhir/markdown{:id "foo"} "999ebb88"
+      #fhir/markdown{:id "foo" :value "175726"} "c9b526e9"
+      #fhir/markdown{:extension [#fhir/Extension{:url "foo"}]} "8d0712c5"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
@@ -1528,9 +1775,10 @@
     (is (not-interned? #fhir/unsignedInt 160845
                        #fhir/unsignedInt 160845)))
 
-  (testing "value is a System.Integer which is a Integer"
-    (is (= 160845 (type/value #fhir/unsignedInt 160845)))
-    (is (instance? Integer (type/value #fhir/unsignedInt 160845))))
+  (testing "value"
+    (are [x] (= 160845 (type/value x))
+      #fhir/unsignedInt 160845
+      #fhir/unsignedInt{:id "foo" :value 160845}))
 
   (testing "to-json"
     (is (= "160845" (gen-json-string #fhir/unsignedInt 160845))))
@@ -1546,7 +1794,11 @@
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/unsignedInt 160845 "10a52aa2"))
+      #fhir/unsignedInt 160845 "10a52aa2"
+      #fhir/unsignedInt{:value 160845} "10a52aa2"
+      #fhir/unsignedInt{:id "foo"} "7a1f86be"
+      #fhir/unsignedInt{:id "foo" :value 160845} "b38b1609"
+      #fhir/unsignedInt{:extension [#fhir/Extension{:url "foo"}]} "8117a763"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
@@ -1587,9 +1839,10 @@
     (is (not-interned? #fhir/positiveInt 160845
                        #fhir/positiveInt 160845)))
 
-  (testing "value is a System.Integer which is a Integer"
-    (is (= 160845 (type/value #fhir/positiveInt 160845)))
-    (is (instance? Integer (type/value #fhir/positiveInt 160845))))
+  (testing "value"
+    (are [x] (= 160845 (type/value x))
+      #fhir/positiveInt 160845
+      #fhir/positiveInt{:id "foo" :value 160845}))
 
   (testing "to-json"
     (is (= "160845" (gen-json-string #fhir/positiveInt 160845))))
@@ -1605,7 +1858,11 @@
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/positiveInt 160845 "8c218d7d"))
+      #fhir/positiveInt 160845 "8c218d7d"
+      #fhir/positiveInt{:value 160845} "8c218d7d"
+      #fhir/positiveInt{:id "foo"} "3f7dbd4e"
+      #fhir/positiveInt{:id "foo" :value 160845} "8f325fc8"
+      #fhir/positiveInt{:extension [#fhir/Extension{:url "foo"}]} "7c036682"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
@@ -1649,9 +1906,10 @@
         (type/uuid {:extension [internable-extension]})
         (type/uuid {:extension [internable-extension]}))))
 
-  (testing "value is a System.String which is a String"
-    (is (= "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
-           (type/value #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"))))
+  (testing "value"
+    (are [x] (= "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" (type/value x))
+      #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"
+      #fhir/uuid{:id "foo" :value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"}))
 
   (testing "to-json"
     (is (= "\"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3\""
@@ -1671,7 +1929,11 @@
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
-      #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" "f894ff2b"))
+      #fhir/uuid"urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3" "f894ff2b"
+      #fhir/uuid{:value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"} "f894ff2b"
+      #fhir/uuid{:id "foo"} "3b18b5b7"
+      #fhir/uuid{:id "foo" :value "urn:uuid:6d270b7d-bf7d-4c95-8e30-4d87360d47a3"} "c23eebae"
+      #fhir/uuid{:extension [#fhir/Extension{:url "foo"}]} "9160d648"))
 
   (testing "references"
     (are [x refs] (= refs (type/references x))
@@ -1700,7 +1962,7 @@
     (is (not-interned? #fhir/xhtml"xhtml-123745"
                        #fhir/xhtml"xhtml-123745")))
 
-  (testing "value is a System.String which is a String"
+  (testing "value"
     (is (= "xhtml-123745" (type/value #fhir/xhtml"xhtml-123745"))))
 
   (testing "to-json"
@@ -1726,7 +1988,7 @@
   (testing "print"
     (is (= "#fhir/xhtml\"175718\"" (pr-str #fhir/xhtml"175718"))))
 
-  (testing "str"
+  (testing "toString"
     (is (= "175718" (str #fhir/xhtml"175718")))))
 
 
@@ -1735,8 +1997,13 @@
     (is (= :fhir/Attachment (type/type #fhir/Attachment{}))))
 
   (testing "interned"
-    (is (not-interned? #fhir/Attachment{}
-                       #fhir/Attachment{})))
+    (are [x y] (not-interned? x y)
+      #fhir/Attachment{:id "foo"}
+      #fhir/Attachment{:id "foo"})
+
+    (are [x y] (interned? x y)
+      #fhir/Attachment{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/Attachment{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -1790,40 +2057,30 @@
 
   (testing "interned"
     (testing "instances with code values are interned"
-      (is (interned? #fhir/Extension{:url "url-130945"
-                                     :value #fhir/code"value-130953"}
-                     #fhir/Extension{:url "url-130945"
-                                     :value #fhir/code"value-130953"})))
+      (are [x y] (interned? x y)
+        #fhir/Extension{:url "foo" :value #fhir/code"bar"}
+        #fhir/Extension{:url "foo" :value #fhir/code"bar"}))
 
     (testing "instances with code values and interned extensions are interned"
-      (is (interned? #fhir/Extension
-                             {:extension
-                              [#fhir/Extension
-                                      {:url "url-163531"
-                                       :value #fhir/code"value-163520"}]
-                              :url "url-130945"
-                              :value #fhir/code"value-130953"}
-                     #fhir/Extension
-                             {:extension
-                              [#fhir/Extension
-                                      {:url "url-163531"
-                                       :value #fhir/code"value-163520"}]
-                              :url "url-130945"
-                              :value #fhir/code"value-130953"})))
+      (are [x y] (interned? x y)
+        #fhir/Extension
+                {:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]
+                 :url "foo"
+                 :value #fhir/code"bar"}
+        #fhir/Extension
+                {:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]
+                 :url "foo"
+                 :value #fhir/code"bar"}))
 
     (testing "instances with code values but id's are not interned"
-      (is (not-interned? #fhir/Extension{:id "id-162744"
-                                         :url "url-130945"
-                                         :value #fhir/code"value-130953"}
-                         #fhir/Extension{:id "id-162744"
-                                         :url "url-130945"
-                                         :value #fhir/code"value-130953"})))
+      (are [x y] (not-interned? x y)
+        #fhir/Extension{:id "foo" :url "bar" :value #fhir/code"baz"}
+        #fhir/Extension{:id "foo" :url "bar" :value #fhir/code"baz"}))
 
     (testing "instances with string values are not interned"
-      (is (not-interned? #fhir/Extension{:url "url-130945"
-                                         :value "value-130953"}
-                         #fhir/Extension{:url "url-130945"
-                                         :value "value-130953"}))))
+      (are [x y] (not-interned? x y)
+        #fhir/Extension{:url "foo" :value "bar"}
+        #fhir/Extension{:url "foo" :value "bar"})))
 
   (testing "to-json"
     (are [code json] (= json (gen-json-string code))
@@ -1861,35 +2118,35 @@
       #fhir/Extension{:id "212329"} "#fhir/Extension{:id \"212329\"}")))
 
 
+(defn- recreate
+  "Takes `x`, a complex type and recreates it from its components using
+  `constructor`."
+  [constructor x]
+  (constructor (into {} (remove (comp nil? val)) x)))
+
+
+(def ^:private string-extension-gen
+  (fg/extension :value (fg/string :value fg/string-value)))
+
+
 (deftest coding-test
   (testing "type"
     (is (= :fhir/Coding (type/type #fhir/Coding{}))))
 
   (testing "interned"
-    (is (interned? #fhir/Coding{:system #fhir/uri"system-202808"
-                                :code #fhir/code"code-202828"}
-                   #fhir/Coding{:system #fhir/uri"system-202808"
-                                :code #fhir/code"code-202828"}))
+    (satisfies-prop 100
+      (prop/for-all [x (fg/coding :extension (fg/extensions :value (fg/code)))]
+        (interned? x (recreate type/coding x))))
 
     (testing "instances with id's are not interned"
-      (is (not-interned? #fhir/Coding{:id "id-163711"
-                                      :system #fhir/uri"system-202808"
-                                      :code #fhir/code"code-202828"}
-                         #fhir/Coding{:id "id-163711"
-                                      :system #fhir/uri"system-202808"
-                                      :code #fhir/code"code-202828"})))
+      (satisfies-prop 100
+        (prop/for-all [x (fg/coding :id fg/id-value)]
+          (not-interned? x (recreate type/coding x)))))
 
     (testing "instances with not interned extensions are not interned"
-      (is (not-interned? #fhir/Coding{:extension
-                                      [#fhir/Extension{:url "url-130945"
-                                                       :value "value-130953"}]
-                                      :system #fhir/uri"system-202808"
-                                      :code #fhir/code"code-202828"}
-                         #fhir/Coding{:extension
-                                      [#fhir/Extension{:url "url-130945"
-                                                       :value "value-130953"}]
-                                      :system #fhir/uri"system-202808"
-                                      :code #fhir/code"code-202828"}))))
+      (satisfies-prop 100
+        (prop/for-all [x (fg/coding :extension (gen/vector string-extension-gen 1))]
+          (not-interned? x (recreate type/coding x))))))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -1930,48 +2187,19 @@
     (is (= :fhir/CodeableConcept (type/type #fhir/CodeableConcept{}))))
 
   (testing "interned"
-    (is (interned? #fhir/CodeableConcept
-                           {:coding
-                            [#fhir/Coding{:system #fhir/uri"system-202808"
-                                          :code #fhir/code"code-202828"}]
-                            :text "text-162203"}
-                   #fhir/CodeableConcept
-                           {:coding
-                            [#fhir/Coding{:system #fhir/uri"system-202808"
-                                          :code #fhir/code"code-202828"}]
-                            :text "text-162203"}))
+    (satisfies-prop 100
+      (prop/for-all [x (fg/codeable-concept :extension (fg/extensions :value (fg/code)))]
+        (interned? x (recreate type/codeable-concept x))))
 
     (testing "instances with id's are not interned"
-      (is (not-interned? #fhir/CodeableConcept
-                                 {:id "id-164007"
-                                  :coding
-                                  [#fhir/Coding{:system #fhir/uri"system-202808"
-                                                :code #fhir/code"code-202828"}]
-                                  :text "text-162203"}
-                         #fhir/CodeableConcept
-                                 {:id "id-164007"
-                                  :coding
-                                  [#fhir/Coding{:system #fhir/uri"system-202808"
-                                                :code #fhir/code"code-202828"}]
-                                  :text "text-162203"})))
+      (satisfies-prop 100
+        (prop/for-all [x (fg/codeable-concept :id fg/id-value)]
+          (not-interned? x (recreate type/codeable-concept x)))))
 
     (testing "instances with not interned extensions are not interned"
-      (is (not-interned? #fhir/CodeableConcept
-                                 {:extension
-                                  [#fhir/Extension{:url "url-130945"
-                                                   :value "value-130953"}]
-                                  :coding
-                                  [#fhir/Coding{:system #fhir/uri"system-202808"
-                                                :code #fhir/code"code-202828"}]
-                                  :text "text-162203"}
-                         #fhir/CodeableConcept
-                                 {:extension
-                                  [#fhir/Extension{:url "url-130945"
-                                                   :value "value-130953"}]
-                                  :coding
-                                  [#fhir/Coding{:system #fhir/uri"system-202808"
-                                                :code #fhir/code"code-202828"}]
-                                  :text "text-162203"}))))
+      (satisfies-prop 100
+        (prop/for-all [x (fg/codeable-concept :extension (gen/vector string-extension-gen 1))]
+          (not-interned? x (recreate type/codeable-concept x))))))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -1987,7 +2215,7 @@
       #fhir/CodeableConcept{:coding [#fhir/Coding{}]}
       "9c4509ed"
 
-      #fhir/CodeableConcept{:text "text-153829"}
+      #fhir/CodeableConcept{:text #fhir/string"text-153829"}
       "fe2e61f1"))
 
   (testing "references"
@@ -2004,6 +2232,33 @@
 (deftest quantity-test
   (testing "type"
     (is (= :fhir/Quantity (type/type #fhir/Quantity{}))))
+
+  (testing "interned"
+    (are [x y] (not-interned? x y)
+      #fhir/Quantity{:id "foo"}
+      #fhir/Quantity{:id "foo"}
+
+      #fhir/Quantity{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/Quantity{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+
+      #fhir/Quantity{:value #fhir/decimal 1M}
+      #fhir/Quantity{:value #fhir/decimal 1M})
+
+    (are [x y] (interned? x y)
+      #fhir/Quantity{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/Quantity{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+
+      #fhir/Quantity{:comparator #fhir/code"foo"}
+      #fhir/Quantity{:comparator #fhir/code"foo"}
+
+      #fhir/Quantity{:unit #fhir/string"foo"}
+      #fhir/Quantity{:unit #fhir/string"foo"}
+
+      #fhir/Quantity{:system #fhir/uri"foo"}
+      #fhir/Quantity{:system #fhir/uri"foo"}
+
+      #fhir/Quantity{:code #fhir/code"foo"}
+      #fhir/Quantity{:code #fhir/code"foo"}))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -2022,7 +2277,7 @@
       #fhir/Quantity{:comparator #fhir/code"comparator-153342"}
       "6339e3e8"
 
-      #fhir/Quantity{:unit "unit-153351"}
+      #fhir/Quantity{:unit #fhir/string"unit-153351"}
       "d8f92891"
 
       #fhir/Quantity{:system #fhir/uri"system-153337"}
@@ -2078,6 +2333,24 @@
   (testing "type"
     (is (= :fhir/Identifier (type/type #fhir/Identifier{}))))
 
+  (testing "interned"
+    (are [x y] (not-interned? x y)
+      #fhir/Identifier{:id "foo"}
+      #fhir/Identifier{:id "foo"}
+
+      #fhir/Identifier{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/Identifier{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+
+      #fhir/Identifier{:value "foo"}
+      #fhir/Identifier{:value "foo"})
+
+    (are [x y] (interned? x y)
+      #fhir/Identifier{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/Identifier{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+
+      #fhir/Identifier{:use #fhir/code"foo"}
+      #fhir/Identifier{:use #fhir/code"foo"}))
+
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
       #fhir/Identifier{}
@@ -2121,6 +2394,27 @@
 (deftest human-name-test
   (testing "type"
     (is (= :fhir/HumanName (type/type #fhir/HumanName{}))))
+
+  (testing "interned"
+    (are [x y] (not-interned? x y)
+      #fhir/HumanName{:id "foo"}
+      #fhir/HumanName{:id "foo"}
+
+      #fhir/HumanName{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/HumanName{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+
+      #fhir/HumanName{:text "foo"}
+      #fhir/HumanName{:text "foo"}
+
+      #fhir/HumanName{:family "foo"}
+      #fhir/HumanName{:family "foo"})
+
+    (are [x y] (interned? x y)
+      #fhir/HumanName{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/HumanName{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+
+      #fhir/HumanName{:use #fhir/code"foo"}
+      #fhir/HumanName{:use #fhir/code"foo"}))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -2177,6 +2471,27 @@
 (deftest address-test
   (testing "type"
     (is (= :fhir/Address (type/type #fhir/Address{}))))
+
+  (testing "interned"
+    (are [x y] (not-interned? x y)
+      #fhir/Address{:id "foo"}
+      #fhir/Address{:id "foo"}
+
+      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+
+      #fhir/Address{:text "foo"}
+      #fhir/Address{:text "foo"})
+
+    (are [x y] (interned? x y)
+      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/Address{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+
+      #fhir/Address{:use #fhir/code"foo"}
+      #fhir/Address{:use #fhir/code"foo"}
+
+      #fhir/Address{:type #fhir/code"foo"}
+      #fhir/Address{:type #fhir/code"foo"}))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -2236,6 +2551,30 @@
 (deftest reference-test
   (testing "type"
     (is (= :fhir/Reference (type/type #fhir/Reference{}))))
+
+  (testing "interned"
+    (are [x y] (not-interned? x y)
+      #fhir/Reference{:id "foo"}
+      #fhir/Reference{:id "foo"}
+
+      #fhir/Reference{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/Reference{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+
+      #fhir/Reference{:reference "foo"}
+      #fhir/Reference{:reference "foo"}
+
+      #fhir/Reference{:identifier #fhir/Identifier{:value "foo"}}
+      #fhir/Reference{:identifier #fhir/Identifier{:value "foo"}}
+
+      #fhir/Reference{:display "foo"}
+      #fhir/Reference{:display "foo"})
+
+    (are [x y] (interned? x y)
+      #fhir/Reference{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/Reference{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+
+      #fhir/Reference{:type #fhir/code"foo"}
+      #fhir/Reference{:type #fhir/code"foo"}))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -2298,6 +2637,36 @@
   (testing "type"
     (is (= :fhir/Meta (type/type #fhir/Meta{}))))
 
+  (testing "interned"
+    (are [x y] (not-interned? x y)
+      #fhir/Meta{:id "foo"}
+      #fhir/Meta{:id "foo"}
+
+      #fhir/Meta{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/Meta{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+
+      #fhir/Meta{:versionId #fhir/id"foo"}
+      #fhir/Meta{:versionId #fhir/id"foo"}
+
+      #fhir/Meta{:lastUpdated #fhir/instant"2020-01-01T00:00:00Z"}
+      #fhir/Meta{:lastUpdated #fhir/instant"2020-01-01T00:00:00Z"})
+
+    (are [x y] (interned? x y)
+      #fhir/Meta{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/Meta{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+
+      #fhir/Meta{:source #fhir/uri"foo"}
+      #fhir/Meta{:source #fhir/uri"foo"}
+
+      #fhir/Meta{:profile #fhir/canonical"foo"}
+      #fhir/Meta{:profile #fhir/canonical"foo"}
+
+      #fhir/Meta{:security [#fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}]}
+      #fhir/Meta{:security [#fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}]}
+
+      #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}]}
+      #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}]}))
+
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
       #fhir/Meta{}
@@ -2312,7 +2681,7 @@
       #fhir/Meta{:versionId #fhir/id"versionId-161415"}
       "9edaa9b"
 
-      (type/mk-meta {:lastUpdated Instant/EPOCH})
+      (type/meta {:lastUpdated Instant/EPOCH})
       "38b8dfe3"
 
       #fhir/Meta{:source #fhir/uri"source-161629"}
@@ -2349,6 +2718,24 @@
 (deftest bundle-entry-search-test
   (testing "type"
     (is (= :fhir.Bundle.entry/search (type/type #fhir/BundleEntrySearch{}))))
+
+  (testing "interned"
+    (are [x y] (not-interned? x y)
+      #fhir/BundleEntrySearch{:id "foo"}
+      #fhir/BundleEntrySearch{:id "foo"}
+
+      #fhir/BundleEntrySearch{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/BundleEntrySearch{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+
+      #fhir/BundleEntrySearch{:score #fhir/decimal 1M}
+      #fhir/BundleEntrySearch{:score #fhir/decimal 1M})
+
+    (are [x y] (interned? x y)
+      #fhir/BundleEntrySearch{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/BundleEntrySearch{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+
+      #fhir/BundleEntrySearch{:mode #fhir/code"match"}
+      #fhir/BundleEntrySearch{:mode #fhir/code"match"}))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
