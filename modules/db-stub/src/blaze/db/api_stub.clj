@@ -16,7 +16,8 @@
     [blaze.db.tx-log.local]
     [blaze.fhir.structure-definition-repo]
     [blaze.test-util :refer [with-system]]
-    [integrant.core :as ig]))
+    [integrant.core :as ig]
+    [java-time :as time]))
 
 
 (defn create-mem-node-system [node-config]
@@ -29,7 +30,8 @@
       :resource-store (ig/ref ::rs/kv)
       :kv-store (ig/ref :blaze.db/index-kv-store)
       :resource-indexer (ig/ref :blaze.db.node/resource-indexer)
-      :search-param-registry (ig/ref :blaze.db/search-param-registry)}
+      :search-param-registry (ig/ref :blaze.db/search-param-registry)
+      :poll-timeout (time/millis 10)}
      node-config)
 
    ::tx-log/local

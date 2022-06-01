@@ -7,7 +7,8 @@
 
 
 (defn- value-concept [value]
-  (type/codeable-concept {:text (str (if (nil? value) "null" value))}))
+  (type/codeable-concept
+    {:text (type/string (str (if (nil? value) "null" value)))}))
 
 
 (defn- stratum* [population value]
@@ -25,7 +26,7 @@
 
 (defn- stratifier* [strata code]
   (cond-> {:fhir/type :fhir.MeasureReport.group/stratifier
-           :stratum (sort-by (comp :text :value) strata)}
+           :stratum (sort-by (comp type/value :text :value) strata)}
     code
     (assoc :code [code])))
 
@@ -131,7 +132,7 @@
 (defn- multi-component-stratifier* [strata codes]
   {:fhir/type :fhir.MeasureReport.group/stratifier
    :code codes
-   :stratum (sort-by (comp #(mapv (comp :text :value) %) :component) strata)})
+   :stratum (sort-by (comp #(mapv (comp type/value :text :value) %) :component) strata)})
 
 
 (defn- multi-component-stratifier

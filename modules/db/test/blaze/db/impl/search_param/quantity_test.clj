@@ -213,7 +213,7 @@
                :value
                #fhir/Quantity
                        {:value 140M
-                        :unit "mmHg"}}
+                        :unit #fhir/string"mmHg"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3]]
               (search-param/index-entries
@@ -260,7 +260,7 @@
                :value
                #fhir/Quantity
                        {:value 120M
-                        :unit "mm[Hg]"
+                        :unit #fhir/string"mm[Hg]"
                         :code #fhir/code"mm[Hg]"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3]]
@@ -308,7 +308,7 @@
                :value
                #fhir/Quantity
                        {:value 120M
-                        :unit "mmHg"
+                        :unit #fhir/string"mmHg"
                         :code #fhir/code"mm[Hg]"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]

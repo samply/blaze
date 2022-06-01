@@ -34,6 +34,7 @@
     [java.time Instant]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
@@ -1765,7 +1766,7 @@
                :value
                #fhir/Quantity
                        {:value 0M
-                        :unit "kg/m²"
+                        :unit #fhir/string"kg/m²"
                         :code #fhir/code"kg/m2"
                         :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation
@@ -1775,7 +1776,7 @@
                :value
                #fhir/Quantity
                        {:value 1M
-                        :unit "kg/m²"
+                        :unit #fhir/string"kg/m²"
                         :code #fhir/code"kg/m2"
                         :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation
@@ -1784,7 +1785,7 @@
                :value
                #fhir/Quantity
                        {:value 2.11M
-                        :unit "kg/m²"
+                        :unit #fhir/string"kg/m²"
                         :code #fhir/code"kg/m2"
                         :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation
@@ -1793,7 +1794,7 @@
                :value
                #fhir/Quantity
                        {:value 3M
-                        :unit "kg/m²"
+                        :unit #fhir/string"kg/m²"
                         :code #fhir/code"kg/m2"
                         :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
@@ -2132,7 +2133,7 @@
                :value
                #fhir/Quantity
                        {:value 23.42M
-                        :unit "kg/m²"
+                        :unit #fhir/string"kg/m²"
                         :code #fhir/code"kg/m2"
                         :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation
@@ -2141,7 +2142,7 @@
                :value
                #fhir/Quantity
                        {:value 23.42M
-                        :unit "kg/m²"
+                        :unit #fhir/string"kg/m²"
                         :code #fhir/code"kg/m2"
                         :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
@@ -2165,7 +2166,7 @@
                :value
                #fhir/Quantity
                        {:value 0M
-                        :unit "m"
+                        :unit #fhir/string"m"
                         :code #fhir/code"m"
                         :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/TestScript
@@ -2175,7 +2176,7 @@
                  :value
                  #fhir/Quantity
                          {:value 0M
-                          :unit "m"
+                          :unit #fhir/string"m"
                           :code #fhir/code"m"
                           :system #fhir/uri"http://unitsofmeasure.org"}}]}]]]
 
@@ -3425,7 +3426,7 @@
                :value
                #fhir/Quantity
                        {:code #fhir/code"kg/m2"
-                        :unit "kg/m²"
+                        :unit #fhir/string"kg/m²"
                         :system #fhir/uri"http://unitsofmeasure.org"
                         :value 42M}}]]]
 

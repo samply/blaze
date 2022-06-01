@@ -22,10 +22,10 @@
     [com.datastax.oss.driver.api.core.servererrors
      WriteTimeoutException WriteType]
     [java.nio ByteBuffer]
-    #_{:clj-kondo/ignore [:unused-import]}
     [java.util.concurrent CompletionStage]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 

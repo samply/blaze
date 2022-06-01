@@ -15,6 +15,7 @@
     [java.time OffsetDateTime ZoneOffset]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 

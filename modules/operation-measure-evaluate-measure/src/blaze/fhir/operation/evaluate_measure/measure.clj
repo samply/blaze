@@ -248,7 +248,7 @@
      (type/map->Quantity
        {:code #fhir/code"s"
         :system #fhir/uri"http://unitsofmeasure.org"
-        :unit "s"
+        :unit #fhir/string"s"
         :value (bigdec duration)})}))
 
 

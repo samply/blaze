@@ -221,7 +221,7 @@
                            :criteria (cql-expression "InInitialPopulation")}]
                          :stratifier
                          [{:fhir/type :fhir.Measure.group/stratifier
-                           :code #fhir/CodeableConcept{:text "gender"}
+                           :code #fhir/CodeableConcept{:text #fhir/string"gender"}
                            :criteria (cql-expression "Gender")}]}]}
               params {:period [#system/date"2000" #system/date"2020"]
                       :report-type "subject"
@@ -237,8 +237,8 @@
                                     :end #system/date-time"2020"}
             [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
             [:group 0 :population 0 :count] := 1
-            [:group 0 :stratifier 0 :code 0 :text] := "gender"
-            [:group 0 :stratifier 0 :stratum 0 :value :text] := "male"
+            [:group 0 :stratifier 0 :code 0 :text type/value] := "gender"
+            [:group 0 :stratifier 0 :stratum 0 :value :text type/value] := "male"
             [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := 1))))
 
     (testing "invalid subject"
@@ -366,9 +366,9 @@
       (is (= #fhir/code"summary" (-> result :resource :type))))
 
     (given (first-stratifier-strata result)
-      [0 :value :text] := "10"
+      [0 :value :text type/value] := "10"
       [0 :population 0 :count] := 1
-      [1 :value :text] := "70"
+      [1 :value :text type/value] := "70"
       [1 :population 0 :count] := 2))
 
   (let [result (evaluate "q19-stratifier-ageclass" "subject-list")]
@@ -379,10 +379,10 @@
       (is (= #fhir/code"subject-list" (-> result :resource :type))))
 
     (given (first-stratifier-strata result)
-      [0 :value :text] := "10"
+      [0 :value :text type/value] := "10"
       [0 :population 0 :count] := 1
       [0 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAB"
-      [1 :value :text] := "70"
+      [1 :value :text type/value] := "70"
       [1 :population 0 :count] := 2
       [1 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAC")
 
@@ -398,28 +398,28 @@
       [2 1 :entry 1 :item :reference] := "Patient/2"))
 
   (given (first-stratifier-strata (evaluate "q20-stratifier-city"))
-    [0 :value :text] := "Jena"
+    [0 :value :text type/value] := "Jena"
     [0 :population 0 :count] := 3
-    [1 :value :text] := "Leipzig"
+    [1 :value :text type/value] := "Leipzig"
     [1 :population 0 :count] := 1)
 
   (given (first-stratifier-strata (evaluate "q21-stratifier-city-of-only-women"))
-    [0 :value :text] := "Jena"
+    [0 :value :text type/value] := "Jena"
     [0 :population 0 :count] := 2)
 
   (is (= ::anom/incorrect (::anom/category (evaluate "q22-stratifier-multiple-cities-fail"))))
 
   (given (first-stratifier-strata (evaluate "q23-stratifier-ageclass-and-gender"))
-    [0 :component 0 :code :text] := "age-class"
-    [0 :component 0 :value :text] := "10"
-    [0 :component 1 :code :text] := "gender"
-    [0 :component 1 :value :text] := "male"
+    [0 :component 0 :code :text type/value] := "age-class"
+    [0 :component 0 :value :text type/value] := "10"
+    [0 :component 1 :code :text type/value] := "gender"
+    [0 :component 1 :value :text type/value] := "male"
     [0 :population 0 :count] := 1
-    [1 :component 0 :value :text] := "70"
-    [1 :component 1 :value :text] := "female"
+    [1 :component 0 :value :text type/value] := "70"
+    [1 :component 1 :value :text type/value] := "female"
     [1 :population 0 :count] := 2
-    [2 :component 0 :value :text] := "70"
-    [2 :component 1 :value :text] := "male"
+    [2 :component 0 :value :text type/value] := "70"
+    [2 :component 1 :value :text type/value] := "male"
     [2 :population 0 :count] := 1)
 
   (let [result (evaluate "q23-stratifier-ageclass-and-gender" "subject-list")]
@@ -427,18 +427,18 @@
       (is (s/valid? :blaze/resource (:resource result))))
 
     (given (first-stratifier-strata result)
-      [0 :component 0 :code :text] := "age-class"
-      [0 :component 0 :value :text] := "10"
-      [0 :component 1 :code :text] := "gender"
-      [0 :component 1 :value :text] := "male"
+      [0 :component 0 :code :text type/value] := "age-class"
+      [0 :component 0 :value :text type/value] := "10"
+      [0 :component 1 :code :text type/value] := "gender"
+      [0 :component 1 :value :text type/value] := "male"
       [0 :population 0 :count] := 1
       [0 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAB"
-      [1 :component 0 :value :text] := "70"
-      [1 :component 1 :value :text] := "female"
+      [1 :component 0 :value :text type/value] := "70"
+      [1 :component 1 :value :text type/value] := "female"
       [1 :population 0 :count] := 2
       [1 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAD"
-      [2 :component 0 :value :text] := "70"
-      [2 :component 1 :value :text] := "male"
+      [2 :component 0 :value :text type/value] := "70"
+      [2 :component 1 :value :text type/value] := "male"
       [2 :population 0 :count] := 1
       [2 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAC")
 
@@ -455,43 +455,43 @@
       [3 1 :entry 1 :item :reference] := "Patient/3"))
 
   (given (first-stratifier-strata (evaluate "q25-stratifier-collection"))
-    [0 :value :text] := "Organization/collection-0"
+    [0 :value :text type/value] := "Organization/collection-0"
     [0 :population 0 :count] := 1
-    [1 :value :text] := "Organization/collection-1"
+    [1 :value :text type/value] := "Organization/collection-1"
     [1 :population 0 :count] := 1)
 
   (given (first-stratifier-strata (evaluate "q26-stratifier-bmi"))
-    [0 :value :text] := "37"
+    [0 :value :text type/value] := "37"
     [0 :population 0 :count] := 1
-    [1 :value :text] := "null"
+    [1 :value :text type/value] := "null"
     [1 :population 0 :count] := 2)
 
   (given (first-stratifier-strata (evaluate "q27-stratifier-calculated-bmi"))
-    [0 :value :text] := "26.8"
+    [0 :value :text type/value] := "26.8"
     [0 :population 0 :count] := 1
-    [1 :value :text] := "null"
+    [1 :value :text type/value] := "null"
     [1 :population 0 :count] := 2)
 
   (given (first-stratifier-strata (evaluate "q29-stratifier-sample-material-type"))
-    [0 :value :text] := "liquid"
+    [0 :value :text type/value] := "liquid"
     [0 :population 0 :count] := 1
-    [1 :value :text] := "tissue"
+    [1 :value :text type/value] := "tissue"
     [1 :population 0 :count] := 1)
 
   (given (first-stratifier-strata (evaluate "q30-stratifier-with-missing-expression"))
-    [0 :value :text] := "null"
+    [0 :value :text type/value] := "null"
     [0 :population 0 :count] := 2)
 
   (given (first-stratifier-strata (evaluate "q31-stratifier-storage-temperature"))
-    [0 :value :text] := "temperature2to10"
+    [0 :value :text type/value] := "temperature2to10"
     [0 :population 0 :count] := 1
-    [1 :value :text] := "temperatureGN"
+    [1 :value :text type/value] := "temperatureGN"
     [1 :population 0 :count] := 1)
 
   (given (first-stratifier-strata (evaluate "q32-stratifier-underweight"))
-    [0 :value :text] := "false"
+    [0 :value :text type/value] := "false"
     [0 :population 0 :count] := 2
-    [1 :value :text] := "true"
+    [1 :value :text type/value] := "true"
     [1 :population 0 :count] := 1))
 
 (comment

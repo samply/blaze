@@ -1,9 +1,10 @@
 (ns blaze.fhir.spec.type
   (:refer-clojure
     :exclude
-    [boolean boolean? decimal? integer? long string? time type uri? uuid?])
+    [boolean boolean? decimal? integer? long meta string? time type uri? uuid?])
   (:require
     [blaze.fhir.spec.impl.intern :as intern]
+    [blaze.fhir.spec.type.json :as json]
     [blaze.fhir.spec.type.macros :as macros
      :refer [def-complex-type def-primitive-type defextended]]
     [blaze.fhir.spec.type.protocols :as p]
@@ -35,7 +36,7 @@
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 
 
-(set! *warn-on-reflection* true)
+;;(set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
 
@@ -44,7 +45,8 @@
 
 
 (defn value
-  "Returns the possible value of the primitive value `x` as FHIRPath system type."
+  "Returns the possible value of the primitive value `x` as FHIRPath system
+  type."
   [x]
   (p/-value x))
 
@@ -93,8 +95,10 @@
   (-type [_])
   (-interned [_] true)
   (-value [_])
+  (-has-primary-content [_] false)
   (-serialize-json [_ _ _])
-  (-serialize-json-as-field [_ _ _ _])
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ _ _])
   (-to-xml [_])
   (-hash-into [_ _])
   (-references [_]))
@@ -119,10 +123,12 @@
   (-type [_] :fhir/boolean)
   (-interned [_] true)
   (-value [b] b)
-  (-serialize-json [b generator _]
+  (-has-primary-content [_] true)
+  (-serialize-json [b generator]
     (.writeBoolean ^JsonGenerator generator b))
-  (-serialize-json-as-field [b field-name generator _]
-    (.writeBooleanField ^JsonGenerator generator field-name b))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [b]
     (xml-node/element nil {:value (str b)}))
   (-hash-into [b sink]
@@ -165,7 +171,7 @@
 
 
 (defn boolean? [x]
-  (identical? :fhir/boolean (p/-type x)))
+  (identical? :fhir/boolean (type x)))
 
 
 
@@ -176,10 +182,12 @@
   (-type [_] :fhir/integer)
   (-interned [_] false)
   (-value [i] i)
-  (-serialize-json [i generator _]
+  (-has-primary-content [_] true)
+  (-serialize-json [i generator]
     (.writeNumber ^JsonGenerator generator i))
-  (-serialize-json-as-field [i field-name generator _]
-    (.writeNumberField ^JsonGenerator generator ^String field-name i))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [i]
     (xml-node/element nil {:value (str i)}))
   (-hash-into [i sink]
@@ -210,7 +218,7 @@
 
 
 (defn integer? [x]
-  (identical? :fhir/integer (p/-type x)))
+  (identical? :fhir/integer (type x)))
 
 
 
@@ -221,10 +229,12 @@
   (-type [_] :fhir/long)
   (-interned [_] false)
   (-value [l] l)
-  (-serialize-json [l generator _]
+  (-has-primary-content [_] true)
+  (-serialize-json [l generator]
     (.writeNumber ^JsonGenerator generator (clojure.core/long l)))
-  (-serialize-json-as-field [l field-name generator _]
-    (.writeNumberField ^JsonGenerator generator ^String field-name (clojure.core/long l)))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [l]
     (xml-node/element nil {:value (str l)}))
   (-hash-into [l sink]
@@ -255,7 +265,7 @@
 
 
 (defn long? [x]
-  (identical? :fhir/long (p/-type x)))
+  (identical? :fhir/long (type x)))
 
 
 
@@ -266,10 +276,12 @@
   (-type [_] :fhir/string)
   (-interned [_] false)
   (-value [s] s)
-  (-serialize-json [s generator _]
+  (-has-primary-content [_] true)
+  (-serialize-json [s generator]
     (.writeString ^JsonGenerator generator s))
-  (-serialize-json-as-field [s field-name generator _]
-    (.writeStringField ^JsonGenerator generator field-name s))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [s]
     (xml-node/element nil {:value (str s)}))
   (-hash-into [s sink]
@@ -298,8 +310,29 @@
       (string value))))
 
 
+(def ^{:arglists '([x])} intern-string
+  (let [intern (intern/intern-value identity)
+        intern-extended (intern/intern-value map->ExtendedString)]
+    (fn [x]
+      (if (map? x)
+        (let [{:keys [id extension value]} x]
+          (if (and (p/-interned extension) (nil? id))
+            (intern-extended {:extension extension :value value})
+            (->ExtendedString id extension value)))
+        (intern x)))))
+
+
+(defn xml->InternedString
+  {:arglists '([element])}
+  [{{:keys [id value]} :attrs content :content}]
+  (let [extension (seq content)]
+    (if (or id extension)
+      (intern-string {:id id :extension extension :value value})
+      (intern-string value))))
+
+
 (defn string? [x]
-  (identical? :fhir/string (p/-type x)))
+  (identical? :fhir/string (type x)))
 
 
 
@@ -310,10 +343,12 @@
   (-type [_] :fhir/decimal)
   (-interned [_] false)
   (-value [d] d)
-  (-serialize-json [d generator _]
+  (-has-primary-content [_] true)
+  (-serialize-json [d generator]
     (.writeNumber ^JsonGenerator generator d))
-  (-serialize-json-as-field [d field-name generator _]
-    (.writeNumberField ^JsonGenerator generator ^String field-name d))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [d]
     (xml-node/element nil {:value (str d)}))
   (-hash-into [d sink]
@@ -344,7 +379,7 @@
 
 
 (defn decimal? [x]
-  (identical? :fhir/decimal (p/-type x)))
+  (identical? :fhir/decimal (type x)))
 
 
 
@@ -355,7 +390,7 @@
 (declare xml->Uri)
 
 
-(def-primitive-type Uri [value] :hash-num 5 :interned true)
+(def-primitive-type Uri [^String value] :hash-num 5 :interned true)
 
 
 
@@ -379,7 +414,7 @@
 (declare xml->Canonical)
 
 
-(def-primitive-type Canonical [value] :hash-num 7 :interned true)
+(def-primitive-type Canonical [^String value] :hash-num 7 :interned true)
 
 
 
@@ -410,11 +445,12 @@
   (-type [_] :fhir/instant)
   (-interned [_] false)
   (-value [_] value)
-  (-serialize-json-as-field [_ field-name generator _]
-    (.writeStringField ^JsonGenerator generator ^String field-name
-                       (system/-to-string value)))
-  (-serialize-json [_ generator _]
+  (-has-primary-content [_] true)
+  (-serialize-json [_ generator]
     (.writeString ^JsonGenerator generator ^String (system/-to-string value)))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [_]
     (system-to-xml value))
   (-hash-into [_ sink]
@@ -451,23 +487,24 @@
   (-type [_] :fhir/instant)
   (-interned [_] false)
   (-value [instant] (.atOffset instant ZoneOffset/UTC))
-  (-serialize-json-as-field [instant field-name generator _]
-    (.writeFieldName ^JsonGenerator generator ^String field-name)
+  (-has-primary-content [_] true)
+  (-serialize-json [instant generator]
     (.writeString ^JsonGenerator generator (str instant)))
-  (-serialize-json [instant generator _]
-    (.writeString ^JsonGenerator generator (str instant)))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [instant]
     (xml-node/element nil {:value (str instant)}))
   (-hash-into [instant sink]
     (doto ^PrimitiveSink sink
       (.putByte (byte 9))                                   ; :fhir/instant
       (.putByte (byte 2)))                                  ; :value
-    (system/-hash-into (p/-value instant) sink))
+    (system/-hash-into (value instant) sink))
   (-references [_]))
 
 
-(defextended ExtendedInstant [id extension value]
-  :fhir-type :fhir/instant :hash-num 9)
+(defextended ExtendedInstant [id extension ^Instant value]
+  :fhir-type :fhir/instant :hash-num 9 :value-form (.atOffset value ZoneOffset/UTC))
 
 
 (defn- parse-instant-value [value]
@@ -512,7 +549,7 @@
 
 
 (defn instant? [x]
-  (identical? :fhir/instant (p/-type x)))
+  (identical? :fhir/instant (type x)))
 
 
 
@@ -523,11 +560,12 @@
   (-type [_] :fhir/date)
   (-interned [_] false)
   (-value [date] date)
-  (-serialize-json-as-field [date field-name generator _]
-    (.writeFieldName ^JsonGenerator generator ^String field-name)
+  (-has-primary-content [_] true)
+  (-serialize-json [date generator]
     (.writeString ^JsonGenerator generator (str date)))
-  (-serialize-json [date generator _]
-    (.writeString ^JsonGenerator generator (str date)))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [date]
     (xml-node/element nil {:value (str date)}))
   (-hash-into [date sink]
@@ -541,11 +579,12 @@
   (-type [_] :fhir/date)
   (-interned [_] false)
   (-value [date] date)
-  (-serialize-json-as-field [date field-name generator _]
-    (.writeFieldName ^JsonGenerator generator ^String field-name)
+  (-has-primary-content [_] true)
+  (-serialize-json [date generator]
     (.writeString ^JsonGenerator generator (str date)))
-  (-serialize-json [date generator _]
-    (.writeString ^JsonGenerator generator (str date)))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [date]
     (xml-node/element nil {:value (str date)}))
   (-hash-into [date sink]
@@ -559,11 +598,12 @@
   (-type [_] :fhir/date)
   (-interned [_] false)
   (-value [date] date)
-  (-serialize-json-as-field [date field-name generator _]
-    (.writeFieldName ^JsonGenerator generator ^String field-name)
+  (-has-primary-content [_] true)
+  (-serialize-json [date generator]
     (.writeString ^JsonGenerator generator (str date)))
-  (-serialize-json [date generator _]
-    (.writeString ^JsonGenerator generator (str date)))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [date]
     (xml-node/element nil {:value (str date)}))
   (-hash-into [date sink]
@@ -618,7 +658,7 @@
 
 
 (defn date? [x]
-  (identical? :fhir/date (p/-type x)))
+  (identical? :fhir/date (type x)))
 
 
 (defprotocol ConvertToDateTime
@@ -639,11 +679,12 @@
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
   (-value [year] year)
-  (-serialize-json-as-field [year field-name generator _]
-    (.writeFieldName ^JsonGenerator generator ^String field-name)
+  (-has-primary-content [_] true)
+  (-serialize-json [year generator]
     (.writeString ^JsonGenerator generator (str year)))
-  (-serialize-json [year generator _]
-    (.writeString ^JsonGenerator generator (str year)))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [year]
     (xml-node/element nil {:value (str year)}))
   (-hash-into [year sink]
@@ -657,11 +698,12 @@
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
   (-value [year-month] year-month)
-  (-serialize-json-as-field [year-month field-name generator _]
-    (.writeFieldName ^JsonGenerator generator ^String field-name)
+  (-has-primary-content [_] true)
+  (-serialize-json [year-month generator]
     (.writeString ^JsonGenerator generator (str year-month)))
-  (-serialize-json [year-month generator _]
-    (.writeString ^JsonGenerator generator (str year-month)))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [year-month]
     (xml-node/element nil {:value (str year-month)}))
   (-hash-into [year-month sink]
@@ -675,11 +717,12 @@
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
   (-value [year-month-day] year-month-day)
-  (-serialize-json-as-field [year-month-day field-name generator _]
-    (.writeFieldName ^JsonGenerator generator ^String field-name)
+  (-has-primary-content [_] true)
+  (-serialize-json [year-month-day generator]
     (.writeString ^JsonGenerator generator (str year-month-day)))
-  (-serialize-json [year-month-day generator _]
-    (.writeString ^JsonGenerator generator (str year-month-day)))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [year-month-day]
     (xml-node/element nil {:value (str year-month-day)}))
   (-hash-into [year-month-day sink]
@@ -695,11 +738,12 @@
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
   (-value [date-time] date-time)
-  (-serialize-json-as-field [date-time field-name generator _]
-    (.writeFieldName ^JsonGenerator generator ^String field-name)
+  (-has-primary-content [_] true)
+  (-serialize-json [date-time generator]
     (.writeString ^JsonGenerator generator ^String (system/-to-string date-time)))
-  (-serialize-json [date-time generator _]
-    (.writeString ^JsonGenerator generator ^String (system/-to-string date-time)))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [date-time]
     (system-to-xml date-time))
   (-hash-into [date-time sink]
@@ -713,11 +757,12 @@
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
   (-value [date-time] date-time)
-  (-serialize-json-as-field [date-time field-name generator _]
-    (.writeFieldName ^JsonGenerator generator ^String field-name)
+  (-has-primary-content [_] true)
+  (-serialize-json [date-time generator]
     (.writeString ^JsonGenerator generator ^String (system/-to-string date-time)))
-  (-serialize-json [date-time generator _]
-    (.writeString ^JsonGenerator generator ^String (system/-to-string date-time)))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [date-time]
     (system-to-xml date-time))
   (-hash-into [date-time sink]
@@ -772,7 +817,7 @@
 
 
 (defn dateTime? [x]
-  (identical? :fhir/dateTime (p/-type x)))
+  (identical? :fhir/dateTime (type x)))
 
 
 
@@ -783,11 +828,12 @@
   (-type [_] :fhir/time)
   (-interned [_] false)
   (-value [time] time)
-  (-serialize-json-as-field [time field-name generator _]
-    (.writeStringField ^JsonGenerator generator ^String field-name
-                       (system/-to-string time)))
-  (-serialize-json [time generator _]
+  (-has-primary-content [_] true)
+  (-serialize-json [time generator]
     (.writeString ^JsonGenerator generator ^String (system/-to-string time)))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [time]
     (system-to-xml time))
   (-hash-into [time sink]
@@ -834,7 +880,7 @@
 
 
 (defn time? [x]
-  (identical? :fhir/time (p/-type x)))
+  (identical? :fhir/time (type x)))
 
 
 
@@ -844,7 +890,8 @@
 (declare code)
 (declare xml->Code)
 
-(def-primitive-type Code [value] :hash-num 13 :interned true)
+
+(def-primitive-type Code [^String value] :hash-num 13 :interned true)
 
 
 
@@ -909,11 +956,12 @@
   (-type [_] :fhir/uuid)
   (-interned [_] false)
   (-value [uuid] (str "urn:uuid:" uuid))
-  (-serialize-json-as-field [uuid field-name generator _]
-    (.writeStringField ^JsonGenerator generator ^String field-name
-                       (str "urn:uuid:" uuid)))
-  (-serialize-json [uuid generator _]
+  (-has-primary-content [_] true)
+  (-serialize-json [uuid generator]
     (.writeString ^JsonGenerator generator (str "urn:uuid:" uuid)))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [uuid]
     (xml-node/element nil {:value (str "urn:uuid:" uuid)}))
   (-hash-into [uuid sink]
@@ -926,7 +974,7 @@
 
 
 (defextended ExtendedUuid [id extension ^UUID value]
-  :fhir-type :fhir/uuid :hash-num 19)
+  :fhir-type :fhir/uuid :hash-num 19 :value-form (str "urn:uuid:" value))
 
 
 (def ^{:arglists '([x])} uuid
@@ -944,7 +992,7 @@
 
 
 (defn uuid? [x]
-  (identical? :fhir/uuid (p/-type x)))
+  (identical? :fhir/uuid (type x)))
 
 
 
@@ -955,11 +1003,12 @@
   (-type [_] :fhir/xhtml)
   (-interned [_] false)
   (-value [_] value)
-  (-serialize-json-as-field [_ field-name generator _]
-    (.writeFieldName ^JsonGenerator generator ^String field-name)
+  (-has-primary-content [_] true)
+  (-serialize-json [_ generator]
     (.writeString ^JsonGenerator generator ^String value))
-  (-serialize-json [_ generator _]
-    (.writeString ^JsonGenerator generator ^String value))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [_ generator]
+    (.writeNull ^JsonGenerator generator))
   (-to-xml [_] (update (xml/parse-str value) :attrs assoc :xmlns "http://www.w3.org/1999/xhtml"))
   (-hash-into [_ sink]
     (doto ^PrimitiveSink sink
@@ -978,7 +1027,7 @@
 
 (defmethod print-method Xhtml [xhtml ^Writer w]
   (.write w "#fhir/xhtml\"")
-  (.write w ^String (p/-value xhtml))
+  (.write w ^String (value xhtml))
   (.write w "\""))
 
 
@@ -1003,18 +1052,25 @@
   List
   (-type [_])
   (-interned [xs]
-    (every? p/-interned xs))
+    (reduce #(if (p/-interned %2) %1 (reduced false)) true xs))
   (-value [_])
-  (-serialize-json-as-field [xs field-name generator provider]
-    (.writeArrayFieldStart ^JsonGenerator generator field-name)
-    (dotimes [i (.size xs)]
-      (p/-serialize-json (.get xs i) generator provider))
+  (-has-primary-content [xs]
+    (reduce #(when (p/-has-primary-content %2) (reduced true)) nil xs))
+  (-serialize-json [xs generator]
+    (.writeStartArray ^JsonGenerator generator)
+    (reduce #(p/-serialize-json %2 generator) nil xs)
+    (.writeEndArray ^JsonGenerator generator))
+  (-has-secondary-content [xs]
+    (reduce #(when (p/-has-secondary-content %2) (reduced true)) nil xs))
+  (-serialize-json-secondary [xs generator]
+    (.writeStartArray ^JsonGenerator generator)
+    (reduce #(p/-serialize-json-secondary %2 generator) nil xs)
     (.writeEndArray ^JsonGenerator generator))
   (-hash-into [xs sink]
     (.putByte ^PrimitiveSink sink (byte 36))
-    (run! #(p/-hash-into % sink) xs))
+    (reduce #(p/-hash-into %2 sink) nil xs))
   (-references [xs]
-    (transduce (mapcat p/-references) conj [] xs))
+    (reduce #(into %1 (p/-references %2)) [] xs))
   Keyword
   (-type [_])
   (-value [_])
@@ -1026,22 +1082,19 @@
     (.valAt m :fhir/type))
   (-interned [_] false)
   (-value [_])
-  (-serialize-json [m generator provider]
+  (-has-primary-content [_] true)
+  (-serialize-json [m generator]
     (.writeStartObject ^JsonGenerator generator)
     (run!
       #(let [key (key %)]
          (when-not (identical? :fhir/type key)
-           (p/-serialize-json-as-field (val %) (name key) generator provider)))
+           (when-some [v (val %)]
+             (json/write-field generator (json/field-name (name key)) v))))
       m)
     (.writeEndObject ^JsonGenerator generator))
-  (-serialize-json-as-field [m field-name generator provider]
-    (.writeObjectFieldStart ^JsonGenerator generator field-name)
-    (run!
-      #(let [key (key %)]
-         (when-not (identical? :fhir/type key)
-           (p/-serialize-json-as-field (val %) (name key) generator provider)))
-      m)
-    (.writeEndObject ^JsonGenerator generator))
+  (-has-secondary-content [_] false)
+  (-serialize-json-secondary [m _]
+    (throw (ex-info "A complex type/resource has no secondary content." m)))
   (-hash-into [m sink]
     (.putByte ^PrimitiveSink sink (byte 37))
     (run!
@@ -1053,70 +1106,87 @@
     (transduce (mapcat p/-references) conj [] (vals m))))
 
 
+(declare attachment)
+
+
 (def-complex-type Attachment
-  [id extension contentType language data url size hash title creation]
+  [^String id extension ^:primitive contentType ^:primitive language
+   ^:primitive ^:primitive data ^:primitive url ^:primitive size
+   ^:primitive hash ^:primitive title ^:primitive creation]
   :hash-num 46)
 
 
-(def-complex-type Extension [id extension url ^:polymorph value]
+(declare extension)
+
+
+(def-complex-type Extension [^String id extension ^String url ^:polymorph value]
   :hash-num 39
   :interned (and (nil? id) (p/-interned extension) (p/-interned value)))
 
 
-(def ^{:arglists '([m])} extension
-  "Creates an Extension from a map of :id, :extension, :url or :value."
-  (let [intern-extension (intern/intern-value map->Extension)]
-    (fn [{:keys [id extension value] :as m}]
-      (if (and (nil? id) (p/-interned extension) (p/-interned value))
-        (intern-extension m)
-        (map->Extension m)))))
+(declare coding)
 
 
-(def-complex-type Coding [id extension system version code display]
+(def-complex-type Coding
+  [^String id extension ^:primitive system ^:primitive-string version
+   ^:primitive code ^:primitive-string display ^:primitive userSelected]
   :hash-num 38
   :interned (and (nil? id) (p/-interned extension)))
 
 
-(def coding
-  (let [intern-coding (intern/intern-value map->Coding)]
-    (fn [{:keys [id extension] :as m}]
-      (if (and (nil? id) (p/-interned extension))
-        (intern-coding m)
-        (map->Coding m)))))
+(declare codeable-concept)
 
 
-(def-complex-type CodeableConcept [id extension coding text]
+(def-complex-type CodeableConcept
+  [^String id extension coding ^:primitive-string text]
   :hash-num 39
   :interned (and (nil? id) (p/-interned extension)))
 
 
-(def codeable-concept
-  (let [intern-codeable-concept (intern/intern-value map->CodeableConcept)]
-    (fn [{:keys [id extension] :as m}]
-      (if (and (nil? id) (p/-interned extension))
-        (intern-codeable-concept m)
-        (map->CodeableConcept m)))))
+(declare quantity)
 
 
-(def-complex-type Quantity [id extension value comparator unit system code]
-  :hash-num 40)
+(def-complex-type Quantity
+  [^String id extension ^:primitive value ^:primitive comparator
+   ^:primitive-string unit ^:primitive system ^:primitive code]
+  :hash-num 40
+  :interned (and (nil? id) (p/-interned extension) (nil? value)))
 
 
-(def-complex-type Period [id extension start end]
+(declare period)
+
+
+(def-complex-type Period [^String id extension ^:primitive start ^:primitive end]
   :hash-num 41)
 
 
-(def-complex-type Identifier [id extension use type system value period assigner]
+(declare identifier)
+
+
+(def-complex-type Identifier
+  [^String id extension ^:primitive use type ^:primitive system
+   ^:primitive-string value period assigner]
   :hash-num 42)
 
 
+(declare human-name)
+
+
 (def-complex-type HumanName
-  [id extension use text family given prefix suffix period]
+  [^String id extension ^:primitive use ^:primitive-string text
+   ^:primitive-string family ^:primitive-list given ^:primitive-list prefix
+   ^:primitive-list suffix period]
   :hash-num 46)
 
 
+(declare address)
+
+
 (def-complex-type Address
-  [id extension use type text line city district state postalCode country period]
+  [^String id extension ^:primitive use ^:primitive type ^:primitive-string text
+   ^:primitive-list line ^:primitive-string city ^:primitive-string district
+   ^:primitive-string state ^:primitive-string postalCode
+   ^:primitive-string country period]
   :hash-num 47)
 
 
@@ -1131,7 +1201,12 @@
       [ref])))
 
 
-(def-complex-type Reference [id extension reference type identifier display]
+(declare reference)
+
+
+(def-complex-type Reference
+  [^String id extension ^:primitive-string reference ^:primitive type identifier
+   ^:primitive-string display]
   :hash-num 43
   :references
   (-> (transient (or (some-> reference reference-reference) []))
@@ -1142,18 +1217,23 @@
     (persistent!)))
 
 
+(declare meta)
+
+
 (def-complex-type Meta
-  [id extension versionId lastUpdated source profile security tag]
+  [^String id extension ^:primitive versionId ^:primitive lastUpdated
+   ^:primitive source ^:primitive-list profile security tag]
   :hash-num 44)
 
 
-(def mk-meta
-  (intern/intern-value map->Meta))
+(declare bundle-entry-search)
 
 
-(def-complex-type BundleEntrySearch [id extension mode score]
+(def-complex-type BundleEntrySearch
+  [^String id extension ^:primitive mode ^:primitive score]
   :fhir-type :fhir.Bundle.entry/search
-  :hash-num 45)
+  :hash-num 45
+  :interned (and (nil? id) (p/-interned extension) (nil? score)))
 
 
 
@@ -1161,8 +1241,8 @@
 
 (def ^:private object-serializer
   (proxy [StdSerializer] [Object]
-    (serialize [obj generator provider]
-      (p/-serialize-json obj generator provider))))
+    (serialize [obj generator _]
+      (p/-serialize-json obj generator))))
 
 
 (def fhir-module
@@ -1175,12 +1255,6 @@
 
 
 ;; ---- print -----------------------------------------------------------------
-
-(defmethod print-dup (Class/forName "[B") [^bytes year ^Writer w]
-  (.write w "#=(byte-array [")
-  (.write w ^String (str/join " " (map int (vec year))))
-  (.write w "])"))
-
 
 (defmethod print-dup Year [^Year year ^Writer w]
   (.write w "#=(java.time.Year/of ")

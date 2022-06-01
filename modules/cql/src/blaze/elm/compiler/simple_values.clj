@@ -11,6 +11,9 @@
     [blaze.elm.util :as elm-util]))
 
 
+(set! *warn-on-reflection* true)
+
+
 ;; 1.1 Literal
 ;;
 ;; The Literal type defines a single scalar value. For example, the literal 5,
@@ -21,7 +24,7 @@
 
 (defn- parse-int [s]
   (try
-    (.longValue (Integer/parseInt s))
+    (.longValue (Integer/valueOf ^String s))
     (catch NumberFormatException _
       (throw-anom (ba/incorrect (format "Incorrect integer literal `%s`." s))))))
 

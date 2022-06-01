@@ -13,6 +13,7 @@
     [clojure.test.check.properties :as prop]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 

@@ -9,6 +9,7 @@
     [org.openjdk.jol.info GraphLayout]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 
