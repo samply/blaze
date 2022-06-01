@@ -9,6 +9,7 @@
     [clojure.test.check.properties :as p]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 

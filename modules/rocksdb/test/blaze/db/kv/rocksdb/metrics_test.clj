@@ -9,6 +9,7 @@
     [org.rocksdb Statistics RocksDB]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 

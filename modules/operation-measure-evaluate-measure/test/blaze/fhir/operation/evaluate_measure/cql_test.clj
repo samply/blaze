@@ -19,6 +19,7 @@
     [java.time Clock OffsetDateTime]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 

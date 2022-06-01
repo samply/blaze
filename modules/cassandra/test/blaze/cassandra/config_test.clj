@@ -9,6 +9,7 @@
     [java.net InetSocketAddress]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 

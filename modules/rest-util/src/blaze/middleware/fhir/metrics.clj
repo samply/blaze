@@ -4,6 +4,9 @@
     [prometheus.alpha :as prom]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (prom/defcounter requests-total
   "Number of requests to this service.
    Distinguishes between the returned status code, the handler being used to
@@ -34,6 +37,7 @@
   (/ (double (- (System/nanoTime) start)) 1000000000.0))
 
 
+;; TODO: we no longer use aleph
 (defn- observe-request-duration-seconds!
   [{:aleph/keys [request-arrived] :keys [request-method]} interaction-name]
   (when request-arrived

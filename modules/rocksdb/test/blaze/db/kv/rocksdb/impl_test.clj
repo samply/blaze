@@ -20,6 +20,7 @@
      ColumnFamilyHandle WriteOptions]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 
@@ -188,7 +189,7 @@
 
 
 (defn- cfh [db name]
-  (.createColumnFamily db (ColumnFamilyDescriptor. (from-hex name))))
+  (.createColumnFamily ^RocksDB db (ColumnFamilyDescriptor. (from-hex name))))
 
 
 (deftest put-wb-test

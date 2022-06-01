@@ -11,6 +11,7 @@
     [java.time Instant]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 

@@ -12,6 +12,7 @@
     [java.util.concurrent TimeUnit]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 

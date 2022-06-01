@@ -6,6 +6,9 @@
     [clojure.test.check.generators :as gen]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (defn nilable [gen]
   (gen/one-of [gen (gen/return nil)]))
 

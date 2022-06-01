@@ -12,6 +12,9 @@
     [java.io ByteArrayOutputStream]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (prom/defhistogram generate-duration-seconds
   "FHIR generating latencies in seconds."
   {:namespace "fhir"}

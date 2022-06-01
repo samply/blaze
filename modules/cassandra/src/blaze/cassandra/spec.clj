@@ -6,6 +6,9 @@
     [java.util EnumSet]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (s/def :blaze.cassandra/contact-points
   (s/and string? #(re-matches #"[^:]+:\d+(,[^:]+:\d+)*" %)))
 
@@ -23,7 +26,7 @@
 
 
 (s/def :blaze.cassandra/put-consistency-level
-  (into #{} (map #(.name %)) (EnumSet/allOf DefaultConsistencyLevel)))
+  (into #{} (map #(.name ^Enum %)) (EnumSet/allOf DefaultConsistencyLevel)))
 
 
 (s/def :blaze.cassandra/max-concurrent-read-requests

@@ -17,6 +17,9 @@
     [java.util.regex Pattern]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (defn type-exists? [type]
   (some? (s2/get-spec (keyword "fhir" type))))
 

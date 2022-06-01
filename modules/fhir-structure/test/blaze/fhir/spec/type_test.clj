@@ -29,6 +29,7 @@
 (xml-name/alias-uri 'xhtml "http://www.w3.org/1999/xhtml")
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 

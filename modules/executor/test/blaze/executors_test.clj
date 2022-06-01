@@ -8,6 +8,9 @@
     [java.util.concurrent TimeUnit]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (defn- fixture [f]
   (st/instrument)
   (f)

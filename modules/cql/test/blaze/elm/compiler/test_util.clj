@@ -12,6 +12,9 @@
     [java.time OffsetDateTime ZoneOffset]))
 
 
+(set! *warn-on-reflection* true)
+
+
 (defn instrument-compile []
   (st/instrument
     `c/compile
