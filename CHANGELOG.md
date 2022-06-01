@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.17.6
+
+### Performance
+
+* Improve Interning of Complex Types ([#725](https://github.com/samply/blaze/issues/725))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/44?closed=1).
+
 ## v0.17.5
 
 ### Bugfixes
