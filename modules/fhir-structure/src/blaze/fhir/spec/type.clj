@@ -17,7 +17,7 @@
   (:import
     [blaze.fhir.spec.type.system
      DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]
-    [clojure.lang IPersistentMap Keyword PersistentVector]
+    [clojure.lang IPersistentMap Keyword]
     [com.fasterxml.jackson.core JsonGenerator]
     [com.fasterxml.jackson.databind.module SimpleModule]
     [com.fasterxml.jackson.databind.ser.std StdSerializer]
@@ -1049,28 +1049,28 @@
 ;; ---- Complex Types --------------------------------------------------------
 
 (extend-protocol p/FhirType
-  PersistentVector
+  List
   (-type [_])
   (-interned [xs]
-    (.reduce xs #(if (p/-interned %2) %1 (reduced false)) true))
+    (reduce #(if (p/-interned %2) %1 (reduced false)) true xs))
   (-value [_])
   (-has-primary-content [xs]
-    (.reduce xs #(when (p/-has-primary-content %2) (reduced true)) nil))
+    (reduce #(when (p/-has-primary-content %2) (reduced true)) nil xs))
   (-serialize-json [xs generator]
     (.writeStartArray ^JsonGenerator generator)
-    (.reduce xs #(p/-serialize-json %2 generator) nil)
+    (reduce #(p/-serialize-json %2 generator) nil xs)
     (.writeEndArray ^JsonGenerator generator))
   (-has-secondary-content [xs]
-    (.reduce xs #(when (p/-has-secondary-content %2) (reduced true)) nil))
+    (reduce #(when (p/-has-secondary-content %2) (reduced true)) nil xs))
   (-serialize-json-secondary [xs generator]
     (.writeStartArray ^JsonGenerator generator)
-    (.reduce xs #(p/-serialize-json-secondary %2 generator) nil)
+    (reduce #(p/-serialize-json-secondary %2 generator) nil xs)
     (.writeEndArray ^JsonGenerator generator))
   (-hash-into [xs sink]
     (.putByte ^PrimitiveSink sink (byte 36))
-    (.reduce xs #(p/-hash-into %2 sink) nil))
+    (reduce #(p/-hash-into %2 sink) nil xs))
   (-references [xs]
-    (.reduce xs #(into %1 (p/-references %2)) []))
+    (reduce #(into %1 (p/-references %2)) [] xs))
   Keyword
   (-type [_])
   (-value [_])
