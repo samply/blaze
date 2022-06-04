@@ -22,6 +22,7 @@
     [blaze.db.node.tx-indexer :as tx-indexer]
     [blaze.db.node.tx-indexer.verify :as tx-indexer-verify]
     [blaze.db.node.validation :as validation]
+    [blaze.db.node.version :as version]
     [blaze.db.resource-store :as rs]
     [blaze.db.search-param-registry.spec]
     [blaze.db.tx-log :as tx-log]
@@ -387,12 +388,46 @@
     [:blaze.db/enforce-referential-integrity]))
 
 
+(def ^:private expected-kv-store-version 0)
+
+
+(defn- kv-store-version [kv-store]
+  (or (some-> (kv/get kv-store version/key) version/decode-value) 0))
+
+
+(def ^:private incompatible-kv-store-version-msg
+  "Incompatible index store version %1$d found. This version of Blaze needs
+  version %2$d.
+
+  Either use an older version of Blaze which is compatible with index store
+  version %1$d or do a database migration described here:
+
+    https://github.com/samply/blaze/tree/master/docs/database/migration.md
+
+  ")
+
+
+(defn- incompatible-kv-store-version-ex [actual-version expected-version]
+  (ex-info (format incompatible-kv-store-version-msg actual-version expected-version)
+           {:actual-version actual-version :expected-version expected-version}))
+
+
+(defn- check-version! [kv-store]
+  (when (tx-success/last-t kv-store)
+    (let [actual-kv-store-version (kv-store-version kv-store)]
+      (if (= actual-kv-store-version expected-kv-store-version)
+        (log/info "Index store version is" actual-kv-store-version)
+        (throw (incompatible-kv-store-version-ex actual-kv-store-version
+                                                 expected-kv-store-version))))))
+
+
 (defmethod ig/init-key :blaze.db/node
   [_ {:keys [tx-log resource-handle-cache tx-cache indexer-executor kv-store
              resource-indexer resource-store search-param-registry poll-timeout]
       :or {poll-timeout (time/seconds 1)}
       :as config}]
   (init-msg config)
+  (check-version! kv-store)
   (let [node (->Node (ctx config) tx-log resource-handle-cache tx-cache kv-store
                      resource-store search-param-registry resource-indexer
                      (atom (initial-state kv-store))

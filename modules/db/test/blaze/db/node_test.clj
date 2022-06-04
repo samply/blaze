@@ -6,11 +6,14 @@
     [blaze.db.api :as d]
     [blaze.db.api-spec]
     [blaze.db.impl.db-spec]
+    [blaze.db.impl.index.tx-success :as tx-success]
+    [blaze.db.kv :as kv]
     [blaze.db.kv.mem-spec]
     [blaze.db.node :as node]
     [blaze.db.node-spec]
     [blaze.db.node.resource-indexer :as resource-indexer]
     [blaze.db.node.tx-indexer :as-alias tx-indexer]
+    [blaze.db.node.version :as version]
     [blaze.db.resource-handle-cache]
     [blaze.db.resource-store :as rs]
     [blaze.db.search-param-registry]
@@ -29,7 +32,8 @@
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [juxt.iota :refer [given]]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:import [java.time Instant]))
 
 
 (set! *warn-on-reflection* true)
@@ -82,6 +86,12 @@
              {:resource-store (ig/ref ::rs/kv)})))
 
 
+(defn- with-index-store-version [system version]
+  (assoc-in system [[::kv/mem :blaze.db/index-kv-store] :init-data]
+            [[version/key (version/encode-value version)]
+             (tx-success/index-entry 1 Instant/EPOCH)]))
+
+
 (deftest init-test
   (testing "nil config"
     (given-thrown (ig/init {:blaze.db/node nil})
@@ -129,7 +139,14 @@
       [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
       [:explain ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
       [:explain ::s/problems 8 :pred] := `boolean?
-      [:explain ::s/problems 8 :val] := ::invalid)))
+      [:explain ::s/problems 8 :val] := ::invalid))
+
+  (testing "incompatible version"
+    (given-thrown (ig/init (with-index-store-version system -1))
+      :key := :blaze.db/node
+      :reason := ::ig/build-threw-exception
+      [:cause-data :expected-version] := 0
+      [:cause-data :actual-version] := -1)))
 
 
 (deftest duration-seconds-collector-init-test
@@ -220,3 +237,8 @@
 
     ;; but it isn't terminated yet
     (is (not (ex/terminated? indexer-executor)))))
+
+
+(deftest existing-data-with-compatible-version
+  (with-system [{:blaze.db/keys [node]} (with-index-store-version system 0)]
+    (is node)))
