@@ -7,6 +7,7 @@
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store-spec]
     [blaze.db.resource-store.kv :as rs-kv]
+    [blaze.db.resource-store.spec :refer [resource-store?]]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.test-util :as tu :refer [given-thrown with-system]]
@@ -67,7 +68,7 @@
     (given-thrown (ig/init {:blaze.db/resource-cache {:resource-store ::invalid}})
       :key := :blaze.db/resource-cache
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (satisfies? rs/ResourceStore ~'%))
+      [:explain ::s/problems 0 :pred] := `resource-store?
       [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid max-size"

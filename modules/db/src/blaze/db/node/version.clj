@@ -1,7 +1,8 @@
 (ns blaze.db.node.version
-  (:refer-clojure :exclude [key])
+  (:refer-clojure :exclude [get key])
   (:require
-    [blaze.byte-buffer :as bb])
+    [blaze.byte-buffer :as bb]
+    [blaze.db.kv :as kv])
   (:import
     [java.nio.charset StandardCharsets]))
 
@@ -19,5 +20,13 @@
       (bb/array)))
 
 
-(defn decode-value [bytes]
+(defn- decode-value [bytes]
   (bb/get-int! (bb/wrap bytes)))
+
+
+(defn get [store]
+  (or (some-> (kv/get store key) decode-value) 0))
+
+
+(defn set! [store version]
+  (kv/put! store key (encode-value version)))
