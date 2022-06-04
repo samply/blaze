@@ -2428,29 +2428,29 @@
                  (:kv-store node)
                  :type :id :hash-prefix :code :v-hash)
                [["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
-                 "value-quantity" #blaze/byte-string"0000000080"]
+                 "value-quantity" #blaze/byte-string"4F40902F3B6AE19A80"]
                 ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
-                 "value-quantity" #blaze/byte-string"5C38E45A80"]
+                 "value-quantity" #blaze/byte-string"9CEABF1B055DDDCF80"]
                 ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
-                 "value-quantity" #blaze/byte-string"9B780D9180"]
+                 "value-quantity" #blaze/byte-string"B658D8AF4F417A2B80"]
                 ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
-                 "combo-value-quantity" #blaze/byte-string"0000000080"]
+                 "combo-value-quantity" #blaze/byte-string"4F40902F3B6AE19A80"]
                 ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
-                 "combo-value-quantity" #blaze/byte-string"5C38E45A80"]
+                 "combo-value-quantity" #blaze/byte-string"9CEABF1B055DDDCF80"]
                 ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
-                 "combo-value-quantity" #blaze/byte-string"9B780D9180"]
+                 "combo-value-quantity" #blaze/byte-string"B658D8AF4F417A2B80"]
                 ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
-                 "_id" #blaze/byte-string"165494C5"]
+                 "_id" #blaze/byte-string"490E5C1C8B04CCEC"]
                 ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
                  "_lastUpdated" #blaze/byte-string"80008001"]
                 ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
-                 "context-quantity" #blaze/byte-string"0000000080"]
+                 "context-quantity" #blaze/byte-string"4F40902F3B6AE19A80"]
                 ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
-                 "context-quantity" #blaze/byte-string"5C38E45A80"]
+                 "context-quantity" #blaze/byte-string"9CEABF1B055DDDCF80"]
                 ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
-                 "context-quantity" #blaze/byte-string"9B780D9180"]
+                 "context-quantity" #blaze/byte-string"B658D8AF4F417A2B80"]
                 ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
-                 "_id" #blaze/byte-string"165494C5"]
+                 "_id" #blaze/byte-string"490E5C1C8B04CCEC"]
                 ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
                  "_lastUpdated" #blaze/byte-string"80008001"]])))
 

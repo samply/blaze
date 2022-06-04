@@ -241,19 +241,20 @@
                       kv-store :type :id :hash-prefix)))
         (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
                [["patient" (codec/v-hash "Patient/id-145552")]
+                ["patient" (codec/v-hash "id-145552")]
                 ["patient" (codec/tid-id
                              (codec/tid "Patient")
                              (codec/id-byte-string "id-145552"))]
-                ["patient" (codec/v-hash "id-145552")]
-                ["code" (codec/v-hash "code-204441")]
-                ["code" (codec/v-hash "system-204435|")]
+
                 ["code" (codec/v-hash "system-204435|code-204441")]
+                ["code" (codec/v-hash "system-204435|")]
+                ["code" (codec/v-hash "code-204441")]
                 ["onset-date" (codec-date/encode-range (LocalDate/of 2020 1 30))]
                 ["subject" (codec/v-hash "Patient/id-145552")]
+                ["subject" (codec/v-hash "id-145552")]
                 ["subject" (codec/tid-id
                              (codec/tid "Patient")
                              (codec/id-byte-string "id-145552"))]
-                ["subject" (codec/v-hash "id-145552")]
                 ["_profile" (codec/v-hash "url-164445")]
                 ["_id" (codec/v-hash "id-204446")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
@@ -264,19 +265,19 @@
                       kv-store :type :id :hash-prefix)))
         (is (= (r-sp-v-tu/decode-index-entries kv-store :code :v-hash)
                [["patient" (codec/v-hash "Patient/id-145552")]
+                ["patient" (codec/v-hash "id-145552")]
                 ["patient" (codec/tid-id
                              (codec/tid "Patient")
                              (codec/id-byte-string "id-145552"))]
-                ["patient" (codec/v-hash "id-145552")]
-                ["code" (codec/v-hash "code-204441")]
-                ["code" (codec/v-hash "system-204435|")]
                 ["code" (codec/v-hash "system-204435|code-204441")]
+                ["code" (codec/v-hash "system-204435|")]
+                ["code" (codec/v-hash "code-204441")]
                 ["onset-date" (codec-date/encode-range (LocalDate/of 2020 1 30))]
                 ["subject" (codec/v-hash "Patient/id-145552")]
+                ["subject" (codec/v-hash "id-145552")]
                 ["subject" (codec/tid-id
                              (codec/tid "Patient")
                              (codec/id-byte-string "id-145552"))]
-                ["subject" (codec/v-hash "id-145552")]
                 ["_profile" (codec/v-hash "url-164445")]
                 ["_id" (codec/v-hash "id-204446")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
@@ -292,19 +293,19 @@
                       kv-store :compartment :type :id :hash-prefix)))
         (is (= (c-sp-vr-tu/decode-index-entries kv-store :code :v-hash)
                [["patient" (codec/v-hash "Patient/id-145552")]
+                ["patient" (codec/v-hash "id-145552")]
                 ["patient" (codec/tid-id
                              (codec/tid "Patient")
                              (codec/id-byte-string "id-145552"))]
-                ["patient" (codec/v-hash "id-145552")]
-                ["code" (codec/v-hash "code-204441")]
-                ["code" (codec/v-hash "system-204435|")]
                 ["code" (codec/v-hash "system-204435|code-204441")]
+                ["code" (codec/v-hash "system-204435|")]
+                ["code" (codec/v-hash "code-204441")]
                 ["onset-date" (codec-date/encode-range (LocalDate/of 2020 1 30))]
                 ["subject" (codec/v-hash "Patient/id-145552")]
+                ["subject" (codec/v-hash "id-145552")]
                 ["subject" (codec/tid-id
                              (codec/tid "Patient")
                              (codec/id-byte-string "id-145552"))]
-                ["subject" (codec/v-hash "id-145552")]
                 ["_profile" (codec/v-hash "url-164445")]
                 ["_id" (codec/v-hash "id-204446")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]]))))))
@@ -355,18 +356,6 @@
                       kv-store :type :id :hash-prefix)))
         (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
                [["code-value-quantity"
-                 #blaze/byte-string"82821D0F00000000900926"]
-                ["code-value-quantity"
-                 #blaze/byte-string"82821D0F32690DC8900926"]
-                ["code-value-quantity"
-                 #blaze/byte-string"82821D0FA3C37576900926"]
-                ["code-value-quantity"
-                 #blaze/byte-string"9F7C9B9400000000900926"]
-                ["code-value-quantity"
-                 #blaze/byte-string"9F7C9B9432690DC8900926"]
-                ["code-value-quantity"
-                 #blaze/byte-string"9F7C9B94A3C37576900926"]
-                ["code-value-quantity"
                  (bs/concat (codec/v-hash "code-193824")
                             (codec/quantity "" 23.42M))]
                 ["code-value-quantity"
@@ -376,50 +365,62 @@
                  (bs/concat (codec/v-hash "code-193824")
                             (codec/quantity "http://unitsofmeasure.org|kg/m2"
                                             23.42M))]
+                ["code-value-quantity"
+                 #blaze/byte-string"B02358E02AD0942D4F40902F3B6AE19A900926"]
+                ["code-value-quantity"
+                 #blaze/byte-string"B02358E02AD0942DE95B25E4B02F01AF900926"]
+                ["code-value-quantity"
+                 #blaze/byte-string"B02358E02AD0942DF35972C2DDEDDFE6900926"]
+                ["code-value-quantity"
+                 #blaze/byte-string"D47C56F6D0C25BA34F40902F3B6AE19A900926"]
+                ["code-value-quantity"
+                 #blaze/byte-string"D47C56F6D0C25BA3E95B25E4B02F01AF900926"]
+                ["code-value-quantity"
+                 #blaze/byte-string"D47C56F6D0C25BA3F35972C2DDEDDFE6900926"]
                 ["date" (codec-date/encode-range (LocalDate/of 2005 6 17))]
-                ["category" (codec/v-hash "system-193558|code-193603")]
                 ["category" (codec/v-hash "system-193558|")]
                 ["category" (codec/v-hash "code-193603")]
+                ["category" (codec/v-hash "system-193558|code-193603")]
                 ["patient" (codec/v-hash "id-180857")]
                 ["patient" (codec/tid-id
                              (codec/tid "Patient")
                              (codec/id-byte-string "id-180857"))]
                 ["patient" (codec/v-hash "Patient/id-180857")]
+                ["code" (codec/v-hash "code-193824")]
                 ["code" (codec/v-hash "system-193821|")]
                 ["code" (codec/v-hash "system-193821|code-193824")]
-                ["code" (codec/v-hash "code-193824")]
                 ["value-quantity" (codec/quantity "" 23.42M)]
                 ["value-quantity" (codec/quantity "kg/m2" 23.42M)]
                 ["value-quantity" (codec/quantity
                                     "http://unitsofmeasure.org|kg/m2"
                                     23.42M)]
+                ["combo-code" (codec/v-hash "code-193824")]
                 ["combo-code" (codec/v-hash "system-193821|")]
                 ["combo-code" (codec/v-hash "system-193821|code-193824")]
-                ["combo-code" (codec/v-hash "code-193824")]
                 ["combo-value-quantity"
-                 #blaze/byte-string"00000000900926"]
+                 #blaze/byte-string"4F40902F3B6AE19A900926"]
                 ["combo-value-quantity"
-                 #blaze/byte-string"32690DC8900926"]
+                 #blaze/byte-string"E95B25E4B02F01AF900926"]
                 ["combo-value-quantity"
-                 #blaze/byte-string"A3C37576900926"]
+                 #blaze/byte-string"F35972C2DDEDDFE6900926"]
                 ["combo-code-value-quantity"
-                 #blaze/byte-string"82821D0F00000000900926"]
+                 #blaze/byte-string"825F9E2AAE526A184F40902F3B6AE19A900926"]
                 ["combo-code-value-quantity"
-                 #blaze/byte-string"82821D0F32690DC8900926"]
+                 #blaze/byte-string"825F9E2AAE526A18E95B25E4B02F01AF900926"]
                 ["combo-code-value-quantity"
-                 #blaze/byte-string"82821D0FA3C37576900926"]
+                 #blaze/byte-string"825F9E2AAE526A18F35972C2DDEDDFE6900926"]
                 ["combo-code-value-quantity"
-                 #blaze/byte-string"9F7C9B9400000000900926"]
+                 #blaze/byte-string"B02358E02AD0942D4F40902F3B6AE19A900926"]
                 ["combo-code-value-quantity"
-                 #blaze/byte-string"9F7C9B9432690DC8900926"]
+                 #blaze/byte-string"B02358E02AD0942DE95B25E4B02F01AF900926"]
                 ["combo-code-value-quantity"
-                 #blaze/byte-string"9F7C9B94A3C37576900926"]
+                 #blaze/byte-string"B02358E02AD0942DF35972C2DDEDDFE6900926"]
                 ["combo-code-value-quantity"
-                 #blaze/byte-string"A75DEC9D00000000900926"]
+                 #blaze/byte-string"D47C56F6D0C25BA34F40902F3B6AE19A900926"]
                 ["combo-code-value-quantity"
-                 #blaze/byte-string"A75DEC9D32690DC8900926"]
+                 #blaze/byte-string"D47C56F6D0C25BA3E95B25E4B02F01AF900926"]
                 ["combo-code-value-quantity"
-                 #blaze/byte-string"A75DEC9DA3C37576900926"]
+                 #blaze/byte-string"D47C56F6D0C25BA3F35972C2DDEDDFE6900926"]
                 ["subject" (codec/v-hash "id-180857")]
                 ["subject" (codec/tid-id
                              (codec/tid "Patient")

@@ -48,6 +48,12 @@
          (apply codec/descending-long [(apply codec/descending-long [t])])))))
 
 
+(deftest v-hash-test
+  (testing "no collisions"
+    (let [n (long 1e7)]
+      (is (= n (count (into #{} (map (comp codec/v-hash str)) (repeatedly n random-uuid))))))))
+
+
 (deftest tid-test
   (check `codec/tid))
 
