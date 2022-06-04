@@ -57,7 +57,7 @@
 
 
 (defn- split-value [bs]
-  [(bs/subs bs 0 4) (bs/subs bs 4)])
+  [(bs/subs bs 0 codec/v-hash-size) (bs/subs bs codec/v-hash-size)])
 
 
 (defn compile-code-quantity-value [search-param-registry value]

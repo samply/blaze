@@ -445,11 +445,7 @@
     [:blaze.db/enforce-referential-integrity]))
 
 
-(def ^:private expected-kv-store-version 0)
-
-
-(defn- kv-store-version [kv-store]
-  (or (some-> (kv/get kv-store version/key) version/decode-value) 0))
+(def ^:private expected-kv-store-version 1)
 
 
 (def ^:private incompatible-kv-store-version-msg
@@ -469,13 +465,14 @@
            {:actual-version actual-version :expected-version expected-version}))
 
 
-(defn- check-version! [kv-store]
-  (when (tx-success/last-t kv-store)
-    (let [actual-kv-store-version (kv-store-version kv-store)]
+(defn- check-and-set-version! [kv-store]
+  (if (tx-success/last-t kv-store)
+    (let [actual-kv-store-version (version/get kv-store)]
       (if (= actual-kv-store-version expected-kv-store-version)
         (log/info "Index store version is" actual-kv-store-version)
         (throw (incompatible-kv-store-version-ex actual-kv-store-version
-                                                 expected-kv-store-version))))))
+                                                 expected-kv-store-version))))
+    (version/set! kv-store expected-kv-store-version)))
 
 
 (defmethod ig/init-key :blaze.db/node
@@ -484,7 +481,7 @@
       :or {poll-timeout (time/seconds 1)}
       :as config}]
   (init-msg config)
-  (check-version! kv-store)
+  (check-and-set-version! kv-store)
   (let [node (->Node (ctx config) tx-log resource-handle-cache tx-cache kv-store
                      resource-store search-param-registry resource-indexer
                      (atom (initial-state kv-store))

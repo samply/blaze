@@ -14,6 +14,7 @@
     [blaze.db.node.resource-indexer :as resource-indexer]
     [blaze.db.node.tx-indexer :as-alias tx-indexer]
     [blaze.db.node.version :as version]
+    [blaze.db.node.version-spec]
     [blaze.db.resource-handle-cache]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.spec :refer [resource-store?]]
@@ -86,8 +87,9 @@
 
 (defn- with-index-store-version [system version]
   (assoc-in system [[::kv/mem :blaze.db/index-kv-store] :init-data]
-            [[version/key (version/encode-value version)]
-             (tx-success/index-entry 1 Instant/EPOCH)]))
+            (cond-> [(tx-success/index-entry 1 Instant/EPOCH)]
+              (pos? version)
+              (conj [version/key (version/encode-value version)]))))
 
 
 (deftest init-test
@@ -174,11 +176,11 @@
       [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "incompatible version"
-    (given-thrown (ig/init (with-index-store-version system -1))
+    (given-thrown (ig/init (with-index-store-version system 0))
       :key := :blaze.db/node
       :reason := ::ig/build-threw-exception
-      [:cause-data :expected-version] := 0
-      [:cause-data :actual-version] := -1)))
+      [:cause-data :expected-version] := 1
+      [:cause-data :actual-version] := 0)))
 
 
 (deftest duration-seconds-collector-init-test
@@ -272,5 +274,10 @@
 
 
 (deftest existing-data-with-compatible-version
-  (with-system [{:blaze.db/keys [node]} (with-index-store-version system 0)]
+  (with-system [{:blaze.db/keys [node]} (with-index-store-version system 1)]
     (is node)))
+
+
+(deftest sets-db-version-on-startup
+  (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]} system]
+    (is (= 1 (version/get kv-store)))))

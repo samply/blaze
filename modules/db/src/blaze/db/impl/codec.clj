@@ -18,7 +18,7 @@
 ;; ---- Sizes of Byte Arrays --------------------------------------------------
 
 (def ^:const ^long c-hash-size Integer/BYTES)
-(def ^:const ^long v-hash-size Integer/BYTES)
+(def ^:const ^long v-hash-size Long/BYTES)
 (def ^:const ^long tid-size Integer/BYTES)
 (def ^:const ^long t-size Long/BYTES)
 (def ^:const ^long state-size Long/BYTES)
@@ -299,7 +299,7 @@
 
 
 (defn v-hash [value]
-  (-> (Hashing/murmur3_32_fixed)
+  (-> (Hashing/farmHashFingerprint64)
       (.hashString value StandardCharsets/UTF_8)
       (.asBytes)
       bs/from-byte-array))
