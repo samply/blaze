@@ -2,6 +2,14 @@
 
 ## v0.17.6
 
+### Other
+
+* Introduce Database Versioning ([#738](https://github.com/samply/blaze/pull/738))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/45?closed=1).
+
+## v0.17.6
+
 ### Performance
 
 * Improve Interning of Complex Types ([#725](https://github.com/samply/blaze/issues/725))
