@@ -17,7 +17,7 @@
 
 
 (defn- timeout-msg [timeout]
-  (format "Timeout while trying to acquire the latest known database state. At least one known transaction hasen't been completed yet. Please try to lower the transaction load or increase the timeout of %d ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often.", timeout))
+  (format "Timeout while trying to acquire the latest known database state. At least one known transaction hasn't been completed yet. Please try to lower the transaction load or increase the timeout of %d ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often.", timeout))
 
 
 (defn- db [node timeout {:keys [query-params] :as request}]

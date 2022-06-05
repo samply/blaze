@@ -104,7 +104,7 @@
 
   Please use `pull` to obtain the full resource."
   [db type id]
-  (log/trace "fetch resource handle of " type "" id)
+  (log/trace "fetch resource handle of" (str type "/" id))
   (p/-resource-handle db (codec/tid type) (codec/id-byte-string id)))
 
 

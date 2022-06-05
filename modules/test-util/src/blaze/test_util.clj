@@ -17,8 +17,14 @@
 (set! *warn-on-reflection* true)
 
 
+(defn all-ex-data [e]
+  (cond-> (ex-data e)
+    (ex-data (ex-cause e))
+    (assoc :cause-data (all-ex-data (ex-cause e)))))
+
+
 (defmacro given-thrown [v & body]
-  `(given (try ~v (is false) (catch Exception e# (ex-data e#)))
+  `(given (try ~v (is false) (catch Exception e# (all-ex-data e#)))
      ~@body))
 
 

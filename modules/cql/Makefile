@@ -2,7 +2,8 @@ lint:
 	clj-kondo --lint src test deps.edn
 
 cql-test:
-	wget https://cql.hl7.org/tests.zip
+	wget http://cql.hl7.org/tests.zip
+	echo "0d48a7441c43b6ee46e71d73decfa0cf4ea81e2ce70951f20e9163c3bebfc49a  tests.zip" | sha256sum --check --status
 	unzip -jd cql-test tests.zip
 	rm tests.zip
 	# See: https://github.com/HL7/cql/pull/69
