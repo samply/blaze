@@ -39,6 +39,20 @@ backup!
 
 Exit the shell und start Blaze normally.
 
+### On Kubernetes
+
+You can use an init container to delete the index store on Kubernetes:
+
+```yaml
+initContainers:
+- name: delete-index
+  image: busybox
+  command: [ 'sh', '-c', "rm -r /data/index" ]
+  volumeMounts:
+  - name: data
+    mountPath: /data
+```
+
 ## Index Store Migration at Start
 
 If you start Blaze without an index store, it will use the transaction log and the resource store to recreate the index
