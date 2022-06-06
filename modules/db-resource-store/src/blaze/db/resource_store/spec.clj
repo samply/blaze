@@ -5,5 +5,9 @@
     [clojure.spec.alpha :as s]))
 
 
+(defn resource-store? [x]
+  (satisfies? rs/ResourceStore x))
+
+
 (s/def :blaze.db/resource-store
-  #(satisfies? rs/ResourceStore %))
+  resource-store?)

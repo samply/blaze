@@ -14,9 +14,13 @@
     [blaze.db.node.resource-indexer :as resource-indexer]
     [blaze.db.node.tx-indexer :as-alias tx-indexer]
     [blaze.db.node.version :as version]
+    [blaze.db.node.version-spec]
     [blaze.db.resource-handle-cache]
     [blaze.db.resource-store :as rs]
+    [blaze.db.resource-store.spec :refer [resource-store?]]
     [blaze.db.search-param-registry]
+    [blaze.db.search-param-registry.spec :refer [search-param-registry?]]
+    [blaze.db.spec :refer [cache? loading-cache?]]
     [blaze.db.test-util :refer [system]]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log-spec]
@@ -33,7 +37,8 @@
     [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
-  (:import [java.time Instant]))
+  (:import
+    [java.time Instant]))
 
 
 (set! *warn-on-reflection* true)
@@ -88,8 +93,9 @@
 
 (defn- with-index-store-version [system version]
   (assoc-in system [[::kv/mem :blaze.db/index-kv-store] :init-data]
-            [[version/key (version/encode-value version)]
-             (tx-success/index-entry 1 Instant/EPOCH)]))
+            (cond-> [(tx-success/index-entry 1 Instant/EPOCH)]
+              (pos? version)
+              (conj [version/key (version/encode-value version)]))))
 
 
 (deftest init-test
@@ -113,40 +119,74 @@
       [:explain ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
 
   (testing "invalid tx-log"
-    (given-thrown (ig/init {:blaze.db/node {:tx-log ::invalid}})
+    (given-thrown (ig/init (assoc-in system [:blaze.db/node :tx-log] ::invalid))
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :resource-handle-cache))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :tx-cache))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :indexer-executor))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :resource-indexer))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 7 :pred] := `(fn ~'[%] (satisfies? tx-log/TxLog ~'%))
-      [:explain ::s/problems 7 :val] := ::invalid))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (satisfies? tx-log/TxLog ~'%))
+      [:explain ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid resource-handle-cache"
+    (given-thrown (ig/init (assoc-in system [:blaze.db/node :resource-handle-cache] ::invalid))
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `cache?
+      [:explain ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid tx-cache"
+    (given-thrown (ig/init (assoc-in system [:blaze.db/node :tx-cache] ::invalid))
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `loading-cache?
+      [:explain ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid indexer-executor"
+    (given-thrown (ig/init (assoc-in system [:blaze.db/node :indexer-executor] ::invalid))
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `ex/executor?
+      [:explain ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid kv-store"
+    (given-thrown (ig/init (assoc-in system [:blaze.db/node :kv-store] ::invalid))
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `kv/store?
+      [:explain ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid resource-indexer"
+    (given-thrown (ig/init (assoc-in system [:blaze.db/node :resource-indexer] ::invalid))
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?
+      [:explain ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid resource-store"
+    (given-thrown (ig/init (assoc-in system [:blaze.db/node :resource-store] ::invalid))
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `resource-store?
+      [:explain ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid search-param-registry"
+    (given-thrown (ig/init (assoc-in system [:blaze.db/node :search-param-registry] ::invalid))
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `search-param-registry?
+      [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid enforce-referential-integrity"
-    (given-thrown (ig/init {:blaze.db/node {:enforce-referential-integrity ::invalid}})
+    (given-thrown (ig/init (assoc-in system [:blaze.db/node :enforce-referential-integrity] ::invalid))
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :tx-log))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-handle-cache))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :tx-cache))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :indexer-executor))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :resource-indexer))
-      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:explain ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 8 :pred] := `boolean?
-      [:explain ::s/problems 8 :val] := ::invalid))
+      [:explain ::s/problems 0 :pred] := `boolean?
+      [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "incompatible version"
-    (given-thrown (ig/init (with-index-store-version system -1))
+    (given-thrown (ig/init (with-index-store-version system 0))
       :key := :blaze.db/node
       :reason := ::ig/build-threw-exception
-      [:cause-data :expected-version] := 0
-      [:cause-data :actual-version] := -1)))
+      [:cause-data :expected-version] := 1
+      [:cause-data :actual-version] := 0)))
 
 
 (deftest duration-seconds-collector-init-test
@@ -240,5 +280,10 @@
 
 
 (deftest existing-data-with-compatible-version
-  (with-system [{:blaze.db/keys [node]} (with-index-store-version system 0)]
+  (with-system [{:blaze.db/keys [node]} (with-index-store-version system 1)]
     (is node)))
+
+
+(deftest sets-db-version-on-startup
+  (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]} system]
+    (is (= 1 (version/get kv-store)))))
