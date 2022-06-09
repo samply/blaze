@@ -223,9 +223,10 @@
   String
   (to-quantity [s]
     ;; (+|-)?#0(.0#)?('<unit>')?
-    (let [[_ value unit] (re-matches #"(\d+(?:\.\d+)?)\s*('[^']+')?" s)]
+    (let [[_ value unit] (re-matches #"([+-]?\d+(?:\.\d+)?)\s*('[^']+')?" s)]
       (when value
-        (quantity (p/to-decimal value) (or (str/trim unit "'") "1"))))))
+        (when-let [value (p/to-decimal value)]
+          (quantity value (or (str/trim unit "'") "1")))))))
 
 
 ;; 22.30. ToString

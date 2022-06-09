@@ -5,7 +5,7 @@
   (:import
     [java.util Map]))
 
-
+;; 12.1. Equal
 (extend-protocol p/Equal
   Map
   (equal [x y]
@@ -17,3 +17,9 @@
             false)
           false)
         true))))
+
+;; 22.23. ToDateTime
+(extend-protocol p/ToDateTime
+  ;; for the anomaly
+  Map
+  (to-date-time [_ _]))

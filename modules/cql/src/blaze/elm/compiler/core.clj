@@ -109,5 +109,4 @@
 
 (extend-protocol p/ToString
   Object
-  (to-string [x]
-    (str x)))
+  (to-string [_]))
