@@ -42,7 +42,7 @@
 
 (defrecord SearchParamQuantity [name url type base code c-hash expression]
   p/SearchParam
-  (-compile-value [_ _ value]
+  (-compile-value [_ _modifier value]
     (let [[op value] (u/separate-op value)]
       (if-ok [decimal-value (system/parse-decimal value)]
         (case op
@@ -63,19 +63,19 @@
       (u/resource-handle-mapper context tid)
       (spq/resource-keys! context c-hash tid 0 value)))
 
-  (-resource-handles [_ context tid _ value start-id]
+  (-resource-handles [_ context tid _ value start-did]
     (coll/eduction
       (u/resource-handle-mapper context tid)
-      (spq/resource-keys! context c-hash tid 0 value start-id)))
+      (spq/resource-keys! context c-hash tid 0 value start-did)))
 
   (-matches? [_ context resource-handle _ values]
     (some? (some #(spq/matches? context c-hash resource-handle 0 %) values)))
 
-  (-index-values [search-param resolver resource]
+  (-index-values [search-param resource-id resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (coll/eduction (p/-index-value-compiler search-param) values)))
+      (coll/eduction (p/-index-value-compiler search-param resource-id) values)))
 
-  (-index-value-compiler [_]
+  (-index-value-compiler [_ _resource-id]
     (mapcat (partial index-entries url))))
 
 

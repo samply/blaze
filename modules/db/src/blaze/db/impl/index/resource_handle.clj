@@ -13,7 +13,7 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(deftype ResourceHandle [^int tid id ^long t hash ^long num-changes op]
+(deftype ResourceHandle [^int tid ^long did ^long t hash ^long num-changes op id]
   p/FhirType
   (-type [_]
     ;; TODO: maybe cache this
@@ -25,26 +25,29 @@
   (valAt [_ key not-found]
     (case key
       :tid tid
-      :id id
+      :did did
       :t t
       :hash hash
       :num-changes num-changes
       :op op
+      :id id
       not-found))
 
   Object
+  (toString [_]
+    (format "%s/%s" (codec/tid->type tid) id))
   (equals [rh x]
     (or (identical? rh x)
         (and (instance? ResourceHandle x)
              (= tid (.-tid ^ResourceHandle x))
-             (.equals id (.-id ^ResourceHandle x))
+             (= did (.-did ^ResourceHandle x))
              (= t (.-t ^ResourceHandle x)))))
   (hashCode [_]
-    (-> tid
+    (-> (Long/hashCode tid)
         (unchecked-multiply-int 31)
-        (unchecked-add-int (.hashCode id))
+        (unchecked-add-int (Long/hashCode did))
         (unchecked-multiply-int 31)
-        (unchecked-add-int t))))
+        (unchecked-add-int (Long/hashCode t)))))
 
 
 (defn state->num-changes
@@ -67,16 +70,11 @@
   "Creates a new resource handle.
 
   The type of that handle will be the keyword `:fhir/<resource-type>`."
-  [tid id t value-buffer]
+  [tid did t value-buffer]
   (let [hash (hash/from-byte-buffer! value-buffer)
         state (bb/get-long! value-buffer)]
-    (ResourceHandle.
-      tid
-      id
-      t
-      hash
-      (state->num-changes state)
-      (state->op state))))
+    (ResourceHandle. tid did t hash (state->num-changes state) (state->op state)
+                     (codec/id-from-byte-buffer value-buffer))))
 
 
 (defn resource-handle? [x]
@@ -97,10 +95,10 @@
   (.-tid ^ResourceHandle rh))
 
 
-(defn id
-  {:inline (fn [rh] `(.-id ~(with-meta rh {:tag `ResourceHandle})))}
+(defn did
+  {:inline (fn [rh] `(.-did ~(with-meta rh {:tag `ResourceHandle})))}
   [rh]
-  (.-id ^ResourceHandle rh))
+  (.-did ^ResourceHandle rh))
 
 
 (defn t
@@ -113,6 +111,12 @@
   {:inline (fn [rh] `(.-hash ~(with-meta rh {:tag `ResourceHandle})))}
   [rh]
   (.-hash ^ResourceHandle rh))
+
+
+(defn id
+  {:inline (fn [rh] `(.-id ~(with-meta rh {:tag `ResourceHandle})))}
+  [rh]
+  (.-id ^ResourceHandle rh))
 
 
 (defn reference [rh]

@@ -90,7 +90,9 @@
               hash (hash/generate patient)
               [[_ k0]]
               (search-param/index-entries
-                (birth-date-param search-param-registry) [] hash patient)]
+                (birth-date-param search-param-registry)
+                (constantly nil)
+                [] 202016 hash patient)]
 
           (testing "the entry is about both bounds of `2020-02-04`"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -99,7 +101,7 @@
               :v-hash := (codec/date-lb-ub
                            (date-lb (LocalDate/of 2020 2 4))
                            (date-ub (LocalDate/of 2020 2 4)))
-              :id := "id-142629"
+              :did := 202016
               :hash-prefix := (hash/prefix hash)))))
 
       (testing "death-date"
@@ -111,7 +113,8 @@
               [[_ k0]]
               (search-param/index-entries
                 (sr/get search-param-registry "death-date" "Patient")
-                [] hash patient)]
+                (constantly nil)
+                [] 202030 hash patient)]
 
           (testing "the entry is about both bounds of `2020-01-01T00:00:00Z`"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -124,7 +127,7 @@
                            (date-ub
                              (OffsetDateTime/of 2019 11 17 0 14 29 0
                                                 (ZoneOffset/ofHours 1))))
-              :id := "id-142629"
+              :did := 202030
               :hash-prefix := (hash/prefix hash))))))
 
     (testing "Encounter"
@@ -139,7 +142,8 @@
               [[_ k0]]
               (search-param/index-entries
                 (sr/get search-param-registry "date" "Encounter")
-                [] hash encounter)]
+                (constantly nil)
+                [] 202044 hash encounter)]
 
           (testing "the entry is about the lower bound of the start and the upper
                   bound of the end of the period"
@@ -153,7 +157,7 @@
                            (date-ub
                              (OffsetDateTime/of 2019 11 17 0 44 29 0
                                                 (ZoneOffset/ofHours 1))))
-              :id := "id-160224"
+              :did := 202044
               :hash-prefix := (hash/prefix hash))))
 
         (testing "without start"
@@ -166,7 +170,8 @@
                 [[_ k0]]
                 (search-param/index-entries
                   (sr/get search-param-registry "date" "Encounter")
-                  [] hash encounter)]
+                  (constantly nil)
+                  [] 202100 hash encounter)]
 
             (testing "the entry is about the min bound as lower bound and the
                     upper bound of the end of the period"
@@ -176,7 +181,7 @@
                 :v-hash := (codec/date-lb-ub
                              codec/date-min-bound
                              (date-ub (LocalDate/of 2019 11 17)))
-                :id := "id-160224"
+                :did := 202100
                 :hash-prefix := (hash/prefix hash)))))
 
         (testing "Encounter date without end"
@@ -189,7 +194,8 @@
                 [[_ k0]]
                 (search-param/index-entries
                   (sr/get search-param-registry "date" "Encounter")
-                  [] hash encounter)]
+                  (constantly nil)
+                  [] 202117 hash encounter)]
 
             (testing "the entry is about the lower bound of the start and the max
                     upper bound"
@@ -201,7 +207,7 @@
                                (OffsetDateTime/of 2019 11 17 0 14 29 0
                                                   (ZoneOffset/ofHours 1)))
                              codec/date-max-bound)
-                :id := "id-160224"
+                :did := 202117
                 :hash-prefix := (hash/prefix hash)))))))
 
     (testing "DiagnosticReport"
@@ -213,7 +219,8 @@
               [[_ k0]]
               (search-param/index-entries
                 (sr/get search-param-registry "issued" "DiagnosticReport")
-                [] hash patient)]
+                (constantly nil)
+                [] 202130 hash patient)]
 
           (testing "the entry is about both bounds of `2019-11-17T00:14:29.917+01:00`"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -226,7 +233,7 @@
                            (date-ub
                              (OffsetDateTime/of 2019 11 17 0 14 29 917
                                                 (ZoneOffset/ofHours 1))))
-              :id := "id-155607"
+              :did := 202130
               :hash-prefix := (hash/prefix hash))))))
 
     (testing "FHIRPath evaluation problem"
@@ -236,7 +243,8 @@
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
           (given (search-param/index-entries
                    (sr/get search-param-registry "issued" "DiagnosticReport")
-                   [] hash resource)
+                   (constantly nil)
+                   [] 202141 hash resource)
             ::anom/category := ::anom/fault)))))
 
   (testing "skip warning"

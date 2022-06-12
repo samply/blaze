@@ -24,7 +24,8 @@
 (def ^:const ^long c-hash-size Integer/BYTES)
 (def ^:const ^long v-hash-size Long/BYTES)
 (def ^:const ^long tid-size Integer/BYTES)
-(def ^:const ^long t-size Long/BYTES)
+(def ^:const ^long t-size 5)
+(def ^:const ^long did-size Long/BYTES)
 (def ^:const ^long state-size Long/BYTES)
 (def ^:const ^long max-id-size 64)
 
@@ -211,50 +212,29 @@
 
 ;; ---- Identifier Functions --------------------------------------------------
 
-(defn id-byte-string
-  {:inline
-   (fn [id]
-     `(bs/from-string ~id StandardCharsets/ISO_8859_1))}
-  [id]
-  (bs/from-string id StandardCharsets/ISO_8859_1))
+(defn id-from-byte-buffer [buf]
+  (let [id-bytes (byte-array (bb/remaining buf))]
+    (bb/copy-into-byte-array! buf id-bytes)
+    (String. id-bytes StandardCharsets/ISO_8859_1)))
 
 
-(defn id-string
-  "Converts the byte-string representation of a resource id into it's string
-  representation."
-  {:inline
-   (fn [id-byte-string]
-     `(bs/to-string ~id-byte-string StandardCharsets/ISO_8859_1))}
-  [id-byte-string]
-  (bs/to-string id-byte-string StandardCharsets/ISO_8859_1))
-
-
-(defn id
-  {:inline
-   (fn [id-bytes offset length]
-     `(String. ~id-bytes ~offset ~length StandardCharsets/ISO_8859_1))}
-  [^bytes id-bytes ^long offset ^long length]
-  (String. id-bytes offset length StandardCharsets/ISO_8859_1))
+(defn did [t idx]
+  (+ (bit-shift-left (unchecked-long t) 24) (unchecked-long idx)))
 
 
 
 ;; ---- Key Functions ---------------------------------------------------------
 
 (defn descending-long
-  "Converts positive longs so that they decrease from 0xFFFFFFFFFFFFFF.
+  "Converts positive longs so that they decrease from 0xFFFFFFFFFF.
 
   This function is used for the point in time `t` value, which is always ordered
-  descending in indices. The value 0xFFFFFFFFFFFFFF has 7 bytes, so the first
-  byte will be always the zero byte. This comes handy in indices, because the
-  zero byte terminates ordering of index segments preceding the `t` value.
-
-  7 bytes are also plenty for the `t` value because with 5 bytes one could carry
-  out a transaction every millisecond for 20 years."
+  descending in indices."
   {:inline
    (fn [l]
-     `(bit-and (bit-not (unchecked-long ~l)) 0xFFFFFFFFFFFFFF))}
+     `(bit-and (bit-not (unchecked-long ~l)) 0xFFFFFFFFFF))}
   [l]
-  (bit-and (bit-not (unchecked-long l)) 0xFFFFFFFFFFFFFF))
+  (bit-and (bit-not (unchecked-long l)) 0xFFFFFFFFFF))
 
 
 (defn c-hash [code]
@@ -309,12 +289,12 @@
       bs/from-byte-array))
 
 
-(defn tid-id
-  "Returns a byte string with `tid` followed by `id`."
-  [tid id]
-  (-> (bb/allocate (unchecked-add-int tid-size (bs/size id)))
+(defn tid-did
+  "Returns a byte string with `tid` followed by `did`."
+  [tid did]
+  (-> (bb/allocate (+ tid-size did-size))
       (bb/put-int! tid)
-      (bb/put-byte-string! id)
+      (bb/put-long! did)
       bb/flip!
       bs/from-byte-buffer!))
 

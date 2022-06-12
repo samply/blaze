@@ -61,7 +61,7 @@
 
 
 (defn- resource-value!
-  "Returns the value of the resource with `tid` and `id` according to the
+  "Returns the value of the resource with `tid` and `did` according to the
   search parameter with `c-hash` starting with `prefix`.
 
   The `prefix` is important, because resources have more than one index entry
@@ -71,16 +71,16 @@
 
   Changes the state of `context`. Calling this function requires exclusive
   access to `context`."
-  {:arglists '([context c-hash tid id prefix])}
-  [{:keys [rsvi resource-handle]} c-hash tid id prefix]
-  (let [handle (resource-handle tid id)]
+  {:arglists '([context c-hash tid did prefix])}
+  [{:keys [rsvi resource-handle]} c-hash tid did prefix]
+  (when-let [handle (resource-handle tid did)]
     (r-sp-v/next-value! rsvi handle c-hash prefix prefix)))
 
 
-(defn- id-start-key! [context c-hash tid prefix start-id]
-  (let [start-value (resource-value! context c-hash tid start-id prefix)]
+(defn- did-start-key! [context c-hash tid prefix start-did]
+  (let [start-value (resource-value! context c-hash tid start-did prefix)]
     (assert start-value)
-    (sp-vr/encode-seek-key c-hash tid start-value start-id)))
+    (sp-vr/encode-seek-key c-hash tid start-value start-did)))
 
 
 (defn- take-while-less-equal [c-hash tid value]
@@ -89,8 +89,8 @@
 
 
 (defn- eq-keys!
-  "Returns a reducible collection of `[id hash-prefix]` tuples of values between
-  `lower-bound` and `upper-bound` starting at `start-id` (optional).
+  "Returns a reducible collection of `[did hash-prefix]` tuples of values between
+  `lower-bound` and `upper-bound` starting at `start-did` (optional).
 
   The `prefix` is a fix prefix of `value` which all found values have to have.
 
@@ -100,21 +100,21 @@
    (coll/eduction
      (comp
        (take-while-less-equal c-hash tid upper-bound)
-       (map (fn [[_prefix id hash-prefix]] [id hash-prefix])))
+       (map (fn [[_prefix did hash-prefix]] [did hash-prefix])))
      (sp-vr/keys! svri (sp-vr/encode-seek-key c-hash tid lower-bound))))
   ([{:keys [svri] :as context} c-hash tid lower-bound-prefix upper-bound
-    start-id]
+    start-did]
    (coll/eduction
      (comp
        (take-while-less-equal c-hash tid upper-bound)
-       (map (fn [[_prefix id hash-prefix]] [id hash-prefix])))
-     (sp-vr/keys! svri (id-start-key! context c-hash tid lower-bound-prefix
-                                      start-id)))))
+       (map (fn [[_prefix did hash-prefix]] [did hash-prefix])))
+     (sp-vr/keys! svri (did-start-key! context c-hash tid lower-bound-prefix
+                                       start-did)))))
 
 
 (defn- gt-keys!
-  "Returns a reducible collection of `[id hash-prefix]` tuples of values greater
-  than `value` starting at `start-id` (optional).
+  "Returns a reducible collection of `[did hash-prefix]` tuples of values
+  greater than `value` starting at `start-did` (optional).
 
   The `prefix` is a fix prefix of `value` which all found values have to have.
 
@@ -122,15 +122,15 @@
   access to `iter`. Doesn't close `iter`."
   ([{:keys [svri]} c-hash tid prefix value]
    (sp-vr/prefix-keys'! svri c-hash tid prefix value))
-  ([{:keys [svri] :as context} c-hash tid prefix _value start-id]
-   (let [start-value (resource-value! context c-hash tid start-id prefix)]
+  ([{:keys [svri] :as context} c-hash tid prefix _value start-did]
+   (let [start-value (resource-value! context c-hash tid start-did prefix)]
      (assert start-value)
-     (sp-vr/prefix-keys! svri c-hash tid prefix start-value start-id))))
+     (sp-vr/prefix-keys! svri c-hash tid prefix start-value start-did))))
 
 
 (defn- lt-keys!
-  "Returns a reducible collection of `[id hash-prefix]` tuples of values less
-  than `value` starting at `start-id` (optional).
+  "Returns a reducible collection of `[did hash-prefix]` tuples of values less
+  than `value` starting at `start-did` (optional).
 
   The `prefix` is a fix prefix of `value` which all found values have to have.
 
@@ -138,15 +138,15 @@
   access to `iter`. Doesn't close `iter`."
   ([{:keys [svri]} c-hash tid prefix value]
    (sp-vr/prefix-keys-prev'! svri c-hash tid prefix value))
-  ([{:keys [svri] :as context} c-hash tid prefix _value start-id]
-   (let [start-value (resource-value! context c-hash tid start-id prefix)]
+  ([{:keys [svri] :as context} c-hash tid prefix _value start-did]
+   (let [start-value (resource-value! context c-hash tid start-did prefix)]
      (assert start-value)
-     (sp-vr/prefix-keys-prev! svri c-hash tid prefix start-value start-id))))
+     (sp-vr/prefix-keys-prev! svri c-hash tid prefix start-value start-did))))
 
 
 (defn- ge-keys!
-  "Returns a reducible collection of `[id hash-prefix]` tuples of values greater
-  or equal `value` starting at `start-id` (optional).
+  "Returns a reducible collection of `[did hash-prefix]` tuples of values greater
+  or equal `value` starting at `start-did` (optional).
 
   The `prefix` is a fix prefix of `value` which all found values have to have.
 
@@ -154,15 +154,15 @@
   access to `iter`. Doesn't close `iter`."
   ([{:keys [svri]} c-hash tid prefix value]
    (sp-vr/prefix-keys! svri c-hash tid prefix value))
-  ([{:keys [svri] :as context} c-hash tid prefix _value start-id]
-   (let [start-value (resource-value! context c-hash tid start-id prefix)]
+  ([{:keys [svri] :as context} c-hash tid prefix _value start-did]
+   (let [start-value (resource-value! context c-hash tid start-did prefix)]
      (assert start-value)
-     (sp-vr/prefix-keys! svri c-hash tid prefix start-value start-id))))
+     (sp-vr/prefix-keys! svri c-hash tid prefix start-value start-did))))
 
 
 (defn- le-keys!
-  "Returns a reducible collection of `[id hash-prefix]` tuples of values less
-  or equal `value` starting at `start-id` (optional).
+  "Returns a reducible collection of `[did hash-prefix]` tuples of values less
+  or equal `value` starting at `start-did` (optional).
 
   The `prefix` is a fix prefix of `value` which all found values have to have.
 
@@ -170,15 +170,15 @@
   access to `iter`. Doesn't close `iter`."
   ([{:keys [svri]} c-hash tid prefix value]
    (sp-vr/prefix-keys-prev! svri c-hash tid prefix value))
-  ([{:keys [svri] :as context} c-hash tid prefix _value start-id]
-   (let [start-value (resource-value! context c-hash tid start-id prefix)]
+  ([{:keys [svri] :as context} c-hash tid prefix _value start-did]
+   (let [start-value (resource-value! context c-hash tid start-did prefix)]
      (assert start-value)
-     (sp-vr/prefix-keys-prev! svri c-hash tid prefix start-value start-id))))
+     (sp-vr/prefix-keys-prev! svri c-hash tid prefix start-value start-did))))
 
 
 (defn resource-keys!
-  "Returns a reducible collection of `[id hash-prefix]` tuples of values
-  according to `op` and values starting at `start-id` (optional).
+  "Returns a reducible collection of `[did hash-prefix]` tuples of values
+  according to `op` and values starting at `start-did` (optional).
 
   The `prefix-length` is the length of the fix prefix that all found values
   have to have.
@@ -187,7 +187,7 @@
   access to `context`."
   {:arglists
    '([context c-hash tid prefix-length value]
-     [context c-hash tid prefix-length value start-id])}
+     [context c-hash tid prefix-length value start-did])}
   ([context c-hash tid prefix-length
     {:keys [op lower-bound exact-value upper-bound]}]
    (case op
@@ -202,18 +202,18 @@
                    exact-value)))
   ([context c-hash tid prefix-length
     {:keys [op lower-bound exact-value upper-bound]}
-    start-id]
+    start-did]
    (case op
      :eq (eq-keys! context c-hash tid (bs/subs lower-bound 0 prefix-length)
-                   upper-bound start-id)
+                   upper-bound start-did)
      :gt (gt-keys! context c-hash tid (bs/subs exact-value 0 prefix-length)
-                   exact-value start-id)
+                   exact-value start-did)
      :lt (lt-keys! context c-hash tid (bs/subs exact-value 0 prefix-length)
-                   exact-value start-id)
+                   exact-value start-did)
      :ge (ge-keys! context c-hash tid (bs/subs exact-value 0 prefix-length)
-                   exact-value start-id)
+                   exact-value start-did)
      :le (le-keys! context c-hash tid (bs/subs exact-value 0 prefix-length)
-                   exact-value start-id))))
+                   exact-value start-did))))
 
 
 (defn- take-while-compartment-less-equal [compartment c-hash tid value]
@@ -226,7 +226,7 @@
   (coll/eduction
     (comp
       (take-while-compartment-less-equal compartment c-hash tid upper-bound)
-      (map (fn [[_prefix id hash-prefix]] [id hash-prefix])))
+      (map (fn [[_prefix did hash-prefix]] [did hash-prefix])))
     (c-sp-vr/keys! csvri (c-sp-vr/encode-seek-key compartment c-hash tid
                                                   lower-bound))))
 
@@ -281,7 +281,7 @@
 
 (defrecord SearchParamQuantity [name url type base code c-hash expression]
   p/SearchParam
-  (-compile-value [_ _ value]
+  (-compile-value [_ _modifier value]
     (let [[op value-and-unit] (u/separate-op value)
           [value unit] (str/split value-and-unit #"\s*\|\s*" 2)]
       (if-ok [decimal-value (system/parse-decimal value)]
@@ -303,10 +303,10 @@
       (u/resource-handle-mapper context tid)
       (resource-keys! context c-hash tid codec/v-hash-size value)))
 
-  (-resource-handles [_ context tid _ value start-id]
+  (-resource-handles [_ context tid _ value start-did]
     (coll/eduction
       (u/resource-handle-mapper context tid)
-      (resource-keys! context c-hash tid codec/v-hash-size value start-id)))
+      (resource-keys! context c-hash tid codec/v-hash-size value start-did)))
 
   (-compartment-keys [_ context compartment tid value]
     (compartment-keys context compartment c-hash tid value))
@@ -315,11 +315,11 @@
     (some? (some #(matches? context c-hash resource-handle codec/v-hash-size %)
                  values)))
 
-  (-index-values [search-param resolver resource]
+  (-index-values [search-param resource-id resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (coll/eduction (p/-index-value-compiler search-param) values)))
+      (coll/eduction (p/-index-value-compiler search-param resource-id) values)))
 
-  (-index-value-compiler [_]
+  (-index-value-compiler [_ _resource-id]
     (mapcat (partial index-entries url))))
 
 

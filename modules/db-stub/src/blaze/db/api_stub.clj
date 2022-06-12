@@ -58,6 +58,7 @@
      :tx-success-index {:reverse-comparator? true}
      :tx-error-index nil
      :t-by-instant-index {:reverse-comparator? true}
+     :resource-id-index nil
      :resource-as-of-index nil
      :type-as-of-index nil
      :system-as-of-index nil

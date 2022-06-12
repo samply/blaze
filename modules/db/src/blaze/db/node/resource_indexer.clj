@@ -4,6 +4,7 @@
     [blaze.async.comp :as ac]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.compartment.resource :as cr]
+    [blaze.db.impl.index.resource-id :as ri]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
@@ -43,33 +44,25 @@
   "type")
 
 
-(defn- compartment-resource-type-entry
-  "Returns an entry into the :compartment-resource-type-index where `resource`
-  is linked to `compartment`."
-  {:arglists '([compartment resource])}
-  [[comp-code comp-id] {:keys [id] :as resource}]
-  (cr/index-entry
-    [(codec/c-hash comp-code) (codec/id-byte-string comp-id)]
-    (codec/tid (name (fhir-spec/fhir-type resource)))
-    (codec/id-byte-string id)))
+(defn- compartment-resource-type-entry [compartment {:keys [type did]}]
+  (cr/index-entry compartment (codec/tid type) did))
 
 
-(defn- compartment-resource-type-entries [resource compartments]
-  (mapv #(compartment-resource-type-entry % resource) compartments))
+(defn- compartment-resource-type-entries [entry compartments]
+  (mapv #(compartment-resource-type-entry % entry) compartments))
 
 
-(defn- skip-indexing-msg [search-param resource cause-msg]
+(defn- skip-indexing-msg [search-param {:keys [type resource]} cause-msg]
   (format "Skip indexing for search parameter `%s` on resource `%s/%s`. Cause: %s"
-          (:url search-param) (name (fhir-spec/fhir-type resource))
-          (:id resource) (or cause-msg "<unknown>")))
+          (:url search-param) type (:id resource) (or cause-msg "<unknown>")))
 
 
 (defn- search-param-index-entries
-  [search-param linked-compartments hash resource]
-  (-> (search-param/index-entries search-param linked-compartments hash resource)
+  [search-param resource-id compartments {:keys [did hash resource] :as entry}]
+  (-> (search-param/index-entries search-param resource-id compartments did hash resource)
       (ba/exceptionally
         (fn [{::anom/keys [message]}]
-          (log/warn (skip-indexing-msg search-param resource message))
+          (log/warn (skip-indexing-msg search-param entry message))
           nil))))
 
 
@@ -94,21 +87,34 @@
   (update resource :meta (fnil assoc #fhir/Meta{}) :lastUpdated last-updated))
 
 
+(defn- code-compartment [resource-id [comp-code comp-id]]
+  (when-let [co-res-did (resource-id (codec/tid comp-code) comp-id)]
+    [(codec/c-hash comp-code) co-res-did]))
+
+
+(defn- code-compartments [resource-id compartments]
+  (into
+    []
+    (keep (partial code-compartment resource-id))
+    compartments))
+
+
 (defn- index-resource*
-  [{:keys [search-param-registry last-updated]} hash resource]
-  (let [resource (enhance-resource last-updated resource)
-        compartments (linked-compartments search-param-registry hash resource)]
+  [{:keys [search-param-registry kv-store]} {:keys [hash resource] :as entry}]
+  (let [compartments (linked-compartments search-param-registry hash resource)
+        resource-id (ri/resource-id kv-store)
+        compartments (code-compartments resource-id compartments)]
     (into
-      (compartment-resource-type-entries resource compartments)
-      (mapcat #(search-param-index-entries % compartments hash resource))
+      (compartment-resource-type-entries entry compartments)
+      (mapcat #(search-param-index-entries % resource-id compartments entry))
       (search-params search-param-registry resource))))
 
 
-(defn- index-resource [context [hash resource]]
+(defn- index-resource [context {:keys [hash type] :as entry}]
   (log/trace "Index resource with hash" hash)
   (with-open [_ (prom/timer duration-seconds "index-resource")]
-    (let [entries (index-resource* context hash resource)]
-      (prom/observe! index-entries (name (:fhir/type resource)) (count entries))
+    (let [entries (index-resource* context entry)]
+      (prom/observe! index-entries type (count entries))
       entries)))
 
 
@@ -132,6 +138,20 @@
   (into [] (keep :hash) tx-cmds))
 
 
+(defn- entries [last-updated tx-cmds resources]
+  (reduce
+    (fn [res {:keys [did hash]}]
+      (let [resource (some->> hash (get resources))]
+        (cond-> res
+          resource
+          (conj {:did did
+                 :hash hash
+                 :type (name (fhir-spec/fhir-type resource))
+                 :resource (enhance-resource last-updated resource)}))))
+    []
+    tx-cmds))
+
+
 (defn index-resources
   "Returns a CompletableFuture that will complete after all resources of
    `tx-data` are indexed.
@@ -143,10 +163,10 @@
    {:keys [tx-cmds] resources :local-payload last-updated :instant}]
   (let [context (assoc resource-indexer :last-updated last-updated)]
     (if resources
-      (index-resources* context resources)
+      (index-resources* context (entries last-updated tx-cmds resources))
       (-> (rs/multi-get resource-store (hashes tx-cmds))
           (ac/then-compose
-            (partial index-resources* context))))))
+            #(index-resources* context (entries last-updated tx-cmds %)))))))
 
 
 (defmethod ig/pre-init-spec :blaze.db.node/resource-indexer [_]

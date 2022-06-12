@@ -84,18 +84,19 @@
 
 
 (defn- resource-keys!
-  "Returns a reducible collection of `[id hash-prefix]` tuples starting at
-  `start-id` (optional).
+  "Returns a reducible collection of `[did hash-prefix]` tuples starting at
+  `start-did` (optional).
 
   Changes the state of `context`. Calling this function requires exclusive
   access to `context`."
-  {:arglists '([context c-hash tid value] [context c-hash tid value start-id])}
+  {:arglists '([context c-hash tid value]
+               [context c-hash tid value start-did])}
   ([{:keys [svri]} c-hash tid value]
    (sp-vr/prefix-keys! svri c-hash tid value value))
-  ([{:keys [svri] :as context} c-hash tid _value start-id]
-   (let [start-value (resource-value! context c-hash tid start-id)]
+  ([{:keys [svri] :as context} c-hash tid _value start-did]
+   (let [start-value (resource-value! context c-hash tid start-did)]
      (assert start-value)
-     (sp-vr/prefix-keys! svri c-hash tid start-value start-value start-id))))
+     (sp-vr/prefix-keys! svri c-hash tid start-value start-value start-did))))
 
 
 (defn- matches? [{:keys [rsvi]} c-hash resource-handle value]
@@ -104,7 +105,7 @@
 
 (defrecord SearchParamString [name url type base code c-hash expression]
   p/SearchParam
-  (-compile-value [_ _ value]
+  (-compile-value [_ _modifier value]
     (codec/string (normalize-string value)))
 
   (-resource-handles [_ context tid _ value]
@@ -112,10 +113,10 @@
       (u/resource-handle-mapper context tid)
       (resource-keys! context c-hash tid value)))
 
-  (-resource-handles [_ context tid _ value start-id]
+  (-resource-handles [_ context tid _ value start-did]
     (coll/eduction
       (u/resource-handle-mapper context tid)
-      (resource-keys! context c-hash tid value start-id)))
+      (resource-keys! context c-hash tid value start-did)))
 
   (-compartment-keys [_ context compartment tid value]
     (c-sp-vr/prefix-keys! (:csvri context) compartment c-hash tid value))
@@ -123,11 +124,11 @@
   (-matches? [_ context resource-handle _ values]
     (some? (some #(matches? context c-hash resource-handle %) values)))
 
-  (-index-values [search-param resolver resource]
+  (-index-values [search-param resource-id resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (coll/eduction (p/-index-value-compiler search-param) values)))
+      (coll/eduction (p/-index-value-compiler search-param resource-id) values)))
 
-  (-index-value-compiler [_]
+  (-index-value-compiler [_ _resource-id]
     (mapcat (partial index-entries url))))
 
 

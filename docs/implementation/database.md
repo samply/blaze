@@ -38,20 +38,25 @@ There are two different sets of indices, ones which depend on the database value
 
 ### Indices depending on t
 
-| Name         | Key Parts | Value                         |
-|--------------|-----------|-------------------------------|
-| ResourceAsOf | type id t | content-hash, num-changes, op |
-| TypeAsOf     | type t id | content-hash, num-changes, op |
-| SystemAsOf   | t type id | content-hash, num-changes, op |
-| TxSuccess    | t         | instant                       |
-| TxError      | t         | anomaly                       |
-| TByInstant   | instant   | t                             |
-| TypeStats    | type t    | total, num-changes            |
-| SystemStats  | t         | total, num-changes            |
+| Name         | Key Parts | Value                             |
+|--------------|-----------|-----------------------------------|
+| ResourceId   | tid id    | did                               |
+| ResourceAsOf | tid did t | content-hash, num-changes, op, id |
+| TypeAsOf     | tid t did | content-hash, num-changes, op, id |
+| SystemAsOf   | t tid did | content-hash, num-changes, op, id |
+| TxSuccess    | t         | instant                           |
+| TxError      | t         | anomaly                           |
+| TByInstant   | instant   | t                                 |
+| TypeStats    | tid t     | total, num-changes                |
+| SystemStats  | t         | total, num-changes                |
+
+#### ResourceId
+
+The `ResourceId` index maps the external resource identifier represented by the tuple `(tid, id)`, where `tid` is a 4-byte hash of the resource type and `id` is the [logical id][8] of the resource, to the id part of the internal resource identifier `did`. The term `did` stands for database identifier.   
 
 #### ResourceAsOf
 
-The `ResourceAsOf` index is the primary index which maps the resource identifier `(type, id)` together with the `t` to the `content-hash` of the resource version. In addition to that, the index contains the number of changes `num-changes` to the resource and the operator `op` of the change leading to the index entry.
+The `ResourceAsOf` index is the primary index which maps the internal resource identifier `(tid, did)` together with the `t` to the `content-hash` of the resource version. In addition to that, the index contains the number of changes `num-changes` to the resource and the operator `op` of the change leading to the index entry.
 
 The `ResourceAsOf` index is used to access the version of a resource at a particular point in time `t`. In other words, given a point in time `t`, the database value with that `t`, allows to access the resource version at that point in time by its identifier. Because the index only contains entries with `t` values of changes to each resource, the most current resource version is determined by querying the index for the greatest `t` less or equal to the `t` of the database value.
 
@@ -59,16 +64,16 @@ The `ResourceAsOf` index is used to access the version of a resource at a partic
 
 The following `ResourceAsOf` index:
 
-| Key (type, id, t) | Value (content-hash, num-changes, op) |
-|-------------------|---------------------------------------|
-| Patient, 0, 4     | -, 3, delete                          |
-| Patient, 0, 3     | b7e3e5f8, 2, update                   |
-| Patient, 0, 1     | ba9c9b24, 1, create                   |
-| Patient, 1, 2     | 6744ed32, 1, create                   |
+| Key (tid, did, t) | Value (content-hash, num-changes, op, id) |
+|-------------------|-------------------------------------------|
+| Patient, 0, 4     | --------, 3, delete, 0                    |
+| Patient, 0, 3     | b7e3e5f8, 2, update, 0                    |
+| Patient, 0, 1     | ba9c9b24, 1, create, 0                    |
+| Patient, 1, 2     | 6744ed32, 1, create, 1                    |
 
 provides the basis for the following database values:
 
-| t   | type    | id  | content-hash |
+| t   | type    | did | content-hash |
 |-----|---------|-----|--------------|
 | 1   | Patient | 0   | ba9c9b24     |
 | 2   | Patient | 0   | ba9c9b24     | 
@@ -77,17 +82,17 @@ provides the basis for the following database values:
 | 3   | Patient | 1   | 6744ed32     |
 | 4   | Patient | 1   | 6744ed32     |
 
-The database value with `t=1` contains one patient with `id=0` and content hash `ba9c9b24`, because the second patient was created later at `t=2`. The index access algorithm will not find an entry for the patient with `id=1` on a database value with `t=1` because there is no index key with `type=Patient`, `id=1` and `t<=1`. However, the database value with `t=2` will contain the patient with `id=1` and additionally contains the patient with `id=0` because there is a key with `type=Patient`, `id=0` and `t<=2`. Next, the database value with `t=3` still contains the same content hash for the patient with `id=1` and reflects the update on patient with `id=0` because the key `(Patient, 0, 3)` is now the one with the greatest `t<=3`, resulting in the content hash `b7e3e5f8`. Finally, the database value with `t=4` doesn't contain the patient with `id=0` anymore, because it was deleted. As can be seen in the index, deleting a resource is done by adding the information that it was deleted at some point in time.
+The database value with `t=1` contains one patient with `did=0` and content hash `ba9c9b24`, because the second patient was created later at `t=2`. The index access algorithm will not find an entry for the patient with `did=1` on a database value with `t=1` because there is no index key with `type=Patient`, `did=1` and `t<=1`. However, the database value with `t=2` will contain the patient with `did=1` and additionally contains the patient with `did=0` because there is a key with `type=Patient`, `did=0` and `t<=2`. Next, the database value with `t=3` still contains the same content hash for the patient with `did=1` and reflects the update on patient with `did=0` because the key `(Patient, 0, 3)` is now the one with the greatest `t<=3`, resulting in the content hash `b7e3e5f8`. Finally, the database value with `t=4` doesn't contain the patient with `did=0` anymore, because it was deleted. As can be seen in the index, deleting a resource is done by adding the information that it was deleted at some point in time.
 
 In addition to direct resource lookup, the `ResourceAsOf` index is used for listing all versions of a particular resource, listing all resources of a particular type and listing all resources at all. Listings are done by scanning through the index and for the non-history case, skipping versions not appropriate for the `t` of the database value. 
 
 #### TypeAsOf
 
-The `TypeAsOf` index contains the same information as the `ResourceAsOf` index with the difference that the components of the key are ordered `type`,  `t` and  `id` instead of `type`, `id` and `t`. The index is used for listing all versions of all resources of a particular type. Such history listings start with the `t` of the database value going into the past. This is done by not only choosing the resource version with the latest `t` less or equal the database values `t` but instead using all older versions. Such versions even include deleted versions because in FHIR it is allowed to bring back a resource to a new life after it was already deleted. The listing is done by simply scanning through the index in reverse. Because the key is ordered by `type`,  `t` and  `id`, the entries will be first ordered by time, newest first, and second by resource identifier.
+The `TypeAsOf` index contains the same information as the `ResourceAsOf` index with the difference that the components of the key are ordered `type`,  `t` and  `did` instead of `type`, `did` and `t`. The index is used for listing all versions of all resources of a particular type. Such history listings start with the `t` of the database value going into the past. This is done by not only choosing the resource version with the latest `t` less or equal the database values `t` but instead using all older versions. Such versions even include deleted versions because in FHIR it is allowed to bring back a resource to a new life after it was already deleted. The listing is done by simply scanning through the index in reverse. Because the key is ordered by `type`,  `t` and  `did`, the entries will be first ordered by time, newest first, and second by resource identifier.
 
 #### SystemAsOf
 
-In the same way the `TypeAsOf` index uses a different key ordering in comparison to the `ResourceAsOf` index, the `SystemAsOf` index will use the key order `t`, `type` and `id` in order to provide a global time axis order by resource type and by identifier secondarily.
+In the same way the `TypeAsOf` index uses a different key ordering in comparison to the `ResourceAsOf` index, the `SystemAsOf` index will use the key order `t`, `type` and `did` in order to provide a global time axis order by resource type and by identifier secondarily.
 
 #### TxSuccess
 
@@ -115,23 +120,26 @@ The `SystemStats` index keeps track of the total number of resources, and the nu
 
 The indices not depending on `t` directly point to the resource versions by their content hash. 
 
-| Name                                | Key Parts                                                    | Value |
-|-------------------------------------|--------------------------------------------------------------|-------|
-| SearchParamValueResource            | search-param, type, value, id, content-hash                  | -     |
-| ResourceSearchParamValue            | type, id, content-hash, search-param, value                  | -     |
-| CompartmentSearchParamValueResource | co-c-hash, co-res-id, sp-c-hash, tid, value, id, hash-prefix | -     |
-| CompartmentResource                 | co-c-hash, co-res-id, tid, id                                | -     |
-| SearchParam                         | code, tid                                                    | id    |
-| ActiveSearchParams                  | id                                                           | -     |
+| Name                                | Key Parts                                                      | Value |
+|-------------------------------------|----------------------------------------------------------------|-------|
+| SearchParamValueResource            | sp-c-hash, tid, value, did, hash-prefix                        | -     |
+| ResourceSearchParamValue            | tid, did, hash-prefix, sp-c-hash, value                        | -     |
+| CompartmentSearchParamValueResource | co-c-hash, co-res-did, sp-c-hash, tid, value, did, hash-prefix | -     |
+| CompartmentResource                 | co-c-hash, co-res-did, tid, did                                | -     |
+| SearchParam                         | code, tid                                                      | id    |
+| ActiveSearchParams                  | id                                                             | -     |
 
 #### SearchParamValueResource
 
-The `SearchParamValueResource` index contains all values from resources that are reachable from search parameters. The components of its key are:
-* `search-param` - a 4-byte hash of the search parameters code used to identify the search parameter
-* `type` - a 4-byte hash of the resource type
-* `value` - the encoded value of the resource reachable by the search parameters FHIRPath expression. The encoding depends on the search parameters type.
-* `id` - the logical id of the resource
-* `content-hash` - a 4-byte prefix of the content-hash of the resource version
+The `SearchParamValueResource` index contains all values from resources that are reachable from search parameters. 
+
+The components of its key are:
+
+* `sp-c-hash` - a 4-byte hash of the search parameters code used to identify the search parameter
+* `tid` - a 4-byte hash of the resource type
+* `value` - the encoded value of the resource reachable by the search parameters FHIRPath expression. The encoding depends on the search parameters type
+* `did` - the internal id (database id) of the resource
+* `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
 
 The way the `SearchParamValueResource` index is used, depends on the type of the search parameter. The following sections will explain this in detail for each type:
 
@@ -169,19 +177,19 @@ In order to facilitate different forms of searches specified in the [FHIR Spec][
 * `|code` - the code if the resource doesn't specify a system
 * `system|` - the system independent of the code, used to find all resources with any code in that system
 
-After concatenation, the strings are hashed with the [Murmur3][7] algorithm in its 32-bit variant, yielding a 4-byte wide value. The hashing is done to save space and ensure that all values are of the same length.
+After concatenation, the strings are hashed with [FarmHash's Fingerprint64][7] algorithm, yielding an 8-byte wide value. The hashing is done to save space and ensure that all values are of the same length.
 
 ###### Example
 
 For this example, we don't use the hashed versions of the key parts except for the content-hash.
 
-| Key (search-param, type, value, id, content-hash) |
-|---|
-| gender, Patient, female, 1, 6744ed32 |
-| gender, Patient, female, 2, b7e3e5f8 |
-| gender, Patient, male, 0, ba9c9b24 |
+| Key (sp-c-hash, tid, value, did, hash-prefix) |
+|-----------------------------------------------|
+| gender, Patient, female, 1, 6744ed32          |
+| gender, Patient, female, 2, b7e3e5f8          |
+| gender, Patient,   male, 0, ba9c9b24          |
 
-In case one searches for female patients, Blaze will seek into the index with the key prefix (gender, Patient, female) and scan over it while the prefix stays the same. The result will be the `[id, hash]` tuples:
+In case one searches for female patients, Blaze will seek into the index with the key prefix (gender, Patient, female) and scan over it while the prefix stays the same. The result will be the `[did, hash]` tuples:
 * `[1, 6744ed32]` and
 * `[2, b7e3e5f8]`.
 
@@ -207,11 +215,25 @@ That tuples are further processed against the `ResourceAsOf` index in order to c
 
 **TODO: continue...**
 
+#### CompartmentSearchParamValueResource
+
+Same as the `SearchParamValueResource` index but prefixed with a compartment the resource belongs to. This index is used in [variant searches][9] and in CQL evaluation within the Patient context. In the CQL Patient context all retrieves are relative to one patient. Using that patient as compartment in the `CompartmentSearchParamValueResource` index allows for efficient implementation of that retrieves. 
+
+The components of its key are:
+
+* `co-c-hash` - a 4-byte hash of the code of the compartment
+* `co-res-did` - the internal id (database id) of the resource of the compartment
+* `sp-c-hash` - a 4-byte hash of the search parameters code used to identify the search parameter
+* `tid` - a 4-byte hash of the resource type
+* `value` - the encoded value of the resource reachable by the search parameters FHIRPath expression. The encoding depends on the search parameters type
+* `did` - the internal id (database id) of the resource
+* `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
+
 ## Transaction Handling
 
 * a transaction bundle is POST'ed to one arbitrary node
 * this node submits the transaction commands to the central transaction log
-* all nodes (inkl. the transaction submitter) receive the transaction commands from the central transaction log
+* all nodes (incl. the transaction submitter) receive the transaction commands from the central transaction log
 
 **TODO: continue...**
 
@@ -221,4 +243,6 @@ That tuples are further processed against the `ResourceAsOf` index in order to c
 [4]: <https://en.wikipedia.org/wiki/Copy-on-write>
 [5]: <https://www.mongodb.com>
 [6]: <https://www.hl7.org/fhir/search.html#token>
-[7]: <https://en.wikipedia.org/wiki/MurmurHash>
+[7]: <https://guava.dev/releases/snapshot/api/docs/com/google/common/hash/Hashing.html#farmHashFingerprint64()>
+[8]: <https://www.hl7.org/fhir/resource-definitions.html#Resource.id>
+[9]: <https://www.hl7.org/fhir/http.html#vsearch>

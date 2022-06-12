@@ -101,23 +101,23 @@
         (eq-overlaps? v-lb v-ub q-lb a-lb)))))
 
 
-(defn- all-keys! [{:keys [svri] :as context} c-hash tid start-id]
-  (sp-vr/all-keys! svri c-hash tid (resource-value! context c-hash tid start-id)
-                   start-id))
+(defn- all-keys! [{:keys [svri] :as context} c-hash tid start-did]
+  (sp-vr/all-keys! svri c-hash tid (resource-value! context c-hash tid start-did)
+                   start-did))
 
 
 (defn- eq-keys!
-  "Returns a reducible collection of `[value id hash-prefix]` triples of all
+  "Returns a reducible collection of `[value did hash-prefix]` triples of all
   keys with overlapping date/time intervals with the interval specified by
-  `lower-bound` and `upper-bound` starting at `start-id` (optional)."
+  `lower-bound` and `upper-bound` starting at `start-did` (optional)."
   ([{:keys [svri]} c-hash tid lower-bound upper-bound]
    (coll/eduction
      (eq-filter lower-bound upper-bound)
      (sp-vr/all-keys! svri c-hash tid)))
-  ([context c-hash tid lower-bound upper-bound start-id]
+  ([context c-hash tid lower-bound upper-bound start-did]
    (coll/eduction
      (eq-filter lower-bound upper-bound)
-     (all-keys! context c-hash tid start-id))))
+     (all-keys! context c-hash tid start-did))))
 
 
 (defn- ge-overlaps? [v-lb v-ub q-lb]
@@ -133,17 +133,17 @@
 
 
 (defn- ge-keys!
-  "Returns a reducible collection of `[value id hash-prefix]` triples of all
+  "Returns a reducible collection of `[value did hash-prefix]` triples of all
   keys with overlapping date/time intervals with the interval specified by
-  `lower-bound` and an infinite upper bound starting at `start-id` (optional)."
+  `lower-bound` and an infinite upper bound starting at `start-did` (optional)."
   ([{:keys [svri]} c-hash tid lower-bound]
    (coll/eduction
      (ge-filter lower-bound)
      (sp-vr/all-keys! svri c-hash tid)))
-  ([context c-hash tid lower-bound start-id]
+  ([context c-hash tid lower-bound start-did]
    (coll/eduction
      (ge-filter lower-bound)
-     (all-keys! context c-hash tid start-id))))
+     (all-keys! context c-hash tid start-did))))
 
 
 (defn- le-overlaps? [v-lb v-ub q-ub]
@@ -159,17 +159,17 @@
 
 
 (defn- le-keys!
-  "Returns a reducible collection of `[value id hash-prefix]` triples of all
+  "Returns a reducible collection of `[value did hash-prefix]` triples of all
   keys with overlapping date/time intervals with the interval specified by
-  an infinite lower bound and `upper-bound` starting at `start-id` (optional)."
+  an infinite lower bound and `upper-bound` starting at `start-did` (optional)."
   ([{:keys [svri]} c-hash tid upper-bound]
    (coll/eduction
      (le-filter upper-bound)
      (sp-vr/all-keys! svri c-hash tid)))
-  ([context c-hash tid upper-bound start-id]
+  ([context c-hash tid upper-bound start-did]
    (coll/eduction
      (le-filter upper-bound)
-     (all-keys! context c-hash tid start-id))))
+     (all-keys! context c-hash tid start-did))))
 
 
 (defn- invalid-date-time-value-msg [code value]
@@ -182,11 +182,11 @@
      :eq (eq-keys! context c-hash tid lower-bound upper-bound)
      (:ge :gt) (ge-keys! context c-hash tid lower-bound)
      (:le :lt) (le-keys! context c-hash tid upper-bound)))
-  ([context c-hash tid {:keys [op lower-bound upper-bound]} start-id]
+  ([context c-hash tid {:keys [op lower-bound upper-bound]} start-did]
    (case op
-     :eq (eq-keys! context c-hash tid lower-bound upper-bound start-id)
-     (:ge :gt) (ge-keys! context c-hash tid lower-bound start-id)
-     (:le :lt) (le-keys! context c-hash tid upper-bound start-id))))
+     :eq (eq-keys! context c-hash tid lower-bound upper-bound start-did)
+     (:ge :gt) (ge-keys! context c-hash tid lower-bound start-did)
+     (:le :lt) (le-keys! context c-hash tid upper-bound start-did))))
 
 
 (defn- matches?
@@ -203,7 +203,7 @@
 
 (defrecord SearchParamDate [name url type base code c-hash expression]
   p/SearchParam
-  (-compile-value [_ _ value]
+  (-compile-value [_ _modifier value]
     (let [[op value] (u/separate-op value)]
       (if-ok [date-time-value (system/parse-date-time value)]
         (case op
@@ -223,25 +223,25 @@
   (-resource-handles [_ context tid _ value]
     (coll/eduction
       (comp
-        (map (fn [[_value id hash-prefix]] [id hash-prefix]))
+        (map (fn [[_value did hash-prefix]] [did hash-prefix]))
         (u/resource-handle-mapper context tid))
       (resource-keys! context c-hash tid value)))
 
-  (-resource-handles [_ context tid _ value start-id]
+  (-resource-handles [_ context tid _ value start-did]
     (coll/eduction
       (comp
-        (map (fn [[_value id hash-prefix]] [id hash-prefix]))
+        (map (fn [[_value did hash-prefix]] [did hash-prefix]))
         (u/resource-handle-mapper context tid))
-      (resource-keys! context c-hash tid value start-id)))
+      (resource-keys! context c-hash tid value start-did)))
 
   (-matches? [_ context resource-handle _ values]
     (some? (some #(matches? context c-hash resource-handle %) values)))
 
-  (-index-values [search-param resolver resource]
+  (-index-values [search-param resource-id resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
-      (coll/eduction (p/-index-value-compiler search-param) values)))
+      (coll/eduction (p/-index-value-compiler search-param resource-id) values)))
 
-  (-index-value-compiler [_]
+  (-index-value-compiler [_ _resource-id]
     (mapcat (partial index-entries url))))
 
 

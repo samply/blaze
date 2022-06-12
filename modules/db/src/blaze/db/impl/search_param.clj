@@ -49,18 +49,17 @@
          (mapcat (partial p/-resource-handles search-param context tid modifier))
          (distinct))
        values)))
-  ([search-param context tid modifier values start-id]
+  ([search-param context tid modifier values start-did]
    (if (= 1 (count values))
      (p/-resource-handles search-param context tid modifier (first values)
-                          start-id)
-     (let [start-id (codec/id-string start-id)]
-       (coll/eduction
-         (drop-while #(not= start-id (rh/id %)))
-         (resource-handles search-param context tid modifier values))))))
+                          start-did)
+     (coll/eduction
+       (drop-while #(not= start-did (rh/did %)))
+       (resource-handles search-param context tid modifier values)))))
 
 
 (defn- compartment-keys
-  "Returns a reducible collection of `[prefix id hash-prefix]` triples."
+  "Returns a reducible collection of `[prefix did hash-prefix]` triples."
   [search-param context compartment tid compiled-values]
   (coll/eduction
     (mapcat #(p/-compartment-keys search-param context compartment tid %))
@@ -105,19 +104,11 @@
 (defn index-entries
   "Returns reducible collection of index entries of `resource` with `hash` for
   `search-param` or an anomaly in case of errors."
-  {:arglists '([search-param linked-compartments hash resource])}
-  [{:keys [code c-hash] :as search-param} linked-compartments hash resource]
-  (when-ok [values (p/-index-values search-param stub-resolver resource)]
-    (let [{:keys [id]} resource
-          type (name (fhir-spec/fhir-type resource))
-          tid (codec/tid type)
-          id (codec/id-byte-string id)
-          linked-compartments
-          (mapv
-            (fn [[code comp-id]]
-              [(codec/c-hash code)
-               (codec/id-byte-string comp-id)])
-            linked-compartments)]
+  {:arglists '([search-param resource-id linked-compartments did hash resource])}
+  [{:keys [code c-hash] :as search-param} resource-id linked-compartments did hash resource]
+  (when-ok [values (p/-index-values search-param resource-id stub-resolver resource)]
+    (let [type (name (fhir-spec/fhir-type resource))
+          tid (codec/tid type)]
       (coll/eduction
         (mapcat
           (fn index-entry [[modifier value]]
@@ -130,10 +121,10 @@
                       c-hash
                       tid
                       value
-                      id
+                      did
                       hash)))
                 conj
-                [(sp-vr/index-entry c-hash tid value id hash)
-                 (r-sp-v/index-entry tid id hash c-hash value)]
+                [(sp-vr/index-entry c-hash tid value did hash)
+                 (r-sp-v/index-entry tid did hash c-hash value)]
                 linked-compartments))))
         values))))

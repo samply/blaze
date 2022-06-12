@@ -5,4 +5,4 @@
 
 
 (s/def :blaze.db/compartment
-  (s/tuple :blaze.db/c-hash :blaze.db/id-byte-string))
+  (s/tuple :blaze.db/c-hash :blaze.db/did))

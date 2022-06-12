@@ -8,6 +8,7 @@
     [blaze.coll.core :as coll]
     [blaze.db.api :as d]
     [blaze.db.api-spec]
+    [blaze.db.impl.codec :as codec]
     [blaze.db.impl.db-spec]
     [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
     [blaze.db.kv.mem-spec]
@@ -2183,32 +2184,32 @@
       (testing "ResourceSearchParamValue index looks like it should"
         (is (= (r-sp-v-tu/decode-index-entries
                  (:kv-store node)
-                 :type :id :hash-prefix :code :v-hash)
-               [["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
+                 :type :did :hash-prefix :code :v-hash)
+               [["Observation" (codec/did 1 0) #blaze/hash-prefix"36A9F36D"
                  "value-quantity" #blaze/byte-string"4F40902F3B6AE19A80"]
-                ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
+                ["Observation" (codec/did 1 0) #blaze/hash-prefix"36A9F36D"
                  "value-quantity" #blaze/byte-string"9CEABF1B055DDDCF80"]
-                ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
+                ["Observation" (codec/did 1 0) #blaze/hash-prefix"36A9F36D"
                  "value-quantity" #blaze/byte-string"B658D8AF4F417A2B80"]
-                ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
+                ["Observation" (codec/did 1 0) #blaze/hash-prefix"36A9F36D"
                  "combo-value-quantity" #blaze/byte-string"4F40902F3B6AE19A80"]
-                ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
+                ["Observation" (codec/did 1 0) #blaze/hash-prefix"36A9F36D"
                  "combo-value-quantity" #blaze/byte-string"9CEABF1B055DDDCF80"]
-                ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
+                ["Observation" (codec/did 1 0) #blaze/hash-prefix"36A9F36D"
                  "combo-value-quantity" #blaze/byte-string"B658D8AF4F417A2B80"]
-                ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
+                ["Observation" (codec/did 1 0) #blaze/hash-prefix"36A9F36D"
                  "_id" #blaze/byte-string"490E5C1C8B04CCEC"]
-                ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
+                ["Observation" (codec/did 1 0) #blaze/hash-prefix"36A9F36D"
                  "_lastUpdated" #blaze/byte-string"80008001"]
-                ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
+                ["TestScript" (codec/did 1 1) #blaze/hash-prefix"51E67D28"
                  "context-quantity" #blaze/byte-string"4F40902F3B6AE19A80"]
-                ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
+                ["TestScript" (codec/did 1 1) #blaze/hash-prefix"51E67D28"
                  "context-quantity" #blaze/byte-string"9CEABF1B055DDDCF80"]
-                ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
+                ["TestScript" (codec/did 1 1) #blaze/hash-prefix"51E67D28"
                  "context-quantity" #blaze/byte-string"B658D8AF4F417A2B80"]
-                ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
+                ["TestScript" (codec/did 1 1) #blaze/hash-prefix"51E67D28"
                  "_id" #blaze/byte-string"490E5C1C8B04CCEC"]
-                ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
+                ["TestScript" (codec/did 1 1) #blaze/hash-prefix"51E67D28"
                  "_lastUpdated" #blaze/byte-string"80008001"]])))
 
 
@@ -3145,14 +3146,6 @@
           [0 :id] := "0"
           [0 :meta :versionId] := #fhir/id"1"))
 
-      (testing "starting with Measure also returns the patient,
-                because in type hash order, Measure comes before
-                Patient but after Observation"
-        (given @(d/pull-many node (d/system-list (d/db node) "Measure" "0"))
-          [0 :fhir/type] := :fhir/Patient
-          [0 :id] := "0"
-          [0 :meta :versionId] := #fhir/id"1"))
-
       (testing "overshooting the start-id returns an empty collection"
         (is (coll/empty? (d/system-list (d/db node) "Patient" "1")))))))
 
@@ -3250,7 +3243,7 @@
   (testing "Unknown compartment is not a problem"
     (with-system [{:blaze.db/keys [node]} system]
       (is (coll/empty? (d/list-compartment-resource-handles
-                         (d/db node) "foo" "bar" "Condition"))))))
+                         (d/db node) "Foo" "bar" "Condition"))))))
 
 
 (defn- pull-compartment-query [node code id type clauses]
@@ -3455,7 +3448,7 @@
   (testing "Unknown compartment is not a problem"
     (with-system [{:blaze.db/keys [node]} system]
       (is (coll/empty? (d/compartment-query
-                         (d/db node) "foo" "bar" "Condition"
+                         (d/db node) "Foo" "bar" "Condition"
                          [["code" "baz"]])))))
 
   (testing "Unknown type is not a problem"
