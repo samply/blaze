@@ -10,7 +10,7 @@
 (defn decode-key [byte-array]
   (let [buf (bb/wrap byte-array)]
     {:type (codec/tid->type (bb/get-int! buf))
-     :t (codec/descending-long (bb/get-long! buf))}))
+     :t (codec/descending-long (bb/get-5-byte-long! buf))}))
 
 
 (defn decode-val [byte-array]

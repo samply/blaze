@@ -220,13 +220,13 @@
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
   (prom/observe! transaction-sizes (count tx-cmds))
   (let [timer (prom/timer duration-seconds "index-resources")
-        future (resource-indexer/index-resources resource-indexer tx-data)
         result (index-tx (np/-db node) tx-data)]
     (if (ba/anomaly? result)
       (commit-error! node t result)
-      (do
-        (store-tx-entries! kv-store result)
-        (wait-for-resources future timer)
+      (let [[entries tx-cmds] result]
+        (store-tx-entries! kv-store entries)
+        (let [future (resource-indexer/index-resources resource-indexer (assoc tx-data :tx-cmds tx-cmds))]
+          (wait-for-resources future timer))
         (commit-success! node t instant)))))
 
 
@@ -294,9 +294,10 @@
   (when-ok [clauses (resolve-search-params search-param-registry type clauses
                                            lenient?)]
     (if (empty? clauses)
-      (batch-db/->EmptyCompartmentQuery (codec/c-hash code) (codec/tid type))
-      (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
-                                   clauses))))
+      (batch-db/->EmptyCompartmentQuery (codec/c-hash code) (codec/tid code)
+                                        (codec/tid type))
+      (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid code)
+                                   (codec/tid type) clauses))))
 
 
 (defrecord Node [context tx-log rh-cache tx-cache kv-store resource-store
@@ -445,7 +446,7 @@
     [:blaze.db/enforce-referential-integrity]))
 
 
-(def ^:private expected-kv-store-version 1)
+(def ^:private expected-kv-store-version 2)
 
 
 (def ^:private incompatible-kv-store-version-msg

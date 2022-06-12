@@ -97,7 +97,9 @@
               hash (hash/generate patient)
               [[_ k0]]
               (search-param/index-entries
-                (birth-date-param search-param-registry) [] hash patient)]
+                (birth-date-param search-param-registry)
+                (constantly nil)
+                [] 202016 hash patient)]
 
           (testing "the entry is about both bounds of `2020-02-04`"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -105,7 +107,7 @@
               :type := "Patient"
               [:v-hash lower-bound-instant] := (Instant/parse "2020-02-04T00:00:00Z")
               [:v-hash upper-bound-instant] := (Instant/parse "2020-02-04T23:59:59Z")
-              :id := "id-142629"
+              :did := 202016
               :hash-prefix := (hash/prefix hash)))))
 
       (testing "death-date"
@@ -117,7 +119,8 @@
               [[_ k0]]
               (search-param/index-entries
                 (sr/get search-param-registry "death-date" "Patient")
-                [] hash patient)]
+                (constantly nil)
+                [] 202030 hash patient)]
 
           (testing "the entry is about both bounds of `2019-11-16T23:14:29Z`"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -125,7 +128,7 @@
               :type := "Patient"
               [:v-hash lower-bound-instant] := (Instant/parse "2019-11-16T23:14:29Z")
               [:v-hash upper-bound-instant] := (Instant/parse "2019-11-16T23:14:29Z")
-              :id := "id-142629"
+              :did := 202030
               :hash-prefix := (hash/prefix hash))))))
 
     (testing "Encounter"
@@ -140,7 +143,8 @@
               [[_ k0]]
               (search-param/index-entries
                 (sr/get search-param-registry "date" "Encounter")
-                [] hash encounter)]
+                (constantly nil)
+                [] 202044 hash encounter)]
 
           (testing "the entry is about the lower bound of the start and the upper
                   bound of the end of the period"
@@ -149,7 +153,7 @@
               :type := "Encounter"
               [:v-hash lower-bound-instant] := (Instant/parse "2019-11-16T23:14:29Z")
               [:v-hash upper-bound-instant] := (Instant/parse "2019-11-16T23:44:29Z")
-              :id := "id-160224"
+              :did := 202044
               :hash-prefix := (hash/prefix hash))))
 
         (testing "without start"
@@ -162,7 +166,8 @@
                 [[_ k0]]
                 (search-param/index-entries
                   (sr/get search-param-registry "date" "Encounter")
-                  [] hash encounter)]
+                  (constantly nil)
+                  [] 202100 hash encounter)]
 
             (testing "the entry is about the min bound as lower bound and the
                     upper bound of the end of the period"
@@ -171,7 +176,7 @@
                 :type := "Encounter"
                 [:v-hash lower-bound-instant] := (Instant/parse "0001-01-01T00:00:00Z")
                 [:v-hash upper-bound-instant] := (Instant/parse "2019-11-17T23:59:59Z")
-                :id := "id-160224"
+                :did := 202100
                 :hash-prefix := (hash/prefix hash)))))
 
         (testing "Encounter date without end"
@@ -184,7 +189,8 @@
                 [[_ k0]]
                 (search-param/index-entries
                   (sr/get search-param-registry "date" "Encounter")
-                  [] hash encounter)]
+                  (constantly nil)
+                  [] 202117 hash encounter)]
 
             (testing "the entry is about the lower bound of the start and the max
                     upper bound"
@@ -193,7 +199,7 @@
                 :type := "Encounter"
                 [:v-hash lower-bound-instant] := (Instant/parse "2019-11-16T23:14:29Z")
                 [:v-hash upper-bound-instant] := (Instant/parse "9999-12-31T23:59:59Z")
-                :id := "id-160224"
+                :did := 202117
                 :hash-prefix := (hash/prefix hash)))))))
 
     (testing "DiagnosticReport"
@@ -205,7 +211,8 @@
               [[_ k0]]
               (search-param/index-entries
                 (sr/get search-param-registry "issued" "DiagnosticReport")
-                [] hash patient)]
+                (constantly nil)
+                [] 202130 hash patient)]
 
           (testing "the entry is about both bounds of `2019-11-17T00:14:29.917+01:00`"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -213,7 +220,7 @@
               :type := "DiagnosticReport"
               [:v-hash lower-bound-instant] := (Instant/parse "2019-11-16T23:14:29Z")
               [:v-hash upper-bound-instant] := (Instant/parse "2019-11-16T23:14:29Z")
-              :id := "id-155607"
+              :did := 202130
               :hash-prefix := (hash/prefix hash))))))
 
     (testing "FHIRPath evaluation problem"
@@ -223,7 +230,8 @@
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
           (given (search-param/index-entries
                    (sr/get search-param-registry "issued" "DiagnosticReport")
-                   [] hash resource)
+                   (constantly nil)
+                   [] 202141 hash resource)
             ::anom/category := ::anom/fault)))))
 
   (testing "skip warning"

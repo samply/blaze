@@ -1871,16 +1871,16 @@
                 [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code"match"))
 
-            (testing "the second entry is the included Encounter"
-              (given (-> body :entry (nth 2))
-                :fullUrl := #fhir/uri"base-url-113047/Encounter/1"
-                [:resource :fhir/type] := :fhir/Encounter
-                [:search :mode] := #fhir/code"include"))
-
-            (testing "the third entry is the included Patient"
+            (testing "the second entry is the included Patient"
               (given (-> body :entry second)
                 :fullUrl := #fhir/uri"base-url-113047/Patient/0"
                 [:resource :fhir/type] := :fhir/Patient
+                [:search :mode] := #fhir/code"include"))
+
+            (testing "the third entry is the included Encounter"
+              (given (-> body :entry (nth 2))
+                :fullUrl := #fhir/uri"base-url-113047/Encounter/1"
+                [:resource :fhir/type] := :fhir/Encounter
                 [:search :mode] := #fhir/code"include")))))
 
       (testing "with paging"
@@ -2007,16 +2007,16 @@
               [:resource :fhir/type] := :fhir/MedicationStatement
               [:search :mode] := #fhir/code"match"))
 
-          (testing "the second entry is the included Organization"
+          (testing "the second entry is the included Medication"
             (given (-> body :entry second)
-              :fullUrl := #fhir/uri"base-url-113047/Organization/0"
-              [:resource :fhir/type] := :fhir/Organization
-              [:search :mode] := #fhir/code"include"))
-
-          (testing "the third entry is the included Medication"
-            (given (-> body :entry (nth 2))
               :fullUrl := #fhir/uri"base-url-113047/Medication/0"
               [:resource :fhir/type] := :fhir/Medication
+              [:search :mode] := #fhir/code"include"))
+
+          (testing "the third entry is the included Organization"
+            (given (-> body :entry (nth 2))
+              :fullUrl := #fhir/uri"base-url-113047/Organization/0"
+              [:resource :fhir/type] := :fhir/Organization
               [:search :mode] := #fhir/code"include")))))
 
     (testing "non-iterative include doesn't work iterative"

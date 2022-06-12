@@ -13,7 +13,7 @@
 (defrecord SearchParamCompositeTokenToken
   [name url type base code c-hash main-expression c1 c2]
   p/SearchParam
-  (-compile-value [_ _ value]
+  (-compile-value [_ _modifier value]
     (let [[v1 v2] (cc/split-value value)
           v1 (cc/compile-component-value c1 v1)
           v2 (cc/compile-component-value c1 v2)]
@@ -24,14 +24,14 @@
       (u/resource-handle-mapper context tid)
       (spt/resource-keys! context c-hash tid value)))
 
-  (-resource-handles [_ context tid _ value start-id]
+  (-resource-handles [_ context tid _ value start-did]
     (coll/eduction
       (u/resource-handle-mapper context tid)
-      (spt/resource-keys! context c-hash tid value start-id)))
+      (spt/resource-keys! context c-hash tid value start-did)))
 
   (-matches? [_ context resource-handle _ values]
     (some? (some #(spt/matches? context c-hash resource-handle %) values)))
 
-  (-index-values [_ resolver resource]
+  (-index-values [_ resource-id resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]
-      (coll/eduction (cc/index-values resolver c1 c2) values))))
+      (coll/eduction (cc/index-values resource-id resolver c1 c2) values))))

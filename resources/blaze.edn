@@ -284,6 +284,7 @@
      :tx-success-index {:reverse-comparator? true}
      :tx-error-index nil
      :t-by-instant-index {:reverse-comparator? true}
+     :resource-id-index nil
      :resource-as-of-index nil
      :type-as-of-index nil
      :system-as-of-index nil
@@ -407,6 +408,12 @@
       :target-file-size-base-in-mb 2
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
       :reverse-comparator? true}
+
+     :resource-id-index
+     {:write-buffer-size-in-mb 4
+      :max-bytes-for-level-base-in-mb 16
+      :target-file-size-base-in-mb 4
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :resource-as-of-index
      {:write-buffer-size-in-mb 8
@@ -598,6 +605,12 @@
       :target-file-size-base-in-mb 2
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
       :reverse-comparator? true}
+
+     :resource-id-index
+     {:write-buffer-size-in-mb 4
+      :max-bytes-for-level-base-in-mb 16
+      :target-file-size-base-in-mb 4
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :resource-as-of-index
      {:write-buffer-size-in-mb 8

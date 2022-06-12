@@ -78,6 +78,12 @@
   (.putInt ^ByteBuffer byte-buffer x))
 
 
+(defn put-5-byte-long!
+  [byte-buffer ^long x]
+  (put-byte! byte-buffer (bit-shift-right (unchecked-long x) 32))
+  (put-int! byte-buffer x))
+
+
 (defn put-long!
   {:inline
    (fn [byte-buffer x]
@@ -223,6 +229,11 @@
   (.getInt ^ByteBuffer byte-buffer))
 
 
+(defn get-5-byte-long! [byte-buffer]
+  (+ (bit-shift-left (bit-and (get-byte! byte-buffer) 0xFF) 32)
+     (bit-and (get-int! byte-buffer) 0xFFFFFFFF)))
+
+
 (defn get-long!
   {:inline
    (fn [byte-buffer]
@@ -244,24 +255,6 @@
    (.get ^ByteBuffer byte-buffer ^bytes byte-array))
   ([byte-buffer byte-array offset length]
    (.get ^ByteBuffer byte-buffer ^bytes byte-array offset length)))
-
-
-(defn size-up-to-null [byte-buffer]
-  (when (pos? (remaining byte-buffer))
-    (mark! byte-buffer)
-    (loop [byte (bit-and (long (get-byte! byte-buffer)) 0xFF)
-           size 0]
-      (cond
-        (zero? byte)
-        (do (reset! byte-buffer)
-            size)
-
-        (pos? (remaining byte-buffer))
-        (recur (bit-and (long (get-byte! byte-buffer)) 0xFF) (inc size))
-
-        :else
-        (do (reset! byte-buffer)
-            nil)))))
 
 
 (defn mismatch

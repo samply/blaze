@@ -50,7 +50,7 @@
   is used to get near `t`."
   [iter t]
   (let [buf (bb/allocate-direct kv-capacity)]
-    (bb/put-long! buf (codec/descending-long ^long t))
+    (bb/put-5-byte-long! buf (codec/descending-long t))
     (bb/flip! buf)
     (kv/seek-buffer! iter buf)
     (when (kv/valid? iter)
@@ -61,7 +61,7 @@
 
 (defn- encode-key [t]
   (-> (bb/allocate key-size)
-      (bb/put-long! (codec/descending-long ^long t))
+      (bb/put-5-byte-long! (codec/descending-long t))
       bb/array))
 
 

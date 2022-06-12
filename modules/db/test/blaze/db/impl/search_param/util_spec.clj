@@ -8,12 +8,18 @@
     [blaze.db.impl.search-param.util :as u]
     [blaze.db.kv.spec]
     [blaze.db.spec]
+    [blaze.fhir.spec.spec]
     [clojure.spec.alpha :as s]))
 
 
 (s/fdef u/separate-op
   :args (s/cat :value string?)
   :ret (s/tuple keyword? string?))
+
+
+(s/fdef u/non-deleted-resource-handle
+  :args (s/cat :resource-handle fn? :tid :blaze.db/tid :did :blaze.db/did)
+  :ret (s/nilable :blaze.db/resource-handle))
 
 
 (s/fdef u/resource-handle-mapper

@@ -37,6 +37,6 @@
                :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
                :value byte-string?
-               :id :blaze.db/id-byte-string
+               :did :blaze.db/did
                :hash :blaze.resource/hash)
   :ret :blaze.db.kv/put-entry)

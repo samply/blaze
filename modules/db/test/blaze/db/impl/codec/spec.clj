@@ -1,10 +1,8 @@
 (ns blaze.db.impl.codec.spec
   (:require
     [blaze.byte-string :as bs :refer [byte-string?]]
-    [blaze.db.impl.codec :as codec]
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
-    [clojure.string :as str]
     [clojure.test.check.generators :as gen2]))
 
 
@@ -32,13 +30,15 @@
   (s/with-gen int? gen/int))
 
 
-(def ^:private id-gen
-  #(gen/fmap (comp codec/id-byte-string str/join)
-             (gen/vector gen2/char-alphanumeric 1 64)))
-
-
-(s/def :blaze.db/id-byte-string
-  (s/with-gen (s/and byte-string? #(<= 1 (bs/size %) 64)) id-gen))
+;; A database resource id is a long value were the first 5 bytes is the `t` at
+;; which the resource was created and the last 3 bytes are the index of the
+;; resource in the transaction.
+(s/def :blaze.db/did
+  (s/with-gen
+    (s/and int? #(< 0xFFF %))
+    #(gen/fmap
+       (fn [[t n]] (+ (bit-shift-left t 24) n))
+       (gen/tuple (s/gen :blaze.db/t) (gen/choose 0 0xFFFFFE)))))
 
 
 (def ^:private byte-string-gen

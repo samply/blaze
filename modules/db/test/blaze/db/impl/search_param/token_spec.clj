@@ -13,4 +13,4 @@
                :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
                :value byte-string?
-               :start-id (s/? :blaze.db/id-byte-string)))
+               :start-did (s/? :blaze.db/did)))

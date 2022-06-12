@@ -4,7 +4,8 @@
     [blaze.db.tx-log :as tx-log]
     [blaze.fhir.spec]
     [blaze.spec]
-    [clojure.spec.alpha :as s]))
+    [clojure.spec.alpha :as s]
+    [clojure.spec.gen.alpha :as gen]))
 
 
 (defn tx-log? [x]
@@ -35,8 +36,20 @@
   (s/coll-of :blaze.fhir/local-ref-tuple))
 
 
+(def ^:private ^:const ^long max-t 0xFFFFFFFFFF)
+
+
+;; With a 5 byte long `t`, we can create one transaction each millisecond
+;; for 34 years. Alone the t-values would need a storage of 5 TB.
+(comment
+  (let [millis-per-year (* 1000 3600 24 365)
+        five-bytes (long (Math/pow 2 40))]
+    (double (/ five-bytes millis-per-year))))
+
+
+;; The point in time `t` of a database value.
 (s/def :blaze.db/t
-  (s/and int? #(<= 0 % 0xFFFFFFFFFFFFFF)))
+  (s/with-gen (s/and int? #(<= 0 % max-t)) #(gen/choose 0 max-t)))
 
 
 (s/def :blaze.db.tx-cmd/if-none-exist

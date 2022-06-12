@@ -44,15 +44,15 @@
            search-param context tid modifier values))
        (resource-handles
          search-param context tid modifier values))))
-  ([context tid clauses start-id]
+  ([context tid clauses start-did]
    (let [[[search-param modifier _ values] & other-clauses] clauses]
      (if (seq other-clauses)
        (coll/eduction
          (other-clauses-filter context other-clauses)
          (resource-handles
-           search-param context tid modifier values start-id))
+           search-param context tid modifier values start-did))
        (resource-handles
-         search-param context tid modifier values start-id)))))
+         search-param context tid modifier values start-did)))))
 
 
 (defn system-query [_ _]
@@ -83,12 +83,12 @@
   {:arglists
    '([context resource-handle code]
      [context resource-handle code target-tid])}
-  ([{:keys [rsvi] :as context} {:keys [tid id hash]} code]
+  ([{:keys [rsvi] :as context} {:keys [tid did hash]} code]
    (coll/eduction
      (u/reference-resource-handle-mapper context)
-     (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code)))
-  ([{:keys [rsvi] :as context} {:keys [tid id hash]} code target-tid]
+    (r-sp-v/prefix-keys! rsvi tid did hash code)))
+  ([{:keys [rsvi] :as context} {:keys [tid did hash]} code target-tid]
    (coll/eduction
      (u/reference-resource-handle-mapper context)
-     (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code
+    (r-sp-v/prefix-keys! rsvi tid did hash code
                           (codec/tid-byte-string target-tid)))))

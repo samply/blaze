@@ -179,7 +179,7 @@
     (given-thrown (ig/init (with-index-store-version system 0))
       :key := :blaze.db/node
       :reason := ::ig/build-threw-exception
-      [:cause-data :expected-version] := 1
+      [:cause-data :expected-version] := 2
       [:cause-data :actual-version] := 0)))
 
 
@@ -274,10 +274,10 @@
 
 
 (deftest existing-data-with-compatible-version
-  (with-system [{:blaze.db/keys [node]} (with-index-store-version system 1)]
+  (with-system [{:blaze.db/keys [node]} (with-index-store-version system 2)]
     (is node)))
 
 
 (deftest sets-db-version-on-startup
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]} system]
-    (is (= 1 (version/get kv-store)))))
+    (is (= 2 (version/get kv-store)))))

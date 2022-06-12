@@ -20,7 +20,7 @@
   (are [x] (s/valid? :blaze.db/t x)
     0
     1
-    0xFFFFFFFFFFFFFF))
+    0xFFFFFFFFFF))
 
 
 (def patient-hash-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
