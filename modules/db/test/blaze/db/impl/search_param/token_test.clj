@@ -59,20 +59,21 @@
             [[_ k0] [_ k1]]
             (search-param/index-entries
               (sr/get search-param-registry "_id" "Observation")
-              [] hash observation)]
+              (constantly nil)
+              [] 153828 hash observation)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "_id"
             :type := "Observation"
             :v-hash := (codec/v-hash "id-161849")
-            :id := "id-161849"
+            :did := 153828
             :hash-prefix := (hash/prefix hash)))
 
         (testing "ResourceSearchParamValue key"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Observation"
-            :id := "id-161849"
+            :did := 153828
             :hash-prefix := (hash/prefix hash)
             :code := "_id"
             :v-hash := (codec/v-hash "id-161849")))))
@@ -90,20 +91,22 @@
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
-              (code-param search-param-registry) [] hash observation)]
+              (code-param search-param-registry)
+              (constantly nil)
+              [] 153911 hash observation)]
 
         (testing "first SearchParamValueResource key is about `code`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "code"
             :type := "Observation"
             :v-hash := (codec/v-hash "code-171327")
-            :id := "id-183201"
+            :did := 153911
             :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `code`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Observation"
-            :id := "id-183201"
+            :did := 153911
             :hash-prefix := (hash/prefix hash)
             :code := "code"
             :v-hash := (codec/v-hash "code-171327")))
@@ -113,13 +116,13 @@
             :code := "code"
             :type := "Observation"
             :v-hash := (codec/v-hash "system-171339|")
-            :id := "id-183201"
+            :did := 153911
             :hash-prefix := (hash/prefix hash)))
 
         (testing "second ResourceSearchParamValue key is about `system|`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
             :type := "Observation"
-            :id := "id-183201"
+            :did := 153911
             :hash-prefix := (hash/prefix hash)
             :code := "code"
             :v-hash := (codec/v-hash "system-171339|")))
@@ -129,13 +132,13 @@
             :code := "code"
             :type := "Observation"
             :v-hash := (codec/v-hash "system-171339|code-171327")
-            :id := "id-183201"
+            :did := 153911
             :hash-prefix := (hash/prefix hash)))
 
         (testing "third ResourceSearchParamValue key is about `system|code`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
             :type := "Observation"
-            :id := "id-183201"
+            :did := 153911
             :hash-prefix := (hash/prefix hash)
             :code := "code"
             :v-hash := (codec/v-hash "system-171339|code-171327")))))
@@ -152,20 +155,22 @@
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (search-param/index-entries
-              (code-param search-param-registry) [] hash observation)]
+              (code-param search-param-registry)
+              (constantly nil)
+              [] 153954 hash observation)]
 
         (testing "first SearchParamValueResource key is about `code`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "code"
             :type := "Observation"
             :v-hash := (codec/v-hash "code-134035")
-            :id := "id-183201"
+            :did := 153954
             :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `code`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Observation"
-            :id := "id-183201"
+            :did := 153954
             :hash-prefix := (hash/prefix hash)
             :code := "code"
             :v-hash := (codec/v-hash "code-134035")))
@@ -175,13 +180,13 @@
             :code := "code"
             :type := "Observation"
             :v-hash := (codec/v-hash "|code-134035")
-            :id := "id-183201"
+            :did := 153954
             :hash-prefix := (hash/prefix hash)))
 
         (testing "second ResourceSearchParamValue key is about `|code`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
             :type := "Observation"
-            :id := "id-183201"
+            :did := 153954
             :hash-prefix := (hash/prefix hash)
             :code := "code"
             :v-hash := (codec/v-hash "|code-134035")))))
@@ -198,20 +203,22 @@
             hash (hash/generate observation)
             [[_ k0] [_ k1]]
             (search-param/index-entries
-              (code-param search-param-registry) [] hash observation)]
+              (code-param search-param-registry)
+              (constantly nil)
+              [] 154050 hash observation)]
 
         (testing "first SearchParamValueResource key is about `system|`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "code"
             :type := "Observation"
             :v-hash := (codec/v-hash "system-171339|")
-            :id := "id-183201"
+            :did := 154050
             :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `system|`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Observation"
-            :id := "id-183201"
+            :did := 154050
             :hash-prefix := (hash/prefix hash)
             :code := "code"
             :v-hash := (codec/v-hash "system-171339|")))))
@@ -227,20 +234,21 @@
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
               (sr/get search-param-registry "identifier" "Patient")
-              [] hash patient)]
+              (constantly nil)
+              [] 154101 hash patient)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "identifier"
             :type := "Patient"
             :v-hash := (codec/v-hash "value-123005")
-            :id := "id-122929"
+            :did := 154101
             :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `value`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Patient"
-            :id := "id-122929"
+            :did := 154101
             :hash-prefix := (hash/prefix hash)
             :code := "identifier"
             :v-hash := (codec/v-hash "value-123005")))
@@ -250,13 +258,13 @@
             :code := "identifier"
             :type := "Patient"
             :v-hash := (codec/v-hash "system-123000|")
-            :id := "id-122929"
+            :did := 154101
             :hash-prefix := (hash/prefix hash)))
 
         (testing "second ResourceSearchParamValue key is about `system|`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
             :type := "Patient"
-            :id := "id-122929"
+            :did := 154101
             :hash-prefix := (hash/prefix hash)
             :code := "identifier"
             :v-hash := (codec/v-hash "system-123000|")))
@@ -266,13 +274,13 @@
             :code := "identifier"
             :type := "Patient"
             :v-hash := (codec/v-hash "system-123000|value-123005")
-            :id := "id-122929"
+            :did := 154101
             :hash-prefix := (hash/prefix hash)))
 
         (testing "third ResourceSearchParamValue key is about `system|value`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
             :type := "Patient"
-            :id := "id-122929"
+            :did := 154101
             :hash-prefix := (hash/prefix hash)
             :code := "identifier"
             :v-hash := (codec/v-hash "system-123000|value-123005")))))
@@ -287,20 +295,21 @@
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (search-param/index-entries
               (sr/get search-param-registry "identifier" "Patient")
-              [] hash patient)]
+              (constantly nil)
+              [] 154139 hash patient)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "identifier"
             :type := "Patient"
             :v-hash := (codec/v-hash "value-140132")
-            :id := "id-122929"
+            :did := 154139
             :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `value`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Patient"
-            :id := "id-122929"
+            :did := 154139
             :hash-prefix := (hash/prefix hash)
             :code := "identifier"
             :v-hash := (codec/v-hash "value-140132")))
@@ -310,13 +319,13 @@
             :code := "identifier"
             :type := "Patient"
             :v-hash := (codec/v-hash "|value-140132")
-            :id := "id-122929"
+            :did := 154139
             :hash-prefix := (hash/prefix hash)))
 
         (testing "third ResourceSearchParamValue key is about `|value`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
             :type := "Patient"
-            :id := "id-122929"
+            :did := 154139
             :hash-prefix := (hash/prefix hash)
             :code := "identifier"
             :v-hash := (codec/v-hash "|value-140132")))))
@@ -331,20 +340,21 @@
             [[_ k0] [_ k1]]
             (search-param/index-entries
               (sr/get search-param-registry "identifier" "Patient")
-              [] hash patient)]
+              (constantly nil)
+              [] 154210 hash patient)]
 
         (testing "second SearchParamValueResource key is about `system|`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "identifier"
             :type := "Patient"
             :v-hash := (codec/v-hash "system-140316|")
-            :id := "id-122929"
+            :did := 154210
             :hash-prefix := (hash/prefix hash)))
 
         (testing "second ResourceSearchParamValue key is about `system|`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Patient"
-            :id := "id-122929"
+            :did := 154210
             :hash-prefix := (hash/prefix hash)
             :code := "identifier"
             :v-hash := (codec/v-hash "system-140316|")))))
@@ -356,20 +366,21 @@
               [[_ k0] [_ k1]]
               (search-param/index-entries
                 (sr/get search-param-registry "deceased" "Patient")
-                [] hash patient)]
+                (constantly nil)
+                [] 154245 hash patient)]
 
           (testing "SearchParamValueResource key"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
               :code := "deceased"
               :type := "Patient"
               :v-hash := (codec/v-hash "false")
-              :id := "id-142629"
+              :did := 154245
               :hash-prefix := (hash/prefix hash)))
 
           (testing "ResourceSearchParamValue key"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "Patient"
-              :id := "id-142629"
+              :did := 154245
               :hash-prefix := (hash/prefix hash)
               :code := "deceased"
               :v-hash := (codec/v-hash "false")))))
@@ -382,20 +393,21 @@
               [[_ k0] [_ k1]]
               (search-param/index-entries
                 (sr/get search-param-registry "deceased" "Patient")
-                [] hash patient)]
+                (constantly nil)
+                [] 154258 hash patient)]
 
           (testing "SearchParamValueResource key"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
               :code := "deceased"
               :type := "Patient"
               :v-hash := (codec/v-hash "true")
-              :id := "id-142629"
+              :did := 154258
               :hash-prefix := (hash/prefix hash)))
 
           (testing "ResourceSearchParamValue key"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "Patient"
-              :id := "id-142629"
+              :did := 154258
               :hash-prefix := (hash/prefix hash)
               :code := "deceased"
               :v-hash := (codec/v-hash "true")))))
@@ -409,20 +421,21 @@
               [[_ k0] [_ k1]]
               (search-param/index-entries
                 (sr/get search-param-registry "deceased" "Patient")
-                [] hash patient)]
+                (constantly nil)
+                [] 154315 hash patient)]
 
           (testing "SearchParamValueResource key"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
               :code := "deceased"
               :type := "Patient"
               :v-hash := (codec/v-hash "true")
-              :id := "id-142629"
+              :did := 154315
               :hash-prefix := (hash/prefix hash)))
 
           (testing "ResourceSearchParamValue key"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "Patient"
-              :id := "id-142629"
+              :did := 154315
               :hash-prefix := (hash/prefix hash)
               :code := "deceased"
               :v-hash := (codec/v-hash "true"))))))
@@ -442,20 +455,21 @@
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
               (sr/get search-param-registry "bodysite" "Specimen")
-              [] hash specimen)]
+              (constantly nil)
+              [] 154350 hash specimen)]
 
         (testing "first SearchParamValueResource key is about `code`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "bodysite"
             :type := "Specimen"
             :v-hash := (codec/v-hash "code-103812")
-            :id := "id-105153"
+            :did := 154350
             :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `code`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Specimen"
-            :id := "id-105153"
+            :did := 154350
             :hash-prefix := (hash/prefix hash)
             :code := "bodysite"
             :v-hash := (codec/v-hash "code-103812")))
@@ -465,13 +479,13 @@
             :code := "bodysite"
             :type := "Specimen"
             :v-hash := (codec/v-hash "system-103824|")
-            :id := "id-105153"
+            :did := 154350
             :hash-prefix := (hash/prefix hash)))
 
         (testing "second ResourceSearchParamValue key is about `system|`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
             :type := "Specimen"
-            :id := "id-105153"
+            :did := 154350
             :hash-prefix := (hash/prefix hash)
             :code := "bodysite"
             :v-hash := (codec/v-hash "system-103824|")))
@@ -481,13 +495,13 @@
             :code := "bodysite"
             :type := "Specimen"
             :v-hash := (codec/v-hash "system-103824|code-103812")
-            :id := "id-105153"
+            :did := 154350
             :hash-prefix := (hash/prefix hash)))
 
         (testing "third ResourceSearchParamValue key is about `system|code`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
             :type := "Specimen"
-            :id := "id-105153"
+            :did := 154350
             :hash-prefix := (hash/prefix hash)
             :code := "bodysite"
             :v-hash := (codec/v-hash "system-103824|code-103812")))))
@@ -503,20 +517,21 @@
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (search-param/index-entries
               (sr/get search-param-registry "class" "Encounter")
-              [] hash specimen)]
+              (constantly nil)
+              [] 154421 hash specimen)]
 
         (testing "first SearchParamValueResource key is about `code`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "class"
             :type := "Encounter"
             :v-hash := (codec/v-hash "AMB")
-            :id := "id-105153"
+            :did := 154421
             :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `code`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Encounter"
-            :id := "id-105153"
+            :did := 154421
             :hash-prefix := (hash/prefix hash)
             :code := "class"
             :v-hash := (codec/v-hash "AMB")))
@@ -526,13 +541,13 @@
             :code := "class"
             :type := "Encounter"
             :v-hash := (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|")
-            :id := "id-105153"
+            :did := 154421
             :hash-prefix := (hash/prefix hash)))
 
         (testing "second ResourceSearchParamValue key is about `system|`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
             :type := "Encounter"
-            :id := "id-105153"
+            :did := 154421
             :hash-prefix := (hash/prefix hash)
             :code := "class"
             :v-hash := (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|")))
@@ -542,13 +557,13 @@
             :code := "class"
             :type := "Encounter"
             :v-hash := (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|AMB")
-            :id := "id-105153"
+            :did := 154421
             :hash-prefix := (hash/prefix hash)))
 
         (testing "third ResourceSearchParamValue key is about `system|code`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
             :type := "Encounter"
-            :id := "id-105153"
+            :did := 154421
             :hash-prefix := (hash/prefix hash)
             :code := "class"
             :v-hash := (codec/v-hash "http://terminology.hl7.org/CodeSystem/v3-ActCode|AMB")))))
@@ -563,20 +578,21 @@
             [[_ k0] [_ k1]]
             (search-param/index-entries
               (sr/get search-param-registry "series" "ImagingStudy")
-              [] hash specimen)]
+              (constantly nil)
+              [] 154455 hash specimen)]
 
         (testing "SearchParamValueResource key is about `id`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "series"
             :type := "ImagingStudy"
             :v-hash := (codec/v-hash "1.2.840.99999999.1.59354388.1582528879516")
-            :id := "id-105153"
+            :did := 154455
             :hash-prefix := (hash/prefix hash)))
 
         (testing "ResourceSearchParamValue key"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "ImagingStudy"
-            :id := "id-105153"
+            :did := 154455
             :hash-prefix := (hash/prefix hash)
             :code := "series"
             :v-hash := (codec/v-hash "1.2.840.99999999.1.59354388.1582528879516")))))
@@ -589,20 +605,21 @@
             [[_ k0] [_ k1]]
             (search-param/index-entries
               (sr/get search-param-registry "version" "CodeSystem")
-              [] hash resource)]
+              (constantly nil)
+              [] 154546 hash resource)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "version"
             :type := "CodeSystem"
             :v-hash := (codec/v-hash "version-122621")
-            :id := "id-111846"
+            :did := 154546
             :hash-prefix := (hash/prefix hash)))
 
         (testing "ResourceSearchParamValue key"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "CodeSystem"
-            :id := "id-111846"
+            :did := 154546
             :hash-prefix := (hash/prefix hash)
             :code := "version"
             :v-hash := (codec/v-hash "version-122621")))))
@@ -614,11 +631,12 @@
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
           (given (search-param/index-entries
                    (sr/get search-param-registry "_id" "Patient")
-                   [] hash resource)
+                   (constantly nil)
+                   [] 154605 hash resource)
             ::anom/category := ::anom/fault))))
 
     (testing "skip warning"
-      (is (nil? (spt/index-entries "" nil))))))
+      (is (nil? (spt/index-entries (constantly nil) "" nil))))))
 
 
 (defn subject-param [search-param-registry]

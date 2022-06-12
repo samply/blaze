@@ -3,6 +3,7 @@
     [blaze.byte-string-spec]
     [blaze.db.impl.index-spec]
     [blaze.db.impl.index.resource-as-of-spec]
+    [blaze.db.impl.index.resource-id-spec]
     [blaze.db.impl.index.rts-as-of-spec]
     [blaze.db.impl.index.system-stats-spec]
     [blaze.db.impl.index.type-stats-spec]
@@ -16,5 +17,5 @@
 
 (s/fdef verify/verify-tx-cmds
   :args (s/cat :db-before :blaze.db/db :t :blaze.db/t :cmds :blaze.db/tx-cmds)
-  :ret (s/or :entries (s/coll-of :blaze.db.kv/put-entry)
+  :ret (s/or :res (s/tuple (s/coll-of :blaze.db.kv/put-entry) :blaze.db/tx-cmds)
              :anomaly ::anom/anomaly))

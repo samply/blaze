@@ -30,41 +30,41 @@
 
 
 (deftest decode-key-test
-  (satisfies-prop 100
+  (satisfies-prop 1000
     (prop/for-all [c-hash (s/gen :blaze.db/c-hash)
                    tid (s/gen :blaze.db/tid)
                    value (s/gen :blaze.db/byte-string)
-                   id (s/gen :blaze.db/id-byte-string)
+                   did (s/gen :blaze.db/did)
                    hash (s/gen :blaze.resource/hash)]
-      (let [buf (bb/wrap (sp-vr/encode-key c-hash tid value id hash))
-            [prefix act_id hash-prefix] (sp-vr/decode-key buf)]
+      (let [buf (bb/wrap (sp-vr/encode-key c-hash tid value did hash))
+            [prefix act-did hash-prefix] (sp-vr/decode-key buf)]
         (and (= (create-prefix c-hash tid value) prefix)
-             (= id act_id)
+             (= did act-did)
              (= (hash/prefix hash) hash-prefix))))))
 
 
 (deftest decode-value-id-hash-prefix-test
-  (satisfies-prop 100
+  (satisfies-prop 1000
     (prop/for-all [c-hash (s/gen :blaze.db/c-hash)
                    tid (s/gen :blaze.db/tid)
                    value (s/gen :blaze.db/byte-string)
-                   id (s/gen :blaze.db/id-byte-string)
+                   did (s/gen :blaze.db/did)
                    hash (s/gen :blaze.resource/hash)]
-      (let [buf (bb/wrap (sp-vr/encode-key c-hash tid value id hash))
-            [act_value act_id hash-prefix] (sp-vr/decode-value-id-hash-prefix buf)]
-        (and (= value act_value)
-             (= id act_id)
+      (let [buf (bb/wrap (sp-vr/encode-key c-hash tid value did hash))
+            [act-value act-did hash-prefix] (sp-vr/decode-value-did-hash-prefix buf)]
+        (and (= value act-value)
+             (= did act-did)
              (= (hash/prefix hash) hash-prefix))))))
 
 
 (deftest decode-id-hash-prefix-test
-  (satisfies-prop 100
+  (satisfies-prop 1000
     (prop/for-all [c-hash (s/gen :blaze.db/c-hash)
                    tid (s/gen :blaze.db/tid)
                    value (s/gen :blaze.db/byte-string)
-                   id (s/gen :blaze.db/id-byte-string)
+                   did (s/gen :blaze.db/did)
                    hash (s/gen :blaze.resource/hash)]
-      (let [buf (bb/wrap (sp-vr/encode-key c-hash tid value id hash))
-            [act_id hash-prefix] (sp-vr/decode-id-hash-prefix buf)]
-        (and (= id act_id)
+      (let [buf (bb/wrap (sp-vr/encode-key c-hash tid value did hash))
+            [act-did hash-prefix] (sp-vr/decode-did-hash-prefix buf)]
+        (and (= did act-did)
              (= (hash/prefix hash) hash-prefix))))))

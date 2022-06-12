@@ -19,7 +19,7 @@
     (-resource-handles [_ context tid _ _]
       (rao/type-list context tid))
 
-    (-resource-handles [_ context tid _ _ start-id]
-      (rao/type-list context tid start-id))
+    (-resource-handles [_ context tid _ _ start-did]
+      (rao/type-list context tid start-did))
 
-    (-index-values [_ _ _])))
+    (-index-values [_ _ _ _])))

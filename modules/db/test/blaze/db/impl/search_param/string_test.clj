@@ -59,7 +59,9 @@
               hash (hash/generate patient)]
 
           (is (empty? (search-param/index-entries
-                        (phonetic-param search-param-registry) [] hash
+                        (phonetic-param search-param-registry)
+                        (constantly nil)
+                        [] 153659 hash
                         patient)))))
 
       (let [patient {:fhir/type :fhir/Patient
@@ -68,20 +70,22 @@
             hash (hash/generate patient)
             [[_ k0] [_ k1]]
             (search-param/index-entries
-              (phonetic-param search-param-registry) [] hash patient)]
+              (phonetic-param search-param-registry)
+              (constantly nil)
+              [] 153708 hash patient)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "phonetic"
             :type := "Patient"
             :v-hash := (codec/string (phonetics/soundex "family-102508"))
-            :id := "id-122929"
+            :did := 153708
             :hash-prefix := (hash/prefix hash)))
 
         (testing "ResourceSearchParamValue key"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Patient"
-            :id := "id-122929"
+            :did := 153708
             :hash-prefix := (hash/prefix hash)
             :code := "phonetic"
             :v-hash := (codec/string (phonetics/soundex "family-102508"))))))
@@ -96,7 +100,8 @@
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (search-param/index-entries
               (sr/get search-param-registry "address" "Patient")
-              [] hash patient)]
+              (constantly nil)
+              [] 153730 hash patient)]
 
         (testing "first entry is about `line`"
           (testing "SearchParamValueResource key"
@@ -104,13 +109,13 @@
               :code := "address"
               :type := "Patient"
               :v-hash := (codec/string "line 120252")
-              :id := "id-122929"
+              :did := 153730
               :hash-prefix := (hash/prefix hash)))
 
           (testing "ResourceSearchParamValue key"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "Patient"
-              :id := "id-122929"
+              :did := 153730
               :hash-prefix := (hash/prefix hash)
               :code := "address"
               :v-hash := (codec/string "line 120252"))))
@@ -121,13 +126,13 @@
               :code := "address"
               :type := "Patient"
               :v-hash := (codec/string "city 105431")
-              :id := "id-122929"
+              :did := 153730
               :hash-prefix := (hash/prefix hash)))
 
           (testing "ResourceSearchParamValue key"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
               :type := "Patient"
-              :id := "id-122929"
+              :did := 153730
               :hash-prefix := (hash/prefix hash)
               :code := "address"
               :v-hash := (codec/string "city 105431"))))))
@@ -140,20 +145,21 @@
             [[_ k0] [_ k1]]
             (search-param/index-entries
               (sr/get search-param-registry "description" "ActivityDefinition")
-              [] hash resource)]
+              (constantly nil)
+              [] 153757 hash resource)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "description"
             :type := "ActivityDefinition"
             :v-hash := (codec/string "desc 121328")
-            :id := "id-121344"
+            :did := 153757
             :hash-prefix := (hash/prefix hash)))
 
         (testing "ResourceSearchParamValue key"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "ActivityDefinition"
-            :id := "id-121344"
+            :did := 153757
             :hash-prefix := (hash/prefix hash)
             :code := "description"
             :v-hash := (codec/string "desc 121328")))))
@@ -165,7 +171,8 @@
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
           (given (search-param/index-entries
                    (sr/get search-param-registry "description" "ActivityDefinition")
-                   [] hash resource)
+                   (constantly nil)
+                   [] 153816 hash resource)
             ::anom/category := ::anom/fault))))
 
     (testing "skip warning"

@@ -11,7 +11,7 @@
 
 
 (s/fdef rh/resource-handle
-  :args (s/cat :tid :blaze.db/tid :id :blaze.resource/id
+  :args (s/cat :tid :blaze.db/tid :did :blaze.db/did
                :t :blaze.db/t :value-buffer byte-buffer?)
   :ret :blaze.db/resource-handle)
 
@@ -31,9 +31,9 @@
   :ret :blaze.db/tid)
 
 
-(s/fdef rh/id
+(s/fdef rh/did
   :args (s/cat :rh rh/resource-handle?)
-  :ret :blaze.resource/id)
+  :ret :blaze.db/did)
 
 
 (s/fdef rh/t
@@ -44,6 +44,11 @@
 (s/fdef rh/hash
   :args (s/cat :rh rh/resource-handle?)
   :ret :blaze.resource/hash)
+
+
+(s/fdef rh/id
+  :args (s/cat :rh rh/resource-handle?)
+  :ret :blaze.resource/id)
 
 
 (s/fdef rh/reference

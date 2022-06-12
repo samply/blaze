@@ -153,7 +153,8 @@
              [_ k12] [_ k13] [_ k14] [_ k15] [_ k16] [_ k17]]
             (search-param/index-entries
               (code-value-quantity-param search-param-registry)
-              [] hash observation)]
+              (constantly nil)
+              [] 201853 hash observation)]
 
         (testing "`code` followed by `value`"
           (testing "SearchParamValueResource key"
@@ -162,13 +163,13 @@
               :type := "Observation"
               [:v-hash split-value 0] := observation-code
               [:v-hash split-value 1] := value
-              :id := "id-155558"
+              :did := 201853
               :hash-prefix := (hash/prefix hash)))
 
           (testing "ResourceSearchParamValue key"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "Observation"
-              :id := "id-155558"
+              :did := 201853
               :hash-prefix := (hash/prefix hash)
               :code := "code-value-quantity"
               [:v-hash split-value 0] := observation-code
@@ -274,7 +275,8 @@
                              ::x ::y})]
               (given (search-param/index-entries
                        (code-value-quantity-param search-param-registry)
-                       [] hash resource)
+                       (constantly nil)
+                       [] 201932 hash resource)
                 ::anom/category := ::anom/fault
                 ::x := ::y)))
 
@@ -287,7 +289,8 @@
                                ::x ::y}))]
               (given (anom-vec (search-param/index-entries
                                  (code-value-quantity-param search-param-registry)
-                                 [] hash resource))
+                                 (constantly nil)
+                                 [] 201948 hash resource))
                 ::anom/category := ::anom/fault
                 ::x := ::y)))
 
@@ -308,7 +311,8 @@
                                ::x ::y}))]
               (given (anom-vec (search-param/index-entries
                                  (code-value-quantity-param search-param-registry)
-                                 [] hash resource))
+                                 (constantly nil)
+                                 [] 201954 hash resource))
                 ::anom/category := ::anom/fault
                 ::x := ::y)))))
 
@@ -323,7 +327,8 @@
                              ::x ::y})]
               (given (search-param/index-entries
                        (code-value-concept-param search-param-registry)
-                       [] hash resource)
+                       (constantly nil)
+                       [] 202002 hash resource)
                 ::anom/category := ::anom/fault
                 ::x := ::y))))))))
 

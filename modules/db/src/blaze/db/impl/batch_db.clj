@@ -10,6 +10,7 @@
     [blaze.db.impl.index.compartment.resource :as cr]
     [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.index.resource-handle :as rh]
+    [blaze.db.impl.index.resource-id :as ri]
     [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.index.system-as-of :as sao]
     [blaze.db.impl.index.system-stats :as system-stats]
@@ -42,7 +43,8 @@
   ;; ---- Instance-Level Functions --------------------------------------------
 
   (-resource-handle [_ tid id]
-    ((:resource-handle context) tid id))
+    (when-let [did ((:resource-id context) tid id)]
+      ((:resource-handle context) tid did)))
 
 
 
@@ -52,7 +54,8 @@
     (rao/type-list context tid))
 
   (-type-list [_ tid start-id]
-    (rao/type-list context tid start-id))
+    (when-let [start-did ((:resource-id context) tid start-id)]
+      (rao/type-list context tid start-did)))
 
   (-type-total [_ tid]
     (let [{:keys [snapshot t]} context]
@@ -67,7 +70,8 @@
     (rao/system-list context))
 
   (-system-list [_ start-tid start-id]
-    (rao/system-list context start-tid start-id))
+    (when-let [start-did ((:resource-id context) start-tid start-id)]
+      (rao/system-list context start-tid start-did)))
 
   (-system-total [_]
     (let [{:keys [snapshot t]} context]
@@ -78,11 +82,14 @@
 
   ;; ---- Compartment-Level Functions -----------------------------------------
 
-  (-compartment-resource-handles [_ compartment tid]
-    (cr/resource-handles! context compartment tid))
+  (-compartment-resource-handles [_ [code id] tid]
+    (when-let [did ((:resource-id context) (codec/tid code) id)]
+      (cr/resource-handles! context [(codec/c-hash code) did] tid)))
 
-  (-compartment-resource-handles [_ compartment tid start-id]
-    (cr/resource-handles! context compartment tid start-id))
+  (-compartment-resource-handles [_ [code id] tid start-id]
+    (when-let [did ((:resource-id context) (codec/tid code) id)]
+      (when-let [start-did ((:resource-id context) tid start-id)]
+        (cr/resource-handles! context [(codec/c-hash code) did] tid start-did))))
 
 
 
@@ -99,28 +106,32 @@
   ;; ---- Instance-Level History Functions ------------------------------------
 
   (-instance-history [_ tid id start-t since]
-    (let [{:keys [snapshot raoi t]} context
+    (let [{:keys [snapshot resource-id raoi t]} context
           start-t (if (some-> start-t (<= t)) start-t t)
           end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
-      (rao/instance-history raoi tid id start-t end-t)))
+      (when-let [did (resource-id tid id)]
+        (rao/instance-history raoi tid did start-t end-t))))
 
   (-total-num-of-instance-changes [_ tid id since]
-    (let [{:keys [snapshot resource-handle t]} context
+    (let [{:keys [snapshot resource-id resource-handle t]} context
           end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
-      (rao/num-of-instance-changes resource-handle tid id t end-t)))
+      (if-let [did (resource-id tid id)]
+        (rao/num-of-instance-changes resource-handle tid did t end-t)
+        0)))
 
 
 
   ;; ---- Type-Level History Functions ----------------------------------------
 
   (-type-history [_ tid start-t start-id since]
-    (let [{:keys [snapshot t]} context
+    (let [{:keys [snapshot t resource-id]} context
           start-t (if (some-> start-t (<= t)) start-t t)
-          end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
+          end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)
+          start-did (some->> start-id (resource-id tid))]
       (reify IReduceInit
         (reduce [_ rf init]
           (with-open [taoi (kv/new-iterator snapshot :type-as-of-index)]
-            (reduce rf init (tao/type-history taoi tid start-t start-id end-t)))))))
+            (reduce rf init (tao/type-history taoi tid start-t start-did end-t)))))))
 
   (-total-num-of-type-changes [_ type since]
     (let [{:keys [snapshot t]} context
@@ -136,13 +147,14 @@
   ;; ---- System-Level History Functions --------------------------------------
 
   (-system-history [_ start-t start-tid start-id since]
-    (let [{:keys [snapshot t]} context
+    (let [{:keys [snapshot t resource-id]} context
           start-t (if (some-> start-t (<= t)) start-t t)
-          end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
+          end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)
+          start-did (some->> start-id (resource-id start-tid))]
       (reify IReduceInit
         (reduce [_ rf init]
           (with-open [saoi (kv/new-iterator snapshot :system-as-of-index)]
-            (reduce rf init (sao/system-history saoi start-t start-tid start-id end-t)))))))
+            (reduce rf init (sao/system-history saoi start-t start-tid start-did end-t)))))))
 
   (-total-num-of-system-changes [_ since]
     (let [{:keys [snapshot t]} context
@@ -249,8 +261,9 @@
   p/Query
   (-execute [_ context]
     (index/type-query context tid clauses))
-  (-execute [_ context start-id]
-    (index/type-query context tid clauses (codec/id-byte-string start-id)))
+  (-execute [_ {:keys [resource-id] :as context} start-id]
+    (when-let [start-did (resource-id tid start-id)]
+      (index/type-query context tid clauses start-did)))
   (-clauses [_]
     (decode-clauses clauses)))
 
@@ -259,8 +272,9 @@
   p/Query
   (-execute [_ context]
     (rao/type-list context tid))
-  (-execute [_ context start-id]
-    (rao/type-list context tid (codec/id-byte-string start-id)))
+  (-execute [_ {:keys [resource-id] :as context} start-id]
+    (when-let [start-did (resource-id tid start-id)]
+      (rao/type-list context tid start-did)))
   (-clauses [_]))
 
 
@@ -270,19 +284,20 @@
     (index/system-query context clauses)))
 
 
-(defrecord CompartmentQuery [c-hash tid clauses]
+(defrecord CompartmentQuery [c-hash c-tid tid clauses]
   p/Query
-  (-execute [_ context arg1]
-    (index/compartment-query context [c-hash (codec/id-byte-string arg1)]
-                             tid clauses))
+  (-execute [_ {:keys [resource-id] :as context} compartment-id]
+    (when-let [c-res-did (resource-id c-tid compartment-id)]
+      (index/compartment-query context [c-hash c-res-did] tid clauses)))
   (-clauses [_]
     (decode-clauses clauses)))
 
 
-(defrecord EmptyCompartmentQuery [c-hash tid]
+(defrecord EmptyCompartmentQuery [c-hash c-tid tid]
   p/Query
-  (-execute [_ context arg1]
-    (cr/resource-handles! context [c-hash (codec/id-byte-string arg1)] tid))
+  (-execute [_ {:keys [resource-id] :as context} compartment-id]
+    (when-let [c-res-did (resource-id c-tid compartment-id)]
+      (cr/resource-handles! context [c-hash c-res-did] tid)))
   (-clauses [_]))
 
 
@@ -300,6 +315,7 @@
       basis-t
       (let [raoi (kv/new-iterator snapshot :resource-as-of-index)]
         {:snapshot snapshot
+         :resource-id (ri/resource-id kv-store)
          :raoi raoi
          :resource-handle (rao/resource-handle rh-cache raoi t)
          :svri (kv/new-iterator snapshot :search-param-value-index)

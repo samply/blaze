@@ -105,7 +105,7 @@
   Please use `pull` to obtain the full resource."
   [db type id]
   (log/trace "fetch resource handle of" (str type "/" id))
-  (p/-resource-handle db (codec/tid type) (codec/id-byte-string id)))
+  (p/-resource-handle db (codec/tid type) id))
 
 
 (defn resource-handle? [x]
@@ -124,7 +124,7 @@
   ([db type]
    (p/-type-list db (codec/tid type)))
   ([db type start-id]
-   (p/-type-list db (codec/tid type) (codec/id-byte-string start-id))))
+   (p/-type-list db (codec/tid type) start-id)))
 
 
 (defn type-total
@@ -186,7 +186,7 @@
   ([db]
    (p/-system-list db))
   ([db start-type start-id]
-   (p/-system-list db (codec/tid start-type) (codec/id-byte-string start-id))))
+   (p/-system-list db (codec/tid start-type) start-id)))
 
 
 (defn system-total
@@ -221,10 +221,6 @@
 
 ;; ---- Compartment-Level Functions -------------------------------------------
 
-(defn- compartment [code id]
-  [(codec/c-hash code) (codec/id-byte-string id)])
-
-
 (defn list-compartment-resource-handles
   "Returns a reducible collection of all resource handles of `type` in `db`
   linked to the compartment with `code` and `id`.
@@ -240,10 +236,9 @@
 
   Please use `pull-many` to obtain the full resources."
   ([db code id type]
-   (p/-compartment-resource-handles db (compartment code id) (codec/tid type)))
+   (p/-compartment-resource-handles db [code id] (codec/tid type)))
   ([db code id type start-id]
-   (p/-compartment-resource-handles db (compartment code id) (codec/tid type)
-                                    (codec/id-byte-string start-id))))
+   (p/-compartment-resource-handles db [code id] (codec/tid type) start-id)))
 
 
 (defn compartment-query
@@ -321,13 +316,11 @@
   History entries are resource handles. Please use `pull-many` to obtain the
   full resources."
   ([db type id]
-   (p/-instance-history db (codec/tid type) (codec/id-byte-string id) nil nil))
+   (p/-instance-history db (codec/tid type) id nil nil))
   ([db type id start-t]
-   (p/-instance-history db (codec/tid type) (codec/id-byte-string id) start-t
-                        nil))
+   (p/-instance-history db (codec/tid type) id start-t nil))
   ([db type id start-t since]
-   (p/-instance-history db (codec/tid type) (codec/id-byte-string id) start-t
-                        since)))
+   (p/-instance-history db (codec/tid type) id start-t since)))
 
 
 (defn total-num-of-instance-changes
@@ -337,11 +330,9 @@
   Optionally a `since` instant can be given to define a point in the past where
   the calculation should start."
   ([db type id]
-   (p/-total-num-of-instance-changes db (codec/tid type)
-                                     (codec/id-byte-string id) nil))
+   (p/-total-num-of-instance-changes db (codec/tid type) id nil))
   ([db type id since]
-   (p/-total-num-of-instance-changes db (codec/tid type)
-                                     (codec/id-byte-string id) since)))
+   (p/-total-num-of-instance-changes db (codec/tid type) id since)))
 
 
 
@@ -362,11 +353,9 @@
   ([db type start-t]
    (p/-type-history db (codec/tid type) start-t nil nil))
   ([db type start-t start-id]
-   (p/-type-history db (codec/tid type) start-t
-                    (some-> start-id codec/id-byte-string) nil))
+   (p/-type-history db (codec/tid type) start-t start-id nil))
   ([db type start-t start-id since]
-   (p/-type-history db (codec/tid type) start-t
-                    (some-> start-id codec/id-byte-string) since)))
+   (p/-type-history db (codec/tid type) start-t start-id since)))
 
 
 (defn total-num-of-type-changes
@@ -401,11 +390,9 @@
   ([db start-t start-type]
    (p/-system-history db start-t (some-> start-type codec/tid) nil nil))
   ([db start-t start-type start-id]
-   (p/-system-history db start-t (some-> start-type codec/tid)
-                      (some-> start-id codec/id-byte-string) nil))
+   (p/-system-history db start-t (some-> start-type codec/tid) start-id nil))
   ([db start-t start-type start-id since]
-   (p/-system-history db start-t (some-> start-type codec/tid)
-                      (some-> start-id codec/id-byte-string) since)))
+   (p/-system-history db start-t (some-> start-type codec/tid) start-id since)))
 
 
 (defn total-num-of-system-changes

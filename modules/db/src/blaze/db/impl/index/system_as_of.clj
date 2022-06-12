@@ -7,9 +7,7 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.iterators :as i]
-    [blaze.fhir.hash :as hash])
-  (:import
-    [com.google.common.primitives Longs]))
+    [blaze.fhir.hash :as hash]))
 
 
 (set! *warn-on-reflection* true)
@@ -20,12 +18,12 @@
   (+ codec/t-size codec/tid-size))
 
 
-(def ^:private ^:const ^long max-key-size
-  (+ t-tid-size codec/max-id-size))
+(def ^:private ^:const ^long key-size
+  (+ t-tid-size codec/did-size))
 
 
-(def ^:private ^:const ^long value-size
-  (+ hash/size codec/state-size))
+(def ^:private ^:const ^long max-value-size
+  (+ hash/size codec/state-size codec/max-id-size))
 
 
 (defn- key-valid? [^long end-t]
@@ -48,57 +46,53 @@
   Both byte buffers are changed during decoding and have to be reset accordingly
   after decoding."
   []
-  (let [ib (byte-array codec/max-id-size)]
-    (fn
-      ([]
-       [(bb/allocate-direct max-key-size)
-        (bb/allocate-direct value-size)])
-      ([kb vb]
-       (let [t (codec/descending-long (bb/get-long! kb))]
-         (rh/resource-handle
-           (bb/get-int! kb)
-           (let [id-size (bb/remaining kb)]
-             (bb/copy-into-byte-array! kb ib 0 id-size)
-             (codec/id ib 0 id-size))
-           t vb))))))
+  (fn
+    ([]
+     [(bb/allocate-direct key-size)
+      (bb/allocate-direct max-value-size)])
+    ([kb vb]
+     (let [t (codec/descending-long (bb/get-5-byte-long! kb))]
+       (rh/resource-handle (bb/get-int! kb) (bb/get-long! kb) t vb)))))
 
 
 (defn encode-key
-  "Encodes the key of the SystemAsOf index from `t`, `tid` and `id`."
-  [t tid id]
-  (-> (bb/allocate (unchecked-add-int t-tid-size (bs/size id)))
-      (bb/put-long! (codec/descending-long ^long t))
+  "Encodes the key of the SystemAsOf index from `t`, `tid` and `did`."
+  [t tid did]
+  (-> (bb/allocate key-size)
+      (bb/put-5-byte-long! (codec/descending-long t))
       (bb/put-int! tid)
-      (bb/put-byte-string! id)
+      (bb/put-long! did)
       bb/array))
 
 
 (defn- encode-t-tid [start-t start-tid]
   (-> (bb/allocate t-tid-size)
-      (bb/put-long! (codec/descending-long ^long start-t))
+      (bb/put-5-byte-long! (codec/descending-long start-t))
       (bb/put-int! start-tid)
       bb/array))
 
 
-(defn- start-key [start-t start-tid start-id]
+(defn- start-key [start-t start-tid start-did]
   (cond
-    start-id
-    (encode-key start-t start-tid start-id)
+    start-did
+    (encode-key start-t start-tid start-did)
 
     start-tid
     (encode-t-tid start-t start-tid)
 
     :else
-    (Longs/toByteArray (codec/descending-long ^long start-t))))
+    (-> (bb/allocate codec/t-size)
+        (bb/put-5-byte-long! (codec/descending-long start-t))
+        bb/array)))
 
 
 (defn system-history
   "Returns a reducible collection of all versions between `start-t` (inclusive),
-  `start-tid` (optional, inclusive), `start-id` (optional, inclusive) and
+  `start-tid` (optional, inclusive), `start-did` (optional, inclusive) and
   `end-t` (inclusive) of all resources.
 
   Versions are resource handles."
-  [saoi start-t start-tid start-id end-t]
+  [saoi start-t start-tid start-did end-t]
   (coll/eduction
     (take-while (key-valid? end-t))
-    (i/kvs! saoi (decoder) (bs/from-byte-array (start-key start-t start-tid start-id)))))
+    (i/kvs! saoi (decoder) (bs/from-byte-array (start-key start-t start-tid start-did)))))

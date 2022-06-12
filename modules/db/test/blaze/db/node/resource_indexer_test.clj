@@ -7,6 +7,7 @@
     [blaze.db.impl.index.compartment.resource-test-util :as cr-tu]
     [blaze.db.impl.index.compartment.search-param-value-resource-test-util
      :as c-sp-vr-tu]
+    [blaze.db.impl.index.resource-id :as ri]
     [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
     [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
     [blaze.db.kv :as kv]
@@ -134,7 +135,8 @@
      :resource-value-index nil
      :compartment-search-param-value-index nil
      :compartment-resource-type-index nil
-     :active-search-params nil}}
+     :active-search-params nil
+     :resource-id-index nil}}
 
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
@@ -173,6 +175,7 @@
              [{:op "put"
                :type "Patient"
                :id "0"
+               :did 193734
                :hash hash}]
              :local-payload
              {hash patient}})
@@ -196,6 +199,7 @@
             [{:op "put"
               :type "Observation"
               :id "0"
+              :did 193724
               :hash hash}]
             :local-payload
             {hash observation}}))
@@ -207,6 +211,7 @@
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
                  resource-store ::rs/kv
                  :blaze.db.node/keys [resource-indexer]} system]
+    (kv/put! kv-store [(ri/index-entry (codec/tid "Patient") "id-145552" 155044)])
     (let [resource
           {:fhir/type :fhir/Condition :id "id-204446"
            :code
@@ -233,79 +238,67 @@
           [{:op "put"
             :type "Condition"
             :id "id-204446"
+            :did 142201
             :hash hash}]})
 
       (testing "SearchParamValueResource index"
-        (is (every? #{["Condition" "id-204446" #blaze/hash-prefix"4AB29C7B"]}
+        (is (every? #{["Condition" 142201 #blaze/hash-prefix"4AB29C7B"]}
                     (sp-vr-tu/decode-index-entries
-                      kv-store :type :id :hash-prefix)))
+                      kv-store :type :did :hash-prefix)))
         (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
                [["patient" (codec/v-hash "Patient/id-145552")]
                 ["patient" (codec/v-hash "id-145552")]
-                ["patient" (codec/tid-id
-                             (codec/tid "Patient")
-                             (codec/id-byte-string "id-145552"))]
-
+                ["patient" (codec/tid-did (codec/tid "Patient") 155044)]
                 ["code" (codec/v-hash "system-204435|code-204441")]
                 ["code" (codec/v-hash "system-204435|")]
                 ["code" (codec/v-hash "code-204441")]
                 ["onset-date" (codec-date/encode-range (LocalDate/of 2020 1 30))]
                 ["subject" (codec/v-hash "Patient/id-145552")]
                 ["subject" (codec/v-hash "id-145552")]
-                ["subject" (codec/tid-id
-                             (codec/tid "Patient")
-                             (codec/id-byte-string "id-145552"))]
+                ["subject" (codec/tid-did (codec/tid "Patient") 155044)]
                 ["_profile" (codec/v-hash "url-164445")]
                 ["_id" (codec/v-hash "id-204446")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
       (testing "ResourceSearchParamValue index"
-        (is (every? #{["Condition" "id-204446" #blaze/hash-prefix"4AB29C7B"]}
+        (is (every? #{["Condition" 142201 #blaze/hash-prefix"4AB29C7B"]}
                     (r-sp-v-tu/decode-index-entries
-                      kv-store :type :id :hash-prefix)))
+                      kv-store :type :did :hash-prefix)))
         (is (= (r-sp-v-tu/decode-index-entries kv-store :code :v-hash)
                [["patient" (codec/v-hash "Patient/id-145552")]
                 ["patient" (codec/v-hash "id-145552")]
-                ["patient" (codec/tid-id
-                             (codec/tid "Patient")
-                             (codec/id-byte-string "id-145552"))]
+                ["patient" (codec/tid-did (codec/tid "Patient") 155044)]
                 ["code" (codec/v-hash "system-204435|code-204441")]
                 ["code" (codec/v-hash "system-204435|")]
                 ["code" (codec/v-hash "code-204441")]
                 ["onset-date" (codec-date/encode-range (LocalDate/of 2020 1 30))]
                 ["subject" (codec/v-hash "Patient/id-145552")]
                 ["subject" (codec/v-hash "id-145552")]
-                ["subject" (codec/tid-id
-                             (codec/tid "Patient")
-                             (codec/id-byte-string "id-145552"))]
+                ["subject" (codec/tid-did (codec/tid "Patient") 155044)]
                 ["_profile" (codec/v-hash "url-164445")]
                 ["_id" (codec/v-hash "id-204446")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
       (testing "CompartmentResource index"
-        (is (= (cr-tu/decode-index-entries kv-store :compartment :type :id)
-               [[["Patient" "id-145552"] "Condition" "id-204446"]])))
+        (is (= (cr-tu/decode-index-entries kv-store :compartment :type :did)
+               [[["Patient" 155044] "Condition" 142201]])))
 
       (testing "CompartmentSearchParamValueResource index"
-        (is (every? #{[["Patient" "id-145552"] "Condition" "id-204446"
+        (is (every? #{[["Patient" 155044] "Condition" 142201
                        #blaze/hash-prefix"4AB29C7B"]}
                     (c-sp-vr-tu/decode-index-entries
-                      kv-store :compartment :type :id :hash-prefix)))
+                      kv-store :compartment :type :did :hash-prefix)))
         (is (= (c-sp-vr-tu/decode-index-entries kv-store :code :v-hash)
                [["patient" (codec/v-hash "Patient/id-145552")]
                 ["patient" (codec/v-hash "id-145552")]
-                ["patient" (codec/tid-id
-                             (codec/tid "Patient")
-                             (codec/id-byte-string "id-145552"))]
+                ["patient" (codec/tid-did (codec/tid "Patient") 155044)]
                 ["code" (codec/v-hash "system-204435|code-204441")]
                 ["code" (codec/v-hash "system-204435|")]
                 ["code" (codec/v-hash "code-204441")]
                 ["onset-date" (codec-date/encode-range (LocalDate/of 2020 1 30))]
                 ["subject" (codec/v-hash "Patient/id-145552")]
                 ["subject" (codec/v-hash "id-145552")]
-                ["subject" (codec/tid-id
-                             (codec/tid "Patient")
-                             (codec/id-byte-string "id-145552"))]
+                ["subject" (codec/tid-did (codec/tid "Patient") 155044)]
                 ["_profile" (codec/v-hash "url-164445")]
                 ["_id" (codec/v-hash "id-204446")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]]))))))
@@ -315,6 +308,7 @@
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
                  resource-store ::rs/kv
                  :blaze.db.node/keys [resource-indexer]} system]
+    (kv/put! kv-store [(ri/index-entry (codec/tid "Patient") "id-180857" 174950)])
     (let [resource {:fhir/type :fhir/Observation :id "id-192702"
                     :status #fhir/code"status-193613"
                     :category
@@ -348,12 +342,13 @@
           [{:op "put"
             :type "Observation"
             :id "id-192702"
+            :did 193644
             :hash hash}]})
 
       (testing "SearchParamValueResource index"
-        (is (every? #{["Observation" "id-192702" #blaze/hash-prefix"651D1F37"]}
+        (is (every? #{["Observation" 193644 #blaze/hash-prefix"651D1F37"]}
                     (sp-vr-tu/decode-index-entries
-                      kv-store :type :id :hash-prefix)))
+                      kv-store :type :did :hash-prefix)))
         (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
                [["code-value-quantity"
                  (bs/concat (codec/v-hash "code-193824")
@@ -382,9 +377,7 @@
                 ["category" (codec/v-hash "code-193603")]
                 ["category" (codec/v-hash "system-193558|code-193603")]
                 ["patient" (codec/v-hash "id-180857")]
-                ["patient" (codec/tid-id
-                             (codec/tid "Patient")
-                             (codec/id-byte-string "id-180857"))]
+                ["patient" (codec/tid-did (codec/tid "Patient") 174950)]
                 ["patient" (codec/v-hash "Patient/id-180857")]
                 ["code" (codec/v-hash "code-193824")]
                 ["code" (codec/v-hash "system-193821|")]
@@ -422,9 +415,7 @@
                 ["combo-code-value-quantity"
                  #blaze/byte-string"D47C56F6D0C25BA3F35972C2DDEDDFE6900926"]
                 ["subject" (codec/v-hash "id-180857")]
-                ["subject" (codec/tid-id
-                             (codec/tid "Patient")
-                             (codec/id-byte-string "id-180857"))]
+                ["subject" (codec/tid-did (codec/tid "Patient") 174950)]
                 ["subject" (codec/v-hash "Patient/id-180857")]
                 ["status" (codec/v-hash "status-193613")]
                 ["_id" (codec/v-hash "id-192702")]
@@ -441,6 +432,7 @@
         :tx-cmds
         [{:op "delete"
           :type "Patient"
+          :did 193708
           :id "0"}]})
 
     (testing "doesn't index anything"
