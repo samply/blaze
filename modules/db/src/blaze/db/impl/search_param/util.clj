@@ -31,13 +31,13 @@
           (str value) (fhir-spec/fhir-type value) url type))
 
 
-(def ^:private by-id-grouper
-  "Transducer which groups `[id hash-prefix]` tuples by `id`."
-  (partition-by (fn [[id]] id)))
+(def ^:private by-did-grouper
+  "Transducer which groups `[did hash-prefix]` tuples by `did`."
+  (partition-by (fn [[did]] did)))
 
 
-(defn non-deleted-resource-handle [resource-handle tid id]
-  (when-let [handle (resource-handle tid id)]
+(defn non-deleted-resource-handle [resource-handle tid did]
+  (when-let [handle (resource-handle tid did)]
     (when-not (rh/deleted? handle)
       handle)))
 
@@ -58,7 +58,7 @@
 
 (defn resource-handle-mapper [context tid]
   (comp
-    by-id-grouper
+    by-did-grouper
     (resource-handle-mapper* context tid)))
 
 
@@ -75,12 +75,10 @@
   [{:keys [resource-handle]}]
   (comp
     ;; there has to be at least some bytes for the id
-    (filter #(< codec/tid-size (bs/size %)))
+    (filter #(= (+ codec/tid-size codec/did-size) (bs/size %)))
     (map bs/as-read-only-byte-buffer)
-    (keep
-      #(let [tid (bb/get-int! %)
-             id (bs/from-byte-buffer! %)]
-         (non-deleted-resource-handle resource-handle tid id)))))
+    (keep #(non-deleted-resource-handle resource-handle (bb/get-int! %)
+                                        (bb/get-long! %)))))
 
 
 (defn split-literal-ref [^String s]

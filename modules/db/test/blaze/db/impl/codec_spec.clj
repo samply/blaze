@@ -1,10 +1,12 @@
 (ns blaze.db.impl.codec-spec
   (:require
+    [blaze.byte-buffer :as bb]
     [blaze.byte-string :refer [byte-string?]]
     [blaze.byte-string-spec]
     [blaze.db.api-spec]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.codec.spec]
+    [blaze.db.tx-log.spec]
     [blaze.fhir.spec]
     [blaze.fhir.spec.type.system :as system]
     [blaze.fhir.spec.type.system-spec]
@@ -17,14 +19,14 @@
 
 ;; ---- Identifier Functions --------------------------------------------------
 
-(s/fdef codec/id-byte-string
-  :args (s/cat :id :blaze.resource/id)
-  :ret :blaze.db/id-byte-string)
+(s/fdef codec/id-from-byte-buffer
+  :args (s/cat :buf bb/byte-buffer?)
+  :ret string?)
 
 
-(s/fdef codec/id-string
-  :args (s/cat :id-byte-string :blaze.db/id-byte-string)
-  :ret :blaze.resource/id)
+(s/fdef codec/did
+  :args (s/cat :t :blaze.db/t :idx nat-int?)
+  :ret :blaze.db/did)
 
 
 ;; ---- Other Functions -------------------------------------------------------
@@ -49,8 +51,8 @@
   :ret byte-string?)
 
 
-(s/fdef codec/tid-id
-  :args (s/cat :type :blaze.db/tid :id :blaze.db/id-byte-string)
+(s/fdef codec/tid-did
+  :args (s/cat :type :blaze.db/tid :did :blaze.db/did)
   :ret byte-string?)
 
 

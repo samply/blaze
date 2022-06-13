@@ -73,6 +73,7 @@
   (rocksdb/get-property index-db :tx-success-index "rocksdb.stats")
   (rocksdb/get-property index-db :tx-error-index "rocksdb.stats")
   (rocksdb/get-property index-db :t-by-instant-index "rocksdb.stats")
+  (rocksdb/get-property index-db :resource-id-index "rocksdb.stats")
   (rocksdb/get-property index-db :resource-as-of-index "rocksdb.stats")
   (rocksdb/get-property index-db :type-as-of-index "rocksdb.stats")
   (rocksdb/get-property index-db :system-as-of-index "rocksdb.stats")

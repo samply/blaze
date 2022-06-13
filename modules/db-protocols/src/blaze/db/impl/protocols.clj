@@ -76,8 +76,8 @@
   (-compartment-keys [search-param context compartment tid compiled-value])
   (-matches? [search-param context resource-handle modifier compiled-values])
   (-compartment-ids [_ resolver resource])
-  (-index-values [_ resolver resource])
-  (-index-value-compiler [_]))
+  (-index-values [_ resource-id resolver resource])
+  (-index-value-compiler [_ resource-id]))
 
 
 (defprotocol Pull

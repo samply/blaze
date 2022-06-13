@@ -21,14 +21,14 @@
                :tid :blaze.db/tid
                :prefix-value byte-string?
                :start-value byte-string?
-               :start-id (s/? :blaze.db/id-byte-string)))
+               :start-did (s/? :blaze.db/did)))
 
 
 (s/fdef sp-vr/encode-seek-key
   :args (s/cat :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
-               :more (s/? (s/cat :value byte-string?
-                                 :id (s/? :blaze.db/id-byte-string))))
+               :value (s/? byte-string?)
+               :did (s/? :blaze.db/did))
   :ret byte-string?)
 
 
@@ -36,14 +36,23 @@
   :args (s/cat :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
                :value byte-string?
-               :id (s/? :blaze.db/id-byte-string))
+               :did (s/? :blaze.db/did))
   :ret byte-string?)
+
+
+(s/fdef sp-vr/encode-key
+  :args (s/cat :c-hash :blaze.db/c-hash
+               :tid :blaze.db/tid
+               :value byte-string?
+               :did :blaze.db/did
+               :hash :blaze.resource/hash)
+  :ret bytes?)
 
 
 (s/fdef sp-vr/index-entry
   :args (s/cat :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
                :value byte-string?
-               :id :blaze.db/id-byte-string
+               :did :blaze.db/did
                :hash :blaze.resource/hash)
   :ret :blaze.db.kv/put-entry)

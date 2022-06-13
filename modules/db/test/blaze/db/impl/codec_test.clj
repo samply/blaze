@@ -8,7 +8,6 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
-    [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as prop])
   (:import
     [java.nio.charset StandardCharsets]
@@ -35,21 +34,13 @@
    `(is (not-every? :failure (st/check ~sym ~opts)))))
 
 
-(deftest id-string-id-byte-string-test
-  (satisfies-prop 1000
-    (prop/for-all [s (s/gen :blaze.resource/id)]
-      (= s
-         (codec/id-string (codec/id-byte-string s))
-         (apply codec/id-string [(apply codec/id-byte-string [s])])))))
-
-
 (deftest descending-long-test
   (are [t dt] (= dt (codec/descending-long t))
-    1 0xFFFFFFFFFFFFFE
-    0 0xFFFFFFFFFFFFFF)
+    1 0xFFFFFFFFFE
+    0 0xFFFFFFFFFF)
 
   (satisfies-prop 100000
-    (prop/for-all [t gen/nat]
+    (prop/for-all [t (s/gen :blaze.db/t)]
       (= t
          (codec/descending-long (codec/descending-long t))
          (apply codec/descending-long [(apply codec/descending-long [t])])))))

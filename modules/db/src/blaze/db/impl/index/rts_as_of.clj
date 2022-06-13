@@ -12,15 +12,12 @@
     [blaze.db.impl.index.type-as-of :as tao]
     [blaze.fhir.hash :as hash])
   (:import
-    [clojure.lang Numbers]))
+    [clojure.lang Numbers]
+    [java.nio.charset StandardCharsets]))
 
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
-
-
-(def ^:private ^:const ^long value-size
-  (+ hash/size codec/state-size))
 
 
 (defn- state ^long [^long num-changes op]
@@ -29,15 +26,16 @@
     (identical? :delete op) (Numbers/setBit 0)))
 
 
-(defn encode-value [hash num-changes op]
-  (-> (bb/allocate value-size)
+(defn encode-value [hash num-changes op ^String id]
+  (-> (bb/allocate (+ hash/size codec/state-size (.length id)))
       (hash/into-byte-buffer! hash)
       (bb/put-long! (state num-changes op))
+      (bb/put-byte-array! (.getBytes id StandardCharsets/ISO_8859_1))
       bb/array))
 
 
-(defn index-entries [tid id t hash num-changes op]
-  (let [value (encode-value hash num-changes op)]
-    [[:resource-as-of-index (rao/encode-key tid id t) value]
-     [:type-as-of-index (tao/encode-key tid t id) value]
-     [:system-as-of-index (sao/encode-key t tid id) value]]))
+(defn index-entries [tid did t hash num-changes op id]
+  (let [value (encode-value hash num-changes op id)]
+    [[:resource-as-of-index (rao/encode-key tid did t) value]
+     [:type-as-of-index (tao/encode-key tid t did) value]
+     [:system-as-of-index (sao/encode-key t tid did) value]]))

@@ -18,12 +18,12 @@
   (+ codec/tid-size codec/t-size))
 
 
-(def ^:private ^:const ^long max-key-size
-  (+ tid-t-size codec/max-id-size))
+(def ^:private ^:const ^long key-size
+  (+ tid-t-size codec/did-size))
 
 
-(def ^:private ^:const ^long value-size
-  (+ hash/size codec/state-size))
+(def ^:private ^:const ^long max-value-size
+  (+ hash/size codec/state-size codec/max-id-size))
 
 
 (defn- key-valid? [^long tid ^long end-t]
@@ -46,49 +46,47 @@
   Both byte buffers are changed during decoding and have to be reset accordingly
   after decoding."
   []
-  (let [ib (byte-array codec/max-id-size)]
-    (fn
-      ([]
-       [(bb/allocate-direct max-key-size)
-        (bb/allocate-direct value-size)])
-      ([kb vb]
-       (let [tid (bb/get-int! kb)
-             t (codec/descending-long (bb/get-long! kb))]
-         (rh/resource-handle
-           tid
-           (let [id-size (bb/remaining kb)]
-             (bb/copy-into-byte-array! kb ib 0 id-size)
-             (codec/id ib 0 id-size))
-           t vb))))))
+  (fn
+    ([]
+     [(bb/allocate-direct key-size)
+      (bb/allocate-direct max-value-size)])
+    ([kb vb]
+     (let [tid (bb/get-int! kb)
+           t (codec/descending-long (bb/get-5-byte-long! kb))]
+       (rh/resource-handle
+         tid
+         (bb/get-long! kb)
+         t
+         vb)))))
 
 
 (defn encode-key
-  "Encodes the key of the TypeAsOf index from `tid`, `t` and `id`."
-  [tid t id]
-  (-> (bb/allocate (unchecked-add-int tid-t-size (bs/size id)))
+  "Encodes the key of the TypeAsOf index from `tid`, `t` and `did`."
+  [tid t did]
+  (-> (bb/allocate key-size)
       (bb/put-int! tid)
-      (bb/put-long! (codec/descending-long ^long t))
-      (bb/put-byte-string! id)
+      (bb/put-5-byte-long! (codec/descending-long (unchecked-long t)))
+      (bb/put-long! (unchecked-long did))
       bb/array))
 
 
-(defn- start-key [tid start-t start-id]
-  (if start-id
-    (bs/from-byte-array (encode-key tid start-t start-id))
+(defn- start-key [tid start-t start-did]
+  (if start-did
+    (bs/from-byte-array (encode-key tid start-t start-did))
     (-> (bb/allocate tid-t-size)
         (bb/put-int! tid)
-        (bb/put-long! (codec/descending-long ^long start-t))
+        (bb/put-5-byte-long! (codec/descending-long (unchecked-long start-t)))
         bb/flip!
         bs/from-byte-buffer!)))
 
 
 (defn type-history
   "Returns a reducible collection of all versions between `start-t` (inclusive),
-  `start-id` (optional, inclusive) and `end-t` (inclusive) of resources with
+  `start-did` (optional, inclusive) and `end-t` (inclusive) of resources with
   `tid`.
 
   Versions are resource handles."
-  [taoi tid start-t start-id end-t]
+  [taoi tid start-t start-did end-t]
   (coll/eduction
     (take-while (key-valid? tid end-t))
-    (i/kvs! taoi (decoder) (start-key tid start-t start-id))))
+    (i/kvs! taoi (decoder) (start-key tid start-t start-did))))

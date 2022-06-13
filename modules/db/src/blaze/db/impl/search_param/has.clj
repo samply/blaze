@@ -41,26 +41,24 @@
     []
     (u/reference-resource-handle-mapper context)
     (let [tid-byte-string (codec/tid-byte-string tid)
-          {:keys [tid id hash]} resource-handle]
-      (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash c-hash
-                           tid-byte-string))))
+          {:keys [tid did hash]} resource-handle]
+      (r-sp-v/prefix-keys! rsvi tid did hash c-hash tid-byte-string))))
 
 
-(def ^:private id-cmp
+(def ^:private did-cmp
   (reify Comparator
     (compare [_ a b]
-      (let [^String id-a (rh/id a)]
-        (.compareTo id-a (rh/id b))))))
+      (Long/compare (rh/did a) (rh/did b)))))
 
 
-(defn- drop-lesser-ids [start-id]
-  (drop-while #(neg? (let [^String id (rh/id %)] (.compareTo id start-id)))))
+(defn- drop-lesser-ids [^long start-did]
+  (drop-while #(< (rh/did %) start-did)))
 
 
 (defn- resource-handles*
   [context tid [search-param chain-search-param join-tid value]]
   (into
-    (sorted-set-by id-cmp)
+    (sorted-set-by did-cmp)
     (mapcat #(resolve-resource-handles context chain-search-param tid %))
     (p/-resource-handles search-param context join-tid nil value)))
 
@@ -102,15 +100,13 @@
   (-resource-handles [_ context tid _ value]
     (resource-handles context tid value))
 
-  (-resource-handles [_ context tid _ value start-id]
-    (coll/eduction
-      (drop-lesser-ids (codec/id-string start-id))
-      (resource-handles context tid value)))
+  (-resource-handles [_ context tid _ value start-did]
+    (coll/eduction (drop-lesser-ids start-did) (resource-handles context tid value)))
 
   (-matches? [_ context resource-handle _ values]
     (some? (some #(matches? context resource-handle %) values)))
 
-  (-index-values [_ _ _]
+  (-index-values [_ _ _ _]
     []))
 
 

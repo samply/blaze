@@ -3,6 +3,7 @@
   (:require
     [blaze.db.impl.batch-db :as batch-db]
     [blaze.db.impl.index.resource-as-of :as rao]
+    [blaze.db.impl.index.resource-id :as ri]
     [blaze.db.impl.macros :refer [with-open-coll]]
     [blaze.db.impl.protocols :as p]
     [blaze.db.kv :as kv])
@@ -35,9 +36,10 @@
 
   (-resource-handle [_ tid id]
     (let [{:keys [kv-store rh-cache]} node]
-      (with-open [snapshot (kv/new-snapshot kv-store)
-                  raoi (kv/new-iterator snapshot :resource-as-of-index)]
-        ((rao/resource-handle rh-cache raoi t) tid id))))
+      (when-let [did ((ri/resource-id kv-store) tid id)]
+        (with-open [snapshot (kv/new-snapshot kv-store)
+                    raoi (kv/new-iterator snapshot :resource-as-of-index)]
+          ((rao/resource-handle rh-cache raoi t) tid did)))))
 
 
 

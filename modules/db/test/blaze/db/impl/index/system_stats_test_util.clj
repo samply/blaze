@@ -7,19 +7,12 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(defn decode-key-human
-  ([] (bb/allocate-direct codec/t-size))
-  ([buf]
-   {:t (codec/descending-long (bb/get-long! buf))}))
+(defn decode-key [byte-array]
+  (let [buf (bb/wrap byte-array)]
+    {:t (codec/descending-long (bb/get-5-byte-long! buf))}))
 
 
-(defn decode-value-human
-  ([] (bb/allocate-direct (+ Long/BYTES Long/BYTES)))
-  ([buf]
-   {:total (bb/get-long! buf)
-    :num-changes (bb/get-long! buf)}))
-
-
-(defn decode-index-entry [[k v]]
-  [(decode-key-human (bb/wrap k))
-   (decode-value-human (bb/wrap v))])
+(defn decode-val [byte-array]
+  (let [buf (bb/wrap byte-array)]
+    {:total (bb/get-long! buf)
+     :num-changes (bb/get-long! buf)}))

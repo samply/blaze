@@ -41,11 +41,10 @@
         (p/-resource-handles search-param (assoc context :svri svri) ref-tid
                              modifier compiled-value))))
 
-  (-resource-handles [this context tid modifier compiled-value start-id]
-    (let [start-id (codec/id-string start-id)]
-      (coll/eduction
-        (drop-while #(not= start-id (rh/id %)))
-        (p/-resource-handles this context tid modifier compiled-value))))
+  (-resource-handles [this context tid modifier compiled-value start-did]
+    (coll/eduction
+      (drop-while #(not= start-did (rh/did %)))
+      (p/-resource-handles this context tid modifier compiled-value)))
 
   (-matches? [_ context resource-handle modifier compiled-values]
     (some

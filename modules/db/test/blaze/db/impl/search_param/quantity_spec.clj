@@ -17,7 +17,7 @@
                :tid :blaze.db/tid
                :prefix-length nat-int?
                :value ::spq/value
-               :start-id (s/? :blaze.db/id-byte-string)))
+               :start-did (s/? :blaze.db/did)))
 
 
 (s/fdef spq/matches?

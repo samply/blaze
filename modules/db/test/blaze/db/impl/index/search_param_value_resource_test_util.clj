@@ -3,6 +3,7 @@
     [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv]
     [blaze.fhir.hash :as hash]))
@@ -13,21 +14,19 @@
 
 
 (defn decode-key-human
-  ([] (bb/allocate-direct 128))
+  ([] (bb/allocate-direct sp-vr/key-buffer-capacity))
   ([buf]
-   (let [id-size (bb/get-byte! buf (- (bb/limit buf) hash/prefix-size 1))
-         value-size (- (bb/remaining buf) id-size 2 hash/prefix-size
-                       codec/c-hash-size codec/tid-size)
+   (let [value-size (- (bb/remaining buf) 1 codec/did-size hash/prefix-size
+                       sp-vr/base-key-size)
          c-hash (bb/get-int! buf)
          tid (bb/get-int! buf)
          value (bs/from-byte-buffer! buf value-size)
          _ (bb/get-byte! buf)
-         id (bs/from-byte-buffer! buf id-size)
-         _ (bb/get-byte! buf)]
+         did (bb/get-long! buf)]
      {:code (codec/c-hash->code c-hash (Integer/toHexString c-hash))
       :type (codec/tid->type tid)
       :v-hash value
-      :id (codec/id-string id)
+      :did did
       :hash-prefix (hash/prefix-from-byte-buffer! buf)})))
 
 

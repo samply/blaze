@@ -73,20 +73,21 @@
             [[_ k0] [_ k1]]
             (search-param/index-entries
               (sr/get search-param-registry "_profile" "Patient")
-              [] hash patient)]
+              (constantly nil)
+              [] 201411 hash patient)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "_profile"
             :type := "Patient"
             :v-hash := (codec/v-hash "profile-uri-141443")
-            :id := "id-140855"
+            :did := 201411
             :hash-prefix := (hash/prefix hash)))
 
         (testing "ResourceSearchParamValue key"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "Patient"
-            :id := "id-140855"
+            :did := 201411
             :hash-prefix := (hash/prefix hash)
             :code := "_profile"
             :v-hash := (codec/v-hash "profile-uri-141443")))))
@@ -99,7 +100,8 @@
           (empty?
             (search-param/index-entries
               (sr/get search-param-registry "patient" "Specimen")
-              [] hash specimen)))))
+              (constantly nil)
+              [] 201646 hash specimen)))))
 
     (testing "ActivityDefinition url"
       (let [resource {:fhir/type :fhir/ActivityDefinition
@@ -109,20 +111,21 @@
             [[_ k0] [_ k1]]
             (search-param/index-entries
               (sr/get search-param-registry "url" "ActivityDefinition")
-              [] hash resource)]
+              (constantly nil)
+              [] 201658 hash resource)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "url"
             :type := "ActivityDefinition"
             :v-hash := (codec/v-hash "url-111854")
-            :id := "id-111846"
+            :did := 201658
             :hash-prefix := (hash/prefix hash)))
 
         (testing "ResourceSearchParamValue key"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "ActivityDefinition"
-            :id := "id-111846"
+            :did := 201658
             :hash-prefix := (hash/prefix hash)
             :code := "url"
             :v-hash := (codec/v-hash "url-111854")))))
@@ -137,20 +140,23 @@
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (search-param/index-entries
                 (sr/get search-param-registry "item" "List")
-                [] hash resource)]
+                (fn [tid id]
+                  (when (and (= (codec/tid "Patient") tid) (= "0" id))
+                    181705))
+                [] 201714 hash resource)]
 
           (testing "first SearchParamValueResource key is about `id`"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
               :code := "item"
               :type := "List"
               :v-hash := (codec/v-hash "0")
-              :id := "id-121825"
+              :did := 201714
               :hash-prefix := (hash/prefix hash)))
 
           (testing "first ResourceSearchParamValue key is about `id`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "List"
-              :id := "id-121825"
+              :did := 201714
               :hash-prefix := (hash/prefix hash)
               :code := "item"
               :v-hash := (codec/v-hash "0")))
@@ -160,34 +166,32 @@
               :code := "item"
               :type := "List"
               :v-hash := (codec/v-hash "Patient/0")
-              :id := "id-121825"
+              :did := 201714
               :hash-prefix := (hash/prefix hash)))
 
           (testing "second ResourceSearchParamValue key is about `type/id`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
               :type := "List"
-              :id := "id-121825"
+              :did := 201714
               :hash-prefix := (hash/prefix hash)
               :code := "item"
               :v-hash := (codec/v-hash "Patient/0")))
 
-          (testing "third SearchParamValueResource key is about `tid` and `id`"
+          (testing "third SearchParamValueResource key is about `tid` and `did`"
             (given (sp-vr-tu/decode-key-human (bb/wrap k4))
               :code := "item"
               :type := "List"
-              :v-hash := (codec/tid-id (codec/tid "Patient")
-                                       (codec/id-byte-string "0"))
-              :id := "id-121825"
+              :v-hash := (codec/tid-did (codec/tid "Patient") 181705)
+              :did := 201714
               :hash-prefix := (hash/prefix hash)))
 
-          (testing "third ResourceSearchParamValue key is about `tid` and `id`"
+          (testing "third ResourceSearchParamValue key is about `tid` and `did`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
               :type := "List"
-              :id := "id-121825"
+              :did := 201714
               :hash-prefix := (hash/prefix hash)
               :code := "item"
-              :v-hash := (codec/tid-id (codec/tid "Patient")
-                                       (codec/id-byte-string "0"))))))
+              :v-hash := (codec/tid-did (codec/tid "Patient") 181705)))))
 
       (testing "with identifier reference"
         (let [resource {:fhir/type :fhir/List :id "id-123058"
@@ -203,20 +207,21 @@
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (search-param/index-entries
                 (sr/get search-param-registry "item" "List")
-                [] hash resource)]
+                (constantly nil)
+                [] 201800 hash resource)]
 
           (testing "first SearchParamValueResource key is about `value`"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
               :code := "item:identifier"
               :type := "List"
               :v-hash := (codec/v-hash "value-122931")
-              :id := "id-123058"
+              :did := 201800
               :hash-prefix := (hash/prefix hash)))
 
           (testing "first ResourceSearchParamValue key is about `value`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "List"
-              :id := "id-123058"
+              :did := 201800
               :hash-prefix := (hash/prefix hash)
               :code := "item:identifier"
               :v-hash := (codec/v-hash "value-122931")))
@@ -226,13 +231,13 @@
               :code := "item:identifier"
               :type := "List"
               :v-hash := (codec/v-hash "system-122917|")
-              :id := "id-123058"
+              :did := 201800
               :hash-prefix := (hash/prefix hash)))
 
           (testing "second ResourceSearchParamValue key is about `system|`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
               :type := "List"
-              :id := "id-123058"
+              :did := 201800
               :hash-prefix := (hash/prefix hash)
               :code := "item:identifier"
               :v-hash := (codec/v-hash "system-122917|")))
@@ -242,13 +247,13 @@
               :code := "item:identifier"
               :type := "List"
               :v-hash := (codec/v-hash "system-122917|value-122931")
-              :id := "id-123058"
+              :did := 201800
               :hash-prefix := (hash/prefix hash)))
 
           (testing "third ResourceSearchParamValue key is about `system|value`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
               :type := "List"
-              :id := "id-123058"
+              :did := 201800
               :hash-prefix := (hash/prefix hash)
               :code := "item:identifier"
               :v-hash := (codec/v-hash "system-122917|value-122931")))))
@@ -264,20 +269,21 @@
               [[_ k0] [_ k1]]
               (search-param/index-entries
                 (sr/get search-param-registry "item" "List")
-                [] hash resource)]
+                (constantly nil)
+                [] 201820 hash resource)]
 
           (testing "first SearchParamValueResource key is about `id`"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
               :code := "item"
               :type := "List"
               :v-hash := (codec/v-hash "http://foo.com/bar-141221")
-              :id := "id-121825"
+              :did := 201820
               :hash-prefix := (hash/prefix hash)))
 
           (testing "first ResourceSearchParamValue key is about `id`"
             (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
               :type := "List"
-              :id := "id-121825"
+              :did := 201820
               :hash-prefix := (hash/prefix hash)
               :code := "item"
               :v-hash := (codec/v-hash "http://foo.com/bar-141221"))))))))
