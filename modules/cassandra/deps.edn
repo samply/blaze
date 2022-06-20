@@ -11,7 +11,7 @@
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   io.netty/netty-handler
-  {:mvn/version "4.1.77.Final"}}
+  {:mvn/version "4.1.78.Final"}}
 
  :aliases
  {:test
@@ -27,7 +27,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.66.1034"}}
+    {:mvn/version "1.67.1055"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
