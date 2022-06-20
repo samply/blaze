@@ -6,7 +6,7 @@
   {:mvn/version "0.0.8"}
 
   io.prometheus/simpleclient_hotspot
-  {:mvn/version "0.15.0"}}
+  {:mvn/version "0.16.0"}}
 
  :aliases
  {:test
@@ -19,7 +19,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.66.1034"}}
+    {:mvn/version "1.67.1055"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
