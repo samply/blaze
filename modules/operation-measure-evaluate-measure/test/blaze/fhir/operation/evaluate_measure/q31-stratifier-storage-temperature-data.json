@@ -112,7 +112,7 @@
                   ]
                 },
                 "criteria": {
-                  "language": "text/cql",
+                  "language": "text/cql-identifier",
                   "expression": "InInitialPopulation"
                 }
               }
@@ -123,7 +123,7 @@
                   "text": "StorageTemperatureCodes"
                 },
                 "criteria": {
-                  "language": "text/cql",
+                  "language": "text/cql-identifier",
                   "expression": "StorageTemperatureCodes"
                 }
               }

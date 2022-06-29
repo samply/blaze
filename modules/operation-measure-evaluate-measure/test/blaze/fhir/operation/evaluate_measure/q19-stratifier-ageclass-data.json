@@ -73,7 +73,7 @@
                   ]
                 },
                 "criteria": {
-                  "language": "text/cql",
+                  "language": "text/cql-identifier",
                   "expression": "InInitialPopulation"
                 }
               }
@@ -84,7 +84,7 @@
                   "text": "age-class"
                 },
                 "criteria": {
-                  "language": "text/cql",
+                  "language": "text/cql-identifier",
                   "expression": "AgeClass"
                 }
               }

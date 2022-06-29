@@ -97,7 +97,7 @@
                   ]
                 },
                 "criteria": {
-                  "language": "text/cql",
+                  "language": "text/cql-identifier",
                   "expression": "InInitialPopulation"
                 }
               }
@@ -108,7 +108,7 @@
                   "text": "bmi"
                 },
                 "criteria": {
-                  "language": "text/cql",
+                  "language": "text/cql-identifier",
                   "expression": "Bmi"
                 }
               }
