@@ -14,7 +14,7 @@
         :fhir/issue "required"
         :fhir.issue/expression (population-path-fn))
 
-      (not= "text/cql" language)
+      (not (#{"text/cql" "text/cql-identifier"} language))
       (ba/unsupported
         (format "Unsupported language `%s`." language)
         :fhir/issue "not-supported"

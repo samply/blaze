@@ -156,7 +156,7 @@
                   ]
                 },
                 "criteria": {
-                  "language": "text/cql",
+                  "language": "text/cql-identifier",
                   "expression": "InInitialPopulation"
                 }
               }
@@ -167,7 +167,7 @@
                   "text": "Underweight"
                 },
                 "criteria": {
-                  "language": "text/cql",
+                  "language": "text/cql-identifier",
                   "expression": "Underweight"
                 }
               }

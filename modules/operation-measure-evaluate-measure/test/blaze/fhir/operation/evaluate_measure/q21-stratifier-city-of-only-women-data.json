@@ -104,7 +104,7 @@
                   ]
                 },
                 "criteria": {
-                  "language": "text/cql",
+                  "language": "text/cql-identifier",
                   "expression": "InInitialPopulation"
                 }
               }
@@ -115,7 +115,7 @@
                   "text": "city"
                 },
                 "criteria": {
-                  "language": "text/cql",
+                  "language": "text/cql-identifier",
                   "expression": "City"
                 }
               }

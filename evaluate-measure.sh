@@ -61,7 +61,7 @@ cat <<END
             ]
           },
           "criteria": {
-            "language": "text/cql",
+            "language": "text/cql-identifier",
             "expression": "InInitialPopulation"
           }
         }
