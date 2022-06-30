@@ -130,9 +130,41 @@
     (some? (p/to-boolean operand))))
 
 
-;; TODO 22.8. ConvertsToDate
+;; 22.8. ConvertsToDate
+(defrecord ConvertsToDateOperatorExpression [operand]
+  core/Expression
+  (-eval [_ {:keys [now] :as context} resource scope]
+    (when-let [operand (core/-eval operand context resource scope)]
+      (when (some? operand)
+        (some? (p/to-date operand now)))))
+  (-form [_]
+    (list 'converts-to-date (core/-form operand))))
 
-;; TODO 22.9. ConvertsToDateTime
+
+(defmethod core/compile* :elm.compiler.type/converts-to-date
+  [context {:keys [operand]}]
+  (when-let [operand (core/compile* context operand)]
+    (->ConvertsToDateOperatorExpression operand)))
+
+
+;; 22.9. ConvertsToDateTime
+(defrecord ConvertsToDateTimeOperatorExpression [operand]
+  core/Expression
+  (-eval [_ {:keys [now] :as context} resource scope]
+    (when-let [operand (core/-eval operand context resource scope)]
+      (when (some? operand)
+        (some? (p/to-date-time operand now)))))
+  (-form [_]
+    (list 'converts-to-date-time (core/-form operand))))
+
+
+(defmethod core/compile* :elm.compiler.type/converts-to-date-time
+  [context {:keys [operand]}]
+  (when-let [operand (core/compile* context operand)]
+    (if (system/date? operand)
+      (some? (p/to-date-time operand nil))
+      (->ConvertsToDateTimeOperatorExpression operand))))
+
 
 ;; 22.10. ConvertsToDecimal
 (defunop converts-to-decimal [operand]

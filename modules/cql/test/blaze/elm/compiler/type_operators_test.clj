@@ -380,7 +380,7 @@
           expr (c/compile compile-ctx elm)]
       (is (= '(converts-to-boolean (param-ref "x")) (core/-form expr))))))
 
-;; TODO 22.8. ConvertsToDate
+;; 22.8. ConvertsToDate
 ;;
 ;; The ConvertsToDate operator returns true if the value of its argument is or
 ;; can be converted to a Date value.
@@ -404,8 +404,38 @@
 ;; As with date literals, date values may be specified to any precision.
 ;;
 ;; If the argument is null, the result is null.
+(deftest compile-converts-to-date-test
+  (let [eval #(core/-eval % {:now tu/now} nil nil)]
+    (testing "String"
+      (are [x] (true? (eval (tu/compile-unop elm/converts-to-date elm/string x)))
+        "2019"
+        "2019-01"
+        "2019-01-01")
 
-;; TODO 22.9. ConvertsToDateTime
+      (are [x] (false? (eval (tu/compile-unop elm/converts-to-date elm/string x)))
+        "aaaa"
+        "2019-13"
+        "2019-02-29"))
+
+    (testing "Date"
+      (are [x] (true? (eval (tu/compile-unop elm/converts-to-date elm/date x)))
+        "2019"
+        "2019-01"
+        "2019-01-01"))
+
+    (testing "DateTime"
+      (are [x] (true? (eval (tu/compile-unop elm/converts-to-date elm/date-time x)))
+        "2019"
+        "2019-01"
+        "2019-01-01"
+        "2019-01-01T12:13")))
+
+  (tu/testing-unary-null elm/converts-to-date)
+
+  (tu/testing-unary-form elm/converts-to-date))
+
+
+;; 22.9. ConvertsToDateTime
 ;;
 ;; The ConvertsToDateTime operator returns true if the value of its argument is
 ;; or can be converted to a DateTime value.
@@ -428,6 +458,33 @@
 ;; evaluation request timestamp is assumed.
 ;;
 ;; If the argument is null, the result is null.
+(deftest compile-converts-to-date-time-test
+  (let [eval #(core/-eval % {:now tu/now} nil nil)]
+    (testing "String"
+      (are [x] (true? (eval (tu/compile-unop elm/converts-to-date-time elm/string x)))
+        "2020-03-08T12:54:00+01:00")
+
+      (are [x] (false? (eval (tu/compile-unop elm/converts-to-date-time elm/string x)))
+        "2019-13"
+        "2019-02-29"))
+
+    (testing "Date"
+      (testing "Static"
+        (are [x] (true? (tu/compile-unop elm/converts-to-date-time elm/date x))
+          "2020"
+          "2020-03"
+          "2020-03-08")))
+
+    (testing "DateTime"
+      (are [x] (true? (eval (tu/compile-unop elm/converts-to-date-time elm/date-time x)))
+        "2020"
+        "2020-03"
+        "2020-03-08"
+        "2020-03-08T12:13" )))
+
+  (tu/testing-unary-null elm/converts-to-date-time)
+
+  (tu/testing-unary-form elm/converts-to-date-time))
 
 
 ;; 22.10. ConvertsToDecimal
