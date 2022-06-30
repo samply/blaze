@@ -9,7 +9,7 @@
   {:local/root "../module-base"}
 
   org.rocksdb/rocksdbjni
-  {:mvn/version "7.2.2"}}
+  {:mvn/version "7.3.1"}}
 
  :aliases
  {:test
@@ -22,7 +22,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.66.1034"}}
+    {:mvn/version "1.68.1059"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

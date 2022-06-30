@@ -803,6 +803,31 @@
   {:type "ConvertsToBoolean" :operand operand})
 
 
+;; 22.10. ConvertsToDecimal
+(defn converts-to-decimal [operand]
+  {:type "ConvertsToDecimal" :operand operand})
+
+
+;; 22.11. ConvertsToLong
+(defn converts-to-long [operand]
+  {:type "ConvertsToLong" :operand operand})
+
+
+;; 22.12. ConvertsToInteger
+(defn converts-to-integer [operand]
+  {:type "ConvertsToInteger" :operand operand})
+
+
+;; 22.13. ConvertsToQuantity
+(defn converts-to-quantity [operand]
+  {:type "ConvertsToQuantity" :operand operand})
+
+
+;; 22.15. ConvertsToString
+(defn converts-to-string [operand]
+  {:type "ConvertsToString" :operand operand})
+
+
 ;; 22.17. Descendents
 (defn descendents [source]
   {:type "Descendents" :source source})

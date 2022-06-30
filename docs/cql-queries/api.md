@@ -89,7 +89,7 @@ The Measure resource represents the actual definition of the measure, which is e
             ]
           },
           "criteria": {
-            "language": "text/cql",
+            "language": "text/cql-identifier",
             "expression": "InInitialPopulation"
           }
         }

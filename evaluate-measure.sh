@@ -61,7 +61,7 @@ cat <<END
             ]
           },
           "criteria": {
-            "language": "text/cql",
+            "language": "text/cql-identifier",
             "expression": "InInitialPopulation"
           }
         }
@@ -121,7 +121,7 @@ BASE=$1
 [[ -z "$BASE" ]] && usage
 
 SUBJECT_TYPE_LOWER=$(echo $SUBJECT_TYPE | tr '[:upper:]' '[:lower:]')
-DATA=$(cat ${FILE} | base64 | tr -d '\n')
+DATA=$(base64 < "$FILE" | tr -d '\n')
 LIBRARY_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 

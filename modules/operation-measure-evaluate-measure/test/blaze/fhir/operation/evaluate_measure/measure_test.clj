@@ -132,7 +132,7 @@
 
 (defn- cql-expression [expr]
   {:fhir/type :fhir/Expression
-   :language #fhir/code"text/cql"
+   :language #fhir/code"text/cql-identifier"
    :expression expr})
 
 

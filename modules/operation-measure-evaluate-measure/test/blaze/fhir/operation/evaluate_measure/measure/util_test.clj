@@ -2,8 +2,11 @@
   (:require
     [blaze.anomaly-spec]
     [blaze.fhir.operation.evaluate-measure.measure.util :as u]
+    [blaze.test-util :refer [satisfies-prop]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
+    [clojure.test.check.generators :as gen]
+    [clojure.test.check.properties :as prop]
     [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]]))
 
@@ -38,8 +41,22 @@
 
   (testing "missing expression"
     (given (u/expression (constantly "path-184642")
-                         {:language #fhir/code"text/cql"})
+                         {:language #fhir/code"text/cql-identifier"})
       ::anom/category := ::anom/incorrect
       ::anom/message := "Missing expression."
       :fhir/issue := "required"
-      :fhir.issue/expression := "path-184642.criteria")))
+      :fhir.issue/expression := "path-184642.criteria"))
+
+  (testing "works with `text/cql-identifier`"
+    (satisfies-prop 10
+      (prop/for-all [expression gen/string]
+        (= expression (u/expression (constantly "foo")
+                                    {:language #fhir/code"text/cql-identifier"
+                                     :expression expression})))))
+
+  (testing "works with `text/cql`"
+    (satisfies-prop 10
+      (prop/for-all [expression gen/string]
+        (= expression (u/expression (constantly "foo")
+                                    {:language #fhir/code"text/cql"
+                                     :expression expression}))))))

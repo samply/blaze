@@ -52,3 +52,9 @@
     (try
       (p/to-decimal (BigDecimal. s))
       (catch Exception _))))
+
+;; 22.30. ToString
+(extend-protocol p/ToString
+  String
+  (to-string [s]
+    (str s)))

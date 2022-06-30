@@ -26,7 +26,7 @@
   {:mvn/version "5.2.1"}
 
   funcool/cuerdas
-  {:mvn/version "2022.03.27-397"}
+  {:mvn/version "2022.06.16-403"}
 
   metosin/jsonista
   {:mvn/version "0.3.6"}
@@ -49,7 +49,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.66.1034"}}
+    {:mvn/version "1.68.1059"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
