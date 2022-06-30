@@ -1,6 +1,16 @@
 # Changelog
 
-## v0.17.6
+## v0.17.8
+
+### Other
+
+* Switch to Media Type text/cql-identifier for CQL Expressions ([#748](https://github.com/samply/blaze/pull/748))
+* Update Dependencies ([#749](https://github.com/samply/blaze/pull/749))
+* Update Dependencies ([#746](https://github.com/samply/blaze/pull/746))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/46?closed=1).
+
+## v0.17.7
 
 ### Other
 

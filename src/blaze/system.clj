@@ -85,7 +85,7 @@
 
 
 (def ^:private root-config
-  {:blaze/version "0.17.7"
+  {:blaze/version "0.17.8"
 
    :blaze/clock {}
 
