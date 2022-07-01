@@ -493,6 +493,11 @@
   :ret :elm/expression)
 
 
+;; 22.31. ToTime
+(s/fdef elm/to-time
+  :args (s/cat :operand :elm/expression)
+  :ret :elm/expression)
+
 
 ;; 23. Clinical Operators
 

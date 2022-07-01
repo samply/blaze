@@ -620,6 +620,9 @@
 (derive :elm.deps.type/to-quantity :elm.deps.type/unary-expression)
 
 
+;; 22.31. ToTime
+(derive :elm.deps.type/to-time :elm.deps.type/unary-expression)
+
 
 ;; 23. Clinical Operators
 

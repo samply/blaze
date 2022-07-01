@@ -308,3 +308,9 @@
 ;; 22.30. ToString
 (defprotocol ToString
   (to-string [x]))
+
+
+;; 22.31. ToTime
+(defprotocol ToTime
+  "Converts an object into something usable as Time relative to `now`."
+  (to-time [x now]))

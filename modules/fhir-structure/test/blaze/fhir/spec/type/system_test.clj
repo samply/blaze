@@ -513,6 +513,9 @@
   (testing "type"
     (is (= :system/time (system/type (LocalTime/of 0 0 0)))))
 
+  (testing "time"
+    (is (= (system/time 3 4) (LocalTime/of 3 4))))
+
   (testing "system equals"
     (are [a b res] (= res (system/equals a b))
       (LocalTime/of 0 0 0) (LocalTime/of 0 0 0) true
@@ -527,3 +530,20 @@
 
       (LocalTime/of 0 0 0) (Object.) false
       (Object.) (LocalTime/of 0 0 0) false)))
+
+
+(deftest parse-time-test
+  (testing "valid"
+    (are [s d] (= d (system/parse-time s))
+      "03:04:05" (system/time 3 4 5)
+      "03:04:05.1" (system/time 3 4 5 100)
+      "03:04:05.01" (system/time 3 4 5 10)
+      "03:04:05.006" (system/time 3 4 5 6)))
+
+  (testing "invalid"
+    (are [s] (= ::anom/incorrect (::anom/category (system/parse-time s)))
+      "a"
+      ""
+      "25:00:00"
+      "12:60:00"
+      "12:12:60")))
