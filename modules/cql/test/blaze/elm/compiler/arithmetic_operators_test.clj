@@ -1080,7 +1080,32 @@
       #elm/date "2019-01-01" #elm/quantity [1 "year"] (system/date 2018 1 1)
       #elm/date "2012-02-29" #elm/quantity [1 "year"] (system/date 2011 2 28)
       #elm/date "2019-01-01" #elm/quantity [1 "month"] (system/date 2018 12 1)
-      #elm/date "2019-01-01" #elm/quantity [1 "day"] (system/date 2018 12 31)))
+      #elm/date "2019-01-01" #elm/quantity [1 "day"] (system/date 2018 12 31))
+
+    (testing "out of range"
+      (testing "year"
+        (given (ba/try-anomaly (c/compile {} (elm/subtract [#elm/date "2022" #elm/quantity [2022 "year"]])))
+          ::anom/category := ::anom/fault
+          ::anom/message := "Year 0 out of range while subtracting the period Period[month = 24264, millis = 0] from the year 2022."
+          :op := :subtract
+          :year := (system/date 2022)
+          :period (date-time/period 2022 0 0)))
+
+      (testing "year-month"
+        (given (ba/try-anomaly (c/compile {} (elm/subtract [#elm/date "2022-07" #elm/quantity [2022 "year"]])))
+          ::anom/category := ::anom/fault
+          ::anom/message := "Year-month 0000-07 out of range while subtracting the period Period[month = 24264, millis = 0] from the year-month 2022-07."
+          :op := :subtract
+          :year-month := (system/date 2022 7)
+          :period (date-time/period 2022 0 0)))
+
+      (testing "date"
+        (given (ba/try-anomaly (c/compile {} (elm/subtract [#elm/date "2022-07-01" #elm/quantity [2022 "year"]])))
+          ::anom/category := ::anom/fault
+          ::anom/message := "Date 0000-07-01 out of range while subtracting the period Period[month = 24264, millis = 0] from the date 2022-07-01."
+          :op := :subtract
+          :date := (system/date 2022 7 1)
+          :period (date-time/period 2022 0 0)))))
 
   ;; TODO: find a solution to avoid overflow
   #_(testing "Subtracting a positive amount of years from a year makes it smaller"
@@ -1150,7 +1175,15 @@
       #elm/date-time "2019-01-01T00" #elm/quantity [1 "day"] (system/date-time 2018 12 31 0 0 0)
       #elm/date-time "2019-01-01T00" #elm/quantity [1 "hour"] (system/date-time 2018 12 31 23 0 0)
       #elm/date-time "2019-01-01T00" #elm/quantity [1 "minute"] (system/date-time 2018 12 31 23 59 0)
-      #elm/date-time "2019-01-01T00" #elm/quantity [1 "second"] (system/date-time 2018 12 31 23 59 59)))
+      #elm/date-time "2019-01-01T00" #elm/quantity [1 "second"] (system/date-time 2018 12 31 23 59 59))
+
+    (testing "out of range"
+      (given (ba/try-anomaly (c/compile {} (elm/subtract [#elm/date-time "2022" #elm/quantity [2022 "year"]])))
+        ::anom/category := ::anom/fault
+        ::anom/message := "Year 0 out of range while subtracting the period Period[month = 24264, millis = 0] from the year 2022."
+        :op := :subtract
+        :year := (system/date-time 2022)
+        :period (date-time/period 2022 0 0))))
 
   (testing "Time - Quantity"
     (are [x y res] (= res (c/compile {} (elm/subtract [x y])))
