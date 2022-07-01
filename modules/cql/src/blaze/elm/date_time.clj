@@ -70,7 +70,11 @@
         (- months (:months other))
         (- millis (:millis other)))
       (throw (ex-info (str "Invalid RHS subtracting from Period. Expected Period but was `" (type other) "`.")
-                      {:op :subtract :this this :other other})))))
+                      {:op :subtract :this this :other other}))))
+
+  Object
+  (toString [_]
+    (format "Period[month = %d, millis = %d]" months millis)))
 
 
 (defn period [years months millis]
@@ -527,13 +531,43 @@
 
 
 ;; 16.20. Subtract
+(defn- year-out-of-range-msg [result period year]
+  (format "Year %s out of range while subtracting the period %s from the year %s."
+          result period year))
+
+
+(defn year-out-of-range-ex-info [year period result]
+  (ex-info (year-out-of-range-msg result period year)
+           {:op :subtract :year year :period period}))
+
+
+(defn- year-month-out-of-range-msg [result period year-month]
+  (format "Year-month %s out of range while subtracting the period %s from the year-month %s."
+          result period year-month))
+
+
+(defn year-month-out-of-range-ex-info [year-month period result]
+  (ex-info (year-month-out-of-range-msg result period year-month)
+           {:op :subtract :year-month year-month :period period}))
+
+
+(defn- date-out-of-range-msg [result period date]
+  (format "Date %s out of range while subtracting the period %s from the date %s."
+          result period date))
+
+
+(defn date-out-of-range-ex-info [date period result]
+  (ex-info (date-out-of-range-msg result period date)
+           {:op :subtract :date date :period period}))
+
+
 (extend-protocol p/Subtract
   Year
   (subtract [this other]
     (if (instance? Period other)
       (let [result (time/minus this (time/years (quot (:months other) 12)))]
         (if (time/before? result min-year)
-          (throw (ex-info "Out of range." {:op :subtract :this this :other other}))
+          (throw (year-out-of-range-ex-info this other result))
           result))
       (throw (ex-info (str "Invalid RHS adding to Year. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
@@ -543,7 +577,7 @@
     (if (instance? Period other)
       (let [result (time/minus this (time/years (quot (:months other) 12)))]
         (if (time/before? result date-time-min-year)
-          (throw (ex-info "Out of range." {:op :subtract :this this :other other}))
+          (throw (year-out-of-range-ex-info this other result))
           result))
       (throw (ex-info (str "Invalid RHS adding to Year. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
@@ -553,7 +587,7 @@
     (if (instance? Period other)
       (let [result (time/minus this (time/months (:months other)))]
         (if (time/before? result min-year-month)
-          (throw (ex-info "Out of range." {:op :subtract :this this :other other}))
+          (throw (year-month-out-of-range-ex-info this other result))
           result))
       (throw (ex-info (str "Invalid RHS adding to YearMonth. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
@@ -563,7 +597,7 @@
     (if (instance? Period other)
       (let [result (time/minus this (time/months (:months other)))]
         (if (time/before? result date-time-min-year-month)
-          (throw (ex-info "Out of range." {:op :subtract :this this :other other}))
+          (throw (year-month-out-of-range-ex-info this other result))
           result))
       (throw (ex-info (str "Invalid RHS adding to YearMonth. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
@@ -576,7 +610,7 @@
                      (time/months (:months other))
                      (time/days (quot (:millis other) 86400000)))]
         (if (time/before? result min-date)
-          (throw (ex-info "Out of range." {:op :subtract :this this :other other}))
+          (throw (date-out-of-range-ex-info this other result))
           result))
       (throw (ex-info (str "Invalid RHS adding to LocalDate. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
@@ -589,7 +623,7 @@
                      (time/months (:months other))
                      (time/days (quot (:millis other) 86400000)))]
         (if (time/before? result date-time-min-date)
-          (throw (ex-info "Out of range." {:op :subtract :this this :other other}))
+          (throw (date-out-of-range-ex-info this other result))
           result))
       (throw (ex-info (str "Invalid RHS adding to LocalDate. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
@@ -1233,14 +1267,6 @@
 
 ;; 22.22. ToDate
 (extend-protocol p/ToDate
-  nil
-  (to-date [_ _])
-
-  String
-  (to-date [s _]
-    (-> (system/parse-date s)
-        (ba/exceptionally (constantly nil))))
-
   Year
   (to-date [this _]
     this)
@@ -1277,9 +1303,6 @@
 
 ;; 22.23. ToDateTime
 (extend-protocol p/ToDateTime
-  nil
-  (to-date-time [_ _])
-
   Instant
   (to-date-time [this now]
     (-> (.atOffset this (.getOffset ^OffsetDateTime now))
@@ -1320,11 +1343,7 @@
   OffsetDateTime
   (to-date-time [this now]
     (-> (.withOffsetSameInstant this (.getOffset ^OffsetDateTime now))
-        (.toLocalDateTime)))
-
-  String
-  (to-date-time [s now]
-    (p/to-date-time (system/parse-date-time s) now)))
+        (.toLocalDateTime))))
 
 
 ;; 22.30. ToString
@@ -1360,3 +1379,23 @@
   LocalDateTime
   (to-string [x]
     (str x)))
+
+
+;; 22.31. ToTime
+(extend-protocol p/ToTime
+  LocalTime
+  (to-time [this _]
+    this)
+
+  LocalDateTime
+  (to-time [this _]
+    (.toLocalTime this))
+
+  OffsetDateTime
+  (to-time [this now]
+    (-> (.withOffsetSameInstant this (.getOffset ^OffsetDateTime now))
+        (.toLocalTime)))
+
+  PrecisionLocalTime
+  (to-time [this _]
+   (.-local_time this)))

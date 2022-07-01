@@ -1,7 +1,9 @@
 (ns blaze.elm.string
   "Implementation of the string type."
   (:require
+    [blaze.anomaly :as ba]
     [blaze.elm.protocols :as p]
+    [blaze.fhir.spec.type.system :as system]
     [clojure.string :as str]))
 
 
@@ -45,6 +47,21 @@
       nil)))
 
 
+;; 22.22. ToDate
+(extend-protocol p/ToDate
+  String
+  (to-date [s _]
+    (-> (system/parse-date s)
+        (ba/exceptionally (constantly nil)))))
+
+
+;; 22.23. ToDateTime
+(extend-protocol p/ToDateTime
+  String
+  (to-date-time [s now]
+    (p/to-date-time (system/parse-date-time s) now)))
+
+
 ;; 22.24. ToDecimal
 (extend-protocol p/ToDecimal
   String
@@ -53,8 +70,17 @@
       (p/to-decimal (BigDecimal. s))
       (catch Exception _))))
 
+
 ;; 22.30. ToString
 (extend-protocol p/ToString
   String
   (to-string [s]
     (str s)))
+
+
+;; 22.31. ToTime
+(extend-protocol p/ToTime
+  String
+  (to-time [s _]
+    (-> (system/parse-time s)
+        (ba/exceptionally (constantly nil)))))

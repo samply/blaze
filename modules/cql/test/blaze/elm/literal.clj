@@ -8,6 +8,9 @@
     [clojure.string :as str]))
 
 
+(set! *warn-on-reflection* true)
+
+
 ;; 1. Simple Values
 
 ;; 1.1. Literal
@@ -461,9 +464,12 @@
         timezone-offset (assoc :timezoneOffset timezone-offset)))))
 
 
+;; 18.18. Time
 (defn time [arg]
   (if (string? arg)
-    (time (map integer (str/split arg #"[:.]")))
+    (time (map integer (str/split (if (.contains ^String arg ".")
+                                    (subs (str arg "000") 0 12)
+                                    arg) #"[:.]")))
     (let [[hour minute second millisecond] arg]
       (cond->
         {:type "Time"
@@ -882,7 +888,9 @@
 (defn to-string [operand]
   {:type "ToString" :operand operand})
 
-
+;; 22.31. ToTime
+(defn to-time [operand]
+  {:type "ToTime" :operand operand})
 
 ;; 23. Clinical Operators
 

@@ -257,4 +257,14 @@
   (p/to-string x))
 
 
-;; TODO 22.31. ToTime
+;; 22.31. ToTime
+(defrecord ToTimeOperatorExpression [operand]
+  core/Expression
+  (-eval [_ {:keys [now] :as context} resource scope]
+    (p/to-time (core/-eval operand context resource scope) now)))
+
+
+(defmethod core/compile* :elm.compiler.type/to-time
+  [context {:keys [operand]}]
+  (when-let [operand (core/compile* context operand)]
+    (->ToTimeOperatorExpression operand)))

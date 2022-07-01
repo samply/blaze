@@ -9,7 +9,7 @@
    * DateTime
    * Time
    * Quantity"
-  (:refer-clojure :exclude [boolean? decimal? integer? string? type])
+  (:refer-clojure :exclude [boolean? decimal? integer? string? time type])
   (:require
     [blaze.anomaly :as ba]
     [cognitect.anomalies :as anom]
@@ -537,6 +537,34 @@
   (-equals [time x]
     (some->> x (.equals time))))
 
+
+(defn time
+  "Returns a System.Time"
+  ([hour minute]
+   (LocalTime/of (int hour) (int minute)))
+  ([hour minute second]
+   (LocalTime/of (int hour) (int minute) (int second)))
+  ([hour minute second millis]
+   (LocalTime/of (int hour) (int minute) (int second)
+                 (unchecked-multiply-int (int millis) 1000000))))
+
+
+(defn parse-time* [s]
+  (LocalTime/parse s))
+
+
+(defn- time-string? [s]
+  (.matches (re-matcher #"([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?" s)))
+
+
+(defn parse-time
+  "Parses `s` into a System.Time.
+
+  Returns an anomaly if `s` isn't a valid System.Time."
+  [s]
+  (if (time-string? s)
+    (ba/try-one DateTimeParseException ::anom/incorrect (parse-time* s))
+    (ba/incorrect (format "Invalid date-time value `%s`." s))))
 
 
 ;; ---- Other -----------------------------------------------------------------

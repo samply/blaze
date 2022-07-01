@@ -155,10 +155,11 @@
             "Decimal18D55ToString"                          ; TODO: implement
             "Quantity5D5CMToString"                         ; TODO: implement
             "BooleanTrueToString"                           ; TODO: implement
-            "ToTime1"                                       ; TODO: implement
-            "ToTime2"                                       ; TODO: implement
-            "ToTime3"                                       ; TODO: implement
-            "ToTime4"                                       ; TODO: implement
+            "ToTime1"                                       ; shouldn't start with T
+            "ToTime2"                                       ; time zone?
+            "ToTime3"                                       ; time zone?
+            "ToTime4"                                       ; time zone?
+            "ToTimeMalformed"                               ; should return null
             "StringToDateTimeMalformed"                     ; should return null
             "ToDateTimeMalformed"                           ; should return null
             })
