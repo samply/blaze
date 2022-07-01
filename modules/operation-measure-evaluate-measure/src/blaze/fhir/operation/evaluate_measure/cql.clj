@@ -31,18 +31,27 @@
   512)
 
 
+(defn- evaluate-expression-1-error-msg [expression-name e]
+  (format "Error while evaluating the expression `%s`: %s" expression-name
+          (ex-message e)))
+
+
 (defn- evaluate-expression-1
   [{:keys [library-context] :as context} subject-handle expression-name]
   (try
     (expr/eval context (get library-context expression-name) subject-handle)
     (catch Exception e
-      (log/error (format "Error while evaluating the expression `%s`:"
-                         expression-name) (ex-message (ex-cause e)))
-      (log/error e)
-      (ba/fault
-        (ex-message e)
-        :fhir/issue "exception"
-        :expression-name expression-name))))
+      (let [ex-data (ex-data e)]
+        ;; only log if the exception hasn't ex-data because exception with
+        ;; ex-data are controlled by us and so are not unexpected
+        (when-not ex-data
+          (log/error (evaluate-expression-1-error-msg expression-name e))
+          (log/error e))
+        (-> (ba/fault
+              (evaluate-expression-1-error-msg expression-name e)
+              :fhir/issue "exception"
+              :expression-name expression-name)
+            (merge ex-data))))))
 
 
 (defn- close-batch-db! [{:keys [db]}]
@@ -129,11 +138,12 @@
 
 (defn- unwrap-library-context
   {:arglists '([context])}
-  [{{:keys [compiled-expression-defs parameter-default-values]} :library
+  [{:keys [parameters]
+    {:keys [compiled-expression-defs parameter-default-values]} :library
     :as context}]
   (assoc context
     :library-context compiled-expression-defs
-    :parameters parameter-default-values))
+    :parameters (merge parameter-default-values parameters)))
 
 
 (defn evaluate-expression

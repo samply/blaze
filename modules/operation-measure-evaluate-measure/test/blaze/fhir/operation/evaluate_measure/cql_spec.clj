@@ -22,13 +22,17 @@
   :fhir.resource/type)
 
 
+(s/def ::parameters
+  (s/map-of string? any?))
+
+
 (s/def ::context
   (s/keys :req-un [:blaze.db/db ::now ::library ::subject-type
                    :blaze.fhir.operation.evaluate-measure/report-type]))
 
 
 (s/def ::individual-context
-  (s/keys :req-un [:blaze.db/db ::now ::library]))
+  (s/keys :req-un [:blaze.db/db ::now ::library] :opt-un [::parameters]))
 
 
 (s/fdef cql/evaluate-expression

@@ -110,8 +110,8 @@
 
 
 (defmacro try-one
-  "Applies a try-catch arround `body` catching exceptions of `type`, returning
-  an anomaly with `category` and possible message of the exception."
+  "Applies a try-catch form arround `body` catching exceptions of `type`,
+  returning an anomaly with `category` and possible message of the exception."
   [type category & body]
   `(try
      ~@body
@@ -125,7 +125,10 @@
   `(try-one Throwable ~category ~@body))
 
 
-(defmacro try-anomaly [& body]
+(defmacro try-anomaly
+  "Applies a try-catch form arround `body` catching all Throwables and returns
+  an anomaly created by the `anomaly` function."
+  [& body]
   `(try
      ~@body
      (catch Throwable e#
