@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.17.9
+
+### Other Improvements
+
+* Implement CQL ToTime and rearrange ToDate and ToDateTime ([#747](https://github.com/samply/blaze/pull/747))
+* Improve CQL Error Message on Subtract ([#755](https://github.com/samply/blaze/pull/755))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/47?closed=1).
+
 ## v0.17.8
 
 ### Other

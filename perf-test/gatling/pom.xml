@@ -5,7 +5,7 @@
 
   <groupId>samply.blaze</groupId>
   <artifactId>gatling</artifactId>
-  <version>0.17.8</version>
+  <version>0.17.9</version>
 
   <properties>
     <maven.compiler.source>1.8</maven.compiler.source>
