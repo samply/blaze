@@ -22,7 +22,8 @@
     [com.fasterxml.jackson.databind ObjectMapper]
     [com.google.common.hash Hashing]
     [java.nio.charset StandardCharsets]
-    [java.time Instant LocalTime OffsetDateTime ZoneOffset]))
+    [java.time Instant LocalTime OffsetDateTime ZoneOffset]
+    [com.fasterxml.jackson.core SerializableString]))
 
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
@@ -489,27 +490,27 @@
     (testing "getValue"
       (satisfies-prop 10
         (prop/for-all [value fg/uri-value]
-          (= value (.getValue (type/uri value))))))
+          (= value (.getValue ^SerializableString (type/uri value))))))
 
     (testing "appendQuotedUTF8"
       (satisfies-prop 100
         (prop/for-all [value fg/uri-value]
           (let [expected-buffer (.quoteAsUTF8 (JsonStringEncoder/getInstance) value)
                 buffer (byte-array (count expected-buffer))]
-            (.appendQuotedUTF8 (type/uri value) buffer 0)
+            (.appendQuotedUTF8 ^SerializableString (type/uri value) buffer 0)
             (= (bb/wrap expected-buffer) (bb/wrap buffer))))))
 
     (testing "asUnquotedUTF8"
       (satisfies-prop 100
         (prop/for-all [value fg/uri-value]
           (= (bb/wrap (.encodeAsUTF8 (JsonStringEncoder/getInstance) ^String value))
-             (bb/wrap (.asUnquotedUTF8 (type/uri value)))))))
+             (bb/wrap (.asUnquotedUTF8 ^SerializableString (type/uri value)))))))
 
     (testing "asQuotedUTF8"
       (satisfies-prop 100
         (prop/for-all [value fg/uri-value]
           (= (bb/wrap (.quoteAsUTF8 (JsonStringEncoder/getInstance) value))
-             (bb/wrap (.asQuotedUTF8 (type/uri value)))))))))
+             (bb/wrap (.asQuotedUTF8 ^SerializableString (type/uri value)))))))))
 
 
 (deftest url-test
@@ -666,27 +667,27 @@
     (testing "getValue"
       (satisfies-prop 10
         (prop/for-all [value fg/canonical-value]
-          (= value (.getValue (type/canonical value))))))
+          (= value (.getValue ^SerializableString (type/canonical value))))))
 
     (testing "appendQuotedUTF8"
       (satisfies-prop 100
         (prop/for-all [value fg/canonical-value]
           (let [expected-buffer (.quoteAsUTF8 (JsonStringEncoder/getInstance) value)
                 buffer (byte-array (count expected-buffer))]
-            (.appendQuotedUTF8 (type/canonical value) buffer 0)
+            (.appendQuotedUTF8 ^SerializableString (type/canonical value) buffer 0)
             (= (bb/wrap expected-buffer) (bb/wrap buffer))))))
 
     (testing "asUnquotedUTF8"
       (satisfies-prop 100
         (prop/for-all [value fg/canonical-value]
           (= (bb/wrap (.encodeAsUTF8 (JsonStringEncoder/getInstance) ^String value))
-             (bb/wrap (.asUnquotedUTF8 (type/canonical value)))))))
+             (bb/wrap (.asUnquotedUTF8 ^SerializableString (type/canonical value)))))))
 
     (testing "asQuotedUTF8"
       (satisfies-prop 100
         (prop/for-all [value fg/canonical-value]
           (= (bb/wrap (.quoteAsUTF8 (JsonStringEncoder/getInstance) value))
-             (bb/wrap (.asQuotedUTF8 (type/canonical value)))))))))
+             (bb/wrap (.asQuotedUTF8 ^SerializableString (type/canonical value)))))))))
 
 
 (deftest base64Binary-test
@@ -1004,7 +1005,7 @@
     (testing "equals"
       (satisfies-prop 100
         (prop/for-all [date (s/gen :system/date)]
-          (.equals date date)))
+          (.equals ^Object date date)))
       (is (not (.equals #fhir/date"2020-01-01" #fhir/date"2020-01-02")))
       (is (not (.equals #fhir/date"2020-01-01" "2020-01-01"))))
 
@@ -1421,7 +1422,7 @@
         (is (= extended-date-time-element (type/to-xml extended-date-time))))
 
       (testing "equals"
-        (is (.equals (type/dateTime {:extension [string-extension] :value "2020"}) extended-date-time)))
+        (is (.equals ^Object (type/dateTime {:extension [string-extension] :value "2020"}) extended-date-time)))
 
       (testing "hash-into"
         (are [x hex] (= hex (murmur3 x))
@@ -1577,27 +1578,27 @@
     (testing "getValue"
       (satisfies-prop 10
         (prop/for-all [value fg/code-value]
-          (= value (.getValue (type/code value))))))
+          (= value (.getValue ^SerializableString (type/code value))))))
 
     (testing "appendQuotedUTF8"
       (satisfies-prop 100
         (prop/for-all [value fg/code-value]
           (let [expected-buffer (.quoteAsUTF8 (JsonStringEncoder/getInstance) value)
                 buffer (byte-array (count expected-buffer))]
-            (.appendQuotedUTF8 (type/code value) buffer 0)
+            (.appendQuotedUTF8 ^SerializableString (type/code value) buffer 0)
             (= (bb/wrap expected-buffer) (bb/wrap buffer))))))
 
     (testing "asUnquotedUTF8"
       (satisfies-prop 100
         (prop/for-all [value fg/code-value]
           (= (bb/wrap (.encodeAsUTF8 (JsonStringEncoder/getInstance) ^String value))
-             (bb/wrap (.asUnquotedUTF8 (type/code value)))))))
+             (bb/wrap (.asUnquotedUTF8 ^SerializableString (type/code value)))))))
 
     (testing "asQuotedUTF8"
       (satisfies-prop 100
         (prop/for-all [value fg/code-value]
           (= (bb/wrap (.quoteAsUTF8 (JsonStringEncoder/getInstance) value))
-             (bb/wrap (.asQuotedUTF8 (type/code value)))))))))
+             (bb/wrap (.asQuotedUTF8 ^SerializableString (type/code value)))))))))
 
 
 (deftest oid-test
@@ -2588,7 +2589,7 @@
       #fhir/Reference{:extension [#fhir/Extension{}]}
       "210e3eb7"
 
-      #fhir/Reference{:reference "Patient/0"}
+      #fhir/Reference{:reference #fhir/string"Patient/0"}
       "cd80b8ac"
 
       #fhir/Reference{:type #fhir/uri"type-161222"}
@@ -2597,7 +2598,7 @@
       #fhir/Reference{:identifier #fhir/Identifier{}}
       "eb066d27"
 
-      #fhir/Reference{:display "display-161314"}
+      #fhir/Reference{:display #fhir/string"display-161314"}
       "543cf75f"))
 
   (testing "references"
@@ -2610,23 +2611,36 @@
 
       #fhir/Reference
               {:extension
-               [#fhir/Extension{:value #fhir/Reference{:reference "Patient/1"}}]}
+               [#fhir/Extension
+                       {:value #fhir/Reference
+                               {:reference #fhir/string"Patient/1"}}]}
       [["Patient" "1"]]
 
-      #fhir/Reference{:reference "Patient/0"}
+      #fhir/Reference{:reference #fhir/string"Patient/0"}
       [["Patient" "0"]]
 
-      #fhir/Reference{:reference "Patient"}
+      #fhir/Reference{:reference #fhir/string"Patient"}
       []
 
-      #fhir/Reference{:reference ""}
+      #fhir/Reference{:reference #fhir/string""}
       []
 
       #fhir/Reference
               {:extension
-               [#fhir/Extension{:value #fhir/Reference{:reference "Patient/1"}}]
-               :reference "Patient/0"}
-      [["Patient" "0"] ["Patient" "1"]]))
+               [#fhir/Extension
+                       {:value #fhir/Reference
+                               {:reference #fhir/string"Patient/1"}}]
+               :reference #fhir/string"Patient/0"}
+      [["Patient" "0"] ["Patient" "1"]]
+
+      #fhir/Reference
+              {:reference #fhir/string{:extension [#fhir/Extension{:url "foo"}]}}
+      []
+
+      #fhir/Reference
+              {:reference #fhir/string{:extension [#fhir/Extension{:url "foo"}]
+                                       :value "Patient/0"}}
+      [["Patient" "0"]]))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
