@@ -198,7 +198,22 @@
     (some? (p/to-string operand))))
 
 
-;; TODO 22.16. ConvertsToTime
+;; 22.16. ConvertsToTime
+(defrecord ConvertsToTimeOperatorExpression [operand]
+  core/Expression
+  (-eval [_ {:keys [now] :as context} resource scope]
+    (when-let [operand (core/-eval operand context resource scope)]
+      (when (some? operand)
+        (some? (p/to-time operand now)))))
+  (-form [_]
+    (list 'converts-to-time (core/-form operand))))
+
+
+(defmethod core/compile* :elm.compiler.type/converts-to-time
+  [context {:keys [operand]}]
+  (when-let [operand (core/compile* context operand)]
+    (->ConvertsToTimeOperatorExpression operand)))
+
 
 ;; 22.17. Descendents
 (defrecord DescendentsOperatorExpression [source]

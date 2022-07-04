@@ -322,38 +322,38 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 ### 22. Type Operators
 
 | Num    | Group              | Expression | State         | Notes |
-|--------|--------------------|------------|---------------|-------|
-| 22.1.  | As                 | !          | no strictness |       |
-| 22.2.  | CanConvert         | ✗          |               |       |
-| 22.3.  | CanConvertQuantity | ✓          |               |       |
-| 22.4.  | Children           | ✓          |               |       |
-| 22.5.  | Convert            | ✗          |               |       |
-| 22.6.  | ConvertQuantity    | ✓          |               |       |
-| 22.7.  | ConvertsToBoolean  | ✓          |               |       |
-| 22.8.  | ConvertsToDate     | ✓          |               |       |
-| 22.9.  | ConvertsToDateTime | ✓          |               |       |
-| 22.10. | ConvertsToDecimal  | ✓          |               |       |
-| 22.11. | ConvertsToLong     | ✓          |               |       |
-| 22.12. | ConvertsToInteger  | ✓          |               |       |
-| 22.13. | ConvertsToQuantity | ✓          |               |       |
-| 22.14. | ConvertsToRatio    | ✗          |               |       |
-| 22.15. | ConvertsToString   | ✓          |               |       |
-| 22.16. | ConvertsToTime     | ✗          |               |       |
-| 22.17. | Descendents        | ✓          |               |       |
-| 22.18. | Is                 | ✗          |               |       |
-| 22.19. | ToBoolean          | ✓          |               |       |
-| 22.20. | ToChars            | ✓          |               |       |
-| 22.21. | ToConcept          | ✗          |               |       |
-| 22.22. | ToDate             | ✓          |               |       |
-| 22.23. | ToDateTime         | ✓          |               |       |
-| 22.24. | ToDecimal          | ✓          |               |       |
-| 22.25. | ToInteger          | ✓          |               |       |
-| 22.26. | ToList             | ✓          |               |       |
-| 22.27. | ToLong             | ✓          |               |       |
-| 22.28. | ToQuantity         | ✓          |               |       |
-| 22.29. | ToRatio            | ✗          |               |       |
-| 22.30. | ToString           | ✓          |               |       |
-| 22.31. | ToTime             | ✓          |               |       |
+|--------|--------------------|-----------|---------------|-------|
+| 22.1.  | As                 | !         | no strictness |       |
+| 22.2.  | CanConvert         | ✗         |               |       |
+| 22.3.  | CanConvertQuantity | ✓         |               |       |
+| 22.4.  | Children           | ✓         |               |       |
+| 22.5.  | Convert            | ✗         |               |       |
+| 22.6.  | ConvertQuantity    | ✓         |               |       |
+| 22.7.  | ConvertsToBoolean  | ✓         |               |       |
+| 22.8.  | ConvertsToDate     | ✓         |               |       |
+| 22.9.  | ConvertsToDateTime | ✓         |               |       |
+| 22.10. | ConvertsToDecimal  | ✓         |               |       |
+| 22.11. | ConvertsToLong     | ✓         |               |       |
+| 22.12. | ConvertsToInteger  | ✓         |               |       |
+| 22.13. | ConvertsToQuantity | ✓         |               |       |
+| 22.14. | ConvertsToRatio    | ✗         |               |       |
+| 22.15. | ConvertsToString   | ✓         |               |       |
+| 22.16. | ConvertsToTime     | ✓         |               |       |
+| 22.17. | Descendents        | ✓         |               |       |
+| 22.18. | Is                 | ✗         |               |       |
+| 22.19. | ToBoolean          | ✓         |               |       |
+| 22.20. | ToChars            | ✓         |               |       |
+| 22.21. | ToConcept          | ✗         |               |       |
+| 22.22. | ToDate             | ✓         |               |       |
+| 22.23. | ToDateTime         | ✓         |               |       |
+| 22.24. | ToDecimal          | ✓         |               |       |
+| 22.25. | ToInteger          | ✓         |               |       |
+| 22.26. | ToList             | ✓         |               |       |
+| 22.27. | ToLong             | ✓         |               |       |
+| 22.28. | ToQuantity         | ✓         |               |       |
+| 22.29. | ToRatio            | ✗         |               |       |
+| 22.30. | ToString           | ✓         |               |       |
+| 22.31. | ToTime             | ✓         |               |       |
 
 ### 23. Clinical Operators
 

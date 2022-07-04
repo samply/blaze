@@ -844,6 +844,11 @@
   {:type "ConvertsToString" :operand operand})
 
 
+;; 22.16. ConvertsToTime
+(defn converts-to-time [operand]
+  {:type "ConvertsToTime" :operand operand})
+
+
 ;; 22.17. Descendents
 (defn descendents [source]
   {:type "Descendents" :source source})

@@ -829,7 +829,7 @@
           expr (c/compile compile-ctx elm)]
       (is (= '(converts-to-string (param-ref "x")) (core/-form expr))))))
 
-;; TODO 22.16. ConvertsToTime
+;; 22.16. ConvertsToTime
 ;;
 ;; The ConvertsToTime operator returns true if the value of its argument is or
 ;; can be converted to a Time value.
@@ -852,6 +852,40 @@
 ;; evaluation request timestamp is assumed.
 ;;
 ;; If the argument is null, the result is null.
+(deftest compile-converts-to-time-test
+  (let [eval #(core/-eval % {:now tu/now} nil nil)]
+    (testing "String"
+      (are [x] (true? (eval (tu/compile-unop elm/converts-to-time elm/string x)))
+        "12:54:30"
+        "12:54:30.010")
+
+      (are [x] (false? (eval (tu/compile-unop elm/converts-to-time elm/string x)))
+        "aaaa"
+        "12:54"
+        "24:54:00"
+        "23:60:00"
+        "14-30-00.0"))
+
+    (testing "Time"
+      (are [x] (true? (eval (tu/compile-unop elm/converts-to-time elm/time x)))
+        "12:54"
+        "12:54:00"
+        "12:54:30.010"))
+
+    (testing "DateTime"
+      (are [x] (true? (eval (tu/compile-unop elm/converts-to-time elm/date-time x)))
+        "2020-03-08T12:54:00"
+        "2020-03-08T12:54:30.010"))
+
+    (testing "dynamic"
+      (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-time x)))
+        #elm/parameter-ref "12:54:00"
+        #elm/parameter-ref "2020-01-02T03:04:05.006Z")))
+
+  (tu/testing-unary-null elm/converts-to-time)
+
+  (tu/testing-unary-form elm/converts-to-time))
+
 
 ;; 22.17. Descendents
 ;;
