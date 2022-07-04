@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.17.10
+
+### Bugfixes
+
+* Fix Reference Resolution on Extended Primitive References
+
+### Other Improvements ([#758](https://github.com/samply/blaze/issues/758))
+
+* Implement CQL ConvertsToTime ([#759](https://github.com/samply/blaze/pull/759))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/48?closed=1).
+
 ## v0.17.9
 
 ### Other Improvements
