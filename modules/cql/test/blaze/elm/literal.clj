@@ -809,6 +809,16 @@
   {:type "ConvertsToBoolean" :operand operand})
 
 
+;; 22.8. ConvertsToDate
+(defn converts-to-date [operand]
+  {:type "ConvertsToDate" :operand operand})
+
+
+;; 22.9. ConvertsToDateTime
+(defn converts-to-date-time [operand]
+  {:type "ConvertsToDateTime" :operand operand})
+
+
 ;; 22.10. ConvertsToDecimal
 (defn converts-to-decimal [operand]
   {:type "ConvertsToDecimal" :operand operand})

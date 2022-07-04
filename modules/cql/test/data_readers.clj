@@ -71,6 +71,8 @@
  elm/can-convert-quantity blaze.elm.literal/can-convert-quantity
  elm/convert-quantity blaze.elm.literal/convert-quantity
  elm/converts-to-boolean blaze.elm.literal/converts-to-boolean
+ elm/converts-to-date blaze.elm.literal/converts-to-date
+ elm/converts-to-date-time blaze.elm.literal/converts-to-date-time
  elm/converts-to-decimal blaze.elm.literal/converts-to-decimal
  elm/converts-to-long blaze.elm.literal/converts-to-long
  elm/converts-to-integer blaze.elm.literal/converts-to-integer
