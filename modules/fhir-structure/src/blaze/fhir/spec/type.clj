@@ -36,7 +36,7 @@
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 
 
-;;(set! *warn-on-reflection* true)
+(set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
 
@@ -1209,7 +1209,7 @@
    ^:primitive-string display]
   :hash-num 43
   :references
-  (-> (transient (or (some-> reference reference-reference) []))
+  (-> (transient (or (some-> reference value reference-reference) []))
     (macros/into! (p/-references extension))
     (macros/into! (p/-references type))
     (macros/into! (p/-references identifier))
