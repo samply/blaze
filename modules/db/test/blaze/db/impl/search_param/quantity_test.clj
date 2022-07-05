@@ -362,7 +362,33 @@
               :id := "id-155558"
               :hash-prefix := (hash/prefix hash)
               :code := "value-quantity"
-              :v-hash := (codec/quantity "mmHg" 120M))))))
+              :v-hash := (codec/quantity "mmHg" 120M)))))
+
+      (testing "without Quantity value"
+        (let [observation
+              {:fhir/type :fhir/Observation
+               :id "id-155558"
+               :status #fhir/code"final"
+               :value
+               #fhir/Quantity
+                       {:code #fhir/code"mm[Hg]"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}
+              hash (hash/generate observation)]
+
+          (is (empty? (search-param/index-entries
+                        (sr/get search-param-registry "value-quantity" "Observation")
+                        [] hash observation)))))
+
+      (testing "without value"
+        (let [observation
+              {:fhir/type :fhir/Observation
+               :id "id-155558"
+               :status #fhir/code"final"}
+              hash (hash/generate observation)]
+
+          (is (empty? (search-param/index-entries
+                        (sr/get search-param-registry "value-quantity" "Observation")
+                        [] hash observation))))))
 
     (testing "FHIRPath evaluation problem"
       (let [resource {:fhir/type :fhir/Observation :id "foo"}

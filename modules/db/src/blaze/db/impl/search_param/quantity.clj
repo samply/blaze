@@ -30,19 +30,17 @@
 
 (defn- index-quantity-entries
   [{:keys [value system code unit]}]
-  (let [value (type/value value)
-        system (type/value system)
+  (let [system (type/value system)
         code (type/value code)
         unit (type/value unit)]
-    (cond-> []
-      value
-      (conj [nil (codec/quantity nil value)])
-      code
-      (conj [nil (codec/quantity code value)])
-      (and unit (not= unit code))
-      (conj [nil (codec/quantity unit value)])
-      (and system code)
-      (conj [nil (codec/quantity (str system "|" code) value)]))))
+    (when-let [value (type/value value)]
+      (cond-> [[nil (codec/quantity nil value)]]
+        code
+        (conj [nil (codec/quantity code value)])
+        (and unit (not= unit code))
+        (conj [nil (codec/quantity unit value)])
+        (and system code)
+        (conj [nil (codec/quantity (str system "|" code) value)])))))
 
 
 (defmethod index-entries :fhir/Quantity
