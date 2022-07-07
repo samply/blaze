@@ -41,7 +41,11 @@
 
 
 (defmulti compile*
-  "Compiles `expression` in `context`."
+  "Compiles `expression` in `context`.
+
+  Context consists of:
+  * :library - the library in it's ELM form
+  * :node - the database node"
   {:arglists '([context expression])}
   (fn [_ {:keys [type] :as expr}]
     (assert (string? type) (format "Missing :type in expression `%s`." (pr-str expr)))

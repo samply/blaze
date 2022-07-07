@@ -40,11 +40,17 @@
     `(~'expr-ref ~name)))
 
 
-(defn- find-expression-def
-  "Returns the expression-def with `name` from `library` or nil if not found."
+(defn- find-def
+  "Returns the def with `name` from `library` or nil if not found."
   {:arglists '([library name])}
-  [{{expr-defs :def} :statements} name]
-  (some #(when (= name (:name %)) %) expr-defs))
+  [{{defs :def} :statements} name]
+  (some #(when (= name (:name %)) %) defs))
+
+
+(defn- find-expression-def [library name]
+  (when-let [def (find-def library name)]
+    (when (nil? (:type def))
+      def)))
 
 
 (defn- expression-def-not-found-anom [context name]
@@ -157,6 +163,18 @@
     `(~'call "ToInterval" ~(core/-form operand))))
 
 
+(defn- function-def-not-found-anom [context name]
+  (ba/incorrect
+    (format "Function definition `%s` not found." name)
+    :context context))
+
+
+(defn compile-function [{:keys [functions] :as context} name operands]
+  (if-let [function (get functions name)]
+    (function operands)
+    (throw-anom (function-def-not-found-anom context name))))
+
+
 ;; 9.4. FunctionRef
 (defmethod core/compile* :elm.compiler.type/function-ref
   [context {:keys [name] operands :operand}]
@@ -184,4 +202,14 @@
       "ToInterval"
       (->ToIntervalFunctionExpression (first operands))
 
-      (throw (Exception. (str "Unsupported function `" name "` in `FunctionRef` expression."))))))
+      (compile-function context name operands))))
+
+
+;; 9.5 OperandRef
+(defmethod core/compile* :elm.compiler.type/operand-ref
+  [_ {:keys [name]}]
+  (reify core/Expression
+    (-eval [_ _ _ scope]
+      (scope name))
+    (-form [_]
+      `(~'operand-ref ~name))))

@@ -7,6 +7,7 @@
     [blaze.anomaly :as ba]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.compiler.function :as function]
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.interval :as interval]
     [blaze.elm.literal :as elm]
@@ -66,9 +67,59 @@
 ;; The FunctionRef type defines an expression that invokes a previously defined
 ;; function. The result of evaluating each operand is passed to the function.
 (deftest compile-function-ref-test
+  (testing "Throws error on missing function"
+    (given (ba/try-anomaly (c/compile {} #elm/function-ref ["name-175844"]))
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Function definition `name-175844` not found."
+      :context := {}))
+
+  (testing "Custom function with arity 0"
+    (let [function-name "name-210650"
+          fn-expr (c/compile {} #elm/integer "1")
+          compile-ctx {:functions {function-name (partial function/arity-n function-name fn-expr [])}}
+          elm (elm/function-ref [function-name])
+          expr (c/compile compile-ctx elm)]
+      (testing "eval"
+        (is (= 1 (core/-eval expr {} nil nil))))
+
+      (testing "form"
+        (is (= `(~'call ~function-name) (core/-form expr))))))
+
+  (testing "Custom function with arity 1"
+    (let [function-name "name-180815"
+          fn-expr (c/compile {} #elm/negate #elm/operand-ref"x")
+          compile-ctx {:library {:parameters {:def [{:name "a"}]}}
+                       :functions {function-name (partial function/arity-n function-name fn-expr ["x"])}}
+          elm (elm/function-ref [function-name #elm/parameter-ref "a"])
+          expr (c/compile compile-ctx elm)]
+      (testing "eval"
+        (are [a res] (= res (core/-eval expr {:parameters {"a" a}} nil nil))
+          1 -1
+          -1 1
+          0 0))
+
+      (testing "form"
+        (is (= `(~'call ~function-name (~'param-ref "a")) (core/-form expr))))))
+
+  (testing "Custom function with arity 2"
+    (let [function-name "name-184652"
+          fn-expr (c/compile {} #elm/add [#elm/operand-ref"x" #elm/operand-ref"y"])
+          compile-ctx {:library {:parameters {:def [{:name "a"} {:name "b"}]}}
+                       :functions {function-name (partial function/arity-n function-name fn-expr ["x" "y"])}}
+          elm (elm/function-ref [function-name #elm/parameter-ref "a" #elm/parameter-ref "b"])
+          expr (c/compile compile-ctx elm)]
+      (testing "eval"
+        (are [a b res] (= res (core/-eval expr {:parameters {"a" a "b" b}} nil nil))
+          1 1 2
+          1 0 1
+          0 1 1))
+
+      (testing "form"
+        (is (= `(~'call ~function-name (~'param-ref "a") (~'param-ref "b")) (core/-form expr))))))
+
   (testing "ToQuantity"
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm (elm/function-ref "ToQuantity" #elm/parameter-ref "x")
+          elm #elm/function-ref ["ToQuantity" #elm/parameter-ref "x"]
           expr (c/compile compile-ctx elm)]
       (testing "eval"
         (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
@@ -81,7 +132,7 @@
 
   (testing "ToDateTime"
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm (elm/function-ref "ToDateTime" #elm/parameter-ref "x")
+          elm #elm/function-ref ["ToDateTime" #elm/parameter-ref "x"]
           expr (c/compile compile-ctx elm)
           eval-ctx (fn [x] {:now tu/now :parameters {"x" x}})]
       (testing "eval"
@@ -98,7 +149,7 @@
 
   (testing "ToString"
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm (elm/function-ref "ToString" #elm/parameter-ref "x")
+          elm #elm/function-ref ["ToString" #elm/parameter-ref "x"]
           expr (c/compile compile-ctx elm)]
       (testing "eval"
         (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
@@ -110,29 +161,38 @@
 
   (testing "ToInterval"
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm (elm/function-ref "ToInterval" #elm/parameter-ref "x")
+          elm #elm/function-ref ["ToInterval" #elm/parameter-ref "x"]
           expr (c/compile compile-ctx elm)
           eval-ctx (fn [x] {:now tu/now :parameters {"x" x}})]
       (testing "eval"
         (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
           #fhir/Period
-              {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
-               :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
+                  {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+                   :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
           (interval/interval
             (system/date-time 2021 2 23 14 12 45)
             (system/date-time 2021 2 23 15 0 0))
           #fhir/Period
-              {:start nil
-               :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
+                  {:start nil
+                   :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
           (interval/interval
             nil
             (system/date-time 2021 2 23 15 0 0))
           #fhir/Period
-              {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
-               :end nil}
+                  {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+                   :end nil}
           (interval/interval
             (system/date-time 2021 2 23 14 12 45)
             nil)))
 
       (testing "form"
         (is (= '(call "ToInterval" (param-ref "x")) (core/-form expr)))))))
+
+
+;; 9.5 OperandRef
+;;
+;; The OperandRef expression allows the value of an operand to be referenced as
+;; part of an expression within the body of a function definition.
+(deftest compile-operand-ref-test
+  (testing "form"
+    (is (= '(operand-ref "x") (core/-form (c/compile {} #elm/operand-ref"x"))))))

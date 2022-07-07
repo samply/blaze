@@ -622,8 +622,8 @@
   (s/keys :opt-un [:elm/name :elm/libraryName :elm.nary-expression/operand]))
 
 
-;; ?.? IdentifierRef
-(defmethod expression :elm.spec.type/identifier-ref [_]
+;; 9.5 OperandRef
+(defmethod expression :elm.spec.type/operand-ref [_]
   (s/keys :opt-un [:elm/name]))
 
 
@@ -669,14 +669,23 @@
      :elm.sort-by-item.by-expression/expression]))
 
 
-;; 10.9. RelationshipClause
+;; 10.7 IdentifierRef
+(defmethod expression :elm.spec.type/identifier-ref [_]
+  (s/keys :req-un [:elm/name] :opt-un [:elm/libraryName]))
+
+
+;; TODO: 10.8. LetClause
+
+;; TODO 10.9. QueryLetRef
+
+;; 10.10. RelationshipClause
 (defmulti relationship-clause :type)
 
 (s/def :elm/relationship-clause
   (s/multi-spec relationship-clause :type))
 
 
-;; 10.10. ReturnClause
+;; 10.11. ReturnClause
 (s/def :elm.return-clause/expression
   :elm/expression)
 
@@ -690,9 +699,9 @@
           :opt-un [:elm.return-clause/distinct]))
 
 
-;; TODO: 10.11. AggregateClause
+;; TODO: 10.12. AggregateClause
 
-;; 10.12. SortClause
+;; 10.13. SortClause
 (s/def :elm.sort-clause/by
   (s/coll-of :elm/sort-by-item :min-count 1))
 
@@ -701,7 +710,7 @@
   (s/keys :req-un [:elm.sort-clause/by]))
 
 
-;; 10.13. With
+;; 10.14. With
 (defmethod relationship-clause "With" [_]
   (s/keys :req-un [:elm/expression :elm/alias :elm.query/suchThat]))
 
@@ -711,7 +720,7 @@
           :opt-un [:elm.query/suchThat]))
 
 
-;; 10.14. Without
+;; 10.15. Without
 (defmethod relationship-clause "Without" [_]
   (s/keys :req-un [:elm/expression :elm/alias :elm.query/suchThat]))
 
