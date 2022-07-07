@@ -110,10 +110,16 @@
 
 
 ;; 9.4. FunctionRef
-(defn function-ref [name & ops]
+(defn function-ref [[name & ops]]
   {:type "FunctionRef"
    :name name
-   :operand ops})
+   :operand (vec ops)})
+
+
+;; 9.5. OperandRef
+(defn operand-ref [name]
+  {:type "OperandRef"
+   :name name})
 
 
 

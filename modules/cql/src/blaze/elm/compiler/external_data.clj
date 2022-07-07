@@ -18,7 +18,9 @@
 (defrecord CompartmentListRetrieveExpression [context data-type]
   core/Expression
   (-eval [_ {:keys [db]} {:keys [id]} _]
-    (d/list-compartment-resource-handles db context id data-type)))
+    (d/list-compartment-resource-handles db context id data-type))
+  (-form [_]
+    `(~'compartment-list-retrieve ~data-type)))
 
 
 (defrecord CompartmentQueryRetrieveExpression [query data-type clauses]
@@ -93,7 +95,9 @@
 (defrecord ResourceRetrieveExpression []
   core/Expression
   (-eval [_ _ resource _]
-    [resource]))
+    [resource])
+  (-form [_]
+    (list 'retrieve-resource)))
 
 
 (def ^:private resource-expr

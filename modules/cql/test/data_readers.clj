@@ -10,6 +10,8 @@
  elm/quantity blaze.elm.literal/quantity
  elm/parameter-ref blaze.elm.literal/parameter-ref
  elm/expression-ref blaze.elm.literal/expression-ref
+ elm/function-ref blaze.elm.literal/function-ref
+ elm/operand-ref blaze.elm.literal/operand-ref
  elm/retrieve blaze.elm.literal/retrieve
  elm/equal blaze.elm.literal/equal
  elm/equivalent blaze.elm.literal/equivalent

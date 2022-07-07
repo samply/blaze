@@ -2,6 +2,7 @@
   (:require
     [blaze.cql-translator :as t]
     [blaze.db.api-stub :refer [mem-node-system]]
+    [blaze.elm.compiler :as compiler]
     [blaze.elm.compiler.library :as library]
     [blaze.elm.compiler.library-spec]
     [blaze.fhir.spec.type.system :as system]
@@ -37,23 +38,52 @@
         (given (library/compile-library node library {})
           :compiled-expression-defs := {"Foo" true}))))
 
-  (testing "one static expression"
+  (testing "one dynamic expression"
     (let [library (t/translate "library Test
-    using FHIR version '4.0.0'
-    context Patient
-    define Gender: Patient.gender")]
+      using FHIR version '4.0.0'
+      context Patient
+      define Gender: Patient.gender")]
       (with-system [{:blaze.db/keys [node]} mem-node-system]
         (given (library/compile-library node library {})
-          [:compiled-expression-defs "Gender" :key] := :gender
-          [:compiled-expression-defs "Gender" :source :name] := "Patient"))))
+          [:compiled-expression-defs "Gender" compiler/form] := '(:gender (expr-ref "Patient"))))))
+
+  (testing "one function"
+    (let [library (t/translate "library Test
+      using FHIR version '4.0.0'
+      context Patient
+      define function Gender(P Patient): P.gender
+      define InInitialPopulation: Gender(Patient)")]
+      (with-system [{:blaze.db/keys [node]} mem-node-system]
+        (given (library/compile-library node library {})
+          [:compiled-expression-defs "InInitialPopulation" compiler/form] := '(call "Gender" (expr-ref "Patient"))))))
+
+  (testing "two functions, one calling the other"
+    (let [library (t/translate "library Test
+      using FHIR version '4.0.0'
+      context Patient
+      define function Inc(i System.Integer): i + 1
+      define function Inc2(i System.Integer): Inc(i) + 1
+      define InInitialPopulation: Inc2(1)")]
+      (with-system [{:blaze.db/keys [node]} mem-node-system]
+        (given (library/compile-library node library {})
+          [:compiled-expression-defs "InInitialPopulation" compiler/form] := '(call "Inc2" 1)))))
 
   (testing "with compile-time error"
-    (let [library (t/translate "library Test
-    define Error: singleton from {1, 2}")]
-      (with-system [{:blaze.db/keys [node]} mem-node-system]
-        (given (library/compile-library node library {})
-          ::anom/category := ::anom/conflict
-          ::anom/message := "More than one element in `SingletonFrom` expression."))))
+    (testing "function"
+      (let [library (t/translate "library Test
+          define function Error(): singleton from {1, 2}")]
+        (with-system [{:blaze.db/keys [node]} mem-node-system]
+          (given (library/compile-library node library {})
+            ::anom/category := ::anom/conflict
+            ::anom/message := "More than one element in `SingletonFrom` expression."))))
+
+    (testing "expression"
+      (let [library (t/translate "library Test
+        define Error: singleton from {1, 2}")]
+        (with-system [{:blaze.db/keys [node]} mem-node-system]
+          (given (library/compile-library node library {})
+            ::anom/category := ::anom/conflict
+            ::anom/message := "More than one element in `SingletonFrom` expression.")))))
 
   (testing "with parameter default"
     (let [library (t/translate "library Test
