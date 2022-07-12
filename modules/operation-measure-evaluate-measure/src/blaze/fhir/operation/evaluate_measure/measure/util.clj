@@ -1,6 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.util
   (:require
     [blaze.anomaly :as ba]
+    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.fhir.spec.type :as type]))
 
 
@@ -30,7 +31,15 @@
       expression)))
 
 
-(defn- population-tx-ops [{:keys [subject-type]} list-id result]
+(defn- list-reference [list-id]
+  (type/map->Reference {:reference (str "List/" list-id)}))
+
+
+(defn- resource-handle-reference [resource-handle]
+  (type/map->Reference {:reference (rh/reference resource-handle)}))
+
+
+(defn- population-tx-ops [list-id handles]
   [[:create
     {:fhir/type :fhir/List
      :id list-id
@@ -38,28 +47,19 @@
      :mode #fhir/code"working"
      :entry
      (mapv
-       (fn [subject-id]
+       (fn [{:keys [population-handle]}]
          {:fhir/type :fhir.List/entry
-          :item
-          (type/map->Reference {:reference (str subject-type "/" subject-id)})})
-       result)}]])
+          :item (resource-handle-reference population-handle)})
+       handles)}]])
 
 
-(defn population [{:keys [luids] :as context} fhir-type code result]
+(defn population [{:keys [luids] :as context} fhir-type code handles]
   (case (:report-type context)
-    "population"
+    ("population" "subject")
     {:result
      (cond->
        {:fhir/type fhir-type
-        :count (int result)}
-       code
-       (assoc :code code))
-     :luids luids}
-    "subject"
-    {:result
-     (cond->
-       {:fhir/type fhir-type
-        :count (if result (int 1) (int 0))}
+        :count (count handles)}
        code
        (assoc :code code))
      :luids luids}
@@ -68,22 +68,25 @@
       {:result
        (cond->
          {:fhir/type fhir-type
-          :count (count result)
-          :subjectResults
-          (type/map->Reference {:reference (str "List/" list-id)})}
+          :count (count handles)
+          :subjectResults (list-reference list-id)}
          code
          (assoc :code code))
        :luids (next luids)
-       :tx-ops (population-tx-ops context list-id result)})))
+       :tx-ops (population-tx-ops list-id handles)})))
 
 
 (defn- merge-result*
   "Merges `result` into the return value of the reduction `ret`."
   {:arglists '([ret result])}
-  [ret {:keys [result luids tx-ops]}]
-  (-> (update ret :result conj result)
-      (assoc :luids luids)
-      (update :tx-ops into tx-ops)))
+  [ret {:keys [result handles luids tx-ops]}]
+  (cond-> (update ret :result conj result)
+    (seq handles)
+    (update :handles conj handles)
+    luids
+    (assoc :luids luids)
+    (seq tx-ops)
+    (update :tx-ops into tx-ops)))
 
 
 (defn merge-result

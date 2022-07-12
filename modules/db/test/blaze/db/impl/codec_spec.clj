@@ -30,13 +30,13 @@
 ;; ---- Other Functions -------------------------------------------------------
 
 (s/fdef codec/tid
-  :args (s/cat :type :fhir.type/name)
+  :args (s/cat :type :fhir.resource/type)
   :ret :blaze.db/tid)
 
 
 (s/fdef codec/tid->type
   :args (s/cat :tid :blaze.db/tid)
-  :ret :fhir.type/name)
+  :ret :fhir.resource/type)
 
 
 (s/fdef codec/c-hash

@@ -33,7 +33,6 @@
     (comp (map (partial p/-compile-value search-param modifier))
           (halt-when ba/anomaly?))
     conj
-    []
     values))
 
 

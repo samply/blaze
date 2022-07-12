@@ -31,11 +31,10 @@
 
 (defrecord ExpressionRef [name]
   core/Expression
-  (-eval [_ {:keys [library-context] :as context} resource _]
-    (let [expr (get library-context name ::not-found)]
-      (if (identical? ::not-found expr)
-        (throw-anom (expression-not-found-anom context name))
-        (core/-eval expr context resource nil))))
+  (-eval [_ {:keys [expression-defs] :as context} resource _]
+    (if-let [{:keys [expression]} (get expression-defs name)]
+      (core/-eval expression context resource nil)
+      (throw-anom (expression-not-found-anom context name))))
   (-form [_]
     `(~'expr-ref ~name)))
 
@@ -71,8 +70,8 @@
         ;; Unfiltered context. So we map the referenced expression over all
         ;; concrete resources.
         (reify core/Expression
-          (-eval [_ {:keys [db library-context] :as context} _ _]
-            (if-some [expression (get library-context name)]
+          (-eval [_ {:keys [db expression-defs] :as context} _ _]
+            (if-some [{:keys [expression]} (get expression-defs name)]
               (mapv
                 #(core/-eval expression context % nil)
                 (d/type-list db def-eval-context))
@@ -169,8 +168,8 @@
     :context context))
 
 
-(defn compile-function [{:keys [functions] :as context} name operands]
-  (if-let [function (get functions name)]
+(defn compile-function [{:keys [function-defs] :as context} name operands]
+  (if-let [{:keys [function]} (get function-defs name)]
     (function operands)
     (throw-anom (function-def-not-found-anom context name))))
 

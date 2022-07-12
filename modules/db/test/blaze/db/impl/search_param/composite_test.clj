@@ -132,7 +132,7 @@
 
 
 (defn anom-vec [coll]
-  (transduce (halt-when ba/anomaly?) conj [] coll))
+  (transduce (halt-when ba/anomaly?) conj coll))
 
 
 (deftest index-entries-test

@@ -5,6 +5,8 @@
 
 
 (defn eval
-  "Evaluates `expression` on `resource` using `context`."
+  "Evaluates `expression` on `resource` using `context`.
+
+  Throws an Exception on errors."
   [context expression resource]
   (core/-eval expression context resource nil))

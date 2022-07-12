@@ -25,7 +25,6 @@
     (comp (map (partial resolve-search-param index))
           (halt-when ba/anomaly?))
     conj
-    []
     components))
 
 
@@ -40,7 +39,6 @@
     (comp (map compile-expression)
           (halt-when ba/anomaly?))
     conj
-    []
     components))
 
 
