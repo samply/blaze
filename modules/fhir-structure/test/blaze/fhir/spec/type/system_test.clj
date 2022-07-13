@@ -298,7 +298,7 @@
       (LocalDate/of 2020 1 1)))
 
   (testing "comparable"
-    (are [a b] (pos? (.compareTo a b))
+    (are [a b] (pos? (compare a b))
       (system/date-time 2021) (system/date-time 2020)
       (system/date-time 2020 2) (system/date-time 2020 1)
       (system/date-time 2020 1 2) (system/date-time 2020 1 1)))
