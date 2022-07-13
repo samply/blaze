@@ -1119,7 +1119,7 @@
 (declare extension)
 
 
-(def-complex-type Extension [^String id extension ^String url ^:polymorph value]
+(def-complex-type Extension [^String id extension ^String url ^:polymorph ^:primitive value]
   :hash-num 39
   :interned (and (nil? id) (p/-interned extension) (p/-interned value)))
 

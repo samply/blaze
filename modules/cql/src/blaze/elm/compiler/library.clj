@@ -1,37 +1,55 @@
 (ns blaze.elm.compiler.library
   (:require
-    [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.anomaly :as ba :refer [if-ok when-ok]]
     [blaze.elm.compiler :as compiler]
+    [blaze.elm.compiler.function :as function]
     [blaze.elm.deps-infer :as deps-infer]
     [blaze.elm.equiv-relationships :as equiv-relationships]
     [blaze.elm.normalizer :as normalizer]))
 
 
 (defn- compile-expression-def
-  "Compiles the expression of `expression-def` in `context` and associates the
-  resulting compiled expression under ::compiler/expression to the
-  `expression-def` which itself is returned.
-
-  Returns an anomaly on errors."
-  {:arglists '([context expression-def])}
-  [context {:keys [expression] :as expression-def}]
-  (let [context (assoc context :eval-context (:context expression-def))]
-    (-> (ba/try-anomaly
-          (assoc expression-def
-            ::compiler/expression (compiler/compile context expression)))
+  "Compiles the expression of `def` in `context` and returns a tuple of
+  `[name compiled-expression]` or an anomaly on errors."
+  [context {:keys [name expression] :as def}]
+  (let [context (assoc context :eval-context (:context def))]
+    (-> (ba/try-anomaly [name (compiler/compile context expression)])
         (ba/exceptionally
           #(assoc % :context context :elm/expression expression)))))
 
 
-(defn- expr-defs [context library]
+(defn- compile-function-def
+  "Compiles the function of `def` in `context`.
+
+  Returns the compiled function or an anomaly on errors."
+  [context {:keys [name operand] :as def}]
+  (when-ok [[_ expression] (compile-expression-def context def)]
+    (partial function/arity-n name expression (mapv :name operand))))
+
+
+(defn- compile-function-defs [context library]
   (transduce
-    (comp (map (partial compile-expression-def context))
-          (halt-when ba/anomaly?))
+    (filter (comp #{"FunctionDef"} :type))
     (completing
-      (fn [r {:keys [name] ::compiler/keys [expression]}]
-        (assoc r name expression)))
-    {}
+      (fn [context {:keys [name] :as def}]
+        (if-ok [function (compile-function-def context def)]
+          (assoc-in context [:functions name] function)
+          reduced)))
+    context
     (-> library :statements :def)))
+
+
+(defn- expression-defs [context library]
+  (when-ok [context (compile-function-defs context library)]
+    (transduce
+      (comp (filter (comp nil? :type))
+            (map (partial compile-expression-def context))
+            (halt-when ba/anomaly?))
+      (completing
+        (fn [r [name expression]]
+          (assoc r name expression)))
+      {}
+      (-> library :statements :def))))
 
 
 (defn- compile-parameter-def
@@ -71,7 +89,7 @@
                     equiv-relationships/find-equiv-rels-library
                     deps-infer/infer-library-deps)
         context (assoc opts :node node :library library)]
-    (when-ok [expr-defs (expr-defs context library)
+    (when-ok [expression-defs (expression-defs context library)
               parameter-default-values (parameter-default-values context library)]
-      {:compiled-expression-defs expr-defs
+      {:compiled-expression-defs expression-defs
        :parameter-default-values parameter-default-values})))

@@ -3045,7 +3045,10 @@
         #fhir/Extension{:url "foo" :value #fhir/Reference{:reference "bar"}}
 
         {:url "foo" :valueCodeableConcept {:text "bar"}}
-        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text #fhir/string"bar"}}))
+        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text #fhir/string"bar"}}
+
+        {:url "foo" :extension [{:url "bar" :_valueDateTime {:extension [{:url "baz" :valueCode "qux"}]}}]}
+        #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code"qux"}]}}]}))
 
     (testing "XML"
       (are [xml fhir] (= fhir (s2/conform :fhir.xml/Extension xml))
@@ -3059,7 +3062,10 @@
         #fhir/Extension{:url "foo" :value #fhir/Reference{:reference "bar"}}
 
         (sexp [nil {:url "foo"} [::f/valueCodeableConcept {} [::f/text {:value "bar"}]]])
-        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text #fhir/string"bar"}}))
+        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text #fhir/string"bar"}}
+
+        (sexp [nil {:url "foo"} [::f/extension {:url "bar"} [::f/valueDateTime {} [::f/extension {:url "baz"} [::f/valueCode {:value "qux"}]]]]])
+        #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code"qux"}]}}]}))
 
     (testing "CBOR"
       (are [json fhir] (= fhir (s2/conform :fhir.cbor/Extension json))
@@ -3073,7 +3079,10 @@
         #fhir/Extension{:url "foo" :value #fhir/Reference{:reference "bar"}}
 
         {:url "foo" :valueCodeableConcept {:text "bar"}}
-        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text #fhir/string"bar"}})))
+        #fhir/Extension{:url "foo" :value #fhir/CodeableConcept{:text #fhir/string"bar"}}
+
+        {:url "foo" :extension [{:url "bar" :_valueDateTime {:extension [{:url "baz" :valueCode "qux"}]}}]}
+        #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code"qux"}]}}]})))
 
   (testing "unforming"
     (testing "JSON"
@@ -3102,15 +3111,14 @@
         #fhir/Extension{:value #fhir/CodeableConcept{:text #fhir/string"text-104840"}}
         {:valueCodeableConcept {:text "text-104840"}}
 
-        #fhir/Extension
-                {:value
-                 #fhir/CodeableConcept
-                         {:coding
-                          [#fhir/Coding{:system #fhir/uri"system-105127"}]}}
+        #fhir/Extension{:value #fhir/CodeableConcept{:coding [#fhir/Coding{:system #fhir/uri"system-105127"}]}}
         {:valueCodeableConcept {:coding [{:system "system-105127"}]}}
 
         #fhir/Extension{:value {:fhir/type :fhir/Annotation :text "text-105422"}}
-        {:valueAnnotation {:text "text-105422"}}))
+        {:valueAnnotation {:text "text-105422"}}
+
+        #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code"qux"}]}}]}
+        {:url "foo" :extension [{:url "bar" :_valueDateTime {:extension [{:url "baz" :valueCode "qux"}]}}]}))
 
     (testing "CBOR"
       (are [fhir cbor] (= cbor (fhir-spec/parse-cbor (fhir-spec/unform-cbor fhir)))
@@ -3139,7 +3147,10 @@
         {:valueAddress {}}
 
         #fhir/Extension{:value #fhir/Address{:city "foo"}}
-        {:valueAddress {:city "foo"}}))))
+        {:valueAddress {:city "foo"}}
+
+        #fhir/Extension{:url "foo" :extension [#fhir/Extension{:url "bar" :value #fhir/dateTime{:extension [#fhir/Extension{:url "baz" :value #fhir/code"qux"}]}}]}
+        {:url "foo" :extension [{:url "bar" :_valueDateTime {:extension [{:url "baz" :valueCode "qux"}]}}]}))))
 
 
 (deftest coding-test

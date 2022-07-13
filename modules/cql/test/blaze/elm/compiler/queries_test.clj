@@ -232,7 +232,21 @@
     ::result))
 
 
-;; 10.12. With
+;; 10.7 IdentifierRef
+;;
+;; The IdentifierRef type defines an expression that references an identifier
+;; that is either unresolved, or has been resolved to an attribute in an
+;; unambiguous iteration scope such as a sort. Implementations should attempt to
+;; resolve the identifier, only throwing an error at compile-time (or run-time
+;; for an interpretive system) if the identifier reference cannot be resolved.
+(deftest compile-identifier-ref-test
+  (let [expr (c/compile {} {:type "IdentifierRef" :name "foo"})]
+
+    (testing "form"
+      (is (= '(:foo default) (core/-form expr))))))
+
+
+;; 10.14. With
 (deftest compile-with-clause-test
   (testing "Equiv With with two Observations comparing there subjects."
     (with-system-data [{:blaze.db/keys [node]} mem-node-system]

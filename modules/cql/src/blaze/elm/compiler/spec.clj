@@ -10,5 +10,9 @@
   core/expr?)
 
 
+(s/def :blaze.elm.compiler/function
+  fn?)
+
+
 (s/def :elm/compile-context
   (s/keys :req-un [:elm/library :blaze.db/node]))

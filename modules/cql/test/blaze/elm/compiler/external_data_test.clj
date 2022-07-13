@@ -75,9 +75,13 @@
               db (d/db node)
               patient (d/resource-handle db "Patient" "0")]
 
-          (given (core/-eval expr {:db db} patient nil)
-            [0 fhir-spec/fhir-type] := :fhir/Patient
-            [0 :id] := "0"))))
+          (testing "eval"
+            (given (core/-eval expr {:db db} patient nil)
+              [0 fhir-spec/fhir-type] := :fhir/Patient
+              [0 :id] := "0"))
+
+          (testing "form"
+            (is (= '(retrieve-resource) (core/-form expr)))))))
 
     (testing "Observation"
       (with-system-data [{:blaze.db/keys [node]} mem-node-system]
@@ -94,9 +98,13 @@
               db (d/db node)
               patient (d/resource-handle db "Patient" "0")]
 
-          (given (core/-eval expr {:db db} patient nil)
-            [0 fhir-spec/fhir-type] := :fhir/Observation
-            [0 :id] := "1")))
+          (testing "eval"
+            (given (core/-eval expr {:db db} patient nil)
+              [0 fhir-spec/fhir-type] := :fhir/Observation
+              [0 :id] := "1"))
+
+          (testing "form"
+            (is (= '(compartment-list-retrieve "Observation") (core/-form expr))))))
 
       (testing "with one code"
         (with-system-data [{:blaze.db/keys [node]} mem-node-system]
@@ -107,10 +115,10 @@
             [:put {:fhir/type :fhir/Observation :id "1"
                    :code
                    #fhir/CodeableConcept
-                       {:coding
-                        [#fhir/Coding
-                            {:system #fhir/uri"system-192253"
-                             :code #fhir/code"code-192300"}]}
+                           {:coding
+                            [#fhir/Coding
+                                    {:system #fhir/uri"system-192253"
+                                     :code #fhir/code"code-192300"}]}
                    :subject
                    #fhir/Reference{:reference "Patient/0"}}]]]
 
@@ -123,9 +131,9 @@
                    [{:name "sys-def-131750"
                      :id "system-192253"}]}}}
                 elm #elm/retrieve
-                        {:type "Observation"
-                         :codes #elm/list [#elm/code ["sys-def-131750"
-                                                    "code-192300"]]}
+                            {:type "Observation"
+                             :codes #elm/list [#elm/code ["sys-def-131750"
+                                                          "code-192300"]]}
                 expr (c/compile context elm)
                 db (d/db node)
                 patient (d/resource-handle db "Patient" "0")]
@@ -149,19 +157,19 @@
             [:put {:fhir/type :fhir/Observation :id "1"
                    :code
                    #fhir/CodeableConcept
-                       {:coding
-                        [#fhir/Coding
-                            {:system #fhir/uri"system-192253"
-                             :code #fhir/code"code-192300"}]}
+                           {:coding
+                            [#fhir/Coding
+                                    {:system #fhir/uri"system-192253"
+                                     :code #fhir/code"code-192300"}]}
                    :subject
                    #fhir/Reference{:reference "Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "2"
                    :code
                    #fhir/CodeableConcept
-                       {:coding
-                        [#fhir/Coding
-                            {:system #fhir/uri"system-192253"
-                             :code #fhir/code"code-140541"}]}
+                           {:coding
+                            [#fhir/Coding
+                                    {:system #fhir/uri"system-192253"
+                                     :code #fhir/code"code-140541"}]}
                    :subject
                    #fhir/Reference{:reference "Patient/0"}}]]]
 
@@ -174,10 +182,10 @@
                    [{:name "sys-def-131750"
                      :id "system-192253"}]}}}
                 elm #elm/retrieve
-                        {:type "Observation"
-                         :codes
-                         #elm/list [#elm/code ["sys-def-131750" "code-192300"]
-                                   #elm/code ["sys-def-131750" "code-140541"]]}
+                            {:type "Observation"
+                             :codes
+                             #elm/list [#elm/code ["sys-def-131750" "code-192300"]
+                                        #elm/code ["sys-def-131750" "code-140541"]]}
                 expr (c/compile context elm)
                 db (d/db node)
                 patient (d/resource-handle db "Patient" "0")]
@@ -215,10 +223,10 @@
         [[[:put {:fhir/type :fhir/Medication :id "0"
                  :code
                  #fhir/CodeableConcept
-                     {:coding
-                      [#fhir/Coding
-                          {:system #fhir/uri"system-225806"
-                           :code #fhir/code"code-225809"}]}}]]]
+                         {:coding
+                          [#fhir/Coding
+                                  {:system #fhir/uri"system-225806"
+                                   :code #fhir/code"code-225809"}]}}]]]
 
         (let [context
               {:node node
@@ -229,9 +237,9 @@
                  [{:name "sys-def-225944"
                    :id "system-225806"}]}}}
               elm #elm/retrieve
-                      {:type "Medication"
-                       :codes #elm/list [#elm/code ["sys-def-225944"
-                                                  "code-225809"]]}
+                          {:type "Medication"
+                           :codes #elm/list [#elm/code ["sys-def-225944"
+                                                        "code-225809"]]}
               expr (c/compile context elm)
               db (d/db node)]
 
@@ -251,10 +259,10 @@
                  [{:name "sys-def-225944"
                    :id "system-225806"}]}}}
               elm #elm/retrieve
-                      {:type "Medication"
-                       :codes #elm/list [#elm/code ["sys-def-225944"
-                                                  "code-225809"]]
-                       :code-property "foo"}]
+                          {:type "Medication"
+                           :codes #elm/list [#elm/code ["sys-def-225944"
+                                                        "code-225809"]]
+                           :code-property "foo"}]
 
           (given (ba/try-anomaly (c/compile context elm))
             ::anom/category := ::anom/not-found
@@ -270,10 +278,10 @@
                         [{:name "name-174207"
                           :resultTypeName "{http://hl7.org/fhir}Patient"}]}}
               elm #elm/retrieve
-                      {:type "Observation"
-                       :context #elm/expression-ref "name-174207"
-                       :codes #elm/list [#elm/code ["sys-def-174848"
-                                                  "code-174911"]]}
+                          {:type "Observation"
+                           :context #elm/expression-ref "name-174207"
+                           :codes #elm/list [#elm/code ["sys-def-174848"
+                                                        "code-174911"]]}
               expr (c/compile {:node node :library library} elm)]
           (given expr
             type := WithRelatedContextQueryRetrieveExpression))))
@@ -287,11 +295,11 @@
                         [{:name "name-174207"
                           :resultTypeName "{http://hl7.org/fhir}Patient"}]}}
               elm #elm/retrieve
-                      {:type "Observation"
-                       :context #elm/expression-ref "name-174207"
-                       :codes #elm/list [#elm/code ["sys-def-174848"
-                                                  "code-174911"]]
-                       :code-property "foo"}]
+                          {:type "Observation"
+                           :context #elm/expression-ref "name-174207"
+                           :codes #elm/list [#elm/code ["sys-def-174848"
+                                                        "code-174911"]]
+                           :code-property "foo"}]
           (given (ba/try-anomaly (c/compile {:node node :library library} elm))
             ::anom/category := ::anom/not-found
             ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))))

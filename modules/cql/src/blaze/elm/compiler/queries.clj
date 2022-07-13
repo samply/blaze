@@ -298,18 +298,6 @@
     (throw (Exception. (str "Unsupported number of " (count sources) " sources in query.")))))
 
 
-;; ?.? IdentifierRef
-;;
-;; The IdentifierRef type defines an expression that references an identifier
-;; that is either unresolved, or has been resolved to an attribute in an
-;; unambiguous iteration scope such as a sort. Implementations should attempt to
-;; resolve the identifier, only throwing an error at compile-time (or run-time
-;; for an interpretive system) if the identifier reference cannot be resolved.
-(defmethod core/compile* :elm.compiler.type/identifier-ref
-  [_ {:keys [name]}]
-  (structured-values/->SingleScopePropertyExpression (keyword name)))
-
-
 ;; 10.3. AliasRef
 ;;
 ;; The AliasRef expression allows for the reference of a specific source within
@@ -336,7 +324,13 @@
     (->AliasRefExpression name)))
 
 
-;; 10.12. With
+;; 10.7 IdentifierRef
+(defmethod core/compile* :elm.compiler.type/identifier-ref
+  [_ {:keys [name]}]
+  (structured-values/->SingleScopePropertyExpression (keyword name)))
+
+
+;; 10.14. With
 ;;
 ;; The With clause restricts the elements of a given source to only those
 ;; elements that have elements in the related source that satisfy the suchThat
@@ -386,4 +380,4 @@
         (format "Unsupported call without single query scope.")))))
 
 
-;; TODO 10.13. Without
+;; TODO 10.15. Without
