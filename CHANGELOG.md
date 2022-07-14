@@ -1,12 +1,25 @@
 # Changelog
 
+## v0.17.11
+
+### Bugfixes
+
+* Fix Quantity Indexing without Value ([#764](https://github.com/samply/blaze/issues/764))
+* Fix Deserialisation of Primitive Values in Extensions ([#767](https://github.com/samply/blaze/issues/767))
+
+### Other Improvements ([#758](https://github.com/samply/blaze/issues/758))
+
+* Implement Functions in CQL ([#766](https://github.com/samply/blaze/pull/766))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/50?closed=1).
+
 ## v0.17.10
 
 ### Bugfixes
 
-* Fix Reference Resolution on Extended Primitive References
+* Fix Reference Resolution on Extended Primitive References ([#758](https://github.com/samply/blaze/issues/758))
 
-### Other Improvements ([#758](https://github.com/samply/blaze/issues/758))
+### Other Improvements
 
 * Implement CQL ConvertsToTime ([#759](https://github.com/samply/blaze/pull/759))
 
