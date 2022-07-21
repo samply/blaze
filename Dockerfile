@@ -1,8 +1,8 @@
-FROM openjdk:17-oracle
+FROM eclipse-temurin:17-jre
 
-RUN microdnf upgrade && microdnf remove expat fontconfig freetype \
-  aajohan-comfortaa-fonts fontpackages-filesystem gzip bzip2 tar libpng \
-  binutils && microdnf clean all
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get purge curl libbinutils libctf0 libctf-nobfd0 libncurses6 -y && \
+    apt-get autoremove -y && apt-get clean
 
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
 COPY target/blaze-standalone.jar /app/
