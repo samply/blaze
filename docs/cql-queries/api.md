@@ -159,7 +159,7 @@ Under `group[0].population[0].count` the result of the query can be found.
 By default, the evaluation results in a MeasureReport of type `summary`. Such a MeasureReport contains only the number of resources of each population. However, if you also need the resources itself, you can have a MeasureReport of type `subject-list` generated. This works as follows:
 
 ```sh
-curl -sd '{"resourceType": "Parameters", "parameter": [{"name": "periodStart", "value": "2000"}, {"name": "periodEnd", "value": "2030"}, {"name": "measure", "value": "urn:uuid:49f4c7de-3320-4208-8e60-ecc0d8824e08"}, {"name": "reportType", "value": "subject-list"}]}' -H "Content-Type: application/fhir+json" 'http://localhost:8080/fhir/Measure/$evaluate-measure'
+curl -sd '{"resourceType": "Parameters", "parameter": [{"name": "periodStart", "valueDate": "2000"}, {"name": "periodEnd", "valueDate": "2030"}, {"name": "measure", "valueString": "urn:uuid:49f4c7de-3320-4208-8e60-ecc0d8824e08"}, {"name": "reportType", "valueCode": "subject-list"}]}' -H "Content-Type: application/fhir+json" 'http://localhost:8080/fhir/Measure/$evaluate-measure'
 ```
 
 the result should be the following MeasureReport:

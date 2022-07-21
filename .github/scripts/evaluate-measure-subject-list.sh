@@ -71,15 +71,15 @@ cat <<END
   "parameter": [
     {
       "name": "periodStart",
-      "value": "2000"
+      "valueDate": "2000"
     },
     {
       "name": "periodEnd",
-      "value": "2030"
+      "valueDate": "2030"
     },
     {
       "name": "reportType",
-      "value": "subject-list"
+      "valueCode": "subject-list"
     }
   ]
 }

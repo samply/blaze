@@ -4332,9 +4332,9 @@
                 [#fhir/Extension
                         {:value #fhir/Reference{:reference "Patient/153540"}}]}
         #fhir/uri
-               {:extension
-                [#fhir/Extension
-                        {:value #fhir/Reference{:reference "Observation/153628"}}]}]}
+                {:extension
+                 [#fhir/Extension
+                         {:value #fhir/Reference{:reference "Observation/153628"}}]}]}
       [["Procedure" "153904"]
        ["Condition" "153931"]
        ["Patient" "153540"]
@@ -4380,6 +4380,28 @@
       [["Patient" "204750"]
        ["Observation" "204754"]])))
 
+
+(deftest task-test
+  (testing "conforming"
+    (s2/form :fhir.json.Task/output)
+    (testing "JSON"
+      (are [json fhir] (= fhir (s2/conform :fhir.json/Task json))
+        {:resourceType "Task"
+         :output
+         [{:valueReference {:reference "bar"}}]}
+        {:fhir/type :fhir/Task
+         :output
+         [{:fhir/type :fhir.Task/output
+           :value #fhir/Reference{:reference "bar"}}]})
+
+      (testing "bare :value properties are removed"
+        (are [json fhir] (= fhir (s2/conform :fhir.json/Task json))
+          {:resourceType "Task"
+           :output
+           [{:value {:reference "bar"}}]}
+          {:fhir/type :fhir/Task
+           :output
+           [{:fhir/type :fhir.Task/output}]})))))
 
 (deftest primitive-val-test
   (are [x] (fhir-spec/primitive-val? x)
