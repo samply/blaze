@@ -89,7 +89,7 @@ evaluate-measure() {
 }
 
 evaluate-measure-list() {
-  curl -sd '{"resourceType": "Parameters", "parameter": [{"name": "periodStart", "value": "2000"}, {"name": "periodEnd", "value": "2030"}, {"name": "reportType", "value": "subject-list"}]}' \
+  curl -sd '{"resourceType": "Parameters", "parameter": [{"name": "periodStart", "valueDate": "2000"}, {"name": "periodEnd", "valueDate": "2030"}, {"name": "reportType", "valueCode": "subject-list"}]}' \
     -H "Content-Type: application/fhir+json" "$BASE/Measure/$1/\$evaluate-measure"
 }
 

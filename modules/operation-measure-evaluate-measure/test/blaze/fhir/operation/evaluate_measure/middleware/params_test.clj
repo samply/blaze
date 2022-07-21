@@ -140,7 +140,7 @@
                  :value #fhir/date"2015"}
                 {:fhir/type :fhir.Parameters/parameter
                  :name "measure"
-                 :value "measure-202606"}]}}]]
+                 :value #fhir/string"measure-202606"}]}}]]
       (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
             @(handler request)]
 

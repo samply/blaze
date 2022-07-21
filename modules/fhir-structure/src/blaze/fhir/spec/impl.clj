@@ -374,14 +374,16 @@
 
 
 (defn remove-choice-type
-  "Removes the type suffix from the first key of a choice typed data element."
+  "Removes the type suffix from the first key of a choice typed data element.
+
+  Also removes bare properties with key `key` if no typed keys were found."
   [m typed-keys key]
   (loop [[k & keys] typed-keys]
     (if k
       (if-some [v (get m k)]
         (-> (dissoc m k) (assoc key v))
         (recur keys))
-      m)))
+      (dissoc m key))))
 
 
 (def ^:private choice-type-key-cache
@@ -392,7 +394,7 @@
             (keyword (str (name key) (str/capital (name type)))))))))
 
 
-(defn choice-type-key [key type]
+(defn- choice-type-key [key type]
   (.get ^LoadingCache choice-type-key-cache [key type]))
 
 

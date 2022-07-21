@@ -503,7 +503,7 @@
                      :parameter
                      [{:fhir/type :fhir.Parameters/parameter
                        :name "measure"
-                       :value "url-181501"}
+                       :value #fhir/string"url-181501"}
                       {:fhir/type :fhir.Parameters/parameter
                        :name "periodStart"
                        :value #fhir/date"2014"}
