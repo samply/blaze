@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.17.12
+
+### Security
+
+* Migrate to Eclipse Temurin because OpenJDK is Deprecated ([#773](https://github.com/samply/blaze/issues/773))
+
+### Bugfixes
+
+* Remove Bare Polymorph JSON Properties ([#772](https://github.com/samply/blaze/pull/772))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/51?closed=1).
+
 ## v0.17.11
 
 ### Bugfixes
@@ -7,7 +19,7 @@
 * Fix Quantity Indexing without Value ([#764](https://github.com/samply/blaze/issues/764))
 * Fix Deserialisation of Primitive Values in Extensions ([#767](https://github.com/samply/blaze/issues/767))
 
-### Other Improvements ([#758](https://github.com/samply/blaze/issues/758))
+### Other Improvements
 
 * Implement Functions in CQL ([#766](https://github.com/samply/blaze/pull/766))
 
