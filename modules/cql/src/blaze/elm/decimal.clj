@@ -282,6 +282,18 @@
       nil)))
 
 
+;; 22.22. ToDate
+(extend-protocol p/ToDate
+  BigDecimal
+  (to-date [_ _]))
+
+
+;; 22.23. ToDateTime
+(extend-protocol p/ToDateTime
+  BigDecimal
+  (to-date-time [_ _]))
+
+
 ;; 22.24. ToDecimal
 (extend-protocol p/ToDecimal
   BigDecimal
@@ -295,8 +307,26 @@
     (throw-anom (ba/incorrect (format "Incorrect decimal literal `%s`." s)))))
 
 
+;; 22.25. ToInteger
+(extend-protocol p/ToInteger
+  BigDecimal
+  (to-integer [_]))
+
+
+;; 22.27. ToLong
+(extend-protocol p/ToLong
+  BigDecimal
+  (to-long [_]))
+
+
 ;; 22.30. ToString
 (extend-protocol p/ToString
   BigDecimal
   (to-string [x]
     (.toPlainString x)))
+
+
+;; 22.31. ToTime
+(extend-protocol p/ToTime
+  BigDecimal
+  (to-time [_ _]))

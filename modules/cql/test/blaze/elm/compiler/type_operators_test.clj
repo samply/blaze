@@ -112,8 +112,23 @@
       #elm/as ["{urn:hl7-org:elm-types:r1}Integer" {:type "Null"}]
       nil
 
+      #elm/as ["{urn:hl7-org:elm-types:r1}Long" #elm/long "1"]
+      1
+
+      #elm/as ["{urn:hl7-org:elm-types:r1}Decimal" #elm/decimal "-1.1"]
+      -1.1M
+
+      #elm/as ["{urn:hl7-org:elm-types:r1}Date" #elm/date "2020-03-08"]
+      (system/date 2020 3 8)
+
       #elm/as ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date-time "2019-09-04"]
-      (system/date-time 2019 9 4)))
+      (system/date-time 2019 9 4)
+
+      #elm/as ["{urn:hl7-org:elm-types:r1}String" #elm/string "foo"]
+      "foo"
+
+      #elm/as ["{urn:hl7-org:elm-types:r1}Quantity" #elm/quantity [10 "m"]]
+      (quantity/quantity 10 "m")))
 
   (testing "form"
     (are [elm form] (= form (core/-form (c/compile {} elm)))
@@ -220,7 +235,7 @@
   (tu/testing-unary-null elm/children))
 
 
-;; TODO 22.5. Convert
+;; 22.5. Convert
 ;;
 ;; The Convert operator converts a value to a specific type. The result of the
 ;; operator is the value of the argument converted to the target type, if
@@ -247,6 +262,580 @@
 ;;
 ;; See Formatting Strings for a description of the formatting strings used in
 ;; this specification.
+;;
+;; https://cql.hl7.org/09-b-cqlreference.html#type-operators-1
+(deftest compile-convert-test
+  (testing "ELM types"
+    (testing "from Boolean"
+      (testing "to Boolean"
+        (is (true? (core/-eval
+                     (c/compile {} #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/boolean "true"])
+                     {} nil nil)))
+
+        (is (false? (core/-eval
+                      (c/compile {} #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/boolean "false"])
+                     {} nil nil))))
+
+      (testing "to Integer"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Integer" #elm/boolean "true"]
+          1
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Integer" #elm/boolean "false"]
+          0))
+
+      (testing "to Long"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Long" #elm/boolean "true"]
+          1
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Long" #elm/boolean "false"]
+          0))
+
+      (testing "to Decimal"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Decimal" #elm/boolean "true"]
+          1.0
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Decimal" #elm/boolean "false"]
+          0.0))
+
+      (testing "to Quantity"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Quantity" #elm/boolean "true"]
+          nil))
+
+      (testing "to String"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}String" #elm/boolean "true"]
+          "true"))
+
+      (testing "to Date"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/boolean "true"]
+          nil))
+
+      (testing "to DateTime"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/boolean "true"]
+          nil))
+
+      (testing "to Time"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Time" #elm/boolean "true"]
+          nil)))
+
+    (testing "from Integer"
+      (testing "to Boolean"
+        (is (true? (core/-eval (c/compile {} #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/integer "1"]) {} nil nil)))
+
+        (is (false? (core/-eval (c/compile {} #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/integer "0"]) {} nil nil)))
+
+        (are [elm] (nil? (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/integer "2"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/integer "-1"]))
+
+      (testing "to Integer"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Integer" #elm/integer "1"]
+          1))
+
+      (testing "to Long"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Long" #elm/integer "1"]
+          1))
+
+      (testing "to Decimal"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Decimal" #elm/integer "1"]
+          1M))
+
+      (testing "to Quantity"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Quantity" #elm/integer "1"]
+          (quantity/quantity 1 "1")))
+
+      (testing "to String"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}String" #elm/integer "1"]
+          "1"))
+
+      (testing "to Date"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/integer "1"]
+          nil))
+
+      (testing "to DateTime"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/integer "1"]
+          nil))
+
+      (testing "to Time"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Time" #elm/integer "1"]
+          nil)))
+
+    (testing "from Long"
+      (testing "to Boolean"
+        (is (true? (core/-eval (c/compile {} #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/long "1"]) {} nil nil)))
+
+        (is (false? (core/-eval (c/compile {} #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/long "0"]) {} nil nil)))
+
+        (are [elm] (nil? (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/long "2"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/long "-1"]))
+
+      (testing "to Integer"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Integer" #elm/long "1"]
+          1))
+
+      (testing "to Long"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Long" #elm/long "1"]
+          1))
+
+      (testing "to Decimal"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Decimal" #elm/long "1"]
+          1M))
+
+      (testing "to Quantity"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Quantity" #elm/long "1"]
+          nil))                                             ;Failure
+
+      (testing "to String"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}String" #elm/long "1"]
+          "1"))
+
+      (testing "to Date"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/long "1"]
+          nil))
+
+      (testing "to DateTime"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/long "1"]
+          nil))
+
+      (testing "to Time"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Time" #elm/long "1"]
+          nil)))
+
+    (testing "from Decimal"
+      (testing "to Boolean"
+        (are [elm] (true? (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/decimal "1"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/decimal "1.0"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/decimal "1.00"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/decimal "1.0000000"])
+
+        (are [elm] (false? (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/decimal "0"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/decimal "0.0"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/decimal "0.00"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/decimal "0.0000000"])
+
+        (are [elm] (nil? (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/decimal "0.1"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/decimal "-1.0"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/decimal "2.0"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/decimal "1.1"]))
+
+      (testing "to Integer"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Integer" #elm/decimal "1.0"]
+          nil))
+
+      (testing "to Long"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Long" #elm/decimal "1.0"]
+          nil))
+
+      (testing "to Decimal"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Decimal" #elm/decimal "1.0"]
+          1.0M))
+
+      (testing "to Quantity"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Quantity" #elm/decimal "1.1"]
+          (quantity/quantity 1.1M "1")))
+
+      (testing "to String"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}String" #elm/decimal "1.0"]
+          "1.0"))
+
+      (testing "to Date"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/decimal "1.0"]
+          nil))
+
+      (testing "to DateTime"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/decimal "1.0"]
+          nil))
+
+      (testing "to Time"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Time" #elm/decimal "1.0"]
+          nil)))
+
+    (testing "from Quantity"
+      (testing "to Boolean"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/quantity [1M "m"]]
+          nil))
+
+      (testing "to Integer"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Integer" #elm/quantity [1M "m"]]
+          nil))
+
+      (testing "to Long"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Long" #elm/quantity [1M "m"]]
+          nil))
+
+      (testing "to Decimal"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Decimal" #elm/quantity [1M "m"]]
+          nil))
+
+      (testing "to Quantity"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Quantity" #elm/quantity [1M "m"]]
+          (quantity/quantity 1M "1")))                      ;Failure
+
+      (testing "to String"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}String" #elm/quantity [1M "m"]]
+          "1 'm'"))
+
+      (testing "to Date"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/quantity [1M "m"]]
+          nil))
+
+      (testing "to DateTime"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/quantity [1M "m"]]
+          nil))
+
+      (testing "to Time"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Time" #elm/quantity [1M "m"]]
+          nil)))
+
+    ;TODO Ratio
+
+    (testing "from String"
+      (testing "to Boolean"
+        (are [elm] (true? (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "true"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "t"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "T"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "TRUE"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "Yes"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "y"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "yes"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "Y"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "YES"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "1"])
+
+        (are [elm] (false? (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "false"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "f"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "no"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "n"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "0"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "False"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "F"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "FALSE"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "No"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "N"])
+
+        (are [elm] (nil? (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "foo"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string "bar"]
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/string ""]))
+
+      (testing "to Integer"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Integer" #elm/string "-1"]
+          -1
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Integer" #elm/string "0"]
+          0
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Integer" #elm/string "1"]
+          1)
+
+        (are [elm] (nil? (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Integer" #elm/string "a"]))
+
+      (testing "to Long"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Long" #elm/string "-1"]
+          -1
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Long" #elm/string "0"]
+          0
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Long" #elm/string "1"]
+          1)
+
+        (are [elm] (nil? (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Long" #elm/string "a"]))
+
+      (testing "to Decimal"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Decimal" #elm/string "-1"]
+          -1M
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Decimal" #elm/string "0"]
+          0M
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Decimal" #elm/string "1"]
+          1M)
+
+        (are [elm] (nil? (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Decimal" #elm/string "a"]))
+
+      (testing "to String"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}String" #elm/string "foo"]
+          "foo"))
+
+      (testing "to Date"
+        (let [eval #(core/-eval % {:now tu/now} nil nil)]
+          (are [elm res] (= res (eval (c/compile {} elm)))
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/string "2020"]
+            (system/date 2020)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/string "2020-03"]
+            (system/date 2020 3)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/string "2020-03-08"]
+            (system/date 2020 3 8))
+
+          (are [elm] (nil? (eval (c/compile {} elm)))
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/string "aaaa"]
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/string "2019-13"]
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/string "2019-02-29"])))
+
+      (testing "to DateTime"
+        (let [eval #(core/-eval % {:now tu/now} nil nil)]
+          (are [elm res] (= res (eval (c/compile {} elm)))
+            #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/string "2020"]
+            (system/date-time 2020)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/string "2020-03"]
+            (system/date-time 2020 3)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/string "2020-03-08"]
+            (system/date-time 2020 3 8)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/string "2020-03-08T12:54:00"]
+            (system/date-time 2020 3 8 12 54)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/string "2020-03-08T12:54:00+00:00"]
+            (system/date-time 2020 3 8 12 54)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/string "2020-03-08T12:54:00+01:00"]
+            (system/date-time 2020 3 8 11 54))
+
+          (are [elm] (nil? (eval (c/compile {} elm)))
+            #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/string "aaaa"]
+            #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/string "2019-13"]
+            #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/string "2019-02-29"])))
+
+      (testing "to Time"
+        (let [eval #(core/-eval % {:now tu/now} nil nil)]
+          (are [elm res] (= res (eval (c/compile {} elm)))
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Time" #elm/string "12:54:00"]
+            (system/time 12 54 00)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Time" #elm/string "12:54:00.010"]
+            (system/time 12 54 00 10))
+
+          (are [elm] (nil? (eval (c/compile {} elm)))
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Time" #elm/string "aaaa"]
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Time" #elm/string "12:54"]
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Time" #elm/string "24:54:00"]
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Time" #elm/string "23:60:00"]
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Time" #elm/string "14-30-00.0"]))))
+
+    (testing "from Date"
+      (testing "to Boolean"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/date "2020-03-08"]
+          nil))
+
+      (testing "to Integer"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Integer" #elm/date "2020-03-08"]
+          nil))
+
+      (testing "to Long"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Long" #elm/date "2020-03-08"]
+          nil))
+
+      (testing "to Decimal"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Decimal" #elm/date "2020-03-08"]
+          nil))
+
+      (testing "to Quantity"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Quantity" #elm/date "2020-03-08"]
+          nil))
+
+      (testing "to String"
+        (let [eval #(core/-eval % {:now tu/now} nil nil)]
+          (are [elm res] (= res (eval (c/compile {} elm)))
+            #elm/convert ["{urn:hl7-org:elm-types:r1}String" #elm/date "2020-03-08"]
+            "2020-03-08")))
+
+      (testing "to Date"
+        (let [eval #(core/-eval % {:now tu/now} nil nil)]
+          (are [elm res] (= res (eval (c/compile {} elm)))
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/date "2020"]
+            (system/date 2020)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/date "2020-03"]
+            (system/date 2020 3)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/date "2020-03-08"]
+            (system/date 2020 3 8))))
+
+      (testing "to DateTime"
+        (let [eval #(core/-eval % {:now tu/now} nil nil)]
+          (are [elm res] (= res (eval (c/compile {} elm)))
+            #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date "2020"]
+            (system/date-time 2020)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date "2020-03"]
+            (system/date-time 2020 3)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date "2020-03-08"]
+            (system/date-time 2020 3 8))))
+
+      (testing "to Time"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Time" #elm/date "2020-03-08"]
+          nil)))
+
+    (testing "from DateTime"
+      (testing "to Boolean"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/date-time "2019-01-01T01:00"]
+          nil))
+
+      (testing "to Integer"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Integer" #elm/date-time "2019-01-01T01:00"]
+          nil))
+
+      (testing "to Long"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Long" #elm/date-time "2019-01-01T01:00"]
+          nil))
+
+      (testing "to Decimal"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Decimal" #elm/date-time "2019-01-01T01:00"]
+          nil))
+
+      (testing "to Quantity"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Quantity" #elm/date-time "2019-01-01T01:00"]
+          nil))
+
+      (testing "to String"
+        (let [eval #(core/-eval % {:now tu/now} nil nil)]
+          (are [elm res] (= res (eval (c/compile {} elm)))
+            #elm/convert ["{urn:hl7-org:elm-types:r1}String" #elm/date-time "2019-01-01T01:00"]
+            "2019-01-01T01:00")))
+
+      (testing "to Date"
+        (let [eval #(core/-eval % {:now tu/now} nil nil)]
+          (are [elm res] (= res (eval (c/compile {} elm)))
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/date-time "2020"]
+            (system/date 2020)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/date-time "2020-03"]
+            (system/date 2020 3)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/date-time "2020-03-08"]
+            (system/date 2020 3 8)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/date-time "2020-03-08T12:54:00"]
+            (system/date 2020 3 8))))
+
+      (testing "to DateTime"
+        (let [eval #(core/-eval % {:now tu/now} nil nil)]
+          (are [elm res] (= res (eval (c/compile {} elm)))
+            #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date-time "2020"]
+            (system/date-time 2020)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date-time "2020-03"]
+            (system/date-time 2020 3)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date-time "2020-03-08"]
+            (system/date-time 2020 3 8)
+            #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date-time "2020-03-08T12:54:00"]
+            (system/date-time 2020 3 8 12 54))))
+
+      (testing "to Time"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Time" #elm/date-time "2020-03-08"]
+          nil)))
+
+    (testing "from Time"
+      (testing "to Boolean"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Boolean" #elm/time "12:54:00"]
+          nil))
+
+      (testing "to Integer"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Integer" #elm/time "12:54:00"]
+          nil))
+
+      (testing "to Long"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Long" #elm/time "12:54:00"]
+          nil))
+
+      (testing "to Decimal"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Decimal" #elm/time "12:54:00"]
+          nil))
+
+      (testing "to Quantity"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Quantity" #elm/time "12:54:00"]
+          nil))
+
+      (testing "to String"
+        (let [eval #(core/-eval % {:now tu/now} nil nil)]
+          (are [elm res] (= res (eval (c/compile {} elm)))
+            #elm/convert ["{urn:hl7-org:elm-types:r1}String" #elm/time "12:54:30"]
+            "12:54:30")))
+
+      (testing "to Time"
+        (let [eval #(core/-eval % {:now tu/now} nil nil)]
+          (are [elm res] (= res (eval (c/compile {} elm)))
+            #elm/convert ["{urn:hl7-org:elm-types:r1}Time" #elm/time "12:54:30"]
+            (system/time 12 54 30))))
+
+      (testing "to Date"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}Date" #elm/time "12:54:30"]
+          nil))
+
+      (testing "to DateTime"
+        (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+          #elm/convert ["{urn:hl7-org:elm-types:r1}DateTime" #elm/time "12:54:30"]
+          nil))))
+
+  (testing "form"
+    (are [elm form] (= form (core/-form (c/compile {} elm)))
+      #elm/convert ["{urn:hl7-org:elm-types:r1}Integer" {:type "Null"}]
+      nil
+
+      #elm/convert ["{urn:hl7-org:elm-types:r1}Integer" #elm/integer "1"]
+      '(convert elm/integer 1)
+
+      {:type "Convert"
+         :toTypeSpecifier
+         {:type "ListTypeSpecifier"
+          :elementType
+          {:type "NamedTypeSpecifier"
+           :name "{urn:hl7-org:elm-types:r1}Integer"}}
+         :operand #elm/integer "1"}
+      '(convert (list elm/integer) 1))))
+
 
 ;; 22.6. ConvertQuantity
 ;;
@@ -968,7 +1557,7 @@
       "bar"
       ""))
 
-  (testing "integer"
+  (testing "Integer"
     (is (true? (tu/compile-unop elm/to-boolean elm/integer "1")))
 
     (is (false? (tu/compile-unop elm/to-boolean elm/integer "0")))
@@ -977,7 +1566,7 @@
       "2"
       "-1"))
 
-  (testing "long"
+  (testing "Long"
     (is (true? (tu/compile-unop elm/to-boolean elm/long "1")))
 
     (is (false? (tu/compile-unop elm/to-boolean elm/long "0")))
@@ -986,7 +1575,7 @@
       "2"
       "-1"))
 
-  (testing "decimal"
+  (testing "Decimal"
     (are [x] (true? (tu/compile-unop elm/to-boolean elm/decimal x))
       "1"
       "1.0"
@@ -1006,10 +1595,22 @@
       "1.1"
       "0.9"))
 
-  (testing "boolean"
+  (testing "Boolean"
     (is (true? (tu/compile-unop elm/to-boolean elm/boolean "true")))
 
     (is (false? (tu/compile-unop elm/to-boolean elm/boolean "false"))))
+
+  (testing "Quantity"
+    (is (nil? (tu/compile-unop elm/to-boolean elm/quantity [1 "m"]))))
+
+  (testing "Date"
+    (is (nil? (tu/compile-unop elm/to-boolean elm/date "2022"))))
+
+  (testing "DateTime"
+    (is (nil? (tu/compile-unop elm/to-boolean elm/date-time "2019-01-01T12:13"))))
+
+  (testing "Time"
+    (is (nil? (tu/compile-unop elm/to-boolean elm/time "12:54:30"))))
 
   (tu/testing-unary-null elm/to-boolean)
 
@@ -1214,6 +1815,18 @@
       "true" 1.0
       "false" 0.0))
 
+  (testing "Quantity"
+    (is (nil? (tu/compile-unop elm/to-decimal elm/quantity [1 "m"]))))
+
+  (testing "Date"
+    (is (nil? (tu/compile-unop elm/to-decimal elm/date "2022"))))
+
+  (testing "DateTime"
+    (is (nil? (tu/compile-unop elm/to-decimal elm/date-time "2020-03-08T12:54:00"))))
+
+  (testing "Time"
+    (is (nil? (tu/compile-unop elm/to-decimal elm/time "12:54:00"))))
+
   (tu/testing-unary-null elm/to-decimal)
 
   (testing "form"
@@ -1259,6 +1872,21 @@
     (are [x res] (= res (tu/compile-unop elm/to-integer elm/boolean x))
       "true" 1
       "false" 0))
+
+  (testing "Decimal"
+    (is (nil? (tu/compile-unop elm/to-integer elm/decimal "1.1"))))
+
+  (testing "Quantity"
+    (is (nil? (tu/compile-unop elm/to-integer elm/quantity [1 "m"]))))
+
+  (testing "Date"
+    (is (nil? (tu/compile-unop elm/to-integer elm/date "2020"))))
+
+  (testing "DateTime"
+    (is (nil? (tu/compile-unop elm/to-integer elm/date-time "2020-03-08T12:54:00"))))
+
+  (testing "Time"
+    (is (nil? (tu/compile-unop elm/to-integer elm/time "12:54:00"))))
 
   (tu/testing-unary-null elm/to-integer)
 
@@ -1343,6 +1971,21 @@
       "true" 1
       "false" 0))
 
+  (testing "Decimal"
+    (is (nil? (tu/compile-unop elm/to-long elm/decimal "1.1"))))
+
+  (testing "Quantity"
+    (is (nil? (tu/compile-unop elm/to-long elm/quantity [1 "m"]))))
+
+  (testing "Date"
+    (is (nil? (tu/compile-unop elm/to-long elm/date "2020"))))
+
+  (testing "DateTime"
+    (is (nil? (tu/compile-unop elm/to-long elm/date-time "2020-03-08T12:54:00"))))
+
+  (testing "Time"
+    (is (nil? (tu/compile-unop elm/to-long elm/time "12:54:00"))))
+
   (tu/testing-unary-null elm/to-long)
 
   (testing "form"
@@ -1418,6 +2061,9 @@
                                           {} nil nil))
       "1" (quantity/quantity 1 "1")
       "1.1" (quantity/quantity 1.1M "1")))
+
+  (testing "Boolean"
+    (is (nil? (tu/compile-unop elm/to-quantity elm/boolean "true"))))
 
   ;; TODO: Ratio
 

@@ -805,6 +805,11 @@
   {:type "Children" :source source})
 
 
+;; 22.5. Convert
+(defn convert [[type operand]]
+  {:type "Convert" :toType type :operand operand})
+
+
 ;; 22.6. ConvertQuantity
 (defn convert-quantity [ops]
   {:type "ConvertQuantity" :operand ops})

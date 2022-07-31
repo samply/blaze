@@ -33,8 +33,12 @@
   (case type-name
     "Boolean" ['elm/boolean boolean?]
     "Integer" ['elm/integer int?]
+    "Long" ['elm/long system/long?]
+    "Decimal" ['elm/decimal decimal?]
+    "Date" ['elm/date system/date?]
     "DateTime" ['elm/date-time date-time/temporal?]
     "Quantity" ['elm/quantity quantity/quantity?]
+    "String" ['elm/string string?]
     (throw-anom
       (ba/unsupported
         (format "Unsupported ELM type `%s` in As expression." type-name)
@@ -116,7 +120,83 @@
     (->ChildrenOperatorExpression source)))
 
 
-;; TODO 22.5. Convert
+;; 22.5. Convert
+(defrecord ConvertOperandExpression [operand type pred]
+  core/Expression
+  (-eval [_ context resource scope]
+    (let [value (core/-eval operand context resource scope)]
+      (pred context value)))
+  (-form [_]
+    `(~'convert ~type ~(core/-form operand))))
+
+
+(defn- matches-elm-named-type-cv [type-name]
+  (case type-name
+    "Boolean" ['elm/boolean (fn [_ value] (p/to-boolean value))]
+    "Integer" ['elm/integer (fn [_ value] (p/to-integer value))]
+    "Long" ['elm/long (fn [_ value] (p/to-long value))]
+    "Decimal" ['elm/decimal (fn [_ value] (p/to-decimal value))]
+    "Date" ['elm/date (fn [{:keys [now]} value] (p/to-date value now))]
+    "DateTime" ['elm/date-time (fn [{:keys [now]} value] (p/to-date-time value now))]
+    "Time" ['elm/time (fn [{:keys [now]} value] (p/to-time value now))]
+    "Quantity" ['elm/quantity (fn [_ value] (p/to-quantity value))]
+    "String" ['elm/string (fn [_ value] (p/to-string value))]
+    (throw-anom
+      (ba/unsupported
+        (format "Unsupported ELM type `%s` in Convert expression." type-name)
+        :type-name type-name))))
+
+
+(defn- matches-named-type-cv [type-name]
+  (let [[type-ns type-name] (elm-util/parse-qualified-name type-name)]
+    (case type-ns
+      "urn:hl7-org:elm-types:r1"
+      (matches-elm-named-type-cv type-name)
+      (throw-anom
+        (ba/unsupported
+          (format "Unsupported type namespace `%s` in Convert expression." type-ns)
+          :type-ns type-ns)))))
+
+
+(defn- matches-type-specifier-cv [to-type-specifier]
+  (case (:type to-type-specifier)
+    "NamedTypeSpecifier"
+    (matches-named-type-cv (:name to-type-specifier))
+
+    "ListTypeSpecifier"
+    (let [[type pred] (matches-type-specifier-cv (:elementType to-type-specifier))]
+      [`(~'list ~type)
+       (fn matches-type? [x]
+         (every? pred x))])
+
+    (throw-anom
+      (ba/unsupported
+        (format "Unsupported type specifier type `%s` in Convert expression."
+                (:type to-type-specifier))
+        :type-specifier-type (:type to-type-specifier)))))
+
+
+(defn- matches-type-cv
+  [{to-type :toType to-type-specifier :toTypeSpecifier :as expression}]
+  (cond
+    to-type
+    (matches-named-type-cv to-type)
+
+    to-type-specifier
+    (matches-type-specifier-cv to-type-specifier)
+
+    :else
+    (throw-anom
+      (ba/fault
+        "Invalid Convert expression without `to-type` and `to-type-specifier`."
+        :expression expression))))
+
+
+(defmethod core/compile* :elm.compiler.type/convert
+  [context {:keys [operand] :as expression}]
+  (when-some [operand (core/compile* context operand)]
+    (let [[type pred] (matches-type-cv expression)]
+      (->ConvertOperandExpression operand type pred))))
 
 
 ;; 22.6. ConvertQuantity
