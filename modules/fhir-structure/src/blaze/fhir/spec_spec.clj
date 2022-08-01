@@ -63,4 +63,4 @@
 
 (s/fdef fhir-spec/fhir-type
   :args (s/cat :x any?)
-  :ret (s/nilable keyword?))
+  :ret (s/nilable :fhir/type))

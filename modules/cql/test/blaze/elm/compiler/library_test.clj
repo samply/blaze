@@ -30,13 +30,14 @@
     (let [library (t/translate "library Test")]
       (with-system [{:blaze.db/keys [node]} mem-node-system]
         (given (library/compile-library node library {})
-          :compiled-expression-defs := {}))))
+          :expression-defs := {}))))
 
   (testing "one static expression"
     (let [library (t/translate "library Test define Foo: true")]
       (with-system [{:blaze.db/keys [node]} mem-node-system]
         (given (library/compile-library node library {})
-          :compiled-expression-defs := {"Foo" true}))))
+          [:expression-defs "Foo" :context] := "Patient"
+          [:expression-defs "Foo" :expression] := true))))
 
   (testing "one dynamic expression"
     (let [library (t/translate "library Test
@@ -45,7 +46,8 @@
       define Gender: Patient.gender")]
       (with-system [{:blaze.db/keys [node]} mem-node-system]
         (given (library/compile-library node library {})
-          [:compiled-expression-defs "Gender" compiler/form] := '(:gender (expr-ref "Patient"))))))
+          [:expression-defs "Gender" :context] := "Patient"
+          [:expression-defs "Gender" :expression compiler/form] := '(:gender (expr-ref "Patient"))))))
 
   (testing "one function"
     (let [library (t/translate "library Test
@@ -55,7 +57,12 @@
       define InInitialPopulation: Gender(Patient)")]
       (with-system [{:blaze.db/keys [node]} mem-node-system]
         (given (library/compile-library node library {})
-          [:compiled-expression-defs "InInitialPopulation" compiler/form] := '(call "Gender" (expr-ref "Patient"))))))
+          [:expression-defs "InInitialPopulation" :context] := "Patient"
+          [:expression-defs "InInitialPopulation" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
+          [:expression-defs "InInitialPopulation" :expression compiler/form] := '(call "Gender" (expr-ref "Patient"))
+          [:function-defs "Gender" :context] := "Patient"
+          [:function-defs "Gender" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
+          [:function-defs "Gender" :function] :? fn?))))
 
   (testing "two functions, one calling the other"
     (let [library (t/translate "library Test
@@ -66,7 +73,8 @@
       define InInitialPopulation: Inc2(1)")]
       (with-system [{:blaze.db/keys [node]} mem-node-system]
         (given (library/compile-library node library {})
-          [:compiled-expression-defs "InInitialPopulation" compiler/form] := '(call "Inc2" 1)))))
+          [:expression-defs "InInitialPopulation" :context] := "Patient"
+          [:expression-defs "InInitialPopulation" :expression compiler/form] := '(call "Inc2" 1)))))
 
   (testing "with compile-time error"
     (testing "function"

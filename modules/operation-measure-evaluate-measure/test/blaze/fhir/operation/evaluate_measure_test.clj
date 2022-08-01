@@ -38,6 +38,10 @@
 (def ^:private base-url "base-url-144638")
 
 
+(def ^:private measure-population-uri
+  #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population")
+
+
 (def router
   (reitit/router
     [["/MeasureReport" {:name :MeasureReport/type}]]
@@ -56,7 +60,7 @@
   (type/codeable-concept
     {:coding
      [(type/coding
-        {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
+        {:system measure-population-uri
          :code (type/code code)})]}))
 
 
@@ -409,10 +413,8 @@
                 :date := #fhir/dateTime"1970-01-01T00:00:00Z"
                 [:period :start] := #fhir/dateTime"2014"
                 [:period :end] := #fhir/dateTime"2015"
-                [:group 0 :population 0 :code :coding 0 :system]
-                := #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
-                [:group 0 :population 0 :code :coding 0 :code]
-                := #fhir/code"initial-population"
+                [:group 0 :population 0 :code :coding 0 :system] := measure-population-uri
+                [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
                 [:group 0 :population 0 :count] := 1))))
 
         (testing "cohort scoring with stratifiers"
@@ -467,22 +469,16 @@
                 :date := #fhir/dateTime"1970-01-01T00:00:00Z"
                 [:period :start] := #fhir/dateTime"2014"
                 [:period :end] := #fhir/dateTime"2015"
-                [:group 0 :population 0 :code :coding 0 :system]
-                := #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
-                [:group 0 :population 0 :code :coding 0 :code]
-                := #fhir/code"initial-population"
+                [:group 0 :population 0 :code :coding 0 :system] := measure-population-uri
+                [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
                 [:group 0 :population 0 :count] := 3
                 [:group 0 :stratifier 0 :code 0 :text] := #fhir/string"gender"
-                [:group 0 :stratifier 0 :stratum 0 :population 0 :code :coding 0 :system]
-                := #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
-                [:group 0 :stratifier 0 :stratum 0 :population 0 :code :coding 0 :code]
-                := #fhir/code"initial-population"
+                [:group 0 :stratifier 0 :stratum 0 :population 0 :code :coding 0 :system] := measure-population-uri
+                [:group 0 :stratifier 0 :stratum 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
                 [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := 2
                 [:group 0 :stratifier 0 :stratum 0 :value :text] := #fhir/string"female"
-                [:group 0 :stratifier 0 :stratum 1 :population 0 :code :coding 0 :system]
-                := #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
-                [:group 0 :stratifier 0 :stratum 1 :population 0 :code :coding 0 :code]
-                := #fhir/code"initial-population"
+                [:group 0 :stratifier 0 :stratum 1 :population 0 :code :coding 0 :system] := measure-population-uri
+                [:group 0 :stratifier 0 :stratum 1 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
                 [:group 0 :stratifier 0 :stratum 1 :population 0 :count] := 1
                 [:group 0 :stratifier 0 :stratum 1 :value :text] := #fhir/string"male")))))
 

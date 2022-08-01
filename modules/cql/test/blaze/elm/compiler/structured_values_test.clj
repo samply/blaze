@@ -338,7 +338,7 @@
               {:fhir/type :fhir/Patient :id "0"
                :identifier [identifier]}
               expr (c/compile {:library library :eval-context "Patient"} elm)
-              result (coll/first (core/-eval expr {:library-context {"Patient" source}} nil nil))]
+              result (coll/first (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil))]
           (is (= identifier result))
 
           (testing "form"
@@ -358,7 +358,7 @@
               {:fhir/type :fhir/Patient :id "0"
                :identifier [identifier]}
               expr (c/compile {:library library :eval-context "Patient"} elm)
-              result (coll/first (core/-eval expr {:library-context {"Patient" source}} nil nil))]
+              result (coll/first (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil))]
           (is (= identifier result)))))
 
     (testing "Patient.gender"
@@ -373,7 +373,7 @@
               {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code"male"}
               expr (c/compile {:library library :eval-context "Patient"} elm)
-              result (core/-eval expr {:library-context {"Patient" source}} nil nil)]
+              result (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil)]
           (is (= #fhir/code"male" result))))
 
       (testing "without source-type"
@@ -386,7 +386,7 @@
               {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code"male"}
               expr (c/compile {:library library :eval-context "Patient"} elm)
-              result (core/-eval expr {:library-context {"Patient" source}} nil nil)]
+              result (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil)]
           (is (= #fhir/code"male" result)))))
 
     (testing "Observation.value"
@@ -401,7 +401,7 @@
               {:fhir/type :fhir/Observation :id "0"
                :value "value-114318"}
               expr (c/compile {:library library :eval-context "Patient"} elm)
-              result (core/-eval expr {:library-context {"Observation" source}} nil nil)]
+              result (core/-eval expr {:expression-defs {"Observation" {:expression source}}} nil nil)]
           (is (= "value-114318" result))))
 
       (testing "without source-type"
@@ -414,7 +414,7 @@
               {:fhir/type :fhir/Observation :id "0"
                :value "value-114318"}
               expr (c/compile {:library library :eval-context "Patient"} elm)
-              result (core/-eval expr {:library-context {"Observation" source}} nil nil)]
+              result (core/-eval expr {:expression-defs {"Observation" {:expression source}}} nil nil)]
           (is (= "value-114318" result)))))
 
     (testing "Tuple"

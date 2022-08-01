@@ -20,7 +20,7 @@
 
 
 (s/def :blaze.db.tx-cmd/type
-  :fhir.type/name)
+  :fhir.resource/type)
 
 
 (s/def :blaze.db.tx-cmd/refs

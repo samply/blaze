@@ -9,7 +9,7 @@
 
 
 (s/def ::target-type
-  :fhir.type/name)
+  :fhir.resource/type)
 
 
 (s/def ::include-def
@@ -17,11 +17,11 @@
 
 
 (s/def ::forward
-  (s/map-of :fhir.type/name (s/coll-of ::include-def)))
+  (s/map-of :fhir.resource/type (s/coll-of ::include-def)))
 
 
 (s/def ::reverse
-  (s/map-of (s/or :type :fhir.type/name :any #{:any}) (s/coll-of ::include-def)))
+  (s/map-of (s/or :type :fhir.resource/type :any #{:any}) (s/coll-of ::include-def)))
 
 
 (s/def ::direct

@@ -33,3 +33,11 @@
   (testing "valid string"
     (are [s ns name] (= [ns name] (elm-util/parse-qualified-name s))
       "{a}b" "a" "b")))
+
+
+(deftest parse-type-test
+  (testing "ELM type"
+    (is (= "String" (elm-util/parse-type {:type "NamedTypeSpecifier" :name "{urn:hl7-org:elm-types:r1}String"}))))
+
+  (testing "list type"
+    (is (= "List<Encounter>" (elm-util/parse-type {:type "ListTypeSpecifier" :elementType {:type "NamedTypeSpecifier" :name "{http://hl7.org/fhir}Encounter"}})))))
