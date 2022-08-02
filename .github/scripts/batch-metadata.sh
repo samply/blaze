@@ -1,13 +1,10 @@
 #!/bin/bash -e
 
 #
-# This script creates a patient and tries to retrieve it through a batch request.
+# This script fetches the CapabilityStatement through a batch request.
 #
 
 BASE="http://localhost:8080/fhir"
-PATIENT_ID=$(curl -sH "Content-Type: application/fhir+json" \
-  -d '{"resourceType": "Patient"}' \
-  "$BASE/Patient" | jq -r .id)
 
 bundle() {
 cat <<END
@@ -18,7 +15,7 @@ cat <<END
     {
       "request": {
         "method": "GET",
-        "url": "Patient/$PATIENT_ID"
+        "url": "metadata"
       }
     }
   ]
@@ -51,10 +48,10 @@ else
   exit 1
 fi
 
-RESPONSE_PATIENT_ID="$(echo "$RESULT" | jq -r .entry[].resource.id)"
-if [ "$RESPONSE_PATIENT_ID" = "$PATIENT_ID" ]; then
-  echo "OK: patient id's match"
+RESPONSE_RESOURCE_TYPE="$(echo "$RESULT" | jq -r .entry[].resource.resourceType)"
+if [ "$RESPONSE_RESOURCE_TYPE" = "CapabilityStatement" ]; then
+  echo "OK: resource type is CapabilityStatement"
 else
-  echo "Fail: response patient id was $RESPONSE_PATIENT_ID but should be $PATIENT_ID"
+  echo "Fail: resource type was $RESPONSE_RESOURCE_TYPE but should be CapabilityStatement"
   exit 1
 fi
