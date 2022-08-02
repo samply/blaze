@@ -216,6 +216,27 @@
       [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
 
 
+(def metadata-bundle
+  {:fhir/type :fhir/Bundle
+   :type #fhir/code "batch"
+   :entry
+   [{:fhir/type :fhir.Bundle/entry
+     :request
+     {:fhir/type :fhir.Bundle.entry/request
+      :method #fhir/code"GET"
+      :url #fhir/uri"metadata"}}]})
+
+
+(deftest batch-metadata-test
+  (with-system [{:blaze/keys [rest-api]} system]
+    (given (call rest-api {:request-method :post :uri ""
+                           :headers {"content-type" "application/fhir+json"}
+                           :body (input-stream (fhir-spec/unform-json metadata-bundle))})
+      :status := 200
+      [:body fhir-spec/parse-json :entry 0 :resource :resourceType] := "CapabilityStatement"
+      [:body fhir-spec/parse-json :entry 0 :response :status] := "200")))
+
+
 (deftest delete-test
   (with-system [{:blaze/keys [rest-api]} system]
     (given (call rest-api {:request-method :delete :uri "/Patient/0"})

@@ -433,6 +433,9 @@ jobs:
     - name: Batch
       run: .github/scripts/batch.sh
 
+    - name: Batch Metadata
+      run: .github/scripts/batch-metadata.sh
+
     - name: Transaction
       run: .github/scripts/transaction.sh
 
@@ -852,6 +855,9 @@ jobs:
 
     - name: Batch
       run: .github/scripts/batch.sh
+
+    - name: Batch Metadata
+      run: .github/scripts/batch-metadata.sh
 
     - name: Transaction
       run: .github/scripts/transaction.sh

@@ -158,6 +158,9 @@
       (not (#{"GET" "POST" "PUT" "DELETE"} method))
       (unsupported-method-anom method idx)
 
+      (and (= "GET" method) (= "metadata" url))
+      entry
+
       (nil? type)
       (missing-type-anom url idx)
 
@@ -183,7 +186,7 @@
       (id-mismatch-anom resource url idx)
 
       :else
-      (assoc entry :blaze/type type :blaze/id id))))
+      entry)))
 
 
 (def ^:private validate-entry-xf
