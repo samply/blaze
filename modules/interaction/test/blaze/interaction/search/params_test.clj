@@ -8,7 +8,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [cognitect.anomalies :as anom]
-    [cuerdas.core :as str]
+    [cuerdas.core :as c-str]
     [juxt.iota :refer [given]]))
 
 
@@ -29,6 +29,12 @@
 
 
 (deftest decode-test
+  (testing "unsupported sort parameter"
+    (given-failed-future (params/decode page-store
+                                        :blaze.preference.handling/lenient
+                                        {"_sort" "a,b"})
+      ::anom/category := ::anom/unsupported))
+
   (testing "invalid include parameter"
     (given-failed-future (params/decode page-store
                                         :blaze.preference.handling/strict
@@ -47,9 +53,9 @@
     (given @(params/decode
               (reify p/PageStore
                 (-get [_ token]
-                  (assert (= (str/repeat "A" 32) token))
+                  (assert (= (c-str/repeat "A" 32) token))
                   (ac/completed-future [["foo" "bar"]])))
               :blaze.preference.handling/strict
-              {"__token" (str/repeat "A" 32)})
+              {"__token" (c-str/repeat "A" 32)})
       :clauses := [["foo" "bar"]]
-      :token := (str/repeat "A" 32))))
+      :token := (c-str/repeat "A" 32))))

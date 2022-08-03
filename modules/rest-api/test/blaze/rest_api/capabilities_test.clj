@@ -60,7 +60,10 @@
         [:implementation :url] := #fhir/url"base-url-131713"
         :fhirVersion := #fhir/code"4.0.1"
         :format := [#fhir/code"application/fhir+json"
-                    #fhir/code"application/xml+json"]))
+                    #fhir/code"application/xml+json"]
+        [:rest 0 :searchParam 0 :name] := "_sort"
+        [:rest 0 :searchParam 0 :type] := "special"
+        [:rest 0 :searchParam 0 :documentation] := "Only `_lastUpdated` and `-_lastUpdated` is supported at the moment."))
 
     (testing "minimal config + search-system"
       (given

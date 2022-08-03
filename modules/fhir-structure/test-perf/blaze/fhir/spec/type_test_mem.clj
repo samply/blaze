@@ -3,7 +3,7 @@
     [blaze.fhir.spec.memory :as mem]
     [blaze.fhir.spec.type :as type]
     [clojure.test :refer [are deftest is testing]]
-    [cuerdas.core :as str]
+    [cuerdas.core :as c-str]
     [clojure.alpha.spec :as s2]
     [blaze.test-util :as tu])
   (:import
@@ -22,8 +22,8 @@
     #fhir/string"" 40
     #fhir/string"a" 48
     #fhir/string{:value "a"} 48
-    (type/string (str/repeat "a" 8)) 48
-    (type/string (str/repeat "a" 9)) 56
+    (type/string (c-str/repeat "a" 8)) 48
+    (type/string (c-str/repeat "a" 9)) 56
     #fhir/string{:id "0" :value "foo"} 136
 
     #fhir/decimal 1.1M 40

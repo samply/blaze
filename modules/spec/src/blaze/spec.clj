@@ -40,12 +40,29 @@
 
 ;; ---- DB ------------------------------------------------------------------
 
-(s/def :blaze.db.query/clause
+(s/def :blaze.db.query/search-clause
   (s/coll-of string? :kind vector? :min-count 2))
 
 
+(s/def :blaze.db.query/search-clauses
+  (s/coll-of :blaze.db.query/search-clause :kind vector?))
+
+
+(s/def :blaze.db.query/sort-direction
+  #{:asc :desc})
+
+
+(s/def :blaze.db.query/sort-clause
+  (s/tuple #{:sort} string? :blaze.db.query/sort-direction))
+
+
+(s/def :blaze.db.query/clause
+  (s/or :search-clause :blaze.db.query/search-clause
+        :sort-clause :blaze.db.query/sort-clause))
+
+
 (s/def :blaze.db.query/clauses
-  (s/coll-of :blaze.db.query/clause :min-count 1))
+  (s/coll-of :blaze.db.query/clause :kind vector?))
 
 
 

@@ -764,9 +764,20 @@
 
 
 (deftest type-query-test
-  (testing "a new node has no patients"
-    (with-system [{:blaze.db/keys [node]} system]
-      (is (coll/empty? (d/type-query (d/db node) "Patient" [["gender" "male"]])))))
+  (with-system [{:blaze.db/keys [node]} system]
+    (testing "a new node has no patients"
+      (is (coll/empty? (d/type-query (d/db node) "Patient" [["gender" "male"]]))))
+
+    (testing "sort clauses are anly allowed at first position"
+      (given (d/type-query (d/db node) "Patient" [["gender" "male"]
+                                                  [:sort "_lastUpdated" :desc]])
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Sort clauses are only allowed at first position."))
+
+    (testing "unknown search-param in sort clause"
+      (given (d/type-query (d/db node) "Patient" [[:sort "foo" :desc]])
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Unknown search-param `foo` in sort clause.")))
 
   (testing "a node with one patient"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -774,6 +785,7 @@
 
       (testing "the patient can be found"
         (given (pull-type-query node "Patient" [["active" "true"]])
+          count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"))
 
@@ -797,22 +809,78 @@
 
       (testing "only the active patient will be found"
         (given (pull-type-query node "Patient" [["active" "true"]])
+          count := 1
           [0 :fhir/type] := :fhir/Patient
-          [0 :id] := "0"
-          1 := nil))
+          [0 :id] := "0"))
 
       (testing "only the non-active patient will be found"
         (given (pull-type-query node "Patient" [["active" "false"]])
+          count := 1
           [0 :fhir/type] := :fhir/Patient
-          [0 :id] := "1"
-          1 := nil))
+          [0 :id] := "1"))
 
       (testing "both patients will be found"
         (given (pull-type-query node "Patient" [["active" "true" "false"]])
+          count := 2
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [1 :fhir/type] := :fhir/Patient
           [1 :id] := "1"))))
+
+  (testing "a node with two patients in two transactions"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+      (testing "the oldest patient comes first"
+        (given (pull-type-query node "Patient" [[:sort "_lastUpdated" :asc]])
+          count := 2
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0"
+          [1 :id] := "1"))
+
+      (testing "the newest patient comes first"
+        (given (pull-type-query node "Patient" [[:sort "_lastUpdated" :desc]])
+          count := 2
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "1"
+          [1 :id] := "0"))))
+
+  (testing "a node with three patients in three transactions"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "1"}]]
+       [[:put {:fhir/type :fhir/Patient :id "2"}]]]
+
+      (testing "the oldest patient comes first"
+        (given (pull-type-query node "Patient" [[:sort "_lastUpdated" :asc]])
+          count := 3
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0"
+          [1 :id] := "1"
+          [2 :id] := "2")
+
+        (testing "it is possible to start with the second patient"
+          (given (pull-type-query node "Patient" [[:sort "_lastUpdated" :asc]] "1")
+            count := 2
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "1"
+            [1 :id] := "2")))
+
+      (testing "the newest patient comes first"
+        (given (pull-type-query node "Patient" [[:sort "_lastUpdated" :desc]])
+          count := 3
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "2"
+          [1 :id] := "1"
+          [2 :id] := "0")
+
+        (testing "it is possible to start with the second patient"
+          (given (pull-type-query node "Patient" [[:sort "_lastUpdated" :desc]] "1")
+            count := 2
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "1"
+            [1 :id] := "0")))))
 
   (testing "does not find the deleted active patient"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -3087,7 +3155,12 @@
         (given (d/compile-type-query-lenient
                  node "Patient" [["birthdate" "invalid"]])
           ::anom/category := ::anom/incorrect
-          ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`.")))))
+          ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`."))
+
+      (testing "sort parameter"
+        (let [query (d/compile-type-query-lenient
+                      node "Patient" [[:sort "_lastUpdated" :asc]])]
+          (is (= [[:sort "_lastUpdated" :asc]] (d/query-clauses query))))))))
 
 
 

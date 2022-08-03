@@ -83,11 +83,9 @@
 
 
 (defn type-history
-  "Returns a reducible collection of all versions between `start-t` (inclusive),
-  `start-id` (optional, inclusive) and `end-t` (inclusive) of resources with
-  `tid`.
-
-  Versions are resource handles."
+  "Returns a reducible collection of all historic resource handles between
+  `start-t` (inclusive), `start-id` (optional, inclusive) and `end-t`
+  (inclusive) of resources with `tid`."
   [taoi tid start-t start-id end-t]
   (coll/eduction
     (take-while (key-valid? tid end-t))

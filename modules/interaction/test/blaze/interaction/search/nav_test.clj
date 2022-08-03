@@ -6,7 +6,7 @@
     [blaze.page-store.protocols :as p]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [cuerdas.core :as str]))
+    [cuerdas.core :as c-str]))
 
 
 (st/instrument)
@@ -41,6 +41,15 @@
                     [["combo-code-value-quantity" "8480-6$ge140"]
                      ["combo-code-value-quantity" "8462-4$ge90"]]
                     1 nil))))
+
+  (testing "sort clause"
+    (testing "ascending"
+      (is (= "base-url-110407/Observation?_sort=foo&__t=1"
+             (nav/url "base-url-110407" match nil [[:sort "foo" :asc]] 1 nil))))
+
+    (testing "descending"
+      (is (= "base-url-110407/Observation?_sort=-foo&__t=1"
+             (nav/url "base-url-110407" match nil [[:sort "foo" :desc]] 1 nil)))))
 
   (testing "with include-defs"
     (testing "empty"
@@ -162,7 +171,7 @@
   (reify p/PageStore
     (-put [_ clauses]
       (assert (= clauses-1 clauses))
-      (ac/completed-future (str/repeat "A" 32)))))
+      (ac/completed-future (c-str/repeat "A" 32)))))
 
 
 (deftest token-url-test

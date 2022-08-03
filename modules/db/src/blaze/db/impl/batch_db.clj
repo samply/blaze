@@ -232,7 +232,9 @@
 (defn- decode-clauses [clauses]
   (mapv
     (fn [[search-param modifier values]]
-      (into [(cond-> (:code search-param) modifier (str ":" modifier))] values))
+      (if (#{"asc" "desc"} modifier)
+        [:sort (:code search-param) (keyword modifier)]
+        (into [(cond-> (:code search-param) modifier (str ":" modifier))] values)))
     clauses))
 
 

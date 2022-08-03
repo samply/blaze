@@ -1,9 +1,11 @@
 (ns blaze.interaction.util
   (:require
+    [blaze.anomaly :as ba]
     [blaze.db.api :as d]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.luid :as luid]
-    [clojure.string :as str]))
+    [clojure.string :as str]
+    [cuerdas.core :as c-str]))
 
 
 (defn etag->t [etag]
@@ -33,7 +35,20 @@
     (mapcat query-param->clauses)))
 
 
-(defn clauses [query-params]
+(defn- sort-clauses [sort]
+  (let [[param & params] (str/split sort #",")
+        param (str/trim param)]
+    (if params
+      (ba/unsupported "More than one sort parameter is unsupported.")
+      [[:sort (c-str/ltrim param "-") (if (str/starts-with? param "-") :desc :asc)]])))
+
+
+(defn clauses [{:strs [_sort] :as query-params}]
+  (into (if (str/blank? _sort) [] (sort-clauses _sort))
+        query-params->clauses-xf query-params))
+
+
+(defn search-clauses [query-params]
   (into [] query-params->clauses-xf query-params))
 
 

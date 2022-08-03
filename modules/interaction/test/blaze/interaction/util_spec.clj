@@ -4,7 +4,8 @@
     [blaze.db.tx-log.spec]
     [blaze.handler.fhir.util-spec]
     [blaze.interaction.util :as iu]
-    [clojure.spec.alpha :as s]))
+    [clojure.spec.alpha :as s]
+    [cognitect.anomalies :as anom]))
 
 
 (s/fdef iu/etag->t
@@ -14,4 +15,9 @@
 
 (s/fdef iu/clauses
   :args (s/cat :query-params (s/nilable :ring.request/query-params))
-  :ret (s/coll-of :blaze.db.query/clause))
+  :ret (s/or :clauses :blaze.db.query/clauses :anomaly ::anom/anomaly))
+
+
+(s/fdef iu/search-clauses
+  :args (s/cat :query-params (s/nilable :ring.request/query-params))
+  :ret :blaze.db.query/search-clauses)

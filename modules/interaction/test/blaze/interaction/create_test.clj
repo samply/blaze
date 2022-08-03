@@ -272,6 +272,30 @@
           (is (= :fhir/OperationOutcome (:fhir/type body)))))))
 
   (testing "conditional create"
+    (testing "with empty header"
+      (with-handler [handler]
+        []
+        (let [{:keys [status]}
+              @(handler
+                 {::reitit/match patient-match
+                  :headers {"if-none-exist" ""}
+                  :body {:fhir/type :fhir/Patient}})]
+
+          (testing "a unconditional create is executed"
+            (is (= 201 status))))))
+
+    (testing "with ignorable _sort search parameter"
+      (with-handler [handler]
+        []
+        (let [{:keys [status]}
+              @(handler
+                 {::reitit/match patient-match
+                  :headers {"if-none-exist" "_sort=a"}
+                  :body {:fhir/type :fhir/Patient}})]
+
+          (testing "a unconditional create is executed"
+            (is (= 201 status))))))
+
     (testing "with non-matching query"
       (testing "on empty database"
         (with-handler [handler]

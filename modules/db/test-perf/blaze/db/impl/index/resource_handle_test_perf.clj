@@ -4,7 +4,7 @@
     [blaze.db.impl.index.resource-handle :as rh]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
-    [cuerdas.core :as str])
+    [cuerdas.core :as c-str])
   (:import
     [org.openjdk.jol.info GraphLayout]))
 
@@ -27,7 +27,7 @@
 
 
 (defn- resource-handle [id-size]
-  (rh/resource-handle 0 (str/repeat "0" id-size) 0 (bb/allocate 40)))
+  (rh/resource-handle 0 (c-str/repeat "0" id-size) 0 (bb/allocate 40)))
 
 
 (deftest resource-handle-test

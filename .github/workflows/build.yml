@@ -325,8 +325,20 @@ jobs:
     - name: Download Observation Resources of male Patients
       run: .github/scripts/download-resources-query.sh Observation "patient.gender=male" 20466
 
+    - name: Download Observation Resources of male Patients Sorted Ascending
+      run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "_lastUpdated" 20466
+
+    - name: Download Observation Resources of male Patients Sorted Descending
+      run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "-_lastUpdated" 20466
+
     - name: Download Observation Resources of female Patients
       run: .github/scripts/download-resources-query.sh Observation "patient.gender=female" 22463
+
+    - name: Download Observation Resources of female Patients Sorted Ascending
+      run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=female" "_lastUpdated" 22463
+
+    - name: Download Observation Resources of female Patients Sorted Descending
+      run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=female" "-_lastUpdated" 22463
 
     - name: Download Observation Resources - Including Patients
       run: blazectl --no-progress --server http://localhost:8080/fhir download Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
@@ -351,6 +363,12 @@ jobs:
 
     - name: Download MedicationRequest Resources of Medications with code 854235
       run: .github/scripts/download-resources-query.sh MedicationRequest "medication.code=1736854" 112
+
+    - name: Download MedicationRequest Resources of Medications with code 854235 Sorted Ascending
+      run: .github/scripts/download-resources-query-sort.sh MedicationRequest "medication.code=1736854" "_lastUpdated" 112
+
+    - name: Download MedicationRequest Resources of Medications with code 854235 Sorted Descending
+      run: .github/scripts/download-resources-query-sort.sh MedicationRequest "medication.code=1736854" "-_lastUpdated" 112
 
     - name: Download MedicationRequest Resources - Including Medications
       run: blazectl --no-progress --server http://localhost:8080/fhir download MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
@@ -748,8 +766,20 @@ jobs:
     - name: Download Observation Resources of male Patients
       run: .github/scripts/download-resources-query.sh Observation "patient.gender=male" 20466
 
+    - name: Download Observation Resources of male Patients Sorted Ascending
+      run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "_lastUpdated" 20466
+
+    - name: Download Observation Resources of male Patients Sorted Descending
+      run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "-_lastUpdated" 20466
+
     - name: Download Observation Resources of female Patients
       run: .github/scripts/download-resources-query.sh Observation "patient.gender=female" 22463
+
+    - name: Download Observation Resources of female Patients Sorted Ascending
+      run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=female" "_lastUpdated" 22463
+
+    - name: Download Observation Resources of female Patients Sorted Descending
+      run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=female" "-_lastUpdated" 22463
 
     - name: Download Observation Resources - Including Patients
       run: blazectl --no-progress --server http://localhost:8080/fhir download Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
@@ -774,6 +804,12 @@ jobs:
 
     - name: Download MedicationRequest Resources of Medications with code 854235
       run: .github/scripts/download-resources-query.sh MedicationRequest "medication.code=1736854" 112
+
+    - name: Download MedicationRequest Resources of Medications with code 854235 Sorted Ascending
+      run: .github/scripts/download-resources-query-sort.sh MedicationRequest "medication.code=1736854" "_lastUpdated" 112
+
+    - name: Download MedicationRequest Resources of Medications with code 854235 Sorted Descending
+      run: .github/scripts/download-resources-query-sort.sh MedicationRequest "medication.code=1736854" "-_lastUpdated" 112
 
     - name: Download MedicationRequest Resources - Including Medications
       run: blazectl --no-progress --server http://localhost:8080/fhir download MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
