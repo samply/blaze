@@ -66,5 +66,5 @@
     (log/info "JVM version:" (System/getProperty "java.version"))
     (log/info "Maximum available memory:" (max-memory) "MiB")
     (log/info "Number of available processors:" (available-processors))
-    (log/info "Successfully started Blaze version" version "in"
+    (log/info "Successfully started \uD83D\uDD25 Blaze version" version "in"
               (duration-s start) "seconds")))
