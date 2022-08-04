@@ -19,7 +19,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
-    [cuerdas.core :as str]
+    [cuerdas.core :as c-str]
     [integrant.core :as ig]
     [jsonista.core :as j]
     [taoensso.timbre :as log])
@@ -47,7 +47,7 @@
    (hash "0"))
   ([s]
    (assert (= 1 (count s)))
-   (hash/from-hex (str/repeat s 64))))
+   (hash/from-hex (c-str/repeat s 64))))
 
 
 (defn- invalid-content

@@ -5,7 +5,7 @@
     [clojure.set :as set]
     [clojure.spec.alpha :as s]
     [clojure.spec.gen.alpha :as gen]
-    [cuerdas.core :as str])
+    [cuerdas.core :as c-str])
   (:import
     [javax.measure.spi ServiceProvider SystemOfUnits]
     [tech.units.indriya.unit BaseUnit]))
@@ -91,7 +91,7 @@
 
 (defn- expression-dispatch [{:keys [type]}]
   (when type
-    (keyword "elm.spec.type" (str/kebab type))))
+    (keyword "elm.spec.type" (c-str/kebab type))))
 
 
 (defmulti expression expression-dispatch)

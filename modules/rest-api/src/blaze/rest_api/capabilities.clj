@@ -141,7 +141,11 @@
              (some? transaction-handler)
              (conj {:code #fhir/code"transaction"} {:code #fhir/code"batch"})
              (some? history-system-handler)
-             (conj {:code #fhir/code"history-system"}))}]}]
+             (conj {:code #fhir/code"history-system"}))
+           :searchParam
+           [{:name "_sort"
+             :type "special"
+             :documentation "Only `_lastUpdated` and `-_lastUpdated` is supported at the moment."}]}]}]
     (fn [{:blaze/keys [base-url]}]
       (ac/completed-future
         (ring/response

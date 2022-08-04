@@ -1,14 +1,14 @@
 (ns blaze.elm.normalizer
   (:require
     [blaze.elm.spec]
-    [cuerdas.core :as str]))
+    [cuerdas.core :as c-str]))
 
 
 (defmulti normalize
   {:arglists '([expression])}
   (fn [{:keys [type]}]
     (assert type)
-    (keyword "elm.normalizer.type" (str/kebab type))))
+    (keyword "elm.normalizer.type" (c-str/kebab type))))
 
 
 (defn- normalize-expression [x]

@@ -12,13 +12,14 @@
 
 
 (s/def :blaze.db.index.query/clause
-  (s/tuple :blaze.db/search-param (s/nilable :blaze.db.search-param/modifier)
-           (s/coll-of string?) (s/coll-of some?)))
+  (s/tuple :blaze.db/search-param
+           (s/nilable :blaze.db.search-param/modifier)
+           (s/coll-of string?)
+           (s/coll-of some?)))
 
 
-;; it's a bit faster to have the clauses as seq instead of an vector
 (s/def :blaze.db.index.query/clauses
-  (s/coll-of :blaze.db.index.query/clause :kind seq? :min-count 1))
+  (s/coll-of :blaze.db.index.query/clause :min-count 1))
 
 
 (s/fdef index/type-query

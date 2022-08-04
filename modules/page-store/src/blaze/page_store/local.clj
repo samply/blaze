@@ -11,7 +11,7 @@
     [java-time :as time]
     [taoensso.timbre :as log])
   (:import
-    [com.github.benmanes.caffeine.cache Caffeine Cache Weigher]))
+    [com.github.benmanes.caffeine.cache Cache Caffeine Weigher]))
 
 
 (set! *warn-on-reflection* true)
@@ -28,9 +28,11 @@
       (or (.getIfPresent db token) (ba/not-found (not-found-msg token)))))
 
   (-put [_ clauses]
-    (let [token (token/generate secure-rng)]
-      (.put db token clauses)
-      (ac/completed-future token))))
+    (if (empty? clauses)
+      (ac/completed-future (ba/incorrect "Clauses should not be empty."))
+      (let [token (token/generate secure-rng)]
+        (.put db token clauses)
+        (ac/completed-future token)))))
 
 
 (def ^:private ^:const ^long token-weigh 72)

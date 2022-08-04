@@ -32,14 +32,6 @@
   :ret byte-string?)
 
 
-(s/fdef sp-vr/encode-seek-key-for-prev
-  :args (s/cat :c-hash :blaze.db/c-hash
-               :tid :blaze.db/tid
-               :value byte-string?
-               :id (s/? :blaze.db/id-byte-string))
-  :ret byte-string?)
-
-
 (s/fdef sp-vr/index-entry
   :args (s/cat :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid

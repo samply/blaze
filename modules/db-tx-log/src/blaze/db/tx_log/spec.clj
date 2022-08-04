@@ -32,7 +32,7 @@
 
 
 (s/def :blaze.db.tx-cmd/if-none-exist
-  :blaze.db.query/clauses)
+  (s/coll-of :blaze.db.query/search-clause :kind vector? :min-count 1))
 
 
 (s/def :blaze.db.tx-cmd/if-match

@@ -50,11 +50,46 @@
            :method #fhir/code"POST"
            :url #fhir/uri"Patient"
            :ifNoneExist "birthdate=2020"}}])
+      [0 count] := 3
       [0 0] := :create
       [0 1 :fhir/type] := :fhir/Patient
       [0 1 :id] := "id-220200"
       [0 2 count] := 1
-      [0 2 0] := ["birthdate" "2020"]))
+      [0 2 0] := ["birthdate" "2020"])
+
+    (testing "with empty :ifNoneExist"
+      (given
+        (bundle/tx-ops
+          [{:fhir/type :fhir.Bundle/entry
+            :resource
+            {:fhir/type :fhir/Patient
+             :id "id-220200"}
+            :request
+            {:fhir/type :fhir.Bundle.entry/request
+             :method #fhir/code"POST"
+             :url #fhir/uri"Patient"
+             :ifNoneExist ""}}])
+        [0 count] := 2
+        [0 0] := :create
+        [0 1 :fhir/type] := :fhir/Patient
+        [0 1 :id] := "id-220200"))
+
+    (testing "with ignorable _sort search parameter"
+      (given
+        (bundle/tx-ops
+          [{:fhir/type :fhir.Bundle/entry
+            :resource
+            {:fhir/type :fhir/Patient
+             :id "id-220200"}
+            :request
+            {:fhir/type :fhir.Bundle.entry/request
+             :method #fhir/code"POST"
+             :url #fhir/uri"Patient"
+             :ifNoneExist "_sort=a"}}])
+        [0 count] := 2
+        [0 0] := :create
+        [0 1 :fhir/type] := :fhir/Patient
+        [0 1 :id] := "id-220200")))
 
   (testing "update"
     (given

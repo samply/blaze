@@ -26,8 +26,8 @@
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
-    [java.time.format DateTimeFormatter]
-    [java.time Instant]))
+    [java.time Instant]
+    [java.time.format DateTimeFormatter]))
 
 
 (set! *warn-on-reflection* true)
@@ -277,6 +277,11 @@
       :lastModified (:blaze.db.tx/instant tx)}}))
 
 
+(defn- conditional-clauses [if-none-exist]
+  (when-not (str/blank? if-none-exist)
+    (-> if-none-exist ring-codec/form-decode iu/search-clauses)))
+
+
 (defmethod build-response-entry "POST"
   [{:keys [return-preference db] :as context}
    _
@@ -290,7 +295,7 @@
           (assoc (created-entry context type handle) :resource resource))
         (ac/completed-future (created-entry context type handle)))
       (let [if-none-exist (-> entry :request :ifNoneExist)
-            clauses (some-> if-none-exist ring-codec/form-decode iu/clauses)
+            clauses (conditional-clauses if-none-exist)
             handle (first (d/type-query db type clauses))]
         (if (identical? :blaze.preference.return/representation return-preference)
           (do-sync [resource (d/pull db handle)]

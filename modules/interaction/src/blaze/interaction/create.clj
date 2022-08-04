@@ -13,6 +13,7 @@
     [blaze.interaction.util :as iu]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
+    [clojure.string :as str]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [ring.util.codec :as ring-codec]
@@ -46,8 +47,9 @@
     (conj conditional-clauses)))
 
 
-(defn- conditional-clauses [headers]
-  (some-> headers (get "if-none-exist") ring-codec/form-decode iu/clauses))
+(defn- conditional-clauses [{:strs [if-none-exist]}]
+  (when-not (str/blank? if-none-exist)
+    (-> if-none-exist ring-codec/form-decode iu/search-clauses)))
 
 
 (defn- response-context [{:keys [headers] :as request} db-after]

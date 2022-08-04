@@ -18,7 +18,7 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [cuerdas.core :as str]
+    [cuerdas.core :as c-str]
     [integrant.core :as ig]
     [java-time :as time]
     [juxt.iota :refer [given]]
@@ -464,6 +464,38 @@
                   (is (= #fhir/uri"base-url-113047/Patient?active=true&_summary=count&_count=50&__t=1"
                          (link-url body "self")))))))))))
 
+  (testing "on unsupported second sort parameter"
+    (testing "returns error"
+      (with-handler [handler]
+        []
+        (testing "normal result"
+          (let [{:keys [status body]}
+                @(handler
+                   {::reitit/match patient-match
+                    :params {"_sort" "a,b"}})]
+
+            (is (= 422 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"not-supported"
+              [:issue 0 :diagnostics] := "More than one sort parameter is unsupported.")))
+
+        (testing "summary result"
+          (let [{:keys [status body]}
+                @(handler
+                   {::reitit/match patient-match
+                    :params {"_sort" "a,b" "_summary" "count"}})]
+
+            (is (= 422 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"not-supported"
+              [:issue 0 :diagnostics] := "More than one sort parameter is unsupported."))))))
+
   (testing "on invalid date-time"
     (testing "returns error"
       (with-handler [handler]
@@ -523,7 +555,7 @@
         (let [{:keys [status body]}
               @(handler
                  {::reitit/match patient-page-match
-                  :params {"__token" (str/repeat "A" 32) "_count" "1" "__t" "1"
+                  :params {"__token" (c-str/repeat "A" 32) "_count" "1" "__t" "1"
                            "__page-id" "1"}})]
 
           (is (= 422 status))
@@ -533,7 +565,7 @@
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-found"
             [:issue 0 :diagnostics] := (format "Clauses of token `%s` not found."
-                                               (str/repeat "A" 32)))))))
+                                               (c-str/repeat "A" 32)))))))
 
   (testing "with one patient"
     (with-handler [handler]
@@ -992,6 +1024,72 @@
 
           (testing "the bundle contains one entry"
             (is (= 0 (count (:entry body)))))))))
+
+  (testing "_lastUpdated sort"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "1"}]]
+       [[:put {:fhir/type :fhir/Patient :id "2"}]]]
+
+      (testing "ascending"
+        (let [{:keys [status body]}
+              @(handler
+                 {::reitit/match patient-match
+                  :params {"_sort" "_lastUpdated"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the total count is 3"
+            (is (= #fhir/unsignedInt 3 (:total body))))
+
+          (testing "the bundle contains three entries"
+            (is (= 3 (count (:entry body)))))
+
+          (testing "the resources are sorted ascending"
+            (given (:entry body)
+              [0 :resource :id] := "0"
+              [1 :resource :id] := "1"
+              [2 :resource :id] := "2"))
+
+          (testing "has a self link"
+            (is (= #fhir/uri"base-url-113047/Patient?_sort=_lastUpdated&_count=50&__t=3&__page-id=0"
+                   (link-url body "self"))))))
+
+      (testing "descending"
+        (let [{:keys [status body]}
+              @(handler
+                 {::reitit/match patient-match
+                  :params {"_sort" "-_lastUpdated"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the total count is 3"
+            (is (= #fhir/unsignedInt 3 (:total body))))
+
+          (testing "the bundle contains three entries"
+            (is (= 3 (count (:entry body)))))
+
+          (testing "the resources are sorted ascending"
+            (given (:entry body)
+              [0 :resource :id] := "2"
+              [1 :resource :id] := "1"
+              [2 :resource :id] := "0"))
+
+          (testing "has a self link"
+            (is (= #fhir/uri"base-url-113047/Patient?_sort=-_lastUpdated&_count=50&__t=3&__page-id=2"
+                   (link-url body "self"))))))))
 
   (testing "_profile search"
     (with-handler [handler]

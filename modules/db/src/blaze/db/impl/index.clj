@@ -18,24 +18,40 @@
           true)))))
 
 
+(defn- resource-handles
+  ([search-param context tid modifier values]
+   (condp = modifier
+     "asc" (search-param/sorted-resource-handles search-param context tid :asc)
+     "desc" (search-param/sorted-resource-handles search-param context tid :desc)
+     (search-param/resource-handles search-param context tid modifier values)))
+  ([search-param context tid modifier values start-id]
+   (condp = modifier
+     "asc" (search-param/sorted-resource-handles search-param context tid :asc
+                                                 start-id)
+     "desc" (search-param/sorted-resource-handles search-param context tid :desc
+                                                  start-id)
+     (search-param/resource-handles search-param context tid modifier values
+                                    start-id))))
+
+
 (defn type-query
   ([context tid clauses]
    (let [[[search-param modifier _ values] & other-clauses] clauses]
      (if (seq other-clauses)
        (coll/eduction
          (other-clauses-filter context other-clauses)
-         (search-param/resource-handles
+         (resource-handles
            search-param context tid modifier values))
-       (search-param/resource-handles
+       (resource-handles
          search-param context tid modifier values))))
   ([context tid clauses start-id]
    (let [[[search-param modifier _ values] & other-clauses] clauses]
      (if (seq other-clauses)
        (coll/eduction
          (other-clauses-filter context other-clauses)
-         (search-param/resource-handles
+         (resource-handles
            search-param context tid modifier values start-id))
-       (search-param/resource-handles
+       (resource-handles
          search-param context tid modifier values start-id)))))
 
 
@@ -69,10 +85,10 @@
      [context resource-handle code target-tid])}
   ([{:keys [rsvi] :as context} {:keys [tid id hash]} code]
    (coll/eduction
-    (u/reference-resource-handle-mapper context)
-    (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code)))
+     (u/reference-resource-handle-mapper context)
+     (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code)))
   ([{:keys [rsvi] :as context} {:keys [tid id hash]} code target-tid]
    (coll/eduction
-    (u/reference-resource-handle-mapper context)
-    (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code
-                         (codec/tid-byte-string target-tid)))))
+     (u/reference-resource-handle-mapper context)
+     (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code
+                          (codec/tid-byte-string target-tid)))))

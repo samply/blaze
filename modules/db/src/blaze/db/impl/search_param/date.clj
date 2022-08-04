@@ -106,6 +106,11 @@
                    start-id))
 
 
+(defn- all-keys-prev! [{:keys [svri] :as context} c-hash tid start-id]
+  (sp-vr/all-keys-prev! svri c-hash tid
+                        (resource-value! context c-hash tid start-id) start-id))
+
+
 (defn- eq-keys!
   "Returns a reducible collection of `[value id hash-prefix]` triples of all
   keys with overlapping date/time intervals with the interval specified by
@@ -233,6 +238,24 @@
         (map (fn [[_value id hash-prefix]] [id hash-prefix]))
         (u/resource-handle-mapper context tid))
       (resource-keys! context c-hash tid value start-id)))
+
+  (-sorted-resource-handles [_ context tid direction]
+    (coll/eduction
+      (comp
+        (map (fn [[_value id hash-prefix]] [id hash-prefix]))
+        (u/resource-handle-mapper context tid))
+      (if (= :asc direction)
+        (sp-vr/all-keys! (:svri context) c-hash tid)
+        (sp-vr/all-keys-prev! (:svri context) c-hash tid))))
+
+  (-sorted-resource-handles [_ context tid direction start-id]
+    (coll/eduction
+      (comp
+        (map (fn [[_value id hash-prefix]] [id hash-prefix]))
+        (u/resource-handle-mapper context tid))
+      (if (= :asc direction)
+        (all-keys! context c-hash tid start-id)
+        (all-keys-prev! context c-hash tid start-id))))
 
   (-matches? [_ context resource-handle _ values]
     (some? (some #(matches? context c-hash resource-handle %) values)))

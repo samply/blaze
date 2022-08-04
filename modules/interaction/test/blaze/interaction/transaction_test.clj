@@ -490,6 +490,50 @@
                     :lastModified := Instant/EPOCH)))))))
 
       (testing "and conditional create interaction"
+        (testing "with empty property"
+          (with-handler [handler]
+            []
+
+            (let [{:keys [status]}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type (type/code type)
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Patient}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"POST"
+                          :url #fhir/uri"Patient"
+                          :ifNoneExist ""}}]}})]
+
+              (testing "a unconditional create is executed"
+                (is (= 200 status))))))
+
+        (testing "with ignorable _sort search parameter"
+          (with-handler [handler]
+            []
+
+            (let [{:keys [status]}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type (type/code type)
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Patient}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"POST"
+                          :url #fhir/uri"Patient"
+                          :ifNoneExist "_sort=a"}}]}})]
+
+              (testing "a unconditional create is executed"
+                (is (= 200 status))))))
+
         (testing "with non-matching patient"
           (testing "without return preference"
             (with-handler [handler]

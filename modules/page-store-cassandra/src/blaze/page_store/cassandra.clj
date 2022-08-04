@@ -68,8 +68,8 @@
 
 (defn- bind-put [statement token clauses]
   (let [content (codec/encode clauses)]
-    (prom/observe! clauses-bytes (bb/capacity content))
-    (cass/bind statement token content)))
+    (prom/observe! clauses-bytes (alength content))
+    (cass/bind statement token (bb/wrap content))))
 
 
 (defn- map-execute-put-error [token clauses e]

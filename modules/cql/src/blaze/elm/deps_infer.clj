@@ -2,7 +2,7 @@
   (:require
     [blaze.elm.spec]
     [clojure.set :as set]
-    [cuerdas.core :as str]))
+    [cuerdas.core :as c-str]))
 
 
 (defmulti infer-deps
@@ -11,7 +11,7 @@
   {:arglists '([expression])}
   (fn [{:keys [type]}]
     (assert type)
-    (keyword "elm.deps.type" (str/kebab type))))
+    (keyword "elm.deps.type" (c-str/kebab type))))
 
 
 (defn- update-expression-defs [expression-defs]
