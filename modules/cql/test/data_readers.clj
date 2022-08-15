@@ -82,6 +82,7 @@
  elm/converts-to-string blaze.elm.literal/converts-to-string
  elm/converts-to-time blaze.elm.literal/converts-to-time
  elm/children blaze.elm.literal/children
+ elm/convert blaze.elm.literal/convert
  elm/descendents blaze.elm.literal/descendents
  elm/to-boolean blaze.elm.literal/to-boolean
  elm/to-chars blaze.elm.literal/to-chars

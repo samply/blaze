@@ -214,8 +214,47 @@
       (catch Exception _))))
 
 
+;; 22.19. ToBoolean
+(extend-protocol p/ToBoolean
+  Quantity
+  (to-boolean [_]))
+
+
+;; 22.22. ToDate
+(extend-protocol p/ToDate
+  Quantity
+  (to-date [_ _]))
+
+
+;; 22.23. ToDateTime
+(extend-protocol p/ToDateTime
+  Quantity
+  (to-date-time [_ _]))
+
+
+;; 22.24. ToDecimal
+(extend-protocol p/ToDecimal
+  Quantity
+  (to-decimal [_]))
+
+
+;; 22.25. ToInteger
+(extend-protocol p/ToInteger
+  Quantity
+  (to-integer [_]))
+
+
+;; 22.27. ToLong
+(extend-protocol p/ToLong
+  Quantity
+  (to-long [_]))
+
+
 ;; 22.28. ToQuantity
 (extend-protocol p/ToQuantity
+  Quantity
+  (to-quantity [x] x)
+
   Number
   (to-quantity [x]
     (quantity x "1"))
@@ -234,3 +273,9 @@
   Quantity
   (to-string [x]
     (str (p/to-string (.getValue x)) " '" (.getUnit x) "'")))
+
+
+;; 22.23. ToTime
+(extend-protocol p/ToTime
+  Quantity
+  (to-time [_ _]))

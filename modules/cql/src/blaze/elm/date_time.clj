@@ -1265,6 +1265,33 @@
 
 ;; 22. Type Operators
 
+;; 22.19. ToBoolean
+(extend-protocol p/ToBoolean
+  PrecisionLocalTime
+  (to-boolean [_])
+
+  Year
+  (to-boolean [_])
+
+  DateTimeYear
+  (to-boolean [_])
+
+  YearMonth
+  (to-boolean [_])
+
+  DateTimeYearMonth
+  (to-boolean [_])
+
+  LocalDate
+  (to-boolean [_])
+
+  DateTimeYearMonthDay
+  (to-boolean [_])
+
+  LocalDateTime
+  (to-boolean [_]))
+
+
 ;; 22.22. ToDate
 (extend-protocol p/ToDate
   Year
@@ -1298,7 +1325,13 @@
   OffsetDateTime
   (to-date [this now]
     (-> (.withOffsetSameInstant this (.getOffset ^OffsetDateTime now))
-        (.toLocalDate))))
+        (.toLocalDate)))
+
+  LocalTime
+  (to-date [_ _])
+
+  PrecisionLocalTime
+  (to-date [_ _]))
 
 
 ;; 22.23. ToDateTime
@@ -1343,7 +1376,121 @@
   OffsetDateTime
   (to-date-time [this now]
     (-> (.withOffsetSameInstant this (.getOffset ^OffsetDateTime now))
-        (.toLocalDateTime))))
+        (.toLocalDateTime)))
+
+  LocalTime
+  (to-date-time [_ _])
+
+  PrecisionLocalTime
+  (to-date-time [_ _]))
+
+
+;; 22.24. ToDecimal
+(extend-protocol p/ToDecimal
+  PrecisionLocalTime
+  (to-decimal [_])
+
+  Year
+  (to-decimal [_])
+
+  DateTimeYear
+  (to-decimal [_])
+
+  YearMonth
+  (to-decimal [_])
+
+  DateTimeYearMonth
+  (to-decimal [_])
+
+  LocalDate
+  (to-decimal [_])
+
+  DateTimeYearMonthDay
+  (to-decimal [_])
+
+  LocalDateTime
+  (to-decimal [_]))
+
+
+;; 22.25. ToInteger
+(extend-protocol p/ToInteger
+  PrecisionLocalTime
+  (to-integer [_])
+
+  Year
+  (to-integer [_])
+
+  DateTimeYear
+  (to-integer [_])
+
+  YearMonth
+  (to-integer [_])
+
+  DateTimeYearMonth
+  (to-integer [_])
+
+  LocalDate
+  (to-integer [_])
+
+  DateTimeYearMonthDay
+  (to-integer [_])
+
+  LocalDateTime
+  (to-integer [_]))
+
+
+;; 22.27. ToLong
+(extend-protocol p/ToLong
+  PrecisionLocalTime
+  (to-long [_])
+
+  Year
+  (to-long [_])
+
+  DateTimeYear
+  (to-long [_])
+
+  YearMonth
+  (to-long [_])
+
+  DateTimeYearMonth
+  (to-long [_])
+
+  LocalDate
+  (to-long [_])
+
+  DateTimeYearMonthDay
+  (to-long [_])
+
+  LocalDateTime
+  (to-long [_]))
+
+
+;; 22.28. ToQuantity
+(extend-protocol p/ToQuantity
+  PrecisionLocalTime
+  (to-quantity [_])
+
+  Year
+  (to-quantity [_])
+
+  DateTimeYear
+  (to-quantity [_])
+
+  YearMonth
+  (to-quantity [_])
+
+  DateTimeYearMonth
+  (to-quantity [_])
+
+  LocalDate
+  (to-quantity [_])
+
+  DateTimeYearMonthDay
+  (to-quantity [_])
+
+  LocalDateTime
+  (to-quantity [_]))
 
 
 ;; 22.30. ToString
@@ -1398,4 +1545,23 @@
 
   PrecisionLocalTime
   (to-time [this _]
-   (.-local_time this)))
+   (.-local_time this))
+
+  Year
+  (to-time [_ _])
+
+  DateTimeYear
+  (to-time [_ _])
+
+  YearMonth
+  (to-time [_ _])
+
+  DateTimeYearMonth
+  (to-time [_ _])
+
+  LocalDate
+  (to-time [_ _])
+
+  DateTimeYearMonthDay
+  (to-time [_ _]))
+

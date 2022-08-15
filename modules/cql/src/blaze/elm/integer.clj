@@ -180,6 +180,24 @@
       nil)))
 
 
+;; 22.22. ToDate
+(extend-protocol p/ToDate
+  Integer
+  (to-date [_ _])
+
+  Long
+  (to-date [_ _]))
+
+
+;; 22.23. ToDateTime
+(extend-protocol p/ToDateTime
+  Integer
+  (to-date-time [_ _])
+
+  Long
+  (to-date-time [_ _]))
+
+
 ;; 22.24. ToDecimal
 (extend-protocol p/ToDecimal
   Integer
@@ -228,3 +246,13 @@
   Number
   (to-string [x]
     (str x)))
+
+
+;; 22.31. ToTime
+(extend-protocol p/ToTime
+  Integer
+  (to-time [_ _])
+
+  Long
+  (to-time [_ _]))
+
