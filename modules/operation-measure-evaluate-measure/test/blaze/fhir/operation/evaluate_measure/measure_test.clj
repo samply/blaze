@@ -432,7 +432,9 @@
     "q36-parameter" 1
     "q37-overlaps" 3
     "q38-di-surv" 2
-    "q39-social-sec-num" 1)
+    "q39-social-sec-num" 1
+    "q42-medication-2" 2
+    "q43-medication-3" 2)
 
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
@@ -614,5 +616,6 @@
 
 (comment
   (log/set-level! :debug)
-  (evaluate "q41-specimen-multi-stratifier")
+  (evaluate "q42-medication-2")
+  (evaluate "q43-medication-3")
   )
