@@ -15,7 +15,7 @@
   {:mvn/version "0.5.18"}
 
   ring/ring-core
-  {:mvn/version "1.9.5"
+  {:mvn/version "1.9.6"
    :exclusions
    [commons-fileupload/commons-fileupload
     crypto-equality/crypto-equality
