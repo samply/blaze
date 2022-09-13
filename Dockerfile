@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:17-jre-focal
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get purge curl libbinutils libctf0 libctf-nobfd0 libncurses6 -y && \
