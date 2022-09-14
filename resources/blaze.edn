@@ -351,7 +351,8 @@
     :block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache
     :stats #blaze/ref :blaze.db.index-kv-store/stats
     :opts
-    {:max-background-jobs
+    {:wal-dir #blaze/cfg ["INDEX_DB_WAL_DIR" string? ""]
+     :max-background-jobs
      #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
      :compaction-readahead-size
      #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
@@ -457,10 +458,9 @@
     :block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache
     :stats #blaze/ref :blaze.db.transaction-kv-store/stats
     :opts
-    {:max-background-jobs
-     #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
-     :compaction-readahead-size
-     #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
+    {:wal-dir #blaze/cfg ["TRANSACTION_DB_WAL_DIR" string? ""]
+     :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
+     :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
     :column-families
     {:default
      {:write-buffer-size-in-mb 8
@@ -493,10 +493,9 @@
     :block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache
     :stats #blaze/ref :blaze.db.resource-kv-store/stats
     :opts
-    {:max-background-jobs
-     #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
-     :compaction-readahead-size
-     #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
+    {:wal-dir #blaze/cfg ["RESOURCE_DB_WAL_DIR" string? ""]
+     :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
+     :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
     :column-families
     {:default
      {:write-buffer-size-in-mb 64
@@ -545,10 +544,9 @@
     :block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache
     :stats #blaze/ref :blaze.db.index-kv-store/stats
     :opts
-    {:max-background-jobs
-     #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
-     :compaction-readahead-size
-     #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
+    {:wal-dir #blaze/cfg ["INDEX_DB_WAL_DIR" string? ""]
+     :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
+     :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
     :column-families
     {:search-param-value-index
      {:write-buffer-size-in-mb 64

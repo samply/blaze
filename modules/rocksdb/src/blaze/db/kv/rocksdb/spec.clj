@@ -23,6 +23,10 @@
   #(instance? Statistics %))
 
 
+(s/def ::db-options/wal-dir
+  string?)
+
+
 (s/def ::db-options/max-background-jobs
   nat-int?)
 
@@ -32,7 +36,8 @@
 
 
 (s/def :blaze.db.kv.rocksdb/db-options
-  (s/keys :opt-un [::db-options/max-background-jobs
+  (s/keys :opt-un [::db-options/wal-dir
+                   ::db-options/max-background-jobs
                    ::db-options/compaction-readahead-size]))
 
 

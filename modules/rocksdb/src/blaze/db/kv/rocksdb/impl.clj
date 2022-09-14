@@ -78,12 +78,15 @@
 (defn db-options
   ^DBOptions
   [stats
-   {:keys [max-background-jobs
+   {:keys [wal-dir
+           max-background-jobs
            compaction-readahead-size]
-    :or {max-background-jobs 2
+    :or {wal-dir ""
+         max-background-jobs 2
          compaction-readahead-size 0}}]
   (doto (DBOptions.)
     (.setStatistics ^Statistics stats)
+    (.setWalDir (str wal-dir))
     (.setMaxBackgroundJobs (long max-background-jobs))
     (.setCompactionReadaheadSize (long compaction-readahead-size))
     (.setEnablePipelinedWrite true)

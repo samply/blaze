@@ -72,7 +72,8 @@
 
   DBOptions
   (datafy [options]
-    {:max-background-jobs (.maxBackgroundJobs options)
+    {:wal-dir (.walDir options)
+     :max-background-jobs (.maxBackgroundJobs options)
      :compaction-readahead-size (.compactionReadaheadSize options)
      :enable-pipelined-write (.enablePipelinedWrite options)
      :create-if-missing (.createIfMissing options)
@@ -144,6 +145,7 @@
 (deftest db-options-test
   (testing "with defaults"
     (given (datafy/datafy (impl/db-options (Statistics.) nil))
+      :wal-dir := ""
       :max-background-jobs := 2
       :compaction-readahead-size := 0
       :enable-pipelined-write := true
@@ -154,6 +156,7 @@
       (given (datafy/datafy (impl/db-options (Statistics.) {key value}))
         key := value)
 
+      :wal-dir "wal"
       :max-background-jobs 4
       :compaction-readahead-size 10)))
 
