@@ -212,7 +212,9 @@
 
   (-write [_ entries]
     (swap! db write-entries entries)
-    nil))
+    nil)
+
+  (-flush-wal [_]))
 
 
 (def ^:private bytes-cmp

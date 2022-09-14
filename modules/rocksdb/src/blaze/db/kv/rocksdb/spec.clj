@@ -35,10 +35,15 @@
   nat-int?)
 
 
+(s/def ::db-options/manual-wal-flush?
+  boolean?)
+
+
 (s/def :blaze.db.kv.rocksdb/db-options
   (s/keys :opt-un [::db-options/wal-dir
                    ::db-options/max-background-jobs
-                   ::db-options/compaction-readahead-size]))
+                   ::db-options/compaction-readahead-size
+                   ::db-options/manual-wal-flush?]))
 
 
 (s/def ::write-options/sync?

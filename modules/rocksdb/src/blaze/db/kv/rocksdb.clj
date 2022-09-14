@@ -136,6 +136,9 @@
       (impl/write-wb! cfhs wb entries)
       (.write db write-opts wb)))
 
+  (-flush-wal [_]
+    (.flushWal db false))
+
   Rocks
   (-get-property [_ name]
     (.getProperty db name))

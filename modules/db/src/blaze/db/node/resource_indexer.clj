@@ -123,9 +123,10 @@
     executor))
 
 
-(defn- index-resources* [context entries]
+(defn- index-resources* [{:keys [kv-store] :as context} entries]
   (log/trace "index" (count entries) "resource(s)")
-  (ac/all-of (mapv (partial async-index-resource context) entries)))
+  (-> (ac/all-of (mapv (partial async-index-resource context) entries))
+      (ac/then-apply (fn [_] (kv/flush-wal! kv-store)))))
 
 
 (defn- hashes [tx-cmds]

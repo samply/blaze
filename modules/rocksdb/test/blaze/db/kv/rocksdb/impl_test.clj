@@ -75,6 +75,7 @@
     {:wal-dir (.walDir options)
      :max-background-jobs (.maxBackgroundJobs options)
      :compaction-readahead-size (.compactionReadaheadSize options)
+     :manual-wal-flush? (.manualWalFlush options)
      :enable-pipelined-write (.enablePipelinedWrite options)
      :create-if-missing (.createIfMissing options)
      :create-missing-column-families (.createMissingColumnFamilies options)})
@@ -148,6 +149,7 @@
       :wal-dir := ""
       :max-background-jobs := 2
       :compaction-readahead-size := 0
+      :manual-wal-flush? := false
       :enable-pipelined-write := true
       :create-if-missing := true
       :create-missing-column-families := true)
@@ -158,7 +160,8 @@
 
       :wal-dir "wal"
       :max-background-jobs 4
-      :compaction-readahead-size 10)))
+      :compaction-readahead-size 10
+      :manual-wal-flush? true)))
 
 
 (deftest write-options-test

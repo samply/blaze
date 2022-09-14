@@ -352,10 +352,9 @@
     :stats #blaze/ref :blaze.db.index-kv-store/stats
     :opts
     {:wal-dir #blaze/cfg ["INDEX_DB_WAL_DIR" string? ""]
-     :max-background-jobs
-     #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
-     :compaction-readahead-size
-     #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
+     :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
+     :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]
+     :manual-wal-flush? true}
     :column-families
     {:search-param-value-index
      {:write-buffer-size-in-mb 64
@@ -546,7 +545,8 @@
     :opts
     {:wal-dir #blaze/cfg ["INDEX_DB_WAL_DIR" string? ""]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
-     :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
+     :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]
+     :manual-wal-flush? true}
     :column-families
     {:search-param-value-index
      {:write-buffer-size-in-mb 64

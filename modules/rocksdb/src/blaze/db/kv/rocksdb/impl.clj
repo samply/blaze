@@ -80,10 +80,12 @@
   [stats
    {:keys [wal-dir
            max-background-jobs
-           compaction-readahead-size]
+           compaction-readahead-size
+           manual-wal-flush?]
     :or {wal-dir ""
          max-background-jobs 2
-         compaction-readahead-size 0}}]
+         compaction-readahead-size 0
+         manual-wal-flush? false}}]
   (doto (DBOptions.)
     (.setStatistics ^Statistics stats)
     (.setWalDir (str wal-dir))
@@ -91,7 +93,8 @@
     (.setCompactionReadaheadSize (long compaction-readahead-size))
     (.setEnablePipelinedWrite true)
     (.setCreateIfMissing true)
-    (.setCreateMissingColumnFamilies true)))
+    (.setCreateMissingColumnFamilies true)
+    (.setManualWalFlush (boolean manual-wal-flush?))))
 
 
 (defn write-options [{:keys [sync? disable-wal?]}]

@@ -190,7 +190,9 @@
 
   (-delete [store keys])
 
-  (-write [store entries]))
+  (-write [store entries])
+
+  (-flush-wal [store]))
 
 
 (defn store? [x]
@@ -254,3 +256,7 @@
   Writes are atomic. Blocks."
   [store entries]
   (-write store entries))
+
+
+(defn flush-wal! [store]
+  (-flush-wal store))
