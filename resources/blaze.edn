@@ -352,6 +352,7 @@
     :stats #blaze/ref :blaze.db.index-kv-store/stats
     :opts
     {:wal-dir #blaze/cfg ["INDEX_DB_WAL_DIR" string? ""]
+     :disable-wal? #blaze/cfg ["INDEX_DB_DISABLE_WAL" boolean? false]
      :max-background-jobs
      #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
      :compaction-readahead-size
@@ -459,6 +460,7 @@
     :stats #blaze/ref :blaze.db.transaction-kv-store/stats
     :opts
     {:wal-dir #blaze/cfg ["TRANSACTION_DB_WAL_DIR" string? ""]
+     :disable-wal? #blaze/cfg ["TRANSACTION_DB_DISABLE_WAL" boolean? false]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
      :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
     :column-families
@@ -494,6 +496,7 @@
     :stats #blaze/ref :blaze.db.resource-kv-store/stats
     :opts
     {:wal-dir #blaze/cfg ["RESOURCE_DB_WAL_DIR" string? ""]
+     :disable-wal? #blaze/cfg ["RESOURCE_DB_DISABLE_WAL" boolean? false]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
      :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
     :column-families
@@ -547,6 +550,7 @@
     :stats #blaze/ref :blaze.db.index-kv-store/stats
     :opts
     {:wal-dir #blaze/cfg ["INDEX_DB_WAL_DIR" string? ""]
+     :disable-wal? #blaze/cfg ["INDEX_DB_DISABLE_WAL" boolean? false]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
      :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" int? 0]}
     :column-families
