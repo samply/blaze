@@ -4,8 +4,10 @@
     [blaze.db.kv.rocksdb.impl :as impl]
     [blaze.db.kv.rocksdb.metrics :as metrics]
     [blaze.db.kv.rocksdb.spec]
+    [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
+    [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
     [java.lang AutoCloseable]
@@ -19,6 +21,15 @@
 
 (set! *warn-on-reflection* true)
 (RocksDB/loadLibrary)
+
+
+(defhistogram duration-seconds
+  "Durations in RocksDB."
+  {:namespace "blaze"
+   :subsystem "rocksdb"
+   :name "duration_seconds"}
+  (take 14 (iterate #(* 2 %) 1e-6))
+  "op")
 
 
 (deftype RocksKvIterator [^RocksIterator i]
@@ -120,8 +131,10 @@
 
   (-put [_ entries]
     (with-open [wb (WriteBatch.)]
-      (impl/put-wb! cfhs wb entries)
-      (.write db write-opts wb)))
+      (with-open [_ (prom/timer duration-seconds "put-wb")]
+        (impl/put-wb! cfhs wb entries))
+      (with-open [_ (prom/timer duration-seconds "put")]
+        (.write db write-opts wb))))
 
   (-put [_ key value]
     (.put db key value))
@@ -244,3 +257,7 @@
 
 
 (derive ::stats-collector :blaze.metrics/collector)
+
+
+(reg-collector ::duration-seconds
+  duration-seconds)
