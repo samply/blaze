@@ -14,7 +14,7 @@
     [org.rocksdb
      RocksDB RocksIterator WriteOptions WriteBatch Options ColumnFamilyHandle
      Statistics LRUCache CompactRangeOptions Snapshot ReadOptions
-     StatsLevel Env Priority]))
+     StatsLevel Env]))
 
 
 (set! *warn-on-reflection* true)
@@ -190,9 +190,7 @@
 (defmethod ig/init-key ::env
   [_ _]
   (log/info (format "Init RocksDB environment"))
-  (doto (Env/getDefault)
-    (.setBackgroundThreads 2 Priority/HIGH)
-    (.setBackgroundThreads 6 Priority/LOW)))
+  (Env/getDefault))
 
 
 (defmethod ig/pre-init-spec ::kv/rocksdb [_]
