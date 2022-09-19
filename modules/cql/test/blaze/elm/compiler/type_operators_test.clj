@@ -909,12 +909,172 @@
   (tu/testing-unary-null elm/descendents))
 
 
-;; TODO 22.18. Is
+;; 22.18. Is
 ;;
 ;; The Is operator allows the type of a result to be tested. The language must
 ;; support the ability to test against any type. If the run-time type of the
 ;; argument is of the type being tested, the result of the operator is true;
 ;; otherwise, the result is false.
+(deftest compile-is-test
+  (testing "FHIR types"
+    (are [elm resource] (true? (core/-eval (c/compile {} elm) {} nil {"R" resource}))
+      #elm/is ["{http://hl7.org/fhir}boolean"
+               {:path "deceased"
+                :scope "R"
+                :type "Property"}]
+      {:fhir/type :fhir/Patient :id "0" :deceased true}
+
+      #elm/is ["{http://hl7.org/fhir}integer"
+               {:path "value"
+                :scope "R"
+                :type "Property"}]
+      {:fhir/type :fhir/Observation :value (int 1)}
+
+      #elm/is ["{http://hl7.org/fhir}decimal"
+               {:path "duration"
+                :scope "R"
+                :type "Property"}]
+      {:fhir/type :fhir/Media :duration 1.1M}
+
+      #elm/is ["{http://hl7.org/fhir}string"
+               {:path "name"
+                :scope "R"
+                :type "Property"}]
+      {:fhir/type :fhir/Account :name "a"}
+
+      #elm/is ["{http://hl7.org/fhir}uri"
+               {:path "url"
+                :scope "R"
+                :type "Property"}]
+      {:fhir/type :fhir/Measure :url #fhir/uri"a"}
+
+      #elm/is ["{http://hl7.org/fhir}url"
+               {:path "address"
+                :scope "R"
+                :type "Property"}]
+      {:fhir/type :fhir/Endpoint :address #fhir/url"a"}
+
+      #elm/is ["{http://hl7.org/fhir}dateTime"
+               {:path "value"
+                :scope "R"
+                :type "Property"}]
+      {:fhir/type :fhir/Observation :value #fhir/dateTime"2019-09-04"})
+
+    (are [elm resource] (false? (core/-eval (c/compile {} elm) {} nil {"R" resource}))
+      #elm/is ["{http://hl7.org/fhir}boolean"
+               {:path "deceased"
+                :scope "R"
+                :type "Property"}]
+      {:fhir/type :fhir/Patient :id "0" :deceased "foo"}
+
+      #elm/is ["{http://hl7.org/fhir}integer"
+               {:path "value"
+                :scope "R"
+                :type "Property"}]
+      {:fhir/type :fhir/Observation :value true}
+
+      #elm/is ["{http://hl7.org/fhir}decimal"
+               {:path "duration"
+                :scope "R"
+                :type "Property"}]
+      {:fhir/type :fhir/Media :duration #fhir/uri"a"}
+
+      #elm/is ["{http://hl7.org/fhir}string"
+               {:path "name"
+                :scope "R"
+                :type "Property"}]
+      {:fhir/type :fhir/Account :name (int 1)}
+
+      #elm/is ["{http://hl7.org/fhir}uri"
+               {:path "url"
+                :scope "R"
+                :type "Property"}]
+      {:fhir/type :fhir/Measure :url 1.1M}
+
+      #elm/is ["{http://hl7.org/fhir}url"
+               {:path "address"
+                :scope "R"
+                :type "Property"}]
+      {:fhir/type :fhir/Endpoint :address #fhir/dateTime"2019-09-04"}
+
+      #elm/is ["{http://hl7.org/fhir}dateTime"
+               {:path "value"
+                :scope "R"
+                :type "Property"}]
+      {:fhir/type :fhir/Observation :value #fhir/url"a"}
+
+      #elm/is ["{http://hl7.org/fhir}Quantity"
+               {:path "value"
+                :scope "R"
+                :type "Property"}]
+      {:fhir/type :fhir/Observation :value #fhir/dateTime"2019-09-04"}))
+
+  (testing "ELM types"
+    (are [elm] (true? (core/-eval (c/compile {} elm) {} nil nil))
+      #elm/is ["{urn:hl7-org:elm-types:r1}Boolean" #elm/boolean "true"]
+
+      #elm/is ["{urn:hl7-org:elm-types:r1}Integer" #elm/integer "1"]
+
+      #elm/is ["{urn:hl7-org:elm-types:r1}Long" #elm/long "1"]
+
+      #elm/is ["{urn:hl7-org:elm-types:r1}Decimal" #elm/decimal "-1.1"]
+
+      #elm/is ["{urn:hl7-org:elm-types:r1}Quantity" #elm/quantity [10 "m"]]
+
+      #elm/is ["{urn:hl7-org:elm-types:r1}String" #elm/string "foo"]
+
+      #elm/is ["{urn:hl7-org:elm-types:r1}Date" #elm/date "2020-03-08"]
+
+      #elm/is ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date-time "2019-09-04"])
+
+    (are [elm] (false? (core/-eval (c/compile {} elm) {} nil nil))
+      #elm/is ["{urn:hl7-org:elm-types:r1}Boolean" #elm/integer "1"]
+      #elm/is ["{urn:hl7-org:elm-types:r1}Boolean" {:type "Null"}]
+
+      #elm/is ["{urn:hl7-org:elm-types:r1}Integer" #elm/boolean "true"]
+      #elm/is ["{urn:hl7-org:elm-types:r1}Integer" {:type "Null"}]
+
+      #elm/is ["{urn:hl7-org:elm-types:r1}Long" #elm/string "foo"]
+      #elm/is ["{urn:hl7-org:elm-types:r1}Long" {:type "Null"}]
+
+      #elm/is ["{urn:hl7-org:elm-types:r1}Decimal" #elm/integer "1"]
+      #elm/is ["{urn:hl7-org:elm-types:r1}Decimal" {:type "Null"}]
+
+      #elm/is ["{urn:hl7-org:elm-types:r1}Quantity" #elm/long "1"]
+      #elm/is ["{urn:hl7-org:elm-types:r1}Quantity" {:type "Null"}]
+
+      #elm/is ["{urn:hl7-org:elm-types:r1}String" #elm/decimal "-1.1"]
+      #elm/is ["{urn:hl7-org:elm-types:r1}String" {:type "Null"}]
+
+      #elm/is ["{urn:hl7-org:elm-types:r1}Date" #elm/date-time "2020-03-08"]
+      #elm/is ["{urn:hl7-org:elm-types:r1}Date" {:type "Null"}]
+
+      #elm/is ["{urn:hl7-org:elm-types:r1}DateTime" #elm/string "2019-09-04"]
+      #elm/is ["{urn:hl7-org:elm-types:r1}DateTime" {:type "Null"}]))
+
+  (testing "form"
+    (are [elm form] (= form (core/-form (c/compile {} elm)))
+      #elm/is ["{urn:hl7-org:elm-types:r1}Integer" {:type "Null"}]
+      '(is elm/integer nil)
+
+      #elm/is ["{urn:hl7-org:elm-types:r1}Integer" #elm/integer "1"]
+      '(is elm/integer 1)
+
+      #elm/is ["{http://hl7.org/fhir}dateTime"
+               {:path "value"
+                :scope "R"
+                :type "Property"}]
+      '(is fhir/dateTime (:value R))
+
+      {:type "Is"
+       :isTypeSpecifier
+       {:type "ListTypeSpecifier"
+        :elementType
+        {:type "NamedTypeSpecifier"
+         :name "{http://hl7.org/fhir}Quantity"}}
+       :operand #elm/integer "1"}
+      '(is (list fhir/Quantity) 1))))
+
 
 ;; 22.19. ToBoolean
 ;;

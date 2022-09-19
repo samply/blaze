@@ -860,6 +860,11 @@
   {:type "Descendents" :source source})
 
 
+;; 22.18. Is
+(defn is [[type operand]]
+  {:type "Is" :isType type :operand operand})
+
+
 ;; 22.19. ToBoolean
 (defn to-boolean [operand]
   {:type "ToBoolean" :operand operand})
