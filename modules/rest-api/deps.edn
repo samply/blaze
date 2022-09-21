@@ -20,7 +20,7 @@
    :exclusions [com.cognitect/transit-clj]}
 
   org.clojure/data.xml
-  {:mvn/version "0.2.0-alpha7"}}
+  {:mvn/version "0.2.0-alpha8"}}
 
  :aliases
  {:test
@@ -33,7 +33,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.69.1069"}}
+    {:mvn/version "1.70.1086"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
