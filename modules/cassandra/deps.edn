@@ -3,7 +3,7 @@
   {:local/root "../async"}
 
   com.datastax.oss/java-driver-core
-  {:mvn/version "4.14.1"}
+  {:mvn/version "4.15.0"}
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   com.fasterxml.jackson.core/jackson-databind
@@ -11,7 +11,7 @@
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   io.netty/netty-handler
-  {:mvn/version "4.1.81.Final"}}
+  {:mvn/version "4.1.82.Final"}}
 
  :aliases
  {:test
@@ -27,7 +27,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.69.1069"}}
+    {:mvn/version "1.70.1086"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
