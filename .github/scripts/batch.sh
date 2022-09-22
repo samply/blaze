@@ -55,6 +55,6 @@ RESPONSE_PATIENT_ID="$(echo "$RESULT" | jq -r .entry[].resource.id)"
 if [ "$RESPONSE_PATIENT_ID" = "$PATIENT_ID" ]; then
   echo "OK: patient id's match"
 else
-  echo "Fail: response patient id was $RESPONSE_PATIENT_ID but should be $RESPONSE_PATIENT_ID"
+  echo "Fail: response patient id was $RESPONSE_PATIENT_ID but should be $PATIENT_ID"
   exit 1
 fi

@@ -1,6 +1,7 @@
 (ns blaze.page-store.cassandra-test
   (:require
     [blaze.async.comp :as ac]
+    [blaze.byte-buffer :as bb]
     [blaze.cassandra :as cass]
     [blaze.cassandra-spec]
     [blaze.page-store :as page-store]
@@ -12,7 +13,7 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [cuerdas.core :as str]
+    [cuerdas.core :as c-str]
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
@@ -64,7 +65,7 @@
 
 
 (def clauses [["active" "true"]])
-(def token (str (str/repeat "A" 31) "B"))
+(def token (str (c-str/repeat "A" 31) "B"))
 
 
 (deftest put-test
@@ -74,7 +75,7 @@
        cass/prepare prepare
        cass/bind (fn [prepared-statement & params]
                    (assert (= ::prepared-put-statement prepared-statement))
-                   (assert (= [token (codec/encode clauses)] params))
+                   (assert (= [token (bb/wrap (codec/encode clauses))] params))
                    ::bound-put-statement)
        cass/execute (fn [session statement]
                       (assert (= ::session session))

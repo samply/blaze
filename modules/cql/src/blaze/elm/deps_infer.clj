@@ -2,7 +2,7 @@
   (:require
     [blaze.elm.spec]
     [clojure.set :as set]
-    [cuerdas.core :as str]))
+    [cuerdas.core :as c-str]))
 
 
 (defmulti infer-deps
@@ -11,7 +11,7 @@
   {:arglists '([expression])}
   (fn [{:keys [type]}]
     (assert type)
-    (keyword "elm.deps.type" (str/kebab type))))
+    (keyword "elm.deps.type" (c-str/kebab type))))
 
 
 (defn- update-expression-defs [expression-defs]
@@ -604,6 +604,58 @@
 (derive :elm.deps.type/as :elm.deps.type/unary-expression)
 
 
+;; 22.3. CanConvertQuantity
+(derive :elm.deps.type/can-convert-quantity :elm.deps.type/binary-expression)
+
+
+;; 22.6. ConvertQuantity
+(derive :elm.deps.type/convert-quantity :elm.deps.type/binary-expression)
+
+
+;; 22.7. ConvertsToBoolean
+(derive :elm.deps.type/converts-to-boolean :elm.deps.type/unary-expression)
+
+
+;; 22.8. ConvertsToDate
+(derive :elm.deps.type/converts-to-date :elm.deps.type/unary-expression)
+
+
+;; 22.9. ConvertsToDateTime
+(derive :elm.deps.type/converts-to-date-time :elm.deps.type/unary-expression)
+
+
+;; 22.10. ConvertsToDecimal
+(derive :elm.deps.type/converts-to-decimal :elm.deps.type/unary-expression)
+
+
+;; 22.11. ConvertsToLong
+(derive :elm.deps.type/converts-to-long :elm.deps.type/unary-expression)
+
+
+;; 22.12. ConvertsToInteger
+(derive :elm.deps.type/converts-to-integer :elm.deps.type/unary-expression)
+
+
+;; 22.13. ConvertsToQuantity
+(derive :elm.deps.type/converts-to-quantity :elm.deps.type/unary-expression)
+
+
+;; 22.15. ConvertsToString
+(derive :elm.deps.type/converts-to-string :elm.deps.type/unary-expression)
+
+
+;; 22.16. ConvertsToTime
+(derive :elm.deps.type/converts-to-time :elm.deps.type/unary-expression)
+
+
+;; 22.19. ToBoolean
+(derive :elm.deps.type/to-boolean :elm.deps.type/unary-expression)
+
+
+;; 22.20. ToChars
+(derive :elm.deps.type/to-chars :elm.deps.type/unary-expression)
+
+
 ;; 22.22. ToDate
 (derive :elm.deps.type/to-date :elm.deps.type/unary-expression)
 
@@ -612,12 +664,28 @@
 (derive :elm.deps.type/to-date-time :elm.deps.type/unary-expression)
 
 
+;; 22.24. ToDecimal
+(derive :elm.deps.type/to-decimal :elm.deps.type/unary-expression)
+
+
+;; 22.25. ToInteger
+(derive :elm.deps.type/to-integer :elm.deps.type/unary-expression)
+
+
 ;; 22.26. ToList
 (derive :elm.deps.type/to-list :elm.deps.type/unary-expression)
 
 
+;; 22.27. ToLong
+(derive :elm.deps.type/to-long :elm.deps.type/unary-expression)
+
+
 ;; 22.28. ToQuantity
 (derive :elm.deps.type/to-quantity :elm.deps.type/unary-expression)
+
+
+;; 22.30. ToString
+(derive :elm.deps.type/to-string :elm.deps.type/unary-expression)
 
 
 ;; 22.31. ToTime

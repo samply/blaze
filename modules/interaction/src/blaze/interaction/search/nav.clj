@@ -6,12 +6,21 @@
     [reitit.core :as reitit]))
 
 
+(defmulti clause->query-param (fn [_ret [key]] key))
+
+
+(defmethod clause->query-param :sort
+   [ret [_sort param direction]]
+  (assoc ret "_sort" (if (= :desc direction) (str "-" param) param)))
+
+
+(defmethod clause->query-param :default
+  [ret [param & values]]
+  (update ret param (fnil conj []) (str/join "," values)))
+
+
 (defn- clauses->query-params [clauses]
-  (reduce
-    (fn [ret [param & values]]
-      (update ret param (fnil conj []) (str/join "," values)))
-    {}
-    clauses))
+  (reduce clause->query-param {} clauses))
 
 
 (defn- clauses->token-query-params [page-store token clauses]

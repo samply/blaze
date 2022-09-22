@@ -2,6 +2,7 @@
   (:require
     [blaze.anomaly-spec]
     [blaze.fhir.operation.evaluate-measure.measure.util :as u]
+    [blaze.fhir.operation.evaluate-measure.measure.util-spec]
     [blaze.test-util :refer [satisfies-prop]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]

@@ -3,7 +3,7 @@
     [blaze.elm.protocols :as p]
     [blaze.fhir.spec.type.system :as system]
     [clojure.string :as str]
-    [cuerdas.core :as cuerdas])
+    [cuerdas.core :as c-str])
   (:import
     [java.time.temporal ChronoUnit]))
 
@@ -49,7 +49,7 @@
   {:arglists '([context expression])}
   (fn [_ {:keys [type] :as expr}]
     (assert (string? type) (format "Missing :type in expression `%s`." (pr-str expr)))
-    (keyword "elm.compiler.type" (cuerdas/kebab type))))
+    (keyword "elm.compiler.type" (c-str/kebab type))))
 
 
 (defmethod compile* :default

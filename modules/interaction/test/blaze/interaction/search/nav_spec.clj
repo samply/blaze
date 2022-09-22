@@ -11,7 +11,7 @@
   :args (s/cat :base-url string?
                :match some?
                :params (s/nilable map?)
-               :clauses (s/nilable (s/coll-of :blaze.db.query/clause))
+               :clauses (s/nilable :blaze.db.query/clauses)
                :t :blaze.db/t
                :offset (s/nilable map?))
   :ret string?)
@@ -22,7 +22,7 @@
                :base-url string?
                :match some?
                :params (s/nilable map?)
-               :clauses (s/nilable (s/coll-of :blaze.db.query/clause))
+               :clauses (s/nilable :blaze.db.query/clauses)
                :t :blaze.db/t
                :offset (s/nilable map?))
   :ret ac/completable-future?)

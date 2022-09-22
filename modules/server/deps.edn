@@ -9,7 +9,7 @@
   {:mvn/version "9.4.48.v20220622"}
 
   ring/ring-jetty-adapter
-  {:mvn/version "1.9.5"
+  {:mvn/version "1.9.6"
    :exclusions
    [clj-time/clj-time
     commons-fileupload/commons-fileupload
@@ -30,7 +30,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.68.1059"}}
+    {:mvn/version "1.70.1086"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

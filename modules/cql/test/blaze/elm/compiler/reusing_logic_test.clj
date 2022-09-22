@@ -54,7 +54,7 @@
   (testing "Eval"
     (let [library {:statements {:def [{:name "name-170312"}]}}
           expr (c/compile {:library library} #elm/expression-ref "name-170312")]
-      (is (= ::result (core/-eval expr {:library-context {"name-170312" ::result}} nil nil)))))
+      (is (= ::result (core/-eval expr {:expression-defs {"name-170312" {:expression ::result}}} nil nil)))))
 
   (testing "form"
     (let [library {:statements {:def [{:name "name-170312"}]}}
@@ -76,7 +76,7 @@
   (testing "Custom function with arity 0"
     (let [function-name "name-210650"
           fn-expr (c/compile {} #elm/integer "1")
-          compile-ctx {:functions {function-name (partial function/arity-n function-name fn-expr [])}}
+          compile-ctx {:function-defs {function-name {:function (partial function/arity-n function-name fn-expr [])}}}
           elm (elm/function-ref [function-name])
           expr (c/compile compile-ctx elm)]
       (testing "eval"
@@ -89,7 +89,7 @@
     (let [function-name "name-180815"
           fn-expr (c/compile {} #elm/negate #elm/operand-ref"x")
           compile-ctx {:library {:parameters {:def [{:name "a"}]}}
-                       :functions {function-name (partial function/arity-n function-name fn-expr ["x"])}}
+                       :function-defs {function-name {:function (partial function/arity-n function-name fn-expr ["x"])}}}
           elm (elm/function-ref [function-name #elm/parameter-ref "a"])
           expr (c/compile compile-ctx elm)]
       (testing "eval"
@@ -105,7 +105,7 @@
     (let [function-name "name-184652"
           fn-expr (c/compile {} #elm/add [#elm/operand-ref"x" #elm/operand-ref"y"])
           compile-ctx {:library {:parameters {:def [{:name "a"} {:name "b"}]}}
-                       :functions {function-name (partial function/arity-n function-name fn-expr ["x" "y"])}}
+                       :function-defs {function-name {:function (partial function/arity-n function-name fn-expr ["x" "y"])}}}
           elm (elm/function-ref [function-name #elm/parameter-ref "a" #elm/parameter-ref "b"])
           expr (c/compile compile-ctx elm)]
       (testing "eval"

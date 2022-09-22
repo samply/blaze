@@ -9,7 +9,8 @@
     [clojure.alpha.spec :as s]
     [clojure.data.xml.name :as xml-name]
     [clojure.data.xml.node :as xml-node]
-    [cuerdas.core :as str])
+    [clojure.string :as str]
+    [cuerdas.core :as c-str])
   (:import
     [com.github.benmanes.caffeine.cache CacheLoader Caffeine LoadingCache]
     [java.net URLEncoder]
@@ -116,7 +117,7 @@
 
 (defn- key-name [last-path-part {:keys [code]}]
   (if (str/ends-with? last-path-part "[x]")
-    (str/replace last-path-part "[x]" (str/capital code))
+    (str/replace last-path-part "[x]" (c-str/capital code))
     last-path-part))
 
 
@@ -146,7 +147,7 @@
 
 
 (defn- choice-spec-def* [modifier path code min max]
-  {:key (path-parts->key' (str "fhir." (name modifier)) (split-path (str/replace path "[x]" (str/capital code))))
+  {:key (path-parts->key' (str "fhir." (name modifier)) (split-path (str/replace path "[x]" (c-str/capital code))))
    :modifier modifier
    :min min
    :max max
@@ -391,7 +392,7 @@
       (.build
         (reify CacheLoader
           (load [_ [key type]]
-            (keyword (str (name key) (str/capital (name type)))))))))
+            (keyword (str (name key) (c-str/capital (name type)))))))))
 
 
 (defn- choice-type-key [key type]
@@ -478,7 +479,7 @@
          :fhir.json/HumanName
          :fhir.json/Address
          :fhir.json/Reference)
-       (json-object-spec-form (str/kebab path-part) child-spec-defs)
+       (json-object-spec-form (c-str/kebab path-part) child-spec-defs)
        :fhir.json.Bundle.entry/search
        (json-object-spec-form "bundle-entry-search" child-spec-defs)
        (conj (seq (remap-choice-conformer-forms child-spec-defs))
@@ -655,7 +656,7 @@
          :fhir.cbor/HumanName
          :fhir.cbor/Address
          :fhir.cbor/Reference)
-       (cbor-object-spec-form (str/kebab path-part) child-spec-defs)
+       (cbor-object-spec-form (c-str/kebab path-part) child-spec-defs)
        :fhir.cbor.Bundle.entry/search
        (cbor-object-spec-form "bundle-entry-search" child-spec-defs)
        (conj (seq (remap-choice-conformer-forms child-spec-defs))
@@ -770,7 +771,7 @@
 
 (defn- xml-spec-form [name {:keys [element]}]
   (let [regex (type-regex (value-type element))
-        constructor (str "xml->" (str/capital name))]
+        constructor (str "xml->" (c-str/capital name))]
     (case name
       "xhtml" `(s/and xml/element? (s/conformer type/xml->Xhtml type/to-xml))
       (xml/primitive-xml-form regex (symbol "blaze.fhir.spec.type" constructor)))))

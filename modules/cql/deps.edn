@@ -5,7 +5,7 @@
   {:local/root "../db"}
 
   com.fasterxml.jackson.module/jackson-module-jaxb-annotations
-  {:mvn/version "2.13.3"}
+  {:mvn/version "2.13.4"}
 
   info.cqframework/cql-to-elm
   {:mvn/version "1.5.10"
@@ -37,12 +37,12 @@
     {:local/root "../db-stub"}
 
     org.clojure/data.xml
-    {:mvn/version "0.2.0-alpha6"}}}
+    {:mvn/version "0.2.0-alpha8"}}}
 
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.68.1059"}}
+    {:mvn/version "1.70.1086"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

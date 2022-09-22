@@ -5,6 +5,7 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
+    [blaze.async.comp :as ac]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.executors :as ex]
     [blaze.fhir.spec.type :as type]
@@ -30,6 +31,7 @@
     [reitit.core :as reitit]
     [reitit.ring]
     [ring.middleware.params :refer [wrap-params]]
+    [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
     [java.time Instant]
@@ -61,7 +63,12 @@
   [_ {:keys [node create-handler search-type-handler
              read-handler delete-handler update-handler]}]
   (reitit.ring/router
-    [["/Observation"
+    [["/metadata"
+      {:get
+       (fn [_]
+         (ac/completed-future
+           (ring/response {:fhir/type :fhir/CapabilityStatement})))}]
+     ["/Observation"
       {:name :Observation/type
        :fhir.resource/type "Observation"
        :get {:middleware [[wrap-db node]]
@@ -483,6 +490,50 @@
                     :lastModified := Instant/EPOCH)))))))
 
       (testing "and conditional create interaction"
+        (testing "with empty property"
+          (with-handler [handler]
+            []
+
+            (let [{:keys [status]}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type (type/code type)
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Patient}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"POST"
+                          :url #fhir/uri"Patient"
+                          :ifNoneExist ""}}]}})]
+
+              (testing "a unconditional create is executed"
+                (is (= 200 status))))))
+
+        (testing "with ignorable _sort search parameter"
+          (with-handler [handler]
+            []
+
+            (let [{:keys [status]}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type (type/code type)
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Patient}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"POST"
+                          :url #fhir/uri"Patient"
+                          :ifNoneExist "_sort=a"}}]}})]
+
+              (testing "a unconditional create is executed"
+                (is (= 200 status))))))
+
         (testing "with non-matching patient"
           (testing "without return preference"
             (with-handler [handler]
@@ -1413,6 +1464,32 @@
                 [:issue 0 :code] := #fhir/code"not-supported"
                 [:issue 0 :diagnostics] := "Unsupported method `PATCH`."
                 [:issue 0 :expression 0] := "Bundle.entry[0].request.method"))))))
+
+    (testing "on metadata"
+      (with-handler [handler]
+        []
+        (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
+              @(handler
+                 {:body
+                  {:fhir/type :fhir/Bundle
+                   :type #fhir/code"batch"
+                   :entry
+                   [{:fhir/type :fhir.Bundle/entry
+                     :request
+                     {:fhir/type :fhir.Bundle.entry/request
+                      :method #fhir/code"GET"
+                      :url #fhir/uri"metadata"}}]}})]
+
+          (testing "response status"
+            (is (= 200 status)))
+
+          (testing "entry resource"
+            (given resource
+              :fhir/type := :fhir/CapabilityStatement))
+
+          (testing "entry response"
+            (given response
+              :status := "200")))))
 
     (testing "and update interaction"
       (testing "on invalid type-level URL"

@@ -6,7 +6,7 @@
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.protocols :as p]
-    [cuerdas.core :as str])
+    [cuerdas.core :as c-str])
   (:import
     [javax.measure Quantity UnconvertibleException Unit]
     [javax.measure.format UnitFormat]
@@ -41,7 +41,7 @@
 
 
 (defn- replace-exp [s n]
-  (str/replace s (str "10*" n) (apply str "1" (repeat n \0))))
+  (c-str/replace s (str "10*" n) (apply str "1" (repeat n \0))))
 
 
 (defn- hack-replace-unsupported [s]
@@ -226,7 +226,7 @@
     (let [[_ value unit] (re-matches #"([+-]?\d+(?:\.\d+)?)\s*('[^']+')?" s)]
       (when value
         (when-let [value (p/to-decimal value)]
-          (quantity value (or (str/trim unit "'") "1")))))))
+          (quantity value (or (c-str/trim unit "'") "1")))))))
 
 
 ;; 22.30. ToString

@@ -83,15 +83,19 @@
        bs/from-byte-buffer!)))
 
 
-(def ^:private bs-ff
-  (bs/from-hex "FF"))
+(def ^:private max-hash-prefix
+  (bs/from-hex "FFFFFFFF"))
 
 
-(defn encode-seek-key-for-prev
+(defn- encode-seek-key-for-prev
+  "It is important to cover at least the hash prefix because it could be all
+  binary ones. Other parts like the id will be never all binary ones."
+  ([c-hash tid]
+   (bs/concat (encode-seek-key c-hash tid) max-hash-prefix))
   ([c-hash tid value]
-   (bs/concat (encode-seek-key c-hash tid value) bs-ff))
+   (bs/concat (encode-seek-key c-hash tid value) max-hash-prefix))
   ([c-hash tid value id]
-   (bs/concat (encode-seek-key c-hash tid value id) bs-ff)))
+   (bs/concat (encode-seek-key c-hash tid value id) max-hash-prefix)))
 
 
 (defn decode-value-id-hash-prefix
@@ -125,6 +129,23 @@
      (i/prefix-keys! iter prefix decode-value-id-hash-prefix start-key))))
 
 
+(defn all-keys-prev!
+  "Returns a reducible collection of `[value id hash-prefix]` triples of the
+  whole range prefixed with `c-hash` and `tid` starting with `start-value` and
+  `start-id` (optional), iterating in reverse.
+
+  Changes the state of `iter`. Consuming the collection requires exclusive
+  access to `iter`. Doesn't close `iter`."
+  ([iter c-hash tid]
+   (let [prefix (encode-seek-key c-hash tid)
+         start-key (encode-seek-key-for-prev c-hash tid)]
+     (i/prefix-keys-prev! iter prefix decode-value-id-hash-prefix start-key)))
+  ([iter c-hash tid start-value start-id]
+   (let [prefix (encode-seek-key c-hash tid)
+         start-key (encode-seek-key-for-prev c-hash tid start-value start-id)]
+     (i/prefix-keys-prev! iter prefix decode-value-id-hash-prefix start-key))))
+
+
 (defn decode-id-hash-prefix
   "Returns a tuple of `[id hash-prefix]`."
   ([] (bb/allocate-direct key-buffer-capacity))
@@ -156,8 +177,8 @@
 
 (defn prefix-keys'!
   "Returns a reducible collection of decoded `[id hash-prefix]` tuples from keys
-  starting at `start-value` and optional `start-id` and ending when
-  `prefix-value` is no longer a prefix of the values processed.
+  starting at `start-value` and ending when `prefix-value` is no longer a prefix
+  of the values processed.
 
   Changes the state of `iter`. Consuming the collection requires exclusive
   access to `iter`. Doesn't close `iter`."
@@ -187,9 +208,8 @@
 
 (defn prefix-keys-prev'!
   "Returns a reducible collection of decoded `[id hash-prefix]` tuples from keys
-  starting at `start-value` and optional `start-id` and ending when
-  `prefix-value` is no longer a prefix of the values processed, iterating in
-  reverse.
+  starting at `start-value` and ending when `prefix-value` is no longer a prefix
+  of the values processed, iterating in reverse.
 
   Changes the state of `iter`. Consuming the collection requires exclusive
   access to `iter`. Doesn't close `iter`."

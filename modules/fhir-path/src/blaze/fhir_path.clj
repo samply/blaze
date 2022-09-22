@@ -6,11 +6,12 @@
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
+    [clojure.string :as str]
     [cognitect.anomalies :as anom]
-    [cuerdas.core :as str]
+    [cuerdas.core :as c-str]
     [taoensso.timbre :as log])
   (:import
-    [clojure.lang PersistentVector IReduceInit]
+    [clojure.lang IReduceInit PersistentVector]
     [java.io StringReader]
     [org.antlr.v4.runtime CharStreams CommonTokenStream]
     [org.antlr.v4.runtime.tree TerminalNode]
@@ -528,7 +529,7 @@
 
   fhirpathParser$StringLiteralContext
   (-compile [ctx]
-    [(str/trim (.getText (.getSymbol (.STRING ctx))) "'")])
+    [(c-str/trim (.getText (.getSymbol (.STRING ctx))) "'")])
 
   fhirpathParser$NumberLiteralContext
   (-compile [ctx]

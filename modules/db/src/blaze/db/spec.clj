@@ -69,7 +69,7 @@
 (defmethod tx-op :create [_]
   (s/cat :op #{:create}
          :resource :blaze/resource
-         :if-none-exist (s/? :blaze.db.query/clauses)))
+         :if-none-exist (s/? :blaze.db.tx-cmd/if-none-exist)))
 
 
 (defmethod tx-op :put [_]

@@ -8,7 +8,7 @@
 
 (defn- value-concept [value]
   (type/codeable-concept
-    {:text (type/string (str (if (nil? value) "null" value)))}))
+    {:text (type/string (if (nil? value) "null" (str value)))}))
 
 
 (defn- stratum* [population value]
@@ -17,16 +17,16 @@
    :population [population]})
 
 
-(defn- stratum [context population-code [value result]]
+(defn- stratum [context population-code [value handles]]
   (-> (u/population
         context :fhir.MeasureReport.group.stratifier.stratum/population
-        population-code result)
+        population-code handles)
       (update :result stratum* value)))
 
 
 (defn- stratifier* [strata code]
   (cond-> {:fhir/type :fhir.MeasureReport.group/stratifier
-           :stratum (sort-by (comp type/value :text :value) strata)}
+           :stratum (vec (sort-by (comp type/value :text :value) strata))}
     code
     (assoc :code [code])))
 
@@ -45,28 +45,21 @@
   (format "Measure.group[%d].stratifier[%d]" group-idx stratifier-idx))
 
 
-(defn- calc-strata
-  [{:keys [subject-handle] :as context} population-expression-name
-   stratum-expression-name]
-  (if subject-handle
-    (cql/calc-individual-strata context subject-handle
-                                population-expression-name
-                                stratum-expression-name)
-    (cql/calc-strata context population-expression-name
-                     stratum-expression-name)))
+(defn- calc-strata [{:keys [population-basis] :as context} name handles]
+  (if (= :boolean (or population-basis :boolean))
+    (cql/calc-strata context name handles)
+    (cql/calc-function-strata context name handles)))
 
 
-(defn- evaluate-single-stratifier
-  {:arglists '([context populations stratifier])}
-  [{:keys [group-idx stratifier-idx] :as context} populations
+(defn- evaluate-stratifier
+  {:arglists '([context evaluated-populations stratifier])}
+  [{:keys [group-idx stratifier-idx] :as context} evaluated-populations
    {:keys [code criteria]}]
-  (when-ok [expression (u/expression #(stratifier-path group-idx stratifier-idx)
-                                     criteria)
-            strata (calc-strata
-                     context
-                     (-> populations first :criteria :expression)
-                     expression)]
-    (stratifier context code (-> populations first :code) strata)))
+  (when-ok [name (u/expression #(stratifier-path group-idx stratifier-idx)
+                               criteria)
+            strata (calc-strata context name
+                                (-> evaluated-populations :handles first))]
+    (stratifier context code (-> evaluated-populations :result first :code) strata)))
 
 
 (defn- stratifier-component-path [{:keys [group-idx stratifier-idx component-idx]}]
@@ -132,7 +125,7 @@
 (defn- multi-component-stratifier* [strata codes]
   {:fhir/type :fhir.MeasureReport.group/stratifier
    :code codes
-   :stratum (sort-by (comp #(mapv (comp type/value :text :value) %) :component) strata)})
+   :stratum (vec (sort-by (comp #(mapv (comp type/value :text :value) %) :component) strata))})
 
 
 (defn- multi-component-stratifier
@@ -148,20 +141,20 @@
 
 
 (defn- evaluate-multi-component-stratifier
-  [context populations {:keys [component]}]
-  (when-ok [results (extract-stratifier-components context component)]
-    (let [{:keys [codes expression-names]} results]
-      (when-ok [strata (cql/calc-multi-component-strata
-                         context
-                         (-> populations first :criteria :expression)
-                         expression-names)]
-        (multi-component-stratifier context codes (-> populations first :code)
-                                    strata)))))
+  [context evaluated-populations {:keys [component]}]
+  (when-ok [{:keys [codes expression-names]} (extract-stratifier-components context component)
+            strata (cql/calc-multi-component-strata
+                     context
+                     expression-names
+                     (-> evaluated-populations :handles first))]
+    (multi-component-stratifier context codes
+                                (-> evaluated-populations :result first :code)
+                                strata)))
 
 
 (defn evaluate
-  {:arglists '([context populations stratifier])}
-  [context populations {:keys [component] :as stratifier}]
+  {:arglists '([context evaluated-populations stratifier])}
+  [context evaluated-populations {:keys [component] :as stratifier}]
   (if (seq component)
-    (evaluate-multi-component-stratifier context populations stratifier)
-    (evaluate-single-stratifier context populations stratifier)))
+    (evaluate-multi-component-stratifier context evaluated-populations stratifier)
+    (evaluate-stratifier context evaluated-populations stratifier)))

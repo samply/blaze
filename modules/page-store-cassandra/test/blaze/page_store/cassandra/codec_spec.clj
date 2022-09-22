@@ -1,7 +1,6 @@
 (ns blaze.page-store.cassandra.codec-spec
   (:require
     [blaze.anomaly-spec]
-    [blaze.byte-buffer :as bb]
     [blaze.page-store :as page-store]
     [blaze.page-store.cassandra.codec :as codec]
     [blaze.page-store.spec]
@@ -17,4 +16,4 @@
 
 (s/fdef codec/encode
   :args (s/cat :clauses :blaze.db.query/clauses)
-  :ret bb/byte-buffer?)
+  :ret bytes?)

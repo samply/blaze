@@ -20,7 +20,7 @@
 
 
 (s/def :blaze.db.tx-cmd/type
-  :fhir.type/name)
+  :fhir.resource/type)
 
 
 (s/def :blaze.db.tx-cmd/refs
@@ -32,7 +32,7 @@
 
 
 (s/def :blaze.db.tx-cmd/if-none-exist
-  :blaze.db.query/clauses)
+  (s/coll-of :blaze.db.query/search-clause :kind vector? :min-count 1))
 
 
 (s/def :blaze.db.tx-cmd/if-match

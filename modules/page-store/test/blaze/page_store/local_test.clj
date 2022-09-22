@@ -9,7 +9,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
-    [cuerdas.core :as str]
+    [cuerdas.core :as c-str]
     [integrant.core :as ig]
     [taoensso.timbre :as log]))
 
@@ -32,7 +32,7 @@
    :blaze.test/fixed-rng {}})
 
 
-(def token (str (str/repeat "A" 31) "B"))
+(def token (str (c-str/repeat "A" 31) "B"))
 
 
 (deftest init-test
@@ -67,17 +67,17 @@
       (is (= [["active" "true"]] @(page-store/get store token))))
 
     (testing "not-found"
-      (given-failed-future (page-store/get store (str/repeat "B" 32))
+      (given-failed-future (page-store/get store (c-str/repeat "B" 32))
         ::anom/category := ::anom/not-found
-        ::anom/message := (format "Clauses of token `%s` not found." (str/repeat "B" 32))))))
+        ::anom/message := (format "Clauses of token `%s` not found." (c-str/repeat "B" 32))))))
 
 
 (deftest put-test
   (with-system [{store :blaze.page-store/local} system]
     (testing "shall not be called with an empty list of clauses"
-      (given-thrown (page-store/put! store [])
-        ::s/failure := :instrument
-        [::s/problems 0 :val] := []))
+      (given-failed-future (page-store/put! store [])
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Clauses should not be empty."))
 
     (testing "returns a token"
       (is (= token @(page-store/put! store [["active" "true"]]))))))

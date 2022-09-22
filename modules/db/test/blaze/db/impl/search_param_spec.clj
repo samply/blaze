@@ -21,6 +21,7 @@
     [blaze.db.search-param-registry-spec]
     [blaze.fhir-path-spec]
     [blaze.fhir.spec]
+    [blaze.spec]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]))
 
@@ -39,6 +40,15 @@
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :values (s/coll-of some? :min-count 1)
+               :start-id (s/? :blaze.db/id-byte-string))
+  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+
+
+(s/fdef search-param/sorted-resource-handles
+  :args (s/cat :search-param :blaze.db/search-param
+               :context :blaze.db.impl.batch-db/context
+               :tid :blaze.db/tid
+               :direction :blaze.db.query/sort-direction
                :start-id (s/? :blaze.db/id-byte-string))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 

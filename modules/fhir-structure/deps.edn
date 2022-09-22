@@ -20,7 +20,7 @@
   {:mvn/version "31.1-jre"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
-  {:mvn/version "2.13.3"}
+  {:mvn/version "2.13.4"}
 
   com.taoensso/timbre
   {:mvn/version "5.2.1"}
@@ -36,7 +36,7 @@
    :git/sha "5c86612d50ab523e48a3937d9d437116a1964bd6"}
 
   org.clojure/data.xml
-  {:mvn/version "0.2.0-alpha6"}}
+  {:mvn/version "0.2.0-alpha8"}}
 
  :aliases
  {:test
@@ -49,7 +49,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.68.1059"}}
+    {:mvn/version "1.70.1086"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

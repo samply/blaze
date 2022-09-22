@@ -1,14 +1,14 @@
 (ns blaze.elm.normalizer
   (:require
     [blaze.elm.spec]
-    [cuerdas.core :as str]))
+    [cuerdas.core :as c-str]))
 
 
 (defmulti normalize
   {:arglists '([expression])}
   (fn [{:keys [type]}]
     (assert type)
-    (keyword "elm.normalizer.type" (str/kebab type))))
+    (keyword "elm.normalizer.type" (c-str/kebab type))))
 
 
 (defn- normalize-expression [x]
@@ -410,8 +410,96 @@
 
 ;; 22. Type Operators
 
-;; 20.27. ToLong
+;; 22.1. As
+(derive :elm.normalizer.type/as :elm.normalizer.type/unary-expression)
+
+
+;; 22.3. CanConvertQuantity
+(derive :elm.normalizer.type/can-convert-quantity :elm.normalizer.type/binary-expression)
+
+
+;; 22.6. ConvertQuantity
+(derive :elm.normalizer.type/convert-quantity :elm.normalizer.type/binary-expression)
+
+
+;; 22.7. ConvertsToBoolean
+(derive :elm.normalizer.type/converts-to-boolean :elm.normalizer.type/unary-expression)
+
+
+;; 22.8. ConvertsToDate
+(derive :elm.normalizer.type/converts-to-date :elm.normalizer.type/unary-expression)
+
+
+;; 22.9. ConvertsToDateTime
+(derive :elm.normalizer.type/converts-to-date-time :elm.normalizer.type/unary-expression)
+
+
+;; 22.10. ConvertsToDecimal
+(derive :elm.normalizer.type/converts-to-decimal :elm.normalizer.type/unary-expression)
+
+
+;; 22.11. ConvertsToLong
+(derive :elm.normalizer.type/converts-to-long :elm.normalizer.type/unary-expression)
+
+
+;; 22.12. ConvertsToInteger
+(derive :elm.normalizer.type/converts-to-integer :elm.normalizer.type/unary-expression)
+
+
+;; 22.13. ConvertsToQuantity
+(derive :elm.normalizer.type/converts-to-quantity :elm.normalizer.type/unary-expression)
+
+
+;; 22.15. ConvertsToString
+(derive :elm.normalizer.type/converts-to-string :elm.normalizer.type/unary-expression)
+
+
+;; 22.16. ConvertsToTime
+(derive :elm.normalizer.type/converts-to-time :elm.normalizer.type/unary-expression)
+
+
+;; 22.19. ToBoolean
+(derive :elm.normalizer.type/to-boolean :elm.normalizer.type/unary-expression)
+
+
+;; 22.20. ToChars
+(derive :elm.normalizer.type/to-chars :elm.normalizer.type/unary-expression)
+
+
+;; 22.22. ToDate
+(derive :elm.normalizer.type/to-date :elm.normalizer.type/unary-expression)
+
+
+;; 22.23. ToDateTime
+(derive :elm.normalizer.type/to-date-time :elm.normalizer.type/unary-expression)
+
+
+;; 22.24. ToDecimal
+(derive :elm.normalizer.type/to-decimal :elm.normalizer.type/unary-expression)
+
+
+;; 22.25. ToInteger
+(derive :elm.normalizer.type/to-integer :elm.normalizer.type/unary-expression)
+
+
+;; 22.26. ToList
+(derive :elm.normalizer.type/to-list :elm.normalizer.type/unary-expression)
+
+
+;; 22.27. ToLong
 (derive :elm.normalizer.type/to-long :elm.normalizer.type/unary-expression)
+
+
+;; 22.28. ToQuantity
+(derive :elm.normalizer.type/to-quantity :elm.normalizer.type/unary-expression)
+
+
+;; 22.30. ToString
+(derive :elm.normalizer.type/to-string :elm.normalizer.type/unary-expression)
+
+
+;; 22.31. ToTime
+(derive :elm.normalizer.type/to-time :elm.normalizer.type/unary-expression)
 
 
 

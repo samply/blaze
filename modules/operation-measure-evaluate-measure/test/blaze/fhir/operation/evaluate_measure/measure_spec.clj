@@ -27,9 +27,9 @@
   (s/keys
     :req-un
     [::period
-     :blaze.fhir.operation.evaluate-measure/report-type]
+     ::measure/report-type]
     :opt-un
-    [:blaze.fhir.operation.evaluate-measure/subject-ref]))
+    [::measure/subject-ref]))
 
 
 (s/fdef measure/evaluate-measure

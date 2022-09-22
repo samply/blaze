@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.18.0
+
+### New Features
+
+* Allow Population Basis Differ from Subject in Measures ([#768](https://github.com/samply/blaze/pull/768))
+* Implement Sorting by _lastUpdated ([#98](https://github.com/samply/blaze/issues/98))
+* Allow Metadata Requests in Batches ([#781](https://github.com/samply/blaze/pull/781))
+* Allow to Set Separate RocksDB WAL Dirs ([#791](https://github.com/samply/blaze/pull/791))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/36?closed=1).
+
 ## v0.17.12
 
 ### Security

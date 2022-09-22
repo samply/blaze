@@ -6,19 +6,15 @@
     [clojure.string :as str]))
 
 
-(s/def :fhir.type/name
-  (s/and string? #(re-matches #"[A-Z]([A-Za-z0-9_]){0,254}" %)))
-
-
 (s/def :fhir.resource/type
-  :fhir.type/name)
+  (s/and string? #(re-matches #"[A-Z]([A-Za-z0-9_]){0,254}" %)))
 
 
 (s/def :fhir/type
   (s/and
     keyword?
     #(some-> (namespace %) (str/starts-with? "fhir"))
-    #(s/valid? :fhir.type/name (name %))))
+    #(re-matches #"[A-Za-z]([A-Za-z0-9_]){0,254}" (name %))))
 
 
 (s/def :blaze.resource/id

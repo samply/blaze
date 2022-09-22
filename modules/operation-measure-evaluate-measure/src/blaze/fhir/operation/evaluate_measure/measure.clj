@@ -159,30 +159,42 @@
       (fn [{:keys [luids] :as ret} [idx population]]
         (->> (population/evaluate (assoc context :luids luids) idx population)
              (u/merge-result ret))))
-    {:result [] :luids luids :tx-ops []}
+    {:result [] :handles [] :luids luids :tx-ops []}
     populations))
 
 
-(defn- evaluate-stratifiers [{:keys [luids] :as context} populations stratifiers]
+(defn- evaluate-stratifiers
+  [{:keys [luids] :as context} evaluated-populations stratifiers]
   (transduce
     (map-indexed vector)
     (completing
       (fn [{:keys [luids] :as ret} [idx stratifier]]
         (->> (stratifier/evaluate
                (assoc context :luids luids :stratifier-idx idx)
-               populations stratifier)
+               evaluated-populations stratifier)
              (u/merge-result ret))))
     {:result [] :luids luids :tx-ops []}
     stratifiers))
 
 
+(defn- population-basis [{:keys [extension]}]
+  (some
+    (fn [{:keys [url value]}]
+      (when (= "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis" url)
+        (let [basis (type/value value)]
+          (cond-> basis (= "boolean" basis) keyword))))
+    extension))
+
+
 (defn- evaluate-group
   {:arglists '([context group])}
-  [context {:keys [code population stratifier]}]
-  (when-ok [{:keys [luids] :as evaluated-populations}
+  [context {:keys [code population stratifier] :as group}]
+  (when-ok [context (assoc context :population-basis (population-basis group))
+            {:keys [luids] :as evaluated-populations}
             (evaluate-populations context population)
             evaluated-stratifiers
-            (evaluate-stratifiers (assoc context :luids luids) population
+            (evaluate-stratifiers (assoc context :luids luids)
+                                  evaluated-populations
                                   stratifier)]
     {:result
      (cond-> {:fhir/type :fhir.MeasureReport/group}
@@ -241,7 +253,7 @@
   (or (get-first-code codings "http://hl7.org/fhir/resource-types") "Patient"))
 
 
-(defn eval-duration [duration]
+(defn- eval-duration [duration]
   (type/extension
     {:url "https://samply.github.io/blaze/fhir/StructureDefinition/eval-duration"
      :value
@@ -323,13 +335,17 @@
   [{:keys [clock db] :as context}
    {:keys [id] groups :group :as measure}
    {:keys [report-type subject-ref] [start end] :period}]
-  (when-ok [library (compile-primary-library db measure)
+  (when-ok [{:keys [expression-defs function-defs parameter-default-values]} (compile-primary-library db measure)
             now (now clock)
             subject-type (subject-type measure)
             subject-handle (some->> subject-ref (subject-handle db subject-type))
             context (cond->
                       (assoc context
-                        :db db :now now :library library
+                        :db db
+                        :now now
+                        :expression-defs expression-defs
+                        :function-defs function-defs
+                        :parameters parameter-default-values
                         :subject-type subject-type
                         :report-type report-type
                         :luids (successive-luids context))

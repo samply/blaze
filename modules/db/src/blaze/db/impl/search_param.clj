@@ -33,7 +33,6 @@
     (comp (map (partial p/-compile-value search-param modifier))
           (halt-when ba/anomaly?))
     conj
-    []
     values))
 
 
@@ -57,6 +56,17 @@
        (coll/eduction
          (drop-while #(not= start-id (rh/id %)))
          (resource-handles search-param context tid modifier values))))))
+
+
+(defn sorted-resource-handles
+  "Returns a reducible collection of distinct resource handles sorted by
+  `search-param` in `direction`.
+
+  Optionally starts at `start-id`"
+  ([search-param context tid direction]
+   (p/-sorted-resource-handles search-param context tid direction))
+  ([search-param context tid direction start-id]
+   (p/-sorted-resource-handles search-param context tid direction start-id)))
 
 
 (defn- compartment-keys

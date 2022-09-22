@@ -9,3 +9,12 @@
   [s]
   (when-let [[_ ns name] (some->> s (re-matches #"\{(.+)\}(.+)"))]
     [ns name]))
+
+
+(defn parse-type
+  [{:keys [type name] element-type :elementType}]
+  (condp = type
+    "NamedTypeSpecifier"
+    (second (parse-qualified-name name))
+    "ListTypeSpecifier"
+    (str "List<" (parse-type element-type) ">")))

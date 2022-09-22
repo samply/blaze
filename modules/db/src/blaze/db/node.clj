@@ -30,6 +30,7 @@
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.module :refer [reg-collector]]
+    [blaze.spec]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -75,15 +76,40 @@
   (take 16 (iterate #(* 2 %) 1)))
 
 
+(defmulti resolve-search-param (fn [_registry _type _ret [type] _lenient?] type))
+
+
+(defmethod resolve-search-param :search-clause
+  [registry type ret [_ [param & values]] lenient?]
+  (let [values (distinct values)]
+    (if-ok [[search-param modifier] (spc/parse-search-param registry type param)]
+      (if-ok [compiled-values (search-param/compile-values search-param modifier values)]
+        (conj ret [search-param modifier values compiled-values])
+        reduced)
+      #(if lenient? ret (reduced %)))))
+
+
+(defmethod resolve-search-param :sort-clause
+  [registry type ret [_ [_ param direction]] _lenient?]
+  (cond
+    (seq ret)
+    (reduced (ba/incorrect "Sort clauses are only allowed at first position."))
+
+    (not= "_lastUpdated" param)
+    (reduced (ba/incorrect (format "Unknown search-param `%s` in sort clause." param)))
+
+    :else
+    (let [[search-param] (spc/parse-search-param registry type param)]
+      (conj ret [search-param (name direction) [] []]))))
+
+
+(defn- conform-clause [clause]
+  (s/conform :blaze.db.query/clause clause))
+
+
 (defn- resolve-search-params [registry type clauses lenient?]
   (reduce
-    (fn [ret [param & values]]
-      (let [values (distinct values)]
-        (if-ok [[search-param modifier] (spc/parse-search-param registry type param)]
-          (if-ok [compiled-values (search-param/compile-values search-param modifier values)]
-            (conj ret [search-param modifier values compiled-values])
-            reduced)
-          #(if lenient? ret (reduced %)))))
+    #(resolve-search-param registry type %1 (conform-clause %2) lenient?)
     []
     clauses))
 
@@ -229,6 +255,24 @@
     (rs/get resource-store (rh/hash resource-handle))))
 
 
+(defn- compile-type-query [search-param-registry type clauses lenient?]
+  (when-ok [clauses (resolve-search-params search-param-registry type clauses
+                                           lenient?)]
+    (if (empty? clauses)
+      (batch-db/->EmptyTypeQuery (codec/tid type))
+      (batch-db/->TypeQuery (codec/tid type) clauses))))
+
+
+(defn- compile-compartment-query
+  [search-param-registry code type clauses lenient?]
+  (when-ok [clauses (resolve-search-params search-param-registry type clauses
+                                           lenient?)]
+    (if (empty? clauses)
+      (batch-db/->EmptyCompartmentQuery (codec/c-hash code) (codec/tid type))
+      (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
+                                   clauses))))
+
+
 (defrecord Node [context tx-log rh-cache tx-cache kv-store resource-store
                  search-param-registry resource-indexer state run? poll-timeout
                  finished]
@@ -279,34 +323,21 @@
 
   p/QueryCompiler
   (-compile-type-query [_ type clauses]
-    (when-ok [clauses (resolve-search-params search-param-registry type clauses
-                                             false)]
-      (batch-db/->TypeQuery (codec/tid type) (seq clauses))))
+    (compile-type-query search-param-registry type clauses false))
 
   (-compile-type-query-lenient [_ type clauses]
-    (when-ok [clauses (resolve-search-params search-param-registry type clauses
-                                             true)]
-      (if-let [clauses (seq clauses)]
-        (batch-db/->TypeQuery (codec/tid type) clauses)
-        (batch-db/->EmptyTypeQuery (codec/tid type)))))
+    (compile-type-query search-param-registry type clauses true))
 
   (-compile-system-query [_ clauses]
     (when-ok [clauses (resolve-search-params search-param-registry "Resource"
                                              clauses false)]
-      (batch-db/->SystemQuery (seq clauses))))
+      (batch-db/->SystemQuery clauses)))
 
   (-compile-compartment-query [_ code type clauses]
-    (when-ok [clauses (resolve-search-params search-param-registry type clauses
-                                             false)]
-      (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
-                                   (seq clauses))))
+    (compile-compartment-query search-param-registry code type clauses false))
 
   (-compile-compartment-query-lenient [_ code type clauses]
-    (if-let [clauses (seq (resolve-search-params search-param-registry type clauses
-                                                 true))]
-      (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
-                                   clauses)
-      (batch-db/->EmptyCompartmentQuery (codec/c-hash code) (codec/tid type))))
+    (compile-compartment-query search-param-registry code type clauses true))
 
   p/Pull
   (-pull [_ resource-handle]
