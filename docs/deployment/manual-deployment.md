@@ -7,7 +7,7 @@ Blaze runs on the JVM and comes as single JAR file. Download the most recent ver
 After the download, you can start blaze with the following command (Linux, macOS):
 
 ```sh
-java -jar blaze-0.18.4-standalone.jar -m blaze.core
+java -jar blaze-0.18.4-standalone.jar
 ```
 
 Blaze will run with an in-memory, volatile database for testing and demo purposes.
@@ -17,14 +17,14 @@ Blaze can be run with durable storage by setting the environment variables `STOR
 Under Linux/macOS:
 
 ```sh
-STORAGE=standalone java -jar blaze-0.18.4-standalone.jar -m blaze.core
+STORAGE=standalone java -jar blaze-0.18.4-standalone.jar
 ```
 
 Under Windows, you need to set the Environment variables in the PowerShell before starting Blaze:
 
 ```powershell
 $Env:STORAGE="standalone"
-java -jar blaze-0.18.4-standalone.jar -m blaze.core
+java -jar blaze-0.18.4-standalone.jar
 ```
 
 This will create three directories called `index`, `transaction` and `resource` inside the current working directory, one for each database part used.
