@@ -1,7 +1,7 @@
 FROM eclipse-temurin:17-jre
 
 RUN apt-get update && apt-get upgrade -y && \
-    apt-get purge curl libbinutils libctf0 libctf-nobfd0 libncurses6 -y && \
+    apt-get purge curl wget libbinutils libctf0 libctf-nobfd0 libncurses6 -y && \
     apt-get autoremove -y && apt-get clean
 
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
