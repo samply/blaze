@@ -3,7 +3,7 @@
     [blaze.cassandra.config :as config]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest are testing]]
-    [java-time :as time])
+    [java-time.api :as time])
   (:import
     [com.datastax.oss.driver.api.core.config OptionsMap TypedDriverOption]
     [java.net InetSocketAddress]))

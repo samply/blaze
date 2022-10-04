@@ -1,6 +1,6 @@
 {:deps
  {com.google.protobuf/protobuf-java
-  {:mvn/version "3.21.6"}}
+  {:mvn/version "3.21.7"}}
 
  :aliases
  {:test

@@ -13,7 +13,7 @@
     [clojure.repl :refer [pst]]
     [clojure.spec.test.alpha :as st]
     [clojure.tools.namespace.repl :refer [refresh]]
-    [java-time :as time]
+    [java-time.api :as time]
     [taoensso.timbre :as log])
   (:import
     [com.github.benmanes.caffeine.cache Cache]))

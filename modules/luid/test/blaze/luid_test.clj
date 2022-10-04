@@ -5,7 +5,7 @@
     [clojure.math :as math]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [java-time :as time]
+    [java-time.api :as time]
     [juxt.iota :refer [given]])
   (:import
     [java.time Clock Instant ZoneId]

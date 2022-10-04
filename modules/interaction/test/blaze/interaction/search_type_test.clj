@@ -20,7 +20,7 @@
     [clojure.test :as test :refer [deftest is testing]]
     [cuerdas.core :as c-str]
     [integrant.core :as ig]
-    [java-time :as time]
+    [java-time.api :as time]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])

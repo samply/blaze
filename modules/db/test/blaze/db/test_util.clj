@@ -13,7 +13,7 @@
     [blaze.fhir.structure-definition-repo]
     [blaze.test-util :refer [with-system]]
     [integrant.core :as ig]
-    [java-time :as time]))
+    [java-time.api :as time]))
 
 
 (def system

@@ -7,7 +7,7 @@
     [blaze.elm.expression :as expr]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]
-    [java-time :as time]))
+    [java-time.api :as time]))
 
 
 (s/def ::now

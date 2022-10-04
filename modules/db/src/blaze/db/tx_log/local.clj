@@ -20,7 +20,7 @@
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
-    [java-time :as time]
+    [java-time.api :as time]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
