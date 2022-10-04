@@ -18,7 +18,7 @@
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
-    [java-time :as time]
+    [java-time.api :as time]
     [jsonista.core :as j]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])

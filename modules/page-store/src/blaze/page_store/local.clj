@@ -8,7 +8,7 @@
     [blaze.page-store.weigh :as w]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
-    [java-time :as time]
+    [java-time.api :as time]
     [taoensso.timbre :as log])
   (:import
     [com.github.benmanes.caffeine.cache Cache Caffeine Weigher]))

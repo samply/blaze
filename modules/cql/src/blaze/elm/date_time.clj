@@ -8,7 +8,7 @@
     [blaze.elm.protocols :as p]
     [blaze.fhir.spec.type]
     [blaze.fhir.spec.type.system :as system]
-    [java-time :as time])
+    [java-time.api :as time])
   (:import
     [blaze.fhir.spec.type OffsetInstant]
     [blaze.fhir.spec.type.system DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]

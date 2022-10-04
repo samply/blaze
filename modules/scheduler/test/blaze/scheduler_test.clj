@@ -7,7 +7,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
-    [java-time :as time]
+    [java-time.api :as time]
     [taoensso.timbre :as log]))
 
 

@@ -4,7 +4,7 @@
     [blaze.scheduler.protocol :as p]
     [blaze.scheduler.spec]
     [integrant.core :as ig]
-    [java-time :as time]
+    [java-time.api :as time]
     [taoensso.timbre :as log])
   (:import
     [java.util.concurrent Executors Future ScheduledExecutorService TimeUnit]))
