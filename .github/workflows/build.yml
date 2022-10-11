@@ -19,10 +19,10 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-    - name: Setup clj-kondo
-      uses: DeLaGuardo/setup-clj-kondo@master
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@master
       with:
-        version: '2022.09.08'
+        clj-kondo: '2022.10.05'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
