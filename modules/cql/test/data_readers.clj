@@ -8,6 +8,7 @@
  elm/code blaze.elm.literal/code
  elm/code-ref blaze.elm.literal/code-ref
  elm/quantity blaze.elm.literal/quantity
+ elm/ratio blaze.elm.literal/ratio
  elm/parameter-ref blaze.elm.literal/parameter-ref
  elm/expression-ref blaze.elm.literal/expression-ref
  elm/function-ref blaze.elm.literal/function-ref

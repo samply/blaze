@@ -31,7 +31,7 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 3.7.  | ConceptDef    | ✗          |                          |       |
 | 3.8.  | ConceptRef    | ✗          |                          |       |
 | 3.9.  | Quantity      | ✓          |                          |       |
-| 3.10. | Ratio         | ✗          |                          |       |
+| 3.10. | Ratio         | ✓          |                          |       |
 | 3.11. | ValueSetDef   | ✗          |                          |       |
 | 3.12. | ValueSetRef   | ✗          |                          |       |
 

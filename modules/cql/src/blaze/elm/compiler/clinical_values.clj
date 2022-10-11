@@ -8,7 +8,8 @@
     [blaze.elm.code :as code]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.date-time :as date-time]
-    [blaze.elm.quantity :as quantity]))
+    [blaze.elm.quantity :as quantity]
+    [blaze.elm.ratio :as ratio]))
 
 
 (defn- find-code-system-def
@@ -102,8 +103,13 @@
 
 
 ;; 3.10. Ratio
-;;
-;; TODO
+(defmethod core/compile* :elm.compiler.type/ratio
+  [_ {:keys [numerator denominator]}]
+  (ratio/ratio (quantity/quantity (:value numerator) (or (:unit numerator)
+                                                         "1"))
+               (quantity/quantity (:value denominator) (or (:unit denominator)
+                                                         "1"))))
+
 
 ;; 3.11. ValueSetDef
 ;;
