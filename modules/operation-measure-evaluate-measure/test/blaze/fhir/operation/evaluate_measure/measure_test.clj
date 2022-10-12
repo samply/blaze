@@ -79,9 +79,9 @@
 
 
 (defn- read-data [name]
-  (let [raw (slurp-resource (str name "-data.json"))
+  (let [raw (slurp-resource (str name ".json"))
         bundle (fhir-spec/conform-json (fhir-spec/parse-json raw))
-        library (library-entry (slurp-resource (str name "-query.cql")))]
+        library (library-entry (slurp-resource (str name ".cql")))]
     (update bundle :entry conj library)))
 
 
