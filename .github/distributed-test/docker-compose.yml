@@ -65,7 +65,7 @@ services:
       HEAP_NEWSIZE: "100M"
 
   blaze-1:
-    image: "ghcr.io/samply/blaze:sha-${GITHUB_SHA}"
+    image: "blaze:latest"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx512m"
       STORAGE: "distributed"
@@ -94,7 +94,7 @@ services:
     - cassandra-2
 
   blaze-2:
-    image: "ghcr.io/samply/blaze:sha-${GITHUB_SHA}"
+    image: "blaze:latest"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx512m"
       STORAGE: "distributed"
