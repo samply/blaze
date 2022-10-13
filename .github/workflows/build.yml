@@ -200,6 +200,41 @@ jobs:
     - name: Build Uberjar
       run: make uberjar
 
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build and Export to Docker
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        tags: blaze:latest
+        outputs: type=docker,dest=/tmp/blaze.tar
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: blaze:latest
+        format: sarif
+        output: trivy-results.sarif
+        severity: 'CRITICAL,HIGH'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: trivy-results.sarif
+
+    - name: Upload Blaze Image
+      uses: actions/upload-artifact@v3
+      with:
+        name: blaze-image
+        path: /tmp/blaze.tar
+
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v2
       with:
@@ -212,12 +247,6 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
 
     - name: Docker meta
       id: docker-meta
@@ -232,7 +261,6 @@ jobs:
           type=ref,event=pr
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
-          type=sha,format=long
 
     - name: Build and push
       uses: docker/build-push-action@v3
@@ -242,19 +270,6 @@ jobs:
         push: true
         tags: ${{ steps.docker-meta.outputs.tags }}
         labels: ${{ steps.docker-meta.outputs.labels }}
-
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: ghcr.io/samply/blaze:sha-${{ github.sha }}
-        format: sarif
-        output: trivy-results.sarif
-        severity: 'CRITICAL,HIGH'
-
-    - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: trivy-results.sarif
 
   integration-test:
     needs: build
@@ -267,18 +282,17 @@ jobs:
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
 
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v2
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
       with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.CR_PAT }}
+        name: blaze-image
+        path: /tmp
 
-    - name: Pull Docker Image
-      run: docker pull ghcr.io/samply/blaze:sha-${{ github.sha }}
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
@@ -486,18 +500,17 @@ jobs:
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
 
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v2
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
       with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.CR_PAT }}
+        name: blaze-image
+        path: /tmp
 
-    - name: Pull Docker Image
-      run: docker pull ghcr.io/samply/blaze:sha-${{ github.sha }}
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
@@ -532,18 +545,17 @@ jobs:
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
 
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v2
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
       with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.CR_PAT }}
+        name: blaze-image
+        path: /tmp
 
-    - name: Pull Docker Image
-      run: docker pull ghcr.io/samply/blaze:sha-${{ github.sha }}
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
@@ -571,18 +583,17 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@v3
 
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v2
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
       with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.CR_PAT }}
+        name: blaze-image
+        path: /tmp
 
-    - name: Pull Docker Image
-      run: docker pull ghcr.io/samply/blaze:sha-${{ github.sha }}
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --rm -d -e JAVA_TOOL_OPTIONS=-Xmx1g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 ghcr.io/samply/blaze:sha-${{ github.sha }}
+      run: docker run --rm -d -e JAVA_TOOL_OPTIONS=-Xmx1g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
@@ -621,18 +632,17 @@ jobs:
     - name: Install Gnuplot
       run: sudo apt-get install gnuplot
 
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v2
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
       with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.CR_PAT }}
+        name: blaze-image
+        path: /tmp
 
-    - name: Pull Docker Image
-      run: docker pull ghcr.io/samply/blaze:sha-${{ github.sha }}
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data ghcr.io/samply/blaze:sha-${{ github.sha }}
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
@@ -654,12 +664,14 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@v3
 
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v2
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
       with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.CR_PAT }}
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
 
     - name: Run Keycloak and Blaze
       run: docker-compose -f .github/openid-auth-test/docker-compose.yml up -d
@@ -690,12 +702,14 @@ jobs:
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
 
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v2
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
       with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.CR_PAT }}
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
 
     - name: Run Zookeeper, Kafka, Cassandra and Blaze
       run: docker-compose -f .github/distributed-test/docker-compose.yml up -d
@@ -953,12 +967,14 @@ jobs:
     - name: Install Gnuplot
       run: sudo apt-get install gnuplot
 
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v2
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
       with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.CR_PAT }}
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
 
     - name: Run Zookeeper, Kafka, Cassandra and Blaze
       run: docker-compose -f .github/distributed-test/docker-compose.yml up -d
