@@ -5,7 +5,7 @@
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.spec]
     [clojure.spec.alpha :as s]
-    [java-time :as time]))
+    [java-time.api :as time]))
 
 
 ;; returns a CompletableFuture of :blaze.db/t

@@ -18,7 +18,7 @@
     [clojure.test :as test :refer [are deftest is testing]]
     [clojure.test.check.properties :as prop]
     [cognitect.anomalies :as anom]
-    [java-time :as time]
+    [java-time.api :as time]
     [juxt.iota :refer [given]])
   (:import
     [java.time Year YearMonth]

@@ -6,7 +6,7 @@
     [blaze.scheduler.spec]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
-    [java-time :as time]
+    [java-time.api :as time]
     [taoensso.timbre :as log])
   (:import
     [java.security PublicKey]))

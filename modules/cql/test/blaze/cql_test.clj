@@ -143,8 +143,6 @@
             "StringToIntegerError"                          ; TODO: implement
             "StringToDateTime"                              ; TODO: implement
             "StringToTime"                                  ; TODO: implement
-            "IntegerIsInteger"                              ; TODO: implement
-            "StringIsInteger"                               ; TODO: implement
             "StringNoToBoolean"                             ; TODO: implement
             "CodeToConcept1"                                ; TODO: implement
             "ToDateTime4"                                   ; time zones don't match

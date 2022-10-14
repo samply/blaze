@@ -228,7 +228,65 @@
     (->DescendentsOperatorExpression source)))
 
 
-;; TODO 22.18. Is
+;; 22.18. Is
+(defrecord IsExpression [operand type pred]
+  core/Expression
+  (-eval [_ context resource scope]
+    (pred (core/-eval operand context resource scope)))
+  (-form [_]
+    `(~'is ~type ~(core/-form operand))))
+
+
+(defn- matches-elm-named-type-is [type-name]
+  (case type-name
+    "Boolean" ['elm/boolean boolean?]
+    "Integer" ['elm/integer int?]
+    "Long" ['elm/long system/long?]
+    "Decimal" ['elm/decimal decimal?]
+    "Date" ['elm/date system/date?]
+    "DateTime" ['elm/date-time date-time/temporal?]
+    "Quantity" ['elm/quantity quantity/quantity?]
+    "String" ['elm/string string?]))
+
+
+(defn- matches-named-type-is [type-name]
+  (let [[type-ns type-name] (elm-util/parse-qualified-name type-name)]
+    (case type-ns
+      "http://hl7.org/fhir"
+      [(symbol "fhir" type-name)
+       (let [fhir-type (keyword "fhir" type-name)]
+         #(identical? fhir-type (fhir-spec/fhir-type %)))]
+      "urn:hl7-org:elm-types:r1"
+      (matches-elm-named-type-is type-name))))
+
+
+(defn- matches-type-specifier-is [is-type-specifier]
+  (case (:type is-type-specifier)
+    "NamedTypeSpecifier"
+    (matches-named-type-is (:name is-type-specifier))
+
+    "ListTypeSpecifier"
+    (let [[type pred] (matches-type-specifier-is (:elementType is-type-specifier))]
+      [`(~'list ~type)
+       (fn matches-type? [x]
+         (every? pred x))])))
+
+
+(defn- matches-type-is
+  [{is-type :isType is-type-specifier :isTypeSpecifier}]
+  (cond
+    is-type
+    (matches-named-type-is is-type)
+
+    is-type-specifier
+    (matches-type-specifier-is is-type-specifier)))
+
+
+(defmethod core/compile* :elm.compiler.type/is
+  [context {:keys [operand] :as expression}]
+  (let [[type pred] (matches-type-is expression)]
+    (->IsExpression (core/compile* context operand) type pred)))
+
 
 ;; 22.19. ToBoolean
 (defunop to-boolean [x]

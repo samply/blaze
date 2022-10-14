@@ -2,7 +2,7 @@
   (:require
     [blaze.core :refer [system]]
     [blaze.db.tx-log :as tx-log]
-    [java-time :as time]))
+    [java-time.api :as time]))
 
 
 (def tx-log

@@ -2,7 +2,7 @@
   (:require
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
-    [java-time :as time])
+    [java-time.api :as time])
   (:import
     [java.util Random]))
 

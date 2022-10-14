@@ -3,7 +3,7 @@
     [blaze.scheduler :as sched]
     [blaze.scheduler.spec]
     [clojure.spec.alpha :as s]
-    [java-time :as time]))
+    [java-time.api :as time]))
 
 
 (s/fdef sched/schedule-at-fixed-rate

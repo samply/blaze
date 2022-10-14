@@ -564,6 +564,10 @@
 
     (tu/testing-binary-null elm/greater-or-equal #elm/date "2013-06-15"))
 
+  (testing "DateTime with mixed precision"
+    (are [x y] (nil? (tu/compile-binop elm/greater-or-equal elm/date-time x y))
+      "2005-06-17" "2005"))
+
   (testing "Time"
     (are [x y res] (= res (tu/compile-binop elm/greater-or-equal elm/time x y))
       "00:00:00" "00:00:00" true

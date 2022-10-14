@@ -5,7 +5,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
-    [java-time :as time])
+    [java-time.api :as time])
   (:import
     [com.google.common.hash Hashing]
     [java.time LocalDate LocalDateTime Year YearMonth OffsetDateTime

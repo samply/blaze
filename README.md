@@ -2,7 +2,8 @@
 
 [![Build](https://github.com/samply/blaze/actions/workflows/build.yml/badge.svg)](https://github.com/samply/blaze/actions/workflows/build.yml)
 [![Docker Pulls](https://img.shields.io/docker/pulls/samply/blaze.svg)](https://hub.docker.com/r/samply/blaze/)
-[![codecov](https://codecov.io/gh/samply/blaze/branch/develop/graph/badge.svg)](https://codecov.io/gh/samply/blaze)
+[![Code Coverage](https://codecov.io/gh/samply/blaze/branch/develop/graph/badge.svg)](https://codecov.io/gh/samply/blaze)
+[![Latest Release](https://img.shields.io/github/v/release/samply/blaze)][5]
 
 A FHIR® Store with internal, fast CQL Evaluation Engine
 
@@ -14,7 +15,7 @@ The goal of this project is to provide a FHIR® Store with an internal CQL Evalu
 
 Blaze passes all [Touchstone FHIR 4.0.1 Basic Tests][12] and almost all [CQL Tests][3]. Please refer to the [Conformance](docs/conformance.md) section and report any issues you encounter during evaluation.
 
-Latest release: [v0.18.0][5]
+Latest release: [v0.18.1][5]
 
 ## Quick Start
 
@@ -72,7 +73,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v0.18.0>
+[5]: <https://github.com/samply/blaze/releases/tag/v0.18.1>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>

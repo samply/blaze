@@ -79,9 +79,9 @@
 
 
 (defn- read-data [name]
-  (let [raw (slurp-resource (str name "-data.json"))
+  (let [raw (slurp-resource (str name ".json"))
         bundle (fhir-spec/conform-json (fhir-spec/parse-json raw))
-        library (library-entry (slurp-resource (str name "-query.cql")))]
+        library (library-entry (slurp-resource (str name ".cql")))]
     (update bundle :entry conj library)))
 
 
@@ -434,7 +434,10 @@
     "q38-di-surv" 2
     "q39-social-sec-num" 1
     "q42-medication-2" 2
-    "q43-medication-3" 2)
+    "q43-medication-3" 2
+    "q44-tnm-t" 1
+    "q45-histology" 1
+    "q46-between-date" 1)
 
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
@@ -616,6 +619,5 @@
 
 (comment
   (log/set-level! :debug)
-  (evaluate "q42-medication-2")
-  (evaluate "q43-medication-3")
+  (evaluate "q46-between-date")
   )

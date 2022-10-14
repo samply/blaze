@@ -7,7 +7,7 @@
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [is deftest]]
-    [java-time :as time])
+    [java-time.api :as time])
   (:import
     [java.lang AutoCloseable]
     [java.time Instant]))

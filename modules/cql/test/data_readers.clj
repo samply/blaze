@@ -83,6 +83,7 @@
  elm/converts-to-time blaze.elm.literal/converts-to-time
  elm/children blaze.elm.literal/children
  elm/descendents blaze.elm.literal/descendents
+ elm/is blaze.elm.literal/is
  elm/to-boolean blaze.elm.literal/to-boolean
  elm/to-chars blaze.elm.literal/to-chars
  elm/to-date blaze.elm.literal/to-date

@@ -12,7 +12,7 @@ services:
     - "${GITHUB_WORKSPACE}/.github/openid-auth-test/realm.json:/tmp/realm.json"
 
   blaze:
-    image: "ghcr.io/samply/blaze:sha-${GITHUB_SHA}"
+    image: "blaze:latest"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx2g"
       OPENID_PROVIDER_URL: "http://keycloak:8080/auth/realms/blaze"

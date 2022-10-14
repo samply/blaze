@@ -6,7 +6,7 @@
   {:local/root "../module-base"}
 
   org.eclipse.jetty/jetty-server
-  {:mvn/version "9.4.48.v20220622"}
+  {:mvn/version "9.4.49.v20220914"}
 
   ring/ring-jetty-adapter
   {:mvn/version "1.9.6"
@@ -25,7 +25,7 @@
     {:local/root "../test-util"}
 
     hato/hato
-    {:mvn/version "0.8.2"}}}
+    {:mvn/version "0.9.0"}}}
 
   :kaocha
   {:extra-deps

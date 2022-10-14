@@ -340,7 +340,7 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 22.15. | ConvertsToString   | ✓          |               |       |
 | 22.16. | ConvertsToTime     | ✓          |               |       |
 | 22.17. | Descendents        | ✓          |               |       |
-| 22.18. | Is                 | ✗          |               |       |
+| 22.18. | Is                 | ✓          |               |       |
 | 22.19. | ToBoolean          | ✓          |               |       |
 | 22.20. | ToChars            | ✓          |               |       |
 | 22.21. | ToConcept          | ✗          |               |       |

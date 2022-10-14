@@ -1,7 +1,7 @@
 (ns blaze.cassandra.config
   (:require
     [clojure.string :as str]
-    [java-time :as time])
+    [java-time.api :as time])
   (:import
     [com.datastax.oss.driver.api.core.config OptionsMap TypedDriverOption]
     [java.net InetSocketAddress]))

@@ -1,0 +1,215 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "0"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "1"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/1"
+      }
+    },
+    {
+      "request": {
+        "method": "PUT",
+        "url": "Observation/0"
+      },
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "21908-9",
+              "system": "http://loinc.org"
+            }
+          ]
+        },
+        "id": "0",
+        "meta": {
+          "profile": [
+            "http://dktk.dkfz.de/fhir/StructureDefinition/onco-core-Observation-TNMc"
+          ]
+        },
+        "resourceType": "Observation",
+        "subject": {
+          "reference": "Patient/0"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "21905-5"
+                }
+              ]
+            },
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "system": "http://dktk.dkfz.de/fhir/onco/core/CodeSystem/TNMTCS",
+                  "code": "0"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "PUT",
+        "url": "Observation/1"
+      },
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "21908-9",
+              "system": "http://loinc.org"
+            }
+          ]
+        },
+        "id": "1",
+        "meta": {
+          "profile": [
+            "http://dktk.dkfz.de/fhir/StructureDefinition/onco-core-Observation-TNMc"
+          ]
+        },
+        "resourceType": "Observation",
+        "subject": {
+          "reference": "Patient/1"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "21905-5"
+                }
+              ]
+            },
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "system": "http://dktk.dkfz.de/fhir/onco/core/CodeSystem/TNMTCS",
+                  "code": "1"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "PUT",
+        "url": "Observation/2"
+      },
+      "resource": {
+        "code": {
+          "coding": [
+            {
+              "code": "21908-9",
+              "system": "http://loinc.org"
+            }
+          ]
+        },
+        "id": "2",
+        "meta": {
+          "profile": [
+            "http://dktk.dkfz.de/fhir/StructureDefinition/onco-core-Observation-TNMc"
+          ]
+        },
+        "resourceType": "Observation",
+        "subject": {
+          "reference": "Patient/1"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "21906-3"
+                }
+              ]
+            },
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "system": "http://dktk.dkfz.de/fhir/onco/core/CodeSystem/TNMNCS",
+                  "code": "0"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Measure",
+        "id": "0",
+        "url": "0",
+        "status": "active",
+        "subjectCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/resource-types",
+              "code": "Patient"
+            }
+          ]
+        },
+        "library": [
+          "0"
+        ],
+        "scoring": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/measure-scoring",
+              "code": "cohort"
+            }
+          ]
+        },
+        "group": [
+          {
+            "population": [
+              {
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/measure-population",
+                      "code": "initial-population"
+                    }
+                  ]
+                },
+                "criteria": {
+                  "language": "text/cql-identifier",
+                  "expression": "InInitialPopulation"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Measure/0"
+      }
+    }
+  ]
+}
