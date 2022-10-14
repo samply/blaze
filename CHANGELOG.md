@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.18.1
+
+### Security
+
+* Update Dependencies ([#817](https://github.com/samply/blaze/pull/817))
+* Uninstall wget because of CVE-2021-31879 ([#801](https://github.com/samply/blaze/pull/801))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/52?closed=1).
+
 ## v0.18.0
 
 ### New Features
