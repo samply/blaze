@@ -4206,6 +4206,45 @@
         {:score 1.1M}))))
 
 
+(deftest bundle-entry-reference-test
+  (testing "transforming"
+    (testing "JSON"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/bundle-entry {:resource (fg/patient)})]
+          (= (->> x
+                  fhir-spec/unform-json
+                  fhir-spec/parse-json
+                  (s2/conform :fhir.json.Bundle/entry))
+             x))))
+
+    (testing "XML"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/bundle-entry {:resource (fg/patient)})]
+          (= (->> x
+                  (s2/unform :fhir.xml.Bundle/entry)
+                  (s2/conform :fhir.xml.Bundle/entry))
+             x))))
+
+    (testing "CBOR"
+      (satisfies-prop 100
+        (prop/for-all [x (fg/bundle-entry {:resource (fg/patient)})]
+          (= (->> x
+                  fhir-spec/unform-cbor
+                  fhir-spec/parse-cbor
+                  (s2/conform :fhir.cbor.Bundle/entry))
+             x)))))
+
+  (testing "references"
+    (satisfies-prop 10
+      (prop/for-all [x (fg/bundle-entry
+                         {:resource
+                          (fg/observation
+                            {:subject
+                             (fg/reference
+                               {:reference (gen/return "Patient/0")})})})]
+        (empty? (type/references x))))))
+
+
 
 ;; ---- Resources -------------------------------------------------------------
 

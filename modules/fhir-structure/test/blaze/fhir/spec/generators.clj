@@ -482,3 +482,12 @@
   (->> (gen/tuple category)
        (to-map [:category])
        (fhir-type :fhir/AllergyIntolerance)))
+
+
+(defn bundle-entry
+  [& {:keys [id extension resource]
+      :or {id (gen/return nil)
+           extension (extensions)}}]
+  (->> (gen/tuple id extension resource)
+       (to-map [:id :extension :resource])
+       (fhir-type :fhir.Bundle/entry)))

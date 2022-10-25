@@ -1103,7 +1103,9 @@
         (p/-hash-into (k m) sink))
       (sort (keys m))))
   (-references [m]
-    (transduce (mapcat p/-references) conj [] (vals m))))
+    ;; Bundle entries have no references, because Bundles itself are stored "as-is"
+    (when-not (identical? :fhir.Bundle/entry (p/-type m))
+      (transduce (mapcat p/-references) conj [] (vals m)))))
 
 
 (declare attachment)
