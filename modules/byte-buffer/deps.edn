@@ -1,6 +1,6 @@
 {:deps
  {com.google.protobuf/protobuf-java
-  {:mvn/version "3.21.7"}}
+  {:mvn/version "3.21.8"}}
 
  :aliases
  {:test
@@ -13,6 +13,6 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.70.1086"}}
+    {:mvn/version "1.71.1119"}}
 
    :main-opts ["-m" "kaocha.runner"]}}}
