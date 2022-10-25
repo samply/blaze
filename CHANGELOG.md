@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.18.2
+
+### Bugfixes
+
+* Fix Storage of Bundles with References ([#822](https://github.com/samply/blaze/pull/822))
+
+### Security
+
+* Update Dependencies ([#824](https://github.com/samply/blaze/pull/824))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/53?closed=1).
+
 ## v0.18.1
 
 ### Security
