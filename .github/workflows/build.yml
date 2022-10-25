@@ -601,6 +601,37 @@ jobs:
     - name: Test Include
       run: .github/scripts/include-without-referential-integrity.sh
 
+  # Test that a transaction can create a transaction bundle with references that will be taken "as-is" and not tried to
+  # resolve to existing resources
+  bundle-with-references-test:
+    needs: build
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v3
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Blaze
+      run: docker run --rm -d -e JAVA_TOOL_OPTIONS=-Xmx1g -p 8080:8080 blaze:latest
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Load Data
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/bundle-with-references
+
   jepsen-test:
     needs: build
     runs-on: ubuntu-20.04

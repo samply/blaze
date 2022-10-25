@@ -1,0 +1,30 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Bundle",
+        "type": "transaction",
+        "entry": [
+          {
+            "resource": {
+              "resourceType": "Condition",
+              "subject": {
+                "reference": "Patient/db03f428-4fea-4006-bb90-aeaa7c6e9d1d"
+              }
+            },
+            "request": {
+              "method": "POST",
+              "url": "Condition"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Bundle"
+      }
+    }
+  ]
+}

@@ -109,9 +109,7 @@
       (is (= "0" (murmur3 nil))))
 
     (testing "references"
-      (are [x refs] (= refs (type/references x))
-        nil
-        nil))))
+      (is (nil? (type/references nil))))))
 
 
 (deftest Object-test

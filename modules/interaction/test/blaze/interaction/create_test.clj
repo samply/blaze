@@ -46,7 +46,8 @@
 (def router
   (reitit/router
     [["/Patient" {:name :Patient/type}]
-     ["/Observation" {:name :Observation/type}]]
+     ["/Observation" {:name :Observation/type}]
+     ["/Bundle" {:name :Bundle/type}]]
     {:syntax :bracket}))
 
 
@@ -113,6 +114,10 @@
 
 (def observation-match
   (reitit/map->Match {:data {:fhir.resource/type "Observation"}}))
+
+
+(def bundle-match
+  (reitit/map->Match {:data {:fhir.resource/type "Bundle"}}))
 
 
 (deftest handler-test
@@ -391,4 +396,41 @@
           :id := "AAAAAAAAAAAAAAAA"
           [:meta :versionId] := #fhir/id"1"
           [:meta :lastUpdated] := Instant/EPOCH
-          [:subject :reference] := "Patient/0")))))
+          [:subject :reference] := "Patient/0"))))
+
+  (testing "with a Bundle with references"
+    (with-handler [handler]
+      []
+      (let [{:keys [status headers body]}
+            @(handler
+               {::reitit/match bundle-match
+                :body {:fhir/type :fhir/Bundle
+                       :type #fhir/code"collection"
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Observation
+                          :subject #fhir/Reference{:reference "Patient/0"}}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"POST"
+                          :url #fhir/uri"Observation"}}]}})]
+
+        (is (= 201 status))
+
+        (testing "Location header"
+          (is (= (str base-url "/Bundle/AAAAAAAAAAAAAAAA/_history/1")
+                 (get headers "Location"))))
+
+        (testing "Transaction time in Last-Modified header"
+          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
+
+        (testing "Version in ETag header"
+          ;; 1 is the T of the transaction of the resource creation
+          (is (= "W/\"1\"" (get headers "ETag"))))
+
+        (given body
+          :fhir/type := :fhir/Bundle
+          :id := "AAAAAAAAAAAAAAAA"
+          [:meta :versionId] := #fhir/id"1"
+          [:meta :lastUpdated] := Instant/EPOCH)))))
