@@ -8,10 +8,10 @@
    [com.fasterxml.jackson.dataformat/jackson-dataformat-cbor]}
 
   com.fasterxml.jackson.core/jackson-core
-  {:mvn/version "2.13.4"}
+  {:mvn/version "2.14.0"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-smile
-  {:mvn/version "2.13.4"}
+  {:mvn/version "2.14.0"}
 
   hato/hato
   {:mvn/version "0.9.0"}}
