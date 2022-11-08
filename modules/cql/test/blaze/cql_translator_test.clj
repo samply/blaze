@@ -5,6 +5,7 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
+    [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]]))
 
 
@@ -64,4 +65,11 @@
       [:parameters :def 0 :name] := "MeasurementPeriod"
       [:parameters :def 0 :resultTypeSpecifier :type] := "IntervalTypeSpecifier"
       [:parameters :def 0 :resultTypeSpecifier :pointType :type] := "NamedTypeSpecifier"
-      [:parameters :def 0 :resultTypeSpecifier :pointType :name] := "{urn:hl7-org:elm-types:r1}DateTime")))
+      [:parameters :def 0 :resultTypeSpecifier :pointType :name] := "{urn:hl7-org:elm-types:r1}DateTime"))
+
+  (testing "Syntax Error"
+    (given (translate
+             "library Test
+              define Error: (")
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Syntax error at <EOF>")))
