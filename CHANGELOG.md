@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.18.3
+
+### Operation
+
+* Revert Purging curl for Future Docker Health Checks ([#831](https://github.com/samply/blaze/pull/831))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/54?closed=1).
+
 ## v0.18.2
 
 ### Bugfixes

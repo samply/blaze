@@ -172,7 +172,7 @@ docker-compose exec cassandra-1 cqlsh -u cassandra -p cassandra
 
 ```yaml
 blaze-1:
-  image: "ghcr.io/samply/blaze:c1958af39eacc7e0eb9db658e2c6258e2d946578"
+  image: "samply/blaze:0.18"
   hostname: "blaze-1"
   environment:
     JAVA_TOOL_OPTIONS: "-Xmx4g"
@@ -202,7 +202,7 @@ blaze-1:
   - cassandra-3
 
 blaze-2:
-  image: "ghcr.io/samply/blaze:c1958af39eacc7e0eb9db658e2c6258e2d946578"
+  image: "samply/blaze:0.18"
   hostname: "blaze-2"
   environment:
     JAVA_TOOL_OPTIONS: "-Xmx4g"
