@@ -11,7 +11,7 @@ services:
     volumes:
     - "../../.github/openid-auth-test/realm.json:/tmp/realm.json"
   blaze:
-    image: "ghcr.io/samply/blaze:1a90350d0ef932d99cbaab6e7168e3f40216a880"
+    image: "samply/blaze:0.18"
     environment:
       BASE_URL: "http://localhost:8080"
       JAVA_TOOL_OPTIONS: "-Xmx2g"
