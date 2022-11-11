@@ -437,7 +437,8 @@
     "q43-medication-3" 2
     "q44-tnm-t" 1
     "q45-histology" 1
-    "q46-between-date" 1)
+    "q46-between-date" 1
+    "q47-managing-organization" 1)
 
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
@@ -619,5 +620,5 @@
 
 (comment
   (log/set-level! :debug)
-  (evaluate "q46-between-date")
+  (evaluate "q47-managing-organization")
   )
