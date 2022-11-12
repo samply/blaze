@@ -69,7 +69,13 @@
     [#elm/string "a" #elm/string "b"] "ab"
 
     [#elm/string "a" {:type "Null"}] nil
-    [{:type "Null"}] nil))
+    [{:type "Null"}] nil)
+
+  (testing "form"
+    (are [args form] (= form (core/-form (c/compile {} {:type "Concatenate" :operand args})))
+      [#elm/string "a"] '(concatenate "a")
+      [#elm/string "a" #elm/string "b"] '(concatenate "a" "b")
+      [#elm/string "a" {:type "Null"}] '(concatenate "a" nil))))
 
 
 ;; 17.3. EndsWith

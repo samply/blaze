@@ -91,7 +91,9 @@
        (reify core/Expression
          (~'-eval [~'_ context# resource# scope#]
            (let [~operands-binding (mapv #(core/-eval % context# resource# scope#) operands#)]
-             ~@body))))))
+             ~@body))
+         (~'-form [~'_]
+           (cons (quote ~name) (map core/-form operands#)))))))
 
 
 (defmacro defaggop

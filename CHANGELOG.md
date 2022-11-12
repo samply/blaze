@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.18.4
+
+### Bugfixes
+
+* Fix CQL Function Argument Hiding ([#835](https://github.com/samply/blaze/pull/835))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/55?closed=1).
+
 ## v0.18.3
 
 ### Operation

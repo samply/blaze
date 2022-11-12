@@ -100,13 +100,19 @@
              (code/to-code "foo" nil "c")]))))
 
     (testing "Return non-distinct"
-      (are [query res] (= res (core/-eval (c/compile {} query) {} nil nil))
-        {:type "Query"
-         :source
-         [{:alias "S"
-           :expression #elm/list [#elm/integer "1" #elm/integer "1"]}]
-         :return {:distinct false :expression {:type "AliasRef" :name "S"}}}
-        [1 1]))
+      (let [elm {:type "Query"
+                 :source
+                 [{:alias "S"
+                   :expression #elm/list [#elm/integer "1" #elm/integer "1"]}]
+                 :return {:distinct false :expression {:type "AliasRef" :name "S"}}}
+            expr (c/compile {} elm)]
+
+        (testing "eval"
+          (is (= [1 1] (core/-eval expr {} nil nil))))
+
+        (testing "form"
+          (is (= '(vector-query (return S (alias-ref S)) [1 1])
+                 (core/-form expr))))))
 
     (testing "with query hint optimize first"
       (let [elm {:type "Query"
@@ -146,6 +152,7 @@
                    [{:alias "P"
                      :expression retrieve}]}
               expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
+
           (testing "eval"
             (given (core/-eval expr {:db db} nil nil)
               [0 fhir-spec/fhir-type] := :fhir/Patient
@@ -165,7 +172,7 @@
 
           (testing "form"
             (is (= '(vector-query
-                      (comp (where (equal (:gender default) 2)) distinct)
+                      (comp (where P (equal (:gender P) 2)) distinct)
                       (retrieve "Patient"))
                    (core/-form expr)))))
 
@@ -227,9 +234,12 @@
 
 ;; 10.3. AliasRef
 (deftest compile-alias-ref-test
-  (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil {"foo" ::result}))
-    {:type "AliasRef" :name "foo"}
-    ::result))
+  (let [expr (c/compile {} {:type "AliasRef" :name "foo"})]
+    (testing "eval"
+      (is (= ::result (core/-eval expr {} nil {"foo" ::result}))))
+
+    (testing "form"
+      (is (= '(alias-ref foo) (core/-form expr))))))
 
 
 ;; 10.7 IdentifierRef
@@ -274,13 +284,19 @@
                    :life/scopes #{"O1"}
                    :life/source-type "{http://hl7.org/fhir}Observation"}]}
             compile-context
-            {:node node :life/single-query-scope "O0" :eval-context "Unfiltered"}
-            xform-factory (queries/compile-with-equiv-clause compile-context elm)
+            {:node node :eval-context "Unfiltered"}
+            xform-factory (queries/compile-with-equiv-clause compile-context "O0" elm)
             eval-context {:db (d/db node)}
-            xform (queries/-create xform-factory eval-context nil)
+            xform (queries/-create xform-factory eval-context nil nil)
             lhs-entity {:fhir/type :fhir/Observation
                         :subject #fhir/Reference{:reference "Patient/0"}}]
-        (is (= [lhs-entity] (into [] xform [lhs-entity]))))))
+
+        (testing "filtering"
+          (is (= [lhs-entity] (into [] xform [lhs-entity]))))
+
+        (testing "form"
+          (is (= '(with (retrieve "Observation"))
+                 (queries/-form xform-factory)))))))
 
   (testing "Equiv With with one Patient and one Observation comparing the patient with the operation subject."
     (with-system-data [{:blaze.db/keys [node]} mem-node-system]
@@ -303,9 +319,9 @@
                    :life/scopes #{"O"}
                    :life/source-type "{http://hl7.org/fhir}Observation"}]}
             compile-context
-            {:node node :life/single-query-scope "P" :eval-context "Unfiltered"}
-            xform-factory (queries/compile-with-equiv-clause compile-context elm)
+            {:node node :eval-context "Unfiltered"}
+            xform-factory (queries/compile-with-equiv-clause compile-context "P" elm)
             eval-context {:db (d/db node)}
-            xform (queries/-create xform-factory eval-context nil)
+            xform (queries/-create xform-factory eval-context nil nil)
             lhs-entity #fhir/Reference{:reference "Patient/0"}]
         (is (= [lhs-entity] (into [] xform [lhs-entity])))))))

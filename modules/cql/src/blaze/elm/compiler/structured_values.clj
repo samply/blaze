@@ -121,13 +121,11 @@
 
 
 (defmethod core/compile* :elm.compiler.type/property
-  [{:life/keys [single-query-scope] :as context} {:keys [source scope path]}]
+  [context {:keys [source scope path]}]
   (let [key (path->key path)]
     (cond
       source
       (->SourcePropertyExpression (core/compile* context source) key)
 
       scope
-      (if (= single-query-scope scope)
-        (->SingleScopePropertyExpression key)
-        (->ScopePropertyExpression scope key)))))
+      (->ScopePropertyExpression scope key))))

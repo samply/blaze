@@ -447,6 +447,9 @@ jobs:
     - name: Evaluate CQL Query 34 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q37-overlaps.cql 24
 
+    - name: Evaluate CQL Query 46
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure//q46-between-date.cql 19
+
     - name: Forwarded Header HTTPS
       run: .github/scripts/forwarded-header.sh https
 
@@ -918,6 +921,9 @@ jobs:
 
     - name: Evaluate CQL Query 34 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q37-overlaps.cql 24
+
+    - name: Evaluate CQL Query 46
+      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure//q46-between-date.cql 19
 
     - name: Forwarded Header HTTPS
       run: .github/scripts/forwarded-header.sh https
