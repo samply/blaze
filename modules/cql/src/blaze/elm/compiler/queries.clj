@@ -19,17 +19,18 @@
 
 
 (defprotocol XformFactory
-  (-create [_ context resource]
+  (-create [_ context resource scope]
     "Creates a xform which filters and/or shapes query sources.")
   (-form [_]))
 
 
 (defrecord WithXformFactory
-  [rhs rhs-operand such-that lhs-operand single-query-scope]
+  [rhs rhs-operand rhs-alias such-that lhs-operand lhs-alias]
   XformFactory
-  (-create [_ context resource]
-    (let [rhs (core/-eval rhs context resource nil)
-          indexer #(core/-eval rhs-operand context resource %)]
+  (-create [_ context resource scope]
+    (let [rhs (core/-eval rhs context resource scope)
+          indexer #(core/-eval rhs-operand context resource
+                               (assoc scope rhs-alias %))]
       (if (some? such-that)
         (let [index (group-by indexer rhs)]
           (filter
@@ -39,12 +40,13 @@
                                                (get index))]
                 (some
                   #(core/-eval such-that context resource
-                               {single-query-scope lhs-entity alias %})
+                               (assoc scope lhs-alias lhs-entity rhs-alias %))
                   rhs-entities)))))
         (let [index (into #{} (map indexer) rhs)]
           (filter
             (fn eval-with-clause [lhs-entity]
-              (some->> (core/-eval lhs-operand context resource lhs-entity)
+              (some->> (core/-eval lhs-operand context resource
+                                   (assoc scope lhs-alias lhs-entity))
                        (contains? index))))))))
   (-form [_]
     (list 'with (core/-form rhs))))
@@ -56,27 +58,29 @@
         (filter #(with-clause context resource %)))))
 
 
-(defrecord WhereXformFactory [expr]
+(defrecord WhereXformFactory [alias expr]
   XformFactory
-  (-create [_ context resource]
-    (filter #(core/-eval expr context resource %)))
+  (-create [_ context resource scope]
+    (filter #(core/-eval expr context resource (assoc scope alias %))))
   (-form [_]
-    `(~'where ~(core/-form expr))))
+    `(~'where ~(symbol alias) ~(core/-form expr))))
 
 
-(defn- where-xform-factory [expr]
-  (->WhereXformFactory expr))
+(defn- where-xform-factory [alias expr]
+  (->WhereXformFactory alias expr))
 
 
-(defrecord ReturnXformFactory [expr]
+(defrecord ReturnXformFactory [alias expr]
   XformFactory
-  (-create [_ context resource]
-    (map #(core/-eval expr context resource %))))
+  (-create [_ context resource scope]
+    (map #(core/-eval expr context resource (assoc scope alias %))))
+  (-form [_]
+    `(~'return ~(symbol alias) ~(core/-form expr))))
 
 
 (defrecord DistinctXformFactory []
   XformFactory
-  (-create [_ _ _]
+  (-create [_ _ _ _]
     (distinct))
   (-form [_]
     'distinct))
@@ -84,26 +88,28 @@
 
 (defrecord ComposedDistinctXformFactory [xform-factory]
   XformFactory
-  (-create [_ context resource]
+  (-create [_ context resource scope]
     (comp
-      (-create xform-factory context resource)
-      (distinct))))
+      (-create xform-factory context resource scope)
+      (distinct)))
+  (-form [_]
+    `(~'distinct ~(-form xform-factory))))
 
 
-(defn- return-xform-factory [expr distinct]
+(defn- return-xform-factory [alias expr distinct]
   (if (some? expr)
     (if distinct
-      (-> (->ReturnXformFactory expr)
+      (-> (->ReturnXformFactory alias expr)
           (->ComposedDistinctXformFactory))
-      (->ReturnXformFactory expr))
+      (->ReturnXformFactory alias expr))
     (when distinct
       (->DistinctXformFactory))))
 
 
 (defrecord ComposedXformFactory [factories]
   XformFactory
-  (-create [_ context resource]
-    (transduce (map #(-create % context resource)) comp factories))
+  (-create [_ context resource scope]
+    (transduce (map #(-create % context resource scope)) comp factories))
   (-form [_]
     `(~'comp ~@(map -form factories))))
 
@@ -133,7 +139,7 @@
   core/Expression
   (-eval [_ context resource scope]
     (coll/eduction
-      (-create xform-factory context resource)
+      (-create xform-factory context resource scope)
       (core/-eval source context resource scope)))
   (-form [_]
     `(~'eduction-query ~(-form xform-factory) ~(core/-form source))))
@@ -148,7 +154,7 @@
   (-eval [_ context resource scope]
     (into
       []
-      (-create xform-factory context resource)
+      (-create xform-factory context resource scope)
       (core/-eval source context resource scope)))
   (-form [_]
     `(~'vector-query ~(-form xform-factory) ~(core/-form source))))
@@ -215,7 +221,7 @@
     ;; TODO: build a comparator of all sort by items
     (->> (into
            []
-           (-create xform-factory context resource)
+           (-create xform-factory context resource scope)
            (core/-eval source context resource scope))
          (sort-by
            (if-let [expr (:expression sort-by-item)]
@@ -278,12 +284,11 @@
     (let [{:keys [expression alias]} (first sources)
           context (dissoc context :optimizations)
           source (core/compile* context expression)
-          context (assoc context :life/single-query-scope alias)
           with-equiv-clauses (filter (comp #{"WithEquiv"} :type) relationships)
-          with-xform-factories (map #(compile-with-equiv-clause context %) with-equiv-clauses)
-          where-xform-factory (some->> where (core/compile* context) (where-xform-factory))
+          with-xform-factories (map #(compile-with-equiv-clause context alias %) with-equiv-clauses)
+          where-xform-factory (some->> where (core/compile* context) (where-xform-factory alias))
           distinct (if (contains? optimizations :non-distinct) false distinct)
-          return-xform-factory (return-xform-factory (some->> return (core/compile* context)) distinct)
+          return-xform-factory (return-xform-factory alias (some->> return (core/compile* context)) distinct)
           xform-factory (xform-factory with-xform-factories where-xform-factory return-xform-factory)
           sort-by-items (mapv #(compile-sort-by-item context %) sort-by-items)]
       (if (empty? sort-by-items)
@@ -305,23 +310,14 @@
 (defrecord AliasRefExpression [key]
   core/Expression
   (-eval [_ _ _ scopes]
-    (get scopes key)))
-
-
-(defrecord SingleScopeAliasRefExpression []
-  core/Expression
-  (-eval [_ _ _ scope]
-    scope))
-
-
-(def single-scope-alias-ref-expression (->SingleScopeAliasRefExpression))
+    (get scopes key))
+  (-form [_]
+    `(~'alias-ref ~(symbol key))))
 
 
 (defmethod core/compile* :elm.compiler.type/alias-ref
-  [{:life/keys [single-query-scope]} {:keys [name]}]
-  (if (= single-query-scope name)
-    single-scope-alias-ref-expression
-    (->AliasRefExpression name)))
+  [_ {:keys [name]}]
+  (->AliasRefExpression name))
 
 
 ;; 10.7 IdentifierRef
@@ -358,26 +354,20 @@
   the semi-join here.
 
   Returns an XformFactory."
-  {:arglists '([context with-equiv-clause])}
-  [context {:keys [alias] rhs :expression equiv-operands :equivOperand
-            such-that :suchThat}]
-  (if-let [single-query-scope (:life/single-query-scope context)]
-    (if-let [rhs-operand (find-operand-with-alias equiv-operands alias)]
-      (if-let [lhs-operand (find-operand-with-alias equiv-operands
-                                                    single-query-scope)]
-        (let [rhs (core/compile* context rhs)
-              rhs-operand (core/compile* (assoc context :life/single-query-scope alias)
-                                         rhs-operand)
-              lhs-operand (core/compile* context lhs-operand)
-              such-that (some->> such-that
-                                 (core/compile* (dissoc context :life/single-query-scope)))]
-          (->WithXformFactory rhs rhs-operand such-that lhs-operand
-                              single-query-scope))
-        (throw-anom missing-lhs-operand-anom))
-      (throw-anom (missing-rhs-operand-anom alias)))
-    (throw-anom
-      (ba/incorrect
-        (format "Unsupported call without single query scope.")))))
+  {:arglists '([context lhs-alias with-equiv-clause])}
+  [context
+   lhs-alias
+   {rhs-alias :alias rhs :expression equiv-operands :equivOperand
+    such-that :suchThat}]
+  (if-let [rhs-operand (find-operand-with-alias equiv-operands rhs-alias)]
+    (if-let [lhs-operand (find-operand-with-alias equiv-operands lhs-alias)]
+      (let [rhs (core/compile* context rhs)
+            rhs-operand (core/compile* context rhs-operand)
+            lhs-operand (core/compile* context lhs-operand)
+            such-that (some->> such-that (core/compile* context))]
+        (->WithXformFactory rhs rhs-operand rhs-alias such-that lhs-operand lhs-alias))
+      (throw-anom missing-lhs-operand-anom))
+    (throw-anom (missing-rhs-operand-anom rhs-alias))))
 
 
 ;; TODO 10.15. Without
