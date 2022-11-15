@@ -92,6 +92,21 @@
     (assoc :unit unit)))
 
 
+;; 3.10. Ratio
+(defn ratio
+  [[[numerator-value numerator-unit] [denominator-value denominator-unit]]]
+  {:type "Ratio"
+   :numerator (cond->
+                {:type "Quantity"
+                 :value numerator-value}
+                numerator-unit
+                (assoc :unit numerator-unit))
+   :denominator (cond->
+                  {:type "Quantity"
+                   :value denominator-value}
+                  denominator-unit
+                  (assoc :unit denominator-unit))})
+
 
 ;; 7. Parameters
 

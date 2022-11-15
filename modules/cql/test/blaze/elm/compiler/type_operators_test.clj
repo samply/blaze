@@ -721,7 +721,13 @@
   (testing "Decimal"
     (is (true? (tu/compile-unop elm/converts-to-quantity elm/decimal "1.1"))))
 
-  ;; TODO: Ratio
+  (testing "Ratio"
+    (are [x] (true? (tu/compile-unop elm/converts-to-quantity elm/ratio x))
+      [[-1] [-1]]
+      [[1] [1]]
+      [[1 "s"] [1 "s"]]
+      [[1 "m"] [1 "s"]]
+      [[10 "s"] [1 "s"]]))
 
   (testing "dynamic"
     (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-quantity x)))
@@ -811,7 +817,9 @@
     (are [x] (true? (tu/compile-unop elm/converts-to-string elm/time x))
       "01:00"))
 
-  ;; TODO: Ratio
+  (testing "Ratio"
+    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/ratio x))
+      [[1M "m"] [1M "m"]]))
 
   (testing "Tuple"
     (are [x] (false? (c/compile {} (elm/converts-to-string (elm/tuple x))))
@@ -1579,7 +1587,19 @@
       "1" (quantity/quantity 1 "1")
       "1.1" (quantity/quantity 1.1M "1")))
 
-  ;; TODO: Ratio
+  (testing "Ratio"
+    (are [x res] (p/equal res (core/-eval (tu/compile-unop elm/to-quantity
+                                                           elm/ratio x)
+                                          {} nil nil))
+      [[1] [1]] (quantity/quantity 1 "1")
+      [[-1] [1]] (quantity/quantity -1 "1")
+
+      [[1 "s"] [1 "s"]] (quantity/quantity 1 "1")
+      [[1 "s"] [2 "s"]] (quantity/quantity 2 "1")
+
+      [[1 "m"] [1 "s"]] (quantity/quantity 1 "s/m")
+      [[1 "s"] [1 "m"]] (quantity/quantity 1 "m/s")
+      [[100 "cm"] [1 "m"]] (quantity/quantity 1 "1")))
 
   (tu/testing-unary-null elm/to-quantity)
 
@@ -1681,7 +1701,15 @@
                                     {} nil nil))
       "01:00" "01:00"))
 
-  ;; TODO: Ratio
+  (testing "Ratio"
+    (are [x res] (= res (core/-eval (tu/compile-unop elm/to-string elm/ratio
+                                                     x)
+                                    {} nil nil))
+      [[1 "m"] [1 "m"]] "1 'm':1 'm'"
+      [[1 "m"] [2 "m"]] "1 'm':2 'm'"
+      [[1M "m"] [1M "m"]] "1 'm':1 'm'"
+      [[100M "m"] [1M "m"]] "100 'm':1 'm'"
+      [[1.1M "m"] [1.1M "m"]] "1.1 'm':1.1 'm'"))
 
   (tu/testing-unary-null elm/to-string)
 

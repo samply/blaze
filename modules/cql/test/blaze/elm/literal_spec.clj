@@ -68,6 +68,19 @@
   :ret :elm/expression)
 
 
+;; 3.10. Ratio
+(s/fdef elm/ratio
+          :args
+          (s/cat
+            :args
+            (s/spec
+              (s/cat
+                :numerator
+                (s/spec (s/cat :numerator-value number? :numerator-unit (s/? string?)))
+                :denominator
+                (s/spec (s/cat :denominator-value number? :denominator-unit (s/? string?))))))
+          :ret :elm/expression)
+
 
 ;; 9. Reusing Logic
 

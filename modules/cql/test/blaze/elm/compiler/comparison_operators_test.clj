@@ -132,7 +132,22 @@
 
     (tu/testing-binary-null elm/equal #elm/quantity [1]))
 
-  ;; TODO: Ratio
+  (testing "Ratio"
+    (are [x y res] (= res (tu/compile-binop elm/equal elm/ratio x y))
+      [[1] [1]] [[1] [1]] true
+      [[1] [1]] [[2] [1]] false
+      [[1] [100]] [[10] [1000]] false
+
+      [[1 "s"] [1 "s"]] [[1 "s"] [1 "s"]] true
+      [[1 "m"] [1 "m"]] [[1 "m"] [1 "m"]] true
+      [[100 "cm"] [100 "cm"]] [[1 "m"] [1 "m"]] true
+      [[1 "s"] [1 "s"]] [[1 "s"] [2 "s"]] false
+      [[1 "s"] [1 "s"]] [[2 "s"] [2 "s"]] false
+      [[2 "s"] [1 "s"]] [[1 "s"] [2 "s"]] false
+      [[1 "s"] [1 "s"]] [[1 "m"] [1 "m"]] false
+      [[1 "s"] [1 "m"]] [[1 "m"] [1 "s"]] false)
+
+    (tu/testing-binary-null elm/equal #elm/ratio [[1] [1]]))
 
   (testing "Tuple"
     (are [x y res] (= res (tu/compile-binop elm/equal elm/tuple x y))
@@ -297,61 +312,97 @@
       {:type "Null"} {:type "Null"} true))
 
   (testing "Boolean"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
-      #elm/boolean "true" #elm/boolean "true" true
-      #elm/boolean "true" #elm/boolean "false" false
+    (are [x y res] (= res (tu/compile-binop elm/equivalent elm/boolean x y))
+      "true" "true" true
+      "true" "false" false)
 
+    (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
       {:type "Null"} #elm/boolean "true" false
       #elm/boolean "true" {:type "Null"} false))
 
   (testing "Integer"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
-      #elm/integer "1" #elm/integer "1" true
-      #elm/integer "1" #elm/integer "2" false
+    (are [x y res] (= res (tu/compile-binop elm/equivalent elm/integer x y))
+      "1" "1" true
+      "1" "2" false
+      "2" "1" false)
 
+    (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
       {:type "Null"} #elm/integer "1" false
       #elm/integer "1" {:type "Null"} false))
 
   (testing "Decimal"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
-      #elm/decimal "1.1" #elm/decimal "1.1" true
-      #elm/decimal "1.1" #elm/decimal "2.1" false
+    (are [x y res] (= res (tu/compile-binop elm/equivalent elm/decimal x y))
+      "1.1" "1.1" true
+      "1.1" "2.1" false
+      "2.1" "1.1" false
 
+      "1.1" "1.10" true
+      "1.10" "1.1" true)
+
+    (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
       {:type "Null"} #elm/decimal "1.1" false
       #elm/decimal "1.1" {:type "Null"} false))
 
   (testing "Mixed Integer Decimal"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
+    (are [x y res] (= res (c/compile {} (elm/equivalent [x y])))
       #elm/integer "1" #elm/decimal "1" true
       #elm/decimal "1" #elm/integer "1" true))
 
   (testing "Quantity"
+    (are [x y res] (= res (tu/compile-binop elm/equivalent elm/quantity x y))
+      [1] [1] true
+      [1] [2] false
+
+      [1 "s"] [1 "s"] true
+      [1 "m"] [1 "m"] true
+      [100 "cm"] [1 "m"] true
+      [1 "s"] [2 "s"] false
+      [1 "s"] [1 "m"] false)
+
     (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
-      #elm/quantity [1] #elm/quantity [1] true
-      #elm/quantity [1] #elm/quantity [2] false
-
-      #elm/quantity [1 "s"] #elm/quantity [1 "s"] true
-      #elm/quantity [1 "m"] #elm/quantity [1 "m"] true
-      #elm/quantity [100 "cm"] #elm/quantity [1 "m"] true
-      #elm/quantity [1 "s"] #elm/quantity [2 "s"] false
-      #elm/quantity [1 "s"] #elm/quantity [1 "m"] false
-
       {:type "Null"} #elm/quantity [1] false
       #elm/quantity [1] {:type "Null"} false
 
       {:type "Null"} #elm/quantity [1 "s"] false
       #elm/quantity [1 "s"] {:type "Null"} false))
 
-  (testing "List"
+  (testing "Ratio"
+    (are [x y res] (= res (tu/compile-binop elm/equivalent elm/ratio x y))
+      [[1] [1]] [[1] [1]] true
+      [[1] [100]] [[10] [1000]] true
+      [[1] [1]] [[2] [1]] false
+
+      [[1 "s"] [1 "s"]] [[1 "s"] [1 "s"]] true
+      [[1 "s"] [1 "s"]] [[1 "m"] [1 "m"]] true
+      [[1 "s"] [100 "s"]] [[10 "s"] [1000 "s"]] true
+      [[1 "s"] [1 "s"]] [[2 "s"] [2 "s"]] true
+      [[1 "m"] [1 "m"]] [[1 "m"] [1 "m"]] true
+      [[100 "cm"] [100 "cm"]] [[1 "m"] [1 "m"]] true
+      [[1000 "cm"] [100000 "cm"]] [[10 "m"] [1000 "m"]] true
+      [[100 "cm"] [1 "m"]] [[100 "cm"] [1 "m"]] true
+      [[1 "s"] [1 "s"]] [[1 "s"] [2 "s"]] false
+      [[2 "s"] [1 "s"]] [[1 "s"] [2 "s"]] false
+      [[1 "s"] [1 "m"]] [[1 "m"] [1 "s"]] false
+      [[1 "s"] [1 "s"]] [[1 "m"] [1 "s"]] false)
+
     (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
-      #elm/list [#elm/integer "1"] #elm/list [#elm/integer "1"] true
-      #elm/list [] #elm/list [] true
+      {:type "Null"} #elm/ratio [[1] [1]] false
+      #elm/ratio [[1] [1]] {:type "Null"} false
 
-      #elm/list [#elm/integer "1"] #elm/list [] false
-      #elm/list [#elm/integer "1"] #elm/list [#elm/integer "2"] false
-      #elm/list [#elm/integer "1" #elm/integer "1"]
-      #elm/list [#elm/integer "1" #elm/integer "2"] false
+      {:type "Null"} #elm/ratio [[1 "s"] [1 "s"]] false
+      #elm/ratio [[1 "s"] [1 "s"]] {:type "Null"} false))
 
+  (testing "List"
+    (are [x y res] (= res (tu/compile-binop elm/equivalent elm/list x y))
+      [#elm/integer "1"] [#elm/integer "1"] true
+      [] [] true
+
+      [#elm/integer "1"] [] false
+      [#elm/integer "1"] [#elm/integer "2"] false
+      [#elm/integer "1" #elm/integer "1"]
+      [#elm/integer "1" #elm/integer "2"] false)
+
+    (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
       #elm/list [#elm/integer "1" {:type "Null"}]
       #elm/list [#elm/integer "1" {:type "Null"}] true
       #elm/list [{:type "Null"}] #elm/list [{:type "Null"}] true

@@ -402,6 +402,27 @@
                          :elm.quantity.temporal-keyword/unit hours-unit-gen})))
 
 
+;; 3.10. Ratio
+(s/def :elm.ratio/type
+  #{"Ratio"})
+
+
+(s/def :elm.ratio/numerator
+  :elm/quantity)
+
+
+(s/def :elm.ratio/denominator
+  :elm/quantity)
+
+
+(s/def :elm/ratio
+  (s/keys
+    :req-un [:elm.ratio/type :elm.ratio/numerator :elm.ratio/denominator]))
+
+
+(defmethod expression :elm.spec.type/ratio [_]
+  :elm/ratio)
+
 
 ;; 4. Type Specifiers
 

@@ -14,6 +14,7 @@
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
     [blaze.elm.quantity :as quantity]
+    [blaze.elm.ratio :as ratio]
     [blaze.test-util :refer [satisfies-prop]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -171,3 +172,22 @@
     (satisfies-prop 100
       (prop/for-all [period (s/gen :elm/period)]
         (#{BigDecimal Period} (type (core/-eval (c/compile {} period) {} nil nil)))))))
+
+
+;; 3.10. Ratio
+;;
+;; The Ratio type defines a ratio between two quantities. For example, the
+;; titre 1:128, or the concentration ratio 5 mg/10 mL. The numerator and
+;; denominator are both quantities.
+(deftest compile-ratio-test
+  (testing "Examples"
+    (are [elm res] (= res (c/compile {} elm))
+      #elm/ratio [[1 "s"] [1 "s"]] (ratio/ratio (quantity/quantity 1 "s") (quantity/quantity 1 "s"))
+      #elm/ratio [[1 ""] [128 ""]] (ratio/ratio (quantity/quantity 1 "") (quantity/quantity 128 ""))
+      #elm/ratio [[1 "s"] [1 ""]] (ratio/ratio (quantity/quantity 1 "s") (quantity/quantity 1 ""))
+      #elm/ratio [[1 ""] [1 "s"]] (ratio/ratio (quantity/quantity 1 "") (quantity/quantity 1 "s"))
+      #elm/ratio [[1 "cm2"] [1 "s"]] (ratio/ratio (quantity/quantity 1 "cm2") (quantity/quantity 1 "s"))
+      #elm/ratio [[1] [1]] (ratio/ratio (quantity/quantity 1 "") (quantity/quantity 1 ""))
+      #elm/ratio [[1] [1 "s"]] (ratio/ratio (quantity/quantity 1 "") (quantity/quantity 1 "s"))
+      #elm/ratio [[1 "s"] [1]] (ratio/ratio (quantity/quantity 1 "s") (quantity/quantity 1 ""))
+      #elm/ratio [[5 "mg"] [10 "g"]] (ratio/ratio (quantity/quantity 5 "mg") (quantity/quantity 10 "g")))))
