@@ -7,6 +7,7 @@
  elm/instance blaze.elm.literal/instance
  elm/code blaze.elm.literal/code
  elm/code-ref blaze.elm.literal/code-ref
+ elm/concept blaze.elm.literal/concept
  elm/quantity blaze.elm.literal/quantity
  elm/ratio blaze.elm.literal/ratio
  elm/parameter-ref blaze.elm.literal/parameter-ref
