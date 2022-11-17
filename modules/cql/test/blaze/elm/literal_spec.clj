@@ -38,7 +38,7 @@
   :ret :elm/expression)
 
 
-;; 2.1. Instance
+;; 2.2. Instance
 (s/fdef elm/instance
   :args (s/cat :arg (s/tuple string? (s/map-of string? :elm/expression)))
   :ret :elm/expression)
@@ -59,6 +59,17 @@
 ;; 3.3. CodeRef
 (s/fdef elm/code-ref
   :args (s/cat :name string?)
+  :ret :elm/expression)
+
+
+;; 3.6. Concept
+(s/fdef elm/concept
+  :args (s/cat
+          :args
+          (s/spec (s/cat
+                    :codes (s/coll-of (s/spec (s/cat :system-name string?
+                                                     :code string?)))
+                    :display (s/? string?))))
   :ret :elm/expression)
 
 

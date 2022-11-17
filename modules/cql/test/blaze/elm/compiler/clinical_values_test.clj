@@ -10,6 +10,7 @@
     [blaze.elm.compiler.clinical-values]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.concept-spec]
     [blaze.elm.date-time :as date-time]
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
@@ -24,6 +25,7 @@
     [juxt.iota :refer [given]])
   (:import
     [blaze.elm.code Code]
+    [blaze.elm.concept Concept]
     [blaze.elm.date_time Period]))
 
 
@@ -136,7 +138,75 @@
 ;; 3.6. Concept
 ;;
 ;; The Concept type represents a literal concept selector.
-;; TODO
+(deftest compile-concept-test
+  (testing "without version and one code"
+    (let [context
+          {:library
+           {:codeSystems
+            {:def [{:name "sys-def-115852" :id "system-115910"}]}}}]
+      (given
+        (c/compile context #elm/concept [[["sys-def-115852" "code-115927"]]])
+        type := Concept
+        [:codes 0 type] := Code
+        [:codes 0 :system] := "system-115910"
+        [:codes 0 :code] := "code-115927")))
+
+  (testing "without version and two codes"
+    (let [context
+          {:library
+           {:codeSystems
+            {:def [{:name "sys-def-115852" :id "system-115910"}
+                   {:name "sys-def-115853" :id "system-115911"}]}}}]
+      (given
+        (c/compile context #elm/concept [[["sys-def-115852" "code-115927"]
+                                          ["sys-def-115853" "code-115928"]]])
+        type := Concept
+        [:codes 0 type] := Code
+        [:codes 0 :system] := "system-115910"
+        [:codes 0 :code] := "code-115927"
+        [:codes 1 type] := Code
+        [:codes 1 :system] := "system-115911"
+        [:codes 1 :code] := "code-115928")))
+
+  (testing "with version and one code"
+    (let [context
+          {:library
+           {:codeSystems
+            {:def
+             [{:name "sys-def-120434"
+               :id "system-120411"
+               :version "version-120408"}]}}}]
+      (given
+        (c/compile context #elm/concept [[["sys-def-120434" "code-115927"]]])
+        type := Concept
+        [:codes 0 type] := Code
+        [:codes 0 :system] := "system-120411"
+        [:codes 0 :version] := "version-120408"
+        [:codes 0 :code] := "code-115927")))
+
+  (testing "with version and two codes"
+    (let [context
+        {:library
+         {:codeSystems
+          {:def
+           [{:name "sys-def-120434"
+             :id "system-120411"
+             :version "version-120408"}
+            {:name "sys-def-115853"
+             :id "system-115911"
+             :version "version-115909"}]}}}]
+      (given
+        (c/compile context #elm/concept [[["sys-def-120434" "code-115927"]
+                                          ["sys-def-115853" "code-115928"]]])
+        type := Concept
+        [:codes 0 type] := Code
+        [:codes 0 :system] := "system-120411"
+        [:codes 0 :version] := "version-120408"
+        [:codes 0 :code] := "code-115927"
+        [:codes 1 type] := Code
+        [:codes 1 :system] := "system-115911"
+        [:codes 1 :version] := "version-115909"
+        [:codes 1 :code] := "code-115928"))))
 
 
 ;; 3.9. Quantity

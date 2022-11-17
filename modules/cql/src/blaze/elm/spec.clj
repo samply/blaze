@@ -284,10 +284,12 @@
 (s/def :elm.code/display
   string?)
 
-
-(defmethod expression :elm.spec.type/code [_]
+(s/def :elm/code
   (s/keys :req-un [:elm.code/system :elm.code/code]
           :opt-un [:elm.code/display]))
+
+(defmethod expression :elm.spec.type/code [_]
+  :elm/code)
 
 
 ;; 3.2. CodeDef
@@ -314,6 +316,20 @@
 ;; 3.5. CodeSystemRef
 (defmethod expression :elm.spec.type/code-system-ref [_]
   :elm/code-system-ref)
+
+
+;; 3.6. Concept
+(s/def :elm.concept/codes
+  (s/coll-of :elm/code))
+
+
+(s/def :elm.concept/display
+  string?)
+
+
+(defmethod expression :elm.spec.type/concept [_]
+  (s/keys :req-un [:elm.concept/codes]
+          :opt-un [:elm.concept/display]))
 
 
 ;; 3.9. Quantity

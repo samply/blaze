@@ -7,6 +7,7 @@
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.code :as code]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.concept :as concept]
     [blaze.elm.date-time :as date-time]
     [blaze.elm.quantity :as quantity]
     [blaze.elm.ratio :as ratio]))
@@ -72,8 +73,12 @@
 
 
 ;; 3.6. Concept
-;;
-;; TODO
+(defn- compile-codes [context codes]
+  (map #(core/compile* context %) codes))
+
+(defmethod core/compile* :elm.compiler.type/concept
+  [context {:keys [codes]}]
+  (concept/to-concept (compile-codes context codes)))
 
 
 ;; 3.7. ConceptDef
