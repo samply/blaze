@@ -640,6 +640,10 @@
 (derive :elm.deps.type/converts-to-quantity :elm.deps.type/unary-expression)
 
 
+;; 22.14. ConvertsToRatio
+(derive :elm.deps.type/converts-to-ratio :elm.deps.type/unary-expression)
+
+
 ;; 22.15. ConvertsToString
 (derive :elm.deps.type/converts-to-string :elm.deps.type/unary-expression)
 
@@ -682,6 +686,10 @@
 
 ;; 22.28. ToQuantity
 (derive :elm.deps.type/to-quantity :elm.deps.type/unary-expression)
+
+
+;; 22.29. ToRatio
+(derive :elm.deps.type/to-ratio :elm.deps.type/unary-expression)
 
 
 ;; 22.30. ToString

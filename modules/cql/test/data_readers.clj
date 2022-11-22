@@ -81,6 +81,7 @@
  elm/converts-to-long blaze.elm.literal/converts-to-long
  elm/converts-to-integer blaze.elm.literal/converts-to-integer
  elm/converts-to-quantity blaze.elm.literal/converts-to-quantity
+ elm/converts-to-ratio blaze.elm.literal/converts-to-ratio
  elm/converts-to-string blaze.elm.literal/converts-to-string
  elm/converts-to-time blaze.elm.literal/converts-to-time
  elm/children blaze.elm.literal/children
@@ -95,5 +96,6 @@
  elm/to-list blaze.elm.literal/to-list
  elm/to-long blaze.elm.literal/to-long
  elm/to-quantity blaze.elm.literal/to-quantity
+ elm/to-ratio blaze.elm.literal/to-ratio
  elm/to-string blaze.elm.literal/to-string
  elm/calculate-age-at blaze.elm.literal/calculate-age-at}

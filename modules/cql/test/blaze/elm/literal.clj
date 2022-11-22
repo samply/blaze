@@ -871,6 +871,11 @@
   {:type "ConvertsToQuantity" :operand operand})
 
 
+;; 22.14. ConvertsToRatio
+(defn converts-to-ratio [operand]
+  {:type "ConvertsToRatio" :operand operand})
+
+
 ;; 22.15. ConvertsToString
 (defn converts-to-string [operand]
   {:type "ConvertsToString" :operand operand})
@@ -934,6 +939,11 @@
 ;; 22.28. ToQuantity
 (defn to-quantity [operand]
   {:type "ToQuantity" :operand operand})
+
+
+;; 22.29. ToRatio
+(defn to-ratio [operand]
+  {:type "ToRatio" :operand operand})
 
 
 ;; 22.30. ToString

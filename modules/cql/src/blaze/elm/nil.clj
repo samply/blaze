@@ -320,6 +320,12 @@
   (to-quantity [_]))
 
 
+;; 22.29. ToRatio
+(extend-protocol p/ToRatio
+  nil
+  (to-ratio [_]))
+
+
 ;; 22.30. ToString
 (extend-protocol p/ToString
   nil

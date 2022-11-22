@@ -190,7 +190,11 @@
     (some? (p/to-quantity operand))))
 
 
-;; TODO 22.14. ConvertsToRatio
+;; 22.14. ConvertsToRatio
+(defunop converts-to-ratio [operand]
+  (when (some? operand)
+    (some? (p/to-ratio operand))))
+
 
 ;; 22.15. ConvertsToString
 (defunop converts-to-string [operand]
@@ -355,7 +359,10 @@
   (p/to-quantity x))
 
 
-;; TODO 22.29. ToRatio
+;; 22.29. ToRatio
+(defunop to-ratio [x]
+  (p/to-ratio x))
+
 
 ;; 22.30. ToString
 (defunop to-string [x]
