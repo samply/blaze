@@ -113,7 +113,7 @@
           [0 0 :refs] :? empty?)))
 
     (testing "with matches"
-      (given (tx/prepare-ops context [[:put {:fhir/type :fhir/Patient :id "0"} 4]])
+      (given (tx/prepare-ops context [[:put {:fhir/type :fhir/Patient :id "0"} [:if-match 4]]])
         [0 0 :if-match] := 4)))
 
   (testing "delete"

@@ -1,10 +1,6 @@
 #!/bin/bash -e
 
-TOTAL=$(curl -s http://localhost:8080/fhir | jq -r .total)
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+. "$SCRIPT_DIR/util.sh"
 
-if [ "$1" = "$TOTAL" ]; then
-  echo "Success"
-else
-  echo "Fail: total number of resources was $TOTAL but should be $1"
-  exit 1
-fi
+test "total number of resources" "$(curl -s http://localhost:8080/fhir | jq -r .total)" "$1"

@@ -7,7 +7,7 @@ SORT=$3
 EXPECTED_SIZE=$4
 FILE_NAME_PREFIX="$(uuidgen)"
 
-blazectl --server "$BASE" download "$TYPE" -q "_sort=$SORT&$QUERY" -o "$FILE_NAME_PREFIX-get".ndjson
+blazectl --no-progress --server "$BASE" download "$TYPE" -q "_sort=$SORT&$QUERY" -o "$FILE_NAME_PREFIX-get".ndjson
 
 SIZE=$(wc -l "$FILE_NAME_PREFIX-get".ndjson | xargs | cut -d ' ' -f1)
 if [ "$EXPECTED_SIZE" = "$SIZE" ]; then

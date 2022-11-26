@@ -492,6 +492,9 @@ jobs:
     - name: Not Acceptable
       run: .github/scripts/not-acceptable.sh
 
+    - name: Conditional Update If-None-Match
+      run: .github/scripts/conditional-update-if-none-match.sh
+
   not-enforcing-referential-integrity-test:
     needs: build
     runs-on: ubuntu-20.04
@@ -969,6 +972,9 @@ jobs:
 
     - name: Not Acceptable
       run: .github/scripts/not-acceptable.sh
+
+    - name: Conditional Update If-None-Match
+      run: .github/scripts/conditional-update-if-none-match.sh
 
     - name: Docker Stats
       run: docker stats --no-stream

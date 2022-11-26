@@ -21,9 +21,6 @@
 
 
 (deftest etag->t-test
-  (testing "accepts nil"
-    (is (nil? (iu/etag->t nil))))
-
   (testing "valid ETag"
     (is (= 1 (iu/etag->t "W/\"1\""))))
 

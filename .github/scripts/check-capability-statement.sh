@@ -1,10 +1,8 @@
 #!/bin/bash -e
 
-SOFTWARE_NAME=$(curl -s http://localhost:8080/fhir/metadata | jq -r .software.name)
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+. "$SCRIPT_DIR/util.sh"
 
-if [ "Blaze" = "$SOFTWARE_NAME" ]; then
-  echo "Success"
-else
-  echo "Fail"
-  exit 1
-fi
+BASE="http://localhost:8080/fhir"
+
+test "software name" "$(curl -s "$BASE/metadata" | jq -r .software.name)" "Blaze"

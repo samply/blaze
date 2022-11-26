@@ -9,9 +9,8 @@
 
 
 (defn etag->t [etag]
-  (when etag
-    (let [[_ t] (re-find #"W/\"(\d+)\"" etag)]
-      (some-> t parse-long))))
+  (let [[_ t] (re-find #"W/\"(\d+)\"" etag)]
+    (some-> t parse-long)))
 
 
 (defn- remove-query-param? [[k]]
@@ -62,3 +61,18 @@
 
 (defn t [db]
   (or (d/as-of-t db) (d/basis-t db)))
+
+
+(defn- prep-if-none-match [if-none-match]
+  (if (= "*" if-none-match)
+    :any
+    (etag->t if-none-match)))
+
+
+(defn put-tx-op [resource if-match if-none-match]
+  (let [if-match (some-> if-match etag->t)
+        if-none-match (some-> if-none-match prep-if-none-match)]
+    (cond
+      if-match [:put resource [:if-match if-match]]
+      if-none-match [:put resource [:if-none-match if-none-match]]
+      :else [:put resource])))

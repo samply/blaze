@@ -30,8 +30,14 @@
        (assoc :if-none-exist clauses))}))
 
 
+(defn- prepare-if-none-match [if-none-match]
+  (if (= :any if-none-match)
+    "*"
+    if-none-match))
+
+
 (defmethod prepare-op :put
-  [{:keys [references-fn]} [op resource matches]]
+  [{:keys [references-fn]} [op resource [precond-op precond]]]
   (let [hash (hash/generate resource)
         refs (references-fn resource)]
     {:hash-resource
@@ -44,8 +50,10 @@
         :hash hash}
        (seq refs)
        (assoc :refs refs)
-       matches
-       (assoc :if-match matches))}))
+       (identical? :if-match precond-op)
+       (assoc :if-match precond)
+       (identical? :if-none-match precond-op)
+       (assoc :if-none-match (prepare-if-none-match precond)))}))
 
 
 (defmethod prepare-op :delete

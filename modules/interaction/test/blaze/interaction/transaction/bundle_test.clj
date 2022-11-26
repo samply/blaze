@@ -123,7 +123,25 @@
       [0 0] := :put
       [0 1 :fhir/type] := :fhir/Patient
       [0 1 :id] := "id-214728"
-      [0 2] := 215150))
+      [0 2] := [:if-match 215150]))
+
+  (testing "conditional update"
+    (given
+      (bundle/tx-ops
+        [{:fhir/type :fhir.Bundle/entry
+          :resource
+          {:fhir/type :fhir/Patient
+           :id "id-214728"}
+          :request
+          {:fhir/type :fhir.Bundle.entry/request
+           :method #fhir/code"PUT"
+           :url #fhir/uri"Patient/id-214728"
+           :ifNoneMatch "*"}}])
+      [0 count] := 3
+      [0 0] := :put
+      [0 1 :fhir/type] := :fhir/Patient
+      [0 1 :id] := "id-214728"
+      [0 2] := [:if-none-match :any]))
 
   (testing "delete"
     (given

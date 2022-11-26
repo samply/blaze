@@ -297,7 +297,30 @@
           :id := "0"
           :gender := #fhir/code"female"
           [:meta :versionId] := #fhir/id"2"
-          [meta :blaze.db/op] := :put)))
+          [meta :blaze.db/op] := :put))
+
+      (testing "with if-none-match"
+        (testing "of any"
+          (with-system-data [{:blaze.db/keys [node]} system]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (given-failed-future
+              (d/transact
+                node
+                [[:put {:fhir/type :fhir/Patient :id "0"} [:if-none-match :any]]])
+              ::anom/category := ::anom/conflict
+              ::anom/message := "Resource `Patient/0` already exists.")))
+
+        (testing "of 1"
+          (with-system-data [{:blaze.db/keys [node]} system]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (given-failed-future
+              (d/transact
+                node
+                [[:put {:fhir/type :fhir/Patient :id "0"} [:if-none-match 1]]])
+              ::anom/category := ::anom/conflict
+              ::anom/message := "Resource `Patient/0` with version 1 already exists.")))))
 
     (testing "Diamond Reference Dependencies"
       (with-system-data [{:blaze.db/keys [node]} system]

@@ -4,7 +4,7 @@
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.executors :as ex]
     [blaze.fhir.operation.evaluate-measure :as evaluate-measure]
-    [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
+    [blaze.fhir.operation.evaluate-measure.test-util :as etu :refer [wrap-error]]
     [blaze.fhir.spec.type :as type]
     [blaze.metrics.spec]
     [blaze.middleware.fhir.db :refer [wrap-db]]
@@ -154,20 +154,20 @@
         ::reitit/router router))))
 
 
-(defmacro with-handler [[handler-binding] txs & body]
-  `(with-system-data [{node# :blaze.db/node
-                       handler# ::evaluate-measure/handler} system]
-     ~txs
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
-                                wrap-error)]
-       ~@body)))
+(defmacro with-handler [[handler-binding] & more]
+  (let [[txs body] (etu/extract-txs-body more)]
+    `(with-system-data [{node# :blaze.db/node
+                         handler# ::evaluate-measure/handler} system]
+       ~txs
+       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+                                  wrap-error)]
+         ~@body))))
 
 
 (deftest handler-test
   (testing "Returns Not Found on Non-Existing Measure"
     (testing "on instance endpoint"
       (with-handler [handler]
-        []
         (let [{:keys [status body]}
               @(handler
                  {:path-params {:id "0"}
@@ -184,7 +184,6 @@
 
     (testing "on type endpoint"
       (with-handler [handler]
-        []
         (let [{:keys [status body]}
               @(handler
                  {:params
@@ -203,7 +202,6 @@
 
       (testing "with missing measure parameter"
         (with-handler [handler]
-          []
           (let [{:keys [status body]}
                 @(handler
                    {:params

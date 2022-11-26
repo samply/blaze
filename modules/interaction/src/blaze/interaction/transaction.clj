@@ -409,7 +409,10 @@
 
 (defn- batch-request
   [{:keys [context-path return-preference db] :blaze/keys [base-url]}
-   {{:keys [method url identity] if-match :ifMatch if-none-exist :ifNoneExist}
+   {{:keys [method url identity]
+     if-none-match :ifNoneMatch
+     if-match :ifMatch
+     if-none-exist :ifNoneExist}
     :request :keys [resource]}]
   (let [url (-> url type/value strip-leading-slash)
         [url query-string] (str/split url #"\?")
@@ -427,6 +430,9 @@
 
       return-preference
       (assoc-in [:headers "prefer"] (str "return=" return-preference))
+
+      if-none-match
+      (assoc-in [:headers "if-none-match"] if-none-match)
 
       if-match
       (assoc-in [:headers "if-match"] if-match)

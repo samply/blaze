@@ -92,7 +92,27 @@
             (sao/encode-key 1 tid-patient (codec/id-byte-string "0"))
             value]
            (type-stats/index-entry tid-patient 1 {:total 1 :num-changes 1})
-           (system-stats/index-entry 1 {:total 1 :num-changes 1})]))))
+           (system-stats/index-entry 1 {:total 1 :num-changes 1})])))
+
+    (testing "using if-none-match of `*`"
+      (with-system [{:blaze.db/keys [node]} system]
+        (is-entries=
+          (verify/verify-tx-cmds
+            (d/db node) 1
+            [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0)
+              :if-none-match "*"}])
+          (let [value (rts/encode-value (hash/generate patient-0) 1 :put)]
+            [[:resource-as-of-index
+              (rao/encode-key tid-patient (codec/id-byte-string "0") 1)
+              value]
+             [:type-as-of-index
+              (tao/encode-key tid-patient 1 (codec/id-byte-string "0"))
+              value]
+             [:system-as-of-index
+              (sao/encode-key 1 tid-patient (codec/id-byte-string "0"))
+              value]
+             (type-stats/index-entry tid-patient 1 {:total 1 :num-changes 1})
+             (system-stats/index-entry 1 {:total 1 :num-changes 1})])))))
 
   (testing "adding a second version of a patient to a store containing it already"
     (with-system [{:blaze.db/keys [node]} system]
@@ -113,29 +133,29 @@
             (sao/encode-key 2 tid-patient (codec/id-byte-string "0"))
             value]
            (type-stats/index-entry tid-patient 2 {:total 1 :num-changes 2})
-           (system-stats/index-entry 2 {:total 1 :num-changes 2})]))))
+           (system-stats/index-entry 2 {:total 1 :num-changes 2})])))
 
-  (testing "adding a second version of a patient to a store containing it already incl. matcher"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+    (testing "using matching if-match"
+      (with-system [{:blaze.db/keys [node]} system]
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
-      (is-entries=
-        (verify/verify-tx-cmds
-          (d/db node) 2
-          [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0-v2)
-            :if-match 1}])
-        (let [value (rts/encode-value (hash/generate patient-0-v2) 2 :put)]
-          [[:resource-as-of-index
-            (rao/encode-key tid-patient (codec/id-byte-string "0") 2)
-            value]
-           [:type-as-of-index
-            (tao/encode-key tid-patient 2 (codec/id-byte-string "0"))
-            value]
-           [:system-as-of-index
-            (sao/encode-key 2 tid-patient (codec/id-byte-string "0"))
-            value]
-           (type-stats/index-entry tid-patient 2 {:total 1 :num-changes 2})
-           (system-stats/index-entry 2 {:total 1 :num-changes 2})]))))
+        (is-entries=
+          (verify/verify-tx-cmds
+            (d/db node) 2
+            [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0-v2)
+              :if-match 1}])
+          (let [value (rts/encode-value (hash/generate patient-0-v2) 2 :put)]
+            [[:resource-as-of-index
+              (rao/encode-key tid-patient (codec/id-byte-string "0") 2)
+              value]
+             [:type-as-of-index
+              (tao/encode-key tid-patient 2 (codec/id-byte-string "0"))
+              value]
+             [:system-as-of-index
+              (sao/encode-key 2 tid-patient (codec/id-byte-string "0"))
+              value]
+             (type-stats/index-entry tid-patient 2 {:total 1 :num-changes 2})
+             (system-stats/index-entry 2 {:total 1 :num-changes 2})])))))
 
   (testing "deleting a patient from an empty store"
     (with-system [{:blaze.db/keys [node]} system]
@@ -242,17 +262,44 @@
            (system-stats/index-entry 2 {:total 2 :num-changes 2})]))))
 
   (testing "update conflict"
-    (with-system [{:blaze.db/keys [node]} system]
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+    (testing "using non-matching if-match"
+      (with-system [{:blaze.db/keys [node]} system]
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
-      (given
-        (verify/verify-tx-cmds
-          (d/db node) 2
-          [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0)
-            :if-match 0}])
-        ::anom/category := ::anom/conflict
-        ::anom/message := "Precondition `W/\"0\"` failed on `Patient/0`."
-        :http/status := 412)))
+        (given
+          (verify/verify-tx-cmds
+            (d/db node) 2
+            [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0)
+              :if-match 0}])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Precondition `W/\"0\"` failed on `Patient/0`."
+          :http/status := 412)))
+
+    (testing "using if-none-match of `*`"
+      (with-system [{:blaze.db/keys [node]} system]
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
+        (given
+          (verify/verify-tx-cmds
+            (d/db node) 2
+            [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0)
+              :if-none-match "*"}])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Resource `Patient/0` already exists."
+          :http/status := 412)))
+
+    (testing "using matching if-none-match"
+      (with-system [{:blaze.db/keys [node]} system]
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
+        (given
+          (verify/verify-tx-cmds
+            (d/db node) 2
+            [{:op "put" :type "Patient" :id "0" :hash (hash/generate patient-0)
+              :if-none-match 1}])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Resource `Patient/0` with version 1 already exists."
+          :http/status := 412))))
 
   (testing "conditional create"
     (testing "conflict"
