@@ -72,10 +72,27 @@
          :if-none-exist (s/? :blaze.db.tx-cmd/if-none-exist)))
 
 
+(defmulti put-precond-op "Put precondition operator" first)
+
+
+(defmethod put-precond-op :if-match [_]
+  (s/cat :op #{:if-match}
+         :t :blaze.db/t))
+
+
+(defmethod put-precond-op :if-none-match [_]
+  (s/cat :op #{:if-none-match}
+         :val (s/or :any #{:any} :t :blaze.db/t)))
+
+
+(s/def :blaze.db.tx-op.put/precondition
+  (s/multi-spec put-precond-op first))
+
+
 (defmethod tx-op :put [_]
   (s/cat :op #{:put}
          :resource :blaze/resource
-         :matches (s/? :blaze.db/t)))
+         :precondition (s/? :blaze.db.tx-op.put/precondition)))
 
 
 (defmethod tx-op :delete [_]

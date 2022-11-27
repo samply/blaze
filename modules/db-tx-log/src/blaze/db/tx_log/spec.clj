@@ -39,6 +39,10 @@
   :blaze.db/t)
 
 
+(s/def :blaze.db.tx-cmd/if-none-match
+  (s/or :any #{"*"} :t :blaze.db/t))
+
+
 (defmulti tx-cmd "Transaction command" :op)
 
 
@@ -57,7 +61,8 @@
                    :blaze.resource/id
                    :blaze.resource/hash]
           :opt-un [:blaze.db.tx-cmd/refs
-                   :blaze.db.tx-cmd/if-match]))
+                   :blaze.db.tx-cmd/if-match
+                   :blaze.db.tx-cmd/if-none-match]))
 
 
 (defmethod tx-cmd "delete" [_]

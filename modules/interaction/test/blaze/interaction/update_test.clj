@@ -11,7 +11,7 @@
     [blaze.executors :as ex]
     [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
-    [blaze.interaction.test-util :refer [wrap-error]]
+    [blaze.interaction.test-util :as itu :refer [wrap-error]]
     [blaze.interaction.update]
     [blaze.test-util :as tu :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
@@ -104,18 +104,18 @@
         ::reitit/router router))))
 
 
-(defmacro with-handler [[handler-binding] txs & body]
-  `(with-system-data [{handler# :blaze.interaction/update} system]
-     ~txs
-     (let [~handler-binding (-> handler# wrap-defaults wrap-error)]
-       ~@body)))
+(defmacro with-handler [[handler-binding] & more]
+  (let [[txs body] (itu/extract-txs-body more)]
+    `(with-system-data [{handler# :blaze.interaction/update} system]
+       ~txs
+       (let [~handler-binding (-> handler# wrap-defaults wrap-error)]
+         ~@body))))
 
 
 (deftest handler-test
   (testing "erros on"
     (testing "missing body"
       (with-handler [handler]
-        []
         (let [{:keys [status body]}
               @(handler
                  {:path-params {:id "0"}
@@ -132,7 +132,6 @@
 
     (testing "type mismatch"
       (with-handler [handler]
-        []
         (let [{:keys [status body]}
               @(handler
                  {:path-params {:id "0"}
@@ -152,7 +151,6 @@
 
     (testing "missing id"
       (with-handler [handler]
-        []
         (let [{:keys [status body]}
               @(handler
                  {:path-params {:id "0"}
@@ -172,7 +170,6 @@
 
     (testing "ID mismatch"
       (with-handler [handler]
-        []
         (let [{:keys [status body]}
               @(handler
                  {:path-params {:id "0"}
@@ -213,7 +210,6 @@
 
     (testing "violated referential integrity"
       (with-handler [handler]
-        []
         (let [{:keys [status body]}
               @(handler
                  {:path-params {:id "0"}
@@ -233,7 +229,6 @@
   (testing "on newly created resource"
     (testing "with no Prefer header"
       (with-handler [handler]
-        []
         (let [{:keys [status headers body]}
               @(handler
                  {:path-params {:id "0"}
@@ -264,7 +259,6 @@
 
     (testing "with return=minimal Prefer header"
       (with-handler [handler]
-        []
         (let [{:keys [status headers body]}
               @(handler
                  {:path-params {:id "0"}
@@ -292,7 +286,6 @@
 
     (testing "with return=representation Prefer header"
       (with-handler [handler]
-        []
         (let [{:keys [status headers body]}
               @(handler
                  {:path-params {:id "0"}
@@ -413,4 +406,76 @@
             :fhir/type := :fhir/Observation
             :id := "0"
             [:meta :versionId] := #fhir/id"1"
-            [:meta :lastUpdated] := Instant/EPOCH))))))
+            [:meta :lastUpdated] := Instant/EPOCH)))))
+
+  (testing "conditional update"
+    (testing "if-none-match"
+      (testing "*"
+        (testing "with existing resource"
+          (with-handler [handler]
+            [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (let [{:keys [status body]}
+                  @(handler
+                     {:path-params {:id "0"}
+                      ::reitit/match patient-match
+                      :headers {"if-none-match" "*"}
+                      :body {:fhir/type :fhir/Patient :id "0"}})]
+
+              (testing "returns error"
+                (is (= 412 status))
+
+                (given body
+                  :fhir/type := :fhir/OperationOutcome
+                  [:issue 0 :severity] := #fhir/code"error"
+                  [:issue 0 :code] := #fhir/code"conflict"
+                  [:issue 0 :diagnostics] := "Resource `Patient/0` already exists.")))))
+
+        (testing "with no existing resource"
+          (with-handler [handler]
+
+            (let [{:keys [status]}
+                  @(handler
+                     {:path-params {:id "0"}
+                      ::reitit/match patient-match
+                      :headers {"if-none-match" "*"}
+                      :body {:fhir/type :fhir/Patient :id "0"}})]
+
+              (testing "Returns 201"
+                (is (= 201 status)))))))
+
+      (testing "W/\"1\""
+        (testing "with existing resource"
+          (with-handler [handler]
+            [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (let [{:keys [status body]}
+                  @(handler
+                     {:path-params {:id "0"}
+                      ::reitit/match patient-match
+                      :headers {"if-none-match" "W/\"1\""}
+                      :body {:fhir/type :fhir/Patient :id "0"}})]
+
+              (testing "returns error"
+                (is (= 412 status))
+
+                (given body
+                  :fhir/type := :fhir/OperationOutcome
+                  [:issue 0 :severity] := #fhir/code"error"
+                  [:issue 0 :code] := #fhir/code"conflict"
+                  [:issue 0 :diagnostics] := "Resource `Patient/0` with version 1 already exists."))))))
+
+      (testing "W/\"2\""
+        (testing "with existing resource"
+          (with-handler [handler]
+            [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (let [{:keys [status]}
+                  @(handler
+                     {:path-params {:id "0"}
+                      ::reitit/match patient-match
+                      :headers {"if-none-match" "W/\"2\""}
+                      :body {:fhir/type :fhir/Patient :id "0"}})]
+
+              (testing "Returns 200"
+                (is (= 200 status))))))))))

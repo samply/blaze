@@ -147,9 +147,13 @@
           (update-in [:stats tid :total] (fnil inc 0))))))
 
 
-(defn- verify-tx-cmd-put-msg [type id matches]
-  (if matches
-    (format "verify-tx-cmd :put %s/%s matches-t: %d" type id matches)
+(defn- verify-tx-cmd-put-msg [type id if-match if-none-match]
+  (cond
+    if-match
+    (format "verify-tx-cmd :put %s/%s if-match: %d" type id if-match)
+    if-none-match
+    (format "verify-tx-cmd :put %s/%s if-none-match: %s" type id if-none-match)
+    :else
     (format "verify-tx-cmd :put %s/%s" type id)))
 
 
@@ -161,21 +165,46 @@
   (ba/conflict (precondition-failed-msg if-match type id) :http/status 412))
 
 
+(defn- precondition-any-failed-msg [type id]
+  (format "Resource `%s/%s` already exists." type id))
+
+
+(defn- precondition-any-failed-anomaly [type id]
+  (ba/conflict (precondition-any-failed-msg type id) :http/status 412))
+
+
+(defn- precondition-version-failed-msg [type id if-none-match]
+  (format "Resource `%s/%s` with version %d already exists." type id if-none-match))
+
+
+(defn- precondition-version-failed-anomaly [type id if-none-match]
+  (ba/conflict (precondition-version-failed-msg type id if-none-match) :http/status 412))
+
+
 (defmethod verify-tx-cmd "put"
-  [db-before t res {:keys [type id hash if-match]}]
-  (log/trace (verify-tx-cmd-put-msg type id if-match))
+  [db-before t res {:keys [type id hash if-match if-none-match]}]
+  (log/trace (verify-tx-cmd-put-msg type id if-match if-none-match))
   (with-open [_ (prom/timer duration-seconds "verify-put")]
     (let [tid (codec/tid type)
           {:keys [num-changes op] :or {num-changes 0} old-t :t}
           (d/resource-handle db-before type id)]
-      (if (or (nil? if-match) (= if-match old-t))
+      (cond
+        (and if-match (not= if-match old-t))
+        (throw-anom (precondition-failed-anomaly if-match type id))
+
+        (and (some? old-t) (= "*" if-none-match))
+        (throw-anom (precondition-any-failed-anomaly type id))
+
+        (and (some? old-t) (= if-none-match old-t))
+        (throw-anom (precondition-version-failed-anomaly type id if-none-match))
+
+        :else
         (cond->
           (-> (update res :entries into (index-entries tid id t hash (inc num-changes) :put))
               (update :new-resources conj [type id])
               (update-in [:stats tid :num-changes] (fnil inc 0)))
           (or (nil? old-t) (identical? :delete op))
-          (update-in [:stats tid :total] (fnil inc 0)))
-        (throw-anom (precondition-failed-anomaly if-match type id))))))
+          (update-in [:stats tid :total] (fnil inc 0)))))))
 
 
 (defmethod verify-tx-cmd "delete"

@@ -9,7 +9,7 @@
     [blaze.interaction.search.nav-spec]
     [blaze.interaction.search.params-spec]
     [blaze.interaction.search.util-spec]
-    [blaze.interaction.test-util :refer [wrap-error]]
+    [blaze.interaction.test-util :as itu :refer [wrap-error]]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
     [blaze.page-store-spec]
@@ -105,19 +105,19 @@
         ::reitit/match match))))
 
 
-(defmacro with-handler [[handler-binding] txs & body]
-  `(with-system-data [{node# :blaze.db/node
-                       handler# :blaze.interaction/search-compartment} system]
-     ~txs
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
-                                wrap-error)]
-       ~@body)))
+(defmacro with-handler [[handler-binding] & more]
+  (let [[txs body] (itu/extract-txs-body more)]
+    `(with-system-data [{node# :blaze.db/node
+                         handler# :blaze.interaction/search-compartment} system]
+       ~txs
+       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+                                  wrap-error)]
+         ~@body))))
 
 
 (deftest handler-test
   (testing "Returns an Error on Invalid Id"
     (with-handler [handler]
-      []
       (let [{:keys [status body]}
             @(handler
                {:path-params {:id "<invalid>" :type "Observation"}})]
@@ -132,7 +132,6 @@
 
   (testing "Returns an Error on Invalid Type"
     (with-handler [handler]
-      []
       (let [{:keys [status body]}
             @(handler
                {:path-params {:id "0" :type "<invalid>"}})]
@@ -150,7 +149,6 @@
       (testing "returns error"
         (testing "normal result"
           (with-handler [handler]
-            []
             (let [{:keys [status body]}
                   @(handler
                      {:path-params {:id "0" :type "Observation"}
@@ -167,7 +165,6 @@
 
         (testing "summary result"
           (with-handler [handler]
-            []
             (let [{:keys [status body]}
                   @(handler
                      {:path-params {:id "0" :type "Observation"}
@@ -473,7 +470,6 @@
 
   (testing "Returns an empty Bundle on Non-Existing Compartment"
     (with-handler [handler]
-      []
       (let [{:keys [status body]}
             @(handler
                {:path-params {:id "0" :type "Observation"}})]

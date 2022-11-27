@@ -9,7 +9,7 @@
 
 
 (s/fdef iu/etag->t
-  :args (s/cat :etag (s/nilable string?))
+  :args (s/cat :etag string?)
   :ret (s/nilable :blaze.db/t))
 
 

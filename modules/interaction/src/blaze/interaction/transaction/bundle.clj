@@ -38,9 +38,8 @@
 
 
 (defmethod entry-tx-op "PUT"
-  [{{if-match :ifMatch} :request :keys [resource]}]
-  (let [t (iu/etag->t if-match)]
-    (cond-> [:put resource] t (conj t))))
+  [{{if-match :ifMatch if-none-match :ifNoneMatch} :request :keys [resource]}]
+  (iu/put-tx-op resource if-match if-none-match))
 
 
 (defmethod entry-tx-op "DELETE"

@@ -52,7 +52,7 @@
   A transaction operator can be one of the following:
 
   * [:create resource clauses?]
-  * [:put resource t?]
+  * [:put resource precondition?]
   * [:delete type id]
 
   Returns a CompletableFuture that completes with the database after the

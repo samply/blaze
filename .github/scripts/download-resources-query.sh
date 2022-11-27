@@ -6,7 +6,7 @@ QUERY=$2
 EXPECTED_SIZE=$3
 FILE_NAME_PREFIX="$(uuidgen)"
 
-blazectl --server "$BASE" download "$TYPE" -q "$QUERY" -o "$FILE_NAME_PREFIX-get".ndjson
+blazectl --no-progress --server "$BASE" download "$TYPE" -q "$QUERY" -o "$FILE_NAME_PREFIX-get".ndjson
 
 SIZE=$(wc -l "$FILE_NAME_PREFIX-get".ndjson | xargs | cut -d ' ' -f1)
 if [ "$EXPECTED_SIZE" = "$SIZE" ]; then

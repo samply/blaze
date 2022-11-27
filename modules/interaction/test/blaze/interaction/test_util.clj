@@ -8,3 +8,9 @@
   (fn [request]
     (-> (handler request)
         (ac/exceptionally handler-util/error-response))))
+
+
+(defn extract-txs-body [more]
+  (if (vector? (first more))
+    [(first more) (next more)]
+    [[] more]))

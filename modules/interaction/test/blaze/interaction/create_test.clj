@@ -12,7 +12,7 @@
     [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
     [blaze.interaction.create]
-    [blaze.interaction.test-util :refer [wrap-error]]
+    [blaze.interaction.test-util :as itu :refer [wrap-error]]
     [blaze.interaction.util-spec]
     [blaze.test-util :as tu :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
@@ -101,11 +101,12 @@
         ::reitit/router router))))
 
 
-(defmacro with-handler [[handler-binding] txs & body]
-  `(with-system-data [{handler# :blaze.interaction/create} system]
-     ~txs
-     (let [~handler-binding (-> handler# wrap-defaults wrap-error)]
-       ~@body)))
+(defmacro with-handler [[handler-binding] & more]
+  (let [[txs body] (itu/extract-txs-body more)]
+    `(with-system-data [{handler# :blaze.interaction/create} system]
+       ~txs
+       (let [~handler-binding (-> handler# wrap-defaults wrap-error)]
+         ~@body))))
 
 
 (def patient-match
@@ -124,7 +125,6 @@
   (testing "errors on"
     (testing "missing body"
       (with-handler [handler]
-        []
         (let [{:keys [status body]}
               @(handler
                  {::reitit/match patient-match})]
@@ -139,7 +139,6 @@
 
     (testing "type mismatch"
       (with-handler [handler]
-        []
         (let [{:keys [status body]}
               @(handler
                  {::reitit/match patient-match
@@ -157,7 +156,6 @@
 
     (testing "violated referential integrity"
       (with-handler [handler]
-        []
         (let [{:keys [status body]}
               @(handler
                  {::reitit/match observation-match
@@ -175,7 +173,6 @@
   (testing "on newly created resource"
     (testing "with no Prefer header"
       (with-handler [handler]
-        []
         (let [{:keys [status headers body]}
               @(handler
                  {::reitit/match patient-match
@@ -202,7 +199,6 @@
 
     (testing "with return=minimal Prefer header"
       (with-handler [handler]
-        []
         (let [{:keys [status headers body]}
               @(handler
                  {::reitit/match patient-match
@@ -226,7 +222,6 @@
 
     (testing "with return=representation Prefer header"
       (with-handler [handler]
-        []
         (let [{:keys [status headers body]}
               @(handler
                  {::reitit/match patient-match
@@ -254,7 +249,6 @@
 
     (testing "with return=OperationOutcome Prefer header"
       (with-handler [handler]
-        []
         (let [{:keys [status headers body]}
               @(handler
                  {::reitit/match patient-match
@@ -279,7 +273,6 @@
   (testing "conditional create"
     (testing "with empty header"
       (with-handler [handler]
-        []
         (let [{:keys [status]}
               @(handler
                  {::reitit/match patient-match
@@ -291,7 +284,6 @@
 
     (testing "with ignorable _sort search parameter"
       (with-handler [handler]
-        []
         (let [{:keys [status]}
               @(handler
                  {::reitit/match patient-match
@@ -304,7 +296,6 @@
     (testing "with non-matching query"
       (testing "on empty database"
         (with-handler [handler]
-          []
           (let [{:keys [status]}
                 @(handler
                    {::reitit/match patient-match
@@ -400,7 +391,6 @@
 
   (testing "with a Bundle with references"
     (with-handler [handler]
-      []
       (let [{:keys [status headers body]}
             @(handler
                {::reitit/match bundle-match

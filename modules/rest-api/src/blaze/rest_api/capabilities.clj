@@ -52,12 +52,13 @@
             :history-type
             :create
             :search-type])
-         :versioning #fhir/code"versioned"
+         :versioning #fhir/code"versioned-update"
          :readHistory true
          :updateCreate true
          :conditionalCreate true
          :conditionalRead #fhir/code"not-supported"
          :conditionalUpdate false
+         :conditionalPatch false
          :conditionalDelete #fhir/code"not-supported"
          :referencePolicy
          (cond->
@@ -120,7 +121,8 @@
          :date #fhir/dateTime"2022-11-12"
          :software
          {:name "Blaze"
-          :version version}
+          :version version
+          :releaseDate #fhir/dateTime"2022-11-12"}
          :implementation
          {:description "Blaze"}
          :fhirVersion #fhir/code"4.0.1"
