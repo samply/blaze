@@ -58,7 +58,6 @@
          :conditionalCreate true
          :conditionalRead #fhir/code"not-supported"
          :conditionalUpdate false
-         :conditionalPatch false
          :conditionalDelete #fhir/code"not-supported"
          :referencePolicy
          (cond->
