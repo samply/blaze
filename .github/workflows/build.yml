@@ -607,6 +607,32 @@ jobs:
     - name: Test Include
       run: .github/scripts/include-without-referential-integrity.sh
 
+  chaining-without-referential-integrity-test:
+    needs: build
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v3
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Blaze
+      run: docker run --rm -d -e JAVA_TOOL_OPTIONS=-Xmx1g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 blaze:latest
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Test Chaining
+      run: .github/scripts/chaining-without-referential-integrity.sh
+
   # Test that a transaction can create a transaction bundle with references that will be taken "as-is" and not tried to
   # resolve to existing resources
   bundle-with-references-test:
