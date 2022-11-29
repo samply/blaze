@@ -3,7 +3,8 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.protocols :as p]))
+    [blaze.elm.protocols :as p]
+    [clojure.string :as str]))
 
 
 (set! *warn-on-reflection* true)
@@ -34,6 +35,16 @@
   Ratio
   (to-quantity [x]
      (p/divide (:denominator x) (:numerator x))))
+
+
+;; 22.29. ToRatio
+(extend-protocol p/ToRatio
+  String
+  (to-ratio [s]
+    (let [[numerator denominator] (str/split s #":" 2)]
+      (when-let [numerator (p/to-quantity numerator)]
+        (when-let [denominator (p/to-quantity denominator)]
+          (ratio numerator denominator))))))
 
 
 ;; 22.30. ToString

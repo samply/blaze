@@ -305,6 +305,11 @@
   (to-quantity [x]))
 
 
+;; 22.29. ToRatio
+(defprotocol ToRatio
+  (to-ratio [x]))
+
+
 ;; 22.30. ToString
 (defprotocol ToString
   (to-string [x]))

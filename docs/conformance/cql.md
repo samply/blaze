@@ -336,7 +336,7 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 22.11. | ConvertsToLong     | ✓          |               |       |
 | 22.12. | ConvertsToInteger  | ✓          |               |       |
 | 22.13. | ConvertsToQuantity | ✓          |               |       |
-| 22.14. | ConvertsToRatio    | ✗          |               |       |
+| 22.14. | ConvertsToRatio    | ✓          |               |       |
 | 22.15. | ConvertsToString   | ✓          |               |       |
 | 22.16. | ConvertsToTime     | ✓          |               |       |
 | 22.17. | Descendents        | ✓          |               |       |
@@ -351,7 +351,7 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 22.26. | ToList             | ✓          |               |       |
 | 22.27. | ToLong             | ✓          |               |       |
 | 22.28. | ToQuantity         | ✓          |               |       |
-| 22.29. | ToRatio            | ✗          |               |       |
+| 22.29. | ToRatio            | ✓          |               |       |
 | 22.30. | ToString           | ✓          |               |       |
 | 22.31. | ToTime             | ✓          |               |       |
 
