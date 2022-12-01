@@ -1,0 +1,8 @@
+library: docs/cql-queries/stratifier-condition-code.cql
+group:
+- type: Condition
+  population:
+  - expression: InInitialPopulation
+  stratifier:
+  - code: code
+    expression: Code

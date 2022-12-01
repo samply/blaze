@@ -397,58 +397,109 @@ jobs:
       run: .github/scripts/search-compartment.sh
 
     - name: Evaluate CQL Query 1
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1.cql 56
+      run: .github/scripts/evaluate-measure.sh q1 56
+
+    - name: Evaluate CQL Query 1 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q1 56
 
     - name: Evaluate CQL Query 1 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1.cql 56
+      run: .github/scripts/evaluate-measure-subject-list.sh q1 56
 
     - name: Evaluate CQL Query 1 on Individual Patients
       run: .github/scripts/evaluate-patient-q1-measure.sh
 
     - name: Evaluate CQL Query 2
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2.cql 42
+      run: .github/scripts/evaluate-measure.sh q2 42
+
+    - name: Evaluate CQL Query 2 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q2 42
 
     - name: Evaluate CQL Query 2 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2.cql 42
+      run: .github/scripts/evaluate-measure-subject-list.sh q2 42
 
     - name: Evaluate CQL Query 4
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q4.cql 0
+      run: .github/scripts/evaluate-measure.sh q4 0
+
+    - name: Evaluate CQL Query 4 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q4 0
 
     - name: Evaluate CQL Query 4 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q4.cql 0
+      run: .github/scripts/evaluate-measure-subject-list.sh q4 0
 
     - name: Evaluate CQL Query 7
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q7.cql 81
+      run: .github/scripts/evaluate-measure.sh q7 81
+
+    - name: Evaluate CQL Query 7 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q7 81
 
     - name: Evaluate CQL Query 7 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q7.cql 81
+      run: .github/scripts/evaluate-measure-subject-list.sh q7 81
 
     - name: Evaluate CQL Query 14
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14.cql 96
+      run: .github/scripts/evaluate-measure.sh q14 96
+
+    - name: Evaluate CQL Query 14 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q14 96
 
     - name: Evaluate CQL Query 14 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14.cql 96
+      run: .github/scripts/evaluate-measure-subject-list.sh q14 96
+
+    - name: Evaluate CQL Query 15
+      run: .github/scripts/evaluate-measure.sh q15 30
+
+    - name: Evaluate CQL Query 15 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q15 30
+
+    - name: Evaluate CQL Query 15 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q15 30
 
     - name: Evaluate CQL Query 17
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q17.cql 120
+      run: .github/scripts/evaluate-measure.sh q17 120
+
+    - name: Evaluate CQL Query 17 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q17 120
 
     - name: Evaluate CQL Query 17 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q17.cql 120
+      run: .github/scripts/evaluate-measure-subject-list.sh q17 120
+
+    - name: Evaluate CQL Query 19 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q19-stratifier-ageclass 120
+
+    - name: Evaluate CQL Query 20 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q20-stratifier-city 120
+
+    - name: Evaluate CQL Query 21 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q21-stratifier-city-of-only-women 64
+
+    - name: Evaluate CQL Query 26 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q26-stratifier-bmi 120
+
+    - name: Evaluate CQL Query 27 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q27-stratifier-calculated-bmi 120
+
+    - name: Evaluate CQL Query 32 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q32-stratifier-underweight 120
 
     - name: Evaluate CQL Query 36
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q36-parameter.cql 86
+      run: .github/scripts/evaluate-measure.sh q36-parameter 86
 
     - name: Evaluate CQL Query 36 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q36-parameter.cql 86
+      run: .github/scripts/evaluate-measure-subject-list.sh q36-parameter 86
 
     - name: Evaluate CQL Query 34
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q37-overlaps.cql 24
+      run: .github/scripts/evaluate-measure.sh q37-overlaps 24
+
+    - name: Evaluate CQL Query 34 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q37-overlaps 24
 
     - name: Evaluate CQL Query 34 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q37-overlaps.cql 24
+      run: .github/scripts/evaluate-measure-subject-list.sh q37-overlaps 24
 
     - name: Evaluate CQL Query 46
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure//q46-between-date.cql 19
+      run: .github/scripts/evaluate-measure.sh q46-between-date 19
+
+    - name: Evaluate CQL Query 46 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q46-between-date 19
 
     - name: Forwarded Header HTTPS
       run: .github/scripts/forwarded-header.sh https
@@ -901,58 +952,109 @@ jobs:
       run: .github/scripts/search-compartment.sh
 
     - name: Evaluate CQL Query 1
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1.cql 56
+      run: .github/scripts/evaluate-measure.sh q1 56
+
+    - name: Evaluate CQL Query 1 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q1 56
 
     - name: Evaluate CQL Query 1 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1.cql 56
+      run: .github/scripts/evaluate-measure-subject-list.sh q1 56
 
     - name: Evaluate CQL Query 1 on Individual Patients
       run: .github/scripts/evaluate-patient-q1-measure.sh
 
     - name: Evaluate CQL Query 2
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2.cql 42
+      run: .github/scripts/evaluate-measure.sh q2 42
+
+    - name: Evaluate CQL Query 2 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q2 42
 
     - name: Evaluate CQL Query 2 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2.cql 42
+      run: .github/scripts/evaluate-measure-subject-list.sh q2 42
 
     - name: Evaluate CQL Query 4
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q4.cql 0
+      run: .github/scripts/evaluate-measure.sh q4 0
+
+    - name: Evaluate CQL Query 4 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q4 0
 
     - name: Evaluate CQL Query 4 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q4.cql 0
+      run: .github/scripts/evaluate-measure-subject-list.sh q4 0
 
     - name: Evaluate CQL Query 7
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q7.cql 81
+      run: .github/scripts/evaluate-measure.sh q7 81
+
+    - name: Evaluate CQL Query 7 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q7 81
 
     - name: Evaluate CQL Query 7 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q7.cql 81
+      run: .github/scripts/evaluate-measure-subject-list.sh q7 81
 
     - name: Evaluate CQL Query 14
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14.cql 96
+      run: .github/scripts/evaluate-measure.sh q14 96
+
+    - name: Evaluate CQL Query 14 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q14 96
 
     - name: Evaluate CQL Query 14 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14.cql 96
+      run: .github/scripts/evaluate-measure-subject-list.sh q14 96
+
+    - name: Evaluate CQL Query 15
+      run: .github/scripts/evaluate-measure.sh q15 30
+
+    - name: Evaluate CQL Query 15 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q15 30
+
+    - name: Evaluate CQL Query 15 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q15 30
 
     - name: Evaluate CQL Query 17
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q17.cql 120
+      run: .github/scripts/evaluate-measure.sh q17 120
+
+    - name: Evaluate CQL Query 17 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q17 120
 
     - name: Evaluate CQL Query 17 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q17.cql 120
+      run: .github/scripts/evaluate-measure-subject-list.sh q17 120
+
+    - name: Evaluate CQL Query 19 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q19-stratifier-ageclass 120
+
+    - name: Evaluate CQL Query 20 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q20-stratifier-city 120
+
+    - name: Evaluate CQL Query 21 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q21-stratifier-city-of-only-women 64
+
+    - name: Evaluate CQL Query 26 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q26-stratifier-bmi 120
+
+    - name: Evaluate CQL Query 27 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q27-stratifier-calculated-bmi 120
+
+    - name: Evaluate CQL Query 32 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q32-stratifier-underweight 120
 
     - name: Evaluate CQL Query 36
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q36-parameter.cql 86
+      run: .github/scripts/evaluate-measure.sh q36-parameter 86
 
     - name: Evaluate CQL Query 36 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q36-parameter.cql 86
+      run: .github/scripts/evaluate-measure-subject-list.sh q36-parameter 86
 
     - name: Evaluate CQL Query 34
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q37-overlaps.cql 24
+      run: .github/scripts/evaluate-measure.sh q37-overlaps 24
+
+    - name: Evaluate CQL Query 34 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q37-overlaps 24
 
     - name: Evaluate CQL Query 34 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q37-overlaps.cql 24
+      run: .github/scripts/evaluate-measure-subject-list.sh q37-overlaps 24
 
     - name: Evaluate CQL Query 46
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure//q46-between-date.cql 19
+      run: .github/scripts/evaluate-measure.sh q46-between-date 19
+
+    - name: Evaluate CQL Query 46 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q46-between-date 19
 
     - name: Forwarded Header HTTPS
       run: .github/scripts/forwarded-header.sh https

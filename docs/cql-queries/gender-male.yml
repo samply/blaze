@@ -1,0 +1,5 @@
+library: docs/cql-queries/gender-male.cql
+group:
+- type: Patient
+  population:
+  - expression: InInitialPopulation
