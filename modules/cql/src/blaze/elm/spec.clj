@@ -303,8 +303,12 @@
 
 
 ;; 3.3. CodeRef
-(defmethod expression :elm.spec.type/code-ref [_]
+(s/def :elm/code-ref
   (s/keys :opt-un [:elm/name :elm/libraryName]))
+
+
+(defmethod expression :elm.spec.type/code-ref [_]
+  :elm/code-ref)
 
 
 ;; 3.4. CodeSystemDef
@@ -330,6 +334,24 @@
 (defmethod expression :elm.spec.type/concept [_]
   (s/keys :req-un [:elm.concept/codes]
           :opt-un [:elm.concept/display]))
+
+
+;; 3.7. ConceptDef
+(s/def :elm.concept-def/code
+  (s/coll-of :elm/code-ref))
+
+
+(s/def :elm/concept-def
+  (s/keys :req-un [:elm/name :elm.concept-def/code]))
+
+
+;; 3.8. ConceptRef
+(s/def :elm/concept-ref
+  (s/keys :opt-un [:elm/name :elm/libraryName]))
+
+
+(defmethod expression :elm.spec.type/concept-ref [_]
+  :elm/concept-ref)
 
 
 ;; 3.9. Quantity
@@ -555,6 +577,14 @@
   (s/keys :req-un [:elm.library.codes/def]))
 
 
+(s/def :elm.library.concepts/def
+  (s/coll-of :elm/concept-def))
+
+
+(s/def :elm.library/concepts
+  (s/keys :req-un [:elm.library.concepts/def]))
+
+
 (s/def :elm.library.statements/def
   (s/coll-of :elm/expression-def))
 
@@ -567,6 +597,7 @@
   (s/keys :req-un [:elm.library/identifier :elm.library/schemaIdentifier]
           :opt-un [:elm.library/codeSystems
                    :elm.library/codes
+                   :elm.library/concepts
                    :elm.library/statements]))
 
 

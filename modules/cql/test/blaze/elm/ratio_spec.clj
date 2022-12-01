@@ -1,4 +1,5 @@
 (ns blaze.elm.ratio-spec
+  (:refer-clojure :exclude [ratio?])
   (:require
     [blaze.anomaly-spec]
     [blaze.elm.quantity :as quantity]

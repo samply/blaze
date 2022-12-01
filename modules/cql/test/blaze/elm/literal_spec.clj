@@ -67,9 +67,14 @@
   :args (s/cat
           :args
           (s/spec (s/cat
-                    :codes (s/coll-of (s/spec (s/cat :system-name string?
-                                                     :code string?)))
+                    :codes (s/coll-of :elm/code)
                     :display (s/? string?))))
+  :ret :elm/expression)
+
+
+;; 3.8. ConceptRef
+(s/fdef elm/concept-ref
+  :args (s/cat :name string?)
   :ret :elm/expression)
 
 
