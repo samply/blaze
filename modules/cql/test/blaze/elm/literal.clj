@@ -87,11 +87,14 @@
 (defn concept [[codes display]]
   (cond->
     {:type "Concept"
-     :codes (mapv (fn [[sys code]] {:type "Code" :system
-                                    {:type "CodeSystemRef", :name sys}
-                                    :code code}) codes)}
+     :codes codes}
     display
     (assoc :display display)))
+
+
+;; 3.8. ConceptRef
+(defn concept-ref [name]
+  {:type "ConceptRef" :name name})
 
 
 ;; 3.9. Quantity

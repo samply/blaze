@@ -87,8 +87,17 @@
 
 
 ;; 3.8. ConceptRef
-;;
-;; TODO
+(defn- find-concept-def
+  "Returns the concept-def with `name` from `library` or nil if not found."
+  {:arglists '([library name])}
+  [{{concept-defs :def} :concepts} name]
+  (some #(when (= name (:name %)) %) concept-defs))
+
+(defmethod core/compile* :elm.compiler.type/concept-ref
+  [{:keys [library] :as context} {:keys [name]}]
+  (when-let [{codes-refs :code} (find-concept-def library name)]
+    (->> (map #(core/compile* context (assoc % :type "CodeRef")) codes-refs)
+         (concept/to-concept))))
 
 
 ;; 3.9. Quantity

@@ -145,7 +145,7 @@
            {:codeSystems
             {:def [{:name "sys-def-115852" :id "system-115910"}]}}}]
       (given
-        (c/compile context #elm/concept [[["sys-def-115852" "code-115927"]]])
+        (c/compile context #elm/concept [[#elm/code ["sys-def-115852" "code-115927"]]])
         type := Concept
         [:codes 0 type] := Code
         [:codes 0 :system] := "system-115910"
@@ -158,8 +158,8 @@
             {:def [{:name "sys-def-115852" :id "system-115910"}
                    {:name "sys-def-115853" :id "system-115911"}]}}}]
       (given
-        (c/compile context #elm/concept [[["sys-def-115852" "code-115927"]
-                                          ["sys-def-115853" "code-115928"]]])
+        (c/compile context #elm/concept [[#elm/code ["sys-def-115852" "code-115927"]
+                                          #elm/code ["sys-def-115853" "code-115928"]]])
         type := Concept
         [:codes 0 type] := Code
         [:codes 0 :system] := "system-115910"
@@ -177,7 +177,7 @@
                :id "system-120411"
                :version "version-120408"}]}}}]
       (given
-        (c/compile context #elm/concept [[["sys-def-120434" "code-115927"]]])
+        (c/compile context #elm/concept [[#elm/code ["sys-def-120434" "code-115927"]]])
         type := Concept
         [:codes 0 type] := Code
         [:codes 0 :system] := "system-120411"
@@ -196,8 +196,8 @@
              :id "system-115911"
              :version "version-115909"}]}}}]
       (given
-        (c/compile context #elm/concept [[["sys-def-120434" "code-115927"]
-                                          ["sys-def-115853" "code-115928"]]])
+        (c/compile context #elm/concept [[#elm/code ["sys-def-120434" "code-115927"]
+                                          #elm/code ["sys-def-115853" "code-115928"]]])
         type := Concept
         [:codes 0 type] := Code
         [:codes 0 :system] := "system-120411"
@@ -207,6 +207,67 @@
         [:codes 1 :system] := "system-115911"
         [:codes 1 :version] := "version-115909"
         [:codes 1 :code] := "code-115928"))))
+
+
+;; 3.8. ConceptRef
+;;
+;; The ConceptRef expression allows a previously defined concept to be
+;; referenced within an expression.
+(deftest compile-concept-ref-test
+  (testing "with one code"
+    (let [context
+          {:library
+           {:codeSystems
+            {:def
+             [{:name "sys-def-125149"
+               :id "system-name-125213"}]}
+            :codes
+            {:def
+             [{:name "code-def-125054"
+               :id "code-125354"
+               :codeSystem {:name "sys-def-125149"}}]}
+            :concepts
+            {:def
+             [{:name "concept-def-125054"
+               :code
+               [{:name "code-def-125054"}]}]}}}]
+      (given (c/compile context #elm/concept-ref "concept-def-125054")
+        type := Concept
+        [:codes 0 type] := Code
+        [:codes 0 :system] := "system-name-125213"
+        [:codes 0 :code] := "code-125354")))
+
+  (testing "with two codes"
+    (let [context
+          {:library
+           {:codeSystems
+            {:def
+             [{:name "sys-def-125149"
+               :id "system-name-125213"}
+              {:name "sys-def-162523"
+               :id "system-name-125214"}]}
+            :codes
+            {:def
+             [{:name "code-def-125054"
+               :id "code-125354"
+               :codeSystem {:name "sys-def-125149"}}
+              {:name "code-def-125055"
+               :id "code-125355"
+               :codeSystem {:name "sys-def-162523"}}]}
+            :concepts
+            {:def
+             [{:name "concept-def-125055"
+               :code
+               [{:name "code-def-125054"}
+                {:name "code-def-125055"}]}]}}}]
+      (given (c/compile context #elm/concept-ref "concept-def-125055")
+        type := Concept
+        [:codes 0 type] := Code
+        [:codes 0 :system] := "system-name-125213"
+        [:codes 0 :code] := "code-125354"
+        [:codes 1 type] := Code
+        [:codes 1 :system] := "system-name-125214"
+        [:codes 1 :code] := "code-125355"))))
 
 
 ;; 3.9. Quantity
