@@ -264,6 +264,7 @@
   (testing "failing eval"
     (with-system-data [system mem-node-system]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
       (let [{:keys [db] :as context} (context system library-gender)]
         (with-redefs [expr/eval (failing-eval "msg-221825")]
           (given (cql/calc-strata context "Gender" (mapv handle (d/type-list db "Patient")))
@@ -273,6 +274,7 @@
   (testing "multiple values"
     (with-system-data [system mem-node-system]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
       (let [{:keys [db] :as context} (context system library-gender)]
         (with-redefs [expr/eval two-value-eval]
           (given (cql/calc-strata context "Gender" (mapv handle (d/type-list db "Patient")))
@@ -285,19 +287,29 @@
         [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"male"}]
         [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code"female"}]
         [:put {:fhir/type :fhir/Patient :id "3" :gender #fhir/code"male"}]]]
-      (let [{:keys [db] :as context} (context system library-gender)]
-        (given (cql/calc-strata context "Gender" (mapv handle (d/type-list db "Patient")))
-          [#(get % nil) 0 :subject-handle :id] := "0"
-          [#(get % nil) 0 :population-handle :id] := "0"
-          [#(get % nil) count] := 1
-          [#(get % #fhir/code"male") 0 :subject-handle :id] := "1"
-          [#(get % #fhir/code"male") 0 :population-handle :id] := "1"
-          [#(get % #fhir/code"male") 1 :subject-handle :id] := "3"
-          [#(get % #fhir/code"male") 1 :population-handle :id] := "3"
-          [#(get % #fhir/code"male") count] := 2
-          [#(get % #fhir/code"female") 0 :subject-handle :id] := "2"
-          [#(get % #fhir/code"female") 0 :population-handle :id] := "2"
-          [#(get % #fhir/code"female") count] := 1)))))
+
+      (let [{:keys [db] :as context} (context system library-gender)
+            result (cql/calc-strata context "Gender" (mapv handle (d/type-list db "Patient")))]
+
+        (testing "contains a nil entry for the patient with id 0"
+          (given (result nil)
+            count := 1
+            [0 :subject-handle :id] := "0"
+            [0 :population-handle :id] := "0"))
+
+        (testing "contains a male entry for the patients with id 1 and 3"
+          (given (result #fhir/code"male")
+            count := 2
+            [0 :subject-handle :id] := "1"
+            [0 :population-handle :id] := "1"
+            [1 :subject-handle :id] := "3"
+            [1 :population-handle :id] := "3"))
+
+        (testing "contains a female entry for the patient with id 2"
+          (given (result #fhir/code"female")
+            count := 1
+            [0 :subject-handle :id] := "2"
+            [0 :population-handle :id] := "2"))))))
 
 
 (deftest calc-function-strata-test
@@ -317,6 +329,7 @@
         [:put {:fhir/type :fhir/Encounter :id "3"
                :status #fhir/code"finished"
                :subject #fhir/Reference{:reference "Patient/2"}}]]]
+
       (let [{:keys [db] :as context} (context system library-encounter-status)
             handles
             [{:population-handle (d/resource-handle db "Encounter" "0")
@@ -326,19 +339,28 @@
              {:population-handle (d/resource-handle db "Encounter" "2")
               :subject-handle (d/resource-handle db "Patient" "1")}
              {:population-handle (d/resource-handle db "Encounter" "3")
-              :subject-handle (d/resource-handle db "Patient" "2")}]]
-        (given (cql/calc-function-strata context "Status" handles)
-          [#(get % nil) 0 :population-handle :id] := "0"
-          [#(get % nil) 0 :subject-handle :id] := "0"
-          [#(get % nil) count] := 1
-          [#(get % #fhir/code"finished") 0 :population-handle :id] := "1"
-          [#(get % #fhir/code"finished") 0 :subject-handle :id] := "0"
-          [#(get % #fhir/code"finished") 1 :population-handle :id] := "3"
-          [#(get % #fhir/code"finished") 1 :subject-handle :id] := "2"
-          [#(get % #fhir/code"finished") count] := 2
-          [#(get % #fhir/code"planned") 0 :population-handle :id] := "2"
-          [#(get % #fhir/code"planned") 0 :subject-handle :id] := "1"
-          [#(get % #fhir/code"planned") count] := 1))))
+              :subject-handle (d/resource-handle db "Patient" "2")}]
+            result (cql/calc-function-strata context "Status" handles)]
+
+        (testing "contains a nil entry for the encounter with id 0"
+          (given (result nil)
+            count := 1
+            [0 :population-handle :id] := "0"
+            [0 :subject-handle :id] := "0"))
+
+        (testing "contains a finished entry for the encounters with id 1 and 3"
+          (given (result #fhir/code"finished")
+            count := 2
+            [0 :population-handle :id] := "1"
+            [0 :subject-handle :id] := "0"
+            [1 :population-handle :id] := "3"
+            [1 :subject-handle :id] := "2"))
+
+        (testing "contains a planned entry for the encounter with id 2"
+          (given (result #fhir/code"planned")
+            count := 1
+            [0 :population-handle :id] := "2"
+            [0 :subject-handle :id] := "1")))))
 
   (testing "missing function"
     (with-system [system mem-node-system]

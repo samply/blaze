@@ -7,8 +7,10 @@
 
 
 (defn- value-concept [value]
-  (type/codeable-concept
-    {:text (type/string (if (nil? value) "null" (str value)))}))
+  (if (identical? :fhir/CodeableConcept (type/type value))
+    value
+    (type/codeable-concept
+      {:text (type/string (if (nil? value) "null" (str value)))})))
 
 
 (defn- stratum* [population value]
@@ -17,7 +19,7 @@
    :population [population]})
 
 
-(defn- stratum [context population-code [value handles]]
+(defn- stratum [context population-code value handles]
   (-> (u/population
         context :fhir.MeasureReport.group.stratifier.stratum/population
         population-code handles)
@@ -32,9 +34,9 @@
 
 
 (defn- stratifier [{:keys [luids] :as context} code population-code strata]
-  (-> (reduce
-        (fn [{:keys [luids] :as ret} x]
-          (->> (stratum (assoc context :luids luids) population-code x)
+  (-> (reduce-kv
+        (fn [{:keys [luids] :as ret} value handles]
+          (->> (stratum (assoc context :luids luids) population-code value handles)
                (u/merge-result ret)))
         {:result [] :luids luids :tx-ops []}
         strata)
@@ -46,7 +48,7 @@
 
 
 (defn- calc-strata [{:keys [population-basis] :as context} name handles]
-  (if (= :boolean (or population-basis :boolean))
+  (if (identical? :boolean (or population-basis :boolean))
     (cql/calc-strata context name handles)
     (cql/calc-function-strata context name handles)))
 
@@ -115,7 +117,7 @@
    :population [population]})
 
 
-(defn- multi-component-stratum [context codes population-code [values result]]
+(defn- multi-component-stratum [context codes population-code values result]
   (-> (u/population
         context :fhir.MeasureReport.group.stratifier.stratum/population
         population-code result)
@@ -130,10 +132,10 @@
 
 (defn- multi-component-stratifier
   [{:keys [luids] :as context} codes population-code strata]
-  (-> (reduce
-        (fn [{:keys [luids] :as ret} x]
+  (-> (reduce-kv
+        (fn [{:keys [luids] :as ret} values result]
           (->> (multi-component-stratum (assoc context :luids luids) codes
-                                        population-code x)
+                                        population-code values result)
                (u/merge-result ret)))
         {:result [] :luids luids :tx-ops []}
         strata)
