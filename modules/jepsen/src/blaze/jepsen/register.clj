@@ -5,9 +5,11 @@
     [blaze.async.comp :as ac]
     [blaze.fhir-client :as fhir-client]
     [blaze.fhir.spec.type :as type]
+    [blaze.fhir.structure-definition-repo]
     [blaze.jepsen.util :as u]
     [clojure.tools.logging :refer [info]]
     [hato.client :as hc]
+    [integrant.core :as ig]
     [jepsen.checker :as checker]
     [jepsen.cli :as cli]
     [jepsen.client :as client]
@@ -15,6 +17,9 @@
     [jepsen.nemesis :as nemesis]
     [jepsen.tests :as tests]
     [knossos.model :as model]))
+
+
+(ig/init {:blaze.fhir/structure-definition-repo {}})
 
 
 (defn r [_ _]
