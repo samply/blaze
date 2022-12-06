@@ -7,16 +7,33 @@
 
 
 (defn- value-concept [value]
-  (if (identical? :fhir/CodeableConcept (type/type value))
-    value
-    (type/codeable-concept
-      {:text (type/string (if (nil? value) "null" (str value)))})))
+  (let [type (type/type value)]
+    (cond
+      (identical? :fhir/CodeableConcept type)
+      value
+
+      (identical? :fhir/Quantity type)
+      (type/codeable-concept
+        {:text (cond-> (str (:value value)) (:code value) (str " " (:code value)))})
+
+      :else
+      (type/codeable-concept
+        {:text (type/string (if (nil? value) "null" (str value)))}))))
+
+
+(defn- stratum-value-extension [value]
+  (type/extension
+    {:url "https://samply.github.io/blaze/fhir/StructureDefinition/stratum-value"
+     :value value}))
 
 
 (defn- stratum* [population value]
-  {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
-   :value (value-concept value)
-   :population [population]})
+  (cond-> {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
+           :value (value-concept value)
+           :population [population]}
+
+    (identical? :fhir/Quantity (type/type value))
+    (assoc :extension [(stratum-value-extension value)])))
 
 
 (defn- stratum [context population-code value handles]
