@@ -3,7 +3,7 @@
   {:local/root "../fhir-client"}
 
   jepsen/jepsen
-  {:mvn/version "0.2.7"}}
+  {:mvn/version "0.3.0"}}
 
  :aliases
  {:test
