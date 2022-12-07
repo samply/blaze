@@ -44,7 +44,7 @@
 
 (defn- expression-defs [context library]
   (transduce
-    (comp (filter (comp nil? :type))
+    (comp (filter (comp #{"ExpressionDef"} :type))
           (map (partial compile-expression-def context))
           (halt-when ba/anomaly?))
     (completing

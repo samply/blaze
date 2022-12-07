@@ -69,7 +69,7 @@
 
 
 (defn- translate [cql-code]
-  (-> (cql-translator/translate cql-code :locators? true)
+  (-> (cql-translator/translate cql-code)
       (ba/exceptionally
         #(assoc %
            :fhir/issue "value"

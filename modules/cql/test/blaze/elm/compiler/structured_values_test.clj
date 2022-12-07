@@ -215,7 +215,8 @@
   (testing "with source"
     (testing "Patient.identifier"
       (testing "with source-type"
-        (let [library {:statements {:def [{:name "Patient"}]}}
+        (let [library {:statements {:def [{:type "ExpressionDef"
+                                           :name "Patient"}]}}
               elm
               {:path "identifier"
                :source #elm/expression-ref "Patient"
@@ -236,7 +237,8 @@
             (is (= '(:identifier (expr-ref "Patient")) (core/-form expr))))))
 
       (testing "without source-type"
-        (let [library {:statements {:def [{:name "Patient"}]}}
+        (let [library {:statements {:def [{:type "ExpressionDef"
+                                           :name "Patient"}]}}
               elm
               {:path "identifier"
                :source #elm/expression-ref "Patient"
@@ -254,7 +256,8 @@
 
     (testing "Patient.gender"
       (testing "with source-type"
-        (let [library {:statements {:def [{:name "Patient"}]}}
+        (let [library {:statements {:def [{:type "ExpressionDef"
+                                           :name "Patient"}]}}
               elm
               {:path "gender"
                :source #elm/expression-ref "Patient"
@@ -268,7 +271,8 @@
           (is (= #fhir/code"male" result))))
 
       (testing "without source-type"
-        (let [library {:statements {:def [{:name "Patient"}]}}
+        (let [library {:statements {:def [{:type "ExpressionDef"
+                                           :name "Patient"}]}}
               elm
               {:path "gender"
                :source #elm/expression-ref "Patient"
@@ -282,7 +286,8 @@
 
     (testing "Observation.value"
       (testing "with source-type"
-        (let [library {:statements {:def [{:name "Observation"}]}}
+        (let [library {:statements {:def [{:type "ExpressionDef"
+                                           :name "Observation"}]}}
               elm
               {:path "value"
                :source #elm/expression-ref "Observation"
@@ -296,7 +301,8 @@
           (is (= "value-114318" result))))
 
       (testing "without source-type"
-        (let [library {:statements {:def [{:name "Observation"}]}}
+        (let [library {:statements {:def [{:type "ExpressionDef"
+                                           :name "Observation"}]}}
               elm
               {:path "value"
                :source #elm/expression-ref "Observation"

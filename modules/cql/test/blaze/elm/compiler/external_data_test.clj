@@ -327,7 +327,8 @@
                        {:def [{:name "sys-def-174848" :id "system-174915"}]}
                        :statements
                        {:def
-                        [{:name "name-174207"
+                        [{:type "ExpressionDef"
+                          :name "name-174207"
                           :resultTypeName "{http://hl7.org/fhir}Patient"}]}}
               elm #elm/retrieve
                           {:type "Observation"
@@ -344,7 +345,8 @@
                        {:def [{:name "sys-def-174848" :id "system-174915"}]}
                        :statements
                        {:def
-                        [{:name "name-174207"
+                        [{:type "ExpressionDef"
+                          :name "name-174207"
                           :resultTypeName "{http://hl7.org/fhir}Patient"}]}}
               elm #elm/retrieve
                           {:type "Observation"
