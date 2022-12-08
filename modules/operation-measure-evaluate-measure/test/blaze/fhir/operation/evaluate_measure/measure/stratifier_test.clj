@@ -71,7 +71,7 @@
     observation.code")
 
 
-(def library-observation-value
+(def library-observation-value-age
   "library Retrieve
   using FHIR version '4.0.0'
   include FHIRHelpers version '4.0.0'
@@ -79,7 +79,10 @@
   context Patient
 
   define function QuantityValue(observation Observation):
-    observation.value as Quantity")
+    observation.value as Quantity
+
+  define function Age(observation Observation):
+    AgeInYearsAt(observation.effective)")
 
 
 (def library-encounter-status-age
@@ -156,6 +159,17 @@
    [{:fhir/type :fhir.Measure.group.stratifier/component
      :code #fhir/CodeableConcept{:text #fhir/string"status"}
      :criteria (cql-expression "Status")}
+    {:fhir/type :fhir.Measure.group.stratifier/component
+     :code #fhir/CodeableConcept{:text #fhir/string"age"}
+     :criteria (cql-expression "Age")}]})
+
+
+(def observation-value-age-stratifier
+  {:fhir/type :fhir.Measure.group/stratifier
+   :component
+   [{:fhir/type :fhir.Measure.group.stratifier/component
+     :code #fhir/CodeableConcept{:text #fhir/string"value"}
+     :criteria (cql-expression "QuantityValue")}
     {:fhir/type :fhir.Measure.group.stratifier/component
      :code #fhir/CodeableConcept{:text #fhir/string"age"}
      :criteria (cql-expression "Age")}]})
@@ -264,7 +278,7 @@
                  :subject #fhir/Reference{:reference "Patient/0"}
                  :value #fhir/Quantity
                   {:value #fhir/decimal 2M}}]]]
-        (let [{:keys [db] :as context} (context system library-observation-value)
+        (let [{:keys [db] :as context} (context system library-observation-value-age)
               evaluated-populations
               {:handles
                [[{:population-handle (d/resource-handle db "Observation" "0")
@@ -280,12 +294,12 @@
                      evaluated-populations observation-value-stratifier)
               [:result :fhir/type] := :fhir.MeasureReport.group/stratifier
               [:result :code 0 :text] := #fhir/string"value"
-              [:result :stratum 0 :extension 0 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/stratum-value"
+              [:result :stratum 0 :extension 0 :url] := "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.value"
               [:result :stratum 0 :extension 0 :value :value] := #fhir/decimal 1M
               [:result :stratum 0 :extension 0 :value :code] := #fhir/code"kg"
               [:result :stratum 0 :value :text] := "1 kg"
               [:result :stratum 0 :population 0 :count] := #fhir/integer 1
-              [:result :stratum 1 :extension 0 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/stratum-value"
+              [:result :stratum 1 :extension 0 :url] := "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.value"
               [:result :stratum 1 :extension 0 :value :value] := #fhir/decimal 2M
               [:result :stratum 1 :value :text] := "2"
               [:result :stratum 1 :population 0 :count] := #fhir/integer 1)))))
@@ -408,6 +422,51 @@
               [:result :stratum 3 :component 0 :value :text] := #fhir/string"planned"
               [:result :stratum 3 :component 1 :value :text] := #fhir/string"20"
               [:result :stratum 3 :population 0 :count] := #fhir/integer 1)))))
+
+    (testing "Quantity"
+      (with-system-data [system mem-node-system]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :birthDate #fhir/date"2000"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :effective #fhir/dateTime"2020"
+                 :value #fhir/Quantity
+                  {:value #fhir/decimal 1M
+                   :code #fhir/code"kg"}}]
+          [:put {:fhir/type :fhir/Observation :id "1"
+                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :effective #fhir/dateTime"2021"
+                 :value #fhir/Quantity
+                  {:value #fhir/decimal 2M}}]]]
+        (let [{:keys [db] :as context} (context system library-observation-value-age)
+              evaluated-populations
+              {:handles
+               [[{:population-handle (d/resource-handle db "Observation" "0")
+                  :subject-handle (d/resource-handle db "Patient" "0")}
+                 {:population-handle (d/resource-handle db "Observation" "1")
+                  :subject-handle (d/resource-handle db "Patient" "0")}]]}]
+
+          (testing "report-type population"
+            (given (stratifier/evaluate
+                     (assoc context
+                       :report-type "population"
+                       :population-basis "Observation")
+                     evaluated-populations observation-value-age-stratifier)
+              [:result :fhir/type] := :fhir.MeasureReport.group/stratifier
+              [:result :code 0 :text] := #fhir/string"value"
+              [:result :code 1 :text] := #fhir/string"age"
+              [:result :stratum 0 :component 0 :extension 0 :url] := "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.component.value"
+              [:result :stratum 0 :component 0 :extension 0 :value :value] := #fhir/decimal 1M
+              [:result :stratum 0 :component 0 :extension 0 :value :code] := #fhir/code"kg"
+              [:result :stratum 0 :component 0 :code :text] := #fhir/string"value"
+              [:result :stratum 0 :component 0 :value :text] := #fhir/string"1 kg"
+              [:result :stratum 0 :component 1 :code :text] := #fhir/string"age"
+              [:result :stratum 0 :component 1 :value :text] := #fhir/string"20"
+              [:result :stratum 0 :population 0 :count] := #fhir/integer 1
+              [:result :stratum 1 :component 0 :extension 0 :url] := "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.component.value"
+              [:result :stratum 1 :component 0 :extension 0 :value :value] := #fhir/decimal 2M
+              [:result :stratum 1 :component 0 :value :text] := #fhir/string"2"
+              [:result :stratum 1 :component 1 :value :text] := #fhir/string"21"
+              [:result :stratum 1 :population 0 :count] := #fhir/integer 1)))))
 
     (testing "errors"
       (testing "with expression"
