@@ -23,7 +23,7 @@
 
 (defn- stratum-value-extension [value]
   (type/extension
-    {:url "https://samply.github.io/blaze/fhir/StructureDefinition/stratum-value"
+    {:url "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.value"
      :value value}))
 
 
@@ -121,14 +121,23 @@
     stratifier-components))
 
 
+(defn- stratum-component-value-extension [value]
+  (type/extension
+    {:url "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.component.value"
+     :value value}))
+
+
 (defn- multi-component-stratum* [population codes values]
   {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
    :component
    (mapv
      (fn [code value]
-       {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/component
-        :code code
-        :value (value-concept value)})
+       (cond-> {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/component
+                :code code
+                :value (value-concept value)}
+
+         (identical? :fhir/Quantity (type/type value))
+         (assoc :extension [(stratum-component-value-extension value)])))
      codes
      values)
    :population [population]})
