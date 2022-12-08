@@ -211,6 +211,7 @@ jobs:
       with:
         context: .
         tags: blaze:latest
+        file: Dockerfile.github-ci
         outputs: type=docker,dest=/tmp/blaze.tar
 
     - name: Load Blaze Image
