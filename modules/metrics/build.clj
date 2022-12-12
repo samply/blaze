@@ -9,4 +9,4 @@
               {:project "deps.edn"
                :compile-opts {:direct-linking true}})
      :class-dir "target/classes"
-     :ns-compile ['blaze.metrics.Collector]}))
+     :ns-compile ['blaze.metrics.collector]}))
