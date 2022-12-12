@@ -11,8 +11,7 @@
     [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as prop])
   (:import
-    [java.nio.charset StandardCharsets]
-    [java.time OffsetDateTime ZoneOffset]))
+    [java.nio.charset StandardCharsets]))
 
 
 (set! *warn-on-reflection* true)
@@ -67,83 +66,12 @@
          (bs/to-string (apply codec/string [s]) StandardCharsets/UTF_8)))))
 
 
-(def zo
-  (ZoneOffset/ofHours 0))
-
-
-(deftest date-lb-test
-  (testing "year"
-    (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
-      #system/date"1970" "80"
-      #system/date-time"1970" "80"))
-
-  (testing "year-month"
-    (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
-      #system/date"1970-01" "80"
-      #system/date-time"1970-01" "80"))
-
-  (testing "local-date"
-    (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
-      #system/date"1970-01-01" "80"
-      #system/date-time"1970-01-01" "80"))
-
-  (testing "local-date-time"
-    (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
-      #system/date-time"1970-01-01T00:00" "80"))
-
-  (testing "offset-date-time"
-    (are [date hex] (= hex (bs/hex (codec/date-lb zo date)))
-      (OffsetDateTime/of 1970 1 1 0 0 0 0 ZoneOffset/UTC) "80"
-      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours 2)) "6FE3E0"
-      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours 1)) "6FF1F0"
-      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours -1)) "900E10"
-      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours -2)) "901C20")))
-
-
-(deftest date-ub-test
-  (testing "year"
-    (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
-      #system/date"1969" "7F"
-      #system/date-time"1969" "7F"))
-
-  (testing "year-month"
-    (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
-      #system/date"1969-12" "7F"
-      #system/date-time"1969-12" "7F"))
-
-  (testing "local-date"
-    (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
-      #system/date"1969-12-31" "7F"
-      #system/date-time"1969-12-31" "7F"))
-
-  (testing "local-date-time"
-    (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
-      #system/date-time"1969-12-31T23:59:59" "7F"))
-
-  (testing "offset-date-time"
-    (are [date hex] (= hex (bs/hex (codec/date-ub zo date)))
-      (OffsetDateTime/of 1969 12 31 23 59 59 0 ZoneOffset/UTC) "7F"
-      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 2)) "6FE3DF"
-      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 1)) "6FF1EF"
-      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -1)) "900E0F"
-      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -2)) "901C1F")))
-
-
-(deftest date-lb-ub-test
-  (testing "extract lower bound"
-    (is (=
-          (codec/date-lb-ub->lb
-            (codec/date-lb-ub (codec/date-lb zo #system/date"2020") (codec/date-ub zo #system/date"2020")))
-          (codec/date-lb zo #system/date"2020"))))
-
-  (testing "extract upper bound"
-    (is (=
-          (codec/date-lb-ub->ub
-            (codec/date-lb-ub (codec/date-lb zo #system/date"2020") (codec/date-ub zo #system/date"2020")))
-          (codec/date-ub zo #system/date"2020")))))
-
-
 (deftest number-test
+  (testing "encode/decode"
+    (satisfies-prop 10000
+      (prop/for-all [i (s/gen int?)]
+        (= i (codec/decode-number (codec/number i))))))
+
   (testing "long"
     (are [n hex] (= hex (bs/hex (codec/number n)))
       Long/MIN_VALUE "3F8000000000000000"

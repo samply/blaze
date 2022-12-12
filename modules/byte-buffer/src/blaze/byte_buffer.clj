@@ -200,6 +200,9 @@
 
 
 (defn get-byte!
+  "The 1-arity variant reads the byte at the current position of `byte-buffer`
+  and increments the position afterwards. The 2-arity variant uses absolute
+  `index` access."
   {:inline
    (fn
      ([byte-buffer]

@@ -14,3 +14,10 @@
          (s/gen (s/int-in 1 10000))
          (s/gen (s/int-in 1 13))
          (s/gen (s/int-in 1 29))))))
+
+
+(s/def :system/date-time system/date-time?)
+
+
+(s/def :system/date-or-date-time
+  (s/or :date :system/date :date-time :system/date-time))

@@ -2,6 +2,7 @@
   (:require
     [blaze.byte-buffer :as bb]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.codec.date :as codec-date]
     [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
     [blaze.db.impl.index.search-param-value-resource-spec]
     [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
@@ -11,15 +12,12 @@
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec.type]
-    [blaze.fhir.spec.type.system :as system]
     [blaze.fhir.structure-definition-repo]
     [blaze.test-util :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [integrant.core :as ig]
-    [juxt.iota :refer [given]])
-  (:import
-    [java.time ZoneId]))
+    [juxt.iota :refer [given]]))
 
 
 (set! *warn-on-reflection* true)
@@ -59,8 +57,8 @@
           :upper-bound := upper-bound)
         "2020-10-30"
         :eq
-        (codec/date-lb (ZoneId/systemDefault) (system/parse-date-time "2020-10-30"))
-        (codec/date-ub (ZoneId/systemDefault) (system/parse-date-time "2020-10-30"))))))
+        (codec-date/encode-lower-bound #system/date-time"2020-10-30")
+        (codec-date/encode-upper-bound #system/date-time"2020-10-30")))))
 
 
 (deftest index-entries-test
