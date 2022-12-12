@@ -1,4 +1,4 @@
-(ns blaze.metrics.Collector
+(ns blaze.metrics.collector
   (:gen-class
     :extends io.prometheus.client.Collector
     :constructors {[Object] []}
@@ -15,4 +15,4 @@
 
 
 (defn -collect-void [this]
-  ((.-fn ^blaze.metrics.Collector this)))
+  ((.-fn ^blaze.metrics.collector this)))

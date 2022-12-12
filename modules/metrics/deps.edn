@@ -39,4 +39,4 @@
     {:mvn/version "1.2.4"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
-               "-e" ".*spec$" -e "blaze.metrics.Collector"]}}}
+               "-e" ".*spec$" -e "blaze.metrics.collector"]}}}

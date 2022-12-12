@@ -14,7 +14,7 @@
 
 
 (defmacro collector [& body]
-  `(blaze.metrics.Collector. (fn [] ~@body)))
+  `(blaze.metrics.collector. (fn [] ~@body)))
 
 
 (defn collect
