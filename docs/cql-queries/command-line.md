@@ -1,13 +1,14 @@
-# Evaluate a CQL Query using the Command Line
+# Evaluate a CQL Measure using the Command Line
 
-This section describes how to evaluate a CQL query using the command line only.
+This section describes how to evaluate a CQL measure using the command line only.
 
 ## Checkout the Project
 
-This section assumes, that you have checked out the project and open a command line inside it.
+This section assumes, that you have checked out the project and open a command line in its directory.
 
 ```sh
 git clone https://github.com/samply/blaze.git
+cd blaze
 ```
 
 ## Run Blaze

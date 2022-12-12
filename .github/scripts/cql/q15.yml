@@ -1,0 +1,5 @@
+library: modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q15.cql
+group:
+- type: Patient
+  population:
+  - expression: InInitialPopulation
