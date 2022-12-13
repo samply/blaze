@@ -90,6 +90,7 @@
  elm/is blaze.elm.literal/is
  elm/to-boolean blaze.elm.literal/to-boolean
  elm/to-chars blaze.elm.literal/to-chars
+ elm/to-concept blaze.elm.literal/to-concept
  elm/to-date blaze.elm.literal/to-date
  elm/to-date-time blaze.elm.literal/to-date-time
  elm/to-decimal blaze.elm.literal/to-decimal

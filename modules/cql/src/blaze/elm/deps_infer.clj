@@ -660,6 +660,10 @@
 (derive :elm.deps.type/to-chars :elm.deps.type/unary-expression)
 
 
+;; 22.21. ToConcept
+(derive :elm.deps.type/to-concept :elm.deps.type/unary-expression)
+
+
 ;; 22.22. ToDate
 (derive :elm.deps.type/to-date :elm.deps.type/unary-expression)
 

@@ -284,6 +284,12 @@
   (to-boolean [_]))
 
 
+;; 22.21. ToConcept
+(extend-protocol p/ToConcept
+  nil
+  (to-concept [_]))
+
+
 ;; 22.22. ToDate
 (extend-protocol p/ToDate
   nil

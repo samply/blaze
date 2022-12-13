@@ -909,6 +909,11 @@
   {:type "ToChars" :operand operand})
 
 
+;; 22.21. ToConcept
+(defn to-concept [operand]
+  {:type "ToConcept" :operand operand})
+
+
 ;; 22.22. ToDate
 (defn to-date [operand]
   {:type "ToDate" :operand operand})
