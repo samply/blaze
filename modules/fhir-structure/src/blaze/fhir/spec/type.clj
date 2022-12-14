@@ -27,7 +27,7 @@
      Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
      ZoneOffset]
     [java.time.format DateTimeParseException]
-    [java.util List Map UUID]
+    [java.util Comparator List Map Map$Entry UUID]
     [jsonista.jackson
      KeywordKeyDeserializer PersistentHashMapDeserializer
      PersistentVectorDeserializer]))
@@ -1098,10 +1098,14 @@
   (-hash-into [m sink]
     (.putByte ^PrimitiveSink sink (byte 37))
     (run!
-      (fn [k]
-        (p/-hash-into k sink)
-        (p/-hash-into (k m) sink))
-      (sort (keys m))))
+      (fn [^Map$Entry e]
+        (p/-hash-into (.getKey e) sink)
+        (p/-hash-into (.getValue e) sink))
+      (sort
+        (reify Comparator
+          (compare [_ e1 e2]
+            (.compareTo ^Keyword (.getKey ^Map$Entry e1) (.getKey ^Map$Entry e2))))
+        m)))
   (-references [m]
     ;; Bundle entries have no references, because Bundles itself are stored "as-is"
     (when-not (identical? :fhir.Bundle/entry (p/-type m))
