@@ -297,12 +297,16 @@
   (p/to-boolean x))
 
 
-;; TODO 22.20. ToChars
+;; 22.20. ToChars
 (defunop to-chars [operand]
   (when (string? operand)
     (map str operand)))
 
-;; TODO 22.21. ToConcept
+
+;; 22.21. ToConcept
+(defunop to-concept [x]
+  (p/to-concept x))
+
 
 ;; 22.22. ToDate
 (defrecord ToDateOperatorExpression [operand]

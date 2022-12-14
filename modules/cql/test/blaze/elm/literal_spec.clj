@@ -534,6 +534,12 @@
   :ret :elm/expression)
 
 
+;; 22.21. ToConcept
+(s/fdef elm/to-concept
+  :args (s/cat :operand :elm/expression)
+  :ret :elm/expression)
+
+
 ;; 22.22. ToDate
 (s/fdef elm/to-date
   :args (s/cat :operand :elm/expression)

@@ -4,11 +4,13 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+    [blaze.elm.code :as code]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.clinical-operators]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.compiler.type-operators]
+    [blaze.elm.concept :as concept]
     [blaze.elm.decimal :as decimal]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
@@ -1245,7 +1247,7 @@
           expr (c/compile compile-ctx elm)]
       (is (= '(to-chars (param-ref "x")) (core/-form expr))))))
 
-;; TODO 22.21. ToConcept
+;; 22.21. ToConcept
 ;;
 ;; The ToConcept operator converts a value of type Code to a Concept value with
 ;; the given Code as its primary and only Code. If the Code has a display
@@ -1255,6 +1257,26 @@
 ;; input Codes, and will not have a display value.
 ;;
 ;; If the argument is null, the result is null.
+(deftest compile-to-concept-test
+  (testing "Code"
+    (are [x res] (= res (core/-eval (c/compile {} (elm/to-concept x))
+                                    {:now tu/now} nil nil))
+
+      (tu/code "system-134534" "code-134551")
+      (concept/to-concept [(code/to-code "system-134534" nil "code-134551")])
+
+      (elm/list [(tu/code "system-134534" "code-134551")
+                 (tu/code "system-134535" "code-134552")])
+      (concept/to-concept [(code/to-code "system-134534" nil "code-134551")
+                           (code/to-code "system-134535" nil "code-134552")])))
+
+  (tu/testing-unary-null elm/to-concept)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/to-concept #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+    (is (= '(to-concept (param-ref "x")) (core/-form expr))))))
 
 
 ;; 22.22. ToDate

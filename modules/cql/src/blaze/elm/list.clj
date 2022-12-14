@@ -2,6 +2,7 @@
   "Implementation of the list type."
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
+    [blaze.elm.concept :as concept]
     [blaze.elm.protocols :as p])
   (:import
     [clojure.lang PersistentVector IReduceInit]))
@@ -182,3 +183,10 @@
   IReduceInit
   (singleton-from [list]
     (p/singleton-from (.reduce list ((take 2) conj) []))))
+
+
+;; 22.21. ToConcept
+(extend-protocol p/ToConcept
+  PersistentVector
+  (to-concept [x]
+    (concept/to-concept x)))
