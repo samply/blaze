@@ -4,13 +4,9 @@
     [blaze.byte-string :as bs]
     [blaze.fhir.spec.type.system])
   (:import
-    [blaze.fhir.spec.type.system DateTimeYear DateTimeYearMonth
-                                 DateTimeYearMonthDay]
     [com.github.benmanes.caffeine.cache CacheLoader Caffeine]
     [com.google.common.hash Hashing]
     [java.nio.charset StandardCharsets]
-    [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth
-               ZoneId ZoneOffset]
     [java.util Arrays]))
 
 
@@ -26,7 +22,6 @@
 (def ^:const ^long tid-size Integer/BYTES)
 (def ^:const ^long t-size Long/BYTES)
 (def ^:const ^long state-size Long/BYTES)
-(def ^:const ^long tx-time-size Long/BYTES)
 (def ^:const ^long max-id-size 64)
 
 
@@ -431,110 +426,20 @@
             bs/from-byte-buffer!)))))
 
 
-(defn- epoch-seconds ^long [^LocalDateTime date-time ^ZoneId zone-id]
-  (.toEpochSecond (.atZone date-time zone-id)))
-
-
-(defprotocol DateLowerBound
-  (-date-lb [date-time zone-id]))
-
-
-(extend-protocol DateLowerBound
-  Year
-  (-date-lb [year zone-id]
-    (number (epoch-seconds (.atStartOfDay (.atDay year 1)) zone-id)))
-  DateTimeYear
-  (-date-lb [year zone-id]
-    (number (epoch-seconds (.atStartOfDay (.atDay ^Year (.-year year) 1)) zone-id)))
-  YearMonth
-  (-date-lb [year-month zone-id]
-    (number (epoch-seconds (.atStartOfDay (.atDay year-month 1)) zone-id)))
-  DateTimeYearMonth
-  (-date-lb [year-month zone-id]
-    (number (epoch-seconds (.atStartOfDay (.atDay ^YearMonth (.-year_month year-month) 1)) zone-id)))
-  LocalDate
-  (-date-lb [date zone-id]
-    (number (epoch-seconds (.atStartOfDay date) zone-id)))
-  DateTimeYearMonthDay
-  (-date-lb [date zone-id]
-    (number (epoch-seconds (.atStartOfDay ^LocalDate (.date date)) zone-id)))
-  LocalDateTime
-  (-date-lb [date-time zone-id]
-    (number (epoch-seconds date-time zone-id)))
-  OffsetDateTime
-  (-date-lb [date-time _]
-    (number (.toEpochSecond date-time))))
-
-
-(defn date-lb
-  "Returns the lower bound of the implicit range the `date-time` value spans."
-  [zone-id date-time]
-  (-date-lb date-time zone-id))
-
-
-(defprotocol DateUpperBound
-  (-date-ub [date-time zone-id]))
-
-
-(extend-protocol DateUpperBound
-  Year
-  (-date-ub [year zone-id]
-    (number (dec (epoch-seconds (.atStartOfDay (.atDay (.plusYears year 1) 1)) zone-id))))
-  DateTimeYear
-  (-date-ub [year zone-id]
-    (number (dec (epoch-seconds (.atStartOfDay (.atDay (.plusYears ^Year (.year year) 1) 1)) zone-id))))
-  YearMonth
-  (-date-ub [year-month zone-id]
-    (number (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths year-month 1) 1)) zone-id))))
-  DateTimeYearMonth
-  (-date-ub [year-month zone-id]
-    (number (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths ^YearMonth (.-year_month year-month) 1) 1)) zone-id))))
-  LocalDate
-  (-date-ub [date zone-id]
-    (number (dec (epoch-seconds (.atStartOfDay (.plusDays date 1)) zone-id))))
-  DateTimeYearMonthDay
-  (-date-ub [date zone-id]
-    (number (dec (epoch-seconds (.atStartOfDay (.plusDays ^LocalDate (.date date) 1)) zone-id))))
-  LocalDateTime
-  (-date-ub [date-time zone-id]
-    (number (epoch-seconds date-time zone-id)))
-  OffsetDateTime
-  (-date-ub [date-time _]
-    (number (.toEpochSecond date-time))))
-
-
-(defn date-ub
-  "Returns the upper bound of the implicit range the `date-time` value spans."
-  [zone-id date-time]
-  (-date-ub date-time zone-id))
-
-
-(def date-min-bound
-  (date-lb (ZoneOffset/ofHours 0) (Year/of 1)))
-
-
-(def date-max-bound
-  (date-ub (ZoneOffset/ofHours 0) (Year/of 9999)))
-
-
-(defn date-lb-ub [lb ub]
-  (-> (bb/allocate (+ 2 (bs/size lb) (bs/size ub)))
-      (bb/put-byte-string! lb)
-      (bb/put-byte! 0)
-      (bb/put-byte-string! ub)
-      (bb/put-byte! (bs/size lb))
-      bb/flip!
-      bs/from-byte-buffer!))
-
-
-(defn date-lb-ub->lb [lb-ub]
-  (bs/subs lb-ub 0 (bs/nth lb-ub (unchecked-dec-int (bs/size lb-ub)))))
-
-
-(defn date-lb-ub->ub [lb-ub]
-  (let [lb-size-idx (unchecked-dec-int (bs/size lb-ub))
-        start (unchecked-inc-int (int (bs/nth lb-ub lb-size-idx)))]
-    (bs/subs lb-ub start lb-size-idx)))
+(defn decode-number [byte-string]
+  (let [bb (bs/as-read-only-byte-buffer byte-string)
+        header (bit-and (long (bb/get-byte! bb)) 0xFF)
+        mask (bit-and (bit-shift-right (unchecked-byte (bit-xor header 0x80)) 7) 0xFF)
+        n (bit-and (bit-xor (bit-shift-right header 3) mask) 0x0F)]
+    (loop [val (bit-shift-left (bit-and (bit-xor header mask) 0x07) (* 8 n))
+           i 1]
+      (if (<= i n)
+        (let [byte (bit-and (long (bb/get-byte! bb)) 0xFF)]
+          (recur
+            (+ val (bit-shift-left (bit-xor byte mask) (* 8 (- n i))))
+            (inc i)))
+        (let [final-mask (bit-shift-right (bit-shift-left mask 63) 63)] 
+          (bit-xor val final-mask))))))
 
 
 (defn quantity [unit value]

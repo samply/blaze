@@ -1,5 +1,4 @@
-(ns blaze.dev.decompiler
-  (:require [clojure.test :refer :all]))
+(ns blaze.dev.decompiler)
 
 
 (comment
