@@ -11,7 +11,7 @@
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   io.netty/netty-handler
-  {:mvn/version "4.1.85.Final"}}
+  {:mvn/version "4.1.86.Final"}}
 
  :aliases
  {:test
