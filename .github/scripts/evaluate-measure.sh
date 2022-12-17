@@ -81,10 +81,10 @@ evaluate-measure() {
 }
 
 BASE="http://localhost:8080/fhir"
-FILE=$1
-EXPECTED_COUNT=$2
+NAME="$1"
+EXPECTED_COUNT="$2"
 
-DATA=$(base64 "$FILE" | tr -d '\n')
+DATA=$(base64 "modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/$NAME.cql" | tr -d '\n')
 LIBRARY_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 

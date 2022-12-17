@@ -7,17 +7,36 @@
 
 
 (defn- value-concept [value]
-  (type/codeable-concept
-    {:text (type/string (if (nil? value) "null" (str value)))}))
+  (let [type (type/type value)]
+    (cond
+      (identical? :fhir/CodeableConcept type)
+      value
+
+      (identical? :fhir/Quantity type)
+      (type/codeable-concept
+        {:text (cond-> (str (:value value)) (:code value) (str " " (:code value)))})
+
+      :else
+      (type/codeable-concept
+        {:text (type/string (if (nil? value) "null" (str value)))}))))
+
+
+(defn- stratum-value-extension [value]
+  (type/extension
+    {:url "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.value"
+     :value value}))
 
 
 (defn- stratum* [population value]
-  {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
-   :value (value-concept value)
-   :population [population]})
+  (cond-> {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
+           :value (value-concept value)
+           :population [population]}
+
+    (identical? :fhir/Quantity (type/type value))
+    (assoc :extension [(stratum-value-extension value)])))
 
 
-(defn- stratum [context population-code [value handles]]
+(defn- stratum [context population-code value handles]
   (-> (u/population
         context :fhir.MeasureReport.group.stratifier.stratum/population
         population-code handles)
@@ -32,9 +51,9 @@
 
 
 (defn- stratifier [{:keys [luids] :as context} code population-code strata]
-  (-> (reduce
-        (fn [{:keys [luids] :as ret} x]
-          (->> (stratum (assoc context :luids luids) population-code x)
+  (-> (reduce-kv
+        (fn [{:keys [luids] :as ret} value handles]
+          (->> (stratum (assoc context :luids luids) population-code value handles)
                (u/merge-result ret)))
         {:result [] :luids luids :tx-ops []}
         strata)
@@ -46,7 +65,7 @@
 
 
 (defn- calc-strata [{:keys [population-basis] :as context} name handles]
-  (if (= :boolean (or population-basis :boolean))
+  (if (identical? :boolean (or population-basis :boolean))
     (cql/calc-strata context name handles)
     (cql/calc-function-strata context name handles)))
 
@@ -102,20 +121,29 @@
     stratifier-components))
 
 
+(defn- stratum-component-value-extension [value]
+  (type/extension
+    {:url "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.component.value"
+     :value value}))
+
+
 (defn- multi-component-stratum* [population codes values]
   {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
    :component
    (mapv
      (fn [code value]
-       {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/component
-        :code code
-        :value (value-concept value)})
+       (cond-> {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/component
+                :code code
+                :value (value-concept value)}
+
+         (identical? :fhir/Quantity (type/type value))
+         (assoc :extension [(stratum-component-value-extension value)])))
      codes
      values)
    :population [population]})
 
 
-(defn- multi-component-stratum [context codes population-code [values result]]
+(defn- multi-component-stratum [context codes population-code values result]
   (-> (u/population
         context :fhir.MeasureReport.group.stratifier.stratum/population
         population-code result)
@@ -130,10 +158,10 @@
 
 (defn- multi-component-stratifier
   [{:keys [luids] :as context} codes population-code strata]
-  (-> (reduce
-        (fn [{:keys [luids] :as ret} x]
+  (-> (reduce-kv
+        (fn [{:keys [luids] :as ret} values result]
           (->> (multi-component-stratum (assoc context :luids luids) codes
-                                        population-code x)
+                                        population-code values result)
                (u/merge-result ret)))
         {:result [] :luids luids :tx-ops []}
         strata)

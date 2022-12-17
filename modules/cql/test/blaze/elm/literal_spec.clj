@@ -38,7 +38,7 @@
   :ret :elm/expression)
 
 
-;; 2.1. Instance
+;; 2.2. Instance
 (s/fdef elm/instance
   :args (s/cat :arg (s/tuple string? (s/map-of string? :elm/expression)))
   :ret :elm/expression)
@@ -62,11 +62,40 @@
   :ret :elm/expression)
 
 
+;; 3.6. Concept
+(s/fdef elm/concept
+  :args (s/cat
+          :args
+          (s/spec (s/cat
+                    :codes (s/coll-of :elm/code)
+                    :display (s/? string?))))
+  :ret :elm/expression)
+
+
+;; 3.8. ConceptRef
+(s/fdef elm/concept-ref
+  :args (s/cat :name string?)
+  :ret :elm/expression)
+
+
 ;; 3.9. Quantity
 (s/fdef elm/quantity
   :args (s/cat :args (s/spec (s/cat :value number? :unit (s/? string?))))
   :ret :elm/expression)
 
+
+;; 3.10. Ratio
+(s/fdef elm/ratio
+          :args
+          (s/cat
+            :args
+            (s/spec
+              (s/cat
+                :numerator
+                (s/spec (s/cat :numerator-value number? :numerator-unit (s/? string?)))
+                :denominator
+                (s/spec (s/cat :denominator-value number? :denominator-unit (s/? string?))))))
+          :ret :elm/expression)
 
 
 ;; 9. Reusing Logic
@@ -439,9 +468,75 @@
   :ret :elm/expression)
 
 
+;; 22.7. ConvertsToBoolean
+(s/fdef elm/converts-to-boolean
+  :args (s/cat :operand :elm/expression)
+  :ret :elm/expression)
+
+
+;; 22.8. ConvertsToDate
+(s/fdef elm/converts-to-date
+  :args (s/cat :operand :elm/expression)
+  :ret :elm/expression)
+
+
+;; 22.9. ConvertsToDateTime
+(s/fdef elm/converts-to-date-time
+  :args (s/cat :operand :elm/expression)
+  :ret :elm/expression)
+
+
+;; 22.10. ConvertsToDecimal
+(s/fdef elm/converts-to-decimal
+  :args (s/cat :operand :elm/expression)
+  :ret :elm/expression)
+
+
+;; 22.11. ConvertsToLong
+(s/fdef elm/converts-to-long
+  :args (s/cat :operand :elm/expression)
+  :ret :elm/expression)
+
+
+;; 22.12. ConvertsToInteger
+(s/fdef elm/converts-to-integer
+  :args (s/cat :operand :elm/expression)
+  :ret :elm/expression)
+
+
+;; 22.13. ConvertsToQuantity
+(s/fdef elm/converts-to-quantity
+  :args (s/cat :operand :elm/expression)
+  :ret :elm/expression)
+
+
+;; 22.14. ConvertsToRatio
+(s/fdef elm/converts-to-ratio
+  :args (s/cat :operand :elm/expression)
+  :ret :elm/expression)
+
+
+;; 22.15. ConvertsToString
+(s/fdef elm/converts-to-string
+  :args (s/cat :operand :elm/expression)
+  :ret :elm/expression)
+
+
+;; 22.16. ConvertsToTime
+(s/fdef elm/converts-to-time
+  :args (s/cat :operand :elm/expression)
+  :ret :elm/expression)
+
+
 ;; 22.17. Descendents
 (s/fdef elm/descendents
   :args (s/cat :source :elm/expression)
+  :ret :elm/expression)
+
+
+;; 22.21. ToConcept
+(s/fdef elm/to-concept
+  :args (s/cat :operand :elm/expression)
   :ret :elm/expression)
 
 
@@ -483,6 +578,12 @@
 
 ;; 22.28. ToQuantity
 (s/fdef elm/to-quantity
+  :args (s/cat :operand :elm/expression)
+  :ret :elm/expression)
+
+
+;; 22.29. ToRatio
+(s/fdef elm/to-ratio
   :args (s/cat :operand :elm/expression)
   :ret :elm/expression)
 

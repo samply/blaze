@@ -1,0 +1,8 @@
+library: modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q21-stratifier-city-of-only-women.cql
+group:
+- type: Patient
+  population:
+  - expression: InInitialPopulation
+  stratifier:
+  - code: city
+    expression: City

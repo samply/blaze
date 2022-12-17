@@ -55,10 +55,8 @@
     :else body))
 
 
-(defn- tx-op [resource if-match-t]
-  (cond-> [:put resource]
-    if-match-t
-    (conj if-match-t)))
+(defn- tx-op [resource {:strs [if-match if-none-match]}]
+  (iu/put-tx-op resource if-match if-none-match))
 
 
 (defn- response-context [{:keys [headers] :as request} db-after]
@@ -75,12 +73,10 @@
 (defn- handler [{:keys [node executor]}]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params
-        :keys [body]
-        {:strs [if-match]} :headers
+        :keys [headers body]
         :as request}]
     (-> (ac/completed-future (validate-resource type id body))
-        (ac/then-compose
-          #(d/transact node [(tx-op % (iu/etag->t if-match))]))
+        (ac/then-compose #(d/transact node [(tx-op % headers)]))
         ;; it's important to switch to the executor here, because otherwise
         ;; the central indexing thread would execute response building.
         (ac/then-apply-async identity executor)

@@ -6,12 +6,10 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.codec.spec]
     [blaze.fhir.spec]
-    [blaze.fhir.spec.type.system :as system]
     [blaze.fhir.spec.type.system-spec]
+    [blaze.fhir.spec.type.system.spec]
     [clojure.spec.alpha :as s]
-    [clojure.test.check])
-  (:import
-    [java.time ZoneId]))
+    [clojure.test.check]))
 
 
 
@@ -56,23 +54,6 @@
 
 (s/fdef codec/string
   :args (s/cat :string string?)
-  :ret byte-string?)
-
-
-(s/fdef codec/date-lb
-  :args (s/cat :zone-id #(instance? ZoneId %)
-               :date-time (s/or :date system/date? :date-time system/date-time?))
-  :ret byte-string?)
-
-
-(s/fdef codec/date-ub
-  :args (s/cat :zone-id #(instance? ZoneId %)
-               :date-time (s/or :date system/date? :date-time system/date-time?))
-  :ret byte-string?)
-
-
-(s/fdef codec/date-lb-ub
-  :args (s/cat :lb byte-string? :ub byte-string?)
   :ret byte-string?)
 
 

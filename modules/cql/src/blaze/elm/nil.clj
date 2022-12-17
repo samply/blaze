@@ -284,6 +284,12 @@
   (to-boolean [_]))
 
 
+;; 22.21. ToConcept
+(extend-protocol p/ToConcept
+  nil
+  (to-concept [_]))
+
+
 ;; 22.22. ToDate
 (extend-protocol p/ToDate
   nil
@@ -318,6 +324,12 @@
 (extend-protocol p/ToQuantity
   nil
   (to-quantity [_]))
+
+
+;; 22.29. ToRatio
+(extend-protocol p/ToRatio
+  nil
+  (to-ratio [_]))
 
 
 ;; 22.30. ToString

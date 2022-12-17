@@ -1,8 +1,7 @@
 (ns blaze.metrics.core
   (:require
     [clojure.core.protocols :as p]
-    [clojure.datafy :as datafy]
-    [com.rpl.proxy-plus :refer [proxy+]])
+    [clojure.datafy :as datafy])
   (:import
     [io.prometheus.client
      Collector Collector$MetricFamilySamples Collector$MetricFamilySamples$Sample
@@ -15,9 +14,7 @@
 
 
 (defmacro collector [& body]
-  `(proxy+ []
-     Collector
-     (~'collect [~'_] ~@body)))
+  `(blaze.metrics.collector. (fn [] ~@body)))
 
 
 (defn collect

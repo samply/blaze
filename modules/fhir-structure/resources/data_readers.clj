@@ -27,6 +27,7 @@
  fhir/Coding blaze.fhir.spec.type/coding
  fhir/CodeableConcept blaze.fhir.spec.type/codeable-concept
  fhir/Quantity blaze.fhir.spec.type/quantity
+ fhir/Ratio blaze.fhir.spec.type/ratio
  fhir/Period blaze.fhir.spec.type/period
  fhir/Identifier blaze.fhir.spec.type/identifier
  fhir/HumanName blaze.fhir.spec.type/human-name

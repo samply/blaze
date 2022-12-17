@@ -1,6 +1,11 @@
 # CQL Queries
 
 ## Command Line
+### Using Blazectl
+
+Blazectl can evaluate CQL queries, if you like to use it, please look into [this section](cql-queries/blazectl.md).
+
+### Shell Script
 
 If you like to use the command line, please look into [this section](cql-queries/command-line.md).
 

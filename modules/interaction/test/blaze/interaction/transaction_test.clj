@@ -14,7 +14,7 @@
     [blaze.interaction.delete]
     [blaze.interaction.read]
     [blaze.interaction.search-type]
-    [blaze.interaction.test-util :refer [wrap-error]]
+    [blaze.interaction.test-util :as itu :refer [wrap-error]]
     [blaze.interaction.transaction]
     [blaze.interaction.update]
     [blaze.interaction.util-spec]
@@ -183,18 +183,18 @@
         :batch-handler (batch-handler router)))))
 
 
-(defmacro with-handler [[handler-binding] txs & body]
-  `(with-system-data [{handler# :blaze.interaction/transaction
-                       router# ::router} system]
-     ~txs
-     (let [~handler-binding (-> handler# (wrap-defaults router#)
-                                wrap-error)]
-       ~@body)))
+(defmacro with-handler [[handler-binding] & more]
+  (let [[txs body] (itu/extract-txs-body more)]
+    `(with-system-data [{handler# :blaze.interaction/transaction
+                         router# ::router} system]
+       ~txs
+       (let [~handler-binding (-> handler# (wrap-defaults router#)
+                                  wrap-error)]
+         ~@body))))
 
 
 (deftest handler-test
   (with-handler [handler]
-    []
     (testing "on missing body"
       (let [{:keys [status body]}
             @(handler {})]
@@ -241,7 +241,6 @@
     (testing (format "On %s bundle" type)
       (testing "empty bundle"
         (with-handler [handler]
-          []
           (let [{:keys [status body]}
                 @(handler
                    {:body
@@ -272,7 +271,6 @@
 
             (testing "without return preference"
               (with-handler [handler]
-                []
                 (let [{:keys [status body]
                        {[{:keys [resource response]}] :entry} :body}
                       @(handler
@@ -302,7 +300,6 @@
 
             (testing "with representation return preference"
               (with-handler [handler]
-                []
                 (let [{:keys [status body]
                        {[{:keys [resource response]}] :entry} :body}
                       @(handler
@@ -426,7 +423,6 @@
 
           (testing "without return preference"
             (with-handler [handler]
-              []
               (let [{:keys [status body]
                      {[{:keys [resource response]}] :entry} :body}
                     @(handler
@@ -456,7 +452,6 @@
 
           (testing "with representation return preference"
             (with-handler [handler]
-              []
               (let [{:keys [status body]
                      {[{:keys [resource response]}] :entry} :body}
                     @(handler
@@ -492,8 +487,6 @@
       (testing "and conditional create interaction"
         (testing "with empty property"
           (with-handler [handler]
-            []
-
             (let [{:keys [status]}
                   @(handler
                      {:body
@@ -514,8 +507,6 @@
 
         (testing "with ignorable _sort search parameter"
           (with-handler [handler]
-            []
-
             (let [{:keys [status]}
                   @(handler
                      {:body
@@ -754,7 +745,6 @@
       (testing "and read interaction"
         (testing "returns Not-Found on non-existing resource"
           (with-handler [handler]
-            []
             (let [{:keys [status]
                    {[{:keys [response]}] :entry :as body} :body}
                   @(handler
@@ -831,7 +821,6 @@
   (testing "On transaction bundle"
     (testing "on missing request"
       (with-handler [handler]
-        []
         (let [{:keys [status body]}
               @(handler
                  {:body
@@ -852,7 +841,6 @@
 
     (testing "on missing request url"
       (with-handler [handler]
-        []
         (let [{:keys [status body]}
               @(handler
                  {:body
@@ -874,7 +862,6 @@
 
     (testing "on missing request method"
       (with-handler [handler]
-        []
         (let [{:keys [status body]}
               @(handler
                  {:body
@@ -898,7 +885,6 @@
 
     (testing "on unknown method"
       (with-handler [handler]
-        []
         (let [{:keys [status body]}
               @(handler
                  {:body
@@ -923,7 +909,6 @@
 
     (testing "on unsupported method"
       (with-handler [handler]
-        []
         (let [{:keys [status body]}
               @(handler
                  {:body
@@ -949,7 +934,6 @@
     (testing "and update interaction"
       (testing "on missing type in URL"
         (with-handler [handler]
-          []
           (let [{:keys [status body]}
                 @(handler
                    {:body
@@ -974,7 +958,6 @@
 
       (testing "on unknown type"
         (with-handler [handler]
-          []
           (let [{:keys [status body]}
                 @(handler
                    {:body
@@ -999,7 +982,6 @@
 
       (testing "on missing resource type"
         (with-handler [handler]
-          []
           (let [{:keys [status body]}
                 @(handler
                    {:body
@@ -1026,7 +1008,6 @@
 
       (testing "on type mismatch"
         (with-handler [handler]
-          []
           (let [{:keys [status body]}
                 @(handler
                    {:body
@@ -1056,7 +1037,6 @@
 
       (testing "on missing ID"
         (with-handler [handler]
-          []
           (let [{:keys [status body]}
                 @(handler
                    {:body
@@ -1085,7 +1065,6 @@
 
       (testing "on missing ID in URL"
         (with-handler [handler]
-          []
           (let [{:keys [status body]}
                 @(handler
                    {:body
@@ -1112,7 +1091,6 @@
 
       (testing "on invalid ID"
         (with-handler [handler]
-          []
           (let [{:keys [status body]}
                 @(handler
                    {:body
@@ -1142,7 +1120,6 @@
 
       (testing "on ID mismatch"
         (with-handler [handler]
-          []
           (let [{:keys [status body]}
                 @(handler
                    {:body
@@ -1203,7 +1180,6 @@
 
       (testing "on duplicate resources"
         (with-handler [handler]
-          []
           (let [{:keys [status body]}
                 @(handler
                    {:body
@@ -1238,7 +1214,6 @@
 
       (testing "on violated referential integrity"
         (with-handler [handler]
-          []
           (let [{:keys [status body]}
                 @(handler
                    {:body
@@ -1268,7 +1243,6 @@
     (testing "and create interaction"
       (testing "creates sequential identifiers"
         (with-handler [handler]
-          []
           (let [{:keys [body]}
                 @(handler
                    {:headers {"prefer" "return=representation"}
@@ -1320,12 +1294,77 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"conflict"
-                [:issue 0 :diagnostics] := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found.")))))))
+                [:issue 0 :diagnostics] := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."))))))
+
+    (testing "and conditional update interaction"
+      (testing "with if-none-match *"
+        (testing "on non-existing resource"
+          (with-handler [handler]
+            (let [{:keys [status]
+                   {[{:keys [resource response]}] :entry :as body} :body}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type #fhir/code"transaction"
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Patient :id "0"}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"PUT"
+                          :url #fhir/uri"Patient/0"
+                          :ifNoneMatch "*"}}]}})]
+
+              (testing "response status"
+                (is (= 200 status)))
+
+              (testing "bundle"
+                (given body
+                  :fhir/type := :fhir/Bundle
+                  :id := "AAAAAAAAAAAAAAAA"
+                  :type := #fhir/code"transaction-response"))
+
+              (testing "entry resource"
+                (is (nil? resource)))
+
+              (testing "entry response"
+                (given response
+                  :status := "201"
+                  :etag := "W/\"1\""
+                  :lastModified := Instant/EPOCH)))))
+
+        (testing "on existing resource"
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (let [{:keys [status body]}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type #fhir/code"transaction"
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Patient :id "0"}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"PUT"
+                          :url #fhir/uri"Patient/0"
+                          :ifNoneMatch "*"}}]}})]
+
+              (testing "returns error"
+                (is (= 412 status))
+
+                (given body
+                  :fhir/type := :fhir/OperationOutcome
+                  [:issue 0 :severity] := #fhir/code"error"
+                  [:issue 0 :code] := #fhir/code"conflict"
+                  [:issue 0 :diagnostics] := "Resource `Patient/0` already exists."))))))))
 
   (testing "On batch bundle"
     (testing "on missing request"
       (with-handler [handler]
-        []
         (let [{:keys [status] {[{:keys [response]}] :entry} :body}
               @(handler
                  {:body
@@ -1351,7 +1390,6 @@
 
     (testing "on missing request url"
       (with-handler [handler]
-        []
         (let [{:keys [status] {[{:keys [response]}] :entry} :body}
               @(handler
                  {:body
@@ -1378,7 +1416,6 @@
 
     (testing "on missing request method"
       (with-handler [handler]
-        []
         (let [{:keys [status] {[{:keys [response]}] :entry} :body}
               @(handler
                  {:body
@@ -1407,7 +1444,6 @@
 
     (testing "on unknown method"
       (with-handler [handler]
-        []
         (let [{:keys [status] {[{:keys [response]}] :entry} :body}
               @(handler
                  {:body
@@ -1437,7 +1473,6 @@
 
     (testing "on unsupported method"
       (with-handler [handler]
-        []
         (let [{:keys [status] {[{:keys [response]}] :entry} :body}
               @(handler
                  {:body
@@ -1467,7 +1502,6 @@
 
     (testing "on metadata"
       (with-handler [handler]
-        []
         (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
               @(handler
                  {:body
@@ -1494,7 +1528,6 @@
     (testing "and update interaction"
       (testing "on invalid type-level URL"
         (with-handler [handler]
-          []
           (let [{:keys [status] {[{:keys [response]}] :entry} :body}
                 @(handler
                    {:body
@@ -1562,7 +1595,6 @@
 
       (testing "without return preference"
         (with-handler [handler]
-          []
           (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
                 @(handler
                    {:body
@@ -1592,7 +1624,6 @@
 
         (testing "leading slash in URL is removed"
           (with-handler [handler]
-            []
             (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
                   @(handler
                      {:body
@@ -1622,7 +1653,6 @@
 
       (testing "with representation return preference"
         (with-handler [handler]
-          []
           (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
                 @(handler
                    {:headers {"prefer" "return=representation"}
@@ -1658,7 +1688,6 @@
     (testing "and create interaction"
       (testing "on not-found type-level URL"
         (with-handler [handler]
-          []
           (let [{:keys [status] {[{:keys [response]}] :entry} :body}
                 @(handler
                    {:body
@@ -1690,7 +1719,6 @@
 
       (testing "on invalid instance-level URL"
         (with-handler [handler]
-          []
           (let [{:keys [status] {[{:keys [response]}] :entry} :body}
                 @(handler
                    {:body
@@ -1722,7 +1750,6 @@
 
       (testing "on violated referential integrity"
         (with-handler [handler]
-          []
           (let [{:keys [status] {[{:keys [response]}] :entry} :body}
                 @(handler
                    {:body
@@ -1790,6 +1817,78 @@
                   [:issue 0 :code] := #fhir/code"conflict"
                   [:issue 0 :diagnostics] := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."
                   [:issue 0 :expression 0] := "Bundle.entry[0]")))))))
+
+    (testing "and conditional update interaction"
+      (testing "with if-none-match *"
+        (testing "on non-existing resource"
+          (with-handler [handler]
+            (let [{:keys [status]
+                   {[{:keys [resource response]}] :entry :as body} :body}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type #fhir/code"batch"
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Patient :id "0"}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"PUT"
+                          :url #fhir/uri"Patient/0"
+                          :ifNoneMatch "*"}}]}})]
+
+              (testing "response status"
+                (is (= 200 status)))
+
+              (testing "bundle"
+                (given body
+                  :fhir/type := :fhir/Bundle
+                  :id := "AAAAAAAAAAAAAAAA"
+                  :type := #fhir/code"batch-response"))
+
+              (testing "entry resource"
+                (is (nil? resource)))
+
+              (testing "entry response"
+                (given response
+                  :status := "201"
+                  :etag := "W/\"1\""
+                  :lastModified := Instant/EPOCH)))))
+
+        (testing "on existing resource"
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+            (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type #fhir/code"batch"
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Patient :id "0"}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"PUT"
+                          :url #fhir/uri"Patient/0"
+                          :ifNoneMatch "*"}}]}})]
+
+              (testing "response status"
+                (is (= 200 status)))
+
+              (testing "returns error"
+                (testing "with status"
+                  (is (= "412" (:status response))))
+
+                (testing "with outcome"
+                  (given (:outcome response)
+                    :fhir/type := :fhir/OperationOutcome
+                    [:issue 0 :severity] := #fhir/code"error"
+                    [:issue 0 :code] := #fhir/code"conflict"
+                    [:issue 0 :diagnostics] := "Resource `Patient/0` already exists."
+                    [:issue 0 :expression 0] := "Bundle.entry[0]"))))))))
 
     (testing "and search-type interaction"
       (with-handler [handler]

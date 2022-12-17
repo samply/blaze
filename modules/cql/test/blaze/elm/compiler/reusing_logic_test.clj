@@ -47,17 +47,21 @@
       :context := {}))
 
   (testing "Result Type"
-    (let [library {:statements {:def [{:name "name-170312" :resultTypeName "result-type-name-173029"}]}}
+    (let [library {:statements {:def [{:type "ExpressionDef"
+                                       :name "name-170312"
+                                       :resultTypeName "result-type-name-173029"}]}}
           expr (c/compile {:library library} #elm/expression-ref "name-170312")]
       (is (= "result-type-name-173029" (:result-type-name (meta expr))))))
 
   (testing "Eval"
-    (let [library {:statements {:def [{:name "name-170312"}]}}
+    (let [library {:statements {:def [{:type "ExpressionDef"
+                                       :name "name-170312"}]}}
           expr (c/compile {:library library} #elm/expression-ref "name-170312")]
       (is (= ::result (core/-eval expr {:expression-defs {"name-170312" {:expression ::result}}} nil nil)))))
 
   (testing "form"
-    (let [library {:statements {:def [{:name "name-170312"}]}}
+    (let [library {:statements {:def [{:type "ExpressionDef"
+                                       :name "name-170312"}]}}
           expr (c/compile {:library library} #elm/expression-ref "name-170312")]
       (is (= '(expr-ref "name-170312") (core/-form expr))))))
 

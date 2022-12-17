@@ -8,6 +8,7 @@
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.interaction.history.type]
     [blaze.interaction.history.util-spec]
+    [blaze.interaction.test-util :as itu]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
     [blaze.test-util :as tu :refer [given-thrown]]
@@ -99,15 +100,35 @@
         ::reitit/match match))))
 
 
-(defmacro with-handler [[handler-binding] txs & body]
-  `(with-system-data [{node# :blaze.db/node
-                       handler# :blaze.interaction.history/type} system]
-     ~txs
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
-       ~@body)))
+(defmacro with-handler [[handler-binding] & more]
+  (let [[txs body] (itu/extract-txs-body more)]
+    `(with-system-data [{node# :blaze.db/node
+                         handler# :blaze.interaction.history/type} system]
+       ~txs
+       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
+         ~@body))))
 
 
 (deftest handler-test
+  (testing "with empty node"
+    (with-handler [handler]
+      (let [{:keys [status body]}
+            @(handler {})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle id is an LUID"
+          (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+        (is (= #fhir/code"history" (:type body)))
+
+        (is (= #fhir/unsignedInt 0 (:total body)))
+
+        (is (empty? (:entry body))))))
+
   (testing "with one patient"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]

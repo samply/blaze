@@ -3,6 +3,7 @@
     [blaze.byte-buffer :as bb]
     [blaze.byte-string-spec]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.codec.date :as codec-date]
     [blaze.db.impl.index.search-param-value-resource-spec]
     [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
     [blaze.db.impl.search-param :as search-param]
@@ -22,7 +23,7 @@
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
-    [java.time LocalDate OffsetDateTime ZoneId ZoneOffset]))
+    [java.time Instant]))
 
 
 (set! *warn-on-reflection* true)
@@ -69,15 +70,27 @@
       (given (search-param/compile-values
                (birth-date-param search-param-registry) nil ["ne2020"])
         ::anom/category := ::anom/unsupported
-        ::anom/message := "Unsupported prefix `ne` in search parameter `birthdate`."))))
+        ::anom/message := "Unsupported prefix `ne` in search parameter `birthdate`."))
+
+    (testing "less than"
+      (given (search-param/compile-values
+               (birth-date-param search-param-registry) nil ["lt2020"])
+        [0 :op] := :lt
+        [0 :lower-bound] := (codec-date/encode-lower-bound #system/date"2020")))))
 
 
-(defn- date-lb [date-time]
-  (codec/date-lb (ZoneId/systemDefault) date-time))
+(defn- lower-bound-instant [date-range-bytes]
+  (-> date-range-bytes
+      codec-date/lower-bound-bytes
+      codec/decode-number
+      Instant/ofEpochSecond))
 
 
-(defn- date-ub [date-time]
-  (codec/date-ub (ZoneId/systemDefault) date-time))
+(defn- upper-bound-instant [date-range-bytes]
+  (-> date-range-bytes
+      codec-date/upper-bound-bytes
+      codec/decode-number
+      Instant/ofEpochSecond))
 
 
 (deftest index-entries-test
@@ -96,9 +109,8 @@
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
               :code := "birthdate"
               :type := "Patient"
-              :v-hash := (codec/date-lb-ub
-                           (date-lb (LocalDate/of 2020 2 4))
-                           (date-ub (LocalDate/of 2020 2 4)))
+              [:v-hash lower-bound-instant] := (Instant/parse "2020-02-04T00:00:00Z")
+              [:v-hash upper-bound-instant] := (Instant/parse "2020-02-04T23:59:59Z")
               :id := "id-142629"
               :hash-prefix := (hash/prefix hash)))))
 
@@ -113,17 +125,12 @@
                 (sr/get search-param-registry "death-date" "Patient")
                 [] hash patient)]
 
-          (testing "the entry is about both bounds of `2020-01-01T00:00:00Z`"
+          (testing "the entry is about both bounds of `2019-11-16T23:14:29Z`"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
               :code := "death-date"
               :type := "Patient"
-              :v-hash := (codec/date-lb-ub
-                           (date-lb
-                             (OffsetDateTime/of 2019 11 17 0 14 29 0
-                                                (ZoneOffset/ofHours 1)))
-                           (date-ub
-                             (OffsetDateTime/of 2019 11 17 0 14 29 0
-                                                (ZoneOffset/ofHours 1))))
+              [:v-hash lower-bound-instant] := (Instant/parse "2019-11-16T23:14:29Z")
+              [:v-hash upper-bound-instant] := (Instant/parse "2019-11-16T23:14:29Z")
               :id := "id-142629"
               :hash-prefix := (hash/prefix hash))))))
 
@@ -146,13 +153,8 @@
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
               :code := "date"
               :type := "Encounter"
-              :v-hash := (codec/date-lb-ub
-                           (date-lb
-                             (OffsetDateTime/of 2019 11 17 0 14 29 0
-                                                (ZoneOffset/ofHours 1)))
-                           (date-ub
-                             (OffsetDateTime/of 2019 11 17 0 44 29 0
-                                                (ZoneOffset/ofHours 1))))
+              [:v-hash lower-bound-instant] := (Instant/parse "2019-11-16T23:14:29Z")
+              [:v-hash upper-bound-instant] := (Instant/parse "2019-11-16T23:44:29Z")
               :id := "id-160224"
               :hash-prefix := (hash/prefix hash))))
 
@@ -173,9 +175,8 @@
               (given (sp-vr-tu/decode-key-human (bb/wrap k0))
                 :code := "date"
                 :type := "Encounter"
-                :v-hash := (codec/date-lb-ub
-                             codec/date-min-bound
-                             (date-ub (LocalDate/of 2019 11 17)))
+                [:v-hash lower-bound-instant] := (Instant/parse "0001-01-01T00:00:00Z")
+                [:v-hash upper-bound-instant] := (Instant/parse "2019-11-17T23:59:59Z")
                 :id := "id-160224"
                 :hash-prefix := (hash/prefix hash)))))
 
@@ -196,11 +197,8 @@
               (given (sp-vr-tu/decode-key-human (bb/wrap k0))
                 :code := "date"
                 :type := "Encounter"
-                :v-hash := (codec/date-lb-ub
-                             (date-lb
-                               (OffsetDateTime/of 2019 11 17 0 14 29 0
-                                                  (ZoneOffset/ofHours 1)))
-                             codec/date-max-bound)
+                [:v-hash lower-bound-instant] := (Instant/parse "2019-11-16T23:14:29Z")
+                [:v-hash upper-bound-instant] := (Instant/parse "9999-12-31T23:59:59Z")
                 :id := "id-160224"
                 :hash-prefix := (hash/prefix hash)))))))
 
@@ -219,13 +217,8 @@
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
               :code := "issued"
               :type := "DiagnosticReport"
-              :v-hash := (codec/date-lb-ub
-                           (date-lb
-                             (OffsetDateTime/of 2019 11 17 0 14 29 917
-                                                (ZoneOffset/ofHours 1)))
-                           (date-ub
-                             (OffsetDateTime/of 2019 11 17 0 14 29 917
-                                                (ZoneOffset/ofHours 1))))
+              [:v-hash lower-bound-instant] := (Instant/parse "2019-11-16T23:14:29Z")
+              [:v-hash upper-bound-instant] := (Instant/parse "2019-11-16T23:14:29Z")
               :id := "id-155607"
               :hash-prefix := (hash/prefix hash))))))
 

@@ -6,6 +6,7 @@
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.executors :as ex]
     [blaze.interaction.delete]
+    [blaze.interaction.test-util :as itu]
     [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -60,17 +61,17 @@
     :blaze.test/executor {}))
 
 
-(defmacro with-handler [[handler-binding] txs & body]
-  `(with-system-data [{handler# :blaze.interaction/delete} system]
-     ~txs
-     (let [~handler-binding handler#]
-       ~@body)))
+(defmacro with-handler [[handler-binding] & more]
+  (let [[txs body] (itu/extract-txs-body more)]
+    `(with-system-data [{handler# :blaze.interaction/delete} system]
+       ~txs
+       (let [~handler-binding handler#]
+         ~@body))))
 
 
 (deftest handler-test
   (testing "Returns No Content on non-existing resource"
     (with-handler [handler]
-      []
       (let [{:keys [status headers body]}
             @(handler
                {:path-params {:id "0"}

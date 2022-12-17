@@ -2,7 +2,8 @@
   (:require
     [blaze.system :as system]
     [clojure.string :as str]
-    [taoensso.timbre :as log]))
+    [taoensso.timbre :as log])
+  (:gen-class))
 
 
 (defn- max-memory []

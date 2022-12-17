@@ -83,6 +83,20 @@
   {:type "CodeRef" :name name})
 
 
+;; 3.6. Concept
+(defn concept [[codes display]]
+  (cond->
+    {:type "Concept"
+     :codes codes}
+    display
+    (assoc :display display)))
+
+
+;; 3.8. ConceptRef
+(defn concept-ref [name]
+  {:type "ConceptRef" :name name})
+
+
 ;; 3.9. Quantity
 (defn quantity [[value unit]]
   (cond->
@@ -91,6 +105,21 @@
     unit
     (assoc :unit unit)))
 
+
+;; 3.10. Ratio
+(defn ratio
+  [[[numerator-value numerator-unit] [denominator-value denominator-unit]]]
+  {:type "Ratio"
+   :numerator (cond->
+                {:type "Quantity"
+                 :value numerator-value}
+                numerator-unit
+                (assoc :unit numerator-unit))
+   :denominator (cond->
+                  {:type "Quantity"
+                   :value denominator-value}
+                  denominator-unit
+                  (assoc :unit denominator-unit))})
 
 
 ;; 7. Parameters
@@ -845,6 +874,11 @@
   {:type "ConvertsToQuantity" :operand operand})
 
 
+;; 22.14. ConvertsToRatio
+(defn converts-to-ratio [operand]
+  {:type "ConvertsToRatio" :operand operand})
+
+
 ;; 22.15. ConvertsToString
 (defn converts-to-string [operand]
   {:type "ConvertsToString" :operand operand})
@@ -873,6 +907,11 @@
 ;; 22.20. ToChars
 (defn to-chars [operand]
   {:type "ToChars" :operand operand})
+
+
+;; 22.21. ToConcept
+(defn to-concept [operand]
+  {:type "ToConcept" :operand operand})
 
 
 ;; 22.22. ToDate
@@ -908,6 +947,11 @@
 ;; 22.28. ToQuantity
 (defn to-quantity [operand]
   {:type "ToQuantity" :operand operand})
+
+
+;; 22.29. ToRatio
+(defn to-ratio [operand]
+  {:type "ToRatio" :operand operand})
 
 
 ;; 22.30. ToString

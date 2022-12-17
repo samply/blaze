@@ -219,7 +219,7 @@
          (when ~'extension
            (.putByte ~tagged-sink (byte ~extension-tag))
            (p/-hash-into ~'extension ~'sink))
-         (when (some? ~value-sym)
+         (when-not (nil? ~value-sym)
            (.putByte ~tagged-sink (byte ~value-tag))
            (system/-hash-into ~value-sym ~'sink)))
        (~'-references [~'_]
@@ -309,7 +309,7 @@
 
 
 (defn write-field [generator field-sym]
-  `(when (some? ~field-sym)
+  `(when-not (nil? ~field-sym)
      ~@(cond
          (= 'String (:tag (meta field-sym)))
          `[(.writeFieldName ~(with-meta generator {:tag `JsonGenerator}) ~(field-name field-sym))
@@ -355,7 +355,7 @@
            (.putByte ~sink-sym-tag (byte ~hash-num))
            ~@(map-indexed
                (fn [idx field]
-                 `(when (some? ~field)
+                 `(when-not (nil? ~field)
                     (.putByte ~sink-sym-tag (byte ~idx))
                     (~(if (= 'id field) `system/-hash-into `p/-hash-into)
                       ~field ~sink-sym)))

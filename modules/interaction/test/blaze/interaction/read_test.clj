@@ -9,7 +9,7 @@
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.db.spec]
     [blaze.interaction.read]
-    [blaze.interaction.test-util :refer [wrap-error]]
+    [blaze.interaction.test-util :as itu :refer [wrap-error]]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
     [blaze.test-util :as tu]
@@ -49,19 +49,19 @@
     (handler (assoc request ::reitit/match match))))
 
 
-(defmacro with-handler [[handler-binding] txs & body]
-  `(with-system-data [{node# :blaze.db/node
-                       handler# :blaze.interaction/read} system]
-     ~txs
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
-                                wrap-error)]
-       ~@body)))
+(defmacro with-handler [[handler-binding] & more]
+  (let [[txs body] (itu/extract-txs-body more)]
+    `(with-system-data [{node# :blaze.db/node
+                         handler# :blaze.interaction/read} system]
+       ~txs
+       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+                                  wrap-error)]
+         ~@body))))
 
 
 (deftest handler-test
   (testing "returns Not-Found on non-existing resource"
     (with-handler [handler]
-      []
       (let [{:keys [status body]}
             @(handler {:path-params {:id "0"}})]
 
@@ -75,7 +75,6 @@
 
   (testing "returns Not-Found on invalid version id"
     (with-handler [handler]
-      []
       (let [{:keys [status body]}
             @(handler {:path-params {:id "0" :vid "a"}})]
 

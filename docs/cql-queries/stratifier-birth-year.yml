@@ -1,0 +1,8 @@
+library: docs/cql-queries/stratifier-birth-year.cql
+group:
+- type: Patient
+  population:
+  - expression: InInitialPopulation
+  stratifier:
+  - code: birth-year
+    expression: BirthYear

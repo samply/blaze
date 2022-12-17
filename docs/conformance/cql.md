@@ -27,11 +27,11 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 3.3.  | CodeRef       | !          | only inside same library |       |
 | 3.4.  | CodeSystemDef | ✓          |                          |       |
 | 3.5.  | CodeSystemRef | !          | only inside same library |       |
-| 3.6.  | Concept       | ✗          |                          |       |
-| 3.7.  | ConceptDef    | ✗          |                          |       |
-| 3.8.  | ConceptRef    | ✗          |                          |       |
+| 3.6.  | Concept       | ✓          |                          |       |
+| 3.7.  | ConceptDef    | ✓          |                          |       |
+| 3.8.  | ConceptRef    | ✓          |                          |       |
 | 3.9.  | Quantity      | ✓          |                          |       |
-| 3.10. | Ratio         | ✗          |                          |       |
+| 3.10. | Ratio         | ✓          |                          |       |
 | 3.11. | ValueSetDef   | ✗          |                          |       |
 | 3.12. | ValueSetRef   | ✗          |                          |       |
 
@@ -336,14 +336,14 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 22.11. | ConvertsToLong     | ✓          |               |       |
 | 22.12. | ConvertsToInteger  | ✓          |               |       |
 | 22.13. | ConvertsToQuantity | ✓          |               |       |
-| 22.14. | ConvertsToRatio    | ✗          |               |       |
+| 22.14. | ConvertsToRatio    | ✓          |               |       |
 | 22.15. | ConvertsToString   | ✓          |               |       |
 | 22.16. | ConvertsToTime     | ✓          |               |       |
 | 22.17. | Descendents        | ✓          |               |       |
 | 22.18. | Is                 | ✓          |               |       |
 | 22.19. | ToBoolean          | ✓          |               |       |
 | 22.20. | ToChars            | ✓          |               |       |
-| 22.21. | ToConcept          | ✗          |               |       |
+| 22.21. | ToConcept          | ✓          |               |       |
 | 22.22. | ToDate             | ✓          |               |       |
 | 22.23. | ToDateTime         | ✓          |               |       |
 | 22.24. | ToDecimal          | ✓          |               |       |
@@ -351,7 +351,7 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 22.26. | ToList             | ✓          |               |       |
 | 22.27. | ToLong             | ✓          |               |       |
 | 22.28. | ToQuantity         | ✓          |               |       |
-| 22.29. | ToRatio            | ✗          |               |       |
+| 22.29. | ToRatio            | ✓          |               |       |
 | 22.30. | ToString           | ✓          |               |       |
 | 22.31. | ToTime             | ✓          |               |       |
 

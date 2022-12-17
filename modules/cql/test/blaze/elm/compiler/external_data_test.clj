@@ -195,6 +195,58 @@
               [0 fhir-spec/fhir-type] := :fhir/Observation
               [0 :id] := "1"
               [1 fhir-spec/fhir-type] := :fhir/Observation
+              [1 :id] := "2"))))
+
+      (testing "with one concept"
+        (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Observation :id "0"
+                   :subject
+                   #fhir/Reference{:reference "Patient/0"}}]
+            [:put {:fhir/type :fhir/Observation :id "1"
+                   :code
+                   #fhir/CodeableConcept
+                           {:coding
+                            [#fhir/Coding
+                                    {:system #fhir/uri"system-192253"
+                                     :code #fhir/code"code-192300"}]}
+                   :subject
+                   #fhir/Reference{:reference "Patient/0"}}]
+            [:put {:fhir/type :fhir/Observation :id "2"
+                   :code
+                   #fhir/CodeableConcept
+                           {:coding
+                            [#fhir/Coding
+                                    {:system #fhir/uri"system-192253"
+                                     :code #fhir/code"code-140541"}]}
+                   :subject
+                   #fhir/Reference{:reference "Patient/0"}}]]]
+
+          (let [context
+                {:node node
+                 :eval-context "Patient"
+                 :library
+                 {:codeSystems
+                  {:def
+                   [{:name "sys-def-131750"
+                     :id "system-192253"}]}}}
+                elm #elm/retrieve
+                            {:type "Observation"
+                             :codes
+                             {:type "Property"
+                              :path "codes"
+                              :source #elm/concept
+                                     [[#elm/code ["sys-def-131750" "code-192300"]
+                                       #elm/code ["sys-def-131750" "code-140541"]]]}}
+                expr (c/compile context elm)
+                db (d/db node)
+                patient (d/resource-handle db "Patient" "0")]
+
+            (given (core/-eval expr {:db db} patient nil)
+              count := 2
+              [0 fhir-spec/fhir-type] := :fhir/Observation
+              [0 :id] := "1"
+              [1 fhir-spec/fhir-type] := :fhir/Observation
               [1 :id] := "2"))))))
 
   (testing "Specimen context"
@@ -275,7 +327,8 @@
                        {:def [{:name "sys-def-174848" :id "system-174915"}]}
                        :statements
                        {:def
-                        [{:name "name-174207"
+                        [{:type "ExpressionDef"
+                          :name "name-174207"
                           :resultTypeName "{http://hl7.org/fhir}Patient"}]}}
               elm #elm/retrieve
                           {:type "Observation"
@@ -292,7 +345,8 @@
                        {:def [{:name "sys-def-174848" :id "system-174915"}]}
                        :statements
                        {:def
-                        [{:name "name-174207"
+                        [{:type "ExpressionDef"
+                          :name "name-174207"
                           :resultTypeName "{http://hl7.org/fhir}Patient"}]}}
               elm #elm/retrieve
                           {:type "Observation"

@@ -265,6 +265,11 @@
   (to-boolean [x]))
 
 
+;; 22.21. ToConcept
+(defprotocol ToConcept
+  (to-concept [x]))
+
+
 ;; 22.22. ToDate
 (defprotocol ToDate
   "Converts an object into something usable as Date relative to `now`.
@@ -303,6 +308,11 @@
 ;; 22.28. ToQuantity
 (defprotocol ToQuantity
   (to-quantity [x]))
+
+
+;; 22.29. ToRatio
+(defprotocol ToRatio
+  (to-ratio [x]))
 
 
 ;; 22.30. ToString

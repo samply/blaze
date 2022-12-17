@@ -1,15 +1,25 @@
-{:deps
+{:paths ["src" "target/classes"]
+
+ :deps
  {blaze/module-base
   {:local/root "../module-base"}
-
-  com.rpl/proxy-plus
-  {:mvn/version "0.0.8"}
 
   io.prometheus/simpleclient_hotspot
   {:mvn/version "0.16.0"}}
 
+ :deps/prep-lib
+ {:alias :build
+  :fn compile
+  :ensure "target/classes"}
+
  :aliases
- {:test
+ {:build
+  {:deps
+   {io.github.clojure/tools.build
+    {:git/tag "v0.8.5" :git/sha "9c738da"}}
+   :ns-default build}
+
+  :test
   {:extra-paths ["test"]
 
    :extra-deps
@@ -29,4 +39,4 @@
     {:mvn/version "1.2.4"}}
 
    :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
-               "-e" ".*spec$"]}}}
+               "-e" ".*spec$" -e "blaze.metrics.collector"]}}}

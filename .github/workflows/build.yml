@@ -16,7 +16,7 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Setup Clojure
@@ -73,7 +73,7 @@ jobs:
         - '11'
         - '17'
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Setup Java
@@ -85,7 +85,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1189'
+        cli: '1.11.1.1208'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -104,7 +104,7 @@ jobs:
 
     needs: [ test ]
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Setup Java
@@ -116,7 +116,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1189'
+        cli: '1.11.1.1208'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -146,7 +146,7 @@ jobs:
         - '11'
         - '17'
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Setup Java
@@ -158,7 +158,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1189'
+        cli: '1.11.1.1208'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -174,7 +174,7 @@ jobs:
 
   build:
     needs: [ test, test-root ]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Setup Java
@@ -186,7 +186,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1189'
+        cli: '1.11.1.1208'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -200,8 +200,11 @@ jobs:
     - name: Build Uberjar
       run: make uberjar
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
+    - name: Upload Blaze Uberjar
+      uses: actions/upload-artifact@v3
+      with:
+        name: blaze-uberjar
+        path: target/blaze-0.18.5-standalone.jar
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
@@ -213,8 +216,28 @@ jobs:
         tags: blaze:latest
         outputs: type=docker,dest=/tmp/blaze.tar
 
+    - name: Upload Blaze Image
+      uses: actions/upload-artifact@v3
+      with:
+        name: blaze-image
+        path: /tmp/blaze.tar
+
+  image-scan:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
+      with:
+        name: blaze-image
+        path: /tmp
+
     - name: Load Blaze Image
       run: docker load --input /tmp/blaze.tar
+
+    - name: Check out Git repository
+      uses: actions/checkout@v3
 
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
@@ -229,51 +252,9 @@ jobs:
       with:
         sarif_file: trivy-results.sarif
 
-    - name: Upload Blaze Image
-      uses: actions/upload-artifact@v3
-      with:
-        name: blaze-image
-        path: /tmp/blaze.tar
-
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v2
-      with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.CR_PAT }}
-
-    - name: Login to DockerHub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-    - name: Docker meta
-      id: docker-meta
-      uses: docker/metadata-action@v4
-      with:
-        images: |
-          samply/blaze
-          ghcr.io/samply/blaze
-        tags: |
-          type=schedule
-          type=ref,event=branch
-          type=ref,event=pr
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-
-    - name: Build and push
-      uses: docker/build-push-action@v3
-      with:
-        context: .
-        platforms: linux/amd64,linux/arm64
-        push: true
-        tags: ${{ steps.docker-meta.outputs.tags }}
-        labels: ${{ steps.docker-meta.outputs.labels }}
-
   integration-test:
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Check out Git repository
@@ -334,7 +315,7 @@ jobs:
       run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9" 2399
 
     - name: Download Observation Resources with all LOINC Codes
-      run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9,http://loinc.org|1920-8,http://loinc.org|1960-4,http://loinc.org|1975-2,http://loinc.org|1988-5,http://loinc.org|19926-5,http://loinc.org|19994-3,http://loinc.org|2019-8,http://loinc.org|2028-9,http://loinc.org|20454-5,http://loinc.org|20505-4,http://loinc.org|20565-8,http://loinc.org|20570-8,http://loinc.org|2069-3,http://loinc.org|2075-0,http://loinc.org|2085-9,http://loinc.org|2093-3,http://loinc.org|21000-5,http://loinc.org|2157-6,http://loinc.org|2160-0,http://loinc.org|21905-5,http://loinc.org|21906-3,http://loinc.org|21907-1,http://loinc.org|21908-9,http://loinc.org|2276-4,http://loinc.org|2339-0,http://loinc.org|2345-7,http://loinc.org|2498-4,http://loinc.org|2500-7,http://loinc.org|2502-3,http://loinc.org|2514-8,http://loinc.org|2532-0,http://loinc.org|25428-4,http://loinc.org|2571-8,http://loinc.org|26881-3,http://loinc.org|2703-7,http://loinc.org|2708-6,http://loinc.org|2713-6,http://loinc.org|2744-1,http://loinc.org|2823-3,http://loinc.org|28245-9,http://loinc.org|2857-1,http://loinc.org|2885-2,http://loinc.org|29463-7,http://loinc.org|2947-0,http://loinc.org|2951-2,http://loinc.org|3094-0,http://loinc.org|32167-9,http://loinc.org|32207-3,http://loinc.org|32465-7,http://loinc.org|32623-1,http://loinc.org|33728-7,http://loinc.org|33756-8,http://loinc.org|33762-6,http://loinc.org|33914-3,http://loinc.org|33959-8,http://loinc.org|38208-5,http://loinc.org|38265-5,http://loinc.org|38483-4,http://loinc.org|39156-5,http://loinc.org|44667-4,http://loinc.org|44963-7,http://loinc.org|4544-3,http://loinc.org|4548-4,http://loinc.org|46240-8,http://loinc.org|46288-7,http://loinc.org|48065-7,http://loinc.org|49765-1,http://loinc.org|55277-8,http://loinc.org|5767-9,http://loinc.org|5770-3,http://loinc.org|5778-6,http://loinc.org|57905-2,http://loinc.org|5792-7,http://loinc.org|5794-3,http://loinc.org|5797-6,http://loinc.org|5799-2,http://loinc.org|5802-4,http://loinc.org|5803-2,http://loinc.org|5804-0,http://loinc.org|5811-5,http://loinc.org|5902-2,http://loinc.org|59032-3,http://loinc.org|5905-5,http://loinc.org|59408-5,http://loinc.org|59557-9,http://loinc.org|59576-9,http://loinc.org|6075-6,http://loinc.org|6082-2,http://loinc.org|6085-5,http://loinc.org|6095-4,http://loinc.org|6106-9,http://loinc.org|6158-0,http://loinc.org|6189-5,http://loinc.org|6206-7,http://loinc.org|6246-3,http://loinc.org|6248-9,http://loinc.org|6273-7,http://loinc.org|6276-0,http://loinc.org|6298-4,http://loinc.org|6299-2,http://loinc.org|6301-6,http://loinc.org|63513-6,http://loinc.org|65750-2,http://loinc.org|66519-0,http://loinc.org|66524-0,http://loinc.org|66529-9,http://loinc.org|66534-9,http://loinc.org|6690-2,http://loinc.org|6768-6,http://loinc.org|6833-8,http://loinc.org|6844-5,http://loinc.org|69453-9,http://loinc.org|704-7,http://loinc.org|706-2,http://loinc.org|711-2,http://loinc.org|713-8,http://loinc.org|718-7,http://loinc.org|71802-3,http://loinc.org|72106-8,http://loinc.org|72166-2,http://loinc.org|72514-3,http://loinc.org|7258-7,http://loinc.org|731-0,http://loinc.org|736-9,http://loinc.org|742-7,http://loinc.org|751-8,http://loinc.org|75325-1,http://loinc.org|76690-7,http://loinc.org|770-8,http://loinc.org|77606-2,http://loinc.org|777-3,http://loinc.org|785-6,http://loinc.org|786-4,http://loinc.org|787-2,http://loinc.org|788-0,http://loinc.org|789-8,http://loinc.org|80382-5,http://loinc.org|80383-3,http://loinc.org|8302-2,http://loinc.org|8310-5,http://loinc.org|8331-1,http://loinc.org|8478-0,http://loinc.org|85318-4,http://loinc.org|85319-2,http://loinc.org|85337-4,http://loinc.org|85339-0,http://loinc.org|85352-3,http://loinc.org|85354-9,http://loinc.org|88020-3,http://loinc.org|88021-1,http://loinc.org|88040-1,http://loinc.org|88262-1,http://loinc.org|8867-4,http://loinc.org|89579-7,http://loinc.org|91148-7,http://loinc.org|92130-4,http://loinc.org|92131-2,http://loinc.org|92134-6,http://loinc.org|92138-7,http://loinc.org|92139-5,http://loinc.org|92140-3,http://loinc.org|92141-1,http://loinc.org|92142-9,http://loinc.org|9279-1,http://loinc.org|94040-3,http://loinc.org|94531-1,http://loinc.org|9843-4,http://loinc.org|99999-0" 42929
+      run: .github/scripts/download-resources-query.sh Observation "_count=500&code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9,http://loinc.org|1920-8,http://loinc.org|1960-4,http://loinc.org|1975-2,http://loinc.org|1988-5,http://loinc.org|19926-5,http://loinc.org|19994-3,http://loinc.org|2019-8,http://loinc.org|2028-9,http://loinc.org|20454-5,http://loinc.org|20505-4,http://loinc.org|20565-8,http://loinc.org|20570-8,http://loinc.org|2069-3,http://loinc.org|2075-0,http://loinc.org|2085-9,http://loinc.org|2093-3,http://loinc.org|21000-5,http://loinc.org|2157-6,http://loinc.org|2160-0,http://loinc.org|21905-5,http://loinc.org|21906-3,http://loinc.org|21907-1,http://loinc.org|21908-9,http://loinc.org|2276-4,http://loinc.org|2339-0,http://loinc.org|2345-7,http://loinc.org|2498-4,http://loinc.org|2500-7,http://loinc.org|2502-3,http://loinc.org|2514-8,http://loinc.org|2532-0,http://loinc.org|25428-4,http://loinc.org|2571-8,http://loinc.org|26881-3,http://loinc.org|2703-7,http://loinc.org|2708-6,http://loinc.org|2713-6,http://loinc.org|2744-1,http://loinc.org|2823-3,http://loinc.org|28245-9,http://loinc.org|2857-1,http://loinc.org|2885-2,http://loinc.org|29463-7,http://loinc.org|2947-0,http://loinc.org|2951-2,http://loinc.org|3094-0,http://loinc.org|32167-9,http://loinc.org|32207-3,http://loinc.org|32465-7,http://loinc.org|32623-1,http://loinc.org|33728-7,http://loinc.org|33756-8,http://loinc.org|33762-6,http://loinc.org|33914-3,http://loinc.org|33959-8,http://loinc.org|38208-5,http://loinc.org|38265-5,http://loinc.org|38483-4,http://loinc.org|39156-5,http://loinc.org|44667-4,http://loinc.org|44963-7,http://loinc.org|4544-3,http://loinc.org|4548-4,http://loinc.org|46240-8,http://loinc.org|46288-7,http://loinc.org|48065-7,http://loinc.org|49765-1,http://loinc.org|55277-8,http://loinc.org|5767-9,http://loinc.org|5770-3,http://loinc.org|5778-6,http://loinc.org|57905-2,http://loinc.org|5792-7,http://loinc.org|5794-3,http://loinc.org|5797-6,http://loinc.org|5799-2,http://loinc.org|5802-4,http://loinc.org|5803-2,http://loinc.org|5804-0,http://loinc.org|5811-5,http://loinc.org|5902-2,http://loinc.org|59032-3,http://loinc.org|5905-5,http://loinc.org|59408-5,http://loinc.org|59557-9,http://loinc.org|59576-9,http://loinc.org|6075-6,http://loinc.org|6082-2,http://loinc.org|6085-5,http://loinc.org|6095-4,http://loinc.org|6106-9,http://loinc.org|6158-0,http://loinc.org|6189-5,http://loinc.org|6206-7,http://loinc.org|6246-3,http://loinc.org|6248-9,http://loinc.org|6273-7,http://loinc.org|6276-0,http://loinc.org|6298-4,http://loinc.org|6299-2,http://loinc.org|6301-6,http://loinc.org|63513-6,http://loinc.org|65750-2,http://loinc.org|66519-0,http://loinc.org|66524-0,http://loinc.org|66529-9,http://loinc.org|66534-9,http://loinc.org|6690-2,http://loinc.org|6768-6,http://loinc.org|6833-8,http://loinc.org|6844-5,http://loinc.org|69453-9,http://loinc.org|704-7,http://loinc.org|706-2,http://loinc.org|711-2,http://loinc.org|713-8,http://loinc.org|718-7,http://loinc.org|71802-3,http://loinc.org|72106-8,http://loinc.org|72166-2,http://loinc.org|72514-3,http://loinc.org|7258-7,http://loinc.org|731-0,http://loinc.org|736-9,http://loinc.org|742-7,http://loinc.org|751-8,http://loinc.org|75325-1,http://loinc.org|76690-7,http://loinc.org|770-8,http://loinc.org|77606-2,http://loinc.org|777-3,http://loinc.org|785-6,http://loinc.org|786-4,http://loinc.org|787-2,http://loinc.org|788-0,http://loinc.org|789-8,http://loinc.org|80382-5,http://loinc.org|80383-3,http://loinc.org|8302-2,http://loinc.org|8310-5,http://loinc.org|8331-1,http://loinc.org|8478-0,http://loinc.org|85318-4,http://loinc.org|85319-2,http://loinc.org|85337-4,http://loinc.org|85339-0,http://loinc.org|85352-3,http://loinc.org|85354-9,http://loinc.org|88020-3,http://loinc.org|88021-1,http://loinc.org|88040-1,http://loinc.org|88262-1,http://loinc.org|8867-4,http://loinc.org|89579-7,http://loinc.org|91148-7,http://loinc.org|92130-4,http://loinc.org|92131-2,http://loinc.org|92134-6,http://loinc.org|92138-7,http://loinc.org|92139-5,http://loinc.org|92140-3,http://loinc.org|92141-1,http://loinc.org|92142-9,http://loinc.org|9279-1,http://loinc.org|94040-3,http://loinc.org|94531-1,http://loinc.org|9843-4,http://loinc.org|99999-0" 42929
 
     - name: Download Observation Resources of male Patients
       run: .github/scripts/download-resources-query.sh Observation "patient.gender=male" 20466
@@ -346,7 +327,7 @@ jobs:
       run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "-_lastUpdated" 20466
 
     - name: Download Observation Resources of female Patients
-      run: .github/scripts/download-resources-query.sh Observation "patient.gender=female" 22463
+      run: .github/scripts/download-resources-query.sh Observation "_count=500&patient.gender=female" 22463
 
     - name: Download Observation Resources of female Patients Sorted Ascending
       run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=female" "_lastUpdated" 22463
@@ -397,58 +378,109 @@ jobs:
       run: .github/scripts/search-compartment.sh
 
     - name: Evaluate CQL Query 1
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1.cql 56
+      run: .github/scripts/evaluate-measure.sh q1 56
+
+    - name: Evaluate CQL Query 1 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q1 56
 
     - name: Evaluate CQL Query 1 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1.cql 56
+      run: .github/scripts/evaluate-measure-subject-list.sh q1 56
 
     - name: Evaluate CQL Query 1 on Individual Patients
       run: .github/scripts/evaluate-patient-q1-measure.sh
 
     - name: Evaluate CQL Query 2
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2.cql 42
+      run: .github/scripts/evaluate-measure.sh q2 42
+
+    - name: Evaluate CQL Query 2 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q2 42
 
     - name: Evaluate CQL Query 2 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2.cql 42
+      run: .github/scripts/evaluate-measure-subject-list.sh q2 42
 
     - name: Evaluate CQL Query 4
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q4.cql 0
+      run: .github/scripts/evaluate-measure.sh q4 0
+
+    - name: Evaluate CQL Query 4 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q4 0
 
     - name: Evaluate CQL Query 4 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q4.cql 0
+      run: .github/scripts/evaluate-measure-subject-list.sh q4 0
 
     - name: Evaluate CQL Query 7
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q7.cql 81
+      run: .github/scripts/evaluate-measure.sh q7 81
+
+    - name: Evaluate CQL Query 7 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q7 81
 
     - name: Evaluate CQL Query 7 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q7.cql 81
+      run: .github/scripts/evaluate-measure-subject-list.sh q7 81
 
     - name: Evaluate CQL Query 14
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14.cql 96
+      run: .github/scripts/evaluate-measure.sh q14 96
+
+    - name: Evaluate CQL Query 14 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q14 96
 
     - name: Evaluate CQL Query 14 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14.cql 96
+      run: .github/scripts/evaluate-measure-subject-list.sh q14 96
+
+    - name: Evaluate CQL Query 15
+      run: .github/scripts/evaluate-measure.sh q15 30
+
+    - name: Evaluate CQL Query 15 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q15 30
+
+    - name: Evaluate CQL Query 15 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q15 30
 
     - name: Evaluate CQL Query 17
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q17.cql 120
+      run: .github/scripts/evaluate-measure.sh q17 120
+
+    - name: Evaluate CQL Query 17 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q17 120
 
     - name: Evaluate CQL Query 17 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q17.cql 120
+      run: .github/scripts/evaluate-measure-subject-list.sh q17 120
+
+    - name: Evaluate CQL Query 19 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q19-stratifier-ageclass 120
+
+    - name: Evaluate CQL Query 20 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q20-stratifier-city 120
+
+    - name: Evaluate CQL Query 21 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q21-stratifier-city-of-only-women 64
+
+    - name: Evaluate CQL Query 26 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q26-stratifier-bmi 120
+
+    - name: Evaluate CQL Query 27 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q27-stratifier-calculated-bmi 120
+
+    - name: Evaluate CQL Query 32 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q32-stratifier-underweight 120
 
     - name: Evaluate CQL Query 36
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q36-parameter.cql 86
+      run: .github/scripts/evaluate-measure.sh q36-parameter 86
 
     - name: Evaluate CQL Query 36 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q36-parameter.cql 86
+      run: .github/scripts/evaluate-measure-subject-list.sh q36-parameter 86
 
     - name: Evaluate CQL Query 34
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q37-overlaps.cql 24
+      run: .github/scripts/evaluate-measure.sh q37-overlaps 24
+
+    - name: Evaluate CQL Query 34 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q37-overlaps 24
 
     - name: Evaluate CQL Query 34 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q37-overlaps.cql 24
+      run: .github/scripts/evaluate-measure-subject-list.sh q37-overlaps 24
 
     - name: Evaluate CQL Query 46
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure//q46-between-date.cql 19
+      run: .github/scripts/evaluate-measure.sh q46-between-date 19
+
+    - name: Evaluate CQL Query 46 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q46-between-date 19
 
     - name: Forwarded Header HTTPS
       run: .github/scripts/forwarded-header.sh https
@@ -492,9 +524,12 @@ jobs:
     - name: Not Acceptable
       run: .github/scripts/not-acceptable.sh
 
+    - name: Conditional Update If-None-Match
+      run: .github/scripts/conditional-update-if-none-match.sh
+
   not-enforcing-referential-integrity-test:
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Check out Git repository
@@ -539,7 +574,7 @@ jobs:
   # caused Jetty to close the stream.
   small-transactions-test:
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Check out Git repository
@@ -580,7 +615,7 @@ jobs:
 
   include-without-referential-integrity-test:
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Check out Git repository
@@ -604,11 +639,37 @@ jobs:
     - name: Test Include
       run: .github/scripts/include-without-referential-integrity.sh
 
+  chaining-without-referential-integrity-test:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v3
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Blaze
+      run: docker run --rm -d -e JAVA_TOOL_OPTIONS=-Xmx1g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 blaze:latest
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Test Chaining
+      run: .github/scripts/chaining-without-referential-integrity.sh
+
   # Test that a transaction can create a transaction bundle with references that will be taken "as-is" and not tried to
   # resolve to existing resources
   bundle-with-references-test:
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Check out Git repository
@@ -637,7 +698,7 @@ jobs:
 
   jepsen-test:
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Setup Java
@@ -649,7 +710,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1189'
+        cli: '1.11.1.1208'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -692,7 +753,7 @@ jobs:
 
   openid-auth-test:
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Check out Git repository
@@ -727,7 +788,7 @@ jobs:
 
   distributed-test:
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Check out Git repository
@@ -809,7 +870,7 @@ jobs:
       run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9" 2399
 
     - name: Download Observation Resources with all LOINC Codes
-      run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9,http://loinc.org|1920-8,http://loinc.org|1960-4,http://loinc.org|1975-2,http://loinc.org|1988-5,http://loinc.org|19926-5,http://loinc.org|19994-3,http://loinc.org|2019-8,http://loinc.org|2028-9,http://loinc.org|20454-5,http://loinc.org|20505-4,http://loinc.org|20565-8,http://loinc.org|20570-8,http://loinc.org|2069-3,http://loinc.org|2075-0,http://loinc.org|2085-9,http://loinc.org|2093-3,http://loinc.org|21000-5,http://loinc.org|2157-6,http://loinc.org|2160-0,http://loinc.org|21905-5,http://loinc.org|21906-3,http://loinc.org|21907-1,http://loinc.org|21908-9,http://loinc.org|2276-4,http://loinc.org|2339-0,http://loinc.org|2345-7,http://loinc.org|2498-4,http://loinc.org|2500-7,http://loinc.org|2502-3,http://loinc.org|2514-8,http://loinc.org|2532-0,http://loinc.org|25428-4,http://loinc.org|2571-8,http://loinc.org|26881-3,http://loinc.org|2703-7,http://loinc.org|2708-6,http://loinc.org|2713-6,http://loinc.org|2744-1,http://loinc.org|2823-3,http://loinc.org|28245-9,http://loinc.org|2857-1,http://loinc.org|2885-2,http://loinc.org|29463-7,http://loinc.org|2947-0,http://loinc.org|2951-2,http://loinc.org|3094-0,http://loinc.org|32167-9,http://loinc.org|32207-3,http://loinc.org|32465-7,http://loinc.org|32623-1,http://loinc.org|33728-7,http://loinc.org|33756-8,http://loinc.org|33762-6,http://loinc.org|33914-3,http://loinc.org|33959-8,http://loinc.org|38208-5,http://loinc.org|38265-5,http://loinc.org|38483-4,http://loinc.org|39156-5,http://loinc.org|44667-4,http://loinc.org|44963-7,http://loinc.org|4544-3,http://loinc.org|4548-4,http://loinc.org|46240-8,http://loinc.org|46288-7,http://loinc.org|48065-7,http://loinc.org|49765-1,http://loinc.org|55277-8,http://loinc.org|5767-9,http://loinc.org|5770-3,http://loinc.org|5778-6,http://loinc.org|57905-2,http://loinc.org|5792-7,http://loinc.org|5794-3,http://loinc.org|5797-6,http://loinc.org|5799-2,http://loinc.org|5802-4,http://loinc.org|5803-2,http://loinc.org|5804-0,http://loinc.org|5811-5,http://loinc.org|5902-2,http://loinc.org|59032-3,http://loinc.org|5905-5,http://loinc.org|59408-5,http://loinc.org|59557-9,http://loinc.org|59576-9,http://loinc.org|6075-6,http://loinc.org|6082-2,http://loinc.org|6085-5,http://loinc.org|6095-4,http://loinc.org|6106-9,http://loinc.org|6158-0,http://loinc.org|6189-5,http://loinc.org|6206-7,http://loinc.org|6246-3,http://loinc.org|6248-9,http://loinc.org|6273-7,http://loinc.org|6276-0,http://loinc.org|6298-4,http://loinc.org|6299-2,http://loinc.org|6301-6,http://loinc.org|63513-6,http://loinc.org|65750-2,http://loinc.org|66519-0,http://loinc.org|66524-0,http://loinc.org|66529-9,http://loinc.org|66534-9,http://loinc.org|6690-2,http://loinc.org|6768-6,http://loinc.org|6833-8,http://loinc.org|6844-5,http://loinc.org|69453-9,http://loinc.org|704-7,http://loinc.org|706-2,http://loinc.org|711-2,http://loinc.org|713-8,http://loinc.org|718-7,http://loinc.org|71802-3,http://loinc.org|72106-8,http://loinc.org|72166-2,http://loinc.org|72514-3,http://loinc.org|7258-7,http://loinc.org|731-0,http://loinc.org|736-9,http://loinc.org|742-7,http://loinc.org|751-8,http://loinc.org|75325-1,http://loinc.org|76690-7,http://loinc.org|770-8,http://loinc.org|77606-2,http://loinc.org|777-3,http://loinc.org|785-6,http://loinc.org|786-4,http://loinc.org|787-2,http://loinc.org|788-0,http://loinc.org|789-8,http://loinc.org|80382-5,http://loinc.org|80383-3,http://loinc.org|8302-2,http://loinc.org|8310-5,http://loinc.org|8331-1,http://loinc.org|8478-0,http://loinc.org|85318-4,http://loinc.org|85319-2,http://loinc.org|85337-4,http://loinc.org|85339-0,http://loinc.org|85352-3,http://loinc.org|85354-9,http://loinc.org|88020-3,http://loinc.org|88021-1,http://loinc.org|88040-1,http://loinc.org|88262-1,http://loinc.org|8867-4,http://loinc.org|89579-7,http://loinc.org|91148-7,http://loinc.org|92130-4,http://loinc.org|92131-2,http://loinc.org|92134-6,http://loinc.org|92138-7,http://loinc.org|92139-5,http://loinc.org|92140-3,http://loinc.org|92141-1,http://loinc.org|92142-9,http://loinc.org|9279-1,http://loinc.org|94040-3,http://loinc.org|94531-1,http://loinc.org|9843-4,http://loinc.org|99999-0" 42929
+      run: .github/scripts/download-resources-query.sh Observation "_count=500&code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9,http://loinc.org|1920-8,http://loinc.org|1960-4,http://loinc.org|1975-2,http://loinc.org|1988-5,http://loinc.org|19926-5,http://loinc.org|19994-3,http://loinc.org|2019-8,http://loinc.org|2028-9,http://loinc.org|20454-5,http://loinc.org|20505-4,http://loinc.org|20565-8,http://loinc.org|20570-8,http://loinc.org|2069-3,http://loinc.org|2075-0,http://loinc.org|2085-9,http://loinc.org|2093-3,http://loinc.org|21000-5,http://loinc.org|2157-6,http://loinc.org|2160-0,http://loinc.org|21905-5,http://loinc.org|21906-3,http://loinc.org|21907-1,http://loinc.org|21908-9,http://loinc.org|2276-4,http://loinc.org|2339-0,http://loinc.org|2345-7,http://loinc.org|2498-4,http://loinc.org|2500-7,http://loinc.org|2502-3,http://loinc.org|2514-8,http://loinc.org|2532-0,http://loinc.org|25428-4,http://loinc.org|2571-8,http://loinc.org|26881-3,http://loinc.org|2703-7,http://loinc.org|2708-6,http://loinc.org|2713-6,http://loinc.org|2744-1,http://loinc.org|2823-3,http://loinc.org|28245-9,http://loinc.org|2857-1,http://loinc.org|2885-2,http://loinc.org|29463-7,http://loinc.org|2947-0,http://loinc.org|2951-2,http://loinc.org|3094-0,http://loinc.org|32167-9,http://loinc.org|32207-3,http://loinc.org|32465-7,http://loinc.org|32623-1,http://loinc.org|33728-7,http://loinc.org|33756-8,http://loinc.org|33762-6,http://loinc.org|33914-3,http://loinc.org|33959-8,http://loinc.org|38208-5,http://loinc.org|38265-5,http://loinc.org|38483-4,http://loinc.org|39156-5,http://loinc.org|44667-4,http://loinc.org|44963-7,http://loinc.org|4544-3,http://loinc.org|4548-4,http://loinc.org|46240-8,http://loinc.org|46288-7,http://loinc.org|48065-7,http://loinc.org|49765-1,http://loinc.org|55277-8,http://loinc.org|5767-9,http://loinc.org|5770-3,http://loinc.org|5778-6,http://loinc.org|57905-2,http://loinc.org|5792-7,http://loinc.org|5794-3,http://loinc.org|5797-6,http://loinc.org|5799-2,http://loinc.org|5802-4,http://loinc.org|5803-2,http://loinc.org|5804-0,http://loinc.org|5811-5,http://loinc.org|5902-2,http://loinc.org|59032-3,http://loinc.org|5905-5,http://loinc.org|59408-5,http://loinc.org|59557-9,http://loinc.org|59576-9,http://loinc.org|6075-6,http://loinc.org|6082-2,http://loinc.org|6085-5,http://loinc.org|6095-4,http://loinc.org|6106-9,http://loinc.org|6158-0,http://loinc.org|6189-5,http://loinc.org|6206-7,http://loinc.org|6246-3,http://loinc.org|6248-9,http://loinc.org|6273-7,http://loinc.org|6276-0,http://loinc.org|6298-4,http://loinc.org|6299-2,http://loinc.org|6301-6,http://loinc.org|63513-6,http://loinc.org|65750-2,http://loinc.org|66519-0,http://loinc.org|66524-0,http://loinc.org|66529-9,http://loinc.org|66534-9,http://loinc.org|6690-2,http://loinc.org|6768-6,http://loinc.org|6833-8,http://loinc.org|6844-5,http://loinc.org|69453-9,http://loinc.org|704-7,http://loinc.org|706-2,http://loinc.org|711-2,http://loinc.org|713-8,http://loinc.org|718-7,http://loinc.org|71802-3,http://loinc.org|72106-8,http://loinc.org|72166-2,http://loinc.org|72514-3,http://loinc.org|7258-7,http://loinc.org|731-0,http://loinc.org|736-9,http://loinc.org|742-7,http://loinc.org|751-8,http://loinc.org|75325-1,http://loinc.org|76690-7,http://loinc.org|770-8,http://loinc.org|77606-2,http://loinc.org|777-3,http://loinc.org|785-6,http://loinc.org|786-4,http://loinc.org|787-2,http://loinc.org|788-0,http://loinc.org|789-8,http://loinc.org|80382-5,http://loinc.org|80383-3,http://loinc.org|8302-2,http://loinc.org|8310-5,http://loinc.org|8331-1,http://loinc.org|8478-0,http://loinc.org|85318-4,http://loinc.org|85319-2,http://loinc.org|85337-4,http://loinc.org|85339-0,http://loinc.org|85352-3,http://loinc.org|85354-9,http://loinc.org|88020-3,http://loinc.org|88021-1,http://loinc.org|88040-1,http://loinc.org|88262-1,http://loinc.org|8867-4,http://loinc.org|89579-7,http://loinc.org|91148-7,http://loinc.org|92130-4,http://loinc.org|92131-2,http://loinc.org|92134-6,http://loinc.org|92138-7,http://loinc.org|92139-5,http://loinc.org|92140-3,http://loinc.org|92141-1,http://loinc.org|92142-9,http://loinc.org|9279-1,http://loinc.org|94040-3,http://loinc.org|94531-1,http://loinc.org|9843-4,http://loinc.org|99999-0" 42929
 
     - name: Download Observation Resources of male Patients
       run: .github/scripts/download-resources-query.sh Observation "patient.gender=male" 20466
@@ -821,7 +882,7 @@ jobs:
       run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "-_lastUpdated" 20466
 
     - name: Download Observation Resources of female Patients
-      run: .github/scripts/download-resources-query.sh Observation "patient.gender=female" 22463
+      run: .github/scripts/download-resources-query.sh Observation "_count=500&patient.gender=female" 22463
 
     - name: Download Observation Resources of female Patients Sorted Ascending
       run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=female" "_lastUpdated" 22463
@@ -872,58 +933,109 @@ jobs:
       run: .github/scripts/search-compartment.sh
 
     - name: Evaluate CQL Query 1
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1.cql 56
+      run: .github/scripts/evaluate-measure.sh q1 56
+
+    - name: Evaluate CQL Query 1 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q1 56
 
     - name: Evaluate CQL Query 1 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q1.cql 56
+      run: .github/scripts/evaluate-measure-subject-list.sh q1 56
 
     - name: Evaluate CQL Query 1 on Individual Patients
       run: .github/scripts/evaluate-patient-q1-measure.sh
 
     - name: Evaluate CQL Query 2
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2.cql 42
+      run: .github/scripts/evaluate-measure.sh q2 42
+
+    - name: Evaluate CQL Query 2 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q2 42
 
     - name: Evaluate CQL Query 2 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q2.cql 42
+      run: .github/scripts/evaluate-measure-subject-list.sh q2 42
 
     - name: Evaluate CQL Query 4
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q4.cql 0
+      run: .github/scripts/evaluate-measure.sh q4 0
+
+    - name: Evaluate CQL Query 4 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q4 0
 
     - name: Evaluate CQL Query 4 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q4.cql 0
+      run: .github/scripts/evaluate-measure-subject-list.sh q4 0
 
     - name: Evaluate CQL Query 7
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q7.cql 81
+      run: .github/scripts/evaluate-measure.sh q7 81
+
+    - name: Evaluate CQL Query 7 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q7 81
 
     - name: Evaluate CQL Query 7 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q7.cql 81
+      run: .github/scripts/evaluate-measure-subject-list.sh q7 81
 
     - name: Evaluate CQL Query 14
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14.cql 96
+      run: .github/scripts/evaluate-measure.sh q14 96
+
+    - name: Evaluate CQL Query 14 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q14 96
 
     - name: Evaluate CQL Query 14 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q14.cql 96
+      run: .github/scripts/evaluate-measure-subject-list.sh q14 96
+
+    - name: Evaluate CQL Query 15
+      run: .github/scripts/evaluate-measure.sh q15 30
+
+    - name: Evaluate CQL Query 15 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q15 30
+
+    - name: Evaluate CQL Query 15 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q15 30
 
     - name: Evaluate CQL Query 17
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q17.cql 120
+      run: .github/scripts/evaluate-measure.sh q17 120
+
+    - name: Evaluate CQL Query 17 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q17 120
 
     - name: Evaluate CQL Query 17 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q17.cql 120
+      run: .github/scripts/evaluate-measure-subject-list.sh q17 120
+
+    - name: Evaluate CQL Query 19 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q19-stratifier-ageclass 120
+
+    - name: Evaluate CQL Query 20 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q20-stratifier-city 120
+
+    - name: Evaluate CQL Query 21 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q21-stratifier-city-of-only-women 64
+
+    - name: Evaluate CQL Query 26 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q26-stratifier-bmi 120
+
+    - name: Evaluate CQL Query 27 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q27-stratifier-calculated-bmi 120
+
+    - name: Evaluate CQL Query 32 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q32-stratifier-underweight 120
 
     - name: Evaluate CQL Query 36
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q36-parameter.cql 86
+      run: .github/scripts/evaluate-measure.sh q36-parameter 86
 
     - name: Evaluate CQL Query 36 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q36-parameter.cql 86
+      run: .github/scripts/evaluate-measure-subject-list.sh q36-parameter 86
 
     - name: Evaluate CQL Query 34
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q37-overlaps.cql 24
+      run: .github/scripts/evaluate-measure.sh q37-overlaps 24
+
+    - name: Evaluate CQL Query 34 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q37-overlaps 24
 
     - name: Evaluate CQL Query 34 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q37-overlaps.cql 24
+      run: .github/scripts/evaluate-measure-subject-list.sh q37-overlaps 24
 
     - name: Evaluate CQL Query 46
-      run: .github/scripts/evaluate-measure.sh modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure//q46-between-date.cql 19
+      run: .github/scripts/evaluate-measure.sh q46-between-date 19
+
+    - name: Evaluate CQL Query 46 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q46-between-date 19
 
     - name: Forwarded Header HTTPS
       run: .github/scripts/forwarded-header.sh https
@@ -970,12 +1082,15 @@ jobs:
     - name: Not Acceptable
       run: .github/scripts/not-acceptable.sh
 
+    - name: Conditional Update If-None-Match
+      run: .github/scripts/conditional-update-if-none-match.sh
+
     - name: Docker Stats
       run: docker stats --no-stream
 
   jepsen-distributed-test:
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Setup Java
@@ -987,7 +1102,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1189'
+        cli: '1.11.1.1208'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -1051,3 +1166,80 @@ jobs:
 
     - name: Docker Stats
       run: docker stats --no-stream
+      
+  push-image:
+    needs:
+    - test-coverage
+    - image-scan
+    - integration-test
+    - not-enforcing-referential-integrity-test
+    - small-transactions-test
+    - include-without-referential-integrity-test
+    - chaining-without-referential-integrity-test
+    - bundle-with-references-test
+    - jepsen-test
+    - openid-auth-test
+    - distributed-test
+    - jepsen-distributed-test
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v3
+
+    - name: Download Blaze Uberjar
+      uses: actions/download-artifact@v3
+      with:
+        name: blaze-uberjar
+        path: target/blaze-0.18.5-standalone.jar
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.CR_PAT }}
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Docker meta
+      id: docker-meta
+      uses: docker/metadata-action@v4
+      with:
+        images: |
+          samply/blaze
+          ghcr.io/samply/blaze
+        tags: |
+          type=schedule
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+
+    - name: Build and push
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.docker-meta.outputs.tags }}
+        labels: ${{ steps.docker-meta.outputs.labels }}

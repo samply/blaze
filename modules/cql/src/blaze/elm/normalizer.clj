@@ -450,6 +450,10 @@
 (derive :elm.normalizer.type/converts-to-quantity :elm.normalizer.type/unary-expression)
 
 
+;; 22.14. ConvertsToRatio
+(derive :elm.normalizer.type/converts-to-ratio :elm.normalizer.type/unary-expression)
+
+
 ;; 22.15. ConvertsToString
 (derive :elm.normalizer.type/converts-to-string :elm.normalizer.type/unary-expression)
 
@@ -492,6 +496,10 @@
 
 ;; 22.28. ToQuantity
 (derive :elm.normalizer.type/to-quantity :elm.normalizer.type/unary-expression)
+
+
+;; 22.29. ToRatio
+(derive :elm.normalizer.type/to-ratio :elm.normalizer.type/unary-expression)
 
 
 ;; 22.30. ToString

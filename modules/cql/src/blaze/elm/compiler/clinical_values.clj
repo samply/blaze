@@ -7,8 +7,10 @@
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.code :as code]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.concept :as concept]
     [blaze.elm.date-time :as date-time]
-    [blaze.elm.quantity :as quantity]))
+    [blaze.elm.quantity :as quantity]
+    [blaze.elm.ratio :as ratio]))
 
 
 (defn- find-code-system-def
@@ -71,8 +73,12 @@
 
 
 ;; 3.6. Concept
-;;
-;; TODO
+(defn- compile-codes [context codes]
+  (map #(core/compile* context %) codes))
+
+(defmethod core/compile* :elm.compiler.type/concept
+  [context {:keys [codes]}]
+  (concept/to-concept (compile-codes context codes)))
 
 
 ;; 3.7. ConceptDef
@@ -81,8 +87,17 @@
 
 
 ;; 3.8. ConceptRef
-;;
-;; TODO
+(defn- find-concept-def
+  "Returns the concept-def with `name` from `library` or nil if not found."
+  {:arglists '([library name])}
+  [{{concept-defs :def} :concepts} name]
+  (some #(when (= name (:name %)) %) concept-defs))
+
+(defmethod core/compile* :elm.compiler.type/concept-ref
+  [{:keys [library] :as context} {:keys [name]}]
+  (when-let [{codes-refs :code} (find-concept-def library name)]
+    (->> (map #(core/compile* context (assoc % :type "CodeRef")) codes-refs)
+         (concept/to-concept))))
 
 
 ;; 3.9. Quantity
@@ -102,8 +117,13 @@
 
 
 ;; 3.10. Ratio
-;;
-;; TODO
+(defmethod core/compile* :elm.compiler.type/ratio
+  [_ {:keys [numerator denominator]}]
+  (ratio/ratio (quantity/quantity (:value numerator) (or (:unit numerator)
+                                                         "1"))
+               (quantity/quantity (:value denominator) (or (:unit denominator)
+                                                         "1"))))
+
 
 ;; 3.11. ValueSetDef
 ;;

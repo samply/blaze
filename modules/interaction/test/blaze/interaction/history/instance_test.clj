@@ -9,7 +9,7 @@
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.interaction.history.instance]
     [blaze.interaction.history.util-spec]
-    [blaze.interaction.test-util :refer [wrap-error]]
+    [blaze.interaction.test-util :as itu :refer [wrap-error]]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
     [blaze.test-util :as tu :refer [given-thrown]]
@@ -97,19 +97,19 @@
         ::reitit/match match))))
 
 
-(defmacro with-handler [[handler-binding] txs & body]
-  `(with-system-data [{node# :blaze.db/node
-                       handler# :blaze.interaction.history/instance} system]
-     ~txs
-     (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
-                                wrap-error)]
-       ~@body)))
+(defmacro with-handler [[handler-binding] & more]
+  (let [[txs body] (itu/extract-txs-body more)]
+    `(with-system-data [{node# :blaze.db/node
+                         handler# :blaze.interaction.history/instance} system]
+       ~txs
+       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+                                  wrap-error)]
+         ~@body))))
 
 
 (deftest handler-test
   (testing "returns not found on empty node"
     (with-handler [handler]
-      []
       (let [{:keys [status body]}
             @(handler {:path-params {:id "0"}})]
 

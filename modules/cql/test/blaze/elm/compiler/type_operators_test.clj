@@ -4,17 +4,20 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+    [blaze.elm.code :as code]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.clinical-operators]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.compiler.type-operators]
+    [blaze.elm.concept :as concept]
     [blaze.elm.decimal :as decimal]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [blaze.elm.protocols :as p]
     [blaze.elm.quantity :as quantity]
     [blaze.elm.quantity-spec]
+    [blaze.elm.ratio :as ratio]
     [blaze.fhir.spec.type.system :as system]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]))
@@ -721,7 +724,13 @@
   (testing "Decimal"
     (is (true? (tu/compile-unop elm/converts-to-quantity elm/decimal "1.1"))))
 
-  ;; TODO: Ratio
+  (testing "Ratio"
+    (are [x] (true? (tu/compile-unop elm/converts-to-quantity elm/ratio x))
+      [[-1] [-1]]
+      [[1] [1]]
+      [[1 "s"] [1 "s"]]
+      [[1 "m"] [1 "s"]]
+      [[10 "s"] [1 "s"]]))
 
   (testing "dynamic"
     (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-quantity x)))
@@ -738,7 +747,7 @@
       (is (= '(converts-to-quantity (param-ref "x")) (core/-form expr))))))
 
 
-;; TODO 22.14. ConvertsToRatio
+;; 22.14. ConvertsToRatio
 ;;
 ;; The ConvertsToRatio operator returns true if the value of its argument is or
 ;; can be converted to a Ratio value. The operator accepts strings using the
@@ -754,6 +763,30 @@
 ;; a valid Ratio value, the result is false.
 ;;
 ;; If the argument is null, the result is null.
+(deftest compile-converts-to-ratio-test
+  (testing "String"
+    (are [x] (true? (tu/compile-unop elm/converts-to-ratio elm/string x))
+      "-1'm':-1'm'"
+      "0'm':0'm'"
+      "1'm':1'm'")
+
+    (are [x] (false? (tu/compile-unop elm/converts-to-ratio elm/string x))
+      ""
+      "a"
+      "0'm';0'm'"))
+
+  (testing "dynamic"
+    (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-ratio x)))
+      #elm/parameter-ref "A"))
+
+  (tu/testing-unary-null elm/converts-to-ratio)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/converts-to-ratio #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(converts-to-ratio (param-ref "x")) (core/-form expr))))))
+
 
 ;; 22.15. ConvertsToString
 ;;
@@ -811,7 +844,9 @@
     (are [x] (true? (tu/compile-unop elm/converts-to-string elm/time x))
       "01:00"))
 
-  ;; TODO: Ratio
+  (testing "Ratio"
+    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/ratio x))
+      [[1M "m"] [1M "m"]]))
 
   (testing "Tuple"
     (are [x] (false? (c/compile {} (elm/converts-to-string (elm/tuple x))))
@@ -1212,7 +1247,7 @@
           expr (c/compile compile-ctx elm)]
       (is (= '(to-chars (param-ref "x")) (core/-form expr))))))
 
-;; TODO 22.21. ToConcept
+;; 22.21. ToConcept
 ;;
 ;; The ToConcept operator converts a value of type Code to a Concept value with
 ;; the given Code as its primary and only Code. If the Code has a display
@@ -1222,6 +1257,26 @@
 ;; input Codes, and will not have a display value.
 ;;
 ;; If the argument is null, the result is null.
+(deftest compile-to-concept-test
+  (testing "Code"
+    (are [x res] (= res (core/-eval (c/compile {} (elm/to-concept x))
+                                    {:now tu/now} nil nil))
+
+      (tu/code "system-134534" "code-134551")
+      (concept/to-concept [(code/to-code "system-134534" nil "code-134551")])
+
+      (elm/list [(tu/code "system-134534" "code-134551")
+                 (tu/code "system-134535" "code-134552")])
+      (concept/to-concept [(code/to-code "system-134534" nil "code-134551")
+                           (code/to-code "system-134535" nil "code-134552")])))
+
+  (tu/testing-unary-null elm/to-concept)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/to-concept #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+    (is (= '(to-concept (param-ref "x")) (core/-form expr))))))
 
 
 ;; 22.22. ToDate
@@ -1443,17 +1498,15 @@
 ;; The operator is used to implement list promotion efficiently.
 (deftest compile-to-list-test
   (testing "Boolean"
-    (are [x res] (= res (core/-eval (tu/compile-unop elm/to-list elm/boolean x)
-                                    {} nil nil))
+    (are [x res] (= res (tu/compile-unop elm/to-list elm/boolean x))
       "false" [false]))
 
   (testing "Integer"
-    (are [x res] (= res (core/-eval (tu/compile-unop elm/to-list elm/integer x)
-                                    {} nil nil))
+    (are [x res] (= res (tu/compile-unop elm/to-list elm/integer x))
       "1" [1]))
 
   (testing "Null"
-    (is (= [] (core/-eval (c/compile {} #elm/to-list{:type "Null"}) {} nil nil))))
+    (is (= [] (c/compile {} #elm/to-list{:type "Null"}))))
 
   (testing "form"
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
@@ -1544,9 +1597,7 @@
 ;; If the argument is null, the result is null.
 (deftest compile-to-quantity-test
   (testing "String"
-    (are [x res] (p/equal res (core/-eval (tu/compile-unop elm/to-quantity
-                                                           elm/string x)
-                                          {} nil nil))
+    (are [x res] (p/equal res (tu/compile-unop elm/to-quantity elm/string x))
       "-1" (quantity/quantity -1 "1")
       "1" (quantity/quantity 1 "1")
 
@@ -1558,8 +1609,7 @@
 
       "1.1 'm'" (quantity/quantity 1.1M "m"))
 
-    (are [x] (nil? (core/-eval (tu/compile-unop elm/to-quantity elm/string x)
-                               {} nil nil))
+    (are [x] (nil? (tu/compile-unop elm/to-quantity elm/string x))
       (str (- decimal/min 1e-8M))
       (str (+ decimal/max 1e-8M))
       (str (- decimal/min 1e-8M) "'m'")
@@ -1568,18 +1618,25 @@
       "a"))
 
   (testing "Integer"
-    (are [x res] (= res (core/-eval (tu/compile-unop elm/to-quantity elm/integer x)
-                                    {} nil nil))
+    (are [x res] (= res (tu/compile-unop elm/to-quantity elm/integer x))
       "1" (quantity/quantity 1 "1")))
 
   (testing "Decimal"
-    (are [x res] (p/equal res (core/-eval (tu/compile-unop elm/to-quantity
-                                                           elm/decimal x)
-                                          {} nil nil))
+    (are [x res] (p/equal res (tu/compile-unop elm/to-quantity elm/decimal x))
       "1" (quantity/quantity 1 "1")
       "1.1" (quantity/quantity 1.1M "1")))
 
-  ;; TODO: Ratio
+  (testing "Ratio"
+    (are [x res] (p/equal res (tu/compile-unop elm/to-quantity elm/ratio x))
+      [[1] [1]] (quantity/quantity 1 "1")
+      [[-1] [1]] (quantity/quantity -1 "1")
+
+      [[1 "s"] [1 "s"]] (quantity/quantity 1 "1")
+      [[1 "s"] [2 "s"]] (quantity/quantity 2 "1")
+
+      [[1 "m"] [1 "s"]] (quantity/quantity 1 "s/m")
+      [[1 "s"] [1 "m"]] (quantity/quantity 1 "m/s")
+      [[100 "cm"] [1 "m"]] (quantity/quantity 1 "1")))
 
   (tu/testing-unary-null elm/to-quantity)
 
@@ -1590,7 +1647,7 @@
       (is (= '(to-quantity (param-ref "x")) (core/-form expr))))))
 
 
-;; TODO 22.29. ToRatio
+;; 22.29. ToRatio
 ;;
 ;; The ToRatio operator converts the value of its argument to a Ratio value.
 ;; The operator accepts strings using the following format:
@@ -1605,6 +1662,43 @@
 ;; a valid Ratio value, the result is null.
 ;;
 ;; If the argument is null, the result is null.
+(deftest compile-to-ratio-test
+  (testing "String"
+    (are [x res] (p/equal res (tu/compile-unop elm/to-ratio elm/string x))
+      "-1:-1" (ratio/ratio (quantity/quantity -1 "1") (quantity/quantity -1 "1"))
+      "1:1" (ratio/ratio (quantity/quantity 1 "1") (quantity/quantity 1 "1"))
+      "1:100" (ratio/ratio (quantity/quantity 1 "1") (quantity/quantity 100 "1"))
+      "100:1" (ratio/ratio (quantity/quantity 100 "1") (quantity/quantity 1 "1"))
+
+      "1'm':1'm'" (ratio/ratio (quantity/quantity 1 "m") (quantity/quantity 1 "m"))
+      "1 'm':1 'm'" (ratio/ratio (quantity/quantity 1 "m") (quantity/quantity 1 "m"))
+      "1  'm':1  'm'" (ratio/ratio (quantity/quantity 1 "m") (quantity/quantity 1 "m"))
+
+      "2'm':1'm'" (ratio/ratio (quantity/quantity 2 "m") (quantity/quantity 1 "m"))
+      "1'm':2'm'" (ratio/ratio (quantity/quantity 1 "m") (quantity/quantity 2 "m"))
+
+      "1'cm':1'm'" (ratio/ratio (quantity/quantity 1 "cm") (quantity/quantity 1 "m"))
+      "1'm':1'cm'" (ratio/ratio (quantity/quantity 1 "m") (quantity/quantity 1 "cm"))
+
+      "10 'm':10 'm'" (ratio/ratio (quantity/quantity 10 "m") (quantity/quantity 10 "m"))
+
+      "1.1 'm':1.1 'm'" (ratio/ratio (quantity/quantity 1.1M "m") (quantity/quantity 1.1M "m"))))
+
+  (are [x] (nil? (tu/compile-unop elm/to-ratio elm/string x))
+    ":"
+    "a"
+    ""
+    "1:"
+    ":1"
+    "1:1:1")
+
+  (tu/testing-unary-null elm/to-ratio)
+
+  (testing "form"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/to-ratio #elm/parameter-ref "x"
+          expr (c/compile compile-ctx elm)]
+      (is (= '(to-ratio (param-ref "x")) (core/-form expr))))))
 
 
 ;; 22.30. ToString
@@ -1624,21 +1718,18 @@
 ;; If the argument is null, the result is null.
 (deftest compile-to-string-test
   (testing "Boolean"
-    (are [x res] (= res (core/-eval (tu/compile-unop elm/to-string elm/boolean x)
-                                    {} nil nil))
+    (are [x res] (= res (tu/compile-unop elm/to-string elm/boolean x))
       "true" "true"
       "false" "false"))
 
   (testing "Integer"
-    (are [x res] (= res (core/-eval (tu/compile-unop elm/to-string elm/integer x)
-                                    {} nil nil))
+    (are [x res] (= res (tu/compile-unop elm/to-string elm/integer x))
       "-1" "-1"
       "0" "0"
       "1" "1"))
 
   (testing "Decimal"
-    (are [x res] (= res (core/-eval (tu/compile-unop elm/to-string elm/decimal x)
-                                    {} nil nil))
+    (are [x res] (= res (tu/compile-unop elm/to-string elm/decimal x))
       "-1" "-1"
       "0" "0"
       "1" "1"
@@ -1656,32 +1747,32 @@
       "0.000000005" "0.00000001"))
 
   (testing "Quantity"
-    (are [x res] (= res (core/-eval (tu/compile-unop elm/to-string elm/quantity
-                                                     x)
-                                    {} nil nil))
+    (are [x res] (= res (tu/compile-unop elm/to-string elm/quantity x))
       [1 "m"] "1 'm'"
       [1M "m"] "1 'm'"
       [1.1M "m"] "1.1 'm'"))
 
   (testing "Date"
-    (are [x res] (= res (core/-eval (tu/compile-unop elm/to-string elm/date x)
-                                    {} nil nil))
+    (are [x res] (= res (tu/compile-unop elm/to-string elm/date x))
       "2019" "2019"
       "2019-01" "2019-01"
       "2019-01-01" "2019-01-01"))
 
   (testing "DateTime"
-    (are [x res] (= res (core/-eval (tu/compile-unop elm/to-string elm/date-time
-                                                     x)
-                                    {} nil nil))
+    (are [x res] (= res (tu/compile-unop elm/to-string elm/date-time x))
       "2019-01-01T01:00" "2019-01-01T01:00"))
 
   (testing "Time"
-    (are [x res] (= res (core/-eval (tu/compile-unop elm/to-string elm/time x)
-                                    {} nil nil))
+    (are [x res] (= res (tu/compile-unop elm/to-string elm/time x))
       "01:00" "01:00"))
 
-  ;; TODO: Ratio
+  (testing "Ratio"
+    (are [x res] (= res (tu/compile-unop elm/to-string elm/ratio x))
+      [[1 "m"] [1 "m"]] "1 'm':1 'm'"
+      [[1 "m"] [2 "m"]] "1 'm':2 'm'"
+      [[1M "m"] [1M "m"]] "1 'm':1 'm'"
+      [[100M "m"] [1M "m"]] "100 'm':1 'm'"
+      [[1.1M "m"] [1.1M "m"]] "1.1 'm':1.1 'm'"))
 
   (tu/testing-unary-null elm/to-string)
 

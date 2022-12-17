@@ -2,36 +2,18 @@
   (:require
     [blaze.anomaly :as ba]
     [blaze.elm.spec]
-    [clojure.java.io :as io]
     [jsonista.core :as j])
   (:import
     [org.cqframework.cql.cql2elm
-     CqlTranslator CqlTranslator$Options
-     FhirLibrarySourceProvider LibraryManager ModelManager
-     ModelInfoProvider ModelInfoLoader]
-    [javax.xml.bind JAXB]
-    [org.hl7.elm_modelinfo.r1 ModelInfo]))
+     CqlTranslator CqlTranslatorOptions$Options LibraryManager ModelManager]
+    [org.cqframework.cql.cql2elm.quick FhirLibrarySourceProvider]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(defn- load-model-info [name]
-  (let [res (io/resource name)
-        ^ModelInfo modelInfo (JAXB/unmarshal res ^Class ModelInfo)
-        provider (reify ModelInfoProvider (load [_ _] modelInfo))]
-    (.registerModelInfoProvider (ModelInfoLoader.) provider)))
-
-
-(defn- options [locators?]
-  (->> (cond-> [CqlTranslator$Options/EnableResultTypes]
-         locators?
-         (conj CqlTranslator$Options/EnableLocators))
-       (into-array CqlTranslator$Options)))
-
-
-;; Our special model info with Specimen context
-(load-model-info "blaze/fhir-modelinfo-4.0.0.xml")
+(def ^:private options
+  (into-array [CqlTranslatorOptions$Options/EnableResultTypes]))
 
 
 (def ^:private json-object-mapper
@@ -45,11 +27,11 @@
 
   Returns an anomaly with category :cognitect.anomalies/incorrect in case of
   errors."
-  [cql & {:keys [locators?]}]
+  [cql]
   (let [model-manager (ModelManager.)
         library-manager (LibraryManager. model-manager)
         _ (.registerProvider (.getLibrarySourceLoader library-manager) (FhirLibrarySourceProvider.))
-        translator (CqlTranslator/fromText cql model-manager library-manager (options locators?))]
+        translator (CqlTranslator/fromText cql model-manager library-manager options)]
     (if-let [errors (seq (.getErrors translator))]
       (ba/incorrect
         (apply str (map ex-message errors))

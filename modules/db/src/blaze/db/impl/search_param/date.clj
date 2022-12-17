@@ -4,6 +4,7 @@
     [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.codec.date :as codec-date]
     [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
     [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.protocols :as p]
@@ -14,23 +15,10 @@
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
     [cognitect.anomalies :as anom]
-    [taoensso.timbre :as log])
-  (:import
-    [java.time ZoneId]))
+    [taoensso.timbre :as log]))
 
 
 (set! *warn-on-reflection* true)
-
-
-(def ^:private default-zone-id (ZoneId/systemDefault))
-
-
-(defn- date-lb [date-time]
-  (codec/date-lb default-zone-id date-time))
-
-
-(defn- date-ub [date-time]
-  (codec/date-ub default-zone-id date-time))
 
 
 (defmulti index-entries
@@ -42,31 +30,25 @@
 (defmethod index-entries :fhir/date
   [_ date]
   (when-let [value (type/value date)]
-    [[nil (codec/date-lb-ub (date-lb value) (date-ub value))]]))
+    [[nil (codec-date/encode-range value)]]))
 
 
 (defmethod index-entries :fhir/dateTime
   [_ date-time]
   (when-let [value (type/value date-time)]
-    [[nil (codec/date-lb-ub (date-lb value) (date-ub value))]]))
+    [[nil (codec-date/encode-range value)]]))
 
 
 (defmethod index-entries :fhir/instant
   [_ date-time]
   (when-let [value (type/value date-time)]
-    [[nil (codec/date-lb-ub (date-lb value) (date-ub value))]]))
+    [[nil (codec-date/encode-range value)]]))
 
 
 (defmethod index-entries :fhir/Period
   [_ {:keys [start end]}]
   [[nil
-    (codec/date-lb-ub
-      (if-let [start (type/value start)]
-        (date-lb start)
-        codec/date-min-bound)
-      (if-let [end (type/value end)]
-        (date-ub end)
-        codec/date-max-bound))]])
+    (codec-date/encode-range (type/value start) (type/value end))]])
 
 
 (defmethod index-entries :default
@@ -87,18 +69,18 @@
 
 (defn- eq-overlaps?
   "Returns true if the interval `v` overlaps with the interval `q`."
-  [v-lb v-ub q-lb q-ub]
-  (or (bs/<= q-lb v-lb q-ub)
-      (bs/<= q-lb v-ub q-ub)
-      (and (bs/< v-lb q-lb) (bs/< q-ub v-ub))))
+  [value q-lb q-ub]
+  (let [v-lb (codec-date/lower-bound-bytes value)
+        v-ub (codec-date/upper-bound-bytes value)]
+    (or (bs/<= q-lb v-lb q-ub)
+        (bs/<= q-lb v-ub q-ub)
+        (and (bs/< v-lb q-lb) (bs/< q-ub v-ub)))))
 
 
 (defn- eq-filter [q-lb a-lb]
   (filter
     (fn [[value]]
-      (let [v-lb (codec/date-lb-ub->lb value)
-            v-ub (codec/date-lb-ub->ub value)]
-        (eq-overlaps? v-lb v-ub q-lb a-lb)))))
+      (eq-overlaps? value q-lb a-lb))))
 
 
 (defn- all-keys! [{:keys [svri] :as context} c-hash tid start-id]
@@ -125,16 +107,15 @@
      (all-keys! context c-hash tid start-id))))
 
 
-(defn- ge-overlaps? [v-lb v-ub q-lb]
-  (or (bs/<= q-lb v-lb) (bs/<= q-lb v-ub)))
+(defn- ge-overlaps? [lower-bound value]
+  (or (bs/<= lower-bound (codec-date/lower-bound-bytes value))
+      (bs/<= lower-bound (codec-date/upper-bound-bytes value))))
 
 
-(defn- ge-filter [q-lb]
+(defn- ge-filter [lower-bound]
   (filter
     (fn [[value]]
-      (let [v-lb (codec/date-lb-ub->lb value)
-            v-ub (codec/date-lb-ub->ub value)]
-        (ge-overlaps? v-lb v-ub q-lb)))))
+      (ge-overlaps? lower-bound value))))
 
 
 (defn- ge-keys!
@@ -151,16 +132,40 @@
      (all-keys! context c-hash tid start-id))))
 
 
-(defn- le-overlaps? [v-lb v-ub q-ub]
-  (or (bs/<= v-ub q-ub) (bs/<= v-lb q-ub)))
+(defn- gt-overlaps? [lower-bound value]
+  (or (bs/< lower-bound (codec-date/lower-bound-bytes value))
+      (bs/< lower-bound (codec-date/upper-bound-bytes value))))
+
+
+(defn- gt-filter [lower-bound]
+  (filter
+    (fn [[value]]
+      (gt-overlaps? lower-bound value))))
+
+
+(defn- gt-keys!
+  "Returns a reducible collection of `[value id hash-prefix]` triples of all
+  keys with overlapping date/time intervals with the interval specified by
+  `lower-bound` and an infinite upper bound starting at `start-id` (optional)."
+  ([{:keys [svri]} c-hash tid lower-bound]
+   (coll/eduction
+     (gt-filter lower-bound)
+     (sp-vr/all-keys! svri c-hash tid)))
+  ([context c-hash tid lower-bound start-id]
+   (coll/eduction
+     (gt-filter lower-bound)
+     (all-keys! context c-hash tid start-id))))
+
+
+(defn- le-overlaps? [value upper-bound]
+  (or (bs/<= (codec-date/upper-bound-bytes value) upper-bound)
+      (bs/<= (codec-date/lower-bound-bytes value) upper-bound)))
 
 
 (defn- le-filter [q-ub]
   (filter
     (fn [[value]]
-      (let [v-lb (codec/date-lb-ub->lb value)
-            v-ub (codec/date-lb-ub->ub value)]
-        (le-overlaps? v-lb v-ub q-ub)))))
+      (le-overlaps? value q-ub))))
 
 
 (defn- le-keys!
@@ -177,6 +182,31 @@
      (all-keys! context c-hash tid start-id))))
 
 
+(defn- lt-overlaps? [value upper-bound]
+  (or (bs/< (codec-date/upper-bound-bytes value) upper-bound)
+      (bs/< (codec-date/lower-bound-bytes value) upper-bound)))
+
+
+(defn- lt-filter [upper-bound]
+  (filter
+    (fn [[value]]
+      (lt-overlaps? value upper-bound))))
+
+
+(defn- lt-keys!
+  "Returns a reducible collection of `[value id hash-prefix]` triples of all
+  keys with overlapping date/time intervals with the interval specified by
+  an infinite lower bound and `upper-bound` starting at `start-id` (optional)."
+  ([{:keys [svri]} c-hash tid upper-bound]
+   (coll/eduction
+     (lt-filter upper-bound)
+     (sp-vr/all-keys! svri c-hash tid)))
+  ([context c-hash tid lower-bound start-id]
+   (coll/eduction
+     (lt-filter lower-bound)
+     (all-keys! context c-hash tid start-id))))
+
+
 (defn- invalid-date-time-value-msg [code value]
   (format "Invalid date-time value `%s` in search parameter `%s`." value code))
 
@@ -185,25 +215,29 @@
   ([context c-hash tid {:keys [op lower-bound upper-bound]}]
    (case op
      :eq (eq-keys! context c-hash tid lower-bound upper-bound)
-     (:ge :gt) (ge-keys! context c-hash tid lower-bound)
-     (:le :lt) (le-keys! context c-hash tid upper-bound)))
+     :ge (ge-keys! context c-hash tid lower-bound)
+     :gt (gt-keys! context c-hash tid upper-bound)
+     :le (le-keys! context c-hash tid upper-bound)
+     :lt (lt-keys! context c-hash tid lower-bound)))
   ([context c-hash tid {:keys [op lower-bound upper-bound]} start-id]
    (case op
      :eq (eq-keys! context c-hash tid lower-bound upper-bound start-id)
-     (:ge :gt) (ge-keys! context c-hash tid lower-bound start-id)
-     (:le :lt) (le-keys! context c-hash tid upper-bound start-id))))
+     :ge (ge-keys! context c-hash tid lower-bound start-id)
+     :gt (gt-keys! context c-hash tid upper-bound start-id)
+     :le (le-keys! context c-hash tid upper-bound start-id)
+     :lt (lt-keys! context c-hash tid lower-bound start-id))))
 
 
 (defn- matches?
   [{:keys [rsvi]} c-hash resource-handle
    {:keys [op] q-lb :lower-bound q-ub :upper-bound}]
   (when-let [v (r-sp-v/next-value! rsvi resource-handle c-hash)]
-    (let [v-lb (codec/date-lb-ub->lb v)
-          v-ub (codec/date-lb-ub->ub v)]
-      (case op
-        :eq (eq-overlaps? v-lb v-ub q-lb q-ub)
-        (:ge :gt) (ge-overlaps? v-lb v-ub q-lb)
-        (:le :lt) (le-overlaps? v-lb v-ub q-ub)))))
+    (case op
+      :eq (eq-overlaps? v q-lb q-ub)
+      :ge (ge-overlaps? q-lb v)
+      :gt (gt-overlaps? q-ub v)
+      :le (le-overlaps? v q-ub)
+      :lt (lt-overlaps? v q-lb))))
 
 
 (defrecord SearchParamDate [name url type base code c-hash expression]
@@ -214,14 +248,20 @@
         (case op
           :eq
           {:op op
-           :lower-bound (date-lb date-time-value)
-           :upper-bound (date-ub date-time-value)}
-          (:ge :gt)
+           :lower-bound (codec-date/encode-lower-bound date-time-value)
+           :upper-bound (codec-date/encode-upper-bound date-time-value)}
+          :ge
           {:op op
-           :lower-bound (date-lb date-time-value)}
-          (:le :lt)
+           :lower-bound (codec-date/encode-lower-bound date-time-value)}
+          :gt
           {:op op
-           :upper-bound (date-ub date-time-value)}
+           :upper-bound (codec-date/encode-upper-bound date-time-value)}
+          :le
+          {:op op
+           :upper-bound (codec-date/encode-upper-bound date-time-value)}
+          :lt
+          {:op op
+           :lower-bound (codec-date/encode-lower-bound date-time-value)}
           (ba/unsupported (u/unsupported-prefix-msg code op)))
         #(assoc % ::anom/message (invalid-date-time-value-msg code value)))))
 

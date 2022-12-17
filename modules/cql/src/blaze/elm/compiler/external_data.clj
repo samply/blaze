@@ -7,9 +7,13 @@
     [blaze.anomaly :as ba :refer [if-ok]]
     [blaze.db.api :as d]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.compiler.structured-values]
     [blaze.elm.spec]
     [blaze.elm.util :as elm-util]
-    [clojure.string :as str]))
+    [clojure.string :as str])
+  (:import
+    [blaze.elm.compiler.structured_values SourcePropertyExpression]
+    [java.util List]))
 
 
 (set! *warn-on-reflection* true)
@@ -35,6 +39,20 @@
   (str system "|" code))
 
 
+(defprotocol ToClauses
+  (-to-clauses [x property]))
+
+
+(extend-protocol ToClauses
+  List
+  (-to-clauses [codes property]
+    [(into [property] (map code->clause-value) codes)])
+
+  SourcePropertyExpression
+  (-to-clauses [codes property]
+    (-to-clauses (core/-eval codes nil nil nil) property)))
+
+
 (defn- code-expr
   "Returns an expression which, when evaluated, returns all resources of type
   `data-type` which have a code equivalent to `code` at `property` and are
@@ -45,9 +63,9 @@
   Example:
   * data-type - \"Observation\"
   * property - \"code\"
-  * code - (code/to-code \"http://loinc.org\" nil \"39156-5\")"
+  * codes - [(code/to-code \"http://loinc.org\" nil \"39156-5\")]"
   [node context data-type property codes]
-  (let [clauses [(into [property] (map code->clause-value) codes)]
+  (let [clauses (-to-clauses codes property)
         query (d/compile-compartment-query node context data-type clauses)]
     (->CompartmentQueryRetrieveExpression query data-type clauses)))
 

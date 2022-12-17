@@ -48,7 +48,7 @@
 
 (defn- find-expression-def [library name]
   (when-let [def (find-def library name)]
-    (when (nil? (:type def))
+    (when (= "ExpressionDef" (:type def))
       def)))
 
 

@@ -7,7 +7,10 @@
  elm/instance blaze.elm.literal/instance
  elm/code blaze.elm.literal/code
  elm/code-ref blaze.elm.literal/code-ref
+ elm/concept blaze.elm.literal/concept
+ elm/concept-ref blaze.elm.literal/concept-ref
  elm/quantity blaze.elm.literal/quantity
+ elm/ratio blaze.elm.literal/ratio
  elm/parameter-ref blaze.elm.literal/parameter-ref
  elm/expression-ref blaze.elm.literal/expression-ref
  elm/function-ref blaze.elm.literal/function-ref
@@ -79,6 +82,7 @@
  elm/converts-to-long blaze.elm.literal/converts-to-long
  elm/converts-to-integer blaze.elm.literal/converts-to-integer
  elm/converts-to-quantity blaze.elm.literal/converts-to-quantity
+ elm/converts-to-ratio blaze.elm.literal/converts-to-ratio
  elm/converts-to-string blaze.elm.literal/converts-to-string
  elm/converts-to-time blaze.elm.literal/converts-to-time
  elm/children blaze.elm.literal/children
@@ -86,6 +90,7 @@
  elm/is blaze.elm.literal/is
  elm/to-boolean blaze.elm.literal/to-boolean
  elm/to-chars blaze.elm.literal/to-chars
+ elm/to-concept blaze.elm.literal/to-concept
  elm/to-date blaze.elm.literal/to-date
  elm/to-date-time blaze.elm.literal/to-date-time
  elm/to-decimal blaze.elm.literal/to-decimal
@@ -93,5 +98,6 @@
  elm/to-list blaze.elm.literal/to-list
  elm/to-long blaze.elm.literal/to-long
  elm/to-quantity blaze.elm.literal/to-quantity
+ elm/to-ratio blaze.elm.literal/to-ratio
  elm/to-string blaze.elm.literal/to-string
  elm/calculate-age-at blaze.elm.literal/calculate-age-at}
