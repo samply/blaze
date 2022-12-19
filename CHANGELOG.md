@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.18.5
+
+### New Features
+
+* Support HTTP Header If-None-Match in Update Interactions ([#782](https://github.com/samply/blaze/issues/782))
+* Add a Backport of R5 Quantity Stratum Values ([#853](https://github.com/samply/blaze/pull/853))
+* Return CodeableConcepts as is for Strata ([#851](https://github.com/samply/blaze/pull/851))
+* Implement CQL ToRatio ([#840](https://github.com/samply/blaze/pull/840))
+* Implement CQL Concept Data Type ([#839](https://github.com/samply/blaze/pull/839))
+
+### Bugfixes
+
+* Fix Date Search ([#864](https://github.com/samply/blaze/pull/864))
+
+### Operation
+
+* Decrease Size of Docker Image ([#858](https://github.com/samply/blaze/pull/858))
+
 ## v0.18.4
 
 ### Bugfixes
