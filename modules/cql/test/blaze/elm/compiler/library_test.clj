@@ -7,6 +7,7 @@
     [blaze.elm.compiler.library-spec]
     [blaze.fhir.spec.type.system :as system]
     [blaze.test-util :refer [with-system]]
+    [clojure.java.io :as io]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [cognitect.anomalies :as anom]
@@ -59,10 +60,10 @@
         (given (library/compile-library node library {})
           [:expression-defs "InInitialPopulation" :context] := "Patient"
           [:expression-defs "InInitialPopulation" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
-          [:expression-defs "InInitialPopulation" :expression compiler/form] := '(call "Gender" (expr-ref "Patient"))
+          [:expression-defs "InInitialPopulation" :expression compiler/form] := '(call "Test.Gender" (expr-ref "Patient"))
           [:function-defs "Gender" :context] := "Patient"
           [:function-defs "Gender" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
-          [:function-defs "Gender" :function] :? fn?))))
+          [:function-defs "Gender" :function #(% [nil]) compiler/form] := '(call "Test.Gender" nil)))))
 
   (testing "two functions, one calling the other"
     (let [library (t/translate "library Test
@@ -74,7 +75,38 @@
       (with-system [{:blaze.db/keys [node]} mem-node-system]
         (given (library/compile-library node library {})
           [:expression-defs "InInitialPopulation" :context] := "Patient"
-          [:expression-defs "InInitialPopulation" :expression compiler/form] := '(call "Inc2" 1)))))
+          [:expression-defs "InInitialPopulation" :expression compiler/form] := '(call "Test.Inc2" 1)))))
+
+  (testing "FHIRHelpers"
+    (let [library (t/translate (slurp (io/resource "org/hl7/fhir/FHIRHelpers-4.0.0.cql")))]
+      (with-system [{:blaze.db/keys [node]} mem-node-system]
+        (given (library/compile-library node library {})
+          [:function-defs "ToInterval" :context] := "Patient"
+          [:function-defs "ToInterval" :operand 0 :name] := "range"
+          [:function-defs "ToInterval" :resultTypeSpecifier :type] := "IntervalTypeSpecifier"
+          [:function-defs "ToInterval" :resultTypeSpecifier :pointType :name] := "{urn:hl7-org:elm-types:r1}Quantity"
+          [:function-defs "ToInterval" :function #(% [nil]) compiler/form] := '(call "FHIRHelpers.ToInterval" nil)
+          [:function-defs "ToCalendarUnit" :context] := "Patient"
+          [:function-defs "ToCalendarUnit" :operand 0 :name] := "unit"
+          [:function-defs "ToCalendarUnit" :operand 0 :operandTypeSpecifier :name] := "{urn:hl7-org:elm-types:r1}String"
+          [:function-defs "ToCalendarUnit" :resultTypeName] := "{urn:hl7-org:elm-types:r1}String"
+          [:function-defs "ToCalendarUnit" :function #(% ["foo"]) compiler/form] := '(call "FHIRHelpers.ToCalendarUnit" "foo")
+          [:function-defs "ToQuantity" :context] := "Patient"
+          [:function-defs "ToQuantity" :operand 0 :name] := "quantity"
+          [:function-defs "ToQuantity" :operand 0 :operandTypeSpecifier :name] := "{http://hl7.org/fhir}Quantity"
+          [:function-defs "ToQuantity" :resultTypeName] := "{urn:hl7-org:elm-types:r1}Quantity"
+          [:function-defs "ToQuantity" :function #(% [#fhir/Quantity{:value 1M}]) compiler/form] := '(call "FHIRHelpers.ToQuantity" #fhir/Quantity{:value 1M})))))
+
+  (testing "including FHIRHelpers"
+    (let [library (t/translate "library Test
+      using FHIR version '4.0.0'
+      include FHIRHelpers version '4.0.0'
+      context Patient
+      define InInitialPopulation: Patient.gender = 'male'")]
+      (with-system [{:blaze.db/keys [node]} mem-node-system]
+        (given (library/compile-library node library {})
+          [:expression-defs "InInitialPopulation" :context] := "Patient"
+          [:expression-defs "InInitialPopulation" :expression compiler/form] := '(equal (call "FHIRHelpers.ToString" (:gender (expr-ref "Patient"))) "male")))))
 
   (testing "with compile-time error"
     (testing "function"

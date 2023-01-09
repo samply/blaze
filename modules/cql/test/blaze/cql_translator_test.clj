@@ -5,6 +5,7 @@
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
+    [clojure.java.io :as io]
     [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]]))
 
@@ -46,6 +47,11 @@
       [0 :expression :codes :type] := "ToList"
       [0 :expression :codes :operand :type] := "CodeRef"
       [0 :expression :codes :operand :name] := "T0"))
+
+  (testing "FHIRHelpers"
+    (given-translation
+      (slurp (io/resource "org/hl7/fhir/FHIRHelpers-4.0.0.cql"))
+      count := 236))
 
   (testing "Returns a valid :elm/library"
     (are [cql] (s/valid? :elm/library (translate cql))

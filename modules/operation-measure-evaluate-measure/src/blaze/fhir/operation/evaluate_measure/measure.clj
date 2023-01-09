@@ -83,7 +83,7 @@
   Returns an anomaly on errors."
   [node library]
   (when-ok [cql-code (extract-cql-code library)
-            library (translate cql-code)]
+            library #p (translate cql-code)]
     (library/compile-library node library {})))
 
 

@@ -1529,7 +1529,16 @@
   (testing "value"
     (are [x] (= "code-123745" (type/value x))
       #fhir/code"code-123745"
-      #fhir/code{:id "foo" :value "code-123745"}))
+      #fhir/code{:id "foo" :value "code-123745"}
+      #fhir/code{:extension [#fhir/Extension{:url "181911"}]
+                 :value "code-123745"}))
+
+  (testing ":value"
+    (are [x] (= "code-123745" (:value x))
+      #fhir/code"code-123745"
+      #fhir/code{:id "foo" :value "code-123745"}
+      #fhir/code{:extension [#fhir/Extension{:url "181911"}]
+                 :value "code-123745"}))
 
   (testing "to-json"
     (are [code json] (= json (gen-json-string code))

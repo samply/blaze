@@ -8,6 +8,7 @@
     [clojure.string :as str]
     [cuerdas.core :refer [capital kebab]])
   (:import
+    [clojure.lang ILookup]
     [com.fasterxml.jackson.core JsonGenerator SerializableString]
     [com.fasterxml.jackson.core.io JsonStringEncoder]
     [com.google.common.hash PrimitiveSink]
@@ -157,6 +158,13 @@
        (~'-references [~'_])
        ~@(when (and interned (#{'String} (:tag (meta value))))
            (gen-serializable-string value))
+       ILookup
+       (~'valAt [~'this ~'key]
+         (.valAt ~'this ~'key nil))
+       (~'valAt [~'_ ~'key ~'not-found]
+         (case ~'key
+           :value ~value
+           ~'not-found))
        Object
        (~'equals [~'this ~'x]
          (or (identical? ~'this ~'x)

@@ -19,6 +19,7 @@
     [blaze.elm.compiler.conditional-operators]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.date-time-operators]
+    [blaze.elm.compiler.errors-and-messages]
     [blaze.elm.compiler.external-data]
     [blaze.elm.compiler.interval-operators]
     [blaze.elm.compiler.list-operators]

@@ -21,6 +21,10 @@
             (recur next-items)))))))
 
 
+(defn- item-form [{:keys [when then]}]
+  ['when (core/-form when) 'then (core/-form then)])
+
+
 (defrecord MultiConditionalCaseExpression [items else]
   core/Expression
   (-eval [_ context resource scope]
@@ -29,7 +33,9 @@
         (core/-eval then context resource scope)
         (if (empty? next-items)
           (core/-eval else context resource scope)
-          (recur next-items))))))
+          (recur next-items)))))
+  (-form [_]
+    `(~'case ~@(mapcat item-form items) ~'else ~(core/-form else))))
 
 
 (defmethod core/compile* :elm.compiler.type/case

@@ -333,6 +333,19 @@
           [{:name "id" :value #elm/integer "1"}]}}
         1))
 
+    (testing "FHIR Code"
+      (testing "value"
+        (let [library {:statements {:def [{:type "ExpressionDef"
+                                           :name "Code"}]}}
+              elm
+              {:path "value"
+               :source #elm/expression-ref "Code"
+               :type "Property"}
+              source #fhir/code"code-173851"
+              expr (c/compile {:library library :eval-context "Patient"} elm)
+              result (core/-eval expr {:expression-defs {"Code" {:expression source}}} nil nil)]
+          (is (= "code-173851" result)))))
+
     (testing "Quantity"
       (testing "value"
         (are [elm result]

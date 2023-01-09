@@ -284,9 +284,11 @@
 (s/def :elm.code/display
   string?)
 
+
 (s/def :elm/code
   (s/keys :req-un [:elm.code/system :elm.code/code]
           :opt-un [:elm.code/display]))
+
 
 (defmethod expression :elm.spec.type/code [_]
   :elm/code)
@@ -1881,3 +1883,35 @@
 (defmethod expression :elm.spec.type/calculate-age-at [_]
   (s/keys :req-un [:elm.binary-expression/operand]
           :opt-un [:elm.date/precision]))
+
+
+
+;; 24. Errors and Messages
+
+;; 24.1. Message
+(s/def :elm.message/source
+  :elm/expression)
+
+
+(s/def :elm.message/condition
+  :elm/expression)
+
+
+(s/def :elm.message/code
+  :elm/expression)
+
+
+(s/def :elm.message/severity
+  :elm/expression)
+
+
+(s/def :elm.message/message
+  :elm/expression)
+
+
+(defmethod expression :elm.spec.type/message [_]
+  (s/keys :req-un [:elm.message/source]
+          :opt-un [:elm.message/condition
+                   :elm.message/code
+                   :elm.message/severity
+                   :elm.message/message]))

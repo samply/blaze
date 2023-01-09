@@ -1,11 +1,13 @@
 (ns blaze.elm.compiler.library
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
+    [blaze.cql-translator :as t]
     [blaze.elm.compiler :as compiler]
     [blaze.elm.compiler.function :as function]
     [blaze.elm.deps-infer :as deps-infer]
     [blaze.elm.equiv-relationships :as equiv-relationships]
-    [blaze.elm.normalizer :as normalizer]))
+    [blaze.elm.normalizer :as normalizer]
+    [clojure.java.io :as io]))
 
 
 (defn- compile-expression-def
@@ -24,13 +26,16 @@
 
   Returns `def` with :expression removed and :function added or an anomaly on
   errors."
-  [context {:keys [name operand] :as def}]
+  [{{{library-name :id} :identifier} :library :as context}
+   {:keys [name operand] :as def}]
   (when-ok [{:keys [expression]} (compile-expression-def context def)]
-    (-> (dissoc def :expression)
-        (assoc :function (partial function/arity-n name expression (mapv :name operand))))))
+    (let [function (partial function/arity-n library-name name expression
+                            (mapv :name operand))]
+      (-> (dissoc def :expression)
+          (assoc :function function)))))
 
 
-(defn- compile-function-defs [context library]
+(defn- compile-function-defs [context]
   (transduce
     (filter (comp #{"FunctionDef"} :type))
     (completing
@@ -39,10 +44,10 @@
           (assoc-in context [:function-defs name] def)
           reduced)))
     context
-    (-> library :statements :def)))
+    (-> context :library :statements :def)))
 
 
-(defn- expression-defs [context library]
+(defn- expression-defs [context]
   (transduce
     (comp (filter (comp #{"ExpressionDef"} :type))
           (map (partial compile-expression-def context))
@@ -51,7 +56,7 @@
       (fn [r {:keys [name] :as def}]
         (assoc r name def)))
     {}
-    (-> library :statements :def)))
+    (-> context :library :statements :def)))
 
 
 (defn- compile-parameter-def
@@ -70,7 +75,7 @@
     parameter-def))
 
 
-(defn- parameter-default-values [context library]
+(defn- parameter-default-values [context]
   (transduce
     (comp (map (partial compile-parameter-def context))
           (halt-when ba/anomaly?))
@@ -78,7 +83,37 @@
       (fn [r {:keys [name default]}]
         (assoc r name default)))
     {}
-    (-> library :parameters :def)))
+    (-> context :library :parameters :def)))
+
+
+(def fhir-helpers
+  (t/translate (slurp (io/resource "org/hl7/fhir/FHIRHelpers-4.0.0.cql"))))
+
+
+(defn- library-not-found-anom [context path version]
+  (ba/incorrect
+    (format "Library `%s` version `%s` not found." path version)
+    :context context))
+
+
+(declare compile-library)
+
+
+(defn- resolve-include
+  [{:keys [node] :as context}
+   {:keys [path version] identifier :localIdentifier}]
+  (cond
+    (and (= "FHIRHelpers" path) (= "4.0.0" version))
+    (assoc-in context [:includes identifier] (compile-library node fhir-helpers {}))
+    :else
+    (reduced (library-not-found-anom context path version))))
+
+
+(defn- resolve-includes [context]
+  (reduce
+    resolve-include
+    context
+    (-> context :library :includes :def)))
 
 
 (defn compile-library
@@ -91,9 +126,11 @@
                     equiv-relationships/find-equiv-rels-library
                     deps-infer/infer-library-deps)
         context (assoc opts :node node :library library)]
-    (when-ok [{:keys [function-defs] :as context} (compile-function-defs context library)
-              expression-defs (expression-defs context library)
-              parameter-default-values (parameter-default-values context library)]
-      {:expression-defs expression-defs
+    (when-ok [{:keys [includes] :as context} (resolve-includes context)
+              {:keys [function-defs] :as context} (compile-function-defs context)
+              expression-defs (expression-defs context)
+              parameter-default-values (parameter-default-values context)]
+      {:includes includes
+       :expression-defs expression-defs
        :function-defs function-defs
        :parameter-default-values parameter-default-values})))

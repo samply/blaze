@@ -162,46 +162,33 @@
     `(~'call "ToInterval" ~(core/-form operand))))
 
 
-(defn- function-def-not-found-anom [context name]
+(defn- function-def-not-found-anom [context library-name name]
   (ba/incorrect
-    (format "Function definition `%s` not found." name)
+    (if library-name
+      (format "Function definition `%s` from library include `%s` not found."
+              library-name name)
+      (format "Local function definition `%s` not found." name))
     :context context))
 
 
-(defn compile-function [{:keys [function-defs] :as context} name operands]
-  (if-let [{:keys [function]} (get function-defs name)]
+(defn- find-function-def [context library-name name]
+  (if library-name
+    (when-let [{:keys [function-defs]} (get (:includes context) library-name)]
+      (get function-defs name))
+    (get (:function-defs context) name)))
+
+
+(defn- compile-function [context library-name name operands]
+  (if-let [{:keys [function]} (find-function-def context library-name name)]
     (function operands)
-    (throw-anom (function-def-not-found-anom context name))))
+    (throw-anom (function-def-not-found-anom context library-name name))))
 
 
 ;; 9.4. FunctionRef
 (defmethod core/compile* :elm.compiler.type/function-ref
-  [context {:keys [name] operands :operand}]
-  ;; TODO: look into other libraries (:libraryName)
+  [context {library-name :libraryName :keys [name] operands :operand}]
   (let [operands (map #(core/compile* context %) operands)]
-    (case name
-      "ToQuantity"
-      (->ToQuantityFunctionExpression (first operands))
-
-      "ToDate"
-      (->ToDateFunctionExpression (first operands))
-
-      "ToDateTime"
-      (->ToDateTimeFunctionExpression (first operands))
-
-      "ToString"
-      (->ToStringFunctionExpression (first operands))
-
-      "ToCode"
-      (->ToCodeFunctionExpression (first operands))
-
-      "ToDecimal"
-      (first operands)
-
-      "ToInterval"
-      (->ToIntervalFunctionExpression (first operands))
-
-      (compile-function context name operands))))
+    (compile-function context library-name name operands)))
 
 
 ;; 9.5 OperandRef

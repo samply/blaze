@@ -77,15 +77,9 @@
 
 
 ;; 2.3. Property
-(defn- pull [db x]
-  (if (d/resource-handle? x)
-    @(d/pull-content db x)
-    x))
-
-
 (defn- get-property [db key x]
-  (if (fhir-spec/fhir-type x)
-    (get (pull db x) key)
+  (if (d/resource-handle? x)
+    (get @(d/pull-content db x) key)
     (p/get x key)))
 
 

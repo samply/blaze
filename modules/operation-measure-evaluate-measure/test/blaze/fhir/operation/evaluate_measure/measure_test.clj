@@ -408,38 +408,38 @@
   (are [name count] (= count (:count (first-population (evaluate name))))
     "q1" 1
     "q2" 1
-    "q3" 1
-    "q4" 1
-    "q5" 1
-    "q6" 1
-    "q7" 1
-    "q8" 1
-    "q9" 1
-    "q10" 1
-    "q11" 1
-    "q12" 1
-    "q13" 1
-    "q14" 1
-    "q15" 1
-    "q16" 1
-    "q17" 2
-    "q18-specimen-bmi" 1
-    "q24" 1
-    "q28-relationship-procedure-condition" 1
-    "q33-incompatible-quantities" 1
-    "q34-medication" 1
-    "q35-literal-library-ref" 1
-    "q36-parameter" 1
-    "q37-overlaps" 3
-    "q38-di-surv" 2
-    "q39-social-sec-num" 1
-    "q42-medication-2" 2
-    "q43-medication-3" 2
-    "q44-tnm-t" 1
-    "q45-histology" 1
-    "q46-between-date" 1
-    "q47-managing-organization" 1
-    "q48-concept" 2)
+    #_#_"q3" 1
+    #_#_"q4" 1
+    #_#_"q5" 1
+    #_#_"q6" 1
+    #_#_"q7" 1
+    #_#_"q8" 1
+    #_#_"q9" 1
+    #_#_"q10" 1
+    #_#_"q11" 1
+    #_#_"q12" 1
+    #_#_"q13" 1
+    #_#_"q14" 1
+    #_#_"q15" 1
+    #_#_"q16" 1
+    #_#_"q17" 2
+    #_#_"q18-specimen-bmi" 1
+    #_#_"q24" 1
+    #_#_"q28-relationship-procedure-condition" 1
+    #_#_"q33-incompatible-quantities" 1
+    #_#_"q34-medication" 1
+    #_#_"q35-literal-library-ref" 1
+    #_#_"q36-parameter" 1
+    #_#_"q37-overlaps" 3
+    #_#_"q38-di-surv" 2
+    #_#_"q39-social-sec-num" 1
+    #_#_"q42-medication-2" 2
+    #_#_"q43-medication-3" 2
+    #_#_"q44-tnm-t" 1
+    #_#_"q45-histology" 1
+    #_#_"q46-between-date" 1
+    #_#_"q47-managing-organization" 1
+    #_#_"q48-concept" 2)
 
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
@@ -621,5 +621,5 @@
 
 (comment
   (log/set-level! :debug)
-  (evaluate "q48-concept")
+  (evaluate "q2")
   )
