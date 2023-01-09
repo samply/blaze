@@ -6,7 +6,7 @@
   {:local/root "../module-base"}
 
   org.eclipse.jetty/jetty-server
-  {:mvn/version "9.4.49.v20220914"}
+  {:mvn/version "9.4.50.v20221201"}
 
   ring/ring-jetty-adapter
   {:mvn/version "1.9.6"
