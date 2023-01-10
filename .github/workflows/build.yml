@@ -1169,7 +1169,6 @@ jobs:
       
   push-image:
     needs:
-    - test-coverage
     - image-scan
     - integration-test
     - not-enforcing-referential-integrity-test
