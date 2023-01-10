@@ -240,7 +240,8 @@
       (let [db (d/db node)
             context {:clock clock :rng-fn fixed-rng-fn :db db
                      :blaze/base-url "" ::reitit/router router}
-            measure {:fhir/type :fhir/Measure :id "0"
+            measure-id "measure-id-133021"
+            measure {:fhir/type :fhir/Measure :id measure-id
                      :library [#fhir/canonical"0"]
                      :group
                      [{:fhir/type :fhir.Measure/group
@@ -248,46 +249,47 @@
                        [{:fhir/type :fhir.Measure.group/population
                          :code (population-concept "initial-population")}]}]}
             params {:period [#system/date"2000" #system/date"2020"]
-                    :report-type "population"
-                    :subject "Patient/0"}]
+                    :report-type "population"}]
         (given (measure/evaluate-measure context measure params)
           ::anom/category := ::anom/incorrect
           ::anom/message := "Missing criteria."
+          :measure-id := measure-id
           :fhir/issue := "required"
           :fhir.issue/expression := "Measure.group[0].population[0]"))))
 
   (testing "single subject"
-    (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
-               :content [(library-content library-gender)]}]]]
+    (doseq [subject-ref ["0" ["Patient" "0"]]]
+      (with-system-data
+        [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+                 :content [(library-content library-gender)]}]]]
 
-      (let [db (d/db node)
-            context {:clock clock :rng-fn fixed-rng-fn :db db
-                     :blaze/base-url "" ::reitit/router router}
-            measure {:fhir/type :fhir/Measure :id "0"
-                     :library [#fhir/canonical"0"]
-                     :group
-                     [{:fhir/type :fhir.Measure/group
-                       :population
-                       [{:fhir/type :fhir.Measure.group/population
-                         :code (population-concept "initial-population")
-                         :criteria (cql-expression "InInitialPopulation")}]}]}
-            params {:period [#system/date"2000" #system/date"2020"]
-                    :report-type "subject"
-                    :subject-ref "0"}]
-        (given (:resource (measure/evaluate-measure context measure params))
-          :fhir/type := :fhir/MeasureReport
-          :status := #fhir/code"complete"
-          :type := #fhir/code"individual"
-          :measure := #fhir/canonical"/0"
-          [:subject :reference] := "Patient/0"
-          :date := #system/date-time"1970-01-01T00:00Z"
-          :period := #fhir/Period{:start #system/date-time"2000"
-                                  :end #system/date-time"2020"}
-          [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
-          [:group 0 :population 0 :count] := 1)))
+        (let [db (d/db node)
+              context {:clock clock :rng-fn fixed-rng-fn :db db
+                       :blaze/base-url "" ::reitit/router router}
+              measure {:fhir/type :fhir/Measure :id "0"
+                       :library [#fhir/canonical"0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              params {:period [#system/date"2000" #system/date"2020"]
+                      :report-type "subject"
+                      :subject-ref subject-ref}]
+          (given (:resource (measure/evaluate-measure context measure params))
+            :fhir/type := :fhir/MeasureReport
+            :status := #fhir/code"complete"
+            :type := #fhir/code"individual"
+            :measure := #fhir/canonical"/0"
+            [:subject :reference] := "Patient/0"
+            :date := #system/date-time"1970-01-01T00:00Z"
+            :period := #fhir/Period{:start #system/date-time"2000"
+                                    :end #system/date-time"2020"}
+            [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
+            [:group 0 :population 0 :count] := 1))))
 
     (testing "with stratifiers"
       (with-system-data
@@ -583,7 +585,8 @@
   (given (evaluate "q30-stratifier-with-missing-expression")
     ::anom/category := ::anom/incorrect,
     ::anom/message := "Missing expression with name `SampleMaterialTypeCategory`.",
-    :expression-name := "SampleMaterialTypeCategory")
+    :expression-name := "SampleMaterialTypeCategory"
+    :measure-id := "0")
 
   (given (first-stratifier-strata (evaluate "q31-stratifier-storage-temperature"))
     [0 :value :text type/value] := "temperature2to10"

@@ -1,6 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.measure
   (:require
-    [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.anomaly :as ba :refer [if-ok when-ok]]
     [blaze.coll.core :as coll]
     [blaze.cql-translator :as cql-translator]
     [blaze.db.api :as d]
@@ -227,7 +227,8 @@
           id subject-type (* duration 1e3)))
 
 
-(defn- evaluate-groups [{:keys [subject-type] :as context} id groups]
+(defn- evaluate-groups
+  [{:keys [subject-type] :as context} {:keys [id] groups :group}]
   (log/debug (format "Start evaluating Measure with ID `%s`..." id))
   (let [timer (prom/timer evaluate-duration-seconds subject-type)]
     (when-ok [groups (evaluate-groups* context groups)]
@@ -269,7 +270,8 @@
 
 
 (defn- measure-report
-  [report-type subject-handle measure-ref now start end result duration]
+  [{:keys [now report-type subject-handle] :as context} measure
+   {[start end] :period} [{:keys [result]} duration]]
   (cond->
     {:fhir/type :fhir/MeasureReport
      :extension [(eval-duration duration)]
@@ -279,7 +281,7 @@
        "population" #fhir/code"summary"
        "subject-list" #fhir/code"subject-list"
        "subject" #fhir/code"individual")
-     :measure (type/canonical measure-ref)
+     :measure (type/canonical (canonical context measure))
      :date now
      :period
      (type/map->Period
@@ -289,8 +291,8 @@
     subject-handle
     (assoc :subject (type/map->Reference {:reference (local-ref subject-handle)}))
 
-    (seq (:result result))
-    (assoc :group (:result result))))
+    (seq result)
+    (assoc :group result)))
 
 
 (defn- now [clock]
@@ -326,35 +328,36 @@
     (subject-handle* db subject-type subject-ref)))
 
 
+(defn- enhance-context
+  [{:keys [clock db] :as context} measure {:keys [report-type subject-ref]}]
+  (let [subject-type (subject-type measure)]
+    (when-ok [{:keys [expression-defs function-defs parameter-default-values]} (compile-primary-library db measure)
+              subject-handle (some->> subject-ref (subject-handle db subject-type))]
+      (cond->
+        (assoc context
+          :db db
+          :now (now clock)
+          :expression-defs expression-defs
+          :function-defs function-defs
+          :parameters parameter-default-values
+          :subject-type subject-type
+          :report-type report-type
+          :luids (successive-luids context))
+        subject-handle
+        (assoc :subject-handle subject-handle)))))
+
+
 (defn evaluate-measure
   "Evaluates `measure` inside `period` in `db` with evaluation time of `now`.
 
   Returns an already completed MeasureReport under :resource which isn't
   persisted and optional :tx-ops or an anomaly in case of errors."
   {:arglists '([context measure params])}
-  [{:keys [clock db] :as context}
-   {:keys [id] groups :group :as measure}
-   {:keys [report-type subject-ref] [start end] :period}]
-  (when-ok [{:keys [expression-defs function-defs parameter-default-values]} (compile-primary-library db measure)
-            now (now clock)
-            subject-type (subject-type measure)
-            subject-handle (some->> subject-ref (subject-handle db subject-type))
-            context (cond->
-                      (assoc context
-                        :db db
-                        :now now
-                        :expression-defs expression-defs
-                        :function-defs function-defs
-                        :parameters parameter-default-values
-                        :subject-type subject-type
-                        :report-type report-type
-                        :luids (successive-luids context))
-                      subject-handle
-                      (assoc :subject-handle subject-handle))
-            [groups duration] (evaluate-groups context id groups)]
+  [context {:keys [id] :as measure} params]
+  (if-ok [context (enhance-context context measure params)
+          [{:keys [tx-ops]} :as result] (evaluate-groups context measure)]
     (cond->
-      {:resource
-       (measure-report report-type subject-handle (canonical context measure)
-                       now start end groups duration)}
-      (seq (:tx-ops groups))
-      (assoc :tx-ops (:tx-ops groups)))))
+      {:resource (measure-report context measure params result)}
+      (seq tx-ops)
+      (assoc :tx-ops tx-ops))
+    #(assoc % :measure-id id)))

@@ -2,6 +2,7 @@
   (:require
     [blaze.db.spec]
     [blaze.fhir.operation.evaluate-measure.measure :as-alias measure]
+    [blaze.fhir.spec.spec]
     [clojure.spec.alpha :as s]))
 
 
@@ -11,7 +12,7 @@
 
 (s/def ::measure/subject-ref
   (s/or :id :blaze.resource/id
-        :local-ref (s/tuple :fhir.resource/type :blaze.resource/id)))
+        :local-ref :blaze.fhir/local-ref-tuple))
 
 
 (s/def ::measure/population-handle
