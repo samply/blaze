@@ -1,5 +1,31 @@
 # Development
 
+## Building Blaze
+
+The main build artefact of Blaze is a single Docker image. Apart from the Docker image, an uberjar is build, which can be used also.
+
+### Using GitHub CI
+
+The most reliable way to build Blaze is to use GitHub CI. If you create a PR, a Docker image with the label `pr-<num>` is created. You can use that image after the pipeline ended successfully.   
+
+### Using a Local Build Environment
+
+* install at least Java 11. Java 17 is preferred
+* install Clojure by following this [guide](https://clojure.org/guides/install_clojure)
+* install Make
+* run `make uberjar` to create the uberjar that will be available under the `target` directory
+* run `docker build .` to build the Docker image
+
+## Developing Blaze
+
+The recommended way to write new code for Blaze is to open a REPL in the module you like to work on. Blaze uses Clojures own build system [Deps](https://clojure.org/guides/deps_and_cli). You can run a REPL in the command line by starting the tool `clj` inside the module directory.
+
+The best way to use a REPL, is to use it from your IDE. If you use Intellij, there is a Plugin called [Cursive](https://cursive-ide.com). With Cursive you can create REPL's using the Deps build system. In such a REPL you can also execute the unit tests.
+
+Inside the REPL you should be able to discover and play with the functions and execute unit tests. Developing a new feature will always include writing unit tests. Code coverage is measured in CI and should only increase. The unit tests should already ensure that the feature is implemented correctly on a module level. In addition to that, integration tests can be added to the GitHub CI pipeline available in the file `.github/workflows/build.yml`.
+
+In addition to the REPL development inside a single module, it's possible to run a REPL were Blaze can be started as a system. Such a REPL should be started with the namespace `blaze.dev` loaded available in the file `dev/blaze/dev.clj`. In that namespace Blaze can be started by invoking the `init` function. The configuration of the development system is done with the same environment variables used in the production system. That variables are documented [here](docs/deployment/environment-variables.md).
+
 ## Release Checklist
 
 * create a release branch called `release-v<version>` like `release-v0.13.1`
