@@ -204,7 +204,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: blaze-uberjar
-        path: target/blaze-0.18.5-standalone.jar
+        path: target/blaze*standalone.jar
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
@@ -1202,7 +1202,7 @@ jobs:
 
     - name: Docker Stats
       run: docker stats --no-stream
-      
+
   push-image:
     needs:
     - image-scan
@@ -1218,7 +1218,7 @@ jobs:
     - distributed-test
     - jepsen-distributed-test
     runs-on: ubuntu-22.04
-    
+
     steps:
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -1227,7 +1227,6 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: blaze-uberjar
-        path: target/blaze-0.18.5-standalone.jar
 
     - name: Download Blaze Image
       uses: actions/download-artifact@v3
@@ -1279,3 +1278,17 @@ jobs:
         push: true
         tags: ${{ steps.docker-meta.outputs.tags }}
         labels: ${{ steps.docker-meta.outputs.labels }}
+
+    - name: Validate release version
+      if: startsWith(github.ref, 'refs/tags/')
+      id: semver_parser
+      uses: booxmedialtd/ws-action-parse-semver@v1
+      with:
+        input_string: ${{ github.ref }}
+        version_extractor_regex: '\/v(.*)$'
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: target/blaze*standalone.jar
