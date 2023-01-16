@@ -2,6 +2,8 @@
   (:require
     [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
+    [blaze.db.resource-store :as rs]
+    [blaze.db.resource-store.spec]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.kafka.codec :as codec]
     [blaze.db.tx-log.kafka.config :as c]
@@ -9,6 +11,7 @@
     [blaze.db.tx-log.kafka.spec]
     [blaze.db.tx-log.kafka.util :as u]
     [blaze.executors :as ex]
+    [blaze.fhir.hash :as hash]
     [blaze.module :refer [reg-collector]]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
@@ -82,39 +85,71 @@
     (get (.endOffsets consumer [tx-partition]) tx-partition)))
 
 
-(deftype KafkaTxLog [config ^Producer producer last-t-consumer last-t-executor]
+(defn- prepare-entries [tx-cmds]
+  (reduce
+    (fn [r {:keys [resource] :as tx-cmd}]
+      (if resource
+        (let [hash (hash/generate resource)]
+          (-> (update r :entries assoc hash resource)
+              (update :tx-cmds conj (assoc tx-cmd :hash hash))))
+        (update r :tx-cmds conj tx-cmd)))
+    {:entries {}
+     :tx-cmds []}
+    tx-cmds))
+
+
+(defn- store! [resource-store tx-cmds]
+  (let [{:keys [entries tx-cmds]} (prepare-entries tx-cmds)]
+    (-> (rs/put! resource-store entries)
+        (ac/then-apply (fn [_] tx-cmds)))))
+
+
+(defn- remove-resources [tx-cmds]
+  (mapv #(dissoc % :resource) tx-cmds))
+
+
+(defn- send! [config producer timer tx-cmds]
+  (let [future (ac/future)]
+    (.send ^Producer producer (ProducerRecord. "tx" (remove-resources tx-cmds))
+           (reify Callback
+             (onCompletion [_ metadata e]
+               (prom/observe-duration! timer)
+               (if e
+                 (ac/complete-exceptionally! future (producer-error e config (count tx-cmds)))
+                 (ac/complete! future (metadata->t metadata))))))
+    future))
+
+
+(deftype Queue [record-transformer consumer]
+  tx-log/Queue
+  (-poll [_ timeout]
+    (into [] record-transformer (.poll ^Consumer consumer ^Duration timeout)))
+  AutoCloseable
+  (close [_]
+    (.close ^Consumer consumer)))
+
+
+(deftype KafkaTxLog [config producer last-t-consumer last-t-executor]
   tx-log/TxLog
-  (-submit [_ tx-cmds _]
+  (-submit [_ tx-cmds]
     (log/trace "submit" (count tx-cmds) "tx-cmds")
-    (let [timer (prom/timer duration-seconds "submit")
-          future (ac/future)]
-      (.send producer (ProducerRecord. "tx" tx-cmds)
-             (reify Callback
-               (onCompletion [_ metadata e]
-                 (prom/observe-duration! timer)
-                 (if e
-                   (ac/complete-exceptionally! future (producer-error e config (count tx-cmds)))
-                   (ac/complete! future (metadata->t metadata))))))
-      future))
+    (let [timer (prom/timer duration-seconds "submit")]
+      (-> (store! (:resource-store config) tx-cmds)
+          (ac/then-compose (partial send! config producer timer)))))
 
   (-last-t [_]
     (ac/supply-async #(end-offset last-t-consumer) last-t-executor))
 
   (-new-queue [_ offset]
     (log/trace "new-queue offset =" offset)
-    (doto (create-consumer config)
-      (.seek tx-partition ^long (dec offset))))
+    (Queue. (u/record-transformer (:resource-store config))
+            (doto (create-consumer config)
+              (.seek tx-partition (long (dec offset))))))
 
   AutoCloseable
   (close [_]
-    (.close producer)
+    (.close ^Producer producer)
     (.close ^AutoCloseable last-t-consumer)))
-
-
-(extend-protocol tx-log/Queue
-  Consumer
-  (-poll [consumer timeout]
-    (into [] u/record-transformer (.poll consumer ^Duration timeout))))
 
 
 (def create-last-t-consumer
@@ -123,7 +158,8 @@
 
 (defmethod ig/pre-init-spec :blaze.db.tx-log/kafka [_]
   (s/keys :req-un [::bootstrap-servers
-                   ::last-t-executor]
+                   ::last-t-executor
+                   :blaze.db/resource-store]
           :opt-un [::max-request-size
                    ::compression-type
                    ::security-protocol

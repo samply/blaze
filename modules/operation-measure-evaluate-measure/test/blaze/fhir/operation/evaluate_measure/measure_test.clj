@@ -141,9 +141,7 @@
 
 
 (defn encode-base64 [^String s]
-  (-> (Base64/getEncoder)
-      (.encode (.getBytes s StandardCharsets/UTF_8))
-      (String. StandardCharsets/UTF_8)))
+  (.encodeToString (Base64/getEncoder) (.getBytes s StandardCharsets/UTF_8)))
 
 
 (defn library-content [content]

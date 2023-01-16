@@ -4,7 +4,6 @@
     [blaze.db.impl.db :as db]
     [blaze.db.impl.index.tx-error :as tx-error]
     [blaze.db.impl.index.tx-success :as tx-success]
-    [blaze.fhir.hash :as hash]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]))
 
@@ -14,20 +13,16 @@
 
 (defmethod prepare-op :create
   [{:keys [references-fn]} [op resource clauses]]
-  (let [hash (hash/generate resource)
-        refs (references-fn resource)]
-    {:hash-resource
-     [hash resource]
-     :blaze.db/tx-cmd
-     (cond->
-       {:op (name op)
-        :type (name (fhir-spec/fhir-type resource))
-        :id (:id resource)
-        :hash hash}
-       (seq refs)
-       (assoc :refs refs)
-       (seq clauses)
-       (assoc :if-none-exist clauses))}))
+  (let [refs (references-fn resource)]
+    (cond->
+      {:op (name op)
+       :type (name (fhir-spec/fhir-type resource))
+       :id (:id resource)
+       :resource resource}
+      (seq refs)
+      (assoc :refs refs)
+      (seq clauses)
+      (assoc :if-none-exist clauses))))
 
 
 (defn- prepare-if-none-match [if-none-match]
@@ -38,34 +33,25 @@
 
 (defmethod prepare-op :put
   [{:keys [references-fn]} [op resource [precond-op precond]]]
-  (let [hash (hash/generate resource)
-        refs (references-fn resource)]
-    {:hash-resource
-     [hash resource]
-     :blaze.db/tx-cmd
-     (cond->
-       {:op (name op)
-        :type (name (fhir-spec/fhir-type resource))
-        :id (:id resource)
-        :hash hash}
-       (seq refs)
-       (assoc :refs refs)
-       (identical? :if-match precond-op)
-       (assoc :if-match precond)
-       (identical? :if-none-match precond-op)
-       (assoc :if-none-match (prepare-if-none-match precond)))}))
+  (let [refs (references-fn resource)]
+    (cond->
+      {:op (name op)
+       :type (name (fhir-spec/fhir-type resource))
+       :id (:id resource)
+       :resource resource}
+      (seq refs)
+      (assoc :refs refs)
+      (identical? :if-match precond-op)
+      (assoc :if-match precond)
+      (identical? :if-none-match precond-op)
+      (assoc :if-none-match (prepare-if-none-match precond)))))
 
 
 (defmethod prepare-op :delete
   [_ [_ type id]]
-  {:blaze.db/tx-cmd
-   {:op "delete"
-    :type type
-    :id id}})
-
-
-(def ^:private split
-  (juxt #(mapv :blaze.db/tx-cmd %) #(into {} (map :hash-resource) %)))
+  {:op "delete"
+   :type type
+   :id id})
 
 
 (defn- ctx
@@ -78,14 +64,13 @@
 
 
 (defn prepare-ops
-  "Splits `tx-ops` into a tuple of :blaze.db/tx-cmds and a map of resource
-  hashes to resource contents.
+  "Converts transaction operators into transaction commands.
 
-  Puts :refs into the returned :blaze.db/tx-cmds if
+  Puts :refs into the returned transaction commands if
   :blaze.db/enforce-referential-integrity is true in `context` which is the
   default."
   [context tx-ops]
-  (split (mapv (partial prepare-op (ctx context)) tx-ops)))
+  (mapv (partial prepare-op (ctx context)) tx-ops))
 
 
 (defn- missing-tx-msg [t]

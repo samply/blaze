@@ -19,6 +19,5 @@
   (s/keys
     :req-un
     [:blaze.db/kv-store
-     :blaze.db/resource-store
      :blaze.db/search-param-registry
      :blaze.db.node.resource-indexer/executor]))

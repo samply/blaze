@@ -74,12 +74,6 @@
       (ac/completed-future {::anom/category ::anom/fault}))))
 
 
-(def resource-store-failing-on-put-system
-  (-> (assoc-in system [:blaze.db/node :resource-store]
-                (ig/ref ::resource-store-failing-on-put))
-      (assoc ::resource-store-failing-on-put {})))
-
-
 (deftest sync-test
   (testing "on already available database value"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -512,13 +506,6 @@
                   (map
                     #(= % (d/type-total (d/as-of db %) "Patient"))
                     (range 100))))))))))
-
-  (testing "with failing resource storage"
-    (testing "on put"
-      (with-system [{:blaze.db/keys [node]} resource-store-failing-on-put-system]
-        (given-failed-future
-          (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-          ::anom/category := ::anom/fault))))
 
   (testing "with failing resource indexer"
     (with-redefs

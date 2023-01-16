@@ -10,8 +10,7 @@
 
 ;; returns a CompletableFuture of :blaze.db/t
 (s/fdef tx-log/submit
-  :args (s/cat :tx-log :blaze.db/tx-log :tx-cmds :blaze.db/tx-cmds
-               :local-payload any?)
+  :args (s/cat :tx-log :blaze.db/tx-log :tx-cmds :blaze.db/submit-tx-cmds)
   :ret ac/completable-future?)
 
 

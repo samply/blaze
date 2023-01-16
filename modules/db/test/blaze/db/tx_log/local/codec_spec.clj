@@ -2,6 +2,7 @@
   (:require
     [blaze.byte-buffer :as bb]
     [blaze.db.tx-log.local.codec :as codec]
+    [blaze.db.tx-log.local.spec]
     [blaze.db.tx-log.spec]
     [clojure.spec.alpha :as s]))
 
@@ -12,7 +13,7 @@
 
 
 (s/fdef codec/encode-tx-data
-  :args (s/cat :instant :blaze.db.tx/instant :tx-cmds :blaze.db/tx-cmds)
+  :args (s/cat :instant :blaze.db.tx/instant :tx-cmds :blaze.db.tx-log.local/tx-cmds)
   :ret bytes?)
 
 

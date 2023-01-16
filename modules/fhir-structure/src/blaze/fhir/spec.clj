@@ -94,7 +94,7 @@
 
 
 (defn unform-cbor
-  "Returns the CBOR representation of `resource`."
+  "Returns the CBOR representation of `resource` as byte array."
   [resource]
   (let [key (transform-type-key (type/type resource) "cbor")]
     (if-let [spec (s2/get-spec key)]
