@@ -98,6 +98,12 @@
           :ret :elm/expression)
 
 
+;; 3.12. ValueSetRef
+(s/fdef elm/value-set-ref
+  :args (s/cat :name string?)
+  :ret :elm/expression)
+
+
 ;; 9. Reusing Logic
 
 ;; 9.2. ExpressionRef

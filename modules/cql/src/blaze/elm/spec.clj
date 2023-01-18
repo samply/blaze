@@ -462,6 +462,11 @@
   :elm/ratio)
 
 
+;; 3.12. ValueSetRef
+(defmethod expression :elm.spec.type/value-set-ref [_]
+  (s/keys :opt-un [:elm/name :elm/libraryName]))
+
+
 ;; 4. Type Specifiers
 
 ;; 4.1. TypeSpecifier

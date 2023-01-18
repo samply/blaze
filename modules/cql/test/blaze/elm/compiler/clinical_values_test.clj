@@ -322,3 +322,20 @@
       #elm/ratio [[1] [1 "s"]] (ratio/ratio (quantity/quantity 1 "") (quantity/quantity 1 "s"))
       #elm/ratio [[1 "s"] [1]] (ratio/ratio (quantity/quantity 1 "s") (quantity/quantity 1 ""))
       #elm/ratio [[5 "mg"] [10 "g"]] (ratio/ratio (quantity/quantity 5 "mg") (quantity/quantity 10 "g")))))
+
+
+;; 3.12. ValueSetRef
+;;
+;; The ValueSetRef expression allows a previously defined named value set to be
+;; referenced within an expression. Conceptually, referencing a value set
+;; returns the expansion set for the value set as a list of codes.
+(deftest compile-value-set-ref-test
+  (testing "found"
+    (let [context
+          {:library
+           {:valueSets
+            {:def
+             [{:name "value-set-def-101820",
+               :id "value-set-101820"}]}}}
+          expr (c/compile context #elm/value-set-ref "value-set-def-101820")]
+      (is (= (->ValueSetRef "value-set-def-101820") expr)))))
