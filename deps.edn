@@ -47,7 +47,7 @@
  {:build
   {:deps
    {io.github.clojure/tools.build
-    {:git/tag "v0.9.1" :git/sha "27ff8a4"}}
+    {:git/tag "v0.9.2" :git/sha "fe6b140"}}
    :ns-default build}
 
   :test
@@ -128,4 +128,5 @@
     "-d" "modules/thread-pool-executor-collector"
     "--exclude" "com.taoensso/timbre"
     "--exclude" "org.eclipse.jetty/jetty-server"
-    "--exclude" "org.clojure/alpha.spec"]}}}
+    "--exclude" "org.clojure/alpha.spec"
+    "--exclude" "lambdaisland/kaocha"]}}}

@@ -15,7 +15,7 @@
   {:local/root "../module-base"}
 
   org.apache.kafka/kafka-clients
-  {:mvn/version "3.3.1"}}
+  {:mvn/version "3.3.2"}}
 
  :aliases
  {:test
