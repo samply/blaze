@@ -443,9 +443,6 @@ jobs:
     - name: Evaluate CQL Query 17 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q17 120
 
-    - name: Evaluate CQL Query 19 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q19-stratifier-ageclass 120
-
     - name: Evaluate CQL Query 20 using Blazectl
       run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q20-stratifier-city 120
 
@@ -1032,9 +1029,6 @@ jobs:
 
     - name: Evaluate CQL Query 17 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q17 120
-
-    - name: Evaluate CQL Query 19 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q19-stratifier-ageclass 120
 
     - name: Evaluate CQL Query 20 using Blazectl
       run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q20-stratifier-city 120

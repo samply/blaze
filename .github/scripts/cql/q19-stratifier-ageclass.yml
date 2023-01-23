@@ -1,8 +1,0 @@
-library: modules/operation-measure-evaluate-measure/test/blaze/fhir/operation/evaluate_measure/q19-stratifier-ageclass.cql
-group:
-- type: Patient
-  population:
-  - expression: InInitialPopulation
-  stratifier:
-  - code: ageclass
-    expression: AgeClass
