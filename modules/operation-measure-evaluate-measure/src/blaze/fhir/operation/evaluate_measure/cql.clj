@@ -151,9 +151,7 @@
 
 
 (defn- expression-def [{:keys [expression-defs]} name]
-  (if-let [def (get expression-defs name)]
-    def
-    (missing-expression-anom name)))
+  (or (get expression-defs name) (missing-expression-anom name)))
 
 
 (defn- check-context [subject-type {:keys [context name]}]
@@ -302,9 +300,7 @@
 
 
 (defn- function-def [{:keys [function-defs]} name]
-  (if-let [def (get function-defs name)]
-    def
-    (missing-function-anom name)))
+  (or (get function-defs name) (missing-function-anom name)))
 
 
 (defn calc-function-strata
@@ -352,11 +348,10 @@
 
 
 (defn- def [{:keys [expression-defs population-basis] :as context} name]
-  (if-let [def (get expression-defs name)]
-    def
-    (if (string? population-basis)
-      (function-def context name)
-      (missing-expression-anom name))))
+  (or (get expression-defs name)
+      (if (string? population-basis)
+        (function-def context name)
+        (missing-expression-anom name))))
 
 
 (defn- defs [context names]

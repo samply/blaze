@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.18.6
+
+### Documentation
+
+* Enhance Development Docs ([#878](https://github.com/samply/blaze/issues/878))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/57?closed=1).
+
 ## v0.18.5
 
 ### New Features
