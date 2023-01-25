@@ -86,6 +86,7 @@ More information about distributed deployment are available [here](distributed.m
 | LOG_LEVEL                               | info                       | v0.6   | —      | one of trace, debug, info, warn or error                                                       |
 | JAVA_TOOL_OPTIONS                       | —                          | —      | —      | JVM options \(Docker only\)                                                                    |
 | FHIR_OPERATION_EVALUATE_MEASURE_THREADS | 4                          | v0.8   | —      | The maximum number of parallel $evaluate-measure executions.                                   |
+| FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT | 3600000 (1h)               | v0.19  | —      | Timeout in milliseconds for $evaluate-measure executions.                                      |
 | OPENID_PROVIDER_URL                     | —                          | v0.11  | —      | [OpenID Connect][4] provider URL to enable [authentication][5]                                 |
 | ENFORCE_REFERENTIAL_INTEGRITY           | true                       | v0.14  | —      | Enforce referential integrity on resource create, update and delete.                           |
 | DB_SYNC_TIMEOUT                         | 10000                      | v0.15  | —      | Timeout in milliseconds for all reading FHIR interactions acquiring the newest database state. |

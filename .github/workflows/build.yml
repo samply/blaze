@@ -22,7 +22,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        clj-kondo: '2022.10.05'
+        clj-kondo: '2023.01.20'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -645,6 +645,44 @@ jobs:
     - name: Load Data
       run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/big-tx
 
+  evaluate-measure-timeout-test:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v3
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT=10 -p 8080:8080 -v blaze-data:/app/data blaze:latest
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Docker Logs
+      run: docker logs blaze
+
+    - name: Check Capability Statement
+      run: .github/scripts/check-capability-statement.sh
+
+    - name: Load Data
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+
+    - name: Evaluate CQL Query 1
+      run: .github/scripts/evaluate-measure-timeout.sh q1
+
   include-without-referential-integrity-test:
     needs: build
     runs-on: ubuntu-22.04
@@ -1203,6 +1241,7 @@ jobs:
     - not-enforcing-referential-integrity-test
     - small-transactions-test
     - big-transaction-test
+    - evaluate-measure-timeout-test
     - include-without-referential-integrity-test
     - chaining-without-referential-integrity-test
     - bundle-with-references-test

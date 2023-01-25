@@ -17,6 +17,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
+    [java-time.api :as time]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
@@ -109,6 +110,8 @@
   (let [{:keys [expression-defs function-defs]} (compile-library node library)]
     {:db (d/db node)
      :now (now clock)
+     :timeout-eclipsed? (constantly false)
+     :timeout (time/seconds 42)
      :expression-defs expression-defs
      :function-defs function-defs}))
 
@@ -200,7 +203,16 @@
         (with-redefs [expr/eval (failing-eval "msg-222453")]
           (given (cql/evaluate-expression context "InInitialPopulation" "Patient" :boolean)
             ::anom/category := ::anom/fault
-            ::anom/message := "Error while evaluating the expression `InInitialPopulation`: msg-222453"))))))
+            ::anom/message := "Error while evaluating the expression `InInitialPopulation`: msg-222453")))))
+
+  (testing "timeout eclipsed"
+    (with-system-data [system mem-node-system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [context (assoc (context system library-gender) :timeout-eclipsed? (constantly true))]
+        (given (cql/evaluate-expression context "InInitialPopulation" "Patient" :boolean)
+          ::anom/category := ::anom/interrupted
+          ::anom/message := "Timeout of 42000 millis eclipsed while evaluating.")))))
 
 
 (deftest evaluate-individual-expression-test

@@ -14,6 +14,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]
+    [java-time.api :as time]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
@@ -103,6 +104,32 @@
       [:explain ::s/problems 3 :val] := ::invalid)))
 
 
+(deftest timeout-init-test
+  (testing "nil config"
+    (given-thrown (ig/init {::evaluate-measure/timeout nil})
+      :key := ::evaluate-measure/timeout
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {::evaluate-measure/timeout {}})
+      :key := ::evaluate-measure/timeout
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :millis))))
+
+  (testing "invalid millis"
+    (given-thrown (ig/init {::evaluate-measure/timeout {:millis ::invalid}})
+      :key := ::evaluate-measure/timeout
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `nat-int?
+      [:explain ::s/problems 0 :val] := ::invalid))
+
+  (testing "init"
+    (with-system [{::evaluate-measure/keys [timeout]}
+                  {::evaluate-measure/timeout {:millis 154912}}]
+      (is (= (time/millis 154912) timeout)))))
+
+
 (deftest executor-init-test
   (testing "nil config"
     (given-thrown (ig/init {::evaluate-measure/executor nil})
@@ -114,7 +141,7 @@
     (given-thrown (ig/init {::evaluate-measure/executor {:num-threads ::invalid}})
       :key := ::evaluate-measure/executor
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `nat-int?
+      [:explain ::s/problems 0 :pred] := `pos-int?
       [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "with default num-threads"

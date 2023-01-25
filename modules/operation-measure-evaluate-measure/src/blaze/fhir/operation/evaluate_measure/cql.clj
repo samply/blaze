@@ -6,9 +6,11 @@
     [blaze.elm.util :as elm-util]
     [blaze.fhir.spec :as fhir-spec]
     [clojure.core.reducers :as r]
+    [cognitect.anomalies :as anom]
     [taoensso.timbre :as log])
   (:import
-    [java.lang AutoCloseable]))
+    [java.lang AutoCloseable]
+    [java.time Duration]))
 
 
 (set! *warn-on-reflection* true)
@@ -37,7 +39,7 @@
           (ex-message e)))
 
 
-(defn- evaluate-expression-1 [context subject-handle name expression]
+(defn- evaluate-expression-1* [context subject-handle name expression]
   (try
     (expr/eval context expression subject-handle)
     (catch Exception e
@@ -52,6 +54,24 @@
               :fhir/issue "exception"
               :expression-name name)
             (merge ex-data))))))
+
+
+(defn- timeout-millis [{:keys [timeout]}]
+  (.toMillis ^Duration timeout))
+
+
+(defn- timeout-eclipsed-msg [context]
+  (format "Timeout of %d millis eclipsed while evaluating."
+          (timeout-millis context)))
+
+
+(defn- evaluate-expression-1
+  [{:keys [timeout-eclipsed?] :as context} subject-handle name expression]
+  (if (timeout-eclipsed?)
+    {::anom/category ::anom/interrupted
+     ::anom/message (timeout-eclipsed-msg context)
+     :timeout (:timeout context)}
+    (evaluate-expression-1* context subject-handle name expression)))
 
 
 (defn- close-batch-db! [{:keys [db]}]
@@ -250,7 +270,7 @@
     (stratum-combine-op context)
     (fn [context {:keys [subject-handle] :as handle}]
       (if-ok [stratum (evaluate-stratum-expression context subject-handle
-                                                 name expression)]
+                                                   name expression)]
         (update context ::result stratum-result-reduce-op stratum handle)
         #(reduced (assoc context ::result %))))
     handles))
