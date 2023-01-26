@@ -19,7 +19,7 @@ start-blaze() {
       -e DB_RESOURCE_INDEXER_THREADS=16 \
       -p 8080:8080 \
       -p 8081:8081 \
-      -d samply/blaze:0.18
+      -d samply/blaze:0.19
 
   ../../.github/scripts/wait-for-url.sh  http://localhost:8080/health
   echo "Finished"
