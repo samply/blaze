@@ -11,7 +11,7 @@ If you like to use the command line, please look into [this section](cql-queries
 
 ## API Documentation
 
-If yopu like to use the CQL Evaluation API directly, please read the [CQL API Documentation](cql-queries/api.md).
+If you'd like to use the CQL Evaluation API directly, please read the [CQL API Documentation](cql-queries/api.md).
 
 ## Install the Quality Reporting UI
 

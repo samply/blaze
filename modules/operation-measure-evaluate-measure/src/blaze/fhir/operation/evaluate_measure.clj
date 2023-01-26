@@ -19,6 +19,7 @@
     [blaze.spec]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
+    [java-time.api :as time]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
@@ -123,7 +124,8 @@
 
 
 (defmethod ig/pre-init-spec ::handler [_]
-  (s/keys :req-un [:blaze.db/node ::executor :blaze/clock :blaze/rng-fn]))
+  (s/keys :req-un [:blaze.db/node ::executor :blaze/clock :blaze/rng-fn]
+          :opt-un [::timeout]))
 
 
 (defmethod ig/init-key ::handler [_ context]
@@ -131,6 +133,14 @@
   (-> (handler context)
       wrap-coerce-params
       (wrap-observe-request-duration "operation-evaluate-measure")))
+
+
+(defmethod ig/pre-init-spec ::timeout [_]
+  (s/keys :req-un [:blaze.fhir.operation.evaluate-measure.timeout/millis]))
+
+
+(defmethod ig/init-key ::timeout [_ {:keys [millis]}]
+  (time/millis millis))
 
 
 (defmethod ig/pre-init-spec ::executor [_]
