@@ -22,7 +22,7 @@ backup of all the data Blaze has written to disk, **plan for a downtime**, delet
 Please start Blaze with a shell assuming that you use the volume `blaze-data`:
 
 ```sh
-docker run -it -v blaze-data:/app/data samply/blaze:0.18 sh
+docker run -it -v blaze-data:/app/data samply/blaze:0.19 sh
 ```
 
 in that shell, go into `/app/data` and list all directories:

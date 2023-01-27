@@ -22,7 +22,7 @@ The most accessible way to create and execute CQL queries is to use the Quality 
 If you don't already have Blaze running, you can read about how to do it in [Deployment](deployment/README.md). If you have Docker available just run:
 
 ```
-docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.18
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.19
 ```
 
 Start the Quality Reporting UI. You should see an empty measure list.

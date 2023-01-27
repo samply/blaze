@@ -1,10 +1,18 @@
 # Changelog
 
+## v0.19.0
+
+### Documentation
+
+* Add Evaluate Measure Timeout ([#888](https://github.com/samply/blaze/pull/888))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/38?closed=1).
+
 ## v0.18.6
 
 ### Documentation
 
-* Enhance Development Docs ([#878](https://github.com/samply/blaze/issues/878))
+* Enhance Development Docs ([#878](https://github.com/samply/blaze/pull/878))
 
 The full changelog can be found [here](https://github.com/samply/blaze/milestone/57?closed=1).
 

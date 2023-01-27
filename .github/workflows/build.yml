@@ -204,7 +204,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: blaze-uberjar
-        path: target/blaze-0.18.6-standalone.jar
+        path: target/blaze-*-standalone.jar
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
@@ -246,6 +246,7 @@ jobs:
         format: sarif
         output: trivy-results.sarif
         severity: 'CRITICAL,HIGH'
+        timeout: '15m0s'
 
     - name: Upload Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v2
@@ -1259,7 +1260,7 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: blaze-uberjar
-        path: target/blaze-0.18.6-standalone.jar
+        path: target
 
     - name: Download Blaze Image
       uses: actions/download-artifact@v3
@@ -1311,3 +1312,9 @@ jobs:
         push: true
         tags: ${{ steps.docker-meta.outputs.tags }}
         labels: ${{ steps.docker-meta.outputs.labels }}
+
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: target/blaze-*-standalone.jar
