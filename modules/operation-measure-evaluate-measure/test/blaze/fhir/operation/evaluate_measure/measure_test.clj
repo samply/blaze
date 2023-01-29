@@ -15,6 +15,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
+    [java-time.api :as time]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [taoensso.timbre :as log])
@@ -256,6 +257,33 @@
           :measure-id := measure-id
           :fhir/issue := "required"
           :fhir.issue/expression := "Measure.group[0].population[0]"))))
+
+  (testing "evaluation timeout"
+    (with-system-data
+      [{:blaze.db/keys [node] :blaze.test/keys [clock fixed-rng-fn]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+               :content [(library-content library-gender)]}]]]
+
+      (let [db (d/db node)
+            context {:clock clock :rng-fn fixed-rng-fn
+                     :db db :timeout (time/seconds 0)
+                     :blaze/base-url "" ::reitit/router router}
+            measure-id "measure-id-132321"
+            measure {:fhir/type :fhir/Measure :id measure-id
+                     :library [#fhir/canonical"0"]
+                     :group
+                     [{:fhir/type :fhir.Measure/group
+                       :population
+                       [{:fhir/type :fhir.Measure.group/population
+                         :code (population-concept "initial-population")
+                         :criteria (cql-expression "InInitialPopulation")}]}]}
+            params {:period [#system/date"2000" #system/date"2020"]
+                    :report-type "population"}]
+        (given (measure/evaluate-measure context measure params)
+          ::anom/category := ::anom/interrupted
+          ::anom/message := "Timeout of 0 millis eclipsed while evaluating."
+          :measure-id := measure-id))))
 
   (testing "single subject"
     (doseq [subject-ref ["0" ["Patient" "0"]]]

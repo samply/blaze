@@ -144,7 +144,11 @@
   {:node #blaze/ref :blaze.db/node
    :executor #blaze/ref :blaze.fhir.operation.evaluate-measure/executor
    :clock #blaze/ref :blaze/clock
-   :rng-fn #blaze/ref :blaze/rng-fn}
+   :rng-fn #blaze/ref :blaze/rng-fn
+   :timeout #blaze/ref :blaze.fhir.operation.evaluate-measure/timeout}
+
+  :blaze.fhir.operation.evaluate-measure/timeout
+  {:millis #blaze/cfg ["FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT" nat-int? 3600000]}
 
   :blaze.fhir.operation.evaluate-measure/executor
   {:num-threads #blaze/cfg ["FHIR_OPERATION_EVALUATE_MEASURE_THREADS" pos-int? 4]}

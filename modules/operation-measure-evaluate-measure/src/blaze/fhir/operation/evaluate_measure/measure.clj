@@ -13,6 +13,7 @@
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.luid :as luid]
     [clojure.string :as str]
+    [java-time.api :as time]
     [prometheus.alpha :as prom]
     [taoensso.timbre :as log])
   (:import
@@ -329,14 +330,19 @@
 
 
 (defn- enhance-context
-  [{:keys [clock db] :as context} measure {:keys [report-type subject-ref]}]
-  (let [subject-type (subject-type measure)]
+  [{:keys [clock db timeout] :as context :or {timeout (time/hours 1)}} measure
+   {:keys [report-type subject-ref]}]
+  (let [subject-type (subject-type measure)
+        now (now clock)
+        timeout-instant (time/instant (time/plus now timeout))]
     (when-ok [{:keys [expression-defs function-defs parameter-default-values]} (compile-primary-library db measure)
               subject-handle (some->> subject-ref (subject-handle db subject-type))]
       (cond->
         (assoc context
           :db db
-          :now (now clock)
+          :now now
+          :timeout-eclipsed? #(not (.isBefore (.instant ^Clock clock) timeout-instant))
+          :timeout timeout
           :expression-defs expression-defs
           :function-defs function-defs
           :parameters parameter-default-values

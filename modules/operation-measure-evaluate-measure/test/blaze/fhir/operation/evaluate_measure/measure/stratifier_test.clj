@@ -12,6 +12,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [cognitect.anomalies :as anom]
+    [java-time.api :as time]
     [juxt.iota :refer [given]])
   (:import
     [java.time Clock OffsetDateTime]))
@@ -179,6 +180,8 @@
   (let [{:keys [expression-defs function-defs]} (compile-library node library)]
     {:db (d/db node)
      :now (now clock)
+     :timeout-eclipsed? (constantly false)
+     :timeout (time/seconds 42)
      :expression-defs expression-defs
      :function-defs function-defs}))
 
@@ -310,12 +313,12 @@
           (let [context (context system empty-library)
                 evaluated-populations {:handles [[]]}]
             (given (stratifier/evaluate
-                        (assoc context
-                          :report-type "population"
-                          :group-idx 1
-                          :stratifier-idx 2)
-                        evaluated-populations
-                        stratifier-with-missing-expression)
+                     (assoc context
+                       :report-type "population"
+                       :group-idx 1
+                       :stratifier-idx 2)
+                     evaluated-populations
+                     stratifier-with-missing-expression)
               ::anom/category := ::anom/incorrect
               ::anom/message := "Missing expression."
               :fhir/issue := "required"
@@ -329,7 +332,21 @@
                                         evaluated-populations gender-stratifier)
               ::anom/category := ::anom/incorrect
               ::anom/message := "Missing expression with name `Gender`."
-              :expression-name := "Gender"))))))
+              :expression-name := "Gender"))))
+
+      (testing "gender"
+        (with-system-data [system mem-node-system]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+          (let [{:keys [db] :as context} (context system library-age-gender)
+                evaluated-populations {:handles [(mapv handle (d/type-list db "Patient"))]}]
+
+            (given (stratifier/evaluate (assoc context
+                                          :report-type "population"
+                                          :timeout-eclipsed? (constantly true))
+                                        evaluated-populations gender-stratifier)
+              ::anom/category := ::anom/interrupted
+              ::anom/message := "Timeout of 42000 millis eclipsed while evaluating."))))))
 
   (testing "two components"
     (testing "subject-based measure"

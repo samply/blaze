@@ -10,7 +10,7 @@ RESOURCE_HANDLE_CACHE_SIZE=30000000
 start-blaze() {
   echo "Starting Blaze..."
   docker run --name blaze --rm -v "$VOLUME:/app/data" \
-      -e JAVA_TOOL_OPTIONS="-Xmx${HEAP_SIZE}g -Dclojure.compiler.direct-linking=true" \
+      -e JAVA_TOOL_OPTIONS="-Xmx${HEAP_SIZE}g" \
       -e LOG_LEVEL=debug \
       -e DB_BLOCK_CACHE_SIZE=$BLOCK_CACHE_SIZE \
       -e DB_RESOURCE_CACHE_SIZE=$RESOURCE_CACHE_SIZE \
@@ -19,7 +19,7 @@ start-blaze() {
       -e DB_RESOURCE_INDEXER_THREADS=16 \
       -p 8080:8080 \
       -p 8081:8081 \
-      -d samply/blaze:pr-678
+      -d samply/blaze:0.19
 
   ../../.github/scripts/wait-for-url.sh  http://localhost:8080/health
   echo "Finished"
