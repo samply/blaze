@@ -33,7 +33,8 @@
     [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
-  (:import [java.time Instant]))
+  (:import
+    [java.time Instant]))
 
 
 (set! *warn-on-reflection* true)
