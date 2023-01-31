@@ -53,6 +53,8 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 5.1. | Library             | ✓          |                                      |       |
 | 5.2. | IncludeDef          | !          | no custom includes, only FHIRHelpers |       |
 | 5.3. | VersionedIdentifier | ✗          |                                      |       |
+| 5.4. | ContextDef          | ✗          |                                      |       |
+
 
 ### 6. Data Model
 
@@ -87,6 +89,7 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 9.2. | ExpressionRef | !          | only inside same library                    |       |
 | 9.3. | FunctionDef   | ✓          |                                             |       |
 | 9.4. | FunctionRef   | !          | hard coded implementation of some functions |       |
+| 9.5. | OperandRef    | ✓          |                                             |       |
 
 ### 10. Queries
 
@@ -98,19 +101,22 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 10.4.  | ByColumn           | ✓          |                    |       |
 | 10.5.  | ByDirection        | ✓          |                    |       |
 | 10.6.  | ByExpression       | ✓          |                    |       |
-| 10.7.  | LetClause          | ✗          |                    |       |
-| 10.8.  | QueryLetRef        | ✗          |                    |       |
-| 10.9.  | RelationshipClause | ✓          |                    |       |
-| 10.10. | ReturnClause       | !          | always distinct    |       |
-| 10.11. | SortClause         | ✓          |                    |       |
-| 10.12. | With               | !          | only equiv version |       |
-| 10.13. | Without            | ✗          |                    |       |
+| 10.7.  | IdentifierRef      | ✓          |                    |       |
+| 10.8.  | LetClause          | ✗          |                    |       |
+| 10.9.  | QueryLetRef        | ✗          |                    |       |
+| 10.10. | RelationshipClause | ✓          |                    |       |
+| 10.11. | ReturnClause       | !          | always distinct    |       |
+| 10.12. | AggregateClause    | ✗          |                    |       |
+| 10.13. | SortClause         | ✓          |                    |       |
+| 10.14. | With               | !          | only equiv version |       |
+| 10.15. | Without            | ✗          |                    |       |
 
 ### 11. External Data
 
-| Num   | Group    | Expression | State          | Notes |
-|-------|----------|------------|----------------|-------|
-| 11.1. | Retrieve | !          | no date ranges |       |
+| Num   | Group          | Expression | State          | Notes |
+|-------|----------------|------------|----------------|-------|
+| 11.1. | Retrieve       | !          | no date ranges |       |
+| 11.2. | IncludeElement | ✗          |                |       |
 
 ### 12. Comparison Operators
 
@@ -176,7 +182,7 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 16.19. | Round           | ✓          |
 | 16.20. | Subtract        | ✓          |
 | 16.21. | Successor       | ✓          |
-| 16.12. | Truncate        | ✓          |
+| 16.22. | Truncate        | ✓          |
 | 16.23. | TruncatedDivide | ✓          |
 
 ### 17. String Operators
@@ -260,10 +266,11 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 19.25. | ProperIn         | ✓          |
 | 19.26. | ProperIncludes   | ✓          |
 | 19.27. | ProperIncludedIn | ✓          |
-| 19.28. | Start            | ✓          |
-| 19.29. | Starts           | ✓          |
+| 19.28. | Size             | ✗          |
+| 19.29. | Start            | ✓          |
+| 19.30. | Starts           | ✓          |
 | 19.31. | Union            | ✓          |
-| 19.31. | Width            | ✓          |
+| 19.32. | Width            | ✓          |
 
 ### 20. List Operators
 
@@ -296,7 +303,7 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 20.25. | SingletonFrom    | ✓          |            |       |
 | 20.26. | Slice            | ✓          |            |       |
 | 20.27. | Sort             | ✓          |            |       |
-| 20.28. | Times            | ✗          |            |       |
+| 20.28. | Times            | ✓          |            |       |
 | 20.29. | Union            | ✓          |            |       |
 
 ### 21. Aggregate Operators
@@ -367,9 +374,10 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 23.6.  | Equivalent      | ✗          |
 | 23.7.  | InCodeSystem    | ✗          |
 | 23.8.  | InValueSet      | ✗          |
-| 23.9.  | Not Equal       | ✓          |
-| 23.10. | SubsumedBy      | ✗          |
-| 23.11. | Subsumes        | ✗          |
+| 23.9.  | ExpandValueSet  | ✗          |
+| 23.10. | Not Equal       | ✓          |
+| 23.11. | SubsumedBy      | ✗          |
+| 23.12. | Subsumes        | ✗          |
 
 ### 24. Errors and Messages
 

@@ -31,6 +31,9 @@
 
 
 ;; 1.1 Literal
+;;
+;; The Literal type defines a single scalar value. For example, the literal 5,
+;; the boolean value true or the string "antithrombotic".
 (deftest compile-literal-test
   (testing "Boolean Literal"
     (are [elm res] (= res (c/compile {} elm))
