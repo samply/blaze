@@ -2,7 +2,7 @@
 
 ## v0.19.0
 
-### Documentation
+### New Features
 
 * Add Evaluate Measure Timeout ([#888](https://github.com/samply/blaze/pull/888))
 
