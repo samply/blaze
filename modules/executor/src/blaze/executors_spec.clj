@@ -2,7 +2,8 @@
   (:require
     [blaze.executors :as ex]
     [clojure.spec.alpha :as s])
-  (:import [java.util.concurrent TimeUnit]))
+  (:import
+    [java.util.concurrent TimeUnit]))
 
 
 (s/fdef ex/executor?
