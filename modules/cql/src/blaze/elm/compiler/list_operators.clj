@@ -7,7 +7,7 @@
     [blaze.anomaly :as ba]
     [blaze.coll.core :as coll]
     [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.macros :refer [defunop]]
+    [blaze.elm.compiler.macros :refer [defbinop defunop]]
     [blaze.elm.compiler.queries :as queries]
     [blaze.elm.protocols :as p]
     [cognitect.anomalies :as anom])
@@ -220,3 +220,12 @@
           (->SortByDirectionExpression source (queries/comparator direction))))
       source
       sort-by-items)))
+
+
+;; 20.28. Times
+(defbinop times [list1 list2]
+  (transduce
+    (mapcat #(eduction (map (partial merge %)) list1))
+    (completing (fnil conj []))
+    nil
+    list2))
