@@ -741,7 +741,7 @@
 
 ;; 20.28. Times
 (defn times [lists]
-  {:type "SingletonFrom" :operand lists})
+  {:type "Times" :operand lists})
 
 
 ;; 21.1. AllTrue

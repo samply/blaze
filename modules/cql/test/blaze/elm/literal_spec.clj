@@ -344,7 +344,7 @@
   :ret :elm/expression)
 
 
-;; 19.13. Except
+;; 19.10. Except
 (s/fdef elm/except
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)
