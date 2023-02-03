@@ -12,7 +12,7 @@
     [java.nio ByteBuffer]
     [java.util ArrayList]
     [org.rocksdb
-     RocksDB RocksIterator WriteOptions WriteBatch Options ColumnFamilyHandle
+     RocksDB RocksIterator WriteOptions WriteBatch ColumnFamilyHandle
      Statistics LRUCache CompactRangeOptions Snapshot ReadOptions
      StatsLevel Env Priority]))
 
@@ -96,7 +96,7 @@
    (-get-property store column-family name)))
 
 
-(deftype RocksKvStore [^RocksDB db ^Options opts ^WriteOptions write-opts cfhs]
+(deftype RocksKvStore [^RocksDB db ^WriteOptions write-opts cfhs]
   kv/KvStore
   (-new-snapshot [_]
     (let [snapshot (.getSnapshot db)]
@@ -146,7 +146,6 @@
   AutoCloseable
   (close [_]
     (.close db)
-    (.close opts)
     (.close write-opts)))
 
 
@@ -207,15 +206,12 @@
 (defmethod ig/init-key ::kv/rocksdb
   [_ {:keys [dir block-cache stats opts column-families]}]
   (log/info (init-log-msg dir opts))
-  (let [db-options (impl/db-options stats opts)
-        cfds (map
+  (let [cfds (map
                (partial impl/column-family-descriptor block-cache)
                (merge {:default nil} column-families))
         cfhs (ArrayList.)
-        db (try
-             (RocksDB/open db-options dir cfds cfhs)
-             (finally (.close db-options)))]
-    (->RocksKvStore db db-options (impl/write-options opts)
+        db (RocksDB/open (impl/db-options stats opts) dir cfds cfhs)]
+    (->RocksKvStore db (impl/write-options opts)
                     (index-column-family-handles cfhs))))
 
 
