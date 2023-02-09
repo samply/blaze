@@ -5,4 +5,5 @@
 
 
 (s/def :blaze.fhir-client/options
-  (s/keys :opt-un [:blaze/http-client]))
+  (s/alt :map (s/keys :opt-un [:blaze/http-client])
+         :kv-coll (s/keys* :opt-un [:blaze/http-client])))

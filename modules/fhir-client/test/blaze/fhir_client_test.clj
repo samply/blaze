@@ -43,10 +43,17 @@
           (.doReturn (j/write-value-as-string {:resourceType "Patient" :id "0"}))
           (.withHeader "content-type" "application/fhir+json"))
 
-      (given @(fhir-client/read "http://localhost:8080/fhir" "Patient" "0"
-                                {:http-client http-client})
-        :fhir/type := :fhir/Patient
-        :id := "0")))
+      (testing "with map opts"
+        (given @(fhir-client/read "http://localhost:8080/fhir" "Patient" "0"
+                                  {:http-client http-client})
+          :fhir/type := :fhir/Patient
+          :id := "0"))
+
+      (testing "with k/v sequence opts"
+        (given @(fhir-client/read "http://localhost:8080/fhir" "Patient" "0"
+                                  :http-client http-client)
+          :fhir/type := :fhir/Patient
+          :id := "0"))))
 
   (testing "with application/json Content-Type"
     (let [http-client (HttpClientMock.)]

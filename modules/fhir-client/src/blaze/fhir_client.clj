@@ -16,7 +16,7 @@
   "Returns a CompletableFuture that completes with the CapabilityStatement in
   case of success or completes exceptionally with an anomaly in case of an
   error."
-  [base-uri & [opts]]
+  [base-uri & {:as opts}]
   (impl/fetch (str base-uri "/metadata") opts))
 
 
@@ -24,14 +24,14 @@
   "Returns a CompletableFuture that completes with the resource with `type` and
   `id` in case of success or completes exceptionally with an anomaly in case of
   an error."
-  [base-uri type id & [opts]]
+  [base-uri type id & {:as opts}]
   (impl/fetch (str base-uri "/" type "/" id) opts))
 
 
 (defn update
   "Returns a CompletableFuture that completes with `resource` updated."
-  {:arglists '([base-uri resource & [opts]])}
-  [base-uri {:fhir/keys [type] :keys [id] :as resource} & [opts]]
+  {:arglists '([base-uri resource & opts])}
+  [base-uri {:fhir/keys [type] :keys [id] :as resource} & {:as opts}]
   (impl/update (str base-uri "/" (name type) "/" id) resource opts))
 
 
@@ -47,7 +47,7 @@
 
   Returns a CompletableFuture that completes with either a Parameters resource
   or a resource of the type of the single out parameter named `return`."
-  [base-uri type name & [opts]]
+  [base-uri type name & {:as opts}]
   (log/trace (execute-type-get-msg type name opts))
   (impl/fetch (apply str base-uri "/" type "/$" name) opts))
 
@@ -57,7 +57,7 @@
 
   Use `resource-processor` to transform the pages to individual resources. Use
   `search-type` if you simply want to fetch all resources."
-  [base-uri type & [opts]]
+  [base-uri type & {:as opts}]
   (reify Flow$Publisher
     (subscribe [_ subscriber]
       (->> (impl/paging-subscription subscriber (str base-uri "/" type) opts)
@@ -74,7 +74,7 @@
   "Returns a CompletableFuture that completes with all resources of `type` in
   case of success or completes exceptionally with an anomaly in case of an
   error."
-  [base-uri type & [opts]]
+  [base-uri type & {:as opts}]
   (let [src (search-type-publisher base-uri type opts)
         pro (resource-processor)
         dst (flow/collect pro)]
@@ -87,7 +87,7 @@
 
   Use `resource-processor` to transform the pages to individual resources. Use
   `search-system` if you simply want to fetch all resources."
-  [base-uri & [opts]]
+  [base-uri & {:as opts}]
   (reify Flow$Publisher
     (subscribe [_ subscriber]
       (->> (impl/paging-subscription subscriber base-uri opts)
@@ -97,7 +97,7 @@
 (defn search-system
   "Returns a CompletableFuture that completes with all resource in case of
   success or completes exceptionally with an anomaly in case of an error."
-  [base-uri & [opts]]
+  [base-uri & {:as opts}]
   (let [src (search-system-publisher base-uri opts)
         pro (resource-processor)
         dst (flow/collect pro)]
