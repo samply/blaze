@@ -29,6 +29,12 @@
   :ret ac/completable-future?)
 
 
+(s/fdef fhir-client/transaction
+  :args (s/cat :base-uri string? :resource map?
+               :opts (s/? :blaze.fhir-client/options))
+  :ret ac/completable-future?)
+
+
 (s/fdef fhir-client/execute-type-get
   :args (s/cat :base-uri string? :type :fhir.resource/type :name string?
                :opts (s/? :blaze.fhir-client/options))

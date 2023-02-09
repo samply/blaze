@@ -82,7 +82,7 @@
 
       (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
                                              "Patient" "0"
-                                              {:http-client http-client})
+                                             {:http-client http-client})
         ::anom/category := ::anom/not-found
         [:fhir/issues 0 :severity] := #fhir/code"error"
         [:fhir/issues 0 :code] := #fhir/code"not-found")))
@@ -119,7 +119,7 @@
 
       (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
                                              "Patient" "0"
-                                              {:http-client http-client})
+                                             {:http-client http-client})
         ::anom/category := ::anom/unavailable)))
 
   (testing "Gateway timeout without JSON response (external load-balancer)"
@@ -191,6 +191,21 @@
         ::anom/category := ::anom/conflict
         [:fhir/issues 0 :severity] := #fhir/code"error"))))
 
+
+(deftest transaction-test
+  (testing "success"
+    (let [http-client (HttpClientMock.)
+          resource {:fhir/type :fhir/Bundle :fhir.Bundle/type "transaction"}]
+
+      (-> (.onPost http-client "http://localhost:8080/fhir")
+          (.doReturn (j/write-value-as-string {:resourceType "Bundle" :type "transaction-response" :id "0"}))
+          (.withHeader "content-type" "application/fhir+json"))
+
+      (given @(fhir-client/transaction "http://localhost:8080/fhir" resource
+                                       {:http-client http-client})
+        :fhir/type := :fhir/Bundle
+        :type := #fhir/code"transaction-response"
+        :id := "0"))))
 
 (deftest execute-type-get-test
   (testing "success"

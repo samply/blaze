@@ -35,6 +35,13 @@
   (impl/update (str base-uri "/" (name type) "/" id) resource opts))
 
 
+(defn transaction
+  "Returns a CompletableFuture that completes with `bundle` created."
+  {:arglists '([base-uri bundle & opts])}
+  [base-uri bundle & {:as opts}]
+  (impl/post base-uri bundle opts))
+
+
 (defn- execute-type-get-msg [type name {:keys [query-params]}]
   (format "Execute $%s on type %s with params %s" name type query-params))
 

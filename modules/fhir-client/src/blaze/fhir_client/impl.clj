@@ -120,6 +120,21 @@
     handle-error))
 
 
+(defn post [uri resource opts]
+  (log/trace "Create" uri generate-body)
+  (hc/post
+    uri
+    (merge
+      {:accept :fhir+json
+       :content-type :fhir+json
+       :body (generate-body resource)
+       :as :fhir
+       :async? true}
+      opts)
+    :body
+    handle-error))
+
+
 (defn- next-url [page]
   (type/value (:url (first (filter (comp #{"next"} :relation) (:link page))))))
 
