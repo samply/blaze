@@ -7,12 +7,20 @@
     [clojure.spec.alpha :as s]))
 
 
+(defn tx-log? [x]
+  (satisfies? tx-log/TxLog x))
+
+
 (s/def :blaze.db/tx-log
-  #(satisfies? tx-log/TxLog %))
+  tx-log?)
+
+
+(defn queue? [x]
+  (satisfies? tx-log/Queue x))
 
 
 (s/def :blaze.db.tx-log/queue
-  #(satisfies? tx-log/Queue %))
+  queue?)
 
 
 (s/def :blaze.db.tx-cmd/op
