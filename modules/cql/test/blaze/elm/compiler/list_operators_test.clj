@@ -399,8 +399,55 @@
 ;; component derived from the pairing of the source tuples.
 ;;
 ;; If either argument is null, the result is null.
-;;
-;; TODO: not implemented
+(deftest compile-times-test
+  (are [x y res] (= res (tu/compile-binop elm/times elm/list x y))
+    [#elm/tuple{"id" #elm/integer "1"}] [#elm/tuple{"name" #elm/string "john"}]
+    [{:id 1 :name "john"}]
+
+    [#elm/tuple{"id" #elm/integer "1"}
+     #elm/tuple{"id" #elm/integer "2"}]
+    [#elm/tuple{"name" #elm/string "john"}
+     #elm/tuple{"name" #elm/string "hans"}]
+    [{:id 1 :name "john"}
+     {:id 2 :name "john"}
+     {:id 1 :name "hans"}
+     {:id 2 :name "hans"}]
+
+    [#elm/tuple{"id" #elm/integer "1"}
+     #elm/tuple{"id" #elm/integer "2"}
+     #elm/tuple{"id" #elm/integer "3"}]
+    [#elm/tuple{"name" #elm/string "john"}
+     #elm/tuple{"name" #elm/string "hans"}
+     #elm/tuple{"name" #elm/string "tim"}]
+    [{:id 1 :name "john"} {:id 2 :name "john"} {:id 3 :name "john"}
+     {:id 1 :name "hans"} {:id 2 :name "hans"} {:id 3 :name "hans"}
+     {:id 1 :name "tim"} {:id 2 :name "tim"} {:id 3 :name "tim"}]
+
+    [#elm/tuple{"id" #elm/integer "1"}
+     #elm/tuple{"id" #elm/integer "2"}]
+    [#elm/tuple{"given-name" #elm/string "john"
+                "family-name" #elm/string "doe"}
+     #elm/tuple{"given-name" #elm/string "hans"
+                "family-name" #elm/string "zimmer"}]
+    [{:id 1 :given-name "john" :family-name "doe"}
+     {:id 2 :given-name "john" :family-name "doe"}
+     {:id 1 :given-name "hans" :family-name "zimmer"}
+     {:id 2 :given-name "hans" :family-name "zimmer"}]
+
+    [#elm/tuple{"id" #elm/integer "1"
+                "name" #elm/string "john"}
+     #elm/tuple{"id" #elm/integer "2"
+                "name" #elm/string "hans"}]
+    [#elm/tuple{"location" #elm/string "Frankfurt"}
+     #elm/tuple{"location" #elm/string "Berlin"}]
+    [{:id 1 :name "john" :location "Frankfurt"}
+     {:id 2 :name "hans" :location "Frankfurt"}
+     {:id 1 :name "john" :location "Berlin"}
+     {:id 2 :name "hans" :location "Berlin"}])
+
+  (tu/testing-binary-null elm/times #elm/list[#elm/tuple{"name" #elm/string "hans"}])
+
+  (tu/testing-binary-form elm/times))
 
 
 ;; 20.29. Union

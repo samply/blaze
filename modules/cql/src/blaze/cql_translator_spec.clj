@@ -8,5 +8,5 @@
 
 
 (s/fdef cql-translator/translate
-  :args (s/cat :cql string? :opts (s/* some?))
+  :args (s/cat :cql string?)
   :ret (s/or :library :elm/library :anomaly ::anom/anomaly))

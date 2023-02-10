@@ -407,6 +407,10 @@
 (derive :elm.normalizer.type/singleton-from :elm.normalizer.type/unary-expression)
 
 
+;; 20.28. Times
+(derive :elm.normalizer.type/times :elm.normalizer.type/binary-expression)
+
+
 
 ;; 22. Type Operators
 

@@ -1672,6 +1672,10 @@
   (s/keys :req-un [:elm.sort/by]))
 
 
+;; 20.28. Times
+(derive :elm.spec.type/times :elm.spec.type/binary-expression)
+
+
 
 ;; 21. Aggregate Operators
 

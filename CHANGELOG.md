@@ -1,8 +1,17 @@
 # Changelog
 
+## v0.19.1
+
+### Security
+
+* Update Dependencies ([#898](https://github.com/samply/blaze/pull/898))
+* Update Dependencies ([#899](https://github.com/samply/blaze/pull/899))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/58?closed=1).
+
 ## v0.19.0
 
-### Documentation
+### New Features
 
 * Add Evaluate Measure Timeout ([#888](https://github.com/samply/blaze/pull/888))
 

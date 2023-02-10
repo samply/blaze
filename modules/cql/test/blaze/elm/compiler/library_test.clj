@@ -25,6 +25,42 @@
 (test/use-fixtures :each fixture)
 
 
+;; 5.1. Library
+;;
+;; 1. The identifier element defines a unique identifier for this library, and
+;;    optionally, a system (or namespace) and version.
+;;
+;; 2. This is the identifier of the XML schema (and its version) which governs
+;;    the structure of this Library.
+;;
+;; 3. Set of data models referenced in the Expression objects in this knowledge
+;;    artifact.
+;;
+;; 4. A reference to a data model that is used in the artifact, e.g., the Virtual
+;;    Medical Record.
+;;
+;; 5. Set of libraries referenced by this artifact. Components of referenced
+;;    libraries may be used within this artifact.
+;;
+;; 6. A reference to a library whose components can be used within the
+;;    artifact.
+;;
+;; 7. The parameters defined within this library.
+;;
+;; 8. The code systems defined within this library.
+;;
+;; 9. The value sets defined within this library.
+;;
+;; 10. The codes defined within this library.
+;;
+;; 11. The concepts defined within this library.
+;;
+;; 12. The contexts used within this library.
+;;
+;; 13. The statements section contains the expression and function definitions
+;;     for the library.
+;;
+;; A Library is an instance of a CQL-ELM library.
 (deftest compile-library-test
   (testing "empty library"
     (let [library (t/translate "library Test")]

@@ -239,10 +239,6 @@
 
 
 ;; 10.1. Query
-;;
-;; The Query operator represents a clause-based query. The result of the query
-;; is determined by the type of sources included, as well as the clauses used in
-;; the query.
 (defmulti compile-sort-by-item (fn [_ {:keys [type]}] type))
 
 
@@ -304,9 +300,6 @@
 
 
 ;; 10.3. AliasRef
-;;
-;; The AliasRef expression allows for the reference of a specific source within
-;; the context of a query.
 (defrecord AliasRefExpression [key]
   core/Expression
   (-eval [_ _ _ scopes]
@@ -327,10 +320,6 @@
 
 
 ;; 10.14. With
-;;
-;; The With clause restricts the elements of a given source to only those
-;; elements that have elements in the related source that satisfy the suchThat
-;; condition. This operation is known as a semi-join in database languages.
 (defn- find-operand-with-alias
   "Finds the operand in `expression` that accesses entities with `alias`."
   [operands alias]

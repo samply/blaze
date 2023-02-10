@@ -71,7 +71,7 @@
 
 
 (defn search-type
-  "Returns a CompletableFuture that completes with all resource of `type` in
+  "Returns a CompletableFuture that completes with all resources of `type` in
   case of success or completes exceptionally with an anomaly in case of an
   error."
   [base-uri type & [opts]]

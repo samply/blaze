@@ -233,6 +233,9 @@
 
 
 ;; 10.3. AliasRef
+;;
+;; The AliasRef expression allows for the reference of a specific source within
+;; the scope of a query.
 (deftest compile-alias-ref-test
   (let [expr (c/compile {} {:type "AliasRef" :name "foo"})]
     (testing "eval"
@@ -242,7 +245,7 @@
       (is (= '(alias-ref foo) (core/-form expr))))))
 
 
-;; 10.7 IdentifierRef
+;; 10.7. IdentifierRef
 ;;
 ;; The IdentifierRef type defines an expression that references an identifier
 ;; that is either unresolved, or has been resolved to an attribute in an
@@ -256,7 +259,17 @@
       (is (= '(:foo default) (core/-form expr))))))
 
 
+;; TODO 10.9. QueryLetRef
+;;
+;; The QueryLetRef expression allows for the reference of a specific let
+;; definition within the scope of a query.
+
+
 ;; 10.14. With
+;;
+;; The With clause restricts the elements of a given source to only those
+;; elements that have elements in the related source that satisfy the suchThat
+;; condition. This operation is known as a semi-join in database languages.
 (deftest compile-with-clause-test
   (testing "Equiv With with two Observations comparing there subjects."
     (with-system-data [{:blaze.db/keys [node]} mem-node-system]
