@@ -8,7 +8,6 @@
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
     [blaze.db.node.resource-indexer.spec]
-    [blaze.db.resource-store :as rs]
     [blaze.db.search-param-registry :as sr]
     [blaze.executors :as ex]
     [blaze.fhir.spec :as fhir-spec]
@@ -104,11 +103,11 @@
       (search-params search-param-registry resource))))
 
 
-(defn- index-resource [context [hash resource]]
+(defn- index-resource [context {:keys [type hash resource]}]
   (log/trace "Index resource with hash" hash)
   (with-open [_ (prom/timer duration-seconds "index-resource")]
     (let [entries (index-resource* context hash resource)]
-      (prom/observe! index-entries (name (:fhir/type resource)) (count entries))
+      (prom/observe! index-entries type (count entries))
       entries)))
 
 
@@ -117,19 +116,17 @@
     (kv/put! store entries)))
 
 
-(defn- async-index-resource [{:keys [kv-store executor] :as context} entry]
+(defn- async-index-resource [{:keys [kv-store executor] :as context} tx-cmd]
   (ac/supply-async
-    #(put! kv-store (index-resource context entry))
+    #(put! kv-store (index-resource context (update tx-cmd :resource ac/join)))
     executor))
 
 
-(defn- index-resources* [context entries]
-  (log/trace "index" (count entries) "resource(s)")
-  (ac/all-of (mapv (partial async-index-resource context) entries)))
-
-
-(defn- hashes [tx-cmds]
-  (into [] (keep :hash) tx-cmds))
+(defn- index-resources* [context tx-cmds]
+  (log/trace "index" (count tx-cmds) "resource(s)")
+  (->> (filter (comp #{"create" "put"} :op) tx-cmds)
+       (mapv (partial async-index-resource context))
+       (ac/all-of)))
 
 
 (defn index-resources
@@ -139,19 +136,13 @@
    The :instant from `tx-data` is used to index the _lastUpdated search
    parameter because the property doesn't exist in the resource itself."
   {:arglists '([resource-indexer tx-data])}
-  [{:keys [resource-store] :as resource-indexer}
-   {:keys [tx-cmds] resources :local-payload last-updated :instant}]
+  [resource-indexer {:keys [tx-cmds] last-updated :instant}]
   (let [context (assoc resource-indexer :last-updated last-updated)]
-    (if resources
-      (index-resources* context resources)
-      (-> (rs/multi-get resource-store (hashes tx-cmds))
-          (ac/then-compose
-            (partial index-resources* context))))))
+    (index-resources* context tx-cmds)))
 
 
 (defmethod ig/pre-init-spec :blaze.db.node/resource-indexer [_]
   (s/keys :req-un [:blaze.db/kv-store
-                   :blaze.db/resource-store
                    :blaze.db/search-param-registry
                    ::executor]))
 

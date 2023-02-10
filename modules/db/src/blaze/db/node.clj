@@ -295,9 +295,7 @@
   (-submit-tx [_ tx-ops]
     (log/trace "submit" (count tx-ops) "tx-ops")
     (if-ok [_ (validation/validate-ops tx-ops)]
-      (let [[tx-cmds entries] (tx/prepare-ops context tx-ops)]
-        (-> (rs/put! resource-store entries)
-            (ac/then-compose (fn [_] (tx-log/submit tx-log tx-cmds entries)))))
+      (tx-log/submit tx-log (tx/prepare-ops context tx-ops))
       ac/completed-future))
 
   (-tx-result [node t]

@@ -9,7 +9,7 @@
 
   There might be implementations of TxLog only suitable for single node setups."
 
-  (-submit [tx-log tx-cmds local-payload])
+  (-submit [tx-log tx-cmds])
 
   (-last-t [tx-log])
 
@@ -23,15 +23,11 @@
   potentially valid transaction or complete exceptionally with an anomaly in
   case of errors.
 
-  The `local-payload` will be embedded under :local-payload in the transaction
-  data returned from `poll!` if the transaction log supports this feature and
-  the poller is on the same node as the submitter.
-
   Note: This function only ensures that the transaction is committed into the
   log and will be handled in the future. So a positive return value doesn't mean
   that the transaction itself was successful."
-  [tx-log tx-cmds local-payload]
-  (-submit tx-log tx-cmds local-payload))
+  [tx-log tx-cmds]
+  (-submit tx-log tx-cmds))
 
 
 (defn last-t
@@ -56,9 +52,6 @@
 
 (defn poll!
   "Retrieves and removes the head, a collection of transaction data, of `queue`,
-  waiting up to `timeout` if necessary for transaction data to become available.
-
-  Transaction data optionally contains :local-payload if the transaction was
-  submitted on the same node and the transaction log supports this feature."
+  waiting up to `timeout` if necessary for transaction data to become available."
   [queue timeout]
   (-poll queue timeout))

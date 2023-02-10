@@ -1,20 +1,12 @@
-(ns blaze.db.node.tx-indexer.verify-spec
+(ns blaze.db.tx-log.local.spec
   (:require
-    [blaze.byte-string-spec]
-    [blaze.db.impl.index-spec]
-    [blaze.db.impl.index.resource-as-of-spec]
-    [blaze.db.impl.index.rts-as-of-spec]
-    [blaze.db.impl.index.system-stats-spec]
-    [blaze.db.impl.index.type-stats-spec]
-    [blaze.db.kv.spec]
-    [blaze.db.node.tx-indexer.verify :as verify]
-    [blaze.db.spec]
     [blaze.db.tx-log.spec]
-    [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]))
+    [blaze.fhir.hash.spec]
+    [blaze.fhir.spec.spec]
+    [clojure.spec.alpha :as s]))
 
 
-(defmulti tx-cmd "Transaction command without resource" :op)
+(defmulti tx-cmd "Transaction command" :op)
 
 
 (defmethod tx-cmd "create" [_]
@@ -43,15 +35,9 @@
           :opt-un [:blaze.db.tx-cmd/if-match]))
 
 
-(s/def :blaze.db.node.tx-indexer/tx-cmd
+(s/def :blaze.db.tx-log.local/tx-cmd
   (s/multi-spec tx-cmd :op))
 
 
-(s/def :blaze.db.node.tx-indexer/tx-cmds
-  (s/coll-of :blaze.db.node.tx-indexer/tx-cmd :kind vector?))
-
-
-(s/fdef verify/verify-tx-cmds
-  :args (s/cat :db-before :blaze.db/db :t :blaze.db/t :cmds :blaze.db.node.tx-indexer/tx-cmds)
-  :ret (s/or :entries (s/coll-of :blaze.db.kv/put-entry)
-             :anomaly ::anom/anomaly))
+(s/def :blaze.db.tx-log.local/tx-cmds
+  (s/coll-of :blaze.db.tx-log.local/tx-cmd :kind vector?))

@@ -32,7 +32,7 @@
 
 (deftest round-trip-test
   (satisfies-prop 100
-    (p/for-all [tx-cmds (s/gen :blaze.db/tx-cmds)]
+    (p/for-all [tx-cmds (s/gen :blaze.db.tx-log.kafka/tx-cmds)]
       (= tx-cmds (deserialize (serialize tx-cmds))))))
 
 

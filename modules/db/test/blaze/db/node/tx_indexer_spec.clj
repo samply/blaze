@@ -9,6 +9,10 @@
     [cognitect.anomalies :as anom]))
 
 
+(s/def :blaze.db.node.tx-indexer/tx-data
+  (s/keys :req-un [:blaze.db/t :blaze.db.tx/instant :blaze.db.node.tx-indexer/tx-cmds]))
+
+
 (s/fdef tx-indexer/index-tx
-  :args (s/cat :db-before :blaze.db/db :tx-data :blaze.db/tx-data)
+  :args (s/cat :db-before :blaze.db/db :tx-data :blaze.db.node.tx-indexer/tx-data)
   :ret (s/or :entries (s/coll-of :blaze.db.kv/put-entry) :anomaly ::anom/anomaly))

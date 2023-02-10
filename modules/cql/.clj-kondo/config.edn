@@ -36,7 +36,11 @@
   {:level :warning}
 
   :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}}
+  {:level :warning :warn-only-on-interop true}
+
+  ;; TODO remove when https://github.com/clj-kondo/clj-kondo/issues/1949 is released
+  :aliased-namespace-var-usage
+  {:level :off}}
 
  :output
  {:exclude-files ["^test/data_readers.clj"]}

@@ -1,5 +1,6 @@
 (ns blaze.db.tx-log.spec-test
   (:require
+    [blaze.async.comp :as ac]
     [blaze.db.tx-log.spec]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
@@ -30,8 +31,10 @@
     0xFFFFFFFFFFFFFF))
 
 
-(def patient-hash-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
-(def observation-hash-0 (hash/generate {:fhir/type :fhir/Observation :id "0"}))
+(def patient-0 {:fhir/type :fhir/Patient :id "0"})
+(def patient-hash-0 (hash/generate patient-0))
+(def observation-0 {:fhir/type :fhir/Observation :id "0"})
+(def observation-hash-0 (hash/generate observation-0))
 
 
 (deftest tx-cmd-test
@@ -39,16 +42,19 @@
     {:op "create"
      :type "Patient"
      :id "0"
-     :hash patient-hash-0}
+     :hash patient-hash-0
+     :resource (ac/completed-future patient-0)}
     {:op "create"
      :type "Observation"
      :id "0"
      :hash observation-hash-0
+     :resource (ac/completed-future observation-hash-0)
      :refs [["Patient" "0"]]}
     {:op "put"
      :type "Patient"
      :id "0"
      :hash patient-hash-0
+     :resource (ac/completed-future patient-0)
      :if-match 1}
     {:op "delete"
      :type "Patient"
