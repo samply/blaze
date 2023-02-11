@@ -5,8 +5,12 @@
     [clojure.spec.alpha :as s]))
 
 
+(defn search-param-registry? [x]
+  (satisfies? sr/SearchParamRegistry x))
+
+
 (s/def :blaze.db/search-param-registry
-  #(satisfies? sr/SearchParamRegistry %))
+  search-param-registry?)
 
 
 (s/def :blaze.db/search-param

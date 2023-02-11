@@ -4,5 +4,9 @@
     [clojure.spec.alpha :as s]))
 
 
+(defn structure-definition-repo? [x]
+  (satisfies? p/StructureDefinitionRepo x))
+
+
 (s/def :blaze.fhir/structure-definition-repo
-  #(satisfies? p/StructureDefinitionRepo %))
+  structure-definition-repo?)
