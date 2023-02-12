@@ -17,6 +17,7 @@
     [blaze.db.impl.index.type-as-of :as tao]
     [blaze.db.impl.index.type-stats :as type-stats]
     [blaze.db.impl.protocols :as p]
+    [blaze.db.impl.search-param.all :as search-param-all]
     [blaze.db.impl.search-param.util :as u]
     [blaze.db.kv :as kv])
   (:import
@@ -230,11 +231,17 @@
 
 
 (defn- decode-clauses [clauses]
-  (mapv
-    (fn [[search-param modifier values]]
-      (if (#{"asc" "desc"} modifier)
-        [:sort (:code search-param) (keyword modifier)]
-        (into [(cond-> (:code search-param) modifier (str ":" modifier))] values)))
+  (into
+    []
+    (keep
+      (fn [[search-param modifier values]]
+        (cond
+          (= search-param-all/search-param search-param)
+          nil
+          (#{"asc" "desc"} modifier)
+          [:sort (:code search-param) (keyword modifier)]
+          :else
+          (into [(cond-> (:code search-param) modifier (str ":" modifier))] values))))
     clauses))
 
 

@@ -12,6 +12,7 @@
     [blaze.db.impl.index.tx-success :as tx-success]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param :as search-param]
+    [blaze.db.impl.search-param.all :as search-param-all]
     [blaze.db.impl.search-param.chained :as spc]
     [blaze.db.kv :as kv]
     [blaze.db.node.protocols :as np]
@@ -107,11 +108,36 @@
   (s/conform :blaze.db.query/clause clause))
 
 
-(defn- resolve-search-params [registry type clauses lenient?]
+(defn- resolve-search-params* [registry type clauses lenient?]
   (reduce
     #(resolve-search-param registry type %1 (conform-clause %2) lenient?)
     []
     clauses))
+
+
+(defn- type-priority [type]
+  (case type
+    "token" 0
+    1))
+
+
+(defn- order-clauses
+  "Orders clauses by specificity so that the clause constraining the resources
+  the most will come first."
+  [clauses]
+  (sort-by (comp type-priority :type first) clauses))
+
+
+(defn- fix-last-updated [[[first-search-param first-modifier] :as clauses]]
+  (if (and (= "_lastUpdated" (:code first-search-param))
+           (not (#{"asc" "desc"} first-modifier)))
+    (into [[search-param-all/search-param nil [""] [""]]] clauses)
+    clauses))
+
+
+(defn- resolve-search-params [registry type clauses lenient?]
+  (when-ok [clauses (resolve-search-params* registry type clauses lenient?)]
+    (-> clauses order-clauses fix-last-updated)))
 
 
 (defn- db-future

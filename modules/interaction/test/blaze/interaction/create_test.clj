@@ -83,7 +83,7 @@
     :blaze.interaction/create
     {:node (ig/ref :blaze.db/node)
      :executor (ig/ref :blaze.test/executor)
-     :clock (ig/ref :blaze.test/clock)
+     :clock (ig/ref :blaze.test/fixed-clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
     :blaze.test/executor {}
     :blaze.test/fixed-rng-fn {}))

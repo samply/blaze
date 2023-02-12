@@ -102,22 +102,22 @@
     :blaze.interaction/transaction
     {:node (ig/ref :blaze.db/node)
      :executor (ig/ref :blaze.test/executor)
-     :clock (ig/ref :blaze.test/clock)
+     :clock (ig/ref :blaze.test/fixed-clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
     :blaze.interaction/read {}
     :blaze.interaction/delete
     {:node (ig/ref :blaze.db/node)
      :executor (ig/ref :blaze.test/executor)}
     :blaze.interaction/search-system
-    {:clock (ig/ref :blaze.test/clock)
+    {:clock (ig/ref :blaze.test/fixed-clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
      :page-store (ig/ref ::page-store)}
     :blaze.interaction/search-type
-    {:clock (ig/ref :blaze.test/clock)
+    {:clock (ig/ref :blaze.test/fixed-clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
      :page-store (ig/ref ::page-store)}
     :blaze.test/executor {}
-    :blaze.test/clock {}
+    :blaze.test/fixed-clock {}
     :blaze.test/fixed-rng-fn {}
     ::page-store {}))
 

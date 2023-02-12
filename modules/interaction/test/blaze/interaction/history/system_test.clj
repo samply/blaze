@@ -85,7 +85,7 @@
   (assoc mem-node-system
     :blaze.interaction.history/system
     {:node (ig/ref :blaze.db/node)
-     :clock (ig/ref :blaze.test/clock)
+     :clock (ig/ref :blaze.test/fixed-clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
     :blaze.test/fixed-rng-fn {}))
 

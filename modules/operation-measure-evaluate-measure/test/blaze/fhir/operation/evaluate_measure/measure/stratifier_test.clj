@@ -176,10 +176,10 @@
      :criteria (cql-expression "Age")}]})
 
 
-(defn- context [{:blaze.db/keys [node] :blaze.test/keys [clock]} library]
+(defn- context [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock]} library]
   (let [{:keys [expression-defs function-defs]} (compile-library node library)]
     {:db (d/db node)
-     :now (now clock)
+     :now (now fixed-clock)
      :timeout-eclipsed? (constantly false)
      :timeout (time/seconds 42)
      :expression-defs expression-defs

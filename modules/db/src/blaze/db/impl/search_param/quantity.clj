@@ -86,6 +86,10 @@
     (take-while (fn [[prefix]] (bs/<= prefix prefix-key)))))
 
 
+(def ^:private drop-value
+  (map #(subvec % 1)))
+
+
 (defn- eq-keys!
   "Returns a reducible collection of `[id hash-prefix]` tuples of values between
   `lower-bound` and `upper-bound` starting at `start-id` (optional).
@@ -98,14 +102,14 @@
    (coll/eduction
      (comp
        (take-while-less-equal c-hash tid upper-bound)
-       (map (fn [[_prefix id hash-prefix]] [id hash-prefix])))
+       drop-value)
      (sp-vr/keys! svri (sp-vr/encode-seek-key c-hash tid lower-bound))))
   ([{:keys [svri] :as context} c-hash tid lower-bound-prefix upper-bound
     start-id]
    (coll/eduction
      (comp
        (take-while-less-equal c-hash tid upper-bound)
-       (map (fn [[_prefix id hash-prefix]] [id hash-prefix])))
+       drop-value)
      (sp-vr/keys! svri (id-start-key! context c-hash tid lower-bound-prefix
                                       start-id)))))
 
@@ -224,7 +228,7 @@
   (coll/eduction
     (comp
       (take-while-compartment-less-equal compartment c-hash tid upper-bound)
-      (map (fn [[_prefix id hash-prefix]] [id hash-prefix])))
+      drop-value)
     (c-sp-vr/keys! csvri (c-sp-vr/encode-seek-key compartment c-hash tid
                                                   lower-bound))))
 

@@ -42,9 +42,14 @@
          (ig/halt! system#)))))
 
 
-(defmethod ig/init-key :blaze.test/clock
+(defmethod ig/init-key :blaze.test/fixed-clock
   [_ _]
   (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
+
+
+(defmethod ig/init-key :blaze.test/system-clock
+  [_ _]
+  (Clock/systemUTC))
 
 
 (defmethod ig/init-key :blaze.test/fixed-rng-fn
