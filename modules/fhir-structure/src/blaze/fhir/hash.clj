@@ -88,6 +88,7 @@
 
 
 (defn prefix
+  "Returns the first 4 bytes of `hash`."
   {:inline
    (fn [hash]
      `(.prefix ~(with-meta hash {:tag `Hash})))}
