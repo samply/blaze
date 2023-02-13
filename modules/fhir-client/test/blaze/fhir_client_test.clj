@@ -1,5 +1,6 @@
 (ns blaze.fhir-client-test
   (:require
+    [blaze.async.comp :as ac]
     [blaze.fhir-client :as fhir-client]
     [blaze.fhir-client-spec]
     [blaze.fhir.spec.type]
@@ -12,6 +13,7 @@
     [taoensso.timbre :as log])
   (:import
     [com.pgssoft.httpclient HttpClientMock Condition]
+    [java.net.http HttpClient]
     [java.nio.file Files Path]
     [java.nio.file.attribute FileAttribute]))
 
@@ -33,6 +35,17 @@
     (given @(fhir-client/metadata "http://localhost:8080/fhir"
                                   {:http-client http-client})
       :fhir/type := :fhir/CapabilityStatement)))
+
+
+(deftest handle-error-test
+  (let [http-client (proxy [HttpClient] []
+                      (sendAsync [_ _]
+                        (ac/failed-future (ex-info "" {}))))]
+
+    (given-failed-future (fhir-client/metadata "http://localhost:8080/fhir"
+                                               {:http-client http-client})
+      ::anom/category := ::anom/fault
+      ::anom/message := "Missing response status code.")))
 
 
 (deftest read-test

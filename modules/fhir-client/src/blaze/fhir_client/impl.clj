@@ -27,7 +27,6 @@
 
 (defn- category [status]
   (cond
-    nil ::anom/fault
     (= 404 status) ::anom/not-found
     (#{409 412} status) ::anom/conflict
     (#{401 403} status) ::anom/forbidden
@@ -38,8 +37,11 @@
 
 
 (defn- anomaly* [response]
-  {::anom/category (category (:status response))
-   ::anom/message (format "Unexpected response status %d." (:status response))})
+  (if-let [status (:status response)]
+    {::anom/category (category status)
+     ::anom/message (format "Unexpected response status %d." status)}
+    {::anom/category ::anom/fault
+     ::anom/message "Missing response status code."}))
 
 
 (defn- anomaly [e]
