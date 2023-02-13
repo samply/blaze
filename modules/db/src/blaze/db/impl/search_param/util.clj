@@ -49,14 +49,17 @@
 
 (defn- resource-handle-mapper* [{:keys [resource-handle]} tid]
   (keep
-    (fn [tuples]
-      (let [id (-> tuples (coll/nth 0) (coll/nth 0))]
-        (when-let [handle (resource-handle tid id)]
-          (when (some (contains-hash-prefix-pred handle) tuples)
-            handle))))))
+    (fn [[[id] :as tuples]]
+      (when-let [handle (resource-handle tid id)]
+        (when (some (contains-hash-prefix-pred handle) tuples)
+          handle)))))
 
 
-(defn resource-handle-mapper [context tid]
+(defn resource-handle-mapper
+  "Transducer which groups `[id hash-prefix]` tuples by `id` and maps them to
+  a resource handle with `tid` if there is a current one with matching hash
+  prefix."
+  [context tid]
   (comp
     by-id-grouper
     (resource-handle-mapper* context tid)))

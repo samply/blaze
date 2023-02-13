@@ -17,7 +17,8 @@
     [blaze.db.node.resource-indexer-spec]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.kv :as rs-kv]
-    [blaze.db.search-param-registry :as sr]
+    [blaze.db.resource-store.spec :refer [resource-store?]]
+    [blaze.db.search-param-registry.spec :refer [search-param-registry?]]
     [blaze.executors :as ex]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.hash :as hash]
@@ -83,7 +84,7 @@
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
       [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (satisfies? rs/ResourceStore ~'%))
+      [:explain ::s/problems 3 :pred] := `resource-store?
       [:explain ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid search-param-registry"
@@ -93,7 +94,7 @@
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
       [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (satisfies? sr/SearchParamRegistry ~'%))
+      [:explain ::s/problems 3 :pred] := `search-param-registry?
       [:explain ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid executor"

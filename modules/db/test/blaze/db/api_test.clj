@@ -16,6 +16,7 @@
     [blaze.db.resource-store :as rs]
     [blaze.db.search-param-registry]
     [blaze.db.test-util :refer [system with-system-data]]
+    [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log-spec]
     [blaze.db.tx-log.local-spec]
     [blaze.fhir.spec :as fhir-spec]
@@ -786,12 +787,16 @@
      @(d/pull-many node handles))))
 
 
+(defn- with-system-clock [system]
+  (assoc-in system [::tx-log/local :clock] (ig/ref :blaze.test/system-clock)))
+
+
 (deftest type-query-test
   (with-system [{:blaze.db/keys [node]} system]
     (testing "a new node has no patients"
       (is (coll/empty? (d/type-query (d/db node) "Patient" [["gender" "male"]]))))
 
-    (testing "sort clauses are anly allowed at first position"
+    (testing "sort clauses are only allowed at first position"
       (given (d/type-query (d/db node) "Patient" [["gender" "male"]
                                                   [:sort "_lastUpdated" :desc]])
         ::anom/category := ::anom/incorrect
@@ -927,6 +932,23 @@
         [0 :fhir/type] := :fhir/Patient
         [0 :id] := "0")))
 
+  ;; TODO: fix this https://github.com/samply/blaze/issues/904
+  #_(testing "sorting by _lastUpdated returns only the newest version of the patient"
+    (with-system-data [{:blaze.db/keys [node]} (with-system-clock system)]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+      ;; we have to sleep more than one second here because dates are index only with second resolution
+      (Thread/sleep 2000)
+      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
+      (doseq [dir [:asc :desc]]
+        (given (pull-type-query node "Patient" [[:sort "_lastUpdated" dir]])
+          count := 2
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0"
+          [0 :active] := false))))
+
   (testing "a node with three patients in one transaction"
     (with-system-data [{:blaze.db/keys [node]} system]
       [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
@@ -1014,6 +1036,22 @@
             count := 2
             [0 :id] := "0"
             [1 :id] := "3")))))
+
+  (testing "special case of _lastUpdated date search parameter"
+    (testing "inequality searches do return every resource only once"
+      (with-system-data [{:blaze.db/keys [node]} (with-system-clock system)]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+        ;; we have to sleep more than one second here because dates are index only with second resolution
+        (Thread/sleep 2000)
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+
+        (given (pull-type-query node "Patient" [["_lastUpdated" "ge2000-01-01"]])
+          count := 2)
+
+        (given (pull-type-query node "Patient" [["_lastUpdated" "lt3000-01-01"]])
+          count := 2))))
 
   (testing "Special Search Parameter _has"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -3048,6 +3086,8 @@
     (testing "year precision"
       (with-system-data [{:blaze.db/keys [node]} system]
         [[[:put {:fhir/type :fhir/Patient :id "0"
+                 :birthDate #fhir/date"1970"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0"
                  :birthDate #fhir/date"1990"}]
           [:put {:fhir/type :fhir/Patient :id "1"
                  :birthDate #fhir/date"1989"}]
@@ -3340,6 +3380,19 @@
                      (d/pull-many node))
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"))
+
+      (testing "token clauses are ordered before date clauses"
+        (given (-> (d/compile-type-query node "Patient" [["_lastUpdated" "lt3000-01-01"]
+                                                         ["active" "true"]])
+                   (d/query-clauses))
+          [0] := ["active" "true"]
+          [1] := ["_lastUpdated" "lt3000-01-01"]))
+
+      (testing "special all clause is removed"
+        (given (-> (d/compile-type-query node "Patient" [["_lastUpdated" "lt3000-01-01"]])
+                   (d/query-clauses))
+          count := 1
+          [0] := ["_lastUpdated" "lt3000-01-01"]))
 
       (testing "an unknown search-param errors"
         (given (d/compile-type-query node "Patient" [["foo" "bar"]

@@ -5,7 +5,7 @@
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec.type]
     [blaze.fhir.structure-definition-repo]
-    [blaze.fhir.structure-definition-repo.protocols :as p]
+    [blaze.fhir.structure-definition-repo.spec :refer [structure-definition-repo?]]
     [blaze.test-util :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -46,7 +46,7 @@
     (given-thrown (ig/init {:blaze.db/search-param-registry {:structure-definition-repo ::invalid}})
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (satisfies? p/StructureDefinitionRepo ~'%))
+      [:explain ::s/problems 0 :pred] := `structure-definition-repo?
       [:explain ::s/problems 0 :val] := ::invalid)))
 
 

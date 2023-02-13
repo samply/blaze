@@ -93,17 +93,23 @@
                         (resource-value! context c-hash tid start-id) start-id))
 
 
+(def ^:private drop-value
+  (map #(subvec % 1)))
+
+
 (defn- eq-keys!
-  "Returns a reducible collection of `[value id hash-prefix]` triples of all
+  "Returns a reducible collection of `[id hash-prefix]` triples of all
   keys with overlapping date/time intervals with the interval specified by
   `lower-bound` and `upper-bound` starting at `start-id` (optional)."
   ([{:keys [svri]} c-hash tid lower-bound upper-bound]
    (coll/eduction
-     (eq-filter lower-bound upper-bound)
+     (comp (eq-filter lower-bound upper-bound)
+           drop-value)
      (sp-vr/all-keys! svri c-hash tid)))
   ([context c-hash tid lower-bound upper-bound start-id]
    (coll/eduction
-     (eq-filter lower-bound upper-bound)
+     (comp (eq-filter lower-bound upper-bound)
+           drop-value)
      (all-keys! context c-hash tid start-id))))
 
 
@@ -119,16 +125,18 @@
 
 
 (defn- ge-keys!
-  "Returns a reducible collection of `[value id hash-prefix]` triples of all
+  "Returns a reducible collection of `[id hash-prefix]` triples of all
   keys with overlapping date/time intervals with the interval specified by
   `lower-bound` and an infinite upper bound starting at `start-id` (optional)."
   ([{:keys [svri]} c-hash tid lower-bound]
    (coll/eduction
-     (ge-filter lower-bound)
+     (comp (ge-filter lower-bound)
+           drop-value)
      (sp-vr/all-keys! svri c-hash tid)))
   ([context c-hash tid lower-bound start-id]
    (coll/eduction
-     (ge-filter lower-bound)
+     (comp (ge-filter lower-bound)
+           drop-value)
      (all-keys! context c-hash tid start-id))))
 
 
@@ -144,16 +152,18 @@
 
 
 (defn- gt-keys!
-  "Returns a reducible collection of `[value id hash-prefix]` triples of all
+  "Returns a reducible collection of `[id hash-prefix]` triples of all
   keys with overlapping date/time intervals with the interval specified by
   `lower-bound` and an infinite upper bound starting at `start-id` (optional)."
   ([{:keys [svri]} c-hash tid lower-bound]
    (coll/eduction
-     (gt-filter lower-bound)
+     (comp (gt-filter lower-bound)
+           drop-value)
      (sp-vr/all-keys! svri c-hash tid)))
   ([context c-hash tid lower-bound start-id]
    (coll/eduction
-     (gt-filter lower-bound)
+     (comp (gt-filter lower-bound)
+           drop-value)
      (all-keys! context c-hash tid start-id))))
 
 
@@ -169,16 +179,18 @@
 
 
 (defn- le-keys!
-  "Returns a reducible collection of `[value id hash-prefix]` triples of all
+  "Returns a reducible collection of `[id hash-prefix]` triples of all
   keys with overlapping date/time intervals with the interval specified by
   an infinite lower bound and `upper-bound` starting at `start-id` (optional)."
   ([{:keys [svri]} c-hash tid upper-bound]
    (coll/eduction
-     (le-filter upper-bound)
+     (comp (le-filter upper-bound)
+           drop-value)
      (sp-vr/all-keys! svri c-hash tid)))
   ([context c-hash tid upper-bound start-id]
    (coll/eduction
-     (le-filter upper-bound)
+     (comp (le-filter upper-bound)
+           drop-value)
      (all-keys! context c-hash tid start-id))))
 
 
@@ -194,16 +206,18 @@
 
 
 (defn- lt-keys!
-  "Returns a reducible collection of `[value id hash-prefix]` triples of all
+  "Returns a reducible collection of `[id hash-prefix]` triples of all
   keys with overlapping date/time intervals with the interval specified by
   an infinite lower bound and `upper-bound` starting at `start-id` (optional)."
   ([{:keys [svri]} c-hash tid upper-bound]
    (coll/eduction
-     (lt-filter upper-bound)
+     (comp (lt-filter upper-bound)
+           drop-value)
      (sp-vr/all-keys! svri c-hash tid)))
-  ([context c-hash tid lower-bound start-id]
+  ([context c-hash tid upper-bound start-id]
    (coll/eduction
-     (lt-filter lower-bound)
+     (comp (lt-filter upper-bound)
+           drop-value)
      (all-keys! context c-hash tid start-id))))
 
 
@@ -267,32 +281,26 @@
 
   (-resource-handles [_ context tid _ value]
     (coll/eduction
-      (comp
-        (map (fn [[_value id hash-prefix]] [id hash-prefix]))
-        (u/resource-handle-mapper context tid))
+      (u/resource-handle-mapper context tid)
       (resource-keys! context c-hash tid value)))
 
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction
-      (comp
-        (map (fn [[_value id hash-prefix]] [id hash-prefix]))
-        (u/resource-handle-mapper context tid))
+      (u/resource-handle-mapper context tid)
       (resource-keys! context c-hash tid value start-id)))
 
   (-sorted-resource-handles [_ context tid direction]
     (coll/eduction
-      (comp
-        (map (fn [[_value id hash-prefix]] [id hash-prefix]))
-        (u/resource-handle-mapper context tid))
+      (comp drop-value
+            (u/resource-handle-mapper context tid))
       (if (= :asc direction)
         (sp-vr/all-keys! (:svri context) c-hash tid)
         (sp-vr/all-keys-prev! (:svri context) c-hash tid))))
 
   (-sorted-resource-handles [_ context tid direction start-id]
     (coll/eduction
-      (comp
-        (map (fn [[_value id hash-prefix]] [id hash-prefix]))
-        (u/resource-handle-mapper context tid))
+      (comp drop-value
+            (u/resource-handle-mapper context tid))
       (if (= :asc direction)
         (all-keys! context c-hash tid start-id)
         (all-keys-prev! context c-hash tid start-id))))

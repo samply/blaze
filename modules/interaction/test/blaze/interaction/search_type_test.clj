@@ -159,7 +159,7 @@
 (def system
   (assoc mem-node-system
     :blaze.interaction/search-type
-    {:clock (ig/ref :blaze.test/clock)
+    {:clock (ig/ref :blaze.test/fixed-clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
      :page-store (ig/ref :blaze.page-store/local)}
     :blaze.test/fixed-rng-fn {}

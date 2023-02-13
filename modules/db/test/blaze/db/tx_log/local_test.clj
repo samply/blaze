@@ -82,10 +82,10 @@
 (def system
   {::tx-log/local
    {:kv-store (ig/ref :blaze.db/transaction-kv-store)
-    :clock (ig/ref :blaze.test/clock)}
+    :clock (ig/ref :blaze.test/fixed-clock)}
    [::kv/mem :blaze.db/transaction-kv-store]
    {:column-families {}}
-   :blaze.test/clock {}})
+   :blaze.test/fixed-clock {}})
 
 
 (defn- assoc-kv-store-init-data [system init-data]
@@ -95,9 +95,9 @@
 (def failing-kv-store-system
   {::tx-log/local
    {:kv-store (ig/ref ::failing-kv-store)
-    :clock (ig/ref :blaze.test/clock)}
+    :clock (ig/ref :blaze.test/fixed-clock)}
    ::failing-kv-store {}
-   :blaze.test/clock {}})
+   :blaze.test/fixed-clock {}})
 
 
 (deftest init-test

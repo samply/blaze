@@ -15,12 +15,20 @@
   #(satisfies? np/Node %))
 
 
+(defn cache? [x]
+  (instance? Cache x))
+
+
 (s/def :blaze.db/resource-handle-cache
-  #(instance? Cache %))
+  cache?)
+
+
+(defn loading-cache? [x]
+  (instance? LoadingCache x))
 
 
 (s/def :blaze.db/tx-cache
-  #(instance? LoadingCache %))
+  loading-cache?)
 
 
 (s/def :blaze.db/resource-cache
