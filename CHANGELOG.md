@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.19.2
+
+### Bugfixes
+
+* Fix _lastUpdated Search Returning a Resource more than Once ([#882](https://github.com/samply/blaze/issues/882))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/60?closed=1).
+
 ## v0.19.1
 
 ### Security
