@@ -2,7 +2,7 @@
   "This namespace provides functions to work with Java 9 Reactive Streams.
 
   https://www.baeldung.com/java-9-reactive-streams"
-  (:refer-clojure :exclude [mapcat])
+  (:refer-clojure :exclude [mapcat map])
   (:require
     [blaze.async.comp :as ac])
   (:import
@@ -72,6 +72,23 @@
   (let [future (ac/future)]
     (subscribe! publisher (collector future))
     future))
+
+
+(defn map
+  "Returns a Processor which applies `f`."
+  [f]
+  (let [subscription (volatile! nil)]
+    (proxy [SubmissionPublisher Flow$Processor] []
+      (onSubscribe [s]
+        (vreset! subscription s)
+        (request! s 1))
+      (onNext [x]
+        (.submit ^SubmissionPublisher this (f x))
+        (request! @subscription 1))
+      (onError [e]
+        (.closeExceptionally ^SubmissionPublisher this e))
+      (onComplete []
+        (.close ^SubmissionPublisher this)))))
 
 
 (defn mapcat
