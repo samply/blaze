@@ -4,6 +4,7 @@
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.fhir.response.create :refer [build-response]]
     [blaze.fhir.response.create-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [reitit.core :as reitit]
@@ -14,13 +15,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (def router

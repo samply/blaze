@@ -4,7 +4,7 @@
     [blaze.interaction.search.params :as params]
     [blaze.interaction.search.params-spec]
     [blaze.page-store.protocols :as p]
-    [blaze.test-util :refer [given-failed-future]]
+    [blaze.test-util :as tu :refer [given-failed-future]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [cognitect.anomalies :as anom]
@@ -15,13 +15,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (def page-store

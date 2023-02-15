@@ -2,6 +2,7 @@
   (:require
     [blaze.interaction.util :as iu]
     [blaze.interaction.util-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -11,13 +12,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest etag->t-test
@@ -107,7 +102,7 @@
     (testing "sort param comes always first"
       (is (= [[:sort "a" :asc] ["b" "c"]]
              (iu/clauses {"_sort" "a" "b" "c"})
-             (iu/clauses {"b" "c" "_sort" "a" }))))
+             (iu/clauses {"b" "c" "_sort" "a"}))))
 
     (testing "with two parts is unsupported"
       (given (iu/clauses {"_sort" "a,b" "c" "d"})

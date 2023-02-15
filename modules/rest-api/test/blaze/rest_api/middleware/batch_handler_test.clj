@@ -1,6 +1,7 @@
 (ns blaze.rest-api.middleware.batch-handler-test
   (:require
     [blaze.rest-api.middleware.batch-handler :refer [wrap-batch-handler]]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is]]))
 
@@ -8,13 +9,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest wrap-batch-handler-test

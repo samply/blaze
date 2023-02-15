@@ -1,6 +1,7 @@
 (ns blaze.openid-auth.impl-test
   (:require
     [blaze.openid-auth.impl :as impl]
+    [blaze.test-util :as tu]
     [buddy.auth.middleware :as middleware]
     [buddy.sign.jwt :as jwt]
     [clojure.spec.test.alpha :as st]
@@ -17,13 +18,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 ;; The following json has been taken from https://samples.auth0.com/.well-known/jwks.json

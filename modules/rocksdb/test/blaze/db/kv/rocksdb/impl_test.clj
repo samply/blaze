@@ -4,6 +4,7 @@
     [blaze.db.kv.rocksdb.impl :as impl]
     [blaze.db.kv.rocksdb.impl-spec]
     [blaze.metrics.core-spec]
+    [blaze.test-util :as tu]
     [clojure.core.protocols :as p]
     [clojure.datafy :as datafy]
     [clojure.spec.test.alpha :as st]
@@ -15,22 +16,16 @@
     [java.nio.file Files]
     [java.nio.file.attribute FileAttribute]
     [org.rocksdb
-     BlockBasedTableConfig ColumnFamilyDescriptor ColumnFamilyOptions
-     CompressionType DBOptions LRUCache Statistics RocksDB WriteBatchInterface
-     ColumnFamilyHandle WriteOptions]))
+     BlockBasedTableConfig ColumnFamilyDescriptor ColumnFamilyHandle
+     ColumnFamilyOptions CompressionType DBOptions LRUCache RocksDB Statistics
+     WriteBatchInterface WriteOptions]))
 
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (defn- from-hex [s]
@@ -375,27 +370,27 @@
              [cfh-2 "03" "04"]]))
 
         (testing "delete"
-            (are [entries state-val]
-              (let [state (atom [])]
-                (impl/write-wb!
-                  {:cf-1 cfh-1
-                   :cf-2 cfh-2}
-                  (cf-delete-wb state)
-                  entries)
-                (is (= state-val @state)))
+          (are [entries state-val]
+            (let [state (atom [])]
+              (impl/write-wb!
+                {:cf-1 cfh-1
+                 :cf-2 cfh-2}
+                (cf-delete-wb state)
+                entries)
+              (is (= state-val @state)))
 
-              [[:delete :cf-1 (from-hex "01")]]
-              [[cfh-1 "01"]]
+            [[:delete :cf-1 (from-hex "01")]]
+            [[cfh-1 "01"]]
 
-              [[:delete :cf-1 (from-hex "01")]
-               [:delete :cf-1 (from-hex "02")]]
-              [[cfh-1 "01"]
-               [cfh-1 "02"]]
+            [[:delete :cf-1 (from-hex "01")]
+             [:delete :cf-1 (from-hex "02")]]
+            [[cfh-1 "01"]
+             [cfh-1 "02"]]
 
-              [[:delete :cf-1 (from-hex "01")]
-               [:delete :cf-2 (from-hex "02")]]
-              [[cfh-1 "01"]
-               [cfh-2 "02"]])))))
+            [[:delete :cf-1 (from-hex "01")]
+             [:delete :cf-2 (from-hex "02")]]
+            [[cfh-1 "01"]
+             [cfh-2 "02"]])))))
 
   (testing "with missing column family"
     (let [entries [[:put :cf-1 (byte-array 0) (byte-array 0)]]]

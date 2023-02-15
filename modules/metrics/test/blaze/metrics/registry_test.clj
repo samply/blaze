@@ -2,7 +2,7 @@
   (:require
     [blaze.metrics.core :as metrics]
     [blaze.metrics.registry]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-thrown with-system]]
     [clojure.datafy :as datafy]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -26,7 +26,7 @@
   (st/unstrument))
 
 
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest init-test

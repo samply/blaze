@@ -14,16 +14,9 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(tu/init-fhir-specs)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest since-test

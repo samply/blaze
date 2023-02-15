@@ -5,7 +5,7 @@
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem]
     [blaze.db.kv.mem-spec]
-    [blaze.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -15,13 +15,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (def system

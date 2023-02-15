@@ -1,11 +1,8 @@
 (ns blaze.fhir.hash-test-perf
   (:require
     [blaze.fhir.hash :as hash]
-    [blaze.test-util :as tu]
+    [blaze.test-util]
     [criterium.core :as criterium]))
-
-
-(tu/init-fhir-specs)
 
 
 (def observation

@@ -1,12 +1,9 @@
 (ns blaze.fhir.spec-test-perf
   (:require
     [blaze.fhir.spec :as fhir-spec]
-    [blaze.test-util :as tu]
+    [blaze.test-util]
     [clojure.alpha.spec :as s2]
     [criterium.core :as criterium]))
-
-
-(tu/init-fhir-specs)
 
 
 (defn- bench-unform-json [x]

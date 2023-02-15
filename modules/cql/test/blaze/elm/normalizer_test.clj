@@ -6,6 +6,7 @@
     [blaze.elm.literal-spec]
     [blaze.elm.normalizer :refer [normalize]]
     [blaze.elm.normalizer-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [juxt.iota :refer [given]]))
@@ -14,13 +15,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (def expression-1

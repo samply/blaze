@@ -3,23 +3,18 @@
     [blaze.db.kv.rocksdb.metrics :refer [stats-collector]]
     [blaze.metrics.core :as metrics]
     [blaze.metrics.core-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]])
   (:import
-    [org.rocksdb Statistics RocksDB]))
+    [org.rocksdb RocksDB Statistics]))
 
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (RocksDB/loadLibrary)

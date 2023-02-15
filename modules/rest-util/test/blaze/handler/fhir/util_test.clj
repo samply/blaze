@@ -1,6 +1,7 @@
 (ns blaze.handler.fhir.util-test
   (:require
     [blaze.handler.fhir.util :as fhir-util]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [reitit.core :as reitit]))
@@ -9,13 +10,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest to-seq-test

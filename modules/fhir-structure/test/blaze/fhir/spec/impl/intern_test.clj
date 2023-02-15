@@ -2,23 +2,18 @@
   (:require
     [blaze.executors :as ex]
     [blaze.fhir.spec.impl.intern :as intern]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]])
   (:import
-    [java.util.concurrent TimeUnit CountDownLatch]))
+    [java.util.concurrent CountDownLatch TimeUnit]))
 
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (defrecord TestType [x])

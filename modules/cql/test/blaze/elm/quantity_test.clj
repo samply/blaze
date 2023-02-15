@@ -2,6 +2,7 @@
   (:require
     [blaze.elm.protocols :as p]
     [blaze.elm.quantity :as quantity]
+    [blaze.test-util :as tu]
     [clojure.java.io :as io]
     [clojure.spec.test.alpha :as st]
     [clojure.string :as str]
@@ -12,13 +13,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest quantity-test

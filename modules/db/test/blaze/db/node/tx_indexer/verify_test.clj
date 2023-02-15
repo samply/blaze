@@ -29,7 +29,7 @@
     [blaze.fhir.spec.type]
     [blaze.fhir.structure-definition-repo]
     [blaze.log]
-    [blaze.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [clojure.walk :as walk]
@@ -42,13 +42,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (def tid-patient (codec/tid "Patient"))

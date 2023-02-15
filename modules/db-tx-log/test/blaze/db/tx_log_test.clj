@@ -15,16 +15,9 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(tu/init-fhir-specs)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (def patient-hash-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))

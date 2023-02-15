@@ -15,17 +15,10 @@
 
 
 (st/instrument)
-(tu/init-fhir-specs)
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (def resource-handler

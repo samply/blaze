@@ -8,7 +8,7 @@
     [blaze.elm.compiler.library :as library]
     [blaze.fhir.operation.evaluate-measure.measure.stratifier :as stratifier]
     [blaze.fhir.operation.evaluate-measure.measure.stratifier-spec]
-    [blaze.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [cognitect.anomalies :as anom]
@@ -22,13 +22,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 (defn- now [clock]
   (OffsetDateTime/now ^Clock clock))

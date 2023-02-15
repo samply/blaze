@@ -2,27 +2,22 @@
   (:require
     [blaze.fhir.spec.type.system :as system]
     [blaze.fhir.spec.type.system-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
     [java-time.api :as time])
   (:import
     [com.google.common.hash Hashing]
-    [java.time LocalDate LocalDateTime Year YearMonth OffsetDateTime
-               ZoneOffset LocalTime]))
+    [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year
+               YearMonth ZoneOffset]))
 
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (defn murmur3 [x]

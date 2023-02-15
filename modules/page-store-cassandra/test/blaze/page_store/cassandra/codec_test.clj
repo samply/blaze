@@ -2,7 +2,7 @@
   (:require
     [blaze.page-store.cassandra.codec :as codec]
     [blaze.spec]
-    [blaze.test-util :refer [satisfies-prop]]
+    [blaze.test-util :as tu :refer [satisfies-prop]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest]]
@@ -13,13 +13,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (def token (c-str/repeat "A" 32))

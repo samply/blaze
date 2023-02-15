@@ -2,7 +2,7 @@
   (:require
     [blaze.async.comp-spec]
     [blaze.handler.util :as handler-util]
-    [blaze.test-util :refer [given-failed-future]]
+    [blaze.test-util :as tu :refer [given-failed-future]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
     [cognitect.anomalies :as anom]
@@ -12,13 +12,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest preference-test
@@ -82,7 +76,7 @@
 
 (deftest method-not-allowed-handler-test
   (given (handler-util/method-not-allowed-handler
-            {:uri "/Patient" :request-method :put})
+           {:uri "/Patient" :request-method :put})
     :status := 405
     [:body :fhir/type] := :fhir/OperationOutcome
     [:body :issue 0 :severity] := #fhir/code"error"
