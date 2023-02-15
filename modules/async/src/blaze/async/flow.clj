@@ -107,3 +107,25 @@
         (.closeExceptionally ^SubmissionPublisher this e))
       (onComplete []
         (.close ^SubmissionPublisher this)))))
+
+
+(defn async-map
+  "Returns a Processor which applies `f` expecting an asynchronous result."
+  [f]
+  (let [subscription (volatile! nil)]
+    (proxy [SubmissionPublisher Flow$Processor] []
+      (onSubscribe [s]
+        (vreset! subscription s)
+        (request! s 1))
+      (onNext [x]
+        (-> (f x)
+            (ac/then-apply
+              (fn [y]
+                (.submit ^SubmissionPublisher this y)
+                (request! @subscription 1)))
+            (ac/exceptionally
+              (fn [e] (.closeExceptionally ^SubmissionPublisher this e)))))
+      (onError [e]
+        (.closeExceptionally ^SubmissionPublisher this e))
+      (onComplete []
+        (.close ^SubmissionPublisher this)))))

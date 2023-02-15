@@ -1,5 +1,6 @@
 (ns blaze.async.flow-test
   (:require
+    [blaze.async.comp :as ac]
     [blaze.async.flow :as flow]
     [blaze.async.flow-spec]
     [blaze.test-util :as tu :refer [given-failed-future]]
@@ -102,3 +103,35 @@
       (given-failed-future future
         ::anom/category := ::anom/fault
         ::anom/message := "e-102402"))))
+
+(deftest async-map-test
+  (testing "with publisher generating one number"
+    (let [publisher (SubmissionPublisher.)
+          processor (flow/async-map #(ac/completed-future %))
+          future (flow/collect processor)]
+      (flow/subscribe! publisher processor)
+      (.submit publisher 1)
+      (.close publisher)
+      (is (= [1] @future))))
+
+  (testing "with publisher generating two numbers"
+    (let [publisher (SubmissionPublisher.)
+          processor (flow/async-map #(ac/completed-future %))
+          future (flow/collect processor)]
+      (flow/subscribe! publisher processor)
+      (.submit publisher 1)
+      (.submit publisher 2)
+      (.close publisher)
+      (is (= [1 2] @future))))
+
+  (testing "with exceptionally closed publisher"
+    (let [publisher (SubmissionPublisher.)
+          processor (flow/async-map #(ac/completed-future %))
+          future (flow/collect processor)]
+      (flow/subscribe! publisher processor)
+      (.submit publisher 1)
+      (.closeExceptionally publisher (ex-info "e-102336" {}))
+      (given-failed-future future
+        ::anom/category := ::anom/fault
+        ::anom/message := "e-102336"))))
+
