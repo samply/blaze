@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [error-handler])
   (:require
     [blaze.middleware.fhir.error :refer [wrap-error]]
+    [blaze.test-util :as tu]
     [blaze.test-util.ring :refer [call]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -11,13 +12,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (defn- identity-handler [request respond _]

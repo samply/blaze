@@ -3,6 +3,7 @@
     [blaze.db.impl.search-param]
     [blaze.rest-api.routes :as routes]
     [blaze.rest-api.routes-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [juxt.iota :refer [given]]
@@ -12,13 +13,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest resource-route-test
@@ -27,11 +22,11 @@
       (routes/resource-route
         {:node ::node}
         [#:blaze.rest-api.resource-pattern
-            {:type :default
-             :interactions
-             {:read
-              #:blaze.rest-api.interaction
-                  {:handler (fn [_] ::read)}}}]
+                {:type :default
+                 :interactions
+                 {:read
+                  #:blaze.rest-api.interaction
+                          {:handler (fn [_] ::read)}}}]
         {:kind "resource" :name "Patient"})
       [0] := "/Patient"
       [1 :fhir.resource/type] := "Patient"

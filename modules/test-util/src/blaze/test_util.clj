@@ -4,6 +4,7 @@
     [blaze.byte-buffer :as bb]
     [blaze.executors :as ex]
     [blaze.fhir.structure-definition-repo]
+    [clojure.spec.test.alpha :as st]
     [clojure.test :refer [is]]
     [clojure.test.check :as tc]
     [integrant.core :as ig]
@@ -96,5 +97,10 @@
   (Arrays/equals a b))
 
 
-(defn init-fhir-specs []
-  (ig/init {:blaze.fhir/structure-definition-repo {}}))
+(ig/init {:blaze.fhir/structure-definition-repo {}})
+
+
+(defn fixture [f]
+  (st/instrument)
+  (f)
+  (st/unstrument))

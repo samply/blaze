@@ -4,7 +4,7 @@
     [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.async.comp-spec]
     [blaze.executors :as ex]
-    [blaze.test-util :refer [given-failed-future]]
+    [blaze.test-util :as tu :refer [given-failed-future]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom])
@@ -16,13 +16,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest completed-future-test

@@ -16,7 +16,7 @@
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec.type]
     [blaze.fhir.structure-definition-repo]
-    [blaze.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
     [cognitect.anomalies :as anom]
@@ -31,13 +31,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (defn code-value-quantity-param [search-param-registry]

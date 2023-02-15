@@ -8,7 +8,7 @@
     [blaze.fhir.spec.impl.xml-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.structure-definition-repo :as u]
-    [blaze.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [with-system]]
     [clojure.alpha.spec :as s2]
     [clojure.data.xml.name :as xml-name]
     [clojure.data.xml.node :as xml-node]
@@ -26,13 +26,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (defn- regexes->str

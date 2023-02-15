@@ -3,6 +3,7 @@
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
     [blaze.elm.spec]
+    [blaze.test-util :as tu]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
@@ -12,13 +13,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest literal-test
@@ -87,7 +82,7 @@
   (testing "valid"
     (are [x] (s/valid? :elm/expression x)
       #elm/instance ["{urn:hl7-org:elm-types:r1}Code"
-                    {"system" #elm/string "foo" "code" #elm/string "bar"}]))
+                     {"system" #elm/string "foo" "code" #elm/string "bar"}]))
 
   (testing "invalid"
     (given (s/explain-data :elm/expression {:type "Instance"})

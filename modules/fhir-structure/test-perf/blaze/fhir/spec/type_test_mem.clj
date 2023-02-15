@@ -5,12 +5,9 @@
     [clojure.test :refer [are deftest is testing]]
     [cuerdas.core :as c-str]
     [clojure.alpha.spec :as s2]
-    [blaze.test-util :as tu])
+    [blaze.test-util])
   (:import
     [java.time Instant ZoneOffset]))
-
-
-(tu/init-fhir-specs)
 
 
 (deftest mem-test

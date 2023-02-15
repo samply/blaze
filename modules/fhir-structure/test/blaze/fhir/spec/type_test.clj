@@ -7,7 +7,7 @@
     [blaze.fhir.spec.type.protocols :as p]
     [blaze.fhir.spec.type.system :as system]
     [blaze.fhir.spec.type.system.spec]
-    [blaze.test-util :refer [satisfies-prop]]
+    [blaze.test-util :as tu :refer [satisfies-prop]]
     [clojure.data.xml.name :as xml-name]
     [clojure.data.xml.node :as xml-node]
     [clojure.data.xml.prxml :as prxml]
@@ -34,13 +34,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (defn murmur3 [x]

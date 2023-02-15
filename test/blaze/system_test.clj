@@ -11,7 +11,7 @@
     [blaze.rest-api]
     [blaze.system :as system]
     [blaze.system-spec]
-    [blaze.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [with-system]]
     [blaze.test-util.ring :refer [call]]
     [buddy.auth.protocols :as ap]
     [clojure.spec.alpha :as s]
@@ -28,13 +28,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest resolve-config-test

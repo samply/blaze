@@ -2,7 +2,7 @@
   (:require
     [blaze.db.tx-log.kafka.codec :as codec]
     [blaze.db.tx-log.spec]
-    [blaze.test-util :refer [satisfies-prop]]
+    [blaze.test-util :as tu :refer [satisfies-prop]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -13,13 +13,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (defn- serialize [tx-cmds]

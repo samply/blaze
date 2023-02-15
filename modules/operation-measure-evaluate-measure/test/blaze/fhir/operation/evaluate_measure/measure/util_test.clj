@@ -3,7 +3,7 @@
     [blaze.anomaly-spec]
     [blaze.fhir.operation.evaluate-measure.measure.util :as u]
     [blaze.fhir.operation.evaluate-measure.measure.util-spec]
-    [blaze.test-util :refer [satisfies-prop]]
+    [blaze.test-util :as tu :refer [satisfies-prop]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [clojure.test.check.generators :as gen]
@@ -15,13 +15,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest expression-test

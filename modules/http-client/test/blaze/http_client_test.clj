@@ -2,7 +2,7 @@
   (:require
     [blaze.http-client]
     [blaze.http-client.spec]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-thrown with-system]]
     [clojure.core.protocols :refer [Datafiable]]
     [clojure.datafy :refer [datafy]]
     [clojure.spec.alpha :as s]
@@ -22,13 +22,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (extend-protocol Datafiable
@@ -65,7 +59,7 @@
   (testing "with 2 seconds connect timeout"
     (with-system [{:blaze/keys [http-client]} {:blaze/http-client {:connect-timeout 2000}}]
       (given (datafy http-client)
-      :connect-timeout := (time/millis 2000)))))
+        :connect-timeout := (time/millis 2000)))))
 
 
 (deftest spec-test

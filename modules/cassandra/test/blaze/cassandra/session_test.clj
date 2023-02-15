@@ -2,28 +2,23 @@
   (:require
     [blaze.cassandra.session :as session]
     [blaze.cassandra.session-spec]
+    [blaze.test-util :as tu]
     [clojure.core.protocols :as p]
     [clojure.datafy :as datafy]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest]]
     [juxt.iota :refer [given]])
   (:import
-    [com.datastax.oss.driver.api.core CqlSessionBuilder CqlIdentifier]
-    [com.datastax.oss.driver.api.core.session SessionBuilder]
-    [com.datastax.oss.driver.api.core.metadata EndPoint]))
+    [com.datastax.oss.driver.api.core CqlIdentifier CqlSessionBuilder]
+    [com.datastax.oss.driver.api.core.metadata EndPoint]
+    [com.datastax.oss.driver.api.core.session SessionBuilder]))
 
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (defn- get-field

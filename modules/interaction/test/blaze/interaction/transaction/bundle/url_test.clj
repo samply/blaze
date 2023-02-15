@@ -2,6 +2,7 @@
   (:require
     [blaze.interaction.transaction.bundle.url :as url]
     [blaze.interaction.transaction.bundle.url-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]))
 
@@ -9,13 +10,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest match-url-test

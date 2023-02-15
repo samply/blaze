@@ -4,7 +4,7 @@
     [blaze.fhir.structure-definition-repo]
     [blaze.rest-api.capabilities :as capabilities]
     [blaze.rest-api.capabilities-spec]
-    [blaze.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [integrant.core :as ig]
@@ -15,13 +15,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (def ^:private copyright

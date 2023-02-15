@@ -92,6 +92,7 @@ services:
     - kafka-topic-creator
     - cassandra-1
     - cassandra-2
+    restart: unless-stopped
 
   blaze-2:
     image: "blaze:latest"
@@ -121,6 +122,7 @@ services:
     - kafka-topic-creator
     - cassandra-1
     - cassandra-2
+    restart: unless-stopped
 
   ingress:
     image: "haproxy:2.3"

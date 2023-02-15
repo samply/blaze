@@ -2,7 +2,7 @@
   (:require
     [blaze.executors :as ex]
     [blaze.metrics.core :as metrics]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-thrown with-system]]
     [blaze.thread-pool-executor-collector]
     [blaze.thread-pool-executor-collector.spec :as spec]
     [clojure.spec.alpha :as s]
@@ -20,13 +20,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest init-test

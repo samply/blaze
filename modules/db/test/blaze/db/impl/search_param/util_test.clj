@@ -2,6 +2,7 @@
   (:require
     [blaze.db.impl.search-param.util :as util]
     [blaze.db.impl.search-param.util-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is]]
     [taoensso.timbre :as log]))
@@ -11,13 +12,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest separate-op-test

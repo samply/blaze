@@ -2,6 +2,7 @@
   (:require
     [blaze.byte-buffer :as bb]
     [blaze.db.impl.index.resource-handle :as rh]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
     [cuerdas.core :as c-str])
@@ -13,13 +14,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (defn- total-size [& xs]
