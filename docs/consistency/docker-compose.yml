@@ -149,7 +149,7 @@ services:
       HEAP_NEWSIZE: "200M"
 
   blaze-1:
-    image: "samply/blaze:jepsen"
+    image: "samply/blaze:0.19"
     hostname: "blaze-1"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx4g -Dclojure.server.repl='{:address,\"0.0.0.0\",:port,5555,:accept,clojure.core.server/repl}'"
@@ -176,9 +176,10 @@ services:
     - cassandra-1
     - cassandra-2
     - cassandra-3
+    restart: unless-stopped
 
   blaze-2:
-    image: "samply/blaze:jepsen"
+    image: "samply/blaze:0.19"
     hostname: "blaze-2"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx4g"
@@ -205,6 +206,7 @@ services:
     - cassandra-1
     - cassandra-2
     - cassandra-3
+    restart: unless-stopped
 
   ingress:
     image: "haproxy:2.3"

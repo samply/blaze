@@ -100,6 +100,7 @@ services:
     - cassandra-1
     - cassandra-2
     - cassandra-3
+    restart: unless-stopped
 
   blaze-2:
     image: "samply/blaze:0.19"
@@ -130,6 +131,7 @@ services:
     - cassandra-1
     - cassandra-2
     - cassandra-3
+    restart: unless-stopped
 
   ingress:
     image: "haproxy:2.4"
