@@ -297,6 +297,9 @@ jobs:
     - name: Count Resources
       run: blazectl count-resources --server http://localhost:8080/fhir
 
+    - name: Download All Resources
+      run: .github/scripts/download-all-resources.sh
+
     - name: Download Patient Resources
       run: .github/scripts/download-resources.sh Patient
 
@@ -921,6 +924,9 @@ jobs:
 
     - name: Count Resources
       run: blazectl count-resources --server http://localhost:8080/fhir
+
+    - name: Download All Resources
+      run: .github/scripts/download-all-resources.sh
 
     - name: Download Patient Resources
       run: .github/scripts/download-resources.sh Patient

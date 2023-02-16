@@ -45,7 +45,7 @@
   {:fhir/type :fhir.Bundle/link
    :relation "self"
    :url (type/uri (nav/url base-url match params [] (iu/t db)
-                             (self-link-offset entries)))})
+                           (self-link-offset entries)))})
 
 
 (defn- next-link-offset [entries]
