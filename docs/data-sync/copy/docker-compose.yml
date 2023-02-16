@@ -1,0 +1,28 @@
+services:
+  src:
+    image: "samply/blaze:0.19"
+    environment:
+      BASE_URL: "http://localhost:8080"
+      JAVA_TOOL_OPTIONS: "-Xmx2g"
+      LOG_LEVEL: "debug"
+    ports:
+    - "8080:8080"
+    volumes:
+    - "blaze-data-src:/app/data"
+
+  dst:
+    image: "samply/blaze:0.19"
+    environment:
+      BASE_URL: "http://localhost:8082"
+      SERVER_PORT: "8082"
+      JAVA_TOOL_OPTIONS: "-Xmx2g"
+      ENFORCE_REFERENTIAL_INTEGRITY: "false"
+      LOG_LEVEL: "debug"
+    ports:
+    - "8082:8082"
+    volumes:
+    - "blaze-data-dst:/app/data"
+
+volumes:
+  blaze-data-src:
+  blaze-data-dst:

@@ -1,4 +1,3 @@
-version: '3.7'
 services:
   keycloak:
     image: "jboss/keycloak:15.0.2"
