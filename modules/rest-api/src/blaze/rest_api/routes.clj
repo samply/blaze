@@ -250,7 +250,7 @@
           (assoc :get {:middleware [[wrap-db node db-sync-timeout]]
                        :handler history-system-handler}))]
        ["/__page"
-        (cond-> {}
+        (cond-> {:name :page}
           (some? search-system-handler)
           (assoc
             :get {:middleware [[wrap-db node db-sync-timeout]]
