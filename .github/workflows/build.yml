@@ -860,6 +860,50 @@ jobs:
     - name: Authenticated Request
       run: .github/scripts/authenticated-request.sh
 
+  doc-copy-data-test:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v3
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Test Setup
+      run: docker-compose -f docs/data-sync/copy/docker-compose.yml -f .github/doc-copy-data-test/docker-compose.override.yml up -d
+
+    - name: Wait for Source Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Load Data Into Source Blaze
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+
+    - name: Wait for Destination Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8082/health
+
+    - name: Copy All Resources from Source to Destination
+      run: scripts/copy-data.sh http://localhost:8080/fhir http://localhost:8082/fhir
+
+    - name: Download Source Patients
+      run: blazectl download --server http://localhost:8080/fhir Patient | jq -c 'del(.meta.versionId) | del(.meta.lastUpdated)' > src-patients.ndjson
+
+    - name: Download Destination Patients
+      run: blazectl download --server http://localhost:8082/fhir Patient | jq -c 'del(.meta.versionId) | del(.meta.lastUpdated)' > dst-patients.ndjson
+
+    - name: Compare Source and Destination Patients
+      run: diff src-patients.ndjson dst-patients.ndjson
+
   distributed-test:
     needs: build
     runs-on: ubuntu-22.04
@@ -1254,6 +1298,7 @@ jobs:
     - bundle-with-references-test
     - jepsen-test
     - openid-auth-test
+    - doc-copy-data-test
     - distributed-test
     - jepsen-distributed-test
     runs-on: ubuntu-22.04
