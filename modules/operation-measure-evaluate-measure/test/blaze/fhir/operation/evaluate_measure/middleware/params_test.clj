@@ -3,6 +3,7 @@
     [blaze.async.comp :as ac]
     [blaze.fhir.operation.evaluate-measure.middleware.params :as params]
     [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [juxt.iota :refer [given]]
@@ -13,13 +14,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (def operation-outcome-uri

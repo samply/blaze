@@ -23,7 +23,7 @@
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.structure-definition-repo]
     [blaze.log]
-    [blaze.test-util :refer [given-failed-future with-system]]
+    [blaze.test-util :as tu :refer [given-failed-future with-system]]
     [clojure.math :as math]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
@@ -40,13 +40,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (defmethod ig/init-key ::slow-resource-store [_ {:keys [resource-store]}]
@@ -934,20 +928,20 @@
 
   ;; TODO: fix this https://github.com/samply/blaze/issues/904
   #_(testing "sorting by _lastUpdated returns only the newest version of the patient"
-    (with-system-data [{:blaze.db/keys [node]} (with-system-clock system)]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-       [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+      (with-system-data [{:blaze.db/keys [node]} (with-system-clock system)]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:put {:fhir/type :fhir/Patient :id "1"}]]]
 
-      ;; we have to sleep more than one second here because dates are index only with second resolution
-      (Thread/sleep 2000)
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+        ;; we have to sleep more than one second here because dates are index only with second resolution
+        (Thread/sleep 2000)
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
 
-      (doseq [dir [:asc :desc]]
-        (given (pull-type-query node "Patient" [[:sort "_lastUpdated" dir]])
-          count := 2
-          [0 :fhir/type] := :fhir/Patient
-          [0 :id] := "0"
-          [0 :active] := false))))
+        (doseq [dir [:asc :desc]]
+          (given (pull-type-query node "Patient" [[:sort "_lastUpdated" dir]])
+            count := 2
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0"
+            [0 :active] := false))))
 
   (testing "a node with three patients in one transaction"
     (with-system-data [{:blaze.db/keys [node]} system]

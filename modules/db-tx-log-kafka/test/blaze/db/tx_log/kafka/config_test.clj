@@ -2,6 +2,7 @@
   (:require
     [blaze.db.tx-log.kafka.config :as c]
     [blaze.fhir.hash-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [juxt.iota :refer [given]]))
@@ -10,13 +11,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest producer-config-test

@@ -1,6 +1,7 @@
 (ns blaze.rest-api.middleware.log-test
   (:require
     [blaze.rest-api.middleware.log :refer [wrap-log]]
+    [blaze.test-util :as tu]
     [blaze.test-util.ring :refer [call]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -11,13 +12,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (defn- handler [_ respond _]

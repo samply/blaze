@@ -1,0 +1,6 @@
+services:
+  src:
+    image: "blaze:latest"
+
+  dst:
+    image: "blaze:latest"

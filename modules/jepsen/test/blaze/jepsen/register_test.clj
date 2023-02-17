@@ -4,6 +4,7 @@
     [blaze.async.comp :as ac]
     [blaze.fhir-client :as fhir-client]
     [blaze.jepsen.register :as register]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is]]))
 
@@ -11,13 +12,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (def base-uri "base-uri-143457")

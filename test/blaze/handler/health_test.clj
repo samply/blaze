@@ -1,7 +1,7 @@
 (ns blaze.handler.health-test
   (:require
     [blaze.handler.health]
-    [blaze.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [with-system]]
     [blaze.test-util.ring :refer [call]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest]]
@@ -13,13 +13,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (def system

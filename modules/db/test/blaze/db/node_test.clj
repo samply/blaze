@@ -28,7 +28,7 @@
     [blaze.fhir.structure-definition-repo]
     [blaze.log]
     [blaze.metrics.spec]
-    [blaze.test-util :refer [given-failed-future given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-failed-future given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -45,13 +45,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (defmethod ig/init-key ::resource-store-failing-on-get [_ _]

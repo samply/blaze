@@ -10,6 +10,7 @@
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.log]
+    [blaze.test-util :as tu]
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -29,13 +30,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (def router

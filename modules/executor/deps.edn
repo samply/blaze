@@ -3,8 +3,8 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {org.clojars.akiel/iota
-    {:mvn/version "0.1"}}}
+   {blaze/test-util
+    {:local/root "../test-util"}}}
 
   :kaocha
   {:extra-deps

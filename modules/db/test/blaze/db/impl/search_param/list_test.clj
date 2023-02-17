@@ -4,7 +4,7 @@
     [blaze.db.impl.search-param-spec]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir.structure-definition-repo]
-    [blaze.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest]]
     [integrant.core :as ig]
@@ -16,13 +16,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (defn list-param [search-param-registry]

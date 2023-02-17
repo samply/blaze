@@ -2,6 +2,7 @@
   (:require
     [blaze.metrics.core :as metrics]
     [blaze.metrics.core-spec]
+    [blaze.test-util :as tu]
     [clojure.datafy :as datafy]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -11,13 +12,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest collect-test

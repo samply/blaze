@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.19.3
+
+### Bugfixes
+
+* Fix System Search Paging ([#910](https://github.com/samply/blaze/pull/910))
+
+### Documentation
+
+* Extend Documentation of Data Sync ([#911](https://github.com/samply/blaze/pull/911))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/61?closed=1).
+
 ## v0.19.2
 
 ### Bugfixes

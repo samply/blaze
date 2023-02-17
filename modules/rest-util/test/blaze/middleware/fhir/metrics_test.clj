@@ -2,6 +2,7 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]))
 
@@ -10,13 +11,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (def interaction-name "interaction-name-112524")

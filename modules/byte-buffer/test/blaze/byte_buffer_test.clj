@@ -1,7 +1,7 @@
 (ns blaze.byte-buffer-test
   (:require
     [blaze.byte-buffer :as bb]
-    [blaze.test-util :refer [satisfies-prop]]
+    [blaze.test-util :as tu :refer [satisfies-prop]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [clojure.test.check.generators :as gen]
@@ -11,13 +11,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest limit-test

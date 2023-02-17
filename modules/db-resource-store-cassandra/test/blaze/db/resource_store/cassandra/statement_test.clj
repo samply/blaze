@@ -1,6 +1,7 @@
 (ns blaze.db.resource-store.cassandra.statement-test
   (:require
     [blaze.db.resource-store.cassandra.statement :as statement]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest are]])
   (:import
@@ -11,13 +12,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest put-statement-test

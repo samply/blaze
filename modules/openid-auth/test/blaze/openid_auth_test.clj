@@ -2,7 +2,7 @@
   (:require
     [blaze.openid-auth :as openid-auth]
     [blaze.openid-auth.spec]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-thrown with-system]]
     [buddy.auth.protocols :as p]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -18,13 +18,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (defmethod ig/init-key ::http-client [_ _]

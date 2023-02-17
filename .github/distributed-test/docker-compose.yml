@@ -1,4 +1,3 @@
-version: '3.7'
 services:
   zookeeper:
     image: "docker.io/bitnami/zookeeper:3"
@@ -92,6 +91,7 @@ services:
     - kafka-topic-creator
     - cassandra-1
     - cassandra-2
+    restart: unless-stopped
 
   blaze-2:
     image: "blaze:latest"
@@ -121,6 +121,7 @@ services:
     - kafka-topic-creator
     - cassandra-1
     - cassandra-2
+    restart: unless-stopped
 
   ingress:
     image: "haproxy:2.3"

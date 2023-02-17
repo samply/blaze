@@ -3,6 +3,7 @@
   encoding for the Resource Store."
   (:require
     [blaze.fhir.spec]
+    [blaze.test-util :as tu]
     [clj-cbor.core :as cbor]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
@@ -14,13 +15,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (def ^:private cbor-object-mapper

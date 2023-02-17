@@ -2,6 +2,7 @@
   (:require
     [blaze.cql-translator :refer [translate]]
     [blaze.cql-translator-spec]
+    [blaze.test-util :as tu]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
@@ -12,13 +13,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (defmacro given-translation [cql & body]

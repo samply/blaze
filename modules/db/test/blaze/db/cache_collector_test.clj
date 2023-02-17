@@ -2,7 +2,7 @@
   (:require
     [blaze.db.cache-collector]
     [blaze.metrics.core :as metrics]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
@@ -17,13 +17,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (def ^Cache cache (-> (Caffeine/newBuilder) (.recordStats) (.build)))

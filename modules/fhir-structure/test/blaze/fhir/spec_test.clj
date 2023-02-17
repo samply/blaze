@@ -28,16 +28,9 @@
 
 
 (st/instrument)
-(tu/init-fhir-specs)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest parse-json-test

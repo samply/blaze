@@ -6,10 +6,10 @@
     [blaze.fhir.spec.type]
     [blaze.fhir.structure-definition-repo]
     [blaze.fhir.structure-definition-repo.spec :refer [structure-definition-repo?]]
-    [blaze.test-util :refer [given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
+    [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [juxt.iota :refer [given]]
@@ -20,13 +20,7 @@
 (log/set-level! :trace)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 (deftest init-test
@@ -125,6 +119,16 @@
                   :actor #fhir/Reference{:reference "Patient/1"}}]})
         count := 1
         [0] := ["Patient" "1"]))
+
+    (testing "a simple Patient has no compartments"
+      (is (empty? (sr/linked-compartments
+                    search-param-registry
+                    {:fhir/type :fhir/Patient :id "0"}))))
+
+    (testing "a simple Medication has no compartments"
+      (is (empty? (sr/linked-compartments
+                    search-param-registry
+                    {:fhir/type :fhir/Medication :id "0"}))))
 
     (testing "with FHIRPath eval error"
       (with-redefs [fhir-path/eval
