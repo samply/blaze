@@ -220,6 +220,22 @@
         :type := #fhir/code"transaction-response"
         :id := "0"))))
 
+(deftest batch-test
+  (testing "success"
+    (let [http-client (HttpClientMock.)
+          resource {:fhir/type :fhir/Bundle :fhir.Bundle/type "batch"}]
+
+      (-> (.onPost http-client "http://localhost:8080/fhir")
+          (.doReturn (j/write-value-as-string {:resourceType "Bundle" :type "batch-response" :id "0"}))
+          (.withHeader "content-type" "application/fhir+json"))
+
+      (given @(fhir-client/batch "http://localhost:8080/fhir" resource
+                                 {:http-client http-client})
+        :fhir/type := :fhir/Bundle
+        :type := #fhir/code"batch-response"
+        :id := "0"))))
+
+
 (deftest execute-type-get-test
   (testing "success"
     (let [http-client (HttpClientMock.)]
