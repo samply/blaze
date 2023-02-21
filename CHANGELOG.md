@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.19.4
+
+### Bugfixes
+
+* Allow Writing Large Binary Resources in XML Format ([#919](https://github.com/samply/blaze/pull/919))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/62?closed=1).
+
 ## v0.19.3
 
 ### Bugfixes
