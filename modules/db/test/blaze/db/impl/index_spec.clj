@@ -26,7 +26,7 @@
   :args (s/cat :context :blaze.db.impl.batch-db/context
                :tid :blaze.db/tid
                :clauses :blaze.db.index.query/clauses
-               :start-id (s/? :blaze.db/id-byte-string))
+               :start-did (s/? :blaze.db/did))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 

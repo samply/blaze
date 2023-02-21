@@ -71,17 +71,17 @@
   (-compile-value [search-param modifier value] "Can return an anomaly.")
   (-resource-handles
     [search-param context tid modifier compiled-value]
-    [search-param context tid modifier compiled-value start-id]
+    [search-param context tid modifier compiled-value start-did]
     "Returns a reducible collection.")
   (-sorted-resource-handles
     [search-param context tid direction]
-    [search-param context tid direction start-id]
+    [search-param context tid direction start-did]
     "Returns a reducible collection.")
   (-compartment-keys [search-param context compartment tid compiled-value])
   (-matches? [search-param context resource-handle modifier compiled-values])
   (-compartment-ids [_ resolver resource])
-  (-index-values [_ resolver resource])
-  (-index-value-compiler [_]))
+  (-index-values [_ resource-id resolver resource])
+  (-index-value-compiler [_ resource-id]))
 
 
 (defprotocol Pull

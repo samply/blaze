@@ -97,20 +97,21 @@
             [[_ k0] [_ k1]]
             (search-param/index-entries
               (sr/get search-param-registry "probability" "RiskAssessment")
-              [] hash risk-assessment)]
+              (constantly nil)
+              [] 202156 hash risk-assessment)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "probability"
             :type := "RiskAssessment"
             :v-hash := (codec/number 0.9M)
-            :id := "id-163630"
+            :did := 202156
             :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `value`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "RiskAssessment"
-            :id := "id-163630"
+            :did := 202156
             :hash-prefix := (hash/prefix hash)
             :code := "probability"
             :v-hash := (codec/number 0.9M)))))
@@ -126,20 +127,21 @@
             [[_ k0] [_ k1]]
             (search-param/index-entries
               (sr/get search-param-registry "variant-start" "MolecularSequence")
-              [] hash risk-assessment)]
+              (constantly nil)
+              [] 202219 hash risk-assessment)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "variant-start"
             :type := "MolecularSequence"
             :v-hash := (codec/number 1M)
-            :id := "id-170736"
+            :did := 202219
             :hash-prefix := (hash/prefix hash)))
 
         (testing "first ResourceSearchParamValue key is about `value`"
           (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
             :type := "MolecularSequence"
-            :id := "id-170736"
+            :did := 202219
             :hash-prefix := (hash/prefix hash)
             :code := "variant-start"
             :v-hash := (codec/number 1M)))))
@@ -151,7 +153,8 @@
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
           (given (search-param/index-entries
                    (sr/get search-param-registry "probability" "RiskAssessment")
-                   [] hash resource)
+                   (constantly nil)
+                   [] 202240 hash resource)
             ::anom/category := ::anom/fault)))))
 
   (testing "skip warning"

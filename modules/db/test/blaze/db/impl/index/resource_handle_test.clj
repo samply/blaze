@@ -1,6 +1,7 @@
 (ns blaze.db.impl.index.resource-handle-test
   (:refer-clojure :exclude [hash])
   (:require
+    [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.index.resource-handle-spec]
     [blaze.fhir.hash :as hash]
@@ -22,14 +23,14 @@
 
 
 (defn- resource-handle
-  ([tid id]
-   (resource-handle tid id 0))
-  ([tid id t]
-   (resource-handle tid id t hash))
-  ([tid id t hash]
-   (resource-handle tid id t hash :create))
-  ([tid id t hash op]
-   (rh/->ResourceHandle tid id t hash 0 op)))
+  ([tid did]
+   (resource-handle tid did 0))
+  ([tid did t]
+   (resource-handle tid did t hash))
+  ([tid did t hash]
+   (resource-handle tid did t hash :create "0"))
+  ([tid did t hash op id]
+   (rh/->ResourceHandle tid did t hash 0 op id)))
 
 
 (deftest state->num-changes-test
@@ -44,62 +45,73 @@
 
 (deftest deleted-test
   (are [rh] (and (rh/deleted? rh) (apply rh/deleted? [rh]))
-    (resource-handle 0 "0" 0 hash :delete)))
+    (resource-handle 0 0 0 hash :delete "0")))
 
 
 (deftest tid-test
   (satisfies-prop 100
     (prop/for-all [tid (s/gen :blaze.db/tid)]
-      (let [rh (resource-handle tid "foo")]
+      (let [rh (resource-handle tid 0)]
         (= tid (:tid rh) (rh/tid rh) (apply rh/tid [rh]))))))
 
 
-(deftest id-test
+(deftest did-test
   (satisfies-prop 100
-    (prop/for-all [id (s/gen :blaze.resource/id)]
-      (let [rh (resource-handle 0 id)]
-        (= id (:id rh) (rh/id rh) (apply rh/id [rh]))))))
+    (prop/for-all [did (s/gen :blaze.db/did)]
+      (let [rh (resource-handle 0 did)]
+        (= did (:did rh) (rh/did rh) (apply rh/did [rh]))))))
 
 
 (deftest t-test
   (satisfies-prop 100
     (prop/for-all [t (s/gen :blaze.db/t)]
-      (let [rh (resource-handle 0 "foo" t)]
+      (let [rh (resource-handle 0 0 t)]
         (= t (:t rh) (rh/t rh) (apply rh/t [rh]))))))
 
 
 (deftest hash-test
   (satisfies-prop 100
     (prop/for-all [hash (s/gen :blaze.resource/hash)]
-      (let [rh (resource-handle 0 "foo" 0 hash)]
+      (let [rh (resource-handle 0 0 0 hash)]
         (= hash (:hash rh) (rh/hash rh) (apply rh/hash [rh]))))))
+
+
+(deftest id-test
+  (satisfies-prop 100
+    (prop/for-all [id (s/gen :blaze.resource/id)]
+      (let [rh (resource-handle 0 0 0 hash :create id)]
+        (= id (:id rh) (rh/id rh) (apply rh/id [rh]))))))
 
 
 (deftest reference-test
   (satisfies-prop 100
     (prop/for-all [id (s/gen :blaze.resource/id)]
-      (let [rh (resource-handle 1495153489 id)]
+      (let [rh (resource-handle 1495153489 0 0 hash :create id)]
         (= (str "Condition/" id)
            (rh/reference rh)
            (apply rh/reference [rh]))))))
 
 
 (deftest not-found-key-test
-  (is (nil? (:foo (resource-handle 0 "foo"))))
-  (is (= ::not-found (:foo (resource-handle 0 "foo") ::not-found))))
+  (is (nil? (:foo (resource-handle 0 0))))
+  (is (= ::not-found (:foo (resource-handle 0 0) ::not-found))))
 
 
 (deftest equals-test
   (satisfies-prop 100
     (prop/for-all [tid (s/gen :blaze.db/tid)
-                   id (s/gen :blaze.resource/id)
+                   did (s/gen :blaze.db/did)
                    t (s/gen :blaze.db/t)]
 
       (testing "same instance"
-        (let [rh (resource-handle tid id t)]
+        (let [rh (resource-handle tid did t)]
           (= rh rh)))
 
       (testing "separate instances"
-        (let [rh-1 (resource-handle tid id t)
-              rh-2 (resource-handle tid id t)]
+        (let [rh-1 (resource-handle tid did t)
+              rh-2 (resource-handle tid did t)]
           (= rh-1 rh-2))))))
+
+
+(deftest toString-test
+  (is (= "Patient/182457" (str (resource-handle (codec/tid "Patient") 0 0 hash :put "182457")))))

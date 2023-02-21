@@ -22,25 +22,25 @@
 
 
 (defn- component-index-values
-  [resolver main-value {:keys [expression search-param]}]
+  [resource-id resolver main-value {:keys [expression search-param]}]
   (when-ok [values (fhir-path/eval resolver expression main-value)]
     (coll/eduction
       (comp
-        (p/-index-value-compiler search-param)
+        (p/-index-value-compiler search-param resource-id)
         (filter (fn [[modifier]] (nil? modifier)))
         (map (fn [[_ value]] value)))
       values)))
 
 
-(defn index-values [resolver c1 c2]
+(defn index-values [resource-id resolver c1 c2]
   (comp
     (map
       (fn [main-value]
-        (when-ok [c1-values (component-index-values resolver main-value c1)]
+        (when-ok [c1-values (component-index-values resource-id resolver main-value c1)]
           (.reduce
             ^IReduceInit c1-values
             (fn [res v1]
-              (if-ok [c2-values (component-index-values resolver main-value c2)]
+              (if-ok [c2-values (component-index-values resource-id resolver main-value c2)]
                 (.reduce
                   ^IReduceInit c2-values
                   (fn [res v2]

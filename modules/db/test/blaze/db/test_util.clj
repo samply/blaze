@@ -38,7 +38,8 @@
    :blaze.test/fixed-clock {}
    :blaze.test/system-clock {}
 
-   :blaze.db/resource-handle-cache {}
+   :blaze.db/resource-handle-cache
+   {:max-size 1000}
 
    :blaze.db/tx-cache
    {:kv-store (ig/ref :blaze.db/index-kv-store)}
@@ -55,6 +56,7 @@
      :tx-success-index {:reverse-comparator? true}
      :tx-error-index nil
      :t-by-instant-index {:reverse-comparator? true}
+     :resource-id-index nil
      :resource-as-of-index nil
      :type-as-of-index nil
      :system-as-of-index nil

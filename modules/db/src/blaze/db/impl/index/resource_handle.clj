@@ -13,38 +13,41 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(deftype ResourceHandle [^int tid id ^long t hash ^long num-changes op]
+(deftype ResourceHandle [^int tid ^long did ^long t hash ^long num-changes op id]
   p/FhirType
   (-type [_]
     ;; TODO: maybe cache this
     (keyword "fhir" (codec/tid->type tid)))
 
   ILookup
-  (valAt [rh key]
-    (.valAt rh key nil))
+  (valAt [resource-handle key]
+    (.valAt resource-handle key nil))
   (valAt [_ key not-found]
     (case key
       :tid tid
-      :id id
+      :did did
       :t t
       :hash hash
       :num-changes num-changes
       :op op
+      :id id
       not-found))
 
   Object
-  (equals [rh x]
-    (or (identical? rh x)
+  (toString [_]
+    (str (codec/tid->type tid) "/" id))
+  (equals [resource-handle x]
+    (or (identical? resource-handle x)
         (and (instance? ResourceHandle x)
              (= tid (.-tid ^ResourceHandle x))
-             (.equals id (.-id ^ResourceHandle x))
+             (= did (.-did ^ResourceHandle x))
              (= t (.-t ^ResourceHandle x)))))
   (hashCode [_]
-    (-> tid
+    (-> (Long/hashCode tid)
         (unchecked-multiply-int 31)
-        (unchecked-add-int (.hashCode id))
+        (unchecked-add-int (Long/hashCode did))
         (unchecked-multiply-int 31)
-        (unchecked-add-int t))))
+        (unchecked-add-int (Long/hashCode t)))))
 
 
 (defn state->num-changes
@@ -67,16 +70,11 @@
   "Creates a new resource handle.
 
   The type of that handle will be the keyword `:fhir/<resource-type>`."
-  [tid id t value-buffer]
+  [tid did t value-buffer]
   (let [hash (hash/from-byte-buffer! value-buffer)
         state (bb/get-long! value-buffer)]
-    (ResourceHandle.
-      tid
-      id
-      t
-      hash
-      (state->num-changes state)
-      (state->op state))))
+    (ResourceHandle. tid did t hash (state->num-changes state) (state->op state)
+                     (codec/id-from-byte-buffer value-buffer))))
 
 
 (defn resource-handle? [x]
@@ -85,35 +83,54 @@
 
 (defn deleted?
   {:inline
-   (fn [rh]
-     `(identical? :delete (.-op ~(with-meta rh {:tag `ResourceHandle}))))}
-  [rh]
-  (identical? :delete (.-op ^ResourceHandle rh)))
+   (fn [resource-handle]
+     `(identical? :delete (.-op ~(with-meta resource-handle {:tag `ResourceHandle}))))}
+  [resource-handle]
+  (identical? :delete (.-op ^ResourceHandle resource-handle)))
 
 
 (defn tid
-  {:inline (fn [rh] `(.-tid ~(with-meta rh {:tag `ResourceHandle})))}
-  [rh]
-  (.-tid ^ResourceHandle rh))
+  {:inline
+   (fn [resource-handle]
+     `(.-tid ~(with-meta resource-handle {:tag `ResourceHandle})))}
+  [resource-handle]
+  (.-tid ^ResourceHandle resource-handle))
 
 
-(defn id
-  {:inline (fn [rh] `(.-id ~(with-meta rh {:tag `ResourceHandle})))}
-  [rh]
-  (.-id ^ResourceHandle rh))
+(defn did
+  "Returns the internal resource identifier of `resource-handle`."
+  {:inline
+   (fn [resource-handle]
+     `(.-did ~(with-meta resource-handle {:tag `ResourceHandle})))}
+  [resource-handle]
+  (.-did ^ResourceHandle resource-handle))
 
 
 (defn t
-  {:inline (fn [rh] `(.-t ~(with-meta rh {:tag `ResourceHandle})))}
-  [rh]
-  (.-t ^ResourceHandle rh))
+  "Returns the point in time `t` at which `resource-handle` was created."
+  {:inline
+   (fn [resource-handle]
+     `(.-t ~(with-meta resource-handle {:tag `ResourceHandle})))}
+  [resource-handle]
+  (.-t ^ResourceHandle resource-handle))
 
 
 (defn hash
-  {:inline (fn [rh] `(.-hash ~(with-meta rh {:tag `ResourceHandle})))}
-  [rh]
-  (.-hash ^ResourceHandle rh))
+  {:inline
+   (fn [resource-handle]
+     `(.-hash ~(with-meta resource-handle {:tag `ResourceHandle})))}
+  [resource-handle]
+  (.-hash ^ResourceHandle resource-handle))
 
 
-(defn reference [rh]
-  (str (codec/tid->type (tid rh)) "/" (id rh)))
+(defn id
+  "Returns the FHIR resource identifier of `resource-handle`."
+  {:inline
+   (fn [resource-handle]
+     `(.-id ~(with-meta resource-handle {:tag `ResourceHandle})))}
+  [resource-handle]
+  (.-id ^ResourceHandle resource-handle))
+
+
+(defn reference [resource-handle]
+  (str (codec/tid->type (tid resource-handle)) "/" (id resource-handle)))

@@ -61,6 +61,7 @@
      :tx-success-index {:reverse-comparator? true}
      :tx-error-index nil
      :t-by-instant-index {:reverse-comparator? true}
+     :resource-id-index nil
      :resource-as-of-index nil
      :type-as-of-index nil
      :system-as-of-index nil
@@ -96,7 +97,7 @@
 
 (deftest transact-test
   (with-system [{:blaze.db/keys [node]} system]
-    ;;  58.8 µs / 1.76 µs - Macbook Pro M1 Pro, Oracle OpenJDK 17.0.2
+    ;;  66.7 µs / 1.92 µs - Macbook Pro M1 Pro, Oracle OpenJDK 17.0.2
     (criterium/bench
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))))
 

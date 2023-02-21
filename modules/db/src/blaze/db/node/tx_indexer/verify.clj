@@ -4,6 +4,7 @@
     [blaze.db.api :as d]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
+    [blaze.db.impl.index.resource-id :as ri]
     [blaze.db.impl.index.rts-as-of :as rts]
     [blaze.db.impl.index.system-stats :as system-stats]
     [blaze.db.impl.index.type-stats :as type-stats]
@@ -115,7 +116,7 @@
 
   Throws an anomaly on conflicts."
   {:arglists '([db-before t res cmd])}
-  (fn [_db-before _t _res {:keys [op]}] op))
+  (fn [_db-before _t _idx _res {:keys [op]}] op))
 
 
 (defn- verify-tx-cmd-create-msg [type id]
@@ -131,21 +132,20 @@
     (throw-anom (ba/conflict (id-collision-msg type id)))))
 
 
-(defn- index-entries [tid id t hash num-changes op]
-  (rts/index-entries tid (codec/id-byte-string id) t hash num-changes op))
-
-
 (def ^:private inc-0 (fnil inc 0))
 
 
 (defmethod verify-tx-cmd "create"
-  [db-before t res {:keys [type id hash]}]
+  [db-before t idx res {:keys [type id hash] :as cmd}]
   (log/trace (verify-tx-cmd-create-msg type id))
   (with-open [_ (prom/timer duration-seconds "verify-create")]
     (check-id-collision! db-before type id)
-    (let [tid (codec/tid type)]
-      (-> (update res :entries into (index-entries tid id t hash 1 :create))
+    (let [tid (codec/tid type)
+          did (codec/did t idx)]
+      (-> (update res :entries into (rts/index-entries tid did t hash 1 :create id))
+          (update :entries conj (ri/index-entry tid id did))
           (update :new-resources conj [type id])
+          (update :cmds conj (assoc cmd :did did))
           (update-in [:stats tid :num-changes] inc-0)
           (update-in [:stats tid :total] inc-0)))))
 
@@ -185,11 +185,12 @@
 
 
 (defmethod verify-tx-cmd "put"
-  [db-before t res {:keys [type id hash if-match if-none-match]}]
+  [db-before t idx res {:keys [type id hash if-match if-none-match] :as cmd}]
   (log/trace (verify-tx-cmd-put-msg type id if-match if-none-match))
   (with-open [_ (prom/timer duration-seconds "verify-put")]
     (let [tid (codec/tid type)
-          {:keys [num-changes op] :or {num-changes 0} old-t :t}
+          {:keys [did num-changes op] :or {did (codec/did t idx) num-changes 0}
+           old-t :t}
           (d/resource-handle db-before type id)]
       (cond
         (and if-match (not= if-match old-t))
@@ -203,40 +204,48 @@
 
         :else
         (cond->
-          (-> (update res :entries into (index-entries tid id t hash (inc num-changes) :put))
+          (-> (update res :entries into (rts/index-entries tid did t hash (inc num-changes) :put id))
               (update :new-resources conj [type id])
+              (update :cmds conj (assoc cmd :did did))
               (update-in [:stats tid :num-changes] inc-0))
+          (nil? old-t)
+          (update :entries conj (ri/index-entry tid id did))
           (or (nil? old-t) (identical? :delete op))
           (update-in [:stats tid :total] inc-0))))))
 
 
 (defmethod verify-tx-cmd "delete"
-  [db-before t res {:keys [type id]}]
+  [db-before t idx res {:keys [type id]}]
   (log/trace "verify-tx-cmd :delete" (str type "/" id))
   (with-open [_ (prom/timer duration-seconds "verify-delete")]
     (let [tid (codec/tid type)
-          {:keys [num-changes op] :or {num-changes 0}}
+          {:keys [did num-changes op] :or {did (codec/did t idx) num-changes 0}}
           (d/resource-handle db-before type id)]
       (cond->
-        (-> (update res :entries into (index-entries tid id t hash/deleted-hash (inc num-changes) :delete))
+        (-> (update res :entries into (rts/index-entries tid did t hash/deleted-hash (inc num-changes) :delete id))
             (update :del-resources conj [type id])
             (update-in [:stats tid :num-changes] inc-0))
+        (nil? op)
+        (update :entries conj (ri/index-entry tid id did))
         (and op (not (identical? :delete op)))
         (update-in [:stats tid :total] (fnil dec 0))))))
 
 
 (defmethod verify-tx-cmd :default
-  [_db-before _t res _tx-cmd]
+  [_db-before _t _idx res _tx-cmd]
   res)
 
 
 (defn- verify-tx-cmds** [db-before t tx-cmds]
-  (reduce
-    (partial verify-tx-cmd db-before t)
-    {:entries []
-     :new-resources #{}
-     :del-resources #{}}
-    tx-cmds))
+  (let [idx (volatile! -1)]
+    (reduce
+      (fn [res tx-cmd]
+        (verify-tx-cmd db-before t (vswap! idx inc) res tx-cmd))
+      {:entries []
+       :cmds []
+       :new-resources #{}
+       :del-resources #{}}
+      tx-cmds)))
 
 
 (def ^:private empty-stats
@@ -262,10 +271,11 @@
       (system-stats/index-entry new-t (apply merge-with + current-stats (vals stats))))))
 
 
-(defn- post-process-res [db-before t {:keys [entries stats]}]
-  (cond-> (conj-type-stats entries db-before t stats)
-    stats
-    (conj (system-stats db-before t stats))))
+(defn- post-process-res [db-before t {:keys [entries stats cmds]}]
+  [(cond-> (conj-type-stats entries db-before t stats)
+     stats
+     (conj (system-stats db-before t stats)))
+   cmds])
 
 
 (defn- resource-exists? [db type id]

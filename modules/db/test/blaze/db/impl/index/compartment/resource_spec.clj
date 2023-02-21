@@ -14,12 +14,12 @@
   :args (s/cat :context :blaze.db.impl.batch-db/context
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
-               :start-id (s/? :blaze.db/id-byte-string))
+               :start-did (s/? :blaze.db/did))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
 
 
 (s/fdef cr/index-entry
   :args (s/cat :compartment :blaze.db/compartment
                :tid :blaze.db/tid
-               :id :blaze.db/id-byte-string)
+               :did :blaze.db/did)
   :ret :blaze.db.kv/put-entry)

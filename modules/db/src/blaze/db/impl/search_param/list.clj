@@ -13,51 +13,52 @@
 (set! *warn-on-reflection* true)
 
 
-(def ^:private list-tid (codec/tid "List"))
-(def ^:private item-c-hash (codec/c-hash "item"))
+(def ^:private ^:const list-tid (codec/tid "List"))
+(def ^:private ^:const item-c-hash (codec/c-hash "item"))
+
+
+(defn- list-resource-handle [{:keys [resource-id resource-handle]} list-id]
+  (when-let [list-did (resource-id list-tid list-id)]
+    (u/non-deleted-resource-handle resource-handle list-tid list-did)))
 
 
 (defn- referenced-resource-handles!
   "Returns a reducible collection of resource handles of type `tid` that are
-  referenced by the list with `list-id` and `list-hash`, starting with
-  `start-id` (optional).
+  referenced by the list with `list-did` and `list-hash`, starting with
+  `start-did` (optional).
 
   Changes the state of `rsvi`. Consuming the collection requires exclusive
   access to `rsvi`. Doesn't close `rsvi`."
   {:arglists
-   '([context list-id list-hash tid]
-     [context list-id list-hash tid start-id])}
-  ([{:keys [rsvi] :as context} list-id list-hash tid]
+   '([context list-did list-hash tid]
+     [context list-did list-hash tid start-did])}
+  ([{:keys [rsvi] :as context} list-did list-hash tid]
    (coll/eduction
      (u/reference-resource-handle-mapper context)
-     (r-sp-v/prefix-keys! rsvi list-tid list-id list-hash item-c-hash
+     (r-sp-v/prefix-keys! rsvi list-tid list-did list-hash item-c-hash
                           (codec/tid-byte-string tid))))
-  ([{:keys [rsvi] :as context} list-id list-hash tid start-id]
+  ([{:keys [rsvi] :as context} list-did list-hash tid start-did]
    (coll/eduction
      (u/reference-resource-handle-mapper context)
-     (r-sp-v/prefix-keys! rsvi list-tid list-id list-hash item-c-hash
+     (r-sp-v/prefix-keys! rsvi list-tid list-did list-hash item-c-hash
                           (codec/tid-byte-string tid)
-                          (codec/tid-id tid start-id)))))
+                          (codec/tid-did tid start-did)))))
 
 
 (defrecord SearchParamList [name type code]
   p/SearchParam
-  (-compile-value [_ _ value]
-    (codec/id-byte-string value))
+  (-compile-value [_ _modifier list-id]
+    list-id)
 
   (-resource-handles [_ context tid _ list-id]
-    (let [{:keys [resource-handle]} context]
-      (when-let [{:keys [hash]} (u/non-deleted-resource-handle
-                                  resource-handle list-tid list-id)]
-        (referenced-resource-handles! context list-id hash tid))))
+    (when-let [{:keys [did hash]} (list-resource-handle context list-id)]
+      (referenced-resource-handles! context did hash tid)))
 
-  (-resource-handles [_ context tid _ list-id start-id]
-    (let [{:keys [resource-handle]} context]
-      (when-let [{:keys [hash]} (u/non-deleted-resource-handle
-                                  resource-handle list-tid list-id)]
-        (referenced-resource-handles! context list-id hash tid start-id))))
+  (-resource-handles [_ context tid _ list-id start-did]
+    (when-let [{:keys [did hash]} (list-resource-handle context list-id)]
+      (referenced-resource-handles! context did hash tid start-did)))
 
-  (-index-values [_ _ _]
+  (-index-values [_ _ _ _]
     []))
 
 

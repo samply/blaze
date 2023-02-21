@@ -26,20 +26,20 @@
   :ret (s/nilable byte-string?))
 
 
-(s/fdef r-sp-v/index-entry
-  :args (s/cat :tid :blaze.db/tid
-               :id :blaze.db/id-byte-string
-               :hash :blaze.resource/hash
-               :c-hash :blaze.db/c-hash
-               :value byte-string?)
-  :ret :blaze.db.kv/put-entry)
-
-
 (s/fdef r-sp-v/prefix-keys!
   :args (s/cat :iter :blaze.db/kv-iterator
                :tid :blaze.db/tid
-               :id :blaze.db/id-byte-string
+               :did :blaze.db/did
                :hash :blaze.resource/hash
                :c-hash :blaze.db/c-hash
                :prefix-value (s/? byte-string?)
                :start-value (s/? byte-string?)))
+
+
+(s/fdef r-sp-v/index-entry
+  :args (s/cat :tid :blaze.db/tid
+               :did :blaze.db/did
+               :hash :blaze.resource/hash
+               :c-hash :blaze.db/c-hash
+               :value byte-string?)
+  :ret :blaze.db.kv/put-entry)

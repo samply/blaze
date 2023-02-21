@@ -53,13 +53,13 @@
   [iter tid t]
   (let [buf (bb/allocate-direct kv-capacity)]
     (bb/put-int! buf tid)
-    (bb/put-long! buf (codec/descending-long ^long t))
+    (bb/put-5-byte-long! buf (codec/descending-long t))
     (bb/flip! buf)
     (kv/seek-buffer! iter buf)
     (when (kv/valid? iter)
       (bb/clear! buf)
       (kv/key! iter buf)
-      (when (= ^long tid (bb/get-int! buf))
+      (when (= (long tid) (bb/get-int! buf))
         (bb/clear! buf)
         (kv/value! iter buf)
         (decode-value! buf)))))
@@ -68,7 +68,7 @@
 (defn- encode-key [tid t]
   (-> (bb/allocate key-size)
       (bb/put-int! tid)
-      (bb/put-long! (codec/descending-long ^long t))
+      (bb/put-5-byte-long! (codec/descending-long t))
       bb/array))
 
 
