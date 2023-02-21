@@ -115,7 +115,7 @@
 
   Throws an anomaly on conflicts."
   {:arglists '([db-before t res cmd])}
-  (fn [_ _ _ {:keys [op]}] op))
+  (fn [_db-before _t _res {:keys [op]}] op))
 
 
 (defn- verify-tx-cmd-create-msg [type id]
@@ -135,6 +135,9 @@
   (rts/index-entries tid (codec/id-byte-string id) t hash num-changes op))
 
 
+(def ^:private inc-0 (fnil inc 0))
+
+
 (defmethod verify-tx-cmd "create"
   [db-before t res {:keys [type id hash]}]
   (log/trace (verify-tx-cmd-create-msg type id))
@@ -143,8 +146,8 @@
     (let [tid (codec/tid type)]
       (-> (update res :entries into (index-entries tid id t hash 1 :create))
           (update :new-resources conj [type id])
-          (update-in [:stats tid :num-changes] (fnil inc 0))
-          (update-in [:stats tid :total] (fnil inc 0))))))
+          (update-in [:stats tid :num-changes] inc-0)
+          (update-in [:stats tid :total] inc-0)))))
 
 
 (defn- verify-tx-cmd-put-msg [type id if-match if-none-match]
@@ -202,9 +205,9 @@
         (cond->
           (-> (update res :entries into (index-entries tid id t hash (inc num-changes) :put))
               (update :new-resources conj [type id])
-              (update-in [:stats tid :num-changes] (fnil inc 0)))
+              (update-in [:stats tid :num-changes] inc-0))
           (or (nil? old-t) (identical? :delete op))
-          (update-in [:stats tid :total] (fnil inc 0)))))))
+          (update-in [:stats tid :total] inc-0))))))
 
 
 (defmethod verify-tx-cmd "delete"
@@ -217,13 +220,13 @@
       (cond->
         (-> (update res :entries into (index-entries tid id t hash/deleted-hash (inc num-changes) :delete))
             (update :del-resources conj [type id])
-            (update-in [:stats tid :num-changes] (fnil inc 0)))
+            (update-in [:stats tid :num-changes] inc-0))
         (and op (not (identical? :delete op)))
         (update-in [:stats tid :total] (fnil dec 0))))))
 
 
 (defmethod verify-tx-cmd :default
-  [_ _ res _]
+  [_db-before _t res _tx-cmd]
   res)
 
 

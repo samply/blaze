@@ -109,6 +109,12 @@
           fhir-spec/fhir-type := :fhir/Patient)
         (is (true? @closed?)))))
 
+  (testing "long attribute values are allowed"
+    (given @(resource-handler
+              {:headers {"content-type" "application/fhir+xml"}
+               :body (input-stream (str "<Binary xmlns=\"http://hl7.org/fhir\"><data value=\"" (apply str (repeat (* 8 1024 1024) \a)) "\"/></Binary>"))})
+      fhir-spec/fhir-type := :fhir/Binary))
+
   (testing "body with invalid XML"
     (given @(resource-handler
               {:request-method :post
@@ -118,7 +124,7 @@
       [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
       [:body :issue 0 :code] := #fhir/code"invalid"
-      [:body :issue 0 :diagnostics] := "ParseError at [row,col]:[1,48]\nMessage: Attribute name \"value\" associated with an element type \"id\" must be followed by the ' = ' character."))
+      [:body :issue 0 :diagnostics] := "Unexpected character '\"' (code 34) expected '='\n at [row,col {unknown-source}]: [1,48]"))
 
   (testing "body with invalid resource"
     (given @(resource-handler
