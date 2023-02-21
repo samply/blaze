@@ -4,12 +4,20 @@
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
     [blaze.async.comp :as ac]
     [blaze.fhir.spec :as fhir-spec]
-    [clojure.data.xml :as xml]
+    [clojure.data.xml.jvm.parse :as xml-jvm]
+    [clojure.data.xml.tree :as xml-tree]
     [clojure.java.io :as io]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
     [prometheus.alpha :as prom]
-    [ring.util.request :as request]))
+    [ring.util.request :as request])
+  (:import
+    [com.ctc.wstx.api WstxInputProperties]
+    [java.io Reader]
+    [javax.xml.stream XMLInputFactory]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (prom/defhistogram parse-duration-seconds
@@ -56,6 +64,27 @@
       (str/starts-with? content-type "application/xml")))
 
 
+(defn- create-xml-factory []
+  (doto (XMLInputFactory/newInstance)
+    (.setProperty XMLInputFactory/IS_COALESCING true)
+    (.setProperty XMLInputFactory/IS_NAMESPACE_AWARE true)
+    (.setProperty XMLInputFactory/IS_REPLACING_ENTITY_REFERENCES true)
+    (.setProperty XMLInputFactory/IS_SUPPORTING_EXTERNAL_ENTITIES false)
+    (.setProperty XMLInputFactory/IS_VALIDATING false)
+    (.setProperty XMLInputFactory/SUPPORT_DTD false)
+    (.setProperty WstxInputProperties/P_MAX_ATTRIBUTE_SIZE Integer/MAX_VALUE)))
+
+
+(defn- parse-xml [reader]
+  (let [factory (create-xml-factory)]
+    (xml-tree/event-tree
+      (xml-jvm/pull-seq
+        (.createXMLStreamReader ^XMLInputFactory factory ^Reader reader)
+        {:include-node? #{:element :characters}
+         :location-info true}
+        nil))))
+
+
 (defn- parse-and-conform-xml
   "Takes a request `body` and returns the parsed and conformed XML content.
 
@@ -65,7 +94,7 @@
               reader (io/reader body)]
     ;; It is important to conform inside this function, because the XML parser
     ;; is lazy streaming. Otherwise, errors will be thrown outside this function.
-    (ba/try-all ::anom/incorrect (fhir-spec/conform-xml (xml/parse reader)))))
+    (ba/try-all ::anom/incorrect (fhir-spec/conform-xml (parse-xml reader)))))
 
 
 (defn- resource-request-xml [{:keys [body] :as request}]

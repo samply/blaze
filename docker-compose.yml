@@ -4,6 +4,7 @@ services:
     environment:
       BASE_URL: "http://localhost:8080"
       JAVA_TOOL_OPTIONS: "-Xmx2g"
+      LOG_LEVEL: "debug"
     ports:
     - "8080:8080"
     volumes:
