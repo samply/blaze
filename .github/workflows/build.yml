@@ -931,7 +931,7 @@ jobs:
       run: .github/scripts/generate-large-binary-resource.sh
 
     - name: Post Large Binary Resource
-      run:  curl -f -H Content-Type:application/fhir+xml -d @large-binary.xml http://localhost:8080/fhir/Binary
+      run:  curl -f -H Content-Type:application/fhir+xml -H Prefer:return=minimal -d @large-binary.xml http://localhost:8080/fhir/Binary
 
   distributed-test:
     needs: build
