@@ -46,9 +46,14 @@
          #(.hitCount ^CacheStats %)
          stats)
        (counter-metric
-         "blaze_db_cache_loads_total"
-         "Returns the total number of times that Cache lookup methods attempted to load new values."
-         #(.loadCount ^CacheStats %)
+         "blaze_db_cache_misses_total"
+         "Returns the number of times Cache lookup methods have returned an uncached (newly loaded) value, or null."
+         #(.missCount ^CacheStats %)
+         stats)
+       (counter-metric
+         "blaze_db_cache_load_successes_total"
+         "Returns the number of times Cache lookup methods have successfully loaded a new value."
+         #(.loadSuccessCount ^CacheStats %)
          stats)
        (counter-metric
          "blaze_db_cache_load_failures_total"

@@ -62,6 +62,26 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 According to the measurements the time needed by Blaze to deliver resources only depends on the number of hits and equals roughly in **30 seconds per 1 million hits**.
 
+### Download of Resources with Subsetting
+
+In case only a subset of information of a resource is needed, the special [_elements][1] search parameter can be used to retrieve only certain properties of a resource. Here `_elements=subject` was used.
+
+All measurements are done after Blaze is in a steady state with all resources to download in it's resource cache in order to cancel out resource load times from disk or file system cache.
+
+Download is done using the following `blazectl` command:
+
+```sh
+blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&_elements=subject&_count=1000" -o "$CODE.ndjson"
+```
+
+| CPU         | RAM (GB) | Heap Mem (GB) | Block Cache (GB) | # Resources | # Observations | Code    | # Hits | Time (s) |
+|-------------|---------:|--------------:|-----------------:|------------:|---------------:|---------|-------:|---------:|
+| EPYC 7543P  |      128 |             4 |                1 |        29 M |           28 M | 17861-6 |  171 k |    2.586 |
+| EPYC 7543P  |      128 |             4 |                1 |        29 M |           28 M | 39156-5 |  967 k |   14.456 |
+| EPYC 7543P  |      128 |             4 |                1 |        29 M |           28 M | 29463-7 |  1.3 M |   21.446 |
+
+According to the measurements the time needed by Blaze to deliver subsetted Observations containing only the subject reference is about **twice as fast** as returning the whole resource.
+
 ## Used Dataset
 
 The dataset used is Synthea v2.7.0. The resource generation was done with the following settings:
@@ -128,3 +148,5 @@ blaze_db_cache_evictions_total{name="resource-cache",} 0.0
 ```
 
 Here the important part would be the number of evictions. As long as the number of evictions is still zero, the resource cache did not overflow already. It should be the goal that most CQL queries or FHIR Search queries with export should fit into the resource cache. Otherwise, if the number of resources of a single query do not fit in the resource cache, the cache has to be evicted and filled up during that single query. Especially if you repeat the query, the resources needed at the start of the query will be no longer in the cache and after they are loaded, the resources one needs at the end of the query will be also not in the cache. So having a cache size smaller as needed to run a single query doesn't give any performance benefit. 
+
+[1]: <https://www.hl7.org/fhir/search.html#elements>

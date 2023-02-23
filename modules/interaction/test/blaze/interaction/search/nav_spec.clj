@@ -17,7 +17,7 @@
   :ret string?)
 
 
-(s/fdef nav/token-url
+(s/fdef nav/token-url!
   :args (s/cat :page-store :blaze/page-store
                :base-url string?
                :match some?

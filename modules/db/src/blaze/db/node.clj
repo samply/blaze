@@ -299,6 +299,21 @@
                                    clauses))))
 
 
+(def ^:private subsetted
+  #fhir/Coding
+          {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+           :code #fhir/code"SUBSETTED"})
+
+
+(def ^:private add-subsetted-xf
+  (map #(update-in % [:meta :tag] (fnil conj []) subsetted)))
+
+
+(defn- subset-xf [elements]
+  (comp (map #(select-keys % (conj elements :fhir/type :id :meta)))
+        add-subsetted-xf))
+
+
 (defrecord Node [context tx-log rh-cache tx-cache kv-store resource-store
                  search-param-registry resource-indexer state run? poll-timeout
                  finished]
@@ -379,6 +394,10 @@
           hashes (hashes-of-non-deleted resource-handles)]
       (do-sync [resources (rs/multi-get resource-store hashes)]
         (mapv (partial to-resource tx-cache resources) resource-handles))))
+
+  (-pull-many [node resource-handles elements]
+    (do-sync [resources (p/-pull-many node resource-handles)]
+      (into [] (subset-xf elements) resources)))
 
   Runnable
   (run [node]

@@ -106,7 +106,7 @@
 
 
 (deftest handler-test
-  (testing "erros on"
+  (testing "errors on"
     (testing "missing body"
       (with-handler [handler]
         (let [{:keys [status body]}
@@ -160,6 +160,29 @@
               [:issue 0 :details :coding 0 :system] := operation-outcome
               [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_RESOURCE_ID_MISSING"
               [:issue 0 :diagnostics] := "Missing resource id.")))))
+
+    (testing "subsetted"
+      (with-handler [handler]
+        (let [{:keys [status body]}
+              @(handler
+                 {:path-params {:id "0"}
+                  ::reitit/match patient-match
+                  :body {:fhir/type :fhir/Patient
+                         :id "0"
+                         :meta
+                         {:tag
+                          [#fhir/Coding
+                                  {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+                                   :code #fhir/code"SUBSETTED"}]}}})]
+
+          (testing "returns error"
+            (is (= 400 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"processing"
+              [:issue 0 :diagnostics] := "Resources with tag SUBSETTED may be incomplete and so can't be used in updates.")))))
 
     (testing "ID mismatch"
       (with-handler [handler]

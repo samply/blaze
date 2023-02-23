@@ -2,6 +2,7 @@
   (:require
     [blaze.fhir.spec]
     [blaze.handler.fhir.util :as util]
+    [blaze.handler.fhir.util.spec]
     [blaze.http.spec]
     [blaze.spec]
     [clojure.spec.alpha :as s]
@@ -11,18 +12,6 @@
 (s/fdef util/to-seq
   :args (s/cat :x any?)
   :ret (s/nilable sequential?))
-
-
-(s/def :ring.request.query-params/key
-  string?)
-
-
-(s/def :ring.request.query-params/value
-  (s/or :string string? :strings (s/coll-of string? :min-count 2)))
-
-
-(s/def :ring.request/query-params
-  (s/map-of :ring.request.query-params/key :ring.request.query-params/value))
 
 
 (s/fdef util/t
