@@ -52,4 +52,35 @@
               :blaze.preference.handling/strict
               {"__token" (c-str/repeat "A" 32)})
       :clauses := [["foo" "bar"]]
-      :token := (c-str/repeat "A" 32))))
+      :token := (c-str/repeat "A" 32)))
+
+  (testing "decoding _elements"
+    (testing "one element"
+      (given @(params/decode page-store :blaze.preference.handling/strict
+                             {"_elements" "a"})
+        :elements := [:a]))
+
+    (testing "two elements"
+      (given @(params/decode page-store :blaze.preference.handling/strict
+                             {"_elements" "a,b"})
+        :elements := [:a :b]))
+
+    (testing "two elements with space after comma"
+      (given @(params/decode page-store :blaze.preference.handling/strict
+                             {"_elements" "a, b"})
+        :elements := [:a :b]))
+
+    (testing "two elements with space before comma"
+      (given @(params/decode page-store :blaze.preference.handling/strict
+                             {"_elements" "a ,b"})
+        :elements := [:a :b]))
+
+    (testing "two elements with space before and after comma"
+      (given @(params/decode page-store :blaze.preference.handling/strict
+                             {"_elements" "a , b"})
+        :elements := [:a :b]))
+
+    (testing "three elements"
+      (given @(params/decode page-store :blaze.preference.handling/strict
+                             {"_elements" "a,b,c"})
+        :elements := [:a :b :c]))))

@@ -10,7 +10,7 @@
 
 
 (defmethod clause->query-param :sort
-   [ret [_sort param direction]]
+  [ret [_sort param direction]]
   (assoc ret "_sort" (if (= :desc direction) (str "-" param) param)))
 
 
@@ -23,7 +23,7 @@
   (reduce clause->query-param {} clauses))
 
 
-(defn- clauses->token-query-params [page-store token clauses]
+(defn- clauses->token-query-params! [page-store token clauses]
   (cond
     token
     (ac/completed-future {"__token" token})
@@ -80,37 +80,39 @@
       (assoc "_revinclude:iterate" rev-itr))))
 
 
-(defn- query-params [{:keys [include-defs summary page-size]} clauses]
-  (cond-> (clauses->query-params clauses)
+(defn- merge-params [clauses-params {:keys [include-defs summary elements page-size]}]
+  (cond-> clauses-params
     (seq include-defs)
     (merge (include-defs->query-params include-defs))
     summary
     (assoc "_summary" summary)
+    (seq elements)
+    (assoc "_elements" (str/join "," (map name elements)))
     page-size
     (assoc "_count" page-size)))
 
 
-(defn- token-query-params
-  [page-store {:keys [include-defs page-size token]} clauses]
-  (do-sync [clauses-params (clauses->token-query-params page-store token clauses)]
-    (cond-> clauses-params
-      (seq include-defs)
-      (merge (include-defs->query-params include-defs))
-      page-size
-      (assoc "_count" page-size))))
+(defn- query-params [params clauses]
+  (merge-params (clauses->query-params clauses) params))
 
 
 (defn url [base-url match params clauses t offset]
-  (let [query-params (-> (query-params params clauses)
-                         (assoc "__t" t)
-                         (merge offset))]
-    (str base-url (reitit/match->path match query-params))))
+  (let [query-params (query-params params clauses)]
+    (str base-url (reitit/match->path match (-> query-params
+                                                (assoc "__t" t)
+                                                (merge offset))))))
 
 
-(defn token-url
+(defn- token-query-params!
+  [page-store {:keys [token] :as params} clauses]
+  (do-sync [clauses-params (clauses->token-query-params! page-store token clauses)]
+    (merge-params clauses-params params)))
+
+
+(defn token-url!
   "Returns a CompletableFuture that will complete with the URL."
   [page-store base-url match params clauses t offset]
-  (do-sync [query-params (token-query-params page-store params clauses)]
+  (do-sync [query-params (token-query-params! page-store params clauses)]
     (str base-url (reitit/match->path match (-> query-params
                                                 (assoc "__t" t)
                                                 (merge offset))))))

@@ -5,8 +5,6 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
 BASE="http://localhost:8080/fhir"
 EXPECTED_SIZE=$(curl -s "$BASE?_summary=count" | jq -r .total)
+ACTUAL_SIZE=$(blazectl --server "$BASE" download 2>/dev/null | wc -l | xargs)
 
-FILE_NAME=$(uuidgen)
-blazectl --no-progress --server "$BASE" download -o "$FILE_NAME.ndjson"
-
-test "download size" "$(wc -l "$FILE_NAME.ndjson" | xargs | cut -d ' ' -f1)" "$EXPECTED_SIZE"
+test "download size" "$ACTUAL_SIZE" "$EXPECTED_SIZE"

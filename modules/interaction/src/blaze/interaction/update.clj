@@ -52,6 +52,11 @@
       :fhir/issue "invariant"
       :fhir/operation-outcome "MSG_RESOURCE_ID_MISMATCH")
 
+    (->> body :meta :tag (some iu/subsetted?))
+    (ba/incorrect
+      "Resources with tag SUBSETTED may be incomplete and so can't be used in updates."
+      :fhir/issue "processing")
+
     :else body))
 
 

@@ -131,7 +131,7 @@ fi
 
 LIST_ID=$(echo "$REPORT" | jq -r '.group[0].population[0].subjectResults.reference | split("/")[1]')
 PATIENT_BUNDLE=$(fetch-patients "$BASE" "$LIST_ID")
-ID_COUNT=$(echo "$PATIENT_BUNDLE" | jq -r ".entry[].resource.id" | sort -u | wc -l | xargs | cut -d ' ' -f1)
+ID_COUNT=$(echo "$PATIENT_BUNDLE" | jq -r ".entry[].resource.id" | sort -u | wc -l | xargs)
 
 if [ "$ID_COUNT" = "$EXPECTED_COUNT" ]; then
   echo "Success: downloaded patient count ($ID_COUNT) equals the expected count"

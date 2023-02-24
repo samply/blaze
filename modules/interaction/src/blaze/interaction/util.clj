@@ -76,3 +76,8 @@
       if-match [:put resource [:if-match if-match]]
       if-none-match [:put resource [:if-none-match if-none-match]]
       :else [:put resource])))
+
+
+(defn subsetted? [{:keys [system code]}]
+  (and (= #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue" system)
+       (= #fhir/code"SUBSETTED" code)))

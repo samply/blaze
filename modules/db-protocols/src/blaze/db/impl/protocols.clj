@@ -89,4 +89,4 @@
 
   (-pull-content [pull resource-handle])
 
-  (-pull-many [pull resource-handles]))
+  (-pull-many [pull resource-handles] [pull resource-handles elements]))

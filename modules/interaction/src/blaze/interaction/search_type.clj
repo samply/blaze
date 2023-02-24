@@ -88,6 +88,12 @@
       (into (map #(search-util/entry context % search-util/include)) includes)))
 
 
+(defn- pull-matches-fn [{:keys [elements]}]
+  (if (seq elements)
+    #(d/pull-many %1 %2 elements)
+    d/pull-many))
+
+
 (defn- page-data
   "Returns a CompletableFuture that will complete with a map of:
 
@@ -96,12 +102,12 @@
   :next-handle - the resource handle of the first resource of the next page
   :clauses - the actually used clauses"
   {:arglists '([context db])}
-  [{:blaze/keys [db] {:keys [include-defs page-size]} :params :as context}]
+  [{:blaze/keys [db] {:keys [include-defs page-size] :as params} :params :as context}]
   (if-ok [{:keys [handles clauses]} (handles-and-clauses context db)]
     (let [{:keys [matches includes next-match]}
           (build-page db include-defs page-size handles)
-          match-futures (mapv #(d/pull-many db %) (partition-all 100 matches))
-          include-futures (mapv #(d/pull-many db %) (partition-all 100 includes))]
+          match-futures (mapv (partial (pull-matches-fn params) db) (partition-all 100 matches))
+          include-futures (mapv (partial d/pull-many db) (partition-all 100 includes))]
       (do-sync [_ (ac/all-of (into match-futures include-futures))]
         {:entries
          (entries
@@ -234,8 +240,8 @@
    {:keys [token] :as params}]
   (if (or token (= "search" (some-> route-name name)))
     (fn [clauses offset]
-      (nav/token-url page-store base-url (match request "page") params clauses
-                     (iu/t db) offset))
+      (nav/token-url! page-store base-url (match request "page") params clauses
+                      (iu/t db) offset))
     (fn [clauses offset]
       (ac/completed-future
         (nav/url base-url (match request "page") params clauses (iu/t db)

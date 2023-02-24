@@ -1056,6 +1056,38 @@
                 [:issue 0 :diagnostics] := "Resource id is missing."
                 [:issue 0 :expression 0] := "Bundle.entry[0].resource.id")))))
 
+      (testing "on subsetted"
+        (with-handler [handler]
+          (let [{:keys [status body]}
+                @(handler
+                   {:body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"transaction"
+                     :entry
+                     [{:fhir/type :fhir.Bundle/entry
+                       :resource
+                       {:fhir/type :fhir/Patient
+                        :id "0"
+                        :meta
+                        {:tag
+                         [#fhir/Coding
+                                 {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+                                  :code #fhir/code"SUBSETTED"}]}}
+                       :request
+                       {:fhir/type :fhir.Bundle.entry/request
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri"Patient/0"}}]}})]
+
+            (testing "returns error "
+              (is (= 400 status))
+
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"processing"
+                [:issue 0 :diagnostics] := "Resources with tag SUBSETTED may be incomplete and so can't be used in updates."
+                [:issue 0 :expression 0] := "Bundle.entry[0].resource")))))
+
       (testing "on missing ID in URL"
         (with-handler [handler]
           (let [{:keys [status body]}
@@ -1492,6 +1524,43 @@
                 [:issue 0 :code] := #fhir/code"not-supported"
                 [:issue 0 :diagnostics] := "Unsupported method `PATCH`."
                 [:issue 0 :expression 0] := "Bundle.entry[0].request.method"))))))
+
+    (testing "on subsetted"
+      (with-handler [handler]
+        (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+              @(handler
+                 {:body
+                  {:fhir/type :fhir/Bundle
+                   :type #fhir/code"batch"
+                   :entry
+                   [{:fhir/type :fhir.Bundle/entry
+                     :resource
+                     {:fhir/type :fhir/Patient
+                      :id "0"
+                      :meta
+                      {:tag
+                       [#fhir/Coding
+                               {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+                                :code #fhir/code"SUBSETTED"}]}}
+                     :request
+                     {:fhir/type :fhir.Bundle.entry/request
+                      :method #fhir/code"PUT"
+                      :url #fhir/uri"Patient/0"}}]}})]
+
+          (testing "response status"
+            (is (= 200 status)))
+
+          (testing "returns error"
+            (testing "with status"
+              (is (= "400" (:status response))))
+
+            (testing "with outcome"
+              (given (:outcome response)
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"processing"
+                [:issue 0 :diagnostics] := "Resources with tag SUBSETTED may be incomplete and so can't be used in updates."
+                [:issue 0 :expression 0] := "Bundle.entry[0].resource"))))))
 
     (testing "on metadata"
       (with-handler [handler]

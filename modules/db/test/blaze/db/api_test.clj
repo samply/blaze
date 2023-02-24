@@ -3946,6 +3946,51 @@
       [0 :id] := "0")))
 
 
+(deftest pull-many-test
+  (testing "pull all elements"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"system-191514"
+                                 :code #fhir/code"code-191518"}]}}]]]
+
+      (let [db (d/db node)]
+        (given @(d/pull-many db (d/type-list db "Observation"))
+          count := 1
+          [0 :fhir/type] := :fhir/Observation
+          [0 :id] := "0"
+          [0 :meta :tag] :? nil?
+          [0 :code :coding 0 :code] := #fhir/code"code-191518"
+          [0 :subject :reference] := #fhir/string"Patient/0"))))
+
+  (testing "pull only certain elements"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"system-191514"
+                                 :code #fhir/code"code-191518"}]}}]]]
+
+      (let [db (d/db node)]
+        (given @(d/pull-many db (d/type-list db "Observation") [:subject])
+          count := 1
+          [0 :fhir/type] := :fhir/Observation
+          [0 :id] := "0"
+          [0 :meta :tag 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+          [0 :meta :tag 0 :code] := #fhir/code"SUBSETTED"
+          [0 :code] :? nil?
+          [0 :subject :reference] := #fhir/string"Patient/0")))))
+
+
 
 ;; ---- Instance-Level History Functions --------------------------------------
 

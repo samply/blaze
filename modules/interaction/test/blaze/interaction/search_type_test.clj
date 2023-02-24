@@ -5,6 +5,7 @@
   (:require
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type :as type]
     [blaze.interaction.search-type]
     [blaze.interaction.search.nav-spec]
     [blaze.interaction.search.params-spec]
@@ -17,6 +18,7 @@
     [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
+    [clojure.string :as str]
     [clojure.test :as test :refer [deftest is testing]]
     [cuerdas.core :as c-str]
     [integrant.core :as ig]
@@ -2176,4 +2178,54 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := "Missing search parameter code in _include search parameter with source type `Observation`."))))))
+            [:issue 0 :diagnostics] := "Missing search parameter code in _include search parameter with source type `Observation`.")))))
+
+  (testing "_elements"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :value #fhir/string "foo"}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :value #fhir/string "foo"}]]]
+
+      (let [{:keys [status body] {[{:keys [resource] :as entry}] :entry} :body}
+            @(handler
+               {::reitit/match observation-match
+                :params {"_elements" "subject"
+                         "_count" "1"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle type is searchset"
+          (is (= #fhir/code "searchset" (:type body))))
+
+        (testing "the total count is 2"
+          (is (= #fhir/unsignedInt 2 (:total body))))
+
+        (testing "the next link includes the _elements query param"
+          (is (str/includes? (type/value (link-url body "next")) "_elements=subject")))
+
+        (testing "the bundle contains one entry"
+          (is (= 1 (count (:entry body)))))
+
+        (testing "the entry has the right fullUrl"
+          (is (= #fhir/uri "base-url-113047/Observation/0" (:fullUrl entry))))
+
+        (testing "the resource is subsetted"
+          (given (-> resource :meta :tag first)
+            :system := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+            :code := #fhir/code"SUBSETTED"))
+
+        (testing "the resource has still an id"
+          (is (= "0" (:id resource))))
+
+        (testing "the resource has a subject"
+          (is (= "Patient/0" (-> resource :subject :reference))))
+
+        (testing "the resource has no value"
+          (is (nil? (:value resource))))))))
