@@ -2,6 +2,7 @@
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
     [blaze.handler.fhir.util :as fhir-util]
+    [blaze.util :refer [conj-vec]]
     [clojure.string :as str]))
 
 
@@ -31,7 +32,7 @@
         (if (ba/anomaly? x)
           (reduced x)
           (let [[source-type include-def] x]
-            (update res source-type (fnil conj []) include-def)))))
+            (update res source-type conj-vec include-def)))))
     {}
     query-params))
 
@@ -55,7 +56,7 @@
         (if (ba/anomaly? x)
           (reduced x)
           (let [[target-type include-def] x]
-            (update res target-type (fnil conj []) include-def)))))
+            (update res target-type conj-vec include-def)))))
     {}
     query-params))
 

@@ -32,6 +32,7 @@
     [blaze.fhir.spec.type :as type]
     [blaze.module :refer [reg-collector]]
     [blaze.spec]
+    [blaze.util :refer [conj-vec]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -246,16 +247,15 @@
       (assoc :lastUpdated instant)))
 
 
-(defn- mk-meta [{:keys [t num-changes op] :as handle} tx]
-  (-> (meta handle)
-      (assoc :blaze.db/t t)
-      (assoc :blaze.db/num-changes num-changes)
-      (assoc :blaze.db/op op)
-      (assoc :blaze.db/tx tx)))
+(defn- mk-meta [handle tx]
+  {:blaze.db/num-changes (rh/num-changes handle)
+   :blaze.db/op (rh/op handle)
+   :blaze.db/tx tx})
 
 
-(defn- enhance-resource [tx-cache {:keys [t] :as handle} resource]
-  (let [tx (tx-success/tx tx-cache t)]
+(defn- enhance-resource [tx-cache handle resource]
+  (let [t (rh/t handle)
+        tx (tx-success/tx tx-cache t)]
     (-> (update resource :meta enhance-resource-meta t tx)
         (with-meta (mk-meta handle tx)))))
 
@@ -306,12 +306,13 @@
 
 
 (def ^:private add-subsetted-xf
-  (map #(update-in % [:meta :tag] (fnil conj []) subsetted)))
+  (map #(update % :meta update :tag conj-vec subsetted)))
 
 
 (defn- subset-xf [elements]
-  (comp (map #(select-keys % (conj elements :fhir/type :id :meta)))
-        add-subsetted-xf))
+  (let [keys (conj (seq elements) :fhir/type :id :meta)]
+    (comp (map #(select-keys % keys))
+          add-subsetted-xf)))
 
 
 (defrecord Node [context tx-log rh-cache tx-cache kv-store resource-store
