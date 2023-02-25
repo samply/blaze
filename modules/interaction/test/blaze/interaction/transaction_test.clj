@@ -14,7 +14,7 @@
     [blaze.interaction.delete]
     [blaze.interaction.read]
     [blaze.interaction.search-type]
-    [blaze.interaction.test-util :as itu :refer [wrap-error]]
+    [blaze.interaction.test-util :refer [wrap-error]]
     [blaze.interaction.transaction]
     [blaze.interaction.update]
     [blaze.interaction.util-spec]
@@ -177,7 +177,7 @@
 
 
 (defmacro with-handler [[handler-binding] & more]
-  (let [[txs body] (itu/extract-txs-body more)]
+  (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{handler# :blaze.interaction/transaction
                          router# ::router} system]
        ~txs

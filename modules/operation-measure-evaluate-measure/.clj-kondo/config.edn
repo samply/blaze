@@ -3,7 +3,6 @@
   blaze.anomaly/when-ok clojure.core/let
   blaze.db.api-stub/with-system-data clojure.core/with-open
   blaze.fhir.operation.evaluate-measure-test/with-handler clojure.core/fn
-  blaze.fhir.operation.evaluate-measure-test/with-handler-data clojure.core/fn
   blaze.test-util/with-system clojure.core/with-open
   prometheus.alpha/defcounter clojure.core/def
   prometheus.alpha/defhistogram clojure.core/def}

@@ -59,6 +59,7 @@ jobs:
         - luid
         - metrics
         - openid-auth
+        - operation-graphql
         - operation-measure-evaluate-measure
         - page-store
         - page-store-cassandra
@@ -530,6 +531,12 @@ jobs:
 
     - name: Conditional Update If-None-Match
       run: .github/scripts/conditional-update-if-none-match.sh
+
+    - name: GraphQL Patient
+      run: .github/scripts/graphql.sh Patient
+
+    - name: GraphQL Observation
+      run: .github/scripts/graphql.sh Observation
 
   not-enforcing-referential-integrity-test:
     needs: build
@@ -1237,6 +1244,12 @@ jobs:
 
     - name: Conditional Update If-None-Match
       run: .github/scripts/conditional-update-if-none-match.sh
+
+    - name: GraphQL Patient
+      run: .github/scripts/graphql.sh Patient
+
+    - name: GraphQL Observation
+      run: .github/scripts/graphql.sh Observation
 
     - name: Docker Stats
       run: docker stats --no-stream

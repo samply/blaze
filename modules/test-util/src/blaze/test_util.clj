@@ -104,3 +104,9 @@
   (st/instrument)
   (f)
   (st/unstrument))
+
+
+(defn extract-txs-body [more]
+  (if (vector? (first more))
+    [(first more) (next more)]
+    [[] more]))

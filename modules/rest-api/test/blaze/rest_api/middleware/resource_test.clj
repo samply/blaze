@@ -163,7 +163,7 @@
         [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
         [:body :issue 0 :severity] := #fhir/code"error"
         [:body :issue 0 :code] := #fhir/code"invalid"
-        [:body :issue 0 :diagnostics] := "Unsupported Media Type `text/plain` expect one of `application/fhir+json` or `application/fhir+xml`."))
+        [:body :issue 0 :diagnostics] := "Unsupported media type `text/plain` expect one of `application/fhir+json` or `application/fhir+xml`."))
 
     (testing "missing body"
       (doseq [content-type ["application/fhir+json" "application/fhir+xml"]]

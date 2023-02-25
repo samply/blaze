@@ -4,6 +4,10 @@
 
 A section about FHIR Search performance can be found [here](performance/fhir-search.md).
 
+## GraphQL
+
+A section about GraphQL performance can be found [here](performance/graphql.md).
+
 ## Transaction Bundle Upload - Summary
 
 | CPU         | # Cores | RAM (GB) | Xmx | MBJ³ | -c¹ | # Resources | Disk Util.² | Duration (s) | Resources/s |
