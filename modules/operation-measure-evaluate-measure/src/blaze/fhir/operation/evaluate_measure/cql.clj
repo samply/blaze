@@ -5,6 +5,7 @@
     [blaze.elm.expression :as expr]
     [blaze.elm.util :as elm-util]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.util :refer [conj-vec]]
     [clojure.core.reducers :as r]
     [cognitect.anomalies :as anom]
     [taoensso.timbre :as log])
@@ -242,7 +243,7 @@
 
 
 (defn- stratum-result-reduce-op [result stratum subject-handle]
-  (update result stratum (fnil conj []) subject-handle))
+  (update result stratum conj-vec subject-handle))
 
 
 (defn- stratum-combine-op [context]

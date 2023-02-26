@@ -2,6 +2,7 @@
   (:require
     [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.page-store :as page-store]
+    [blaze.util :refer [conj-vec]]
     [clojure.string :as str]
     [reitit.core :as reitit]))
 
@@ -16,7 +17,7 @@
 
 (defmethod clause->query-param :default
   [ret [param & values]]
-  (update ret param (fnil conj []) (str/join "," values)))
+  (update ret param conj-vec (str/join "," values)))
 
 
 (defn- clauses->query-params [clauses]
