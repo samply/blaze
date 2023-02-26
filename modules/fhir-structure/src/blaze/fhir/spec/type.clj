@@ -26,7 +26,7 @@
     [java.time
      Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
      ZoneOffset]
-    [java.time.format DateTimeParseException]
+    [java.time.format DateTimeFormatter DateTimeParseException]
     [java.util Comparator List Map Map$Entry UUID]
     [jsonista.jackson
      KeywordKeyDeserializer PersistentHashMapDeserializer
@@ -231,7 +231,7 @@
   (-value [l] l)
   (-has-primary-content [_] true)
   (-serialize-json [l generator]
-    (.writeNumber ^JsonGenerator generator (clojure.core/long l)))
+    (.writeNumber ^JsonGenerator generator (unchecked-long l)))
   (-has-secondary-content [_] false)
   (-serialize-json-secondary [_ generator]
     (.writeNull ^JsonGenerator generator))
@@ -489,7 +489,7 @@
   (-value [instant] (.atOffset instant ZoneOffset/UTC))
   (-has-primary-content [_] true)
   (-serialize-json [instant generator]
-    (.writeString ^JsonGenerator generator (str instant)))
+    (.writeString ^JsonGenerator generator (.format DateTimeFormatter/ISO_INSTANT instant)))
   (-has-secondary-content [_] false)
   (-serialize-json-secondary [_ generator]
     (.writeNull ^JsonGenerator generator))
@@ -1086,10 +1086,11 @@
   (-serialize-json [m generator]
     (.writeStartObject ^JsonGenerator generator)
     (run!
-      #(let [key (key %)]
-         (when-not (identical? :fhir/type key)
-           (when-some [v (val %)]
-             (json/write-field generator (json/field-name (name key)) v))))
+      (fn [^Map$Entry e]
+        (let [^Keyword key (.getKey e)]
+          (when-not (identical? :fhir/type key)
+            (when-some [v (.getValue e)]
+              (json/write-field generator (json/field-name (.getName key)) v)))))
       m)
     (.writeEndObject ^JsonGenerator generator))
   (-has-secondary-content [_] false)

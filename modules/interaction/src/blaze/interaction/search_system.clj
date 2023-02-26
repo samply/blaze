@@ -44,8 +44,7 @@
 (defn- self-link [{:keys [match params] :blaze/keys [base-url db]} entries]
   {:fhir/type :fhir.Bundle/link
    :relation "self"
-   :url (type/uri (nav/url base-url match params [] (iu/t db)
-                           (self-link-offset entries)))})
+   :url (nav/url base-url match params [] (iu/t db) (self-link-offset entries))})
 
 
 (defn- next-link-offset [entries]
@@ -59,7 +58,7 @@
                                 (iu/t db) (next-link-offset entries))]
     {:fhir/type :fhir.Bundle/link
      :relation "next"
-     :url (type/uri url)}))
+     :url url}))
 
 
 (defn- normal-bundle

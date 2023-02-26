@@ -129,7 +129,7 @@
   (let [url (self-link-url-fn clauses (self-link-offset first-entry))]
     {:fhir/type :fhir.Bundle/link
      :relation "self"
-     :url (type/uri url)}))
+     :url url}))
 
 
 (defn- next-link-offset [next-handle]
@@ -141,7 +141,7 @@
   (do-sync [url (next-link-url-fn clauses (next-link-offset next-handle))]
     {:fhir/type :fhir.Bundle/link
      :relation "next"
-     :url (type/uri url)}))
+     :url url}))
 
 
 (defn- total

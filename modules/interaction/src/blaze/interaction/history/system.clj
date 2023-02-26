@@ -24,12 +24,11 @@
 (defn- link [context query-params relation resource-handle]
   {:fhir/type :fhir.Bundle/link
    :relation relation
-   :url (-> (history-util/nav-url
-              context query-params
-              (:t resource-handle)
-              (-> resource-handle fhir-spec/fhir-type name)
-              (:id resource-handle))
-            type/uri)})
+   :url (history-util/nav-url
+          context query-params
+          (:t resource-handle)
+          (-> resource-handle fhir-spec/fhir-type name)
+          (:id resource-handle))})
 
 
 (defn- build-response

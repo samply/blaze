@@ -3,8 +3,10 @@
   (:refer-clojure :exclude [sync])
   (:require
     [blaze.fhir.spec]
-    [clojure.spec.alpha :as s]
-    [reitit.core :as reitit]))
+    [clojure.spec.alpha :as s]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (defn to-seq
@@ -76,23 +78,39 @@
 
 (defn type-url
   "Returns the URL of a resource type like `[base]/[type]`."
-  [{:blaze/keys [base-url] ::reitit/keys [router]} type]
-  (let [{:keys [path]} (reitit/match-by-name router (keyword type "type"))]
-    (str base-url path)))
+  [{:blaze/keys [base-url]} type]
+  ;; URLs are build by hand here, because id's do not need to be URL encoded
+  ;; and the URL encoding in reitit is slow: https://github.com/metosin/reitit/issues/477
+  (-> (StringBuilder. ^String base-url)
+      (.append "/")
+      (.append type)
+      (.toString)))
 
 
 (defn instance-url
   "Returns the URL of an instance (resource) like `[base]/[type]/[id]`."
-  [context type id]
+  [{:blaze/keys [base-url]} type id]
   ;; URLs are build by hand here, because id's do not need to be URL encoded
   ;; and the URL encoding in reitit is slow: https://github.com/metosin/reitit/issues/477
-  (str (type-url context type) "/" id))
+  (-> (StringBuilder. ^String base-url)
+      (.append "/")
+      (.append type)
+      (.append "/")
+      (.append id)
+      (.toString)))
 
 
 (defn versioned-instance-url
   "Returns the URL of a versioned instance (resource) like
   `[base]/[type]/[id]/_history/[vid]`."
-  [context type id vid]
+  [{:blaze/keys [base-url]} type id vid]
   ;; URLs are build by hand here, because id's do not need to be URL encoded
   ;; and the URL encoding in reitit is slow: https://github.com/metosin/reitit/issues/477
-  (str (instance-url context type id) "/_history/" vid))
+  (-> (StringBuilder. ^String base-url)
+      (.append "/")
+      (.append type)
+      (.append "/")
+      (.append id)
+      (.append "/_history/")
+      (.append vid)
+      (.toString)))

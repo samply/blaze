@@ -292,6 +292,7 @@
               context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                        :blaze/base-url "" ::reitit/router router}
               measure {:fhir/type :fhir/Measure :id "0"
+                       :url #fhir/uri"measure-155437"
                        :library [#fhir/canonical"0"]
                        :group
                        [{:fhir/type :fhir.Measure/group
@@ -306,7 +307,7 @@
             :fhir/type := :fhir/MeasureReport
             :status := #fhir/code"complete"
             :type := #fhir/code"individual"
-            :measure := #fhir/canonical"/0"
+            :measure := #fhir/canonical"measure-155437"
             [:subject :reference] := "Patient/0"
             :date := #system/date-time"1970-01-01T00:00Z"
             :period := #fhir/Period{:start #system/date-time"2000"
@@ -325,6 +326,7 @@
               context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
                        :blaze/base-url "" ::reitit/router router}
               measure {:fhir/type :fhir/Measure :id "0"
+                       :url #fhir/uri"measure-155502"
                        :library [#fhir/canonical"0"]
                        :group
                        [{:fhir/type :fhir.Measure/group
@@ -343,7 +345,7 @@
             :fhir/type := :fhir/MeasureReport
             :status := #fhir/code"complete"
             :type := #fhir/code"individual"
-            :measure := #fhir/canonical"/0"
+            :measure := #fhir/canonical"measure-155502"
             [:subject :reference] := "Patient/0"
             :date := #system/date-time"1970-01-01T00:00Z"
             :period := #fhir/Period{:start #system/date-time"2000"

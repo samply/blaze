@@ -141,16 +141,16 @@
         (is (= #fhir/unsignedInt 1 (:total body)))
 
         (testing "has a self link"
-          (is (= #fhir/uri"base-url-135844/_history?__t=1&__page-t=1&__page-type=Patient&__page-id=0"
+          (is (= "base-url-135844/_history?__t=1&__page-t=1&__page-type=Patient&__page-id=0"
                  (link-url body "self"))))
 
         (testing "the bundle contains one entry"
           (is (= 1 (count (:entry body)))))
 
         (given (-> body :entry first)
-          :fullUrl := #fhir/uri"base-url-135844/Patient/0"
+          :fullUrl := "base-url-135844/Patient/0"
           [:request :method] := #fhir/code"PUT"
-          [:request :url] := #fhir/uri"/Patient/0"
+          [:request :url] := "/Patient/0"
           [:resource :id] := "0"
           [:resource :fhir/type] := :fhir/Patient
           [:resource :meta :versionId] := #fhir/id"1"
@@ -168,7 +168,7 @@
               @(handler {:query-params {"_count" "1"}})]
 
           (testing "hash next link"
-            (is (= #fhir/uri"base-url-135844/_history?_count=1&__t=1&__page-t=1&__page-type=Patient&__page-id=1"
+            (is (= "base-url-135844/_history?_count=1&__t=1&__page-t=1&__page-type=Patient&__page-id=1"
                    (link-url body "next")))))))
 
     (testing "calling the second page shows the patient with the higher id"
@@ -209,7 +209,7 @@
 
           (is (= "next" (-> body :link second :relation)))
 
-          (is (= #fhir/uri"base-url-135844/_history?_count=1&__t=2&__page-t=1&__page-type=Patient&__page-id=0"
+          (is (= "base-url-135844/_history?_count=1&__t=2&__page-t=1&__page-type=Patient&__page-id=0"
                  (-> body :link second :url))))))
 
     (testing "calling the second page shows the patient from the first transaction"

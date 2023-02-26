@@ -76,9 +76,9 @@
           {:blaze.db/op :create
            :blaze.db/num-changes 1
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := #fhir/uri"http://localhost:8080/Patient/0"
+      :fullUrl := "http://localhost:8080/Patient/0"
       [:request :method] := #fhir/code"POST"
-      [:request :url] := #fhir/uri"/Patient"
+      [:request :url] := "/Patient"
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := "201"
@@ -97,9 +97,9 @@
           {:blaze.db/op :put
            :blaze.db/num-changes 1
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := #fhir/uri"http://localhost:8080/Patient/0"
+      :fullUrl := "http://localhost:8080/Patient/0"
       [:request :method] := #fhir/code"PUT"
-      [:request :url] := #fhir/uri"/Patient/0"
+      [:request :url] := "/Patient/0"
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := "201"
@@ -118,9 +118,9 @@
           {:blaze.db/op :put
            :blaze.db/num-changes 2
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := #fhir/uri"http://localhost:8080/Patient/0"
+      :fullUrl := "http://localhost:8080/Patient/0"
       [:request :method] := #fhir/code"PUT"
-      [:request :url] := #fhir/uri"/Patient/0"
+      [:request :url] := "/Patient/0"
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := "200"
@@ -139,9 +139,9 @@
           {:blaze.db/op :delete
            :blaze.db/num-changes 2
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := #fhir/uri"http://localhost:8080/Patient/0"
+      :fullUrl := "http://localhost:8080/Patient/0"
       [:request :method] := #fhir/code"DELETE"
-      [:request :url] := #fhir/uri"/Patient/0"
+      [:request :url] := "/Patient/0"
       [:response :status] := "204"
       [:response :lastModified] := Instant/EPOCH
       [:response :etag] := "W/\"2\"")))

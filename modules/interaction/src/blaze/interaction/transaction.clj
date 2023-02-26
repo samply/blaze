@@ -260,7 +260,7 @@
 
 
 (defn- location [context type id vid]
-  (type/uri (fhir-util/versioned-instance-url context type id vid)))
+  (fhir-util/versioned-instance-url context type id vid))
 
 
 (defn- created-entry
@@ -385,7 +385,7 @@
         :status (str status)}
 
        location
-       (assoc :location (type/uri location))
+       (assoc :location location)
 
        etag
        (assoc :etag etag)
