@@ -15,19 +15,19 @@ All measurements are done after Blaze is in a steady state with all resource han
 Counting is done using the following `curl` command:
 
 ```sh
-time curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&_summary=count"
+curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&_summary=count"
 ```
 
-| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | # Hits | Time (s) | T / 1M |
-|------------|---------:|------------:|---------:|--- -----:|---------|-------:|---------:|-------:|
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 17861-6 |  171 k |    0.172 |   1.01 |
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 39156-5 |  967 k |    0.790 |   0.82 |
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 29463-7 |  1.3 M |    1.232 |   0.95 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 17861-6 |  1.7 M |    1.504 |   0.88 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 39156-5 |  9.7 M |    9.258 |   0.95 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 29463-7 |   13 M |   11.816 |   0.91 |
+| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | # Hits | Time (s) | T / 1M ³ |
+|------------|---------:|------------:|---------:|---------:|---------|-------:|---------:|---------:|
+| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 17861-6 |  171 k |    0.172 |     1.01 |
+| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 39156-5 |  967 k |    0.790 |     0.82 |
+| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 29463-7 |  1.3 M |    1.232 |     0.95 |
+| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 17861-6 |  1.7 M |    1.504 |     0.88 |
+| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 39156-5 |  9.7 M |    9.258 |     0.95 |
+| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 29463-7 |   13 M |   11.816 |     0.91 |
 
-¹ Number of Resources, ² Number of Observations, The amount of system memory was 128 GB in all cases.
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
 
 According to the measurements the time needed by Blaze to count resources only depends on the number of hits and equals roughly in **1 second per 1 million hits**.
 
@@ -38,19 +38,19 @@ All measurements are done after Blaze is in a steady state with all resources to
 Download is done using the following `blazectl` command:
 
 ```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&_count=1000" -o "$CODE.ndjson"
+blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&_count=1000" > /dev/null"
 ```
 
-| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | # Hits | Time (s) | T / 1M |
-|------------|---------:|----- ------:|---------:|---------:|---------|-------:|---------:|-------:|
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 17861-6 |  171 k |    4.012 |  23.46 |
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 39156-5 |  967 k |   23.488 |  24.29 |
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 29463-7 |  1.3 M |   31.634 |  24.33 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 17861-6 |  1.7 M |   39.058 |  22.98 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 39156-5 |  9.7 M |  223.100 |  23.00 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 29463-7 |   13 M |  309.090 |  23.78 |
+| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | # Hits | Time (s) | T / 1M ³ |
+|------------|---------:|------------:|---------:|---------:|---------|-------:|---------:|---------:|
+| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 17861-6 |  171 k |    4.012 |    23.46 |
+| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 39156-5 |  967 k |   23.488 |    24.29 |
+| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 29463-7 |  1.3 M |   31.634 |    24.33 |
+| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 17861-6 |  1.7 M |   39.058 |    22.98 |
+| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 39156-5 |  9.7 M |  223.100 |    23.00 |
+| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 29463-7 |   13 M |  309.090 |    23.78 |
 
-¹ Number of Resources, ² Number of Observations, The amount of system memory was 128 GB in all cases.
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
 
 According to the measurements the time needed by Blaze to deliver resources only depends on the number of hits and equals roughly in **25 seconds per 1 million hits**.
 
@@ -63,21 +63,21 @@ All measurements are done after Blaze is in a steady state with all resources to
 Download is done using the following `blazectl` command:
 
 ```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&_elements=subject&_count=1000" -o "$CODE.ndjson"
+blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&_elements=subject&_count=1000" > /dev/null"
 ```
 
-| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | # Hits | Time (s) | T / 1M |
-|------------|---------:|------------:|---------:|---------:|---------|-------:|---------:|-------:|
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 17861-6 |  171 k |    2.360 |  13.80 |
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 39156-5 |  967 k |   13.150 |  13.60 |
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 29463-7 |  1.3 M |   17.512 |  13.47 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 17861-6 |  1.7 M |   21.562 |  12.68 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 39156-5 |  9.7 M |  131.194 |  13.53 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 29463-7 |   13 M |  182.820 |  14.06 |
+| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | # Hits | Time (s) | T / 1M ³ |
+|------------|---------:|------------:|---------:|---------:|---------|-------:|---------:|---------:|
+| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 17861-6 |  171 k |    2.360 |    13.80 |
+| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 39156-5 |  967 k |   13.150 |    13.60 |
+| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 29463-7 |  1.3 M |   17.512 |    13.47 |
+| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 17861-6 |  1.7 M |   21.562 |    12.68 |
+| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 39156-5 |  9.7 M |  131.194 |    13.53 |
+| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 29463-7 |   13 M |  182.820 |    14.06 |
 
-¹ Number of Resources, ² Number of Observations, The amount of system memory was 128 GB in all cases.
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
 
-According to the measurements the time needed by Blaze to deliver subsetted Observations containing only the subject reference is about **twice as fast** as returning the whole resource.
+According to the measurements, the time needed by Blaze to deliver subsetted Observations containing only the subject reference is about **twice as fast** as returning the whole resource.
 
 ## Used Dataset
 
