@@ -25,14 +25,14 @@
 
     #fhir/decimal 1.1M 40
 
-    #fhir/uri"" 56
-    #fhir/uri"a" 64
+    #fhir/uri"" 96
+    #fhir/uri"a" 120
 
     #fhir/url"" 56
     #fhir/url"a" 64
 
-    #fhir/canonical"" 56
-    #fhir/canonical"a" 64
+    #fhir/canonical"" 96
+    #fhir/canonical"a" 120
 
     #fhir/base64Binary"" 56
     #fhir/base64Binary"YQo=" 64
@@ -51,8 +51,8 @@
 
     #fhir/time"13:53:21" 24
 
-    #fhir/code"" 56
-    #fhir/code"175718" 64
+    #fhir/code"" 96
+    #fhir/code"175718" 120
 
     #fhir/oid"" 56
     #fhir/oid"175718" 64
@@ -91,14 +91,14 @@
     #fhir/HumanName{} 64
 
     #fhir/Address{} 80
-    #fhir/Address{:extension [#fhir/Extension{:url "url-120620" :value #fhir/code"code-120656"}]} 320
+    #fhir/Address{:extension [#fhir/Extension{:url "url-120620" :value #fhir/code"code-120656"}]} 392
     #fhir/Address{:text "text-212402"} 136
     #fhir/Address{:line ["line-212441"]} 200
 
     #fhir/Reference{} 56
 
     #fhir/Meta{} 64
-    #fhir/Meta{:profile [#fhir/canonical"foo"]} 192
+    #fhir/Meta{:profile [#fhir/canonical"foo"]} 248
 
     #fhir/BundleEntrySearch{} 48)
 
@@ -127,7 +127,7 @@
 
   (testing "Meta"
     (testing "two interned instances take the same memory as one"
-      (is (= 192 (mem/total-size #fhir/Meta{:profile [#fhir/canonical"foo"]}
+      (is (= 248 (mem/total-size #fhir/Meta{:profile [#fhir/canonical"foo"]}
                                  #fhir/Meta{:profile [#fhir/canonical"foo"]}))))))
 
 
@@ -153,7 +153,7 @@
     (testing "JSON"
       (are [json size] (= size (mem/total-size (s2/conform :fhir.json/Extension json)))
         {} 48
-        {:url "foo" :valueCode "bar"} 160)
+        {:url "foo" :valueCode "bar"} 216)
 
       (testing "two instances have only the 48 byte instance overhead"
         (is (= (+ (mem/total-size
@@ -182,10 +182,10 @@
     (testing "JSON"
       (are [json size] (= size (mem/total-size (s2/conform :fhir.json/Coding json)))
         {} 56
-        {:system "foo" :code "bar"} 184)
+        {:system "foo" :code "bar"} 296)
 
       (testing "two interned instances take the same memory as one"
-        (is (= 184 (mem/total-size (s2/conform :fhir.json/Coding {:system "foo" :code "bar"})
+        (is (= 296 (mem/total-size (s2/conform :fhir.json/Coding {:system "foo" :code "bar"})
                                    (s2/conform :fhir.json/Coding {:system "foo" :code "bar"}))))))))
 
 
@@ -211,13 +211,13 @@
     (testing "JSON"
       (are [json size] (= size (mem/total-size (s2/conform :fhir.json/HumanName json)))
         {} 64
-        {:use "usual"} 128
+        {:use "usual"} 184
         {:given ["given-212441"]} 184))
 
     (testing "CBOR"
       (are [cbor size] (= size (mem/total-size (s2/conform :fhir.cbor/HumanName cbor)))
         {} 64
-        {:use "usual"} 128
+        {:use "usual"} 184
         {:given ["given-212441"]} 184))))
 
 
@@ -225,9 +225,9 @@
   (testing "conformed instance size"
     (are [json size] (= size (mem/total-size (s2/conform :fhir.json/Address json)))
       {} 80
-      {:extension [{:url "foo1foo1" :valueCode "bar"}]} 304
+      {:extension [{:url "foo1foo1" :valueCode "bar"}]} 360
       {:extension [{:url (String. "foo") :valueCode (String. "bar")}
-                   {:url (String. "foo") :valueCode (String. "bar")}]} 304
+                   {:url (String. "foo") :valueCode (String. "bar")}]} 360
       {:text "text-212402"} 136
       {:line ["line-212441"]} 200)))
 
@@ -237,8 +237,8 @@
     (are [json size] (= size (mem/total-size (s2/conform :fhir.json/Meta json)))
       {} 64
       {:versionId "1"} 128
-      {:profile ["foo"]} 192)
+      {:profile ["foo"]} 248)
 
     (testing "two interned instances take the same memory as one"
-      (is (= 192 (mem/total-size (s2/conform :fhir.json/Meta {:profile ["foo"]})
+      (is (= 248 (mem/total-size (s2/conform :fhir.json/Meta {:profile ["foo"]})
                                  (s2/conform :fhir.json/Meta {:profile ["foo"]})))))))
