@@ -1,4 +1,4 @@
-(ns blaze.interaction.test-util
+(ns blaze.fhir.operation.graphql.test-util
   (:require
     [blaze.async.comp :as ac]
     [blaze.handler.util :as handler-util]))

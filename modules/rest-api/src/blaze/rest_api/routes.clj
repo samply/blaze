@@ -68,7 +68,10 @@
 
 (def ^:private wrap-output
   {:name :output
-   :wrap output/wrap-output})
+   :compile (fn [{:keys [response-type]} _]
+              (if (= :json response-type)
+                   output/wrap-json-output
+                   output/wrap-output))})
 
 
 (def ^:private wrap-error
@@ -169,13 +172,18 @@
 
 (defn- operation-system-handler-route
   [{:keys [node db-sync-timeout]}
-   {:blaze.rest-api.operation/keys [code system-handler]}]
+   {:blaze.rest-api.operation/keys
+    [code response-type post-middleware system-handler]}]
   (when system-handler
     [[(str "/$" code)
-      {:middleware [[wrap-db node db-sync-timeout]]
-       :get system-handler
-       :post {:middleware [wrap-resource]
-              :handler system-handler}}]]))
+      (cond-> {:middleware [[wrap-db node db-sync-timeout]]
+               :get system-handler
+               :post {:middleware [(if post-middleware
+                                     post-middleware
+                                     wrap-resource)]
+                      :handler system-handler}}
+        response-type
+        (assoc :response-type response-type))]]))
 
 
 (defn operation-type-handler-route

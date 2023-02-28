@@ -10,6 +10,9 @@
   blaze/interaction
   {:local/root "modules/interaction"}
 
+  blaze.operation/graphql
+  {:local/root "modules/operation-graphql"}
+
   blaze.operation/measure-evaluate-measure
   {:local/root "modules/operation-measure-evaluate-measure"}
 
@@ -80,7 +83,7 @@
   :outdated
   {:replace-deps
    {com.github.liquidz/antq
-    {:mvn/version "2.2.992"}
+    {:mvn/version "2.2.999"}
 
     org.slf4j/slf4j-nop
     {:mvn/version "2.0.6"}}
@@ -114,6 +117,7 @@
     "-d" "modules/metrics"
     "-d" "modules/module-base"
     "-d" "modules/openid-auth"
+    "-d" "modules/operation-graphql"
     "-d" "modules/operation-measure-evaluate-measure"
     "-d" "modules/page-store"
     "-d" "modules/page-store-cassandra"
@@ -127,6 +131,8 @@
     "-d" "modules/test-util"
     "-d" "modules/thread-pool-executor-collector"
     "--exclude" "com.taoensso/timbre"
+    "--exclude" "org.antlr/antlr4"
     "--exclude" "org.eclipse.jetty/jetty-server"
     "--exclude" "org.clojure/alpha.spec"
+    "--exclude" "com.walmartlabs/lacinia"
     "--exclude" "lambdaisland/kaocha"]}}}

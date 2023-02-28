@@ -69,7 +69,14 @@
         :def-uri "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
         :resource-types ["Measure"]
         :type-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler
-        :instance-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler}]
+        :instance-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler}
+    #:blaze.rest-api.operation
+       {:code "graphql"
+        :def-uri "http://hl7.org/fhir/OperationDefinition/Resource-graphql"
+        :resource-types ["Resource"]
+        :post-middleware #blaze/ref :blaze.fhir.operation.graphql.middleware/query
+        :response-type :json
+        :system-handler #blaze/ref :blaze.fhir.operation.graphql/handler}]
    :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]}
 
   ;;
@@ -155,6 +162,18 @@
 
   :blaze.fhir.operation.evaluate-measure/compile-duration-seconds {}
   :blaze.fhir.operation.evaluate-measure/evaluate-duration-seconds {}
+
+  ;;
+  ;; FHIR Operation GraphQL
+  ;;
+  :blaze.fhir.operation.graphql/handler
+  {:node #blaze/ref :blaze.db/node
+   :executor #blaze/ref :blaze.fhir.operation.graphql/executor}
+
+  :blaze.fhir.operation.graphql/executor
+  {:num-threads #blaze/cfg ["FHIR_OPERATION_GRAPHQL_THREADS" pos-int? 4]}
+
+  :blaze.fhir.operation.graphql.middleware/query {}
 
   ;;
   ;; Database Node

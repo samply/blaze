@@ -17,9 +17,7 @@
     [java-time.api :as time]
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
-    [taoensso.timbre :as log])
-  (:import
-    [java.util.concurrent ExecutorService]))
+    [taoensso.timbre :as log]))
 
 
 (set! *warn-on-reflection* true)
@@ -141,7 +139,7 @@
   (testing "with default num-threads"
     (with-system [{::evaluate-measure/keys [executor]}
                   {::evaluate-measure/executor {}}]
-      (is (instance? ExecutorService executor)))))
+      (is (ex/executor? executor)))))
 
 
 (deftest compile-duration-seconds-collector-init-test
@@ -176,7 +174,7 @@
 
 
 (defmacro with-handler [[handler-binding] & more]
-  (let [[txs body] (etu/extract-txs-body more)]
+  (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
                          handler# ::evaluate-measure/handler} system]
        ~txs

@@ -8,7 +8,6 @@
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.interaction.history.system]
     [blaze.interaction.history.util-spec]
-    [blaze.interaction.test-util :as itu]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
     [blaze.test-util :as tu :refer [given-thrown]]
@@ -93,7 +92,7 @@
 
 
 (defmacro with-handler [[handler-binding] & more]
-  (let [[txs body] (itu/extract-txs-body more)]
+  (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
                          handler# :blaze.interaction.history/system} system]
        ~txs
