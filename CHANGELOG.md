@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.20.0
+
+### New Features
+
+* Implement Special Search Parameter _elements ([#923](https://github.com/samply/blaze/pull/923))
+
+* Implement First Parts of Operation $graphql ([#924](https://github.com/samply/blaze/pull/924))  
+
+### Bugfixes
+
+* Fix Indexing Error during Soundex Calculation ([#928](https://github.com/samply/blaze/pull/928))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/59?closed=1).
+
 ## v0.19.4
 
 ### Bugfixes
