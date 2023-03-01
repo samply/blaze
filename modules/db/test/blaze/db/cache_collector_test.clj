@@ -57,18 +57,21 @@
         [0 :name] := "blaze_db_cache_hits"
         [0 :type] := :counter
         [0 :samples 0 :value] := 0.0
-        [1 :name] := "blaze_db_cache_loads"
+        [1 :name] := "blaze_db_cache_misses"
         [1 :type] := :counter
         [1 :samples 0 :value] := 0.0
-        [2 :name] := "blaze_db_cache_load_failures"
+        [2 :name] := "blaze_db_cache_load_successes"
         [2 :type] := :counter
         [2 :samples 0 :value] := 0.0
-        [3 :name] := "blaze_db_cache_load_seconds"
+        [3 :name] := "blaze_db_cache_load_failures"
         [3 :type] := :counter
         [3 :samples 0 :value] := 0.0
-        [4 :name] := "blaze_db_cache_evictions"
+        [4 :name] := "blaze_db_cache_load_seconds"
+        [4 :type] := :counter
         [4 :samples 0 :value] := 0.0
-        [4 :type] := :counter))
+        [5 :name] := "blaze_db_cache_evictions"
+        [5 :samples 0 :value] := 0.0
+        [5 :type] := :counter))
 
     (testing "one load"
       (.get cache 1 (reify Function (apply [_ key] key)))
@@ -77,8 +80,10 @@
       (given (metrics/collect collector)
         [0 :name] := "blaze_db_cache_hits"
         [0 :samples 0 :value] := 0.0
-        [1 :name] := "blaze_db_cache_loads"
-        [1 :samples 0 :value] := 1.0))
+        [1 :name] := "blaze_db_cache_misses"
+        [1 :samples 0 :value] := 1.0
+        [2 :name] := "blaze_db_cache_load_successes"
+        [2 :samples 0 :value] := 1.0))
 
     (testing "one loads and one hit"
       (.get cache 1 (reify Function (apply [_ key] key)))
@@ -87,5 +92,7 @@
       (given (metrics/collect collector)
         [0 :name] := "blaze_db_cache_hits"
         [0 :samples 0 :value] := 1.0
-        [1 :name] := "blaze_db_cache_loads"
-        [1 :samples 0 :value] := 1.0))))
+        [1 :name] := "blaze_db_cache_misses"
+        [1 :samples 0 :value] := 1.0
+        [2 :name] := "blaze_db_cache_load_successes"
+        [2 :samples 0 :value] := 1.0))))

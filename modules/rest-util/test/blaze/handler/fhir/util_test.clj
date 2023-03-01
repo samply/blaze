@@ -3,8 +3,7 @@
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [reitit.core :as reitit]))
+    [clojure.test :as test :refer [are deftest is testing]]))
 
 
 (st/instrument)
@@ -121,18 +120,8 @@
       ["A" "b"] "A")))
 
 
-(def router
-  (reitit/router
-    [[""
-      {}
-      ["/Patient" {:name :Patient/type}]
-      ["/Patient/{id}" {:name :Patient/instance}]
-      ["/Patient/{id}/_history/{vid}" {:name :Patient/versioned-instance}]]]
-    {:syntax :bracket}))
-
-
 (def context
-  {:blaze/base-url "http://localhost:8080" ::reitit/router router})
+  {:blaze/base-url "http://localhost:8080"})
 
 
 (deftest type-url-test

@@ -3,7 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#history"
   (:require
-    [blaze.async.comp :as ac :refer [do-sync]]
+    [blaze.async.comp :refer [do-sync]]
     [blaze.db.api :as d]
     [blaze.db.spec]
     [blaze.fhir.spec.type :as type]
@@ -12,6 +12,7 @@
     [blaze.interaction.util :as iu]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.spec]
+    [blaze.util :refer [conj-vec]]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [reitit.core :as reitit]
@@ -22,9 +23,9 @@
 (defn- link [context query-params relation resource-handle]
   {:fhir/type :fhir.Bundle/link
    :relation relation
-   :url (type/uri (history-util/nav-url context query-params
-                                          (:t resource-handle)
-                                          (:id resource-handle)))})
+   :url (history-util/nav-url context query-params
+                              (:t resource-handle)
+                              (:id resource-handle))})
 
 
 (defn- build-response
@@ -45,10 +46,10 @@
                (mapv (partial history-util/build-entry context) paged-versions)}
 
               (seq paged-version-handles)
-              (update :link (fnil conj []) (self-link (first paged-version-handles)))
+              (update :link conj-vec (self-link (first paged-version-handles)))
 
               (< page-size (count paged-version-handles))
-              (update :link (fnil conj []) (next-link (peek paged-version-handles)))))))))
+              (update :link conj-vec (next-link (peek paged-version-handles)))))))))
 
 
 (defn- handler [context]

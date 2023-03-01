@@ -32,6 +32,7 @@
     [blaze.fhir.spec.type :as type]
     [blaze.module :refer [reg-collector]]
     [blaze.spec]
+    [blaze.util :refer [conj-vec]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -246,16 +247,15 @@
       (assoc :lastUpdated instant)))
 
 
-(defn- mk-meta [{:keys [t num-changes op] :as handle} tx]
-  (-> (meta handle)
-      (assoc :blaze.db/t t)
-      (assoc :blaze.db/num-changes num-changes)
-      (assoc :blaze.db/op op)
-      (assoc :blaze.db/tx tx)))
+(defn- mk-meta [handle tx]
+  {:blaze.db/num-changes (rh/num-changes handle)
+   :blaze.db/op (rh/op handle)
+   :blaze.db/tx tx})
 
 
-(defn- enhance-resource [tx-cache {:keys [t] :as handle} resource]
-  (let [tx (tx-success/tx tx-cache t)]
+(defn- enhance-resource [tx-cache handle resource]
+  (let [t (rh/t handle)
+        tx (tx-success/tx tx-cache t)]
     (-> (update resource :meta enhance-resource-meta t tx)
         (with-meta (mk-meta handle tx)))))
 
@@ -297,6 +297,22 @@
       (batch-db/->EmptyCompartmentQuery (codec/c-hash code) (codec/tid type))
       (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
                                    clauses))))
+
+
+(def ^:private subsetted
+  #fhir/Coding
+          {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+           :code #fhir/code"SUBSETTED"})
+
+
+(def ^:private add-subsetted-xf
+  (map #(update % :meta update :tag conj-vec subsetted)))
+
+
+(defn- subset-xf [elements]
+  (let [keys (conj (seq elements) :fhir/type :id :meta)]
+    (comp (map #(select-keys % keys))
+          add-subsetted-xf)))
 
 
 (defrecord Node [context tx-log rh-cache tx-cache kv-store resource-store
@@ -379,6 +395,10 @@
           hashes (hashes-of-non-deleted resource-handles)]
       (do-sync [resources (rs/multi-get resource-store hashes)]
         (mapv (partial to-resource tx-cache resources) resource-handles))))
+
+  (-pull-many [node resource-handles elements]
+    (do-sync [resources (p/-pull-many node resource-handles)]
+      (into [] (subset-xf elements) resources)))
 
   Runnable
   (run [node]

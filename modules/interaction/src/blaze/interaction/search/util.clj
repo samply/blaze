@@ -1,6 +1,5 @@
 (ns blaze.interaction.search.util
   (:require
-    [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]))
 
 
@@ -17,6 +16,6 @@
    (entry context resource match))
   ([context {:fhir/keys [type] :keys [id] :as resource} mode]
    {:fhir/type :fhir.Bundle/entry
-    :fullUrl (type/uri (fhir-util/instance-url context (name type) id))
+    :fullUrl (fhir-util/instance-url context (name type) id)
     :resource resource
     :search mode}))

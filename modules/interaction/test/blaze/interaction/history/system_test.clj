@@ -8,7 +8,6 @@
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.interaction.history.system]
     [blaze.interaction.history.util-spec]
-    [blaze.interaction.test-util :as itu]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
     [blaze.test-util :as tu :refer [given-thrown]]
@@ -93,7 +92,7 @@
 
 
 (defmacro with-handler [[handler-binding] & more]
-  (let [[txs body] (itu/extract-txs-body more)]
+  (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
                          handler# :blaze.interaction.history/system} system]
        ~txs
@@ -141,16 +140,16 @@
         (is (= #fhir/unsignedInt 1 (:total body)))
 
         (testing "has a self link"
-          (is (= #fhir/uri"base-url-135844/_history?__t=1&__page-t=1&__page-type=Patient&__page-id=0"
+          (is (= "base-url-135844/_history?__t=1&__page-t=1&__page-type=Patient&__page-id=0"
                  (link-url body "self"))))
 
         (testing "the bundle contains one entry"
           (is (= 1 (count (:entry body)))))
 
         (given (-> body :entry first)
-          :fullUrl := #fhir/uri"base-url-135844/Patient/0"
+          :fullUrl := "base-url-135844/Patient/0"
           [:request :method] := #fhir/code"PUT"
-          [:request :url] := #fhir/uri"/Patient/0"
+          [:request :url] := "/Patient/0"
           [:resource :id] := "0"
           [:resource :fhir/type] := :fhir/Patient
           [:resource :meta :versionId] := #fhir/id"1"
@@ -168,7 +167,7 @@
               @(handler {:query-params {"_count" "1"}})]
 
           (testing "hash next link"
-            (is (= #fhir/uri"base-url-135844/_history?_count=1&__t=1&__page-t=1&__page-type=Patient&__page-id=1"
+            (is (= "base-url-135844/_history?_count=1&__t=1&__page-t=1&__page-type=Patient&__page-id=1"
                    (link-url body "next")))))))
 
     (testing "calling the second page shows the patient with the higher id"
@@ -209,7 +208,7 @@
 
           (is (= "next" (-> body :link second :relation)))
 
-          (is (= #fhir/uri"base-url-135844/_history?_count=1&__t=2&__page-t=1&__page-type=Patient&__page-id=0"
+          (is (= "base-url-135844/_history?_count=1&__t=2&__page-t=1&__page-type=Patient&__page-id=0"
                  (-> body :link second :url))))))
 
     (testing "calling the second page shows the patient from the first transaction"

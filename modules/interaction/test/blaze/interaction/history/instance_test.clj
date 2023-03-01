@@ -9,7 +9,7 @@
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.interaction.history.instance]
     [blaze.interaction.history.util-spec]
-    [blaze.interaction.test-util :as itu :refer [wrap-error]]
+    [blaze.interaction.test-util :refer [wrap-error]]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
     [blaze.test-util :as tu :refer [given-thrown]]
@@ -91,7 +91,7 @@
 
 
 (defmacro with-handler [[handler-binding] & more]
-  (let [[txs body] (itu/extract-txs-body more)]
+  (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
                          handler# :blaze.interaction.history/instance} system]
        ~txs
@@ -138,13 +138,13 @@
 
         (is (= "self" (-> body :link first :relation)))
 
-        (is (= #fhir/uri"base-url-135814/Patient/0/_history?__t=1&__page-t=1"
+        (is (= "base-url-135814/Patient/0/_history?__t=1&__page-t=1"
                (-> body :link first :url)))
 
         (given (-> body :entry first)
-          :fullUrl := #fhir/uri"base-url-135814/Patient/0"
+          :fullUrl := "base-url-135814/Patient/0"
           [:request :method] := #fhir/code"PUT"
-          [:request :url] := #fhir/uri"/Patient/0"
+          [:request :url] := "/Patient/0"
           [:resource :id] := "0"
           [:resource :fhir/type] := :fhir/Patient
           [:resource :meta :versionId] := #fhir/id"1"
@@ -179,14 +179,14 @@
 
         (is (= "self" (-> body :link first :relation)))
 
-        (is (= #fhir/uri"base-url-135814/Patient/0/_history?__t=2&__page-t=2"
+        (is (= "base-url-135814/Patient/0/_history?__t=2&__page-t=2"
                (-> body :link first :url)))
 
         (testing "first entry"
           (given (-> body :entry first)
-            :fullUrl := #fhir/uri"base-url-135814/Patient/0"
+            :fullUrl := "base-url-135814/Patient/0"
             [:request :method] := #fhir/code"DELETE"
-            [:request :url] := #fhir/uri"/Patient/0"
+            [:request :url] := "/Patient/0"
             keys :!> #{:resource}
             [:response :status] := "204"
             [:response :etag] := "W/\"2\""
@@ -194,9 +194,9 @@
 
         (testing "second entry"
           (given (-> body :entry second)
-            :fullUrl := #fhir/uri"base-url-135814/Patient/0"
+            :fullUrl := "base-url-135814/Patient/0"
             [:request :method] := #fhir/code"PUT"
-            [:request :url] := #fhir/uri"/Patient/0"
+            [:request :url] := "/Patient/0"
             [:resource :id] := "0"
             [:resource :fhir/type] := :fhir/Patient
             [:resource :meta :versionId] := #fhir/id"1"
@@ -217,7 +217,7 @@
 
         (is (= "next" (-> body :link second :relation)))
 
-        (is (= #fhir/uri"base-url-135814/Patient/0/_history?_count=1&__t=2&__page-t=1"
+        (is (= "base-url-135814/Patient/0/_history?_count=1&__t=2&__page-t=1"
                (-> body :link second :url))))))
 
   (testing "with two versions, calling the second page"

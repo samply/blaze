@@ -193,7 +193,10 @@
     (p/-pull-content node resource-handle))
 
   (-pull-many [_ resource-handles]
-    (p/-pull-many node resource-handles)))
+    (p/-pull-many node resource-handles))
+
+  (-pull-many [_ resource-handles elements]
+    (p/-pull-many node resource-handles elements)))
 
 
 (defmethod print-method Db [^Db db ^Writer w]

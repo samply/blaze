@@ -215,6 +215,9 @@
   (-pull-many [_ resource-handles]
     (p/-pull-many node resource-handles))
 
+  (-pull-many [_ resource-handles elements]
+    (p/-pull-many node resource-handles elements))
+
   AutoCloseable
   (close [_]
     (let [{:keys [snapshot raoi svri rsvi cri csvri]} context]

@@ -12,7 +12,7 @@
     [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
     [blaze.interaction.create]
-    [blaze.interaction.test-util :as itu :refer [wrap-error]]
+    [blaze.interaction.test-util :refer [wrap-error]]
     [blaze.interaction.util-spec]
     [blaze.test-util :as tu :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
@@ -95,7 +95,7 @@
 
 
 (defmacro with-handler [[handler-binding] & more]
-  (let [[txs body] (itu/extract-txs-body more)]
+  (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{handler# :blaze.interaction/create} system]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults wrap-error)]

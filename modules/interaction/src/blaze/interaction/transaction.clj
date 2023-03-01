@@ -119,6 +119,13 @@
     :fhir/operation-outcome "MSG_RESOURCE_ID_MISSING"))
 
 
+(defn- subsetted-anom [idx]
+  (ba/incorrect
+    "Resources with tag SUBSETTED may be incomplete and so can't be used in updates."
+    :fhir/issue "processing"
+    :fhir.issue/expression (format "Bundle.entry[%d].resource" idx)))
+
+
 (defn- invalid-resource-id-anom [resource idx]
   (ba/incorrect
     (format "Resource id `%s` is invalid." (:id resource))
@@ -172,6 +179,9 @@
 
       (and (#{"POST" "PUT"} method) (not= type (-> resource :fhir/type name)))
       (type-mismatch-anom resource url idx)
+
+      (and (#{"POST" "PUT"} method) (->> resource :meta :tag (some iu/subsetted?)))
+      (subsetted-anom idx)
 
       (and (= "PUT" method) (nil? id))
       (missing-url-id-anom url idx)
@@ -250,7 +260,7 @@
 
 
 (defn- location [context type id vid]
-  (type/uri (fhir-util/versioned-instance-url context type id vid)))
+  (fhir-util/versioned-instance-url context type id vid))
 
 
 (defn- created-entry
@@ -375,7 +385,7 @@
         :status (str status)}
 
        location
-       (assoc :location (type/uri location))
+       (assoc :location location)
 
        etag
        (assoc :etag etag)

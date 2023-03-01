@@ -79,12 +79,11 @@
 
 (defn build-entry [context {:fhir/keys [type] :keys [id] :as resource}]
   (cond->
-    {:fullUrl (type/uri (fhir-util/instance-url context (name type) id))
+    {:fullUrl (fhir-util/instance-url context (name type) id)
      :request
      {:fhir/type :fhir.Bundle.entry/request
       :method (method resource)
-      :url (type/uri (url (assoc context :blaze/base-url "") (name type) id
-                            resource))}
+      :url (url (assoc context :blaze/base-url "") (name type) id resource)}
      :response
      {:fhir/type :fhir.Bundle.entry/response
       :status (status resource)

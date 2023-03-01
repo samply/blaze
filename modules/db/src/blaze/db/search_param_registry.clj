@@ -6,6 +6,7 @@
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.impl.search-param.core :as sc]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.util :refer [conj-vec]]
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
@@ -200,7 +201,7 @@
         (if-let [search-param (clojure.core/get url-index url)]
           (reduce
             (fn [index target]
-              (update index target (fnil conj []) search-param))
+              (update index target conj-vec search-param))
             index
             target)
           index)))

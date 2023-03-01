@@ -244,5 +244,6 @@
 (s/fdef d/pull-many
   :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
                :resource-handles (s/coll-of :blaze.db/resource-handle
-                                            :kind sequential?))
+                                            :kind sequential?)
+               :elements (s/? (s/coll-of keyword?)))
   :ret ac/completable-future?)

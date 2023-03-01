@@ -46,6 +46,23 @@
       (is (= "base-url-110407/Observation?_sort=-foo&__t=1"
              (nav/url "base-url-110407" match nil [[:sort "foo" :desc]] 1 nil)))))
 
+  (testing "_summary"
+    (is (= "base-url-110407/Observation?_summary=true&__t=1"
+           (nav/url "base-url-110407" match {:summary "true"} [] 1 nil))))
+
+  (testing "_elements"
+    (testing "zero element"
+      (is (= "base-url-110407/Observation?__t=1"
+             (nav/url "base-url-110407" match {:elements []} [] 1 nil))))
+
+    (testing "one element"
+      (is (= "base-url-110407/Observation?_elements=a&__t=1"
+             (nav/url "base-url-110407" match {:elements [:a]} [] 1 nil))))
+
+    (testing "two elements"
+      (is (= "base-url-110407/Observation?_elements=a%2Cb&__t=1"
+             (nav/url "base-url-110407" match {:elements [:a :b]} [] 1 nil)))))
+
   (testing "with include-defs"
     (testing "empty"
       (is (= "base-url-110439/Observation?__t=1"
@@ -172,11 +189,11 @@
 (deftest token-url-test
   (testing "stores clauses and puts token into the query params"
     (is (= "base-url-195241/Observation?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&__t=195312"
-           @(nav/token-url page-store "base-url-195241" match {} clauses-1 195312 nil))))
+           @(nav/token-url! page-store "base-url-195241" match {} clauses-1 195312 nil))))
 
   (testing "reuses existing token"
     (is (= "base-url-195241/Observation?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&__t=195312"
-           @(nav/token-url
+           @(nav/token-url!
               (reify p/PageStore
                 (-put [_ _]
                   (assert false)))
@@ -184,4 +201,30 @@
               {:token "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"}
               clauses-1
               195312
+              nil))))
+
+  (testing "_summary"
+    (is (= "base-url-134538/Observation?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_summary=true&__t=1"
+           @(nav/token-url!
+              (reify p/PageStore
+                (-put [_ _]
+                  (assert false)))
+              "base-url-134538" match
+              {:token "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"
+               :summary "true"}
+              []
+              1
+              nil))))
+
+  (testing "_elements"
+    (is (= "base-url-134538/Observation?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_elements=a&__t=1"
+           @(nav/token-url!
+              (reify p/PageStore
+                (-put [_ _]
+                  (assert false)))
+              "base-url-134538" match
+              {:token "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"
+               :elements [:a]}
+              []
+              1
               nil)))))

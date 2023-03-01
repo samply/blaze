@@ -115,5 +115,17 @@
   (.-hash ^ResourceHandle rh))
 
 
+(defn num-changes
+  {:inline (fn [rh] `(.-num_changes ~(with-meta rh {:tag `ResourceHandle})))}
+  [rh]
+  (.-num_changes ^ResourceHandle rh))
+
+
+(defn op
+  {:inline (fn [rh] `(.-op ~(with-meta rh {:tag `ResourceHandle})))}
+  [rh]
+  (.-op ^ResourceHandle rh))
+
+
 (defn reference [rh]
   (str (codec/tid->type (tid rh)) "/" (id rh)))

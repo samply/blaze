@@ -4,6 +4,7 @@
     [blaze.fhir.spec :as fhir-spec]
     [clojure.data.xml :as xml]
     [clojure.java.io :as io]
+    [jsonista.core :as j]
     [muuntaja.parse :as parse]
     [prometheus.alpha :as prom]
     [ring.util.response :as ring]
@@ -100,3 +101,15 @@
   ([handler opts]
    (fn [request respond raise]
      (handler request #(respond (handle-response opts request %)) raise))))
+
+
+(defn- handle-json-response [response]
+  (-> (update response :body j/write-value-as-bytes)
+      (ring/content-type "application/json;charset=utf-8")))
+
+
+(defn wrap-json-output
+  "Middleware to output data (not resources) in JSON"
+  [handler]
+  (fn [request respond raise]
+    (handler request #(respond (handle-json-response %)) raise)))

@@ -489,6 +489,13 @@
   "Returns a CompletableFuture that will complete with a vector of all resources
   of all `resource-handles`.
 
+  Optional, `elements` can be given which is a list of top-level keys to return
+  instead of all keys. Certain mandatory and modifier elements are returned
+  regardless of if they are specified in `elements`. In addition the resources
+  are marked with the tag SUBSETTED in this case.
+
   Returns a failed CompletableFuture if one pull fails."
-  [node-or-db resource-handles]
-  (p/-pull-many node-or-db resource-handles))
+  ([node-or-db resource-handles]
+   (p/-pull-many node-or-db resource-handles))
+  ([node-or-db resource-handles elements]
+   (p/-pull-many node-or-db resource-handles elements)))

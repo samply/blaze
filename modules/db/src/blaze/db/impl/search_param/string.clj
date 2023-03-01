@@ -12,7 +12,6 @@
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
-    [clj-fuzzy.phonetics :as phonetics]
     [clojure.string :as str]
     [taoensso.timbre :as log]))
 
@@ -22,7 +21,7 @@
 
 (defmulti index-entries
   "Returns index entries for `value` from a resource."
-  {:arglists '([url value])}
+  {:arglists '([normalize value])}
   (fn [_ value] (fhir-spec/fhir-type value)))
 
 
@@ -33,38 +32,33 @@
       str/lower-case))
 
 
-(defn- index-entry
-  ([value]
-   (index-entry normalize-string value))
-  ([f value]
-   (when-let [s (type/value value)]
-     [nil (codec/string (f s))])))
+(defn- index-entry [normalize value]
+  (when-let [s (some-> value type/value normalize)]
+    [nil (codec/string s)]))
 
 
 (defmethod index-entries :fhir/string
-  [_ s]
-  (some-> (index-entry s) vector))
+  [normalize s]
+  (some-> (index-entry normalize s) vector))
 
 
 (defmethod index-entries :fhir/markdown
-  [_ s]
-  (some-> (index-entry s) vector))
+  [normalize s]
+  (some-> (index-entry normalize s) vector))
 
 
 (defmethod index-entries :fhir/Address
-  [_ {:keys [line city district state postalCode country]}]
+  [normalize {:keys [line city district state postalCode country]}]
   (coll/eduction
-    (keep index-entry)
+    (keep (partial index-entry normalize))
     (reduce conj line [city district state postalCode country])))
 
 
 (defmethod index-entries :fhir/HumanName
-  [url {:keys [family given]}]
-  (if (str/ends-with? url "phonetic")
-    (some-> (index-entry phonetics/soundex family) vector)
-    (coll/eduction
-      (keep index-entry)
-      (conj given family))))
+  [normalize {:keys [family given]}]
+  (coll/eduction
+    (keep (partial index-entry normalize))
+    (conj given family)))
 
 
 (defmethod index-entries :default
@@ -102,10 +96,10 @@
   (some? (r-sp-v/next-value! rsvi resource-handle c-hash value value)))
 
 
-(defrecord SearchParamString [name url type base code c-hash expression]
+(defrecord SearchParamString [name type base code c-hash expression normalize]
   p/SearchParam
   (-compile-value [_ _ value]
-    (codec/string (normalize-string value)))
+    (codec/string (normalize value)))
 
   (-resource-handles [_ context tid _ value]
     (coll/eduction
@@ -128,12 +122,15 @@
       (coll/eduction (p/-index-value-compiler search-param) values)))
 
   (-index-value-compiler [_]
-    (mapcat (partial index-entries url))))
+    (mapcat (partial index-entries normalize))))
 
 
 (defmethod sc/search-param "string"
   [_ {:keys [name url type base code expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamString name url type base code (codec/c-hash code) expression))
+      (->SearchParamString name type base code (codec/c-hash code) expression
+                           (if (str/ends-with? url "phonetic")
+                             u/soundex
+                             normalize-string)))
     (ba/unsupported (u/missing-expression-msg url))))

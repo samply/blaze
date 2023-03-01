@@ -8,7 +8,7 @@
     [blaze.interaction.search.nav-spec]
     [blaze.interaction.search.params-spec]
     [blaze.interaction.search.util-spec]
-    [blaze.interaction.test-util :as itu :refer [wrap-error]]
+    [blaze.interaction.test-util :refer [wrap-error]]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
     [blaze.page-store-spec]
@@ -101,7 +101,7 @@
 
 
 (defmacro with-handler [[handler-binding] & more]
-  (let [[txs body] (itu/extract-txs-body more)]
+  (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
                          handler# :blaze.interaction/search-system} system]
        ~txs
@@ -132,7 +132,7 @@
             (is (= #fhir/unsignedInt 0 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"base-url-114650?_count=50&__t=0"
+            (is (= "base-url-114650?_count=50&__t=0"
                    (link-url body "self"))))
 
           (testing "the bundle contains no entry"
@@ -161,14 +161,14 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"base-url-114650?_count=50&__t=1&__page-type=Patient&__page-id=0"
+            (is (= "base-url-114650?_count=50&__t=1&__page-type=Patient&__page-id=0"
                    (link-url body "self"))))
 
           (testing "the bundle contains one entry"
             (is (= 1 (count (:entry body)))))
 
           (testing "the entry has the right fullUrl"
-            (is (= #fhir/uri"base-url-114650/Patient/0"
+            (is (= "base-url-114650/Patient/0"
                    (-> body :entry first :fullUrl))))
 
           (testing "the entry has the right resource"
@@ -197,7 +197,7 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"base-url-114650?_summary=count&_count=50&__t=1"
+            (is (= "base-url-114650?_summary=count&_count=50&__t=1"
                    (link-url body "self"))))
 
           (testing "the bundle contains no entries"
@@ -219,7 +219,7 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"base-url-114650?_count=0&__t=1" (link-url body "self"))))
+            (is (= "base-url-114650?_count=0&__t=1" (link-url body "self"))))
 
           (testing "the bundle contains no entries"
             (is (empty? (:entry body))))))))
@@ -237,11 +237,11 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=0"
+            (is (= "base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=0"
                    (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= #fhir/uri"base-url-114650/__page?_count=1&__t=1&__page-type=Patient&__page-id=1"
+            (is (= "base-url-114650/__page?_count=1&__t=1&__page-type=Patient&__page-id=1"
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -257,11 +257,11 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=0"
+            (is (= "base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=0"
                    (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= #fhir/uri"base-url-114650/__page?_count=1&__t=1&__page-type=Patient&__page-id=1"
+            (is (= "base-url-114650/__page?_count=1&__t=1&__page-type=Patient&__page-id=1"
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -277,7 +277,7 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= #fhir/uri"base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=1"
+            (is (= "base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=1"
                    (link-url body "self"))))
 
           (testing "has no next link"

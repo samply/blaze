@@ -105,7 +105,7 @@
 
 
 (defn- unsupported-media-type-msg [media-type]
-  (format "Unsupported Media Type `%s` expect one of `application/fhir+json` or `application/fhir+xml`."
+  (format "Unsupported media type `%s` expect one of `application/fhir+json` or `application/fhir+xml`."
           media-type))
 
 
