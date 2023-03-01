@@ -7,7 +7,9 @@
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.spec :as fhir-spec]
-    [clojure.string :as str]))
+    [clojure.string :as str])
+  (:import
+    [org.apache.commons.codec.language Soundex]))
 
 
 (set! *warn-on-reflection* true)
@@ -110,3 +112,10 @@
      :lower-bound (f (.subtract decimal-value delta))
      :exact-value (f decimal-value)
      :upper-bound (f (.add decimal-value delta))}))
+
+
+(let [soundex (Soundex.)]
+  (defn soundex [s]
+    (try
+      (.soundex soundex s)
+      (catch IllegalArgumentException _))))

@@ -9,13 +9,13 @@
     [blaze.db.impl.search-param-spec]
     [blaze.db.impl.search-param.string :as sps]
     [blaze.db.impl.search-param.string-spec]
+    [blaze.db.impl.search-param.util :as u]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.structure-definition-repo]
     [blaze.test-util :as tu :refer [with-system]]
-    [clj-fuzzy.phonetics :as phonetics]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -62,6 +62,16 @@
                         (phonetic-param search-param-registry) [] hash
                         patient)))))
 
+      (testing "unmappable char in family is not a problem"
+        (let [patient {:fhir/type :fhir/Patient
+                       :id "id-164114"
+                       :name [#fhir/HumanName{:family "Õ"}]}
+              hash (hash/generate patient)]
+
+          (is (empty? (search-param/index-entries
+                        (phonetic-param search-param-registry) [] hash
+                        patient)))))
+
       (let [patient {:fhir/type :fhir/Patient
                      :id "id-122929"
                      :name [#fhir/HumanName{:family "family-102508"}]}
@@ -74,7 +84,7 @@
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
             :code := "phonetic"
             :type := "Patient"
-            :v-hash := (codec/string (phonetics/soundex "family-102508"))
+            :v-hash := (codec/string (u/soundex "family-102508"))
             :id := "id-122929"
             :hash-prefix := (hash/prefix hash)))
 
@@ -84,7 +94,7 @@
             :id := "id-122929"
             :hash-prefix := (hash/prefix hash)
             :code := "phonetic"
-            :v-hash := (codec/string (phonetics/soundex "family-102508"))))))
+            :v-hash := (codec/string (u/soundex "family-102508"))))))
 
     (testing "Patient address"
       (let [patient {:fhir/type :fhir/Patient
