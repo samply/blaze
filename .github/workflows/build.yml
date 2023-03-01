@@ -101,7 +101,7 @@ jobs:
       run: make -C modules/${{ matrix.module }} test
 
   test-coverage:
-    if: ${{ github.event_name != 'schedule' }}
+    if: ${{ github.event_name == 'pull_request' }}
 
     needs: [ test ]
 
