@@ -67,7 +67,7 @@
     {:mvn/version "0.4.6"}
 
     org.openjdk.jol/jol-core
-    {:mvn/version "0.16"}}}
+    {:mvn/version "0.17"}}}
 
   :coverage
   {:extra-deps
