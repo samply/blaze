@@ -37,9 +37,8 @@
   blaze/spec
   {:local/root "../spec"}
 
-  ;; Warning: version 0.4.1 is from 2017 but has no dependencies
-  clj-fuzzy/clj-fuzzy
-  {:mvn/version "0.4.1"}}
+  commons-codec/commons-codec
+  {:mvn/version "1.15"}}
 
  :aliases
  {:test

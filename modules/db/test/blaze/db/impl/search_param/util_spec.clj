@@ -23,3 +23,8 @@
 (s/fdef u/eq-value
   :args (s/cat :f ifn? :decimal-value decimal?)
   :ret map?)
+
+
+(s/fdef u/soundex
+  :args (s/cat :s string?)
+  :ret (s/nilable string?))

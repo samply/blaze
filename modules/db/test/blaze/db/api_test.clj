@@ -1145,6 +1145,21 @@
             ::anom/category := ::anom/not-found
             ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))))
 
+  (testing "Patient phonetic"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :name [#fhir/HumanName{:family "Doe" :given ["John"]}]}]]]
+
+      (testing "family"
+        (given (pull-type-query node "Patient" [["phonetic" "Day"]])
+          count := 1
+          [0 :id] := "0"))
+
+      (testing "given"
+        (given (pull-type-query node "Patient" [["phonetic" "Jane"]])
+          count := 1
+          [0 :id] := "0"))))
+
   (testing "Patient"
     (with-system-data [{:blaze.db/keys [node]} system]
       [[[:put {:fhir/type :fhir/Patient
