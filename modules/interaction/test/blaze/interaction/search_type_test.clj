@@ -38,6 +38,7 @@
 
 
 (def base-url "base-url-113047")
+(def context-path "/context-path-173858")
 
 
 (def router
@@ -54,14 +55,15 @@
      ["/Medication" {:name :Medication/type}]
      ["/Organization" {:name :Organization/type}]
      ["/Encounter" {:name :Encounter/type}]]
-    {:syntax :bracket}))
+    {:syntax :bracket
+     :path context-path}))
 
 
 (def patient-match
   (reitit/map->Match
     {:data
      {:fhir.resource/type "Patient"}
-     :path "/Patient"}))
+     :path (str context-path "/Patient")}))
 
 
 (def patient-search-match
@@ -69,7 +71,7 @@
     {:data
      {:name :Patient/search
       :fhir.resource/type "Patient"}
-     :path "/Patient"}))
+     :path (str context-path "/Patient")}))
 
 
 (def patient-page-match
@@ -77,49 +79,49 @@
     {:data
      {:name :Patient/page
       :fhir.resource/type "Patient"}
-     :path "/Patient"}))
+     :path (str context-path "/Patient")}))
 
 
 (def measure-report-match
   (reitit/map->Match
     {:data
      {:fhir.resource/type "MeasureReport"}
-     :path "/MeasureReport"}))
+     :path (str context-path "/MeasureReport")}))
 
 
 (def list-match
   (reitit/map->Match
     {:data
      {:fhir.resource/type "List"}
-     :path "/List"}))
+     :path (str context-path "/List")}))
 
 
 (def observation-match
   (reitit/map->Match
     {:data
      {:fhir.resource/type "Observation"}
-     :path "/Observation"}))
+     :path (str context-path "/Observation")}))
 
 
 (def condition-match
   (reitit/map->Match
     {:data
      {:fhir.resource/type "Condition"}
-     :path "/Condition"}))
+     :path (str context-path "/Condition")}))
 
 
 (def encounter-match
   (reitit/map->Match
     {:data
      {:fhir.resource/type "Encounter"}
-     :path "/Encounter"}))
+     :path (str context-path "/Encounter")}))
 
 
 (def medication-statement-match
   (reitit/map->Match
     {:data
      {:fhir.resource/type "MedicationStatement"}
-     :path "/MedicationStatement"}))
+     :path (str context-path "/MedicationStatement")}))
 
 
 (defn- link-url [body link-relation]
@@ -246,7 +248,7 @@
                   (is (= 1 (count (:entry body)))))
 
                 (testing "has a self link"
-                  (is (= "base-url-113047/Patient?_count=50&__t=1&__page-id=0"
+                  (is (= (str base-url context-path "/Patient?_count=50&__t=1&__page-id=0")
                          (link-url body "self"))))))
 
             (testing "summary result"
@@ -274,7 +276,7 @@
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
-                  (is (= "base-url-113047/Patient?_summary=count&_count=50&__t=1"
+                  (is (= (str base-url context-path "/Patient?_summary=count&_count=50&__t=1")
                          (link-url body "self"))))))))
 
         (testing "with another search parameter"
@@ -308,7 +310,7 @@
                   (is (= 1 (count (:entry body)))))
 
                 (testing "has a self link"
-                  (is (= "base-url-113047/Patient?active=true&_count=50&__t=1&__page-id=1"
+                  (is (= (str base-url context-path "/Patient?active=true&_count=50&__t=1&__page-id=1")
                          (link-url body "self"))))))
 
             (testing "summary result"
@@ -336,7 +338,7 @@
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
-                  (is (= "base-url-113047/Patient?active=true&_summary=count&_count=50&__t=1"
+                  (is (= (str base-url context-path "/Patient?active=true&_summary=count&_count=50&__t=1")
                          (link-url body "self"))))))))))
 
     (testing "with default handling"
@@ -369,7 +371,7 @@
                   (is (= 1 (count (:entry body)))))
 
                 (testing "has a self link"
-                  (is (= "base-url-113047/Patient?_count=50&__t=1&__page-id=0"
+                  (is (= (str base-url context-path "/Patient?_count=50&__t=1&__page-id=0")
                          (link-url body "self"))))))
 
             (testing "summary result"
@@ -396,7 +398,7 @@
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
-                  (is (= "base-url-113047/Patient?_summary=count&_count=50&__t=1"
+                  (is (= (str base-url context-path "/Patient?_summary=count&_count=50&__t=1")
                          (link-url body "self"))))))))
 
         (testing "with another search parameter"
@@ -429,7 +431,7 @@
                   (is (= 1 (count (:entry body)))))
 
                 (testing "has a self link"
-                  (is (= "base-url-113047/Patient?active=true&_count=50&__t=1&__page-id=1"
+                  (is (= (str base-url context-path "/Patient?active=true&_count=50&__t=1&__page-id=1")
                          (link-url body "self"))))))
 
             (testing "summary result"
@@ -456,7 +458,7 @@
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
-                  (is (= "base-url-113047/Patient?active=true&_summary=count&_count=50&__t=1"
+                  (is (= (str base-url context-path "/Patient?active=true&_summary=count&_count=50&__t=1")
                          (link-url body "self")))))))))))
 
   (testing "on unsupported second sort parameter"
@@ -578,14 +580,14 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-113047/Patient?_count=50&__t=1&__page-id=0"
+            (is (= (str base-url context-path "/Patient?_count=50&__t=1&__page-id=0")
                    (link-url body "self"))))
 
           (testing "the bundle contains one entry"
             (is (= 1 (count (:entry body)))))
 
           (testing "the entry has the right fullUrl"
-            (is (= "base-url-113047/Patient/0"
+            (is (= (str base-url context-path "/Patient/0")
                    (-> body :entry first :fullUrl))))
 
           (testing "the entry has the right resource"
@@ -618,7 +620,7 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-113047/Patient?_summary=count&_count=50&__t=1"
+            (is (= (str base-url context-path "/Patient?_summary=count&_count=50&__t=1")
                    (link-url body "self"))))
 
           (testing "the bundle contains no entries"
@@ -642,7 +644,7 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-113047/Patient?_count=0&__t=1"
+            (is (= (str base-url context-path "/Patient?_count=0&__t=1")
                    (link-url body "self"))))
 
           (testing "the bundle contains no entries"
@@ -663,11 +665,11 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-113047/Patient?_count=1&__t=1&__page-id=0"
+            (is (= (str base-url context-path "/Patient?_count=1&__t=1&__page-id=0")
                    (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= "base-url-113047/Patient/__page?_count=1&__t=1&__page-id=1"
+            (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1&__page-id=1")
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -683,11 +685,11 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-113047/Patient?_count=1&__t=1&__page-id=0"
+            (is (= (str base-url context-path "/Patient?_count=1&__t=1&__page-id=0")
                    (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= "base-url-113047/Patient/__page?_count=1&__t=1&__page-id=1"
+            (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1&__page-id=1")
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -703,7 +705,7 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-113047/Patient?_count=1&__t=1&__page-id=1"
+            (is (= (str base-url context-path "/Patient?_count=1&__t=1&__page-id=1")
                    (link-url body "self"))))
 
           (testing "has no next link"
@@ -750,11 +752,11 @@
               (is (nil? (:total body))))
 
             (testing "has a self link"
-              (is (= "base-url-113047/Patient?active=true&_count=1&__t=1&__page-id=1"
+              (is (= (str base-url context-path "/Patient?active=true&_count=1&__t=1&__page-id=1")
                      (link-url body "self"))))
 
             (testing "has a next link with search params"
-              (is (= "base-url-113047/Patient/__page?active=true&_count=1&__t=1&__page-id=2"
+              (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1&__page-id=2")
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
@@ -772,11 +774,11 @@
               (is (nil? (:total body))))
 
             (testing "has a self link"
-              (is (= "base-url-113047/Patient?active=true&_count=1&__t=1&__page-id=1"
+              (is (= (str base-url context-path "/Patient?active=true&_count=1&__t=1&__page-id=1")
                      (link-url body "self"))))
 
             (testing "has a next link with token"
-              (is (= "base-url-113047/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1&__page-id=2"
+              (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1&__page-id=2")
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
@@ -793,11 +795,11 @@
             (is (nil? (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-113047/Patient?active=true&_count=1&__t=1&__page-id=1"
+            (is (= (str base-url context-path "/Patient?active=true&_count=1&__t=1&__page-id=1")
                    (link-url body "self"))))
 
           (testing "has a next link with search params"
-            (is (= "base-url-113047/Patient/__page?active=true&_count=1&__t=1&__page-id=2"
+            (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1&__page-id=2")
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -814,7 +816,7 @@
             (is (nil? (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-113047/Patient?active=true&_count=1&__t=1&__page-id=2"
+            (is (= (str base-url context-path "/Patient?active=true&_count=1&__t=1&__page-id=2")
                    (link-url body "self"))))
 
           (testing "has no next link"
@@ -838,7 +840,7 @@
                     :params {"active" "true" "_count" "1"}})]
 
             (testing "has a next link with search params"
-              (is (= "base-url-113047/Patient/__page?active=true&_count=1&__t=1&__page-id=2"
+              (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1&__page-id=2")
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
@@ -851,7 +853,7 @@
                     :params {"active" "true" "_count" "1" "__t" "1" "__page-id" "2"}})]
 
             (testing "has a next link with search params"
-              (is (= "base-url-113047/Patient/__page?active=true&_count=1&__t=1&__page-id=3"
+              (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1&__page-id=3")
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
@@ -865,7 +867,7 @@
                     :params {"active" "true" "_count" "1"}})]
 
             (testing "has a next link with token"
-              (is (= "base-url-113047/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1&__page-id=2"
+              (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1&__page-id=2")
                      (link-url body "next"))))))
 
         (testing "following the next link"
@@ -875,7 +877,7 @@
                     :params {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"}})]
 
             (testing "has a next link with token"
-              (is (= "base-url-113047/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1&__page-id=3"
+              (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1&__page-id=3")
                      (link-url body "next")))))))))
 
 
@@ -904,7 +906,7 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "the entry has the right fullUrl"
-          (is (= "base-url-113047/Patient/0"
+          (is (= (str base-url context-path "/Patient/0")
                  (-> body :entry first :fullUrl))))
 
         (testing "the entry has the right resource"
@@ -938,11 +940,11 @@
             (is (= 2 (count (:entry body)))))
 
           (testing "the first entry has the right fullUrl"
-            (is (= "base-url-113047/Patient/0"
+            (is (= (str base-url context-path "/Patient/0")
                    (-> body :entry first :fullUrl))))
 
           (testing "the second entry has the right fullUrl"
-            (is (= "base-url-113047/Patient/2"
+            (is (= (str base-url context-path "/Patient/2")
                    (-> body :entry second :fullUrl))))
 
           (testing "the first entry has the right resource"
@@ -1049,7 +1051,7 @@
               [2 :resource :id] := "2"))
 
           (testing "has a self link"
-            (is (= "base-url-113047/Patient?_sort=_lastUpdated&_count=50&__t=3&__page-id=0"
+            (is (= (str base-url context-path "/Patient?_sort=_lastUpdated&_count=50&__t=3&__page-id=0")
                    (link-url body "self"))))))
 
       (testing "descending"
@@ -1079,7 +1081,7 @@
               [2 :resource :id] := "0"))
 
           (testing "has a self link"
-            (is (= "base-url-113047/Patient?_sort=-_lastUpdated&_count=50&__t=3&__page-id=2"
+            (is (= (str base-url context-path "/Patient?_sort=-_lastUpdated&_count=50&__t=3&__page-id=2")
                    (link-url body "self"))))))))
 
   (testing "_profile search"
@@ -1111,7 +1113,7 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "the entry has the right fullUrl"
-          (is (= "base-url-113047/Patient/1"
+          (is (= (str base-url context-path "/Patient/1")
                  (-> body :entry first :fullUrl))))
 
         (testing "the entry has the right resource"
@@ -1151,7 +1153,7 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "the entry has the right fullUrl"
-          (is (= "base-url-113047/Patient/0"
+          (is (= (str base-url context-path "/Patient/0")
                  (-> body :entry first :fullUrl))))
 
         (testing "the entry has the right resource"
@@ -1201,7 +1203,7 @@
             (is (= 2 (count (:entry body)))))
 
           (testing "the entry has the right fullUrl"
-            (is (= "base-url-113047/Observation/1"
+            (is (= (str base-url context-path "/Observation/1")
                    (-> body :entry first :fullUrl))))
 
           (testing "the entry has the right resources"
@@ -1282,7 +1284,7 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "the entry has the right fullUrl"
-          (is (= "base-url-113047/Patient/0"
+          (is (= (str base-url context-path "/Patient/0")
                  (-> body :entry first :fullUrl))))
 
         (testing "the entry has the right resource"
@@ -1317,7 +1319,7 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "the entry has the right fullUrl"
-          (is (= "base-url-113047/Patient/0"
+          (is (= (str base-url context-path "/Patient/0")
                  (-> body :entry first :fullUrl))))
 
         (testing "the entry has the right resource"
@@ -1372,7 +1374,7 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "the entry has the right fullUrl"
-          (is (= "base-url-113047/Patient/0"
+          (is (= (str base-url context-path "/Patient/0")
                  (-> body :entry first :fullUrl))))
 
         (testing "the entry has the right resource"
@@ -1400,7 +1402,7 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "the entry has the right fullUrl"
-          (is (= "base-url-113047/Library/0"
+          (is (= (str base-url context-path "/Library/0")
                  (-> body :entry first :fullUrl))))
 
         (testing "the entry has the right resource"
@@ -1435,7 +1437,7 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "the entry has the right fullUrl"
-          (is (= "base-url-113047/MeasureReport/0"
+          (is (= (str base-url context-path "/MeasureReport/0")
                  (-> body :entry first :fullUrl))))
 
         (testing "the entry has the right resource"
@@ -1483,7 +1485,7 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "the entry has the right fullUrl"
-          (is (= "base-url-113047/List/id-143814"
+          (is (= (str base-url context-path "/List/id-143814")
                  (-> body :entry first :fullUrl))))
 
         (testing "the entry has the right resource"
@@ -1566,7 +1568,7 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "has a next link with search params"
-          (is (= "base-url-113047/Observation/__page?combo-code-value-quantity=http%3A%2F%2Floinc.org%7C8480-6%24ge140%7Cmm%5BHg%5D&combo-code-value-quantity=http%3A%2F%2Floinc.org%7C8462-4%24ge90%7Cmm%5BHg%5D&_count=1&__t=2&__page-id=id-123130"
+          (is (= (str base-url context-path "/Observation/__page?combo-code-value-quantity=http%3A%2F%2Floinc.org%7C8480-6%24ge140%7Cmm%5BHg%5D&combo-code-value-quantity=http%3A%2F%2Floinc.org%7C8462-4%24ge90%7Cmm%5BHg%5D&_count=1&__t=2&__page-id=id-123130")
                  (link-url body "next")))))))
 
   (testing "Duplicate OR Search Parameters have no Effect (#293)"
@@ -1599,7 +1601,7 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "the entry has the right fullUrl"
-          (is (= "base-url-113047/Condition/0"
+          (is (= (str base-url context-path "/Condition/0")
                  (-> body :entry first :fullUrl))))
 
         (testing "the entry has the right resource"
@@ -1645,7 +1647,7 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "the entry has the right fullUrl"
-          (is (= "base-url-113047/Condition/1"
+          (is (= (str base-url context-path "/Condition/1")
                  (-> body :entry first :fullUrl)))))))
 
   (testing "forward chaining"
@@ -1702,7 +1704,7 @@
             (is (= 1 (count (:entry body)))))
 
           (testing "the entry has the right fullUrl"
-            (is (= "base-url-113047/Encounter/0"
+            (is (= (str base-url context-path "/Encounter/0")
                    (-> body :entry first :fullUrl))))))
 
       (testing "ambiguous type"
@@ -1744,7 +1746,7 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-113047/Observation?_include=Observation%3Asubject&_count=50&__t=1&__page-id=0"
+            (is (= (str base-url context-path "/Observation?_include=Observation%3Asubject&_count=50&__t=1&__page-id=0")
                    (link-url body "self"))))
 
           (testing "the bundle contains two entries"
@@ -1752,13 +1754,13 @@
 
           (testing "the first entry is the matched Observation"
             (given (-> body :entry first)
-              :fullUrl := "base-url-113047/Observation/0"
+              :fullUrl := (str base-url context-path "/Observation/0")
               [:resource :fhir/type] := :fhir/Observation
               [:search :mode] := #fhir/code"match"))
 
           (testing "the second entry is the included Patient"
             (given (-> body :entry second)
-              :fullUrl := "base-url-113047/Patient/0"
+              :fullUrl := (str base-url context-path "/Patient/0")
               [:resource :fhir/type] := :fhir/Patient
               [:search :mode] := #fhir/code"include"))))
 
@@ -1789,7 +1791,7 @@
 
             (testing "the first entry is the matched Observation"
               (given (-> body :entry first)
-                :fullUrl := "base-url-113047/Observation/0"
+                :fullUrl := (str base-url context-path "/Observation/0")
                 [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code"match")))))
 
@@ -1822,19 +1824,19 @@
 
             (testing "the first entry is the first matched Observation"
               (given (-> body :entry first)
-                :fullUrl := "base-url-113047/Observation/1"
+                :fullUrl := (str base-url context-path "/Observation/1")
                 [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code"match"))
 
             (testing "the second entry is the second matched Observation"
               (given (-> body :entry second)
-                :fullUrl := "base-url-113047/Observation/2"
+                :fullUrl := (str base-url context-path "/Observation/2")
                 [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code"match"))
 
             (testing "the third entry is the included Patient"
               (given (-> body :entry (nth 2))
-                :fullUrl := "base-url-113047/Patient/0"
+                :fullUrl := (str base-url context-path "/Patient/0")
                 [:resource :fhir/type] := :fhir/Patient
                 [:search :mode] := #fhir/code"include")))))
 
@@ -1869,19 +1871,19 @@
 
             (testing "the first entry is the matched Observation"
               (given (-> body :entry first)
-                :fullUrl := "base-url-113047/Observation/2"
+                :fullUrl := (str base-url context-path "/Observation/2")
                 [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code"match"))
 
             (testing "the second entry is the included Encounter"
               (given (-> body :entry (nth 2))
-                :fullUrl := "base-url-113047/Encounter/1"
+                :fullUrl := (str base-url context-path "/Encounter/1")
                 [:resource :fhir/type] := :fhir/Encounter
                 [:search :mode] := #fhir/code"include"))
 
             (testing "the third entry is the included Patient"
               (given (-> body :entry second)
-                :fullUrl := "base-url-113047/Patient/0"
+                :fullUrl := (str base-url context-path "/Patient/0")
                 [:resource :fhir/type] := :fhir/Patient
                 [:search :mode] := #fhir/code"include")))))
 
@@ -1915,7 +1917,7 @@
               (is (= #fhir/unsignedInt 2 (:total body))))
 
             (testing "has a next link"
-              (is (= "base-url-113047/Observation/__page?_include=Observation%3Asubject&_count=1&__t=1&__page-id=3"
+              (is (= (str base-url context-path "/Observation/__page?_include=Observation%3Asubject&_count=1&__t=1&__page-id=3")
                      (link-url body "next"))))
 
             (testing "the bundle contains two entries"
@@ -1923,13 +1925,13 @@
 
             (testing "the first entry is the matched Observation"
               (given (-> body :entry first)
-                :fullUrl := "base-url-113047/Observation/1"
+                :fullUrl := (str base-url context-path "/Observation/1")
                 [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code"match"))
 
             (testing "the second entry is the included Patient"
               (given (-> body :entry second)
-                :fullUrl := "base-url-113047/Patient/0"
+                :fullUrl := (str base-url context-path "/Patient/0")
                 [:resource :fhir/type] := :fhir/Patient
                 [:search :mode] := #fhir/code"include"))
 
@@ -1952,7 +1954,7 @@
                   (is (= #fhir/unsignedInt 2 (:total body))))
 
                 (testing "has a self link"
-                  (is (= "base-url-113047/Observation?_include=Observation%3Asubject&_count=2&__t=1&__page-id=3"
+                  (is (= (str base-url context-path "/Observation?_include=Observation%3Asubject&_count=2&__t=1&__page-id=3")
                          (link-url body "self"))))
 
                 (testing "the bundle contains two entries"
@@ -1960,13 +1962,13 @@
 
                 (testing "the first entry is the matched Observation"
                   (given (-> body :entry first)
-                    :fullUrl := "base-url-113047/Observation/3"
+                    :fullUrl := (str base-url context-path "/Observation/3")
                     [:resource :fhir/type] := :fhir/Observation
                     [:search :mode] := #fhir/code"match"))
 
                 (testing "the second entry is the included Patient"
                   (given (-> body :entry second)
-                    :fullUrl := "base-url-113047/Patient/2"
+                    :fullUrl := (str base-url context-path "/Patient/2")
                     [:resource :fhir/type] := :fhir/Patient
                     [:search :mode] := #fhir/code"include"))))))))
 
@@ -2005,19 +2007,19 @@
 
           (testing "the first entry is the matched MedicationStatement"
             (given (-> body :entry first)
-              :fullUrl := "base-url-113047/MedicationStatement/0"
+              :fullUrl := (str base-url context-path "/MedicationStatement/0")
               [:resource :fhir/type] := :fhir/MedicationStatement
               [:search :mode] := #fhir/code"match"))
 
           (testing "the second entry is the included Organization"
             (given (-> body :entry second)
-              :fullUrl := "base-url-113047/Organization/0"
+              :fullUrl := (str base-url context-path "/Organization/0")
               [:resource :fhir/type] := :fhir/Organization
               [:search :mode] := #fhir/code"include"))
 
           (testing "the third entry is the included Medication"
             (given (-> body :entry (nth 2))
-              :fullUrl := "base-url-113047/Medication/0"
+              :fullUrl := (str base-url context-path "/Medication/0")
               [:resource :fhir/type] := :fhir/Medication
               [:search :mode] := #fhir/code"include")))))
 
@@ -2057,13 +2059,13 @@
 
           (testing "the first entry is the matched MedicationStatement"
             (given (-> body :entry first)
-              :fullUrl := "base-url-113047/MedicationStatement/0"
+              :fullUrl := (str base-url context-path "/MedicationStatement/0")
               [:resource :fhir/type] := :fhir/MedicationStatement
               [:search :mode] := #fhir/code"match"))
 
           (testing "the second entry is the included Medication"
             (given (-> body :entry second)
-              :fullUrl := "base-url-113047/Medication/0"
+              :fullUrl := (str base-url context-path "/Medication/0")
               [:resource :fhir/type] := :fhir/Medication
               [:search :mode] := #fhir/code"include")))))
 
@@ -2092,7 +2094,7 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-113047/Patient?_revinclude=Observation%3Asubject&_count=50&__t=1&__page-id=0"
+            (is (= (str base-url context-path "/Patient?_revinclude=Observation%3Asubject&_count=50&__t=1&__page-id=0")
                    (link-url body "self"))))
 
           (testing "the bundle contains two entries"
@@ -2100,13 +2102,13 @@
 
           (testing "the first entry is the matched Patient"
             (given (-> body :entry first)
-              :fullUrl := "base-url-113047/Patient/0"
+              :fullUrl := (str base-url context-path "/Patient/0")
               [:resource :fhir/type] := :fhir/Patient
               [:search :mode] := #fhir/code"match"))
 
           (testing "the second entry is the included Observation"
             (given (-> body :entry second)
-              :fullUrl := "base-url-113047/Observation/1"
+              :fullUrl := (str base-url context-path "/Observation/1")
               [:resource :fhir/type] := :fhir/Observation
               [:search :mode] := #fhir/code"include"))))
 
@@ -2140,7 +2142,7 @@
               (is (= #fhir/unsignedInt 1 (:total body))))
 
             (testing "has a self link"
-              (is (= "base-url-113047/Patient?_revinclude=Observation%3Asubject&_revinclude=Condition%3Asubject&_count=50&__t=1&__page-id=0"
+              (is (= (str base-url context-path "/Patient?_revinclude=Observation%3Asubject&_revinclude=Condition%3Asubject&_count=50&__t=1&__page-id=0")
                      (link-url body "self"))))
 
             (testing "the bundle contains two entries"
@@ -2148,19 +2150,19 @@
 
             (testing "the first entry is the matched Patient"
               (given (-> body :entry first)
-                :fullUrl := "base-url-113047/Patient/0"
+                :fullUrl := (str base-url context-path "/Patient/0")
                 [:resource :fhir/type] := :fhir/Patient
                 [:search :mode] := #fhir/code"match"))
 
             (testing "the second entry is the included Condition"
               (given (-> body :entry second)
-                :fullUrl := "base-url-113047/Condition/2"
+                :fullUrl := (str base-url context-path "/Condition/2")
                 [:resource :fhir/type] := :fhir/Condition
                 [:search :mode] := #fhir/code"include"))
 
             (testing "the third entry is the included Observation"
               (given (-> body :entry (nth 2))
-                :fullUrl := "base-url-113047/Observation/1"
+                :fullUrl := (str base-url context-path "/Observation/1")
                 [:resource :fhir/type] := :fhir/Observation
                 [:search :mode] := #fhir/code"include"))))))
 
@@ -2214,7 +2216,7 @@
           (is (= 1 (count (:entry body)))))
 
         (testing "the entry has the right fullUrl"
-          (is (= "base-url-113047/Observation/0" (:fullUrl entry))))
+          (is (= (str base-url context-path "/Observation/0") (:fullUrl entry))))
 
         (testing "the resource is subsetted"
           (given (-> resource :meta :tag first)

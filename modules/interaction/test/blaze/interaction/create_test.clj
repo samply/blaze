@@ -34,6 +34,7 @@
 
 
 (def base-url "base-url-134418")
+(def context-path "/context-path-141016")
 
 
 (def router
@@ -41,7 +42,8 @@
     [["/Patient" {:name :Patient/type}]
      ["/Observation" {:name :Observation/type}]
      ["/Bundle" {:name :Bundle/type}]]
-    {:syntax :bracket}))
+    {:syntax :bracket
+     :path context-path}))
 
 
 (deftest init-test
@@ -174,7 +176,7 @@
           (is (= 201 status))
 
           (testing "Location header"
-            (is (= (str base-url "/Patient/AAAAAAAAAAAAAAAA/_history/1")
+            (is (= (str base-url context-path "/Patient/AAAAAAAAAAAAAAAA/_history/1")
                    (get headers "Location"))))
 
           (testing "Transaction time in Last-Modified header"
@@ -201,7 +203,7 @@
           (is (= 201 status))
 
           (testing "Location header"
-            (is (= (str base-url "/Patient/AAAAAAAAAAAAAAAA/_history/1")
+            (is (= (str base-url context-path "/Patient/AAAAAAAAAAAAAAAA/_history/1")
                    (get headers "Location"))))
 
           (testing "Transaction time in Last-Modified header"
@@ -224,7 +226,7 @@
           (is (= 201 status))
 
           (testing "Location header"
-            (is (= (str base-url "/Patient/AAAAAAAAAAAAAAAA/_history/1")
+            (is (= (str base-url context-path "/Patient/AAAAAAAAAAAAAAAA/_history/1")
                    (get headers "Location"))))
 
           (testing "Transaction time in Last-Modified header"
@@ -251,7 +253,7 @@
           (is (= 201 status))
 
           (testing "Location header"
-            (is (= (str base-url "/Patient/AAAAAAAAAAAAAAAA/_history/1")
+            (is (= (str base-url context-path "/Patient/AAAAAAAAAAAAAAAA/_history/1")
                    (get headers "Location"))))
 
           (testing "Transaction time in Last-Modified header"
@@ -365,7 +367,7 @@
         (is (= 201 status))
 
         (testing "Location header"
-          (is (= (str base-url "/Observation/AAAAAAAAAAAAAAAA/_history/1")
+          (is (= (str base-url context-path "/Observation/AAAAAAAAAAAAAAAA/_history/1")
                  (get headers "Location"))))
 
         (testing "Transaction time in Last-Modified header"
@@ -402,7 +404,7 @@
         (is (= 201 status))
 
         (testing "Location header"
-          (is (= (str base-url "/Bundle/AAAAAAAAAAAAAAAA/_history/1")
+          (is (= (str base-url context-path "/Bundle/AAAAAAAAAAAAAAAA/_history/1")
                  (get headers "Location"))))
 
         (testing "Transaction time in Last-Modified header"

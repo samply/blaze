@@ -7,6 +7,7 @@
     [java.util Random]))
 
 
+;; The base URL of Blaze without :blaze/context-path
 (s/def :blaze/base-url
   (s/and string? (complement #(str/ends-with? % "/"))))
 
@@ -15,6 +16,7 @@
   string?)
 
 
+;; The context path of Blaze that is appended to the :blaze/base-url
 (s/def :blaze/context-path
   (s/and
     string?

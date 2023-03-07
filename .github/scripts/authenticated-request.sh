@@ -9,7 +9,7 @@ fi
 
 BASE="http://localhost:8080/fhir"
 
-if [ "200" = "$(curl -s --oauth2-bearer "$ACCESS_TOKEN" -o /dev/null -w ''%{http_code}'' "$BASE")" ]; then
+if [ "200" = "$(curl -s --oauth2-bearer "$ACCESS_TOKEN" -o /dev/null -w '%{response_code}' "$BASE")" ]; then
   echo "OK: successful authenticated system search request"
 else
   echo "Fail: failed authenticated system search request"

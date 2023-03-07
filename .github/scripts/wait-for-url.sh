@@ -9,6 +9,6 @@ eclipsed() {
 }
 
 # wait at maximum 120 seconds
-while [[ ($(eclipsed) -lt 120) && ("$(curl -s -o /dev/null -w ''%{http_code}'' "$URL")" != "200") ]]; do
+while [[ ($(eclipsed) -lt 120) && ("$(curl -s -o /dev/null -w '%{response_code}' "$URL")" != "200") ]]; do
   sleep 2
 done

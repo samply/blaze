@@ -62,10 +62,10 @@
     :delete #fhir/code"DELETE"}))
 
 
-(defn- url [context type id resource]
+(defn- url [{:fhir/keys [type] :keys [id] :as resource}]
   (if (-> resource meta :blaze.db/op #{:create})
-    (fhir-util/type-url context type)
-    (fhir-util/instance-url context type id)))
+    (name type)
+    (str (name type) "/" id)))
 
 
 (defn- status [resource]
@@ -83,7 +83,7 @@
      :request
      {:fhir/type :fhir.Bundle.entry/request
       :method (method resource)
-      :url (url (assoc context :blaze/base-url "") (name type) id resource)}
+      :url (url resource)}
      :response
      {:fhir/type :fhir.Bundle.entry/response
       :status (status resource)

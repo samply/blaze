@@ -240,7 +240,7 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@v3
 
-    - name: Run Trivy vulnerability scanner
+    - name: Run Trivy Vulnerability Scanner
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: blaze:latest
@@ -249,7 +249,7 @@ jobs:
         severity: 'CRITICAL,HIGH'
         timeout: '15m0s'
 
-    - name: Upload Trivy scan results to GitHub Security tab
+    - name: Upload Trivy Scan Results to GitHub Security Tab
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: trivy-results.sarif
@@ -537,6 +537,9 @@ jobs:
 
     - name: GraphQL Observation
       run: .github/scripts/graphql.sh Observation
+
+    - name: Create Patient
+      run: .github/scripts/create-patient.sh
 
   not-enforcing-referential-integrity-test:
     needs: build
@@ -1250,6 +1253,9 @@ jobs:
 
     - name: GraphQL Observation
       run: .github/scripts/graphql.sh Observation
+
+    - name: Create Patient
+      run: .github/scripts/create-patient.sh
 
     - name: Docker Stats
       run: docker stats --no-stream
