@@ -11,7 +11,7 @@
   {:local/root "../module-base"}
 
   com.github.ben-manes.caffeine/caffeine
-  {:mvn/version "3.1.4"}
+  {:mvn/version "3.1.5"}
 
   com.google.guava/guava
   {:mvn/version "31.1-jre"}}
