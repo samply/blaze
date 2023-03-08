@@ -86,7 +86,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1237'
+        cli: '1.11.1.1252'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -101,7 +101,7 @@ jobs:
       run: make -C modules/${{ matrix.module }} test
 
   test-coverage:
-    if: ${{ github.event_name != 'schedule' }}
+    if: ${{ github.event_name == 'pull_request' }}
 
     needs: [ test ]
 
@@ -117,7 +117,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1237'
+        cli: '1.11.1.1252'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -159,7 +159,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1237'
+        cli: '1.11.1.1252'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -187,7 +187,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1237'
+        cli: '1.11.1.1252'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -240,7 +240,7 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@v3
 
-    - name: Run Trivy vulnerability scanner
+    - name: Run Trivy Vulnerability Scanner
       uses: aquasecurity/trivy-action@master
       with:
         image-ref: blaze:latest
@@ -249,7 +249,7 @@ jobs:
         severity: 'CRITICAL,HIGH'
         timeout: '15m0s'
 
-    - name: Upload Trivy scan results to GitHub Security tab
+    - name: Upload Trivy Scan Results to GitHub Security Tab
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: trivy-results.sarif
@@ -538,6 +538,9 @@ jobs:
     - name: GraphQL Observation
       run: .github/scripts/graphql.sh Observation
 
+    - name: Create Patient
+      run: .github/scripts/create-patient.sh
+
   not-enforcing-referential-integrity-test:
     needs: build
     runs-on: ubuntu-22.04
@@ -794,7 +797,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1237'
+        cli: '1.11.1.1252'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -1251,6 +1254,9 @@ jobs:
     - name: GraphQL Observation
       run: .github/scripts/graphql.sh Observation
 
+    - name: Create Patient
+      run: .github/scripts/create-patient.sh
+
     - name: Docker Stats
       run: docker stats --no-stream
 
@@ -1268,7 +1274,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1237'
+        cli: '1.11.1.1252'
 
     - name: Check out Git repository
       uses: actions/checkout@v3

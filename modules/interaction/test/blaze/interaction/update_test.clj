@@ -255,7 +255,7 @@
             (is (= 201 status)))
 
           (testing "Location header"
-            (is (= "base-url-134013/Patient/0/_history/1" (get headers "Location"))))
+            (is (= (str base-url "/Patient/0/_history/1") (get headers "Location"))))
 
           (testing "Transaction time in Last-Modified header"
             (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
@@ -264,7 +264,7 @@
             (is (= "W/\"1\"" (get headers "ETag"))))
 
           (testing "Location header"
-            (is (= "base-url-134013/Patient/0/_history/1" (get headers "Location"))))
+            (is (= (str base-url "/Patient/0/_history/1") (get headers "Location"))))
 
           (testing "Contains the resource as body"
             (given body
@@ -286,7 +286,7 @@
             (is (= 201 status)))
 
           (testing "Location header"
-            (is (= "base-url-134013/Patient/0/_history/1" (get headers "Location"))))
+            (is (= (str base-url "/Patient/0/_history/1") (get headers "Location"))))
 
           (testing "Transaction time in Last-Modified header"
             (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
@@ -295,7 +295,7 @@
             (is (= "W/\"1\"" (get headers "ETag"))))
 
           (testing "Location header"
-            (is (= "base-url-134013/Patient/0/_history/1" (get headers "Location"))))
+            (is (= (str base-url "/Patient/0/_history/1") (get headers "Location"))))
 
           (testing "Contains no body"
             (is (nil? body))))))
@@ -313,7 +313,7 @@
             (is (= 201 status)))
 
           (testing "Location header"
-            (is (= "base-url-134013/Patient/0/_history/1" (get headers "Location"))))
+            (is (= (str base-url "/Patient/0/_history/1") (get headers "Location"))))
 
           (testing "Transaction time in Last-Modified header"
             (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
@@ -322,7 +322,7 @@
             (is (= "W/\"1\"" (get headers "ETag"))))
 
           (testing "Location header"
-            (is (= "base-url-134013/Patient/0/_history/1" (get headers "Location"))))
+            (is (= (str base-url "/Patient/0/_history/1") (get headers "Location"))))
 
           (testing "Contains body"
             (given body
@@ -345,7 +345,7 @@
             (is (= 201 status)))
 
           (testing "Location header"
-            (is (= "base-url-134013/Patient/0/_history/3" (get headers "Location"))))
+            (is (= (str base-url "/Patient/0/_history/3") (get headers "Location"))))
 
           (testing "Transaction time in Last-Modified header"
             (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
@@ -354,7 +354,7 @@
             (is (= "W/\"3\"" (get headers "ETag"))))
 
           (testing "Location header"
-            (is (= "base-url-134013/Patient/0/_history/3" (get headers "Location"))))
+            (is (= (str base-url "/Patient/0/_history/3") (get headers "Location"))))
 
           (testing "Contains the resource as body"
             (given body
@@ -406,7 +406,7 @@
           (is (= 201 status)))
 
         (testing "Location header"
-          (is (= "base-url-134013/Observation/0/_history/1" (get headers "Location"))))
+          (is (= (str base-url "/Observation/0/_history/1") (get headers "Location"))))
 
         (testing "Transaction time in Last-Modified header"
           (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
@@ -415,7 +415,7 @@
           (is (= "W/\"1\"" (get headers "ETag"))))
 
         (testing "Location header"
-          (is (= "base-url-134013/Observation/0/_history/1" (get headers "Location"))))
+          (is (= (str base-url "/Observation/0/_history/1") (get headers "Location"))))
 
         (testing "Contains the resource as body"
           (given body

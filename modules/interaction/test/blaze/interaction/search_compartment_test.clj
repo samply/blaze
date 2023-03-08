@@ -33,20 +33,22 @@
 
 
 (def base-url "base-url-114238")
+(def context-path "/context-path-173854")
 
 
 (def router
   (reitit/router
     [["/Patient/{id}/{type}" {:name :Patient/compartment}]
      ["/Observation" {:name :Observation/type}]]
-    {:syntax :bracket}))
+    {:syntax :bracket
+     :path context-path}))
 
 
 (def match
   (reitit/map->Match
     {:data
      {:fhir.compartment/code "Patient"}
-     :path "/Patient/0/Observation"}))
+     :path (str context-path "/Patient/0/Observation")}))
 
 
 (defn- link-url [body link-relation]
@@ -206,7 +208,7 @@
                   (is (= 1 (count (:entry body)))))
 
                 (testing "has a self link"
-                  (is (= "base-url-114238/Patient/0/Observation?_count=50&__t=1&__page-offset=0"
+                  (is (= (str base-url context-path "/Patient/0/Observation?_count=50&__t=1&__page-offset=0")
                          (link-url body "self")))))))
 
           (testing "summary result"
@@ -241,7 +243,7 @@
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
-                  (is (= "base-url-114238/Patient/0/Observation?_summary=count&_count=50&__t=1&__page-offset=0"
+                  (is (= (str base-url context-path "/Patient/0/Observation?_summary=count&_count=50&__t=1&__page-offset=0")
                          (link-url body "self"))))))))
 
         (testing "with another search parameter"
@@ -280,7 +282,7 @@
                   (is (= 1 (count (:entry body)))))
 
                 (testing "has a self link"
-                  (is (= "base-url-114238/Patient/0/Observation?status=preliminary&_count=50&__t=1&__page-offset=0"
+                  (is (= (str base-url context-path "/Patient/0/Observation?status=preliminary&_count=50&__t=1&__page-offset=0")
                          (link-url body "self")))))))
 
           (testing "summary result"
@@ -318,7 +320,7 @@
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
-                  (is (= "base-url-114238/Patient/0/Observation?status=preliminary&_summary=count&_count=50&__t=1&__page-offset=0"
+                  (is (= (str base-url context-path "/Patient/0/Observation?status=preliminary&_summary=count&_count=50&__t=1&__page-offset=0")
                          (link-url body "self"))))))))))
 
     (testing "with default handling"
@@ -353,7 +355,7 @@
                   (is (= 1 (count (:entry body)))))
 
                 (testing "has a self link"
-                  (is (= "base-url-114238/Patient/0/Observation?_count=50&__t=1&__page-offset=0"
+                  (is (= (str base-url context-path "/Patient/0/Observation?_count=50&__t=1&__page-offset=0")
                          (link-url body "self")))))))
 
           (testing "summary result"
@@ -387,7 +389,7 @@
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
-                  (is (= "base-url-114238/Patient/0/Observation?_summary=count&_count=50&__t=1&__page-offset=0"
+                  (is (= (str base-url context-path "/Patient/0/Observation?_summary=count&_count=50&__t=1&__page-offset=0")
                          (link-url body "self"))))))))
 
         (testing "with another search parameter"
@@ -421,7 +423,7 @@
                   (is (= 1 (count (:entry body)))))
 
                 (testing "has a self link"
-                  (is (= "base-url-114238/Patient/0/Observation?status=preliminary&_count=50&__t=1&__page-offset=0"
+                  (is (= (str base-url context-path "/Patient/0/Observation?status=preliminary&_count=50&__t=1&__page-offset=0")
                          (link-url body "self")))))))
 
           (testing "summary result"
@@ -458,7 +460,7 @@
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
-                  (is (= "base-url-114238/Patient/0/Observation?status=preliminary&_summary=count&_count=50&__t=1&__page-offset=0"
+                  (is (= (str base-url context-path "/Patient/0/Observation?status=preliminary&_summary=count&_count=50&__t=1&__page-offset=0")
                          (link-url body "self")))))))))))
 
   (testing "Returns an empty Bundle on Non-Existing Compartment"
@@ -538,7 +540,7 @@
               (is (= #fhir/unsignedInt 2 (:total body))))
 
             (testing "has a self link"
-              (is (= "base-url-114238/Patient/0/Observation?_count=50&__t=1&__page-offset=0"
+              (is (= (str base-url context-path "/Patient/0/Observation?_count=50&__t=1&__page-offset=0")
                      (link-url body "self"))))
 
             (testing "the bundle contains two entries"
@@ -546,12 +548,12 @@
 
             (testing "the first entry"
               (given (-> body :entry first)
-                :fullUrl := "base-url-114238/Observation/0"
+                :fullUrl := (str base-url context-path "/Observation/0")
                 [:resource :fhir/type] := :fhir/Observation
                 [:resource :id] := "0"))
 
             (testing "the second entry"
               (given (-> body :entry second)
-                :fullUrl := "base-url-114238/Observation/1"
+                :fullUrl := (str base-url context-path "/Observation/1")
                 [:resource :fhir/type] := :fhir/Observation
                 [:resource :id] := "1"))))))))
