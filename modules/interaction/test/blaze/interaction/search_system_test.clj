@@ -132,7 +132,7 @@
             (is (= #fhir/unsignedInt 0 (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-114650?_count=50&__t=0"
+            (is (= (str base-url "?_count=50&__t=0")
                    (link-url body "self"))))
 
           (testing "the bundle contains no entry"
@@ -161,14 +161,14 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-114650?_count=50&__t=1&__page-type=Patient&__page-id=0"
+            (is (= (str base-url "?_count=50&__t=1&__page-type=Patient&__page-id=0")
                    (link-url body "self"))))
 
           (testing "the bundle contains one entry"
             (is (= 1 (count (:entry body)))))
 
           (testing "the entry has the right fullUrl"
-            (is (= "base-url-114650/Patient/0"
+            (is (= (str base-url "/Patient/0")
                    (-> body :entry first :fullUrl))))
 
           (testing "the entry has the right resource"
@@ -197,7 +197,7 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-114650?_summary=count&_count=50&__t=1"
+            (is (= (str base-url "?_summary=count&_count=50&__t=1")
                    (link-url body "self"))))
 
           (testing "the bundle contains no entries"
@@ -219,7 +219,7 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-114650?_count=0&__t=1" (link-url body "self"))))
+            (is (= (str base-url "?_count=0&__t=1") (link-url body "self"))))
 
           (testing "the bundle contains no entries"
             (is (empty? (:entry body))))))))
@@ -237,11 +237,11 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=0"
+            (is (= (str base-url "?_count=1&__t=1&__page-type=Patient&__page-id=0")
                    (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= "base-url-114650/__page?_count=1&__t=1&__page-type=Patient&__page-id=1"
+            (is (= (str base-url "/__page?_count=1&__t=1&__page-type=Patient&__page-id=1")
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -257,11 +257,11 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=0"
+            (is (= (str base-url "?_count=1&__t=1&__page-type=Patient&__page-id=0")
                    (link-url body "self"))))
 
           (testing "has a next link"
-            (is (= "base-url-114650/__page?_count=1&__t=1&__page-type=Patient&__page-id=1"
+            (is (= (str base-url "/__page?_count=1&__t=1&__page-type=Patient&__page-id=1")
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -277,7 +277,7 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= "base-url-114650?_count=1&__t=1&__page-type=Patient&__page-id=1"
+            (is (= (str base-url "?_count=1&__t=1&__page-type=Patient&__page-id=1")
                    (link-url body "self"))))
 
           (testing "has no next link"

@@ -31,12 +31,14 @@
 
 
 (def base-url "base-url-144600")
+(def context-path "/context-path-182518")
 
 
 (def router
   (reitit/router
     [["/Patient" {:name :Patient/type}]]
-    {:syntax :bracket}))
+    {:syntax :bracket
+     :path context-path}))
 
 
 (def match
@@ -44,7 +46,7 @@
     {:data
      {:blaze/base-url ""
       :fhir.resource/type "Patient"}
-     :path "/Patient/_history"}))
+     :path (str context-path "/Patient/_history")}))
 
 
 (defn- link-url [body link-relation]
@@ -141,16 +143,16 @@
         (is (= #fhir/unsignedInt 1 (:total body)))
 
         (testing "has self link"
-          (is (= "base-url-144600/Patient/_history?__t=1&__page-t=1&__page-id=0"
+          (is (= (str base-url context-path "/Patient/_history?__t=1&__page-t=1&__page-id=0")
                  (link-url body "self"))))
 
         (testing "the bundle contains one entry"
           (is (= 1 (count (:entry body)))))
 
         (given (-> body :entry first)
-          :fullUrl := "base-url-144600/Patient/0"
+          :fullUrl := (str base-url context-path "/Patient/0")
           [:request :method] := #fhir/code"PUT"
-          [:request :url] := "/Patient/0"
+          [:request :url] := "Patient/0"
           [:resource :id] := "0"
           [:resource :fhir/type] := :fhir/Patient
           [:resource :meta :versionId] := #fhir/id"1"

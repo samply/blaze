@@ -33,12 +33,14 @@
 
 
 (def base-url "base-url-135814")
+(def context-path "/context-path-181842")
 
 
 (def router
   (reitit/router
     [["/Patient" {:name :Patient/type}]]
-    {:syntax :bracket}))
+    {:syntax :bracket
+     :path context-path}))
 
 
 (def match
@@ -46,7 +48,7 @@
     {:data
      {:blaze/base-url ""
       :fhir.resource/type "Patient"}
-     :path "/Patient/0/_history"}))
+     :path (str context-path "/Patient/0/_history")}))
 
 
 (deftest init-test
@@ -138,13 +140,13 @@
 
         (is (= "self" (-> body :link first :relation)))
 
-        (is (= "base-url-135814/Patient/0/_history?__t=1&__page-t=1"
+        (is (= (str base-url context-path "/Patient/0/_history?__t=1&__page-t=1")
                (-> body :link first :url)))
 
         (given (-> body :entry first)
-          :fullUrl := "base-url-135814/Patient/0"
+          :fullUrl := (str base-url context-path "/Patient/0")
           [:request :method] := #fhir/code"PUT"
-          [:request :url] := "/Patient/0"
+          [:request :url] := "Patient/0"
           [:resource :id] := "0"
           [:resource :fhir/type] := :fhir/Patient
           [:resource :meta :versionId] := #fhir/id"1"
@@ -179,14 +181,14 @@
 
         (is (= "self" (-> body :link first :relation)))
 
-        (is (= "base-url-135814/Patient/0/_history?__t=2&__page-t=2"
+        (is (= (str base-url context-path "/Patient/0/_history?__t=2&__page-t=2")
                (-> body :link first :url)))
 
         (testing "first entry"
           (given (-> body :entry first)
-            :fullUrl := "base-url-135814/Patient/0"
+            :fullUrl := (str base-url context-path "/Patient/0")
             [:request :method] := #fhir/code"DELETE"
-            [:request :url] := "/Patient/0"
+            [:request :url] := "Patient/0"
             keys :!> #{:resource}
             [:response :status] := "204"
             [:response :etag] := "W/\"2\""
@@ -194,9 +196,9 @@
 
         (testing "second entry"
           (given (-> body :entry second)
-            :fullUrl := "base-url-135814/Patient/0"
+            :fullUrl := (str base-url context-path "/Patient/0")
             [:request :method] := #fhir/code"PUT"
-            [:request :url] := "/Patient/0"
+            [:request :url] := "Patient/0"
             [:resource :id] := "0"
             [:resource :fhir/type] := :fhir/Patient
             [:resource :meta :versionId] := #fhir/id"1"
@@ -217,7 +219,7 @@
 
         (is (= "next" (-> body :link second :relation)))
 
-        (is (= "base-url-135814/Patient/0/_history?_count=1&__t=2&__page-t=1"
+        (is (= (str base-url context-path "/Patient/0/_history?_count=1&__t=2&__page-t=1")
                (-> body :link second :url))))))
 
   (testing "with two versions, calling the second page"

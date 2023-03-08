@@ -3,7 +3,8 @@
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]))
+    [clojure.test :as test :refer [are deftest is testing]]
+    [reitit.core :as reitit]))
 
 
 (st/instrument)
@@ -120,20 +121,32 @@
       ["A" "b"] "A")))
 
 
+(def router
+  (reitit/router
+    [[""
+      {}
+      ["/Patient" {:name :Patient/type}]
+      ["/Patient/{id}" {:name :Patient/instance}]
+      ["/Patient/{id}/_history/{vid}" {:name :Patient/versioned-instance}]]]
+    {:syntax :bracket
+     :path "/fhir"}))
+
+
 (def context
-  {:blaze/base-url "http://localhost:8080"})
+  {:blaze/base-url "http://localhost:8080"
+   ::reitit/router router})
 
 
 (deftest type-url-test
-  (is (= "http://localhost:8080/Patient"
+  (is (= "http://localhost:8080/fhir/Patient"
          (fhir-util/type-url context "Patient"))))
 
 
 (deftest instance-url-test
-  (is (= "http://localhost:8080/Patient/0"
+  (is (= "http://localhost:8080/fhir/Patient/0"
          (fhir-util/instance-url context "Patient" "0"))))
 
 
 (deftest versioned-instance-url-test
-  (is (= "http://localhost:8080/Patient/0/_history/1"
+  (is (= "http://localhost:8080/fhir/Patient/0/_history/1"
          (fhir-util/versioned-instance-url context "Patient" "0" "1"))))

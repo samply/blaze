@@ -53,15 +53,21 @@
       ["3" "4"] 3)))
 
 
+(def base-url "base-url-183028")
+(def context-path "/context-path-183031")
+
+
 (def router
   (reitit/router
     [["/Patient" {:name :Patient/type}]
      ["/Patient/{id}" {:name :Patient/instance}]]
-    {:syntax :bracket}))
+    {:syntax :bracket
+     :path context-path}))
 
 
 (def context
-  {:blaze/base-url "http://localhost:8080" ::reitit/router router})
+  {:blaze/base-url base-url
+   ::reitit/router router})
 
 
 (deftest build-entry-test
@@ -76,9 +82,9 @@
           {:blaze.db/op :create
            :blaze.db/num-changes 1
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := "http://localhost:8080/Patient/0"
+      :fullUrl := (str base-url context-path "/Patient/0")
       [:request :method] := #fhir/code"POST"
-      [:request :url] := "/Patient"
+      [:request :url] := "Patient"
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := "201"
@@ -97,9 +103,9 @@
           {:blaze.db/op :put
            :blaze.db/num-changes 1
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := "http://localhost:8080/Patient/0"
+      :fullUrl := (str base-url context-path "/Patient/0")
       [:request :method] := #fhir/code"PUT"
-      [:request :url] := "/Patient/0"
+      [:request :url] := "Patient/0"
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := "201"
@@ -118,9 +124,9 @@
           {:blaze.db/op :put
            :blaze.db/num-changes 2
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := "http://localhost:8080/Patient/0"
+      :fullUrl := (str base-url context-path "/Patient/0")
       [:request :method] := #fhir/code"PUT"
-      [:request :url] := "/Patient/0"
+      [:request :url] := "Patient/0"
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
       [:response :status] := "200"
@@ -139,9 +145,9 @@
           {:blaze.db/op :delete
            :blaze.db/num-changes 2
            :blaze.db/tx {:blaze.db.tx/instant Instant/EPOCH}}))
-      :fullUrl := "http://localhost:8080/Patient/0"
+      :fullUrl := (str base-url context-path "/Patient/0")
       [:request :method] := #fhir/code"DELETE"
-      [:request :url] := "/Patient/0"
+      [:request :url] := "Patient/0"
       [:response :status] := "204"
       [:response :lastModified] := Instant/EPOCH
       [:response :etag] := "W/\"2\"")))

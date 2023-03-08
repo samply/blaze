@@ -287,7 +287,7 @@
                   (testing "entry response"
                     (given response
                       :status := "201"
-                      :location := "base-url-115515/Patient/0/_history/1"
+                      :location := (str base-url "/Patient/0/_history/1")
                       :etag := "W/\"1\""
                       :lastModified := Instant/EPOCH)))))
 
@@ -321,7 +321,7 @@
                   (testing "entry response"
                     (given response
                       :status := "201"
-                      :location := "base-url-115515/Patient/0/_history/1"
+                      :location := (str base-url "/Patient/0/_history/1")
                       :etag := "W/\"1\""
                       :lastModified := Instant/EPOCH)))))))
 
@@ -439,7 +439,7 @@
                 (testing "entry response"
                   (given response
                     :status := "201"
-                    :location := "base-url-115515/Patient/AAAAAAAAAAAAAAAA/_history/1"
+                    :location := (str base-url "/Patient/AAAAAAAAAAAAAAAA/_history/1")
                     :etag := "W/\"1\""
                     :lastModified := Instant/EPOCH)))))
 
@@ -473,7 +473,7 @@
                 (testing "entry response"
                   (given response
                     :status := "201"
-                    :location := "base-url-115515/Patient/AAAAAAAAAAAAAAAA/_history/1"
+                    :location := (str base-url "/Patient/AAAAAAAAAAAAAAAA/_history/1")
                     :etag := "W/\"1\""
                     :lastModified := Instant/EPOCH)))))))
 
@@ -557,7 +557,7 @@
                   (testing "entry response"
                     (given response
                       :status := "201"
-                      :location := "base-url-115515/Patient/AAAAAAAAAAAAAAAA/_history/2"
+                      :location := (str base-url "/Patient/AAAAAAAAAAAAAAAA/_history/2")
                       :etag := "W/\"2\""
                       :lastModified := Instant/EPOCH))))))
 
@@ -604,7 +604,7 @@
                   (testing "entry response"
                     (given response
                       :status := "201"
-                      :location := "base-url-115515/Patient/AAAAAAAAAAAAAAAA/_history/2"
+                      :location := (str base-url "/Patient/AAAAAAAAAAAAAAAA/_history/2")
                       :etag := "W/\"2\""
                       :lastModified := Instant/EPOCH)))))))
 
@@ -1680,7 +1680,7 @@
             (testing "entry response"
               (given response
                 :status := "201"
-                :location := "base-url-115515/Patient/0/_history/1"
+                :location := (str base-url "/Patient/0/_history/1")
                 :etag := "W/\"1\""
                 :lastModified := Instant/EPOCH))))
 
@@ -1709,7 +1709,7 @@
               (testing "entry response"
                 (given response
                   :status := "201"
-                  :location := "base-url-115515/Patient/0/_history/1"
+                  :location := (str base-url "/Patient/0/_history/1")
                   :etag := "W/\"1\""
                   :lastModified := Instant/EPOCH))))))
 
@@ -1743,7 +1743,7 @@
             (testing "entry response"
               (given response
                 :status := "201"
-                :location := "base-url-115515/Patient/0/_history/1"
+                :location := (str base-url "/Patient/0/_history/1")
                 :etag := "W/\"1\""
                 :lastModified := Instant/EPOCH))))))
 
