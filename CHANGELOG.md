@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.20.1
+
+### Bugfixes
+
+* Fix URL Generation ([#932](https://github.com/samply/blaze/pull/932))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/63?closed=1).
+
 ## v0.20.0
 
 ### New Features
