@@ -35,6 +35,10 @@
   string?)
 
 
+(s/def :elm/identifier
+  string?)
+
+
 (s/def :elm/accessLevel
   string?)
 
@@ -742,9 +746,15 @@
   (s/keys :req-un [:elm/name] :opt-un [:elm/libraryName]))
 
 
-;; TODO: 10.8. LetClause
+;; 10.8. LetClause
+(s/def :elm/let-clause
+  (s/keys :req-un [:elm/expression :elm/identifier]))
 
-;; TODO 10.9. QueryLetRef
+
+;; 10.9. QueryLetRef
+(defmethod expression :elm.spec.type/query-let-ref [_]
+  (s/keys :opt-un [:elm/name]))
+
 
 ;; 10.10. RelationshipClause
 (defmulti relationship-clause :type)
@@ -802,6 +812,10 @@
   (s/coll-of :elm/relationship-clause))
 
 
+(s/def :elm.query/let
+  (s/coll-of :elm/let-clause))
+
+
 (s/def :elm.query/suchThat
   :elm/expression)
 
@@ -826,7 +840,7 @@
   (s/keys
     :req-un [:elm.query/source]
     :opt-un
-    [#_:elm.query/let
+    [:elm.query/let
      :elm.query/relationship
      :elm.query/where
      :elm.query/return
