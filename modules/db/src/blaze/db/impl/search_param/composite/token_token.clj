@@ -14,10 +14,10 @@
   [name url type base code c-hash main-expression c1 c2]
   p/SearchParam
   (-compile-value [_ _ value]
-    (let [[v1 v2] (cc/split-value value)
-          v1 (cc/compile-component-value c1 v1)
-          v2 (cc/compile-component-value c1 v2)]
-      (bs/concat v1 v2)))
+    (when-ok [[v1 v2] (cc/split-value value)]
+      (let [v1 (cc/compile-component-value c1 v1)
+            v2 (cc/compile-component-value c1 v2)]
+        (bs/concat v1 v2))))
 
   (-resource-handles [_ context tid _ value]
     (coll/eduction
