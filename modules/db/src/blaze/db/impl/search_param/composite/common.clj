@@ -13,8 +13,14 @@
 (set! *warn-on-reflection* true)
 
 
-(defn split-value [value]
-  (str/split value #"\$" 2))
+(defn split-value
+  "Returns the first and second value part in a vector or an anomaly if the
+  second part is missing."
+  [value]
+  (let [res (str/split value #"\$" 2)]
+    (if (< (count res) 2)
+      (ba/incorrect (format "Miss the second part is composite search value `%s`." value))
+      res)))
 
 
 (defn compile-component-value [{:keys [search-param]} value]
