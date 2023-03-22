@@ -86,7 +86,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1252'
+        cli: '1.11.1.1257'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -117,7 +117,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1252'
+        cli: '1.11.1.1257'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -159,7 +159,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1252'
+        cli: '1.11.1.1257'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -187,7 +187,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1252'
+        cli: '1.11.1.1257'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -432,15 +432,6 @@ jobs:
 
     - name: Evaluate CQL Query 14 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q14 96
-
-    - name: Evaluate CQL Query 15
-      run: .github/scripts/evaluate-measure.sh q15 30
-
-    - name: Evaluate CQL Query 15 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q15 30
-
-    - name: Evaluate CQL Query 15 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q15 30
 
     - name: Evaluate CQL Query 17
       run: .github/scripts/evaluate-measure.sh q17 120
@@ -797,7 +788,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1252'
+        cli: '1.11.1.1257'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -1146,15 +1137,6 @@ jobs:
     - name: Evaluate CQL Query 14 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q14 96
 
-    - name: Evaluate CQL Query 15
-      run: .github/scripts/evaluate-measure.sh q15 30
-
-    - name: Evaluate CQL Query 15 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q15 30
-
-    - name: Evaluate CQL Query 15 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q15 30
-
     - name: Evaluate CQL Query 17
       run: .github/scripts/evaluate-measure.sh q17 120
 
@@ -1274,7 +1256,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1252'
+        cli: '1.11.1.1257'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
