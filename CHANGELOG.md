@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.20.2
+
+### Other
+
+* Update Dependencies ([#943](https://github.com/samply/blaze/pull/943))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/65?closed=1).
+
 ## v0.20.1
 
 ### Bugfixes
