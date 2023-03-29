@@ -1,0 +1,5 @@
+library: docs/performance/cql/observation-body-weight-10.cql
+group:
+- type: Patient
+  population:
+  - expression: InInitialPopulation
