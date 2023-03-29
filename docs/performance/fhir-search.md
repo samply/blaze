@@ -79,6 +79,104 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 According to the measurements, the time needed by Blaze to deliver subsetted Observations containing only the subject reference is about **twice as fast** as returning the whole resource.
 
+## Code and Value Search
+
+In this section, FHIR Search for selecting Observation resources with a certain code and value is used.
+
+### Counting
+
+All measurements are done after Blaze is in a steady state with all resource handles to hit in it's resource handle cache in order to cancel out additional seeks necessary to determine the current version of each resource. A resource handle doesn't contain the actual resource content which is not necessary for counting.
+
+Counting is done using the following `curl` command:
+
+```sh
+curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&value-quantity=lt$VALUE|http://unitsofmeasure.org|$UNIT&_summary=count"
+```
+
+| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | Value | # Hits | Time (s) | T / 1M ³ |
+|------------|---------:|------------:|---------:|---------:|---------|------:|-------:|---------:|---------:|
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  8.67 |   17 k |      5.1 |      300 |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  9.35 |   86 k |      5.1 |       59 |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  10.2 |  171 k |      5.1 |       30 |
+
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
+
+### Download of Resources
+
+All measurements are done after Blaze is in a steady state with all resources to download in it's resource cache in order to cancel out resource load times from disk or file system cache.
+
+Download is done using the following `blazectl` command:
+
+```sh
+blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&value-quantity=lt$VALUE|http://unitsofmeasure.org|$UNIT&_count=1000" > /dev/null"
+```
+
+| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | Value | # Hits | Time (s) | T / 1M ³ |
+|------------|---------:|------------:|---------:|---------:|---------|------:|-------:|---------:|---------:|
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  8.67 |   17 k |      5.6 |      329 |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  9.35 |   86 k |      7.3 |       85 |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  10.2 |  171 k |      9.1 |       53 |
+
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
+
+### Download of Resources with Subsetting
+
+In case only a subset of information of a resource is needed, the special [_elements][1] search parameter can be used to retrieve only certain properties of a resource. Here `_elements=subject` was used.
+
+All measurements are done after Blaze is in a steady state with all resources to download in it's resource cache in order to cancel out resource load times from disk or file system cache.
+
+Download is done using the following `blazectl` command:
+
+```sh
+blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&value-quantity=lt$VALUE|http://unitsofmeasure.org|$UNIT&_elements=subject&_count=1000" > /dev/null"
+```
+
+| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | Value | # Hits | Time (s) | T / 1M ³ |
+|------------|---------:|------------:|---------:|---------:|---------|------:|-------:|---------:|---------:|
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  8.67 |   17 k |      5.4 |      318 |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  9.35 |   86 k |      6.5 |          |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  10.2 |  171 k |      7.5 |          |
+
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
+
+### Download of Resources using the Combined Search Param
+
+All measurements are done after Blaze is in a steady state with all resources to download in it's resource cache in order to cancel out resource load times from disk or file system cache.
+
+Download is done using the following `blazectl` command:
+
+```sh
+blazectl download --server http://localhost:8080/fhir Observation -q "code-value-quantity=http://loinc.org|$CODE\$lt$VALUE|http://unitsofmeasure.org|$UNIT&_count=1000" > /dev/null"
+```
+
+| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | Value | # Hits | Time (s) | T / 1M ³ |
+|------------|---------:|------------:|---------:|---------:|---------|------:|-------:|---------:|---------:|
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  8.67 |   17 k |      0.4 |       24 |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  9.35 |   86 k |      2.0 |       23 |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  10.2 |  171 k |      4.2 |       25 |
+
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
+
+### Download of Resources with Subsetting
+
+In case only a subset of information of a resource is needed, the special [_elements][1] search parameter can be used to retrieve only certain properties of a resource. Here `_elements=subject` was used.
+
+All measurements are done after Blaze is in a steady state with all resources to download in it's resource cache in order to cancel out resource load times from disk or file system cache.
+
+Download is done using the following `blazectl` command:
+
+```sh
+blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&value-quantity=lt$VALUE|http://unitsofmeasure.org|$UNIT&_elements=subject&_count=1000" > /dev/null"
+```
+
+| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | Value | # Hits | Time (s) | T / 1M ³ |
+|------------|---------:|------------:|---------:|---------:|---------|------:|-------:|---------:|---------:|
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  8.67 |   17 k |      0.2 |          |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  9.35 |   86 k |      1.3 |          |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  10.2 |  171 k |      2.4 |          |
+
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
+
 ## Used Dataset
 
 The dataset used is Synthea v2.7.0. The resource generation was done with the following settings:
