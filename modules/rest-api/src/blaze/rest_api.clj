@@ -64,7 +64,8 @@
   {:arglists '([context capabilities-handler])}
   [{:keys [context-path] :or {context-path ""} :as context} capabilities-handler]
   (let [batch-handler-promise (promise)
-        routes (routes/routes context capabilities-handler batch-handler-promise)]
+        routes (routes/routes context capabilities-handler
+                              batch-handler-promise)]
     (deliver batch-handler-promise (batch-handler routes context-path))
     (reitit.ring/router
       routes
@@ -79,7 +80,9 @@
   "Whole app Ring handler."
   [{:keys [auth-backends] :as context}]
   (-> (reitit.ring/ring-handler
-        (router context (capabilities/capabilities-handler context))
+        (router
+          context
+          (capabilities/capabilities-handler context))
         (reitit.ring/routes
           (reitit.ring/redirect-trailing-slash-handler {:method :strip})
           (output/wrap-output handler-util/default-handler {:accept-all? true}))
@@ -107,6 +110,8 @@
      ::history-system-handler
      ::resource-patterns
      ::operations
+     ::metadata-handler
+     ::admin-handler
      :blaze.db/enforce-referential-integrity]))
 
 

@@ -38,4 +38,7 @@
        :db (.getDbName status)
        :cf (.getCfName status)})
     (.getThreadList (Env/getDefault)))
+
+  (rocksdb/table-properties (index-kv-store) :resource-as-of-index)
+
   )

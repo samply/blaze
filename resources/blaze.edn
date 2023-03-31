@@ -739,6 +739,29 @@
  :features
  [
   ;;
+  ;; Frontend
+  ;;
+  {:name "Frontend"
+   :toggle "ENABLE_FRONTEND"
+   :config
+   {:blaze.handler/app
+    {:frontend #blaze/ref :blaze/frontend}
+
+    :blaze/frontend
+    {:context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]}
+
+    :blaze/rest-api
+    {:metadata-handler #blaze/ref :blaze.rest-api/metadata-handler
+     :admin-handler #blaze/ref :blaze/admin-api}
+
+    :blaze.rest-api/metadata-handler
+    {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}
+
+    :blaze/admin-api
+    {:context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]
+     :index-kv-store #blaze/ref :blaze.db/index-kv-store}}}
+
+  ;;
   ;; OpenID Authentication
   ;;
   ;; Can be referred by the super key :blaze.auth/backend. Will be enabled if an

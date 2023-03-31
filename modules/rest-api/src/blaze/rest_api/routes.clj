@@ -281,63 +281,78 @@
      history-system-handler
      resource-patterns
      compartments
-     operations]
+     operations
+     metadata-handler
+     admin-handler]
     :or {context-path ""}
     :as context}
    capabilities-handler
    batch-handler-promise]
-  (-> [""
-       {:middleware
+  (cond->
+    (-> [""
+         {:middleware
         (cond-> [wrap-observe-request-duration wrap-params wrap-output
                  wrap-error [wrap-forwarded base-url] wrap-sync]
-          (seq auth-backends)
-          (conj wrap-auth-guard))
-        :blaze/context-path context-path}
-       [""
-        (cond-> {}
-          (some? search-system-handler)
+            (seq auth-backends)
+            (conj wrap-auth-guard))
+          :blaze/context-path context-path}
+         [""
+          (cond-> {}
+            (some? search-system-handler)
           (assoc :get {:interaction "search-system"
                        :middleware [[wrap-search-db node db-sync-timeout]
                                     wrap-link-headers]
-                       :handler search-system-handler})
-          (some? transaction-handler)
+                         :handler search-system-handler})
+            (some? transaction-handler)
           (assoc :post {:interaction "transaction"
                         :middleware
-                        [wrap-resource
-                         [wrap-batch-handler batch-handler-promise]]
-                        :handler transaction-handler}))]
-       ["/metadata"
+                          [wrap-resource
+                           [wrap-batch-handler batch-handler-promise]]
+                          :handler transaction-handler}))]
+         ["/metadata"
         {:interaction "capabilities"
          :get capabilities-handler}]
-       ["/_history"
-        (cond-> {}
-          (some? history-system-handler)
+         ["/_history"
+          (cond-> {}
+            (some? history-system-handler)
           (assoc :get {:interaction "history-system"
                        :middleware [[wrap-db node db-sync-timeout]
                                     wrap-link-headers]
-                       :handler history-system-handler}))]
-       ["/__page"
-        (cond-> {:name :page}
-          (some? search-system-handler)
-          (assoc
+                         :handler history-system-handler}))]
+         ["/__page"
+          (cond-> {:name :page}
+            (some? search-system-handler)
+            (assoc
             :get {:interaction "search-system"
                   :middleware [[wrap-snapshot-db node db-sync-timeout]
                                wrap-link-headers]
-                  :handler search-system-handler}
+                    :handler search-system-handler}
             :post {:interaction "search-system"
                    :middleware [[wrap-snapshot-db node db-sync-timeout]
                                 wrap-link-headers]
-                   :handler search-system-handler}))]]
-      (into
-        (mapcat (partial operation-system-handler-route context))
-        operations)
-      (into
-        (mapcat (partial operation-type-handler-route context))
-        operations)
-      (into
-        (mapcat (partial operation-instance-handler-route context))
-        operations)
-      (into
-        (keep (partial resource-route context resource-patterns))
-        structure-definitions)
-      (into (map (partial compartment-route context)) compartments)))
+                     :handler search-system-handler}))]]
+        (into
+          (mapcat (partial operation-system-handler-route context))
+          operations)
+        (into
+          (mapcat (partial operation-type-handler-route context))
+          operations)
+        (into
+          (mapcat (partial operation-instance-handler-route context))
+          operations)
+        (into
+          (keep (partial resource-route context resource-patterns))
+          structure-definitions)
+        (into
+          (map (partial compartment-route context))
+          compartments))
+    metadata-handler
+    (conj
+      ["/__metadata/StructureDefinition"
+       {:get {:handler metadata-handler}
+        :response-type :json}])
+    admin-handler
+    (conj
+      ["/__admin{*more}"
+       {:get {:handler admin-handler}
+        :response-type :json}])))

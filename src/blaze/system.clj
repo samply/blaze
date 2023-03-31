@@ -114,7 +114,8 @@
 
    :blaze.handler/app
    {:rest-api (ig/ref :blaze/rest-api)
-    :health-handler (ig/ref :blaze.handler/health)}
+    :health-handler (ig/ref :blaze.handler/health)
+    :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")}
 
    :blaze.server/executor {}
 
@@ -170,7 +171,7 @@
       (let [enabled? (feature-enabled? env feature)]
         (log/info "Feature" name (if enabled? "enabled" "disabled"))
         (if enabled?
-          (merge res config)
+          (merge-with merge res config)
           res)))
     base-config
     features))

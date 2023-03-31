@@ -1,0 +1,37 @@
+{:deps
+ {blaze/async
+  {:local/root "../async"}
+
+  blaze/module-base
+  {:local/root "../module-base"}
+
+  blaze/rest-util
+  {:local/root "../rest-util"}
+
+  blaze/rocksdb
+  {:local/root "../rocksdb"}
+
+  blaze/spec
+  {:local/root "../spec"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/test-util
+    {:local/root "../test-util"}}}
+
+  :kaocha
+  {:extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.71.1119"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :coverage
+  {:extra-deps
+   {cloverage/cloverage
+    {:mvn/version "1.2.4"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

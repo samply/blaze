@@ -23,7 +23,10 @@ clean-root:
 
 clean: $(MODULES) clean-root
 
-uberjar: prep
+build-frontend:
+	$(MAKE) -C modules/frontend build
+
+uberjar: prep build-frontend
 	clojure -T:build uber
 
 outdated:
@@ -35,4 +38,4 @@ deps-tree:
 deps-list:
 	clojure -X:deps list
 
-.PHONY: $(MODULES) lint-root lint prep test-root test test-coverage clean-root clean uberjar outdated deps-tree deps-list
+.PHONY: $(MODULES) lint-root lint prep test-root test test-coverage clean-root clean build-frontend uberjar outdated deps-tree deps-list

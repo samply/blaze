@@ -1,11 +1,17 @@
 {:paths ["src" "resources"]
 
  :deps
- {blaze/db-resource-store-cassandra
+ {blaze/admin-api
+  {:local/root "modules/admin-api"}
+
+  blaze/db-resource-store-cassandra
   {:local/root "modules/db-resource-store-cassandra"}
 
   blaze/db-tx-log-kafka
   {:local/root "modules/db-tx-log-kafka"}
+
+  blaze/frontend
+  {:local/root "modules/frontend"}
 
   blaze/interaction
   {:local/root "modules/interaction"}
