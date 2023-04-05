@@ -205,6 +205,34 @@
         [:fhir/issues 0 :severity] := #fhir/code"error"))))
 
 
+(deftest create-test
+  (testing "success"
+    (let [http-client (HttpClientMock.)
+          resource {:fhir/type :fhir/Patient}]
+
+      (-> (.onPost http-client "http://localhost:8080/fhir/Patient")
+          (.doReturn 201 (j/write-value-as-string {:resourceType "Patient" :id "P144216"}))
+          (.withHeader "content-type" "application/fhir+json"))
+
+      (given @(fhir-client/create "http://localhost:8080/fhir" resource
+                                  {:http-client http-client})
+        :fhir/type := :fhir/Patient
+        :id := "P144216")))
+
+  (testing "rejected"
+    (let [http-client (HttpClientMock.)]
+
+      (-> (.onPost http-client "http://localhost:8080/fhir/Patient")
+          (.doReturn 422 (j/write-value-as-string {:resourceType "OperationOutcome"
+                                                   :issue [{:severity "error"}]}))
+          (.withHeader "content-type" "application/fhir+json"))
+
+      (given-failed-future (fhir-client/create "http://localhost:8080/fhir" {:fhir/type :fhir/Patient}
+                                               {:http-client http-client})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Unexpected response status 422."))))
+
+
 (deftest transaction-test
   (testing "success"
     (let [http-client (HttpClientMock.)

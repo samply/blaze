@@ -35,6 +35,13 @@
   (impl/update (str base-uri "/" (name type) "/" id) resource opts))
 
 
+(defn create
+  "Returns a CompletableFuture that completes with `resource` created."
+  {:arglists '([base-uri resource & opts])}
+  [base-uri {:fhir/keys [type] :as resource} & {:as opts}]
+  (impl/post (str base-uri "/" (name type)) resource opts))
+
+
 (defn transaction
   "Returns a CompletableFuture that completes with `bundle` created."
   {:arglists '([base-uri bundle & opts])}
