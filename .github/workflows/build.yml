@@ -1441,3 +1441,36 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: target/blaze-*-standalone.jar
+
+  pages:
+    runs-on: ubuntu-22.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v3
+    - name: Setup Node
+      working-directory: ./docs
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+        cache: npm
+    - name: Install dependencies
+      working-directory: ./docs
+      run: npm install
+    - name: Build
+      working-directory: ./docs
+      run: npm run docs:build
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v1
+      with:
+        path: docs/.vitepress/dist
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v2
