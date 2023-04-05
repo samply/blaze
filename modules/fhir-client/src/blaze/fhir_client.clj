@@ -42,6 +42,12 @@
   (impl/post (str base-uri "/" (name type)) resource opts))
 
 
+(defn delete
+  "Returns a CompletableFuture that completes when resource with `type`/`id` is deleted."
+  [base-uri type id & {:as opts}]
+  (impl/delete (str base-uri "/" type "/" id) opts))
+
+
 (defn transaction
   "Returns a CompletableFuture that completes with `bundle` created."
   {:arglists '([base-uri bundle & opts])}

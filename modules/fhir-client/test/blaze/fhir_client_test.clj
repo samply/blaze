@@ -233,6 +233,17 @@
         ::anom/message := "Unexpected response status 422."))))
 
 
+(deftest delete-test
+  (testing "success"
+    (let [http-client (HttpClientMock.)]
+
+      (-> (.onDelete http-client "http://localhost:8080/fhir/Patient/P145440")
+          (.doReturnStatus 204))
+
+      (is @(fhir-client/delete "http://localhost:8080/fhir" "Patient" "P145440"
+                               {:http-client http-client})))))
+
+
 (deftest transaction-test
   (testing "success"
     (let [http-client (HttpClientMock.)

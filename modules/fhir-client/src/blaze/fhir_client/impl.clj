@@ -137,6 +137,18 @@
     handle-error))
 
 
+(defn delete [uri opts]
+  (log/trace "Delete" uri)
+  (hc/delete
+    uri
+    (merge
+      {:as :fhir
+       :async? true}
+      opts)
+    :body
+    handle-error))
+
+
 (defn- next-url [page]
   (type/value (:url (first (filter (comp #{"next"} :relation) (:link page))))))
 
