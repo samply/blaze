@@ -2,9 +2,10 @@
   "This namespace provides functions to work with Java 9 Reactive Streams.
 
   https://www.baeldung.com/java-9-reactive-streams"
-  (:refer-clojure :exclude [mapcat map])
+  (:refer-clojure :exclude [map mapcat])
   (:require
-    [blaze.async.comp :as ac])
+    [blaze.async.comp :as ac]
+    [taoensso.timbre :as log])
   (:import
     [java.util.concurrent Flow$Processor Flow$Publisher Flow$Subscriber
                           Flow$Subscription SubmissionPublisher]))
@@ -86,8 +87,10 @@
         (.submit ^SubmissionPublisher this (f x))
         (request! @subscription 1))
       (onError [e]
+        (log/error "on error" e)
         (.closeExceptionally ^SubmissionPublisher this e))
       (onComplete []
+        (log/trace "on complete")
         (.close ^SubmissionPublisher this)))))
 
 
@@ -104,8 +107,10 @@
         (run! #(.submit ^SubmissionPublisher this %) (f x))
         (request! @subscription 1))
       (onError [e]
+        (log/error "on error" e)
         (.closeExceptionally ^SubmissionPublisher this e))
       (onComplete []
+        (log/trace "on complete")
         (.close ^SubmissionPublisher this)))))
 
 
@@ -124,8 +129,12 @@
                 (.submit ^SubmissionPublisher this y)
                 (request! @subscription 1)))
             (ac/exceptionally
-              (fn [e] (.closeExceptionally ^SubmissionPublisher this e)))))
+              (fn [e]
+                (log/error "exceptionally" e)
+                (.closeExceptionally ^SubmissionPublisher this e)))))
       (onError [e]
+        (log/error "on error" e)
         (.closeExceptionally ^SubmissionPublisher this e))
       (onComplete []
+        (log/trace "on complete")
         (.close ^SubmissionPublisher this)))))
