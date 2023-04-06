@@ -236,8 +236,8 @@ blaze-2:
 [2]: <https://zookeeper.apache.org>
 [3]: <https://www.confluent.io/blog/kafka-without-zookeeper-a-sneak-peek/>
 [4]: <https://cassandra.apache.org>
-[5]: <https://github.com/bitnami/bitnami-docker-kafka#security>
-[6]: <https://github.com/bitnami/bitnami-docker-kafka>
+[5]: <https://github.com/bitnami/containers/tree/main/bitnami/kafka#security>
+[6]: <https://github.com/bitnami/containers/tree/main/bitnami/kafka>
 [7]: <http://kafka.apache.org/documentation/#security>
 [8]: <http://kafka.apache.org/documentation/>
 [9]: <https://raw.githubusercontent.com/confluentinc/confluent-platform-security-tools/master/kafka-generate-ssl.sh>

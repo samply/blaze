@@ -1388,7 +1388,7 @@ jobs:
       uses: docker/metadata-action@v4
       with:
         images: |
-          ghcr.io/${{ github.repository_owner }}/blaze
+          ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
         tags: |
           type=schedule
           type=ref,event=branch
@@ -1418,7 +1418,7 @@ jobs:
       uses: docker/metadata-action@v4
       with:
         images: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/blaze
+          ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
         tags: |
           type=schedule
           type=ref,event=branch
@@ -1441,3 +1441,44 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: target/blaze-*-standalone.jar
+
+  build-pages:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v3
+    - name: Setup Node
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+        cache: npm
+        cache-dependency-path: 'docs/package-lock.json'
+    - name: Install dependencies
+      working-directory: ./docs
+      run: npm install
+    - name: Build
+      working-directory: ./docs
+      env:
+        DOCS_BASE: "/${{ github.event.repository.name }}/"
+      run: npm run docs:build
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v1
+      with:
+        path: docs/.vitepress/dist
+
+  deploy-pages:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-22.04
+    needs: [ build-pages ]
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v2
