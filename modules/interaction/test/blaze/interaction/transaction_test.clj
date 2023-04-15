@@ -63,18 +63,32 @@
            (ring/response {:fhir/type :fhir/CapabilityStatement})))}]
      ["/Observation"
       {:name :Observation/type
+       :conflicting true
        :fhir.resource/type "Observation"
        :get {:middleware [[wrap-db node]]
              :handler (wrap-params search-type-handler)}
        :post create-handler}]
+     ["/Observation/__page"
+      {:name :Observation/page
+       :conflicting true
+       :fhir.resource/type "Observation"
+       :get {:middleware [[wrap-db node]]
+             :handler (wrap-params search-type-handler)}}]
      ["/Patient"
       {:name :Patient/type
        :fhir.resource/type "Patient"
        :get {:middleware [[wrap-db node]]
              :handler (wrap-params search-type-handler)}
        :post create-handler}]
+     ["/Patient/__page"
+      {:name :Patient/page
+       :conflicting true
+       :fhir.resource/type "Patient"
+       :get {:middleware [[wrap-db node]]
+             :handler (wrap-params search-type-handler)}}]
      ["/Patient/{id}"
       {:name :Patient/instance
+       :conflicting true
        :fhir.resource/type "Patient"
        :get {:middleware [[wrap-db node]] :handler read-handler}
        :delete delete-handler

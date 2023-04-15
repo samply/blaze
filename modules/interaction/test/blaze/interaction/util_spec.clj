@@ -21,3 +21,8 @@
 (s/fdef iu/search-clauses
   :args (s/cat :query-params (s/nilable :ring.request/query-params))
   :ret :blaze.db.query/search-clauses)
+
+
+(s/fdef iu/t
+  :args (s/cat :db :blaze.db/db)
+  :ret :blaze.db/t)

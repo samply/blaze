@@ -46,15 +46,21 @@
     [["/Patient" {:name :Patient/type}]
      ["/Patient/__page" {:name :Patient/page}]
      ["/MeasureReport" {:name :MeasureReport/type}]
+     ["/MeasureReport/__page" {:name :MeasureReport/page}]
      ["/Library" {:name :Library/type}]
+     ["/Library/__page" {:name :Library/page}]
      ["/List" {:name :List/type}]
+     ["/List/__page" {:name :List/page}]
      ["/Condition" {:name :Condition/type}]
+     ["/Condition/__page" {:name :Condition/page}]
      ["/Observation" {:name :Observation/type}]
      ["/Observation/__page" {:name :Observation/page}]
      ["/MedicationStatement" {:name :MedicationStatement/type}]
+     ["/MedicationStatement/__page" {:name :MedicationStatement/page}]
      ["/Medication" {:name :Medication/type}]
      ["/Organization" {:name :Organization/type}]
-     ["/Encounter" {:name :Encounter/type}]]
+     ["/Encounter" {:name :Encounter/type}]
+     ["/Encounter/__page" {:name :Encounter/page}]]
     {:syntax :bracket
      :path context-path}))
 
@@ -668,6 +674,10 @@
             (is (= (str base-url context-path "/Patient?_count=1&__t=1&__page-id=0")
                    (link-url body "self"))))
 
+          (testing "has a first link"
+            (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1")
+                   (link-url body "first"))))
+
           (testing "has a next link"
             (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1&__page-id=1")
                    (link-url body "next"))))
@@ -687,6 +697,10 @@
           (testing "has a self link"
             (is (= (str base-url context-path "/Patient?_count=1&__t=1&__page-id=0")
                    (link-url body "self"))))
+
+          (testing "has a first link"
+            (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1")
+                   (link-url body "first"))))
 
           (testing "has a next link"
             (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1&__page-id=1")
@@ -708,11 +722,40 @@
             (is (= (str base-url context-path "/Patient?_count=1&__t=1&__page-id=1")
                    (link-url body "self"))))
 
+          (testing "has a first link"
+            (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1")
+                   (link-url body "first"))))
+
           (testing "has no next link"
             (is (nil? (link-url body "next"))))
 
           (testing "the bundle contains one entry"
-            (is (= 1 (count (:entry body)))))))))
+            (is (= 1 (count (:entry body)))))))
+
+      (testing "on /_search request"
+        (testing "search for all patients with _count=1"
+          (let [{:keys [body]}
+                @(handler
+                   {::reitit/match patient-search-match
+                    :params {"_count" "1"}})]
+
+            (testing "the total count is 2"
+              (is (= #fhir/unsignedInt 2 (:total body))))
+
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient?_count=1&__t=1&__page-id=0")
+                     (link-url body "self"))))
+
+            (testing "has a first link"
+              (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1")
+                     (link-url body "first"))))
+
+            (testing "has a next link"
+              (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1&__page-id=1")
+                     (link-url body "next"))))
+
+            (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body))))))))))
 
   (testing "with three patients"
     (with-handler [handler]
@@ -755,6 +798,10 @@
               (is (= (str base-url context-path "/Patient?active=true&_count=1&__t=1&__page-id=1")
                      (link-url body "self"))))
 
+            (testing "has a first link"
+              (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1")
+                     (link-url body "first"))))
+
             (testing "has a next link with search params"
               (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1&__page-id=2")
                      (link-url body "next"))))
@@ -777,6 +824,10 @@
               (is (= (str base-url context-path "/Patient?active=true&_count=1&__t=1&__page-id=1")
                      (link-url body "self"))))
 
+            (testing "has a first link with token"
+              (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1")
+                     (link-url body "first"))))
+
             (testing "has a next link with token"
               (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1&__page-id=2")
                      (link-url body "next"))))
@@ -798,6 +849,10 @@
             (is (= (str base-url context-path "/Patient?active=true&_count=1&__t=1&__page-id=1")
                    (link-url body "self"))))
 
+          (testing "has a first link with search params"
+            (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1")
+                   (link-url body "first"))))
+
           (testing "has a next link with search params"
             (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1&__page-id=2")
                    (link-url body "next"))))
@@ -818,6 +873,10 @@
           (testing "has a self link"
             (is (= (str base-url context-path "/Patient?active=true&_count=1&__t=1&__page-id=2")
                    (link-url body "self"))))
+
+          (testing "has a first link with token"
+            (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1")
+                   (link-url body "first"))))
 
           (testing "has no next link"
             (is (nil? (link-url body "next"))))
@@ -866,7 +925,11 @@
                    {::reitit/match patient-search-match
                     :params {"active" "true" "_count" "1"}})]
 
-            (testing "has a next link with token"
+            (testing "has a first link with token"
+              (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1")
+                     (link-url body "first"))))
+
+            (testing "has a first link with token"
               (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1&__page-id=2")
                      (link-url body "next"))))))
 
@@ -1052,7 +1115,11 @@
 
           (testing "has a self link"
             (is (= (str base-url context-path "/Patient?_sort=_lastUpdated&_count=50&__t=3&__page-id=0")
-                   (link-url body "self"))))))
+                   (link-url body "self"))))
+
+          (testing "has a first link"
+            (is (= (str base-url context-path "/Patient/__page?_sort=_lastUpdated&_count=50&__t=3")
+                   (link-url body "first"))))))
 
       (testing "descending"
         (let [{:keys [status body]}
@@ -1082,7 +1149,11 @@
 
           (testing "has a self link"
             (is (= (str base-url context-path "/Patient?_sort=-_lastUpdated&_count=50&__t=3&__page-id=2")
-                   (link-url body "self"))))))))
+                   (link-url body "self"))))
+
+          (testing "has a first link"
+            (is (= (str base-url context-path "/Patient/__page?_sort=-_lastUpdated&_count=50&__t=3")
+                   (link-url body "first"))))))))
 
   (testing "_profile search"
     (with-handler [handler]
@@ -1749,6 +1820,10 @@
             (is (= (str base-url context-path "/Observation?_include=Observation%3Asubject&_count=50&__t=1&__page-id=0")
                    (link-url body "self"))))
 
+          (testing "has a first link"
+            (is (= (str base-url context-path "/Observation/__page?_include=Observation%3Asubject&_count=50&__t=1")
+                   (link-url body "first"))))
+
           (testing "the bundle contains two entries"
             (is (= 2 (count (:entry body)))))
 
@@ -1957,6 +2032,10 @@
                   (is (= (str base-url context-path "/Observation?_include=Observation%3Asubject&_count=2&__t=1&__page-id=3")
                          (link-url body "self"))))
 
+                (testing "has a first link"
+                  (is (= (str base-url context-path "/Observation/__page?_include=Observation%3Asubject&_count=2&__t=1")
+                         (link-url body "first"))))
+
                 (testing "the bundle contains two entries"
                   (is (= 2 (count (:entry body)))))
 
@@ -2097,6 +2176,10 @@
             (is (= (str base-url context-path "/Patient?_revinclude=Observation%3Asubject&_count=50&__t=1&__page-id=0")
                    (link-url body "self"))))
 
+          (testing "has a first link"
+            (is (= (str base-url context-path "/Patient/__page?_revinclude=Observation%3Asubject&_count=50&__t=1")
+                   (link-url body "first"))))
+
           (testing "the bundle contains two entries"
             (is (= 2 (count (:entry body)))))
 
@@ -2144,6 +2227,10 @@
             (testing "has a self link"
               (is (= (str base-url context-path "/Patient?_revinclude=Observation%3Asubject&_revinclude=Condition%3Asubject&_count=50&__t=1&__page-id=0")
                      (link-url body "self"))))
+
+            (testing "has a first link"
+              (is (= (str base-url context-path "/Patient/__page?_revinclude=Observation%3Asubject&_revinclude=Condition%3Asubject&_count=50&__t=1")
+                     (link-url body "first"))))
 
             (testing "the bundle contains two entries"
               (is (= 3 (count (:entry body)))))

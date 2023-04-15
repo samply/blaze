@@ -168,7 +168,7 @@
         (let [{:keys [body]}
               @(handler {:query-params {"_count" "1"}})]
 
-          (testing "hash next link"
+          (testing "has next link"
             (is (= (str base-url context-path "/_history?_count=1&__t=1&__page-t=1&__page-type=Patient&__page-id=1")
                    (link-url body "next")))))))
 

@@ -26,8 +26,9 @@
         :http/status 422))
 
     :else
-    (do-sync [clauses (ac/completed-future (iu/clauses query-params))]
-      {:clauses clauses})))
+    (ac/completed-future
+      (when-ok [clauses (iu/clauses query-params)]
+        {:clauses clauses}))))
 
 
 (defn- summary?
@@ -41,7 +42,8 @@
   complete exceptionally in case of errors.
 
   Decoded params consist of:
-  :clauses - query clauses"
+   :clauses - query clauses
+   :token - possibly a token encoding the query clauses"
   [page-store handling query-params]
   (do-sync [{:keys [clauses token]} (clauses page-store query-params)]
     (when-ok [include-defs (include/include-defs handling query-params)]

@@ -26,10 +26,8 @@
 
 (defn- clauses->token-query-params! [page-store token clauses]
   (cond
-    token
-    (ac/completed-future {"__token" token})
-    (empty? clauses)
-    (ac/completed-future nil)
+    token (ac/completed-future {"__token" token})
+    (empty? clauses) (ac/completed-future nil)
     :else
     (do-sync [token (page-store/put! page-store clauses)]
       {"__token" token})))
@@ -111,9 +109,26 @@
 
 
 (defn token-url!
-  "Returns a CompletableFuture that will complete with the URL."
+  "Returns a CompletableFuture that will complete with a URL that will encode
+  `clauses` in a token."
   [page-store base-url match params clauses t offset]
   (do-sync [query-params (token-query-params! page-store params clauses)]
+    (str base-url (reitit/match->path match (-> query-params
+                                                (assoc "__t" t)
+                                                (merge offset))))))
+
+
+(defn- clauses->token-query-params [token clauses]
+  (if token {"__token" token} (clauses->query-params clauses)))
+
+
+(defn- token-query-params [params token clauses]
+  (merge-params (clauses->token-query-params token clauses) params))
+
+
+(defn token-url
+  [base-url match params token clauses t offset]
+  (let [query-params (token-query-params params token clauses)]
     (str base-url (reitit/match->path match (-> query-params
                                                 (assoc "__t" t)
                                                 (merge offset))))))
