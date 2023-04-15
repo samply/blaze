@@ -103,8 +103,6 @@ jobs:
   test-coverage:
     if: ${{ github.event_name == 'pull_request' }}
     needs: [ test ]
-    env:
-      codecov_token: ${{ secrets.CODECOV_TOKEN }}
 
     runs-on: ubuntu-22.04
 
@@ -134,7 +132,6 @@ jobs:
 
     - name: Codecov Upload
       uses: codecov/codecov-action@v3
-      if: ${{ env.codecov_token != '' }}
       with:
         name: codecov-umbrella
         file: modules/**/target/coverage/codecov.json
@@ -1418,7 +1415,7 @@ jobs:
       uses: docker/metadata-action@v4
       with:
         images: |
-          ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
+          ${{ github.repository_owner }}/${{ github.event.repository.name }}
         tags: |
           type=schedule
           type=ref,event=branch
