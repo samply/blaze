@@ -116,13 +116,28 @@
        :else (combine-op a b)))))
 
 
-(defn- expression-combine-op [context]
+(defn- expression-combine-conj-op [context]
   (-> (fn
         ([] (transient []))
         ([x] (persistent! x))
         ([a b] (reduce conj! a (persistent! b))))
       (wrap-anomaly)
       (wrap-batch-db context)))
+
+
+(defn- expression-combine-sum-op [context]
+  (-> (fn
+        ([] 0)
+        ([x] x)
+        ([a b] (+ a b)))
+      (wrap-anomaly)
+      (wrap-batch-db context)))
+
+
+(defn- expression-combine-op [{:keys [return-handles?] :as context}]
+  (if return-handles?
+    (expression-combine-conj-op context)
+    (expression-combine-sum-op context)))
 
 
 (defn- handle [subject-handle]
@@ -138,24 +153,58 @@
     population-handles))
 
 
+(defn- expression-reduce-subject-based-conj-op [{:keys [name expression]}]
+  (fn [context subject-handle]
+    (if-ok [res (evaluate-expression-1 context subject-handle name expression)]
+      (cond-> context res (update ::result conj! (handle subject-handle)))
+      #(reduced (assoc context ::result %)))))
+
+
+(defn- expression-reduce-conj-op [{:keys [name expression]}]
+  (fn [context subject-handle]
+    (if-ok [res (evaluate-expression-1 context subject-handle name expression)]
+      (update context ::result conj-all! subject-handle res)
+      #(reduced (assoc context ::result %)))))
+
+
+(defn- expression-reduce-subject-based-sum-op [{:keys [name expression]}]
+  (fn [context subject-handle]
+    (if-ok [res (evaluate-expression-1 context subject-handle name expression)]
+      (cond-> context res (update ::result inc))
+      #(reduced (assoc context ::result %)))))
+
+
+(defn- expression-reduce-sum-op [{:keys [name expression]}]
+  (fn [context subject-handle]
+    (if-ok [res (evaluate-expression-1 context subject-handle name expression)]
+      (update context ::result + (count res))
+      #(reduced (assoc context ::result %)))))
+
+
+(defn- expression-reduce-op
+  [{:keys [return-handles?]} expression-def population-basis]
+  (if return-handles?
+    (if (identical? :boolean population-basis)
+      (expression-reduce-subject-based-conj-op expression-def)
+      (expression-reduce-conj-op expression-def))
+    (if (identical? :boolean population-basis)
+      (expression-reduce-subject-based-sum-op expression-def)
+      (expression-reduce-sum-op expression-def))))
+
+
 (defn- evaluate-expression**
   "Evaluates the expression within `def` over `subject-handles` parallel.
 
   Subject handles have to be a vector in order to ensure parallel execution."
-  [context {:keys [name expression]} subject-handles population-basis]
+  [context expression-def subject-handles population-basis]
   (r/fold
     eval-sequential-chunk-size
     (expression-combine-op context)
-    (fn [context subject-handle]
-      (if-ok [res (evaluate-expression-1 context subject-handle name expression)]
-        (if (identical? :boolean population-basis)
-          (cond-> context res (update ::result conj! (handle subject-handle)))
-          (update context ::result conj-all! subject-handle res))
-        #(reduced (assoc context ::result %))))
+    (expression-reduce-op context expression-def population-basis)
     subject-handles))
 
 
-(defn evaluate-expression*
+(defn- evaluate-expression*
   [{:keys [db] :as context} expression-def subject-type population-basis]
   (transduce
     (comp
@@ -217,15 +266,26 @@
   available in :db of `context`.
 
   The context consists of:
-   :db - the database to use for obtaining subjects and evaluating the expression
-   :now - the evaluation time
-   :expression-defs - a map of available expression definitions
-   :parameters - an optional map of parameters
+   * context :db                - the database to use for obtaining subjects and
+                                  evaluating the expression
+   * context :now               - the evaluation time
+   * context :timeout-eclipsed? - a function returning ture if the evaluation
+                                  timeout is eclipsed
+   * context :timeout           - the evaluation timeout itself
+   * context :expression-defs   - a map of available expression definitions
+   * context :parameters        - an optional map of parameters
+   * context :return-handles?   - whether subject-handles or a simple count
+                                  should be returned
+   * name                       - the name of the expression
+   * subject-type               - the type of subjects like `Patient`
+   * population-basis           - the population basis of either :boolean or a
+                                  type like `Encounter`
 
   The context of the expression has to match `subject-type`. The result type of
   the expression has to match the `population-basis`.
 
-  Returns a list of subject-handles or an anomaly in case of errors."
+  Returns a list of subject-handles or a simple count or an anomaly in case of
+  errors."
   [context name subject-type population-basis]
   (when-ok [expression-def (expression-def context name)
             _ (check-context subject-type expression-def)
@@ -234,7 +294,8 @@
 
 
 (defn evaluate-individual-expression
-  "Evaluates the expression with `name` according to `context`.
+  "Evaluates the expression with `name` on `subject-handle` according to
+  `context`.
 
   Returns an anomaly in case of errors."
   [context subject-handle name]

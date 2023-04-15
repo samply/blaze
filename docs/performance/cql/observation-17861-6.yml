@@ -1,4 +1,4 @@
-library: docs/performance/cql/observation-17861-6.cql
+library: cql/observation-17861-6.cql
 group:
 - type: Patient
   population:

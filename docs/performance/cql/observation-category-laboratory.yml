@@ -1,0 +1,5 @@
+library: cql/observation-category-laboratory.cql
+group:
+- type: Observation
+  population:
+  - expression: InInitialPopulation
