@@ -21,6 +21,24 @@
 (set! *warn-on-reflection* true)
 
 
+(defn- split-modifier [modifier]
+  (if modifier
+    (let [[type chain-code code] (str/split modifier #":")]
+      (cond
+        (str/blank? type)
+        (ba/incorrect (format "Missing type in _has search param `_has:%s`." modifier))
+
+        (str/blank? chain-code)
+        (ba/incorrect (format "Missing chaining search param in _has search param `_has:%s`." modifier))
+
+        (str/blank? code)
+        (ba/incorrect (format "Missing search param in _has search param `_has:%s`." modifier))
+
+        :else
+        [type chain-code code]))
+    (ba/incorrect "Missing modifier of _has search param.")))
+
+
 (defn- search-param-not-found-msg [code type]
   (format "The search-param with code `%s` and type `%s` was not found."
           code type))
@@ -91,13 +109,13 @@
 (defrecord SearchParamHas [index name type code]
   p/SearchParam
   (-compile-value [_ modifier value]
-    (let [[type chain-code code] (str/split modifier #":")]
-      (when-ok [search-param (resolve-search-param index type code)]
-        (when-ok [chain-search-param (resolve-search-param index type chain-code)]
-          [search-param
-           chain-search-param
-           (codec/tid type)
-           (p/-compile-value search-param nil value)]))))
+    (when-ok [[type chain-code code] (split-modifier modifier)
+              search-param (resolve-search-param index type code)
+              chain-search-param (resolve-search-param index type chain-code)]
+      [search-param
+       chain-search-param
+       (codec/tid type)
+       (p/-compile-value search-param nil value)]))
 
   (-resource-handles [_ context tid _ value]
     (resource-handles context tid value))
