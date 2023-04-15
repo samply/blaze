@@ -1133,6 +1133,30 @@
               [0 :id] := "0")))))
 
     (testing "errors"
+      (testing "missing modifier"
+        (with-system [{:blaze.db/keys [node]} system]
+          (given (d/type-query (d/db node) "Patient" [["_has" ""]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Missing modifier of _has search param.")))
+
+      (testing "missing type"
+        (with-system [{:blaze.db/keys [node]} system]
+          (given (d/type-query (d/db node) "Patient" [["_has:" ""]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Missing type in _has search param `_has:`.")))
+
+      (testing "missing chaining search param"
+        (with-system [{:blaze.db/keys [node]} system]
+          (given (d/type-query (d/db node) "Patient" [["_has:foo" ""]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Missing chaining search param in _has search param `_has:foo`.")))
+
+      (testing "missing search param"
+        (with-system [{:blaze.db/keys [node]} system]
+          (given (d/type-query (d/db node) "Patient" [["_has:foo:bar" ""]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Missing search param in _has search param `_has:foo:bar`.")))
+
       (testing "main search param not found"
         (with-system [{:blaze.db/keys [node]} system]
           (given (d/type-query (d/db node) "Patient" [["_has:Observation:patient:foo" ""]])
