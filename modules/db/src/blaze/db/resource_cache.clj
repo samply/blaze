@@ -33,7 +33,9 @@
 
   ccp/StatsCache
   (-stats [_]
-    (.stats (.synchronous cache))))
+    (.stats (.synchronous cache)))
+  (-estimated-size [_]
+    (.estimatedSize (.synchronous cache))))
 
 
 (defn invalidate-all! [resource-cache]
