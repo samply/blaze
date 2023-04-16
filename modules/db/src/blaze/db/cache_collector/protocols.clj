@@ -2,4 +2,5 @@
 
 
 (defprotocol StatsCache
-  (-stats [_]))
+  (-stats [_])
+  (-estimated-size [_]))

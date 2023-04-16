@@ -3,7 +3,7 @@
     [blaze.byte-string :as bs]
     [blaze.db.api :as d]
     [blaze.db.api-spec]
-    [blaze.db.cache-collector :as cc]
+    [blaze.db.cache-collector.protocols :as ccp]
     [blaze.db.resource-cache :as resource-cache]
     [blaze.db.resource-store :as rs]
     [blaze.db.tx-log :as tx-log]
@@ -58,19 +58,19 @@
 
 ;; Resource Handle Cache
 (comment
-  (str (cc/-stats (:blaze.db/resource-handle-cache system)))
+  (str (ccp/-stats (:blaze.db/resource-handle-cache system)))
   (.invalidateAll ^Cache (:blaze.db/resource-handle-cache system))
   )
 
 ;; Transaction Cache
 (comment
-  (str (cc/-stats (:blaze.db/tx-cache system)))
+  (str (ccp/-stats (:blaze.db/tx-cache system)))
   (resource-cache/invalidate-all! (:blaze.db/tx-cache system))
   )
 
 ;; Resource Cache
 (comment
-  (str (cc/-stats (:blaze.db/resource-cache system)))
+  (str (ccp/-stats (:blaze.db/resource-cache system)))
   (resource-cache/invalidate-all! (:blaze.db/resource-cache system))
   )
 
