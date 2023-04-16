@@ -118,12 +118,18 @@
         [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code"female"}]]]
 
       (let [context (context system library-gender)]
-        (given (cql/evaluate-expression context "InInitialPopulation" "Patient" :boolean)
-          [0 :population-handle fhir-spec/fhir-type] := :fhir/Patient
-          [0 :population-handle :id] := "1"
-          [0 :subject-handle fhir-spec/fhir-type] := :fhir/Patient
-          [0 :subject-handle :id] := "1"
-          count := 1))))
+        (testing "returning handles"
+          (let [context (assoc context :return-handles? true)]
+            (given (cql/evaluate-expression context "InInitialPopulation" "Patient" :boolean)
+              [0 :population-handle fhir-spec/fhir-type] := :fhir/Patient
+              [0 :population-handle :id] := "1"
+              [0 :subject-handle fhir-spec/fhir-type] := :fhir/Patient
+              [0 :subject-handle :id] := "1"
+              count := 1)))
+
+        (testing "not returning handles"
+          (let [context (assoc context :return-handles? false)]
+            (is (= 1 (cql/evaluate-expression context "InInitialPopulation" "Patient" :boolean))))))))
 
   (testing "returns all encounters"
     (with-system-data [system mem-node-system]
@@ -135,59 +141,73 @@
         [:put {:fhir/type :fhir/Patient :id "2"}]]]
 
       (let [context (context system library-encounter)]
-        (given (cql/evaluate-expression context "InInitialPopulation" "Patient" "Encounter")
-          [0 :population-handle fhir-spec/fhir-type] := :fhir/Encounter
-          [0 :population-handle :id] := "0-0"
-          [0 :subject-handle fhir-spec/fhir-type] := :fhir/Patient
-          [0 :subject-handle :id] := "0"
-          [1 :population-handle fhir-spec/fhir-type] := :fhir/Encounter
-          [1 :population-handle :id] := "1-0"
-          [1 :subject-handle fhir-spec/fhir-type] := :fhir/Patient
-          [1 :subject-handle :id] := "1"
-          [2 :population-handle fhir-spec/fhir-type] := :fhir/Encounter
-          [2 :population-handle :id] := "1-1"
-          [2 :subject-handle fhir-spec/fhir-type] := :fhir/Patient
-          [2 :subject-handle :id] := "1"
-          count := 3))))
+        (testing "returning handles"
+          (let [context (assoc context :return-handles? true)]
+            (given (cql/evaluate-expression context "InInitialPopulation" "Patient" "Encounter")
+              [0 :population-handle fhir-spec/fhir-type] := :fhir/Encounter
+              [0 :population-handle :id] := "0-0"
+              [0 :subject-handle fhir-spec/fhir-type] := :fhir/Patient
+              [0 :subject-handle :id] := "0"
+              [1 :population-handle fhir-spec/fhir-type] := :fhir/Encounter
+              [1 :population-handle :id] := "1-0"
+              [1 :subject-handle fhir-spec/fhir-type] := :fhir/Patient
+              [1 :subject-handle :id] := "1"
+              [2 :population-handle fhir-spec/fhir-type] := :fhir/Encounter
+              [2 :population-handle :id] := "1-1"
+              [2 :subject-handle fhir-spec/fhir-type] := :fhir/Patient
+              [2 :subject-handle :id] := "1"
+              count := 3)))
+
+        (testing "not returning handles"
+          (let [context (assoc context :return-handles? false)]
+            (is (= 3 (cql/evaluate-expression context "InInitialPopulation" "Patient" "Encounter"))))))))
 
   (testing "missing expression"
     (with-system [system mem-node-system]
       (let [context (context system library-empty)]
-        (given (cql/evaluate-expression context "InInitialPopulation" "Patient" :boolean)
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "Missing expression with name `InInitialPopulation`."
-          :expression-name := "InInitialPopulation"))))
+        (doseq [return-handles? [true false]
+                :let [context (assoc context :return-handles? return-handles?)]]
+          (given (cql/evaluate-expression context "InInitialPopulation" "Patient" :boolean)
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Missing expression with name `InInitialPopulation`."
+            :expression-name := "InInitialPopulation")))))
 
   (testing "expression context doesn't match the subject type"
     (with-system [system mem-node-system]
       (let [context (context system library-gender)]
-        (given (cql/evaluate-expression context "InInitialPopulation" "Encounter" :boolean)
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "The context `Patient` of the expression `InInitialPopulation` differs from the subject type `Encounter`."
-          :expression-name := "InInitialPopulation"
-          :subject-type := "Encounter"
-          :expression-context := "Patient"))))
+        (doseq [return-handles? [true false]
+                :let [context (assoc context :return-handles? return-handles?)]]
+          (given (cql/evaluate-expression context "InInitialPopulation" "Encounter" :boolean)
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "The context `Patient` of the expression `InInitialPopulation` differs from the subject type `Encounter`."
+            :expression-name := "InInitialPopulation"
+            :subject-type := "Encounter"
+            :expression-context := "Patient")))))
 
   (testing "population basis doesn't match the expression return type"
     (testing "boolean"
       (with-system [system mem-node-system]
         (let [context (context system library-encounter)]
-          (given (cql/evaluate-expression context "InInitialPopulation" "Patient" :boolean)
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "The result type `List<Encounter>` of the expression `InInitialPopulation` differs from the population basis :boolean."
-            :expression-name := "InInitialPopulation"
-            :population-basis := :boolean
-            :expression-result-type := "List<Encounter>"))))
+          (doseq [return-handles? [true false]
+                  :let [context (assoc context :return-handles? return-handles?)]]
+            (given (cql/evaluate-expression context "InInitialPopulation" "Patient" :boolean)
+              ::anom/category := ::anom/incorrect
+              ::anom/message := "The result type `List<Encounter>` of the expression `InInitialPopulation` differs from the population basis :boolean."
+              :expression-name := "InInitialPopulation"
+              :population-basis := :boolean
+              :expression-result-type := "List<Encounter>")))))
 
     (testing "Encounter"
       (with-system [system mem-node-system]
         (let [context (context system library-gender)]
-          (given (cql/evaluate-expression context "InInitialPopulation" "Patient" "Encounter")
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "The result type `Boolean` of the expression `InInitialPopulation` differs from the population basis `Encounter`."
-            :expression-name := "InInitialPopulation"
-            :population-basis := "Encounter"
-            :expression-result-type := "Boolean")))))
+          (doseq [return-handles? [true false]
+                  :let [context (assoc context :return-handles? return-handles?)]]
+            (given (cql/evaluate-expression context "InInitialPopulation" "Patient" "Encounter")
+              ::anom/category := ::anom/incorrect
+              ::anom/message := "The result type `Boolean` of the expression `InInitialPopulation` differs from the population basis `Encounter`."
+              :expression-name := "InInitialPopulation"
+              :population-basis := "Encounter"
+              :expression-result-type := "Boolean"))))))
 
   (testing "failing eval"
     (with-system-data [system mem-node-system]
@@ -195,18 +215,22 @@
 
       (let [context (context system library-gender)]
         (with-redefs [expr/eval (failing-eval "msg-222453")]
-          (given (cql/evaluate-expression context "InInitialPopulation" "Patient" :boolean)
-            ::anom/category := ::anom/fault
-            ::anom/message := "Error while evaluating the expression `InInitialPopulation`: msg-222453")))))
+          (doseq [return-handles? [true false]
+                  :let [context (assoc context :return-handles? return-handles?)]]
+            (given (cql/evaluate-expression context "InInitialPopulation" "Patient" :boolean)
+              ::anom/category := ::anom/fault
+              ::anom/message := "Error while evaluating the expression `InInitialPopulation`: msg-222453"))))))
 
   (testing "timeout eclipsed"
     (with-system-data [system mem-node-system]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [context (assoc (context system library-gender) :timeout-eclipsed? (constantly true))]
-        (given (cql/evaluate-expression context "InInitialPopulation" "Patient" :boolean)
-          ::anom/category := ::anom/interrupted
-          ::anom/message := "Timeout of 42000 millis eclipsed while evaluating.")))))
+        (doseq [return-handles? [true false]
+                :let [context (assoc context :return-handles? return-handles?)]]
+          (given (cql/evaluate-expression context "InInitialPopulation" "Patient" :boolean)
+            ::anom/category := ::anom/interrupted
+            ::anom/message := "Timeout of 42000 millis eclipsed while evaluating."))))))
 
 
 (deftest evaluate-individual-expression-test
@@ -286,6 +310,15 @@
           (given (cql/calc-strata context "Gender" (mapv handle (d/type-list db "Patient")))
             ::anom/category := ::anom/incorrect
             ::anom/message := "CQL expression `Gender` returned more than one value for resource `Patient/0`.")))))
+
+  (testing "timeout eclipsed"
+    (with-system-data [system mem-node-system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [{:keys [db] :as context} (assoc (context system library-gender) :timeout-eclipsed? (constantly true))]
+        (given (cql/calc-strata context "Gender" (mapv handle (d/type-list db "Patient")))
+          ::anom/category := ::anom/interrupted
+          ::anom/message := "Timeout of 42000 millis eclipsed while evaluating."))))
 
   (testing "gender"
     (with-system-data [system mem-node-system]

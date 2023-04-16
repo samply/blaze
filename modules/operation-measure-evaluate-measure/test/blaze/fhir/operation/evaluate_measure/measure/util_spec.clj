@@ -9,3 +9,7 @@
 (s/fdef u/population
   :args (s/cat :context map? :fhir-type :fhir/type :code any?
                :handles ::measure/handles))
+
+
+(s/fdef u/population-count
+  :args (s/cat :context map? :fhir-type :fhir/type :code any? :count int?))

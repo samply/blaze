@@ -10,13 +10,17 @@
 
 
 (defn- evaluate-expression
-  [{:keys [subject-handle subject-type population-basis] :as context}
+  [{:keys [subject-handle subject-type return-handles? population-basis]
+    :as context}
    expression-name]
   (if subject-handle
-    (when (cql/evaluate-individual-expression context subject-handle
-                                              expression-name)
-      [{:population-handle subject-handle
-        :subject-handle subject-handle}])
+    (if (cql/evaluate-individual-expression context subject-handle
+                                            expression-name)
+      (if return-handles?
+        [{:population-handle subject-handle
+          :subject-handle subject-handle}]
+        1)
+      (if return-handles? [] 0))
     (cql/evaluate-expression context expression-name subject-type
                              (or population-basis :boolean))))
 
@@ -24,9 +28,11 @@
 (defn evaluate
   "Returns a map of :result, :handles, :luids and :tx-ops."
   {:arglists '([context idx population])}
-  [{:keys [group-idx] :as context} idx {:keys [code criteria]}]
+  [{:keys [group-idx return-handles?] :as context} idx {:keys [code criteria]}]
   (let [population-path-fn #(population-path group-idx idx)]
     (when-ok [expression-name (u/expression population-path-fn criteria)
-              handles (evaluate-expression context expression-name)]
-      (-> (u/population context :fhir.MeasureReport.group/population code handles)
-          (assoc :handles handles)))))
+              result (evaluate-expression context expression-name)]
+      (if return-handles?
+        (-> (u/population context :fhir.MeasureReport.group/population code result)
+            (assoc :handles result))
+        (u/population-count context :fhir.MeasureReport.group/population code result)))))

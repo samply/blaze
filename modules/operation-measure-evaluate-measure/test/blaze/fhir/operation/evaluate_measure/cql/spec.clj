@@ -23,9 +23,17 @@
                    ::compiler/expression-defs]))
 
 
+(s/def ::cql/return-handles?
+  boolean?)
+
+
+(s/def ::cql/evaluate-expression-context
+  (s/merge ::cql/context (s/keys :opt-un [::cql/return-handles?])))
+
+
 (s/def ::cql/parameters
   (s/map-of string? any?))
 
 
-(s/def ::cql/individual-context
+(s/def ::cql/evaluate-individual-expression-context
   (s/merge ::cql/context (s/keys :opt-un [::cql/parameters])))

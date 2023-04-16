@@ -1,4 +1,4 @@
-library: docs/performance/cql/observation-body-weight-50.cql
+library: cql/observation-body-weight-50.cql
 group:
 - type: Patient
   population:

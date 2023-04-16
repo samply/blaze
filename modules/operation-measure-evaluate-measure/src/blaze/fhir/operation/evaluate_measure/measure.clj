@@ -189,8 +189,12 @@
 
 (defn- evaluate-group
   {:arglists '([context group])}
-  [context {:keys [code population stratifier] :as group}]
-  (when-ok [context (assoc context :population-basis (population-basis group))
+  [{:keys [report-type] :as context}
+   {:keys [code population stratifier] :as group}]
+  (when-ok [context (assoc context
+                      :population-basis (population-basis group)
+                      :return-handles? (or (= "subject-list" report-type)
+                                           (some? (seq stratifier))))
             {:keys [luids] :as evaluated-populations}
             (evaluate-populations context population)
             evaluated-stratifiers
