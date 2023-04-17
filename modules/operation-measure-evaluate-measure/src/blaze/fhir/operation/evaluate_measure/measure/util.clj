@@ -53,8 +53,8 @@
        handles)}]])
 
 
-(defn population [{:keys [luids] :as context} fhir-type code handles]
-  (case (:report-type context)
+(defn population [{:keys [report-type luids]} fhir-type code handles]
+  (case report-type
     ("population" "subject")
     {:result
      (cond->
@@ -76,13 +76,22 @@
        :tx-ops (population-tx-ops list-id handles)})))
 
 
+(defn population-count [{:keys [luids]} fhir-type code count]
+  {:result
+   (cond->
+     {:fhir/type fhir-type
+      :count count}
+     code
+     (assoc :code code))
+   :luids luids})
+
+
 (defn- merge-result*
   "Merges `result` into the return value of the reduction `ret`."
   {:arglists '([ret result])}
   [ret {:keys [result handles luids tx-ops]}]
-  (cond-> (update ret :result conj result)
-    (seq handles)
-    (update :handles conj handles)
+  (cond-> (-> (update ret :result conj result)
+              (update :handles conj handles))
     luids
     (assoc :luids luids)
     (seq tx-ops)

@@ -1,0 +1,220 @@
+"system","code","display","count"
+"http://snomed.info/sct","234466008","Acquired coagulation disorder (disorder)",87
+"http://snomed.info/sct","65275009","Acute Cholecystitis",243
+"http://snomed.info/sct","241929008","Acute allergic reaction",1802
+"http://snomed.info/sct","75498004","Acute bacterial sinusitis (disorder)",6464
+"http://snomed.info/sct","10509002","Acute bronchitis (disorder)",54833
+"http://snomed.info/sct","132281000119108","Acute deep venous thrombosis (disorder)",4566
+"http://snomed.info/sct","706870000","Acute pulmonary embolism (disorder)",4577
+"http://snomed.info/sct","67782005","Acute respiratory distress syndrome (disorder)",236
+"http://snomed.info/sct","65710008","Acute respiratory failure (disorder)",5716
+"http://snomed.info/sct","195662009","Acute viral pharyngitis (disorder)",66382
+"http://snomed.info/sct","7200002","Alcoholism",478
+"http://snomed.info/sct","300916003","Allergy to latex (finding)",16
+"http://snomed.info/sct","26929004","Alzheimer's disease (disorder)",1379
+"http://snomed.info/sct","271737000","Anemia (disorder)",30666
+"http://snomed.info/sct","198992004","Antepartum eclampsia",2457
+"http://snomed.info/sct","74400008","Appendicitis",5017
+"http://snomed.info/sct","195967001","Asthma",184
+"http://snomed.info/sct","225444004","At risk for suicide (finding)",10
+"http://snomed.info/sct","24079001","Atopic dermatitis",2144
+"http://snomed.info/sct","49436004","Atrial Fibrillation",3314
+"http://snomed.info/sct","287185009","Attempted suicide - cut/stab",1
+"http://snomed.info/sct","87628006","Bacterial infectious disease (disorder)",165
+"http://snomed.info/sct","6072007","Bleeding from anus",143
+"http://snomed.info/sct","35999006","Blighted ovum",1915
+"http://snomed.info/sct","60951000119105","Blindness due to type 2 diabetes mellitus (disorder)",14
+"http://snomed.info/sct","162864005","Body mass index 30+ - obesity (finding)",43724
+"http://snomed.info/sct","408512008","Body mass index 40+ - severely obese (finding)",999
+"http://snomed.info/sct","275272006","Brain damage - traumatic",669
+"http://snomed.info/sct","262574004","Bullet wound",232
+"http://snomed.info/sct","840539006","COVID-19",92398
+"http://snomed.info/sct","92691004","Carcinoma in situ of prostate (disorder)",980
+"http://snomed.info/sct","410429000","Cardiac Arrest",3445
+"http://snomed.info/sct","128188000","Cerebral palsy (disorder)",391
+"http://snomed.info/sct","373587001","Chiari malformation type II (disorder)",32
+"http://snomed.info/sct","192127007","Child attention deficit disorder",1784
+"http://snomed.info/sct","233678006","Childhood asthma",2709
+"http://snomed.info/sct","43724002","Chill (finding)",10787
+"http://snomed.info/sct","235919008","Cholelithiasis",243
+"http://snomed.info/sct","88805009","Chronic congestive heart failure (disorder)",467
+"http://snomed.info/sct","124171000119105","Chronic intractable migraine without aura",4621
+"http://snomed.info/sct","431855005","Chronic kidney disease stage 1 (disorder)",2329
+"http://snomed.info/sct","431856006","Chronic kidney disease stage 2 (disorder)",350
+"http://snomed.info/sct","433144002","Chronic kidney disease stage 3 (disorder)",22
+"http://snomed.info/sct","278860009","Chronic low back pain (finding)",21409
+"http://snomed.info/sct","1121000119107","Chronic neck pain (finding)",13413
+"http://snomed.info/sct","185086009","Chronic obstructive bronchitis (disorder)",992
+"http://snomed.info/sct","82423001","Chronic pain",4562
+"http://snomed.info/sct","698754002","Chronic paralysis due to lesion of spinal cord",74
+"http://snomed.info/sct","40055000","Chronic sinusitis (disorder)",23367
+"http://snomed.info/sct","359817006","Closed fracture of hip",1174
+"http://snomed.info/sct","110030002","Concussion injury of brain",410
+"http://snomed.info/sct","62564004","Concussion with loss of consciousness",1705
+"http://snomed.info/sct","62106007","Concussion with no loss of consciousness",6359
+"http://snomed.info/sct","302297009","Congenital deformity of foot (disorder)",34
+"http://snomed.info/sct","14760008","Constipation (finding)",56
+"http://snomed.info/sct","40275004","Contact dermatitis",624
+"http://snomed.info/sct","53741008","Coronary Heart Disease",3639
+"http://snomed.info/sct","49727002","Cough (finding)",64683
+"http://snomed.info/sct","190905008","Cystic Fibrosis",2
+"http://snomed.info/sct","38822007","Cystitis",2072
+"http://snomed.info/sct","44054006","Diabetes",6363
+"http://snomed.info/sct","427089005","Diabetes from Cystic Fibrosis",1
+"http://snomed.info/sct","127013003","Diabetic renal disease (disorder)",2493
+"http://snomed.info/sct","422034002","Diabetic retinopathy associated with type II diabetes mellitus (disorder)",1733
+"http://snomed.info/sct","267060006","Diarrhea symptom (finding)",3820
+"http://snomed.info/sct","157265008","Dislocation of hip joint (disorder)",68
+"http://snomed.info/sct","62718007","Dribbling from mouth (finding)",108
+"http://snomed.info/sct","55680006","Drug overdose",4676
+"http://snomed.info/sct","55680006","Drug overdose (disorder)",2
+"http://snomed.info/sct","267036007","Dyspnea (finding)",17824
+"http://snomed.info/sct","15802004","Dystonia (disorder)",60
+"http://snomed.info/sct","84757009","Epilepsy",1452
+"http://snomed.info/sct","84757009","Epilepsy (disorder)",194
+"http://snomed.info/sct","301011002","Escherichia coli urinary tract infection",3257
+"http://snomed.info/sct","53827007","Excessive salivation (disorder)",162
+"http://snomed.info/sct","370247008","Facial laceration",3109
+"http://snomed.info/sct","230265002","Familial Alzheimer's disease of early onset (disorder)",238
+"http://snomed.info/sct","84229001","Fatigue (finding)",36329
+"http://snomed.info/sct","707577004","Female Infertility",1
+"http://snomed.info/sct","156073000","Fetus with unknown complication",3913
+"http://snomed.info/sct","386661006","Fever (finding)",84769
+"http://snomed.info/sct","203082005","Fibromyalgia (disorder)",2681
+"http://snomed.info/sct","403190006","First degree burn",2503
+"http://snomed.info/sct","16114001","Fracture of ankle",3072
+"http://snomed.info/sct","58150001","Fracture of clavicle",3358
+"http://snomed.info/sct","65966004","Fracture of forearm",3951
+"http://snomed.info/sct","33737001","Fracture of rib",1503
+"http://snomed.info/sct","1734006","Fracture of the vertebral column with spinal cord injury",21
+"http://snomed.info/sct","15724005","Fracture of vertebral column without spinal cord injury",145
+"http://snomed.info/sct","263102004","Fracture subluxation of wrist",3130
+"http://snomed.info/sct","235595009","Gastroesophageal reflux disease (disorder)",295
+"http://snomed.info/sct","90560007","Gout",783
+"http://snomed.info/sct","25064002","Headache (finding)",13091
+"http://snomed.info/sct","84114007","Heart failure (disorder)",186
+"http://snomed.info/sct","66857006","Hemoptysis (finding)",789
+"http://snomed.info/sct","429280009","History of amputation of foot (situation)",24
+"http://snomed.info/sct","428251008","History of appendectomy",5017
+"http://snomed.info/sct","429007001","History of cardiac arrest (situation)",3445
+"http://snomed.info/sct","161622006","History of lower limb amputation (situation)",30
+"http://snomed.info/sct","399211009","History of myocardial infarction (situation)",243
+"http://snomed.info/sct","703151001","History of single seizure (situation)",2826
+"http://snomed.info/sct","230745008","Hydrocephalus (disorder)",32
+"http://snomed.info/sct","80394007","Hyperglycemia (disorder)",3261
+"http://snomed.info/sct","55822004","Hyperlipidemia",10906
+"http://snomed.info/sct","59621000","Hypertension",27666
+"http://snomed.info/sct","302870006","Hypertriglyceridemia (disorder)",6238
+"http://snomed.info/sct","389087006","Hypoxemia (disorder)",15902
+"http://snomed.info/sct","83664006","Idiopathic atrophic hypothyroidism",688
+"http://snomed.info/sct","196416002","Impacted molars",4620
+"http://snomed.info/sct","11218009","Infection caused by Pseudomonas aeruginosa",1
+"http://snomed.info/sct","406602003","Infection caused by Staphylococcus aureus",1
+"http://snomed.info/sct","444470001","Injury of anterior cruciate ligament",549
+"http://snomed.info/sct","86175003","Injury of heart (disorder)",18
+"http://snomed.info/sct","40095003","Injury of kidney (disorder)",14
+"http://snomed.info/sct","444448004","Injury of medial collateral ligament of knee",753
+"http://snomed.info/sct","307731004","Injury of tendon of the rotator cuff of shoulder",1607
+"http://snomed.info/sct","110359009","Intellectual disability (disorder)",191
+"http://snomed.info/sct","57676002","Joint pain (finding)",14225
+"http://snomed.info/sct","414564002","Kyphosis deformity of spine (disorder)",6
+"http://snomed.info/sct","284551006","Laceration of foot",3313
+"http://snomed.info/sct","283371005","Laceration of forearm",3195
+"http://snomed.info/sct","284549007","Laceration of hand",3169
+"http://snomed.info/sct","283385000","Laceration of thigh",3251
+"http://snomed.info/sct","201834006","Localized, primary osteoarthritis of the hand",2156
+"http://snomed.info/sct","36955009","Loss of taste (finding)",47989
+"http://snomed.info/sct","200936003","Lupus erythematosus",13
+"http://snomed.info/sct","97331000119101","Macular edema and retinopathy due to type 2 diabetes mellitus (disorder)",389
+"http://snomed.info/sct","370143000","Major depression disorder",501
+"http://snomed.info/sct","36923009","Major depression, single episode",52
+"http://snomed.info/sct","427089005","Male Infertility",1
+"http://snomed.info/sct","254837009","Malignant neoplasm of breast (disorder)",1682
+"http://snomed.info/sct","363406005","Malignant tumor of colon",401
+"http://snomed.info/sct","171131006","Meningocele (disorder)",11
+"http://snomed.info/sct","414667000","Meningomyelocele (disorder)",34
+"http://snomed.info/sct","237602007","Metabolic syndrome X (disorder)",6118
+"http://snomed.info/sct","314994000","Metastasis from malignant tumor of prostate (disorder)",20
+"http://snomed.info/sct","90781000119102","Microalbuminuria due to type 2 diabetes mellitus (disorder)",369
+"http://snomed.info/sct","19169002","Miscarriage in first trimester",18973
+"http://snomed.info/sct","68962001","Muscle pain (finding)",14225
+"http://snomed.info/sct","22298006","Myocardial Infarction",243
+"http://snomed.info/sct","68235000","Nasal congestion (finding)",4518
+"http://snomed.info/sct","422587007","Nausea (finding)",4884
+"http://snomed.info/sct","126906006","Neoplasm of prostate",993
+"http://snomed.info/sct","368581000119106","Neuropathy due to type 2 diabetes mellitus (disorder)",2259
+"http://snomed.info/sct","47200007","Non-low risk pregnancy",10
+"http://snomed.info/sct","424132000","Non-small cell carcinoma of lung, TNM stage 1 (disorder)",139
+"http://snomed.info/sct","254637007","Non-small cell lung cancer (disorder)",139
+"http://snomed.info/sct","1551000119108","Nonproliferative diabetic retinopathy due to type 2 diabetes mellitus (disorder)",982
+"http://snomed.info/sct","72892002","Normal pregnancy",51022
+"http://snomed.info/sct","5602001","Opioid abuse (disorder)",911
+"http://snomed.info/sct","239872002","Osteoarthritis of hip",1923
+"http://snomed.info/sct","239873007","Osteoarthritis of knee",5168
+"http://snomed.info/sct","64859006","Osteoporosis (disorder)",4867
+"http://snomed.info/sct","65363002","Otitis media",17758
+"http://snomed.info/sct","109838007","Overlapping malignant neoplasm of colon",546
+"http://snomed.info/sct","22253000","Pain (finding)",114
+"http://snomed.info/sct","246677007","Passive conjunctival congestion (finding)",798
+"http://snomed.info/sct","443165006","Pathological fracture due to osteoporosis (disorder)",1861
+"http://snomed.info/sct","446096008","Perennial allergic rhinitis",3237
+"http://snomed.info/sct","232353008","Perennial allergic rhinitis with seasonal variation",3420
+"http://snomed.info/sct","233604007","Pneumonia",1
+"http://snomed.info/sct","233604007","Pneumonia (disorder)",16077
+"http://snomed.info/sct","68496003","Polyp of colon",8118
+"http://snomed.info/sct","398152000","Poor muscle tone (finding)",174
+"http://snomed.info/sct","47505003","Posttraumatic stress disorder",75
+"http://snomed.info/sct","15777000","Prediabetes",31799
+"http://snomed.info/sct","398254007","Preeclampsia",2410
+"http://snomed.info/sct","399912005","Pressure ulcer (disorder)",31
+"http://snomed.info/sct","95417003","Primary fibromyalgia syndrome",356
+"http://snomed.info/sct","93761005","Primary malignant neoplasm of colon",278
+"http://snomed.info/sct","67811000119102","Primary small cell malignant neoplasm of lung, TNM stage 1 (disorder)",24
+"http://snomed.info/sct","1501000119109","Proliferative diabetic retinopathy due to type II diabetes mellitus (disorder)",289
+"http://snomed.info/sct","157141000119108","Proteinuria due to type 2 diabetes mellitus (disorder)",22
+"http://snomed.info/sct","236077008","Protracted diarrhea",143
+"http://snomed.info/sct","87433001","Pulmonary emphysema (disorder)",1109
+"http://snomed.info/sct","45816000","Pyelonephritis",52
+"http://snomed.info/sct","713197008","Recurrent rectal polyp",1942
+"http://snomed.info/sct","197927001","Recurrent urinary tract infection",957
+"http://snomed.info/sct","271825005","Respiratory distress (finding)",15902
+"http://snomed.info/sct","267064002","Retention of urine (disorder)",36
+"http://snomed.info/sct","69896004","Rheumatoid arthritis",280
+"http://snomed.info/sct","47693006","Rupture of appendix",1547
+"http://snomed.info/sct","30832001","Rupture of patellar tendon",624
+"http://snomed.info/sct","298382003","Scoliosis deformity of spine (disorder)",24
+"http://snomed.info/sct","367498001","Seasonal allergic rhinitis",1647
+"http://snomed.info/sct","403191005","Second degree burn",1626
+"http://snomed.info/sct","94260004","Secondary malignant neoplasm of colon",26
+"http://snomed.info/sct","128613002","Seizure disorder",2826
+"http://snomed.info/sct","91302008","Sepsis (disorder)",3011
+"http://snomed.info/sct","448813005","Sepsis caused by Pseudomonas (disorder)",1
+"http://snomed.info/sct","448417001","Sepsis caused by Staphylococcus aureus",1
+"http://snomed.info/sct","770349000","Sepsis caused by virus (disorder)",3702
+"http://snomed.info/sct","76571007","Septic shock (disorder)",503
+"http://snomed.info/sct","27942005","Shock (disorder)",9
+"http://snomed.info/sct","36971009","Sinusitis (disorder)",6512
+"http://snomed.info/sct","254632001","Small cell carcinoma of lung (disorder)",24
+"http://snomed.info/sct","449868002","Smokes tobacco daily",647
+"http://snomed.info/sct","267102003","Sore throat symptom (finding)",13259
+"http://snomed.info/sct","221360009","Spasticity (finding)",298
+"http://snomed.info/sct","76916001","Spina bifida occulta (disorder)",25
+"http://snomed.info/sct","44465007","Sprain of ankle",11451
+"http://snomed.info/sct","70704007","Sprain of wrist",5007
+"http://snomed.info/sct","248595008","Sputum finding (finding)",32267
+"http://snomed.info/sct","43878008","Streptococcal sore throat (disorder)",15953
+"http://snomed.info/sct","230690007","Stroke",4089
+"http://snomed.info/sct","86849004","Suicidal deliberate poisoning",7
+"http://snomed.info/sct","840544004","Suspected COVID-19",95527
+"http://snomed.info/sct","162573006","Suspected lung cancer (situation)",164
+"http://snomed.info/sct","239720000","Tear of meniscus of knee",529
+"http://snomed.info/sct","403192003","Third degree burn",165
+"http://snomed.info/sct","427419006","Transformed migraine (disorder)",928
+"http://snomed.info/sct","127295002","Traumatic brain injury (disorder)",31
+"http://snomed.info/sct","79586000","Tubal pregnancy",2405
+"http://snomed.info/sct","288959006","Unable to swallow saliva (finding)",84
+"http://snomed.info/sct","68566005","Urinary tract infectious disease (disorder)",34
+"http://snomed.info/sct","444814009","Viral sinusitis (disorder)",117378
+"http://snomed.info/sct","249497008","Vomiting symptom (finding)",4884
+"http://snomed.info/sct","56018004","Wheezing (finding)",17824
+"http://snomed.info/sct","39848009","Whiplash injury to neck",5109

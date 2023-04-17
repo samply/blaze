@@ -1,4 +1,4 @@
-# GraphQL
+# GraphQL Performance
 
 ## Simple Code Search
 

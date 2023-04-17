@@ -37,6 +37,10 @@
   (reitit/map->Match {:data {:fhir.resource/type "Patient"}}))
 
 
+(def operation-outcome
+  #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome")
+
+
 (defn wrap-defaults [handler]
   (fn [request]
     (handler (assoc request ::reitit/match match))))
@@ -66,18 +70,35 @@
           [:issue 0 :code] := #fhir/code"not-found"
           [:issue 0 :diagnostics] := "Resource `Patient/0` was not found."))))
 
-  (testing "returns Not-Found on invalid version id"
+  (testing "returns Bad-Request on invalid id"
     (with-handler [handler]
       (let [{:keys [status body]}
-            @(handler {:path-params {:id "0" :vid "a"}})]
+            @(handler {:path-params {:id "A_B"}})]
 
-        (is (= 404 status))
+        (is (= 400 status))
 
         (given body
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"not-found"
-          [:issue 0 :diagnostics] := "Resource `Patient/0` with versionId `a` was not found."))))
+          [:issue 0 :code] := #fhir/code"value"
+          [:issue 0 :details :coding 0 :system] := operation-outcome
+          [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_ID_INVALID"
+          [:issue 0 :diagnostics] := "Resource id `A_B` is invalid."))))
+
+  (testing "returns Bad-Request on invalid version id"
+    (with-handler [handler]
+      (let [{:keys [status body]}
+            @(handler {:path-params {:id "0" :vid "a"}})]
+
+        (is (= 400 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"value"
+          [:issue 0 :details :coding 0 :system] := operation-outcome
+          [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_ID_INVALID"
+          [:issue 0 :diagnostics] := "Resource versionId `a` is invalid."))))
 
   (testing "returns Gone on deleted resource"
     (with-handler [handler]

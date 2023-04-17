@@ -36,20 +36,20 @@
   [name url type base code c-hash main-expression c1 c2]
   p/SearchParam
   (-compile-value [_ _ value]
-    (let [[v1 v2] (cc/split-value value)
-          token-value (cc/compile-component-value c1 v1)]
-      (if-ok [quantity-value (cc/compile-component-value c2 v2)]
-        (prefix-with quantity-value token-value)
-        #(case (::spq/category %)
-          ::spq/invalid-decimal-value
-          (assoc %
-            ::anom/message (u/invalid-decimal-value-msg code v2))
-          ::spq/unsupported-prefix
-          (assoc %
-            ::anom/message
-            (u/unsupported-prefix-msg
-              code (::spq/unsupported-prefix %)))
-          %))))
+    (when-ok [[v1 v2] (cc/split-value value)]
+      (let [token-value (cc/compile-component-value c1 v1)]
+        (if-ok [quantity-value (cc/compile-component-value c2 v2)]
+          (prefix-with quantity-value token-value)
+          #(case (::spq/category %)
+             ::spq/invalid-decimal-value
+             (assoc %
+               ::anom/message (u/invalid-decimal-value-msg code v2))
+             ::spq/unsupported-prefix
+             (assoc %
+               ::anom/message
+               (u/unsupported-prefix-msg
+                 code (::spq/unsupported-prefix %)))
+             %)))))
 
   (-resource-handles [_ context tid _ value]
     (coll/eduction

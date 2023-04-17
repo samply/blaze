@@ -14,7 +14,7 @@
 (defprotocol Expression
   (-eval [expression context resource scope]
     "Evaluates `expression` on `resource` using `context` and optional `scope`
-    for scoped expressions like inside queries.")
+    for scoped expressions inside queries.")
   (-form [expression]))
 
 

@@ -15,6 +15,7 @@
     [blaze.interaction.search.util :as search-util]
     [blaze.interaction.util :as iu]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [blaze.page-store :as page-store]
     [blaze.page-store.spec]
     [blaze.spec]
     [clojure.spec.alpha :as s]
@@ -101,7 +102,7 @@
   :num-matches - the number of search matches (excluding includes)
   :next-handle - the resource handle of the first resource of the next page
   :clauses - the actually used clauses"
-  {:arglists '([context db])}
+  {:arglists '([context])}
   [{:blaze/keys [db] {:keys [include-defs page-size] :as params} :params :as context}]
   (if-ok [{:keys [handles clauses]} (handles-and-clauses context db)]
     (let [{:keys [matches includes next-match]}
@@ -125,11 +126,18 @@
     {"__page-id" id}))
 
 
+(defn- link [relation url]
+  {:fhir/type :fhir.Bundle/link
+   :relation relation
+   :url url})
+
+
 (defn- self-link [{:keys [self-link-url-fn]} clauses first-entry]
-  (let [url (self-link-url-fn clauses (self-link-offset first-entry))]
-    {:fhir/type :fhir.Bundle/link
-     :relation "self"
-     :url url}))
+  (link "self" (self-link-url-fn clauses (self-link-offset first-entry))))
+
+
+(defn- first-link [{:keys [first-link-url-fn]} token clauses]
+  (link "first" (first-link-url-fn token clauses)))
 
 
 (defn- next-link-offset [next-handle]
@@ -137,11 +145,9 @@
 
 
 (defn- next-link
-  [{:keys [next-link-url-fn]} clauses next-handle]
-  (do-sync [url (next-link-url-fn clauses (next-link-offset next-handle))]
-    {:fhir/type :fhir.Bundle/link
-     :relation "next"
-     :url url}))
+  [{:keys [next-link-url-fn]} token clauses next-handle]
+  (let [url (next-link-url-fn token clauses (next-link-offset next-handle))]
+    (link "next" url)))
 
 
 (defn- total
@@ -161,16 +167,23 @@
     num-matches))
 
 
-(defn- normal-bundle [context clauses entries total]
+(defn- normal-bundle [context token clauses entries total]
   (cond->
     {:fhir/type :fhir/Bundle
      :id (iu/luid context)
      :type #fhir/code"searchset"
      :entry entries
-     :link [(self-link context clauses (first entries))]}
+     :link [(self-link context clauses (first entries))
+            (first-link context token clauses)]}
 
     total
     (assoc :total (type/->UnsignedInt total))))
+
+
+(defn- gen-token! [{{:keys [token]} :params :keys [gen-token-fn]} clauses]
+  (if token
+    (ac/completed-future token)
+    (gen-token-fn clauses)))
 
 
 (defn- search-normal [context]
@@ -178,12 +191,11 @@
       (ac/then-compose
         (fn [{:keys [entries num-matches next-handle clauses]}]
           (let [total (total context num-matches next-handle)]
-            (if next-handle
-              (do-sync [next-link (next-link context clauses next-handle)]
-                (-> (normal-bundle context clauses entries total)
-                    (update :link conj next-link)))
-              (-> (normal-bundle context clauses entries total)
-                  ac/completed-future)))))))
+            (do-sync [token (gen-token! context clauses)]
+              (if next-handle
+                (-> (normal-bundle context token clauses entries total)
+                    (update :link conj (next-link context token clauses next-handle)))
+                (normal-bundle context token clauses entries total))))))))
 
 
 (defn- summary-total
@@ -231,21 +243,33 @@
     (nav/url base-url (match request "type") params clauses (iu/t db) offset)))
 
 
+(defn- gen-token-fn
+  [{:keys [page-store]} {{{route-name :name} :data} ::reitit/match}]
+  (if (= "search" (some-> route-name name))
+    (fn [clauses]
+      (if (empty? clauses)
+        (ac/completed-future nil)
+        (page-store/put! page-store clauses)))
+    (fn [_clauses]
+      (ac/completed-future nil))))
+
+
+(defn- first-link-url-fn
+  "Returns a function of `token` and `clauses` that returns the URL of the first
+  link."
+  [{:blaze/keys [base-url db] :as request} params]
+  (fn [token clauses]
+    (nav/token-url base-url (match request "page") params token clauses
+                   (iu/t db) nil)))
+
+
 (defn- next-link-url-fn
-  "Returns a function of `clauses`, `t` and `offset` that returns a
-  CompletableFuture that will complete with the URL of the next link."
-  [{:keys [page-store]}
-   {:blaze/keys [base-url db]
-    {{route-name :name} :data} ::reitit/match :as request}
-   {:keys [token] :as params}]
-  (if (or token (= "search" (some-> route-name name)))
-    (fn [clauses offset]
-      (nav/token-url! page-store base-url (match request "page") params clauses
-                      (iu/t db) offset))
-    (fn [clauses offset]
-      (ac/completed-future
-        (nav/url base-url (match request "page") params clauses (iu/t db)
-                 offset)))))
+  "Returns a function of `token`, `clauses` and `offset` that returns the URL
+  of the next link."
+  [{:blaze/keys [base-url db] :as request} params]
+  (fn [token clauses offset]
+    (nav/token-url base-url (match request "page") params token clauses
+                   (iu/t db) offset)))
 
 
 (defn- search-context
@@ -265,7 +289,9 @@
           :type type
           :params params
           :self-link-url-fn (self-link-url-fn request params)
-          :next-link-url-fn (next-link-url-fn context request params))
+          :gen-token-fn (gen-token-fn context request)
+          :first-link-url-fn (first-link-url-fn request params)
+          :next-link-url-fn (next-link-url-fn request params))
         handling
         (assoc :blaze.preference/handling handling)))))
 

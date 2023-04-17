@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.20.3
+
+### Documentation
+
+* Generate GitHub Pages from Documentation ([#955](https://github.com/samply/blaze/pull/955))
+
+### Performance
+
+* Improve Performance Evaluating Measures without Stratifier ([#962](https://github.com/samply/blaze/pull/962))
+* Strip Narrative from Structure Definitions ([#959](https://github.com/samply/blaze/pull/959))
+
+### Minor Enhancements
+
+* Add First Link to Searchset Bundles ([#961](https://github.com/samply/blaze/pull/961))
+
+### Operation
+
+* Add Estimated Size to Cache Metrics ([#963](https://github.com/samply/blaze/pull/963))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/69?closed=1).
+
 ## v0.20.2
 
 ### Other

@@ -1,0 +1,8 @@
+library: observation-17861-6-value.cql
+group:
+- type: Observation
+  population:
+  - expression: InInitialPopulation
+  stratifier:
+  - code: value
+    expression: Value

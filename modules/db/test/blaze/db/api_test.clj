@@ -1133,6 +1133,30 @@
               [0 :id] := "0")))))
 
     (testing "errors"
+      (testing "missing modifier"
+        (with-system [{:blaze.db/keys [node]} system]
+          (given (d/type-query (d/db node) "Patient" [["_has" ""]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Missing modifier of _has search param.")))
+
+      (testing "missing type"
+        (with-system [{:blaze.db/keys [node]} system]
+          (given (d/type-query (d/db node) "Patient" [["_has:" ""]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Missing type in _has search param `_has:`.")))
+
+      (testing "missing chaining search param"
+        (with-system [{:blaze.db/keys [node]} system]
+          (given (d/type-query (d/db node) "Patient" [["_has:foo" ""]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Missing chaining search param in _has search param `_has:foo`.")))
+
+      (testing "missing search param"
+        (with-system [{:blaze.db/keys [node]} system]
+          (given (d/type-query (d/db node) "Patient" [["_has:foo:bar" ""]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Missing search param in _has search param `_has:foo:bar`.")))
+
       (testing "main search param not found"
         (with-system [{:blaze.db/keys [node]} system]
           (given (d/type-query (d/db node) "Patient" [["_has:Observation:patient:foo" ""]])
@@ -2541,6 +2565,11 @@
                         :code #fhir/code"mm[Hg]"
                         :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
+      (testing "missing second value part"
+        (given (d/type-query (d/db node) "Observation" [["code-value-quantity" "8480-6"]])
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Miss the second part is composite search value `8480-6`."))
+
       (testing "as first clause"
         (let [clauses [["code-value-quantity" "8480-6$ge140"]]]
           (given (pull-type-query node "Observation" clauses)
@@ -2725,6 +2754,11 @@
                                 {:system #fhir/uri"http://snomed.info/sct"
                                  :code #fhir/code"260373001"
                                  :display "Detected (qualifier value)"}]}}]]]
+
+      (testing "missing second value part"
+        (given (d/type-query (d/db node) "Observation" [["code-value-concept" "http://loinc.org|94564-2"]])
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Miss the second part is composite search value `http://loinc.org|94564-2`."))
 
       (testing "as first clause"
         (testing "code as system|code"

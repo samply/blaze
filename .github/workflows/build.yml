@@ -86,7 +86,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1257'
+        cli: '1.11.1.1273'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -102,7 +102,6 @@ jobs:
 
   test-coverage:
     if: ${{ github.event_name == 'pull_request' }}
-
     needs: [ test ]
 
     runs-on: ubuntu-22.04
@@ -117,7 +116,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1257'
+        cli: '1.11.1.1273'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -159,7 +158,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1257'
+        cli: '1.11.1.1273'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -187,7 +186,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1257'
+        cli: '1.11.1.1273'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -226,6 +225,8 @@ jobs:
   image-scan:
     needs: build
     runs-on: ubuntu-22.04
+    permissions:
+      security-events: write
 
     steps:
     - name: Download Blaze Image
@@ -250,6 +251,7 @@ jobs:
         timeout: '15m0s'
 
     - name: Upload Trivy Scan Results to GitHub Security Tab
+      if: ${{ (github.repository_owner == 'samply') || (vars.IMAGE_SCAN_UPLOAD == 'true') }}
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: trivy-results.sarif
@@ -788,7 +790,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1257'
+        cli: '1.11.1.1273'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -1256,7 +1258,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1257'
+        cli: '1.11.1.1273'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -1320,9 +1322,11 @@ jobs:
 
     - name: Docker Stats
       run: docker stats --no-stream
-      
+
   push-image:
+    if: github.event_name != 'pull_request' || (github.event.pull_request.base.repo.full_name == github.event.pull_request.head.repo.full_name)
     needs:
+    - build
     - image-scan
     - integration-test
     - not-enforcing-referential-integrity-test
@@ -1339,7 +1343,11 @@ jobs:
     - distributed-test
     - jepsen-distributed-test
     runs-on: ubuntu-22.04
-    
+    permissions:
+      packages: write
+    env:
+      dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+
     steps:
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -1365,26 +1373,19 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
-    - name: Login to GitHub Container Registry
+    - name: Login to GHCR
       uses: docker/login-action@v2
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
-        password: ${{ secrets.CR_PAT }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Login to DockerHub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-    - name: Docker meta
-      id: docker-meta
+    - name: GHCR meta
+      id: ghcr-meta
       uses: docker/metadata-action@v4
       with:
         images: |
-          samply/blaze
-          ghcr.io/samply/blaze
+          ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
         tags: |
           type=schedule
           type=ref,event=branch
@@ -1392,17 +1393,89 @@ jobs:
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
 
-    - name: Build and push
+    - name: Build and push to GHCR
       uses: docker/build-push-action@v4
       with:
         context: .
         platforms: linux/amd64,linux/arm64
         push: true
-        tags: ${{ steps.docker-meta.outputs.tags }}
-        labels: ${{ steps.docker-meta.outputs.labels }}
+        tags: ${{ steps.ghcr-meta.outputs.tags }}
+        labels: ${{ steps.ghcr-meta.outputs.labels }}
+
+    - name: Login to DockerHub
+      if: ${{ env.dockerhub_username != '' }}
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: DockerHub meta
+      if: ${{ env.dockerhub_username != '' }}
+      id: dockerhub-meta
+      uses: docker/metadata-action@v4
+      with:
+        images: |
+          ${{ github.repository_owner }}/${{ github.event.repository.name }}
+        tags: |
+          type=schedule
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+
+    - name: Build and push to DockerHub
+      if: ${{ env.dockerhub_username != '' }}
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.dockerhub-meta.outputs.tags }}
+        labels: ${{ steps.dockerhub-meta.outputs.labels }}
 
     - name: Release
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: target/blaze-*-standalone.jar
+
+  build-pages:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v3
+    - name: Setup Node
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+        cache: npm
+        cache-dependency-path: 'docs/package-lock.json'
+    - name: Install dependencies
+      working-directory: ./docs
+      run: npm install
+    - name: Build
+      working-directory: ./docs
+      env:
+        DOCS_BASE: "/${{ github.event.repository.name }}/"
+      run: npm run docs:build
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v1
+      with:
+        path: docs/.vitepress/dist
+
+  deploy-pages:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-22.04
+    needs: [ build-pages ]
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v2

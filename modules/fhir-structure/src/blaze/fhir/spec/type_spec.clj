@@ -39,7 +39,17 @@
 
 (s/fdef type/uri
   :args (s/cat :value (s/alt :value string? :extended map?))
-  :ret (s/or :value type/uri :invalid s2/invalid?))
+  :ret (s/or :value type/uri? :invalid s2/invalid?))
+
+
+(s/fdef type/url
+  :args (s/cat :value (s/alt :value string? :extended map?))
+  :ret (s/or :value type/url? :invalid s2/invalid?))
+
+
+(s/fdef type/canonical
+  :args (s/cat :value (s/alt :value string? :extended map?))
+  :ret (s/or :value type/canonical? :invalid s2/invalid?))
 
 
 (s/fdef type/instant
