@@ -87,6 +87,17 @@
       [:body :issue 0 :diagnostics] := "Error on value `{}`. Expected type is `code`, regex `[^\\s]+(\\s[^\\s]+)*`."
       [:body :issue 0 :expression] := ["gender"]))
 
+  (testing "body with bundle with null resource"
+    (given @(resource-handler
+              {:headers {"content-type" "application/fhir+json"}
+               :body (input-stream "{\"resourceType\": \"Bundle\", \"entry\": [{\"resource\": null}]}")})
+      :status := 400
+      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code"error"
+      [:body :issue 0 :code] := #fhir/code"invariant"
+      [:body :issue 0 :diagnostics] := "Error on value `null`. Expected type is `Resource`."
+      [:body :issue 0 :expression] := ["entry[0].resource"]))
+
   (testing "body with bundle with invalid resource"
     (given @(resource-handler
               {:headers {"content-type" "application/fhir+json"}
@@ -135,6 +146,16 @@
       [:body :issue 0 :severity] := #fhir/code"error"
       [:body :issue 0 :code] := #fhir/code"invariant"
       [:body :issue 0 :diagnostics] := "Error on value `a_b`. Expected type is `id`, regex `[A-Za-z0-9\\-\\.]{1,64}`."))
+
+  (testing "body with bundle with empty resource"
+    (given @(resource-handler
+              {:headers {"content-type" "application/fhir+xml"}
+               :body (input-stream "<Bundle xmlns=\"http://hl7.org/fhir\"><entry><resource></resource></entry></Bundle>")})
+      :status := 400
+      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code"error"
+      [:body :issue 0 :code] := #fhir/code"invariant"
+      [:body :issue 0 :diagnostics] := "Error on value `<:resource/>`. Expected type is `Resource`."))
 
   (testing "body with bundle with invalid resource"
     (given @(resource-handler

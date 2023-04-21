@@ -230,7 +230,7 @@
       [{:fhir.issues/severity "error"
         :fhir.issues/code "value"
         :fhir.issues/diagnostics
-        "Given resource does not contain a :resourceType key."}]})))
+        "Given resource does not contain a `resourceType` property."}]})))
 
 
 (defn explain-data-xml
@@ -256,8 +256,7 @@
      {:fhir/issues
       [{:fhir.issues/severity "error"
         :fhir.issues/code "value"
-        :fhir.issues/diagnostics
-        "Given resource does not contain a :tag key."}]})))
+        :fhir.issues/diagnostics (format "Invalid resource element `%s`." resource)}]})))
 
 
 (defn primitive?
@@ -303,7 +302,7 @@
   {:arglists '([x])}
   [{:keys [tag] :as x}]
   (or
-    (when type
+    (when tag
       (when-let [spec (s2/get-spec (keyword "fhir.xml" (name tag)))]
         (let [resource (s2/conform spec x)]
           (when-not (s2/invalid? resource)
