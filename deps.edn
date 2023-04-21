@@ -83,7 +83,7 @@
   :outdated
   {:replace-deps
    {com.github.liquidz/antq
-    {:mvn/version "2.2.1017"}
+    {:mvn/version "2.3.1043"}
 
     org.slf4j/slf4j-nop
     {:mvn/version "2.0.7"}}
