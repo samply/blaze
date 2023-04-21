@@ -1,11 +1,11 @@
 (ns blaze.fhir.spec-test
   (:require
-    [blaze.anomaly :as ba]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec-spec]
     [blaze.fhir.spec.generators :as fg]
     [blaze.fhir.spec.impl.util-spec]
     [blaze.fhir.spec.impl.xml-spec]
+    [blaze.fhir.spec.spec]
     [blaze.fhir.spec.type :as type]
     [blaze.test-util :as tu :refer [satisfies-prop]]
     [clojure.alpha.spec :as s2]
@@ -138,13 +138,66 @@
 
 (deftest conform-json-test
   (testing "nil"
-    (is (ba/anomaly? (fhir-spec/conform-json nil))))
+    (given (fhir-spec/conform-json nil)
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource."
+      [:fhir/issues 0 :fhir.issues/code] := "value"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Given resource does not contain a `resourceType` property."))
 
   (testing "string"
-    (is (ba/anomaly? (fhir-spec/conform-json "foo"))))
+    (given (fhir-spec/conform-json "foo")
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource."
+      [:fhir/issues 0 :fhir.issues/code] := "value"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Given resource does not contain a `resourceType` property."))
 
-  (testing "invalid"
-    (is (ba/anomaly? (fhir-spec/conform-json {:resourceType "Patient" :id 0}))))
+  (testing "empty map"
+    (given (fhir-spec/conform-json {})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource."
+      [:fhir/issues 0 :fhir.issues/code] := "value"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Given resource does not contain a `resourceType` property."))
+
+  (testing "invalid id"
+    (given (fhir-spec/conform-json {:resourceType "Patient" :id 0})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `0`. Expected type is `Patient.id`."
+      [:fhir/issues 0 :fhir.issues/expression] := "id"))
+
+  (testing "Bundle resource: nil"
+    (given (fhir-spec/conform-json
+               {:resourceType "Bundle"
+                :type "transaction"
+                :entry [{:resource nil}]})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource."
+        [:fhir/issues 0 :fhir.issues/code] := "invariant"
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `null`. Expected type is `Resource`."
+        [:fhir/issues 0 :fhir.issues/expression] := "entry[0].resource"))
+
+  (testing "Bundle resource: string"
+    (given (fhir-spec/conform-json
+               {:resourceType "Bundle"
+                :type "transaction"
+                :entry [{:resource "foo"}]})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource."
+        [:fhir/issues 0 :fhir.issues/code] := "invariant"
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `foo`. Expected type is `Resource`."
+        [:fhir/issues 0 :fhir.issues/expression] := "entry[0].resource"))
+
+  (testing "Bundle resource: empty map"
+    (given (fhir-spec/conform-json
+               {:resourceType "Bundle"
+                :type "transaction"
+                :entry [{:resource {}}]})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid JSON representation of a resource."
+        [:fhir/issues 0 :fhir.issues/code] := "invariant"
+        [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `{}`. Expected type is `Resource`."
+        [:fhir/issues 0 :fhir.issues/expression] := "entry[0].resource"))
 
   (testing "empty patient resource"
     (testing "gets type annotated"
@@ -214,6 +267,40 @@
 
 
 (deftest conform-xml-test
+  (testing "nil"
+    (given (conform-xml nil)
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid XML representation of a resource."
+      [:fhir/issues 0 :fhir.issues/code] := "value"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Invalid resource element `null`."))
+
+  (testing "string"
+    (given (conform-xml "foo")
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid XML representation of a resource."
+      [:fhir/issues 0 :fhir.issues/code] := "value"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Invalid resource element `foo`."))
+
+  (testing "Bundle resource: nil"
+    (given (conform-xml
+             [::f/Bundle {:xmlns "http://hl7.org/fhir"}
+              [::f/entry
+               [::f/resource]]])
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid XML representation of a resource."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `<:xmlns.http%3A%2F%2Fhl7.org%2Ffhir/resource/>`. Expected type is `Resource`."))
+
+  (testing "Bundle resource: string"
+    (given (conform-xml
+             [::f/Bundle {:xmlns "http://hl7.org/fhir"}
+              [::f/entry
+               [::f/resource "foo"]]])
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid XML representation of a resource."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `<:xmlns.http%3A%2F%2Fhl7.org%2Ffhir/resource>foo</:xmlns.http%3A%2F%2Fhl7.org%2Ffhir/resource>`. Expected type is `Resource`."))
+
   (testing "empty patient resource"
     (testing "gets type annotated"
       (is (= :fhir/Patient
@@ -526,7 +613,7 @@
       [:fhir/issues 0 :fhir.issues/severity] := "error"
       [:fhir/issues 0 :fhir.issues/code] := "value"
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
-      "Given resource does not contain a :resourceType key."))
+      "Given resource does not contain a `resourceType` property."))
 
   (testing "unknown resource type"
     (given (fhir-spec/explain-data-json {:resourceType "<unknown>"})
@@ -619,7 +706,7 @@
       [:fhir/issues 0 :fhir.issues/severity] := "error"
       [:fhir/issues 0 :fhir.issues/code] := "value"
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
-      "Given resource does not contain a :tag key."))
+      "Invalid resource element `{}`." ))
 
   (testing "unknown resource type"
     (given (fhir-spec/explain-data-xml {:tag "<unknown>"})
