@@ -15,7 +15,10 @@
   ([context resource]
    (entry context resource match))
   ([context {:fhir/keys [type] :keys [id] :as resource} mode]
-   {:fhir/type :fhir.Bundle/entry
-    :fullUrl (fhir-util/instance-url context (name type) id)
-    :resource resource
-    :search mode}))
+   ;; TODO: revert after discovery why the resource type can be nil
+   (cond->
+     {:fhir/type :fhir.Bundle/entry
+      :resource resource
+      :search mode}
+     type
+     (assoc :fullUrl (fhir-util/instance-url context (name type) id)))))
