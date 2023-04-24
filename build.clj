@@ -18,8 +18,7 @@
                   :src-dirs ["src"]
                   :class-dir class-dir
                   :compile-opts
-                  {:direct-linking true
-                   :elide-meta [:doc :file :line :added]}})
+                  {:elide-meta [:doc :file :line :added]}})
   (b/uber {:class-dir class-dir
            :uber-file uber-file
            :basis basis
