@@ -8,12 +8,13 @@
     [blaze.db.api :as d]
     [blaze.db.spec]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
-    [java.time ZonedDateTime ZoneId]
+    [java.time ZoneId ZonedDateTime]
     [java.time.format DateTimeFormatter]))
 
 
@@ -51,7 +52,11 @@
 
 (defn- pull [db type id]
   (if-ok [resource-handle (resource-handle db type id)]
-    (d/pull db resource-handle)
+    (-> (d/pull db resource-handle)
+        (ac/exceptionally
+          #(assoc %
+             ::anom/category ::anom/fault
+             :fhir/issue "incomplete")))
     ac/completed-future))
 
 

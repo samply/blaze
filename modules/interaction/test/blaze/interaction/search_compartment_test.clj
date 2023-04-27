@@ -3,7 +3,9 @@
 
   https://www.hl7.org/fhir/http.html#vsearch"
   (:require
+    [blaze.async.comp :as ac]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.resource-store :as rs]
     [blaze.fhir.spec.type]
     [blaze.interaction.search-compartment]
     [blaze.interaction.search.nav-spec]
@@ -476,7 +478,7 @@
           :type := #fhir/code"searchset"
           :total := #fhir/unsignedInt 0))))
 
-  (testing "with one Observation"
+  (testing "with two Observations"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
@@ -556,4 +558,16 @@
               (given (-> body :entry second)
                 :fullUrl := (str base-url context-path "/Observation/1")
                 [:resource :fhir/type] := :fhir/Observation
-                [:resource :id] := "1"))))))))
+                [:resource :id] := "1"))))
+
+        (testing "missing resource contents"
+          (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]
+            (let [{:keys [status body]} @(handler request)]
+
+              (is (= 500 status))
+
+              (given body
+                :fhir/type := :fhir/OperationOutcome
+                [:issue 0 :severity] := #fhir/code"error"
+                [:issue 0 :code] := #fhir/code"incomplete"
+                [:issue 0 :diagnostics] := "The resource content of `Observation/0` with hash `07F3F62AAE35B3BEF8F1AAA7B4BA3DE6055541BF073A65DFF32B512A460D6D1E` was not found."))))))))

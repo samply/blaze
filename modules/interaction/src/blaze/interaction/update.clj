@@ -7,11 +7,13 @@
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.fhir.response.create :as response]
+    [blaze.fhir.spec.type :as type]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.update.spec]
     [blaze.interaction.util :as iu]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [taoensso.timbre :as log]))
@@ -75,6 +77,12 @@
   (d/as-of db-after (dec (d/basis-t db-after))))
 
 
+(defn- resource-content-not-found-msg [{:blaze.db/keys [resource-handle]}]
+  (format "The resource `%s/%s` was successfully updated but it's content with hash `%s` was not found during response creation."
+          (name (type/type resource-handle)) (:id resource-handle)
+          (:hash resource-handle)))
+
+
 (defn- handler [{:keys [node executor]}]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params
@@ -90,7 +98,15 @@
             (response/build-response
               (response-context request db-after)
               (d/resource-handle (db-before db-after) type id)
-              (d/resource-handle db-after type id)))))))
+              (d/resource-handle db-after type id))))
+        (ac/exceptionally
+          (fn [e]
+            (cond-> e
+              (ba/not-found? e)
+              (assoc
+                ::anom/category ::anom/fault
+                ::anom/message (resource-content-not-found-msg e)
+                :fhir/issue "incomplete")))))))
 
 
 (defmethod ig/pre-init-spec :blaze.interaction/update [_]

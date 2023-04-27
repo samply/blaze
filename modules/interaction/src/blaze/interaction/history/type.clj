@@ -3,7 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#history"
   (:require
-    [blaze.async.comp :refer [do-sync]]
+    [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.db.spec]
     [blaze.fhir.spec.type :as type]
@@ -14,6 +14,7 @@
     [blaze.spec]
     [blaze.util :refer [conj-vec]]
     [clojure.spec.alpha :as s]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
@@ -35,21 +36,27 @@
         self-link (partial link context query-params "self")
         next-link (partial link context query-params "next")]
     ;; we need take here again because we take page-size + 1 above
-    (-> (do-sync [paged-versions (d/pull-many db (take page-size paged-version-handles))]
-          (ring/response
-            (cond->
-              {:fhir/type :fhir/Bundle
-               :id (iu/luid context)
-               :type #fhir/code"history"
-               :total (type/->UnsignedInt total)
-               :entry
-               (mapv (partial history-util/build-entry context) paged-versions)}
+    (-> (d/pull-many db (take page-size paged-version-handles))
+        (ac/exceptionally
+          #(assoc %
+             ::anom/category ::anom/fault
+             :fhir/issue "incomplete"))
+        (ac/then-apply
+          (fn [paged-versions]
+            (ring/response
+              (cond->
+                {:fhir/type :fhir/Bundle
+                 :id (iu/luid context)
+                 :type #fhir/code"history"
+                 :total (type/->UnsignedInt total)
+                 :entry
+                 (mapv (partial history-util/build-entry context) paged-versions)}
 
-              (seq paged-version-handles)
-              (update :link conj-vec (self-link (first paged-version-handles)))
+                (seq paged-version-handles)
+                (update :link conj-vec (self-link (first paged-version-handles)))
 
-              (< page-size (count paged-version-handles))
-              (update :link conj-vec (next-link (peek paged-version-handles)))))))))
+                (< page-size (count paged-version-handles))
+                (update :link conj-vec (next-link (peek paged-version-handles))))))))))
 
 
 (defn- handler [context]

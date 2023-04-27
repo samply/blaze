@@ -6,8 +6,10 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.anomaly-spec]
+    [blaze.async.comp :as ac]
     [blaze.db.api-stub
      :refer [create-mem-node-system with-system-data]]
+    [blaze.db.resource-store :as rs]
     [blaze.executors :as ex]
     [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
@@ -241,6 +243,23 @@
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"conflict"
               [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))))
+
+  (testing "missing resource content"
+    (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
+      (with-handler [handler]
+        (let [{:keys [status body]}
+              @(handler
+                 {:path-params {:id "0"}
+                  ::reitit/match patient-match
+                  :body {:fhir/type :fhir/Patient :id "0"}})]
+
+          (is (= 500 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"incomplete"
+            [:issue 0 :diagnostics] := "The resource `Patient/0` was successfully updated but it's content with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found during response creation.")))))
 
   (testing "on newly created resource"
     (testing "with no Prefer header"

@@ -15,6 +15,7 @@
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.page-store.spec]
     [clojure.spec.alpha :as s]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
@@ -32,8 +33,14 @@
 
 
 (defn- entries [{:blaze/keys [db] :as context}]
-  (do-sync [resources (d/pull-many db (handles context))]
-    (mapv (partial search-util/entry context) resources)))
+  (-> (d/pull-many db (handles context))
+      (ac/exceptionally
+        #(assoc %
+           ::anom/category ::anom/fault
+           :fhir/issue "incomplete"))
+      (ac/then-apply
+        (fn [resources]
+          (mapv (partial search-util/entry context) resources)))))
 
 
 (defn- self-link-offset [[{first-resource :resource}]]

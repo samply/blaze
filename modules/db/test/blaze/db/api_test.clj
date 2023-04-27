@@ -19,12 +19,12 @@
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log-spec]
     [blaze.db.tx-log.local-spec]
+    [blaze.fhir.hash :as hash]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.structure-definition-repo]
     [blaze.log]
     [blaze.test-util :as tu :refer [given-failed-future with-system]]
-    [clojure.math :as math]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -32,7 +32,8 @@
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
-    [java.time Instant]))
+    [java.time Instant]
+    [java.util.concurrent TimeUnit]))
 
 
 (set! *warn-on-reflection* true)
@@ -43,23 +44,34 @@
 (test/use-fixtures :each tu/fixture)
 
 
+(def ^:private delayed-executor
+  (ac/delayed-executor 1 TimeUnit/SECONDS))
+
+
 (defmethod ig/init-key ::slow-resource-store [_ {:keys [resource-store]}]
   (reify
     rs/ResourceStore
     (-get [_ hash]
-      (Thread/sleep (long (* 100 (math/random))))
-      (rs/get resource-store hash))
+      (-> (rs/get resource-store hash)
+          (ac/then-apply-async identity delayed-executor)))
     (-multi-get [_ hashes]
-      (Thread/sleep (long (* 100 (math/random))))
-      (rs/multi-get resource-store hashes))
+      (-> (rs/multi-get resource-store hashes)
+          (ac/then-apply-async identity delayed-executor)))
     (-put [_ entries]
-      (Thread/sleep (long (* 100 (math/random))))
-      (rs/put! resource-store entries))))
+      (-> (rs/put! resource-store entries)
+          (ac/then-apply-async identity delayed-executor)))))
 
 
-(def slow-resource-store-system
-  (-> (assoc-in system [:blaze.db/node :resource-store] (ig/ref ::slow-resource-store))
-      (assoc ::slow-resource-store {:resource-store (ig/ref ::rs/kv)})))
+(def ^:private slow-resource-store-system
+  (merge-with
+    merge
+    system
+    {:blaze.db/node
+     {:resource-store (ig/ref ::slow-resource-store)}
+     :blaze.db.node/resource-indexer
+     {:resource-store (ig/ref ::slow-resource-store)}
+     ::slow-resource-store
+     {:resource-store (ig/ref ::rs/kv)}}))
 
 
 (defmethod ig/init-key ::resource-store-failing-on-put [_ _]
@@ -70,9 +82,14 @@
 
 
 (def resource-store-failing-on-put-system
-  (-> (assoc-in system [:blaze.db/node :resource-store]
-                (ig/ref ::resource-store-failing-on-put))
-      (assoc ::resource-store-failing-on-put {})))
+  (merge-with
+    merge
+    system
+    {:blaze.db/node
+     {:resource-store (ig/ref ::resource-store-failing-on-put)}
+     :blaze.db.node/resource-indexer
+     {:resource-store (ig/ref ::resource-store-failing-on-put)}
+     ::resource-store-failing-on-put {}}))
 
 
 (deftest sync-test
@@ -3995,6 +4012,76 @@
       [0 :id] := "0")))
 
 
+(defmethod ig/init-key ::defective-resource-store [_ {:keys [hashes-to-store]}]
+  (let [store (atom {})]
+    (reify
+      rs/ResourceStore
+      (-get [_ hash]
+        (ac/completed-future (get @store hash)))
+      (-multi-get [_ hashes]
+        (ac/completed-future (select-keys @store hashes)))
+      (-put [_ entries]
+        (swap! store merge (select-keys entries hashes-to-store))
+        (ac/completed-future nil)))))
+
+
+(defn- defective-resource-store-system
+  "Returns the config of a system only storing resource contents of given hashes."
+  [& hashes-to-store]
+  (merge-with
+    merge
+    system
+    {:blaze.db/node
+     {:resource-store (ig/ref ::defective-resource-store)}
+     :blaze.db.node/resource-indexer
+     {:resource-store (ig/ref ::defective-resource-store)}
+     ::defective-resource-store
+     {:hashes-to-store hashes-to-store}}))
+
+
+(deftest pull-test
+  (testing "success"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+        :fhir/type := :fhir/Patient
+        [:meta :versionId] := #fhir/id"1"
+        [:meta :lastUpdated] := Instant/EPOCH
+        :id := "0")))
+
+  (testing "resource content not-found"
+    (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-system)]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [resource-handle (d/resource-handle (d/db node) "Patient" "0")]
+        (given-failed-future (d/pull node resource-handle)
+          ::anom/category := ::anom/not-found
+          ::anom/message := (format "The resource content of `Patient/0` with hash `%s` was not found."
+                                    (:hash resource-handle)))))))
+
+
+(deftest pull-content-test
+  (testing "success"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (given @(d/pull-content node (d/resource-handle (d/db node) "Patient" "0"))
+        :fhir/type := :fhir/Patient
+        :meta :? nil?
+        :id := "0")))
+
+  (testing "resource content not-found"
+    (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-system)]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [resource-handle (d/resource-handle (d/db node) "Patient" "0")]
+        (given-failed-future (d/pull-content node resource-handle)
+          ::anom/category := ::anom/not-found
+          ::anom/message := (format "The resource content of `Patient/0` with hash `%s` was not found."
+                                    (:hash resource-handle)))))))
+
+
 (deftest pull-many-test
   (testing "pull all elements"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -4037,7 +4124,31 @@
           [0 :meta :tag 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
           [0 :meta :tag 0 :code] := #fhir/code"SUBSETTED"
           [0 :code] :? nil?
-          [0 :subject :reference] := #fhir/string"Patient/0")))))
+          [0 :subject :reference] := #fhir/string"Patient/0"))))
+
+  (testing "pull a single non-existing hash"
+    (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-system)]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [resource-handle (d/resource-handle (d/db node) "Patient" "0")]
+        (given-failed-future (d/pull-many node [resource-handle])
+          ::anom/category := ::anom/not-found
+          ::anom/message := (format "The resource content of `Patient/0` with hash `%s` was not found."
+                                    (:hash resource-handle))))))
+
+  (testing "pull an existing and a non-existing hash"
+    (let [patient-0 {:fhir/type :fhir/Patient :id "0"}
+          patient-hash-0 (hash/generate patient-0)]
+      (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-system patient-hash-0)]
+        [[[:put patient-0]
+          [:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+        (let [existing-rh (d/resource-handle (d/db node) "Patient" "0")
+              non-existing-rh (d/resource-handle (d/db node) "Patient" "1")]
+          (given-failed-future (d/pull-many node [existing-rh non-existing-rh])
+            ::anom/category := ::anom/not-found
+            ::anom/message := (format "The resource content of `Patient/1` with hash `%s` was not found."
+                                      (:hash non-existing-rh))))))))
 
 
 
