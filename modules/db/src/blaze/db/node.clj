@@ -268,11 +268,23 @@
   {:fhir/type (fhir-spec/fhir-type resource-handle) :id id})
 
 
+(defn- resource-content-not-found-msg [resource-handle]
+  (format "The resource content of `%s/%s` with hash `%s` was not found."
+          (name (type/type resource-handle)) (:id resource-handle)
+          (:hash resource-handle)))
+
+
+(defn- resource-content-not-found-anom [resource-handle]
+  (ba/not-found (resource-content-not-found-msg resource-handle)
+                :blaze.db/resource-handle resource-handle))
+
+
 (defn- to-resource [tx-cache resources resource-handle]
-  (let [resource (if (rh/deleted? resource-handle)
-                   (deleted-resource resource-handle)
-                   (get resources (rh/hash resource-handle)))]
-    (enhance-resource tx-cache resource-handle resource)))
+  (if-let [resource (if (rh/deleted? resource-handle)
+                      (deleted-resource resource-handle)
+                      (get resources (rh/hash resource-handle)))]
+    (enhance-resource tx-cache resource-handle resource)
+    (resource-content-not-found-anom resource-handle)))
 
 
 (defn- get-resource [resource-store resource-handle]
@@ -384,17 +396,23 @@
   p/Pull
   (-pull [_ resource-handle]
     (do-sync [resource (get-resource resource-store resource-handle)]
-      (enhance-resource tx-cache resource-handle resource)))
+      (or (some->> resource (enhance-resource tx-cache resource-handle))
+          (resource-content-not-found-anom resource-handle))))
 
   (-pull-content [_ resource-handle]
     (do-sync [resource (get-resource resource-store resource-handle)]
-      (with-meta resource (meta resource-handle))))
+      (or (some-> resource (with-meta (meta resource-handle)))
+          (resource-content-not-found-anom resource-handle))))
 
   (-pull-many [_ resource-handles]
     (let [resource-handles (vec resource-handles)           ; don't evaluate resource-handles twice
           hashes (hashes-of-non-deleted resource-handles)]
       (do-sync [resources (rs/multi-get resource-store hashes)]
-        (mapv (partial to-resource tx-cache resources) resource-handles))))
+        (into
+          []
+          (comp (map (partial to-resource tx-cache resources))
+                (halt-when ba/anomaly?))
+          resource-handles))))
 
   (-pull-many [node resource-handles elements]
     (do-sync [resources (p/-pull-many node resource-handles)]

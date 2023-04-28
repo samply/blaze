@@ -942,6 +942,50 @@ jobs:
     - name: Post Large Binary Resource
       run:  curl -f -H Content-Type:application/fhir+xml -H Prefer:return=minimal -d @large-binary.xml http://localhost:8080/fhir/Binary
 
+  missing-resource-content-test:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v3
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Create a Data Dir
+      run: mkdir data
+
+    - name: Run Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v "$(pwd)/data:/app/data" blaze:latest
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Create Patient
+      run: .github/scripts/create-patient-0.sh
+
+    - name: Stop Blaze
+      run: docker stop blaze
+
+    - name: Remove Resource Database
+      run: rm -r data/resource
+
+    - name: Start Blaze Again
+      run: docker start blaze
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Fetch Patient Expecting an Error
+      run: .github/scripts/fetch-resource-0-with-missing-resource-content.sh
+
   distributed-test:
     needs: build
     runs-on: ubuntu-22.04
@@ -1346,6 +1390,7 @@ jobs:
     - openid-auth-test
     - doc-copy-data-test
     - big-binary-test
+    - missing-resource-content-test
     - distributed-test
     - jepsen-distributed-test
     runs-on: ubuntu-22.04

@@ -18,6 +18,7 @@
     [blaze.module :refer [reg-collector]]
     [blaze.spec]
     [clojure.spec.alpha :as s]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [java-time.api :as time]
     [reitit.core :as reitit]
@@ -119,7 +120,13 @@
 (defn- handler [context]
   (fn [{:blaze/keys [db] :as request}]
     (-> (ac/completed-future (find-measure-handle db request))
-        (ac/then-compose (partial d/pull db))
+        (ac/then-compose
+          (fn [measure-handle]
+            (-> (d/pull db measure-handle)
+                (ac/exceptionally
+                  #(assoc %
+                     ::anom/category ::anom/fault
+                     :fhir/issue "incomplete")))))
         (ac/then-compose (partial handle (assoc context :db db) request)))))
 
 

@@ -14,6 +14,7 @@
     [blaze.page-store.spec]
     [blaze.spec]
     [clojure.spec.alpha :as s]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
@@ -94,6 +95,10 @@
 (defn- search-normal [{:blaze/keys [db] :as context}]
   (if-ok [{:keys [handles clauses]} (handles-and-clauses context)]
     (-> (d/pull-many db handles)
+        (ac/exceptionally
+          #(assoc %
+             ::anom/category ::anom/fault
+             :fhir/issue "incomplete"))
         (ac/then-apply (partial entries context))
         (ac/then-compose (partial bundle context handles clauses)))
     ac/completed-future))

@@ -469,14 +469,14 @@
 
 (defn pull
   "Returns a CompletableFuture that will complete with the resource of
-  `resource-handle`."
+  `resource-handle` or an anomaly in case of errors."
   [node-or-db resource-handle]
   (p/-pull node-or-db resource-handle))
 
 
 (defn pull-content
   "Returns a CompletableFuture that will complete with the resource content of
-  `resource-handle`.
+  `resource-handle` or an anomaly in case of errors.
 
   Compared to `pull`, the resource content doesn't contain :versionId and
   :lastUpdated in :meta and also not :blaze.db/t, :blaze.db/num-changes,
@@ -487,7 +487,7 @@
 
 (defn pull-many
   "Returns a CompletableFuture that will complete with a vector of all resources
-  of all `resource-handles`.
+  of all `resource-handles` in the same order.
 
   Optional, `elements` can be given which is a list of top-level keys to return
   instead of all keys. Certain mandatory and modifier elements are returned
