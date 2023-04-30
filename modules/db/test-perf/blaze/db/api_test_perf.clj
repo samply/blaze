@@ -12,9 +12,8 @@
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.local]
     [blaze.fhir.spec.type :as type]
-    [blaze.fhir.structure-definition-repo]
     [blaze.log]
-    [blaze.test-util :refer [with-system]]
+    [blaze.test-util :refer [structure-definition-repo with-system]]
     [clojure.test :refer [deftest]]
     [criterium.core :as criterium]
     [integrant.core :as ig]
@@ -83,9 +82,7 @@
    :blaze.db.node.resource-indexer/executor {}
 
    :blaze.db/search-param-registry
-   {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
-
-   :blaze.fhir/structure-definition-repo {}})
+   {:structure-definition-repo structure-definition-repo}})
 
 
 (defmacro with-system-data [[binding-form system] txs & body]

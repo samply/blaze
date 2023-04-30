@@ -3,11 +3,9 @@
     [blaze.byte-string-spec]
     [blaze.db.impl.search-param-spec]
     [blaze.db.search-param-registry :as sr]
-    [blaze.fhir.structure-definition-repo]
-    [blaze.test-util :as tu :refer [with-system]]
+    [blaze.test-util :as tu :refer [structure-definition-repo with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest]]
-    [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log]))
 
@@ -24,9 +22,8 @@
 
 
 (def system
-  {:blaze.fhir/structure-definition-repo {}
-   :blaze.db/search-param-registry
-   {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}})
+  {:blaze.db/search-param-registry
+   {:structure-definition-repo structure-definition-repo}})
 
 
 (deftest list-param-test

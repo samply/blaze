@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [boolean meta time])
   (:require
     [blaze.fhir.spec.type :as type]
+    [blaze.fhir.spec.type.system :as system]
     [clojure.string :as str]
     [clojure.test.check.generators :as gen]))
 
@@ -327,6 +328,8 @@
            end (nilable (dateTime))}}]
   (->> (gen/tuple id extension start end)
        (to-map [:id :extension :start :end])
+       (gen/such-that #(<= (system/date-time-lower-bound (type/value (:start %)))
+                           (system/date-time-upper-bound (type/value (:end %)))))
        (gen/fmap type/period)))
 
 
@@ -445,16 +448,18 @@
 
 
 (defn observation
-  [& {:keys [identifier status category code subject encounter value]
-      :or {identifier (gen/vector (identifier))
+  [& {:keys [id identifier status category code subject encounter effective value]
+      :or {id id-value
+           identifier (gen/vector (identifier))
            status (rare-nil (code))
            category (gen/vector (codeable-concept))
            code (rare-nil (codeable-concept))
            subject (rare-nil (reference))
            encounter (rare-nil (reference))
+           effective (rare-nil (gen/one-of [(dateTime) (period)]))
            value (rare-nil (observation-value))}}]
-  (->> (gen/tuple identifier status category code subject encounter value)
-       (to-map [:identifier :status :category :code :subject :encounter :value])
+  (->> (gen/tuple id identifier status category code subject encounter effective value)
+       (to-map [:id :identifier :status :category :code :subject :encounter :effective :value])
        (fhir-type :fhir/Observation)))
 
 

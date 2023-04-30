@@ -18,7 +18,7 @@
     [com.google.common.hash PrimitiveSink]
     [java.io Writer]
     [java.nio.charset StandardCharsets]
-    [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth]
+    [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth ZoneOffset]
     [java.time.format DateTimeFormatter DateTimeParseException]
     [java.time.temporal Temporal TemporalAccessor TemporalField TemporalUnit]))
 
@@ -516,6 +516,100 @@
 
 (defmethod print-method OffsetDateTime [^OffsetDateTime date-time ^Writer w]
   (.write w (.toString date-time)))
+
+
+(defn- epoch-seconds ^long [^LocalDateTime date-time]
+  (.toEpochSecond (.atOffset date-time (ZoneOffset/UTC))))
+
+
+(defprotocol LowerBound
+  (-lower-bound [date-time]))
+
+
+(defn date-time-lower-bound [date-time]
+  (-lower-bound date-time))
+
+
+(extend-protocol LowerBound
+  Year
+  (-lower-bound [year]
+    (epoch-seconds (.atStartOfDay (.atDay year 1))))
+  DateTimeYear
+  (-lower-bound [year]
+    (epoch-seconds (.atStartOfDay (.atDay ^Year (.-year year) 1))))
+  YearMonth
+  (-lower-bound [year-month]
+    (epoch-seconds (.atStartOfDay (.atDay year-month 1))))
+  DateTimeYearMonth
+  (-lower-bound [year-month]
+    (epoch-seconds (.atStartOfDay (.atDay ^YearMonth (.-year_month year-month) 1))))
+  LocalDate
+  (-lower-bound [date]
+    (epoch-seconds (.atStartOfDay date)))
+  DateTimeYearMonthDay
+  (-lower-bound [date]
+    (epoch-seconds (.atStartOfDay ^LocalDate (.date date))))
+  LocalDateTime
+  (-lower-bound [date-time]
+    (epoch-seconds date-time))
+  OffsetDateTime
+  (-lower-bound [date-time]
+    (.toEpochSecond date-time)))
+
+
+(def ^:private lower-bound-seconds
+  (-lower-bound (Year/of 1)))
+
+
+(extend-protocol LowerBound
+  nil
+  (-lower-bound [_]
+    lower-bound-seconds))
+
+
+(defprotocol UpperBound
+  (-upper-bound [date-time]))
+
+
+(defn date-time-upper-bound [date-time]
+  (-upper-bound date-time))
+
+
+(extend-protocol UpperBound
+  Year
+  (-upper-bound [year]
+    (dec (epoch-seconds (.atStartOfDay (.atDay (.plusYears year 1) 1)))))
+  DateTimeYear
+  (-upper-bound [year]
+    (dec (epoch-seconds (.atStartOfDay (.atDay (.plusYears ^Year (.year year) 1) 1)))))
+  YearMonth
+  (-upper-bound [year-month]
+    (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths year-month 1) 1)))))
+  DateTimeYearMonth
+  (-upper-bound [year-month]
+    (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths ^YearMonth (.-year_month year-month) 1) 1)))))
+  LocalDate
+  (-upper-bound [date]
+    (dec (epoch-seconds (.atStartOfDay (.plusDays date 1)))))
+  DateTimeYearMonthDay
+  (-upper-bound [date]
+    (dec (epoch-seconds (.atStartOfDay (.plusDays ^LocalDate (.date date) 1)))))
+  LocalDateTime
+  (-upper-bound [date-time]
+    (epoch-seconds date-time))
+  OffsetDateTime
+  (-upper-bound [date-time]
+    (.toEpochSecond date-time)))
+
+
+(def ^:private upper-bound-seconds
+  (-upper-bound (Year/of 9999)))
+
+
+(extend-protocol UpperBound
+  nil
+  (-upper-bound [_]
+    upper-bound-seconds))
 
 
 

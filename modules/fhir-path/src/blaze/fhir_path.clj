@@ -316,11 +316,11 @@
 
 
 (defmethod resolve :fhir/string [{:keys [resolver]} uri]
-  (resolve* resolver uri))
+  (resolve* resolver (type/value uri)))
 
 
 (defmethod resolve :fhir/Reference [{:keys [resolver]} {:keys [reference]}]
-  (resolve* resolver reference))
+  (resolve* resolver (type/value reference)))
 
 
 (defmethod resolve :default [_ item]

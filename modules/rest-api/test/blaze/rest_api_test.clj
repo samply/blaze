@@ -4,12 +4,11 @@
     [blaze.db.api-stub :refer [mem-node-system]]
     [blaze.db.impl.search-param]
     [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.structure-definition-repo]
     [blaze.fhir.structure-definition-repo.protocols :as sdrp]
     [blaze.handler.util :as handler-util]
     [blaze.metrics.spec]
     [blaze.rest-api :as rest-api]
-    [blaze.test-util :as tu :refer [given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-thrown structure-definition-repo with-system]]
     [blaze.test-util.ring :refer [call]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -309,7 +308,7 @@
     :blaze/rest-api
     {:base-url "http://localhost:8080"
      :version "0.1.0"
-     :structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)
+     :structure-definition-repo structure-definition-repo
      :node (ig/ref :blaze.db/node)
      :search-param-registry (ig/ref :blaze.db/search-param-registry)
      :db-sync-timeout 10000
@@ -330,8 +329,7 @@
                #:blaze.rest-api.interaction
                        {:handler success-handler}}}]}
     :blaze.db/search-param-registry
-    {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
-    :blaze.fhir/structure-definition-repo {}))
+    {:structure-definition-repo structure-definition-repo}))
 
 
 (defmethod ig/init-key ::empty-structure-definition-repo

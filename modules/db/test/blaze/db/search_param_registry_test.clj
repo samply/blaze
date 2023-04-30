@@ -4,9 +4,8 @@
     [blaze.db.search-param-registry-spec]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec.type]
-    [blaze.fhir.structure-definition-repo]
     [blaze.fhir.structure-definition-repo.spec :refer [structure-definition-repo?]]
-    [blaze.test-util :as tu :refer [given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-thrown structure-definition-repo with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -45,9 +44,8 @@
 
 
 (def system
-  {:blaze.fhir/structure-definition-repo {}
-   :blaze.db/search-param-registry
-   {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}})
+  {:blaze.db/search-param-registry
+   {:structure-definition-repo structure-definition-repo}})
 
 
 (deftest get-test

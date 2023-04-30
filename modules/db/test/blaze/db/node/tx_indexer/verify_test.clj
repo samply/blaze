@@ -20,7 +20,6 @@
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec.type]
-    [blaze.fhir.structure-definition-repo]
     [blaze.log]
     [blaze.test-util :as tu :refer [with-system]]
     [clojure.spec.test.alpha :as st]

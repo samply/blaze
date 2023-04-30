@@ -25,7 +25,6 @@
     [blaze.db.tx-log.local-spec]
     [blaze.db.tx-log.spec :refer [tx-log?]]
     [blaze.executors :as ex]
-    [blaze.fhir.structure-definition-repo]
     [blaze.log]
     [blaze.metrics.spec]
     [blaze.test-util :as tu :refer [given-failed-future given-thrown with-system]]
