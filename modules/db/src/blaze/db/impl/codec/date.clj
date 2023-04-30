@@ -3,93 +3,19 @@
     [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
     [blaze.db.impl.codec :refer [number]]
-    [blaze.fhir.spec.type.system])
-  (:import
-    [blaze.fhir.spec.type.system DateTimeYear DateTimeYearMonth
-                                 DateTimeYearMonthDay]
-    [java.time LocalDate LocalDateTime OffsetDateTime Year YearMonth
-               ZoneOffset]))
-
-
-(set! *warn-on-reflection* true)
-
-
-(defn- epoch-seconds ^long [^LocalDateTime date-time]
-  (.toEpochSecond (.atOffset date-time (ZoneOffset/UTC))))
-
-
-(defprotocol LowerBound
-  (-encode-lower-bound [date-time]))
-
-
-(extend-protocol LowerBound
-  Year
-  (-encode-lower-bound [year]
-    (number (epoch-seconds (.atStartOfDay (.atDay year 1)))))
-  DateTimeYear
-  (-encode-lower-bound [year]
-    (number (epoch-seconds (.atStartOfDay (.atDay ^Year (.-year year) 1)))))
-  YearMonth
-  (-encode-lower-bound [year-month]
-    (number (epoch-seconds (.atStartOfDay (.atDay year-month 1)))))
-  DateTimeYearMonth
-  (-encode-lower-bound [year-month]
-    (number (epoch-seconds (.atStartOfDay (.atDay ^YearMonth (.-year_month year-month) 1)))))
-  LocalDate
-  (-encode-lower-bound [date]
-    (number (epoch-seconds (.atStartOfDay date))))
-  DateTimeYearMonthDay
-  (-encode-lower-bound [date]
-    (number (epoch-seconds (.atStartOfDay ^LocalDate (.date date)))))
-  LocalDateTime
-  (-encode-lower-bound [date-time]
-    (number (epoch-seconds date-time)))
-  OffsetDateTime
-  (-encode-lower-bound [date-time]
-    (number (.toEpochSecond date-time))))
+    [blaze.fhir.spec.type.system :as system]))
 
 
 (defn encode-lower-bound
   "Encodes the lower bound of the implicit range of `date-time`."
   [date-time]
-  (-encode-lower-bound date-time))
-
-
-(defprotocol UpperBound
-  (-encode-upper-bound [date-time]))
-
-
-(extend-protocol UpperBound
-  Year
-  (-encode-upper-bound [year]
-    (number (dec (epoch-seconds (.atStartOfDay (.atDay (.plusYears year 1) 1))))))
-  DateTimeYear
-  (-encode-upper-bound [year]
-    (number (dec (epoch-seconds (.atStartOfDay (.atDay (.plusYears ^Year (.year year) 1) 1))))))
-  YearMonth
-  (-encode-upper-bound [year-month]
-    (number (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths year-month 1) 1))))))
-  DateTimeYearMonth
-  (-encode-upper-bound [year-month]
-    (number (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths ^YearMonth (.-year_month year-month) 1) 1))))))
-  LocalDate
-  (-encode-upper-bound [date]
-    (number (dec (epoch-seconds (.atStartOfDay (.plusDays date 1))))))
-  DateTimeYearMonthDay
-  (-encode-upper-bound [date]
-    (number (dec (epoch-seconds (.atStartOfDay (.plusDays ^LocalDate (.date date) 1))))))
-  LocalDateTime
-  (-encode-upper-bound [date-time]
-    (number (epoch-seconds date-time)))
-  OffsetDateTime
-  (-encode-upper-bound [date-time]
-    (number (.toEpochSecond date-time))))
+  (number (system/date-time-lower-bound date-time)))
 
 
 (defn encode-upper-bound
   "Encodes the upper bound of the implicit range of `date-time`."
   [date-time]
-  (-encode-upper-bound date-time))
+  (number (system/date-time-upper-bound date-time)))
 
 
 (defn- encode-range* [lower-bound upper-bound]
@@ -108,8 +34,7 @@
   ([date-time]
    (encode-range date-time date-time))
   ([start end]
-   (encode-range* (encode-lower-bound (or start (Year/of 1)))
-                  (encode-upper-bound (or end (Year/of 9999))))))
+   (encode-range* (encode-lower-bound start) (encode-upper-bound end))))
 
 
 (defn lower-bound-bytes

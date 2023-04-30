@@ -336,6 +336,36 @@ jobs:
     - name: Download Observation Resources of female Patients
       run: .github/scripts/download-resources-query.sh Observation "_count=500&patient.gender=female" 22463
 
+    - name: Download Observation Resources of the year 1970
+      run: .github/scripts/download-resources-query.sh Observation "date=1970" 59
+
+    - name: Download Observation Resources of the year 1980
+      run: .github/scripts/download-resources-query.sh Observation "date=1980" 0
+
+    - name: Download Observation Resources of the year 1990
+      run: .github/scripts/download-resources-query.sh Observation "date=1990" 19
+
+    - name: Download Observation Resources of the year 2000
+      run: .github/scripts/download-resources-query.sh Observation "date=2000" 101
+
+    - name: Download Observation Resources of the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=2010" 995
+
+    - name: Download Observation Resources of the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=2020" 17419
+
+    - name: Download Observation Resources of not the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=ne2020" 25510
+
+    - name: Check Observation Date Search
+      run: .github/scripts/check-date-search.sh "Observation"
+
+    - name: Check Encounter Date Search
+      run: .github/scripts/check-date-search.sh "Encounter"
+
+    - name: Check DiagnosticReport Date Search
+      run: .github/scripts/check-date-search.sh "DiagnosticReport"
+
     - name: Download Observation Resources of female Patients Sorted Ascending
       run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=female" "_lastUpdated" 22463
 
@@ -1086,6 +1116,36 @@ jobs:
 
     - name: Download Observation Resources of female Patients
       run: .github/scripts/download-resources-query.sh Observation "_count=500&patient.gender=female" 22463
+
+    - name: Download Observation Resources of the year 1970
+      run: .github/scripts/download-resources-query.sh Observation "date=1970" 59
+
+    - name: Download Observation Resources of the year 1980
+      run: .github/scripts/download-resources-query.sh Observation "date=1980" 0
+
+    - name: Download Observation Resources of the year 1990
+      run: .github/scripts/download-resources-query.sh Observation "date=1990" 19
+
+    - name: Download Observation Resources of the year 2000
+      run: .github/scripts/download-resources-query.sh Observation "date=2000" 101
+
+    - name: Download Observation Resources of the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=2010" 995
+
+    - name: Download Observation Resources of the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=2020" 17419
+
+    - name: Download Observation Resources of not the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=ne2020" 25510
+
+    - name: Check Observation Date Search
+      run: .github/scripts/check-date-search.sh "Observation"
+
+    - name: Check Encounter Date Search
+      run: .github/scripts/check-date-search.sh "Encounter"
+
+    - name: Check DiagnosticReport Date Search
+      run: .github/scripts/check-date-search.sh "DiagnosticReport"
 
     - name: Download Observation Resources of female Patients Sorted Ascending
       run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=female" "_lastUpdated" 22463

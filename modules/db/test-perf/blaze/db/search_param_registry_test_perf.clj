@@ -1,11 +1,9 @@
 (ns blaze.db.search-param-registry-test-perf
   (:require
     [blaze.db.search-param-registry :as sr]
-    [blaze.fhir.structure-definition-repo]
-    [blaze.test-util :refer [with-system]]
+    [blaze.test-util :refer [structure-definition-repo with-system]]
     [clojure.test :refer [deftest testing]]
     [criterium.core :as criterium]
-    [integrant.core :as ig]
     [taoensso.timbre :as log]))
 
 
@@ -13,9 +11,8 @@
 
 
 (def system
-  {:blaze.fhir/structure-definition-repo {}
-   :blaze.db/search-param-registry
-   {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}})
+  {:blaze.db/search-param-registry
+   {:structure-definition-repo structure-definition-repo}})
 
 
 (deftest linked-compartments-test

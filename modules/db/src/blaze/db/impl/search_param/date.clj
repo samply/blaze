@@ -47,8 +47,7 @@
 
 (defmethod index-entries :fhir/Period
   [_ {:keys [start end]}]
-  [[nil
-    (codec-date/encode-range (type/value start) (type/value end))]])
+  [[nil (codec-date/encode-range (type/value start) (type/value end))]])
 
 
 (defmethod index-entries :default
@@ -67,22 +66,6 @@
   (r-sp-v/next-value! rsvi (resource-handle tid id) c-hash))
 
 
-(defn- eq-overlaps?
-  "Returns true if the interval `v` overlaps with the interval `q`."
-  [value q-lb q-ub]
-  (let [v-lb (codec-date/lower-bound-bytes value)
-        v-ub (codec-date/upper-bound-bytes value)]
-    (or (bs/<= q-lb v-lb q-ub)
-        (bs/<= q-lb v-ub q-ub)
-        (and (bs/< v-lb q-lb) (bs/< q-ub v-ub)))))
-
-
-(defn- eq-filter [q-lb a-lb]
-  (filter
-    (fn [[value]]
-      (eq-overlaps? value q-lb a-lb))))
-
-
 (defn- all-keys! [{:keys [svri] :as context} c-hash tid start-id]
   (sp-vr/all-keys! svri c-hash tid (resource-value! context c-hash tid start-id)
                    start-id))
@@ -97,161 +80,295 @@
   (map #(subvec % 1)))
 
 
+(defn- equal?
+  "Returns true if the parameter value interval `[param-lb param-ub]` fully
+  contains the resource value interval `value`."
+  [value param-lb param-ub]
+  (let [value-lb (codec-date/lower-bound-bytes value)
+        value-ub (codec-date/upper-bound-bytes value)]
+    (and (bs/<= param-lb value-lb)
+         (bs/<= value-ub param-ub))))
+
+
+(defn- eq-filter [param-lb param-ub]
+  (filter
+    (fn [[value]]
+      (equal? value param-lb param-ub))))
+
+
 (defn- eq-keys!
-  "Returns a reducible collection of `[id hash-prefix]` triples of all
-  keys with overlapping date/time intervals with the interval specified by
-  `lower-bound` and `upper-bound` starting at `start-id` (optional)."
-  ([{:keys [svri]} c-hash tid lower-bound upper-bound]
+  "Returns a reducible collection of `[id hash-prefix]` tuples of all keys were
+  the parameter value interval `[param-lb param-ub]` fully contains the
+  resource value interval starting at `start-id` (optional)."
+  ([{:keys [svri]} c-hash tid param-lb param-ub]
    (coll/eduction
-     (comp (eq-filter lower-bound upper-bound)
+     (comp (eq-filter param-lb param-ub)
            drop-value)
      (sp-vr/all-keys! svri c-hash tid)))
-  ([context c-hash tid lower-bound upper-bound start-id]
+  ([context c-hash tid param-lb param-ub start-id]
    (coll/eduction
-     (comp (eq-filter lower-bound upper-bound)
+     (comp (eq-filter param-lb param-ub)
            drop-value)
      (all-keys! context c-hash tid start-id))))
 
 
-(defn- ge-overlaps? [lower-bound value]
-  (or (bs/<= lower-bound (codec-date/lower-bound-bytes value))
-      (bs/<= lower-bound (codec-date/upper-bound-bytes value))))
+(defn- not-equal? [value param-lb param-ub]
+  (not (equal? value param-lb param-ub)))
 
 
-(defn- ge-filter [lower-bound]
+(defn- ne-filter [param-lb param-ub]
   (filter
     (fn [[value]]
-      (ge-overlaps? lower-bound value))))
+      (not-equal? value param-lb param-ub))))
 
 
-(defn- ge-keys!
-  "Returns a reducible collection of `[id hash-prefix]` triples of all
-  keys with overlapping date/time intervals with the interval specified by
-  `lower-bound` and an infinite upper bound starting at `start-id` (optional)."
-  ([{:keys [svri]} c-hash tid lower-bound]
+(defn- ne-keys!
+  ([{:keys [svri]} c-hash tid param-lb param-ub]
    (coll/eduction
-     (comp (ge-filter lower-bound)
+     (comp (ne-filter param-lb param-ub)
            drop-value)
      (sp-vr/all-keys! svri c-hash tid)))
-  ([context c-hash tid lower-bound start-id]
+  ([context c-hash tid param-lb param-ub start-id]
    (coll/eduction
-     (comp (ge-filter lower-bound)
+     (comp (ne-filter param-lb param-ub)
            drop-value)
      (all-keys! context c-hash tid start-id))))
 
 
-(defn- gt-overlaps? [lower-bound value]
-  (or (bs/< lower-bound (codec-date/lower-bound-bytes value))
-      (bs/< lower-bound (codec-date/upper-bound-bytes value))))
+(defn- greater-than? [param-ub value]
+  (bs/< param-ub (codec-date/upper-bound-bytes value)))
 
 
-(defn- gt-filter [lower-bound]
+(defn- gt-filter [param-ub]
   (filter
     (fn [[value]]
-      (gt-overlaps? lower-bound value))))
+      (greater-than? param-ub value))))
 
 
 (defn- gt-keys!
-  "Returns a reducible collection of `[id hash-prefix]` triples of all
+  "Returns a reducible collection of `[id hash-prefix]` tuples of all
   keys with overlapping date/time intervals with the interval specified by
-  `lower-bound` and an infinite upper bound starting at `start-id` (optional)."
-  ([{:keys [svri]} c-hash tid lower-bound]
+  `param-ub` and an infinite upper bound starting at `start-id` (optional)."
+  ([{:keys [svri]} c-hash tid param-ub]
    (coll/eduction
-     (comp (gt-filter lower-bound)
+     (comp (gt-filter param-ub)
            drop-value)
      (sp-vr/all-keys! svri c-hash tid)))
-  ([context c-hash tid lower-bound start-id]
+  ([context c-hash tid param-ub start-id]
    (coll/eduction
-     (comp (gt-filter lower-bound)
+     (comp (gt-filter param-ub)
            drop-value)
      (all-keys! context c-hash tid start-id))))
 
 
-(defn- le-overlaps? [value upper-bound]
-  (or (bs/<= (codec-date/upper-bound-bytes value) upper-bound)
-      (bs/<= (codec-date/lower-bound-bytes value) upper-bound)))
+(defn- less-than? [value param-lb]
+  (bs/< (codec-date/lower-bound-bytes value) param-lb))
 
 
-(defn- le-filter [q-ub]
+(defn- lt-filter [param-lb]
   (filter
     (fn [[value]]
-      (le-overlaps? value q-ub))))
-
-
-(defn- le-keys!
-  "Returns a reducible collection of `[id hash-prefix]` triples of all
-  keys with overlapping date/time intervals with the interval specified by
-  an infinite lower bound and `upper-bound` starting at `start-id` (optional)."
-  ([{:keys [svri]} c-hash tid upper-bound]
-   (coll/eduction
-     (comp (le-filter upper-bound)
-           drop-value)
-     (sp-vr/all-keys! svri c-hash tid)))
-  ([context c-hash tid upper-bound start-id]
-   (coll/eduction
-     (comp (le-filter upper-bound)
-           drop-value)
-     (all-keys! context c-hash tid start-id))))
-
-
-(defn- lt-overlaps? [value upper-bound]
-  (or (bs/< (codec-date/upper-bound-bytes value) upper-bound)
-      (bs/< (codec-date/lower-bound-bytes value) upper-bound)))
-
-
-(defn- lt-filter [upper-bound]
-  (filter
-    (fn [[value]]
-      (lt-overlaps? value upper-bound))))
+      (less-than? value param-lb))))
 
 
 (defn- lt-keys!
-  "Returns a reducible collection of `[id hash-prefix]` triples of all
+  "Returns a reducible collection of `[id hash-prefix]` tuples of all
   keys with overlapping date/time intervals with the interval specified by
-  an infinite lower bound and `upper-bound` starting at `start-id` (optional)."
-  ([{:keys [svri]} c-hash tid upper-bound]
+  an infinite lower bound and `param-lb` starting at `start-id` (optional)."
+  ([{:keys [svri]} c-hash tid param-lb]
    (coll/eduction
-     (comp (lt-filter upper-bound)
+     (comp (lt-filter param-lb)
            drop-value)
      (sp-vr/all-keys! svri c-hash tid)))
-  ([context c-hash tid upper-bound start-id]
+  ([context c-hash tid param-lb start-id]
    (coll/eduction
-     (comp (lt-filter upper-bound)
+     (comp (lt-filter param-lb)
            drop-value)
      (all-keys! context c-hash tid start-id))))
 
 
-(defn- invalid-date-time-value-msg [code value]
-  (format "Invalid date-time value `%s` in search parameter `%s`." value code))
+(defn- greater-equal?
+  "The range above the parameter value intersects (i.e. overlaps) with the range
+  of the resource value, or the range of the parameter value fully contains the
+  range of the resource value."
+  [param-lb param-ub value]
+  (or (bs/<= param-ub (codec-date/upper-bound-bytes value))
+      (bs/<= param-lb (codec-date/lower-bound-bytes value))))
+
+
+(defn- ge-filter [param-lb param-ub]
+  (filter
+    (fn [[value]]
+      (greater-equal? param-lb param-ub value))))
+
+
+(defn- ge-keys!
+  "Returns a reducible collection of `[id hash-prefix]` tuples of all
+  keys with overlapping date/time intervals with the interval specified by
+  `param-lb` and an infinite upper bound starting at `start-id` (optional)."
+  ([{:keys [svri]} c-hash tid param-lb param-ub]
+   (coll/eduction
+     (comp (ge-filter param-lb param-ub)
+           drop-value)
+     (sp-vr/all-keys! svri c-hash tid)))
+  ([context c-hash tid param-lb param-ub start-id]
+   (coll/eduction
+     (comp (ge-filter param-lb param-ub)
+           drop-value)
+     (all-keys! context c-hash tid start-id))))
+
+
+(defn- less-equal? [value param-lb param-ub]
+  (or (bs/<= (codec-date/lower-bound-bytes value) param-lb)
+      (bs/<= (codec-date/upper-bound-bytes value) param-ub)))
+
+
+(defn- le-filter [param-lb param-ub]
+  (filter
+    (fn [[value]]
+      (less-equal? value param-lb param-ub))))
+
+
+(defn- le-keys!
+  "Returns a reducible collection of `[id hash-prefix]` tuples of all
+  keys with overlapping date/time intervals with the interval specified by
+  an infinite lower bound and `param-ub` starting at `start-id` (optional)."
+  ([{:keys [svri]} c-hash tid param-lb param-ub]
+   (coll/eduction
+     (comp (le-filter param-lb param-ub)
+           drop-value)
+     (sp-vr/all-keys! svri c-hash tid)))
+  ([context c-hash tid param-lb param-ub start-id]
+   (coll/eduction
+     (comp (le-filter param-lb param-ub)
+           drop-value)
+     (all-keys! context c-hash tid start-id))))
+
+
+(defn- starts-after? [param-ub value]
+  (bs/<= param-ub (codec-date/lower-bound-bytes value)))
+
+
+(defn- sa-filter [param-ub]
+  (filter
+    (fn [[value]]
+      (starts-after? param-ub value))))
+
+
+(defn- sa-keys!
+  ([{:keys [svri]} c-hash tid param-ub]
+   (coll/eduction
+     (comp (sa-filter param-ub)
+           drop-value)
+     (sp-vr/all-keys! svri c-hash tid)))
+  ([context c-hash tid param-ub start-id]
+   (coll/eduction
+     (comp (sa-filter param-ub)
+           drop-value)
+     (all-keys! context c-hash tid start-id))))
+
+
+(defn- ends-before? [value param-lb]
+  (bs/<= (codec-date/upper-bound-bytes value) param-lb))
+
+
+(defn- eb-filter [param-lb]
+  (filter
+    (fn [[value]]
+      (ends-before? value param-lb))))
+
+
+(defn- eb-keys!
+  ([{:keys [svri]} c-hash tid param-lb]
+   (coll/eduction
+     (comp (eb-filter param-lb)
+           drop-value)
+     (sp-vr/all-keys! svri c-hash tid)))
+  ([context c-hash tid param-lb start-id]
+   (coll/eduction
+     (comp (eb-filter param-lb)
+           drop-value)
+     (all-keys! context c-hash tid start-id))))
+
+
+(defn- approximately?
+  "Returns true if the interval `v` overlaps with the interval `q`."
+  [value param-lb param-ub]
+  (let [v-lb (codec-date/lower-bound-bytes value)
+        v-ub (codec-date/upper-bound-bytes value)]
+    (or (bs/<= param-lb v-lb param-ub)
+        (bs/<= param-lb v-ub param-ub)
+        (and (bs/< v-lb param-lb) (bs/< param-ub v-ub)))))
+
+
+(defn- ap-filter [param-lb a-lb]
+  (filter
+    (fn [[value]]
+      (approximately? value param-lb a-lb))))
+
+
+(defn- ap-keys!
+  "Returns a reducible collection of `[id hash-prefix]` tuples of all
+  keys with overlapping date/time intervals with the interval specified by
+  `param-lb` and `param-ub` starting at `start-id` (optional)."
+  ([{:keys [svri]} c-hash tid param-lb param-ub]
+   (coll/eduction
+     (comp (ap-filter param-lb param-ub)
+           drop-value)
+     (sp-vr/all-keys! svri c-hash tid)))
+  ([context c-hash tid param-lb param-ub start-id]
+   (coll/eduction
+     (comp (ap-filter param-lb param-ub)
+           drop-value)
+     (all-keys! context c-hash tid start-id))))
 
 
 (defn- resource-keys!
-  ([context c-hash tid {:keys [op lower-bound upper-bound]}]
+  ([context c-hash tid
+    {:keys [op] param-lb :lower-bound param-ub :upper-bound}]
    (case op
-     :eq (eq-keys! context c-hash tid lower-bound upper-bound)
-     :ge (ge-keys! context c-hash tid lower-bound)
-     :gt (gt-keys! context c-hash tid upper-bound)
-     :le (le-keys! context c-hash tid upper-bound)
-     :lt (lt-keys! context c-hash tid lower-bound)))
-  ([context c-hash tid {:keys [op lower-bound upper-bound]} start-id]
+     :eq (eq-keys! context c-hash tid param-lb param-ub)
+     :ne (ne-keys! context c-hash tid param-lb param-ub)
+     :gt (gt-keys! context c-hash tid param-ub)
+     :lt (lt-keys! context c-hash tid param-lb)
+     :ge (ge-keys! context c-hash tid param-lb param-ub)
+     :le (le-keys! context c-hash tid param-lb param-ub)
+     :sa (sa-keys! context c-hash tid param-ub)
+     :eb (eb-keys! context c-hash tid param-lb)
+     :ap (ap-keys! context c-hash tid param-lb param-ub)))
+  ([context c-hash tid
+    {:keys [op] param-lb :lower-bound param-ub :upper-bound}
+    start-id]
    (case op
-     :eq (eq-keys! context c-hash tid lower-bound upper-bound start-id)
-     :ge (ge-keys! context c-hash tid lower-bound start-id)
-     :gt (gt-keys! context c-hash tid upper-bound start-id)
-     :le (le-keys! context c-hash tid upper-bound start-id)
-     :lt (lt-keys! context c-hash tid lower-bound start-id))))
+     :eq (eq-keys! context c-hash tid param-lb param-ub start-id)
+     :ne (ne-keys! context c-hash tid param-lb param-ub start-id)
+     :gt (gt-keys! context c-hash tid param-ub start-id)
+     :lt (lt-keys! context c-hash tid param-lb start-id)
+     :ge (ge-keys! context c-hash tid param-lb param-ub start-id)
+     :le (le-keys! context c-hash tid param-lb param-ub start-id)
+     :sa (sa-keys! context c-hash tid param-ub start-id)
+     :eb (eb-keys! context c-hash tid param-lb start-id)
+     :ap (ap-keys! context c-hash tid param-lb param-ub start-id))))
 
 
 (defn- matches?
   [{:keys [rsvi]} c-hash resource-handle
-   {:keys [op] q-lb :lower-bound q-ub :upper-bound}]
-  (when-let [v (r-sp-v/next-value! rsvi resource-handle c-hash)]
+   {:keys [op] param-lb :lower-bound param-ub :upper-bound}]
+  (when-let [value (r-sp-v/next-value! rsvi resource-handle c-hash)]
     (case op
-      :eq (eq-overlaps? v q-lb q-ub)
-      :ge (ge-overlaps? q-lb v)
-      :gt (gt-overlaps? q-ub v)
-      :le (le-overlaps? v q-ub)
-      :lt (lt-overlaps? v q-lb))))
+      :eq (equal? value param-lb param-ub)
+      :ne (not-equal? value param-lb param-ub)
+      :gt (greater-than? param-ub value)
+      :lt (less-than? value param-lb)
+      :ge (greater-equal? param-lb param-ub value)
+      :le (less-equal? value param-lb param-ub)
+      :sa (starts-after? param-ub value)
+      :eb (ends-before? value param-lb)
+      :ap (approximately? value param-lb param-ub))))
+
+
+(defn- invalid-date-time-value-msg [code value]
+  (format "Invalid date-time value `%s` in search parameter `%s`." value code))
 
 
 (defrecord SearchParamDate [name url type base code c-hash expression]
@@ -260,20 +377,14 @@
     (let [[op value] (u/separate-op value)]
       (if-ok [date-time-value (system/parse-date-time value)]
         (case op
-          :eq
+          (:eq :ne :ge :le :ap)
           {:op op
            :lower-bound (codec-date/encode-lower-bound date-time-value)
            :upper-bound (codec-date/encode-upper-bound date-time-value)}
-          :ge
-          {:op op
-           :lower-bound (codec-date/encode-lower-bound date-time-value)}
-          :gt
+          (:gt :sa)
           {:op op
            :upper-bound (codec-date/encode-upper-bound date-time-value)}
-          :le
-          {:op op
-           :upper-bound (codec-date/encode-upper-bound date-time-value)}
-          :lt
+          (:lt :eb)
           {:op op
            :lower-bound (codec-date/encode-lower-bound date-time-value)}
           (ba/unsupported (u/unsupported-prefix-msg code op)))

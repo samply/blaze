@@ -13,12 +13,12 @@
 
 
 (s/fdef codec-date/encode-lower-bound
-  :args (s/cat :date-time :system/date-or-date-time)
+  :args (s/cat :date-time (s/nilable :system/date-or-date-time))
   :ret byte-string?)
 
 
 (s/fdef codec-date/encode-upper-bound
-  :args (s/cat :date-time :system/date-or-date-time)
+  :args (s/cat :date-time (s/nilable :system/date-or-date-time))
   :ret byte-string?)
 
 

@@ -15,12 +15,10 @@
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec.type]
-    [blaze.fhir.structure-definition-repo]
-    [blaze.test-util :as tu :refer [with-system]]
+    [blaze.test-util :as tu :refer [structure-definition-repo with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
     [cognitect.anomalies :as anom]
-    [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
@@ -43,9 +41,8 @@
 
 
 (def system
-  {:blaze.fhir/structure-definition-repo {}
-   :blaze.db/search-param-registry
-   {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}})
+  {:blaze.db/search-param-registry
+   {:structure-definition-repo structure-definition-repo}})
 
 
 (deftest code-value-quantity-param-test

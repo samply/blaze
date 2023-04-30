@@ -1,13 +1,11 @@
 (ns blaze.rest-api.capabilities-test
   (:require
     [blaze.db.impl.search-param]
-    [blaze.fhir.structure-definition-repo]
     [blaze.rest-api.capabilities :as capabilities]
     [blaze.rest-api.capabilities-spec]
-    [blaze.test-util :as tu :refer [with-system]]
+    [blaze.test-util :as tu :refer [structure-definition-repo with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
-    [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [reitit.ring]))
 
@@ -27,9 +25,8 @@
 
 
 (def system
-  {:blaze.fhir/structure-definition-repo {}
-   :blaze.db/search-param-registry
-   {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}})
+  {:blaze.db/search-param-registry
+   {:structure-definition-repo structure-definition-repo}})
 
 
 (deftest capabilities-handler-test
