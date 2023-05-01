@@ -19,6 +19,7 @@
     [blaze.spec]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [reitit.ring]
@@ -292,6 +293,24 @@
     (-> if-none-exist ring-codec/form-decode iu/search-clauses)))
 
 
+(defn- resource-content-not-found-msg [{:blaze.db/keys [resource-handle]}]
+  (format "The transaction was successful but the resource content of `%s/%s` with hash `%s` was not found during response creation."
+          (name (type/type resource-handle)) (:id resource-handle)
+          (:hash resource-handle)))
+
+
+(defn- resource-content-not-found-anom [e]
+  (assoc e
+    ::anom/category ::anom/fault
+    ::anom/message (resource-content-not-found-msg e)
+    :fhir/issue "incomplete"))
+
+
+(defn- pull [db handle]
+  (-> (d/pull db handle)
+      (ac/exceptionally resource-content-not-found-anom)))
+
+
 (defmethod build-response-entry "POST"
   [{:keys [return-preference db] :as context}
    _
@@ -301,14 +320,14 @@
     ;; transaction because a new id is created for POST requests
     (if-let [handle (d/resource-handle db type id)]
       (if (identical? :blaze.preference.return/representation return-preference)
-        (do-sync [resource (d/pull db handle)]
+        (do-sync [resource (pull db handle)]
           (assoc (created-entry context type handle) :resource resource))
         (ac/completed-future (created-entry context type handle)))
       (let [if-none-exist (-> entry :request :ifNoneExist)
             clauses (conditional-clauses if-none-exist)
             handle (first (d/type-query db type clauses))]
         (if (identical? :blaze.preference.return/representation return-preference)
-          (do-sync [resource (d/pull db handle)]
+          (do-sync [resource (pull db handle)]
             (assoc (noop-entry db handle) :resource resource))
           (ac/completed-future (noop-entry db handle)))))))
 
@@ -335,7 +354,7 @@
   (let [type (name type)
         handle (d/resource-handle db type id)]
     (if (identical? :blaze.preference.return/representation return-preference)
-      (do-sync [resource (d/pull db handle)]
+      (do-sync [resource (pull db handle)]
         (assoc (update-entry context type handle) :resource resource))
       (ac/completed-future (update-entry context type handle)))))
 

@@ -10,10 +10,15 @@
     [blaze.db.tx-cache]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.local]
-    [blaze.fhir.structure-definition-repo]
-    [blaze.test-util :refer [with-system]]
+    [blaze.test-util :refer [structure-definition-repo with-system]]
     [integrant.core :as ig]
     [java-time.api :as time]))
+
+
+(defonce search-param-registry
+         (-> (ig/init {:blaze.db/search-param-registry
+                       {:structure-definition-repo structure-definition-repo}})
+             :blaze.db/search-param-registry))
 
 
 (def system
@@ -25,7 +30,7 @@
     :resource-store (ig/ref ::rs/kv)
     :kv-store (ig/ref :blaze.db/index-kv-store)
     :resource-indexer (ig/ref :blaze.db.node/resource-indexer)
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :search-param-registry search-param-registry
     :poll-timeout (time/millis 10)}
 
    ::tx-log/local
@@ -73,15 +78,10 @@
    :blaze.db.node/resource-indexer
    {:kv-store (ig/ref :blaze.db/index-kv-store)
     :resource-store (ig/ref ::rs/kv)
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :search-param-registry search-param-registry
     :executor (ig/ref :blaze.db.node.resource-indexer/executor)}
 
-   :blaze.db.node.resource-indexer/executor {}
-
-   :blaze.db/search-param-registry
-   {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
-
-   :blaze.fhir/structure-definition-repo {}})
+   :blaze.db.node.resource-indexer/executor {}})
 
 
 (defmacro with-system-data [[binding-form system] txs & body]

@@ -73,6 +73,7 @@ jobs:
         java-version:
         - '11'
         - '17'
+        - '20'
 
     runs-on: ubuntu-22.04
 
@@ -145,6 +146,7 @@ jobs:
         java-version:
         - '11'
         - '17'
+        - '20'
 
     runs-on: ubuntu-22.04
 
@@ -336,6 +338,72 @@ jobs:
     - name: Download Observation Resources of female Patients
       run: .github/scripts/download-resources-query.sh Observation "_count=500&patient.gender=female" 22463
 
+    - name: Download Observation Resources of the year 1970
+      run: .github/scripts/download-resources-query.sh Observation "date=1970" 59
+
+    - name: Download Observation Resources of the year 1980
+      run: .github/scripts/download-resources-query.sh Observation "date=1980" 0
+
+    - name: Download Observation Resources of the year 1990
+      run: .github/scripts/download-resources-query.sh Observation "date=1990" 19
+
+    - name: Download Observation Resources of the year 2000
+      run: .github/scripts/download-resources-query.sh Observation "date=2000" 101
+
+    - name: Download Observation Resources of the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=2010" 995
+
+    - name: Download Observation Resources of the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=2020" 17419
+
+    - name: Download Observation Resources not of the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=ne2020" 25510
+
+    - name: Download Observation Resources greater than the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=gt2010" 38486
+
+    - name: Download Observation Resources greater than the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=gt2020" 983
+
+    - name: Download Observation Resources less than the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=lt2010" 3448
+
+    - name: Download Observation Resources less than the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=lt2020" 24527
+
+    - name: Download Observation Resources greater equal the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=ge2010" 39481
+
+    - name: Download Observation Resources greater equal the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=ge2020" 18402
+
+    - name: Download Observation Resources less equal the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=le2010" 4443
+
+    - name: Download Observation Resources less equal the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=le2020" 41946
+
+    - name: Download Observation Resources that start after the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=sa2010" 38486
+
+    - name: Download Observation Resources that start after the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=sa2020" 983
+
+    - name: Download Observation Resources that end before the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=eb2010" 3448
+
+    - name: Download Observation Resources that end before the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=eb2020" 24527
+
+    - name: Check Observation Date Search
+      run: .github/scripts/check-date-search.sh "Observation"
+
+    - name: Check Encounter Date Search
+      run: .github/scripts/check-date-search.sh "Encounter"
+
+    - name: Check DiagnosticReport Date Search
+      run: .github/scripts/check-date-search.sh "DiagnosticReport"
+
     - name: Download Observation Resources of female Patients Sorted Ascending
       run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=female" "_lastUpdated" 22463
 
@@ -506,6 +574,9 @@ jobs:
 
     - name: Transaction Read/Write
       run: .github/scripts/transaction-rw.sh
+
+    - name: Transaction with Invalid (Null) Resource
+      run: .github/scripts/transaction-null-resource.sh
 
     - name: OPTIONS
       run: curl -f -XOPTIONS http://localhost:8080/fhir/metadata
@@ -939,6 +1010,50 @@ jobs:
     - name: Post Large Binary Resource
       run:  curl -f -H Content-Type:application/fhir+xml -H Prefer:return=minimal -d @large-binary.xml http://localhost:8080/fhir/Binary
 
+  missing-resource-content-test:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v3
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Create a Data Dir
+      run: mkdir data
+
+    - name: Run Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v "$(pwd)/data:/app/data" blaze:latest
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Create Patient
+      run: .github/scripts/create-patient-0.sh
+
+    - name: Stop Blaze
+      run: docker stop blaze
+
+    - name: Remove Resource Database
+      run: rm -r data/resource
+
+    - name: Start Blaze Again
+      run: docker start blaze
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Fetch Patient Expecting an Error
+      run: .github/scripts/fetch-resource-0-with-missing-resource-content.sh
+
   distributed-test:
     needs: build
     runs-on: ubuntu-22.04
@@ -1039,6 +1154,72 @@ jobs:
 
     - name: Download Observation Resources of female Patients
       run: .github/scripts/download-resources-query.sh Observation "_count=500&patient.gender=female" 22463
+
+    - name: Download Observation Resources of the year 1970
+      run: .github/scripts/download-resources-query.sh Observation "date=1970" 59
+
+    - name: Download Observation Resources of the year 1980
+      run: .github/scripts/download-resources-query.sh Observation "date=1980" 0
+
+    - name: Download Observation Resources of the year 1990
+      run: .github/scripts/download-resources-query.sh Observation "date=1990" 19
+
+    - name: Download Observation Resources of the year 2000
+      run: .github/scripts/download-resources-query.sh Observation "date=2000" 101
+
+    - name: Download Observation Resources of the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=2010" 995
+
+    - name: Download Observation Resources of the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=2020" 17419
+
+    - name: Download Observation Resources not of the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=ne2020" 25510
+
+    - name: Download Observation Resources greater than the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=gt2010" 38486
+
+    - name: Download Observation Resources greater than the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=gt2020" 983
+
+    - name: Download Observation Resources less than the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=lt2010" 3448
+
+    - name: Download Observation Resources less than the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=lt2020" 24527
+
+    - name: Download Observation Resources greater equal the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=ge2010" 39481
+
+    - name: Download Observation Resources greater equal the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=ge2020" 18402
+
+    - name: Download Observation Resources less equal the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=le2010" 4443
+
+    - name: Download Observation Resources less equal the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=le2020" 41946
+
+    - name: Download Observation Resources that start after the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=sa2010" 38486
+
+    - name: Download Observation Resources that start after the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=sa2020" 983
+
+    - name: Download Observation Resources that end before the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=eb2010" 3448
+
+    - name: Download Observation Resources that end before the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=eb2020" 24527
+
+    - name: Check Observation Date Search
+      run: .github/scripts/check-date-search.sh "Observation"
+
+    - name: Check Encounter Date Search
+      run: .github/scripts/check-date-search.sh "Encounter"
+
+    - name: Check DiagnosticReport Date Search
+      run: .github/scripts/check-date-search.sh "DiagnosticReport"
 
     - name: Download Observation Resources of female Patients Sorted Ascending
       run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=female" "_lastUpdated" 22463
@@ -1211,6 +1392,9 @@ jobs:
     - name: Transaction Read/Write
       run: .github/scripts/transaction-rw.sh
 
+    - name: Transaction with Invalid (Null) Resource
+      run: .github/scripts/transaction-null-resource.sh
+
     - name: OPTIONS
       run: curl -f -XOPTIONS http://localhost:8080/fhir/metadata
 
@@ -1340,6 +1524,7 @@ jobs:
     - openid-auth-test
     - doc-copy-data-test
     - big-binary-test
+    - missing-resource-content-test
     - distributed-test
     - jepsen-distributed-test
     runs-on: ubuntu-22.04

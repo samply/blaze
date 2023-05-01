@@ -19,6 +19,7 @@
     [blaze.page-store.spec]
     [blaze.spec]
     [clojure.spec.alpha :as s]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [ring.util.response :as ring]
@@ -101,7 +102,9 @@
   :entries - the bundle entries of the page
   :num-matches - the number of search matches (excluding includes)
   :next-handle - the resource handle of the first resource of the next page
-  :clauses - the actually used clauses"
+  :clauses - the actually used clauses
+
+  or an anomaly in case of errors."
   {:arglists '([context])}
   [{:blaze/keys [db] {:keys [include-defs page-size] :as params} :params :as context}]
   (if-ok [{:keys [handles clauses]} (handles-and-clauses context db)]
@@ -109,15 +112,21 @@
           (build-page db include-defs page-size handles)
           match-futures (mapv (partial (pull-matches-fn params) db) (partition-all 100 matches))
           include-futures (mapv (partial d/pull-many db) (partition-all 100 includes))]
-      (do-sync [_ (ac/all-of (into match-futures include-futures))]
-        {:entries
-         (entries
-           context
-           (mapcat deref match-futures)
-           (mapcat deref include-futures))
-         :num-matches (count matches)
-         :next-handle next-match
-         :clauses clauses}))
+      (-> (ac/all-of (into match-futures include-futures))
+          (ac/exceptionally
+            #(assoc %
+               ::anom/category ::anom/fault
+               :fhir/issue "incomplete"))
+          (ac/then-apply
+            (fn [_]
+              {:entries
+               (entries
+                 context
+                 (mapcat deref match-futures)
+                 (mapcat deref include-futures))
+               :num-matches (count matches)
+               :next-handle next-match
+               :clauses clauses}))))
     ac/completed-future))
 
 

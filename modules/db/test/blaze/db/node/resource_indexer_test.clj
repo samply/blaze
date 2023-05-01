@@ -24,9 +24,8 @@
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec.type]
-    [blaze.fhir.structure-definition-repo]
     [blaze.metrics.spec]
-    [blaze.test-util :as tu :refer [given-failed-future given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-failed-future given-thrown structure-definition-repo with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -146,9 +145,7 @@
    ::rs-kv/executor {}
 
    :blaze.db/search-param-registry
-   {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
-
-   :blaze.fhir/structure-definition-repo {}
+   {:structure-definition-repo structure-definition-repo}
 
    :blaze.db.node/resource-indexer
    {:kv-store (ig/ref :blaze.db/index-kv-store)

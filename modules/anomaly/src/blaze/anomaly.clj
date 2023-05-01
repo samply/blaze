@@ -1,7 +1,8 @@
 (ns blaze.anomaly
   (:refer-clojure :exclude [map])
   (:require
-    [cognitect.anomalies :as anom])
+    [cognitect.anomalies :as anom]
+    [io.aviso.exception :as aviso])
   (:import
     [clojure.lang ExceptionInfo]
     [java.util Map]
@@ -65,6 +66,15 @@
   (anomaly* ::anom/busy msg kvs))
 
 
+(defn- format-exception
+  "Formats `e` without any ANSI formatting.
+
+  Used to output stack traces in OperationOutcome's."
+  [e]
+  (binding [aviso/*fonts* nil]
+    (aviso/format-exception e)))
+
+
 (defprotocol ToAnomaly
   (-anomaly [x]))
 
@@ -88,7 +98,7 @@
       (assoc :blaze.anomaly/cause (-anomaly (.getCause e)))))
   Throwable
   (-anomaly [e]
-    (fault (.getMessage e)))
+    (fault (.getMessage e) :stacktrace (format-exception e)))
   Map
   (-anomaly [m]
     (when (anomaly? m)

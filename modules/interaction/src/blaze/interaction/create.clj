@@ -8,12 +8,14 @@
     [blaze.db.api :as d]
     [blaze.db.spec]
     [blaze.fhir.response.create :as response]
+    [blaze.fhir.spec.type :as type]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.create.spec]
     [blaze.interaction.util :as iu]
     [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
+    [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
     [ring.util.codec :as ring-codec]
@@ -59,6 +61,12 @@
       (assoc :blaze.preference/return return-preference))))
 
 
+(defn- resource-content-not-found-msg [{:blaze.db/keys [resource-handle]}]
+  (format "The resource `%s/%s` was successfully created but it's content with hash `%s` was not found during response creation."
+          (name (type/type resource-handle)) (:id resource-handle)
+          (:hash resource-handle)))
+
+
 (defn- handler [{:keys [node executor] :as context}]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         :keys [headers body]
@@ -79,7 +87,15 @@
                   (response-context request db-after) nil handle)
                 (let [handle (first (d/type-query db-after type conditional-clauses))]
                   (response/build-response
-                    (response-context request db-after) handle handle)))))))))
+                    (response-context request db-after) handle handle)))))
+          (ac/exceptionally
+            (fn [e]
+              (cond-> e
+                (ba/not-found? e)
+                (assoc
+                  ::anom/category ::anom/fault
+                  ::anom/message (resource-content-not-found-msg e)
+                  :fhir/issue "incomplete"))))))))
 
 
 (defmethod ig/pre-init-spec :blaze.interaction/create [_]

@@ -830,7 +830,8 @@
 
 
 (defmethod json-resource :default [{json-type :resourceType :fhir/keys [type]}]
-  (keyword "fhir.json" (or json-type (name type))))
+  (when-let [type (or json-type (some-> type name))]
+    (keyword "fhir.json" type)))
 
 
 (s/def :fhir.json/Resource
@@ -857,7 +858,7 @@
 
 
 (defn conform-xml-resource [{:keys [content]}]
-  (some #(when (xml/element? %) %) content))
+  (or (some #(when (xml/element? %) %) content) ::s/invalid))
 
 
 (defn unform-xml-resource [resource]

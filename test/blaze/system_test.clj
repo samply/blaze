@@ -11,7 +11,7 @@
     [blaze.rest-api]
     [blaze.system :as system]
     [blaze.system-spec]
-    [blaze.test-util :as tu :refer [with-system]]
+    [blaze.test-util :as tu :refer [structure-definition-repo with-system]]
     [blaze.test-util.ring :refer [call]]
     [buddy.auth.protocols :as ap]
     [clojure.spec.alpha :as s]
@@ -69,7 +69,7 @@
     :blaze/rest-api
     {:base-url "http://localhost:8080"
      :version "0.1.0"
-     :structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)
+     :structure-definition-repo structure-definition-repo
      :node (ig/ref :blaze.db/node)
      :search-param-registry (ig/ref :blaze.db/search-param-registry)
      :db-sync-timeout 10000
@@ -90,8 +90,7 @@
                #:blaze.rest-api.interaction
                        {:handler (ig/ref :blaze.interaction/search-type)}}}]}
     :blaze.db/search-param-registry
-    {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
-    :blaze.fhir/structure-definition-repo {}
+    {:structure-definition-repo structure-definition-repo}
     ::auth-backend {}
     :blaze.interaction/transaction
     {:node (ig/ref :blaze.db/node)

@@ -6,7 +6,9 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.anomaly-spec]
+    [blaze.async.comp :as ac]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.resource-store :as rs]
     [blaze.interaction.history.instance]
     [blaze.interaction.history.util-spec]
     [blaze.interaction.test-util :refer [wrap-error]]
@@ -237,4 +239,20 @@
 
         (testing "is shows the first version"
           (given (-> body :entry first)
-            [:resource :gender] := #fhir/code"male"))))))
+            [:resource :gender] := #fhir/code"male")))))
+
+  (testing "missing resource contents"
+    (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [{:keys [status body]}
+              @(handler {:path-params {:id "0"}})]
+
+          (is (= 500 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"incomplete"
+            [:issue 0 :diagnostics] := "The resource content of `Patient/0` with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found."))))))

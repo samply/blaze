@@ -3,7 +3,9 @@
 
   https://www.hl7.org/fhir/http.html#search"
   (:require
+    [blaze.async.comp :as ac]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.resource-store :as rs]
     [blaze.interaction.search-system]
     [blaze.interaction.search.nav-spec]
     [blaze.interaction.search.params-spec]
@@ -300,4 +302,20 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := "Missing search parameter code in _include search parameter with source type `Observation`."))))))
+            [:issue 0 :diagnostics] := "Missing search parameter code in _include search parameter with source type `Observation`.")))))
+
+  (testing "missing resource contents"
+    (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [{:keys [status body]}
+              @(handler {})]
+
+          (is (= 500 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"incomplete"
+            [:issue 0 :diagnostics] := "The resource content of `Patient/0` with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found."))))))

@@ -1,10 +1,12 @@
 (ns blaze.fhir.operation.evaluate-measure-test
   (:require
     [blaze.anomaly-spec]
+    [blaze.async.comp :as ac]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.resource-store :as rs]
     [blaze.executors :as ex]
     [blaze.fhir.operation.evaluate-measure :as evaluate-measure]
-    [blaze.fhir.operation.evaluate-measure.test-util :as etu :refer [wrap-error]]
+    [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
     [blaze.fhir.spec.type :as type]
     [blaze.metrics.spec]
     [blaze.middleware.fhir.db :refer [wrap-db]]
@@ -194,12 +196,11 @@
 
           (is (= 404 status))
 
-          (is (= :fhir/OperationOutcome (:fhir/type body)))
-
-          (given (-> body :issue first)
-            :severity := #fhir/code"error"
-            :code := #fhir/code"not-found"
-            :diagnostics := "The Measure resource with id `0` was not found."))))
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"not-found"
+            [:issue 0 :diagnostics] := "The Measure resource with id `0` was not found."))))
 
     (testing "on type endpoint"
       (with-handler [handler]
@@ -212,12 +213,11 @@
 
           (is (= 400 status))
 
-          (is (= :fhir/OperationOutcome (:fhir/type body)))
-
-          (given (-> body :issue first)
-            :severity := #fhir/code"error"
-            :code := #fhir/code"not-found"
-            :diagnostics := "The Measure resource with reference `url-181501` was not found.")))
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"not-found"
+            [:issue 0 :diagnostics] := "The Measure resource with reference `url-181501` was not found.")))
 
       (testing "with missing measure parameter"
         (with-handler [handler]
@@ -229,12 +229,11 @@
 
             (is (= 400 status))
 
-            (is (= :fhir/OperationOutcome (:fhir/type body)))
-
-            (given (-> body :issue first)
-              :severity := #fhir/code"error"
-              :code := #fhir/code"required"
-              :diagnostics := "The measure parameter is missing."))))))
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"required"
+              [:issue 0 :diagnostics] := "The measure parameter is missing."))))))
 
   (testing "Returns Gone on Deleted Resource"
     (with-handler [handler]
@@ -248,12 +247,31 @@
 
         (is (= 410 status))
 
-        (is (= :fhir/OperationOutcome (:fhir/type body)))
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"deleted"
+          [:issue 0 :diagnostics] := "The Measure resource with the id `0` was deleted."))))
 
-        (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"deleted"
-          :diagnostics := "The Measure resource with the id `0` was deleted."))))
+  (testing "missing measure content"
+    (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Measure :id "0"}]]]
+
+        (let [{:keys [status body]}
+              @(handler
+                 {:path-params {:id "0"}
+                  :params
+                  {"periodStart" "2014"
+                   "periodEnd" "2015"}})]
+
+          (is (= 500 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"incomplete"
+            [:issue 0 :diagnostics] := "The resource content of `Measure/0` with hash `D0CCBAF739DAC930C5A0844A48CDE18F0004D4549CEF7E1FF0DEB9A0611D9451` was not found.")))))
 
   (testing "measure without library"
     (with-handler [handler]
@@ -269,13 +287,12 @@
 
         (is (= 422 status))
 
-        (is (= :fhir/OperationOutcome (:fhir/type body)))
-
-        (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"not-supported"
-          :diagnostics := "Missing primary library. Currently only CQL expressions together with one primary library are supported."
-          [:expression first] := "Measure.library"))))
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"not-supported"
+          [:issue 0 :diagnostics] := "Missing primary library. Currently only CQL expressions together with one primary library are supported."
+          [:issue 0 :expression first] := "Measure.library"))))
 
   (testing "measure with non-existing library"
     (with-handler [handler]
@@ -292,13 +309,12 @@
 
         (is (= 400 status))
 
-        (is (= :fhir/OperationOutcome (:fhir/type body)))
-
-        (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"value"
-          :diagnostics := "The Library resource with canonical URI `library-url-094115` was not found."
-          [:expression first] := "Measure.library"))))
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"value"
+          [:issue 0 :diagnostics] := "The Library resource with canonical URI `library-url-094115` was not found."
+          [:issue 0 :expression first] := "Measure.library"))))
 
   (testing "missing content in library"
     (with-handler [handler]
@@ -317,13 +333,12 @@
 
         (is (= 400 status))
 
-        (is (= :fhir/OperationOutcome (:fhir/type body)))
-
-        (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"value"
-          :diagnostics := "Missing content in library with id `0`."
-          [:expression first] := "Library.content"))))
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"value"
+          [:issue 0 :diagnostics] := "Missing content in library with id `0`."
+          [:issue 0 :expression first] := "Library.content"))))
 
   (testing "non text/cql content type"
     (with-handler [handler]
@@ -344,13 +359,12 @@
 
         (is (= 400 status))
 
-        (is (= :fhir/OperationOutcome (:fhir/type body)))
-
-        (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"value"
-          :diagnostics := "Non `text/cql` content type of `text/plain` of first attachment in library with id `0`."
-          [:expression first] := "Library.content[0].contentType"))))
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"value"
+          [:issue 0 :diagnostics] := "Non `text/cql` content type of `text/plain` of first attachment in library with id `0`."
+          [:issue 0 :expression first] := "Library.content[0].contentType"))))
 
   (testing "missing data in library content"
     (with-handler [handler]
@@ -371,13 +385,12 @@
 
         (is (= 400 status))
 
-        (is (= :fhir/OperationOutcome (:fhir/type body)))
-
-        (given (-> body :issue first)
-          :severity := #fhir/code"error"
-          :code := #fhir/code"value"
-          :diagnostics := "Missing embedded data of first attachment in library with id `0`."
-          [:expression first] := "Library.content[0].data"))))
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"value"
+          [:issue 0 :diagnostics] := "Missing embedded data of first attachment in library with id `0`."
+          [:issue 0 :expression first] := "Library.content[0].data"))))
 
   (testing "Success"
     (testing "on type endpoint"

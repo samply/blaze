@@ -1,6 +1,8 @@
 (ns blaze.fhir.operation.graphql-test
   (:require
+    [blaze.async.comp :as ac]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.resource-store :as rs]
     [blaze.executors :as ex]
     [blaze.fhir.operation.graphql :as graphql]
     [blaze.fhir.operation.graphql.test-util :refer [wrap-error]]
@@ -217,4 +219,19 @@
               (given body
                 [:data :ObservationList count] := 1
                 [:data :ObservationList 0 :subject :reference] := "Patient/0"
-                [:errors] :? empty?))))))))
+                [:errors] :? empty?)))))))
+
+  (testing "missing resource contents"
+    (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [{:keys [status body]}
+              @(handler
+                 {:request-method :get
+                  :params {"query" "{ PatientList { gender } }"}})]
+
+          (is (= 200 status))
+
+          (given body
+            [:errors 0 :message] := "The resource content of `Patient/0` with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found."))))))

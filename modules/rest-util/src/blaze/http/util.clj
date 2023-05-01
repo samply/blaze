@@ -4,8 +4,8 @@
     [clojure.datafy :refer [datafy]]
     [clojure.string :as str])
   (:import
-    [org.apache.http HeaderElement NameValuePair]
-    [org.apache.http.message BasicHeaderValueParser]))
+    [org.apache.hc.core5.http HeaderElement NameValuePair]
+    [org.apache.hc.core5.http.message BasicHeaderValueParser ParserCursor]))
 
 
 (set! *warn-on-reflection* true)
@@ -33,6 +33,6 @@
   The element name is converted to lower-case."
   [s]
   (when s
-    (->> (BasicHeaderValueParser/parseElements
-           s BasicHeaderValueParser/INSTANCE)
-         (mapv datafy))))
+    (let [cursor (ParserCursor. 0 (count s))]
+      (->> (.parseElements BasicHeaderValueParser/INSTANCE s cursor)
+           (mapv datafy)))))

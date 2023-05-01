@@ -97,7 +97,9 @@
   (Arrays/equals a b))
 
 
-(ig/init {:blaze.fhir/structure-definition-repo {}})
+(defonce structure-definition-repo
+         (:blaze.fhir/structure-definition-repo
+           (ig/init {:blaze.fhir/structure-definition-repo {}})))
 
 
 (defn fixture [f]

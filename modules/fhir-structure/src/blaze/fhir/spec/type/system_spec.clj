@@ -2,6 +2,7 @@
   (:require
     [blaze.anomaly-spec]
     [blaze.fhir.spec.type.system :as system]
+    [blaze.fhir.spec.type.system.spec]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]))
 
@@ -52,3 +53,13 @@
   :args (s/cat :s string?)
   :ret (s/or :date-time system/date-time?
              :anomaly ::anom/anomaly))
+
+
+(s/fdef system/date-time-lower-bound
+  :args (s/cat :date-time (s/nilable :system/date-or-date-time))
+  :ret int?)
+
+
+(s/fdef system/date-time-upper-bound
+  :args (s/cat :date-time (s/nilable :system/date-or-date-time))
+  :ret int?)

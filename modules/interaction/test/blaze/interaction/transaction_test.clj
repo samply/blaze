@@ -7,6 +7,7 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.resource-store :as rs]
     [blaze.executors :as ex]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.util :as handler-util]
@@ -1267,8 +1268,8 @@
                                 {:reference "Patient/0"}}
                        :request
                        {:fhir/type :fhir.Bundle.entry/request
-                        :method #fhir/code"POST"
-                        :url #fhir/uri"Observation"}}]}})]
+                        :method #fhir/code"PUT"
+                        :url #fhir/uri"Observation/0"}}]}})]
 
             (testing "returns error"
               (is (= 409 status))
@@ -1277,9 +1278,63 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"conflict"
-                [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))))
+                [:issue 0 :diagnostics] := "Referential integrity violated. Resource `Patient/0` doesn't exist.")))))
+
+      (testing "on missing resource content"
+        (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
+          (with-handler [handler]
+            (let [{:keys [status body]}
+                  @(handler
+                     {:headers {"prefer" "return=representation"}
+                      :body
+                      {:fhir/type :fhir/Bundle
+                       :type #fhir/code"transaction"
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Patient :id "0"}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"PUT"
+                          :url #fhir/uri"Patient/0"}}]}})]
+
+              (testing "returns error"
+                (is (= 500 status))
+
+                (given body
+                  :fhir/type := :fhir/OperationOutcome
+                  [:issue 0 :severity] := #fhir/code"error"
+                  [:issue 0 :code] := #fhir/code"incomplete"
+                  [:issue 0 :diagnostics] := "The transaction was successful but the resource content of `Patient/0` with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found during response creation.")))))))
 
     (testing "and create interaction"
+      (testing "on missing resource content"
+        (with-redefs [rs/get (fn [_ _] (ac/completed-future nil))]
+          (with-handler [handler]
+            (let [{:keys [status body]}
+                  @(handler
+                     {:headers {"prefer" "return=representation"}
+                      :body
+                      {:fhir/type :fhir/Bundle
+                       :type #fhir/code"transaction"
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Patient}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"POST"
+                          :url #fhir/uri"Patient"}}]}})]
+
+              (testing "returns error"
+                (is (= 500 status))
+
+                (given body
+                  :fhir/type := :fhir/OperationOutcome
+                  [:issue 0 :severity] := #fhir/code"error"
+                  [:issue 0 :code] := #fhir/code"incomplete"
+                  [:issue 0 :diagnostics] := "The transaction was successful but the resource content of `Patient/AAAAAAAAAAAAAAAA` with hash `C854DBB25D7D32AE87A7D1CD633145A775E139904408FF821FA7ABB77D311DFF` was not found during response creation."))))))
+
       (testing "creates sequential identifiers"
         (with-handler [handler]
           (let [{:keys [body]}

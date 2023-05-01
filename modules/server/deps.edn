@@ -6,10 +6,10 @@
   {:local/root "../module-base"}
 
   org.eclipse.jetty/jetty-server
-  {:mvn/version "9.4.50.v20221201"}
+  {:mvn/version "9.4.51.v20230217"}
 
   ring/ring-jetty-adapter
-  {:mvn/version "1.9.6"
+  {:mvn/version "1.10.0"
    :exclusions
    [clj-time/clj-time
     commons-fileupload/commons-fileupload

@@ -8,14 +8,14 @@
   blaze/fhir-structure
   {:local/root "../fhir-structure"}
 
-  org.apache.httpcomponents/httpcore
-  {:mvn/version "4.4.16"}
+  org.apache.httpcomponents.core5/httpcore5
+  {:mvn/version "5.2.1"}
 
   metosin/reitit-ring
   {:mvn/version "0.6.0"}
 
   ring/ring-core
-  {:mvn/version "1.9.6"
+  {:mvn/version "1.10.0"
    :exclusions
    [commons-fileupload/commons-fileupload
     crypto-equality/crypto-equality

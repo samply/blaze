@@ -146,6 +146,18 @@
      (i/prefix-keys-prev! iter prefix decode-value-id-hash-prefix start-key))))
 
 
+(defn prefix-keys-value! [iter c-hash tid value-prefix]
+  (let [prefix (encode-seek-key c-hash tid)
+        start-key (encode-seek-key c-hash tid value-prefix)]
+    (i/prefix-keys! iter prefix decode-value-id-hash-prefix start-key)))
+
+
+(defn prefix-keys-value-prev! [iter c-hash tid value-prefix]
+  (let [prefix (encode-seek-key c-hash tid)
+        start-key (encode-seek-key c-hash tid value-prefix)]
+    (i/prefix-keys-prev! iter prefix decode-value-id-hash-prefix start-key)))
+
+
 (defn decode-id-hash-prefix
   "Returns a tuple of `[id hash-prefix]`."
   ([] (bb/allocate-direct key-buffer-capacity))

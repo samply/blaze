@@ -5,9 +5,12 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
+    [blaze.async.comp :as ac]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.resource-store :as rs]
     [blaze.interaction.history.type]
     [blaze.interaction.history.util-spec]
+    [blaze.interaction.test-util :refer [wrap-error]]
     [blaze.middleware.fhir.db :refer [wrap-db]]
     [blaze.middleware.fhir.db-spec]
     [blaze.test-util :as tu :refer [given-thrown]]
@@ -99,7 +102,8 @@
     `(with-system-data [{node# :blaze.db/node
                          handler# :blaze.interaction.history/type} system]
        ~txs
-       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#))]
+       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+                                  wrap-error)]
          ~@body))))
 
 
@@ -158,4 +162,20 @@
           [:resource :meta :versionId] := #fhir/id"1"
           [:response :status] := "201"
           [:response :etag] := "W/\"1\""
-          [:response :lastModified] := Instant/EPOCH)))))
+          [:response :lastModified] := Instant/EPOCH))))
+
+  (testing "missing resource contents"
+    (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [{:keys [status body]}
+              @(handler {})]
+
+          (is (= 500 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"incomplete"
+            [:issue 0 :diagnostics] := "The resource content of `Patient/0` with hash `C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F` was not found."))))))

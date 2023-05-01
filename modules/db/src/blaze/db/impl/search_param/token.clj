@@ -188,7 +188,7 @@
         (keep
           (fn [value]
             (when (identical? :fhir/Reference (fhir-spec/fhir-type value))
-              (when-let [reference (:reference value)]
+              (when-let [reference (type/value (:reference value))]
                 (some-> (u/split-literal-ref reference) (coll/nth 1))))))
         values)))
 

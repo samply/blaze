@@ -504,6 +504,44 @@
       "2019-02-29")))
 
 
+(deftest date-time-lower-bound-test
+  (testing "date-times with increasing precision have the same lower bound"
+    (are [dt] (= 1577836800 (system/date-time-lower-bound dt))
+      #system/date"2020"
+      #system/date"2020-01"
+      #system/date"2020-01-01"
+      #system/date-time"2020"
+      #system/date-time"2020-01"
+      #system/date-time"2020-01-01"
+      #system/date-time"2020-01-01T00:00:00"
+      #system/date-time"2020-01-01T00:00:00Z"
+      #system/date-time"2020-01-01T00:00:00.000"
+      #system/date-time"2020-01-01T00:00:00.000Z")
+
+    (testing "nil has the same lower bound as year 1"
+      (is (= (system/date-time-lower-bound #system/date"0001")
+             (system/date-time-lower-bound nil))))))
+
+
+(deftest date-time-upper-bound-test
+  (testing "date-times with increasing precision have the same upper bound"
+    (are [dt] (= 1609459199 (system/date-time-upper-bound dt))
+      #system/date"2020"
+      #system/date"2020-12"
+      #system/date"2020-12-31"
+      #system/date-time"2020"
+      #system/date-time"2020-12"
+      #system/date-time"2020-12-31"
+      #system/date-time"2020-12-31T23:59:59"
+      #system/date-time"2020-12-31T23:59:59Z"
+      #system/date-time"2020-12-31T23:59:59.000"
+      #system/date-time"2020-12-31T23:59:59.000Z"))
+
+  (testing "nil has the same upper bound as year 9999"
+    (is (= (system/date-time-upper-bound #system/date"9999")
+           (system/date-time-upper-bound nil)))))
+
+
 (deftest time-test
   (testing "type"
     (is (= :system/time (system/type (LocalTime/of 0 0 0)))))

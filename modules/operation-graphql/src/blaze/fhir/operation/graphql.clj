@@ -55,11 +55,17 @@
     (d/type-list db type)))
 
 
+(defn- to-error [e]
+  {:message (ex-message e)})
+
+
 (defn- resolve-type-list [type {:blaze/keys [db]} args _]
   (log/trace (format "execute %sList query" type))
   (let [result (resolve/resolve-promise)]
     (-> (d/pull-many db (type-query db type args))
-        (ac/when-complete (partial resolve/deliver! result)))
+        (ac/when-complete
+          (fn [r e]
+            (resolve/deliver! result r (some-> e ac/-completion-cause to-error)))))
     result))
 
 

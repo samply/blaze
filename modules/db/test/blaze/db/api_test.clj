@@ -19,20 +19,24 @@
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log-spec]
     [blaze.db.tx-log.local-spec]
+    [blaze.fhir.hash :as hash]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.generators :as fg]
     [blaze.fhir.spec.type :as type]
-    [blaze.fhir.structure-definition-repo]
+    [blaze.fhir.spec.type.system :as system]
     [blaze.log]
-    [blaze.test-util :as tu :refer [given-failed-future with-system]]
-    [clojure.math :as math]
+    [blaze.test-util :as tu :refer [given-failed-future satisfies-prop with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
+    [clojure.test.check.generators :as gen]
+    [clojure.test.check.properties :as prop]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
-    [java.time Instant]))
+    [java.time Instant]
+    [java.util.concurrent TimeUnit]))
 
 
 (set! *warn-on-reflection* true)
@@ -43,23 +47,34 @@
 (test/use-fixtures :each tu/fixture)
 
 
+(def ^:private delayed-executor
+  (ac/delayed-executor 1 TimeUnit/SECONDS))
+
+
 (defmethod ig/init-key ::slow-resource-store [_ {:keys [resource-store]}]
   (reify
     rs/ResourceStore
     (-get [_ hash]
-      (Thread/sleep (long (* 100 (math/random))))
-      (rs/get resource-store hash))
+      (-> (rs/get resource-store hash)
+          (ac/then-apply-async identity delayed-executor)))
     (-multi-get [_ hashes]
-      (Thread/sleep (long (* 100 (math/random))))
-      (rs/multi-get resource-store hashes))
+      (-> (rs/multi-get resource-store hashes)
+          (ac/then-apply-async identity delayed-executor)))
     (-put [_ entries]
-      (Thread/sleep (long (* 100 (math/random))))
-      (rs/put! resource-store entries))))
+      (-> (rs/put! resource-store entries)
+          (ac/then-apply-async identity delayed-executor)))))
 
 
-(def slow-resource-store-system
-  (-> (assoc-in system [:blaze.db/node :resource-store] (ig/ref ::slow-resource-store))
-      (assoc ::slow-resource-store {:resource-store (ig/ref ::rs/kv)})))
+(def ^:private slow-resource-store-system
+  (merge-with
+    merge
+    system
+    {:blaze.db/node
+     {:resource-store (ig/ref ::slow-resource-store)}
+     :blaze.db.node/resource-indexer
+     {:resource-store (ig/ref ::slow-resource-store)}
+     ::slow-resource-store
+     {:resource-store (ig/ref ::rs/kv)}}))
 
 
 (defmethod ig/init-key ::resource-store-failing-on-put [_ _]
@@ -70,9 +85,14 @@
 
 
 (def resource-store-failing-on-put-system
-  (-> (assoc-in system [:blaze.db/node :resource-store]
-                (ig/ref ::resource-store-failing-on-put))
-      (assoc ::resource-store-failing-on-put {})))
+  (merge-with
+    merge
+    system
+    {:blaze.db/node
+     {:resource-store (ig/ref ::resource-store-failing-on-put)}
+     :blaze.db.node/resource-indexer
+     {:resource-store (ig/ref ::resource-store-failing-on-put)}
+     ::resource-store-failing-on-put {}}))
 
 
 (deftest sync-test
@@ -1326,126 +1346,52 @@
           [1 :id] := "id-2"))
 
       (testing "birthdate"
-        (testing "with day precision"
-          (testing "overlapping three patients"
-            (given (pull-type-query node "Patient" [["birthdate" "2020-02-08"]])
-              count := 3
-              [0 :id] := "id-2"
-              [1 :id] := "id-1"
-              [2 :id] := "id-0")
-
-            (testing "it is possible to start with the second patient"
-              (given (pull-type-query node "Patient" [["birthdate" "2020-02-08"]] "id-1")
-                count := 2
-                [0 :id] := "id-1"
-                [1 :id] := "id-0"))
-
-            (testing "it is possible to start with the third patient"
-              (given (pull-type-query node "Patient" [["birthdate" "2020-02-08"]] "id-0")
-                count := 1
-                [0 :id] := "id-0")))
-
-          (testing "overlapping two patients"
-            (are [date]
-              (given (pull-type-query node "Patient" [["birthdate" date]])
-                count := 2
+        (testing "without a prefix (same as eq)"
+          (testing "with day precision"
+            (testing "fully containing three patients"
+              (given (pull-type-query node "Patient" [["birthdate" "2020"]])
+                count := 3
                 [0 :id] := "id-2"
-                [1 :id] := "id-1")
-              "2020-02-07"
-              "2020-02-09")
+                [1 :id] := "id-1"
+                [2 :id] := "id-0")
 
-            (testing "it is possible to start with the second patient"
-              (are [date]
-                (given (pull-type-query node "Patient" [["birthdate" date]] "id-1")
+              (testing "it is possible to start with the second patient"
+                (given (pull-type-query node "Patient" [["birthdate" "2020"]] "id-1")
+                  count := 2
+                  [0 :id] := "id-1"
+                  [1 :id] := "id-0"))
+
+              (testing "it is possible to start with the third patient"
+                (given (pull-type-query node "Patient" [["birthdate" "2020"]] "id-0")
                   count := 1
-                  [0 :id] := "id-1")
-                "2020-02-07"
-                "2020-02-09")))
+                  [0 :id] := "id-0")))
 
-          (testing "overlapping one patient"
-            (are [date]
-              (given (pull-type-query node "Patient" [["birthdate" date]])
-                count := 1
-                [0 :id] := "id-2")
-              "2020-01-31"
-              "2020-03-01"))
-
-          (testing "overlapping no patient"
-            (are [date]
-              (given (pull-type-query node "Patient" [["birthdate" date]])
-                count := 0)
-              "2018-12-31"
-              "2022-01-01")))
-
-        (testing "with month precision"
-          (testing "overlapping three patients"
-            (given (pull-type-query node "Patient" [["birthdate" "2020-02"]])
-              count := 3
-              [0 :id] := "id-2"
-              [1 :id] := "id-1"
-              [2 :id] := "id-0")
-
-            (testing "it is possible to start with the second patient"
-              (given (pull-type-query node "Patient" [["birthdate" "2020-02"]] "id-1")
+            (testing "fully containing two patients"
+              (given (pull-type-query node "Patient" [["birthdate" "2020-02"]])
                 count := 2
                 [0 :id] := "id-1"
-                [1 :id] := "id-0"))
+                [1 :id] := "id-0")
 
-            (testing "it is possible to start with the third patient"
-              (given (pull-type-query node "Patient" [["birthdate" "2020-02"]] "id-0")
+              (testing "it is possible to start with the second patient"
+                (given (pull-type-query node "Patient" [["birthdate" "2020-02"]] "id-0")
+                  count := 1
+                  [0 :id] := "id-0")))
+
+            (testing "fully containing one patient"
+              (given (pull-type-query node "Patient" [["birthdate" "2020-02-08"]])
                 count := 1
-                [0 :id] := "id-0")))
+                [0 :id] := "id-0"))
 
-          (testing "overlapping one patient"
-            (given (pull-type-query node "Patient" [["birthdate" "2020-03"]])
-              count := 1
-              [0 :id] := "id-2"))
-
-          (testing "overlapping no patient"
-            (are [date]
-              (given (pull-type-query node "Patient" [["birthdate" date]])
-                count := 0)
-              "2018-12"
-              "2022-01")))
-
-        (testing "with year precision"
-          (testing "overlapping three patients"
-            (given (pull-type-query node "Patient" [["birthdate" "2020"]])
-              count := 3
-              [0 :id] := "id-2"
-              [1 :id] := "id-1"
-              [2 :id] := "id-0")
-
-            (testing "it is possible to start with the second patient"
-              (given (pull-type-query node "Patient" [["birthdate" "2020"]] "id-1")
-                count := 2
-                [0 :id] := "id-1"
-                [1 :id] := "id-0"))
-
-            (testing "it is possible to start with the third patient"
-              (given (pull-type-query node "Patient" [["birthdate" "2020"]] "id-0")
-                count := 1
-                [0 :id] := "id-0")))
-
-          (testing "overlapping no patient"
-            (are [date]
-              (given (pull-type-query node "Patient" [["birthdate" date]])
-                count := 0)
-              "2018"
-              "2022")))
+            (testing "fully containing no patient"
+              (given (pull-type-query node "Patient" [["birthdate" "2020-02-09"]])
+                count := 0))))
 
         (testing "with `eq` prefix"
-          (given (pull-type-query node "Patient" [["birthdate" "eq2020-02-08"]])
+          (given (pull-type-query node "Patient" [["birthdate" "eq2020"]])
             count := 3
             [0 :id] := "id-2"
             [1 :id] := "id-1"
             [2 :id] := "id-0"))
-
-        (testing "with `ne` prefix is unsupported"
-          (given
-            (d/type-query (d/db node) "Patient" [["birthdate" "ne2020-02-08"]])
-            ::anom/category := ::anom/unsupported
-            ::anom/message := "Unsupported prefix `ne` in search parameter `birthdate`."))
 
         (testing "with ge prefix"
           (testing "with day precision"
@@ -1595,28 +1541,28 @@
               (testing "starting at the most specific birthdate"
                 (given (pull-type-query node "Patient" [["birthdate" "lt2020-02-08"]])
                   count := 3
-                  [0 :id] := "id-3"
+                  [0 :id] := "id-1"
                   [1 :id] := "id-2"
-                  [2 :id] := "id-1")
+                  [2 :id] := "id-3")
 
                 (testing "it is possible to start with the second patient"
                   (given (pull-type-query node "Patient" [["birthdate" "lt2020-02-08"]] "id-2")
                     count := 2
                     [0 :id] := "id-2"
-                    [1 :id] := "id-1"))
+                    [1 :id] := "id-3"))
 
                 (testing "it is possible to start with the third patient"
-                  (given (pull-type-query node "Patient" [["birthdate" "lt2020-02-08"]] "id-1")
+                  (given (pull-type-query node "Patient" [["birthdate" "lt2020-02-08"]] "id-3")
                     count := 1
-                    [0 :id] := "id-1")))
+                    [0 :id] := "id-3")))
 
               (testing "starting after the most specific birthdate"
                 (given (pull-type-query node "Patient" [["birthdate" "lt2020-02-09"]])
                   count := 4
-                  [0 :id] := "id-3"
-                  [1 :id] := "id-2"
-                  [2 :id] := "id-1"
-                  [3 :id] := "id-0")))))
+                  [0 :id] := "id-0"
+                  [1 :id] := "id-1"
+                  [2 :id] := "id-2"
+                  [3 :id] := "id-3")))))
 
         (testing "with le prefix"
           (testing "with day precision"
@@ -1692,14 +1638,123 @@
             (testing "overlapping no patient"
               (testing "starting at the last day of 2018"
                 (given (pull-type-query node "Patient" [["birthdate" "le2018-12-31"]])
-                  count := 0))))))
+                  count := 0)))))
+
+        (testing "with ap prefix"
+          (testing "with day precision"
+            (testing "overlapping three patients"
+              (given (pull-type-query node "Patient" [["birthdate" "ap2020-02-08"]])
+                count := 3
+                [0 :id] := "id-2"
+                [1 :id] := "id-1"
+                [2 :id] := "id-0")
+
+              (testing "it is possible to start with the second patient"
+                (given (pull-type-query node "Patient" [["birthdate" "ap2020-02-08"]] "id-1")
+                  count := 2
+                  [0 :id] := "id-1"
+                  [1 :id] := "id-0"))
+
+              (testing "it is possible to start with the third patient"
+                (given (pull-type-query node "Patient" [["birthdate" "ap2020-02-08"]] "id-0")
+                  count := 1
+                  [0 :id] := "id-0")))
+
+            (testing "overlapping two patients"
+              (are [date]
+                (given (pull-type-query node "Patient" [["birthdate" date]])
+                  count := 2
+                  [0 :id] := "id-2"
+                  [1 :id] := "id-1")
+                "ap2020-02-07"
+                "ap2020-02-09")
+
+              (testing "it is possible to start with the second patient"
+                (are [date]
+                  (given (pull-type-query node "Patient" [["birthdate" date]] "id-1")
+                    count := 1
+                    [0 :id] := "id-1")
+                  "ap2020-02-07"
+                  "ap2020-02-09")))
+
+            (testing "overlapping one patient"
+              (are [date]
+                (given (pull-type-query node "Patient" [["birthdate" date]])
+                  count := 1
+                  [0 :id] := "id-2")
+                "ap2020-01-31"
+                "ap2020-03-01"))
+
+            (testing "overlapping no patient"
+              (are [date]
+                (given (pull-type-query node "Patient" [["birthdate" date]])
+                  count := 0)
+                "ap2018-12-31"
+                "ap2022-01-01")))
+
+          (testing "with month precision"
+            (testing "overlapping three patients"
+              (given (pull-type-query node "Patient" [["birthdate" "ap2020-02"]])
+                count := 3
+                [0 :id] := "id-2"
+                [1 :id] := "id-1"
+                [2 :id] := "id-0")
+
+              (testing "it is possible to start with the second patient"
+                (given (pull-type-query node "Patient" [["birthdate" "ap2020-02"]] "id-1")
+                  count := 2
+                  [0 :id] := "id-1"
+                  [1 :id] := "id-0"))
+
+              (testing "it is possible to start with the third patient"
+                (given (pull-type-query node "Patient" [["birthdate" "ap2020-02"]] "id-0")
+                  count := 1
+                  [0 :id] := "id-0")))
+
+            (testing "overlapping one patient"
+              (given (pull-type-query node "Patient" [["birthdate" "ap2020-03"]])
+                count := 1
+                [0 :id] := "id-2"))
+
+            (testing "overlapping no patient"
+              (are [date]
+                (given (pull-type-query node "Patient" [["birthdate" date]])
+                  count := 0)
+                "ap2018-12"
+                "ap2022-01")))
+
+          (testing "with year precision"
+            (testing "overlapping three patients"
+              (given (pull-type-query node "Patient" [["birthdate" "ap2020"]])
+                count := 3
+                [0 :id] := "id-2"
+                [1 :id] := "id-1"
+                [2 :id] := "id-0")
+
+              (testing "it is possible to start with the second patient"
+                (given (pull-type-query node "Patient" [["birthdate" "ap2020"]] "id-1")
+                  count := 2
+                  [0 :id] := "id-1"
+                  [1 :id] := "id-0"))
+
+              (testing "it is possible to start with the third patient"
+                (given (pull-type-query node "Patient" [["birthdate" "ap2020"]] "id-0")
+                  count := 1
+                  [0 :id] := "id-0")))
+
+            (testing "overlapping no patient"
+              (are [date]
+                (given (pull-type-query node "Patient" [["birthdate" date]])
+                  count := 0)
+                "ap2018"
+                "ap2022")))))
 
       (testing "gender and birthdate"
         (given (pull-type-query node "Patient" [["gender" "male" "female"]
-                                                ["birthdate" "2020-02-09"]])
+                                                ["birthdate" "2020-02"]])
           count := 2
-          [0 :id] := "id-1"
-          [1 :id] := "id-2"))
+          [0 :id] := "id-0"
+          [1 :id] := "id-1"))
 
       (testing "gender and birthdate with multiple values"
         (given (pull-type-query node "Patient" [["gender" "male" "female"]
@@ -2103,11 +2158,11 @@
 
         (testing "with second precision"
           (testing "before the start of the period"
-            (given (pull-type-query node "Observation" [["date" "2021-02-23T15:12:44+01:00"]])
+            (given (pull-type-query node "Observation" [["date" "ap2021-02-23T15:12:44+01:00"]])
               count := 0))
 
           (testing "at the start of the period"
-            (given (pull-type-query node "Observation" [["date" "2021-02-23T15:12:45+01:00"]])
+            (given (pull-type-query node "Observation" [["date" "ap2021-02-23T15:12:45+01:00"]])
               count := 1
               [0 :id] := "id-0"))
 
@@ -2116,17 +2171,17 @@
               (given (pull-type-query node "Observation" [["date" date]])
                 count := 1
                 [0 :id] := "id-0")
-              "2021-02-23T15:12:46+01:00"
-              "2021-02-23T15:30:00+01:00"
-              "2021-02-23T15:59:59+01:00"))
+              "ap2021-02-23T15:12:46+01:00"
+              "ap2021-02-23T15:30:00+01:00"
+              "ap2021-02-23T15:59:59+01:00"))
 
           (testing "at the end of the period"
-            (given (pull-type-query node "Observation" [["date" "2021-02-23T16:00:00+01:00"]])
+            (given (pull-type-query node "Observation" [["date" "ap2021-02-23T16:00:00+01:00"]])
               count := 1
               [0 :id] := "id-0"))
 
           (testing "after the end of the period"
-            (given (pull-type-query node "Observation" [["date" "2021-02-23T16:00:01+01:00"]])
+            (given (pull-type-query node "Observation" [["date" "ap2021-02-23T16:00:01+01:00"]])
               count := 0))))
 
       (testing "value-quantity"
@@ -3124,98 +3179,561 @@
             [0 :id] := "1"))))))
 
 
-(deftest type-query-date-test
-  (testing "less than"
-    (testing "year precision"
-      (with-system-data [{:blaze.db/keys [node]} system]
-        [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :birthDate #fhir/date"1970"}]]
-         [[:put {:fhir/type :fhir/Patient :id "0"
-                 :birthDate #fhir/date"1990"}]
-          [:put {:fhir/type :fhir/Patient :id "1"
-                 :birthDate #fhir/date"1989"}]
-          [:put {:fhir/type :fhir/Patient :id "2"
-                 :birthDate #fhir/date"1988"}]]]
+(deftest type-query-date-equal-test
+  (testing "with second precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Observation :id "0"
+               :effective #fhir/dateTime"1990-06-14T12:24:47Z"}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :effective #fhir/dateTime"1990-06-14T12:24:48Z"}]
+        [:put {:fhir/type :fhir/Observation :id "2"
+               :effective #fhir/dateTime"1990-06-14T12:24:48Z"}]
+        [:put {:fhir/type :fhir/Observation :id "3"
+               :effective #fhir/dateTime"1990-06-14T12:24:48Z"}]
+        [:put {:fhir/type :fhir/Observation :id "4"
+               :effective #fhir/dateTime"1990-06-14T12:24:49Z"}]]]
 
-        (given (pull-type-query node "Patient" [["birthdate" "lt1990"]])
+      (given (pull-type-query node "Observation" [["date" "1990-06-14T12:24:48Z"]])
+        count := 3
+        [0 :id] := "1"
+        [1 :id] := "2"
+        [2 :id] := "3")
+
+      (testing "it is possible to start with the second observation"
+        (given (pull-type-query node "Observation" [["date" "1990-06-14T12:24:48Z"]] "2")
           count := 2
           [0 :id] := "2"
-          [1 :id] := "1")
+          [1 :id] := "3")))))
 
-        (testing "it is possible to start with the second patient"
-          (given (pull-type-query node "Patient" [["birthdate" "lt1990"]] "1")
-            count := 1
-            [0 :id] := "1"))))
 
-    (testing "day precision"
-      (with-system-data [{:blaze.db/keys [node]} system]
-        [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :birthDate #fhir/date"2022-12-14"}]
-          [:put {:fhir/type :fhir/Patient :id "1"
-                 :birthDate #fhir/date"2022-12-13"}]]]
+(deftest type-query-date-greater-than-test
+  (testing "year precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"1990"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"1991"}]
+        [:put {:fhir/type :fhir/Patient :id "2"
+               :birthDate #fhir/date"1992"}]]]
 
-        (given (pull-type-query node "Patient" [["birthdate" "lt2022-12-14"]])
+      (given (pull-type-query node "Patient" [["birthdate" "gt1990"]])
+        count := 2
+        [0 :id] := "1"
+        [1 :id] := "2")
+
+      (testing "it is possible to start with the second patient"
+        (given (pull-type-query node "Patient" [["birthdate" "gt1990"]] "2")
           count := 1
-          [0 :id] := "1")))
+          [0 :id] := "2"))))
 
-    (testing "as second clause"
-      (with-system-data [{:blaze.db/keys [node]} system]
-        [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :gender #fhir/code"male"
-                 :birthDate #fhir/date"2022-12-14"}]
-          [:put {:fhir/type :fhir/Patient :id "1"
-                 :gender #fhir/code"male"
-                 :birthDate #fhir/date"2022-12-13"}]]]
+  (testing "day precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"2022-12-14"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"2022-12-15"}]]]
 
-        (given (pull-type-query node "Patient" [["gender" "male"]
-                                                ["birthdate" "lt2022-12-14"]])
+      (given (pull-type-query node "Patient" [["birthdate" "gt2022-12-14"]])
+        count := 1
+        [0 :id] := "1")))
+
+  (testing "as second clause"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2022-12-14"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2022-12-15"}]]]
+
+      (given (pull-type-query node "Patient" [["gender" "male"]
+                                              ["birthdate" "gt2022-12-14"]])
+        count := 1
+        [0 :id] := "1"))))
+
+
+(deftest type-query-date-less-than-test
+  (testing "year precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"1970"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"1990"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"1989"}]
+        [:put {:fhir/type :fhir/Patient :id "2"
+               :birthDate #fhir/date"1988"}]]]
+
+      (given (pull-type-query node "Patient" [["birthdate" "lt1990"]])
+        count := 2
+        [0 :id] := "1"
+        [1 :id] := "2")
+
+      (testing "it is possible to start with the second patient"
+        (given (pull-type-query node "Patient" [["birthdate" "lt1990"]] "2")
+          count := 1
+          [0 :id] := "2"))))
+
+  (testing "day precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"2022-12-14"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"2022-12-13"}]]]
+
+      (given (pull-type-query node "Patient" [["birthdate" "lt2022-12-14"]])
+        count := 1
+        [0 :id] := "1")))
+
+  (testing "as second clause"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2022-12-14"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2022-12-13"}]]]
+
+      (given (pull-type-query node "Patient" [["gender" "male"]
+                                              ["birthdate" "lt2022-12-14"]])
+        count := 1
+        [0 :id] := "1"))))
+
+
+(deftest type-query-date-greater-equal-test
+  (testing "year precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"1990"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"1991"}]
+        [:put {:fhir/type :fhir/Patient :id "2"
+               :birthDate #fhir/date"1992"}]]]
+
+      (given (pull-type-query node "Patient" [["birthdate" "ge1990"]])
+        count := 3
+        [0 :id] := "0"
+        [1 :id] := "1"
+        [2 :id] := "2")
+
+      (testing "it is possible to start with the second patient"
+        (given (pull-type-query node "Patient" [["birthdate" "ge1990"]] "1")
+          count := 2
+          [0 :id] := "1"
+          [1 :id] := "2"))))
+
+  (testing "day precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"2022-12-14"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"2022-12-15"}]]]
+
+      (given (pull-type-query node "Patient" [["birthdate" "ge2022-12-14"]])
+        count := 2
+        [0 :id] := "0"
+        [1 :id] := "1")))
+
+  (testing "as second clause"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2022-12-14"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2022-12-15"}]]]
+
+      (given (pull-type-query node "Patient" [["gender" "male"]
+                                              ["birthdate" "ge2022-12-14"]])
+        count := 2
+        [0 :id] := "0"
+        [1 :id] := "1"))))
+
+
+(deftest type-query-date-less-equal-test
+  (testing "year precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"1970"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"1990"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"1989"}]
+        [:put {:fhir/type :fhir/Patient :id "2"
+               :birthDate #fhir/date"1988"}]]]
+
+      (given (pull-type-query node "Patient" [["birthdate" "le1990"]])
+        count := 3
+        [0 :id] := "2"
+        [1 :id] := "1"
+        [2 :id] := "0")
+
+      (testing "it is possible to start with the second patient"
+        (given (pull-type-query node "Patient" [["birthdate" "le1990"]] "1")
+          count := 2
+          [0 :id] := "1"
+          [1 :id] := "0"))))
+
+  (testing "day precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"2022-12-14"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"2022-12-13"}]]]
+
+      (given (pull-type-query node "Patient" [["birthdate" "le2022-12-14"]])
+        count := 2
+        [0 :id] := "1"
+        [1 :id] := "0")))
+
+  (testing "as second clause"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2022-12-14"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2022-12-13"}]]]
+
+      (given (pull-type-query node "Patient" [["gender" "male"]
+                                              ["birthdate" "le2022-12-14"]])
+        count := 2
+        [0 :id] := "0"
+        [1 :id] := "1"))))
+
+
+(deftest type-query-date-starts-after-test
+  (testing "year precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"1990"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"1991"}]
+        [:put {:fhir/type :fhir/Patient :id "2"
+               :birthDate #fhir/date"1992"}]]]
+
+      (given (pull-type-query node "Patient" [["birthdate" "sa1990"]])
+        count := 2
+        [0 :id] := "1"
+        [1 :id] := "2")
+
+      (testing "it is possible to start with the second patient"
+        (given (pull-type-query node "Patient" [["birthdate" "sa1990"]] "2")
+          count := 1
+          [0 :id] := "2"))))
+
+  (testing "day precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"2022-12-14"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"2022-12-15"}]]]
+
+      (given (pull-type-query node "Patient" [["birthdate" "sa2022-12-14"]])
+        count := 1
+        [0 :id] := "1")))
+
+  (testing "as second clause"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2022-12-14"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2022-12-15"}]]]
+
+      (given (pull-type-query node "Patient" [["gender" "male"]
+                                              ["birthdate" "sa2022-12-14"]])
+        count := 1
+        [0 :id] := "1"))))
+
+
+(deftest type-query-date-ends-before-test
+  (testing "year precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"1970"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"1990"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"1989"}]
+        [:put {:fhir/type :fhir/Patient :id "2"
+               :birthDate #fhir/date"1988"}]]]
+
+      (given (pull-type-query node "Patient" [["birthdate" "eb1990"]])
+        count := 2
+        [0 :id] := "2"
+        [1 :id] := "1")
+
+      (testing "it is possible to start with the second patient"
+        (given (pull-type-query node "Patient" [["birthdate" "eb1990"]] "1")
           count := 1
           [0 :id] := "1"))))
 
-  (testing "greater than"
-    (testing "year precision"
+  (testing "day precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"2022-12-14"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"2022-12-13"}]]]
+
+      (given (pull-type-query node "Patient" [["birthdate" "eb2022-12-14"]])
+        count := 1
+        [0 :id] := "1")))
+
+  (testing "as second clause"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2022-12-14"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2022-12-13"}]]]
+
+      (given (pull-type-query node "Patient" [["gender" "male"]
+                                              ["birthdate" "eb2022-12-14"]])
+        count := 1
+        [0 :id] := "1"))))
+
+
+(defn- create-tx-op [resource-gen]
+  (gen/fmap (partial vector :create) resource-gen))
+
+
+(defn- range-below [date-time]
+  [Long/MIN_VALUE (system/date-time-lower-bound date-time)])
+
+
+(defn- range-above [date-time]
+  [(system/date-time-lower-bound date-time) Long/MAX_VALUE])
+
+
+(defn- date-time-range [date-time]
+  (if (fhir-spec/primitive-val? date-time)
+    [(system/date-time-lower-bound (type/value date-time))
+     (system/date-time-upper-bound (type/value date-time))]
+    [(system/date-time-lower-bound (type/value (:start date-time)))
+     (system/date-time-upper-bound (type/value (:end date-time)))]))
+
+
+(defn- unwrap-value [value]
+  (cond-> value (fhir-spec/primitive-val? value) type/value))
+
+
+(defn- fully-contains? [[x1 x2] [y1 y2]]
+  (<= x1 y1 y2 x2))
+
+
+(defn- equal
+  "The range of the parameter value fully contains the range of the resource
+  value."
+  [param-value]
+  (let [param-range (date-time-range param-value)]
+    (fn [resource-value]
+      (when-let [resource-value (unwrap-value resource-value)]
+        (fully-contains? param-range (date-time-range resource-value))))))
+
+
+(defn- not-equal
+  "The range of the parameter value does not fully contain the range of the
+  resource value."
+  [param-value]
+  (let [param-range (date-time-range param-value)]
+    (fn [resource-value]
+      (when-let [resource-value (unwrap-value resource-value)]
+        (not (fully-contains? param-range (date-time-range resource-value)))))))
+
+
+(defn- overlaps? [[x1 x2] [y1 y2]]
+  (and (<= x1 y2) (<= y1 x2)))
+
+
+(defn- greater-than
+  "The range above the parameter value intersects (i.e. overlaps) with the range
+  of the resource value."
+  [param-value]
+  (let [param-range (range-above param-value)]
+    (fn [resource-value]
+      (when-let [resource-value (unwrap-value resource-value)]
+        (overlaps? param-range (date-time-range resource-value))))))
+
+
+(defn- less-than
+  "The range below the parameter value intersects (i.e. overlaps) with the range
+  of the resource value."
+  [param-value]
+  (let [param-range (range-below param-value)]
+    (fn [resource-value]
+      (when-let [resource-value (unwrap-value resource-value)]
+        (overlaps? (date-time-range resource-value) param-range)))))
+
+
+(defn- greater-equal
+  "The range above the parameter value intersects (i.e. overlaps) with the range
+  of the resource value, or the range of the parameter value fully contains the
+  range of the resource value."
+  [param-value]
+  (let [greater-than (greater-than param-value)
+        equal (equal param-value)]
+    (fn [resource-value]
+      (or (greater-than resource-value)
+          (equal resource-value)))))
+
+
+(defn- less-equal
+  "The range below the parameter value intersects (i.e. overlaps) with the range
+  of the resource value or the range of the parameter value fully contains the
+  range of the resource value."
+  [param-value]
+  (let [less-than (less-than param-value)
+        equal (equal param-value)]
+    (fn [resource-value]
+      (or (less-than resource-value)
+          (equal resource-value)))))
+
+
+(defn- starts-after
+  "The range of the parameter value does not overlap with the range of the
+  resource value, and the range above the parameter value contains the range of
+  the resource value."
+  [param-value]
+  (let [param-range (date-time-range param-value)
+        param-range-above (range-above param-value)]
+    (fn [resource-value]
+      (when-let [value-range (some-> resource-value unwrap-value date-time-range)]
+        (and (not (overlaps? param-range value-range))
+             (fully-contains? param-range-above value-range))))))
+
+
+(defn- ends-before
+  "The range of the parameter value does not overlap with the range of the
+  resource value, and the range below the parameter value contains the range of
+  the resource value."
+  [param-value]
+  (let [param-range (date-time-range param-value)
+        param-range-below (range-below param-value)]
+    (fn [resource-value]
+      (when-let [value-range (some-> resource-value unwrap-value date-time-range)]
+        (and (not (overlaps? param-range value-range))
+             (fully-contains? param-range-below value-range))))))
+
+
+(defn- approximately
+  "The range of the parameter value overlaps with the range of the resource
+  value."
+  [param-value]
+  (let [param-range (date-time-range param-value)]
+    (fn [resource-value]
+      (when-let [resource-value (unwrap-value resource-value)]
+        (overlaps? param-range (date-time-range resource-value))))))
+
+
+(def observation-gen
+  (fg/observation
+    :id (gen/fmap str gen/uuid)
+    :identifier (gen/return nil)
+    :status (gen/return #fhir/code"final")
+    :category (gen/return nil)
+    :code (gen/return nil)
+    :subject (gen/return nil)
+    :encounter (gen/return nil)
+    :value (gen/return nil)))
+
+
+(defn- every-found-observation-matches? [pred node prefix date-time]
+  (let [pull (partial pull-type-query node "Observation")
+        pred (comp (pred (type/dateTime date-time)) :effective)
+        observations (pull [["date" (str prefix date-time)]])]
+    (and (every? pred observations)
+         (or (< (count observations) 2)
+             (every? pred (pull [["date" (str prefix date-time)]]
+                                (:id (first observations)))))
+         (every? pred (pull [["status" "final"]
+                             ["date" (str prefix date-time)]])))))
+
+
+(def ^:private num-date-tests 100)
+
+
+(deftest type-query-date-equal-generative-test
+  (satisfies-prop num-date-tests
+    (prop/for-all [date-time fg/dateTime-value
+                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
-        [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :birthDate #fhir/date"1990"}]
-          [:put {:fhir/type :fhir/Patient :id "1"
-                 :birthDate #fhir/date"1991"}]
-          [:put {:fhir/type :fhir/Patient :id "2"
-                 :birthDate #fhir/date"1992"}]]]
+        [tx-ops]
+        (every-found-observation-matches? equal node "" date-time)))))
 
-        (given (pull-type-query node "Patient" [["birthdate" "gt1990"]])
-          count := 2
-          [0 :id] := "1"
-          [1 :id] := "2")
 
-        (testing "it is possible to start with the second patient"
-          (given (pull-type-query node "Patient" [["birthdate" "gt1990"]] "2")
-            count := 1
-            [0 :id] := "2"))))
-
-    (testing "day precision"
+(deftest type-query-date-not-equal-generative-test
+  (satisfies-prop num-date-tests
+    (prop/for-all [date-time fg/dateTime-value
+                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
-        [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :birthDate #fhir/date"2022-12-14"}]
-          [:put {:fhir/type :fhir/Patient :id "1"
-                 :birthDate #fhir/date"2022-12-15"}]]]
+        [tx-ops]
+        (every-found-observation-matches? not-equal node "ne" date-time)))))
 
-        (given (pull-type-query node "Patient" [["birthdate" "gt2022-12-14"]])
-          count := 1
-          [0 :id] := "1")))
 
-    (testing "as second clause"
+(deftest type-query-date-greater-than-generative-test
+  (satisfies-prop num-date-tests
+    (prop/for-all [date-time fg/dateTime-value
+                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
-        [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :gender #fhir/code"male"
-                 :birthDate #fhir/date"2022-12-14"}]
-          [:put {:fhir/type :fhir/Patient :id "1"
-                 :gender #fhir/code"male"
-                 :birthDate #fhir/date"2022-12-15"}]]]
+        [tx-ops]
+        (every-found-observation-matches? greater-than node "gt" date-time)))))
 
-        (given (pull-type-query node "Patient" [["gender" "male"]
-                                                ["birthdate" "gt2022-12-14"]])
-          count := 1
-          [0 :id] := "1")))))
+
+(deftest type-query-date-less-than-generative-test
+  (satisfies-prop num-date-tests
+    (prop/for-all [date-time fg/dateTime-value
+                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [tx-ops]
+        (every-found-observation-matches? less-than node "lt" date-time)))))
+
+
+(deftest type-query-date-greater-equal-generative-test
+  (satisfies-prop num-date-tests
+    (prop/for-all [date-time fg/dateTime-value
+                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [tx-ops]
+        (every-found-observation-matches? greater-equal node "ge" date-time)))))
+
+
+(deftest type-query-date-less-equal-generative-test
+  (satisfies-prop num-date-tests
+    (prop/for-all [date-time fg/dateTime-value
+                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [tx-ops]
+        (every-found-observation-matches? less-equal node "le" date-time)))))
+
+
+(deftest type-query-date-starts-after-generative-test
+  (satisfies-prop num-date-tests
+    (prop/for-all [date-time fg/dateTime-value
+                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [tx-ops]
+        (every-found-observation-matches? starts-after node "sa" date-time)))))
+
+
+(deftest type-query-date-ends-before-generative-test
+  (satisfies-prop num-date-tests
+    (prop/for-all [date-time fg/dateTime-value
+                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [tx-ops]
+        (every-found-observation-matches? ends-before node "eb" date-time)))))
+
+
+(deftest type-query-date-approximately-generative-test
+  (satisfies-prop num-date-tests
+    (prop/for-all [date-time fg/dateTime-value
+                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [tx-ops]
+        (every-found-observation-matches? approximately node "ap" date-time)))))
 
 
 (deftest type-query-forward-chaining-test
@@ -3995,6 +4513,76 @@
       [0 :id] := "0")))
 
 
+(defmethod ig/init-key ::defective-resource-store [_ {:keys [hashes-to-store]}]
+  (let [store (atom {})]
+    (reify
+      rs/ResourceStore
+      (-get [_ hash]
+        (ac/completed-future (get @store hash)))
+      (-multi-get [_ hashes]
+        (ac/completed-future (select-keys @store hashes)))
+      (-put [_ entries]
+        (swap! store merge (select-keys entries hashes-to-store))
+        (ac/completed-future nil)))))
+
+
+(defn- defective-resource-store-system
+  "Returns the config of a system only storing resource contents of given hashes."
+  [& hashes-to-store]
+  (merge-with
+    merge
+    system
+    {:blaze.db/node
+     {:resource-store (ig/ref ::defective-resource-store)}
+     :blaze.db.node/resource-indexer
+     {:resource-store (ig/ref ::defective-resource-store)}
+     ::defective-resource-store
+     {:hashes-to-store hashes-to-store}}))
+
+
+(deftest pull-test
+  (testing "success"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+        :fhir/type := :fhir/Patient
+        [:meta :versionId] := #fhir/id"1"
+        [:meta :lastUpdated] := Instant/EPOCH
+        :id := "0")))
+
+  (testing "resource content not-found"
+    (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-system)]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [resource-handle (d/resource-handle (d/db node) "Patient" "0")]
+        (given-failed-future (d/pull node resource-handle)
+          ::anom/category := ::anom/not-found
+          ::anom/message := (format "The resource content of `Patient/0` with hash `%s` was not found."
+                                    (:hash resource-handle)))))))
+
+
+(deftest pull-content-test
+  (testing "success"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (given @(d/pull-content node (d/resource-handle (d/db node) "Patient" "0"))
+        :fhir/type := :fhir/Patient
+        :meta :? nil?
+        :id := "0")))
+
+  (testing "resource content not-found"
+    (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-system)]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [resource-handle (d/resource-handle (d/db node) "Patient" "0")]
+        (given-failed-future (d/pull-content node resource-handle)
+          ::anom/category := ::anom/not-found
+          ::anom/message := (format "The resource content of `Patient/0` with hash `%s` was not found."
+                                    (:hash resource-handle)))))))
+
+
 (deftest pull-many-test
   (testing "pull all elements"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -4037,7 +4625,31 @@
           [0 :meta :tag 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
           [0 :meta :tag 0 :code] := #fhir/code"SUBSETTED"
           [0 :code] :? nil?
-          [0 :subject :reference] := #fhir/string"Patient/0")))))
+          [0 :subject :reference] := #fhir/string"Patient/0"))))
+
+  (testing "pull a single non-existing hash"
+    (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-system)]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [resource-handle (d/resource-handle (d/db node) "Patient" "0")]
+        (given-failed-future (d/pull-many node [resource-handle])
+          ::anom/category := ::anom/not-found
+          ::anom/message := (format "The resource content of `Patient/0` with hash `%s` was not found."
+                                    (:hash resource-handle))))))
+
+  (testing "pull an existing and a non-existing hash"
+    (let [patient-0 {:fhir/type :fhir/Patient :id "0"}
+          patient-hash-0 (hash/generate patient-0)]
+      (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-system patient-hash-0)]
+        [[[:put patient-0]
+          [:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+        (let [existing-rh (d/resource-handle (d/db node) "Patient" "0")
+              non-existing-rh (d/resource-handle (d/db node) "Patient" "1")]
+          (given-failed-future (d/pull-many node [existing-rh non-existing-rh])
+            ::anom/category := ::anom/not-found
+            ::anom/message := (format "The resource content of `Patient/1` with hash `%s` was not found."
+                                      (:hash non-existing-rh))))))))
 
 
 

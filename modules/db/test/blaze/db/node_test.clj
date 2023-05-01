@@ -25,7 +25,6 @@
     [blaze.db.tx-log.local-spec]
     [blaze.db.tx-log.spec :refer [tx-log?]]
     [blaze.executors :as ex]
-    [blaze.fhir.structure-definition-repo]
     [blaze.log]
     [blaze.metrics.spec]
     [blaze.test-util :as tu :refer [given-failed-future given-thrown with-system]]
@@ -37,7 +36,8 @@
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
-    [java.time Instant]))
+    [java.time Instant]
+    [java.util.concurrent TimeUnit]))
 
 
 (set! *warn-on-reflection* true)
@@ -59,10 +59,19 @@
       (ac/completed-future nil))))
 
 
-(def resource-store-failing-on-get-system
-  (-> (assoc-in system [:blaze.db/node :resource-store]
-                (ig/ref ::resource-store-failing-on-get))
-      (assoc ::resource-store-failing-on-get {})))
+(def ^:private resource-store-failing-on-get-system
+  (merge-with
+    merge
+    system
+    {:blaze.db/node
+     {:resource-store (ig/ref ::resource-store-failing-on-get)}
+     :blaze.db.node/resource-indexer
+     {:resource-store (ig/ref ::resource-store-failing-on-get)}
+     ::resource-store-failing-on-get {}}))
+
+
+(def ^:private delayed-executor
+  (ac/delayed-executor 100 TimeUnit/MILLISECONDS))
 
 
 (defmethod ig/init-key ::resource-store-slow-on-put [_ {:keys [resource-store]}]
@@ -74,14 +83,19 @@
       (rs/multi-get resource-store hashes))
     (-put [_ entries]
       (-> (rs/put! resource-store entries)
-          (ac/then-apply-async (fn [_] (Thread/sleep 100)))))))
+          (ac/then-apply-async identity delayed-executor)))))
 
 
-(def resource-store-slow-on-put
-  (-> (assoc-in system [:blaze.db/node :resource-store]
-                (ig/ref ::resource-store-slow-on-put))
-      (assoc ::resource-store-slow-on-put
-             {:resource-store (ig/ref ::rs/kv)})))
+(def ^:private resource-store-slow-on-put-system
+  (merge-with
+    merge
+    system
+    {:blaze.db/node
+     {:resource-store (ig/ref ::resource-store-slow-on-put)}
+     :blaze.db.node/resource-indexer
+     {:resource-store (ig/ref ::resource-store-slow-on-put)}
+     ::resource-store-slow-on-put
+     {:resource-store (ig/ref ::rs/kv)}}))
 
 
 (defn- with-index-store-version [system version]
@@ -233,7 +247,7 @@
            (ac/failed-future (ex-info "" (ba/fault "" ::x ::y))))]
 
         (testing "fetching the result immediately"
-          (with-system [{:blaze.db/keys [node]} resource-store-slow-on-put]
+          (with-system [{:blaze.db/keys [node]} resource-store-slow-on-put-system]
             (given-failed-future
               (-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
                   (ac/then-compose (partial node/tx-result node)))

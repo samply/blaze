@@ -7,7 +7,7 @@
     [blaze.test-util :as tu :refer [satisfies-prop]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest testing]]
+    [clojure.test :as test :refer [are deftest is testing]]
     [clojure.test.check.properties :as prop])
   (:import
     [java.time OffsetDateTime ZoneOffset]))
@@ -46,7 +46,11 @@
       (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours 2)) "6FE3E0"
       (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours 1)) "6FF1F0"
       (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours -1)) "900E10"
-      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours -2)) "901C20")))
+      (OffsetDateTime/of 1970 1 1 0 0 0 0 (ZoneOffset/ofHours -2)) "901C20"))
+
+  (testing "nil"
+    (is (= (codec-date/encode-lower-bound #system/date"0001")
+           (codec-date/encode-lower-bound nil)))))
 
 
 (deftest encode-upper-bound-test
@@ -75,7 +79,11 @@
       (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 2)) "6FE3DF"
       (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours 1)) "6FF1EF"
       (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -1)) "900E0F"
-      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -2)) "901C1F")))
+      (OffsetDateTime/of 1969 12 31 23 59 59 0 (ZoneOffset/ofHours -2)) "901C1F"))
+
+  (testing "nil"
+    (is (= (codec-date/encode-upper-bound #system/date"9999")
+           (codec-date/encode-upper-bound nil)))))
 
 
 (deftest encode-range-test

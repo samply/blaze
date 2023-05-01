@@ -77,29 +77,43 @@
 
 
 (deftest get-test
-  (with-system [{cache :blaze.db/resource-cache store ::rs/kv} system]
-    @(rs/put! store {patient-0-hash patient-0
-                     patient-1-hash patient-1})
+  (testing "success"
+    (with-system [{cache :blaze.db/resource-cache store ::rs/kv} system]
+      @(rs/put! store {patient-0-hash patient-0
+                       patient-1-hash patient-1})
 
-    (are [patient patient-hash] (= patient @(rs/get cache patient-hash))
-      patient-0 patient-0-hash
-      patient-1 patient-1-hash)))
+      (are [patient patient-hash] (= patient @(rs/get cache patient-hash))
+        patient-0 patient-0-hash
+        patient-1 patient-1-hash)))
+
+  (testing "not-found"
+    (with-system [{cache :blaze.db/resource-cache} system]
+
+      (is (nil? @(rs/get cache patient-0-hash))))))
 
 
 (deftest multi-get-test
-  (with-system [{cache :blaze.db/resource-cache store ::rs/kv} system]
-    @(rs/put! store {patient-0-hash patient-0
-                     patient-1-hash patient-1})
+  (testing "found both"
+    (with-system [{cache :blaze.db/resource-cache store ::rs/kv} system]
+      @(rs/put! store {patient-0-hash patient-0
+                       patient-1-hash patient-1})
 
-    (is (= {patient-0-hash patient-0
-            patient-1-hash patient-1}
-           @(rs/multi-get cache [patient-0-hash patient-1-hash])))))
+      (is (= {patient-0-hash patient-0
+              patient-1-hash patient-1}
+             @(rs/multi-get cache [patient-0-hash patient-1-hash])))))
+
+  (testing "found one"
+    (with-system [{cache :blaze.db/resource-cache store ::rs/kv} system]
+      @(rs/put! store {patient-0-hash patient-0})
+
+      (is (= {patient-0-hash patient-0}
+             @(rs/multi-get cache [patient-0-hash patient-1-hash]))))))
 
 
 (deftest put-test
   (with-system [{cache :blaze.db/resource-cache store ::rs/kv} system]
     (is (nil? @(rs/put! cache {patient-0-hash patient-0
-                                        patient-1-hash patient-1})))
+                               patient-1-hash patient-1})))
     (is (= {patient-0-hash patient-0
             patient-1-hash patient-1}
            @(rs/multi-get store [patient-0-hash patient-1-hash])))))
