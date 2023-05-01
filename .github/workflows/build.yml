@@ -73,6 +73,7 @@ jobs:
         java-version:
         - '11'
         - '17'
+        - '20'
 
     runs-on: ubuntu-22.04
 
@@ -145,6 +146,7 @@ jobs:
         java-version:
         - '11'
         - '17'
+        - '20'
 
     runs-on: ubuntu-22.04
 
