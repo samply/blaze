@@ -67,13 +67,13 @@
 
 
 (defn- all-keys! [{:keys [svri] :as context} c-hash tid start-id]
-  (sp-vr/all-keys! svri c-hash tid (resource-value! context c-hash tid start-id)
-                   start-id))
+  (sp-vr/all-keys!
+    svri c-hash tid (resource-value! context c-hash tid start-id) start-id))
 
 
 (defn- all-keys-prev! [{:keys [svri] :as context} c-hash tid start-id]
-  (sp-vr/all-keys-prev! svri c-hash tid
-                        (resource-value! context c-hash tid start-id) start-id))
+  (sp-vr/all-keys-prev!
+    svri c-hash tid (resource-value! context c-hash tid start-id) start-id))
 
 
 (def ^:private drop-value
@@ -84,16 +84,22 @@
   "Returns true if the parameter value interval `[param-lb param-ub]` fully
   contains the resource value interval `value`."
   [value param-lb param-ub]
-  (let [value-lb (codec-date/lower-bound-bytes value)
-        value-ub (codec-date/upper-bound-bytes value)]
-    (and (bs/<= param-lb value-lb)
-         (bs/<= value-ub param-ub))))
+  (and (bs/<= param-lb (codec-date/lower-bound-bytes value))
+       (bs/<= (codec-date/upper-bound-bytes value) param-ub)))
 
 
-(defn- eq-filter [param-lb param-ub]
+(defn- eq-filter [param-ub]
   (filter
     (fn [[value]]
-      (equal? value param-lb param-ub))))
+      (bs/<= (codec-date/upper-bound-bytes value) param-ub))))
+
+
+(defn- eq-stop [param-ub]
+  (halt-when
+    (fn [[value]]
+      (bs/< param-ub (codec-date/lower-bound-bytes value)))
+    (fn [result _]
+      result)))
 
 
 (defn- eq-keys!
@@ -102,12 +108,14 @@
   resource value interval starting at `start-id` (optional)."
   ([{:keys [svri]} c-hash tid param-lb param-ub]
    (coll/eduction
-     (comp (eq-filter param-lb param-ub)
+     (comp (eq-stop param-ub)
+           (eq-filter param-ub)
            drop-value)
-     (sp-vr/all-keys! svri c-hash tid)))
-  ([context c-hash tid param-lb param-ub start-id]
+     (sp-vr/prefix-keys-value! svri c-hash tid param-lb)))
+  ([context c-hash tid _param-lb param-ub start-id]
    (coll/eduction
-     (comp (eq-filter param-lb param-ub)
+     (comp (eq-stop param-ub)
+           (eq-filter param-ub)
            drop-value)
      (all-keys! context c-hash tid start-id))))
 
@@ -165,26 +173,18 @@
   (bs/< (codec-date/lower-bound-bytes value) param-lb))
 
 
-(defn- lt-filter [param-lb]
-  (filter
-    (fn [[value]]
-      (less-than? value param-lb))))
-
-
 (defn- lt-keys!
   "Returns a reducible collection of `[id hash-prefix]` tuples of all
   keys with overlapping date/time intervals with the interval specified by
   an infinite lower bound and `param-lb` starting at `start-id` (optional)."
   ([{:keys [svri]} c-hash tid param-lb]
    (coll/eduction
-     (comp (lt-filter param-lb)
-           drop-value)
-     (sp-vr/all-keys! svri c-hash tid)))
-  ([context c-hash tid param-lb start-id]
+     drop-value
+     (sp-vr/prefix-keys-value-prev! svri c-hash tid param-lb)))
+  ([context c-hash tid _param-lb start-id]
    (coll/eduction
-     (comp (lt-filter param-lb)
-           drop-value)
-     (all-keys! context c-hash tid start-id))))
+     drop-value
+     (all-keys-prev! context c-hash tid start-id))))
 
 
 (defn- greater-equal?
@@ -249,22 +249,14 @@
   (bs/<= param-ub (codec-date/lower-bound-bytes value)))
 
 
-(defn- sa-filter [param-ub]
-  (filter
-    (fn [[value]]
-      (starts-after? param-ub value))))
-
-
 (defn- sa-keys!
   ([{:keys [svri]} c-hash tid param-ub]
    (coll/eduction
-     (comp (sa-filter param-ub)
-           drop-value)
-     (sp-vr/all-keys! svri c-hash tid)))
-  ([context c-hash tid param-ub start-id]
+     drop-value
+     (sp-vr/prefix-keys-value! svri c-hash tid param-ub)))
+  ([context c-hash tid _param-ub start-id]
    (coll/eduction
-     (comp (sa-filter param-ub)
-           drop-value)
+     drop-value
      (all-keys! context c-hash tid start-id))))
 
 

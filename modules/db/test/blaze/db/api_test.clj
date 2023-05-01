@@ -1541,28 +1541,28 @@
               (testing "starting at the most specific birthdate"
                 (given (pull-type-query node "Patient" [["birthdate" "lt2020-02-08"]])
                   count := 3
-                  [0 :id] := "id-3"
+                  [0 :id] := "id-1"
                   [1 :id] := "id-2"
-                  [2 :id] := "id-1")
+                  [2 :id] := "id-3")
 
                 (testing "it is possible to start with the second patient"
                   (given (pull-type-query node "Patient" [["birthdate" "lt2020-02-08"]] "id-2")
                     count := 2
                     [0 :id] := "id-2"
-                    [1 :id] := "id-1"))
+                    [1 :id] := "id-3"))
 
                 (testing "it is possible to start with the third patient"
-                  (given (pull-type-query node "Patient" [["birthdate" "lt2020-02-08"]] "id-1")
+                  (given (pull-type-query node "Patient" [["birthdate" "lt2020-02-08"]] "id-3")
                     count := 1
-                    [0 :id] := "id-1")))
+                    [0 :id] := "id-3")))
 
               (testing "starting after the most specific birthdate"
                 (given (pull-type-query node "Patient" [["birthdate" "lt2020-02-09"]])
                   count := 4
-                  [0 :id] := "id-3"
-                  [1 :id] := "id-2"
-                  [2 :id] := "id-1"
-                  [3 :id] := "id-0")))))
+                  [0 :id] := "id-0"
+                  [1 :id] := "id-1"
+                  [2 :id] := "id-2"
+                  [3 :id] := "id-3")))))
 
         (testing "with le prefix"
           (testing "with day precision"
@@ -3179,6 +3179,33 @@
             [0 :id] := "1"))))))
 
 
+(deftest type-query-date-equal-test
+  (testing "with second precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Observation :id "0"
+               :effective #fhir/dateTime"1990-06-14T12:24:47Z"}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :effective #fhir/dateTime"1990-06-14T12:24:48Z"}]
+        [:put {:fhir/type :fhir/Observation :id "2"
+               :effective #fhir/dateTime"1990-06-14T12:24:48Z"}]
+        [:put {:fhir/type :fhir/Observation :id "3"
+               :effective #fhir/dateTime"1990-06-14T12:24:48Z"}]
+        [:put {:fhir/type :fhir/Observation :id "4"
+               :effective #fhir/dateTime"1990-06-14T12:24:49Z"}]]]
+
+      (given (pull-type-query node "Observation" [["date" "1990-06-14T12:24:48Z"]])
+        count := 3
+        [0 :id] := "1"
+        [1 :id] := "2"
+        [2 :id] := "3")
+
+      (testing "it is possible to start with the second observation"
+        (given (pull-type-query node "Observation" [["date" "1990-06-14T12:24:48Z"]] "2")
+          count := 2
+          [0 :id] := "2"
+          [1 :id] := "3")))))
+
+
 (deftest type-query-date-greater-than-test
   (testing "year precision"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -3239,13 +3266,13 @@
 
       (given (pull-type-query node "Patient" [["birthdate" "lt1990"]])
         count := 2
-        [0 :id] := "2"
-        [1 :id] := "1")
+        [0 :id] := "1"
+        [1 :id] := "2")
 
       (testing "it is possible to start with the second patient"
-        (given (pull-type-query node "Patient" [["birthdate" "lt1990"]] "1")
+        (given (pull-type-query node "Patient" [["birthdate" "lt1990"]] "2")
           count := 1
-          [0 :id] := "1"))))
+          [0 :id] := "2"))))
 
   (testing "day precision"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -3373,6 +3400,100 @@
         count := 2
         [0 :id] := "0"
         [1 :id] := "1"))))
+
+
+(deftest type-query-date-starts-after-test
+  (testing "year precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"1990"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"1991"}]
+        [:put {:fhir/type :fhir/Patient :id "2"
+               :birthDate #fhir/date"1992"}]]]
+
+      (given (pull-type-query node "Patient" [["birthdate" "sa1990"]])
+        count := 2
+        [0 :id] := "1"
+        [1 :id] := "2")
+
+      (testing "it is possible to start with the second patient"
+        (given (pull-type-query node "Patient" [["birthdate" "sa1990"]] "2")
+          count := 1
+          [0 :id] := "2"))))
+
+  (testing "day precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"2022-12-14"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"2022-12-15"}]]]
+
+      (given (pull-type-query node "Patient" [["birthdate" "sa2022-12-14"]])
+        count := 1
+        [0 :id] := "1")))
+
+  (testing "as second clause"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2022-12-14"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2022-12-15"}]]]
+
+      (given (pull-type-query node "Patient" [["gender" "male"]
+                                              ["birthdate" "sa2022-12-14"]])
+        count := 1
+        [0 :id] := "1"))))
+
+
+(deftest type-query-date-ends-before-test
+  (testing "year precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"1970"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"1990"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"1989"}]
+        [:put {:fhir/type :fhir/Patient :id "2"
+               :birthDate #fhir/date"1988"}]]]
+
+      (given (pull-type-query node "Patient" [["birthdate" "eb1990"]])
+        count := 2
+        [0 :id] := "2"
+        [1 :id] := "1")
+
+      (testing "it is possible to start with the second patient"
+        (given (pull-type-query node "Patient" [["birthdate" "eb1990"]] "1")
+          count := 1
+          [0 :id] := "1"))))
+
+  (testing "day precision"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"2022-12-14"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"2022-12-13"}]]]
+
+      (given (pull-type-query node "Patient" [["birthdate" "eb2022-12-14"]])
+        count := 1
+        [0 :id] := "1")))
+
+  (testing "as second clause"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2022-12-14"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :gender #fhir/code"male"
+               :birthDate #fhir/date"2022-12-13"}]]]
+
+      (given (pull-type-query node "Patient" [["gender" "male"]
+                                              ["birthdate" "eb2022-12-14"]])
+        count := 1
+        [0 :id] := "1"))))
 
 
 (defn- create-tx-op [resource-gen]
