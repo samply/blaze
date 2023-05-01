@@ -177,6 +177,29 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 ¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
 
+
+## Date Search
+
+In this section, FHIR Search for selecting Observation resources with a certain effective year is used.
+
+### Counting
+
+All measurements are done after Blaze is in a steady state with all resource handles to hit in it's resource handle cache in order to cancel out additional seeks necessary to determine the current version of each resource. A resource handle doesn't contain the actual resource content which is not necessary for counting.
+
+Counting is done using the following `curl` command:
+
+```sh
+curl -s "http://localhost:8080/fhir/Observation?date=$YEAR&_summary=count"
+```
+
+| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Year | # Hits | Time (s) | StdDev | T / 1M ³ |
+|------------|---------:|------------:|---------:|---------:|------|-------:|---------:|-------:|---------:|
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 2012 |      0 |     0.11 |  0.007 |      N/A |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 2019 |    2 M |     2.10 |  0.034 |     1.06 |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 2020 | 11.3 M |    11.45 |  0.112 |     1.01 |
+
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
+
 ## Used Dataset
 
 The dataset used is Synthea v2.7.0. The resource generation was done with the following settings:

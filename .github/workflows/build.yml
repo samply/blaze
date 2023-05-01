@@ -356,8 +356,44 @@ jobs:
     - name: Download Observation Resources of the year 2020
       run: .github/scripts/download-resources-query.sh Observation "date=2020" 17419
 
-    - name: Download Observation Resources of not the year 2020
+    - name: Download Observation Resources not of the year 2020
       run: .github/scripts/download-resources-query.sh Observation "date=ne2020" 25510
+
+    - name: Download Observation Resources greater than the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=gt2010" 38486
+
+    - name: Download Observation Resources greater than the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=gt2020" 983
+
+    - name: Download Observation Resources less than the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=lt2010" 3448
+
+    - name: Download Observation Resources less than the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=lt2020" 24527
+
+    - name: Download Observation Resources greater equal the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=ge2010" 39481
+
+    - name: Download Observation Resources greater equal the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=ge2020" 18402
+
+    - name: Download Observation Resources less equal the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=le2010" 4443
+
+    - name: Download Observation Resources less equal the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=le2020" 41946
+
+    - name: Download Observation Resources that start after the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=sa2010" 38486
+
+    - name: Download Observation Resources that start after the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=sa2020" 983
+
+    - name: Download Observation Resources that end before the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=eb2010" 3448
+
+    - name: Download Observation Resources that end before the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=eb2020" 24527
 
     - name: Check Observation Date Search
       run: .github/scripts/check-date-search.sh "Observation"
@@ -1137,8 +1173,44 @@ jobs:
     - name: Download Observation Resources of the year 2020
       run: .github/scripts/download-resources-query.sh Observation "date=2020" 17419
 
-    - name: Download Observation Resources of not the year 2020
+    - name: Download Observation Resources not of the year 2020
       run: .github/scripts/download-resources-query.sh Observation "date=ne2020" 25510
+
+    - name: Download Observation Resources greater than the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=gt2010" 38486
+
+    - name: Download Observation Resources greater than the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=gt2020" 983
+
+    - name: Download Observation Resources less than the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=lt2010" 3448
+
+    - name: Download Observation Resources less than the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=lt2020" 24527
+
+    - name: Download Observation Resources greater equal the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=ge2010" 39481
+
+    - name: Download Observation Resources greater equal the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=ge2020" 18402
+
+    - name: Download Observation Resources less equal the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=le2010" 4443
+
+    - name: Download Observation Resources less equal the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=le2020" 41946
+
+    - name: Download Observation Resources that start after the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=sa2010" 38486
+
+    - name: Download Observation Resources that start after the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=sa2020" 983
+
+    - name: Download Observation Resources that end before the year 2010
+      run: .github/scripts/download-resources-query.sh Observation "date=eb2010" 3448
+
+    - name: Download Observation Resources that end before the year 2020
+      run: .github/scripts/download-resources-query.sh Observation "date=eb2020" 24527
 
     - name: Check Observation Date Search
       run: .github/scripts/check-date-search.sh "Observation"
