@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.20.4
+
+### Bugfixes
+
+* Fix Date Equal Search and Add Missing Prefixes ([#975](https://github.com/samply/blaze/pull/975))
+* Handle Case of Missing Resource Contents ([#974](https://github.com/samply/blaze/pull/974))
+* Fix Null Resource in Transactions Result in a 500 ([#969](https://github.com/samply/blaze/pull/969))
+
+### Minor Enhancements
+
+* Support for Search prefixes sa and eb ([#666](https://github.com/samply/blaze/issues/666))
+
+### Performance
+
+* Improve Date Search Performance ([#977](https://github.com/samply/blaze/pull/977))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/70?closed=1).
+
 ## v0.20.3
 
 ### Documentation
