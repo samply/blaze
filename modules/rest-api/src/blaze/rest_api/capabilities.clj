@@ -21,7 +21,7 @@
   [{:keys [resource-patterns operations search-param-registry
            enforce-referential-integrity]
     :or {enforce-referential-integrity true}}
-   {:keys [name] :as structure-definition}]
+   {:keys [name url] :as structure-definition}]
   (when-let
     [{:blaze.rest-api.resource-pattern/keys [interactions]}
      (u/resolve-pattern resource-patterns structure-definition)]
@@ -31,6 +31,7 @@
             operations)]
       (cond->
         {:type (type/code name)
+         :profile (type/canonical url)
          :interaction
          (reduce
            (fn [res code]
@@ -65,6 +66,18 @@
             #fhir/code"local"]
            enforce-referential-integrity
            (conj #fhir/code"enforced"))
+         :searchInclude
+         (into
+           []
+           (comp
+             (filter (comp #{"reference"} :type))
+             (mapcat
+               (fn [{:keys [code target]}]
+                 (cons
+                   (str name ":" code)
+                   (for [target target]
+                     (str name ":" code ":" target))))))
+           (sr/list-by-type search-param-registry name))
          :searchRevInclude
          (into
            []
@@ -75,13 +88,15 @@
          :searchParam
          (into
            []
-           (map
-             (fn [{:keys [name url type]}]
-               (cond-> {:name name :type (type/code type)}
-                 url
-                 (assoc :definition (type/canonical url))
-                 (= "quantity" type)
-                 (assoc :documentation quantity-documentation))))
+           (comp
+             (remove (comp #{"_id" "_lastUpdated" "_profile" "_security" "_source" "_tag" "_list" "_has"} :name))
+             (map
+               (fn [{:keys [name url type]}]
+                 (cond-> {:name name :type (type/code type)}
+                   url
+                   (assoc :definition (type/canonical url))
+                   (= "quantity" type)
+                   (assoc :documentation quantity-documentation)))))
            (sr/list-by-type search-param-registry name))}
 
         (seq operations)
@@ -133,7 +148,9 @@
            :resource
            (into
              []
-             (keep (partial capability-resource context))
+             (comp
+               (filter (comp #{"resource"} :kind))
+               (keep (partial capability-resource context)))
              structure-definitions)
            :interaction
            (cond-> []
@@ -144,9 +161,43 @@
              (some? history-system-handler)
              (conj {:code #fhir/code"history-system"}))
            :searchParam
-           [{:name "_sort"
+           [{:name "_id"
+             :type "token"
+             :definition "http://hl7.org/fhir/SearchParameter/Resource-id"}
+            {:name "_lastUpdated"
+             :type "date"
+             :definition "http://hl7.org/fhir/SearchParameter/Resource-lastUpdated"}
+            {:name "_profile"
+             :type "uri"
+             :definition "http://hl7.org/fhir/SearchParameter/Resource-profile"}
+            {:name "_security"
+             :type "token"
+             :definition "http://hl7.org/fhir/SearchParameter/Resource-security"}
+            {:name "_source"
+             :type "uri"
+             :definition "http://hl7.org/fhir/SearchParameter/Resource-source"}
+            {:name "_tag"
+             :type "token"
+             :definition "http://hl7.org/fhir/SearchParameter/Resource-tag"}
+            {:name "_list"
+             :type "special"}
+            {:name "_has"
+             :type "special"}
+            {:name "_include"
+             :type "special"}
+            {:name "_revinclude"
+             :type "special"}
+            {:name "_count"
+             :type "number"
+             :documentation "The number of resources returned per page"}
+            {:name "_elements"
+             :type "special"}
+            {:name "_sort"
              :type "special"
-             :documentation "Only `_lastUpdated` and `-_lastUpdated` is supported at the moment."}]}]}]
+             :documentation "Only `_lastUpdated` and `-_lastUpdated` is supported at the moment."}
+            {:name "_summary"
+             :type "token"
+             :documentation "Only `count` is supported at the moment."}]}]}]
     (fn [{:blaze/keys [base-url]}]
       (ac/completed-future
         (ring/response
