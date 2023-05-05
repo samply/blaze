@@ -52,9 +52,43 @@
         :fhirVersion := #fhir/code"4.0.1"
         :format := [#fhir/code"application/fhir+json"
                     #fhir/code"application/xml+json"]
-        [:rest 0 :searchParam 0 :name] := "_sort"
-        [:rest 0 :searchParam 0 :type] := "special"
-        [:rest 0 :searchParam 0 :documentation] := "Only `_lastUpdated` and `-_lastUpdated` is supported at the moment."))
+        [:rest 0 :searchParam 0 :name] := "_id"
+        [:rest 0 :searchParam 0 :type] := "token"
+        [:rest 0 :searchParam 0 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-id"
+        [:rest 0 :searchParam 1 :name] := "_lastUpdated"
+        [:rest 0 :searchParam 1 :type] := "date"
+        [:rest 0 :searchParam 1 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-lastUpdated"
+        [:rest 0 :searchParam 2 :name] := "_profile"
+        [:rest 0 :searchParam 2 :type] := "uri"
+        [:rest 0 :searchParam 2 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-profile"
+        [:rest 0 :searchParam 3 :name] := "_security"
+        [:rest 0 :searchParam 3 :type] := "token"
+        [:rest 0 :searchParam 3 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-security"
+        [:rest 0 :searchParam 4 :name] := "_source"
+        [:rest 0 :searchParam 4 :type] := "uri"
+        [:rest 0 :searchParam 4 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-source"
+        [:rest 0 :searchParam 5 :name] := "_tag"
+        [:rest 0 :searchParam 5 :type] := "token"
+        [:rest 0 :searchParam 5 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-tag"
+        [:rest 0 :searchParam 6 :name] := "_list"
+        [:rest 0 :searchParam 6 :type] := "special"
+        [:rest 0 :searchParam 7 :name] := "_has"
+        [:rest 0 :searchParam 7 :type] := "special"
+        [:rest 0 :searchParam 8 :name] := "_include"
+        [:rest 0 :searchParam 8 :type] := "special"
+        [:rest 0 :searchParam 9 :name] := "_revinclude"
+        [:rest 0 :searchParam 9 :type] := "special"
+        [:rest 0 :searchParam 10 :name] := "_count"
+        [:rest 0 :searchParam 10 :type] := "number"
+        [:rest 0 :searchParam 10 :documentation] := "The number of resources returned per page"
+        [:rest 0 :searchParam 11 :name] := "_elements"
+        [:rest 0 :searchParam 11 :type] := "special"
+        [:rest 0 :searchParam 12 :name] := "_sort"
+        [:rest 0 :searchParam 12 :type] := "special"
+        [:rest 0 :searchParam 12 :documentation] := "Only `_lastUpdated` and `-_lastUpdated` is supported at the moment."
+        [:rest 0 :searchParam 13 :name] := "_summary"
+        [:rest 0 :searchParam 13 :type] := "token"
+        [:rest 0 :searchParam 13 :documentation] := "Only `count` is supported at the moment."))
 
     (testing "minimal config + search-system"
       (given
@@ -82,12 +116,14 @@
         :fhir/type := :fhir/CapabilityStatement
         [:rest 0 :interaction 0 :code] := #fhir/code"history-system"))
 
-    (testing "Patient interaction"
+    (testing "Patient read interaction"
       (given
         (-> @((capabilities/capabilities-handler
                 {:version "version-131640"
                  :structure-definitions
-                 [{:kind "resource" :name "Patient"}]
+                 [{:url "http://hl7.org/fhir/StructureDefinition/Patient"
+                   :name "Patient"
+                   :kind "resource"}]
                  :search-param-registry search-param-registry
                  :resource-patterns
                  [#:blaze.rest-api.resource-pattern
@@ -100,8 +136,20 @@
             :body)
         :fhir/type := :fhir/CapabilityStatement
         [:rest 0 :resource 0 :type] := #fhir/code"Patient"
+        [:rest 0 :resource 0 :profile] := #fhir/canonical"http://hl7.org/fhir/StructureDefinition/Patient"
         [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
         [:rest 0 :resource 0 :referencePolicy] :? (partial some #{#fhir/code"enforced"})
+        [:rest 0 :resource 0 :searchParam 0 :name] := "address-use"
+        [:rest 0 :resource 0 :searchParam 0 :type] := #fhir/code"token"
+        [:rest 0 :resource 0 :searchParam 1 :name] := "address-country"
+        [:rest 0 :resource 0 :searchParam 1 :type] := #fhir/code"string"
+        [:rest 0 :resource 0 :searchParam 2 :name] := "death-date"
+        [:rest 0 :resource 0 :searchParam 2 :type] := #fhir/code"date"
+        [:rest 0 :resource 0 :searchInclude 0] := "Patient:general-practitioner"
+        [:rest 0 :resource 0 :searchInclude 1] := "Patient:general-practitioner:Practitioner"
+        [:rest 0 :resource 0 :searchInclude 2] := "Patient:general-practitioner:Organization"
+        [:rest 0 :resource 0 :searchInclude 3] := "Patient:general-practitioner:PractitionerRole"
+        [:rest 0 :resource 0 :searchInclude 4] := "Patient:link"
         [:rest 0 :resource 0 :searchRevInclude 0] := "Account:patient"
         [:rest 0 :resource 0 :searchRevInclude 1] := "Account:subject"
         [:rest 0 :resource 0 :searchRevInclude 2] := "ActivityDefinition:composed-of")
@@ -111,7 +159,9 @@
           (-> @((capabilities/capabilities-handler
                   {:version "version-131640"
                    :structure-definitions
-                   [{:kind "resource" :name "Patient"}]
+                   [{:url "http://hl7.org/fhir/StructureDefinition/Patient"
+                     :name "Patient"
+                     :kind "resource"}]
                    :search-param-registry search-param-registry
                    :resource-patterns
                    [#:blaze.rest-api.resource-pattern
@@ -133,7 +183,9 @@
         (-> @((capabilities/capabilities-handler
                 {:version "version-131640"
                  :structure-definitions
-                 [{:kind "resource" :name "Observation"}]
+                 [{:url "http://hl7.org/fhir/StructureDefinition/Observation"
+                   :name "Observation"
+                   :kind "resource"}]
                  :search-param-registry search-param-registry
                  :resource-patterns
                  [#:blaze.rest-api.resource-pattern
@@ -157,7 +209,9 @@
         (-> @((capabilities/capabilities-handler
                 {:version "version-131640"
                  :structure-definitions
-                 [{:kind "resource" :name "Measure"}]
+                 [{:url "http://hl7.org/fhir/StructureDefinition/Measure"
+                   :name "Measure"
+                   :kind "resource"}]
                  :search-param-registry search-param-registry
                  :resource-patterns
                  [#:blaze.rest-api.resource-pattern
