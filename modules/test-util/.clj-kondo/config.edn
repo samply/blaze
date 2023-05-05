@@ -1,4 +1,7 @@
-{:linters
+{:lint-as
+ {blaze.fhir.spec.generators/def-resource-gen clojure.core/def}
+
+ :linters
  {:unsorted-required-namespaces
   {:level :error}
 
@@ -9,7 +12,10 @@
   {:level :error}
 
   :reduce-without-init
-  {:level :warning}}
+  {:level :warning}
+
+  :unresolved-symbol
+  {:exclude [(blaze.fhir.spec.generators/def-resource-gen)]}}
 
  :warn-on-reflection
  {:level :warning :warn-only-on-interop true}

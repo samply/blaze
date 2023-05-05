@@ -503,8 +503,12 @@
   (-references [_]))
 
 
+(defn- at-utc [instant]
+  (.atOffset ^Instant instant ZoneOffset/UTC))
+
+
 (defextended ExtendedInstant [id extension ^Instant value]
-  :fhir-type :fhir/instant :hash-num 9 :value-form (.atOffset value ZoneOffset/UTC))
+  :fhir-type :fhir/instant :hash-num 9 :value-form (some-> value at-utc))
 
 
 (defn- parse-instant-value [value]

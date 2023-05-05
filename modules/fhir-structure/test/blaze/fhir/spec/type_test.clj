@@ -765,8 +765,13 @@
       #fhir/instant{:value "1970-01-02T00:00:00Z"}
       #fhir/instant{:value "1970-01-02T00:00:00+01:00"}))
 
+  (testing "with extension"
+    (testing "without value"
+      (is (nil? (type/value #fhir/instant{:extension [#fhir/Extension{:url "url-130945"}]})))))
+
   (testing "instant"
-    (is (= #fhir/instant{:value "1970-01-02T00:00:00Z"} #fhir/instant"1970-01-02T00:00:00Z")))
+    (is (= #fhir/instant{:value "1970-01-02T00:00:00Z"}
+           #fhir/instant"1970-01-02T00:00:00Z")))
 
   (testing "interned"
     (is (not-interned? #fhir/instant"2020-01-01T00:00:00+02:00"
