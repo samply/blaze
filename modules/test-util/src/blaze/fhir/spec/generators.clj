@@ -4,7 +4,8 @@
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
     [clojure.string :as str]
-    [clojure.test.check.generators :as gen]))
+    [clojure.test.check.generators :as gen]
+    [cuerdas.core :refer [pascal]]))
 
 
 (set! *warn-on-reflection* true)
@@ -320,6 +321,15 @@
        (gen/fmap type/quantity)))
 
 
+;; TODO: Range
+
+
+;; TODO: Ratio
+
+
+;; TODO: RatioRange
+
+
 (defn period
   [& {:keys [id extension start end]
       :or {id (gen/return nil)
@@ -331,6 +341,9 @@
        (gen/such-that #(<= (system/date-time-lower-bound (type/value (:start %)))
                            (system/date-time-upper-bound (type/value (:end %)))))
        (gen/fmap type/period)))
+
+
+;; TODO: SampledData
 
 
 (declare reference)
@@ -389,6 +402,18 @@
        (gen/fmap type/address)))
 
 
+;; TODO: ContactPoint
+
+
+;; TODO: Timing
+
+
+;; TODO: Signature
+
+
+;; TODO: Annotation
+
+
 (defn reference
   [& {:keys [id extension reference type identifier display]
       :or {id (gen/return nil)
@@ -433,62 +458,6 @@
   (gen/fmap #(assoc % :fhir/type fhir-type) gen))
 
 
-(defn patient
-  [& {:keys [gender birthDate]
-      :or {gender (rare-nil (code))
-           birthDate (rare-nil (date))}}]
-  (->> (gen/tuple gender birthDate)
-       (to-map [:gender :birthDate])
-       (fhir-type :fhir/Patient)))
-
-
-(defn- observation-value []
-  (gen/one-of [(quantity) (codeable-concept) (string) (boolean) (integer)
-               #_(range) #_(ratio) #_(sampled-data) (time) (dateTime) (period)]))
-
-
-(defn observation
-  [& {:keys [id identifier status category code subject encounter effective value]
-      :or {id id-value
-           identifier (gen/vector (identifier))
-           status (rare-nil (code))
-           category (gen/vector (codeable-concept))
-           code (rare-nil (codeable-concept))
-           subject (rare-nil (reference))
-           encounter (rare-nil (reference))
-           effective (rare-nil (gen/one-of [(dateTime) (period)]))
-           value (rare-nil (observation-value))}}]
-  (->> (gen/tuple id identifier status category code subject encounter effective value)
-       (to-map [:id :identifier :status :category :code :subject :encounter :effective :value])
-       (fhir-type :fhir/Observation)))
-
-
-(defn procedure
-  [& {:keys [identifier instantiatesCanonical instantiatesUri status category
-             code subject encounter]
-      :or {identifier (gen/vector (identifier))
-           instantiatesCanonical (gen/vector (canonical))
-           instantiatesUri (gen/vector (uri))
-           status (rare-nil (code))
-           category (codeable-concept)
-           code (rare-nil (codeable-concept))
-           subject (rare-nil (reference))
-           encounter (rare-nil (reference))}}]
-  (->> (gen/tuple identifier instantiatesCanonical instantiatesUri status
-                  category code subject encounter)
-       (to-map [:identifier :instantiatesCanonical :instantiatesUri :status
-                :category :code :subject :encounter])
-       (fhir-type :fhir/Procedure)))
-
-
-(defn allergy-intolerance
-  [& {:keys [category]
-      :or {category (gen/vector (code))}}]
-  (->> (gen/tuple category)
-       (to-map [:category])
-       (fhir-type :fhir/AllergyIntolerance)))
-
-
 (defn bundle-entry
   [& {:keys [id extension resource]
       :or {id (gen/return nil)
@@ -496,3 +465,87 @@
   (->> (gen/tuple id extension resource)
        (to-map [:id :extension :resource])
        (fhir-type :fhir.Bundle/entry)))
+
+
+(defmacro def-resource-gen [type [& fields]]
+  (let [fields (partition 2 fields)
+        field-syms (map first fields)]
+    `(defn ~type [& {:keys [~@field-syms]
+                     :or ~(into {} (map vec) fields)}]
+       (->> (gen/tuple ~@field-syms)
+            (to-map [~@(map keyword field-syms)])
+            (fhir-type ~(keyword "fhir" (pascal type)))))))
+
+
+(def-resource-gen patient
+  [id id-value
+   gender (rare-nil (code))
+   birthDate (rare-nil (date))
+   multipleBirth (rare-nil (gen/one-of [(boolean) (integer)]))])
+
+
+(defn- observation-value []
+  (gen/one-of [(quantity) (codeable-concept) (string) (boolean) (integer)
+               #_(range) #_(ratio) #_(sampled-data) (time) (dateTime) (period)]))
+
+
+(def-resource-gen observation
+  [id id-value
+   meta (meta)
+   identifier (gen/vector (identifier))
+   status (rare-nil (code))
+   category (gen/vector (codeable-concept))
+   code (rare-nil (codeable-concept))
+   subject (rare-nil (reference :reference (gen/return nil)))
+   encounter (rare-nil (reference :reference (gen/return nil)))
+   effective (rare-nil (gen/one-of [(dateTime) (period)]))
+   value (rare-nil (observation-value))])
+
+
+(def-resource-gen procedure
+  [id id-value
+   meta (meta)
+   identifier (gen/vector (identifier))
+   instantiatesCanonical (gen/vector (canonical))
+   instantiatesUri (gen/vector (uri))
+   status (rare-nil (code))
+   category (codeable-concept)
+   code (rare-nil (codeable-concept))
+   subject (rare-nil (reference :reference (gen/return nil)))
+   encounter (rare-nil (reference :reference (gen/return nil)))])
+
+
+(def-resource-gen allergy-intolerance
+  [id id-value
+   meta (meta)
+   category (gen/vector (code))])
+
+
+(def-resource-gen diagnostic-report
+  [id id-value
+   meta (meta)
+   identifier (gen/vector (identifier))
+   status (rare-nil (code))
+   category (gen/vector (codeable-concept))
+   code (rare-nil (codeable-concept))
+   subject (rare-nil (reference :reference (gen/return nil)))
+   encounter (rare-nil (reference :reference (gen/return nil)))
+   effective (rare-nil (gen/one-of [(dateTime) (period)]))
+   issued (nilable (instant))
+   performer (gen/vector (reference :reference (gen/return nil)))])
+
+
+(def-resource-gen library
+  [id id-value
+   meta (meta)
+   url (uri)
+   identifier (gen/vector (identifier))
+   version (rare-nil (string))
+   name (nilable (string))
+   title (nilable (string))
+   subtitle (nilable (string))
+   status (rare-nil (code))
+   experimental (nilable (boolean))
+   type (codeable-concept)
+   subject (rare-nil (gen/one-of [(codeable-concept) (reference :reference (gen/return nil))]))
+   content (gen/vector (attachment))])

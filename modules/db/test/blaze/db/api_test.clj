@@ -31,6 +31,7 @@
     [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as prop]
     [cognitect.anomalies :as anom]
+    [cuerdas.core :refer [pascal]]
     [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
@@ -143,6 +144,18 @@
         (is (ac/canceled? future))))))
 
 
+(defn- create-tx-op [resource-gen]
+  (gen/fmap (partial vector :create) resource-gen))
+
+
+(defn- unique-ids? [tx-ops]
+  (= (count tx-ops) (count (into #{} (map (comp :id second)) tx-ops))))
+
+
+(defn- create-tx [resource-gen max-ops]
+  (gen/such-that unique-ids? (gen/vector (create-tx-op resource-gen) 1 max-ops)))
+
+
 (deftest transact-test
   (testing "create"
     (testing "one Patient"
@@ -175,7 +188,18 @@
           :id := "0"
           [:subject :reference] := "Patient/0"
           [:meta :versionId] := #fhir/id"1"
-          [meta :blaze.db/op] := :create))))
+          [meta :blaze.db/op] := :create)))
+
+    (testing "generated data"
+      (doseq [gen `[fg/patient fg/observation fg/procedure fg/allergy-intolerance
+                    fg/diagnostic-report fg/library]]
+        (satisfies-prop 30
+          (prop/for-all [tx-ops (create-tx ((resolve gen)) 30)]
+            (with-system-data [{:blaze.db/keys [node]} system]
+              [tx-ops]
+
+              (= (count tx-ops)
+                 (count @(d/pull-many node (d/type-list (d/db node) (pascal (name gen))))))))))))
 
   (testing "conditional create"
     (testing "one Patient"
@@ -3496,10 +3520,6 @@
         [0 :id] := "1"))))
 
 
-(defn- create-tx-op [resource-gen]
-  (gen/fmap (partial vector :create) resource-gen))
-
-
 (defn- range-below [date-time]
   [Long/MIN_VALUE (system/date-time-lower-bound date-time)])
 
@@ -3628,18 +3648,6 @@
         (overlaps? param-range (date-time-range resource-value))))))
 
 
-(def observation-gen
-  (fg/observation
-    :id (gen/fmap str gen/uuid)
-    :identifier (gen/return nil)
-    :status (gen/return #fhir/code"final")
-    :category (gen/return nil)
-    :code (gen/return nil)
-    :subject (gen/return nil)
-    :encounter (gen/return nil)
-    :value (gen/return nil)))
-
-
 (defn- every-found-observation-matches? [pred node prefix date-time]
   (let [pull (partial pull-type-query node "Observation")
         pred (comp (pred (type/dateTime date-time)) :effective)
@@ -3655,10 +3663,23 @@
 (def ^:private num-date-tests 100)
 
 
+(def observation-gen
+  (fg/observation
+    :id (gen/fmap str gen/uuid)
+    :meta (gen/return nil)
+    :identifier (gen/return nil)
+    :status (gen/return #fhir/code"final")
+    :category (gen/return nil)
+    :code (gen/return nil)
+    :subject (gen/return nil)
+    :encounter (gen/return nil)
+    :value (gen/return nil)))
+
+
 (deftest type-query-date-equal-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time fg/dateTime-value
-                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
+                   tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
         (every-found-observation-matches? equal node "" date-time)))))
@@ -3667,7 +3688,7 @@
 (deftest type-query-date-not-equal-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time fg/dateTime-value
-                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
+                   tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
         (every-found-observation-matches? not-equal node "ne" date-time)))))
@@ -3676,7 +3697,7 @@
 (deftest type-query-date-greater-than-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time fg/dateTime-value
-                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
+                   tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
         (every-found-observation-matches? greater-than node "gt" date-time)))))
@@ -3685,7 +3706,7 @@
 (deftest type-query-date-less-than-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time fg/dateTime-value
-                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
+                   tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
         (every-found-observation-matches? less-than node "lt" date-time)))))
@@ -3694,7 +3715,7 @@
 (deftest type-query-date-greater-equal-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time fg/dateTime-value
-                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
+                   tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
         (every-found-observation-matches? greater-equal node "ge" date-time)))))
@@ -3703,7 +3724,7 @@
 (deftest type-query-date-less-equal-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time fg/dateTime-value
-                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
+                   tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
         (every-found-observation-matches? less-equal node "le" date-time)))))
@@ -3712,7 +3733,7 @@
 (deftest type-query-date-starts-after-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time fg/dateTime-value
-                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
+                   tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
         (every-found-observation-matches? starts-after node "sa" date-time)))))
@@ -3721,7 +3742,7 @@
 (deftest type-query-date-ends-before-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time fg/dateTime-value
-                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
+                   tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
         (every-found-observation-matches? ends-before node "eb" date-time)))))
@@ -3730,7 +3751,7 @@
 (deftest type-query-date-approximately-generative-test
   (satisfies-prop num-date-tests
     (prop/for-all [date-time fg/dateTime-value
-                   tx-ops (gen/vector (create-tx-op observation-gen) 1 num-date-tests)]
+                   tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
         (every-found-observation-matches? approximately node "ap" date-time)))))

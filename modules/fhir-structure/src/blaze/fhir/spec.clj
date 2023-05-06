@@ -90,7 +90,7 @@
   (let [key (transform-type-key (type/type x) "json")]
     (if-let [spec (s2/get-spec key)]
       (j/write-value-as-bytes (s2/unform spec x) json-object-mapper)
-      (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
+      (throw (ex-info (format "Missing spec: %s" key) {:key key :x x})))))
 
 
 (defn unform-cbor
