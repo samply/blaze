@@ -12,7 +12,6 @@
     [blaze.elm.interval :refer [interval]]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
-    [blaze.fhir.spec.type.system :as system]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]))
 
@@ -78,15 +77,15 @@
 
     (testing "Date"
       (are [s e res] (= res (tu/compile-binop elm/closed-interval elm/date s e))
-        "2020" "2021" (interval (system/date 2020) (system/date 2021))))
+        "2020" "2021" (interval #system/date"2020" #system/date"2021")))
 
     (testing "DateTime"
       (are [s e res] (= res (tu/compile-binop elm/closed-interval elm/date-time s e))
-        "2020" "2021" (interval (system/date-time 2020) (system/date-time 2021)))
+        "2020" "2021" (interval #system/date-time"2020" #system/date-time"2021"))
 
       (testing "with ToDateTime"
         (are [s e res] (= res (c/compile {} (elm/closed-interval [(elm/to-date-time (elm/date s)) (elm/date-time e)])))
-          "2020" "2021" (interval (system/date-time 2020) (system/date-time 2021)))))
+          "2020" "2021" (interval #system/date-time"2020" #system/date-time"2021"))))
 
     (are [elm res] (= res (c/compile {} elm))
       #elm/interval [:< #elm/as ["{urn:hl7-org:elm-types:r1}Integer" {:type "Null"}]
@@ -205,9 +204,9 @@
       "2019-04-17" "2019-04-17" false
       "2019-04-17" "2019-04-18" false)
 
-    (tu/testing-binary-null elm/after #elm/date "2019")
-    (tu/testing-binary-null elm/after #elm/date "2019-04")
-    (tu/testing-binary-null elm/after #elm/date "2019-04-17")
+    (tu/testing-binary-null elm/after #elm/date"2019")
+    (tu/testing-binary-null elm/after #elm/date"2019-04")
+    (tu/testing-binary-null elm/after #elm/date"2019-04-17")
 
     (testing "with year precision"
       (are [x y res] (= res (tu/compile-binop-precision elm/after elm/date x y "year"))
@@ -233,9 +232,9 @@
       "2019-04-17" "2019-04-17" false
       "2019-04-17" "2019-04-18" false)
 
-    (tu/testing-binary-null elm/after #elm/date-time "2019")
-    (tu/testing-binary-null elm/after #elm/date-time "2019-04")
-    (tu/testing-binary-null elm/after #elm/date-time "2019-04-17")
+    (tu/testing-binary-null elm/after #elm/date-time"2019")
+    (tu/testing-binary-null elm/after #elm/date-time"2019-04")
+    (tu/testing-binary-null elm/after #elm/date-time"2019-04-17")
 
     (testing "with year precision"
       (are [x y res] (= res (tu/compile-binop-precision elm/after elm/date-time
@@ -341,9 +340,9 @@
       "2019-04-17" "2019-04-17" false
       "2019-04-17" "2019-04-16" false)
 
-    (tu/testing-binary-null elm/before #elm/date "2019")
-    (tu/testing-binary-null elm/before #elm/date "2019-04")
-    (tu/testing-binary-null elm/before #elm/date "2019-04-17")
+    (tu/testing-binary-null elm/before #elm/date"2019")
+    (tu/testing-binary-null elm/before #elm/date"2019-04")
+    (tu/testing-binary-null elm/before #elm/date"2019-04-17")
 
     (testing "with year precision"
       (are [x y res] (= res (tu/compile-binop-precision elm/before elm/date x y
@@ -370,9 +369,9 @@
       "2019-04-17" "2019-04-17" false
       "2019-04-17" "2019-04-16" false)
 
-    (tu/testing-binary-null elm/before #elm/date-time "2019")
-    (tu/testing-binary-null elm/before #elm/date-time "2019-04")
-    (tu/testing-binary-null elm/before #elm/date-time "2019-04-17")
+    (tu/testing-binary-null elm/before #elm/date-time"2019")
+    (tu/testing-binary-null elm/before #elm/date-time"2019-04")
+    (tu/testing-binary-null elm/before #elm/date-time"2019-04-17")
 
     (testing "with year precision"
       (are [x y res] (= res (tu/compile-binop-precision elm/before elm/date-time
@@ -440,10 +439,10 @@
 
   (testing "DateTime"
     (are [source per res] (= res (core/-eval (c/compile {} (elm/collapse [source per])) {} nil nil))
-      #elm/list [#elm/interval [#elm/date-time "2012-01-01" #elm/date-time "2012-01-15"]
-                #elm/interval [#elm/date-time "2012-01-16" #elm/date-time "2012-05-25"]]
+      #elm/list [#elm/interval [#elm/date-time"2012-01-01" #elm/date-time"2012-01-15"]
+                #elm/interval [#elm/date-time"2012-01-16" #elm/date-time"2012-05-25"]]
       {:type "Null"}
-      [(interval (system/date-time 2012 1 1) (system/date-time 2012 5 25))]))
+      [(interval #system/date-time"2012-01-01" #system/date-time"2012-05-25")]))
 
   (tu/testing-binary-form elm/collapse))
 
@@ -487,7 +486,7 @@
 
       #elm/list [#elm/quantity [1 "m"]] #elm/quantity [100 "cm"] true
 
-      #elm/list [#elm/date "2019"] #elm/date "2019-01" false)
+      #elm/list [#elm/date"2019"] #elm/date"2019-01" false)
 
     (tu/testing-binary-null elm/contains #elm/list [] #elm/integer "1"))
 

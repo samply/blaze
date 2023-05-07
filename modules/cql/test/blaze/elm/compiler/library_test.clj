@@ -5,7 +5,7 @@
     [blaze.elm.compiler :as compiler]
     [blaze.elm.compiler.library :as library]
     [blaze.elm.compiler.library-spec]
-    [blaze.fhir.spec.type.system :as system]
+    [blaze.fhir.spec.type.system]
     [blaze.test-util :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
@@ -134,8 +134,8 @@
     parameter \"Measurement Period\" Interval<Date> default Interval[@2020-01-01, @2020-12-31]")]
       (with-system [{:blaze.db/keys [node]} mem-node-system]
         (given (library/compile-library node library {})
-          [:parameter-default-values "Measurement Period" :start] := (system/date 2020 1 1)
-          [:parameter-default-values "Measurement Period" :end] := (system/date 2020 12 31)))))
+          [:parameter-default-values "Measurement Period" :start] := #system/date"2020-01-01"
+          [:parameter-default-values "Measurement Period" :end] := #system/date"2020-12-31"))))
 
   (testing "with invalid parameter default"
     (let [library (t/translate "library Test

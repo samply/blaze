@@ -134,6 +134,22 @@
       (testing "form"
         (is (= '(call "ToQuantity" (param-ref "x")) (core/-form expr))))))
 
+  (testing "ToDate"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/function-ref ["ToDate" #elm/parameter-ref "x"]
+          expr (c/compile compile-ctx elm)
+          eval-ctx (fn [x] {:now tu/now :parameters {"x" x}})]
+      (testing "eval"
+        (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
+          #fhir/date{:id "foo"} nil
+          #fhir/date{:extension [#fhir/Extension{:url "foo"}]} nil
+          #fhir/date"2023" #system/date"2023"
+          #fhir/date"2023-05" #system/date"2023-05"
+          #fhir/date"2023-05-07" #system/date"2023-05-07"))
+
+      (testing "form"
+        (is (= '(call "ToDate" (param-ref "x")) (core/-form expr))))))
+
   (testing "ToDateTime"
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
           elm #elm/function-ref ["ToDateTime" #elm/parameter-ref "x"]
@@ -141,12 +157,17 @@
           eval-ctx (fn [x] {:now tu/now :parameters {"x" x}})]
       (testing "eval"
         (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
-          #fhir/dateTime"2022-02-22"
-          (system/date-time 2022 2 22)
-          #fhir/instant"2021-02-23T15:12:45Z"
-          (system/date-time 2021 2 23 15 12 45)
-          #fhir/instant"2021-02-23T15:12:45+01:00"
-          (system/date-time 2021 2 23 14 12 45)))
+          #fhir/dateTime{:id "foo"} nil
+          #fhir/dateTime{:extension [#fhir/Extension{:url "foo"}]} nil
+          #fhir/dateTime"2022" #system/date-time"2022"
+          #fhir/dateTime"2022-02" #system/date-time"2022-02"
+          #fhir/dateTime"2022-02-22" #system/date-time"2022-02-22"
+          #fhir/dateTime"2023-05-07T17:39" #system/date-time"2023-05-07T17:39"
+
+          #fhir/instant{:id "foo"} nil
+          #fhir/instant{:extension [#fhir/Extension{:url "foo"}]} nil
+          #fhir/instant"2021-02-23T15:12:45Z" #system/date-time"2021-02-23T15:12:45"
+          #fhir/instant"2021-02-23T15:12:45+01:00" #system/date-time"2021-02-23T14:12:45"))
 
       (testing "form"
         (is (= '(call "ToDateTime" (param-ref "x")) (core/-form expr))))))

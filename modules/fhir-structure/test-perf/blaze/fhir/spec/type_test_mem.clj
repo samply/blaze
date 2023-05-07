@@ -42,9 +42,9 @@
     #fhir/date"2020-01" 24
     #fhir/date"2020-01-01" 24
 
-    #fhir/dateTime"2020" 32
-    #fhir/dateTime"2020-01" 40
-    #fhir/dateTime"2020-01-01" 40
+    #fhir/dateTime"2020" 16
+    #fhir/dateTime"2020-01" 24
+    #fhir/dateTime"2020-01-01" 24
 
     #fhir/dateTime"2020-01-01T00:00:00" 72
     #fhir/dateTime"2020-01-01T00:00:00.000" 72

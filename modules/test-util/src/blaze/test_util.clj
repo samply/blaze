@@ -20,6 +20,8 @@
 
 (defn all-ex-data [e]
   (cond-> (ex-data e)
+    (ex-message e)
+    (assoc :message (ex-message e))
     (ex-data (ex-cause e))
     (assoc :cause-data (all-ex-data (ex-cause e)))))
 

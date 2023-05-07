@@ -210,23 +210,13 @@
           check-overflow))))
 
 
-(defn- minimum-value-msg [x]
-  (format "Predecessor: argument `%s` is already the minimum value." x))
-
-
-(defn- minimum-value-anom [x]
-  (ba/incorrect (minimum-value-msg x)))
-
-
 ;; 16.18. Predecessor
 (extend-protocol p/Predecessor
   BigDecimal
   (predecessor [x]
     (let [x (.subtract x min-step-size)]
-      (if (within-bounds? x)
-        x
-        ;; TODO: throwing an exception this is inconsistent with subtract
-        (throw-anom (minimum-value-anom x))))))
+      (when (within-bounds? x)
+        x))))
 
 
 ;; 16.19. Round
@@ -253,11 +243,8 @@
   BigDecimal
   (successor [x]
     (let [x (.add x min-step-size)]
-      (if (within-bounds? x)
-        x
-        ;; TODO: throwing an exception this is inconsistent with add
-        (throw (ex-info "Successor: argument is already the maximum value."
-                        {:x x}))))))
+      (when (within-bounds? x)
+        x))))
 
 
 ;; 16.22. Truncate

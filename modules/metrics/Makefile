@@ -1,7 +1,10 @@
 lint:
 	clj-kondo --lint src test deps.edn
 
-build:
+prep:
+	clojure -X:deps prep
+
+build: prep
 	clojure -T:build compile
 
 test: build
@@ -13,4 +16,4 @@ test-coverage: build
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: lint build test test-coverage clean
+.PHONY: lint prep build test test-coverage clean

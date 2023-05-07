@@ -182,6 +182,25 @@
                   elm)]
             (is (= #fhir/code"male" (core/-eval expr nil nil {"R" entity}))))))
 
+      (testing "Patient.birthDate.value"
+        (let [elm
+              {:path "birthDate.value"
+               :scope "R"
+               :type "Property"}
+              entity
+              (fn [x]
+                {:fhir/type :fhir/Patient :id "0"
+                 :birthDate x})
+              expr
+              (c/compile
+                {:eval-context "Patient"}
+                elm)]
+          (are [birth-date res] (= res (core/-eval expr nil nil {"R" (entity birth-date)}))
+            #fhir/date"2023-05-07" #system/date"2023-05-07"
+            #fhir/date{:id "foo" :value "2023-05-07"} #system/date"2023-05-07"
+            #fhir/date{:id "foo"} nil
+            #fhir/date{:extension [#fhir/Extension{:url "foo"}]} nil)))
+
       (testing "Observation.value"
         (testing "with source-type"
           (let [elm
@@ -283,6 +302,24 @@
               expr (c/compile {:library library :eval-context "Patient"} elm)
               result (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil)]
           (is (= #fhir/code"male" result)))))
+
+    (testing "Patient.birthDate.value"
+      (let [library {:statements {:def [{:type "ExpressionDef"
+                                         :name "Patient"}]}}
+            elm
+            {:path "birthDate.value"
+             :source #elm/expression-ref "Patient"
+             :type "Property"}
+            source
+            (fn [x]
+              {:fhir/type :fhir/Patient :id "0"
+               :birthDate x})
+            expr (c/compile {:library library :eval-context "Patient"} elm)]
+        (are [birth-date res] (= res (core/-eval expr {:expression-defs {"Patient" {:expression (source birth-date)}}} nil nil))
+          #fhir/date"2023-05-07" #system/date"2023-05-07"
+          #fhir/date{:id "foo" :value "2023-05-07"} #system/date"2023-05-07"
+          #fhir/date{:id "foo"} nil
+          #fhir/date{:extension [#fhir/Extension{:url "foo"}]} nil)))
 
     (testing "Observation.value"
       (testing "with source-type"

@@ -11,6 +11,11 @@
   :ret boolean?)
 
 
+(s/fdef ba/incorrect?
+  :args (s/cat :x any?)
+  :ret boolean?)
+
+
 (s/fdef ba/unsupported?
   :args (s/cat :x any?)
   :ret boolean?)
@@ -104,3 +109,7 @@
 
 (s/fdef ba/exceptionally
   :args (s/cat :x any? :f ifn?))
+
+
+(s/fdef ba/ignore
+  :args (s/cat :x any?))

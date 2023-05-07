@@ -56,17 +56,26 @@
 ;; For the DateTime overload, the result is the number of whole calendar periods
 ;; that have elapsed between the first datetime and the second datetime.
 (deftest compile-calculate-age-at-test
-  (testing "Year"
+  (testing "Static"
     (are [elm res] (= res (core/-eval (c/compile {} elm) {:now tu/now} nil nil))
-      #elm/calculate-age-at [#elm/date "2018" #elm/date "2019" "year"]
-      1
-      #elm/calculate-age-at [#elm/date "2018" #elm/date "2018" "year"]
-      0
+      #elm/calculate-age-at [#elm/date"2018" #elm/date"2019" "year"] 1
+      #elm/calculate-age-at [#elm/date"2018" #elm/date"2018" "year"] 0
+      #elm/calculate-age-at [#elm/date"2018" #elm/date"2019" "month"] nil
 
-      #elm/calculate-age-at [#elm/date "2018" #elm/date "2018" "month"]
-      nil))
+      #elm/calculate-age-at [#elm/date"2018-01" #elm/date"2019-02" "year"] 1
+      #elm/calculate-age-at [#elm/date"2018-01" #elm/date"2018-12" "year"] 0
+      #elm/calculate-age-at [#elm/date"2018-01" #elm/date"2018-12" "month"] 11
+      #elm/calculate-age-at [#elm/date"2018-01" #elm/date"2018-12" "day"] nil
 
-  (tu/testing-binary-null elm/calculate-age-at #elm/date "2018")
+      #elm/calculate-age-at [#elm/date"2018-01-01" #elm/date"2019-02-02" "year"] 1
+      #elm/calculate-age-at [#elm/date"2018-01" #elm/date"2018-12-15" "year"] 0
+      #elm/calculate-age-at [#elm/date"2018-01-01" #elm/date"2018-12-02" "month"] 11
+      #elm/calculate-age-at [#elm/date"2018-01-01" #elm/date"2018-02-01" "day"] 31
+
+      #elm/calculate-age-at [#elm/date-time"2018-01-01" #elm/date-time"2018-02-01" "day"] 31))
+
+  (tu/testing-binary-null elm/calculate-age-at #elm/date"2018")
+  (tu/testing-binary-null elm/calculate-age-at #elm/date-time"2018-01-01")
 
   (tu/testing-binary-precision-form elm/calculate-age-at "year" "month" "day"))
 

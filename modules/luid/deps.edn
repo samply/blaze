@@ -1,5 +1,10 @@
 {:deps
- {blaze/spec
+ {
+  ;; TODO: only needed for prepping
+  blaze/fhir-structure
+  {:local/root "../fhir-structure"}
+
+  blaze/spec
   {:local/root "../spec"}
 
   com.google.guava/guava

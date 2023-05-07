@@ -1,4 +1,5 @@
 target
+classes
 .cpcache
 .cache
 blaze-load-tests/node_modules

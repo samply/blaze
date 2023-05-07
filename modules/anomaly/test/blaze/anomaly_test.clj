@@ -29,6 +29,17 @@
     (is (not (ba/anomaly? nil)))))
 
 
+(deftest incorrect?-test
+  (testing "a incorrect anomaly has to have the right category"
+    (is (ba/incorrect? {::anom/category ::anom/incorrect})))
+
+  (testing "anomalies with other categories are no incorrect anomalies"
+    (is (not (ba/incorrect? {::anom/category ::anom/fault}))))
+
+  (testing "nil is no incorrect anomaly"
+    (is (not (ba/anomaly? nil)))))
+
+
 (deftest unsupported?-test
   (testing "a unsupported anomaly has to have the right category"
     (is (ba/unsupported? {::anom/category ::anom/unsupported})))
@@ -342,3 +353,11 @@
     (given (ba/exceptionally (ba/fault) #(assoc % ::foo ::bar))
       ::anom/category := ::anom/fault
       ::foo := ::bar)))
+
+
+(deftest ignore-test
+  (testing "no anomaly"
+    (is (= 1 (ba/ignore 1))))
+
+  (testing "with anomaly"
+    (is (nil? (ba/ignore (ba/fault))))))

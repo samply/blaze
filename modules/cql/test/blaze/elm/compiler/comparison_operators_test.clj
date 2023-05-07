@@ -168,7 +168,7 @@
 
       [#elm/integer "1" {:type "Null"}] [#elm/integer "1" {:type "Null"}] nil
       [{:type "Null"}] [{:type "Null"}] nil
-      [#elm/date "2019"] [#elm/date "2019-01"] nil)
+      [#elm/date"2019"] [#elm/date"2019-01"] nil)
 
     (tu/testing-binary-null elm/equal #elm/list []))
 
@@ -185,7 +185,7 @@
       "2012" "2013" false
       "2013" "2012" false)
 
-    (tu/testing-binary-null elm/equal #elm/date "2013"))
+    (tu/testing-binary-null elm/equal #elm/date"2013"))
 
   (testing "Date with year-month precision"
     (are [x y res] (= res (tu/compile-binop elm/equal elm/date x y))
@@ -193,7 +193,7 @@
       "2013-01" "2013-02" false
       "2013-02" "2013-01" false)
 
-    (tu/testing-binary-null elm/equal #elm/date "2013-01"))
+    (tu/testing-binary-null elm/equal #elm/date"2013-01"))
 
   (testing "Date with full precision"
     (are [x y res] (= res (tu/compile-binop elm/equal elm/date x y))
@@ -201,7 +201,7 @@
       "2013-01-01" "2013-01-02" false
       "2013-01-02" "2013-01-01" false)
 
-    (tu/testing-binary-null elm/equal #elm/date "2013-01-01"))
+    (tu/testing-binary-null elm/equal #elm/date"2013-01-01"))
 
   (testing "Date with differing precisions"
     (are [x y res] (= res (tu/compile-binop elm/equal elm/date x y))
@@ -219,7 +219,7 @@
 
       "2013-01-01T00" "2013-01-01T00:00:00" true)
 
-    (tu/testing-binary-null elm/equal #elm/date-time "2013-01-01"))
+    (tu/testing-binary-null elm/equal #elm/date-time"2013-01-01"))
 
   (testing "Time"
     (are [x y res] (= res (tu/compile-binop elm/equal elm/time x y))
@@ -406,7 +406,7 @@
       #elm/list [#elm/integer "1" {:type "Null"}]
       #elm/list [#elm/integer "1" {:type "Null"}] true
       #elm/list [{:type "Null"}] #elm/list [{:type "Null"}] true
-      #elm/list [#elm/date "2019"] #elm/list [#elm/date "2019-01"] false
+      #elm/list [#elm/date"2019"] #elm/list [#elm/date"2019-01"] false
 
       {:type "Null"} #elm/list [] false
       #elm/list [] {:type "Null"} false))
@@ -495,28 +495,28 @@
       "2014" "2013" true
       "2013" "2013" false)
 
-    (tu/testing-binary-null elm/greater #elm/date "2013"))
+    (tu/testing-binary-null elm/greater #elm/date"2013"))
 
   (testing "DateTime with year precision"
     (are [x y res] (= res (tu/compile-binop elm/greater elm/date-time x y))
       "2014" "2013" true
       "2013" "2013" false)
 
-    (tu/testing-binary-null elm/greater #elm/date-time "2013"))
+    (tu/testing-binary-null elm/greater #elm/date-time"2013"))
 
   (testing "DateTime with year-month precision"
     (are [x y res] (= res (tu/compile-binop elm/greater elm/date-time x y))
       "2013-07" "2013-06" true
       "2013-06" "2013-06" false)
 
-    (tu/testing-binary-null elm/greater #elm/date-time "2013-06"))
+    (tu/testing-binary-null elm/greater #elm/date-time"2013-06"))
 
   (testing "DateTime with date precision"
     (are [x y res] (= res (tu/compile-binop elm/greater elm/date-time x y))
       "2013-06-16" "2013-06-15" true
       "2013-06-15" "2013-06-15" false)
 
-    (tu/testing-binary-null elm/greater #elm/date-time "2013-06-15"))
+    (tu/testing-binary-null elm/greater #elm/date-time"2013-06-15"))
 
   (testing "Comparing dates with mixed precisions (year and year-month) results in null."
     (are [x y res] (= res (tu/compile-binop elm/greater elm/date x y))
@@ -589,7 +589,7 @@
       "2013-06-15" "2013-06-15" true
       "2013-06-14" "2013-06-15" false)
 
-    (tu/testing-binary-null elm/greater-or-equal #elm/date "2013-06-15"))
+    (tu/testing-binary-null elm/greater-or-equal #elm/date"2013-06-15"))
 
   (testing "DateTime with year precision"
     (are [x y res] (= res (tu/compile-binop elm/greater-or-equal elm/date-time x y))
@@ -597,7 +597,7 @@
       "2013" "2013" true
       "2012" "2013" false)
 
-    (tu/testing-binary-null elm/greater-or-equal #elm/date "2013"))
+    (tu/testing-binary-null elm/greater-or-equal #elm/date"2013"))
 
   (testing "DateTime with year-month precision"
     (are [x y res] (= res (tu/compile-binop elm/greater-or-equal elm/date-time x y))
@@ -605,7 +605,7 @@
       "2013-06" "2013-06" true
       "2013-05" "2013-06" false)
 
-    (tu/testing-binary-null elm/greater-or-equal #elm/date "2013-06"))
+    (tu/testing-binary-null elm/greater-or-equal #elm/date"2013-06"))
 
   (testing "DateTime with date precision"
     (are [x y res] (= res (tu/compile-binop elm/greater-or-equal elm/date-time x y))
@@ -613,7 +613,7 @@
       "2013-06-15" "2013-06-15" true
       "2013-06-14" "2013-06-15" false)
 
-    (tu/testing-binary-null elm/greater-or-equal #elm/date "2013-06-15"))
+    (tu/testing-binary-null elm/greater-or-equal #elm/date"2013-06-15"))
 
   (testing "DateTime with mixed precision"
     (are [x y] (nil? (tu/compile-binop elm/greater-or-equal elm/date-time x y))
@@ -696,7 +696,7 @@
       "2012" "2013" true
       "2013" "2013" false)
 
-    (tu/testing-binary-null elm/less #elm/date "2013"))
+    (tu/testing-binary-null elm/less #elm/date"2013"))
 
   (testing "Comparing dates with mixed precisions (year and year-month) results in null."
     (are [x y res] (= res (tu/compile-binop elm/less elm/date x y))
@@ -708,7 +708,7 @@
       "2013-06-14" "2013-06-15" true
       "2013-06-15" "2013-06-15" false)
 
-    (tu/testing-binary-null elm/less #elm/date "2013-06-15"))
+    (tu/testing-binary-null elm/less #elm/date"2013-06-15"))
 
   (testing "Comparing dates with mixed precisions (year-month and full) results in null."
     (are [x y res] (= res (tu/compile-binop elm/less elm/date x y))
@@ -720,28 +720,28 @@
       "2012" "2013" true
       "2013" "2013" false)
 
-    (tu/testing-binary-null elm/less #elm/date-time "2013"))
+    (tu/testing-binary-null elm/less #elm/date-time"2013"))
 
   (testing "DateTime with year-month precision"
     (are [x y res] (= res (tu/compile-binop elm/less elm/date-time x y))
       "2013-05" "2013-06" true
       "2013-06" "2013-06" false)
 
-    (tu/testing-binary-null elm/less #elm/date-time "2013-06"))
+    (tu/testing-binary-null elm/less #elm/date-time"2013-06"))
 
   (testing "DateTime with date precision"
     (are [x y res] (= res (tu/compile-binop elm/less elm/date-time x y))
       "2013-06-14" "2013-06-15" true
       "2013-06-15" "2013-06-15" false)
 
-    (tu/testing-binary-null elm/less #elm/date-time "2013-06-15"))
+    (tu/testing-binary-null elm/less #elm/date-time"2013-06-15"))
 
   (testing "DateTime with full precision (there is only one precision)"
     (are [x y res] (= res (tu/compile-binop elm/less elm/date-time x y))
       "2013-06-15T11" "2013-06-15T12" true
       "2013-06-15T12" "2013-06-15T12" false)
 
-    (tu/testing-binary-null elm/less #elm/date-time "2013-06-15T12"))
+    (tu/testing-binary-null elm/less #elm/date-time"2013-06-15T12"))
 
   (testing "Time with full precision (there is only one precision)"
     (are [x y res] (= res (tu/compile-binop elm/less elm/time x y))
@@ -814,12 +814,12 @@
       "2013-06-15" "2013-06-15" true
       "2013-06-16" "2013-06-15" false)
 
-    (tu/testing-binary-null elm/less-or-equal #elm/date "2013-06-15"))
+    (tu/testing-binary-null elm/less-or-equal #elm/date"2013-06-15"))
 
   (testing "Mixed Date and DateTime"
     (are [x y res] (= res (c/compile {} (elm/less-or-equal [x y])))
-      #elm/date "2013-06-15" #elm/date-time "2013-06-15T00" nil
-      #elm/date-time "2013-06-15T00" #elm/date "2013-06-15" nil))
+      #elm/date"2013-06-15" #elm/date-time"2013-06-15T00" nil
+      #elm/date-time"2013-06-15T00" #elm/date"2013-06-15" nil))
 
   (testing "DateTime with year precision"
     (are [x y res] (= res (tu/compile-binop elm/less-or-equal elm/date-time x y))
@@ -827,7 +827,7 @@
       "2013" "2013" true
       "2014" "2013" false)
 
-    (tu/testing-binary-null elm/less-or-equal #elm/date "2013"))
+    (tu/testing-binary-null elm/less-or-equal #elm/date"2013"))
 
   (testing "DateTime with year-month precision"
     (are [x y res] (= res (tu/compile-binop elm/less-or-equal elm/date-time x y))
@@ -835,7 +835,7 @@
       "2013-06" "2013-06" true
       "2013-07" "2013-06" false)
 
-    (tu/testing-binary-null elm/less-or-equal #elm/date "2013-06"))
+    (tu/testing-binary-null elm/less-or-equal #elm/date"2013-06"))
 
   (testing "DateTime with date precision"
     (are [x y res] (= res (tu/compile-binop elm/less-or-equal elm/date-time x y))
@@ -843,7 +843,7 @@
       "2013-06-15" "2013-06-15" true
       "2013-06-16" "2013-06-15" false)
 
-    (tu/testing-binary-null elm/less-or-equal #elm/date "2013-06-15"))
+    (tu/testing-binary-null elm/less-or-equal #elm/date"2013-06-15"))
 
   (testing "Time"
     (are [x y res] (= res (tu/compile-binop elm/less-or-equal elm/time x y))
