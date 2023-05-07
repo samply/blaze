@@ -1816,6 +1816,7 @@
 
 
 (deftest fhir-dateTime-test
+  (s2/form :fhir/dateTime)
   (testing "conforming"
     (testing "JSON"
       (testing "valid"

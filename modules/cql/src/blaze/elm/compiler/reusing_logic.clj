@@ -119,14 +119,16 @@
 
 (defrecord ToDateFunctionExpression [operand]
   core/Expression
-  (-eval [_ {:keys [now] :as context} resource scope]
-    (p/to-date (core/-eval operand context resource scope) now)))
+  (-eval [_ context resource scope]
+    (type/value (core/-eval operand context resource scope)))
+  (-form [_]
+    `(~'call "ToDate" ~(core/-form operand))))
 
 
 (defrecord ToDateTimeFunctionExpression [operand]
   core/Expression
   (-eval [_ {:keys [now] :as context} resource scope]
-    (p/to-date-time (core/-eval operand context resource scope) now))
+    (p/to-date-time (type/value (core/-eval operand context resource scope)) now))
   (-form [_]
     `(~'call "ToDateTime" ~(core/-form operand))))
 

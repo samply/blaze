@@ -115,7 +115,7 @@
       #elm/as ["{urn:hl7-org:elm-types:r1}Integer" {:type "Null"}]
       nil
 
-      #elm/as ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date-time "2019-09-04"]
+      #elm/as ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date-time"2019-09-04"]
       (system/date-time 2019 9 4)))
 
   (testing "form"
@@ -1058,9 +1058,9 @@
 
       #elm/is ["{urn:hl7-org:elm-types:r1}String" #elm/string "foo"]
 
-      #elm/is ["{urn:hl7-org:elm-types:r1}Date" #elm/date "2020-03-08"]
+      #elm/is ["{urn:hl7-org:elm-types:r1}Date" #elm/date"2020-03-08"]
 
-      #elm/is ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date-time "2019-09-04"])
+      #elm/is ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date-time"2019-09-04"])
 
     (are [elm] (false? (core/-eval (c/compile {} elm) {} nil nil))
       #elm/is ["{urn:hl7-org:elm-types:r1}Boolean" #elm/integer "1"]
@@ -1081,7 +1081,7 @@
       #elm/is ["{urn:hl7-org:elm-types:r1}String" #elm/decimal "-1.1"]
       #elm/is ["{urn:hl7-org:elm-types:r1}String" {:type "Null"}]
 
-      #elm/is ["{urn:hl7-org:elm-types:r1}Date" #elm/date-time "2020-03-08"]
+      #elm/is ["{urn:hl7-org:elm-types:r1}Date" #elm/date-time"2020-03-08"]
       #elm/is ["{urn:hl7-org:elm-types:r1}Date" {:type "Null"}]
 
       #elm/is ["{urn:hl7-org:elm-types:r1}DateTime" #elm/string "2019-09-04"]
@@ -1303,9 +1303,9 @@
   (let [eval #(core/-eval % {:now tu/now} nil nil)]
     (testing "String"
       (are [x res] (= res (eval (tu/compile-unop elm/to-date elm/string x)))
-        "2019" (system/date 2019)
-        "2019-01" (system/date 2019 1)
-        "2019-01-01" (system/date 2019 1 1)
+        "2019" #system/date"2019"
+        "2019-01" #system/date"2019-01"
+        "2019-01-01" #system/date"2019-01-01"
 
         "aaaa" nil
         "2019-13" nil
@@ -1313,16 +1313,32 @@
 
     (testing "Date"
       (are [x res] (= res (eval (tu/compile-unop elm/to-date elm/date x)))
-        "2019" (system/date 2019)
-        "2019-01" (system/date 2019 1)
-        "2019-01-01" (system/date 2019 1 1)))
+        "2019" #system/date"2019"
+        "2019-01" #system/date"2019-01"
+        "2019-01-01" #system/date"2019-01-01"))
 
     (testing "DateTime"
       (are [x res] (= res (eval (tu/compile-unop elm/to-date elm/date-time x)))
-        "2019" (system/date 2019)
-        "2019-01" (system/date 2019 1)
-        "2019-01-01" (system/date 2019 1 1)
-        "2019-01-01T12:13" (system/date 2019 1 1))))
+        "2019" #system/date"2019"
+        "2019-01" #system/date"2019-01"
+        "2019-01-01" #system/date"2019-01-01"
+        "2019-01-01T12:13" #system/date"2019-01-01"
+        "2019-01-01T12:13:14" #system/date"2019-01-01"
+        "2019-01-01T12:13:14.000-01:00" #system/date"2019-01-01")
+
+      (testing "dynamic"
+        (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+              elm #elm/to-date #elm/parameter-ref "x"
+              expr (c/compile compile-ctx elm)
+              eval-ctx (fn [x] {:now tu/now :parameters {"x" x}})]
+          (are [date-time date] (= date (core/-eval expr (eval-ctx date-time) nil nil))
+            #system/date-time"2023" #system/date"2023"
+            #system/date-time"2023-05" #system/date"2023-05"
+            #system/date-time"2023-05-07" #system/date"2023-05-07"
+            #system/date-time"2023-05-07T16" #system/date"2023-05-07"
+            #system/date-time"2023-05-07T16:07" #system/date"2023-05-07"
+            #system/date-time"2023-05-07T16:07:00" #system/date"2023-05-07"
+            #system/date-time"2023-05-07T16:07:00+02:00" #system/date"2023-05-07")))))
 
   (tu/testing-unary-null elm/to-date))
 
@@ -1355,9 +1371,9 @@
   (let [eval #(core/-eval % {:now tu/now} nil nil)]
     (testing "String"
       (are [x res] (= res (eval (tu/compile-unop elm/to-date-time elm/string x)))
-        "2020" (system/date-time 2020)
-        "2020-03" (system/date-time 2020 3)
-        "2020-03-08" (system/date-time 2020 3 8)
+        "2020" #system/date-time"2020"
+        "2020-03" #system/date-time"2020-03"
+        "2020-03-08" #system/date-time"2020-03-08"
         "2020-03-08T12:54:00" (system/date-time 2020 3 8 12 54)
         "2020-03-08T12:54:00+00:00" (system/date-time 2020 3 8 12 54)
         "2020-03-08T12:54:00+01:00" (system/date-time 2020 3 8 11 54)
@@ -1369,16 +1385,16 @@
     (testing "Date"
       (testing "Static"
         (are [x res] (= res (tu/compile-unop elm/to-date-time elm/date x))
-          "2020" (system/date-time 2020)
-          "2020-03" (system/date-time 2020 3)
-          "2020-03-08" (system/date-time 2020 3 8))))
+          "2020" #system/date-time"2020"
+          "2020-03" #system/date-time"2020-03"
+          "2020-03-08" #system/date-time"2020-03-08")))
 
     (testing "DateTime"
       (are [x res] (= res (eval (tu/compile-unop elm/to-date-time elm/date-time x)))
-        "2020" (system/date-time 2020)
-        "2020-03" (system/date-time 2020 3)
-        "2020-03-08" (system/date-time 2020 3 8)
-        "2020-03-08T12:13" (system/date-time 2020 3 8 12 13))))
+        "2020" #system/date-time"2020"
+        "2020-03" #system/date-time"2020-03"
+        "2020-03-08" #system/date-time"2020-03-08"
+        "2020-03-08T12:13" #system/date-time"2020-03-08T12:13")))
 
   (tu/testing-unary-null elm/to-date-time)
 

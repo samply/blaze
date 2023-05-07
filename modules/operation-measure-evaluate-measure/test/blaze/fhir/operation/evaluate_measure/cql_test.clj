@@ -6,13 +6,11 @@
     [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.elm.compiler.library :as library]
-    [blaze.elm.date-time :as date-time]
     [blaze.elm.expression :as expr]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
     [blaze.fhir.operation.evaluate-measure.cql-spec]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type]
-    [blaze.fhir.spec.type.system :as system]
     [blaze.test-util :as tu :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -61,12 +59,12 @@
   using FHIR version '4.0.0'
   include FHIRHelpers version '4.0.0'
 
-  parameter Year2022 Date
+  parameter Numbers List<Integer>
 
   context Patient
 
   define InInitialPopulation:
-    Year2022 - 2022 'years'")
+    singleton from Numbers")
 
 
 (def library-encounter
@@ -262,16 +260,14 @@
     (with-system-data [system mem-node-system]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
       (let [{:keys [db] :as context} (assoc (context system library-error)
-                                       :parameters {"Year2022" (system/date 2022)})
+                                       :parameters {"Numbers" [1 2]})
             patient (d/resource-handle db "Patient" "0")]
         (given (cql/evaluate-individual-expression context patient "InInitialPopulation")
-          ::anom/category := ::anom/fault
-          ::anom/message := "Error while evaluating the expression `InInitialPopulation`: Year 0 out of range while subtracting the period Period[month = 24264, millis = 0] from the year 2022."
+          ::anom/category := ::anom/conflict
+          ::anom/message := "More than one element in `SingletonFrom` expression."
           :fhir/issue := "exception"
           :expression-name := "InInitialPopulation"
-          :op := :subtract
-          :year := (system/date 2022)
-          :period := (date-time/period 2022 0 0))))))
+          :list := [1 2])))))
 
 
 (def two-value-eval

@@ -1,5 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.measure-test
   (:require
+    [blaze.anomaly :as ba]
     [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.fhir.operation.evaluate-measure.measure :as measure]
@@ -545,7 +546,7 @@
     [0 :value :text type/value] := "Jena"
     [0 :population 0 :count] := 2)
 
-  (is (= ::anom/incorrect (::anom/category (evaluate "q22-stratifier-multiple-cities-fail"))))
+  (is (ba/incorrect? (evaluate "q22-stratifier-multiple-cities-fail")))
 
   (given (first-stratifier-strata (evaluate "q23-stratifier-ageclass-and-gender"))
     [0 :component 0 :code :text type/value] := "age-class"

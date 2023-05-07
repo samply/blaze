@@ -4,7 +4,6 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :as ba]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.test-util :as tu]
@@ -12,19 +11,19 @@
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [blaze.fhir.spec.type.system :as system]
-    [blaze.test-util :refer [satisfies-prop]]
+    [blaze.test-util :refer [given-thrown satisfies-prop]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [clojure.test.check.properties :as prop]
-    [cognitect.anomalies :as anom]
-    [java-time.api :as time]
-    [juxt.iota :refer [given]])
+    [java-time.api :as time])
   (:import
-    [java.time Year YearMonth]
+    [blaze.fhir.spec.type.system DateDate DateYear DateYearMonth]
+    [java.time OffsetDateTime]
     [java.time.temporal Temporal]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (tu/instrument-compile)
 
@@ -76,12 +75,11 @@
     (is (nil? (c/compile {} #elm/date [{:type "null"}]))))
 
   (testing "Static year"
-    (is (= (system/date 2019) (c/compile {} #elm/date "2019"))))
+    (is (= #system/date"2019" (c/compile {} #elm/date"2019"))))
 
-  (testing "Static year over 10.000"
-    (given (ba/try-anomaly (c/compile {} #elm/date "10001"))
-      ::anom/category := ::anom/incorrect
-      ::anom/message := "Year `10001` out of range."))
+  (testing "Static year over 9.999"
+    (given-thrown (c/compile {} #elm/date"10000")
+      :message := "Invalid value for Year (valid values 1 - 9999): 10000"))
 
   (testing "Dynamic year has type :system/date"
     (let [compile-ctx {:library {:parameters {:def [{:name "year"}]}}}
@@ -100,19 +98,19 @@
           elm #elm/date [#elm/parameter-ref "year"]
           expr (c/compile compile-ctx elm)
           eval-ctx {:parameters {"year" 2019}}]
-      (is (= (system/date 2019) (core/-eval expr eval-ctx nil nil)))))
+      (is (= #system/date"2019" (core/-eval expr eval-ctx nil nil)))))
 
   (testing "Dynamic Null month"
     (let [compile-ctx {:library {:parameters {:def [{:name "month"}]}}}
           elm #elm/date [#elm/integer "2018" #elm/parameter-ref "month"]
           expr (c/compile compile-ctx elm)
           eval-ctx {:parameters {"month" nil}}]
-      (is (= (system/date 2018) (core/-eval expr eval-ctx nil nil)))))
+      (is (= #system/date"2018" (core/-eval expr eval-ctx nil nil)))))
 
   (testing "Static year-month"
     (are [elm res] (= res (c/compile {} elm))
-      #elm/date "2019-03"
-      (system/date 2019 3)))
+      #elm/date"2019-03"
+      #system/date"2019-03"))
 
   (testing "Dynamic year-month has type :system/date"
     (let [compile-ctx {:library {:parameters {:def [{:name "month"}]}}}
@@ -124,57 +122,57 @@
           elm #elm/date [#elm/integer "2019" #elm/parameter-ref "month"]
           expr (c/compile compile-ctx elm)
           eval-ctx {:parameters {"month" 3}}]
-      (is (= (system/date 2019 3) (core/-eval expr eval-ctx nil nil)))))
+      (is (= #system/date"2019-03" (core/-eval expr eval-ctx nil nil)))))
 
   (testing "Dynamic Null month and day"
     (let [compile-ctx {:library
                        {:parameters {:def [{:name "month"} {:name "day"}]}}}
           elm #elm/date [#elm/integer "2020"
-                        #elm/parameter-ref "month"
-                        #elm/parameter-ref "day"]
+                         #elm/parameter-ref "month"
+                         #elm/parameter-ref "day"]
           expr (c/compile compile-ctx elm)
           eval-ctx {:parameters {"month" nil "day" nil}}]
-      (is (= (system/date 2020) (core/-eval expr eval-ctx nil nil)))))
+      (is (= #system/date"2020" (core/-eval expr eval-ctx nil nil)))))
 
   (testing "Dynamic date has type :system/date"
     (let [compile-ctx {:library {:parameters {:def [{:name "day"}]}}}
           elm #elm/date [#elm/integer "2018"
-                        #elm/integer "5"
-                        #elm/parameter-ref "day"]]
+                         #elm/integer "5"
+                         #elm/parameter-ref "day"]]
       (is (= :system/date (system/type (c/compile compile-ctx elm))))))
 
   (testing "Dynamic Null day"
     (let [compile-ctx {:library {:parameters {:def [{:name "day"}]}}}
           elm #elm/date [#elm/integer "2018"
-                        #elm/integer "5"
-                        #elm/parameter-ref "day"]
+                         #elm/integer "5"
+                         #elm/parameter-ref "day"]
           expr (c/compile compile-ctx elm)
           eval-ctx {:parameters {"day" nil}}]
-      (is (= (system/date 2018 5) (core/-eval expr eval-ctx nil nil)))))
+      (is (= #system/date"2018-05" (core/-eval expr eval-ctx nil nil)))))
 
   (testing "Static date"
     (are [elm res] (= res (c/compile {} elm))
-      #elm/date "2019-03-23"
-      (system/date 2019 3 23)))
+      #elm/date"2019-03-23"
+      #system/date"2019-03-23"))
 
   (testing "Dynamic date"
     (let [compile-ctx {:library {:parameters {:def [{:name "day"}]}}}
           elm #elm/date [#elm/integer "2019"
-                        #elm/integer "3"
-                        #elm/parameter-ref "day"]
+                         #elm/integer "3"
+                         #elm/parameter-ref "day"]
           expr (c/compile compile-ctx elm)
           eval-ctx {:parameters {"day" 23}}]
-      (is (= (system/date 2019 3 23) (core/-eval expr eval-ctx nil nil)))))
+      (is (= #system/date"2019-03-23" (core/-eval expr eval-ctx nil nil)))))
 
-  (testing "an ELM year (only literals) always compiles to a Year"
+  (testing "an ELM year (only literals) always compiles to a DateYear"
     (satisfies-prop 100
       (prop/for-all [year (s/gen :elm/literal-year)]
-        (instance? Year (c/compile {} year)))))
+        (instance? DateYear (c/compile {} year)))))
 
-  (testing "an ELM year-month (only literals) always compiles to a YearMonth"
+  (testing "an ELM year-month (only literals) always compiles to a DateYearMonth"
     (satisfies-prop 100
       (prop/for-all [year-month (s/gen :elm/literal-year-month)]
-        (instance? YearMonth (c/compile {} year-month)))))
+        (instance? DateYearMonth (c/compile {} year-month)))))
 
   (testing "an ELM date (only literals) always compiles to something implementing Temporal"
     (satisfies-prop 100
@@ -190,8 +188,13 @@
 ;; If the argument is null, the result is null.
 (deftest compile-date-from-test
   (are [x res] (= res (c/compile {} (elm/date-from x)))
-    #elm/date "2019-04-17" (system/date 2019 4 17)
-    #elm/date-time "2019-04-17T12:48" (system/date 2019 4 17))
+    #elm/date"2019" #system/date"2019"
+    #elm/date"2019-04" #system/date"2019-04"
+    #elm/date"2019-04-17" #system/date"2019-04-17"
+    #elm/date-time"2019" #system/date"2019"
+    #elm/date-time"2019-04" #system/date"2019-04"
+    #elm/date-time"2019-04-17" #system/date"2019-04-17"
+    #elm/date-time"2019-04-17T12:48" #system/date"2019-04-17")
 
   (tu/testing-unary-null elm/date-from)
 
@@ -207,6 +210,13 @@
 ;; example, hour may be null, but if it is, minute, second, and millisecond must
 ;; all be null as well.
 ;;
+;; If all the arguments are null, the result is null, as opposed to a DateTime
+;; with no components specified.
+;;
+;; Although the milliseconds are specified with a separate component, seconds
+;; and milliseconds are combined and represented as a Decimal for the purposes
+;; of comparison.
+;;
 ;; If timezoneOffset is not specified, it is defaulted to the timezone offset of
 ;; the evaluation request.
 (deftest compile-date-time-test
@@ -214,7 +224,7 @@
     (is (nil? (c/compile {} #elm/date-time[{:type "null"}]))))
 
   (testing "Static year"
-    (is (= (system/date-time 2019) (c/compile {} #elm/date-time "2019"))))
+    (is (= #system/date-time"2019" (c/compile {} #elm/date-time"2019"))))
 
   (testing "Dynamic Null year"
     (let [compile-ctx {:library {:parameters {:def [{:name "year"}]}}}
@@ -228,26 +238,26 @@
           elm #elm/date-time[#elm/parameter-ref "year"]
           expr (c/compile compile-ctx elm)
           eval-ctx {:parameters {"year" 2019}}]
-      (is (= (system/date-time 2019) (core/-eval expr eval-ctx nil nil)))))
+      (is (= #system/date-time"2019" (core/-eval expr eval-ctx nil nil)))))
 
   (testing "Dynamic Null month"
     (let [compile-ctx {:library {:parameters {:def [{:name "month"}]}}}
           elm #elm/date-time[#elm/integer "2018" #elm/parameter-ref "month"]
           expr (c/compile compile-ctx elm)
           eval-ctx {:parameters {"month" nil}}]
-      (is (= (system/date-time 2018) (core/-eval expr eval-ctx nil nil)))))
+      (is (= #system/date-time"2018" (core/-eval expr eval-ctx nil nil)))))
 
   (testing "Static year-month"
     (are [elm res] (= res (c/compile {} elm))
-      #elm/date-time "2019-03"
-      (system/date-time 2019 3)))
+      #elm/date-time"2019-03"
+      #system/date-time"2019-03"))
 
   (testing "Dynamic year-month"
     (let [compile-ctx {:library {:parameters {:def [{:name "month"}]}}}
           elm #elm/date-time[#elm/integer "2019" #elm/parameter-ref "month"]
           expr (c/compile compile-ctx elm)
           eval-ctx {:parameters {"month" 3}}]
-      (is (= (system/date-time 2019 3) (core/-eval expr eval-ctx nil nil)))))
+      (is (= #system/date-time"2019-03" (core/-eval expr eval-ctx nil nil)))))
 
   (testing "Dynamic Null month and day"
     (let [compile-ctx {:library
@@ -257,7 +267,7 @@
                              #elm/parameter-ref "day"]
           expr (c/compile compile-ctx elm)
           eval-ctx {:parameters {"month" nil "day" nil}}]
-      (is (= (system/date-time 2020) (core/-eval expr eval-ctx nil nil)))))
+      (is (= #system/date-time"2020" (core/-eval expr eval-ctx nil nil)))))
 
   (testing "Dynamic Null day"
     (let [compile-ctx {:library {:parameters {:def [{:name "day"}]}}}
@@ -266,12 +276,12 @@
                              #elm/parameter-ref "day"]
           expr (c/compile compile-ctx elm)
           eval-ctx {:parameters {"day" nil}}]
-      (is (= (system/date-time 2018 5) (core/-eval expr eval-ctx nil nil)))))
+      (is (= #system/date-time"2018-05" (core/-eval expr eval-ctx nil nil)))))
 
   (testing "Static date"
     (are [elm res] (= res (c/compile {} elm))
-      #elm/date-time "2019-03-23"
-      (system/date-time 2019 3 23)))
+      #elm/date-time"2019-03-23"
+      #system/date-time"2019-03-23"))
 
   (testing "Dynamic date"
     (let [compile-ctx {:library {:parameters {:def [{:name "day"}]}}}
@@ -280,11 +290,11 @@
                              #elm/parameter-ref "day"]
           expr (c/compile compile-ctx elm)
           eval-ctx {:parameters {"day" 23}}]
-      (is (= (system/date-time 2019 3 23) (core/-eval expr eval-ctx nil nil)))))
+      (is (= #system/date-time"2019-03-23" (core/-eval expr eval-ctx nil nil)))))
 
   (testing "Static hour"
     (are [elm res] (= res (c/compile {} elm))
-      #elm/date-time "2019-03-23T12"
+      #elm/date-time"2019-03-23T12"
       (system/date-time 2019 3 23 12 0 0)))
 
   (testing "Dynamic hour"
@@ -300,22 +310,22 @@
 
   (testing "minute"
     (are [elm res] (= res (c/compile {} elm))
-      #elm/date-time "2019-03-23T12:13"
+      #elm/date-time"2019-03-23T12:13"
       (system/date-time 2019 3 23 12 13 0)))
 
   (testing "second"
     (are [elm res] (= res (c/compile {} elm))
-      #elm/date-time "2019-03-23T12:13:14"
+      #elm/date-time"2019-03-23T12:13:14"
       (system/date-time 2019 3 23 12 13 14)))
 
   (testing "millisecond"
     (are [elm res] (= res (c/compile {} elm))
-      #elm/date-time "2019-03-23T12:13:14.1"
+      #elm/date-time"2019-03-23T12:13:14.1"
       (system/date-time 2019 3 23 12 13 14 1)))
 
   (testing "Invalid DateTime above max value"
     (are [elm] (thrown? Exception (c/compile {} elm))
-      #elm/date-time "10000-12-31T23:59:59.999"))
+      #elm/date-time"10000-12-31T23:59:59.999"))
 
   (testing "with offset"
     (are [elm res] (= res (core/-eval (c/compile {} elm) {:now tu/now} nil nil))
@@ -601,9 +611,9 @@
       "2019-04-17" "2019-04-17" true
       "2019-04-17" "2019-04-18" false)
 
-    (tu/testing-binary-null elm/same-as #elm/date "2019")
-    (tu/testing-binary-null elm/same-as #elm/date "2019-04")
-    (tu/testing-binary-null elm/same-as #elm/date "2019-04-17")
+    (tu/testing-binary-null elm/same-as #elm/date"2019")
+    (tu/testing-binary-null elm/same-as #elm/date"2019-04")
+    (tu/testing-binary-null elm/same-as #elm/date"2019-04-17")
 
     (testing "with year precision"
       (are [x y res] (= res (tu/compile-binop-precision elm/same-as elm/date x y "year"))
@@ -623,9 +633,9 @@
       "2019-04-17" "2019-04-17" true
       "2019-04-17" "2019-04-18" false)
 
-    (tu/testing-binary-null elm/same-as #elm/date-time "2019")
-    (tu/testing-binary-null elm/same-as #elm/date-time "2019-04")
-    (tu/testing-binary-null elm/same-as #elm/date-time "2019-04-17")
+    (tu/testing-binary-null elm/same-as #elm/date-time"2019")
+    (tu/testing-binary-null elm/same-as #elm/date-time"2019-04")
+    (tu/testing-binary-null elm/same-as #elm/date-time"2019-04-17")
 
     (testing "with year precision"
       (are [x y res] (= res (tu/compile-binop-precision elm/same-as elm/date-time x y "year"))
@@ -700,9 +710,9 @@
       "2019-04-17" "2019-04-17" true
       "2019-04-17" "2019-04-16" false)
 
-    (tu/testing-binary-null elm/same-or-before #elm/date "2019")
-    (tu/testing-binary-null elm/same-or-before #elm/date "2019-04")
-    (tu/testing-binary-null elm/same-or-before #elm/date "2019-04-17")
+    (tu/testing-binary-null elm/same-or-before #elm/date"2019")
+    (tu/testing-binary-null elm/same-or-before #elm/date"2019-04")
+    (tu/testing-binary-null elm/same-or-before #elm/date"2019-04-17")
 
     (testing "with year precision"
       (are [x y res] (= res (tu/compile-binop-precision elm/same-or-before elm/date x y "year"))
@@ -725,9 +735,9 @@
       "2019-04-17" "2019-04-17" true
       "2019-04-17" "2019-04-16" false)
 
-    (tu/testing-binary-null elm/same-or-before #elm/date-time "2019")
-    (tu/testing-binary-null elm/same-or-before #elm/date-time "2019-04")
-    (tu/testing-binary-null elm/same-or-before #elm/date-time "2019-04-17")
+    (tu/testing-binary-null elm/same-or-before #elm/date-time"2019")
+    (tu/testing-binary-null elm/same-or-before #elm/date-time"2019-04")
+    (tu/testing-binary-null elm/same-or-before #elm/date-time"2019-04-17")
 
     (testing "with year precision"
       (are [x y res] (= res (tu/compile-binop-precision elm/same-or-before elm/date-time x y "year"))
@@ -802,9 +812,9 @@
       "2019-04-17" "2019-04-17" true
       "2019-04-17" "2019-04-18" false)
 
-    (tu/testing-binary-null elm/same-or-after #elm/date "2019")
-    (tu/testing-binary-null elm/same-or-after #elm/date "2019-04")
-    (tu/testing-binary-null elm/same-or-after #elm/date "2019-04-17")
+    (tu/testing-binary-null elm/same-or-after #elm/date"2019")
+    (tu/testing-binary-null elm/same-or-after #elm/date"2019-04")
+    (tu/testing-binary-null elm/same-or-after #elm/date"2019-04-17")
 
     (testing "with year precision"
       (are [x y res] (= res (tu/compile-binop-precision elm/same-or-after elm/date x y "year"))
@@ -827,9 +837,9 @@
       "2019-04-17" "2019-04-17" true
       "2019-04-17" "2019-04-18" false)
 
-    (tu/testing-binary-null elm/same-or-after #elm/date-time "2019")
-    (tu/testing-binary-null elm/same-or-after #elm/date-time "2019-04")
-    (tu/testing-binary-null elm/same-or-after #elm/date-time "2019-04-17")
+    (tu/testing-binary-null elm/same-or-after #elm/date-time"2019")
+    (tu/testing-binary-null elm/same-or-after #elm/date-time"2019-04")
+    (tu/testing-binary-null elm/same-or-after #elm/date-time"2019-04-17")
 
     (testing "with year precision"
       (are [x y res] (= res (tu/compile-binop-precision elm/same-or-after elm/date-time x y "year"))
@@ -933,5 +943,7 @@
 ;; more information on the rationale for defining the Today operator in this
 ;; way.
 (deftest compile-today-test
-  (are [res] (= res (core/-eval (c/compile {} {:type "Today"}) {:now tu/now} nil nil))
-    (time/local-date tu/now)))
+  (are [res] (= res (core/-eval (c/compile {} elm/today) {:now tu/now} nil nil))
+    (DateDate/fromLocalDate (.toLocalDate ^OffsetDateTime tu/now)))
+
+  (tu/testing-constant-form elm/today))
