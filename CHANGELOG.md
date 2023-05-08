@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.20.5
+
+### Bugfixes
+
+* Fix Extended Birth Date in CQL ([#985](https://github.com/samply/blaze/pull/985))
+* Fix Extended Instant ([#984](https://github.com/samply/blaze/pull/984))
+
+### Minor Enhancements
+
+* Add Profiles to Capability Statement ([#983](https://github.com/samply/blaze/issues/983))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/71?closed=1).
+
 ## v0.20.4
 
 ### Bugfixes
