@@ -11,17 +11,17 @@
   {:mvn/version "2.15.0"}
 
   info.cqframework/cql-to-elm
-  {:mvn/version "2.8.0"
+  {:mvn/version "2.9.0"
    :exclusions [xpp3/xpp3_xpath]}
 
   info.cqframework/elm-jackson
-  {:mvn/version "2.8.0"}
+  {:mvn/version "2.9.0"}
 
   info.cqframework/model-jackson
-  {:mvn/version "2.8.0"}
+  {:mvn/version "2.9.0"}
 
   info.cqframework/quick
-  {:mvn/version "2.8.0"}
+  {:mvn/version "2.9.0"}
 
   org.apache.commons/commons-text
   {:mvn/version "1.10.0"}
