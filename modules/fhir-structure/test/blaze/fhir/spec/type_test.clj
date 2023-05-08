@@ -5,7 +5,6 @@
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type-spec]
     [blaze.fhir.spec.type.protocols :as p]
-    [blaze.fhir.spec.type.system :as system]
     [blaze.fhir.spec.type.system.spec]
     [blaze.test-util :as tu :refer [satisfies-prop]]
     [clojure.data.xml.name :as xml-name]
@@ -765,8 +764,13 @@
       #fhir/instant{:value "1970-01-02T00:00:00Z"}
       #fhir/instant{:value "1970-01-02T00:00:00+01:00"}))
 
+  (testing "with extension"
+    (testing "without value"
+      (is (nil? (type/value #fhir/instant{:extension [#fhir/Extension{:url "url-130945"}]})))))
+
   (testing "instant"
-    (is (= #fhir/instant{:value "1970-01-02T00:00:00Z"} #fhir/instant"1970-01-02T00:00:00Z")))
+    (is (= #fhir/instant{:value "1970-01-02T00:00:00Z"}
+           #fhir/instant"1970-01-02T00:00:00Z")))
 
   (testing "interned"
     (is (not-interned? #fhir/instant"2020-01-01T00:00:00+02:00"
@@ -888,7 +892,7 @@
           (type/date {:extension [internable-extension]}))))
 
     (testing "value"
-      (are [x] (= (system/date 2020) (type/value x))
+      (are [x] (= #system/date"2020" (type/value x))
         #fhir/date"2020"
         #fhir/date{:id "foo" :value "2020"}))
 
@@ -934,7 +938,7 @@
       (is (not-interned? #fhir/date"2020-01" #fhir/date"2020-01")))
 
     (testing "value"
-      (are [x] (= (system/date 2020 1) (type/value x))
+      (are [x] (= #system/date"2020-01" (type/value x))
         #fhir/date"2020-01"
         #fhir/date{:id "foo" :value "2020-01"}))
 
@@ -980,7 +984,7 @@
       (is (not-interned? #fhir/date"2020-01-01" #fhir/date"2020-01-01")))
 
     (testing "value"
-      (are [x] (= (system/date 2020 1 2) (type/value x))
+      (are [x] (= #system/date"2020-01-02" (type/value x))
         #fhir/date"2020-01-02"
         #fhir/date{:id "foo" :value "2020-01-02"}))
 
@@ -1018,7 +1022,10 @@
     (testing "dateTime?"
       (are [x] (type/dateTime? x)
         #fhir/dateTime"2022"
-        #fhir/dateTime{:id "foo"}))
+        #fhir/dateTime"2022-01"
+        #fhir/dateTime"2022-01-01"
+        #fhir/dateTime{:id "foo"}
+        #fhir/dateTime{:extension [#fhir/Extension{:url "foo"}]}))
 
     (testing "type"
       (are [x] (= :fhir/dateTime (type/type x))
@@ -1032,7 +1039,7 @@
       (is (not-interned? #fhir/dateTime"2020" #fhir/dateTime"2020")))
 
     (testing "value"
-      (are [x] (= (system/date-time 2020) (type/value x))
+      (are [x] (= #system/date-time"2020" (type/value x))
         #fhir/dateTime"2020"
         #fhir/dateTime{:id "foo" :value "2020"}))
 
@@ -1078,7 +1085,7 @@
       (is (not-interned? #fhir/dateTime"2022-05" #fhir/dateTime"2022-05")))
 
     (testing "value"
-      (are [x] (= (system/date-time 2020 1) (type/value x))
+      (are [x] (= #system/date-time"2020-01" (type/value x))
         #fhir/dateTime"2020-01"
         #fhir/dateTime{:id "foo" :value "2020-01"}))
 
@@ -1124,7 +1131,7 @@
       (is (not-interned? #fhir/dateTime"2022-05-23" #fhir/dateTime"2022-05-23")))
 
     (testing "value"
-      (are [x] (= (system/date-time 2020 1 1) (type/value x))
+      (are [x] (= #system/date-time"2020-01-01" (type/value x))
         #fhir/dateTime"2020-01-01"
         #fhir/dateTime{:id "foo" :value "2020-01-01"}))
 
@@ -1408,7 +1415,7 @@
                            (type/dateTime {:extension [string-extension] :value "2020"}))))
 
       (testing "value"
-        (is (= (system/date-time 2020) (type/value extended-date-time))))
+        (is (= #system/date-time"2020" (type/value extended-date-time))))
 
       (testing "to-xml"
         (is (= extended-date-time-element (type/to-xml extended-date-time))))

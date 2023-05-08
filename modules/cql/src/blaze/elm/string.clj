@@ -51,15 +51,14 @@
 (extend-protocol p/ToDate
   String
   (to-date [s _]
-    (-> (system/parse-date s)
-        (ba/exceptionally (constantly nil)))))
+    (ba/ignore (system/parse-date s))))
 
 
 ;; 22.23. ToDateTime
 (extend-protocol p/ToDateTime
   String
   (to-date-time [s now]
-    (p/to-date-time (system/parse-date-time s) now)))
+    (p/to-date-time (ba/ignore (system/parse-date-time s)) now)))
 
 
 ;; 22.24. ToDecimal

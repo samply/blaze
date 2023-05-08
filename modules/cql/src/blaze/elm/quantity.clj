@@ -175,8 +175,8 @@
 (extend-protocol p/Predecessor
   Quantity
   (predecessor [x]
-    (Quantities/getQuantity ^Number (p/predecessor (p/to-decimal (.getValue x)))
-                            (.getUnit x))))
+    (when-let [value (p/predecessor (p/to-decimal (.getValue x)))]
+      (Quantities/getQuantity ^Number value (.getUnit x)))))
 
 
 ;; 16.20. Subtract
@@ -190,8 +190,8 @@
 (extend-protocol p/Successor
   Quantity
   (successor [x]
-    (Quantities/getQuantity ^Number (p/successor (p/to-decimal (.getValue x)))
-                            (.getUnit x))))
+    (when-let [value (p/successor (p/to-decimal (.getValue x)))]
+      (Quantities/getQuantity ^Number value (.getUnit x)))))
 
 
 

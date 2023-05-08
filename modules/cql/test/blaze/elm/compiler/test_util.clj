@@ -163,6 +163,15 @@
   (c/compile {} (constructor [(op-constructor op-1) (op-constructor op-2) precision])))
 
 
+(defmacro testing-constant-form [elm-constructor]
+  (let [form-name (symbol (name elm-constructor))]
+    `(testing "form"
+       (let [compile-ctx# {:library {:parameters {:def [{:name "x"}]}}}
+             elm# ~elm-constructor
+             expr# (c/compile compile-ctx# elm#)]
+         (is (= (quote ~form-name) (core/-form expr#)))))))
+
+
 (defmacro testing-unary-form [elm-constructor]
   (let [form-name (symbol (name elm-constructor))]
     `(testing "form"

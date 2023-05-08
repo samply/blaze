@@ -16,7 +16,7 @@
     [clojure.string :as str])
   (:import
     [blaze.fhir.spec.type.system
-     DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]
+     Date DateDate DateTimeDate DateTimeYear DateTimeYearMonth DateYear DateYearMonth]
     [clojure.lang IPersistentMap Keyword]
     [com.fasterxml.jackson.core JsonGenerator]
     [com.fasterxml.jackson.databind.module SimpleModule]
@@ -24,9 +24,8 @@
     [com.google.common.hash PrimitiveSink]
     [java.io Writer]
     [java.time
-     Instant LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth
-     ZoneOffset]
-    [java.time.format DateTimeFormatter DateTimeParseException]
+     DateTimeException Instant LocalDate LocalDateTime LocalTime OffsetDateTime ZoneOffset]
+    [java.time.format DateTimeFormatter]
     [java.util Comparator List Map Map$Entry UUID]
     [jsonista.jackson
      KeywordKeyDeserializer PersistentHashMapDeserializer
@@ -503,8 +502,12 @@
   (-references [_]))
 
 
+(defn- at-utc [instant]
+  (.atOffset ^Instant instant ZoneOffset/UTC))
+
+
 (defextended ExtendedInstant [id extension ^Instant value]
-  :fhir-type :fhir/instant :hash-num 9 :value-form (.atOffset value ZoneOffset/UTC))
+  :fhir-type :fhir/instant :hash-num 9 :value-form (some-> value at-utc))
 
 
 (defn- parse-instant-value [value]
@@ -556,7 +559,7 @@
 ;; -- date --------------------------------------------------------------------
 
 (extend-protocol p/FhirType
-  Year
+  DateYear
   (-type [_] :fhir/date)
   (-interned [_] false)
   (-value [date] date)
@@ -572,10 +575,10 @@
     (doto ^PrimitiveSink sink
       (.putByte (byte 10))                                  ; :fhir/date
       (.putByte (byte 2)))                                  ; :value
-    (system/-hash-into date sink))
+    (.hashInto date sink))
   (-references [_])
 
-  YearMonth
+  DateYearMonth
   (-type [_] :fhir/date)
   (-interned [_] false)
   (-value [date] date)
@@ -591,10 +594,10 @@
     (doto ^PrimitiveSink sink
       (.putByte (byte 10))                                  ; :fhir/date
       (.putByte (byte 2)))                                  ; :value
-    (system/-hash-into date sink))
+    (.hashInto date sink))
   (-references [_])
 
-  LocalDate
+  DateDate
   (-type [_] :fhir/date)
   (-interned [_] false)
   (-value [date] date)
@@ -610,7 +613,7 @@
     (doto ^PrimitiveSink sink
       (.putByte (byte 10))                                  ; :fhir/date
       (.putByte (byte 2)))                                  ; :value
-    (system/-hash-into date sink))
+    (.hashInto date sink))
   (-references [_]))
 
 
@@ -620,8 +623,8 @@
 
 (defn- parse-date-value [value]
   (try
-    (system/parse-date* value)
-    (catch DateTimeParseException _
+    (Date/parse value)
+    (catch DateTimeException _
       ;; in case of leap year errors not covered by regex
       ::s2/invalid)))
 
@@ -678,58 +681,58 @@
   DateTimeYear
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
-  (-value [year] year)
+  (-value [date] date)
   (-has-primary-content [_] true)
-  (-serialize-json [year generator]
-    (.writeString ^JsonGenerator generator (str year)))
+  (-serialize-json [date generator]
+    (.writeString ^JsonGenerator generator (str date)))
   (-has-secondary-content [_] false)
   (-serialize-json-secondary [_ generator]
     (.writeNull ^JsonGenerator generator))
-  (-to-xml [year]
-    (xml-node/element nil {:value (str year)}))
-  (-hash-into [year sink]
+  (-to-xml [date]
+    (xml-node/element nil {:value (str date)}))
+  (-hash-into [date sink]
     (doto ^PrimitiveSink sink
       (.putByte (byte 11))                                  ; :fhir/dateTime
       (.putByte (byte 2)))                                  ; :value
-    (system/-hash-into year sink))
+    (.hashInto date sink))
   (-references [_])
 
   DateTimeYearMonth
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
-  (-value [year-month] year-month)
+  (-value [date] date)
   (-has-primary-content [_] true)
-  (-serialize-json [year-month generator]
-    (.writeString ^JsonGenerator generator (str year-month)))
+  (-serialize-json [date generator]
+    (.writeString ^JsonGenerator generator (str date)))
   (-has-secondary-content [_] false)
   (-serialize-json-secondary [_ generator]
     (.writeNull ^JsonGenerator generator))
-  (-to-xml [year-month]
-    (xml-node/element nil {:value (str year-month)}))
-  (-hash-into [year-month sink]
+  (-to-xml [date]
+    (xml-node/element nil {:value (str date)}))
+  (-hash-into [date sink]
     (doto ^PrimitiveSink sink
       (.putByte (byte 11))                                  ; :fhir/dateTime
       (.putByte (byte 2)))                                  ; :value
-    (system/-hash-into year-month sink))
+    (.hashInto date sink))
   (-references [_])
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (-type [_] :fhir/dateTime)
   (-interned [_] false)
-  (-value [year-month-day] year-month-day)
+  (-value [date] date)
   (-has-primary-content [_] true)
-  (-serialize-json [year-month-day generator]
-    (.writeString ^JsonGenerator generator (str year-month-day)))
+  (-serialize-json [date generator]
+    (.writeString ^JsonGenerator generator (str date)))
   (-has-secondary-content [_] false)
   (-serialize-json-secondary [_ generator]
     (.writeNull ^JsonGenerator generator))
-  (-to-xml [year-month-day]
-    (xml-node/element nil {:value (str year-month-day)}))
-  (-hash-into [year-month-day sink]
+  (-to-xml [date]
+    (xml-node/element nil {:value (str date)}))
+  (-hash-into [date sink]
     (doto ^PrimitiveSink sink
       (.putByte (byte 11))                                  ; :fhir/dateTime
       (.putByte (byte 2)))                                  ; :value
-    (system/-hash-into year-month-day sink))
+    (.hashInto date sink))
   (-references [_]))
 
 
@@ -780,7 +783,7 @@
 (defn- parse-date-time-value [value]
   (try
     (system/parse-date-time* value)
-    (catch DateTimeParseException _
+    (catch DateTimeException _
       ;; in case of leap year errors not covered by regex
       ::s2/invalid)))
 
@@ -1263,35 +1266,11 @@
 
 ;; ---- print -----------------------------------------------------------------
 
-(defmethod print-dup Year [^Year year ^Writer w]
-  (.write w "#=(java.time.Year/of ")
-  (.write w (str (.getValue year)))
-  (.write w ")"))
-
-
 (defmethod print-dup Instant [^Instant instant ^Writer w]
   (.write w "#=(java.time.Instant/ofEpochSecond ")
   (.write w (str (.getEpochSecond instant)))
   (.write w " ")
   (.write w (str (.getNano instant)))
-  (.write w ")"))
-
-
-(defmethod print-dup YearMonth [^YearMonth yearMonth ^Writer w]
-  (.write w "#=(java.time.YearMonth/of ")
-  (.write w (str (.getYear yearMonth)))
-  (.write w " ")
-  (.write w (str (.getMonthValue yearMonth)))
-  (.write w ")"))
-
-
-(defmethod print-dup LocalDate [^LocalDate date ^Writer w]
-  (.write w "#=(java.time.LocalDate/of ")
-  (.write w (str (.getYear date)))
-  (.write w " ")
-  (.write w (str (.getMonthValue date)))
-  (.write w " ")
-  (.write w (str (.getDayOfMonth date)))
   (.write w ")"))
 
 

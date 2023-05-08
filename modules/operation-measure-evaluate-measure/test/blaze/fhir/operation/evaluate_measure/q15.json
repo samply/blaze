@@ -26,6 +26,24 @@
     },
     {
       "resource": {
+        "resourceType": "Patient",
+        "id": "2",
+        "_birthDate": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+              "valueCode": "unknown"
+            }
+          ]
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/2"
+      }
+    },
+    {
+      "resource": {
         "resourceType": "Measure",
         "id": "0",
         "url": "0",

@@ -12,15 +12,15 @@
   (:refer-clojure :exclude [boolean? decimal? integer? string? time type])
   (:require
     [blaze.anomaly :as ba]
-    [cognitect.anomalies :as anom]
-    [java-time.core :as time-core])
+    [cognitect.anomalies :as anom])
   (:import
+    [blaze.fhir.spec.type.system Date DateDate DateTime DateTimeDate DateTimeYear DateTimeYearMonth DateYear DateYearMonth]
     [com.google.common.hash PrimitiveSink]
     [java.io Writer]
     [java.nio.charset StandardCharsets]
-    [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth ZoneOffset]
+    [java.time DateTimeException LocalDateTime LocalTime OffsetDateTime ZoneOffset]
     [java.time.format DateTimeFormatter DateTimeParseException]
-    [java.time.temporal Temporal TemporalAccessor TemporalField TemporalUnit]))
+    [java.time.temporal ChronoField]))
 
 
 (set! *warn-on-reflection* true)
@@ -183,22 +183,11 @@
 (defn date
   "Returns a System.Date"
   ([year]
-   (Year/of year))
+   (DateYear/of year))
   ([year month]
-   (YearMonth/of (int year) (int month)))
+   (DateYearMonth/of year month))
   ([year month day]
-   (LocalDate/of (int year) (int month) (int day))))
-
-
-(defn parse-date* [s]
-  (case (count s)
-    10 (LocalDate/parse s)
-    7 (YearMonth/parse s)
-    (Year/parse s)))
-
-
-(defn- date-string? [s]
-  (.matches (re-matcher #"([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1]))?)?" s)))
+   (DateDate/of year month day)))
 
 
 (defn parse-date
@@ -206,9 +195,69 @@
 
   Returns an anomaly if `s` isn't a valid System.Date."
   [s]
-  (if (date-string? s)
-    (ba/try-one DateTimeParseException ::anom/incorrect (parse-date* s))
-    (ba/incorrect (format "Invalid date-time value `%s`." s))))
+  (ba/try-one DateTimeException ::anom/incorrect (Date/parse s)))
+
+
+(extend-protocol SystemType
+  DateYear
+  (-type [date]
+    (.type date))
+  (-to-string [date]
+    (.toString date))
+  (-hash-into [date sink]
+    (.hashInto date sink))
+  (-equals [date x]
+    (cond
+      (instance? DateYear x) (.equals date x)
+      (instance? DateTimeYear x) (.equals date (.toDate ^DateTimeYear x))))
+
+  DateYearMonth
+  (-type [date]
+    (.type date))
+  (-to-string [date]
+    (.toString date))
+  (-hash-into [date sink]
+    (.hashInto date sink))
+  (-equals [date x]
+    (cond
+      (instance? DateYearMonth x) (.equals date x)
+      (instance? DateTimeYearMonth x) (.equals date (.toDate ^DateTimeYearMonth x))))
+
+  DateDate
+  (-type [date]
+    (.type date))
+  (-to-string [date]
+    (.toString date))
+  (-hash-into [date sink]
+    (.hashInto date sink))
+  (-equals [date x]
+    (cond
+      (instance? DateDate x) (.equals date x)
+      (instance? DateTimeDate x) (.equals date (.toDate ^DateTimeDate x)))))
+
+
+(defmethod print-dup DateYear [^DateYear date ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.system.DateYear/of ")
+  (.write w (str date))
+  (.write w ")"))
+
+
+(defmethod print-dup DateYearMonth [^DateYearMonth date ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.system.DateYearMonth/of ")
+  (.write w (str (.year date)))
+  (.write w " ")
+  (.write w (str (.month date)))
+  (.write w ")"))
+
+
+(defmethod print-dup DateDate [^DateDate date ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.system.DateDate/of ")
+  (.write w (str (.year date)))
+  (.write w " ")
+  (.write w (str (.month date)))
+  (.write w " ")
+  (.write w (str (.day date)))
+  (.write w ")"))
 
 
 
@@ -220,174 +269,13 @@
   (identical? :system/date-time (-type x)))
 
 
-(deftype DateTimeYear [year]
-  SystemType
-  (-type [_]
-    :system/date-time)
-  (-to-string [_]
-    (str year))
-  (-hash-into [_ sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 6))
-      (.putInt (.getValue ^Year year))))
-  (-equals [_ x]
-    (cond
-      (instance? DateTimeYear x) (.equals year (.-year ^DateTimeYear x))
-      (instance? Year x) (.equals year x)))
-
-  time-core/Ordered
-  (single-before? [_ x]
-    (and (instance? DateTimeYear x) (.isBefore ^Year year (.-year ^DateTimeYear x))))
-  (single-after? [_ x]
-    (and (instance? DateTimeYear x) (.isAfter ^Year year (.-year ^DateTimeYear x))))
-
-  Temporal
-  (^boolean isSupported [_ ^TemporalUnit unit]
-    (.isSupported ^Year year unit))
-  (plus [_ amount-to-add]
-    (DateTimeYear. (.plus ^Year year amount-to-add)))
-  (plus [_ amount-to-add unit]
-    (DateTimeYear. (.plus ^Year year amount-to-add unit)))
-  (until [_ endExclusive unit]
-    (.until ^Year year endExclusive unit))
-
-  TemporalAccessor
-  (^boolean isSupported [_ ^TemporalField field]
-    (.isSupported ^Year year field))
-  (^long getLong [_ ^TemporalField field]
-    (.getLong ^Year year field))
-
-  Comparable
-  (compareTo [_ x]
-    (.compareTo ^Year year (.-year ^DateTimeYear x)))
-
-  Object
-  (equals [_ x]
-    (and (instance? DateTimeYear x) (.equals year (.-year ^DateTimeYear x))))
-  (hashCode [_]
-    (.hashCode year))
-  (toString [_]
-    (.toString year)))
-
-
-(deftype DateTimeYearMonth [year-month]
-  SystemType
-  (-type [_]
-    :system/date-time)
-  (-to-string [_]
-    (str year-month))
-  (-hash-into [_ sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 6))
-      (.putInt (.getYear ^YearMonth year-month))
-      (.putInt (.getMonthValue ^YearMonth year-month))))
-  (-equals [_ x]
-    (cond
-      (instance? DateTimeYearMonth x)
-      (.equals year-month (.-year_month ^DateTimeYearMonth x))
-      (instance? YearMonth x) (.equals year-month x)))
-
-  time-core/Ordered
-  (single-before? [_ x]
-    (and (instance? DateTimeYearMonth x)
-         (.isBefore ^YearMonth year-month (.-year_month ^DateTimeYearMonth x))))
-  (single-after? [_ x]
-    (and (instance? DateTimeYearMonth x)
-         (.isAfter ^YearMonth year-month (.-year_month ^DateTimeYearMonth x))))
-
-  Temporal
-  (^boolean isSupported [_ ^TemporalUnit unit]
-    (.isSupported ^YearMonth year-month unit))
-  (plus [_ amount-to-add]
-    (DateTimeYearMonth. (.plus ^YearMonth year-month amount-to-add)))
-  (plus [_ amount-to-add unit]
-    (DateTimeYearMonth. (.plus ^YearMonth year-month amount-to-add unit)))
-  (until [_ endExclusive unit]
-    (.until ^YearMonth year-month endExclusive unit))
-
-  TemporalAccessor
-  (^boolean isSupported [_ ^TemporalField field]
-    (.isSupported ^YearMonth year-month field))
-  (^long getLong [_ ^TemporalField field]
-    (.getLong ^YearMonth year-month field))
-
-  Comparable
-  (compareTo [_ x]
-    (.compareTo ^YearMonth year-month (.-year_month ^DateTimeYearMonth x)))
-
-  Object
-  (equals [_ x]
-    (and (instance? DateTimeYearMonth x)
-         (.equals year-month (.-year_month ^DateTimeYearMonth x))))
-  (hashCode [_]
-    (.hashCode year-month))
-  (toString [_]
-    (.toString year-month)))
-
-
-(deftype DateTimeYearMonthDay [date]
-  SystemType
-  (-type [_]
-    :system/date-time)
-  (-to-string [_]
-    (str date))
-  (-hash-into [_ sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 6))
-      (.putInt (.getYear ^LocalDate date))
-      (.putInt (.getMonthValue ^LocalDate date))
-      (.putInt (.getDayOfMonth ^LocalDate date))))
-  (-equals [_ x]
-    (cond
-      (instance? DateTimeYearMonthDay x)
-      (.equals date (.-date ^DateTimeYearMonthDay x))
-      (instance? LocalDate x) (.equals date x)))
-
-  time-core/Ordered
-  (single-before? [_ x]
-    (and (instance? DateTimeYearMonthDay x)
-         (.isBefore ^LocalDate date (.-date ^DateTimeYearMonthDay x))))
-  (single-after? [_ x]
-    (and (instance? DateTimeYearMonthDay x)
-         (.isAfter ^LocalDate date (.-date ^DateTimeYearMonthDay x))))
-
-  Temporal
-  (^boolean isSupported [_ ^TemporalUnit unit]
-    (.isSupported ^LocalDate date unit))
-  (plus [_ amount-to-add]
-    (DateTimeYearMonthDay. (.plus ^LocalDate date amount-to-add)))
-  (plus [_ amount-to-add unit]
-    (DateTimeYearMonthDay. (.plus ^LocalDate date amount-to-add unit)))
-  (until [_ endExclusive unit]
-    (.until ^LocalDate date endExclusive unit))
-
-  TemporalAccessor
-  (^boolean isSupported [_ ^TemporalField field]
-    (.isSupported ^LocalDate date field))
-  (^long getLong [_ ^TemporalField field]
-    (.getLong ^LocalDate date field))
-
-  Comparable
-  (compareTo [_ x]
-    (.compareTo ^LocalDate date (.-date ^DateTimeYearMonthDay x)))
-
-  Object
-  (equals [_ x]
-    (and (instance? DateTimeYearMonthDay x)
-         (.equals date (.-date ^DateTimeYearMonthDay x))))
-  (hashCode [_]
-    (.hashCode date))
-  (toString [_]
-    (.toString date)))
-
-
 (defn date-time
   ([year]
-   (DateTimeYear. (Year/of year)))
+   (DateTimeYear/of year))
   ([year month]
-   (DateTimeYearMonth. (YearMonth/of (int year) (int month))))
+   (DateTimeYearMonth/of year month))
   ([year month day]
-   (DateTimeYearMonthDay. (LocalDate/of (int year) (int month) (int day))))
+   (DateTimeDate/of year month day))
   ([year month day hour]
    (LocalDateTime/of (int year) (int month) (int day) (int hour) 0))
   ([year month day hour minute]
@@ -396,9 +284,11 @@
    (LocalDateTime/of (int year) (int month) (int day) (int hour) (int minute)
                      (int second)))
   ([year month day hour minute second millis]
+   (.checkValidValue DateTime/YEAR_RANGE year ChronoField/YEAR);
    (LocalDateTime/of (int year) (int month) (int day) (int hour) (int minute)
                      (int second) (unchecked-multiply-int (int millis) 1000000)))
   ([year month day hour minute second millis zone-offset]
+   (.checkValidValue DateTime/YEAR_RANGE year ChronoField/YEAR);
    (OffsetDateTime/of (int year) (int month) (int day) (int hour) (int minute)
                       (int second) (unchecked-multiply-int (int millis) 1000000)
                       zone-offset)))
@@ -411,68 +301,77 @@
          (catch Exception _
            (LocalDateTime/parse s)))
     10 (LocalDateTime/parse (str s ":00"))
-    7 (DateTimeYearMonthDay. (LocalDate/parse s))
-    4 (DateTimeYearMonth. (YearMonth/parse s))
-    (DateTimeYear. (Year/parse s))))
+    (DateTime/parse s)))
 
 
-(defn- date-time-string? [s]
-  (.matches (re-matcher #"([0-9]([0-9]([0-9][1-9]|[1-9]0)|[1-9]00)|[1-9]000)(-(0[1-9]|1[0-2])(-(0[1-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3])(:[0-5][0-9](:([0-5][0-9]|60)(\.[0-9]+)?)?)?(Z|(\+|-)((0[0-9]|1[0-3]):[0-5][0-9]|14:00))?)?)?)?" s)))
+(defn parse-date-time
+  "Parses `s` into a System.DateTime.
+
+  Returns an anomaly if `s` isn't a valid System.DateTime."
+  [s]
+  (ba/try-one DateTimeException ::anom/incorrect (parse-date-time* s)))
 
 
-(defn parse-date-time [s]
-  (if (date-time-string? s)
-    (ba/try-one DateTimeParseException ::anom/incorrect (parse-date-time* s))
-    (ba/incorrect (format "Invalid date-time value `%s`." s))))
+(defmethod print-dup DateTimeYear [^DateTimeYear date-time ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.system.DateTimeYear/of ")
+  (.write w (str date-time))
+  (.write w ")"))
+
+
+(defmethod print-dup DateTimeYearMonth [^DateTimeYearMonth date-time ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.system.DateTimeYearMonth/of ")
+  (.write w (str (.year date-time)))
+  (.write w " ")
+  (.write w (str (.month date-time)))
+  (.write w ")"))
+
+
+(defmethod print-dup DateTimeDate [^DateTimeDate date-time ^Writer w]
+  (.write w "#=(blaze.fhir.spec.type.system.DateTimeDate/of ")
+  (.write w (str (.year date-time)))
+  (.write w " ")
+  (.write w (str (.month date-time)))
+  (.write w " ")
+  (.write w (str (.day date-time)))
+  (.write w ")"))
 
 
 (extend-protocol SystemType
-  Year
-  (-type [_]
-    :system/date)
-  (-to-string [date]
-    (str date))
-  (-hash-into [date sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 5))
-      (.putInt (.getValue date))))
-  (-equals [date x]
+  DateTimeYear
+  (-type [date-time]
+    (.type date-time))
+  (-to-string [date-time]
+    (.toString date-time))
+  (-hash-into [date-time sink]
+    (.hashInto date-time sink))
+  (-equals [date-time x]
     (cond
-      (instance? Year x) (.equals date x)
-      (instance? DateTimeYear x) (.equals date (.-year ^DateTimeYear x))))
+      (instance? DateTimeYear x) (.equals date-time x)
+      (instance? DateYear x) (.equals date-time (.toDateTime ^DateYear x))))
 
-  YearMonth
-  (-type [_]
-    :system/date)
-  (-to-string [date]
-    (str date))
-  (-hash-into [date sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 5))
-      (.putInt (.getYear date))
-      (.putInt (.getMonthValue date))))
-  (-equals [date x]
+  DateTimeYearMonth
+  (-type [date-time]
+    (.type date-time))
+  (-to-string [date-time]
+    (.toString date-time))
+  (-hash-into [date-time sink]
+    (.hashInto date-time sink))
+  (-equals [date-time x]
     (cond
-      (instance? YearMonth x) (.equals date x)
-      (instance? DateTimeYearMonth x)
-      (.equals date (.-year_month ^DateTimeYearMonth x))))
+      (instance? DateTimeYearMonth x) (.equals date-time x)
+      (instance? DateYearMonth x) (.equals date-time (.toDateTime ^DateYearMonth x))))
 
-  LocalDate
-  (-type [_]
-    :system/date)
-  (-to-string [date]
-    (str date))
-  (-hash-into [date sink]
-    (doto ^PrimitiveSink sink
-      (.putByte (byte 5))
-      (.putInt (.getYear date))
-      (.putInt (.getMonthValue date))
-      (.putInt (.getDayOfMonth date))))
-  (-equals [date x]
+  DateTimeDate
+  (-type [date-time]
+    (.type date-time))
+  (-to-string [date-time]
+    (.toString date-time))
+  (-hash-into [date-time sink]
+    (.hashInto date-time sink))
+  (-equals [date-time x]
     (cond
-      (instance? LocalDate x) (.equals date x)
-      (instance? DateTimeYearMonthDay x)
-      (.equals date (.-date ^DateTimeYearMonthDay x))))
+      (instance? DateTimeDate x) (.equals date-time x)
+      (instance? DateDate x) (.equals date-time (.toDateTime ^DateDate x))))
 
   LocalDateTime
   (-type [_]
@@ -518,10 +417,6 @@
   (.write w (.toString date-time)))
 
 
-(defn- epoch-seconds ^long [^LocalDateTime date-time]
-  (.toEpochSecond (.atOffset date-time (ZoneOffset/UTC))))
-
-
 (defprotocol LowerBound
   (-lower-bound [date-time]))
 
@@ -531,34 +426,34 @@
 
 
 (extend-protocol LowerBound
-  Year
-  (-lower-bound [year]
-    (epoch-seconds (.atStartOfDay (.atDay year 1))))
+  DateYear
+  (-lower-bound [date]
+    (-lower-bound (.atStartOfYear date)))
   DateTimeYear
-  (-lower-bound [year]
-    (epoch-seconds (.atStartOfDay (.atDay ^Year (.-year year) 1))))
-  YearMonth
-  (-lower-bound [year-month]
-    (epoch-seconds (.atStartOfDay (.atDay year-month 1))))
+  (-lower-bound [date]
+    (-lower-bound (.atStartOfYear date)))
+  DateYearMonth
+  (-lower-bound [date]
+    (-lower-bound (.atStartOfMonth date)))
   DateTimeYearMonth
-  (-lower-bound [year-month]
-    (epoch-seconds (.atStartOfDay (.atDay ^YearMonth (.-year_month year-month) 1))))
-  LocalDate
   (-lower-bound [date]
-    (epoch-seconds (.atStartOfDay date)))
-  DateTimeYearMonthDay
+    (-lower-bound (.atStartOfMonth date)))
+  DateDate
   (-lower-bound [date]
-    (epoch-seconds (.atStartOfDay ^LocalDate (.date date))))
+    (-lower-bound (.atStartOfDay date)))
+  DateTimeDate
+  (-lower-bound [date]
+    (-lower-bound (.atStartOfDay date)))
   LocalDateTime
   (-lower-bound [date-time]
-    (epoch-seconds date-time))
+    (-lower-bound (.atOffset date-time (ZoneOffset/UTC))))
   OffsetDateTime
   (-lower-bound [date-time]
     (.toEpochSecond date-time)))
 
 
 (def ^:private lower-bound-seconds
-  (-lower-bound (Year/of 1)))
+  (-lower-bound (DateYear/of 1)))
 
 
 (extend-protocol LowerBound
@@ -576,34 +471,34 @@
 
 
 (extend-protocol UpperBound
-  Year
+  DateYear
   (-upper-bound [year]
-    (dec (epoch-seconds (.atStartOfDay (.atDay (.plusYears year 1) 1)))))
+    (-upper-bound (.atEndOfYear year)))
   DateTimeYear
   (-upper-bound [year]
-    (dec (epoch-seconds (.atStartOfDay (.atDay (.plusYears ^Year (.year year) 1) 1)))))
-  YearMonth
+    (-upper-bound (.atEndOfYear year)))
+  DateYearMonth
   (-upper-bound [year-month]
-    (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths year-month 1) 1)))))
+    (-upper-bound (.atEndOfMonth year-month)))
   DateTimeYearMonth
   (-upper-bound [year-month]
-    (dec (epoch-seconds (.atStartOfDay (.atDay (.plusMonths ^YearMonth (.-year_month year-month) 1) 1)))))
-  LocalDate
+    (-upper-bound (.atEndOfMonth year-month)))
+  DateDate
   (-upper-bound [date]
-    (dec (epoch-seconds (.atStartOfDay (.plusDays date 1)))))
-  DateTimeYearMonthDay
+    (-upper-bound (.atTime date 23 59 59)))
+  DateTimeDate
   (-upper-bound [date]
-    (dec (epoch-seconds (.atStartOfDay (.plusDays ^LocalDate (.date date) 1)))))
+    (-upper-bound (.atTime date 23 59 59)))
   LocalDateTime
   (-upper-bound [date-time]
-    (epoch-seconds date-time))
+    (-upper-bound (.atOffset date-time (ZoneOffset/UTC))))
   OffsetDateTime
   (-upper-bound [date-time]
     (.toEpochSecond date-time)))
 
 
 (def ^:private upper-bound-seconds
-  (-upper-bound (Year/of 9999)))
+  (-upper-bound (DateYear/of 9999)))
 
 
 (extend-protocol UpperBound

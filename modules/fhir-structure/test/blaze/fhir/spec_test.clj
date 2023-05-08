@@ -1816,6 +1816,7 @@
 
 
 (deftest fhir-dateTime-test
+  (s2/form :fhir/dateTime)
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
@@ -4290,7 +4291,7 @@
   (testing "transforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [x (fg/bundle-entry {:resource (fg/patient)})]
+        (prop/for-all [x (fg/bundle-entry :resource (fg/patient))]
           (= (->> x
                   fhir-spec/unform-json
                   fhir-spec/parse-json
@@ -4299,7 +4300,7 @@
 
     (testing "XML"
       (satisfies-prop 100
-        (prop/for-all [x (fg/bundle-entry {:resource (fg/patient)})]
+        (prop/for-all [x (fg/bundle-entry :resource (fg/patient))]
           (= (->> x
                   (s2/unform :fhir.xml.Bundle/entry)
                   (s2/conform :fhir.xml.Bundle/entry))
@@ -4307,7 +4308,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [x (fg/bundle-entry {:resource (fg/patient)})]
+        (prop/for-all [x (fg/bundle-entry :resource (fg/patient))]
           (= (->> x
                   fhir-spec/unform-cbor
                   fhir-spec/parse-cbor
@@ -4317,11 +4318,11 @@
   (testing "references"
     (satisfies-prop 10
       (prop/for-all [x (fg/bundle-entry
-                         {:resource
-                          (fg/observation
-                            {:subject
-                             (fg/reference
-                               {:reference (gen/return "Patient/0")})})})]
+                         :resource
+                         (fg/observation
+                           :subject
+                           (fg/reference
+                             :reference (gen/return "Patient/0"))))]
         (empty? (type/references x))))))
 
 

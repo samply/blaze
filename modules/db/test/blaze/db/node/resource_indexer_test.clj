@@ -33,7 +33,7 @@
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
-    [java.time Instant LocalDate]))
+    [java.time Instant]))
 
 
 (set! *warn-on-reflection* true)
@@ -245,7 +245,7 @@
                 ["code" (codec/v-hash "code-204441")]
                 ["code" (codec/v-hash "system-204435|")]
                 ["code" (codec/v-hash "system-204435|code-204441")]
-                ["onset-date" (codec-date/encode-range (LocalDate/of 2020 1 30))]
+                ["onset-date" (codec-date/encode-range #system/date-time"2020-01-30")]
                 ["subject" (codec/v-hash "Patient/id-145552")]
                 ["subject" (codec/tid-id
                              (codec/tid "Patient")
@@ -268,7 +268,7 @@
                 ["code" (codec/v-hash "code-204441")]
                 ["code" (codec/v-hash "system-204435|")]
                 ["code" (codec/v-hash "system-204435|code-204441")]
-                ["onset-date" (codec-date/encode-range (LocalDate/of 2020 1 30))]
+                ["onset-date" (codec-date/encode-range #system/date-time"2020-01-30")]
                 ["subject" (codec/v-hash "Patient/id-145552")]
                 ["subject" (codec/tid-id
                              (codec/tid "Patient")
@@ -296,7 +296,7 @@
                 ["code" (codec/v-hash "code-204441")]
                 ["code" (codec/v-hash "system-204435|")]
                 ["code" (codec/v-hash "system-204435|code-204441")]
-                ["onset-date" (codec-date/encode-range (LocalDate/of 2020 1 30))]
+                ["onset-date" (codec-date/encode-range #system/date-time"2020-01-30")]
                 ["subject" (codec/v-hash "Patient/id-145552")]
                 ["subject" (codec/tid-id
                              (codec/tid "Patient")
@@ -373,7 +373,7 @@
                  (bs/concat (codec/v-hash "code-193824")
                             (codec/quantity "http://unitsofmeasure.org|kg/m2"
                                             23.42M))]
-                ["date" (codec-date/encode-range (LocalDate/of 2005 6 17))]
+                ["date" (codec-date/encode-range #system/date-time"2005-06-17")]
                 ["category" (codec/v-hash "system-193558|code-193603")]
                 ["category" (codec/v-hash "system-193558|")]
                 ["category" (codec/v-hash "code-193603")]

@@ -4,59 +4,23 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.macros :refer [defbinopp defunop defunopp]]
     [blaze.elm.date-time :as date-time]
     [blaze.elm.protocols :as p]
     [blaze.fhir.spec.type.system :as system])
   (:import
+    [blaze.fhir.spec.type.system DateDate]
     [java.time OffsetDateTime ZoneOffset]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(defn- check-year-range! [year]
-  (when-not (< 0 year 10000)
-    (throw-anom (ba/incorrect (format "Year `%d` out of range." year)))))
-
-
-(defn- date
-  ([year]
-   (check-year-range! year)
-   (system/date year))
-  ([year month]
-   (check-year-range! year)
-   (system/date year month))
-  ([year month day]
-   (check-year-range! year)
-   (system/date year month day)))
-
-
-(defn- date-time
-  ([year]
-   (check-year-range! year)
-   (system/date-time year))
-  ([year month]
-   (check-year-range! year)
-   (system/date-time year month))
-  ([year month day]
-   (check-year-range! year)
-   (system/date-time year month day)))
-
-
-(defn- to-local-date-time
-  [year month day hour minute second millis]
-  (check-year-range! year)
-  (system/date-time year month day hour minute second millis))
-
-
 (defn- to-local-date-time-with-offset
   "Creates a DateTime with a local date time adjusted for the offset of the
   evaluation request."
   [now year month day hour minute second millis timezone-offset]
-  (check-year-range! year)
   (-> ^OffsetDateTime
       (system/date-time year month day hour minute second millis
                         (ZoneOffset/ofTotalSeconds (* timezone-offset 3600)))
@@ -69,13 +33,13 @@
   (-type [_] :system/date)
   core/Expression
   (-eval [_ context resource scope]
-    (some-> (core/-eval year context resource scope) date)))
+    (some-> (core/-eval year context resource scope) system/date)))
 
 
 (defrecord DateTimeYearExpression [year]
   core/Expression
   (-eval [_ context resource scope]
-    (some-> (core/-eval year context resource scope) date-time)))
+    (some-> (core/-eval year context resource scope) system/date-time)))
 
 
 (defrecord YearMonthExpression [year month]
@@ -85,8 +49,8 @@
   (-eval [_ context resource scope]
     (when-let [year (core/-eval year context resource scope)]
       (if-let [month (core/-eval month context resource scope)]
-        (date year month)
-        (date year)))))
+        (system/date year month)
+        (system/date year)))))
 
 
 (defrecord DateTimeYearMonthExpression [year month]
@@ -94,8 +58,8 @@
   (-eval [_ context resource scope]
     (when-let [year (core/-eval year context resource scope)]
       (if-let [month (core/-eval month context resource scope)]
-        (date-time year month)
-        (date-time year)))))
+        (system/date-time year month)
+        (system/date-time year)))))
 
 
 (defrecord LocalDateExpression [year month day]
@@ -106,9 +70,9 @@
     (when-let [year (core/-eval year context resource scope)]
       (if-let [month (core/-eval month context resource scope)]
         (if-let [day (core/-eval day context resource scope)]
-          (date year month day)
-          (date year month))
-        (date year)))))
+          (system/date year month day)
+          (system/date year month))
+        (system/date year)))))
 
 
 (defrecord DateTimeYearMonthDayExpression [year month day]
@@ -117,9 +81,9 @@
     (when-let [year (core/-eval year context resource scope)]
       (if-let [month (core/-eval month context resource scope)]
         (if-let [day (core/-eval day context resource scope)]
-          (date-time year month day)
-          (date-time year month))
-        (date-time year)))))
+          (system/date-time year month day)
+          (system/date-time year month))
+        (system/date-time year)))))
 
 
 ;; 18.6. Date
@@ -130,19 +94,19 @@
         day (some->> day (core/compile* context))]
     (cond
       (and (int? day) (int? month) (int? year))
-      (date year month day)
+      (system/date year month day)
 
       (some? day)
       (->LocalDateExpression year month day)
 
       (and (int? month) (int? year))
-      (date year month)
+      (system/date year month)
 
       (some? month)
       (->YearMonthExpression year month)
 
       (int? year)
-      (date year)
+      (system/date year)
 
       :else
       (some-> year ->YearExpression))))
@@ -215,12 +179,12 @@
       (cond
         (and (int? millisecond) (int? second) (int? minute) (int? hour)
              (int? day) (int? month) (int? year))
-        (to-local-date-time year month day hour minute second millisecond)
+        (system/date-time year month day hour minute second millisecond)
 
         (some? hour)
         (reify core/Expression
           (-eval [_ context resource scope]
-            (to-local-date-time
+            (system/date-time
               (core/-eval year context resource scope)
               (core/-eval month context resource scope)
               (core/-eval day context resource scope)
@@ -230,19 +194,19 @@
               (or (core/-eval millisecond context resource scope) 0))))
 
         (and (int? day) (int? month) (int? year))
-        (date-time year month day)
+        (system/date-time year month day)
 
         (some? day)
         (->DateTimeYearMonthDayExpression year month day)
 
         (and (int? month) (int? year))
-        (date-time year month)
+        (system/date-time year month)
 
         (some? month)
         (->DateTimeYearMonthExpression year month)
 
         (int? year)
-        (date-time year)
+        (system/date-time year)
 
         :else
         (some-> year ->DateTimeYearExpression)))))
@@ -355,14 +319,12 @@
   time-of-day-expr)
 
 
-(defrecord TodayExpression []
-  core/Expression
-  (-eval [_ {:keys [now]} _ _]
-    (.toLocalDate ^OffsetDateTime now)))
-
-
 (def ^:private today-expr
-  (->TodayExpression))
+  (reify core/Expression
+    (-eval [_ {:keys [now]} _ _]
+      (DateDate/fromLocalDate (.toLocalDate ^OffsetDateTime now)))
+    (-form [_]
+      'today)))
 
 
 ;; 18.22. Today

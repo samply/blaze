@@ -101,9 +101,9 @@
 ;; granular unit of either input. Attempting to operate on quantities with
 ;; invalid units will result in a run-time error.
 ;;
-;; The Add operator is defined for the Integer, Decimal, and Quantity types. In
-;; addition, a time-valued Quantity can be added to a Date, DateTime or Time
-;; using this operator.
+;; The Add operator is defined for the Integer, Long Decimal, and Quantity
+;; types. In addition, a time-valued Quantity can be added to a Date, DateTime
+;; or Time using this operator.
 ;;
 ;; For Date, DateTime, and Time values, the operator returns the value of the
 ;; first argument, incremented by the time-valued quantity, respecting variable
@@ -115,15 +115,25 @@
 ;; For DateTime values, the quantity unit must be one of years, months, weeks,
 ;; days, hours, minutes, seconds, or milliseconds.
 ;;
-;; For Time values, the quantity unit must be one of hours, minutes, seconds,
-;; or milliseconds.
+;; For Time values, the quantity unit must be one of hours, minutes, seconds, or
+;; milliseconds.
 ;;
 ;; Note that as with any date and time operations, temporal units may be
-;; specified with either singular, plural, or UCUM units.
+;; specified with either singular, plural, or UCUM units. However, to avoid the
+;; potential confusion of calendar-based date and time arithmetic with
+;; definite-duration date and time arithmetic, it is an error to attempt to add
+;; a definite-duration time-valued unit above days (and weeks), a calendar
+;; duration must be used.
 ;;
-;; The operation is performed by converting the time-based quantity to the
-;; highest specified granularity in the first argument (truncating any resulting
-;; decimal portion) and then adding it to the first argument.
+;; For precisions above seconds, any decimal portion of the time-valued quantity
+;; is ignored, since date/time arithmetic above seconds is performed with
+;; calendar duration semantics.
+;;
+;; For partial date/time values where the time-valued quantity is more precise
+;; than the partial date/time, the operation is performed by converting the
+;; time-based quantity to the highest specified granularity in the first
+;; argument (truncating any resulting decimal portion) and then adding it to the
+;; first argument.
 ;;
 ;; If either argument is null, the result is null.
 ;;
@@ -244,67 +254,67 @@
 
   (testing "Date + Quantity"
     (are [x y res] (= res (core/-eval (c/compile {} (elm/add [x y])) {} nil nil))
-      #elm/date "2019" #elm/quantity [1 "year"] (system/date 2020)
-      #elm/date "2019" #elm/quantity [13 "months"] (system/date 2020)
+      #elm/date"2019" #elm/quantity [1 "year"] #system/date"2020"
+      #elm/date"2019" #elm/quantity [13 "months"] #system/date"2020"
 
-      #elm/date "2019-01" #elm/quantity [1 "month"] (system/date 2019 2)
-      #elm/date "2019-01" #elm/quantity [12 "month"] (system/date 2020 1)
-      #elm/date "2019-01" #elm/quantity [13 "month"] (system/date 2020 2)
-      #elm/date "2019-01" #elm/quantity [1 "year"] (system/date 2020 1)
+      #elm/date"2019-01" #elm/quantity [1 "month"] #system/date"2019-02"
+      #elm/date"2019-01" #elm/quantity [12 "month"] #system/date"2020-01"
+      #elm/date"2019-01" #elm/quantity [13 "month"] #system/date"2020-02"
+      #elm/date"2019-01" #elm/quantity [1 "year"] #system/date"2020-01"
 
-      #elm/date "2019-01-01" #elm/quantity [1 "year"] (system/date 2020 1 1)
-      #elm/date "2012-02-29" #elm/quantity [1 "year"] (system/date 2013 2 28)
-      #elm/date "2019-01-01" #elm/quantity [1 "month"] (system/date 2019 2 1)
-      #elm/date "2019-01-01" #elm/quantity [1 "day"] (system/date 2019 1 2)))
+      #elm/date"2019-01-01" #elm/quantity [1 "year"] #system/date"2020-01-01"
+      #elm/date"2012-02-29" #elm/quantity [1 "year"] #system/date"2013-02-28"
+      #elm/date"2019-01-01" #elm/quantity [1 "month"] #system/date"2019-02-01"
+      #elm/date"2019-01-01" #elm/quantity [1 "day"] #system/date"2019-01-02"))
 
   (testing "Adding a positive amount of years to a year makes it greater"
     (satisfies-prop 100
       (prop/for-all [year (s/gen :elm/year)
                      years (s/gen :elm/pos-years)]
         (let [elm (elm/greater [(elm/add [year years]) year])]
-          (true? (core/-eval (c/compile {} elm) {} nil nil))))))
+          (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
   (testing "Adding a positive amount of years to a year-month makes it greater"
     (satisfies-prop 100
       (prop/for-all [year-month (s/gen :elm/year-month)
                      years (s/gen :elm/pos-years)]
         (let [elm (elm/greater [(elm/add [year-month years]) year-month])]
-          (true? (core/-eval (c/compile {} elm) {} nil nil))))))
+          (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
   (testing "Adding a positive amount of years to a date makes it greater"
     (satisfies-prop 100
       (prop/for-all [date (s/gen :elm/literal-date)
                      years (s/gen :elm/pos-years)]
         (let [elm (elm/greater [(elm/add [date years]) date])]
-          (true? (core/-eval (c/compile {} elm) {} nil nil))))))
+          (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
   (testing "Adding a positive amount of years to a date-time makes it greater"
     (satisfies-prop 100
       (prop/for-all [date-time (s/gen :elm/literal-date-time)
                      years (s/gen :elm/pos-years)]
         (let [elm (elm/greater [(elm/add [date-time years]) date-time])]
-          (true? (core/-eval (c/compile {} elm) {:now tu/now} nil nil))))))
+          (not (false? (core/-eval (c/compile {} elm) {:now tu/now} nil nil)))))))
 
   (testing "Adding a positive amount of months to a year-month makes it greater"
     (satisfies-prop 100
       (prop/for-all [year-month (s/gen :elm/year-month)
                      months (s/gen :elm/pos-months)]
         (let [elm (elm/greater [(elm/add [year-month months]) year-month])]
-          (true? (core/-eval (c/compile {} elm) {} nil nil))))))
+          (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
   (testing "Adding a positive amount of months to a date makes it greater or lets it equal because a date can be also a year and adding a small amount of months to a year doesn't change it."
     (satisfies-prop 100
       (prop/for-all [date (s/gen :elm/literal-date)
                      months (s/gen :elm/pos-months)]
         (let [elm (elm/greater-or-equal [(elm/add [date months]) date])]
-          (true? (core/-eval (c/compile {} elm) {} nil nil))))))
+          (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
   (testing "Adding a positive amount of months to a date-time makes it greater or lets it equal because a date-time can be also a year and adding a small amount of months to a year doesn't change it."
     (satisfies-prop 100
       (prop/for-all [date-time (s/gen :elm/literal-date-time)
                      months (s/gen :elm/pos-months)]
         (let [elm (elm/greater-or-equal [(elm/add [date-time months]) date-time])]
-          (true? (core/-eval (c/compile {} elm) {:now tu/now} nil nil))))))
+          (not (false? (core/-eval (c/compile {} elm) {:now tu/now} nil nil)))))))
 
   ;; TODO: is that right?
   (testing "Adding a positive amount of days to a year doesn't change it."
@@ -338,13 +348,13 @@
 
   (testing "DateTime + Quantity"
     (are [x y res] (= res (core/-eval (c/compile {} (elm/add [x y])) {} nil nil))
-      #elm/date-time "2019-01-01T00" #elm/quantity [1 "year"] (system/date-time 2020 1 1 0 0 0)
-      #elm/date-time "2012-02-29T00" #elm/quantity [1 "year"] (system/date-time 2013 2 28 0 0 0)
-      #elm/date-time "2019-01-01T00" #elm/quantity [1 "month"] (system/date-time 2019 2 1 0 0 0)
-      #elm/date-time "2019-01-01T00" #elm/quantity [1 "day"] (system/date-time 2019 1 2 0 0 0)
-      #elm/date-time "2019-01-01T00" #elm/quantity [1 "hour"] (system/date-time 2019 1 1 1 0 0)
-      #elm/date-time "2019-01-01T00" #elm/quantity [1 "minute"] (system/date-time 2019 1 1 0 1 0)
-      #elm/date-time "2019-01-01T00" #elm/quantity [1 "second"] (system/date-time 2019 1 1 0 0 1)))
+      #elm/date-time"2019-01-01T00" #elm/quantity [1 "year"] (system/date-time 2020 1 1 0 0 0)
+      #elm/date-time"2012-02-29T00" #elm/quantity [1 "year"] (system/date-time 2013 2 28 0 0 0)
+      #elm/date-time"2019-01-01T00" #elm/quantity [1 "month"] (system/date-time 2019 2 1 0 0 0)
+      #elm/date-time"2019-01-01T00" #elm/quantity [1 "day"] (system/date-time 2019 1 2 0 0 0)
+      #elm/date-time"2019-01-01T00" #elm/quantity [1 "hour"] (system/date-time 2019 1 1 1 0 0)
+      #elm/date-time"2019-01-01T00" #elm/quantity [1 "minute"] (system/date-time 2019 1 1 0 1 0)
+      #elm/date-time"2019-01-01T00" #elm/quantity [1 "second"] (system/date-time 2019 1 1 0 0 1)))
 
   (testing "Time + Quantity"
     (are [x y res] (= res (core/-eval (c/compile {} (elm/add [x y])) {} nil nil))
@@ -610,7 +620,7 @@
     "{urn:hl7-org:elm-types:r1}Integer" Integer/MAX_VALUE
     "{urn:hl7-org:elm-types:r1}Long" Long/MAX_VALUE
     "{urn:hl7-org:elm-types:r1}Decimal" (/ (- 1E28M 1) 1E8M)
-    "{urn:hl7-org:elm-types:r1}Date" (system/date 9999 12 31)
+    "{urn:hl7-org:elm-types:r1}Date" #system/date"9999-12-31"
     "{urn:hl7-org:elm-types:r1}DateTime" (system/date-time 9999 12 31 23 59 59 999)
     "{urn:hl7-org:elm-types:r1}Time" (date-time/local-time 23 59 59 999))
 
@@ -655,7 +665,7 @@
     "{urn:hl7-org:elm-types:r1}Integer" Integer/MIN_VALUE
     "{urn:hl7-org:elm-types:r1}Long" Long/MIN_VALUE
     "{urn:hl7-org:elm-types:r1}Decimal" (/ (+ -1E28M 1) 1E8M)
-    "{urn:hl7-org:elm-types:r1}Date" (system/date 1 1 1)
+    "{urn:hl7-org:elm-types:r1}Date" #system/date"0001-01-01"
     "{urn:hl7-org:elm-types:r1}DateTime" (system/date-time 1 1 1 0 0 0 0)
     "{urn:hl7-org:elm-types:r1}Time" (date-time/local-time 0 0 0 0))
 
@@ -859,49 +869,43 @@
 
   (testing "Decimal"
     (are [x res] (= res (c/compile {} (elm/predecessor x)))
+      (elm/decimal (str decimal/min)) nil
       #elm/decimal "0" -1E-8M))
 
   (testing "Date"
     (are [x res] (= res (c/compile {} (elm/predecessor x)))
-      #elm/date "2019" (system/date 2018)
-      #elm/date "2019-01" (system/date 2018 12)
-      #elm/date "2019-01-01" (system/date 2018 12 31)))
+      #elm/date"0001" nil
+      #elm/date"0001-01" nil
+      #elm/date"0001-01-01" nil
+      #elm/date"2019" #system/date"2018"
+      #elm/date"2019-01" #system/date"2018-12"
+      #elm/date"2019-01-01" #system/date"2018-12-31"))
 
   (testing "DateTime"
     (are [x res] (= res (c/compile {} (elm/predecessor x)))
-      #elm/date-time "2019" (system/date-time 2018)
-      #elm/date-time "2019-01" (system/date-time 2018 12)
-      #elm/date-time "2019-01-01" (system/date-time 2018 12 31)
-      #elm/date-time "2019-01-01T00" (system/date-time 2018 12 31 23 59 59 999)))
+      #elm/date-time"0001" nil
+      #elm/date-time"0001-01" nil
+      #elm/date-time"0001-01-01" nil
+      #elm/date-time"0001-01-01T00:00:00.0" nil
+      #elm/date-time"2019" #system/date-time"2018"
+      #elm/date-time"2019-01" #system/date-time"2018-12"
+      #elm/date-time"2019-01-01" #system/date-time"2018-12-31"
+      #elm/date-time"2019-01-01T00" (system/date-time 2018 12 31 23 59 59 999)))
 
   (testing "Time"
     (are [x res] (= res (c/compile {} (elm/predecessor x)))
+      #elm/time "00:00:00.0" nil
       #elm/time "12:00" (date-time/local-time 11 59)))
 
   (testing "Quantity"
     (are [x res] (= res (c/compile {} (elm/predecessor x)))
+      (elm/quantity [decimal/min]) nil
       #_#_#elm/quantity [0 "m"] (quantity/quantity -1 "m")   ; TODO: implement
       #elm/quantity [0M "m"] (quantity/quantity -1E-8M "m")))
 
   (tu/testing-unary-null elm/predecessor)
 
-  (tu/testing-unary-form elm/predecessor)
-
-  (testing "throws error if the argument is already the minimum value"
-    (are [x]
-      (= ::anom/incorrect
-         (::anom/category (ba/try-anomaly (c/compile {} (elm/predecessor x)))))
-
-      (elm/decimal (str decimal/min))
-      #elm/date "0001"
-      #elm/date "0001-01"
-      #elm/date "0001-01-01"
-      #elm/time "00:00:00.0"
-      #elm/date-time "0001"
-      #elm/date-time "0001-01"
-      #elm/date-time "0001-01-01"
-      #elm/date-time "0001-01-01T00:00:00.0"
-      (elm/quantity [decimal/min]))))
+  (tu/testing-unary-form elm/predecessor))
 
 
 ;; 16.19. Round
@@ -970,13 +974,13 @@
 ;; be the most granular unit of either input. Attempting to operate on
 ;; quantities with invalid units will result in a run-time error.
 ;;
-;; The Subtract operator is defined for the Integer, Decimal, and Quantity types.
-;; In addition, a time-valued Quantity can be subtracted from a Date, DateTime,
-;; or Time using this operator.
+;; The Subtract operator is defined for the Integer, Long, Decimal, and Quantity
+;; types. In addition, a time-valued Quantity can be subtracted from a Date,
+;; DateTime, or Time using this operator.
 ;;
-;; For Date, DateTime, Time values, the operator returns the value of the given
-;; date/time, decremented by the time-valued quantity, respecting variable
-;; length periods for calendar years and months.
+;; For Date, DateTime, Time values, the operator returns the value of the first
+;; argument, decremented by the time-valued quantity, respecting variable length
+;; periods for calendar years and months.
 ;;
 ;; For Date values, the quantity unit must be one of years, months, weeks, or
 ;; days.
@@ -987,11 +991,26 @@
 ;; For Time values, the quantity unit must be one of hours, minutes, seconds, or
 ;; milliseconds.
 ;;
-;; The operation is performed by converting the time-based quantity to the
-;; highest specified granularity in the date/time value (truncating any
-;; resulting decimal portion) and then adding it to the date/time value.
+;; Note that as with any Date, Time, or DateTime operations, temporal units may
+;; be specified with either singular, plural, or UCUM units. However, to avoid
+;; the potential confusion of calendar-based date and time arithmetic with
+;; definite-duration date and time arithmetic, it is an error to attempt to
+;; subtract a definite-duration time-valued unit above days (and weeks), a
+;; calendar duration must be used.
+;;
+;; For precisions above seconds, any decimal portion of the time-valued quantity
+;; is ignored, since date/time arithmetic above seconds is performed with
+;; calendar duration semantics.
+;;
+;; For partial date/time values where the time-valued quantity is more precise
+;; than the partial date/time, the operation is performed by converting the
+;; time-based quantity to the highest specified granularity in the first
+;; argument (truncating any resulting decimal portion) and then subtracting it
+;; from the first argument.
 ;;
 ;; If either argument is null, the result is null.
+;;
+;; If the result of the operation cannot be represented, the result is null.
 (deftest compile-subtract-test
   (testing "Integer"
     (are [x y res] (= res (core/-eval (c/compile {} (elm/subtract [x y])) {} nil nil))
@@ -1017,6 +1036,8 @@
         #elm/decimal "1" #elm/decimal "1" 0M
         #elm/decimal "1" #elm/decimal "0" 1M
         #elm/decimal "1" #elm/decimal "-1" 2M
+
+        (elm/decimal (str decimal/min)) #elm/decimal "1" nil
 
         {:type "Null"} #elm/decimal "1.1" nil
         #elm/decimal "1.1" {:type "Null"} nil))
@@ -1069,121 +1090,90 @@
 
   (testing "Date - Quantity"
     (are [x y res] (= res (c/compile {} (elm/subtract [x y])))
-      #elm/date "2019" #elm/quantity [1 "year"] (system/date 2018)
-      #elm/date "2019" #elm/quantity [13 "months"] (system/date 2018)
+      #elm/date"2019" #elm/quantity [1 "year"] #system/date"2018"
+      #elm/date"2019" #elm/quantity [13 "months"] #system/date"2018"
 
-      #elm/date "2019-01" #elm/quantity [1 "month"] (system/date 2018 12)
-      #elm/date "2019-01" #elm/quantity [12 "month"] (system/date 2018 1)
-      #elm/date "2019-01" #elm/quantity [13 "month"] (system/date 2017 12)
-      #elm/date "2019-01" #elm/quantity [1 "year"] (system/date 2018 1)
+      #elm/date"2019-01" #elm/quantity [1 "month"] #system/date"2018-12"
+      #elm/date"2019-01" #elm/quantity [12 "month"] #system/date"2018-01"
+      #elm/date"2019-01" #elm/quantity [13 "month"] #system/date"2017-12"
+      #elm/date"2019-01" #elm/quantity [1 "year"] #system/date"2018-01"
 
-      #elm/date "2019-01-01" #elm/quantity [1 "year"] (system/date 2018 1 1)
-      #elm/date "2012-02-29" #elm/quantity [1 "year"] (system/date 2011 2 28)
-      #elm/date "2019-01-01" #elm/quantity [1 "month"] (system/date 2018 12 1)
-      #elm/date "2019-01-01" #elm/quantity [1 "day"] (system/date 2018 12 31))
+      #elm/date"2019-01-01" #elm/quantity [1 "year"] #system/date"2018-01-01"
+      #elm/date"2012-02-29" #elm/quantity [1 "year"] #system/date"2011-02-28"
+      #elm/date"2019-01-01" #elm/quantity [1 "month"] #system/date"2018-12-01"
+      #elm/date"2019-01-01" #elm/quantity [1 "day"] #system/date"2018-12-31"
 
-    (testing "out of range"
-      (testing "year"
-        (given (ba/try-anomaly (c/compile {} (elm/subtract [#elm/date "2022" #elm/quantity [2022 "year"]])))
-          ::anom/category := ::anom/fault
-          ::anom/message := "Year 0 out of range while subtracting the period Period[month = 24264, millis = 0] from the year 2022."
-          :op := :subtract
-          :year := (system/date 2022)
-          :period (date-time/period 2022 0 0)))
+      #elm/date"2022" #elm/quantity [2022 "year"] nil
+      #elm/date"2022-07" #elm/quantity [2022 "year"] nil
+      #elm/date"2022-07-07" #elm/quantity [2022 "year"] nil))
 
-      (testing "year-month"
-        (given (ba/try-anomaly (c/compile {} (elm/subtract [#elm/date "2022-07" #elm/quantity [2022 "year"]])))
-          ::anom/category := ::anom/fault
-          ::anom/message := "Year-month 0000-07 out of range while subtracting the period Period[month = 24264, millis = 0] from the year-month 2022-07."
-          :op := :subtract
-          :year-month := (system/date 2022 7)
-          :period (date-time/period 2022 0 0)))
-
-      (testing "date"
-        (given (ba/try-anomaly (c/compile {} (elm/subtract [#elm/date "2022-07-01" #elm/quantity [2022 "year"]])))
-          ::anom/category := ::anom/fault
-          ::anom/message := "Date 0000-07-01 out of range while subtracting the period Period[month = 24264, millis = 0] from the date 2022-07-01."
-          :op := :subtract
-          :date := (system/date 2022 7 1)
-          :period (date-time/period 2022 0 0)))))
-
-  ;; TODO: find a solution to avoid overflow
-  #_(testing "Subtracting a positive amount of years from a year makes it smaller"
+  (testing "Subtracting a positive amount of years from a year makes it smaller"
       (satisfies-prop 100
         (prop/for-all [year (s/gen :elm/year)
                        years (s/gen :elm/pos-years)]
           (let [elm (elm/less [(elm/subtract [year years]) year])]
-            (true? (core/-eval (c/compile {} elm) {} nil nil))))))
+            (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
-  ;; TODO: find a solution to avoid overflow
-  #_(testing "Subtracting a positive amount of years from a year-month makes it smaller"
+  (testing "Subtracting a positive amount of years from a year-month makes it smaller"
       (satisfies-prop 100
         (prop/for-all [year-month (s/gen :elm/year-month)
                        years (s/gen :elm/pos-years)]
           (let [elm (elm/less [(elm/subtract [year-month years]) year-month])]
-            (true? (core/-eval (c/compile {} elm) {} nil nil))))))
+            (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
-  ;; TODO: find a solution to avoid overflow
-  #_(testing "Subtracting a positive amount of years from a date makes it smaller"
+  (testing "Subtracting a positive amount of years from a date makes it smaller"
       (satisfies-prop 100
         (prop/for-all [date (s/gen :elm/literal-date)
                        years (s/gen :elm/pos-years)]
           (let [elm (elm/less [(elm/subtract [date years]) date])]
-            (true? (core/-eval (c/compile {} elm) {} nil nil))))))
+            (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
-  ;; TODO: find a solution to avoid overflow
-  #_(testing "Subtracting a positive amount of months from a year-month makes it smaller"
+  (testing "Subtracting a positive amount of months from a year-month makes it smaller"
       (satisfies-prop 100
         (prop/for-all [year-month (s/gen :elm/year-month)
                        months (s/gen :elm/pos-months)]
           (let [elm (elm/less [(elm/subtract [year-month months]) year-month])]
-            (true? (core/-eval (c/compile {} elm) {} nil nil))))))
+            (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
-  ;; TODO: find a solution to avoid overflow
-  #_(testing "Subtracting a positive amount of months from a date makes it smaller or lets it equal because a date can be also a year and subtracting a small amount of months from a year doesn't change it."
+  (testing "Subtracting a positive amount of months from a date makes it smaller or lets it equal because a date can be also a year and subtracting a small amount of months from a year doesn't change it."
       (satisfies-prop 100
         (prop/for-all [date (s/gen :elm/literal-date)
                        months (s/gen :elm/pos-months)]
           (let [elm (elm/less-or-equal [(elm/subtract [date months]) date])]
-            (true? (core/-eval (c/compile {} elm) {} nil nil))))))
+            (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
-  ;; TODO: find a solution to avoid overflow
-  #_(testing "Subtracting a positive amount of days from a date makes it smaller or lets it equal because a date can be also a year or year-month and subtracting any amount of days from a year or year-month doesn't change it."
+  (testing "Subtracting a positive amount of days from a date makes it smaller or lets it equal because a date can be also a year or year-month and subtracting any amount of days from a year or year-month doesn't change it."
       (satisfies-prop 100
         (prop/for-all [date (s/gen :elm/literal-date)
                        days (s/gen :elm/pos-days)]
           (let [elm (elm/less-or-equal [(elm/subtract [date days]) date])]
-            (true? (core/-eval (c/compile {} elm) {} nil nil))))))
+            (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
   (testing "DateTime - Quantity"
     (are [x y res] (= res (c/compile {} (elm/subtract [x y])))
-      #elm/date-time "2019" #elm/quantity [1 "year"] (system/date-time 2018)
-      #elm/date-time "2019" #elm/quantity [13 "months"] (system/date-time 2018)
+      #elm/date-time"2019" #elm/quantity [1 "year"] #system/date-time"2018"
+      #elm/date-time"2019" #elm/quantity [13 "months"] #system/date-time"2018"
 
-      #elm/date-time "2019-01" #elm/quantity [1 "month"] (system/date-time 2018 12)
-      #elm/date-time "2019-01" #elm/quantity [12 "month"] (system/date-time 2018 1)
-      #elm/date-time "2019-01" #elm/quantity [13 "month"] (system/date-time 2017 12)
-      #elm/date-time "2019-01" #elm/quantity [1 "year"] (system/date-time 2018 1)
+      #elm/date-time"2019-01" #elm/quantity [1 "month"] #system/date-time"2018-12"
+      #elm/date-time"2019-01" #elm/quantity [12 "month"] #system/date-time"2018-01"
+      #elm/date-time"2019-01" #elm/quantity [13 "month"] #system/date-time"2017-12"
+      #elm/date-time"2019-01" #elm/quantity [1 "year"] #system/date-time"2018-01"
 
-      #elm/date-time "2019-01-01" #elm/quantity [1 "year"] (system/date-time 2018 1 1)
-      #elm/date-time "2012-02-29" #elm/quantity [1 "year"] (system/date-time 2011 2 28)
-      #elm/date-time "2019-01-01" #elm/quantity [1 "month"] (system/date-time 2018 12 1)
-      #elm/date-time "2019-01-01" #elm/quantity [1 "day"] (system/date-time 2018 12 31)
+      #elm/date-time"2019-01-01" #elm/quantity [1 "year"] #system/date-time"2018-01-01"
+      #elm/date-time"2012-02-29" #elm/quantity [1 "year"] #system/date-time"2011-02-28"
+      #elm/date-time"2019-01-01" #elm/quantity [1 "month"] #system/date-time"2018-12-01"
+      #elm/date-time"2019-01-01" #elm/quantity [1 "day"] #system/date-time"2018-12-31"
 
-      #elm/date-time "2019-01-01T00" #elm/quantity [1 "year"] (system/date-time 2018 1 1 0 0 0)
-      #elm/date-time "2019-01-01T00" #elm/quantity [1 "month"] (system/date-time 2018 12 1 0 0 0)
-      #elm/date-time "2019-01-01T00" #elm/quantity [1 "day"] (system/date-time 2018 12 31 0 0 0)
-      #elm/date-time "2019-01-01T00" #elm/quantity [1 "hour"] (system/date-time 2018 12 31 23 0 0)
-      #elm/date-time "2019-01-01T00" #elm/quantity [1 "minute"] (system/date-time 2018 12 31 23 59 0)
-      #elm/date-time "2019-01-01T00" #elm/quantity [1 "second"] (system/date-time 2018 12 31 23 59 59))
+      #elm/date-time"2019-01-01T00" #elm/quantity [1 "year"] (system/date-time 2018 1 1 0 0 0)
+      #elm/date-time"2019-01-01T00" #elm/quantity [1 "month"] (system/date-time 2018 12 1 0 0 0)
+      #elm/date-time"2019-01-01T00" #elm/quantity [1 "day"] (system/date-time 2018 12 31 0 0 0)
+      #elm/date-time"2019-01-01T00" #elm/quantity [1 "hour"] (system/date-time 2018 12 31 23 0 0)
+      #elm/date-time"2019-01-01T00" #elm/quantity [1 "minute"] (system/date-time 2018 12 31 23 59 0)
+      #elm/date-time"2019-01-01T00" #elm/quantity [1 "second"] (system/date-time 2018 12 31 23 59 59)
 
-    (testing "out of range"
-      (given (ba/try-anomaly (c/compile {} (elm/subtract [#elm/date-time "2022" #elm/quantity [2022 "year"]])))
-        ::anom/category := ::anom/fault
-        ::anom/message := "Year 0 out of range while subtracting the period Period[month = 24264, millis = 0] from the year 2022."
-        :op := :subtract
-        :year := (system/date-time 2022)
-        :period (date-time/period 2022 0 0))))
+      #elm/date-time"2022" #elm/quantity [2022 "year"] nil
+      #elm/date-time"2022-07" #elm/quantity [2022 "year"] nil
+      #elm/date-time"2022-07-07" #elm/quantity [2022 "year"] nil))
 
   (testing "Time - Quantity"
     (are [x y res] (= res (c/compile {} (elm/subtract [x y])))
@@ -1226,42 +1216,41 @@
 
   (testing "Decimal"
     (are [x res] (= res (c/compile {} (elm/successor x)))
+      (elm/decimal (str decimal/max)) nil
       #elm/decimal "0" 1E-8M))
 
   (testing "Date"
     (are [x res] (= res (c/compile {} (elm/successor x)))
-      #elm/date "2019" (system/date 2020)
-      #elm/date "2019-01" (system/date 2019 2)
-      #elm/date "2019-01-01" (system/date 2019 1 2)))
+      #elm/date"9999" nil
+      #elm/date"9999-12" nil
+      #elm/date"9999-12-31" nil
+      #elm/date"2019" #system/date"2020"
+      #elm/date"2019-01" #system/date"2019-02"
+      #elm/date"2019-01-01" #system/date"2019-01-02"))
 
   (testing "DateTime"
     (are [x res] (= res (c/compile {} (elm/successor x)))
-      #elm/date-time "2019" (system/date-time 2020)
-      #elm/date-time "2019-01" (system/date-time 2019 2)
-      #elm/date-time "2019-01-01" (system/date-time 2019 1 2)
-      #elm/date-time "2019-01-01T00" (system/date-time 2019 1 1 0 0 0 1)))
+      #elm/date-time"9999" nil
+      #elm/date-time"9999-12" nil
+      #elm/date-time"9999-12-31" nil
+      #elm/date-time"9999-12-31T23:59:59.999" nil
+      #elm/date-time"2019" #system/date-time"2020"
+      #elm/date-time"2019-01" #system/date-time"2019-02"
+      #elm/date-time"2019-01-01" #system/date-time"2019-01-02"
+      #elm/date-time"2019-01-01T00" (system/date-time 2019 1 1 0 0 0 1)))
 
   (testing "Time"
     (are [x res] (= res (c/compile {} (elm/successor x)))
+      #elm/time "23:59:59.999" nil
       #elm/time "00:00:00" (date-time/local-time 0 0 1)))
 
   (testing "Quantity"
     (are [x res] (= res (c/compile {} (elm/successor x)))
+      (elm/quantity [decimal/max]) nil
       #_#_#elm/quantity [0 "m"] (quantity/quantity 1 "m")    ; TODO: implement
       #elm/quantity [0M "m"] (quantity/quantity 1E-8M "m")))
 
   (tu/testing-unary-null elm/successor)
-
-  (are [x] (thrown? Exception (core/-eval (c/compile {} (elm/successor x)) {} nil nil))
-    (elm/decimal (str decimal/max))
-    #elm/date "9999"
-    #elm/date "9999-12"
-    #elm/date "9999-12-31"
-    #elm/time "23:59:59.999"
-    #elm/date-time "9999"
-    #elm/date-time "9999-12"
-    #elm/date-time "9999-12-31"
-    #elm/date-time "9999-12-31T23:59:59.999")
 
   (tu/testing-unary-form elm/successor))
 

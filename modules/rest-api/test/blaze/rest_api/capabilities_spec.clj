@@ -1,5 +1,6 @@
 (ns blaze.rest-api.capabilities-spec
   (:require
+    [blaze.fhir.spec.type-spec]
     [blaze.rest-api.capabilities :as capabilities]
     [blaze.rest-api.capabilities.spec]
     [clojure.spec.alpha :as s]))

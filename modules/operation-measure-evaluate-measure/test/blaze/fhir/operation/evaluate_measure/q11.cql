@@ -5,4 +5,4 @@ include FHIRHelpers version '4.0.0'
 define InInitialPopulation:
   exists
     from [Specimen] S
-    where FHIRHelpers.ToDateTime(S.collection.collected) < @2006
+    where S.collection.collected < @2006

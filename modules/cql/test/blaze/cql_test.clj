@@ -202,6 +202,11 @@
             "HighBoundaryDateTimeMillisecond"               ; TODO: implement
             "HighBoundaryDateMonth"                         ; TODO: implement
             "HighBoundaryDecimal"                           ; TODO: implement
+
+            "PredecessorUnderflowDt"                        ; is nil
+            "PredecessorUnderflowT"                         ; is nil
+            "SuccessorOverflowDt"                           ; is nil
+            "SuccessorOverflowT"                            ; is nil
             })
 
 
@@ -258,6 +263,7 @@
             "DateTimeDurationBetweenMonthUncertain7"        ; TODO: implement uncertainty
 
             "TimeDurationBetweenHourDiffPrecision"          ; new in v1.4.6
+            "DateTimeSubtractInvalidYears"                  ; is nil
             })
 
 

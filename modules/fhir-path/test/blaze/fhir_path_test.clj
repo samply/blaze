@@ -6,7 +6,6 @@
     [blaze.fhir-path-spec]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type]
-    [blaze.fhir.spec.type.system :as system]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
@@ -106,17 +105,17 @@
 
 (deftest date-test
   (are [expr date] (= date (first (eval expr "foo")))
-    "@2020" (system/date 2020)
-    "@2020-01" (system/date 2020 1)
-    "@2020-01-02" (system/date 2020 1 2)))
+    "@2020" #system/date"2020"
+    "@2020-01" #system/date"2020-01"
+    "@2020-01-02" #system/date"2020-01-02"))
 
 
 (deftest date-time-test
   (are [expr date-time] (= date-time (first (eval expr "foo")))
-    "@2020T" (system/date-time 2020)
-    "@2020-01T" (system/date-time 2020 1)
-    "@2020-01-02T" (system/date-time 2020 1 2)
-    "@2020-01-02T03" (system/date-time 2020 1 2 3)))
+    "@2020T" #system/date-time"2020"
+    "@2020-01T" #system/date-time"2020-01"
+    "@2020-01-02T" #system/date-time"2020-01-02"
+    "@2020-01-02T03" #system/date-time"2020-01-02T03"))
 
 
 ;; 4.5. Singleton Evaluation of Collections

@@ -7,4 +7,4 @@ context Patient
 define InInitialPopulation:
   exists
     from [Condition] C
-    where AgeInYearsAt(FHIRHelpers.ToDateTime(C.onset)) between 18 and 45
+    where AgeInYearsAt(C.onset) between 18 and 45

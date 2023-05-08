@@ -11,6 +11,7 @@
     [blaze.elm.compiler.core :as core]
     [blaze.elm.protocols :as p]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.spec.type :as type]
     [clojure.string :as str])
   (:import
     [clojure.lang ILookup IReduceInit]))
@@ -97,6 +98,14 @@
     `(~key ~(core/-form source))))
 
 
+(defrecord SourcePropertyValueExpression [source key]
+  core/Expression
+  (-eval [_ {:keys [db] :as context} resource scope]
+    (type/value (get-property db key (core/-eval source context resource scope))))
+  (-form [_]
+    `(:value (~key ~(core/-form source)))))
+
+
 (defrecord SingleScopePropertyExpression [key]
   core/Expression
   (-eval [_ {:keys [db]} _ value]
@@ -113,19 +122,33 @@
     `(~key ~(symbol (name scope-key)))))
 
 
+(defrecord ScopePropertyValueExpression [scope-key key]
+  core/Expression
+  (-eval [_ {:keys [db]} _ scope]
+    (type/value (get-property db key (get scope scope-key))))
+  (-form [_]
+    `(:value (~key ~(symbol (name scope-key))))))
+
+
 (defn- path->key [path]
-  (let [[first-part & more-parts] (str/split path #"\." 2)]
-    (when (and more-parts (not= ["value"] more-parts))
-      (throw-anom (ba/unsupported (format "Unsupported path `%s`with more than one part." path))))
-    (keyword first-part)))
+  (let [[first-part more] (str/split path #"\." 2)]
+    (if more
+      (if (= "value" more)
+        [(keyword first-part) true]
+        (throw-anom (ba/unsupported (format "Unsupported path `%s`with more than one part." path))))
+      [(keyword first-part)])))
 
 
 (defmethod core/compile* :elm.compiler.type/property
   [context {:keys [source scope path]}]
-  (let [key (path->key path)]
+  (let [[key value?] (path->key path)]
     (cond
       source
-      (->SourcePropertyExpression (core/compile* context source) key)
+      (if value?
+        (->SourcePropertyValueExpression (core/compile* context source) key)
+        (->SourcePropertyExpression (core/compile* context source) key))
 
       scope
-      (->ScopePropertyExpression scope key))))
+      (if value?
+        (->ScopePropertyValueExpression scope key)
+        (->ScopePropertyExpression scope key)))))

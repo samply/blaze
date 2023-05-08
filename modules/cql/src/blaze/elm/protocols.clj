@@ -274,7 +274,7 @@
 (defprotocol ToDate
   "Converts an object into something usable as Date relative to `now`.
 
-  Converts OffsetDateTime and Instant to LocalDate so that we can compare
+  Converts OffsetDateTime to LocalDate so that we can compare
   temporal fields directly."
   (to-date [x now]))
 
@@ -283,7 +283,7 @@
 (defprotocol ToDateTime
   "Converts an object into something usable as DateTime relative to `now`.
 
-  Converts OffsetDateTime and Instant to LocalDateTime so that we can compare
+  Converts OffsetDateTime to LocalDateTime so that we can compare
   temporal fields directly.
 
   Returns nil if not convertable."

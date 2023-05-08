@@ -1,16 +1,16 @@
 (ns blaze.fhir.spec.type.system-test
   (:require
+    [blaze.anomaly :as ba]
     [blaze.fhir.spec.type.system :as system]
     [blaze.fhir.spec.type.system-spec]
-    [blaze.test-util :as tu]
+    [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
-    [cognitect.anomalies :as anom]
     [java-time.api :as time])
   (:import
+    [blaze.fhir.spec.type.system DateDate DateTimeDate DateTimeYear DateTimeYearMonth DateYear DateYearMonth]
     [com.google.common.hash Hashing]
-    [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year
-               YearMonth ZoneOffset]))
+    [java.time LocalTime ZoneOffset]))
 
 
 (set! *warn-on-reflection* true)
@@ -32,7 +32,7 @@
     false
     ""
     0M
-    (Year/of 2020))
+    #system/date"2020")
 
   (are [x] (not (system/value? x))
     nil
@@ -171,7 +171,7 @@
       "1.1" 1.1M))
 
   (testing "invalid"
-    (are [s] (= ::anom/incorrect (::anom/category (system/parse-decimal s)))
+    (are [s] (ba/incorrect? (system/parse-decimal s))
       "a"
       "")))
 
@@ -179,307 +179,342 @@
 (deftest date-test
   (testing "date?"
     (are [date] (true? (system/date? date))
-      (Year/of 2020)
-      (YearMonth/of 2020 1)
-      (LocalDate/of 2020 1 1))
+      #system/date"2020"
+      #system/date"2020-01"
+      #system/date"2020-01-01")
 
     (are [x] (false? (system/date? x))
       nil
-      (system/date-time 2020)))
+      #system/date-time"2020"))
 
   (testing "system equals"
     (testing "same precision"
       (testing "within date"
         (are [a b res] (= res (system/equals a b))
-          (Year/of 2020) (Year/of 2020) true
-          (Year/of 2020) (Year/of 2021) false
-          (Year/of 2020) nil nil
-          (Year/of 2021) (Year/of 2020) false
-          (Year/of 2021) (Year/of 2021) true
-          (Year/of 2021) nil nil
-          nil (Year/of 2020) nil
-          nil (Year/of 2021) nil
+          #system/date"2020" #system/date"2020" true
+          #system/date"2020" #system/date"2021" false
+          #system/date"2020" nil nil
+          #system/date"2021" #system/date"2020" false
+          #system/date"2021" #system/date"2021" true
+          #system/date"2021" nil nil
+          nil #system/date"2020" nil
+          nil #system/date"2021" nil
           nil nil nil
 
-          (YearMonth/of 2020 1) (YearMonth/of 2020 1) true
-          (YearMonth/of 2020 1) (YearMonth/of 2020 2) false
-          (YearMonth/of 2020 1) nil nil
-          (YearMonth/of 2020 2) (YearMonth/of 2020 1) false
-          (YearMonth/of 2020 2) (YearMonth/of 2020 2) true
-          (YearMonth/of 2020 2) nil nil
-          nil (YearMonth/of 2020 1) nil
-          nil (YearMonth/of 2020 2) nil
+          #system/date"2020-01" #system/date"2020-01" true
+          #system/date"2020-01" #system/date"2020-02" false
+          #system/date"2020-01" nil nil
+          #system/date"2020-02" #system/date"2020-01" false
+          #system/date"2020-02" #system/date"2020-02" true
+          #system/date"2020-02" nil nil
+          nil #system/date"2020-01" nil
+          nil #system/date"2020-02" nil
           nil nil nil
 
-          (LocalDate/of 2020 1 1) (LocalDate/of 2020 1 1) true
-          (LocalDate/of 2020 1 1) (LocalDate/of 2020 1 2) false
-          (LocalDate/of 2020 1 1) nil nil
-          (LocalDate/of 2020 1 2) (LocalDate/of 2020 1 1) false
-          (LocalDate/of 2020 1 2) (LocalDate/of 2020 1 2) true
-          (LocalDate/of 2020 1 2) nil nil
-          nil (LocalDate/of 2020 1 1) nil
-          nil (LocalDate/of 2020 1 2) nil
+          #system/date"2020-01-01" #system/date"2020-01-01" true
+          #system/date"2020-01-01" #system/date"2020-01-02" false
+          #system/date"2020-01-01" nil nil
+          #system/date"2020-01-02" #system/date"2020-01-01" false
+          #system/date"2020-01-02" #system/date"2020-01-02" true
+          #system/date"2020-01-02" nil nil
+          nil #system/date"2020-01-01" nil
+          nil #system/date"2020-01-02" nil
           nil nil nil))
 
       (testing "with date-time"
         (are [a b res] (= res (system/equals a b))
-          (Year/of 2020) (system/date-time 2020) true
-          (Year/of 2020) (system/date-time 2021) false
-          (YearMonth/of 2020 1) (system/date-time 2020 1) true
-          (YearMonth/of 2020 1) (system/date-time 2020 2) false
-          (LocalDate/of 2020 1 1) (system/date-time 2020 1 1) true
-          (LocalDate/of 2020 1 1) (system/date-time 2020 1 2) false)))
+          #system/date"2020" #system/date-time"2020" true
+          #system/date"2020" #system/date-time"2021" false
+          #system/date"2020-01" #system/date-time"2020-01" true
+          #system/date"2020-01" #system/date-time"2020-02" false
+          #system/date"2020-01-01" #system/date-time"2020-01-01" true
+          #system/date"2020-01-01" #system/date-time"2020-01-02" false)))
 
     (testing "different precision"
       (testing "within date"
         (are [a b res] (= res (system/equals a b))
-          (Year/of 2020) (YearMonth/of 2020 1) nil
-          (YearMonth/of 2020 1) (Year/of 2020) nil
-          (YearMonth/of 2020 1) (LocalDate/of 2020 1 1) nil
-          (LocalDate/of 2020 1 1) (YearMonth/of 2020 1) nil))
+          #system/date"2020" #system/date"2020-01" nil
+          #system/date"2020-01" #system/date"2020" nil
+          #system/date"2020-01" #system/date"2020-01-01" nil
+          #system/date"2020-01-01" #system/date"2020-01" nil))
 
       (testing "with date-time"
         (are [a b res] (= res (system/equals a b))
-          (Year/of 2020) (system/date-time 2020 1) nil
-          (YearMonth/of 2020 1) (system/date-time 2020) nil
-          (YearMonth/of 2020 1) (system/date-time 2020 1 1) nil
-          (LocalDate/of 2020 1 1) (system/date-time 2020 1) nil)))))
+          #system/date"2020" #system/date-time"2020-01" nil
+          #system/date"2020-01" #system/date-time"2020" nil
+          #system/date"2020-01" #system/date-time"2020-01-01" nil
+          #system/date"2020-01-01" #system/date-time"2020-01" nil)))))
 
 
 (deftest parse-date-test
   (testing "valid"
     (are [s d] (= d (system/parse-date s))
-      "2020" (system/date 2020)
-      "2020-01" (system/date 2020 1)
-      "2020-01-02" (system/date 2020 1 2)))
+      "2020" #system/date"2020"
+      "2020-01" #system/date"2020-01"
+      "2020-01-02" #system/date"2020-01-02"))
 
   (testing "invalid"
-    (are [s] (= ::anom/incorrect (::anom/category (system/parse-date s)))
-      "a"
+    (are [s] (ba/incorrect? (system/parse-date s))
       ""
+      "a"
+      "aaaa"
+      "2020-aa"
+      "2020-01-aa"
+      "201"
+      "20191"
       "2019-13"
       "2019-02-29")))
+
+
+(deftest date-year-test
+  (testing "plus years"
+    (are [date amount res] (= res (.plusYears date amount))
+      (DateYear/of 9998) 1 (system/date 9999)
+      (DateYear/of 2) -1 (system/date 1))
+
+    (given-thrown (.plusYears (DateYear/of 1) -1)
+      :message := "Invalid value for Year (valid values 1 - 9999): 0")
+
+    (given-thrown (.plusYears (DateYear/of 9999) 1)
+      :message := "Invalid value for Year (valid values 1 - 9999): 10000")))
+
+
+(deftest date-year-month-test
+  (testing "plus months"
+    (are [date amount res] (= res (.plusMonths date amount))
+      (DateYearMonth/of 9998 12) 1 (system/date 9999 1)
+      (DateYearMonth/of 9999 11) 1 (system/date 9999 12)
+      (DateYearMonth/of 2 1) -1 (system/date 1 12)
+      (DateYearMonth/of 1 2) -1 (system/date 1 1))
+
+    (given-thrown (.plusMonths (DateYearMonth/of 1 1) -1)
+      :message := "Invalid value for Year (valid values 1 - 9999): 0")
+
+    (given-thrown (.plusMonths (DateYearMonth/of 9999 12) 1)
+      :message := "Invalid value for Year (valid values 1 - 9999): 10000")))
+
+
+(deftest date-date-test
+  (testing "plus days"
+    (are [date amount res] (= res (.plusDays date amount))
+      (DateDate/of 9998 12 31) 1 (system/date 9999 1 1)
+      (DateDate/of 9999 12 30) 1 #system/date"9999-12-31"
+      (DateDate/of 2 1 1) -1 (system/date 1 12 31)
+      (DateDate/of 1 1 2) -1 #system/date"0001-01-01")
+
+    (given-thrown (.plusDays (DateDate/of 1 1 1) -1)
+      :message := "Invalid value for Year (valid values 1 - 9999): 0")
+
+    (given-thrown (.plusDays (DateDate/of 9999 12 31) 1)
+      :message := "Invalid value for Year (valid values 1 - 9999): 10000")))
 
 
 (deftest date-time-test
   (testing "date-time?"
     (are [date-time] (system/date-time? date-time)
-      (system/date-time 2020)
-      (system/date-time 2020 1)
-      (system/date-time 2020 1 1)
-      (LocalDateTime/of 2020 1 1 0 0 0 0)
-      (OffsetDateTime/of 2020 1 1 0 0 0 0 (ZoneOffset/UTC)))
+      #system/date-time"2020"
+      #system/date-time"2020-01"
+      #system/date-time"2020-01-01"
+      (system/date-time 2020 1 1 0 0 0 0)
+      (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)))
 
     (are [x] (not (system/date-time? x))
       nil
-      (Year/of 2020)))
+      #system/date"2020"))
 
   (testing "equals"
     (are [a b] (= a b)
-      (system/date-time 2020) (system/date-time 2020)
-      (system/date-time 2020 1) (system/date-time 2020 1))
+      #system/date-time"2020" #system/date-time"2020"
+      #system/date-time"2020-01" #system/date-time"2020-01")
 
     (are [a b] (not= a b)
-      (system/date-time 2020) (system/date-time 2021)
-      (system/date-time 2020) (Year/of 2020)
+      #system/date-time"2020" #system/date-time"2021"
+      #system/date-time"2020" #system/date"2020"
 
-      (system/date-time 2020 1) (system/date-time 2020 2)
-      (system/date-time 2020 1) (YearMonth/of 2020 1)
+      #system/date-time"2020-01" #system/date-time"2020-02"
+      #system/date-time"2020-01" #system/date"2020-01"
 
-      (system/date-time 2020 1 1)
-      (system/date-time 2020 1 2)
+      #system/date-time"2020-01-01"
+      #system/date-time"2020-01-02"
 
-      (system/date-time 2020 1 1)
-      (LocalDate/of 2020 1 1)))
+      #system/date-time"2020-01-01"
+      #system/date"2020-01-01"))
 
   (testing "comparable"
     (are [a b] (pos? (compare a b))
-      (system/date-time 2021) (system/date-time 2020)
-      (system/date-time 2020 2) (system/date-time 2020 1)
-      (system/date-time 2020 1 2) (system/date-time 2020 1 1)))
+      #system/date-time"2021" #system/date-time"2020"
+      #system/date-time"2020-02" #system/date-time"2020-01"
+      #system/date-time"2020-01-02" #system/date-time"2020-01-01"))
 
   (testing "system equals"
     (testing "same precision"
       (testing "within date-time"
         (are [a b res] (= res (system/equals a b))
-          (system/date-time 2020) (system/date-time 2020) true
-          (system/date-time 2020) (system/date-time 2021) false
-          (system/date-time 2020) nil nil
-          (system/date-time 2021) (system/date-time 2020) false
-          (system/date-time 2021) (system/date-time 2021) true
-          (system/date-time 2021) nil nil
-          nil (system/date-time 2020) nil
-          nil (system/date-time 2021) nil
+          #system/date-time"2020" #system/date-time"2020" true
+          #system/date-time"2020" #system/date-time"2021" false
+          #system/date-time"2020" nil nil
+          #system/date-time"2021" #system/date-time"2020" false
+          #system/date-time"2021" #system/date-time"2021" true
+          #system/date-time"2021" nil nil
+          nil #system/date-time"2020" nil
+          nil #system/date-time"2021" nil
           nil nil nil
 
-          (system/date-time 2020 1) (system/date-time 2020 1) true
-          (system/date-time 2020 1) (system/date-time 2020 2) false
-          (system/date-time 2020 1) nil nil
-          (system/date-time 2020 2) (system/date-time 2020 1) false
-          (system/date-time 2020 2) (system/date-time 2020 2) true
-          (system/date-time 2020 2) nil nil
-          nil (system/date-time 2020 1) nil
-          nil (system/date-time 2020 2) nil
+          #system/date-time"2020-01" #system/date-time"2020-01" true
+          #system/date-time"2020-01" #system/date-time"2020-02" false
+          #system/date-time"2020-01" nil nil
+          #system/date-time"2020-02" #system/date-time"2020-01" false
+          #system/date-time"2020-02" #system/date-time"2020-02" true
+          #system/date-time"2020-02" nil nil
+          nil #system/date-time"2020-01" nil
+          nil #system/date-time"2020-02" nil
           nil nil nil
 
-          (system/date-time 2020 1 1) (system/date-time 2020 1 1) true
-          (system/date-time 2020 1 1) (system/date-time 2020 1 2) false
-          (system/date-time 2020 1 1) nil nil
-          (system/date-time 2020 1 2) (system/date-time 2020 1 1) false
-          (system/date-time 2020 1 2) (system/date-time 2020 1 2) true
-          (system/date-time 2020 1 2) nil nil
-          nil (system/date-time 2020 1 1) nil
-          nil (system/date-time 2020 1 2) nil
+          #system/date-time"2020-01-01" #system/date-time"2020-01-01" true
+          #system/date-time"2020-01-01" #system/date-time"2020-01-02" false
+          #system/date-time"2020-01-01" nil nil
+          #system/date-time"2020-01-02" #system/date-time"2020-01-01" false
+          #system/date-time"2020-01-02" #system/date-time"2020-01-02" true
+          #system/date-time"2020-01-02" nil nil
+          nil #system/date-time"2020-01-01" nil
+          nil #system/date-time"2020-01-02" nil
           nil nil nil
 
-          (LocalDateTime/of 2020 1 1 0 0 0 0) (LocalDateTime/of 2020 1 1 0 0 0 0) true
-          (LocalDateTime/of 2020 1 1 0 0 0 0) (LocalDateTime/of 2020 1 1 0 0 1 0) false
-          (LocalDateTime/of 2020 1 1 0 0 0 0) nil nil
-          (LocalDateTime/of 2020 1 1 0 0 1 0) (LocalDateTime/of 2020 1 1 0 0 0 0) false
-          (LocalDateTime/of 2020 1 1 0 0 1 0) (LocalDateTime/of 2020 1 1 0 0 1 0) true
-          (LocalDateTime/of 2020 1 1 0 0 1 0) nil nil
-          nil (LocalDateTime/of 2020 1 1 0 0 0 0) nil
-          nil (LocalDateTime/of 2020 1 1 0 0 1 0) nil
+          (system/date-time 2020 1 1 0 0 0 0) (system/date-time 2020 1 1 0 0 0 0) true
+          (system/date-time 2020 1 1 0 0 0 0) (system/date-time 2020 1 1 0 0 1 0) false
+          (system/date-time 2020 1 1 0 0 0 0) nil nil
+          (system/date-time 2020 1 1 0 0 1 0) (system/date-time 2020 1 1 0 0 0 0) false
+          (system/date-time 2020 1 1 0 0 1 0) (system/date-time 2020 1 1 0 0 1 0) true
+          (system/date-time 2020 1 1 0 0 1 0) nil nil
+          nil (system/date-time 2020 1 1 0 0 0 0) nil
+          nil (system/date-time 2020 1 1 0 0 1 0) nil
           nil nil nil
 
-          (OffsetDateTime/of 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) (OffsetDateTime/of 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) true
-          (OffsetDateTime/of 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) (OffsetDateTime/of 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) false
-          (OffsetDateTime/of 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) nil nil
-          (OffsetDateTime/of 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) (OffsetDateTime/of 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) false
-          (OffsetDateTime/of 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) (OffsetDateTime/of 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) true
-          (OffsetDateTime/of 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) nil nil
-          nil (OffsetDateTime/of 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) nil
-          nil (OffsetDateTime/of 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) nil
+          (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) true
+          (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) false
+          (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) nil nil
+          (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) false
+          (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) true
+          (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) nil nil
+          nil (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) nil
+          nil (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) nil
           nil nil nil))
 
       (testing "with date"
         (are [a b res] (= res (system/equals a b))
-          (system/date-time 2020) (Year/of 2020) true
-          (system/date-time 2020) (Year/of 2021) false
-          (system/date-time 2020 1) (YearMonth/of 2020 1) true
-          (system/date-time 2020 2) (YearMonth/of 2020 1) false
-          (system/date-time 2020 1 1) (LocalDate/of 2020 1 1) true
-          (system/date-time 2020 1 2) (LocalDate/of 2020 1 1) false)))
+          #system/date-time"2020" #system/date"2020" true
+          #system/date-time"2020" #system/date"2021" false
+          #system/date-time"2020-01" #system/date"2020-01" true
+          #system/date-time"2020-02" #system/date"2020-01" false
+          #system/date-time"2020-01-01" #system/date"2020-01-01" true
+          #system/date-time"2020-01-02" #system/date"2020-01-01" false)))
 
     (testing "different precision"
       (testing "within date-time"
         (are [a b res] (= res (system/equals a b))
-          (system/date-time 2020) (system/date-time 2020 1) nil
-          (system/date-time 2020 1) (system/date-time 2020) nil
-          (system/date-time 2020 1) (system/date-time 2020 1 1) nil
-          (system/date-time 2020 1 1) (system/date-time 2020 1) nil
-          (LocalDateTime/of 2020 1 1 0 0 0 0) (OffsetDateTime/of 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) nil
-          (OffsetDateTime/of 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) (LocalDateTime/of 2020 1 1 0 0 0 0) nil))
+          #system/date-time"2020" #system/date-time"2020-01" nil
+          #system/date-time"2020-01" #system/date-time"2020" nil
+          #system/date-time"2020-01" #system/date-time"2020-01-01" nil
+          #system/date-time"2020-01-01" #system/date-time"2020-01" nil
+          (system/date-time 2020 1 1 0 0 0 0) (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) nil
+          (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 0 0) nil))
 
       (testing "with date"
         (are [a b res] (= res (system/equals a b))
-          (system/date-time 2020 1) (Year/of 2020) nil
-          (system/date-time 2020) (YearMonth/of 2020 1) nil
-          (system/date-time 2020 1 1) (YearMonth/of 2020 1) nil
-          (system/date-time 2020 1) (LocalDate/of 2020 1 1) nil))))
+          #system/date-time"2020-01" #system/date"2020" nil
+          #system/date-time"2020" #system/date"2020-01" nil
+          #system/date-time"2020-01-01" #system/date"2020-01" nil
+          #system/date-time"2020-01" #system/date"2020-01-01" nil))))
 
   (testing "hash-code"
-    (testing "DateTimeYear hash-code equals that of Year"
-      (is (= (.hashCode ^Object (system/date-time 2020))
-             (.hashCode (Year/of 2020)))))
+    (testing "DateTimeYear hash-code equals that of DateYear"
+      (is (= (.hashCode #system/date-time"2020")
+             (.hashCode #system/date"2020"))))
 
-    (testing "DateTimeYearMonth hash-code equals that of YearMonth"
-      (is (= (.hashCode ^Object (system/date-time 2020 1))
-             (.hashCode (YearMonth/of 2020 1)))))
+    (testing "DateTimeYearMonth hash-code equals that of DateYearMonth"
+      (is (= (.hashCode #system/date-time"2020-01")
+             (.hashCode #system/date"2020-01"))))
 
-    (testing "DateTimeYearMonthDay hash-code equals that of LocalDate"
-      (is (= (.hashCode ^Object (system/date-time 2020 1 1))
-             (.hashCode (LocalDate/of 2020 1 1))))))
+    (testing "DateTimeDate hash-code equals that of DateDate"
+      (is (= (.hashCode #system/date-time"2020-01-01")
+             (.hashCode #system/date"2020-01-01")))))
 
   (testing "Temporal"
-    (testing "after?"
-      (testing "year"
-        (are [a b] (time/after? a b)
-          (system/date-time 2021) (system/date-time 2020)))
-
-      (testing "year-month"
-        (are [a b] (time/after? a b)
-          (system/date-time 2020 2) (system/date-time 2020 1)))
-
-      (testing "year-month-day"
-        (are [a b] (time/after? a b)
-          (system/date-time 2020 1 2) (system/date-time 2020 1 1))))
-
     (testing "plus"
       (testing "year"
         (are [o amount res] (= res (time/plus o amount))
-          (system/date-time 2020) (time/years 0) (system/date-time 2020)
-          (system/date-time 2020) (time/years 1) (system/date-time 2021)))
+          #system/date-time"2020" (time/years 0) #system/date-time"2020"
+          #system/date-time"2020" (time/years 1) #system/date-time"2021"))
 
       (testing "year-month"
         (are [o amount res] (= res (time/plus o amount))
-          (system/date-time 2020 1) (time/months 0) (system/date-time 2020 1)
-          (system/date-time 2020 1) (time/months 1) (system/date-time 2020 2)))
+          #system/date-time"2020-01" (time/months 0) #system/date-time"2020-01"
+          #system/date-time"2020-01" (time/months 1) #system/date-time"2020-02"))
 
       (testing "year-month-day"
         (are [o amount res] (= res (time/plus o amount))
-          (system/date-time 2020 1 1) (time/days 0) (system/date-time 2020 1 1)
-          (system/date-time 2020 1 1) (time/days 1) (system/date-time 2020 1 2))))
+          #system/date-time"2020-01-01" (time/days 0) #system/date-time"2020-01-01"
+          #system/date-time"2020-01-01" (time/days 1) #system/date-time"2020-01-02")))
 
     (testing "time-between"
       (testing "year"
         (are [o e n] (= n (time/time-between o e :years))
-          (system/date-time 2020) (system/date-time 2020) 0
-          (system/date-time 2020) (system/date-time 2021) 1
-          (system/date-time 2020) (Year/of 2020) 0
-          (system/date-time 2020) (Year/of 2021) 1
-          (Year/of 2020) (system/date-time 2020) 0
-          (Year/of 2020) (system/date-time 2021) 1))
+          #system/date-time"2020" #system/date-time"2020" 0
+          #system/date-time"2020" #system/date-time"2021" 1
+          #system/date-time"2020" #system/date"2020" 0
+          #system/date-time"2020" #system/date"2021" 1
+          #system/date"2020" #system/date-time"2020" 0
+          #system/date"2020" #system/date-time"2021" 1))
 
       (testing "year-month"
         (are [o e n] (= n (time/time-between o e :months))
-          (system/date-time 2020 1)
-          (system/date-time 2020 1) 0
-          (system/date-time 2020 1)
-          (system/date-time 2020 2) 1
-          (system/date-time 2020 1) (YearMonth/of 2020 1) 0
-          (system/date-time 2020 1) (YearMonth/of 2020 2) 1
-          (YearMonth/of 2020 1) (system/date-time 2020 1) 0
-          (YearMonth/of 2020 1) (system/date-time 2020 2) 1))
+          #system/date-time"2020-01"
+          #system/date-time"2020-01" 0
+          #system/date-time"2020-01"
+          #system/date-time"2020-02" 1
+          #system/date-time"2020-01" #system/date"2020-01" 0
+          #system/date-time"2020-01" #system/date"2020-02" 1
+          #system/date"2020-01" #system/date-time"2020-01" 0
+          #system/date"2020-01" #system/date-time"2020-02" 1))
 
       (testing "year-month-day"
         (are [o e n] (= n (time/time-between o e :days))
-          (system/date-time 2020 1 1)
-          (system/date-time 2020 1 1) 0
-          (system/date-time 2020 1 1)
-          (system/date-time 2020 1 2) 1
-          (system/date-time 2020 1 1) (LocalDate/of 2020 1 1) 0
-          (system/date-time 2020 1 1) (LocalDate/of 2020 1 2) 1
-          (LocalDate/of 2020 1 1) (system/date-time 2020 1 1) 0
-          (LocalDate/of 2020 1 1) (system/date-time 2020 1 2) 1))))
+          #system/date-time"2020-01-01"
+          #system/date-time"2020-01-01" 0
+          #system/date-time"2020-01-01"
+          #system/date-time"2020-01-02" 1
+          #system/date-time"2020-01-01" #system/date"2020-01-01" 0
+          #system/date-time"2020-01-01" #system/date"2020-01-02" 1
+          #system/date"2020-01-01" #system/date-time"2020-01-01" 0
+          #system/date"2020-01-01" #system/date-time"2020-01-02" 1))))
 
   (testing "TemporalAccessor"
     (are [o ps] (every? #(time/supports? o %) ps)
-      (system/date-time 2020)
+      #system/date-time"2020"
       [:year]
 
-      (system/date-time 2020 1)
+      #system/date-time"2020-01"
       [:year :month-of-year]
 
-      (system/date-time 2020 1 1)
+      #system/date-time"2020-01-01"
       [:year :month-of-year :day-of-month])
 
     (are [o p v] (= v (time/value (time/property o p)))
-      (system/date-time 2020) :year 2020
-      (system/date-time 2020 1) :year 2020
-      (system/date-time 2020 1) :month-of-year 1
-      (system/date-time 2020 1 2) :year 2020
-      (system/date-time 2020 1 2) :month-of-year 1
-      (system/date-time 2020 1 2) :day-of-month 2)))
+      #system/date-time"2020" :year 2020
+      #system/date-time"2020-01" :year 2020
+      #system/date-time"2020-01" :month-of-year 1
+      #system/date-time"2020-01-02" :year 2020
+      #system/date-time"2020-01-02" :month-of-year 1
+      #system/date-time"2020-01-02" :day-of-month 2)))
 
 
 (deftest parse-date-time-test
   (testing "valid"
     (are [s d] (= d (system/parse-date-time s))
-      "2020" (system/date-time 2020)
-      "2020-01" (system/date-time 2020 1)
-      "2020-01-02" (system/date-time 2020 1 2)
-      "2020-01-02T03" (system/date-time 2020 1 2 3)
+      "2020" #system/date-time"2020"
+      "2020-01" #system/date-time"2020-01"
+      "2020-01-02" #system/date-time"2020-01-02"
+      "2020-01-02T03" #system/date-time"2020-01-02T03"
       "2020-01-02T03:04" (system/date-time 2020 1 2 3 4)
       "2020-01-02T03:04:05" (system/date-time 2020 1 2 3 4 5)
       "2020-01-02T03:04:05.006" (system/date-time 2020 1 2 3 4 5 6)
@@ -497,11 +532,20 @@
       (system/date-time 2020 1 2 3 4 5 6 (ZoneOffset/ofHours 1))))
 
   (testing "invalid"
-    (are [s] (= ::anom/incorrect (::anom/category (system/parse-date-time s)))
-      "a"
+    (are [s] (ba/incorrect? (system/parse-date-time s))
       ""
+      "a"
+      "aaaa"
+      "2020-aa"
+      "2020-01-aa"
+      "201"
+      "20191"
       "2019-13"
-      "2019-02-29")))
+      "2019-02-29"
+      "2019-02-28T24"
+      "2019-02-28T23:60"
+      "2019-02-28T23:59:60"
+      "2019-02-28T23:59:59+99")))
 
 
 (deftest date-time-lower-bound-test
@@ -542,6 +586,49 @@
            (system/date-time-upper-bound nil)))))
 
 
+(deftest date-time-year-test
+  (testing "plus years"
+    (are [date amount res] (= res (.plusYears date amount))
+      (DateTimeYear/of 9998) 1 #system/date-time"9999"
+      (DateTimeYear/of 2) -1 #system/date-time"0001")
+
+    (given-thrown (.plusYears (DateTimeYear/of 1) -1)
+      :message := "Invalid value for Year (valid values 1 - 9999): 0")
+
+    (given-thrown (.plusYears (DateTimeYear/of 9999) 1)
+      :message := "Invalid value for Year (valid values 1 - 9999): 10000")))
+
+
+(deftest date-time-year-month-test
+  (testing "plus months"
+    (are [date amount res] (= res (.plusMonths date amount))
+      (DateTimeYearMonth/of 9998 12) 1 #system/date-time"9999-01"
+      (DateTimeYearMonth/of 9999 11) 1 #system/date-time"9999-12"
+      (DateTimeYearMonth/of 2 1) -1 #system/date-time"0001-12"
+      (DateTimeYearMonth/of 1 2) -1 #system/date-time"0001-01")
+
+    (given-thrown (.plusMonths (DateTimeYearMonth/of 1 1) -1)
+      :message := "Invalid value for Year (valid values 1 - 9999): 0")
+
+    (given-thrown (.plusMonths (DateTimeYearMonth/of 9999 12) 1)
+      :message := "Invalid value for Year (valid values 1 - 9999): 10000")))
+
+
+(deftest date-time-date-test
+  (testing "plus days"
+    (are [date amount res] (= res (.plusDays date amount))
+      (DateTimeDate/of 9998 12 31) 1 #system/date-time"9999-01-01"
+      (DateTimeDate/of 9999 12 30) 1 #system/date-time"9999-12-31"
+      (DateTimeDate/of 2 1 1) -1 #system/date-time"0001-12-31"
+      (DateTimeDate/of 1 1 2) -1 #system/date-time"0001-01-01")
+
+    (given-thrown (.plusDays (DateTimeDate/of 1 1 1) -1)
+      :message := "Invalid value for Year (valid values 1 - 9999): 0")
+
+    (given-thrown (.plusDays (DateTimeDate/of 9999 12 31) 1)
+      :message := "Invalid value for Year (valid values 1 - 9999): 10000")))
+
+
 (deftest time-test
   (testing "type"
     (is (= :system/time (system/type (LocalTime/of 0 0 0)))))
@@ -574,7 +661,7 @@
       "03:04:05.006" (system/time 3 4 5 6)))
 
   (testing "invalid"
-    (are [s] (= ::anom/incorrect (::anom/category (system/parse-time s)))
+    (are [s] (ba/incorrect? (system/parse-time s))
       "a"
       ""
       "25:00:00"

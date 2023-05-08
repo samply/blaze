@@ -4,36 +4,22 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.protocols :as p]
     [blaze.fhir.spec.type]
     [blaze.fhir.spec.type.system :as system]
     [java-time.api :as time])
   (:import
-    [blaze.fhir.spec.type OffsetInstant]
-    [blaze.fhir.spec.type.system DateTimeYear DateTimeYearMonth DateTimeYearMonthDay]
-    [java.time LocalDate LocalDateTime LocalTime OffsetDateTime Year YearMonth Instant]
+    [blaze.fhir.spec.type.system Date DateDate DateTime DateTimeDate DateTimeYear DateTimeYearMonth DateYear DateYearMonth]
+    [java.time DateTimeException LocalDateTime LocalTime OffsetDateTime]
     [java.time.temporal ChronoField ChronoUnit Temporal TemporalAccessor]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(def min-year (system/date 1))
-(def date-time-min-year (system/date-time 1))
-(def min-year-month (system/date 1 1))
-(def date-time-min-year-month (system/date-time 1 1))
 (def min-date (system/date 1 1 1))
-(def date-time-min-date (system/date-time 1 1 1))
 (def min-date-time (system/date-time 1 1 1 0 0 0 0))
-
-
-(def max-year (system/date 9999))
-(def date-time-max-year (system/date-time 9999))
-(def max-year-month (system/date 9999 12))
-(def date-time-max-year-month (system/date-time 9999 12))
 (def max-date (system/date 9999 12 31))
-(def date-time-max-date (system/date-time 9999 12 31))
 (def max-date-time (system/date-time 9999 12 31 23 59 59 999))
 
 
@@ -172,17 +158,17 @@
 
 
 (extend-protocol PrecisionNum
-  Year
+  DateYear
   (precision-num [_] 0)
   DateTimeYear
   (precision-num [_] 0)
-  YearMonth
+  DateYearMonth
   (precision-num [_] 1)
   DateTimeYearMonth
   (precision-num [_] 1)
-  LocalDate
+  DateDate
   (precision-num [_] 2)
-  DateTimeYearMonthDay
+  DateTimeDate
   (precision-num [_] 2)
   LocalDateTime
   (precision-num [_] 6))
@@ -203,7 +189,7 @@
 
 ;; 12.3. Greater
 (extend-protocol p/Greater
-  Year
+  DateYear
   (greater [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 0 (precision-num other))]
@@ -215,7 +201,7 @@
       (when-let [cmp (compare-to-precision this other 0 (precision-num other))]
         (> cmp 0))))
 
-  YearMonth
+  DateYearMonth
   (greater [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 1 (precision-num other))]
@@ -227,13 +213,13 @@
       (when-let [cmp (compare-to-precision this other 1 (precision-num other))]
         (> cmp 0))))
 
-  LocalDate
+  DateDate
   (greater [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
         (> cmp 0))))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (greater [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
@@ -255,7 +241,7 @@
 
 ;; 12.4. GreaterOrEqual
 (extend-protocol p/GreaterOrEqual
-  Year
+  DateYear
   (greater-or-equal [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 0 (precision-num other))]
@@ -267,7 +253,7 @@
       (when-let [cmp (compare-to-precision this other 0 (precision-num other))]
         (>= cmp 0))))
 
-  YearMonth
+  DateYearMonth
   (greater-or-equal [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 1 (precision-num other))]
@@ -279,13 +265,13 @@
       (when-let [cmp (compare-to-precision this other 1 (precision-num other))]
         (>= cmp 0))))
 
-  LocalDate
+  DateDate
   (greater-or-equal [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
         (>= cmp 0))))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (greater-or-equal [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
@@ -307,7 +293,7 @@
 
 ;; 12.5. Less
 (extend-protocol p/Less
-  Year
+  DateYear
   (less [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 0 (precision-num other))]
@@ -319,7 +305,7 @@
       (when-let [cmp (compare-to-precision this other 0 (precision-num other))]
         (< cmp 0))))
 
-  YearMonth
+  DateYearMonth
   (less [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 1 (precision-num other))]
@@ -331,13 +317,13 @@
       (when-let [cmp (compare-to-precision this other 1 (precision-num other))]
         (< cmp 0))))
 
-  LocalDate
+  DateDate
   (less [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
         (< cmp 0))))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (less [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
@@ -359,7 +345,7 @@
 
 ;; 12.6. LessOrEqual
 (extend-protocol p/LessOrEqual
-  Year
+  DateYear
   (less-or-equal [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 0 (precision-num other))]
@@ -371,7 +357,7 @@
       (when-let [cmp (compare-to-precision this other 0 (precision-num other))]
         (<= cmp 0))))
 
-  YearMonth
+  DateYearMonth
   (less-or-equal [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 1 (precision-num other))]
@@ -383,13 +369,13 @@
       (when-let [cmp (compare-to-precision this other 1 (precision-num other))]
         (<= cmp 0))))
 
-  LocalDate
+  DateDate
   (less-or-equal [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
         (<= cmp 0))))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (less-or-equal [this other]
     (when other
       (when-let [cmp (compare-to-precision this other 2 (precision-num other))]
@@ -412,48 +398,54 @@
 
 ;; 16. Arithmetic Operators
 
+(defmacro catch-date-time-error [& body]
+  `(try
+     ~@body
+     (catch DateTimeException ~'_)))
+
+
 ;; 16.2. Add
 (extend-protocol p/Add
-  Year
+  DateYear
   (add [this other]
     (if (instance? Period other)
-      (time/plus this (time/years (quot (:months other) 12)))
-      (throw (ex-info (str "Invalid RHS adding to Year. Expected Period but was `" (type other) "`.")
+      (catch-date-time-error (.plusYears this (quot (:months other) 12)))
+      (throw (ex-info (str "Invalid RHS adding to DateYear. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
   DateTimeYear
   (add [this other]
     (if (instance? Period other)
-      (time/plus this (time/years (quot (:months other) 12)))
-      (throw (ex-info (str "Invalid RHS adding to Year. Expected Period but was `" (type other) "`.")
+      (catch-date-time-error (.plusYears this (quot (:months other) 12)))
+      (throw (ex-info (str "Invalid RHS adding to DateYear. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
-  YearMonth
+  DateYearMonth
   (add [this other]
     (if (instance? Period other)
-      (time/plus this (time/months (:months other)))
-      (throw (ex-info (str "Invalid RHS adding to YearMonth. Expected Period but was `" (type other) "`.")
+      (catch-date-time-error (.plusMonths this (:months other)))
+      (throw (ex-info (str "Invalid RHS adding to DateYearMonth. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
   DateTimeYearMonth
   (add [this other]
     (if (instance? Period other)
-      (time/plus this (time/months (:months other)))
-      (throw (ex-info (str "Invalid RHS adding to YearMonth. Expected Period but was `" (type other) "`.")
+      (catch-date-time-error (.plusMonths this (:months other)))
+      (throw (ex-info (str "Invalid RHS adding to DateYearMonth. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
-  LocalDate
+  DateDate
   (add [this other]
     (if (instance? Period other)
-      (time/plus this (time/months (:months other)) (time/days (quot (:millis other) 86400000)))
-      (throw (ex-info (str "Invalid RHS adding to LocalDate. Expected Period but was `" (type other) "`.")
+      (catch-date-time-error (time/plus this (time/months (:months other)) (time/days (quot (:millis other) 86400000))))
+      (throw (ex-info (str "Invalid RHS adding to DateDate. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (add [this other]
     (if (instance? Period other)
-      (time/plus this (time/months (:months other)) (time/days (quot (:millis other) 86400000)))
-      (throw (ex-info (str "Invalid RHS adding to LocalDate. Expected Period but was `" (type other) "`.")
+      (catch-date-time-error (time/plus this (time/months (:months other)) (time/days (quot (:millis other) 86400000))))
+      (throw (ex-info (str "Invalid RHS adding to DateDate. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
   LocalDateTime
@@ -471,161 +463,93 @@
                       {:op :add :this this :other other})))))
 
 
-(defn- minimum-value-msg [x]
-  (format "Predecessor: argument `%s` is already the minimum value." x))
-
-
-(defn- minimum-value-anom [x]
-  (ba/incorrect (minimum-value-msg x)))
-
-
 ;; 16.18. Predecessor
 (extend-protocol p/Predecessor
-  Year
+  DateYear
   (predecessor [x]
-    (if (time/after? x min-year)
-      (.minusYears x 1)
-      (throw-anom (minimum-value-anom x))))
+    (catch-date-time-error (.plusYears x -1)))
 
   DateTimeYear
   (predecessor [x]
-    (if (time/after? x date-time-min-year)
-      (time/minus x (time/years 1))
-      (throw-anom (minimum-value-anom x))))
+    (catch-date-time-error (.plusYears x -1)))
 
-  YearMonth
+  DateYearMonth
   (predecessor [x]
-    (if (time/after? x min-year-month)
-      (.minusMonths x 1)
-      (throw-anom (minimum-value-anom x))))
+    (catch-date-time-error (.plusMonths x -1)))
 
   DateTimeYearMonth
   (predecessor [x]
-    (if (time/after? x date-time-min-year-month)
-      (time/minus x (time/months 1))
-      (throw-anom (minimum-value-anom x))))
+    (catch-date-time-error (.plusMonths x -1)))
 
-  LocalDate
+  DateDate
   (predecessor [x]
-    (if (time/after? x min-date)
-      (.minusDays x 1)
-      (throw-anom (minimum-value-anom x))))
+    (catch-date-time-error (.plusDays x -1)))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (predecessor [x]
-    (if (time/after? x date-time-min-date)
-      (time/minus x (time/days 1))
-      (throw-anom (minimum-value-anom x))))
+    (catch-date-time-error (.plusDays x -1)))
 
   LocalDateTime
   (predecessor [x]
-    (if (time/after? x min-date-time)
-      (.minusNanos x 1000000)
-      (throw-anom (minimum-value-anom x))))
+    (when (time/after? x min-date-time)
+      (.minusNanos x 1000000)))
 
   PrecisionLocalTime
   (predecessor [{:keys [local-time p-num] :as x}]
-    (if (p/greater x min-time)
-      (->PrecisionLocalTime (.minus ^LocalTime local-time 1 ^ChronoUnit (p-num->precision p-num)) p-num)
-      (throw-anom (minimum-value-anom x)))))
+    (when (p/greater x min-time)
+      (->PrecisionLocalTime (.minus ^LocalTime local-time 1 ^ChronoUnit (p-num->precision p-num)) p-num))))
 
 
 ;; 16.20. Subtract
-(defn- year-out-of-range-msg [result period year]
-  (format "Year %s out of range while subtracting the period %s from the year %s."
-          result period year))
-
-
-(defn year-out-of-range-ex-info [year period result]
-  (ex-info (year-out-of-range-msg result period year)
-           {:op :subtract :year year :period period}))
-
-
-(defn- year-month-out-of-range-msg [result period year-month]
-  (format "Year-month %s out of range while subtracting the period %s from the year-month %s."
-          result period year-month))
-
-
-(defn year-month-out-of-range-ex-info [year-month period result]
-  (ex-info (year-month-out-of-range-msg result period year-month)
-           {:op :subtract :year-month year-month :period period}))
-
-
-(defn- date-out-of-range-msg [result period date]
-  (format "Date %s out of range while subtracting the period %s from the date %s."
-          result period date))
-
-
-(defn date-out-of-range-ex-info [date period result]
-  (ex-info (date-out-of-range-msg result period date)
-           {:op :subtract :date date :period period}))
-
-
 (extend-protocol p/Subtract
-  Year
+  DateYear
   (subtract [this other]
     (if (instance? Period other)
-      (let [result (time/minus this (time/years (quot (:months other) 12)))]
-        (if (time/before? result min-year)
-          (throw (year-out-of-range-ex-info this other result))
-          result))
-      (throw (ex-info (str "Invalid RHS adding to Year. Expected Period but was `" (type other) "`.")
+      (catch-date-time-error (.plusYears this (- (quot (:months other) 12))))
+      (throw (ex-info (str "Invalid RHS adding to DateYear. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
 
   DateTimeYear
   (subtract [this other]
     (if (instance? Period other)
-      (let [result (time/minus this (time/years (quot (:months other) 12)))]
-        (if (time/before? result date-time-min-year)
-          (throw (year-out-of-range-ex-info this other result))
-          result))
-      (throw (ex-info (str "Invalid RHS adding to Year. Expected Period but was `" (type other) "`.")
+      (catch-date-time-error (.plusYears this (- (quot (:months other) 12))))
+      (throw (ex-info (str "Invalid RHS adding to DateYear. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
 
-  YearMonth
+  DateYearMonth
   (subtract [this other]
     (if (instance? Period other)
-      (let [result (time/minus this (time/months (:months other)))]
-        (if (time/before? result min-year-month)
-          (throw (year-month-out-of-range-ex-info this other result))
-          result))
-      (throw (ex-info (str "Invalid RHS adding to YearMonth. Expected Period but was `" (type other) "`.")
+      (catch-date-time-error (.plusMonths this (- (:months other))))
+      (throw (ex-info (str "Invalid RHS adding to DateYearMonth. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
 
   DateTimeYearMonth
   (subtract [this other]
     (if (instance? Period other)
-      (let [result (time/minus this (time/months (:months other)))]
-        (if (time/before? result date-time-min-year-month)
-          (throw (year-month-out-of-range-ex-info this other result))
-          result))
-      (throw (ex-info (str "Invalid RHS adding to YearMonth. Expected Period but was `" (type other) "`.")
+      (catch-date-time-error (.plusMonths this (- (:months other))))
+      (throw (ex-info (str "Invalid RHS adding to DateYearMonth. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
 
-  LocalDate
+  DateDate
   (subtract [this other]
     (if (instance? Period other)
-      (let [result (time/minus
-                     this
-                     (time/months (:months other))
-                     (time/days (quot (:millis other) 86400000)))]
-        (if (time/before? result min-date)
-          (throw (date-out-of-range-ex-info this other result))
-          result))
-      (throw (ex-info (str "Invalid RHS adding to LocalDate. Expected Period but was `" (type other) "`.")
+      (catch-date-time-error
+        (time/minus
+          this
+          (time/months (:months other))
+          (time/days (quot (:millis other) 86400000))))
+      (throw (ex-info (str "Invalid RHS adding to DateDate. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (subtract [this other]
     (if (instance? Period other)
-      (let [result (time/minus
-                     this
-                     (time/months (:months other))
-                     (time/days (quot (:millis other) 86400000)))]
-        (if (time/before? result date-time-min-date)
-          (throw (date-out-of-range-ex-info this other result))
-          result))
-      (throw (ex-info (str "Invalid RHS adding to LocalDate. Expected Period but was `" (type other) "`.")
+      (catch-date-time-error
+        (time/minus
+          this
+          (time/months (:months other))
+          (time/days (quot (:millis other) 86400000))))
+      (throw (ex-info (str "Invalid RHS adding to DateDate. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
 
   LocalDateTime
@@ -634,9 +558,8 @@
       (let [result (-> this
                        (.minusMonths (:months other))
                        (.minusNanos (* (:millis other) 1000000)))]
-        (if (>= (.compareTo result min-date-time) 0)
-          result
-          (throw (ex-info "Out of range." {:op :subtract :this this :other other}))))
+        (when (>= (.compareTo result min-date-time) 0)
+          result))
       (throw (ex-info (str "Invalid RHS adding to LocalDateTime. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
 
@@ -651,61 +574,39 @@
 
 ;; 16.15. Successor
 (extend-protocol p/Successor
-  Year
+  DateYear
   (successor [x]
-    (if (time/before? x max-year)
-      (.plusYears x 1)
-      (throw (ex-info "Successor: argument is already the maximum value."
-                      {:x x}))))
+    (catch-date-time-error (.plusYears x 1)))
 
   DateTimeYear
   (successor [x]
-    (if (time/before? x date-time-max-year)
-      (time/plus x (time/years 1))
-      (throw (ex-info "Successor: argument is already the maximum value."
-                      {:x x}))))
+    (catch-date-time-error (.plusYears x 1)))
 
-  YearMonth
+  DateYearMonth
   (successor [x]
-    (if (time/before? x max-year-month)
-      (.plusMonths x 1)
-      (throw (ex-info "Successor: argument is already the maximum value."
-                      {:x x}))))
+    (catch-date-time-error (.plusMonths x 1)))
 
   DateTimeYearMonth
   (successor [x]
-    (if (time/before? x date-time-max-year-month)
-      (time/plus x (time/months 1))
-      (throw (ex-info "Successor: argument is already the maximum value."
-                      {:x x}))))
+    (catch-date-time-error (.plusMonths x 1)))
 
-  LocalDate
+  DateDate
   (successor [x]
-    (if (time/before? x max-date)
-      (.plusDays x 1)
-      (throw (ex-info "Successor: argument is already the maximum value."
-                      {:x x}))))
+    (catch-date-time-error (.plusDays x 1)))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (successor [x]
-    (if (time/before? x date-time-max-date)
-      (time/plus x (time/days 1))
-      (throw (ex-info "Successor: argument is already the maximum value."
-                      {:x x}))))
+    (catch-date-time-error (.plusDays x 1)))
 
   LocalDateTime
   (successor [x]
-    (if (time/before? x max-date-time)
-      (.plusNanos x 1000000)
-      (throw (ex-info "Successor: argument is already the maximum value."
-                      {:x x}))))
+    (when (time/before? x max-date-time)
+      (.plusNanos x 1000000)))
 
   PrecisionLocalTime
   (successor [{:keys [local-time p-num] :as x}]
-    (if (p/less x max-time)
-      (->PrecisionLocalTime (.plus ^LocalTime local-time 1 ^ChronoUnit (p-num->precision p-num)) p-num)
-      (throw (ex-info "Successor: argument is already the maximum value."
-                      {:x x})))))
+    (when (p/less x max-time)
+      (->PrecisionLocalTime (.plus ^LocalTime local-time 1 ^ChronoUnit (p-num->precision p-num)) p-num))))
 
 
 
@@ -713,18 +614,22 @@
 
 ;; 18.7. DateFrom
 (extend-protocol p/DateFrom
-  LocalDate
+  Date
   (date-from [x]
     x)
 
+  DateTime
+  (date-from [x]
+    (.toDate x))
+
   LocalDateTime
   (date-from [x]
-    (.toLocalDate x)))
+    (DateDate/fromLocalDate (.toLocalDate x))))
 
 
 ;; 18.9. DateTimeComponentFrom
 (extend-protocol p/DateTimeComponentFrom
-  Year
+  DateYear
   (date-time-component-from [x precision]
     (let [req-p-num (precision->p-num precision)]
       (when (<= req-p-num 0)
@@ -736,7 +641,7 @@
       (when (<= req-p-num 0)
         (get-chrono-field x req-p-num))))
 
-  YearMonth
+  DateYearMonth
   (date-time-component-from [x precision]
     (let [req-p-num (precision->p-num precision)]
       (when (<= req-p-num 1)
@@ -748,13 +653,13 @@
       (when (<= req-p-num 1)
         (get-chrono-field x req-p-num))))
 
-  LocalDate
+  DateDate
   (date-time-component-from [x precision]
     (let [req-p-num (precision->p-num precision)]
       (when (<= req-p-num 2)
         (get-chrono-field x req-p-num))))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (date-time-component-from [x precision]
     (let [req-p-num (precision->p-num precision)]
       (when (<= req-p-num 2)
@@ -775,7 +680,7 @@
 
 ;; 18.10. DifferenceBetween
 (extend-protocol p/DifferenceBetween
-  Year
+  DateYear
   (difference-between [this other precision]
     (when other
       (when (<= (precision->p-num precision) (min 0 (precision-num other)))
@@ -787,7 +692,7 @@
       (when (<= (precision->p-num precision) (min 0 (precision-num other)))
         (.until this other precision))))
 
-  YearMonth
+  DateYearMonth
   (difference-between [this other precision]
     (when other
       (when (<= (precision->p-num precision) (min 1 (precision-num other)))
@@ -799,13 +704,13 @@
       (when (<= (precision->p-num precision) (min 1 (precision-num other)))
         (.until this other precision))))
 
-  LocalDate
+  DateDate
   (difference-between [this other precision]
     (when other
       (when (<= (precision->p-num precision) (min 2 (precision-num other)))
         (.until this other precision))))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (difference-between [this other precision]
     (when other
       (when (<= (precision->p-num precision) (min 2 (precision-num other)))
@@ -833,7 +738,7 @@
 
 ;; 18.11. DurationBetween
 (extend-protocol p/DurationBetween
-  Year
+  DateYear
   (duration-between [this other precision]
     (when other
       (when (<= (precision->p-num precision) (min 0 (precision-num other)))
@@ -845,7 +750,7 @@
       (when (<= (precision->p-num precision) (min 0 (precision-num other)))
         (.until this other precision))))
 
-  YearMonth
+  DateYearMonth
   (duration-between [this other precision]
     (when other
       (when (<= (precision->p-num precision) (min 1 (precision-num other)))
@@ -857,13 +762,13 @@
       (when (<= (precision->p-num precision) (min 1 (precision-num other)))
         (.until this other precision))))
 
-  LocalDate
+  DateDate
   (duration-between [this other precision]
     (when other
       (when (<= (precision->p-num precision) (min 2 (precision-num other)))
         (.until this other precision))))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (duration-between [this other precision]
     (when other
       (when (<= (precision->p-num precision) (min 2 (precision-num other)))
@@ -884,7 +789,7 @@
 
 ;; 18.14. SameAs
 (extend-protocol p/SameAs
-  Year
+  DateYear
   (same-as [this other precision]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
@@ -902,7 +807,7 @@
             (= cmp 0)))
         (p/equal this other))))
 
-  YearMonth
+  DateYearMonth
   (same-as [this other precision]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
@@ -920,7 +825,7 @@
             (= cmp 0)))
         (p/equal this other))))
 
-  LocalDate
+  DateDate
   (same-as [this other precision]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
@@ -929,7 +834,7 @@
             (= cmp 0)))
         (p/equal this other))))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (same-as [this other precision]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
@@ -960,7 +865,7 @@
 
 ;; 18.15. SameOrBefore
 (extend-protocol p/SameOrBefore
-  Year
+  DateYear
   (same-or-before [this other precision]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
@@ -978,7 +883,7 @@
             (<= cmp 0)))
         (p/less-or-equal this other))))
 
-  YearMonth
+  DateYearMonth
   (same-or-before [this other precision]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
@@ -996,7 +901,7 @@
             (<= cmp 0)))
         (p/less-or-equal this other))))
 
-  LocalDate
+  DateDate
   (same-or-before [this other precision]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
@@ -1005,7 +910,7 @@
             (<= cmp 0)))
         (p/less-or-equal this other))))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (same-or-before [this other precision]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
@@ -1036,7 +941,7 @@
 
 ;; 18.16. SameOrAfter
 (extend-protocol p/SameOrAfter
-  Year
+  DateYear
   (same-or-after [this other precision]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
@@ -1054,7 +959,7 @@
             (>= cmp 0)))
         (p/greater-or-equal this other))))
 
-  YearMonth
+  DateYearMonth
   (same-or-after [this other precision]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
@@ -1072,7 +977,7 @@
             (>= cmp 0)))
         (p/greater-or-equal this other))))
 
-  LocalDate
+  DateDate
   (same-or-after [this other precision]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
@@ -1081,7 +986,7 @@
             (>= cmp 0)))
         (p/greater-or-equal this other))))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (same-or-after [this other precision]
     (when other
       (if-let [p-num (some-> precision precision->p-num)]
@@ -1112,7 +1017,7 @@
 
 ;; 19.2. After
 (extend-protocol p/After
-  Year
+  DateYear
   (after [this other precision]
     (when other
       (let [p-num (some-> precision precision->p-num)]
@@ -1130,7 +1035,7 @@
             (> cmp 0))
           (p/greater this other)))))
 
-  YearMonth
+  DateYearMonth
   (after [this other precision]
     (when other
       (let [p-num (some-> precision precision->p-num)]
@@ -1148,7 +1053,7 @@
             (> cmp 0))
           (p/greater this other)))))
 
-  LocalDate
+  DateDate
   (after [this other precision]
     (when other
       (let [p-num (some-> precision precision->p-num)]
@@ -1157,7 +1062,7 @@
             (> cmp 0))
           (p/greater this other)))))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (after [this other precision]
     (when other
       (let [p-num (some-> precision precision->p-num)]
@@ -1188,7 +1093,7 @@
 
 ;; 19.3. Before
 (extend-protocol p/Before
-  Year
+  DateYear
   (before [this other precision]
     (when other
       (let [p-num (some-> precision precision->p-num)]
@@ -1206,7 +1111,7 @@
             (< cmp 0))
           (p/less this other)))))
 
-  YearMonth
+  DateYearMonth
   (before [this other precision]
     (when other
       (let [p-num (some-> precision precision->p-num)]
@@ -1224,7 +1129,7 @@
             (< cmp 0))
           (p/less this other)))))
 
-  LocalDate
+  DateDate
   (before [this other precision]
     (when other
       (let [p-num (some-> precision precision->p-num)]
@@ -1233,7 +1138,7 @@
             (< cmp 0))
           (p/less this other)))))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (before [this other precision]
     (when other
       (let [p-num (some-> precision precision->p-num)]
@@ -1267,72 +1172,32 @@
 
 ;; 22.22. ToDate
 (extend-protocol p/ToDate
-  Year
+  Date
   (to-date [this _]
     this)
 
-  DateTimeYear
+  DateTime
   (to-date [this _]
-    (.-year this))
-
-  YearMonth
-  (to-date [this _]
-    this)
-
-  DateTimeYearMonth
-  (to-date [this _]
-    (.-year_month this))
-
-  LocalDate
-  (to-date [this _]
-    this)
-
-  DateTimeYearMonthDay
-  (to-date [this _]
-    (.-date this))
+    (.toDate this))
 
   LocalDateTime
   (to-date [this _]
-    (.toLocalDate this))
+    (DateDate/fromLocalDate (.toLocalDate this)))
 
   OffsetDateTime
   (to-date [this now]
     (-> (.withOffsetSameInstant this (.getOffset ^OffsetDateTime now))
-        (.toLocalDate))))
+        (.toLocalDate)
+        (DateDate/fromLocalDate))))
 
 
 ;; 22.23. ToDateTime
 (extend-protocol p/ToDateTime
-  Instant
-  (to-date-time [this now]
-    (-> (.atOffset this (.getOffset ^OffsetDateTime now))
-        (.toLocalDateTime)))
-
-  OffsetInstant
-  (to-date-time [this now]
-    (p/to-date-time (.value this) now))
-
-  Year
+  Date
   (to-date-time [this _]
-    (DateTimeYear. this))
+    (.toDateTime this))
 
-  DateTimeYear
-  (to-date-time [this _]
-    this)
-
-  YearMonth
-  (to-date-time [this _]
-    (DateTimeYearMonth. this))
-
-  DateTimeYearMonth
-  (to-date-time [this _]
-    this)
-
-  LocalDate
-  (to-date-time [this _]
-    (DateTimeYearMonthDay. this))
-
-  DateTimeYearMonthDay
+  DateTime
   (to-date-time [this _]
     this)
 
@@ -1352,7 +1217,7 @@
   (to-string [{:keys [local-time]}]
     (str local-time))
 
-  Year
+  DateYear
   (to-string [x]
     (str x))
 
@@ -1360,7 +1225,7 @@
   (to-string [x]
     (str x))
 
-  YearMonth
+  DateYearMonth
   (to-string [x]
     (str x))
 
@@ -1368,11 +1233,11 @@
   (to-string [x]
     (str x))
 
-  LocalDate
+  DateDate
   (to-string [x]
     (str x))
 
-  DateTimeYearMonthDay
+  DateTimeDate
   (to-string [x]
     (str x))
 
@@ -1398,4 +1263,4 @@
 
   PrecisionLocalTime
   (to-time [this _]
-   (.-local_time this)))
+    (.-local_time this)))

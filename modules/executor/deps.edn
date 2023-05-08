@@ -1,4 +1,10 @@
-{:aliases
+{:deps
+ {
+  ;; TODO: only needed for prepping
+  blaze/fhir-structure
+  {:local/root "../fhir-structure"}}
+
+ :aliases
  {:test
   {:extra-paths ["test"]
 

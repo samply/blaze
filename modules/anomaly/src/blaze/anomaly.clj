@@ -16,6 +16,10 @@
   (some? (::anom/category x)))
 
 
+(defn incorrect? [x]
+  (identical? ::anom/incorrect (::anom/category x)))
+
+
 (defn unsupported? [x]
   (identical? ::anom/unsupported (::anom/category x)))
 
@@ -201,3 +205,9 @@
 
 (defn exceptionally [x f]
   (if (::anom/category x) (f x) x))
+
+
+(defn ignore
+  "Ignores a possible anomaly, returning nil instead."
+  [x]
+  (when-not (::anom/category x) x))

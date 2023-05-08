@@ -481,7 +481,7 @@
    :operand op})
 
 
-;; 18.7. DateTime
+;; 18.8. DateTime
 (defn date-time [arg]
   (if (string? arg)
     (date-time (map integer (str/split arg #"[-T:.]")))
@@ -497,21 +497,6 @@
         second (assoc :second second)
         millisecond (assoc :millisecond millisecond)
         timezone-offset (assoc :timezoneOffset timezone-offset)))))
-
-
-;; 18.18. Time
-(defn time [arg]
-  (if (string? arg)
-    (time (map integer (str/split (if (.contains ^String arg ".")
-                                    (subs (str arg "000") 0 12)
-                                    arg) #"[:.]")))
-    (let [[hour minute second millisecond] arg]
-      (cond->
-        {:type "Time"
-         :hour hour}
-        minute (assoc :minute minute)
-        second (assoc :second second)
-        millisecond (assoc :millisecond millisecond)))))
 
 
 ;; 18.9. DateTimeComponentFrom
@@ -533,6 +518,26 @@
   {:type "DurationBetween"
    :operand [x y]
    :precision precision})
+
+
+;; 18.18. Time
+(defn time [arg]
+  (if (string? arg)
+    (time (map integer (str/split (if (.contains ^String arg ".")
+                                    (subs (str arg "000") 0 12)
+                                    arg) #"[:.]")))
+    (let [[hour minute second millisecond] arg]
+      (cond->
+        {:type "Time"
+         :hour hour}
+        minute (assoc :minute minute)
+        second (assoc :second second)
+        millisecond (assoc :millisecond millisecond)))))
+
+
+;; 18.22. Today
+(def today
+  {:type "Today"})
 
 
 ;; 19.1. Interval
