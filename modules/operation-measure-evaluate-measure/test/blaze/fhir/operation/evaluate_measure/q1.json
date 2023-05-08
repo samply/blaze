@@ -26,6 +26,70 @@
     },
     {
       "resource": {
+        "resourceType": "Patient",
+        "id": "2",
+        "gender": "female",
+        "_gender": {
+          "extension": [
+            {
+              "url": "http://fhir.de/StructureDefinition/gender-amtlich-de",
+              "valueCoding": {
+                "system": "http://fhir.de/CodeSystem/gender-amtlich-de",
+                "code": "W",
+                "display": "weiblich"
+              }
+            }
+          ]
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/2"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "3",
+        "gender": "male",
+        "_gender": {
+          "extension": [
+            {
+              "url": "http://fhir.de/StructureDefinition/gender-amtlich-de",
+              "valueCoding": {
+                "system": "http://fhir.de/CodeSystem/gender-amtlich-de",
+                "code": "M",
+                "display": "männlich"
+              }
+            }
+          ]
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/3"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "4",
+        "_gender": {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/data-absent-reason",
+              "valueCode": "unknown"
+            }
+          ]
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/4"
+      }
+    },
+    {
+      "resource": {
         "resourceType": "Measure",
         "id": "0",
         "url": "0",

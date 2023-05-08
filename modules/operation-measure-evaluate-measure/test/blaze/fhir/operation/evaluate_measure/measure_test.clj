@@ -447,7 +447,7 @@
 
 (deftest integration-test
   (are [name count] (= count (:count (first-population (evaluate name))))
-    "q1" 1
+    "q1" 2
     "q2" 1
     "q3" 1
     "q4" 1
@@ -487,13 +487,14 @@
       (is (s/valid? :blaze/resource (:resource result))))
 
     (given (first-population result)
-      :count := 1
+      :count := 2
       [:subjectResults :reference] := "List/AAAAAAAAAAAAAAAA")
 
     (given (second (first (:tx-ops result)))
       :fhir/type := :fhir/List
       :id := "AAAAAAAAAAAAAAAA"
-      [:entry 0 :item :reference] := "Patient/0"))
+      [:entry 0 :item :reference] := "Patient/0"
+      [:entry 1 :item :reference] := "Patient/3"))
 
   (let [result (evaluate "q19-stratifier-ageclass")]
     (testing "MeasureReport is valid"

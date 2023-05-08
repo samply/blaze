@@ -244,7 +244,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
       (let [{:keys [db] :as context} (context system library-gender)
             patient (d/resource-handle db "Patient" "0")]
-        (is (false? (cql/evaluate-individual-expression context patient "InInitialPopulation"))))))
+        (is (nil? (cql/evaluate-individual-expression context patient "InInitialPopulation"))))))
 
   (testing "missing expression"
     (with-system-data [system mem-node-system]
