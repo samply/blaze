@@ -12,6 +12,7 @@
     [cognitect.anomalies :as anom]
     [jsonista.core :as j])
   (:import
+    [com.fasterxml.jackson.core JsonFactory StreamReadConstraints]
     [com.fasterxml.jackson.databind DeserializationFeature ObjectMapper]
     [com.fasterxml.jackson.dataformat.cbor CBORFactory]
     [java.util.regex Pattern]))
@@ -24,8 +25,20 @@
   (some? (s2/get-spec (keyword "fhir" type))))
 
 
+(def ^:private stream-read-constraints
+  (-> (StreamReadConstraints/builder)
+      (.maxStringLength 5e7)
+      (.build)))
+
+
+(def ^:private json-factory
+  (-> (JsonFactory/builder)
+      (.streamReadConstraints stream-read-constraints)
+      (.build)))
+
+
 (def ^:private json-object-mapper
-  (doto (ObjectMapper.)
+  (doto (ObjectMapper. json-factory)
     (.registerModule type/fhir-module)
     (.enable DeserializationFeature/USE_BIG_DECIMAL_FOR_FLOATS)
     (.enable DeserializationFeature/FAIL_ON_TRAILING_TOKENS)))
@@ -45,8 +58,14 @@
   (ba/try-all ::anom/incorrect (j/read-value source json-object-mapper)))
 
 
+(def ^:private cbor-factory
+  (-> (CBORFactory/builder)
+      (.streamReadConstraints stream-read-constraints)
+      (.build)))
+
+
 (def ^:private cbor-object-mapper
-  (doto (ObjectMapper. (CBORFactory.))
+  (doto (ObjectMapper. cbor-factory)
     (.registerModule type/fhir-module)))
 
 

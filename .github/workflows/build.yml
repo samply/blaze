@@ -999,16 +999,22 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_RESOURCE_CACHE_SIZE=0 -p 8080:8080 -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
 
-    - name: Generate Large Binary Resource
+    - name: Generate Large Binary Resources (JSON and XML)
       run: .github/scripts/generate-large-binary-resource.sh
 
-    - name: Post Large Binary Resource
+    - name: Post Large Binary JSON Resource
+      run:  curl -f -H Content-Type:application/fhir+json -H Prefer:return=minimal -d @large-binary.json http://localhost:8080/fhir/Binary
+
+    - name: Post Large Binary XML Resource
       run:  curl -f -H Content-Type:application/fhir+xml -H Prefer:return=minimal -d @large-binary.xml http://localhost:8080/fhir/Binary
+
+    - name: Download Both Resources
+      run:  test "2" = "$(curl -s http://localhost:8080/fhir/Binary | jq .total)"
 
   missing-resource-content-test:
     needs: build
@@ -1530,6 +1536,7 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       packages: write
+      contents: write
     env:
       dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
 

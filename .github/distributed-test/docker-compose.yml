@@ -66,7 +66,7 @@ services:
   blaze-1:
     image: "blaze:latest"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx512m"
+      JAVA_TOOL_OPTIONS: "-Xmx1g"
       STORAGE: "distributed"
       DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       DB_KAFKA_MAX_REQUEST_SIZE: "10485760"
@@ -79,7 +79,7 @@ services:
       DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042"
       DB_CASSANDRA_REQUEST_TIMEOUT: "60000"
       DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
-      DB_RESOURCE_CACHE_SIZE: "1000"
+      DB_RESOURCE_CACHE_SIZE: "100000"
       LOG_LEVEL: "debug"
     ports:
     - "8081:8081"
@@ -96,7 +96,7 @@ services:
   blaze-2:
     image: "blaze:latest"
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx512m"
+      JAVA_TOOL_OPTIONS: "-Xmx1g"
       STORAGE: "distributed"
       DB_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
       DB_KAFKA_MAX_REQUEST_SIZE: "10485760"
@@ -109,7 +109,7 @@ services:
       DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042"
       DB_CASSANDRA_REQUEST_TIMEOUT: "60000"
       DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
-      DB_RESOURCE_CACHE_SIZE: "1000"
+      DB_RESOURCE_CACHE_SIZE: "100000"
       LOG_LEVEL: "debug"
     ports:
     - "8082:8081"

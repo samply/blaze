@@ -136,7 +136,7 @@
 (defrecord ToStringFunctionExpression [operand]
   core/Expression
   (-eval [_ context resource scope]
-    (str (core/-eval operand context resource scope)))
+    (some-> (type/value (core/-eval operand context resource scope)) str))
   (-form [_]
     `(~'call "ToString" ~(core/-form operand))))
 

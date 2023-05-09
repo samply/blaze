@@ -179,7 +179,9 @@
       (testing "eval"
         (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
           "string-195733" "string-195733"
-          #fhir/uri"uri-195924" "uri-195924"))
+          #fhir/uri"uri-195924" "uri-195924"
+          #fhir/code{:id "foo" :value "code-211914"} "code-211914"
+          #fhir/code{:id "foo"} nil))
 
       (testing "form"
         (is (= '(call "ToString" (param-ref "x")) (core/-form expr))))))

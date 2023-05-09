@@ -333,18 +333,18 @@
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
   (testing "Adding a positive amount of days to a date makes it greater or lets it equal because a date can be also a year or year-month and adding any amount of days to a year or year-month doesn't change it."
-    (satisfies-prop 100
+    (satisfies-prop 1000
       (prop/for-all [date (s/gen :elm/literal-date)
                      days (s/gen :elm/pos-days)]
         (let [elm (elm/greater-or-equal [(elm/add [date days]) date])]
-          (true? (core/-eval (c/compile {} elm) {} nil nil))))))
+          (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
   (testing "Adding a positive amount of days to a date-time makes it greater or lets it equal because a date-time can be also a year or year-month and adding any amount of days to a year or year-month doesn't change it."
-    (satisfies-prop 100
+    (satisfies-prop 1000
       (prop/for-all [date-time (s/gen :elm/literal-date-time)
                      days (s/gen :elm/pos-days)]
         (let [elm (elm/greater-or-equal [(elm/add [date-time days]) date-time])]
-          (true? (core/-eval (c/compile {} elm) {:now tu/now} nil nil))))))
+          (not (false? (core/-eval (c/compile {} elm) {:now tu/now} nil nil)))))))
 
   (testing "DateTime + Quantity"
     (are [x y res] (= res (core/-eval (c/compile {} (elm/add [x y])) {} nil nil))

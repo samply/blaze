@@ -67,7 +67,7 @@
 
 
 (defn- bind-put [statement token clauses]
-  (let [content (codec/encode clauses)]
+  (let [^bytes content (codec/encode clauses)]
     (prom/observe! clauses-bytes (alength content))
     (cass/bind statement token (bb/wrap content))))
 
