@@ -1536,6 +1536,7 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       packages: write
+      contents: write
     env:
       dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
 
