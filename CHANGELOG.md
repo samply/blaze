@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.20.6
+
+### Bugfixes
+
+* Fix Gender Values with Extensions Not Found in CQL ([#993](https://github.com/samply/blaze/issues/993))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/72?closed=1).
+
 ## v0.20.5
 
 ### Bugfixes
