@@ -1,9 +1,0 @@
-{
-  "method": "GET",
-  "url": "http://localhost:8080/fhir/Patient/",
-  "header": {
-    "Accept": [
-      "application/fhir+json"
-    ]
-  }
-}
