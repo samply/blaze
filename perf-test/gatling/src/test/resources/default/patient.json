@@ -1,4 +1,0 @@
-{
-  "resourceType" : "Patient",
-  "gender": "${gender}"
-}

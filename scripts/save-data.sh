@@ -18,4 +18,4 @@ echo "Save all resources from $SRC_BASE_URI into the directory $DST_DIR..."
 
 blazectl download --server "$SRC_BASE_URI" -q "_count=$PAGE_SIZE" 2>/dev/null |\
   jq -c '{resource: ., request: {method: "PUT", url: (.resourceType + "/" + .id)}}' |\
-  parallel --pipe -n "$TRANSACTION_BUNDLE_SIZE" -j "$NUM_JOBS"  save-bundle "$DST_DIR" "{#}"
+  parallel --pipe -n "$TRANSACTION_BUNDLE_SIZE" -j "$NUM_JOBS" save-bundle "$DST_DIR" "{#}"
