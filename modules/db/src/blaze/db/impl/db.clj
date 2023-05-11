@@ -2,7 +2,6 @@
   "Primary Database Implementation"
   (:require
     [blaze.db.impl.batch-db :as batch-db]
-    [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.macros :refer [with-open-coll]]
     [blaze.db.impl.protocols :as p]
     [blaze.db.kv :as kv])
@@ -14,14 +13,14 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(deftype Db [node basis-t t]
+(deftype Db [node kv-store rh-cache basis-t t]
   p/Db
   (-node [_]
     node)
 
   (-as-of [_ t]
     (assert (<= ^long t ^long basis-t))
-    (Db. node basis-t t))
+    (Db. node kv-store rh-cache basis-t t))
 
   (-basis-t [_]
     basis-t)
@@ -34,10 +33,9 @@
   ;; ---- Instance-Level Functions --------------------------------------------
 
   (-resource-handle [_ tid id]
-    (let [{:keys [kv-store rh-cache]} node]
-      (with-open [snapshot (kv/new-snapshot kv-store)
-                  raoi (kv/new-iterator snapshot :resource-as-of-index)]
-        ((rao/resource-handle rh-cache raoi t) tid id))))
+    (with-open [snapshot (kv/new-snapshot kv-store)
+                raoi (kv/new-iterator snapshot :resource-as-of-index)]
+      ((batch-db/resource-handle rh-cache raoi t) tid id)))
 
 
 
@@ -206,4 +204,5 @@
 (defn db
   "Creates a database on `node` based on `t`."
   [node t]
-  (->Db node t t))
+  (let [{:keys [kv-store rh-cache]} node]
+    (->Db node kv-store rh-cache t t)))

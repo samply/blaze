@@ -472,7 +472,6 @@
   (s/keys
     :req-un
     [:blaze.db/tx-log
-     :blaze.db/resource-handle-cache
      :blaze.db/tx-cache
      ::indexer-executor
      :blaze.db/kv-store
@@ -480,7 +479,8 @@
      :blaze.db/resource-store
      :blaze.db/search-param-registry]
     :opt-un
-    [:blaze.db/enforce-referential-integrity]))
+    [:blaze.db/resource-handle-cache
+     :blaze.db/enforce-referential-integrity]))
 
 
 (def ^:private expected-kv-store-version 0)

@@ -20,7 +20,7 @@
 
 
 (s/def :blaze.db/resource-handle-cache
-  cache?)
+  (s/nilable cache?))
 
 
 (defn loading-cache? [x]

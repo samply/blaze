@@ -4,10 +4,13 @@ lint:
 prep:
 	clojure -X:deps prep
 
-test: prep
+build: prep
+	clojure -T:build compile
+
+test: build
 	clojure -M:test:kaocha --profile :ci
 
-test-coverage: prep
+test-coverage: build
 	clojure -M:test:coverage
 
 deps-tree:
@@ -19,4 +22,4 @@ deps-list:
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: lint prep test test-coverage deps-tree deps-list clean
+.PHONY: lint prep build test test-coverage deps-tree deps-list clean

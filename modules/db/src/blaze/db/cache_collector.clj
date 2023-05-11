@@ -36,7 +36,10 @@
 
 
 (def ^:private mapper
-  (map (fn [[name cache]] [name (p/-stats cache) (p/-estimated-size cache)])))
+  (keep
+    (fn [[name cache]]
+      (when cache
+        [name (p/-stats cache) (p/-estimated-size cache)]))))
 
 
 (defmethod ig/pre-init-spec :blaze.db/cache-collector [_]

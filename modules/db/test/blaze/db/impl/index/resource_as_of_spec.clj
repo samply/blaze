@@ -51,9 +51,15 @@
     (s/nilable :blaze.db/resource-handle)))
 
 
-(s/fdef rao/resource-handle
+(s/fdef rao/caching-resource-handle
   :args (s/cat :rh-cache :blaze.db/resource-handle-cache
                :raoi :blaze.db/kv-iterator
+               :t :blaze.db/t)
+  :ret ::resource-handle-fn)
+
+
+(s/fdef rao/non-caching-resource-handle
+  :args (s/cat :raoi :blaze.db/kv-iterator
                :t :blaze.db/t)
   :ret ::resource-handle-fn)
 

@@ -5,4 +5,4 @@
 
 
 (s/def :blaze.db.cache-collector/caches
-  (s/map-of string? #(satisfies? p/StatsCache %)))
+  (s/map-of string? (s/nilable #(satisfies? p/StatsCache %))))
