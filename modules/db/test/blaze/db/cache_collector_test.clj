@@ -25,7 +25,7 @@
 
 (def system
   {:blaze.db/cache-collector
-   {:caches {"name-135224" cache}}})
+   {:caches {"name-135224" cache "name-093214" nil}}})
 
 
 (deftest init-test

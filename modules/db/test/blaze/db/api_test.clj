@@ -584,58 +584,59 @@
 ;; ---- Instance-Level Functions ----------------------------------------------
 
 (deftest resource-handle-test
-  (testing "a new node does not contain a resource"
-    (with-system [{:blaze.db/keys [node]} system]
-      (is (nil? (d/resource-handle (d/db node) "Patient" "foo")))))
+  (doseq [system [system (assoc-in system [:blaze.db/resource-handle-cache :max-size] 100)]]
+    (testing "a new node does not contain a resource"
+      (with-system [{:blaze.db/keys [node]} system]
+        (is (nil? (d/resource-handle (d/db node) "Patient" "foo")))))
 
-  (testing "a resource handle is actually one"
-    (with-system-data [{:blaze.db/keys [node]} system]
-      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+    (testing "a resource handle is actually one"
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (is (d/resource-handle? (d/resource-handle (d/db node) "Patient" "0")))))
+        (is (d/resource-handle? (d/resource-handle (d/db node) "Patient" "0")))))
 
-  (testing "a node contains a resource after a create transaction"
-    (with-system-data [{:blaze.db/keys [node]} system]
-      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+    (testing "a node contains a resource after a create transaction"
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (testing "pull"
+        (testing "pull"
+          (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+            :fhir/type := :fhir/Patient
+            :id := "0"
+            [:meta :versionId] := #fhir/id"1"
+            [meta :blaze.db/tx :blaze.db/t] := 1
+            [meta :blaze.db/num-changes] := 1))
+
+        (testing "pull-content"
+          (given @(d/pull-content node (d/resource-handle (d/db node) "Patient" "0"))
+            :fhir/type := :fhir/Patient
+            :id := "0"))
+
+        (testing "number of changes is 1"
+          (is (= 1 (:num-changes (d/resource-handle (d/db node) "Patient" "0")))))))
+
+    (testing "a node contains a resource after a put transaction"
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
           :fhir/type := :fhir/Patient
           :id := "0"
           [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/tx :blaze.db/t] := 1
-          [meta :blaze.db/num-changes] := 1))
+          [meta :blaze.db/num-changes] := 1)))
 
-      (testing "pull-content"
-        (given @(d/pull-content node (d/resource-handle (d/db node) "Patient" "0"))
+    (testing "a deleted resource is flagged"
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+         [[:delete "Patient" "0"]]]
+
+        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
           :fhir/type := :fhir/Patient
-          :id := "0"))
-
-      (testing "number of changes is 1"
-        (is (= 1 (:num-changes (d/resource-handle (d/db node) "Patient" "0")))))))
-
-  (testing "a node contains a resource after a put transaction"
-    (with-system-data [{:blaze.db/keys [node]} system]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
-
-      (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-        :fhir/type := :fhir/Patient
-        :id := "0"
-        [:meta :versionId] := #fhir/id"1"
-        [meta :blaze.db/tx :blaze.db/t] := 1
-        [meta :blaze.db/num-changes] := 1)))
-
-  (testing "a deleted resource is flagged"
-    (with-system-data [{:blaze.db/keys [node]} system]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-       [[:delete "Patient" "0"]]]
-
-      (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-        :fhir/type := :fhir/Patient
-        :id := "0"
-        [:meta :versionId] := #fhir/id"2"
-        [meta :blaze.db/op] := :delete
-        [meta :blaze.db/tx :blaze.db/t] := 2))))
+          :id := "0"
+          [:meta :versionId] := #fhir/id"2"
+          [meta :blaze.db/op] := :delete
+          [meta :blaze.db/tx :blaze.db/t] := 2)))))
 
 
 

@@ -116,13 +116,12 @@
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :tx-log))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-handle-cache))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :tx-cache))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :indexer-executor))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :resource-indexer))
-      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:explain ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :tx-cache))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :indexer-executor))
+      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
+      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :resource-indexer))
+      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
+      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
 
   (testing "invalid tx-log"
     (given-thrown (ig/init (assoc-in system [:blaze.db/node :tx-log] ::invalid))

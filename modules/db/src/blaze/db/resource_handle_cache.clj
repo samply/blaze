@@ -23,7 +23,8 @@
   [_ {:keys [max-size] :or {max-size 0}}]
   (log/info "Create resource handle cache with a size of" max-size
             "resource handles")
-  (-> (Caffeine/newBuilder)
-      (.maximumSize max-size)
-      (.recordStats)
-      (.build)))
+  (when (pos? max-size)
+    (-> (Caffeine/newBuilder)
+        (.maximumSize max-size)
+        (.recordStats)
+        (.build))))
