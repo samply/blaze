@@ -29,6 +29,11 @@
       (u/resource-handle-mapper context tid)
       (spt/resource-keys! context c-hash tid value start-id)))
 
+  (-count-resource-handles [_ context tid _ value]
+    (u/count-resource-handles
+      context tid
+      (spt/resource-keys! context c-hash tid value)))
+
   (-matches? [_ context resource-handle _ values]
     (some? (some #(spt/matches? context c-hash resource-handle %) values)))
 

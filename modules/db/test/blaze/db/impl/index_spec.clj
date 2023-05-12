@@ -1,5 +1,6 @@
 (ns blaze.db.impl.index-spec
   (:require
+    [blaze.async.comp :as ac]
     [blaze.byte-string-spec]
     [blaze.db.impl.batch-db.spec]
     [blaze.db.impl.codec-spec]
@@ -28,6 +29,13 @@
                :clauses :blaze.db.index.query/clauses
                :start-id (s/? :blaze.db/id-byte-string))
   :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+
+
+(s/fdef index/type-query-total
+  :args (s/cat :context :blaze.db.impl.batch-db/context
+               :tid :blaze.db/tid
+               :clauses :blaze.db.index.query/clauses)
+  :ret ac/completable-future?)
 
 
 (s/fdef index/system-query

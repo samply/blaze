@@ -59,6 +59,7 @@
               (.setVerifyCompression false)
               (.setCacheIndexAndFilterBlocks true)
               (.setPinL0FilterAndIndexBlocksInCache true)
+              (.setPinTopLevelIndexAndFilter true)
               (.setBlockSize block-size)
               (.setBlockCache block-cache))
             bloom-filter?

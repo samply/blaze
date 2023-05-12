@@ -24,6 +24,10 @@
     [db compartment tid]
     [db compartment tid start-id])
 
+  (-count-query [db query]
+    "Returns a CompletableFuture that will complete with the count of the
+    matching resource handles.")
+
   (-execute-query [db query] [db query arg1])
 
   (-instance-history [db tid id start-t since])
@@ -62,6 +66,10 @@
 
 
 (defprotocol Query
+  (-count [query context]
+    "Returns a CompletableFuture that will complete with the count of the
+    matching resource handles.")
+
   (-execute [query context] [query context arg1])
 
   (-clauses [query]))
@@ -77,6 +85,10 @@
     [search-param context tid direction]
     [search-param context tid direction start-id]
     "Returns a reducible collection.")
+  (-count-resource-handles
+    [search-param context tid modifier compiled-value]
+    "Returns a CompletableFuture that will complete with the count of the
+    matching resource handles.")
   (-compartment-keys [search-param context compartment tid compiled-value])
   (-matches? [search-param context resource-handle modifier compiled-values])
   (-compartment-ids [_ resolver resource])

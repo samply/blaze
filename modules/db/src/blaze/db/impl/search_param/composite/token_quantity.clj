@@ -61,6 +61,11 @@
       (u/resource-handle-mapper context tid)
       (spq/resource-keys! context c-hash tid prefix-length value start-id)))
 
+  (-count-resource-handles [_ context tid _ value]
+    (u/count-resource-handles
+      context tid
+      (spq/resource-keys! context c-hash tid prefix-length value)))
+
   (-matches? [_ context resource-handle _ values]
     (some? (some #(spq/matches? context c-hash resource-handle prefix-length %)
                  values)))

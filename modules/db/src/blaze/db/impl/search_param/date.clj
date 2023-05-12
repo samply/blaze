@@ -392,6 +392,11 @@
       (u/resource-handle-mapper context tid)
       (resource-keys! context c-hash tid value start-id)))
 
+  (-count-resource-handles [_ context tid _ value]
+    (u/count-resource-handles
+      context tid
+      (resource-keys! context c-hash tid value)))
+
   (-sorted-resource-handles [_ context tid direction]
     (coll/eduction
       (comp drop-value

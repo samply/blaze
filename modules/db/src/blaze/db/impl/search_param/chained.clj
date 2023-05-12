@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.chained
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.async.comp :as ac]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index :as index]
@@ -46,6 +47,10 @@
       (coll/eduction
         (drop-while #(not= start-id (rh/id %)))
         (p/-resource-handles this context tid modifier compiled-value))))
+
+  (-count-resource-handles [this context tid modifier compiled-value]
+    (ac/completed-future
+      (count (p/-resource-handles this context tid modifier compiled-value))))
 
   (-matches? [_ context resource-handle modifier compiled-values]
     (some

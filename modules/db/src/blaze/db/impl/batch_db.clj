@@ -4,6 +4,7 @@
   A batch database keeps key-value store iterators open in order to avoid the
   cost associated with open and closing them."
   (:require
+    [blaze.async.comp :as ac]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index :as index]
@@ -27,6 +28,11 @@
 
 
 (set! *warn-on-reflection* true)
+
+
+(defn- type-total [{:keys [snapshot t]} tid]
+  (with-open [iter (type-stats/new-iterator snapshot)]
+    (:total (type-stats/get! iter tid t) 0)))
 
 
 (defrecord BatchDb [node basis-t context]
@@ -55,9 +61,7 @@
     (rao/type-list context tid start-id))
 
   (-type-total [_ tid]
-    (let [{:keys [snapshot t]} context]
-      (with-open [iter (type-stats/new-iterator snapshot)]
-        (:total (type-stats/get! iter tid t) 0))))
+    (type-total context tid))
 
 
 
@@ -87,6 +91,9 @@
 
 
   ;; ---- Common Query Functions ----------------------------------------------
+
+  (-count-query [_ query]
+    (p/-count query context))
 
   (-execute-query [_ query]
     (p/-execute query context))
@@ -250,6 +257,8 @@
 
 (defrecord TypeQuery [tid clauses]
   p/Query
+  (-count [_ context]
+    (index/type-query-total context tid clauses))
   (-execute [_ context]
     (index/type-query context tid clauses))
   (-execute [_ context start-id]
@@ -260,6 +269,8 @@
 
 (defrecord EmptyTypeQuery [tid]
   p/Query
+  (-count [_ context]
+    (ac/completed-future (type-total context tid)))
   (-execute [_ context]
     (rao/type-list context tid))
   (-execute [_ context start-id]
@@ -289,12 +300,6 @@
   (-clauses [_]))
 
 
-(defn resource-handle [rh-cache raoi t]
-  (if rh-cache
-    (rao/caching-resource-handle rh-cache raoi t)
-    (rao/non-caching-resource-handle raoi t)))
-
-
 (defn new-batch-db
   "Creates a new batch database.
 
@@ -309,8 +314,9 @@
       basis-t
       (let [raoi (kv/new-iterator snapshot :resource-as-of-index)]
         {:snapshot snapshot
+         :rh-cache rh-cache
          :raoi raoi
-         :resource-handle (resource-handle rh-cache raoi t)
+         :resource-handle (u/resource-handle rh-cache raoi t)
          :svri (kv/new-iterator snapshot :search-param-value-index)
          :rsvi (kv/new-iterator snapshot :resource-value-index)
          :cri (kv/new-iterator snapshot :compartment-resource-type-index)
