@@ -131,7 +131,7 @@
   "Returns the number of all resources of `type` in `db`.
 
   This is O(1) instead of O(n) when counting the number of resources returned by
-  `list-resources`."
+  `type-list`."
   [db type]
   (p/-type-total db (codec/tid type)))
 
@@ -168,7 +168,9 @@
 
 (defn compile-type-query-lenient
   "Like `compile-type-query` but ignores clauses which refer to unknown search
-  parameters."
+  parameters.
+
+  Returns an anomaly if search values are invalid."
   [node-or-db type clauses]
   (p/-compile-type-query-lenient node-or-db type clauses))
 
@@ -283,6 +285,13 @@
 
 
 ;; ---- Common Query Functions ------------------------------------------------
+
+(defn count-query
+  "Returns a CompletableFuture that will complete with the count of the
+  matching resource handles."
+  [db query]
+  (p/-count-query db query))
+
 
 (defn execute-query
   "Executes a pre-compiled `query` with `args`.

@@ -826,6 +826,11 @@
      @(d/pull-many node handles))))
 
 
+(defn- count-type-query [node type clauses]
+  (when-ok [query (d/compile-type-query node type clauses)]
+    @(d/count-query (d/db node) query)))
+
+
 (defn- with-system-clock [system]
   (assoc-in system [::tx-log/local :clock] (ig/ref :blaze.test/system-clock)))
 
@@ -969,7 +974,10 @@
       (given (pull-type-query node "Patient" [["active" "true"]])
         count := 1
         [0 :fhir/type] := :fhir/Patient
-        [0 :id] := "0")))
+        [0 :id] := "0")
+
+      (testing "count query"
+        (is (= 1 (count-type-query node "Patient" [["active" "true"]]))))))
 
   ;; TODO: fix this https://github.com/samply/blaze/issues/904
   #_(testing "sorting by _lastUpdated returns only the newest version of the patient"
@@ -1025,7 +1033,10 @@
           (given (pull-type-query node "Patient" [["_list" "0"]])
             count := 1
             [0 :fhir/type] := :fhir/Patient
-            [0 :id] := "0"))
+            [0 :id] := "0")
+
+          (testing "count query"
+            (is (= 1 (count-type-query node "Patient" [["_list" "0"]])))))
 
         (testing "returns only the observation referenced in the list"
           (given (pull-type-query node "Observation" [["_list" "0"]])
@@ -1148,7 +1159,10 @@
         (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$ge130"]]]
           (given (pull-type-query node "Patient" clauses)
             count := 1
-            [0 :id] := "0")))
+            [0 :id] := "0")
+
+          (testing "count query"
+            (is (= 1 (count-type-query node "Patient" clauses))))))
 
       (testing "select the Patient with 100 mm[Hg]"
         (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$100"]]]
@@ -1313,13 +1327,16 @@
         (testing "in first position"
           (given (pull-type-query node "Patient" [["address" "Liebigstraße"]])
             count := 1
-            [0 :id] := "id-2"))
+            [0 :id] := "id-2")
+
+          (testing "count query"
+            (is (= 1 (count-type-query node "Patient" [["address" "Liebigstraße"]])))))
 
         (testing "in second position"
           (given (pull-type-query node "Patient" [["gender" "female"]
                                                   ["address" "Liebigstraße"]])
-            [0 :id] := "id-2"
-            1 := nil)))
+            count := 1
+            [0 :id] := "id-2")))
 
       (testing "address with city"
         (testing "full result"
@@ -1330,8 +1347,8 @@
 
         (testing "it is possible to start with the second patient"
           (given (pull-type-query node "Patient" [["address" "Leipzig"]] "id-2")
-            [0 :id] := "id-2"
-            1 := nil)))
+            count := 1
+            [0 :id] := "id-2")))
 
       (testing "address-city full"
         (given (pull-type-query node "Patient" [["address-city" "Leipzig"]])
@@ -1864,8 +1881,8 @@
 
       (testing "email"
         (given (pull-type-query node "Patient" [["email" "foo@bar.baz"]])
-          [0 :id] := "id-1"
-          1 := nil))
+          count := 1
+          [0 :id] := "id-1"))
 
       (testing "family lower-case"
         (given (pull-type-query node "Patient" [["family" "schmidt"]])
@@ -1874,18 +1891,18 @@
 
       (testing "gender"
         (given (pull-type-query node "Patient" [["gender" "male"]])
-          [0 :id] := "id-0"
-          1 := nil))
+          count := 1
+          [0 :id] := "id-0"))
 
       (testing "identifier"
         (given (pull-type-query node "Patient" [["identifier" "0"]])
-          [0 :id] := "id-0"
-          1 := nil))
+          count := 1
+          [0 :id] := "id-0"))
 
       (testing "telecom"
         (given (pull-type-query node "Patient" [["telecom" "0815"]])
-          [0 :id] := "id-1"
-          1 := nil))))
+          count := 1
+          [0 :id] := "id-1"))))
 
   (testing "Practitioner"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -1900,7 +1917,10 @@
         (testing "using family"
           (given (pull-type-query node "Practitioner" [["name" "müller"]])
             count := 1
-            [0 :id] := "id-0"))
+            [0 :id] := "id-0")
+
+          (testing "count query"
+            (is (= 1 (count-type-query node "Practitioner" [["name" "müller"]])))))
 
         (testing "using first given"
           (given (pull-type-query node "Practitioner" [["name" "hans"]])
@@ -1934,42 +1954,42 @@
       (testing "bodysite"
         (testing "using system|code"
           (given (pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]])
-            [0 :id] := "id-0"
-            1 := nil))
+            count := 1
+            [0 :id] := "id-0"))
 
         (testing "using code"
           (given (pull-type-query node "Specimen" [["bodysite" "C77.4"]])
-            [0 :id] := "id-0"
-            1 := nil))
+            count := 1
+            [0 :id] := "id-0"))
 
         (testing "using system|"
           (given (pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|"]])
-            [0 :id] := "id-0"
-            1 := nil)))
+            count := 1
+            [0 :id] := "id-0")))
 
       (testing "type"
         (given (pull-type-query node "Specimen" [["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|dna"]])
-          [0 :id] := "id-0"
-          1 := nil))
+          count := 1
+          [0 :id] := "id-0"))
 
       (testing "bodysite and type"
         (testing "using system|code"
           (given (pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
                                                    ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|dna"]])
-            [0 :id] := "id-0"
-            1 := nil))
+            count := 1
+            [0 :id] := "id-0"))
 
         (testing "using code"
           (given (pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
                                                    ["type" "dna"]])
-            [0 :id] := "id-0"
-            1 := nil))
+            count := 1
+            [0 :id] := "id-0"))
 
         (testing "using system|"
           (given (pull-type-query node "Specimen" [["bodysite" "urn:oid:2.16.840.1.113883.6.43.1|C77.4"]
                                                    ["type" "https://fhir.bbmri.de/CodeSystem/SampleMaterialType|"]])
-            [0 :id] := "id-0"
-            1 := nil))
+            count := 1
+            [0 :id] := "id-0"))
 
         (testing "does not match"
           (testing "using system|code"
@@ -1989,8 +2009,11 @@
 
       (testing "url"
         (given (pull-type-query node "ActivityDefinition" [["url" "url-111619"]])
-          [0 :id] := "id-0"
-          1 := nil))
+          count := 1
+          [0 :id] := "id-0")
+
+        (testing "count query"
+          (is (= 1 (count-type-query node "ActivityDefinition" [["url" "url-111619"]])))))
 
       (testing "description"
         (given (pull-type-query node "ActivityDefinition" [["description" "desc-121208"]])
@@ -2008,8 +2031,8 @@
 
       (testing "version"
         (given (pull-type-query node "CodeSystem" [["version" "version-122443"]])
-          [0 :id] := "id-0"
-          1 := nil))))
+          count := 1
+          [0 :id] := "id-0"))))
 
   (testing "MedicationKnowledge"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -2023,8 +2046,8 @@
 
       (testing "monitoring-program-name"
         (given (pull-type-query node "MedicationKnowledge" [["monitoring-program-name" "name-123124"]])
-          [0 :id] := "id-0"
-          1 := nil))))
+          count := 1
+          [0 :id] := "id-0"))))
 
   (testing "Condition"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -2054,11 +2077,6 @@
 
       (testing "code"
         (testing "duplicate values have no effect (#293)"
-          (given (pull-type-query node "Condition" [["code" "C71.4" "C71.4"]])
-            count := 1
-            [0 :id] := "id-0"))
-
-        (testing "starting"
           (given (pull-type-query node "Condition" [["code" "C71.4" "C71.4"]])
             count := 1
             [0 :id] := "id-0")))
@@ -2101,6 +2119,17 @@
                                 {:code #fhir/code"1"}]}}]]]
 
       (testing "code"
+        (given (pull-type-query node "Condition" [["code" "0" "1"]])
+          count := 5
+          [0 :id] := "0"
+          [1 :id] := "3"
+          [2 :id] := "4"
+          [3 :id] := "1"
+          [4 :id] := "2")
+
+        (testing "count query"
+          (is (= 5 (count-type-query node "Condition" [["code" "0" "1"]]))))
+
         (testing "starting with ID `1` does not return Conditions with ID `3`
                   and `4` because they were already returned"
           (given (pull-type-query node "Condition" [["code" "0" "1"]] "1")
@@ -2214,7 +2243,10 @@
           (let [clauses [["value-quantity" "2.11"]]]
             (given (pull-type-query node "Observation" clauses)
               count := 1
-              [0 :id] := "id-2")))
+              [0 :id] := "id-2")
+
+            (testing "count query"
+              (is (= 1 (count-type-query node "Observation" clauses))))))
 
         (testing "with minimal unit"
           (let [clauses [["value-quantity" "2.11|kg/m2"]]]
@@ -2436,7 +2468,10 @@
               (given (pull-type-query node "Observation" clauses)
                 count := 2
                 [0 :id] := "id-2"
-                [1 :id] := "id-3")))
+                [1 :id] := "id-3")
+
+              (testing "count query"
+                (is (= 2 (count-type-query node "Observation" clauses))))))
 
           (testing "less equal"
             (let [clauses [["status" "final"] ["value-quantity" "le2.11|kg/m2"]]]
@@ -2485,7 +2520,10 @@
         (let [clauses [["value-quantity" "2.11|kg/m2"] ["status" "final"]]]
           (given (pull-type-query node "Observation" clauses)
             count := 1
-            [0 :id] := "id-2")))))
+            [0 :id] := "id-2")
+
+          (testing "count query"
+            (is (= 1 (count-type-query node "Observation" clauses))))))))
 
   (testing "Observation"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -2654,7 +2692,10 @@
         (let [clauses [["code-value-quantity" "8480-6$ge140"]]]
           (given (pull-type-query node "Observation" clauses)
             count := 1
-            [0 :id] := "id-1"))
+            [0 :id] := "id-1")
+
+          (testing "count query"
+            (is (= 1 (count-type-query node "Observation" clauses)))))
 
         (let [clauses [["code-value-quantity" "http://loinc.org|8462-4$ge90|mm[Hg]"]]]
           (given (pull-type-query node "Observation" clauses)
@@ -2847,13 +2888,18 @@
               (given (pull-type-query node "Observation" clauses)
                 count := 2
                 [0 :id] := "id-0"
-                [1 :id] := "id-2")))
+                [1 :id] := "id-2")
+
+              (testing "count query"
+                (is (= 2 (count-type-query node "Observation" clauses))))))
+
           (testing "value as code"
             (let [clauses [["code-value-concept" "http://loinc.org|94564-2$260373001"]]]
               (given (pull-type-query node "Observation" clauses)
                 count := 2
                 [0 :id] := "id-0"
                 [1 :id] := "id-2"))))
+
         (testing "code as code"
           (testing "value as system|code"
             (let [clauses [["code-value-concept" "94564-2$http://snomed.info/sct|260373001"]]]
@@ -2861,6 +2907,7 @@
                 count := 2
                 [0 :id] := "id-0"
                 [1 :id] := "id-2")))
+
           (testing "value as code"
             (let [clauses [["code-value-concept" "94564-2$260373001"]]]
               (given (pull-type-query node "Observation" clauses)
@@ -2875,17 +2922,20 @@
                 (given (pull-type-query node "Observation" clauses "id-2")
                   count := 1
                   [0 :id] := "id-2")))
+
             (testing "value as code"
               (let [clauses [["code-value-concept" "http://loinc.org|94564-2$260373001"]]]
                 (given (pull-type-query node "Observation" clauses "id-2")
                   count := 1
                   [0 :id] := "id-2"))))
+
           (testing "code as code"
             (testing "value as system|code"
               (let [clauses [["code-value-concept" "94564-2$http://snomed.info/sct|260373001"]]]
                 (given (pull-type-query node "Observation" clauses "id-2")
                   count := 1
                   [0 :id] := "id-2")))
+
             (testing "value as code"
               (let [clauses [["code-value-concept" "94564-2$260373001"]]]
                 (given (pull-type-query node "Observation" clauses "id-2")
@@ -2901,6 +2951,7 @@
                 count := 2
                 [0 :id] := "id-0"
                 [1 :id] := "id-2")))
+
           (testing "value as code"
             (let [clauses [["status" "final"]
                            ["code-value-concept" "http://loinc.org|94564-2$260373001"]]]
@@ -2908,6 +2959,7 @@
                 count := 2
                 [0 :id] := "id-0"
                 [1 :id] := "id-2"))))
+
         (testing "code as code"
           (testing "value as system|code"
             (let [clauses [["status" "final"]
@@ -2916,6 +2968,7 @@
                 count := 2
                 [0 :id] := "id-0"
                 [1 :id] := "id-2")))
+
           (testing "value as code"
             (let [clauses [["status" "final"]
                            ["code-value-concept" "94564-2$260373001"]]]
@@ -2933,8 +2986,8 @@
       (testing "measure"
         (let [clauses [["measure" "measure-url-181106"]]]
           (given (pull-type-query node "MeasureReport" clauses)
-            [0 :id] := "id-144132"
-            1 := nil)))))
+            count := 1
+            [0 :id] := "id-144132")))))
 
   (testing "List"
     (testing "item"
@@ -2959,8 +3012,8 @@
 
           (let [clauses [["item" "Patient/1"]]]
             (given (pull-type-query node "List" clauses)
-              [0 :id] := "id-143814"
-              1 := nil))))
+              count := 1
+              [0 :id] := "id-143814"))))
 
       (testing "with identifier modifier"
         (with-system-data [{:blaze.db/keys [node]} system]
@@ -2987,8 +3040,8 @@
 
           (let [clauses [["item:identifier" "system-122917|value-122931"]]]
             (given (pull-type-query node "List" clauses)
-              [0 :id] := "id-123058"
-              1 := nil)))))
+              count := 1
+              [0 :id] := "id-123058")))))
 
     (testing "code and item"
       (testing "with identifier modifier"
@@ -3029,8 +3082,8 @@
           (let [clauses [["code" "system-152812|code-152819"]
                          ["item:identifier" "system-122917|value-143818"]]]
             (given (pull-type-query node "List" clauses)
-              [0 :id] := "id-143814"
-              1 := nil))))))
+              count := 1
+              [0 :id] := "id-143814"))))))
 
   (testing "Date order"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -3104,6 +3157,9 @@
             count := 1
             [0 :id] := "id-0"))
 
+        (testing "count query"
+          (is (= 2 (count-type-query node "RiskAssessment" [["probability" "ge0.5"]]))))
+
         (testing "as second clause"
           (given (pull-type-query node "RiskAssessment" [["method" "code-164847"]
                                                          ["probability" "ge0.5"]])
@@ -3159,13 +3215,19 @@
       (testing "duplicates are removed"
         (given (pull-type-query node "Condition" [["code" "foo" "bar"]])
           count := 1
-          [0 :id] := "0"))
+          [0 :id] := "0")
+
+        (testing "count query"
+          (is (= 1 (count-type-query node "Condition" [["code" "foo" "bar"]])))))
 
       (testing "forward chaining to Patient"
         (given (pull-type-query node "Condition" [["patient.gender" "male"]])
           count := 1
           [0 fhir-spec/fhir-type] := :fhir/Condition
-          [0 :id] := "1"))))
+          [0 :id] := "1")
+
+        (testing "count query"
+          (is (= 1 (count-type-query node "Condition" [["patient.gender" "male"]])))))))
 
   (testing "Encounter"
     (testing "duplicates are removed"
@@ -3196,7 +3258,10 @@
           (given (pull-type-query node "Encounter" [["diagnosis" "Condition/0" "Condition/1" "Condition/2"]])
             count := 2
             [0 :id] := "0"
-            [1 :id] := "1"))
+            [1 :id] := "1")
+
+          (testing "count query"
+            (is (= 2 (count-type-query node "Encounter" [["diagnosis" "Condition/0" "Condition/1" "Condition/2"]])))))
 
         (testing "on pulling the second page"
           (given (pull-type-query node "Encounter" [["diagnosis" "Condition/0" "Condition/1" "Condition/2"]] "1")
@@ -3228,7 +3293,10 @@
         (given (pull-type-query node "Observation" [["date" "1990-06-14T12:24:48Z"]] "2")
           count := 2
           [0 :id] := "2"
-          [1 :id] := "3")))))
+          [1 :id] := "3"))
+
+      (testing "count query"
+        (is (= 3 (count-type-query node "Observation" [["date" "1990-06-14T12:24:48Z"]])))))))
 
 
 (deftest type-query-date-greater-than-test
@@ -3249,7 +3317,10 @@
       (testing "it is possible to start with the second patient"
         (given (pull-type-query node "Patient" [["birthdate" "gt1990"]] "2")
           count := 1
-          [0 :id] := "2"))))
+          [0 :id] := "2"))
+
+      (testing "count query"
+        (is (= 2 (count-type-query node "Patient" [["birthdate" "gt1990"]]))))))
 
   (testing "day precision"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -3989,42 +4060,47 @@
           ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`.")))))
 
 
+(defn- pull-type-query-lenient
+  ([node type clauses]
+   (when-ok [query (d/compile-type-query-lenient node type clauses)]
+     @(d/pull-many node (d/execute-query (d/db node) query))))
+  ([node type clauses start-id]
+   (when-ok [query (d/compile-type-query-lenient node type clauses)]
+     @(d/pull-many node (d/execute-query (d/db node) query start-id)))))
+
+
+(defn- count-type-query-lenient [node type clauses]
+  (when-ok [query (d/compile-type-query-lenient node type clauses)]
+    @(d/count-query (d/db node) query)))
+
+
 (deftest compile-type-query-lenient-test
   (testing "a node with one patient"
     (with-system-data [{:blaze.db/keys [node]} system]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (testing "the patient can be found"
-        (given @(->> (d/compile-type-query-lenient
-                       node "Patient" [["active" "true"]])
-                     (d/execute-query (d/db node))
-                     (d/pull-many node))
-          [0 :fhir/type] := :fhir/Patient
+        (given (pull-type-query-lenient node "Patient" [["active" "true"]])
+          count := 1
           [0 :id] := "0"))
 
       (testing "an unknown search-param is ignored"
-        (let [query (d/compile-type-query-lenient
-                      node "Patient" [["foo" "bar"] ["active" "true"]])]
-          (given @(d/pull-many node (d/execute-query (d/db node) query))
-            [0 :fhir/type] := :fhir/Patient
-            [0 :id] := "0")
-
-          (testing "the clause [\"foo\" \"bar\"] was not used"
-            (is (= [["active" "true"]] (d/query-clauses query)))))
+        (given (pull-type-query-lenient node "Patient" [["foo" "bar"] ["active" "true"]])
+          count := 1
+          [0 :id] := "0")
 
         (testing "one unknown search parameter will result in an empty query"
-          (let [query (d/compile-type-query-lenient
-                        node "Patient" [["foo" "bar"]])]
-            (given @(d/pull-many node (d/execute-query (d/db node) query))
-              [0 :fhir/type] := :fhir/Patient
-              [0 :id] := "0")
+          (given (pull-type-query-lenient node "Patient" [["foo" "bar"]])
+            count := 2
+            [0 :id] := "0"
+            [1 :id] := "1")
 
-            (testing "the clause [\"foo\" \"bar\"] was not used"
-              (is (empty? (d/query-clauses query)))))))
+          (testing "count query"
+            (is (= 2 (count-type-query-lenient node "Patient" [["foo" "bar"]]))))))
 
       (testing "invalid date"
-        (given (d/compile-type-query-lenient
-                 node "Patient" [["birthdate" "invalid"]])
+        (given (d/compile-type-query-lenient node "Patient" [["birthdate" "invalid"]])
           ::anom/category := ::anom/incorrect
           ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`."))
 
@@ -4032,6 +4108,18 @@
         (let [query (d/compile-type-query-lenient
                       node "Patient" [[:sort "_lastUpdated" :asc]])]
           (is (= [[:sort "_lastUpdated" :asc]] (d/query-clauses query))))))))
+
+
+(deftest count-query-test
+  (testing "different sizes"
+    (satisfies-prop 25
+      (prop/for-all [n (gen/large-integer* {:min 1 :max 100000})]
+        (with-system-data [{:blaze.db/keys [node]} system]
+          [(mapv
+             (fn [id] [:put {:fhir/type :fhir/Patient :id (str id) :active true}])
+             (range n))]
+
+          (= n (count-type-query node "Patient" [["active" "true"]])))))))
 
 
 
@@ -5196,7 +5284,7 @@
         (given @(->> (d/compile-type-query batch-db "Patient" [["active" "true"]])
                      (d/execute-query batch-db)
                      (d/pull-many batch-db))
-          [0 :fhir/type] := :fhir/Patient
+          count := 1
           [0 :id] := "0"))))
 
   (testing "compile-type-query-lenient"
@@ -5207,7 +5295,7 @@
         (given @(->> (d/compile-type-query-lenient batch-db "Patient" [["active" "true"]])
                      (d/execute-query batch-db)
                      (d/pull-many batch-db))
-          [0 :fhir/type] := :fhir/Patient
+          count := 1
           [0 :id] := "0"))))
 
   (testing "compile-compartment-query"

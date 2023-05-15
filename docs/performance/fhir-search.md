@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-Under ideal conditions, Blaze can execute a FHIR Search query for a single code in **1 second per 1 million found resources** and export the matching resources in **25 seconds per 1 million found resources**, independent of the total number of resources hold.
+Under ideal conditions, Blaze can execute a FHIR Search query for a single code in **0.5 seconds per 1 million found resources** and export the matching resources in **25 seconds per 1 million found resources**, independent of the total number of resources hold.
 
 ## Simple Code Search
 
@@ -10,26 +10,24 @@ In this section, FHIR Search for selecting Observation resources with a certain 
 
 ### Counting
 
-All measurements are done after Blaze is in a steady state with all resource handles to hit in it's resource handle cache in order to cancel out additional seeks necessary to determine the current version of each resource. A resource handle doesn't contain the actual resource content which is not necessary for counting.
-
 Counting is done using the following `curl` command:
 
 ```sh
 curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&_summary=count"
 ```
 
-| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | # Hits | Time (s) | T / 1M ³ |
-|------------|---------:|------------:|---------:|---------:|---------|-------:|---------:|---------:|
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 17861-6 |  171 k |    0.172 |     1.01 |
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 39156-5 |  967 k |    0.790 |     0.82 |
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 29463-7 |  1.3 M |    1.232 |     0.95 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 17861-6 |  1.7 M |    1.504 |     0.88 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 39156-5 |  9.7 M |    9.258 |     0.95 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 29463-7 |   13 M |   11.816 |     0.91 |
+| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | # Hits | Time (s) | StdDev | T/1M ³ |
+|------------|---------:|------------:|---------:|---------:|---------|-------:|---------:|-------:|-------:|
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  171 k |     0.09 |  0.003 |   0.54 |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 39156-5 |  967 k |     0.52 |  0.012 |   0.52 |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 29463-7 |  1.3 M |     0.71 |  0.026 |   0.52 |
+| EPYC 7543P |    30 GB |       20 GB |    292 M |    278 M | 17861-6 |  1.7 M |     0.90 |  0.025 |   0.52 |
+| EPYC 7543P |    30 GB |       20 GB |    292 M |    278 M | 39156-5 |  9.7 M |     5.26 |  0.158 |   0.53 |  
+| EPYC 7543P |    30 GB |       20 GB |    292 M |    278 M | 29463-7 |   13 M |     6.97 |  0.192 |   0.52 |
 
-¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The system had 16 cores and 128 GB RAM in all cases.
 
-According to the measurements the time needed by Blaze to count resources only depends on the number of hits and equals roughly in **1 second per 1 million hits**.
+According to the measurements the time needed by Blaze to count resources only depends on the number of hits and equals roughly in **0.5 seconds per 1 million hits**.
 
 ### Download of Resources
 
@@ -41,16 +39,16 @@ Download is done using the following `blazectl` command:
 blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&_count=1000" > /dev/null"
 ```
 
-| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | # Hits | Time (s) | T / 1M ³ |
-|------------|---------:|------------:|---------:|---------:|---------|-------:|---------:|---------:|
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 17861-6 |  171 k |    4.012 |    23.46 |
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 39156-5 |  967 k |   23.488 |    24.29 |
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 29463-7 |  1.3 M |   31.634 |    24.33 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 17861-6 |  1.7 M |   39.058 |    22.98 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 39156-5 |  9.7 M |  223.100 |    23.00 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 29463-7 |   13 M |  309.090 |    23.78 |
+| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | # Hits | Time (s) | StdDev | T/1M ³ |
+|------------|---------:|------------:|---------:|---------:|---------|-------:|---------:|--------|-------:|
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  171 k |     4.38 |  0.102 |  25.30 |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 39156-5 |  967 k |    24.64 |  0.377 |  24.71 |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 29463-7 |  1.3 M |    32.68 |  0.670 |  24.32 |
+| EPYC 7543P |    40 GB |       20 GB |    292 M |    278 M | 17861-6 |  1.7 M |    42.23 |  0.440 |  24.49 |
+| EPYC 7543P |    40 GB |       20 GB |    292 M |    278 M | 39156-5 |  9.7 M |   233.62 |  0.713 |  23.52 |
+| EPYC 7543P |    40 GB |       20 GB |    292 M |    278 M | 29463-7 |   13 M |   314.11 |  2.971 |  23.48 |
 
-¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The system had 16 cores and 128 GB RAM in all cases.
 
 According to the measurements the time needed by Blaze to deliver resources only depends on the number of hits and equals roughly in **25 seconds per 1 million hits**.
 
@@ -66,26 +64,26 @@ Download is done using the following `blazectl` command:
 blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&_elements=subject&_count=1000" > /dev/null"
 ```
 
-| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | # Hits | Time (s) | T / 1M ³ |
-|------------|---------:|------------:|---------:|---------:|---------|-------:|---------:|---------:|
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 17861-6 |  171 k |    2.360 |    13.80 |
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 39156-5 |  967 k |   13.150 |    13.60 |
-| EPYC 7543P |     8 GB |        1 GB |     29 M |     28 M | 29463-7 |  1.3 M |   17.512 |    13.47 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 17861-6 |  1.7 M |   21.562 |    12.68 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 39156-5 |  9.7 M |  131.194 |    13.53 |
-| EPYC 7543P |    30 GB |       10 GB |    292 M |    278 M | 29463-7 |   13 M |  182.820 |    14.06 |
+| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Code    | # Hits | Time (s) | StdDev | T/1M ³ |
+|------------|---------:|------------:|---------:|---------:|---------|-------:|---------:|--------|-------:|
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  171 k |     2.74 |  0.088 |  15.82 |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 39156-5 |  967 k |    15.26 |  0.244 |  15.31 |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 29463-7 |  1.3 M |    20.62 |  0.277 |  15.35 |
+| EPYC 7543P |    40 GB |       20 GB |    292 M |    278 M | 17861-6 |  1.7 M |    27.03 |  0.629 |  15.68 |
+| EPYC 7543P |    40 GB |       20 GB |    292 M |    278 M | 39156-5 |  9.7 M |   150.98 |  1.171 |  15.20 |
+| EPYC 7543P |    40 GB |       20 GB |    292 M |    278 M | 29463-7 |   13 M |   200.41 |  1.191 |  14.98 |
 
-¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The system had 16 cores and 128 GB RAM in all cases.
 
 According to the measurements, the time needed by Blaze to deliver subsetted Observations containing only the subject reference is about **twice as fast** as returning the whole resource.
+
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The system had 16 cores and 128 GB RAM in all cases.
 
 ## Code and Value Search
 
 In this section, FHIR Search for selecting Observation resources with a certain code and value is used.
 
 ### Counting
-
-All measurements are done after Blaze is in a steady state with all resource handles to hit in it's resource handle cache in order to cancel out additional seeks necessary to determine the current version of each resource. A resource handle doesn't contain the actual resource content which is not necessary for counting.
 
 Counting is done using the following `curl` command:
 
@@ -99,7 +97,7 @@ curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&valu
 | EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  9.35 |   86 k |      5.1 |       59 |
 | EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  10.2 |  171 k |      5.1 |       30 |
 
-¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The system had 16 cores and 128 GB RAM in all cases.
 
 ### Download of Resources
 
@@ -117,7 +115,7 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 | EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  9.35 |   86 k |      7.3 |       85 |
 | EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  10.2 |  171 k |      9.1 |       53 |
 
-¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The system had 16 cores and 128 GB RAM in all cases.
 
 ### Download of Resources with Subsetting
 
@@ -137,7 +135,7 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 | EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  9.35 |   86 k |      6.5 |          |
 | EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  10.2 |  171 k |      7.5 |          |
 
-¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The system had 16 cores and 128 GB RAM in all cases.
 
 ### Download of Resources using the Combined Search Param
 
@@ -155,7 +153,7 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code-value
 | EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  9.35 |   86 k |      2.0 |       23 |
 | EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  10.2 |  171 k |      4.2 |       25 |
 
-¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The system had 16 cores and 128 GB RAM in all cases.
 
 ### Download of Resources with Subsetting
 
@@ -175,16 +173,14 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 | EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  9.35 |   86 k |      1.3 |          |
 | EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 17861-6 |  10.2 |  171 k |      2.4 |          |
 
-¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The system had 16 cores and 128 GB RAM in all cases.
 
 
-## Date Search
+## Simple Date Search
 
 In this section, FHIR Search for selecting Observation resources with a certain effective year is used.
 
 ### Counting
-
-All measurements are done after Blaze is in a steady state with all resource handles to hit in it's resource handle cache in order to cancel out additional seeks necessary to determine the current version of each resource. A resource handle doesn't contain the actual resource content which is not necessary for counting.
 
 Counting is done using the following `curl` command:
 
@@ -192,13 +188,16 @@ Counting is done using the following `curl` command:
 curl -s "http://localhost:8080/fhir/Observation?date=$YEAR&_summary=count"
 ```
 
-| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Year | # Hits | Time (s) | StdDev | T / 1M ³ |
-|------------|---------:|------------:|---------:|---------:|------|-------:|---------:|-------:|---------:|
-| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 2012 |      0 |     0.11 |  0.007 |      N/A |
-| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 2019 |    2 M |     2.10 |  0.034 |     1.06 |
-| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 2020 | 11.3 M |    11.45 |  0.112 |     1.01 |
+| CPU        | Heap Mem | Block Cache | # Res. ¹ | # Obs. ² | Year | # Hits | Time (s) | StdDev | T/1M ³ |
+|------------|---------:|------------:|---------:|---------:|------|-------:|---------:|-------:|-------:|
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 2013 |  1.5 M |     1.12 |  0.030 |   0.73 |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 2019 |  2.0 M |     1.46 |  0.036 |   0.73 |
+| EPYC 7543P |     8 GB |        2 GB |     29 M |     28 M | 2020 | 11.3 M |     8.18 |  0.226 |   0.72 |
+| EPYC 7543P |    30 GB |       20 GB |    292 M |    278 M | 2013 | 14.8 M |    10.64 |  0.288 |   0.71 |
+| EPYC 7543P |    30 GB |       20 GB |    292 M |    278 M | 2019 | 19.7 M |    13.78 |  0.350 |   0.70 |  
+| EPYC 7543P |    30 GB |       20 GB |    292 M |    278 M | 2020 |  113 M |    78.54 |  1.935 |   0.69 |
 
-¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The amount of system memory was 128 GB in all cases.
+¹ Number of Resources, ² Number of Observations, ³ Time in seconds per 1 million resources, The system had 16 cores and 128 GB RAM in all cases.
 
 ## Used Dataset
 
@@ -235,7 +234,7 @@ The result is a dataset which consists only of the resource types Patient, Obser
 
 ## Controlling and Monitoring the Caches
 
-The size of the resource cache and the resource handle cache can be set by their respective environment variables `DB_RESOURCE_CACHE_SIZE` and `DB_RESOURCE_HANDLE_CACHE_SIZE`. The size denotes the number of resources / resource handles. Because one has to specify a number of resources / resource handles, it's important to know how many bytes a resource / resource handle allocates on the heap. For resource handles, it can be said that they allocate between 272 and 328 bytes depending on the size of the resource id. For resources, the size varies widely. Monitoring of the heap usage is critical.
+The size of the resource cache can be set by its respective environment variable `DB_RESOURCE_CACHE_SIZE`. The size denotes the number of resources. Because one has to specify a number of resources, it's important to know how many bytes a resource allocates on the heap. The size varies widely. Monitoring of the heap usage is critical.
 
 ### Monitoring 
 
@@ -252,9 +251,9 @@ jvm_memory_pool_bytes_used{pool="G1 Old Gen",} 8.325004288E9
 
 Here the value `8.325004288E9` is in bytes and `E9` means GB. So we have 8.3 GB used old generation here which makes out most of the total heap size. So if you had configured Blaze with a maximum heap size of 10 GB, that usage would be much like a healthy upper limit.
 
-#### Resource / Resource Handle Cache
+#### Resource Cache
 
-The resource cache metrics can be found under keys starting with `blaze_db_cache`. Among others there is the `resource-cache` and the `resource-handle-cache`. The metrics are a bit more difficult to interpret without a Prometheus/Grafana infrastructure, because they are counters starting Blaze startup. So after a longer runtime, one has to calculate relative differences here. But right after the start of Blaze, the numbers are very useful on its own. 
+The resource cache metrics can be found under keys starting with `blaze_db_cache`. Among others there is the `resource-cache`. The metrics are a bit more difficult to interpret without a Prometheus/Grafana infrastructure, because they are counters starting Blaze startup. So after a longer runtime, one has to calculate relative differences here. But right after the start of Blaze, the numbers are very useful on its own. 
 
 ```sh
 curl -s http://localhost:8081/metrics | grep blaze_db_cache | grep resource-cache

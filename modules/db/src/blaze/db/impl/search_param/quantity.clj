@@ -310,6 +310,11 @@
       (u/resource-handle-mapper context tid)
       (resource-keys! context c-hash tid codec/v-hash-size value start-id)))
 
+  (-count-resource-handles [_ context tid _ value]
+    (u/count-resource-handles
+      context tid
+      (resource-keys! context c-hash tid codec/v-hash-size value)))
+
   (-compartment-keys [_ context compartment tid value]
     (compartment-keys context compartment c-hash tid value))
 

@@ -84,10 +84,17 @@
     (build-matches-only-page page-size handles)))
 
 
-(defn- entries [context matches includes]
+(defn- entries [context match-futures include-futures]
   (log/trace "build entries")
-  (-> (mapv #(search-util/entry context %) matches)
-      (into (map #(search-util/entry context % search-util/include)) includes)))
+  (-> (into
+        []
+        (comp (mapcat ac/join)
+              (map #(search-util/entry context %)))
+        match-futures)
+      (into
+        (comp (mapcat ac/join)
+              (map #(search-util/entry context % search-util/include)))
+        include-futures)))
 
 
 (defn- pull-matches-fn [{:keys [elements]}]
@@ -119,11 +126,7 @@
                :fhir/issue "incomplete"))
           (ac/then-apply
             (fn [_]
-              {:entries
-               (entries
-                 context
-                 (mapcat deref match-futures)
-                 (mapcat deref include-futures))
+              {:entries (entries context match-futures include-futures)
                :num-matches (count matches)
                :next-handle next-match
                :clauses clauses}))))
@@ -207,26 +210,27 @@
                 (normal-bundle context token clauses entries total))))))))
 
 
-(defn- summary-total
+(defn- compile-type-query
   [{:keys [type] :blaze/keys [db] :blaze.preference/keys [handling]
     {:keys [clauses]} :params}]
-  (cond
-    (empty? clauses)
-    {:total (d/type-total db type)}
+  (if (identical? :blaze.preference.handling/strict handling)
+    (d/compile-type-query db type clauses)
+    (d/compile-type-query-lenient db type clauses)))
 
-    (identical? :blaze.preference.handling/strict handling)
-    (when-ok [handles (d/type-query db type clauses)]
-      {:total (count handles)
-       :clauses clauses})
 
-    :else
-    (when-ok [query (d/compile-type-query-lenient db type clauses)]
-      {:total (count (d/execute-query db query))
-       :clauses (d/query-clauses query)})))
+(defn- summary-total
+  [{:keys [type] :blaze/keys [db] {:keys [clauses]} :params :as context}]
+  (if (empty? clauses)
+    (ac/completed-future {:total (d/type-total db type)})
+    (if-ok [query (compile-type-query context)]
+      (do-sync [total (d/count-query db query)]
+        {:total total
+         :clauses (d/query-clauses query)})
+      ac/completed-future)))
 
 
 (defn- search-summary [context]
-  (when-ok [{:keys [total clauses]} (summary-total context)]
+  (do-sync [{:keys [total clauses]} (summary-total context)]
     {:fhir/type :fhir/Bundle
      :id (iu/luid context)
      :type #fhir/code"searchset"
@@ -236,7 +240,7 @@
 
 (defn- search [{:keys [params] :as context}]
   (if (:summary? params)
-    (ac/completed-future (search-summary context))
+    (search-summary context)
     (search-normal context)))
 
 

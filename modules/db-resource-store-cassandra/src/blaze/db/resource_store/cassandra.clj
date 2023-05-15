@@ -143,7 +143,7 @@
     (log/trace "multi-get" (count hashes) "resource(s)")
     (let [futures (execute-multi-get session get-statement hashes)]
       (do-sync [_ (ac/all-of futures)]
-        (zipmap-found hashes (map deref futures)))))
+        (zipmap-found hashes (map ac/join futures)))))
 
   (-put [_ entries]
     (log/trace "put" (count entries) "entries")

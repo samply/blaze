@@ -1,9 +1,11 @@
 (ns blaze.db.impl.db
   "Primary Database Implementation"
   (:require
+    [blaze.async.comp :as ac]
     [blaze.db.impl.batch-db :as batch-db]
     [blaze.db.impl.macros :refer [with-open-coll]]
     [blaze.db.impl.protocols :as p]
+    [blaze.db.impl.search-param.util :as u]
     [blaze.db.kv :as kv])
   (:import
     [java.io Writer]))
@@ -35,7 +37,7 @@
   (-resource-handle [_ tid id]
     (with-open [snapshot (kv/new-snapshot kv-store)
                 raoi (kv/new-iterator snapshot :resource-as-of-index)]
-      ((batch-db/resource-handle rh-cache raoi t) tid id)))
+      ((u/resource-handle rh-cache raoi t) tid id)))
 
 
 
@@ -84,6 +86,11 @@
 
 
   ;; ---- Common Query Functions ----------------------------------------------
+
+  (-count-query [_ query]
+    (let [batch-db (batch-db/new-batch-db node basis-t t)]
+      (-> (p/-count-query batch-db query)
+          (ac/when-complete (fn [_ _] (.close batch-db))))))
 
   (-execute-query [_ query]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]

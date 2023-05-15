@@ -175,6 +175,12 @@
       (resource-keys! context (c-hash-w-modifier c-hash code modifier) tid value
                       start-id)))
 
+  (-count-resource-handles [_ context tid modifier value]
+    (u/count-resource-handles
+      context tid
+      (resource-keys! context (c-hash-w-modifier c-hash code modifier) tid
+                      value)))
+
   (-compartment-keys [_ context compartment tid value]
     (c-sp-vr/prefix-keys! (:csvri context) compartment c-hash tid value))
 

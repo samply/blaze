@@ -118,7 +118,7 @@
     (log/trace "multi-get" (count hashes) "hash(es)")
     (let [futures (multi-get-and-parse-async kv-store executor hashes)]
       (do-sync [_ (ac/all-of futures)]
-        (zipmap-found hashes (map deref futures)))))
+        (zipmap-found hashes (map ac/join futures)))))
 
   (-put [_ entries]
     (ac/supply-async
