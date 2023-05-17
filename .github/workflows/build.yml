@@ -602,6 +602,9 @@ jobs:
     - name: GraphQL Observation
       run: .github/scripts/graphql.sh Observation
 
+    - name: Paging uses a Stable Snapshot of the Database
+      run: .github/scripts/follow-next-link-after-write.sh
+
     - name: Create Patient
       run: .github/scripts/create-patient.sh
 
@@ -1427,6 +1430,9 @@ jobs:
 
     - name: GraphQL Observation
       run: .github/scripts/graphql.sh Observation
+
+    - name: Paging uses a Stable Snapshot of the Database
+      run: .github/scripts/follow-next-link-after-write.sh
 
     - name: Create Patient
       run: .github/scripts/create-patient.sh

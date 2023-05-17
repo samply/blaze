@@ -4,6 +4,7 @@
   https://www.hl7.org/fhir/http.html#search"
   (:require
     [blaze.async.comp :as ac]
+    [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.db.resource-store :as rs]
     [blaze.fhir.spec :as fhir-spec]
@@ -180,13 +181,14 @@
         ::reitit/router router))))
 
 
-(defmacro with-handler [[handler-binding] & more]
+(defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
                          handler# :blaze.interaction/search-type} system]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
-                                  wrap-error)]
+                                  wrap-error)
+             ~(or node-binding '_) node#]
          ~@body))))
 
 
@@ -539,8 +541,7 @@
         (let [{:keys [status body]}
               @(handler
                  {::reitit/match patient-page-match
-                  :params {"__token" "invalid-token-175424" "_count" "1"
-                           "__t" "1" "__page-id" "1"}})]
+                  :params {"__token" "invalid-token-175424"}})]
 
           (is (= 422 status))
 
@@ -556,8 +557,7 @@
         (let [{:keys [status body]}
               @(handler
                  {::reitit/match patient-page-match
-                  :params {"__token" (c-str/repeat "A" 32) "_count" "1" "__t" "1"
-                           "__page-id" "1"}})]
+                  :params {"__token" (c-str/repeat "A" 32)}})]
 
           (is (= 422 status))
 
@@ -659,7 +659,7 @@
             (is (empty? (:entry body))))))))
 
   (testing "with two patients"
-    (with-handler [handler]
+    (with-handler [handler node]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
@@ -755,6 +755,32 @@
             (testing "has a next link"
               (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1&__page-id=1")
                      (link-url body "next"))))
+
+            (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body))))))))
+
+      (testing "adding a third patient doesn't influence the paging"
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "2"}]])
+
+        (testing "following the next link"
+          (let [{:keys [body]}
+                @(handler
+                   {::reitit/match patient-match
+                    :params {"_count" "1" "__t" "1" "__page-id" "1"}})]
+
+            (testing "the total count is 2"
+              (is (= #fhir/unsignedInt 2 (:total body))))
+
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient?_count=1&__t=1&__page-id=1")
+                     (link-url body "self"))))
+
+            (testing "has a first link"
+              (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1")
+                     (link-url body "first"))))
+
+            (testing "has no next link"
+              (is (nil? (link-url body "next"))))
 
             (testing "the bundle contains one entry"
               (is (= 1 (count (:entry body))))))))))

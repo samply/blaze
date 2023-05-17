@@ -66,9 +66,14 @@
        (fn [node t]
          (assert (= ::node node))
          (assert (= 114429 t))
-         (ac/completed-future ::db))]
+         (ac/completed-future ::db))
+       d/as-of
+       (fn [db t]
+         (assert (= ::db db))
+         (assert (= 114429 t))
+         ::as-of-db)]
 
-      (is (= ::db @((db/wrap-db handler ::node) {:query-params {"__t" "114429"}})))))
+      (is (= ::as-of-db @((db/wrap-db handler ::node) {:params {"__t" "114429"}})))))
 
   (testing "uses sync for database value acquisition"
     (with-redefs
