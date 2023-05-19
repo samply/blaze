@@ -107,7 +107,7 @@
     `(with-system-data [{node# :blaze.db/node
                          handler# :blaze.interaction/search-compartment} system]
        ~txs
-       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# 100)
                                   wrap-error)]
          ~@body))))
 

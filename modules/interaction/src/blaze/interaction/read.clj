@@ -75,19 +75,12 @@
 
 
 (defn- wrap-invalid-id-vid [handler]
-  (fn [{{:keys [id vid]} :path-params :as request}]
+  (fn [{{:keys [id]} :path-params :as request}]
     (cond
       (not (re-matches #"[A-Za-z0-9\-\.]{1,64}" id))
       (ac/completed-future
         (ba/incorrect
           (format "Resource id `%s` is invalid." id)
-          :fhir/issue "value"
-          :fhir/operation-outcome "MSG_ID_INVALID"))
-
-      (and vid (not (re-matches #"\d+" vid)))
-      (ac/completed-future
-        (ba/incorrect
-          (format "Resource versionId `%s` is invalid." vid)
           :fhir/issue "value"
           :fhir/operation-outcome "MSG_ID_INVALID"))
 
