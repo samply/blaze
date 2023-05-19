@@ -48,6 +48,21 @@
    :wrap db/wrap-db})
 
 
+(def ^:private wrap-search-db
+  {:name :search-db
+   :wrap db/wrap-search-db})
+
+
+(def ^:private wrap-snapshot-db
+  {:name :snapshot-db
+   :wrap db/wrap-snapshot-db})
+
+
+(def ^:private wrap-versioned-instance-db
+  {:name :versioned-instance-db
+   :wrap db/wrap-versioned-instance-db})
+
+
 (def ^:private wrap-ensure-form-body
   {:name :ensure-form-body
    :wrap ensure-form-body/wrap-ensure-form-body})
@@ -96,7 +111,7 @@
      [""
       (cond-> {:name (keyword name "type")}
         (contains? interactions :search-type)
-        (assoc :get {:middleware [[wrap-db node db-sync-timeout]]
+        (assoc :get {:middleware [[wrap-search-db node db-sync-timeout]]
                      :handler (-> interactions :search-type
                                   :blaze.rest-api.interaction/handler)})
         (contains? interactions :create)
@@ -120,10 +135,10 @@
       (cond-> {:name (keyword name "page") :conflicting true}
         (contains? interactions :search-type)
         (assoc
-          :get {:middleware [[wrap-db node db-sync-timeout]]
+          :get {:middleware [[wrap-snapshot-db node db-sync-timeout]]
                 :handler (-> interactions :search-type
                              :blaze.rest-api.interaction/handler)}
-          :post {:middleware [[wrap-db node db-sync-timeout]]
+          :post {:middleware [[wrap-snapshot-db node db-sync-timeout]]
                  :handler (-> interactions :search-type
                               :blaze.rest-api.interaction/handler)}))]
      ["/{id}"
@@ -154,7 +169,7 @@
        ["/{vid}"
         (cond-> {:name (keyword name "versioned-instance")}
           (contains? interactions :vread)
-          (assoc :get {:middleware [[wrap-db node db-sync-timeout]]
+          (assoc :get {:middleware [[wrap-versioned-instance-db node db-sync-timeout]]
                        :handler (-> interactions :vread
                                     :blaze.rest-api.interaction/handler)}))]]]]))
 
@@ -243,7 +258,7 @@
        [""
         (cond-> {}
           (some? search-system-handler)
-          (assoc :get {:middleware [[wrap-db node db-sync-timeout]]
+          (assoc :get {:middleware [[wrap-search-db node db-sync-timeout]]
                        :handler search-system-handler})
           (some? transaction-handler)
           (assoc :post {:middleware
@@ -261,9 +276,9 @@
         (cond-> {:name :page}
           (some? search-system-handler)
           (assoc
-            :get {:middleware [[wrap-db node db-sync-timeout]]
+            :get {:middleware [[wrap-snapshot-db node db-sync-timeout]]
                   :handler search-system-handler}
-            :post {:middleware [[wrap-db node db-sync-timeout]]
+            :post {:middleware [[wrap-snapshot-db node db-sync-timeout]]
                    :handler search-system-handler}))]]
       (into
         (mapcat (partial operation-system-handler-route context))

@@ -148,18 +148,22 @@
                 (reitit/match-by-path (router []) path)
                 [:result request-method :data :middleware])
               (mapv (comp :name #(if (sequential? %) (first %) %)))))
-      "" :get [:params :output :error :forwarded :sync :db]
+      "" :get [:params :output :error :forwarded :sync :search-db]
       "" :post [:params :output :error :forwarded :sync :resource :wrap-batch-handler]
       "/_history" :get [:params :output :error :forwarded :sync :db]
-      "/Patient" :get [:params :output :error :forwarded :sync :db]
+      "/__page" :get [:params :output :error :forwarded :sync :snapshot-db]
+      "/__page" :post [:params :output :error :forwarded :sync :snapshot-db]
+      "/Patient" :get [:params :output :error :forwarded :sync :search-db]
       "/Patient" :post [:params :output :error :forwarded :sync :resource]
       "/Patient/_history" :get [:params :output :error :forwarded :sync :db]
       "/Patient/_search" :post [:params :output :error :forwarded :sync :ensure-form-body :db]
+      "/Patient/__page" :get [:params :output :error :forwarded :sync :snapshot-db]
+      "/Patient/__page" :post [:params :output :error :forwarded :sync :snapshot-db]
       "/Patient/0" :get [:params :output :error :forwarded :sync :db]
       "/Patient/0" :put [:params :output :error :forwarded :sync :resource]
       "/Patient/0" :delete [:params :output :error :forwarded :sync]
       "/Patient/0/_history" :get [:params :output :error :forwarded :sync :db]
-      "/Patient/0/_history/42" :get [:params :output :error :forwarded :sync :db]
+      "/Patient/0/_history/42" :get [:params :output :error :forwarded :sync :versioned-instance-db]
       "/Patient/0/Condition" :get [:params :output :error :forwarded :sync :db]
       "/Patient/0/Observation" :get [:params :output :error :forwarded :sync :db]
       "/$compact-db" :get [:params :output :error :forwarded :sync :db]
@@ -177,7 +181,7 @@
                   (reitit/match-by-path (router [:auth-backend]) path)
                   [:result request-method :data :middleware])
                 (mapv (comp :name #(if (sequential? %) (first %) %)))))
-        "" :get [:params :output :error :forwarded :sync :auth-guard :db]
+        "" :get [:params :output :error :forwarded :sync :auth-guard :search-db]
         "" :post [:params :output :error :forwarded :sync :auth-guard :resource :wrap-batch-handler]
         "/$compact-db" :get [:params :output :error :forwarded :sync :auth-guard :db]
         "/$compact-db" :post [:params :output :error :forwarded :sync :auth-guard :db :resource]

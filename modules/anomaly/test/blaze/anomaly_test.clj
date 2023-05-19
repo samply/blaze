@@ -73,6 +73,17 @@
     (is (not (ba/anomaly? nil)))))
 
 
+(deftest busy?-test
+  (testing "a busy anomaly has to have the right category"
+    (is (ba/busy? {::anom/category ::anom/busy})))
+
+  (testing "anomalies with other categories are no busy anomalies"
+    (is (not (ba/busy? {::anom/category ::anom/fault}))))
+
+  (testing "nil is no busy anomaly"
+    (is (not (ba/anomaly? nil)))))
+
+
 (deftest incorrect-test
   (testing "with nil message"
     (is (= (ba/incorrect nil) {::anom/category ::anom/incorrect})))

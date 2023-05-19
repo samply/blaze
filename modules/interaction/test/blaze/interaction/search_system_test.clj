@@ -4,6 +4,7 @@
   https://www.hl7.org/fhir/http.html#search"
   (:require
     [blaze.async.comp :as ac]
+    [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.db.resource-store :as rs]
     [blaze.interaction.search-system]
@@ -11,7 +12,7 @@
     [blaze.interaction.search.params-spec]
     [blaze.interaction.search.util-spec]
     [blaze.interaction.test-util :refer [wrap-error]]
-    [blaze.middleware.fhir.db :refer [wrap-db]]
+    [blaze.middleware.fhir.db :as db]
     [blaze.middleware.fhir.db-spec]
     [blaze.page-store-spec]
     [blaze.page-store.local]
@@ -49,6 +50,14 @@
   (reitit/map->Match
     {:data
      {:blaze/base-url ""}
+     :path ""}))
+
+
+(def page-match
+  (reitit/map->Match
+    {:data
+     {:name :page
+      :blaze/base-url ""}
      :path ""}))
 
 
@@ -102,13 +111,21 @@
         ::reitit/match match))))
 
 
-(defmacro with-handler [[handler-binding] & more]
+(defn wrap-db [handler node]
+  (fn [{::reitit/keys [match] :as request}]
+    (if (= page-match match)
+      ((db/wrap-snapshot-db handler node 100) request)
+      ((db/wrap-search-db handler node 100) request))))
+
+
+(defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
                          handler# :blaze.interaction/search-system} system]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
-                                  wrap-error)]
+                                  wrap-error)
+             ~(or node-binding '_) node#]
          ~@body))))
 
 
@@ -117,7 +134,7 @@
     (with-handler [handler]
       (testing "Returns all existing resources"
         (let [{:keys [status body]}
-              @(handler {})]
+              @(handler {::reitit/match match})]
 
           (is (= 200 status))
 
@@ -146,7 +163,7 @@
 
       (testing "Returns all existing resources"
         (let [{:keys [status body]}
-              @(handler {})]
+              @(handler {::reitit/match match})]
 
           (is (= 200 status))
 
@@ -182,7 +199,8 @@
 
       (testing "with param _summary equal to count"
         (let [{:keys [status body]}
-              @(handler {:params {"_summary" "count"}})]
+              @(handler {::reitit/match match
+                         :params {"_summary" "count"}})]
 
           (is (= 200 status))
 
@@ -207,7 +225,8 @@
 
       (testing "with param _count equal to zero"
         (let [{:keys [status body]}
-              @(handler {:params {"_count" "0"}})]
+              @(handler {::reitit/match match
+                         :params {"_count" "0"}})]
 
           (is (= 200 status))
 
@@ -227,13 +246,14 @@
             (is (empty? (:entry body))))))))
 
   (testing "with two patients"
-    (with-handler [handler]
+    (with-handler [handler node]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (testing "search for all patients with _count=1"
         (let [{:keys [body]}
-              @(handler {:params {"_count" "1"}})]
+              @(handler {::reitit/match match
+                         :params {"_count" "1"}})]
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
@@ -252,7 +272,8 @@
       (testing "following the self link"
         (let [{:keys [body]}
               @(handler
-                 {:params {"_count" "1" "__t" "1" "__page-type" "Patient"
+                 {::reitit/match match
+                  :params {"_count" "1" "__t" "1" "__page-type" "Patient"
                            "__page-id" "0"}})]
 
           (testing "the total count is 2"
@@ -272,7 +293,8 @@
       (testing "following the next link"
         (let [{:keys [body]}
               @(handler
-                 {:params {"_count" "1" "__t" "1" "__page-type" "Patient"
+                 {::reitit/match page-match
+                  :params {"_count" "1" "__t" "1" "__page-type" "Patient"
                            "__page-id" "1"}})]
 
           (testing "the total count is 2"
@@ -286,14 +308,59 @@
             (is (nil? (link-url body "next"))))
 
           (testing "the bundle contains one entry"
-            (is (= 1 (count (:entry body)))))))))
+            (is (= 1 (count (:entry body)))))))
+
+      (testing "adding a third patient doesn't influence the paging"
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "2"}]])
+
+        (testing "following the self link"
+          (let [{:keys [body]}
+                @(handler
+                   {::reitit/match match
+                    :params {"_count" "1" "__t" "1" "__page-type" "Patient"
+                             "__page-id" "0"}})]
+
+            (testing "the total count is 2"
+              (is (= #fhir/unsignedInt 2 (:total body))))
+
+            (testing "has a self link"
+              (is (= (str base-url "?_count=1&__t=1&__page-type=Patient&__page-id=0")
+                     (link-url body "self"))))
+
+            (testing "has a next link"
+              (is (= (str base-url "/__page?_count=1&__t=1&__page-type=Patient&__page-id=1")
+                     (link-url body "next"))))
+
+            (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body)))))))
+
+        (testing "following the next link"
+          (let [{:keys [body]}
+                @(handler
+                   {::reitit/match page-match
+                    :params {"_count" "1" "__t" "1" "__page-type" "Patient"
+                             "__page-id" "1"}})]
+
+            (testing "the total count is 2"
+              (is (= #fhir/unsignedInt 2 (:total body))))
+
+            (testing "has a self link"
+              (is (= (str base-url "?_count=1&__t=1&__page-type=Patient&__page-id=1")
+                     (link-url body "self"))))
+
+            (testing "has no next link"
+              (is (nil? (link-url body "next"))))
+
+            (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body))))))))))
 
   (testing "Include Resources"
     (testing "invalid include parameter"
       (with-handler [handler]
         (let [{:keys [status body]}
               @(handler
-                 {:headers {"prefer" "handling=strict"}
+                 {::reitit/match match
+                  :headers {"prefer" "handling=strict"}
                   :params {"_include" "Observation"}})]
 
           (is (= 400 status))
@@ -310,7 +377,7 @@
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [{:keys [status body]}
-              @(handler {})]
+              @(handler {::reitit/match match})]
 
           (is (= 500 status))
 

@@ -602,11 +602,17 @@ jobs:
     - name: GraphQL Observation
       run: .github/scripts/graphql.sh Observation
 
-    - name: Paging uses a Stable Snapshot of the Database
-      run: .github/scripts/follow-next-link-after-write.sh
+    - name: Paging uses a Stable Snapshot of the Database (Patient)
+      run: .github/scripts/follow-patient-next-link-after-write.sh
+
+    - name: Paging uses a Stable Snapshot of the Database (system)
+      run: .github/scripts/follow-system-next-link-after-write.sh
 
     - name: Create Patient
       run: .github/scripts/create-patient.sh
+
+    - name: Read Ignores T
+      run: .github/scripts/read-ignores-t.sh
 
   not-enforcing-referential-integrity-test:
     needs: build
@@ -1431,11 +1437,17 @@ jobs:
     - name: GraphQL Observation
       run: .github/scripts/graphql.sh Observation
 
-    - name: Paging uses a Stable Snapshot of the Database
-      run: .github/scripts/follow-next-link-after-write.sh
+    - name: Paging uses a Stable Snapshot of the Database (Patient)
+      run: .github/scripts/follow-patient-next-link-after-write.sh
+
+    - name: Paging uses a Stable Snapshot of the Database (system)
+      run: .github/scripts/follow-system-next-link-after-write.sh
 
     - name: Create Patient
       run: .github/scripts/create-patient.sh
+
+    - name: Read Ignores T
+      run: .github/scripts/read-ignores-t.sh
 
     - name: Docker Stats
       run: docker stats --no-stream
