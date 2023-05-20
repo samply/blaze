@@ -111,7 +111,7 @@
           (is (= [1 1] (core/-eval expr {} nil nil))))
 
         (testing "form"
-          (is (= '(vector-query (return S (alias-ref S)) [1 1])
+          (is (= '(vector-query (return (alias-ref S)) [1 1])
                  (core/-form expr))))))
 
     (testing "with query hint optimize first"
@@ -125,7 +125,7 @@
           (is (= [1] (into [] (core/-eval expr {} nil nil)))))
 
         (testing "form"
-          (is (= '(eduction-query distinct [1 1]) (core/-form expr)))))))
+          (is (= '(eduction-query (distinct) [1 1]) (core/-form expr)))))))
 
   (testing "Retrieve queries"
     (with-system-data [{:blaze.db/keys [node]} mem-node-system]
@@ -159,7 +159,7 @@
               [0 :id] := "0"))
 
           (testing "form"
-            (is (= '(vector-query distinct (retrieve "Patient")) (core/-form expr)))))
+            (is (= '(vector-query (distinct) (retrieve "Patient")) (core/-form expr)))))
 
         (let [elm {:type "Query"
                    :source
@@ -172,7 +172,7 @@
 
           (testing "form"
             (is (= '(vector-query
-                      (comp (where P (equal (:gender P) 2)) distinct)
+                      (comp (where (equal (:gender P) 2)) (distinct))
                       (retrieve "Patient"))
                    (core/-form expr)))))
 
@@ -259,10 +259,64 @@
       (is (= '(:foo default) (core/-form expr))))))
 
 
-;; TODO 10.9. QueryLetRef
+;; 10.8. LetClause
+;;
+;; The LetClause element allows any number of expression definitions to be
+;; introduced within a query scope. Defined expressions can be referenced by
+;; name within the query scope.
+(deftest compile-let-clause-test
+  (testing "Non-retrieve queries"
+    (testing "One let-expression"
+      (let [elm {:type "Query"
+                 :source
+                 [{:alias "S"
+                   :expression #elm/list [#elm/integer "1"]}]
+                 :let
+                 [{:identifier "E"
+                   :expression {:type "AliasRef" :name "S"}}]
+                 :return {:distinct false :expression {:type "QueryLetRef" :name "E"}}}
+            expr (c/compile {} elm)]
+
+        (testing "eval"
+          (is (= [1] (core/-eval expr {} nil nil))))
+
+        (testing "form"
+          (is (= '(vector-query (comp (let E (alias-ref S)) (return (query-let-ref E))) [1])
+                 (core/-form expr))))))
+
+    (testing "two let-expressions"
+      (let [elm {:type "Query"
+                 :source
+                 [{:alias "S"
+                   :expression #elm/list [#elm/integer "1"]}]
+                 :let
+                 [{:identifier "E"
+                   :expression {:type "AliasRef" :name "S"}}
+                  {:identifier "F"
+                   :expression {:type "QueryLetRef" :name "E"}}]
+                 :return {:distinct false :expression {:type "QueryLetRef" :name "F"}}}
+            expr (c/compile {} elm)]
+
+        (testing "eval"
+          (is (= [1] (core/-eval expr {} nil nil))))
+
+        (testing "form"
+          (is (= '(vector-query (comp (let E (alias-ref S)) (let F (query-let-ref E))
+                                      (return (query-let-ref F))) [1])
+                 (core/-form expr))))))))
+
+
+;; 10.9. QueryLetRef
 ;;
 ;; The QueryLetRef expression allows for the reference of a specific let
 ;; definition within the scope of a query.
+(deftest compile-query-let-ref-test
+  (let [expr (c/compile {} {:type "QueryLetRef" :name "expr1"})]
+    (testing "eval"
+      (is (= ::result (core/-eval expr {} nil {"expr1" ::result}))))
+
+    (testing "form"
+      (is (= '(query-let-ref expr1) (core/-form expr))))))
 
 
 ;; 10.14. With

@@ -58,32 +58,31 @@
         (filter #(with-clause context resource %)))))
 
 
-(defrecord WhereXformFactory [alias expr]
+(defrecord WhereXformFactory [expr]
   XformFactory
-  (-create [_ context resource scope]
-    (filter #(core/-eval expr context resource (assoc scope alias %))))
+  (-create [_ context resource _]
+    (filter #(core/-eval expr context resource %)))
   (-form [_]
-    `(~'where ~(symbol alias) ~(core/-form expr))))
+    `(~'where ~(core/-form expr))))
 
 
-(defn- where-xform-factory [alias expr]
-  (->WhereXformFactory alias expr))
+(defn- where-xform-factory [expr]
+  (->WhereXformFactory expr))
 
 
-(defrecord ReturnXformFactory [alias expr]
+(defrecord ReturnXformFactory [expr]
   XformFactory
-  (-create [_ context resource scope]
-    (map #(core/-eval expr context resource (assoc scope alias %))))
+  (-create [_ context resource _]
+    (map #(core/-eval expr context resource %)))
   (-form [_]
-    `(~'return ~(symbol alias) ~(core/-form expr))))
+    `(~'return ~(core/-form expr))))
 
 
-(defrecord DistinctXformFactory []
+(defrecord DefaultReturnXformFactory [alias]
   XformFactory
   (-create [_ _ _ _]
-    (distinct))
-  (-form [_]
-    'distinct))
+    (map #(get % alias)))
+  (-form [_]))
 
 
 (defrecord ComposedDistinctXformFactory [xform-factory]
@@ -93,17 +92,31 @@
       (-create xform-factory context resource scope)
       (distinct)))
   (-form [_]
-    `(~'distinct ~(-form xform-factory))))
+    (cons 'distinct (-form xform-factory))))
 
 
 (defn- return-xform-factory [alias expr distinct]
   (if (some? expr)
     (if distinct
-      (-> (->ReturnXformFactory alias expr)
+      (-> (->ReturnXformFactory expr)
           (->ComposedDistinctXformFactory))
-      (->ReturnXformFactory alias expr))
-    (when distinct
-      (->DistinctXformFactory))))
+      (->ReturnXformFactory expr))
+    (if distinct
+      (-> (->DefaultReturnXformFactory alias)
+          (->ComposedDistinctXformFactory))
+      (->DefaultReturnXformFactory alias))))
+
+
+(defrecord LetXformFactory [identifier expr]
+  XformFactory
+  (-create [_ context resource _]
+    (map #(assoc % identifier (core/-eval expr context resource %))))
+  (-form [_]
+    `(~'let ~(symbol identifier) ~(core/-form expr))))
+
+
+(defn- let-xform-factory [identifier expr]
+  (->LetXformFactory identifier expr))
 
 
 (defrecord ComposedXformFactory [factories]
@@ -115,53 +128,44 @@
 
 
 (defn- xform-factory
-  [with-xform-factories where-xform-factory return-xform-factory]
-  (if (some? where-xform-factory)
-    (if (seq with-xform-factories)
-      (if (some? return-xform-factory)
-        (->ComposedXformFactory
-          (conj
-            (into [where-xform-factory] with-xform-factories)
-            return-xform-factory))
-        (->ComposedXformFactory (into [where-xform-factory] with-xform-factories)))
-      (if (some? return-xform-factory)
-        (->ComposedXformFactory [where-xform-factory return-xform-factory])
-        where-xform-factory))
-    (if (seq with-xform-factories)
-      (if (some? return-xform-factory)
-        (->ComposedXformFactory (conj with-xform-factories return-xform-factory))
-        (->ComposedXformFactory with-xform-factories))
-      (when (some? return-xform-factory)
-        return-xform-factory))))
+  [let-xform-factories with-xform-factories where-xform-factory return-xform-factory]
+  (let [xform-factories (cond-> (into let-xform-factories with-xform-factories)
+                                (some? where-xform-factory) (conj where-xform-factory)
+                                (some? return-xform-factory) (conj return-xform-factory))]
+    (if (< 1 (count xform-factories))
+      (->ComposedXformFactory xform-factories)
+      (first xform-factories))))
 
 
-(defrecord EductionQueryExpression [xform-factory source]
+(defrecord EductionQueryExpression [xform-factory alias source]
   core/Expression
   (-eval [_ context resource scope]
     (coll/eduction
-      (-create xform-factory context resource scope)
+      (comp (map (fn [x] (assoc scope alias x)))
+            (-create xform-factory context resource scope))
       (core/-eval source context resource scope)))
   (-form [_]
     `(~'eduction-query ~(-form xform-factory) ~(core/-form source))))
 
 
-(defn- eduction-expr [xform-factory source]
-  (->EductionQueryExpression xform-factory source))
+(defn- eduction-expr [xform-factory alias source]
+  (->EductionQueryExpression xform-factory alias source))
 
 
-(defrecord IntoVectorQueryExpression [xform-factory source]
+(defrecord IntoVectorQueryExpression [xform-factory alias source]
   core/Expression
   (-eval [_ context resource scope]
     (into
       []
-      (-create xform-factory context resource scope)
+      (comp (map (fn [x] (assoc scope alias x)))
+            (-create xform-factory context resource scope))
       (core/-eval source context resource scope)))
   (-form [_]
     `(~'vector-query ~(-form xform-factory) ~(core/-form source))))
 
 
-(defn- into-vector-expr [xform-factory source]
-  (->IntoVectorQueryExpression xform-factory source))
+(defn- into-vector-expr [xform-factory alias source]
+  (->IntoVectorQueryExpression xform-factory alias source))
 
 
 (deftype AscComparator []
@@ -215,13 +219,14 @@
   (->SortQueryExpression source sort-by-item))
 
 
-(defrecord XformSortQueryExpression [xform-factory source sort-by-item]
+(defrecord XformSortQueryExpression [xform-factory alias source sort-by-item]
   core/Expression
   (-eval [_ context resource scope]
     ;; TODO: build a comparator of all sort by items
     (->> (into
            []
-           (-create xform-factory context resource scope)
+           (comp (map (fn [x] (assoc scope alias x)))
+                 (-create xform-factory context resource scope))
            (core/-eval source context resource scope))
          (sort-by
            (if-let [expr (:expression sort-by-item)]
@@ -231,8 +236,8 @@
          (vec))))
 
 
-(defn xform-sort-expr [xform-factory source sort-by-item]
-  (->XformSortQueryExpression xform-factory source sort-by-item))
+(defn xform-sort-expr [xform-factory alias source sort-by-item]
+  (->XformSortQueryExpression xform-factory alias source sort-by-item))
 
 
 (declare compile-with-equiv-clause)
@@ -267,6 +272,7 @@
 (defmethod core/compile* :elm.compiler.type/query
   [{:keys [optimizations] :as context}
    {sources :source
+    letclauses :let
     relationships :relationship
     :keys [where]
     {return :expression :keys [distinct] :or {distinct true}} :return
@@ -280,21 +286,24 @@
     (let [{:keys [expression alias]} (first sources)
           context (dissoc context :optimizations)
           source (core/compile* context expression)
+          let-xform-factories (mapv (fn [{letexpr :expression :keys [identifier]}]
+                                      (let-xform-factory identifier (core/compile* context letexpr)))
+                                    letclauses)
           with-equiv-clauses (filter (comp #{"WithEquiv"} :type) relationships)
           with-xform-factories (map #(compile-with-equiv-clause context alias %) with-equiv-clauses)
-          where-xform-factory (some->> where (core/compile* context) (where-xform-factory alias))
+          where-xform-factory (some->> where (core/compile* context) (where-xform-factory))
           distinct (if (contains? optimizations :non-distinct) false distinct)
           return-xform-factory (return-xform-factory alias (some->> return (core/compile* context)) distinct)
-          xform-factory (xform-factory with-xform-factories where-xform-factory return-xform-factory)
+          xform-factory (xform-factory let-xform-factories with-xform-factories where-xform-factory return-xform-factory)
           sort-by-items (mapv #(compile-sort-by-item context %) sort-by-items)]
       (if (empty? sort-by-items)
         (if xform-factory
           (if (contains? optimizations :first)
-            (eduction-expr xform-factory source)
-            (into-vector-expr xform-factory source))
+            (eduction-expr xform-factory alias source)
+            (into-vector-expr xform-factory alias source))
           source)
         (if xform-factory
-          (xform-sort-expr xform-factory source (first sort-by-items))
+          (xform-sort-expr xform-factory alias source (first sort-by-items))
           (sort-expr source (first sort-by-items)))))
     (throw (Exception. (str "Unsupported number of " (count sources) " sources in query.")))))
 
@@ -317,6 +326,20 @@
 (defmethod core/compile* :elm.compiler.type/identifier-ref
   [_ {:keys [name]}]
   (structured-values/->SingleScopePropertyExpression (keyword name)))
+
+
+;; 10.9. QueryLetRef
+(defrecord QueryLetRefExpression [key]
+  core/Expression
+  (-eval [_ _ _ scopes]
+    (get scopes key))
+  (-form [_]
+    `(~'query-let-ref ~(symbol key))))
+
+
+(defmethod core/compile* :elm.compiler.type/query-let-ref
+  [_ {:keys [name]}]
+  (->QueryLetRefExpression name))
 
 
 ;; 10.14. With

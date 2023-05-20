@@ -124,6 +124,11 @@
     (assoc source :expression expression :life/deps deps :life/scopes scopes)))
 
 
+(defn- infer-let-deps [{:keys [expression] :as letclause}]
+  (let [{:life/keys [deps scopes] :as expression} (infer-deps expression)]
+    (assoc letclause :expression expression :life/deps deps :life/scopes scopes)))
+
+
 (defn- infer-relationship-deps
   [{source :expression equiv-operands :equivOperand such-that :suchThat
     :as relationship}]
@@ -141,8 +146,9 @@
 
 
 (defmethod infer-deps :elm.deps.type/query
-  [{sources :source relationships :relationship :keys [where] :as expression}]
+  [{sources :source letclause :let relationships :relationship :keys [where] :as expression}]
   (let [sources (mapv infer-source-deps sources)
+        letclause (mapv infer-let-deps letclause)
         relationships (mapv infer-relationship-deps relationships)
         where (some-> where infer-deps)
         source-deps (transduce (map :life/deps) set/union sources)
@@ -152,6 +158,7 @@
     (cond->
       (assoc expression
         :source sources
+        :let letclause
         :relationship relationships)
       where
       (assoc :where where)
@@ -166,6 +173,11 @@
   [{:keys [name] :as expression}]
   (assoc expression :life/scopes #{name}))
 
+
+;; 10.9. QueryLetRef
+(defmethod infer-deps :elm.deps.type/query-let-ref
+  [{:keys [name] :as expression}]
+  (assoc expression :life/scopes #{name}))
 
 
 ;; 12. Comparison Operators
