@@ -1,0 +1,235 @@
+"system","code","display","count"
+"http://loinc.org","1742-6","ALT (Elevated)",244
+"http://loinc.org","1920-8","AST (Elevated)",244
+"http://loinc.org","28245-9","Abuse Status [OMAHA]",6289
+"http://loinc.org","94040-3","Adenovirus A+B+C+D+E DNA [Presence] in Respiratory specimen by NAA with probe detection",6009
+"http://loinc.org","1742-6","Alanine aminotransferase [Enzymatic activity/volume] in Serum or Plasma",288409
+"http://loinc.org","1751-7","Albumin",244
+"http://loinc.org","1751-7","Albumin [Mass/volume] in Serum or Plasma",288409
+"http://loinc.org","6768-6","Alkaline Phosphatase",244
+"http://loinc.org","6768-6","Alkaline phosphatase [Enzymatic activity/volume] in Serum or Plasma",288409
+"http://loinc.org","6095-4","American house dust mite IgE Ab in Serum",5554
+"http://loinc.org","33037-3","Anion Gap",244
+"http://loinc.org","5767-9","Appearance of Urine",800563
+"http://loinc.org","63513-6","Are you covered by health insurance or some other kind of health care plan [PhenX]",6289
+"http://loinc.org","1920-8","Aspartate aminotransferase [Enzymatic activity/volume] in Serum or Plasma",288409
+"http://loinc.org","704-7","Basophils [#/volume] in Blood by Automated count",19359
+"http://loinc.org","706-2","Basophils/100 leukocytes in Blood by Automated count",19359
+"http://loinc.org","1960-4","Bicarbonate [Moles/volume] in Arterial blood",6925
+"http://loinc.org","1975-2","Bilirubin.total [Mass/volume] in Serum or Plasma",288409
+"http://loinc.org","20505-4","Bilirubin.total [Mass/volume] in Urine by Test strip",800563
+"http://loinc.org","5770-3","Bilirubin.total [Presence] in Urine by Test strip",800563
+"http://loinc.org","85354-9","Blood Pressure",1622769
+"http://loinc.org","8302-2","Body Height",1551916
+"http://loinc.org","39156-5","Body Mass Index",1474551
+"http://loinc.org","8310-5","Body Temperature",9633
+"http://loinc.org","29463-7","Body Weight",1582370
+"http://loinc.org","59576-9","Body mass index (BMI) [Percentile] Per age and gender",204352
+"http://loinc.org","8310-5","Body temperature",105547
+"http://loinc.org","1988-5","C reactive protein [Mass/volume] in Serum or Plasma",10313
+"http://loinc.org","24467-3","CD3+CD4+ (T4 helper) cells [#/volume] in Blood",2322
+"http://loinc.org","49765-1","Calcium",1791259
+"http://loinc.org","17861-6","Calcium",244
+"http://loinc.org","17861-6","Calcium [Mass/volume] in Serum or Plasma",21596
+"http://loinc.org","44963-7","Capillary refill [Time] of Nail bed",526
+"http://loinc.org","2028-9","Carbon Dioxide",244
+"http://loinc.org","20565-8","Carbon Dioxide",1791259
+"http://loinc.org","2019-8","Carbon dioxide [Partial pressure] in Arterial blood",6925
+"http://loinc.org","2028-9","Carbon dioxide, total [Moles/volume] in Serum or Plasma",21596
+"http://loinc.org","6833-8","Cat dander IgE Ab in Serum",5554
+"http://loinc.org","2069-3","Chloride",1791259
+"http://loinc.org","2075-0","Chloride",244
+"http://loinc.org","2075-0","Chloride [Moles/volume] in Serum or Plasma",21596
+"http://loinc.org","6075-6","Cladosporium herbarum IgE Ab in Serum",5554
+"http://loinc.org","32167-9","Clarity of Urine",800563
+"http://loinc.org","6082-2","Codfish IgE Ab in Serum",5554
+"http://loinc.org","5778-6","Color of Urine",800563
+"http://loinc.org","6085-5","Common Ragweed IgE Ab in Serum",5554
+"http://loinc.org","7258-7","Cow milk IgE Ab in Serum",5554
+"http://loinc.org","2157-6","Creatine kinase [Enzymatic activity/volume] in Serum or Plasma",10313
+"http://loinc.org","2160-0","Creatinine",244
+"http://loinc.org","38483-4","Creatinine",1791259
+"http://loinc.org","2160-0","Creatinine [Mass/volume] in Serum or Plasma",21596
+"http://loinc.org","99999-0","DSM-5 Clinical Diagnostic Criteria for Opioid Use Disorder",959
+"http://loinc.org","38265-5","DXA [T-score] Bone density",14250
+"http://loinc.org","21907-1","Distant metastases.clinical [Class] Cancer",644
+"http://loinc.org","65750-2","Drugs of abuse 5 panel - Urine by Screen method",34226
+"http://loinc.org","6106-9","Egg white IgE Ab in Serum",5554
+"http://loinc.org","711-2","Eosinophils [#/volume] in Blood by Automated count",19359
+"http://loinc.org","713-8","Eosinophils/100 leukocytes in Blood by Automated count",19359
+"http://loinc.org","21000-5","Erythrocyte distribution width [Entitic volume] by Automated count",192077
+"http://loinc.org","788-0","Erythrocyte distribution width [Ratio] by Automated count",21563
+"http://loinc.org","789-8","Erythrocytes [#/volume] in Blood by Automated count",213640
+"http://loinc.org","33914-3","Estimated Glomerular Filtration Rate",257286
+"http://loinc.org","85337-4","Estrogen receptor Ag [Presence] in Breast cancer specimen by Immune stain",644
+"http://loinc.org","417181009","Estrogen+Progesterone receptor Ag [Presence] in Tissue by Immune stain",37
+"http://loinc.org","10480-2","Estrogen+Progesterone receptor Ag [Presence] in Tissue by Immune stain",346
+"http://loinc.org","19926-5","FEV1/FVC",24242
+"http://loinc.org","59461-4","Fall risk level [Morse Fall Scale]",572999
+"http://loinc.org","59460-6","Fall risk total [Morse Fall Scale]",572999
+"http://loinc.org","2276-4","Ferritin [Mass/volume] in Serum or Plasma",12550
+"http://loinc.org","48065-7","Fibrin D-dimer FEU [Mass/volume] in Platelet poor plasma",10313
+"http://loinc.org","88020-3","Functional capacity NYHA",675
+"http://loinc.org","70274-6","Generalized anxiety disorder 7 item (GAD-7) total score [Reported.PHQ]",658612
+"http://loinc.org","10834-0","Globulin",244
+"http://loinc.org","10834-0","Globulin [Mass/volume] in Serum by calculation",266813
+"http://loinc.org","33914-3","Glomerular filtration rate/1.73 sq M.predicted",970031
+"http://loinc.org","2339-0","Glucose",1791259
+"http://loinc.org","2345-7","Glucose",244
+"http://loinc.org","2345-7","Glucose [Mass/volume] in Serum or Plasma",21596
+"http://loinc.org","5792-7","Glucose [Mass/volume] in Urine by Test strip",800563
+"http://loinc.org","25428-4","Glucose [Presence] in Urine by Test strip",800563
+"http://loinc.org","88262-1","Gram positive blood culture panel by Probe in Positive blood culture",526
+"http://loinc.org","85318-4","HER2 [Presence] in Breast cancer specimen by FISH",644
+"http://loinc.org","85319-2","HER2 [Presence] in Breast cancer specimen by Immune stain",644
+"http://loinc.org","7917-8","HIV 1 Ab [Presence] in Serum",69
+"http://loinc.org","20447-9","HIV 1 RNA [#/volume] (viral load) in Serum or Plasma by NAA with probe detection",2988
+"http://loinc.org","55277-8","HIV status",6289
+"http://loinc.org","9843-4","Head Occipital-frontal circumference",119221
+"http://loinc.org","8289-1","Head Occipital-frontal circumference Percentile",119221
+"http://loinc.org","8867-4","Heart rate",1576792
+"http://loinc.org","20570-8","Hematocrit",244
+"http://loinc.org","20570-8","Hematocrit [Volume Fraction] of Blood",8633
+"http://loinc.org","4544-3","Hematocrit [Volume Fraction] of Blood by Automated count",213640
+"http://loinc.org","718-7","Hemoglobin",244
+"http://loinc.org","4548-4","Hemoglobin A1c/Hemoglobin.total in Blood",848937
+"http://loinc.org","718-7","Hemoglobin [Mass/volume] in Blood",222273
+"http://loinc.org","5794-3","Hemoglobin [Presence] in Urine by Test strip",800563
+"http://loinc.org","57905-2","Hemoglobin.gastrointestinal [Presence] in Stool by Immunologic method",5724
+"http://loinc.org","2085-9","High Density Lipoprotein Cholesterol",591659
+"http://loinc.org","72092-0","Hip Dysfunction and Osteoarthritis Outcome Score [HOOS]",5
+"http://loinc.org","46240-8","History of Hospitalizations+Outpatient visits",6289
+"http://loinc.org","6844-5","Honey bee IgE Ab in Serum",5554
+"http://loinc.org","71802-3","Housing status",6289
+"http://loinc.org","92134-6","Human metapneumovirus RNA [Presence] in Respiratory specimen by NAA with probe detection",6009
+"http://loinc.org","6301-6","INR in Platelet poor plasma by Coagulation assay",10313
+"http://loinc.org","80382-5","Influenza virus A Ag [Presence] in Nasopharynx by Rapid immunoassay",2917
+"http://loinc.org","92142-9","Influenza virus A RNA [Presence] in Respiratory specimen by NAA with probe detection",6009
+"http://loinc.org","80383-3","Influenza virus B Ag [Presence] in Nasopharynx by Rapid immunoassay",2917
+"http://loinc.org","92141-1","Influenza virus B RNA [Presence] in Respiratory specimen by NAA with probe detection",6009
+"http://loinc.org","26881-3","Interleukin 6 [Mass/volume] in Serum or Plasma",114
+"http://loinc.org","2498-4","Iron [Mass/volume] in Serum or Plasma",2237
+"http://loinc.org","2500-7","Iron binding capacity [Mass/volume] in Serum or Plasma",2237
+"http://loinc.org","2502-3","Iron saturation [Mass Fraction] in Serum or Plasma",2237
+"http://loinc.org","5797-6","Ketones [Mass/volume] in Urine by Test strip",800563
+"http://loinc.org","2514-8","Ketones [Presence] in Urine by Test strip",800563
+"http://loinc.org","72091-2","Knee injury and Osteoarthritis Outcome Score [KOOS]",20
+"http://loinc.org","59032-3","Lactate [Mass/volume] in Blood",826
+"http://loinc.org","14804-9","Lactate dehydrogenase [Enzymatic activity/volume] in Serum or Plasma by Lactate to pyruvate reaction",10313
+"http://loinc.org","6158-0","Latex IgE Ab in Serum",5554
+"http://loinc.org","10230-1","Left ventricular Ejection fraction",3387
+"http://loinc.org","5799-2","Leukocyte esterase [Presence] in Urine by Test strip",800563
+"http://loinc.org","6690-2","Leukocytes [#/volume] in Blood by Automated count",213640
+"http://loinc.org","18262-6","Low Density Lipoprotein Cholesterol",591659
+"http://loinc.org","85352-3","Lymph nodes with isolated tumor cells [#] in Cancer specimen by Light microscopy",387
+"http://loinc.org","85343-2","Lymph nodes with macrometastases [#] in Cancer specimen by Light microscopy",90
+"http://loinc.org","85344-0","Lymph nodes with micrometastases [#] in Cancer specimen by Light microscopy",167
+"http://loinc.org","731-0","Lymphocytes [#/volume] in Blood by Automated count",19359
+"http://loinc.org","736-9","Lymphocytes/100 leukocytes in Blood by Automated count",19359
+"http://loinc.org","785-6","MCH [Entitic mass] by Automated count",221673
+"http://loinc.org","786-4","MCHC [Mass/volume] by Automated count",221673
+"http://loinc.org","30428-7","MCV",244
+"http://loinc.org","787-2","MCV [Entitic volume] by Automated count",221673
+"http://loinc.org","19123-9","Magnesium [Mass/volume] in Serum or Plasma",2237
+"http://loinc.org","8478-0","Mean blood pressure",526
+"http://loinc.org","75443-2","Mental health Outpatient Note",1055
+"http://loinc.org","84215-3","Mental health Telehealth Note",743
+"http://loinc.org","14959-1","Microalbumin Creatinine Ratio",257286
+"http://loinc.org","742-7","Monocytes [#/volume] in Blood by Automated count",19359
+"http://loinc.org","5905-5","Monocytes/100 leukocytes in Blood by Automated count",19359
+"http://loinc.org","33762-6","NT-proBNP",2237
+"http://loinc.org","751-8","Neutrophils [#/volume] in Blood by Automated count",28992
+"http://loinc.org","770-8","Neutrophils/100 leukocytes in Blood by Automated count",19359
+"http://loinc.org","5802-4","Nitrite [Presence] in Urine by Test strip",800563
+"http://loinc.org","88021-1","Objective assessment of cardiovascular disease NYHA",675
+"http://loinc.org","5767-9","Odor of Urine",800563
+"http://loinc.org","2713-6","Oxygen Saturation",526
+"http://loinc.org","2703-7","Oxygen [Partial pressure] in Arterial blood",6925
+"http://loinc.org","2708-6","Oxygen saturation in Arterial blood",36703
+"http://loinc.org","19994-3","Oxygen/Inspired gas setting [Volume Fraction] Ventilator",6925
+"http://loinc.org","62337-1","PROMIS item bank - 29 profile",5
+"http://loinc.org","61576-5","PROMIS short form - global - version 1.1",18
+"http://loinc.org","91148-7","Pain intensity, Enjoyment of life, General activity (PEG) 3 item pain scale",53218
+"http://loinc.org","72514-3","Pain severity - 0-10 verbal numeric rating [Score] - Reported",2748059
+"http://loinc.org","38208-5","Pain severity - Reported",128647
+"http://loinc.org","92140-3","Parainfluenza virus 1 RNA [Presence] in Respiratory specimen by NAA with probe detection",6009
+"http://loinc.org","92139-5","Parainfluenza virus 2 RNA [Presence] in Respiratory specimen by NAA with probe detection",6009
+"http://loinc.org","92138-7","Parainfluenza virus 3 RNA [Presence] in Respiratory specimen by NAA with probe detection",6009
+"http://loinc.org","55758-7","Patient Health Questionnaire 2 item (PHQ-2) total score [Reported]",1007217
+"http://loinc.org","44261-6","Patient Health Questionnaire 9 item (PHQ-9) total score [Reported]",60553
+"http://loinc.org","89204-2","Patient Health Questionnaire-9: Modified for Teens total score [Reported.PHQ.Teen]",50837
+"http://loinc.org","6206-7","Peanut IgE Ab in Serum",5554
+"http://loinc.org","66519-0","Percentage area affected by eczema Head and Neck",600
+"http://loinc.org","66534-9","Percentage area affected by eczema Lower extremitiy - bilateral",600
+"http://loinc.org","66529-9","Percentage area affected by eczema Trunk",600
+"http://loinc.org","66524-0","Percentage area affected by eczema Upper extremitiy - bilateral",600
+"http://loinc.org","80271-0","Physical findings of Abdomen by Palpation",244
+"http://loinc.org","32465-7","Physical findings of Prostate",6647
+"http://loinc.org","26515-7","Platelet Count",244
+"http://loinc.org","32207-3","Platelet distribution width [Entitic volume] in Blood by Automated count",200110
+"http://loinc.org","32623-1","Platelet mean volume [Entitic volume] in Blood by Automated count",200110
+"http://loinc.org","777-3","Platelets [#/volume] in Blood by Automated count",221673
+"http://loinc.org","33756-8","Polyp size greatest dimension by CAP cancer protocols",5724
+"http://loinc.org","6298-4","Potassium",1791259
+"http://loinc.org","2823-3","Potassium",244
+"http://loinc.org","2823-3","Potassium [Moles/volume] in Serum or Plasma",21596
+"http://loinc.org","21905-5","Primary tumor.clinical [Class] Cancer",644
+"http://loinc.org","33959-8","Procalcitonin [Mass/volume] in Serum or Plasma",10313
+"http://loinc.org","85339-0","Progesterone receptor Ag [Presence] in Breast cancer specimen by Immune stain",644
+"http://loinc.org","2857-1","Prostate specific Ag [Mass/volume] in Serum or Plasma",6647
+"http://loinc.org","2885-2","Protein",244
+"http://loinc.org","2885-2","Protein [Mass/volume] in Serum or Plasma",288409
+"http://loinc.org","5804-0","Protein [Mass/volume] in Urine by Test strip",800563
+"http://loinc.org","20454-5","Protein [Presence] in Urine by Test strip",800563
+"http://loinc.org","5902-2","Prothrombin time (PT)",10313
+"http://loinc.org","93025-5","Protocol for Responding to and Assessing Patients' Assets, Risks, and Experiences [PRAPARE]",1285398
+"http://loinc.org","789-8","RBC Auto (Bld) [#/Vol]",8033
+"http://loinc.org","30385-9","RBC Distribution Width",244
+"http://loinc.org","21000-5","RDW - Erythrocyte distribution width Auto (RBC) [Entitic vol]",8033
+"http://loinc.org","26453-1","Red Blood Cell",244
+"http://loinc.org","21906-3","Regional lymph nodes.clinical [Class] Cancer",644
+"http://loinc.org","9279-1","Respiratory rate",1576792
+"http://loinc.org","92131-2","Respiratory syncytial virus RNA [Presence] in Respiratory specimen by NAA with probe detection",6009
+"http://loinc.org","88040-1","Response to cancer treatment",3198
+"http://loinc.org","92130-4","Rhinovirus RNA [Presence] in Respiratory specimen by NAA with probe detection",6009
+"http://loinc.org","94531-1","SARS-CoV-2 RNA Pnl Resp NAA+probe",11908
+"http://loinc.org","76690-7","Sexual orientation",6289
+"http://loinc.org","6246-3","Shrimp IgE Ab in Serum",5554
+"http://loinc.org","44667-4","Site of distant metastasis in Breast tumor",630
+"http://loinc.org","33728-7","Size.maximum dimension in Tumor",630
+"http://loinc.org","2951-2","Sodium",244
+"http://loinc.org","2947-0","Sodium",1791259
+"http://loinc.org","2951-2","Sodium [Moles/volume] in Serum or Plasma",21596
+"http://loinc.org","6248-9","Soybean IgE Ab in Serum",5554
+"http://loinc.org","5811-5","Specific gravity of Urine by Test strip",800563
+"http://loinc.org","21908-9","Stage group.clinical Cancer",1274
+"http://loinc.org","75325-1","Symptom",4056
+"http://loinc.org","3016-3","Thyrotropin [Units/volume] in Serum or Plasma",299
+"http://loinc.org","3024-7","Thyroxine (T4) free [Mass/volume] in Serum or Plasma",299
+"http://loinc.org","72166-2","Tobacco smoking status",1548575
+"http://loinc.org","42719-5","Total Bilirubin (Elevated)",244
+"http://loinc.org","2093-3","Total Cholesterol",591659
+"http://loinc.org","75626-2","Total score [AUDIT-C]",387623
+"http://loinc.org","82667-7","Total score [DAST-10]",388687
+"http://loinc.org","76504-0","Total score [HARK]",385773
+"http://loinc.org","72106-8","Total score [MMSE]",7900
+"http://loinc.org","22577-1","Toxoplasma gondii Ab [Presence] in Serum",11
+"http://loinc.org","59557-9","Treatment status Cancer",635
+"http://loinc.org","2571-8","Triglycerides",591659
+"http://loinc.org","89579-7","Troponin I.cardiac [Mass/volume] in Serum or Plasma by High sensitivity method",12550
+"http://loinc.org","21924-6","Tumor marker Cancer",28
+"http://loinc.org","46288-7","US Guidance for biopsy of Prostate",1045
+"http://loinc.org","3094-0","Urea Nitrogen",244
+"http://loinc.org","6299-2","Urea Nitrogen",1791259
+"http://loinc.org","3094-0","Urea nitrogen [Mass/volume] in Serum or Plasma",21596
+"http://loinc.org","71934-4","Veterans Rand health survey - 12 item (VR-12)",18
+"http://loinc.org","71933-6","Veterans Rand health survey - 36 item (VR-36)",2
+"http://loinc.org","6690-2","WBC Auto (Bld) [#/Vol]",8033
+"http://loinc.org","6273-7","Walnut IgE Ab in Serum",5554
+"http://loinc.org","74006-8","Weight difference [Mass difference] --pre dialysis - post dialysis",1167181
+"http://loinc.org","77606-2","Weight-for-length Per age and sex",119221
+"http://loinc.org","6276-0","Wheat IgE Ab in Serum",5554
+"http://loinc.org","26464-8","White Blood Cell (Elevated)",244
+"http://loinc.org","6189-5","White oak IgE Ab in Serum",5554
+"http://loinc.org","2744-1","pH of Arterial blood",6925
+"http://loinc.org","5803-2","pH of Urine by Test strip",800563
