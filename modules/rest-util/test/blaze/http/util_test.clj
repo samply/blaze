@@ -15,6 +15,18 @@
 
 
 (deftest parse-header-value-test
+  (testing "one element without value"
+    (given (hu/parse-header-value "a")
+      count := 1
+      [0 :name] := "a"
+      [0 :value] := nil)
+
+    (testing "names are converted to lowercase"
+      (given (hu/parse-header-value "A")
+        count := 1
+        [0 :name] := "a"
+        [0 :value] := nil)))
+
   (testing "one element"
     (given (hu/parse-header-value "a=b")
       count := 1
@@ -28,6 +40,14 @@
       [0 :value] := "b"
       [1 :name] := "c"
       [1 :value] := "d"))
+
+  (testing "one element without value with one param"
+    (given (hu/parse-header-value "a;c=d")
+      count := 1
+      [0 :name] := "a"
+      [0 :value] := nil
+      [0 :params 0 :name] := "c"
+      [0 :params 0 :value] := "d"))
 
   (testing "one element with one param"
     (given (hu/parse-header-value "a=b;c=d")

@@ -71,6 +71,7 @@
 ;; Resource Cache
 (comment
   (str (ccp/-stats (:blaze.db/resource-cache system)))
+  (ccp/-estimated-size (:blaze.db/resource-cache system))
   (resource-cache/invalidate-all! (:blaze.db/resource-cache system))
   )
 
