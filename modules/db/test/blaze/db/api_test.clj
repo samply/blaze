@@ -3592,6 +3592,90 @@
         [0 :id] := "1"))))
 
 
+(deftest type-query-date-encounter-test
+  (with-system-data [{:blaze.db/keys [node]} system]
+    [[[:put {:fhir/type :fhir/Encounter :id "E1"
+             :period #fhir/Period{:start #fhir/dateTime"1999-08"
+                                  :end #fhir/dateTime"2000-04"}}]]
+     [[:put {:fhir/type :fhir/Encounter :id "E2"
+             :period #fhir/Period{:start #fhir/dateTime"2000-03"
+                                  :end #fhir/dateTime"2000-10"}}]]
+     [[:put {:fhir/type :fhir/Encounter :id "E3"
+             :period #fhir/Period{:start #fhir/dateTime"1999-11"
+                                  :end #fhir/dateTime"2001-04"}}]]
+     [[:put {:fhir/type :fhir/Encounter :id "E4"
+             :period #fhir/Period{:start #fhir/dateTime"2000-09"
+                                  :end #fhir/dateTime"2001-07"}}]]]
+
+    (let [db (d/db node)
+          num-encounter #(count (d/type-query db "Encounter" %))]
+      (are [year n] (= n (num-encounter [["date" (format "gt%d-01-01" year)]
+                                         ["date" (format "lt%d-01-01" (inc year))]]))
+        1999 2
+        2000 4
+        2001 2)
+
+      (are [year n] (= n (num-encounter [["date" (format "sa%d-01-01" year)]
+                                         ["date" (format "eb%d-01-01" (inc year))]]))
+        1999 0
+        2000 1
+        2001 0)
+
+      (are [year n] (= n (num-encounter [["date" (str year)]]))
+        1999 0
+        2000 1
+        2001 0)
+
+      (are [year n] (= n (num-encounter [["date" (str "ap" year)]]))
+        1999 2
+        2000 4
+        2001 2))))
+
+
+(def encounter-gen
+  (let [date-time (fg/dateTime :extension (gen/return nil)
+                               :value (gen/fmap (partial apply format "%04d-%02d-%02d")
+                                                (gen/tuple (gen/choose 1999 2001) fg/month fg/day)))]
+    (fg/encounter
+      :id (gen/fmap str gen/uuid)
+      :meta (gen/return nil)
+      :identifier (gen/return nil)
+      :status (gen/return #fhir/code"finished")
+      :type (gen/return nil)
+      :priority (gen/return nil)
+      :subject (gen/return nil)
+      :period (fg/period :extension (gen/return nil)
+                         :start date-time :end date-time))))
+
+
+(deftest type-query-date-encounter-eq-sa-eb-test
+  (satisfies-prop 1000
+    (prop/for-all [year (gen/choose 1999 2001)
+                   tx-ops (create-tx encounter-gen 10)]
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [tx-ops]
+
+        (let [db (d/db node)
+              num-encounter #(count (d/type-query db "Encounter" %))]
+          (= (num-encounter [["date" (str year)]])
+             (num-encounter [["date" (format "sa%d-12-31" (dec year))]
+                             ["date" (format "eb%d-01-01" (inc year))]])))))))
+
+
+(deftest type-query-date-encounter-ap-gt-lt-test
+  (satisfies-prop 1000
+    (prop/for-all [year (gen/choose 1999 2001)
+                   tx-ops (create-tx encounter-gen 10)]
+      (with-system-data [{:blaze.db/keys [node]} system]
+        [tx-ops]
+
+        (let [db (d/db node)
+              num-encounter #(count (d/type-query db "Encounter" %))]
+          (= (num-encounter [["date" (str "ap" year)]])
+             (num-encounter [["date" (format "ge%d-01-01" year)]
+                             ["date" (format "lt%d-01-01" (inc year))]])))))))
+
+
 (defn- range-below [date-time]
   [Long/MIN_VALUE (system/date-time-lower-bound date-time)])
 
@@ -3750,7 +3834,7 @@
 
 (deftest type-query-date-equal-generative-test
   (satisfies-prop num-date-tests
-    (prop/for-all [date-time fg/dateTime-value
+    (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
@@ -3759,7 +3843,7 @@
 
 (deftest type-query-date-not-equal-generative-test
   (satisfies-prop num-date-tests
-    (prop/for-all [date-time fg/dateTime-value
+    (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
@@ -3768,7 +3852,7 @@
 
 (deftest type-query-date-greater-than-generative-test
   (satisfies-prop num-date-tests
-    (prop/for-all [date-time fg/dateTime-value
+    (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
@@ -3777,7 +3861,7 @@
 
 (deftest type-query-date-less-than-generative-test
   (satisfies-prop num-date-tests
-    (prop/for-all [date-time fg/dateTime-value
+    (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
@@ -3786,7 +3870,7 @@
 
 (deftest type-query-date-greater-equal-generative-test
   (satisfies-prop num-date-tests
-    (prop/for-all [date-time fg/dateTime-value
+    (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
@@ -3795,7 +3879,7 @@
 
 (deftest type-query-date-less-equal-generative-test
   (satisfies-prop num-date-tests
-    (prop/for-all [date-time fg/dateTime-value
+    (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
@@ -3804,7 +3888,7 @@
 
 (deftest type-query-date-starts-after-generative-test
   (satisfies-prop num-date-tests
-    (prop/for-all [date-time fg/dateTime-value
+    (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
@@ -3813,7 +3897,7 @@
 
 (deftest type-query-date-ends-before-generative-test
   (satisfies-prop num-date-tests
-    (prop/for-all [date-time fg/dateTime-value
+    (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
@@ -3822,7 +3906,7 @@
 
 (deftest type-query-date-approximately-generative-test
   (satisfies-prop num-date-tests
-    (prop/for-all [date-time fg/dateTime-value
+    (prop/for-all [date-time (fg/dateTime-value)
                    tx-ops (create-tx observation-gen num-date-tests)]
       (with-system-data [{:blaze.db/keys [node]} system]
         [tx-ops]
