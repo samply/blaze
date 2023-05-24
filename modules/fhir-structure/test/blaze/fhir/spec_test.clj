@@ -1821,14 +1821,14 @@
     (testing "JSON"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value fg/dateTime-value]
+          (prop/for-all [value (fg/dateTime-value)]
             (= (type/dateTime value) (s2/conform :fhir.json/dateTime value))))
 
         (testing "with extension"
           (satisfies-prop 100
             (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
                            extension-url fg/uri-value
-                           value (gen/one-of [fg/dateTime-value (gen/return nil)])]
+                           value (gen/one-of [(fg/dateTime-value) (gen/return nil)])]
               (= (type/dateTime {:id id
                                  :extension
                                  [(type/extension {:url extension-url})]
@@ -1848,14 +1848,14 @@
     (testing "XML"
       (testing "valid"
         (satisfies-prop 1000
-          (prop/for-all [value fg/dateTime-value]
+          (prop/for-all [value (fg/dateTime-value)]
             (= (type/dateTime value) (s2/conform :fhir.xml/dateTime (sexp-value value)))))
 
         (testing "with extension"
           (satisfies-prop 100
             (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
                            extension-url fg/uri-value
-                           value (gen/one-of [fg/dateTime-value (gen/return nil)])]
+                           value (gen/one-of [(fg/dateTime-value) (gen/return nil)])]
               (= (type/dateTime {:id id
                                  :extension
                                  [(type/extension {:url extension-url})]
@@ -1873,14 +1873,14 @@
     (testing "CBOR"
       (testing "valid"
         (satisfies-prop 100
-          (prop/for-all [value fg/dateTime-value]
+          (prop/for-all [value (fg/dateTime-value)]
             (= (type/dateTime value) (s2/conform :fhir.cbor/dateTime value))))
 
         (testing "with extension"
           (satisfies-prop 100
             (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
                            extension-url fg/uri-value
-                           value (gen/one-of [fg/dateTime-value (gen/return nil)])]
+                           value (gen/one-of [(fg/dateTime-value) (gen/return nil)])]
               (= (type/dateTime {:id id
                                  :extension
                                  [(type/extension {:url extension-url})]
@@ -1894,20 +1894,20 @@
   (testing "unforming"
     (testing "JSON"
       (satisfies-prop 100
-        (prop/for-all [value fg/dateTime-value]
+        (prop/for-all [value (fg/dateTime-value)]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/dateTime value)))))))
 
     (testing "XML"
       (testing "value only"
         (satisfies-prop 100
-          (prop/for-all [value fg/dateTime-value]
+          (prop/for-all [value (fg/dateTime-value)]
             (= (sexp-value value) (s2/unform :fhir.xml/dateTime (type/dateTime value))))))
 
       (testing "with extension"
         (satisfies-prop 100
           (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
                          extension-url fg/uri-value
-                         value (gen/one-of [fg/dateTime-value (gen/return nil)])]
+                         value (gen/one-of [(fg/dateTime-value) (gen/return nil)])]
             (= (sexp
                  [nil (cond-> {} id (assoc :id id) value (assoc :value value))
                   [::f/extension {:url extension-url}]])
@@ -1919,7 +1919,7 @@
 
     (testing "CBOR"
       (satisfies-prop 100
-        (prop/for-all [value fg/dateTime-value]
+        (prop/for-all [value (fg/dateTime-value)]
           (= value (fhir-spec/parse-cbor (fhir-spec/unform-cbor (type/dateTime value)))))))))
 
 
