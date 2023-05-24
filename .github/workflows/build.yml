@@ -602,6 +602,9 @@ jobs:
     - name: GraphQL Observation
       run: .github/scripts/graphql.sh Observation
 
+    - name: Link Header Encoding
+      run: .github/scripts/link-header-encoding.sh
+
     - name: Paging uses a Stable Snapshot of the Database (Patient)
       run: .github/scripts/follow-patient-next-link-after-write.sh
 
@@ -1436,6 +1439,9 @@ jobs:
 
     - name: GraphQL Observation
       run: .github/scripts/graphql.sh Observation
+
+    - name: Link Header Encoding
+      run: .github/scripts/link-header-encoding.sh
 
     - name: Paging uses a Stable Snapshot of the Database (Patient)
       run: .github/scripts/follow-patient-next-link-after-write.sh

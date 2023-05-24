@@ -8,6 +8,7 @@
     [blaze.rest-api.middleware.batch-handler :as batch-handler]
     [blaze.rest-api.middleware.ensure-form-body :as ensure-form-body]
     [blaze.rest-api.middleware.forwarded :as forwarded]
+    [blaze.rest-api.middleware.link-headers :as link-headers]
     [blaze.rest-api.middleware.output :as output]
     [blaze.rest-api.middleware.resource :as resource]
     [blaze.rest-api.spec]
@@ -68,6 +69,11 @@
    :wrap ensure-form-body/wrap-ensure-form-body})
 
 
+(def ^:private wrap-link-headers
+  {:name :link-headers
+   :wrap link-headers/wrap-link-headers})
+
+
 (def ^:private wrap-sync
   {:name :sync
    :wrap
@@ -85,8 +91,8 @@
   {:name :output
    :compile (fn [{:keys [response-type]} _]
               (if (= :json response-type)
-                   output/wrap-json-output
-                   output/wrap-output))})
+                output/wrap-json-output
+                output/wrap-output))})
 
 
 (def ^:private wrap-error
@@ -111,7 +117,8 @@
      [""
       (cond-> {:name (keyword name "type")}
         (contains? interactions :search-type)
-        (assoc :get {:middleware [[wrap-search-db node db-sync-timeout]]
+        (assoc :get {:middleware [[wrap-search-db node db-sync-timeout]
+                                  wrap-link-headers]
                      :handler (-> interactions :search-type
                                   :blaze.rest-api.interaction/handler)})
         (contains? interactions :create)
@@ -121,24 +128,28 @@
      ["/_history"
       (cond-> {:conflicting true}
         (contains? interactions :history-type)
-        (assoc :get {:middleware [[wrap-db node db-sync-timeout]]
+        (assoc :get {:middleware [[wrap-db node db-sync-timeout]
+                                  wrap-link-headers]
                      :handler (-> interactions :history-type
                                   :blaze.rest-api.interaction/handler)}))]
      ["/_search"
       (cond-> {:name (keyword name "search") :conflicting true}
         (contains? interactions :search-type)
         (assoc :post {:middleware [wrap-ensure-form-body
-                                   [wrap-db node db-sync-timeout]]
+                                   [wrap-db node db-sync-timeout]
+                                   wrap-link-headers]
                       :handler (-> interactions :search-type
                                    :blaze.rest-api.interaction/handler)}))]
      ["/__page"
       (cond-> {:name (keyword name "page") :conflicting true}
         (contains? interactions :search-type)
         (assoc
-          :get {:middleware [[wrap-snapshot-db node db-sync-timeout]]
+          :get {:middleware [[wrap-snapshot-db node db-sync-timeout]
+                             wrap-link-headers]
                 :handler (-> interactions :search-type
                              :blaze.rest-api.interaction/handler)}
-          :post {:middleware [[wrap-snapshot-db node db-sync-timeout]]
+          :post {:middleware [[wrap-snapshot-db node db-sync-timeout]
+                              wrap-link-headers]
                  :handler (-> interactions :search-type
                               :blaze.rest-api.interaction/handler)}))]
      ["/{id}"
@@ -163,7 +174,8 @@
           {:name (keyword name "history-instance")
            :conflicting true}
           (contains? interactions :history-instance)
-          (assoc :get {:middleware [[wrap-db node db-sync-timeout]]
+          (assoc :get {:middleware [[wrap-db node db-sync-timeout]
+                                    wrap-link-headers]
                        :handler (-> interactions :history-instance
                                     :blaze.rest-api.interaction/handler)}))]
        ["/{vid}"
@@ -181,7 +193,7 @@
    {:name (keyword code "compartment")
     :fhir.compartment/code code
     :conflicting true
-    :get {:middleware [[wrap-db node db-sync-timeout]]
+    :get {:middleware [[wrap-db node db-sync-timeout] wrap-link-headers]
           :handler search-handler}}])
 
 
@@ -258,7 +270,8 @@
        [""
         (cond-> {}
           (some? search-system-handler)
-          (assoc :get {:middleware [[wrap-search-db node db-sync-timeout]]
+          (assoc :get {:middleware [[wrap-search-db node db-sync-timeout]
+                                    wrap-link-headers]
                        :handler search-system-handler})
           (some? transaction-handler)
           (assoc :post {:middleware
@@ -270,15 +283,18 @@
        ["/_history"
         (cond-> {}
           (some? history-system-handler)
-          (assoc :get {:middleware [[wrap-db node db-sync-timeout]]
+          (assoc :get {:middleware [[wrap-db node db-sync-timeout]
+                                    wrap-link-headers]
                        :handler history-system-handler}))]
        ["/__page"
         (cond-> {:name :page}
           (some? search-system-handler)
           (assoc
-            :get {:middleware [[wrap-snapshot-db node db-sync-timeout]]
+            :get {:middleware [[wrap-snapshot-db node db-sync-timeout]
+                               wrap-link-headers]
                   :handler search-system-handler}
-            :post {:middleware [[wrap-snapshot-db node db-sync-timeout]]
+            :post {:middleware [[wrap-snapshot-db node db-sync-timeout]
+                                wrap-link-headers]
                    :handler search-system-handler}))]]
       (into
         (mapcat (partial operation-system-handler-route context))
