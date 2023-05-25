@@ -44,6 +44,7 @@ Please have a look into [Manual Deployment](docs/deployment/manual-deployment.md
 * [Sync Data](docs/data-sync.md)
 * [Conformance](docs/conformance.md)
 * [Performance](docs/performance.md)
+* [Monitoring](docs/monitoring.md)
 * [Tuning Guide](docs/tuning-guide.md)
 * [Tooling](docs/tooling.md)
 * [CQL Queries](docs/cql-queries.md)

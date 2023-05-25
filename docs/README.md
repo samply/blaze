@@ -6,6 +6,7 @@
 * [Sync Data](data-sync.md)
 * [Conformance](conformance.md)
 * [Performance](performance.md)
+* [Monitoring](monitoring.md)
 * [Tuning Guide](tuning-guide.md)
 * [Tooling](tooling.md)
 * [CQL Queries](cql-queries.md)
