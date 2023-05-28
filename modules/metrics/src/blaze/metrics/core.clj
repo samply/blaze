@@ -23,7 +23,15 @@
   (mapv datafy/datafy (.collect ^Collector collector)))
 
 
-(defn counter-metric [name help label-names samples]
+(defn counter-metric
+  "Creates a counter metric from `samples`.
+
+  The other arguments are:
+  * name: the name with must only contain word chars
+  * the help text
+  * a collection of label names
+  * a collection of samples"
+  [name help label-names samples]
   (let [m (CounterMetricFamily. ^String name ^String help ^List label-names)]
     (run!
       (fn [{:keys [label-values value]}] (.addMetric m label-values value))
@@ -31,7 +39,15 @@
     m))
 
 
-(defn gauge-metric [name help label-names samples]
+(defn gauge-metric
+  "Creates a gauge metric from `samples`.
+
+  The other arguments are:
+  * name: the name with must only contain word chars
+  * the help text
+  * a collection of label names
+  * a collection of samples"
+  [name help label-names samples]
   (let [m (GaugeMetricFamily. ^String name ^String help ^List label-names)]
     (run!
       (fn [{:keys [label-values value]}] (.addMetric m label-values value))

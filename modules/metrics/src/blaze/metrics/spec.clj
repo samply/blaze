@@ -1,6 +1,7 @@
 (ns blaze.metrics.spec
   (:require
-    [clojure.spec.alpha :as s])
+    [clojure.spec.alpha :as s]
+    [clojure.string :as str])
   (:import
     [io.prometheus.client Collector CollectorRegistry]))
 
@@ -26,7 +27,11 @@
 
 
 (s/def :blaze.metrics.metric/name
-  string?)
+  (s/and string? #(re-matches #"\w+" %)))
+
+
+(s/def :blaze.metrics.counter/name
+  (s/and :blaze.metrics.metric/name #(str/ends-with? % "_total")))
 
 
 (s/def :blaze.metrics.metric/samples

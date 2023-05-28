@@ -1,13 +1,13 @@
 (ns blaze.db.kv.rocksdb.metrics-test
   (:require
-    [blaze.db.kv.rocksdb.metrics :refer [stats-collector]]
+    [blaze.db.kv.rocksdb.metrics :refer [stats-collector block-cache-collector]]
     [blaze.metrics.core :as metrics]
     [blaze.metrics.core-spec]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]])
   (:import
-    [org.rocksdb RocksDB Statistics]))
+    [org.rocksdb LRUCache RocksDB Statistics]))
 
 
 (set! *warn-on-reflection* true)
@@ -20,7 +20,7 @@
 (RocksDB/loadLibrary)
 
 
-(deftest collector-test
+(deftest stats-collector-test
   (let [collector (stats-collector [["foo" (Statistics.)]])
         metrics (metrics/collect collector)]
 
@@ -75,6 +75,22 @@
 
     (testing "every metric has the label value `foo`"
       (is (every? (comp #{["foo"]} :label-values first :samples) metrics)))
+
+    (testing "every metric has the value 0.0"
+      (is (every? (comp #{0.0} :value first :samples) metrics)))))
+
+
+(deftest block-cache-collector-test
+  (let [collector (block-cache-collector (LRUCache. 100))
+        metrics (metrics/collect collector)]
+
+    (testing "the metrics names are"
+      (is (= ["blaze_rocksdb_block_cache_usage_bytes"
+              "blaze_rocksdb_block_cache_pinned_usage_bytes"]
+             (mapv :name metrics))))
+
+    (testing "every metric is of type gauge"
+      (is (every? (comp #{:gauge} :type) metrics)))
 
     (testing "every metric has the value 0.0"
       (is (every? (comp #{0.0} :value first :samples) metrics)))))
