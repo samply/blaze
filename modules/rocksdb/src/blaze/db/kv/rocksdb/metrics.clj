@@ -2,7 +2,7 @@
   (:require
     [blaze.metrics.core :as metrics])
   (:import
-    [org.rocksdb Statistics TickerType HistogramType]))
+    [org.rocksdb Cache Statistics TickerType HistogramType]))
 
 
 (set! *warn-on-reflection* true)
@@ -395,3 +395,19 @@
      (compaction-seconds-total stats)
      (compression-seconds-total stats)
      (decompression-seconds-total stats)]))
+
+
+(defn block-cache-collector [block-cache]
+  (metrics/collector
+    [(metrics/gauge-metric
+       "blaze_rocksdb_block_cache_usage_bytes"
+       "Returns the memory size for the entries in the RocksDB block cache."
+       []
+       [{:label-values []
+         :value (.getUsage ^Cache block-cache)}])
+     (metrics/gauge-metric
+       "blaze_rocksdb_block_cache_pinned_usage_bytes"
+       "Returns the memory size for the entries pinned in the RocksDB block cache."
+       []
+       [{:label-values []
+         :value (.getPinnedUsage ^Cache block-cache)}])]))

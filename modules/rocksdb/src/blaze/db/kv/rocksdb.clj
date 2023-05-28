@@ -239,4 +239,10 @@
   (metrics/stats-collector stats))
 
 
+(defmethod ig/init-key ::block-cache-collector
+  [_ {:keys [block-cache]}]
+  (metrics/block-cache-collector block-cache))
+
+
 (derive ::stats-collector :blaze.metrics/collector)
+(derive ::block-cache-collector :blaze.metrics/collector)
