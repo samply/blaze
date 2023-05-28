@@ -66,6 +66,7 @@ export default defineConfig({
                     {text: 'Importing Data', link: '/importing-data'},
                     {text: 'Sync Data', link: '/data-sync'},
                     {text: 'CQL Queries', link: '/cql-queries'},
+                    {text: 'Monitoring', link: '/monitoring'},
                     {text: 'Tooling', link: '/tooling'},
                 ],
             },
