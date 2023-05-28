@@ -221,7 +221,7 @@
 
 
 (defmethod ig/pre-init-spec ::kv/rocksdb [_]
-  (s/keys :req-un [::dir ::block-cache ::stats] :opt-un [::opts]))
+  (s/keys :req-un [::dir ::stats] :opt-un [::block-cache ::opts]))
 
 
 (defn- init-log-msg [dir opts]

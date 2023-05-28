@@ -63,6 +63,7 @@
      :cache-index-and-filter-blocks (.cacheIndexAndFilterBlocks config)
      :pin-l0-filter-and-index-blocks-in-cache (.pinL0FilterAndIndexBlocksInCache config)
      :block-size (.blockSize config)
+     :block-cache? (not (.noBlockCache config))
      :bloom-filter? (some? (.filterPolicy config))})
 
   DBOptions
@@ -85,7 +86,7 @@
 
 
 (deftest column-family-descriptor-test
-  (testing "with defaults"
+  (testing "with defaults and block cache"
     (with-open [block-cache (LRUCache. 0)]
       (given (column-family-descriptor block-cache :default nil)
         :name := "default"
@@ -102,9 +103,16 @@
         [:options :table-format-config :cache-index-and-filter-blocks] := true
         [:options :table-format-config :pin-l0-filter-and-index-blocks-in-cache] := true
         [:options :table-format-config :block-size] := 4096
+        [:options :table-format-config :block-cache?] := true
         [:options :table-format-config :bloom-filter?] := false
         [:options :memtable-whole-key-filtering?] := false
         [:options :optimize-filters-for-hits?] := false)))
+
+  (testing "without block cache"
+    (given (column-family-descriptor nil :default nil)
+      [:options :table-format-config :block-cache?] := false
+      [:options :table-format-config :cache-index-and-filter-blocks] := false
+      [:options :table-format-config :pin-l0-filter-and-index-blocks-in-cache] := false))
 
   (with-open [block-cache (LRUCache. 0)]
     (are [key value]
