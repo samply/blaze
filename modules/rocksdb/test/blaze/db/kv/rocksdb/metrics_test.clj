@@ -1,12 +1,19 @@
 (ns blaze.db.kv.rocksdb.metrics-test
   (:require
-    [blaze.db.kv.rocksdb.metrics :refer [stats-collector block-cache-collector]]
-    [blaze.metrics.core :as metrics]
+    [blaze.db.kv :as-alias kv]
+    [blaze.db.kv.rocksdb :as rocksdb]
+    [blaze.db.kv.rocksdb.metrics :as metrics]
+    [blaze.db.kv.rocksdb.metrics-spec]
+    [blaze.metrics.core :as metrics-core]
     [blaze.metrics.core-spec]
-    [blaze.test-util :as tu]
+    [blaze.test-util :as tu :refer [with-system]]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]])
+    [clojure.test :as test :refer [deftest is testing]]
+    [integrant.core :as ig]
+    [juxt.iota :refer [given]])
   (:import
+    [java.nio.file Files]
+    [java.nio.file.attribute FileAttribute]
     [org.rocksdb LRUCache RocksDB Statistics]))
 
 
@@ -21,8 +28,8 @@
 
 
 (deftest stats-collector-test
-  (let [collector (stats-collector [["foo" (Statistics.)]])
-        metrics (metrics/collect collector)]
+  (let [collector (metrics/stats-collector {"foo" (Statistics.)})
+        metrics (metrics-core/collect collector)]
 
     (testing "the metrics names are"
       (is (= ["blaze_rocksdb_block_cache_data_miss"
@@ -81,8 +88,8 @@
 
 
 (deftest block-cache-collector-test
-  (let [collector (block-cache-collector (LRUCache. 100))
-        metrics (metrics/collect collector)]
+  (let [collector (metrics/block-cache-collector (LRUCache. 100))
+        metrics (metrics-core/collect collector)]
 
     (testing "the metrics names are"
       (is (= ["blaze_rocksdb_block_cache_usage_bytes"
@@ -94,3 +101,63 @@
 
     (testing "every metric has the value 0.0"
       (is (every? (comp #{0.0} :value first :samples) metrics)))))
+
+
+(defn- new-temp-dir! []
+  (str (Files/createTempDirectory "blaze" (make-array FileAttribute 0))))
+
+
+(defn- system [dir]
+  {::kv/rocksdb
+   {:dir dir
+    :block-cache (ig/ref ::rocksdb/block-cache)
+    :stats (ig/ref ::rocksdb/stats)}
+   ::rocksdb/block-cache {}
+   ::rocksdb/stats {}})
+
+
+(deftest table-reader-collector-test
+  (testing "no stores"
+    (let [collector (metrics/table-reader-collector nil)
+          metrics (metrics-core/collect collector)]
+
+      (given metrics
+        count := 1
+        [0 :type] := :gauge
+        [0 :name] := "blaze_rocksdb_table_reader_usage_bytes"
+        [0 :samples count] := 0)))
+
+  (testing "one store"
+    (testing "default column family"
+      (with-system [{store ::kv/rocksdb} (system (new-temp-dir!))]
+        (let [collector (metrics/table-reader-collector {"foo" store})
+              metrics (metrics-core/collect collector)]
+
+          (given metrics
+            count := 1
+            [0 :type] := :gauge
+            [0 :name] := "blaze_rocksdb_table_reader_usage_bytes"
+            [0 :samples count] := 1
+            [0 :samples 0 :label-names] := ["name" "column_family"]
+            [0 :samples 0 :label-values] := ["foo" "default"]
+            [0 :samples 0 :value] := 0.0))))
+
+    (testing "two custom column families"
+      (with-system [{store ::kv/rocksdb} (assoc-in (system (new-temp-dir!)) [::kv/rocksdb :column-families] {:a nil :b nil})]
+        (let [collector (metrics/table-reader-collector {"foo" store})
+              metrics (metrics-core/collect collector)]
+
+          (given metrics
+            count := 1
+            [0 :type] := :gauge
+            [0 :name] := "blaze_rocksdb_table_reader_usage_bytes"
+            [0 :samples count] := 3
+            [0 :samples 0 :label-names] := ["name" "column_family"]
+            [0 :samples 0 :label-values] := ["foo" "default"]
+            [0 :samples 0 :value] := 0.0
+            [0 :samples 1 :label-names] := ["name" "column_family"]
+            [0 :samples 1 :label-values] := ["foo" "a"]
+            [0 :samples 1 :value] := 0.0
+            [0 :samples 2 :label-names] := ["name" "column_family"]
+            [0 :samples 2 :label-values] := ["foo" "b"]
+            [0 :samples 2 :value] := 0.0))))))

@@ -38,6 +38,7 @@
       (given (datafy/datafy (metrics/counter-metric "foo_total" "" ["name"] [{:label-values ["bar"] :value 1.0}]))
         :name := "foo"
         :type := :counter
+        [:samples 0 :label-names] := ["name"]
         [:samples 0 :label-values] := ["bar"]
         [:samples 0 :value] := 1.0))))
 
@@ -48,5 +49,6 @@
       (given (datafy/datafy (metrics/gauge-metric "foo" "" ["name"] [{:label-values ["bar"] :value 1.0}]))
         :name := "foo"
         :type := :gauge
+        [:samples 0 :label-names] := ["name"]
         [:samples 0 :label-values] := ["bar"]
         [:samples 0 :value] := 1.0))))

@@ -72,6 +72,7 @@
   Collector$MetricFamilySamples$Sample
   (datafy [sample]
     {:name (.-name sample)
+     :label-names (vec (.-labelNames sample))
      :label-values (vec (.-labelValues sample))
      :value (.-value sample)}))
 

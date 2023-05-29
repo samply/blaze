@@ -17,8 +17,8 @@
     [java.nio.file.attribute FileAttribute]
     [org.rocksdb
      BlockBasedTableConfig ColumnFamilyDescriptor ColumnFamilyHandle
-     ColumnFamilyOptions CompressionType DBOptions LRUCache RocksDB Statistics
-     WriteBatchInterface WriteOptions]))
+     ColumnFamilyOptions CompressionType DBOptions LRUCache RocksDB RocksDBException
+     Statistics WriteBatchInterface WriteOptions]))
 
 
 (set! *warn-on-reflection* true)
@@ -406,3 +406,17 @@
       (impl/write-wb! {} (cf-put-wb nil) [[:foo]])
       (catch Exception e
         (is (= "No matching clause: :foo" (ex-message e)))))))
+
+
+(deftest property-error-test
+  (testing "other error"
+    (given (impl/property-error (RocksDBException. "msg-151223") "foo")
+      ::anom/category := ::anom/fault
+      ::anom/message := "msg-151223")))
+
+
+(deftest column-family-property-error-test
+  (testing "other error"
+    (given (impl/column-family-property-error (RocksDBException. "msg-151628") :foo "bar")
+      ::anom/category := ::anom/fault
+      ::anom/message := "msg-151628")))

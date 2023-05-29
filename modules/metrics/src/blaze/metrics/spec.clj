@@ -30,6 +30,10 @@
   (s/and string? #(re-matches #"\w+" %)))
 
 
+(s/def :blaze.metrics.metric/label-name
+  (s/and string? #(re-matches #"\w+" %)))
+
+
 (s/def :blaze.metrics.counter/name
   (s/and :blaze.metrics.metric/name #(str/ends-with? % "_total")))
 

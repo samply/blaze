@@ -7,11 +7,14 @@
     [blaze.db.kv.rocksdb :as rocksdb]
     [blaze.db.kv.rocksdb-spec]
     [blaze.db.kv.rocksdb.impl-spec]
+    [blaze.db.kv.rocksdb.metrics :as-alias metrics]
     [blaze.test-util :as tu :refer [bytes= given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [integrant.core :as ig])
+    [cognitect.anomalies :as anom]
+    [integrant.core :as ig]
+    [juxt.iota :refer [given]])
   (:import
     [java.nio.file Files]
     [java.nio.file.attribute FileAttribute]))
@@ -77,6 +80,69 @@
       [:explain ::s/problems 2 :val] := ::invalid)))
 
 
+(deftest stats-collector-init-test
+  (testing "nil config"
+    (given-thrown (ig/init {::rocksdb/stats-collector nil})
+      :key := ::rocksdb/stats-collector
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {::rocksdb/stats-collector {}})
+      :key := ::rocksdb/stats-collector
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :stats))))
+
+  (testing "invalid stats"
+    (given-thrown (ig/init {::rocksdb/stats-collector {:stats ::invalid}})
+      :key := ::rocksdb/stats-collector
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :via] := [::metrics/stats]
+      [:explain ::s/problems 0 :val] := ::invalid)))
+
+
+(deftest block-cache-collector-init-test
+  (testing "nil config"
+    (given-thrown (ig/init {::rocksdb/block-cache-collector nil})
+      :key := ::rocksdb/block-cache-collector
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {::rocksdb/block-cache-collector {}})
+      :key := ::rocksdb/block-cache-collector
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :block-cache))))
+
+  (testing "invalid stats"
+    (given-thrown (ig/init {::rocksdb/block-cache-collector {:block-cache ::invalid}})
+      :key := ::rocksdb/block-cache-collector
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :via] := [::rocksdb/block-cache]
+      [:explain ::s/problems 0 :val] := ::invalid)))
+
+
+(deftest table-reader-collector-init-test
+  (testing "nil config"
+    (given-thrown (ig/init {::rocksdb/table-reader-collector nil})
+      :key := ::rocksdb/table-reader-collector
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {::rocksdb/table-reader-collector {}})
+      :key := ::rocksdb/table-reader-collector
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :stores))))
+
+  (testing "invalid stores"
+    (given-thrown (ig/init {::rocksdb/table-reader-collector {:stores ::invalid}})
+      :key := ::rocksdb/table-reader-collector
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :via] := [::metrics/stores]
+      [:explain ::s/problems 0 :val] := ::invalid)))
+
+
 (defn- new-temp-dir! []
   (str (Files/createTempDirectory "blaze" (make-array FileAttribute 0))))
 
@@ -89,9 +155,11 @@
    ::rocksdb/block-cache {}
    ::rocksdb/env {}
    ::rocksdb/stats {}
-   ::rocksdb/stats-collector {}
+   ::rocksdb/stats-collector {:stats {"default" (ig/ref ::rocksdb/stats)}}
    ::rocksdb/block-cache-collector
-   {:block-cache (ig/ref ::rocksdb/block-cache)}})
+   {:block-cache (ig/ref ::rocksdb/block-cache)}
+   ::rocksdb/table-reader-collector
+   {:stores {"default" (ig/ref ::kv/rocksdb)}}})
 
 
 (deftest valid-test
@@ -620,9 +688,17 @@
     (is (= "0" (rocksdb/get-property db "rocksdb.num-files-at-level0")))
     (is (= "0" (rocksdb/get-property db "rocksdb.num-files-at-level1")))
 
+    (is (= 0 (rocksdb/get-long-property db "rocksdb.estimate-table-readers-mem")))
+
     (is (string? (rocksdb/get-property db "rocksdb.stats")))
 
-    (is (string? (rocksdb/get-property db "rocksdb.sstables"))))
+    (is (string? (rocksdb/get-property db "rocksdb.sstables")))
+
+    (testing "not-found"
+      (doseq [fn [rocksdb/get-property rocksdb/get-long-property]]
+        (given (fn db "name-143100")
+          ::anom/category := ::anom/not-found
+          ::anom/message := "Property with name `name-143100` was not found."))))
 
   (testing "with column-family"
     (with-system [{db ::kv/rocksdb} (a-system (new-temp-dir!))]
@@ -630,9 +706,17 @@
       (is (= "0" (rocksdb/get-property db :a "rocksdb.num-files-at-level0")))
       (is (= "0" (rocksdb/get-property db :a "rocksdb.num-files-at-level1")))
 
+      (is (= 0 (rocksdb/get-long-property db :a "rocksdb.estimate-table-readers-mem")))
+
       (is (string? (rocksdb/get-property db :a "rocksdb.stats")))
 
-      (is (string? (rocksdb/get-property db :a "rocksdb.sstables"))))))
+      (is (string? (rocksdb/get-property db :a "rocksdb.sstables")))
+
+      (testing "not-found"
+        (doseq [fn [rocksdb/get-property rocksdb/get-long-property]]
+          (given (fn db :a "name-143127")
+            ::anom/category := ::anom/not-found
+            ::anom/message := "Property with name `name-143127` was not found on column-family with name `a`."))))))
 
 
 (deftest compact-range-test

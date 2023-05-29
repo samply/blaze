@@ -1,25 +1,33 @@
 (ns blaze.db.kv.rocksdb.spec
   (:require
+    [blaze.db.kv :as-alias kv]
+    [blaze.db.kv.rocksdb :as-alias rocksdb]
     [blaze.db.kv.rocksdb.db-options :as-alias db-options]
+    [blaze.db.kv.rocksdb.protocols :as p]
     [blaze.db.kv.rocksdb.write-options :as-alias write-options]
+    [blaze.db.kv.spec]
     [clojure.spec.alpha :as s])
   (:import
     [org.rocksdb Cache Env Statistics]))
 
 
-(s/def :blaze.db.kv.rocksdb/dir
+(s/def ::kv/rocksdb
+  (s/and :blaze.db/kv-store #(satisfies? p/Rocks %)))
+
+
+(s/def ::rocksdb/dir
   string?)
 
 
-(s/def :blaze.db.kv.rocksdb/block-cache
+(s/def ::rocksdb/block-cache
   #(instance? Cache %))
 
 
-(s/def :blaze.db.kv.rocksdb/env
+(s/def ::rocksdb/env
   #(instance? Env %))
 
 
-(s/def :blaze.db.kv.rocksdb/stats
+(s/def ::rocksdb/stats
   #(instance? Statistics %))
 
 
@@ -35,7 +43,7 @@
   nat-int?)
 
 
-(s/def :blaze.db.kv.rocksdb/db-options
+(s/def ::rocksdb/db-options
   (s/keys :opt-un [::db-options/wal-dir
                    ::db-options/max-background-jobs
                    ::db-options/compaction-readahead-size]))
@@ -49,9 +57,9 @@
   boolean?)
 
 
-(s/def :blaze.db.kv.rocksdb/write-options
+(s/def ::rocksdb/write-options
   (s/keys :opt-un [::write-options/sync? ::write-options/disable-wal?]))
 
 
-(s/def :blaze.db.kv.rocksdb/opts
-  (s/merge :blaze.db.kv.rocksdb/db-options :blaze.db.kv.rocksdb/write-options))
+(s/def ::rocksdb/opts
+  (s/merge ::rocksdb/db-options ::rocksdb/write-options))
