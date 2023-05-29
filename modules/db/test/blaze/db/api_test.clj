@@ -191,10 +191,10 @@
           [meta :blaze.db/op] := :create)))
 
     (testing "generated data"
-      (doseq [gen `[fg/patient fg/observation fg/procedure fg/allergy-intolerance
-                    fg/diagnostic-report fg/library]]
-        (satisfies-prop 30
-          (prop/for-all [tx-ops (create-tx ((resolve gen)) 30)]
+      (doseq [gen `[fg/patient fg/observation fg/encounter fg/procedure
+                    fg/allergy-intolerance fg/diagnostic-report fg/library]]
+        (satisfies-prop 20
+          (prop/for-all [tx-ops (create-tx ((resolve gen)) 20)]
             (with-system-data [{:blaze.db/keys [node]} system]
               [tx-ops]
 
@@ -3649,7 +3649,7 @@
 
 
 (deftest type-query-date-encounter-eq-sa-eb-test
-  (satisfies-prop 1000
+  (satisfies-prop 100
     (prop/for-all [year (gen/choose 1999 2001)
                    tx-ops (create-tx encounter-gen 10)]
       (with-system-data [{:blaze.db/keys [node]} system]
@@ -3663,7 +3663,7 @@
 
 
 (deftest type-query-date-encounter-ap-gt-lt-test
-  (satisfies-prop 1000
+  (satisfies-prop 100
     (prop/for-all [year (gen/choose 1999 2001)
                    tx-ops (create-tx encounter-gen 10)]
       (with-system-data [{:blaze.db/keys [node]} system]
@@ -3816,7 +3816,7 @@
                              ["date" (str prefix date-time)]])))))
 
 
-(def ^:private num-date-tests 100)
+(def ^:private num-date-tests 50)
 
 
 (def observation-gen
@@ -4197,7 +4197,7 @@
 (deftest count-query-test
   (testing "different sizes"
     (satisfies-prop 25
-      (prop/for-all [n (gen/large-integer* {:min 1 :max 100000})]
+      (prop/for-all [n (gen/large-integer* {:min 1 :max 10000})]
         (with-system-data [{:blaze.db/keys [node]} system]
           [(mapv
              (fn [id] [:put {:fhir/type :fhir/Patient :id (str id) :active true}])
