@@ -6,8 +6,7 @@
   {:mvn/version "5.2.1"}
 
   integrant/integrant
-  {:git/url "https://github.com/weavejester/integrant.git"
-   :git/sha "32a46f5dca8a6b563a6dddf88bec887be3201b08"}
+  {:mvn/version "0.8.1"}
 
   prom-metrics/prom-metrics
   {:mvn/version "0.6-alpha.7"}}}
