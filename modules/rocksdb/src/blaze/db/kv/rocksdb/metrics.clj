@@ -1,8 +1,9 @@
 (ns blaze.db.kv.rocksdb.metrics
   (:require
+    [blaze.db.kv.rocksdb.protocols :as p]
     [blaze.metrics.core :as metrics])
   (:import
-    [org.rocksdb Cache Statistics TickerType HistogramType]))
+    [org.rocksdb Cache HistogramType Statistics TickerType]))
 
 
 (set! *warn-on-reflection* true)
@@ -411,3 +412,15 @@
        []
        [{:label-values []
          :value (.getPinnedUsage ^Cache block-cache)}])]))
+
+
+(defn table-reader-collector [stores]
+  (metrics/collector
+    [(metrics/gauge-metric
+       "blaze_rocksdb_table_reader_usage_bytes"
+       "Returns the memory usage of the table reader."
+       ["name" "column_family"]
+       (for [[name store] stores
+             column-family (p/-get-column-families store)]
+         {:label-values [name (clojure.core/name column-family)]
+          :value (p/-get-long-property store column-family "rocksdb.estimate-table-readers-mem")}))]))

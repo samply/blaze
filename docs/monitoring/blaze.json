@@ -24,7 +24,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id": 71,
+  "id": 73,
   "links": [
     {
       "asDropdown": false,
@@ -202,10 +202,10 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": true,
+            "spanNulls": false,
             "stacking": {
               "group": "A",
-              "mode": "none"
+              "mode": "normal"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -229,7 +229,30 @@
           },
           "unit": "bytes"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "group": "A",
+                  "mode": "none"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 6,
@@ -237,14 +260,14 @@
         "x": 8,
         "y": 1
       },
-      "id": 99,
+      "id": 185,
       "links": [],
       "options": {
         "legend": {
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": false
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -258,18 +281,57 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "exemplar": true,
-          "expr": "process_resident_memory_bytes{job=\"$job\",instance=\"$instance\"}",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(jvm_memory_pool_bytes_committed{job=\"$job\",instance=\"$instance\"})",
           "format": "time_series",
+          "hide": false,
           "interval": "",
-          "intervalFactor": 2,
-          "legendFormat": "",
+          "intervalFactor": 1,
+          "legendFormat": "JVM",
           "metric": "process_cpu_seconds_total",
+          "range": true,
           "refId": "A",
           "step": 10
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "blaze_rocksdb_block_cache_usage_bytes{job=\"$job\",instance=\"$instance\"}",
+          "hide": false,
+          "legendFormat": "RocksDB Block Cache",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "sum(blaze_rocksdb_table_reader_usage_bytes{job=\"$job\",instance=\"$instance\"})",
+          "hide": false,
+          "legendFormat": "RocksDB Table Reader",
+          "range": true,
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "process_resident_memory_bytes{job=\"$job\",instance=\"$instance\"}",
+          "hide": false,
+          "legendFormat": "Total",
+          "range": true,
+          "refId": "Total"
         }
       ],
-      "title": "Resident Memory Bytes",
+      "title": "Memory Usage",
       "type": "timeseries"
     },
     {
@@ -2639,7 +2701,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2738,7 +2801,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2837,7 +2901,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2936,7 +3001,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -3034,7 +3100,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -3138,7 +3205,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -3236,7 +3304,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -3360,7 +3429,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -3484,7 +3554,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -3561,6 +3632,110 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Values are per Column Family and stacked.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "links": [],
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 16,
+        "x": 0,
+        "y": 65
+      },
+      "id": 186,
+      "links": [],
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "8.4.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "blaze_rocksdb_table_reader_usage_bytes{job=\"$job\",instance=\"$instance\", name=\"$database\"}",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 1,
+          "legendFormat": "{{column_family}}",
+          "metric": "process_cpu_seconds_total",
+          "range": true,
+          "refId": "A",
+          "step": 10
+        }
+      ],
+      "title": "Table Reader Memory Usage",
+      "type": "timeseries"
+    },
+    {
       "collapsed": true,
       "datasource": {
         "type": "prometheus",
@@ -3570,7 +3745,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 65
+        "y": 71
       },
       "id": 59,
       "panels": [
@@ -3983,7 +4158,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 66
+        "y": 72
       },
       "id": 46,
       "panels": [
@@ -4286,7 +4461,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 67
+        "y": 73
       },
       "id": 86,
       "panels": [],
@@ -4351,7 +4526,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -4367,7 +4543,7 @@
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 68
+        "y": 74
       },
       "id": 22,
       "options": {
@@ -4446,7 +4622,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -4487,7 +4664,7 @@
         "h": 6,
         "w": 8,
         "x": 8,
-        "y": 68
+        "y": 74
       },
       "id": 87,
       "options": {
@@ -4566,7 +4743,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -4582,7 +4760,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 68
+        "y": 74
       },
       "id": 88,
       "options": {
@@ -4662,7 +4840,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -4678,7 +4857,7 @@
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 74
+        "y": 80
       },
       "id": 90,
       "options": {
@@ -4760,7 +4939,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -4776,7 +4956,7 @@
         "h": 6,
         "w": 8,
         "x": 8,
-        "y": 74
+        "y": 80
       },
       "id": 91,
       "options": {
@@ -4858,7 +5038,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -4874,7 +5055,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 74
+        "y": 80
       },
       "id": 92,
       "options": {
@@ -4956,7 +5137,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -4972,7 +5154,7 @@
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 80
+        "y": 86
       },
       "id": 93,
       "options": {
@@ -5016,7 +5198,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 86
+        "y": 92
       },
       "id": 103,
       "panels": [
@@ -5619,7 +5801,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 87
+        "y": 93
       },
       "id": 31,
       "panels": [
@@ -6452,7 +6634,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 88
+        "y": 94
       },
       "id": 24,
       "panels": [
@@ -6851,7 +7033,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 89
+        "y": 95
       },
       "id": 37,
       "panels": [
@@ -7356,7 +7538,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 90
+        "y": 96
       },
       "id": 34,
       "panels": [],
@@ -7435,7 +7617,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 91
+        "y": 97
       },
       "id": 4,
       "options": {
@@ -7528,7 +7710,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 91
+        "y": 97
       },
       "id": 42,
       "options": {
@@ -7622,7 +7804,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 91
+        "y": 97
       },
       "id": 83,
       "options": {
@@ -7716,7 +7898,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 98
+        "y": 104
       },
       "id": 2,
       "options": {
@@ -7809,7 +7991,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 98
+        "y": 104
       },
       "id": 43,
       "options": {
@@ -7902,7 +8084,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 98
+        "y": 104
       },
       "id": 82,
       "options": {
@@ -7996,7 +8178,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 105
+        "y": 111
       },
       "id": 122,
       "options": {

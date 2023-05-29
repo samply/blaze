@@ -12,13 +12,13 @@
 
 (s/fdef metrics/counter-metric
   :args (s/cat :name :blaze.metrics.counter/name :help string?
-               :label-names (s/coll-of string?)
+               :label-names (s/coll-of :blaze.metrics.metric/label-name)
                :samples (s/coll-of :blaze.metrics/sample)))
 
 
 (s/fdef metrics/gauge-metric
   :args (s/cat :name :blaze.metrics.metric/name :help string?
-               :label-names (s/coll-of string?)
+               :label-names (s/coll-of :blaze.metrics.metric/label-name)
                :samples (s/coll-of :blaze.metrics/sample)))
 
 

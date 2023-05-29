@@ -588,7 +588,7 @@ jobs:
       run: curl -f --head http://localhost:8080/health
 
     - name: Prometheus Metrics
-      run: curl -f http://localhost:8081/metrics
+      run: .github/scripts/test-metrics.sh
 
     - name: Not Acceptable
       run: .github/scripts/not-acceptable.sh

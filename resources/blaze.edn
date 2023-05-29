@@ -542,12 +542,18 @@
 
    :blaze.db.kv.rocksdb/stats-collector
    {:stats
-    [["index" #blaze/ref :blaze.db.index-kv-store/stats]
-     ["transaction" #blaze/ref :blaze.db.transaction-kv-store/stats]
-     ["resource" #blaze/ref :blaze.db.resource-kv-store/stats]]}
+    {"index" #blaze/ref :blaze.db.index-kv-store/stats
+     "transaction" #blaze/ref :blaze.db.transaction-kv-store/stats
+     "resource" #blaze/ref :blaze.db.resource-kv-store/stats}}
 
    :blaze.db.kv.rocksdb/block-cache-collector
    {:block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache}
+
+   :blaze.db.kv.rocksdb/table-reader-collector
+   {:stores
+    {"index" #blaze/ref :blaze.db/index-kv-store
+     "transaction" #blaze/ref :blaze.db/transaction-kv-store
+     "resource" #blaze/ref :blaze.db/resource-kv-store}}
 
    ;;
    ;; Local Page Store
@@ -660,10 +666,14 @@
 
    :blaze.db.kv.rocksdb/stats-collector
    {:stats
-    [["index" #blaze/ref :blaze.db.index-kv-store/stats]]}
+    {"index" #blaze/ref :blaze.db.index-kv-store/stats}}
 
    :blaze.db.kv.rocksdb/block-cache-collector
    {:block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache}
+
+   :blaze.db.kv.rocksdb/table-reader-collector
+   {:stores
+    {"index" #blaze/ref :blaze.db/index-kv-store}}
 
    ;;
    ;; Kafka Transaction Log
