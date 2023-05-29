@@ -101,13 +101,6 @@
     TickerType/BLOCK_CACHE_INDEX_BYTES_INSERT))
 
 
-(def ^:private block-cache-index-evict-bytes-total
-  (counter-metric
-    "blaze_rocksdb_block_cache_index_evict_bytes_total"
-    "Returns the number of bytes of index blocks erased from block cache."
-    TickerType/BLOCK_CACHE_INDEX_BYTES_EVICT))
-
-
 (def ^:private block-cache-filter-miss-total
   (counter-metric
     "blaze_rocksdb_block_cache_filter_miss_total"
@@ -134,13 +127,6 @@
     "blaze_rocksdb_block_cache_filter_insert_bytes_total"
     "Returns the number of bytes of filter blocks inserted into block cache."
     TickerType/BLOCK_CACHE_FILTER_BYTES_INSERT))
-
-
-(def ^:private block-cache-filter-evict-bytes-total
-  (counter-metric
-    "blaze_rocksdb_block_cache_filter_evict_bytes_total"
-    "Returns the number of bytes of filter blocks erased from block cache."
-    TickerType/BLOCK_CACHE_FILTER_BYTES_EVICT))
 
 
 (def ^:private memtable-hit-total
@@ -227,13 +213,6 @@
     TickerType/NO_FILE_OPENS))
 
 
-(def ^:private file-closes-total
-  (counter-metric
-    "blaze_rocksdb_file_closes_total"
-    "Returns the number of file closes."
-    TickerType/NO_FILE_CLOSES))
-
-
 (def ^:private file-errors-total
   (counter-metric
     "blaze_rocksdb_file_errors_total"
@@ -295,7 +274,14 @@
   (counter-metric
     "blaze_rocksdb_iterators_created_total"
     "Returns the total number of iterators created."
-    TickerType/NO_ITERATORS))
+    TickerType/NO_ITERATOR_CREATED))
+
+
+(def ^:private iterators-deleted-total
+  (counter-metric
+    "blaze_rocksdb_iterators_deleted_total"
+    "Returns the total number of iterators deleted."
+    TickerType/NO_ITERATOR_DELETED))
 
 
 (def ^:private wal-syncs-total
@@ -310,13 +296,6 @@
     "blaze_rocksdb_wal_bytes_total"
     "Returns the total number of bytes written to WAL."
     TickerType/WAL_FILE_BYTES))
-
-
-(def ^:private write-timeout-total
-  (counter-metric
-    "blaze_rocksdb_write_timeout_total"
-    "Returns the total number of writes ending up with a timeout."
-    TickerType/WRITE_TIMEDOUT))
 
 
 (def ^:private flush-seconds-total
@@ -361,12 +340,10 @@
      (block-cache-index-hit-total stats)
      (block-cache-index-add-total stats)
      (block-cache-index-insert-bytes-total stats)
-     (block-cache-index-evict-bytes-total stats)
      (block-cache-filter-miss-total stats)
      (block-cache-filter-hit-total stats)
      (block-cache-filter-add-total stats)
      (block-cache-filter-insert-bytes-total stats)
-     (block-cache-filter-evict-bytes-total stats)
      (memtable-hit-total stats)
      (memtable-miss-total stats)
      (get-hit-l0-total stats)
@@ -379,7 +356,6 @@
      (next-total stats)
      (prev-total stats)
      (file-opens-total stats)
-     (file-closes-total stats)
      (file-errors-total stats)
      (stall-seconds-total stats)
      (bloom-filter-useful-total stats)
@@ -389,9 +365,9 @@
      (blocks-decompressed-total stats)
      (blocks-not-compressed-total stats)
      (iterators-created-total stats)
+     (iterators-deleted-total stats)
      (wal-syncs-total stats)
      (wal-bytes-total stats)
-     (write-timeout-total stats)
      (flush-seconds-total stats)
      (compaction-seconds-total stats)
      (compression-seconds-total stats)

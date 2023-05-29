@@ -283,7 +283,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(jvm_memory_pool_bytes_committed{job=\"$job\",instance=\"$instance\"})",
+          "expr": "sum(jvm_memory_bytes_committed{job=\"$job\",instance=\"$instance\"})",
           "format": "time_series",
           "hide": false,
           "interval": "",
@@ -810,7 +810,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -826,7 +827,7 @@
             "h": 6,
             "w": 6,
             "x": 0,
-            "y": 31
+            "y": 15
           },
           "id": 128,
           "options": {
@@ -908,7 +909,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -924,7 +926,7 @@
             "h": 6,
             "w": 6,
             "x": 6,
-            "y": 31
+            "y": 15
           },
           "id": 72,
           "options": {
@@ -1005,7 +1007,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1021,7 +1024,7 @@
             "h": 6,
             "w": 6,
             "x": 12,
-            "y": 31
+            "y": 15
           },
           "id": 78,
           "options": {
@@ -1102,7 +1105,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1118,7 +1122,7 @@
             "h": 6,
             "w": 6,
             "x": 18,
-            "y": 31
+            "y": 15
           },
           "id": 126,
           "options": {
@@ -1201,7 +1205,7 @@
               "type": "linear"
             },
             "showPoints": "never",
-            "spanNulls": true,
+            "spanNulls": false,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -2312,7 +2316,7 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": false
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -2331,12 +2335,26 @@
           "expr": "rate(blaze_rocksdb_iterators_created_total{job=\"$job\",instance=\"$instance\", name=\"$database\"}[1m])",
           "hide": false,
           "interval": "",
-          "legendFormat": "{{name}}",
+          "legendFormat": "created",
           "range": true,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "exemplar": true,
+          "expr": "rate(blaze_rocksdb_iterators_deleted_total{job=\"$job\",instance=\"$instance\", name=\"$database\"}[1m])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "deleted",
+          "range": true,
+          "refId": "B"
         }
       ],
-      "title": "Iterators Created",
+      "title": "Iterators Created/Deleted",
       "type": "timeseries"
     },
     {
@@ -7601,7 +7619,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -7694,7 +7713,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -7788,7 +7808,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -7882,7 +7903,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -7975,7 +7997,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -8068,7 +8091,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -8162,7 +8186,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -8208,6 +8233,101 @@
         }
       ],
       "title": "JVM Memory Committed by Pool",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "links": [],
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 111
+      },
+      "id": 210,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "8.4.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "jvm_memory_bytes_committed{job=\"$job\",instance=\"$instance\"}",
+          "legendFormat": "{{area}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "JVM Memory Committed by Area",
       "type": "timeseries"
     }
   ],
