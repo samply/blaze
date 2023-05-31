@@ -1,6 +1,7 @@
 FROM eclipse-temurin:17-jre
 
 RUN apt-get update && apt-get upgrade -y && \
+    apt-get install libjemalloc2 -y && \
     apt-get purge wget libbinutils libctf0 libctf-nobfd0 libncurses6 -y && \
     apt-get autoremove -y && apt-get clean && \
     rm -rf /var/lib/apt/lists/
@@ -16,4 +17,4 @@ ENV INDEX_DB_DIR="/app/data/index"
 ENV TRANSACTION_DB_DIR="/app/data/transaction"
 ENV RESOURCE_DB_DIR="/app/data/resource"
 
-CMD ["java", "-jar", "blaze-0.20.6-standalone.jar"]
+CMD ["sh", "-c", "LD_PRELOAD=/usr/lib/$(arch)-linux-gnu/libjemalloc.so.2 exec java -jar blaze-0.20.6-standalone.jar"]
