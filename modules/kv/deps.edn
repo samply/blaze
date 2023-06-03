@@ -3,10 +3,7 @@
   {:local/root "../byte-buffer"}
 
   blaze/module-base
-  {:local/root "../module-base"}
-
-  com.google.guava/guava
-  {:mvn/version "31.1-jre"}}
+  {:local/root "../module-base"}}
 
  :aliases
  {:test
