@@ -57,11 +57,13 @@
           (cond->
             (doto (BlockBasedTableConfig.)
               (.setVerifyCompression false)
-              (.setCacheIndexAndFilterBlocks true)
-              (.setPinL0FilterAndIndexBlocksInCache true)
-              (.setPinTopLevelIndexAndFilter true)
-              (.setBlockSize block-size)
-              (.setBlockCache block-cache))
+              (.setBlockSize block-size))
+            (nil? block-cache)
+            (.setNoBlockCache true)
+            (some? block-cache)
+            (-> (.setBlockCache block-cache)
+                (.setCacheIndexAndFilterBlocks true)
+                (.setPinL0FilterAndIndexBlocksInCache true))
             bloom-filter?
             (.setFilterPolicy (BloomFilter. 10 false))
             bloom-filter?
