@@ -16,9 +16,6 @@
   com.github.ben-manes.caffeine/caffeine
   {:mvn/version "3.1.6"}
 
-  com.google.guava/guava
-  {:mvn/version "31.1-jre"}
-
   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
   {:mvn/version "2.15.1"}
 
