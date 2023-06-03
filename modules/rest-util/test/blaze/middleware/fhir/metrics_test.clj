@@ -56,7 +56,7 @@
                          {:fhir/interaction-name interaction-name
                           :status 200})))
                    {:request-method :get
-                    :aleph/request-arrived (System/nanoTime)})))))))
+                    :blaze/request-arrived (System/nanoTime)})))))))
 
   (testing "with interaction name as parameter"
     (is (= {:status 200}
@@ -66,4 +66,4 @@
                    {:status 200}))
                interaction-name)
              {:request-method :get
-              :aleph/request-arrived (System/nanoTime)})))))
+              :blaze/request-arrived (System/nanoTime)})))))
