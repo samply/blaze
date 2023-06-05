@@ -37,9 +37,8 @@
   (/ (double (- (System/nanoTime) start)) 1000000000.0))
 
 
-;; TODO: we no longer use aleph
 (defn- observe-request-duration-seconds!
-  [{:aleph/keys [request-arrived] :keys [request-method]} interaction-name]
+  [{:blaze/keys [request-arrived] :keys [request-method]} interaction-name]
   (when request-arrived
     (prom/observe! request-duration-seconds interaction-name
                    (name request-method)
