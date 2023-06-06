@@ -566,7 +566,7 @@
                  {::reitit/match patient-page-match
                   :params {"__t" "0" "__token" (c-str/repeat "A" 32)}})]
 
-          (is (= 422 status))
+          (is (= 404 status))
 
           (given body
             :fhir/type := :fhir/OperationOutcome
