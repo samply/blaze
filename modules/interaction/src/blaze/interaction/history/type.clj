@@ -10,7 +10,6 @@
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.interaction.history.util :as history-util]
     [blaze.interaction.util :as iu]
-    [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.spec]
     [blaze.util :refer [conj-vec]]
     [clojure.spec.alpha :as s]
@@ -59,7 +58,12 @@
                 (update :link conj-vec (next-link (peek paged-version-handles))))))))))
 
 
-(defn- handler [context]
+(defmethod ig/pre-init-spec :blaze.interaction.history/type [_]
+  (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
+
+
+(defmethod ig/init-key :blaze.interaction.history/type [_ context]
+  (log/info "Init FHIR history type interaction handler")
   (fn [{:blaze/keys [base-url db]
         ::reitit/keys [router match]
         :keys [query-params]
@@ -75,13 +79,3 @@
                     ::reitit/router router
                     ::reitit/match match)]
       (build-response context query-params total version-handles))))
-
-
-(defmethod ig/pre-init-spec :blaze.interaction.history/type [_]
-  (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
-
-
-(defmethod ig/init-key :blaze.interaction.history/type [_ context]
-  (log/info "Init FHIR history type interaction handler")
-  (-> (handler context)
-      (wrap-observe-request-duration "history-type")))

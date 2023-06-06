@@ -5,11 +5,11 @@
     [blaze.db.spec]
     [blaze.fhir.structure-definition-repo :as sdr]
     [blaze.handler.util :as handler-util]
-    [blaze.middleware.fhir.metrics :as metrics]
     [blaze.module :refer [reg-collector]]
     [blaze.rest-api.capabilities :as capabilities]
     [blaze.rest-api.middleware.cors :as cors]
     [blaze.rest-api.middleware.log :refer [wrap-log]]
+    [blaze.rest-api.middleware.metrics :as metrics]
     [blaze.rest-api.middleware.output :as output]
     [blaze.rest-api.middleware.resource :as resource]
     [blaze.rest-api.routes :as routes]
@@ -41,7 +41,8 @@
        :syntax :bracket
        :reitit.middleware/transform
        (fn [middleware]
-         (filterv (comp not #{:resource :auth-guard :output :sync :forwarded :error} :name) middleware))})
+         (filterv (comp not #{:resource :auth-guard :output :sync :forwarded
+                              :error :observe-request-duration} :name) middleware))})
     handler-util/default-batch-handler))
 
 

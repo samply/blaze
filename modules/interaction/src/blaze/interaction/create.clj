@@ -12,7 +12,6 @@
     [blaze.handler.util :as handler-util]
     [blaze.interaction.create.spec]
     [blaze.interaction.util :as iu]
-    [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
@@ -104,5 +103,4 @@
 
 (defmethod ig/init-key :blaze.interaction/create [_ context]
   (log/info "Init FHIR create interaction handler")
-  (-> (handler context)
-      (wrap-observe-request-duration "create")))
+  (handler context))

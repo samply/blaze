@@ -11,7 +11,6 @@
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.interaction.history.util :as history-util]
     [blaze.interaction.util :as iu]
-    [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.spec]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
@@ -58,7 +57,12 @@
                 (update :link conj (next-link (peek paged-version-handles))))))))))
 
 
-(defn- handler [context]
+(defmethod ig/pre-init-spec :blaze.interaction.history/instance [_]
+  (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
+
+
+(defmethod ig/init-key :blaze.interaction.history/instance [_ context]
+  (log/info "Init FHIR history instance interaction handler")
   (fn [{:blaze/keys [base-url db]
         ::reitit/keys [router match] :keys [query-params]
         {{:fhir.resource/keys [type]} :data} ::reitit/match
@@ -78,13 +82,3 @@
         (ba/not-found
           (format "Resource `%s/%s` was not found." type id)
           :fhir/issue "not-found")))))
-
-
-(defmethod ig/pre-init-spec :blaze.interaction.history/instance [_]
-  (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
-
-
-(defmethod ig/init-key :blaze.interaction.history/instance [_ context]
-  (log/info "Init FHIR history instance interaction handler")
-  (-> (handler context)
-      (wrap-observe-request-duration "history-instance")))
