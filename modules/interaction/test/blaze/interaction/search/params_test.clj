@@ -1,5 +1,6 @@
 (ns blaze.interaction.search.params-test
   (:require
+    [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
     [blaze.interaction.search.params :as params]
     [blaze.interaction.search.params-spec]
@@ -53,6 +54,18 @@
               {"__token" (c-str/repeat "A" 32)})
       :clauses := [["foo" "bar"]]
       :token := (c-str/repeat "A" 32)))
+
+  (testing "token not found"
+    (given-failed-future
+      (params/decode
+        (reify p/PageStore
+          (-get [_ token]
+            (assert (= (c-str/repeat "A" 32) token))
+            (ac/completed-future (ba/not-found "Not Found"))))
+        :blaze.preference.handling/strict
+        {"__token" (c-str/repeat "A" 32)})
+      ::anom/category := ::anom/not-found
+      :http/status := nil))
 
   (testing "decoding _elements"
     (testing "one element"

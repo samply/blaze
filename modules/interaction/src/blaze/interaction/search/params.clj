@@ -14,10 +14,9 @@
 (defn- clauses [page-store {token "__token" :as query-params}]
   (cond
     (s/valid? ::page-store/token token)
-    (-> (do-sync [clauses (page-store/get page-store token)]
-          {:clauses clauses
-           :token token})
-        (ac/exceptionally #(assoc % :http/status 422)))
+    (do-sync [clauses (page-store/get page-store token)]
+      {:clauses clauses
+       :token token})
 
     token
     (ac/completed-future
