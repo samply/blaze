@@ -38,6 +38,8 @@
     (wrap-server handler (str "Blaze/" version))
     {:port port
      :async? async?
+     ;; TODO: remove such a long timeout only here because of FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT
+     :async-timeout 3610000                                 ; 1 h and 10 s
      :join? false
      :send-server-version? false
      :min-threads min-threads
