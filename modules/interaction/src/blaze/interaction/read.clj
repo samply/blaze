@@ -7,7 +7,6 @@
     [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.db.api :as d]
     [blaze.db.spec]
-    [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
@@ -88,15 +87,6 @@
       (handler request))))
 
 
-(defn- wrap-interaction-name [handler]
-  (fn [{{:keys [vid]} :path-params :as request}]
-    (do-sync [response (handler request)]
-      (assoc response :fhir/interaction-name (if vid "vread" "read")))))
-
-
 (defmethod ig/init-key :blaze.interaction/read [_ _]
   (log/info "Init FHIR read interaction handler")
-  (-> handler
-      wrap-invalid-id-vid
-      wrap-interaction-name
-      wrap-observe-request-duration))
+  (wrap-invalid-id-vid handler))

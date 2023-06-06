@@ -11,7 +11,6 @@
     [blaze.handler.util :as handler-util]
     [blaze.interaction.update.spec]
     [blaze.interaction.util :as iu]
-    [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -83,7 +82,12 @@
           (:hash resource-handle)))
 
 
-(defn- handler [{:keys [node executor]}]
+(defmethod ig/pre-init-spec :blaze.interaction/update [_]
+  (s/keys :req-un [:blaze.db/node ::executor]))
+
+
+(defmethod ig/init-key :blaze.interaction/update [_ {:keys [node executor]}]
+  (log/info "Init FHIR update interaction handler")
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params
         :keys [headers body]
@@ -107,13 +111,3 @@
                 ::anom/category ::anom/fault
                 ::anom/message (resource-content-not-found-msg e)
                 :fhir/issue "incomplete")))))))
-
-
-(defmethod ig/pre-init-spec :blaze.interaction/update [_]
-  (s/keys :req-un [:blaze.db/node ::executor]))
-
-
-(defmethod ig/init-key :blaze.interaction/update [_ context]
-  (log/info "Init FHIR update interaction handler")
-  (-> (handler context)
-      (wrap-observe-request-duration "update")))

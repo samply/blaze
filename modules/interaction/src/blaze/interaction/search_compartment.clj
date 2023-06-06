@@ -10,7 +10,6 @@
     [blaze.interaction.search.params :as params]
     [blaze.interaction.search.util :as search-util]
     [blaze.interaction.util :as iu]
-    [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.page-store.spec]
     [blaze.spec]
     [clojure.spec.alpha :as s]
@@ -152,18 +151,13 @@
           (assoc :blaze.preference/handling handling))))))
 
 
-(defn- handler [context]
-  (fn [request]
-    (-> (search-context context request)
-        (ac/then-compose search)
-        (ac/then-apply ring/response))))
-
-
 (defmethod ig/pre-init-spec :blaze.interaction/search-compartment [_]
   (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store]))
 
 
 (defmethod ig/init-key :blaze.interaction/search-compartment [_ context]
   (log/info "Init FHIR search-compartment interaction handler")
-  (-> (handler context)
-      (wrap-observe-request-duration "search-compartment")))
+  (fn [request]
+    (-> (search-context context request)
+        (ac/then-compose search)
+        (ac/then-apply ring/response))))

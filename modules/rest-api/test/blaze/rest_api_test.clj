@@ -8,6 +8,7 @@
     [blaze.handler.util :as handler-util]
     [blaze.metrics.spec]
     [blaze.rest-api :as rest-api]
+    [blaze.rest-api.middleware.metrics :as metrics]
     [blaze.test-util :as tu :refer [given-thrown structure-definition-repo with-system]]
     [blaze.test-util.ring :refer [call]]
     [clojure.spec.alpha :as s]
@@ -17,7 +18,7 @@
     [juxt.iota :refer [given]]
     [reitit.core :as reitit]
     [reitit.ring]
-    [ring.util.response :as response]
+    [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
     [java.io ByteArrayInputStream]))
@@ -103,6 +104,41 @@
 
 
 (deftest router-test
+  (testing "compile observe-request-duration middleware"
+    (with-redefs [metrics/wrap-observe-request-duration-fn
+                  (fn [interaction]
+                    (fn [_handler]
+                      interaction))]
+      (are [path request-method interaction]
+        (let [middlewares (get-in (reitit/match-by-path (router []) path) [:result request-method :middleware])
+              observe-request-duration (:wrap (some #(when (= :observe-request-duration (:name %)) %) middlewares))]
+          (= interaction (observe-request-duration ::handler)))
+
+        "" :get "search-system"
+        "" :post "transaction"
+        "/_history" :get "history-system"
+        "/__page" :get "search-system"
+        "/__page" :post "search-system"
+        "/Patient" :get "search-type"
+        "/Patient" :post "create"
+        "/Patient/_history" :get "history-type"
+        "/Patient/_search" :post "search-type"
+        "/Patient/0" :get "read"
+        "/Patient/0" :put "update"
+        "/Patient/0" :delete "delete"
+        "/Patient/0/_history" :get "history-instance"
+        "/Patient/0/_history/42" :get "vread"
+        "/Patient/0/Condition" :get "search-compartment"
+        "/Patient/0/Observation" :get "search-compartment"
+        "/$compact-db" :get "operation-system-compact-db"
+        "/$compact-db" :post "operation-system-compact-db"
+        "/Measure/$evaluate-measure" :get "operation-type-evaluate-measure"
+        "/Measure/$evaluate-measure" :post "operation-type-evaluate-measure"
+        "/Measure/0/$evaluate-measure" :get "operation-instance-evaluate-measure"
+        "/Measure/0/$evaluate-measure" :post "operation-instance-evaluate-measure"
+        "/Measure/0" :get "read"
+        "/metadata" :get "capabilities")))
+
   (testing "handlers"
     (are [path request-method handler]
       (= handler
@@ -148,31 +184,31 @@
                 (reitit/match-by-path (router []) path)
                 [:result request-method :data :middleware])
               (mapv (comp :name #(if (sequential? %) (first %) %)))))
-      "" :get [:params :output :error :forwarded :sync :search-db :link-headers]
-      "" :post [:params :output :error :forwarded :sync :resource :wrap-batch-handler]
-      "/_history" :get [:params :output :error :forwarded :sync :db :link-headers]
-      "/__page" :get [:params :output :error :forwarded :sync :snapshot-db :link-headers]
-      "/__page" :post [:params :output :error :forwarded :sync :snapshot-db :link-headers]
-      "/Patient" :get [:params :output :error :forwarded :sync :search-db :link-headers]
-      "/Patient" :post [:params :output :error :forwarded :sync :resource]
-      "/Patient/_history" :get [:params :output :error :forwarded :sync :db :link-headers]
-      "/Patient/_search" :post [:params :output :error :forwarded :sync :ensure-form-body :db :link-headers]
-      "/Patient/__page" :get [:params :output :error :forwarded :sync :snapshot-db :link-headers]
-      "/Patient/__page" :post [:params :output :error :forwarded :sync :snapshot-db :link-headers]
-      "/Patient/0" :get [:params :output :error :forwarded :sync :db]
-      "/Patient/0" :put [:params :output :error :forwarded :sync :resource]
-      "/Patient/0" :delete [:params :output :error :forwarded :sync]
-      "/Patient/0/_history" :get [:params :output :error :forwarded :sync :db :link-headers]
-      "/Patient/0/_history/42" :get [:params :output :error :forwarded :sync :versioned-instance-db]
-      "/Patient/0/Condition" :get [:params :output :error :forwarded :sync :db :link-headers]
-      "/Patient/0/Observation" :get [:params :output :error :forwarded :sync :db :link-headers]
-      "/$compact-db" :get [:params :output :error :forwarded :sync :db]
-      "/$compact-db" :post [:params :output :error :forwarded :sync :db :resource]
-      "/Measure/$evaluate-measure" :get [:params :output :error :forwarded :sync :db]
-      "/Measure/$evaluate-measure" :post [:params :output :error :forwarded :sync :db :resource]
-      "/Measure/0/$evaluate-measure" :get [:params :output :error :forwarded :sync :db]
-      "/Measure/0/$evaluate-measure" :post [:params :output :error :forwarded :sync :db :resource]
-      "/Measure/0" :get [:params :output :error :forwarded :sync :db])
+      "" :get [:observe-request-duration :params :output :error :forwarded :sync :search-db :link-headers]
+      "" :post [:observe-request-duration :params :output :error :forwarded :sync :resource :wrap-batch-handler]
+      "/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
+      "/__page" :get [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
+      "/__page" :post [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
+      "/Patient" :get [:observe-request-duration :params :output :error :forwarded :sync :search-db :link-headers]
+      "/Patient" :post [:observe-request-duration :params :output :error :forwarded :sync :resource]
+      "/Patient/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
+      "/Patient/_search" :post [:observe-request-duration :params :output :error :forwarded :sync :ensure-form-body :db :link-headers]
+      "/Patient/__page" :get [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
+      "/Patient/__page" :post [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
+      "/Patient/0" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
+      "/Patient/0" :put [:observe-request-duration :params :output :error :forwarded :sync :resource]
+      "/Patient/0" :delete [:observe-request-duration :params :output :error :forwarded :sync]
+      "/Patient/0/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
+      "/Patient/0/_history/42" :get [:observe-request-duration :params :output :error :forwarded :sync :versioned-instance-db]
+      "/Patient/0/Condition" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
+      "/Patient/0/Observation" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
+      "/$compact-db" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
+      "/$compact-db" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
+      "/Measure/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
+      "/Measure/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
+      "/Measure/0/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
+      "/Measure/0/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
+      "/Measure/0" :get [:observe-request-duration :params :output :error :forwarded :sync :db])
 
     (testing "with auth backends"
       (are [path request-method middleware]
@@ -181,14 +217,14 @@
                   (reitit/match-by-path (router [:auth-backend]) path)
                   [:result request-method :data :middleware])
                 (mapv (comp :name #(if (sequential? %) (first %) %)))))
-        "" :get [:params :output :error :forwarded :sync :auth-guard :search-db :link-headers]
-        "" :post [:params :output :error :forwarded :sync :auth-guard :resource :wrap-batch-handler]
-        "/$compact-db" :get [:params :output :error :forwarded :sync :auth-guard :db]
-        "/$compact-db" :post [:params :output :error :forwarded :sync :auth-guard :db :resource]
-        "/Measure/$evaluate-measure" :get [:params :output :error :forwarded :sync :auth-guard :db]
-        "/Measure/$evaluate-measure" :post [:params :output :error :forwarded :sync :auth-guard :db :resource]
-        "/Measure/0/$evaluate-measure" :get [:params :output :error :forwarded :sync :auth-guard :db]
-        "/Measure/0/$evaluate-measure" :post [:params :output :error :forwarded :sync :auth-guard :db :resource])))
+        "" :get [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :search-db :link-headers]
+        "" :post [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :resource :wrap-batch-handler]
+        "/$compact-db" :get [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db]
+        "/$compact-db" :post [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db :resource]
+        "/Measure/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db]
+        "/Measure/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db :resource]
+        "/Measure/0/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db]
+        "/Measure/0/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db :resource])))
 
   (testing "Patient instance POST is not allowed"
     (given (call (reitit.ring/ring-handler (router []) handler-util/default-handler)
@@ -304,7 +340,7 @@
 
 
 (def ^:private success-handler
-  (constantly (ac/completed-future (response/status 200))))
+  (constantly (ac/completed-future (ring/status 200))))
 
 
 (def ^:private system

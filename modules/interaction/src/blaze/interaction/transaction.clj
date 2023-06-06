@@ -15,7 +15,6 @@
     [blaze.interaction.transaction.bundle.url :as url]
     [blaze.interaction.transaction.spec]
     [blaze.interaction.util :as iu]
-    [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.spec]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
@@ -550,7 +549,12 @@
    :entry entries})
 
 
-(defn- handler [context]
+(defmethod ig/pre-init-spec :blaze.interaction/transaction [_]
+  (s/keys :req-un [:blaze.db/node ::executor :blaze/clock :blaze/rng-fn]))
+
+
+(defmethod ig/init-key :blaze.interaction/transaction [_ context]
+  (log/info "Init FHIR transaction interaction handler")
   (fn [{{:keys [type] :as bundle} :body :as request}]
     (-> (ac/completed-future (validate-and-prepare-bundle context bundle))
         (ac/then-compose
@@ -558,24 +562,6 @@
              (ac/completed-future [])
              (process-entries (process-context context request) request %)))
         (ac/then-apply #(ring/response (response-bundle context type %))))))
-
-
-(defn- wrap-interaction-name [handler]
-  (fn [{{:keys [type]} :body :as request}]
-    (cond-> (handler request)
-      (some? type)
-      (ac/then-apply #(assoc % :fhir/interaction-name (type/value type))))))
-
-
-(defmethod ig/pre-init-spec :blaze.interaction/transaction [_]
-  (s/keys :req-un [:blaze.db/node ::executor :blaze/clock :blaze/rng-fn]))
-
-
-(defmethod ig/init-key :blaze.interaction/transaction [_ context]
-  (log/info "Init FHIR transaction interaction handler")
-  (-> (handler context)
-      (wrap-interaction-name)
-      (wrap-observe-request-duration)))
 
 
 (defn- executor-init-msg []

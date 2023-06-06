@@ -1,6 +1,7 @@
 (ns blaze.core
   (:require
     [blaze.system :as system]
+    [blaze.util :as u]
     [clojure.string :as str]
     [taoensso.timbre :as log])
   (:gen-class))
@@ -56,10 +57,6 @@
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable f)))
 
 
-(defn- duration-s [start]
-  (format "%.1f" (/ (double (- (System/nanoTime) start)) 1e9)))
-
-
 (defn -main [& _]
   (add-shutdown-hook shutdown-system!)
   (let [start (System/nanoTime)
@@ -68,4 +65,4 @@
     (log/info "Maximum available memory:" (max-memory) "MiB")
     (log/info "Number of available processors:" (available-processors))
     (log/info "Successfully started \uD83D\uDD25 Blaze version" version "in"
-              (duration-s start) "seconds")))
+              (format "%.1f" (u/duration-s start)) "seconds")))

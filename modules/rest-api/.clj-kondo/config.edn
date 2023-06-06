@@ -2,6 +2,7 @@
  {blaze.anomaly/when-ok clojure.core/let
   blaze.async.comp/do-sync clojure.core/let
   blaze.test-util/with-system clojure.core/with-open
+  prometheus.alpha/defcounter clojure.core/def
   prometheus.alpha/defhistogram clojure.core/def}
 
  :linters
@@ -18,6 +19,25 @@
   {:level :warning}
 
   :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}}
+  {:level :warning :warn-only-on-interop true}
+
+  :consistent-alias
+  {:aliases
+   {blaze.anomaly ba
+    blaze.async.comp ac
+    blaze.executors ex
+    buddy.auth auth
+    cognitect.anomalies anom
+    clojure.data.xml xml
+    clojure.java.io io
+    clojure.spec.alpha s
+    clojure.string str
+    integrant.core ig
+    jsonista.core j
+    prometheus.alpha prom
+    reitit.core reitit
+    ring.util.request request
+    ring.util.response ring
+    taoensso.timbre log}}}
 
  :skip-comments true}
