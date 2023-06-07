@@ -55,7 +55,7 @@
   (->LocalPageStore
     secure-rng
     (-> (Caffeine/newBuilder)
-        (.maximumWeight (* 1024 1024 max-size-in-mb))
+        (.maximumWeight (bit-shift-left max-size-in-mb 20))
         (.weigher weigher)
         (.expireAfterAccess expire-duration)
         (.build))))
