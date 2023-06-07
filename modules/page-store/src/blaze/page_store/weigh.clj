@@ -20,7 +20,7 @@
   PersistentVector
   (-weigh [xs]
     (let [l (.count xs)
-          vector-weight (+ 240 (* (cond-> (quot l 2) (pos? (rem l 2)) inc) 8))]
+          vector-weight (+ 56 (* (cond-> (quot l 2) (pos? (rem l 2)) inc) 8))]
       (transduce (map -weigh) + vector-weight xs)))
   Keyword
   (-weigh [_]
