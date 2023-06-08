@@ -171,11 +171,24 @@
   [{:keys [type] :blaze/keys [db] {:keys [clauses page-id]} :params}
    num-matches next-handle]
   (cond
-    (empty? clauses)
-    (d/type-total db type)
-
+    ;; evaluate this criteria first, because we can potentially safe the
+    ;; d/type-total call
     (and (nil? page-id) (nil? next-handle))
-    num-matches))
+    num-matches
+
+    (empty? clauses)
+    (d/type-total db type)))
+
+
+(defn- zero-bundle
+  "Generate a special bundle if the search results in zero matches to avoid
+  generating a token for the first link, we don't need in this case."
+  [context clauses entries]
+  {:fhir/type :fhir/Bundle
+   :id (iu/luid context)
+   :type #fhir/code"searchset"
+   :total #fhir/unsignedInt 0
+   :link [(self-link context clauses (first entries))]})
 
 
 (defn- normal-bundle [context token clauses entries total]
@@ -202,11 +215,13 @@
       (ac/then-compose
         (fn [{:keys [entries num-matches next-handle clauses]}]
           (let [total (total context num-matches next-handle)]
-            (do-sync [token (gen-token! context clauses)]
-              (if next-handle
-                (-> (normal-bundle context token clauses entries total)
-                    (update :link conj (next-link context token clauses next-handle)))
-                (normal-bundle context token clauses entries total))))))))
+            (if (some-> total zero?)
+              (ac/completed-future (zero-bundle context clauses entries))
+              (do-sync [token (gen-token! context clauses)]
+                (if next-handle
+                  (-> (normal-bundle context token clauses entries total)
+                      (update :link conj (next-link context token clauses next-handle)))
+                  (normal-bundle context token clauses entries total)))))))))
 
 
 (defn- compile-type-query
