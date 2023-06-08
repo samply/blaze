@@ -1,9 +1,12 @@
 (ns blaze.page-store.local-test
   (:require
     [blaze.anomaly-spec]
+    [blaze.metrics.core :as metrics]
+    [blaze.metrics.spec]
     [blaze.page-store :as page-store]
     [blaze.page-store-spec]
     [blaze.page-store.local]
+    [blaze.page-store.spec :refer [page-store?]]
     [blaze.test-util :as tu :refer [given-failed-future given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -11,6 +14,7 @@
     [cognitect.anomalies :as anom]
     [cuerdas.core :as c-str]
     [integrant.core :as ig]
+    [juxt.iota :refer [given]]
     [taoensso.timbre :as log]))
 
 
@@ -23,7 +27,8 @@
 
 (def system
   {:blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
-   :blaze.test/fixed-rng {}})
+   :blaze.test/fixed-rng {}
+   :blaze.page-store.local/collector {:page-store (ig/ref :blaze.page-store/local)}})
 
 
 (def token (str (c-str/repeat "A" 31) "B"))
@@ -75,3 +80,40 @@
 
     (testing "returns a token"
       (is (= token @(page-store/put! store [["active" "true"]]))))))
+
+
+(deftest collector-init-test
+  (testing "nil config"
+    (given-thrown (ig/init {:blaze.page-store.local/collector nil})
+      :key := :blaze.page-store.local/collector
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {:blaze.page-store.local/collector {}})
+      :key := :blaze.page-store.local/collector
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :page-store))))
+
+  (testing "invalid page store"
+    (given-thrown (ig/init {:blaze.page-store.local/collector {:page-store ::invalid}})
+      :key := :blaze.page-store.local/collector
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `page-store?
+      [:explain ::s/problems 0 :val] := ::invalid))
+
+  (testing "is a collector"
+    (with-system [{collector :blaze.page-store.local/collector} system]
+      (is (s/valid? :blaze.metrics/collector collector)))))
+
+
+(deftest collector-test
+  (with-system [{collector :blaze.page-store.local/collector} system]
+    (let [metrics (metrics/collect collector)]
+
+      (given metrics
+        count := 1
+        [0 :type] := :gauge
+        [0 :name] := "blaze_page_store_estimated_size"
+        [0 :samples count] := 1
+        [0 :samples 0 :value] := 0.0))))

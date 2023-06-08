@@ -866,7 +866,29 @@
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
-              (is (= 1 (count (:entry body))))))))
+              (is (= 1 (count (:entry body)))))))
+
+        (testing "search for inactive patients"
+          (let [{:keys [body]}
+                @(handler
+                   {::reitit/match patient-match
+                    :params {"active" "false"}})]
+
+            (testing "the total is zero"
+              (is (zero? (type/value (:total body)))))
+
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient?active=false&_count=50&__t=1")
+                     (link-url body "self"))))
+
+            (testing "has no first link"
+              (is (nil? (link-url body "first"))))
+
+            (testing "has no next link"
+              (is (nil? (link-url body "next"))))
+
+            (testing "the bundle contains no entry"
+              (is (zero? (count (:entry body))))))))
 
       (testing "on /_search request"
         (testing "search for active patients with _count=1"
@@ -892,7 +914,29 @@
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
-              (is (= 1 (count (:entry body))))))))
+              (is (= 1 (count (:entry body)))))))
+
+        (testing "search for inactive patients"
+          (let [{:keys [body]}
+                @(handler
+                   {::reitit/match patient-search-match
+                    :params {"active" "false"}})]
+
+            (testing "the total is zero"
+              (is (zero? (type/value (:total body)))))
+
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient?active=false&_count=50&__t=1")
+                     (link-url body "self"))))
+
+            (testing "has no first link"
+              (is (nil? (link-url body "first"))))
+
+            (testing "has no next link"
+              (is (nil? (link-url body "next"))))
+
+            (testing "the bundle contains no entry"
+              (is (zero? (count (:entry body))))))))
 
       (testing "following the self link"
         (let [{:keys [body]}

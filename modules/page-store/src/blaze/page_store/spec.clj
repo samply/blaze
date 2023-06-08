@@ -6,8 +6,12 @@
     [java.util Random]))
 
 
+(defn page-store? [x]
+  (satisfies? p/PageStore x))
+
+
 (s/def :blaze/page-store
-  #(satisfies? p/PageStore %))
+  page-store?)
 
 
 (s/def :blaze.page-store/secure-rng
