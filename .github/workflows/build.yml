@@ -1660,22 +1660,27 @@ jobs:
     steps:
     - name: Check out Git repository
       uses: actions/checkout@v3
+
     - name: Setup Node
       uses: actions/setup-node@v3
       with:
         node-version: 18
         cache: npm
         cache-dependency-path: 'docs/package-lock.json'
+
     - name: Install dependencies
       working-directory: ./docs
       run: npm install
+
     - name: Build
       working-directory: ./docs
       env:
         DOCS_BASE: "/${{ github.event.repository.name }}/"
       run: npm run docs:build
+
     - name: Setup Pages
       uses: actions/configure-pages@v3
+
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v1
       with:
