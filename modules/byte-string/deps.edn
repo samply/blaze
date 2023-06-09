@@ -2,7 +2,7 @@
 
  :deps
  {com.google.guava/guava
-  {:mvn/version "32.0.0-jre"
+  {:mvn/version "32.0.1-jre"
    :exclusions
    [com.google.code.findbugs/jsr305
     org.checkerframework/checker-qual
@@ -13,4 +13,4 @@
   {:mvn/version "3.23.2"}
 
   com.fasterxml.jackson.core/jackson-databind
-  {:mvn/version "2.15.1"}}}
+  {:mvn/version "2.15.2"}}}
