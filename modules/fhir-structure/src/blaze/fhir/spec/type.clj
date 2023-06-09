@@ -1001,6 +1001,29 @@
 
 ;; ---- xhtml -----------------------------------------------------------------
 
+
+(defn- wrap-div [s]
+  (str "<div xmlns=\"http://www.w3.org/1999/xhtml\">" s "</div>"))
+
+
+(defn- parse-xhtml* [s]
+  (let [xml (xml/parse-str s)]
+    ;; simply emit the xml in order to parse eager and see all exceptions
+    (xml/emit-str xml)
+    xml))
+
+
+(defn- parse-xhtml [s]
+  (try
+    (parse-xhtml* s)
+    (catch Exception _
+      (-> s
+          (str/replace "<" "&lt;")
+          (str/replace ">" "&gt;")
+          (wrap-div)
+          (parse-xhtml*)))))
+
+
 (deftype Xhtml [value]
   p/FhirType
   (-type [_] :fhir/xhtml)
@@ -1012,7 +1035,7 @@
   (-has-secondary-content [_] false)
   (-serialize-json-secondary [_ generator]
     (.writeNull ^JsonGenerator generator))
-  (-to-xml [_] (update (xml/parse-str value) :attrs assoc :xmlns "http://www.w3.org/1999/xhtml"))
+  (-to-xml [_] (update (parse-xhtml value) :attrs assoc :xmlns "http://www.w3.org/1999/xhtml"))
   (-hash-into [_ sink]
     (doto ^PrimitiveSink sink
       (.putByte (byte 20))                                  ; :fhir/xhtml
