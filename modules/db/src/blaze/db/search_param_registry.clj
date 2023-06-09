@@ -3,8 +3,10 @@
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
     [blaze.coll.core :as coll]
+    [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.impl.search-param.core :as sc]
+    [blaze.db.search-param-registry.spec]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.util :refer [conj-vec]]
     [clojure.java.io :as io]
@@ -14,31 +16,24 @@
     [taoensso.timbre :as log]))
 
 
-(defprotocol SearchParamRegistry
-  (-get [_ code] [_ code type])
-  (-list-by-type [_ type])
-  (-list-by-target [_ target])
-  (-linked-compartments [_ resource]))
-
-
 (defn get
   "Returns the search parameter with `code` and optional `type`."
   ([search-param-registry code]
-   (-get search-param-registry code))
+   (p/-get search-param-registry code))
   ([search-param-registry code type]
-   (-get search-param-registry code type)))
+   (p/-get search-param-registry code type)))
 
 
 (defn list-by-type
   "Returns a seq of search params of `type`."
   [search-param-registry type]
-  (-list-by-type search-param-registry type))
+  (p/-list-by-type search-param-registry type))
 
 
 (defn list-by-target
   "Returns a seq of search params of `target`."
   [search-param-registry target]
-  (-list-by-target search-param-registry target))
+  (p/-list-by-target search-param-registry target))
 
 
 (defn linked-compartments
@@ -48,17 +43,17 @@
   because its subject points to this patient. Compartments are represented
   through a tuple of `code` and `id`."
   [search-param-registry resource]
-  (-linked-compartments search-param-registry resource))
+  (p/-linked-compartments search-param-registry resource))
 
 
 (deftype MemSearchParamRegistry [index target-index compartment-index]
-  SearchParamRegistry
+  p/SearchParamRegistry
   (-get [_ code]
     (get-in index ["Resource" code]))
 
   (-get [this code type]
     (or (get-in index [type code])
-        (-get this code)))
+        (p/-get this code)))
 
   (-list-by-type [_ type]
     (-> (into [] (map val) (index "Resource"))
@@ -88,12 +83,30 @@
     {:decode-key-fn true}))
 
 
-(defn- read-json-resource
+(defn- read-json-resource [x]
+  (with-open [rdr (io/reader x)]
+    (j/read-value rdr object-mapper)))
+
+
+(defn- read-classpath-json-resource
   "Reads the JSON encoded resource with `name` from classpath."
   [name]
   (log/trace (format "Read resource `%s` from class path." name))
-  (with-open [rdr (io/reader (io/resource name))]
-    (j/read-value rdr object-mapper)))
+  (read-json-resource (io/resource name)))
+
+
+(defn- read-file-json-resource
+  "Reads the JSON encoded resource with `name` from filesystem."
+  [name]
+  (log/trace (format "Read resource `%s` from filesystem." name))
+  (read-json-resource name))
+
+
+(defn- read-bundle-entries [extra-bundle-file]
+  (let [{entries :entry} (read-classpath-json-resource "blaze/db/search-parameters.json")]
+    (cond-> entries
+      extra-bundle-file
+      (into (:entry (read-file-json-resource extra-bundle-file))))))
 
 
 (defn- index-search-param [index {:keys [url] :as sp}]
@@ -126,7 +139,7 @@
 
 
 (defn- index-compartments [search-param-index]
-  (->> (read-json-resource "blaze/db/compartment/patient.json")
+  (->> (read-classpath-json-resource "blaze/db/compartment/patient.json")
        (index-compartment-def search-param-index)))
 
 
@@ -167,15 +180,18 @@
 
 
 (defn- build-url-index
-  "Builds an index from url to search-param."
-  [{entries :entry}]
+  "Builds an index from url to search-param.
+
+  Ensures that non-composite search params are build first so that composite
+  search params will find it's components in the already partial build index."
+  [entries]
   (when-ok [non-composite (build-url-index* {} remove-composite entries)]
     (build-url-index* non-composite filter-composite entries)))
 
 
 (defn- build-index
   "Builds an index from [type code] to search param."
-  [url-index {entries :entry}]
+  [url-index entries]
   (transduce
     (map :resource)
     (completing
@@ -191,7 +207,7 @@
     entries))
 
 
-(defn- build-target-index [url-index {entries :entry}]
+(defn- build-target-index [url-index entries]
   (transduce
     (comp
       (map :resource)
@@ -210,15 +226,19 @@
 
 
 (defmethod ig/pre-init-spec :blaze.db/search-param-registry [_]
-  (s/keys :req-un [:blaze.fhir/structure-definition-repo]))
+  (s/keys :req-un [:blaze.fhir/structure-definition-repo]
+          :opt-un [::extra-bundle-file]))
 
 
 (defmethod ig/init-key :blaze.db/search-param-registry
-  [_ _]
-  (log/info "Init in-memory fixed R4 search parameter registry")
-  (let [bundle (read-json-resource "blaze/db/search-parameters.json")]
-    (when-ok [url-index (build-url-index bundle)
-              index (build-index url-index bundle)]
+  [_ {:keys [extra-bundle-file]}]
+  (log/info
+    (cond-> "Init in-memory fixed R4 search parameter registry"
+      extra-bundle-file
+      (str " including extra search parameters from file: " extra-bundle-file)))
+  (let [entries (read-bundle-entries extra-bundle-file)]
+    (when-ok [url-index (build-url-index entries)
+              index (build-index url-index entries)]
       (->MemSearchParamRegistry (add-special index)
-                                (build-target-index url-index bundle)
+                                (build-target-index url-index entries)
                                 (index-compartments index)))))

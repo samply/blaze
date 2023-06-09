@@ -1,0 +1,13 @@
+services:
+  blaze:
+    image: "blaze:latest"
+    environment:
+      DB_SEARCH_PARAM_BUNDLE: "/app/custom-search-parameters.json"
+      LOG_LEVEL: trace
+    ports:
+    - "8080:8080"
+    volumes:
+    - "${GITHUB_WORKSPACE}/.github/custom-search-parameters-test/custom-search-parameters.json:/app/custom-search-parameters.json:ro"
+    - "blaze-data:/app/data"
+volumes:
+  blaze-data:

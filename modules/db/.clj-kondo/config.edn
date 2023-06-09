@@ -27,6 +27,21 @@
   {:level :warning}
 
   :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}}
+  {:level :warning :warn-only-on-interop true}
+
+  :consistent-alias
+  {:aliases
+   {blaze.anomaly ba
+    blaze.async.comp ac
+    blaze.db.impl.protocols p
+    blaze.executors ex
+    buddy.auth auth
+    cognitect.anomalies anom
+    clojure.java.io io
+    clojure.spec.alpha s
+    clojure.string str
+    integrant.core ig
+    prometheus.alpha prom
+    taoensso.timbre log}}}
 
  :skip-comments true}

@@ -281,7 +281,8 @@
   ;; in FHIR R4.
   ;;
   :blaze.db/search-param-registry
-  {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}}
+  {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo
+   :extra-bundle-file #blaze/cfg ["DB_SEARCH_PARAM_BUNDLE" string?]}}
 
  :storage
  {:in-memory

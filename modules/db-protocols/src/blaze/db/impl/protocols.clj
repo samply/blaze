@@ -75,6 +75,14 @@
   (-clauses [query]))
 
 
+(defprotocol Pull
+  (-pull [pull resource-handle])
+
+  (-pull-content [pull resource-handle])
+
+  (-pull-many [pull resource-handles] [pull resource-handles elements]))
+
+
 (defprotocol SearchParam
   (-compile-value [search-param modifier value] "Can return an anomaly.")
   (-resource-handles
@@ -96,9 +104,8 @@
   (-index-value-compiler [_]))
 
 
-(defprotocol Pull
-  (-pull [pull resource-handle])
-
-  (-pull-content [pull resource-handle])
-
-  (-pull-many [pull resource-handles] [pull resource-handles elements]))
+(defprotocol SearchParamRegistry
+  (-get [_ code] [_ code type])
+  (-list-by-type [_ type])
+  (-list-by-target [_ target])
+  (-linked-compartments [_ resource]))

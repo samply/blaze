@@ -90,6 +90,7 @@ More information about distributed deployment are available [here](distributed.m
 | OPENID_PROVIDER_URL                     | —                          | v0.11  | —      | [OpenID Connect][4] provider URL to enable [authentication][5]                                 |
 | ENFORCE_REFERENTIAL_INTEGRITY           | true                       | v0.14  | —      | Enforce referential integrity on resource create, update and delete.                           |
 | DB_SYNC_TIMEOUT                         | 10000                      | v0.15  | —      | Timeout in milliseconds for all reading FHIR interactions acquiring the newest database state. |
+| DB_SEARCH_PARAM_BUNDLE                  | —                          | v0.21  | —      | Name of a custom search parameter bundle file.                                                 |
 
 ¹ Deprecated
 
