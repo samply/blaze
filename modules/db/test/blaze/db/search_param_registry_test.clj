@@ -22,6 +22,17 @@
 (test/use-fixtures :each tu/fixture)
 
 
+(def config
+  {:blaze.db/search-param-registry
+   {:structure-definition-repo structure-definition-repo}})
+
+
+(def config-extra
+  {:blaze.db/search-param-registry
+   {:structure-definition-repo structure-definition-repo
+    :extra-bundle-file "../../.github/custom-search-parameters-test/custom-search-parameters.json"}})
+
+
 (deftest init-test
   (testing "nil config"
     (given-thrown (ig/init {:blaze.db/search-param-registry nil})
@@ -40,24 +51,58 @@
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `structure-definition-repo?
-      [:explain ::s/problems 0 :val] := ::invalid)))
+      [:explain ::s/problems 0 :val] := ::invalid))
 
+  (testing "invalid extra-bundle-file"
+    (given-thrown (ig/init {:blaze.db/search-param-registry
+                            {:structure-definition-repo structure-definition-repo
+                             :extra-bundle-file ::invalid}})
+      :key := :blaze.db/search-param-registry
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `string?
+      [:explain ::s/problems 0 :val] := ::invalid))
 
-(def system
-  {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+  (testing "not-found extra-bundle-file"
+    (given-thrown (ig/init {:blaze.db/search-param-registry
+                            {:structure-definition-repo structure-definition-repo
+                             :extra-bundle-file "foo"}})
+      :key := :blaze.db/search-param-registry
+      :reason := ::ig/build-threw-exception))
+
+  (testing "with nil extra bundle file"
+    (is (->> (ig/init {:blaze.db/search-param-registry
+                       {:structure-definition-repo structure-definition-repo
+                        :extra-bundle-file nil}})
+             :blaze.db/search-param-registry
+             (s/valid? :blaze.db/search-param-registry))))
+
+  (testing "without extra bundle file"
+    (is (->> (:blaze.db/search-param-registry (ig/init config))
+             (s/valid? :blaze.db/search-param-registry))))
+
+  (testing "with extra bundle file"
+    (is (->> (:blaze.db/search-param-registry (ig/init config-extra))
+             (s/valid? :blaze.db/search-param-registry)))))
 
 
 (deftest get-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
-    (testing "_id"
-      (given (sr/get search-param-registry "_id")
-        :type := "token"
-        :url := "http://hl7.org/fhir/SearchParameter/Resource-id"))))
+  (testing "default system"
+    (with-system [{:blaze.db/keys [search-param-registry]} config]
+      (testing "_id"
+        (given (sr/get search-param-registry "_id")
+          :type := "token"
+          :url := "http://hl7.org/fhir/SearchParameter/Resource-id"))))
+
+  (testing "with extra bundle file"
+    (with-system [{:blaze.db/keys [search-param-registry]} config-extra]
+      (testing "marital-status"
+        (given (sr/get search-param-registry "marital-status" "Patient")
+          :type := "token"
+          :url := "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status")))))
 
 
 (deftest list-by-target-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Patient"
       (given (sr/list-by-target search-param-registry "Patient")
         count := 210
@@ -70,7 +115,7 @@
 
 
 (deftest linked-compartments-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Condition subject"
       (given (sr/linked-compartments
                search-param-registry

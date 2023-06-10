@@ -17,17 +17,17 @@ docker run -d --name blaze -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.2
 Blaze should log something like this:
 
 ```text
-2021-06-27T11:02:29.649Z ee086ef908c1 main INFO [blaze.system:173] - Set log level to: info
-2021-06-27T11:02:29.662Z ee086ef908c1 main INFO [blaze.system:43] - Try to read blaze.edn ...
-2021-06-27T11:02:29.679Z ee086ef908c1 main INFO [blaze.system:152] - Use storage variant standalone
-2021-06-27T11:02:29.680Z ee086ef908c1 main INFO [blaze.system:163] - Feature OpenID Authentication disabled
+2023-06-09T08:30:21.134Z b45689460ff3 main INFO [blaze.system:181] - Set log level to: info
+2023-06-09T08:30:21.155Z b45689460ff3 main INFO [blaze.system:44] - Try to read blaze.edn ...
+2023-06-09T08:30:21.173Z b45689460ff3 main INFO [blaze.system:160] - Use storage variant standalone
+2023-06-09T08:30:21.174Z b45689460ff3 main INFO [blaze.system:171] - Feature OpenID Authentication disabled
 ...
-2021-06-27T11:02:37.758Z ee086ef908c1 main INFO [blaze.system:230] - Start metrics server on port 8081
-2021-06-27T11:02:37.822Z ee086ef908c1 main INFO [blaze.system:218] - Start main server on port 8080
-2021-06-27T11:02:37.834Z ee086ef908c1 main INFO [blaze.core:64] - JVM version: 16.0.2
-2021-06-27T11:02:37.834Z ee086ef908c1 main INFO [blaze.core:65] - Maximum available memory: 1738 MiB
-2021-06-27T11:02:37.835Z ee086ef908c1 main INFO [blaze.core:66] - Number of available processors: 8
-2021-06-27T11:02:37.836Z ee086ef908c1 main INFO [blaze.core:67] - Successfully started Blaze version 0.20.6 in 8.2 seconds
+2023-06-09T08:30:30.079Z b45689460ff3 main INFO [blaze.server:33] - Start main server on port 8080
+2023-06-09T08:30:30.122Z b45689460ff3 main INFO [blaze.server:33] - Start metrics server on port 8081
+2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:67] - JVM version: 17.0.7
+2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:68] - Maximum available memory: 1738 MiB
+2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:69] - Number of available processors: 2
+2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:70] - Successfully started 🔥 Blaze version 0.20.6 in 9.0 seconds
 ```
 
 In order to test connectivity, query the health endpoint:
@@ -58,7 +58,6 @@ Blaze will be configured through environment variables which are documented [her
 A Docker Compose file looks like this:
 
 ```text
-version: '3.2'
 services:
   blaze:
     image: "samply/blaze:0.20"
@@ -68,6 +67,27 @@ services:
     ports:
     - "8080:8080"
     volumes:
+    - "blaze-data:/app/data"
+volumes:
+  blaze-data:
+```
+
+## Custom Search Parameters
+
+Per default, Blaze supports FHIR Search on all FHIR R4 search parameters. However Blaze can be configured to support custom search parameters by specifying the file name of a search parameter bundle in the environment variable `DB_SEARCH_PARAM_BUNDLE`. If such a bundle file name is specified, Blaze will index newly written resources using the search parameters defined in that file. Please be aware that Blaze will currently not reindex existing resources. So resources written before specifying a custom search parameter will not be indexed and so will not be found.
+
+### Example Config
+
+```text
+services:
+  blaze:
+    image: "samply/blaze:0.20"
+    environment:
+      DB_SEARCH_PARAM_BUNDLE: "/app/custom-search-parameters.json"
+    ports:
+    - "8080:8080"
+    volumes:
+    - "custom-search-parameters.json:/app/custom-search-parameters.json:ro"
     - "blaze-data:/app/data"
 volumes:
   blaze-data:
