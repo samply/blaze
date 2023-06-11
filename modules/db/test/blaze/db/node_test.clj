@@ -14,12 +14,11 @@
     [blaze.db.node.resource-indexer :as resource-indexer]
     [blaze.db.node.tx-indexer :as-alias tx-indexer]
     [blaze.db.node.version :as version]
-    [blaze.db.resource-handle-cache]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.spec :refer [resource-store?]]
     [blaze.db.search-param-registry]
     [blaze.db.search-param-registry.spec :refer [search-param-registry?]]
-    [blaze.db.spec :refer [cache? loading-cache?]]
+    [blaze.db.spec :refer [loading-cache?]]
     [blaze.db.test-util :refer [system]]
     [blaze.db.tx-log-spec]
     [blaze.db.tx-log.local-spec]
@@ -128,13 +127,6 @@
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `tx-log?
-      [:explain ::s/problems 0 :val] := ::invalid))
-
-  (testing "invalid resource-handle-cache"
-    (given-thrown (ig/init (assoc-in system [:blaze.db/node :resource-handle-cache] ::invalid))
-      :key := :blaze.db/node
-      :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `cache?
       [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid tx-cache"

@@ -197,7 +197,6 @@
   ;;
   :blaze.db/node
   {:tx-log #blaze/ref :blaze.db/tx-log
-   :resource-handle-cache #blaze/ref :blaze.db/resource-handle-cache
    :tx-cache #blaze/ref :blaze.db/tx-cache
    :indexer-executor #blaze/ref :blaze.db.node/indexer-executor
    :resource-store #blaze/ref :blaze.db/resource-cache
@@ -227,23 +226,8 @@
 
   :blaze.db/cache-collector
   {:caches
-   {"resource-handle-cache" #blaze/ref :blaze.db/resource-handle-cache
-    "tx-cache" #blaze/ref :blaze.db/tx-cache
+   {"tx-cache" #blaze/ref :blaze.db/tx-cache
     "resource-cache" #blaze/ref :blaze.db/resource-cache}}
-
-  ;;
-  ;; Resource Handle Cache
-  ;;
-  ;; The resource handle cache holds resource handles keyed by tuples of
-  ;; [tid id t]. It avoids seeks in the ResourceAsOf index.
-  ;;
-  ;; The env var DB_RESOURCE_HANDLE_CACHE_SIZE can be used to specify the
-  ;; maximum number of resource handles, the cache can hold. A resource handle
-  ;; weights in about 200 bytes of memory. Please choose a cache size depending
-  ;; on your use case while monitoring JVM heap size.
-  ;;
-  :blaze.db/resource-handle-cache
-  {:max-size #blaze/cfg ["DB_RESOURCE_HANDLE_CACHE_SIZE" nat-int? 100000]}
 
   ;;
   ;; Transaction Cache

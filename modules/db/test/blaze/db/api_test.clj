@@ -5,7 +5,6 @@
     [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.async.comp-spec]
-    [blaze.coll.core :as coll]
     [blaze.db.api :as d]
     [blaze.db.api-spec]
     [blaze.db.impl.db-spec]
@@ -584,59 +583,58 @@
 ;; ---- Instance-Level Functions ----------------------------------------------
 
 (deftest resource-handle-test
-  (doseq [system [system (assoc-in system [:blaze.db/resource-handle-cache :max-size] 100)]]
-    (testing "a new node does not contain a resource"
-      (with-system [{:blaze.db/keys [node]} system]
-        (is (nil? (d/resource-handle (d/db node) "Patient" "foo")))))
+  (testing "a new node does not contain a resource"
+    (with-system [{:blaze.db/keys [node]} system]
+      (is (nil? (d/resource-handle (d/db node) "Patient" "foo")))))
 
-    (testing "a resource handle is actually one"
-      (with-system-data [{:blaze.db/keys [node]} system]
-        [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+  (testing "a resource handle is actually one"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
-        (is (d/resource-handle? (d/resource-handle (d/db node) "Patient" "0")))))
+      (is (d/resource-handle? (d/resource-handle (d/db node) "Patient" "0")))))
 
-    (testing "a node contains a resource after a create transaction"
-      (with-system-data [{:blaze.db/keys [node]} system]
-        [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+  (testing "a node contains a resource after a create transaction"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
-        (testing "pull"
-          (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-            :fhir/type := :fhir/Patient
-            :id := "0"
-            [:meta :versionId] := #fhir/id"1"
-            [meta :blaze.db/tx :blaze.db/t] := 1
-            [meta :blaze.db/num-changes] := 1))
-
-        (testing "pull-content"
-          (given @(d/pull-content node (d/resource-handle (d/db node) "Patient" "0"))
-            :fhir/type := :fhir/Patient
-            :id := "0"))
-
-        (testing "number of changes is 1"
-          (is (= 1 (:num-changes (d/resource-handle (d/db node) "Patient" "0")))))))
-
-    (testing "a node contains a resource after a put transaction"
-      (with-system-data [{:blaze.db/keys [node]} system]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
-
+      (testing "pull"
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
           :fhir/type := :fhir/Patient
           :id := "0"
           [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/tx :blaze.db/t] := 1
-          [meta :blaze.db/num-changes] := 1)))
+          [meta :blaze.db/num-changes] := 1))
 
-    (testing "a deleted resource is flagged"
-      (with-system-data [{:blaze.db/keys [node]} system]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-         [[:delete "Patient" "0"]]]
-
-        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+      (testing "pull-content"
+        (given @(d/pull-content node (d/resource-handle (d/db node) "Patient" "0"))
           :fhir/type := :fhir/Patient
-          :id := "0"
-          [:meta :versionId] := #fhir/id"2"
-          [meta :blaze.db/op] := :delete
-          [meta :blaze.db/tx :blaze.db/t] := 2)))))
+          :id := "0"))
+
+      (testing "number of changes is 1"
+        (is (= 1 (:num-changes (d/resource-handle (d/db node) "Patient" "0")))))))
+
+  (testing "a node contains a resource after a put transaction"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+        :fhir/type := :fhir/Patient
+        :id := "0"
+        [:meta :versionId] := #fhir/id"1"
+        [meta :blaze.db/tx :blaze.db/t] := 1
+        [meta :blaze.db/num-changes] := 1)))
+
+  (testing "a deleted resource is flagged"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:delete "Patient" "0"]]]
+
+      (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+        :fhir/type := :fhir/Patient
+        :id := "0"
+        [:meta :versionId] := #fhir/id"2"
+        [meta :blaze.db/op] := :delete
+        [meta :blaze.db/tx :blaze.db/t] := 2))))
 
 
 
@@ -645,7 +643,7 @@
 (deftest type-list-and-total-test
   (testing "a new node has no patients"
     (with-system [{:blaze.db/keys [node]} system]
-      (is (coll/empty? (d/type-list (d/db node) "Patient")))
+      (is (empty? (d/type-list (d/db node) "Patient")))
       (is (zero? (d/type-total (d/db node) "Patient")))))
 
   (testing "a node with one patient"
@@ -670,7 +668,7 @@
        [[:delete "Patient" "0"]]]
 
       (testing "doesn't contain it in the list"
-        (is (coll/empty? (d/type-list (d/db node) "Patient")))
+        (is (empty? (d/type-list (d/db node) "Patient")))
         (is (zero? (d/type-total (d/db node) "Patient"))))))
 
   (testing "a node with one recreated patient"
@@ -709,7 +707,8 @@
           [0 :meta :versionId] := #fhir/id"2"))
 
       (testing "overshooting the start-id returns an empty collection"
-        (is (coll/empty? (d/type-list (d/db node) "Patient" "2"))))))
+        (is (empty? (d/type-list (d/db node) "Patient" "2")))
+        (is (zero? (count (d/type-list (d/db node) "Patient" "2")))))))
 
   (testing "a node with two patients in one transaction"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -737,7 +736,7 @@
           [0 :meta :versionId] := #fhir/id"1"))
 
       (testing "overshooting the start-id returns an empty collection"
-        (is (coll/empty? (d/type-list (d/db node) "Patient" "2"))))))
+        (is (empty? (d/type-list (d/db node) "Patient" "2"))))))
 
   (testing "a node with one updated patient"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -838,7 +837,7 @@
 (deftest type-query-test
   (with-system [{:blaze.db/keys [node]} system]
     (testing "a new node has no patients"
-      (is (coll/empty? (d/type-query (d/db node) "Patient" [["gender" "male"]]))))
+      (is (empty? (d/type-query (d/db node) "Patient" [["gender" "male"]]))))
 
     (testing "sort clauses are only allowed at first position"
       (given (d/type-query (d/db node) "Patient" [["gender" "male"]
@@ -4212,6 +4211,8 @@
 (deftest system-list-and-total-test
   (testing "a new node has no resources"
     (with-system [{:blaze.db/keys [node]} system]
+      (is (zero? (count (d/system-list (d/db node)))))
+      (is (empty? (d/system-list (d/db node))))
       (is (zero? (d/system-total (d/db node))))))
 
   (testing "a node with one patient"
@@ -4234,7 +4235,7 @@
        [[:delete "Patient" "0"]]]
 
       (testing "doesn't contain it in the list"
-        (is (coll/empty? (d/system-list (d/db node))))
+        (is (empty? (d/system-list (d/db node))))
         (is (zero? (d/system-total (d/db node)))))))
 
   (testing "a node with two resources in two transactions"
@@ -4270,7 +4271,7 @@
           [0 :meta :versionId] := #fhir/id"1"))
 
       (testing "overshooting the start-id returns an empty collection"
-        (is (coll/empty? (d/system-list (d/db node) "Patient" "1")))))))
+        (is (empty? (d/system-list (d/db node) "Patient" "1")))))))
 
 
 
@@ -4288,8 +4289,10 @@
 (deftest list-compartment-resources-test
   (testing "a new node has an empty list of resources in the Patient/0 compartment"
     (with-system [{:blaze.db/keys [node]} system]
-      (is (coll/empty? (d/list-compartment-resource-handles
-                         (d/db node) "Patient" "0" "Observation")))))
+      (is (empty? (d/list-compartment-resource-handles
+                    (d/db node) "Patient" "0" "Observation")))
+      (is (zero? (count (d/list-compartment-resource-handles
+                          (d/db node) "Patient" "0" "Observation"))))))
 
   (testing "a node contains one Observation in the Patient/0 compartment"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -4335,8 +4338,8 @@
                        {:reference "Patient/0"}}]]
        [[:delete "Observation" "0"]]]
 
-      (is (coll/empty? (d/list-compartment-resource-handles
-                         (d/db node) "Patient" "0" "Observation")))))
+      (is (empty? (d/list-compartment-resource-handles
+                    (d/db node) "Patient" "0" "Observation")))))
 
   (testing "it is possible to start at a later id"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -4354,19 +4357,22 @@
                #fhir/Reference
                        {:reference "Patient/0"}}]]]
 
+      (is (= 2 (count (d/list-compartment-resource-handles
+                        (d/db node) "Patient" "0" "Observation" "1"))))
+
       (given @(pull-compartment-resources node "Patient" "0" "Observation" "1")
+        count := 2
         [0 :fhir/type] := :fhir/Observation
         [0 :id] := "1"
         [0 :meta :versionId] := #fhir/id"3"
         [1 :fhir/type] := :fhir/Observation
         [1 :id] := "2"
-        [1 :meta :versionId] := #fhir/id"4"
-        2 := nil)))
+        [1 :meta :versionId] := #fhir/id"4")))
 
   (testing "Unknown compartment is not a problem"
     (with-system [{:blaze.db/keys [node]} system]
-      (is (coll/empty? (d/list-compartment-resource-handles
-                         (d/db node) "foo" "bar" "Condition"))))))
+      (is (empty? (d/list-compartment-resource-handles
+                    (d/db node) "foo" "bar" "Condition"))))))
 
 
 (defn- pull-compartment-query [node code id type clauses]
@@ -4377,9 +4383,9 @@
 (deftest compartment-query-test
   (testing "a new node has an empty list of resources in the Patient/0 compartment"
     (with-system [{:blaze.db/keys [node]} system]
-      (is (coll/empty? (d/compartment-query
-                         (d/db node) "Patient" "0" "Observation"
-                         [["code" "foo"]])))))
+      (is (empty? (d/compartment-query
+                    (d/db node) "Patient" "0" "Observation"
+                    [["code" "foo"]])))))
 
   (testing "returns the Observation in the Patient/0 compartment"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -4477,9 +4483,9 @@
                                  :code #fhir/code"code"}]}}]]
        [[:delete "Observation" "0"]]]
 
-      (is (coll/empty? (d/compartment-query
-                         (d/db node) "Patient" "0" "Observation"
-                         [["code" "system|code"]])))))
+      (is (empty? (d/compartment-query
+                    (d/db node) "Patient" "0" "Observation"
+                    [["code" "system|code"]])))))
 
   (testing "finds resources after deleted ones"
     (let [observation
@@ -4556,7 +4562,7 @@
           [0 :id] := "0"))
 
       (testing "returns nothing because of non-matching second criteria"
-        (is (coll/empty?
+        (is (empty?
               (d/compartment-query
                 (d/db node) "Patient" "0" "Observation"
                 [["code" "system-191514|code-191518"]
@@ -4570,9 +4576,9 @@
 
   (testing "Unknown compartment is not a problem"
     (with-system [{:blaze.db/keys [node]} system]
-      (is (coll/empty? (d/compartment-query
-                         (d/db node) "foo" "bar" "Condition"
-                         [["code" "baz"]])))))
+      (is (empty? (d/compartment-query
+                    (d/db node) "foo" "bar" "Condition"
+                    [["code" "baz"]])))))
 
   (testing "Unknown type is not a problem"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -4739,21 +4745,23 @@
     (with-system-data [{:blaze.db/keys [node]} system]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-        :fhir/type := :fhir/Patient
-        [:meta :versionId] := #fhir/id"1"
-        [:meta :lastUpdated] := Instant/EPOCH
-        :id := "0")))
+      (doseq [target [node (d/db node)]]
+        (given @(d/pull target (d/resource-handle (d/db node) "Patient" "0"))
+          :fhir/type := :fhir/Patient
+          [:meta :versionId] := #fhir/id"1"
+          [:meta :lastUpdated] := Instant/EPOCH
+          :id := "0"))))
 
   (testing "resource content not-found"
     (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-system)]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [resource-handle (d/resource-handle (d/db node) "Patient" "0")]
-        (given-failed-future (d/pull node resource-handle)
-          ::anom/category := ::anom/not-found
-          ::anom/message := (format "The resource content of `Patient/0` with hash `%s` was not found."
-                                    (:hash resource-handle)))))))
+        (doseq [target [node (d/db node)]]
+          (given-failed-future (d/pull target resource-handle)
+            ::anom/category := ::anom/not-found
+            ::anom/message := (format "The resource content of `Patient/0` with hash `%s` was not found."
+                                      (:hash resource-handle))))))))
 
 
 (deftest pull-content-test
@@ -4852,7 +4860,7 @@
 (deftest instance-history-test
   (testing "a new node has an empty instance history"
     (with-system [{:blaze.db/keys [node]} system]
-      (is (coll/empty? (d/instance-history (d/db node) "Patient" "0")))
+      (is (empty? (d/instance-history (d/db node) "Patient" "0")))
       (is (zero? (d/total-num-of-instance-changes (d/db node) "Patient" "0")))))
 
   (testing "a node with one patient"
@@ -4870,7 +4878,7 @@
           [0 :meta :versionId] := #fhir/id"1"))
 
       (testing "has an empty history on another patient"
-        (is (coll/empty? (d/instance-history (d/db node) "Patient" "1")))
+        (is (empty? (d/instance-history (d/db node) "Patient" "1")))
         (is (zero? (d/total-num-of-instance-changes (d/db node) "Patient" "1"))))))
 
   (testing "a node with one deleted patient"
@@ -4915,7 +4923,7 @@
           [0 :active] := true))
 
       (testing "overshooting the start-t returns an empty collection"
-        (is (coll/empty? (d/instance-history (d/db node) "Patient" "0" 0))))))
+        (is (empty? (d/instance-history (d/db node) "Patient" "0" 0))))))
 
   (testing "the database is immutable"
     (testing "while updating a patient"
@@ -4944,7 +4952,7 @@
 (deftest type-history-test
   (testing "a new node has an empty type history"
     (with-system [{:blaze.db/keys [node]} system]
-      (is (coll/empty? (d/type-history (d/db node) "Patient")))
+      (is (empty? (d/type-history (d/db node) "Patient")))
       (is (zero? (d/total-num-of-type-changes (d/db node) "Patient")))))
 
   (testing "a node with one patient"
@@ -4962,7 +4970,7 @@
           [0 :meta :versionId] := #fhir/id"1"))
 
       (testing "has an empty observation history"
-        (is (coll/empty? (d/type-history (d/db node) "Observation")))
+        (is (empty? (d/type-history (d/db node) "Observation")))
         (is (zero? (d/total-num-of-type-changes (d/db node) "Observation"))))))
 
   (testing "a node with one deleted patient"
@@ -5007,7 +5015,7 @@
           [0 :id] := "0"))
 
       (testing "overshooting the start-t returns an empty collection"
-        (is (coll/empty? (d/type-history (d/db node) "Patient" 0))))))
+        (is (empty? (d/type-history (d/db node) "Patient" 0))))))
 
   (testing "a node with two patients in one transaction"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -5072,7 +5080,7 @@
 (deftest system-history-test
   (testing "a new node has an empty system history"
     (with-system [{:blaze.db/keys [node]} system]
-      (is (coll/empty? (d/system-history (d/db node))))
+      (is (empty? (d/system-history (d/db node))))
       (is (zero? (d/total-num-of-system-changes (d/db node))))))
 
   (testing "a node with one patient"

@@ -9,10 +9,6 @@
   (.synchronous (.-cache (:blaze.db/resource-cache system))))
 
 
-(defn ^Cache resource-handle-cache []
-  (:blaze.db/resource-handle-cache system))
-
-
 (defn ^Cache tx-cache []
   (:blaze.db/tx-cache system))
 
@@ -24,9 +20,6 @@
 (comment
   (.estimatedSize (resource-cache))
   (.invalidateAll (resource-cache))
-
-  (.estimatedSize (resource-handle-cache))
-  (.invalidateAll (resource-handle-cache))
 
   (.estimatedSize (tx-cache))
   (.invalidateAll (tx-cache))

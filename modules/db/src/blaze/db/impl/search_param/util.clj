@@ -70,16 +70,10 @@
     (resource-handle-mapper* context tid)))
 
 
-(defn resource-handle [rh-cache raoi t]
-  (if rh-cache
-    (rao/caching-resource-handle rh-cache raoi t)
-    (rao/non-caching-resource-handle raoi t)))
-
-
-(defn- id-groups-counter [{:keys [snapshot rh-cache t]} tid]
+(defn- id-groups-counter [{:keys [snapshot t]} tid]
   (fn [id-groups]
     (with-open [raoi (kv/new-iterator snapshot :resource-as-of-index)]
-      (let [resource-handle (resource-handle rh-cache raoi t)]
+      (let [resource-handle (rao/resource-handle raoi t)]
         (reduce
           (fn [sum [[id] :as tuples]]
             (if-let [handle (resource-handle tid id)]

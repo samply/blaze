@@ -10,10 +10,7 @@
     [blaze.db.kv :as kv]
     [blaze.fhir.hash :as hash])
   (:import
-    [blaze.db.impl.index.resource_as_of Key]
-    [com.github.benmanes.caffeine.cache Cache]
-    [com.google.common.primitives Ints]
-    [java.util.function Function]))
+    [com.google.common.primitives Ints]))
 
 
 (set! *warn-on-reflection* true)
@@ -416,29 +413,7 @@
         vb))))
 
 
-(defn caching-resource-handle
-  "Returns a function which can be called with a `tid`, an `id` and an optional
-  `t` which will lookup the resource handle in `raoi` using `rh-cache` as cache.
-
-  The `t` is the default if `t` isn't given at the returned function.
-
-  The returned function can't be called concurrently."
-  [rh-cache raoi t]
-  (let [tb (bb/allocate-direct max-key-size)
-        kb (bb/allocate-direct max-key-size)
-        vb (bb/allocate-direct value-size)
-        rh (reify Function
-             (apply [_ key]
-               (resource-handle** raoi tb kb vb (.-tid ^Key key)
-                                  (.-id ^Key key) (.-t ^Key key))))]
-    (fn resource-handle
-      ([tid id]
-       (resource-handle tid id t))
-      ([tid id t]
-       (.get ^Cache rh-cache (Key. tid id t) rh)))))
-
-
-(defn non-caching-resource-handle
+(defn resource-handle
   "Returns a function which can be called with a `tid`, an `id` and an optional
   `t` which will lookup the resource handle in `raoi`.
 

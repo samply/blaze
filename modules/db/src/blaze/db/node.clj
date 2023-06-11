@@ -327,7 +327,7 @@
           add-subsetted-xf)))
 
 
-(defrecord Node [context tx-log rh-cache tx-cache kv-store resource-store
+(defrecord Node [context tx-log tx-cache kv-store resource-store
                  search-param-registry resource-indexer state run? poll-timeout
                  finished]
   np/Node
@@ -479,8 +479,7 @@
      :blaze.db/resource-store
      :blaze.db/search-param-registry]
     :opt-un
-    [:blaze.db/resource-handle-cache
-     :blaze.db/enforce-referential-integrity]))
+    [:blaze.db/enforce-referential-integrity]))
 
 
 (def ^:private expected-kv-store-version 0)
@@ -517,14 +516,14 @@
 
 
 (defmethod ig/init-key :blaze.db/node
-  [_ {:keys [tx-log resource-handle-cache tx-cache indexer-executor kv-store
-             resource-indexer resource-store search-param-registry poll-timeout]
+  [_ {:keys [tx-log tx-cache indexer-executor kv-store resource-indexer
+             resource-store search-param-registry poll-timeout]
       :or {poll-timeout (time/seconds 1)}
       :as config}]
   (init-msg config)
   (check-version! kv-store)
-  (let [node (->Node (ctx config) tx-log resource-handle-cache tx-cache kv-store
-                     resource-store search-param-registry resource-indexer
+  (let [node (->Node (ctx config) tx-log tx-cache kv-store resource-store
+                     search-param-registry resource-indexer
                      (atom (initial-state kv-store))
                      (volatile! true)
                      poll-timeout
