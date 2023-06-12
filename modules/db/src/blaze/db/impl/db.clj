@@ -3,9 +3,9 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.db.impl.batch-db :as batch-db]
+    [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.macros :refer [with-open-coll]]
     [blaze.db.impl.protocols :as p]
-    [blaze.db.impl.search-param.util :as u]
     [blaze.db.kv :as kv])
   (:import
     [java.io Writer]))
@@ -15,14 +15,14 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(deftype Db [node kv-store rh-cache basis-t t]
+(deftype Db [node kv-store basis-t t]
   p/Db
   (-node [_]
     node)
 
   (-as-of [_ t]
     (assert (<= ^long t ^long basis-t))
-    (Db. node kv-store rh-cache basis-t t))
+    (Db. node kv-store basis-t t))
 
   (-basis-t [_]
     basis-t)
@@ -37,7 +37,7 @@
   (-resource-handle [_ tid id]
     (with-open [snapshot (kv/new-snapshot kv-store)
                 raoi (kv/new-iterator snapshot :resource-as-of-index)]
-      ((u/resource-handle rh-cache raoi t) tid id)))
+      ((rao/resource-handle raoi t) tid id)))
 
 
 
@@ -211,5 +211,4 @@
 (defn db
   "Creates a database on `node` based on `t`."
   [node t]
-  (let [{:keys [kv-store rh-cache]} node]
-    (->Db node kv-store rh-cache t t)))
+  (->Db node (:kv-store node) t t))

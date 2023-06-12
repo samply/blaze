@@ -307,16 +307,15 @@
   the same. Only the performance for multiple calls differs. It's not thread
   save and has to be closed after usage because it holds open iterators."
   ^AutoCloseable
-  [{:keys [kv-store rh-cache] :as node} basis-t t]
+  [{:keys [kv-store] :as node} basis-t t]
   (let [snapshot (kv/new-snapshot kv-store)]
     (->BatchDb
       node
       basis-t
       (let [raoi (kv/new-iterator snapshot :resource-as-of-index)]
         {:snapshot snapshot
-         :rh-cache rh-cache
          :raoi raoi
-         :resource-handle (u/resource-handle rh-cache raoi t)
+         :resource-handle (rao/resource-handle raoi t)
          :svri (kv/new-iterator snapshot :search-param-value-index)
          :rsvi (kv/new-iterator snapshot :resource-value-index)
          :cri (kv/new-iterator snapshot :compartment-resource-type-index)
