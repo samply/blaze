@@ -95,6 +95,11 @@
      ::resource-store-failing-on-put {}}))
 
 
+(deftest node-test
+  (with-system [{:blaze.db/keys [node]} system]
+    (is (identical? node (d/node (d/db node))))))
+
+
 (deftest sync-test
   (testing "on already available database value"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -321,8 +326,8 @@
           (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
             :fhir/type := :fhir/Observation
             :id := "0"
-            [:subject :reference] := "Patient/0"
             [:meta :versionId] := #fhir/id"1"
+            [:subject :reference] := "Patient/0"
             [meta :blaze.db/op] := :put))))
 
     (testing "updating one Patient"
@@ -333,8 +338,8 @@
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
           :fhir/type := :fhir/Patient
           :id := "0"
-          :gender := #fhir/code"female"
           [:meta :versionId] := #fhir/id"2"
+          :gender := #fhir/code"female"
           [meta :blaze.db/op] := :put))
 
       (testing "with if-none-match"
@@ -386,23 +391,23 @@
         (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
           :fhir/type := :fhir/Observation
           :id := "0"
-          [:subject :reference] := "Patient/0"
           [:meta :versionId] := #fhir/id"1"
+          [:subject :reference] := "Patient/0"
           [meta :blaze.db/op] := :put)
 
         (given @(d/pull node (d/resource-handle (d/db node) "Observation" "1"))
           :fhir/type := :fhir/Observation
           :id := "1"
-          [:subject :reference] := "Patient/0"
           [:meta :versionId] := #fhir/id"1"
+          [:subject :reference] := "Patient/0"
           [meta :blaze.db/op] := :put)
 
         (given @(d/pull node (d/resource-handle (d/db node) "List" "0"))
           :fhir/type := :fhir/List
           :id := "0"
+          [:meta :versionId] := #fhir/id"1"
           [:entry 0 :item :reference] := "Observation/0"
           [:entry 1 :item :reference] := "Observation/1"
-          [:meta :versionId] := #fhir/id"1"
           [meta :blaze.db/op] := :put))))
 
   (testing "delete"
@@ -527,8 +532,8 @@
           (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
             :fhir/type := :fhir/Observation
             :id := "0"
-            [:subject :reference] := "Patient/0"
             [:meta :versionId] := #fhir/id"1"
+            [:subject :reference] := "Patient/0"
             [meta :blaze.db/op] := :create)))))
 
   (testing "creating 100 transactions in parallel"
@@ -608,7 +613,8 @@
       (testing "pull-content"
         (given @(d/pull-content node (d/resource-handle (d/db node) "Patient" "0"))
           :fhir/type := :fhir/Patient
-          :id := "0"))
+          :id := "0"
+          :meta := nil))
 
       (testing "number of changes is 1"
         (is (= 1 (:num-changes (d/resource-handle (d/db node) "Patient" "0")))))))
@@ -4112,44 +4118,42 @@
       [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
 
       (testing "the patient can be found"
-        (given @(->> (d/compile-type-query node "Patient" [["active" "true"]])
-                     (d/execute-query (d/db node))
-                     (d/pull-many node))
-          [0 :fhir/type] := :fhir/Patient
-          [0 :id] := "0"))
+        (let [db (d/db node)]
+          (doseq [target [node db]]
+            (given @(->> (d/compile-type-query target "Patient" [["active" "true"]])
+                         (d/execute-query db)
+                         (d/pull-many target))
+              count := 1
+              [0 :fhir/type] := :fhir/Patient
+              [0 :id] := "0"))))
 
       (testing "token clauses are ordered before date clauses"
-        (given (-> (d/compile-type-query node "Patient" [["_lastUpdated" "lt3000-01-01"]
-                                                         ["active" "true"]])
-                   (d/query-clauses))
-          [0] := ["active" "true"]
-          [1] := ["_lastUpdated" "lt3000-01-01"]))
+        (doseq [target [node (d/db node)]]
+          (given (-> (d/compile-type-query target "Patient" [["_lastUpdated" "lt3000-01-01"]
+                                                             ["active" "true"]])
+                     (d/query-clauses))
+            [0] := ["active" "true"]
+            [1] := ["_lastUpdated" "lt3000-01-01"])))
 
       (testing "special all clause is removed"
-        (given (-> (d/compile-type-query node "Patient" [["_lastUpdated" "lt3000-01-01"]])
-                   (d/query-clauses))
-          count := 1
-          [0] := ["_lastUpdated" "lt3000-01-01"]))
+        (doseq [target [node (d/db node)]]
+          (given (-> (d/compile-type-query target "Patient" [["_lastUpdated" "lt3000-01-01"]])
+                     (d/query-clauses))
+            count := 1
+            [0] := ["_lastUpdated" "lt3000-01-01"])))
 
       (testing "an unknown search-param errors"
-        (given (d/compile-type-query node "Patient" [["foo" "bar"]
-                                                     ["active" "true"]])
-          ::anom/category := ::anom/not-found
-          ::anom/message := "The search-param with code `foo` and type `Patient` was not found."))
+        (doseq [target [node (d/db node)]]
+          (given (d/compile-type-query target "Patient" [["foo" "bar"]
+                                                       ["active" "true"]])
+            ::anom/category := ::anom/not-found
+            ::anom/message := "The search-param with code `foo` and type `Patient` was not found.")))
 
       (testing "invalid date"
-        (given (d/compile-type-query node "Patient" [["birthdate" "invalid"]])
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`.")))))
-
-
-(defn- pull-type-query-lenient
-  ([node type clauses]
-   (when-ok [query (d/compile-type-query-lenient node type clauses)]
-     @(d/pull-many node (d/execute-query (d/db node) query))))
-  ([node type clauses start-id]
-   (when-ok [query (d/compile-type-query-lenient node type clauses)]
-     @(d/pull-many node (d/execute-query (d/db node) query start-id)))))
+        (doseq [target [node (d/db node)]]
+          (given (d/compile-type-query target "Patient" [["birthdate" "invalid"]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`."))))))
 
 
 (defn- count-type-query-lenient [node type clauses]
@@ -4164,20 +4168,35 @@
         [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (testing "the patient can be found"
-        (given (pull-type-query-lenient node "Patient" [["active" "true"]])
-          count := 1
-          [0 :id] := "0"))
+        (let [db (d/db node)]
+          (doseq [target [node db]]
+            (given @(->> (d/compile-type-query-lenient target "Patient" [["active" "true"]])
+                         (d/execute-query db)
+                         (d/pull-many target))
+              count := 1
+              [0 :fhir/type] := :fhir/Patient
+              [0 :id] := "0"))))
 
       (testing "an unknown search-param is ignored"
-        (given (pull-type-query-lenient node "Patient" [["foo" "bar"] ["active" "true"]])
-          count := 1
-          [0 :id] := "0")
+        (let [db (d/db node)]
+          (doseq [target [node db]]
+            (given @(->> (d/compile-type-query-lenient target "Patient" [["foo" "bar"] ["active" "true"]])
+                         (d/execute-query db)
+                         (d/pull-many target))
+              count := 1
+              [0 :fhir/type] := :fhir/Patient
+              [0 :id] := "0")))
 
         (testing "one unknown search parameter will result in an empty query"
-          (given (pull-type-query-lenient node "Patient" [["foo" "bar"]])
-            count := 2
-            [0 :id] := "0"
-            [1 :id] := "1")
+          (let [db (d/db node)]
+            (doseq [target [node db]]
+              (let [query (d/compile-type-query-lenient target "Patient" [["foo" "bar"]])]
+                (given @(d/pull-many target (d/execute-query db query))
+                  count := 2
+                  [0 :id] := "0"
+                  [1 :id] := "1")
+
+                (is (empty? (d/query-clauses query))))))
 
           (testing "count query"
             (is (= 2 (count-type-query-lenient node "Patient" [["foo" "bar"]]))))))
@@ -4235,6 +4254,7 @@
        [[:delete "Patient" "0"]]]
 
       (testing "doesn't contain it in the list"
+        (is (zero? (count (d/system-list (d/db node)))))
         (is (empty? (d/system-list (d/db node))))
         (is (zero? (d/system-total (d/db node)))))))
 
@@ -4271,6 +4291,7 @@
           [0 :meta :versionId] := #fhir/id"1"))
 
       (testing "overshooting the start-id returns an empty collection"
+        (is (zero? (count (d/system-list (d/db node) "Patient" "1"))))
         (is (empty? (d/system-list (d/db node) "Patient" "1")))))))
 
 
@@ -4704,13 +4725,38 @@
                               {:system #fhir/uri"system-191514"
                                :code #fhir/code"code-191518"}]}}]]]
 
-    (given @(let [query (d/compile-compartment-query
-                          node "Patient" "Observation"
-                          [["code" "system-191514|code-191518"]])]
-              (d/pull-many node (d/execute-query (d/db node) query "0")))
-      count := 1
-      [0 :fhir/type] := :fhir/Observation
-      [0 :id] := "0")))
+    (let [db (d/db node)]
+      (doseq [target [node db]]
+        (given @(let [query (d/compile-compartment-query
+                              target "Patient" "Observation"
+                              [["code" "system-191514|code-191518"]])]
+                  (d/pull-many target (d/execute-query db query "0")))
+          count := 1
+          [0 :fhir/type] := :fhir/Observation
+          [0 :id] := "0")))))
+
+
+(deftest compile-compartment-query-lenient-test
+  (with-system-data [{:blaze.db/keys [node]} system]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/Observation :id "0"
+             :subject #fhir/Reference{:reference "Patient/0"}
+             :code
+             #fhir/CodeableConcept
+                     {:coding
+                      [#fhir/Coding
+                              {:system #fhir/uri"system-191514"
+                               :code #fhir/code"code-191518"}]}}]]]
+
+    (let [db (d/db node)]
+      (doseq [target [node db]]
+        (given @(let [query (d/compile-compartment-query-lenient
+                              target "Patient" "Observation"
+                              [["code" "system-191514|code-191518"]])]
+                  (d/pull-many target (d/execute-query db query "0")))
+          count := 1
+          [0 :fhir/type] := :fhir/Observation
+          [0 :id] := "0")))))
 
 
 (defmethod ig/init-key ::defective-resource-store [_ {:keys [hashes-to-store]}]
@@ -4745,19 +4791,21 @@
     (with-system-data [{:blaze.db/keys [node]} system]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (doseq [target [node (d/db node)]]
-        (given @(d/pull target (d/resource-handle (d/db node) "Patient" "0"))
-          :fhir/type := :fhir/Patient
-          [:meta :versionId] := #fhir/id"1"
-          [:meta :lastUpdated] := Instant/EPOCH
-          :id := "0"))))
+      (let [db (d/db node)]
+        (doseq [target [node db]]
+          (given @(d/pull target (d/resource-handle db "Patient" "0"))
+            :fhir/type := :fhir/Patient
+            :id := "0"
+            [:meta :versionId] := #fhir/id"1"
+            [:meta :lastUpdated] := Instant/EPOCH)))))
 
   (testing "resource content not-found"
     (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-system)]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (let [resource-handle (d/resource-handle (d/db node) "Patient" "0")]
-        (doseq [target [node (d/db node)]]
+      (let [db (d/db node)
+            resource-handle (d/resource-handle db "Patient" "0")]
+        (doseq [target [node db]]
           (given-failed-future (d/pull target resource-handle)
             ::anom/category := ::anom/not-found
             ::anom/message := (format "The resource content of `Patient/0` with hash `%s` was not found."
@@ -4769,10 +4817,12 @@
     (with-system-data [{:blaze.db/keys [node]} system]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (given @(d/pull-content node (d/resource-handle (d/db node) "Patient" "0"))
-        :fhir/type := :fhir/Patient
-        :meta :? nil?
-        :id := "0")))
+      (let [db (d/db node)]
+        (doseq [target [node db]]
+          (given @(d/pull-content target (d/resource-handle db "Patient" "0"))
+            :fhir/type := :fhir/Patient
+            :id := "0"
+            :meta := nil)))))
 
   (testing "resource content not-found"
     (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-system)]
@@ -4799,13 +4849,14 @@
                                  :code #fhir/code"code-191518"}]}}]]]
 
       (let [db (d/db node)]
-        (given @(d/pull-many db (d/type-list db "Observation"))
-          count := 1
-          [0 :fhir/type] := :fhir/Observation
-          [0 :id] := "0"
-          [0 :meta :tag] :? nil?
-          [0 :code :coding 0 :code] := #fhir/code"code-191518"
-          [0 :subject :reference] := #fhir/string"Patient/0"))))
+        (doseq [target [node db]]
+          (given @(d/pull-many target (d/type-list db "Observation"))
+            count := 1
+            [0 :fhir/type] := :fhir/Observation
+            [0 :id] := "0"
+            [0 :meta :tag] := nil
+            [0 :code :coding 0 :code] := #fhir/code"code-191518"
+            [0 :subject :reference] := #fhir/string"Patient/0")))))
 
   (testing "pull only certain elements"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -4820,14 +4871,15 @@
                                  :code #fhir/code"code-191518"}]}}]]]
 
       (let [db (d/db node)]
-        (given @(d/pull-many db (d/type-list db "Observation") [:subject])
-          count := 1
-          [0 :fhir/type] := :fhir/Observation
-          [0 :id] := "0"
-          [0 :meta :tag 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-          [0 :meta :tag 0 :code] := #fhir/code"SUBSETTED"
-          [0 :code] :? nil?
-          [0 :subject :reference] := #fhir/string"Patient/0"))))
+        (doseq [target [node db]]
+          (given @(d/pull-many target (d/type-list db "Observation") [:subject])
+            count := 1
+            [0 :fhir/type] := :fhir/Observation
+            [0 :id] := "0"
+            [0 :meta :tag 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+            [0 :meta :tag 0 :code] := #fhir/code"SUBSETTED"
+            [0 :code] := nil
+            [0 :subject :reference] := #fhir/string"Patient/0")))))
 
   (testing "pull a single non-existing hash"
     (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-system)]
@@ -4846,8 +4898,9 @@
         [[[:put patient-0]
           [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
-        (let [existing-rh (d/resource-handle (d/db node) "Patient" "0")
-              non-existing-rh (d/resource-handle (d/db node) "Patient" "1")]
+        (let [db (d/db node)
+              existing-rh (d/resource-handle db "Patient" "0")
+              non-existing-rh (d/resource-handle db "Patient" "1")]
           (given-failed-future (d/pull-many node [existing-rh non-existing-rh])
             ::anom/category := ::anom/not-found
             ::anom/message := (format "The resource content of `Patient/1` with hash `%s` was not found."
@@ -5350,15 +5403,24 @@
           (is (empty? (d/rev-include db patients "Observation" "code"))))))))
 
 
-(deftest new-batch-db-test
+(deftest batch-db-test
   (testing "resource-handle"
     (with-system-data [{:blaze.db/keys [node]} system]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
-        (given @(d/pull batch-db (d/resource-handle batch-db "Patient" "0"))
-          :fhir/type := :fhir/Patient
-          :id := "0"))))
+        (let [resource-handle (d/resource-handle batch-db "Patient" "0")]
+          (testing "pull"
+            (given @(d/pull batch-db resource-handle)
+              :fhir/type := :fhir/Patient
+              :id := "0"
+              [:meta :versionId] := #fhir/id"1"))
+
+          (testing "pull-content"
+            (given @(d/pull-content batch-db resource-handle)
+              :fhir/type := :fhir/Patient
+              :id := "0"
+              :meta := nil))))))
 
   (testing "type-list-and-total"
     (with-system-data [{:blaze.db/keys [node]} system]
@@ -5432,4 +5494,54 @@
                   (->> (d/execute-query batch-db query "0")
                        (d/pull-many batch-db)))
           [0 :fhir/type] := :fhir/Observation
-          [0 :id] := "0")))))
+          [0 :id] := "0"))))
+
+  (testing "node"
+    (with-system [{:blaze.db/keys [node]} system]
+      (with-open [batch-db (d/new-batch-db (d/db node))]
+        (is (identical? node (d/node batch-db))))))
+
+  (testing "pull"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (with-open [batch-db (d/new-batch-db (d/db node))]
+        (given @(d/pull batch-db (d/resource-handle batch-db "Patient" "0"))
+          :fhir/type := :fhir/Patient
+          :id := "0"
+          [:meta :versionId] := #fhir/id"1"))))
+
+  (testing "pull-content"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (with-open [batch-db (d/new-batch-db (d/db node))]
+        (given @(d/pull-content batch-db (d/resource-handle batch-db "Patient" "0"))
+          :fhir/type := :fhir/Patient
+          :id := "0"
+          :meta := nil))))
+
+  (testing "pull-many"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
+
+      (with-open [batch-db (d/new-batch-db (d/db node))]
+        (testing "full pull"
+          (given @(d/pull-many batch-db (d/type-list batch-db "Patient"))
+            count := 1
+            [0 :id] := "0"
+            [0 :active] := true))
+
+        (testing "elements pull"
+          (given @(d/pull-many batch-db (d/type-list batch-db "Patient") [:id])
+            count := 1
+            [0 :id] := "0"
+            [0 :active] := nil)))))
+
+  (testing "tx"
+    (with-system-data [{:blaze.db/keys [node]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "id-142136"}]]]
+
+      (with-open [batch-db (d/new-batch-db (d/db node))]
+        (given (d/tx batch-db (d/basis-t batch-db))
+          :blaze.db.tx/instant := Instant/EPOCH)))))
