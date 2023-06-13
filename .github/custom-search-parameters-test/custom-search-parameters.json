@@ -1,0 +1,23 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "fullUrl": "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status",
+      "resource": {
+        "resourceType": "SearchParameter",
+        "id": "marital-status",
+        "url": "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status",
+        "version": "0.1.0",
+        "name": "marital-status",
+        "status": "active",
+        "code": "marital-status",
+        "base": [
+          "Patient"
+        ],
+        "type": "token",
+        "expression": "Patient.maritalStatus"
+      }
+    }
+  ]
+}

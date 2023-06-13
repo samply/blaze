@@ -3,6 +3,8 @@
     [blaze.db.kv :as kv]
     [blaze.db.kv.rocksdb.impl :as impl]
     [blaze.db.kv.rocksdb.metrics :as metrics]
+    [blaze.db.kv.rocksdb.metrics.spec]
+    [blaze.db.kv.rocksdb.protocols :as p]
     [blaze.db.kv.rocksdb.spec]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
@@ -12,9 +14,9 @@
     [java.nio ByteBuffer]
     [java.util ArrayList]
     [org.rocksdb
-     RocksDB RocksIterator WriteOptions WriteBatch ColumnFamilyHandle
-     Statistics LRUCache CompactRangeOptions Snapshot ReadOptions
-     StatsLevel Env Priority]))
+     ColumnFamilyHandle CompactRangeOptions Env LRUCache Priority
+     ReadOptions RocksDB RocksDBException RocksIterator Snapshot Statistics
+     StatsLevel WriteBatch WriteOptions]))
 
 
 (set! *warn-on-reflection* true)
@@ -85,15 +87,18 @@
     (.releaseSnapshot db snapshot)))
 
 
-(defprotocol Rocks
-  (-get-property [_ name] [_ column-family name]))
-
-
 (defn get-property
   ([store name]
-   (-get-property store name))
+   (p/-get-property store name))
   ([store column-family name]
-   (-get-property store column-family name)))
+   (p/-get-property store column-family name)))
+
+
+(defn get-long-property
+  ([store name]
+   (p/-get-long-property store name))
+  ([store column-family name]
+   (p/-get-long-property store column-family name)))
 
 
 (deftype RocksKvStore [^RocksDB db ^WriteOptions write-opts cfhs]
@@ -136,12 +141,33 @@
       (impl/write-wb! cfhs wb entries)
       (.write db write-opts wb)))
 
-  Rocks
+  p/Rocks
+  (-get-column-families [_]
+    (keys cfhs))
+
   (-get-property [_ name]
-    (.getProperty db name))
+    (try
+      (.getProperty db name)
+      (catch RocksDBException e
+        (impl/property-error e name))))
 
   (-get-property [_ column-family name]
-    (.getProperty db (impl/get-cfh cfhs column-family) name))
+    (try
+      (.getProperty db (impl/get-cfh cfhs column-family) name)
+      (catch RocksDBException e
+        (impl/column-family-property-error e column-family name))))
+
+  (-get-long-property [_ name]
+    (try
+      (.getLongProperty db name)
+      (catch RocksDBException e
+        (impl/property-error e name))))
+
+  (-get-long-property [_ column-family name]
+    (try
+      (.getLongProperty db (impl/get-cfh cfhs column-family) name)
+      (catch RocksDBException e
+        (impl/column-family-property-error e column-family name))))
 
   AutoCloseable
   (close [_]
@@ -195,7 +221,7 @@
 
 
 (defmethod ig/pre-init-spec ::kv/rocksdb [_]
-  (s/keys :req-un [::dir ::block-cache ::stats] :opt-un [::opts]))
+  (s/keys :req-un [::dir ::stats] :opt-un [::block-cache ::opts]))
 
 
 (defn- init-log-msg [dir opts]
@@ -234,9 +260,33 @@
   (.close ^AutoCloseable stats))
 
 
+(defmethod ig/pre-init-spec ::stats-collector [_]
+  (s/keys :req-un [::metrics/stats]))
+
+
 (defmethod ig/init-key ::stats-collector
   [_ {:keys [stats]}]
   (metrics/stats-collector stats))
 
 
+(defmethod ig/pre-init-spec ::block-cache-collector [_]
+  (s/keys :req-un [::block-cache]))
+
+
+(defmethod ig/init-key ::block-cache-collector
+  [_ {:keys [block-cache]}]
+  (metrics/block-cache-collector block-cache))
+
+
+(defmethod ig/pre-init-spec ::table-reader-collector [_]
+  (s/keys :req-un [::metrics/stores]))
+
+
+(defmethod ig/init-key ::table-reader-collector
+  [_ {:keys [stores]}]
+  (metrics/table-reader-collector stores))
+
+
 (derive ::stats-collector :blaze.metrics/collector)
+(derive ::block-cache-collector :blaze.metrics/collector)
+(derive ::table-reader-collector :blaze.metrics/collector)

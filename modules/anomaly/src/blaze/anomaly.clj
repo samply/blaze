@@ -32,6 +32,10 @@
   (identical? ::anom/fault (::anom/category x)))
 
 
+(defn busy? [x]
+  (identical? ::anom/busy (::anom/category x)))
+
+
 (defn- anomaly*
   ([category msg]
    (cond-> {::anom/category category} msg (assoc ::anom/message msg)))

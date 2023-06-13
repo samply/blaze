@@ -132,7 +132,6 @@
     "-d" "modules/thread-pool-executor-collector"
     "--exclude" "com.taoensso/timbre"
     "--exclude" "org.antlr/antlr4"
-    "--exclude" "org.eclipse.jetty/jetty-server"
     "--exclude" "org.clojure/alpha.spec"
     "--exclude" "com.walmartlabs/lacinia"
     "--exclude" "lambdaisland/kaocha"]}}}

@@ -2,6 +2,7 @@
   "https://www.hl7.org/fhir/search.html#has"
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.async.comp :as ac]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
@@ -124,6 +125,10 @@
     (coll/eduction
       (drop-lesser-ids (codec/id-string start-id))
       (resource-handles context tid value)))
+
+  (-count-resource-handles [search-param context tid modifier value]
+    (ac/completed-future
+      (count (p/-resource-handles search-param context tid modifier value))))
 
   (-matches? [_ context resource-handle _ values]
     (some? (some #(matches? context resource-handle %) values)))

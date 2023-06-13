@@ -110,7 +110,7 @@
                (gen/tuple year month day))]))
 
 
-(def dateTime-value
+(defn dateTime-value [& {:keys [year] :or {year year}}]
   (gen/one-of
     [(gen/fmap (partial format "%04d") year)
      (gen/fmap (partial apply format "%04d-%02d")
@@ -234,7 +234,7 @@
 
 
 (def dateTime
-  (primitive-gen type/dateTime dateTime-value))
+  (primitive-gen type/dateTime (dateTime-value)))
 
 
 (def time
@@ -336,11 +336,13 @@
            extension (extensions)
            start (nilable (dateTime))
            end (nilable (dateTime))}}]
-  (->> (gen/tuple id extension start end)
-       (to-map [:id :extension :start :end])
-       (gen/such-that #(<= (system/date-time-lower-bound (type/value (:start %)))
-                           (system/date-time-upper-bound (type/value (:end %)))))
-       (gen/fmap type/period)))
+  (as-> (gen/tuple id extension start end) x
+        (to-map [:id :extension :start :end] x)
+        (gen/such-that #(<= (system/date-time-lower-bound (type/value (:start %)))
+                            (system/date-time-upper-bound (type/value (:end %))))
+                       x
+                       100)
+        (gen/fmap type/period x)))
 
 
 ;; TODO: SampledData
@@ -500,6 +502,17 @@
    encounter (rare-nil (reference :reference (gen/return nil)))
    effective (rare-nil (gen/one-of [(dateTime) (period)]))
    value (rare-nil (observation-value))])
+
+
+(def-resource-gen encounter
+  [id id-value
+   meta (meta)
+   identifier (gen/vector (identifier))
+   status (rare-nil (code))
+   type (gen/vector (codeable-concept))
+   priority (rare-nil (codeable-concept))
+   subject (rare-nil (reference :reference (gen/return nil)))
+   period (rare-nil (period))])
 
 
 (def-resource-gen procedure

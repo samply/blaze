@@ -26,9 +26,12 @@
 (deftest url-test
   (testing "url encoding of clauses"
     (testing "Observation code with URL"
-      (is (= "base-url-110407/Observation?code=http%3A%2F%2Floinc.org%7C8480-6&__t=1"
-             (nav/url "base-url-110407" match nil
-                      [["code" "http://loinc.org|8480-6"]] 1 nil)))))
+      (is (= "base/Observation?code=http%3A%2F%2Floinc.org%7C8480-6&__t=1"
+             (nav/url "base" match nil [["code" "http://loinc.org|8480-6"]] 1 nil))))
+
+    (testing "Observation code with multiple values"
+      (is (= "base/Observation?code=8480-6%2C8310-5&__t=1"
+             (nav/url "base" match nil [["code" "8480-6,8310-5"]] 1 nil)))))
 
   (testing "two clauses with the same code"
     (is (= "base-url-110421/Observation?combo-code-value-quantity=8480-6%24ge140&combo-code-value-quantity=8462-4%24ge90&__t=1"

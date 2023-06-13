@@ -1,6 +1,7 @@
 (ns blaze.db.impl.db
   "Primary Database Implementation"
   (:require
+    [blaze.async.comp :as ac]
     [blaze.db.impl.batch-db :as batch-db]
     [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.macros :refer [with-open-coll]]
@@ -14,14 +15,14 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(deftype Db [node basis-t t]
+(deftype Db [node kv-store basis-t t]
   p/Db
   (-node [_]
     node)
 
   (-as-of [_ t]
     (assert (<= ^long t ^long basis-t))
-    (Db. node basis-t t))
+    (Db. node kv-store basis-t t))
 
   (-basis-t [_]
     basis-t)
@@ -34,10 +35,9 @@
   ;; ---- Instance-Level Functions --------------------------------------------
 
   (-resource-handle [_ tid id]
-    (let [{:keys [kv-store rh-cache]} node]
-      (with-open [snapshot (kv/new-snapshot kv-store)
-                  raoi (kv/new-iterator snapshot :resource-as-of-index)]
-        ((rao/resource-handle rh-cache raoi t) tid id))))
+    (with-open [snapshot (kv/new-snapshot kv-store)
+                raoi (kv/new-iterator snapshot :resource-as-of-index)]
+      ((rao/resource-handle raoi t) tid id)))
 
 
 
@@ -86,6 +86,11 @@
 
 
   ;; ---- Common Query Functions ----------------------------------------------
+
+  (-count-query [_ query]
+    (let [batch-db (batch-db/new-batch-db node basis-t t)]
+      (-> (p/-count-query batch-db query)
+          (ac/when-complete (fn [_ _] (.close batch-db))))))
 
   (-execute-query [_ query]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
@@ -206,4 +211,4 @@
 (defn db
   "Creates a database on `node` based on `t`."
   [node t]
-  (->Db node t t))
+  (->Db node (:kv-store node) t t))

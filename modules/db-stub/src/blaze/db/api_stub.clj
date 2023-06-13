@@ -6,7 +6,6 @@
     [blaze.db.kv.mem]
     [blaze.db.kv.mem-spec]
     [blaze.db.node]
-    [blaze.db.resource-handle-cache]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.kv :as rs-kv]
     [blaze.db.search-param-registry]
@@ -23,7 +22,6 @@
   {:blaze.db/node
    (merge
      {:tx-log (ig/ref :blaze.db/tx-log)
-      :resource-handle-cache (ig/ref :blaze.db/resource-handle-cache)
       :tx-cache (ig/ref :blaze.db/tx-cache)
       :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
       :resource-store (ig/ref ::rs/kv)
@@ -39,8 +37,6 @@
    [::kv/mem :blaze.db/transaction-kv-store]
    {:column-families {}}
    :blaze.test/fixed-clock {}
-
-   :blaze.db/resource-handle-cache {}
 
    :blaze.db/tx-cache
    {:kv-store (ig/ref :blaze.db/index-kv-store)}

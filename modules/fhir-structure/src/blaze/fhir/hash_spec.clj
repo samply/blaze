@@ -18,6 +18,11 @@
   :ret :blaze.resource/hash)
 
 
+(s/fdef hash/from-hex
+  :args (s/cat :s string?)
+  :ret :blaze.resource/hash)
+
+
 (s/fdef hash/to-byte-array
   :args (s/cat :hash :blaze.resource/hash)
   :ret bytes?)

@@ -24,6 +24,11 @@
   :ret nat-int?)
 
 
+(s/fdef util/page-offset
+  :args (s/cat :query-params (s/nilable :ring.request/query-params))
+  :ret nat-int?)
+
+
 (s/fdef util/page-type
   :args (s/cat :query-params (s/nilable :ring.request/query-params))
   :ret (s/nilable :fhir.resource/type))

@@ -52,9 +52,7 @@
 
 
 (s/fdef rao/resource-handle
-  :args (s/cat :rh-cache :blaze.db/resource-handle-cache
-               :raoi :blaze.db/kv-iterator
-               :t :blaze.db/t)
+  :args (s/cat :raoi :blaze.db/kv-iterator :t :blaze.db/t)
   :ret ::resource-handle-fn)
 
 

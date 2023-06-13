@@ -5,7 +5,6 @@
     [blaze.db.api :as d]
     [blaze.executors :as ex]
     [blaze.fhir.operation.graphql.spec]
-    [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [clojure.spec.alpha :as s]
     [com.walmartlabs.lacinia :as lacinia]
     [com.walmartlabs.lacinia.resolve :as resolve]
@@ -84,22 +83,17 @@
     (lacinia/execute schema (get (:params request) "query") nil {:blaze/db db})))
 
 
-(defn- handler [{:keys [executor] :as context}]
+(defmethod ig/pre-init-spec ::handler [_]
+  (s/keys :req-un [:blaze.db/node ::executor]))
+
+
+(defmethod ig/init-key ::handler [_ {:keys [executor] :as context}]
+  (log/info "Init FHIR $graphql operation handler")
   (let [schema (compile-schema context)]
     (fn [{:blaze/keys [db] :as request}]
       (ac/supply-async
         #(ring/response (execute-query schema db request))
         executor))))
-
-
-(defmethod ig/pre-init-spec ::handler [_]
-  (s/keys :req-un [:blaze.db/node ::executor]))
-
-
-(defmethod ig/init-key ::handler [_ context]
-  (log/info "Init FHIR $graphql operation handler")
-  (-> (handler context)
-      (wrap-observe-request-duration "operation-graphql")))
 
 
 

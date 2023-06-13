@@ -1,5 +1,6 @@
 (ns blaze.db.impl.index
   (:require
+    [blaze.async.comp :as ac]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
@@ -53,6 +54,22 @@
            search-param context tid modifier values start-id))
        (resource-handles
          search-param context tid modifier values start-id)))))
+
+
+(defn type-query-total
+  "Returns a CompletableFuture that will complete with the count of the
+  matching resource handles."
+  [context tid clauses]
+  (let [[[search-param modifier _ values] & other-clauses] clauses]
+    (if (seq other-clauses)
+      (ac/completed-future
+        (count
+          (coll/eduction
+            (other-clauses-filter context other-clauses)
+            (search-param/resource-handles
+              search-param context tid modifier values))))
+      (search-param/count-resource-handles
+        search-param context tid modifier values))))
 
 
 (defn system-query [_ _]

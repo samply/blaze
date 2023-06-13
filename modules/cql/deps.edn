@@ -5,23 +5,23 @@
   {:local/root "../db"}
 
   com.fasterxml.jackson.module/jackson-module-jaxb-annotations
-  {:mvn/version "2.15.0"}
+  {:mvn/version "2.15.2"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-xml
-  {:mvn/version "2.15.0"}
+  {:mvn/version "2.15.2"}
 
   info.cqframework/cql-to-elm
-  {:mvn/version "2.9.0"
+  {:mvn/version "2.10.0"
    :exclusions [xpp3/xpp3_xpath]}
 
   info.cqframework/elm-jackson
-  {:mvn/version "2.9.0"}
+  {:mvn/version "2.10.0"}
 
   info.cqframework/model-jackson
-  {:mvn/version "2.9.0"}
+  {:mvn/version "2.10.0"}
 
   info.cqframework/quick
-  {:mvn/version "2.9.0"}
+  {:mvn/version "2.10.0"}
 
   org.apache.commons/commons-text
   {:mvn/version "1.10.0"}

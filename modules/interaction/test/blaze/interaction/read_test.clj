@@ -12,7 +12,7 @@
     [blaze.db.spec]
     [blaze.interaction.read]
     [blaze.interaction.test-util :refer [wrap-error]]
-    [blaze.middleware.fhir.db :refer [wrap-db]]
+    [blaze.middleware.fhir.db :refer [wrap-db wrap-versioned-instance-db]]
     [blaze.middleware.fhir.db-spec]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
@@ -53,7 +53,18 @@
     `(with-system-data [{node# :blaze.db/node
                          handler# :blaze.interaction/read} system]
        ~txs
-       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# 100)
+                                  wrap-error)]
+         ~@body))))
+
+
+(defmacro with-vread-handler [[handler-binding] & more]
+  (let [[txs body] (tu/extract-txs-body more)]
+    `(with-system-data [{node# :blaze.db/node
+                         handler# :blaze.interaction/read} system]
+       ~txs
+       (let [~handler-binding (-> handler# wrap-defaults
+                                  (wrap-versioned-instance-db node# 100)
                                   wrap-error)]
          ~@body))))
 
@@ -88,7 +99,7 @@
           [:issue 0 :diagnostics] := "Resource id `A_B` is invalid."))))
 
   (testing "returns Bad-Request on invalid version id"
-    (with-handler [handler]
+    (with-vread-handler [handler]
       (let [{:keys [status body]}
             @(handler {:path-params {:id "0" :vid "a"}})]
 
@@ -159,9 +170,10 @@
           [:meta :versionId] := #fhir/id"1"
           [:meta :lastUpdated] := Instant/EPOCH))))
 
-  (testing "returns existing resource on versioned read"
-    (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+  (testing "returns existing resource on versioned read even if it is currently deleted"
+    (with-vread-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:delete "Patient" "0"]]]
 
       (let [{:keys [status headers body]}
             @(handler {:path-params {:id "0" :vid "1"}})]

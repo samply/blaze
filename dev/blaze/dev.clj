@@ -55,13 +55,6 @@
   (log/set-level! :info)
   )
 
-
-;; Resource Handle Cache
-(comment
-  (str (ccp/-stats (:blaze.db/resource-handle-cache system)))
-  (.invalidateAll ^Cache (:blaze.db/resource-handle-cache system))
-  )
-
 ;; Transaction Cache
 (comment
   (str (ccp/-stats (:blaze.db/tx-cache system)))
@@ -71,6 +64,7 @@
 ;; Resource Cache
 (comment
   (str (ccp/-stats (:blaze.db/resource-cache system)))
+  (ccp/-estimated-size (:blaze.db/resource-cache system))
   (resource-cache/invalidate-all! (:blaze.db/resource-cache system))
   )
 

@@ -4,6 +4,7 @@
   https://www.hl7.org/fhir/http.html#search"
   (:require
     [blaze.async.comp :as ac]
+    [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.db.resource-store :as rs]
     [blaze.fhir.spec :as fhir-spec]
@@ -13,7 +14,7 @@
     [blaze.interaction.search.params-spec]
     [blaze.interaction.search.util-spec]
     [blaze.interaction.test-util :refer [wrap-error]]
-    [blaze.middleware.fhir.db :refer [wrap-db]]
+    [blaze.middleware.fhir.db :as db]
     [blaze.middleware.fhir.db-spec]
     [blaze.page-store-spec]
     [blaze.page-store.local]
@@ -180,13 +181,21 @@
         ::reitit/router router))))
 
 
-(defmacro with-handler [[handler-binding] & more]
+(defn wrap-db [handler node]
+  (fn [{::reitit/keys [match] :as request}]
+    (if (= patient-page-match match)
+      ((db/wrap-snapshot-db handler node 100) request)
+      ((db/wrap-search-db handler node 100) request))))
+
+
+(defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
                          handler# :blaze.interaction/search-type} system]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
-                                  wrap-error)]
+                                  wrap-error)
+             ~(or node-binding '_) node#]
          ~@body))))
 
 
@@ -539,8 +548,7 @@
         (let [{:keys [status body]}
               @(handler
                  {::reitit/match patient-page-match
-                  :params {"__token" "invalid-token-175424" "_count" "1"
-                           "__t" "1" "__page-id" "1"}})]
+                  :params {"__t" "0" "__token" "invalid-token-175424"}})]
 
           (is (= 422 status))
 
@@ -556,10 +564,9 @@
         (let [{:keys [status body]}
               @(handler
                  {::reitit/match patient-page-match
-                  :params {"__token" (c-str/repeat "A" 32) "_count" "1" "__t" "1"
-                           "__page-id" "1"}})]
+                  :params {"__t" "0" "__token" (c-str/repeat "A" 32)}})]
 
-          (is (= 422 status))
+          (is (= 404 status))
 
           (given body
             :fhir/type := :fhir/OperationOutcome
@@ -659,7 +666,7 @@
             (is (empty? (:entry body))))))))
 
   (testing "with two patients"
-    (with-handler [handler]
+    (with-handler [handler node]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
@@ -757,6 +764,56 @@
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body))))))))
+
+      (testing "adding a third patient doesn't influence the paging"
+        @(d/transact node [[:put {:fhir/type :fhir/Patient :id "2"}]])
+
+        (testing "following the self link"
+          (let [{:keys [body]}
+                @(handler
+                   {::reitit/match patient-match
+                    :params {"_count" "1" "__t" "1" "__page-id" "0"}})]
+
+            (testing "the total count is 2"
+              (is (= #fhir/unsignedInt 2 (:total body))))
+
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient?_count=1&__t=1&__page-id=0")
+                     (link-url body "self"))))
+
+            (testing "has a first link"
+              (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1")
+                     (link-url body "first"))))
+
+            (testing "has a next link"
+              (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1&__page-id=1")
+                     (link-url body "next"))))
+
+            (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body)))))))
+
+        (testing "following the next link"
+          (let [{:keys [body]}
+                @(handler
+                   {::reitit/match patient-page-match
+                    :params {"_count" "1" "__t" "1" "__page-id" "1"}})]
+
+            (testing "the total count is 2"
+              (is (= #fhir/unsignedInt 2 (:total body))))
+
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient?_count=1&__t=1&__page-id=1")
+                     (link-url body "self"))))
+
+            (testing "has a first link"
+              (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1")
+                     (link-url body "first"))))
+
+            (testing "has no next link"
+              (is (nil? (link-url body "next"))))
+
+            (testing "the bundle contains one entry"
               (is (= 1 (count (:entry body))))))))))
 
   (testing "with three patients"
@@ -809,7 +866,29 @@
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
-              (is (= 1 (count (:entry body))))))))
+              (is (= 1 (count (:entry body)))))))
+
+        (testing "search for inactive patients"
+          (let [{:keys [body]}
+                @(handler
+                   {::reitit/match patient-match
+                    :params {"active" "false"}})]
+
+            (testing "the total is zero"
+              (is (zero? (type/value (:total body)))))
+
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient?active=false&_count=50&__t=1")
+                     (link-url body "self"))))
+
+            (testing "has no first link"
+              (is (nil? (link-url body "first"))))
+
+            (testing "has no next link"
+              (is (nil? (link-url body "next"))))
+
+            (testing "the bundle contains no entry"
+              (is (zero? (count (:entry body))))))))
 
       (testing "on /_search request"
         (testing "search for active patients with _count=1"
@@ -835,7 +914,29 @@
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
-              (is (= 1 (count (:entry body))))))))
+              (is (= 1 (count (:entry body)))))))
+
+        (testing "search for inactive patients"
+          (let [{:keys [body]}
+                @(handler
+                   {::reitit/match patient-search-match
+                    :params {"active" "false"}})]
+
+            (testing "the total is zero"
+              (is (zero? (type/value (:total body)))))
+
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient?active=false&_count=50&__t=1")
+                     (link-url body "self"))))
+
+            (testing "has no first link"
+              (is (nil? (link-url body "first"))))
+
+            (testing "has no next link"
+              (is (nil? (link-url body "next"))))
+
+            (testing "the bundle contains no entry"
+              (is (zero? (count (:entry body))))))))
 
       (testing "following the self link"
         (let [{:keys [body]}

@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.21.0
+
+### New Features
+
+* Add Support for Custom Search Parameters ([#1025](https://github.com/samply/blaze/pull/1025))
+* Add Link Headers ([#1003](https://github.com/samply/blaze/pull/1003))
+
+### Performance
+
+* Make Count Queries Parallel ([#998](https://github.com/samply/blaze/pull/998))
+
+### Operation
+
+* Add RocksDB Block Cache Usage Metrics ([#1008](https://github.com/samply/blaze/pull/1008))
+* Add RocksDB Table Reader Usage Metric ([#1011](https://github.com/samply/blaze/pull/1011))
+
+### Bugfixes
+
+* Fix High Memory Usage of RocksDB ([#1030](https://github.com/samply/blaze/issues/1030))
+* Fix Low Capacity of Paging Tokens ([#1029](https://github.com/samply/blaze/issues/1029))
+* Fix Non-Stable Paging ([#1000](https://github.com/samply/blaze/pull/1000))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/64?closed=1).
+
 ## v0.20.6
 
 ### Bugfixes

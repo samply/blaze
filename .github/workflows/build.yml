@@ -87,7 +87,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1273'
+        cli: '1.11.1.1347'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -117,7 +117,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1273'
+        cli: '1.11.1.1347'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -160,7 +160,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1273'
+        cli: '1.11.1.1347'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -188,7 +188,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1273'
+        cli: '1.11.1.1347'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -588,7 +588,7 @@ jobs:
       run: curl -f --head http://localhost:8080/health
 
     - name: Prometheus Metrics
-      run: curl -f http://localhost:8081/metrics
+      run: .github/scripts/test-metrics.sh
 
     - name: Not Acceptable
       run: .github/scripts/not-acceptable.sh
@@ -602,8 +602,20 @@ jobs:
     - name: GraphQL Observation
       run: .github/scripts/graphql.sh Observation
 
+    - name: Link Header Encoding
+      run: .github/scripts/link-header-encoding.sh
+
+    - name: Paging uses a Stable Snapshot of the Database (Patient)
+      run: .github/scripts/follow-patient-next-link-after-write.sh
+
+    - name: Paging uses a Stable Snapshot of the Database (system)
+      run: .github/scripts/follow-system-next-link-after-write.sh
+
     - name: Create Patient
       run: .github/scripts/create-patient.sh
+
+    - name: Read Ignores T
+      run: .github/scripts/read-ignores-t.sh
 
   not-enforcing-referential-integrity-test:
     needs: build
@@ -861,7 +873,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1273'
+        cli: '1.11.1.1347'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -936,6 +948,38 @@ jobs:
 
     - name: Authenticated Request
       run: .github/scripts/authenticated-request.sh
+
+  custom-search-parameters-test:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v3
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Keycloak and Blaze
+      run: docker-compose -f .github/custom-search-parameters-test/docker-compose.yml up -d
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Docker Logs Blaze
+      run: docker-compose -f .github/custom-search-parameters-test/docker-compose.yml logs blaze
+
+    - name: Create Patient
+      run: .github/custom-search-parameters-test/create-patient.sh
+
+    - name: Search Patient
+      run: .github/custom-search-parameters-test/search-patient.sh
 
   doc-copy-data-test:
     needs: build
@@ -1428,8 +1472,20 @@ jobs:
     - name: GraphQL Observation
       run: .github/scripts/graphql.sh Observation
 
+    - name: Link Header Encoding
+      run: .github/scripts/link-header-encoding.sh
+
+    - name: Paging uses a Stable Snapshot of the Database (Patient)
+      run: .github/scripts/follow-patient-next-link-after-write.sh
+
+    - name: Paging uses a Stable Snapshot of the Database (system)
+      run: .github/scripts/follow-system-next-link-after-write.sh
+
     - name: Create Patient
       run: .github/scripts/create-patient.sh
+
+    - name: Read Ignores T
+      run: .github/scripts/read-ignores-t.sh
 
     - name: Docker Stats
       run: docker stats --no-stream
@@ -1448,7 +1504,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1273'
+        cli: '1.11.1.1347'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -1636,22 +1692,27 @@ jobs:
     steps:
     - name: Check out Git repository
       uses: actions/checkout@v3
+
     - name: Setup Node
       uses: actions/setup-node@v3
       with:
         node-version: 18
         cache: npm
         cache-dependency-path: 'docs/package-lock.json'
+
     - name: Install dependencies
       working-directory: ./docs
       run: npm install
+
     - name: Build
       working-directory: ./docs
       env:
         DOCS_BASE: "/${{ github.event.repository.name }}/"
       run: npm run docs:build
+
     - name: Setup Pages
       uses: actions/configure-pages@v3
+
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v1
       with:

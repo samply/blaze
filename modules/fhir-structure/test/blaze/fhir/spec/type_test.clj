@@ -7,6 +7,7 @@
     [blaze.fhir.spec.type.protocols :as p]
     [blaze.fhir.spec.type.system.spec]
     [blaze.test-util :as tu :refer [satisfies-prop]]
+    [clojure.data.xml :as xml]
     [clojure.data.xml.name :as xml-name]
     [clojure.data.xml.node :as xml-node]
     [clojure.data.xml.prxml :as prxml]
@@ -1970,6 +1971,26 @@
     (is (= "\"xhtml-123745\"" (gen-json-string #fhir/xhtml"xhtml-123745"))))
 
   (testing "to-xml"
+    (testing "plain text"
+      (is (= (xml/emit-str (type/to-xml #fhir/xhtml"xhtml-123745"))
+             "<?xml version='1.0' encoding='UTF-8'?><div xmlns=\"http://www.w3.org/1999/xhtml\">xhtml-123745</div>")))
+
+    (testing "not closed tag"
+      (is (= (xml/emit-str (type/to-xml #fhir/xhtml"<foo>"))
+             "<?xml version='1.0' encoding='UTF-8'?><div xmlns=\"http://www.w3.org/1999/xhtml\">&lt;foo></div>")))
+
+    (testing "invalid tag"
+      (is (= (xml/emit-str (type/to-xml #fhir/xhtml"<foo"))
+             "<?xml version='1.0' encoding='UTF-8'?><div xmlns=\"http://www.w3.org/1999/xhtml\">&lt;foo</div>")))
+
+    (testing "CDATA"
+      (is (= (xml/emit-str (type/to-xml #fhir/xhtml"<![CDATA[foo]]>"))
+             "<?xml version='1.0' encoding='UTF-8'?><div xmlns=\"http://www.w3.org/1999/xhtml\">&lt;![CDATA[foo]]&gt;</div>")))
+
+    (testing "CDATA end"
+      (is (= (xml/emit-str (type/to-xml #fhir/xhtml"]]>"))
+             "<?xml version='1.0' encoding='UTF-8'?><div xmlns=\"http://www.w3.org/1999/xhtml\">]]&gt;</div>")))
+
     (is (= xhtml-element (type/to-xml #fhir/xhtml"<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>FHIR is cool.</p></div>"))))
 
   (testing "equals"

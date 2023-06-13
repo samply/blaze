@@ -21,6 +21,11 @@
   :ret bs/byte-string?)
 
 
+(s/fdef bs/from-hex
+  :args (s/cat :s string?)
+  :ret bs/byte-string?)
+
+
 (s/fdef bs/<=
   :args (s/cat :a bs/byte-string? :b bs/byte-string? :c (s/? bs/byte-string?))
   :ret boolean?)

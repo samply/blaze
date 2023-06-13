@@ -7,7 +7,6 @@
     [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.db.api :as d]
     [blaze.db.spec]
-    [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
     [reitit.core :as reitit]
@@ -75,7 +74,7 @@
 
 
 (defn- wrap-invalid-id-vid [handler]
-  (fn [{{:keys [id vid]} :path-params :as request}]
+  (fn [{{:keys [id]} :path-params :as request}]
     (cond
       (not (re-matches #"[A-Za-z0-9\-\.]{1,64}" id))
       (ac/completed-future
@@ -84,26 +83,10 @@
           :fhir/issue "value"
           :fhir/operation-outcome "MSG_ID_INVALID"))
 
-      (and vid (not (re-matches #"\d+" vid)))
-      (ac/completed-future
-        (ba/incorrect
-          (format "Resource versionId `%s` is invalid." vid)
-          :fhir/issue "value"
-          :fhir/operation-outcome "MSG_ID_INVALID"))
-
       :else
       (handler request))))
 
 
-(defn- wrap-interaction-name [handler]
-  (fn [{{:keys [vid]} :path-params :as request}]
-    (do-sync [response (handler request)]
-      (assoc response :fhir/interaction-name (if vid "vread" "read")))))
-
-
 (defmethod ig/init-key :blaze.interaction/read [_ _]
   (log/info "Init FHIR read interaction handler")
-  (-> handler
-      wrap-invalid-id-vid
-      wrap-interaction-name
-      wrap-observe-request-duration))
+  (wrap-invalid-id-vid handler))

@@ -2,6 +2,7 @@
   (:require
     [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
+    [blaze.metrics.core :as metrics]
     [blaze.page-store.local.token :as token]
     [blaze.page-store.protocols :as p]
     [blaze.page-store.spec]
@@ -21,17 +22,17 @@
   (format "Clauses of token `%s` not found." token))
 
 
-(defrecord LocalPageStore [secure-rng ^Cache db]
+(defrecord LocalPageStore [secure-rng ^Cache cache]
   p/PageStore
   (-get [_ token]
     (ac/completed-future
-      (or (.getIfPresent db token) (ba/not-found (not-found-msg token)))))
+      (or (.getIfPresent cache token) (ba/not-found (not-found-msg token)))))
 
   (-put [_ clauses]
     (if (empty? clauses)
       (ac/completed-future (ba/incorrect "Clauses should not be empty."))
       (let [token (token/generate secure-rng)]
-        (.put db token clauses)
+        (.put cache token clauses)
         (ac/completed-future token)))))
 
 
@@ -51,14 +52,33 @@
 (defmethod ig/init-key :blaze.page-store/local
   [_ {:keys [secure-rng max-size-in-mb expire-duration]
       :or {max-size-in-mb 10 expire-duration (time/hours 24)}}]
-  (log/info "Open local page store")
+  (log/info "Open local page store with a capacity of" max-size-in-mb
+            "MiB and an expire duration of" expire-duration)
   (->LocalPageStore
     secure-rng
     (-> (Caffeine/newBuilder)
-        (.maximumWeight (* 1024 1024 max-size-in-mb))
+        (.maximumWeight (bit-shift-left max-size-in-mb 20))
         (.weigher weigher)
         (.expireAfterAccess expire-duration)
         (.build))))
 
 
 (derive :blaze.page-store/local :blaze/page-store)
+
+
+(defmethod ig/pre-init-spec :blaze.page-store.local/collector [_]
+  (s/keys :req-un [:blaze/page-store]))
+
+
+(defmethod ig/init-key :blaze.page-store.local/collector
+  [_ {:keys [page-store]}]
+  (metrics/collector
+    [(metrics/gauge-metric
+       "blaze_page_store_estimated_size"
+       "Returns the approximate number of tokens in the page store."
+       []
+       [{:label-values []
+         :value (.estimatedSize ^Cache (:cache page-store))}])]))
+
+
+(derive :blaze.page-store.local/collector :blaze.metrics/collector)

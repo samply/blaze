@@ -1,33 +1,40 @@
 #!/bin/bash -e
 
-BASE="http://localhost:8080/fhir"
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+. "$SCRIPT_DIR/util.sh"
 
-for CODE in "17861-6" "39156-5" "29463-7"
-do
+BASE="${1:-http://localhost:8080/fhir}"
+START_EPOCH="$(date +"%s")"
+
+count-resources() {
+  CODE="$1"
+
   echo "Counting Observations with code $CODE..."
-  for i in {1..6}
-  do
-    /usr/bin/time -f "%e" -a -o "count-$CODE.times" curl -s "$BASE/Observation?code=http://loinc.org|$CODE&_summary=count" | jq .total
-  done
+  count-resources-raw "$BASE" "code=http://loinc.org|$CODE" "$START_EPOCH-count-$CODE.times"
+}
 
-  # Skip first line because it will not benefit from caching
-  tail -n +2 "count-$CODE.times" | awk '{t+=$1;n++} END {printf("Avg time: %.3f\n", t/n)}'
+download-resources() {
+  CODE="$1"
 
   echo "Downloading Observations with code $CODE..."
-  for i in {1..6}
-  do
-    /usr/bin/time -f "%e" -a -o "download-$CODE.times" blazectl download --server "$BASE" Observation -q "code=http://loinc.org|$CODE&_count=1000" > /dev/null 2> /dev/null
-  done
+  download-resources-raw "$BASE" "code=http://loinc.org|$CODE" "$START_EPOCH-download-$CODE.times"
+}
 
-  # Skip first line because it will not benefit from caching
-  tail -n +2 "download-$CODE.times" | awk '{t+=$1;n++} END {printf("Avg time: %.3f\n", t/n)}'
+download-resources-elements-subject() {
+  CODE="$1"
 
   echo "Downloading Observations with code $CODE and _elements=subject..."
-  for i in {1..6}
-  do
-    /usr/bin/time -f "%e" -a -o "download-subject-$CODE.times" blazectl download --server "$BASE" Observation -q "code=http://loinc.org|$CODE&_elements=subject&_count=1000" > /dev/null 2> /dev/null
-  done
+  download-resources-raw "$BASE" "code=http://loinc.org|$CODE&_elements=subject" "$START_EPOCH-download-subject-$CODE.times"
+}
 
-  # Skip first line because it will not benefit from caching
-  tail -n +2 "download-subject-$CODE.times" | awk '{t+=$1;n++} END {printf("Avg time: %.3f\n", t/n)}'
-done
+count-resources "8310-5"
+download-resources "8310-5"
+download-resources-elements-subject "8310-5"
+
+count-resources "55758-7"
+download-resources "55758-7"
+download-resources-elements-subject "55758-7"
+
+count-resources "72514-3"
+download-resources "72514-3"
+download-resources-elements-subject "72514-3"

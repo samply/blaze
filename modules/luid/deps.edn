@@ -4,11 +4,11 @@
   blaze/fhir-structure
   {:local/root "../fhir-structure"}
 
-  blaze/spec
-  {:local/root "../spec"}
+  blaze/module-base
+  {:local/root "../module-base"}
 
-  com.google.guava/guava
-  {:mvn/version "31.1-jre"}}
+  blaze/spec
+  {:local/root "../spec"}}
 
  :aliases
  {:test

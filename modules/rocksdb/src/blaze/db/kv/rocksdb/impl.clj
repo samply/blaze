@@ -5,9 +5,9 @@
   (:import
     [clojure.lang ILookup]
     [org.rocksdb
-     ColumnFamilyHandle DBOptions ColumnFamilyDescriptor CompressionType
-     ColumnFamilyOptions BlockBasedTableConfig Statistics BloomFilter
-     BuiltinComparator WriteBatchInterface WriteOptions]))
+     BlockBasedTableConfig BloomFilter BuiltinComparator ColumnFamilyDescriptor
+     ColumnFamilyHandle ColumnFamilyOptions CompressionType DBOptions
+     RocksDBException Statistics Status$Code WriteBatchInterface WriteOptions]))
 
 
 (set! *warn-on-reflection* true)
@@ -57,10 +57,13 @@
           (cond->
             (doto (BlockBasedTableConfig.)
               (.setVerifyCompression false)
-              (.setCacheIndexAndFilterBlocks true)
-              (.setPinL0FilterAndIndexBlocksInCache true)
-              (.setBlockSize block-size)
-              (.setBlockCache block-cache))
+              (.setBlockSize block-size))
+            (nil? block-cache)
+            (.setNoBlockCache true)
+            (some? block-cache)
+            (-> (.setBlockCache block-cache)
+                (.setCacheIndexAndFilterBlocks true)
+                (.setPinL0FilterAndIndexBlocksInCache true))
             bloom-filter?
             (.setFilterPolicy (BloomFilter. 10 false))
             bloom-filter?
@@ -144,3 +147,17 @@
           :merge (.merge wb ^bytes column-family ^bytes k)
           :delete (.delete wb ^bytes column-family))))
     entries))
+
+
+(defn property-error [^RocksDBException e name]
+  (condp identical? (some-> (.getStatus e) (.getCode))
+    Status$Code/NotFound
+    (ba/not-found (format "Property with name `%s` was not found." name))
+    (ba/fault (ex-message e))))
+
+
+(defn column-family-property-error [^RocksDBException e column-family name]
+  (condp identical? (some-> (.getStatus e) (.getCode))
+    Status$Code/NotFound
+    (ba/not-found (format "Property with name `%s` was not found on column-family with name `%s`." name (clojure.core/name column-family)))
+    (ba/fault (ex-message e))))

@@ -14,7 +14,7 @@ hero:
     link: /deployment/README
   - theme: alt
     text: View on GitHub
-    link: https://github.com/vuejs/vitepress
+    link: https://github.com/samply/blaze
 
 features:
 - title: Internal, fast CQL Evaluation Engine

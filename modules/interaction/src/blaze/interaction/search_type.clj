@@ -14,7 +14,6 @@
     [blaze.interaction.search.params :as params]
     [blaze.interaction.search.util :as search-util]
     [blaze.interaction.util :as iu]
-    [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.page-store :as page-store]
     [blaze.page-store.spec]
     [blaze.spec]
@@ -84,10 +83,17 @@
     (build-matches-only-page page-size handles)))
 
 
-(defn- entries [context matches includes]
+(defn- entries [context match-futures include-futures]
   (log/trace "build entries")
-  (-> (mapv #(search-util/entry context %) matches)
-      (into (map #(search-util/entry context % search-util/include)) includes)))
+  (-> (into
+        []
+        (comp (mapcat ac/join)
+              (map #(search-util/entry context %)))
+        match-futures)
+      (into
+        (comp (mapcat ac/join)
+              (map #(search-util/entry context % search-util/include)))
+        include-futures)))
 
 
 (defn- pull-matches-fn [{:keys [elements]}]
@@ -119,11 +125,7 @@
                :fhir/issue "incomplete"))
           (ac/then-apply
             (fn [_]
-              {:entries
-               (entries
-                 context
-                 (mapcat deref match-futures)
-                 (mapcat deref include-futures))
+              {:entries (entries context match-futures include-futures)
                :num-matches (count matches)
                :next-handle next-match
                :clauses clauses}))))
@@ -169,11 +171,24 @@
   [{:keys [type] :blaze/keys [db] {:keys [clauses page-id]} :params}
    num-matches next-handle]
   (cond
-    (empty? clauses)
-    (d/type-total db type)
-
+    ;; evaluate this criteria first, because we can potentially safe the
+    ;; d/type-total call
     (and (nil? page-id) (nil? next-handle))
-    num-matches))
+    num-matches
+
+    (empty? clauses)
+    (d/type-total db type)))
+
+
+(defn- zero-bundle
+  "Generate a special bundle if the search results in zero matches to avoid
+  generating a token for the first link, we don't need in this case."
+  [context clauses entries]
+  {:fhir/type :fhir/Bundle
+   :id (iu/luid context)
+   :type #fhir/code"searchset"
+   :total #fhir/unsignedInt 0
+   :link [(self-link context clauses (first entries))]})
 
 
 (defn- normal-bundle [context token clauses entries total]
@@ -200,33 +215,36 @@
       (ac/then-compose
         (fn [{:keys [entries num-matches next-handle clauses]}]
           (let [total (total context num-matches next-handle)]
-            (do-sync [token (gen-token! context clauses)]
-              (if next-handle
-                (-> (normal-bundle context token clauses entries total)
-                    (update :link conj (next-link context token clauses next-handle)))
-                (normal-bundle context token clauses entries total))))))))
+            (if (some-> total zero?)
+              (ac/completed-future (zero-bundle context clauses entries))
+              (do-sync [token (gen-token! context clauses)]
+                (if next-handle
+                  (-> (normal-bundle context token clauses entries total)
+                      (update :link conj (next-link context token clauses next-handle)))
+                  (normal-bundle context token clauses entries total)))))))))
+
+
+(defn- compile-type-query
+  [{:keys [type] :blaze/keys [db] :blaze.preference/keys [handling]
+    {:keys [clauses]} :params}]
+  (if (identical? :blaze.preference.handling/strict handling)
+    (d/compile-type-query db type clauses)
+    (d/compile-type-query-lenient db type clauses)))
 
 
 (defn- summary-total
-  [{:keys [type] :blaze/keys [db] :blaze.preference/keys [handling]
-    {:keys [clauses]} :params}]
-  (cond
-    (empty? clauses)
-    {:total (d/type-total db type)}
-
-    (identical? :blaze.preference.handling/strict handling)
-    (when-ok [handles (d/type-query db type clauses)]
-      {:total (count handles)
-       :clauses clauses})
-
-    :else
-    (when-ok [query (d/compile-type-query-lenient db type clauses)]
-      {:total (count (d/execute-query db query))
-       :clauses (d/query-clauses query)})))
+  [{:keys [type] :blaze/keys [db] {:keys [clauses]} :params :as context}]
+  (if (empty? clauses)
+    (ac/completed-future {:total (d/type-total db type)})
+    (if-ok [query (compile-type-query context)]
+      (do-sync [total (d/count-query db query)]
+        {:total total
+         :clauses (d/query-clauses query)})
+      ac/completed-future)))
 
 
 (defn- search-summary [context]
-  (when-ok [{:keys [total clauses]} (summary-total context)]
+  (do-sync [{:keys [total clauses]} (summary-total context)]
     {:fhir/type :fhir/Bundle
      :id (iu/luid context)
      :type #fhir/code"searchset"
@@ -236,7 +254,7 @@
 
 (defn- search [{:keys [params] :as context}]
   (if (:summary? params)
-    (ac/completed-future (search-summary context))
+    (search-summary context)
     (search-normal context)))
 
 
@@ -305,18 +323,13 @@
         (assoc :blaze.preference/handling handling)))))
 
 
-(defn- handler [context]
-  (fn [request]
-    (-> (search-context context request)
-        (ac/then-compose search)
-        (ac/then-apply ring/response))))
-
-
 (defmethod ig/pre-init-spec :blaze.interaction/search-type [_]
   (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store]))
 
 
 (defmethod ig/init-key :blaze.interaction/search-type [_ context]
   (log/info "Init FHIR search-type interaction handler")
-  (-> (handler context)
-      (wrap-observe-request-duration "search-type")))
+  (fn [request]
+    (-> (search-context context request)
+        (ac/then-compose search)
+        (ac/then-apply ring/response))))

@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.list
   "https://www.hl7.org/fhir/search.html#list"
   (:require
+    [blaze.async.comp :as ac]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
@@ -56,6 +57,10 @@
       (when-let [{:keys [hash]} (u/non-deleted-resource-handle
                                   resource-handle list-tid list-id)]
         (referenced-resource-handles! context list-id hash tid start-id))))
+
+  (-count-resource-handles [search-param context tid modifier list-id]
+    (ac/completed-future
+      (count (p/-resource-handles search-param context tid modifier list-id))))
 
   (-index-values [_ _ _]
     []))

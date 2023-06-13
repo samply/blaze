@@ -8,19 +8,11 @@
     [blaze.spec]
     [clojure.spec.alpha :as s])
   (:import
-    [com.github.benmanes.caffeine.cache Cache LoadingCache]))
+    [com.github.benmanes.caffeine.cache LoadingCache]))
 
 
 (s/def :blaze.db/node
   #(satisfies? np/Node %))
-
-
-(defn cache? [x]
-  (instance? Cache x))
-
-
-(s/def :blaze.db/resource-handle-cache
-  cache?)
 
 
 (defn loading-cache? [x]

@@ -4,22 +4,25 @@
     [blaze.server.spec]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
-    [ring.adapter.jetty :as ring-jetty]
+    [ring.adapter.jetty9 :as ring-jetty]
     [ring.util.response :as ring]
-    [taoensso.timbre :as log])
-  (:import
-    [org.eclipse.jetty.server Server]))
+    [taoensso.timbre :as log]))
 
 
 (set! *warn-on-reflection* true)
 
 
+(defn- server-request [request]
+  (assoc request :blaze/request-arrived (System/nanoTime)))
+
+
 (defn- wrap-server [handler server]
   (fn
     ([request]
-     (ring/header (handler request) "Server" server))
+     (-> request server-request handler (ring/header "Server" server)))
     ([request respond raise]
-     (handler request #(respond (ring/header % "Server" server)) raise))))
+     (-> (server-request request)
+         (handler #(respond (ring/header % "Server" server)) raise)))))
 
 
 (defmethod ig/pre-init-spec :blaze/server [_]
@@ -35,6 +38,8 @@
     (wrap-server handler (str "Blaze/" version))
     {:port port
      :async? async?
+     ;; TODO: remove such a long timeout only here because of FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT
+     :async-timeout 3610000                                 ; 1 h and 10 s
      :join? false
      :send-server-version? false
      :min-threads min-threads
@@ -44,4 +49,4 @@
 (defmethod ig/halt-key! :blaze/server
   [_ server]
   (log/info "Shutdown main server")
-  (.stop ^Server server))
+  (ring-jetty/stop-server server))

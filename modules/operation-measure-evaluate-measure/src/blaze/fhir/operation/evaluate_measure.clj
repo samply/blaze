@@ -14,7 +14,6 @@
     [blaze.fhir.response.create :as response]
     [blaze.handler.util :as handler-util]
     [blaze.luid :as luid]
-    [blaze.middleware.fhir.metrics :refer [wrap-observe-request-duration]]
     [blaze.module :refer [reg-collector]]
     [blaze.spec]
     [clojure.spec.alpha :as s]
@@ -137,9 +136,7 @@
 
 (defmethod ig/init-key ::handler [_ context]
   (log/info "Init FHIR $evaluate-measure operation handler")
-  (-> (handler context)
-      wrap-coerce-params
-      (wrap-observe-request-duration "operation-evaluate-measure")))
+  (wrap-coerce-params (handler context)))
 
 
 (defmethod ig/pre-init-spec ::timeout [_]

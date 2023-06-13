@@ -12,7 +12,6 @@
     [blaze.db.node]
     [blaze.db.node.tx-indexer.verify :as verify]
     [blaze.db.node.tx-indexer.verify-spec]
-    [blaze.db.resource-handle-cache]
     [blaze.db.search-param-registry]
     [blaze.db.test-util :refer [system with-system-data]]
     [blaze.db.tx-cache]

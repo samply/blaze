@@ -17,7 +17,7 @@ define InInitialPopulation:
   exists [Observation: Code '17861-6' from loinc]
 ```
 
-The `DB_RESOURCE_HANDLE_CACHE_SIZE` was set to zero because CQL doesn't benefit from it. The GC settings were: `-XX:+UseG1GC -XX:MaxGCPauseMillis=50`.
+The GC settings were: `-XX:+UseG1GC -XX:MaxGCPauseMillis=50`.
 
 The CQL query is executed with the following `blazectl` command:
 
@@ -54,7 +54,7 @@ define InInitialPopulation:
   exists [Observation: "body-weight"] O where O.value < 73.3 'kg'
 ```
 
-The `DB_RESOURCE_HANDLE_CACHE_SIZE` was set to zero because CQL doesn't benefit from it. The GC settings were: `-XX:+UseG1GC -XX:MaxGCPauseMillis=50`.
+The GC settings were: `-XX:+UseG1GC -XX:MaxGCPauseMillis=50`.
 
 The CQL query is executed with the following `blazectl` command:
 
@@ -91,7 +91,7 @@ define InInitialPopulation:
   [Observation: category in "laboratory"]
 ```
 
-The `DB_RESOURCE_HANDLE_CACHE_SIZE` was set to zero because CQL doesn't benefit from it. The GC settings were: `-XX:+UseG1GC -XX:MaxGCPauseMillis=50`.
+The GC settings were: `-XX:+UseG1GC -XX:MaxGCPauseMillis=50`.
 
 The CQL query is executed with the following `blazectl` command:
 
