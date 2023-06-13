@@ -7,7 +7,7 @@ RUN apt-get update && apt-get upgrade -y && \
     rm -rf /var/lib/apt/lists/
 
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
-COPY target/blaze-0.20.6-standalone.jar /app/
+COPY target/blaze-0.21.0-standalone.jar /app/
 
 WORKDIR /app
 USER 1001
@@ -17,4 +17,4 @@ ENV INDEX_DB_DIR="/app/data/index"
 ENV TRANSACTION_DB_DIR="/app/data/transaction"
 ENV RESOURCE_DB_DIR="/app/data/resource"
 
-CMD ["sh", "-c", "LD_PRELOAD=/usr/lib/$(arch)-linux-gnu/libjemalloc.so.2 exec java -jar blaze-0.20.6-standalone.jar"]
+CMD ["sh", "-c", "LD_PRELOAD=/usr/lib/$(arch)-linux-gnu/libjemalloc.so.2 exec java -jar blaze-0.21.0-standalone.jar"]

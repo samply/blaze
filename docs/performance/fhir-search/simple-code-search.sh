@@ -3,7 +3,7 @@
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 . "$SCRIPT_DIR/util.sh"
 
-BASE="http://localhost:8080/fhir"
+BASE="${1:-http://localhost:8080/fhir}"
 START_EPOCH="$(date +"%s")"
 
 count-resources() {
@@ -27,14 +27,14 @@ download-resources-elements-subject() {
   download-resources-raw "$BASE" "code=http://loinc.org|$CODE&_elements=subject" "$START_EPOCH-download-subject-$CODE.times"
 }
 
-count-resources "17861-6"
-count-resources "39156-5"
-count-resources "29463-7"
+count-resources "8310-5"
+download-resources "8310-5"
+download-resources-elements-subject "8310-5"
 
-download-resources "17861-6"
-download-resources "39156-5"
-download-resources "29463-7"
+count-resources "55758-7"
+download-resources "55758-7"
+download-resources-elements-subject "55758-7"
 
-download-resources-elements-subject "17861-6"
-download-resources-elements-subject "39156-5"
-download-resources-elements-subject "29463-7"
+count-resources "72514-3"
+download-resources "72514-3"
+download-resources-elements-subject "72514-3"

@@ -71,7 +71,7 @@ services:
       HEAP_NEWSIZE: "200M"
 
   blaze-1:
-    image: "samply/blaze:0.20"
+    image: "samply/blaze:0.21"
     hostname: "blaze-1"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx4g"
@@ -102,7 +102,7 @@ services:
     restart: unless-stopped
 
   blaze-2:
-    image: "samply/blaze:0.20"
+    image: "samply/blaze:0.21"
     hostname: "blaze-2"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx4g"
