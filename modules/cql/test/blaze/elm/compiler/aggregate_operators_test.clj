@@ -107,9 +107,12 @@
 ;; If the list is null the result is 0.
 (deftest compile-count-test
   (testing "Without path"
-    (are [source res] (= res (core/-eval (c/compile {} (elm/count source)) {} nil nil))
+    (are [source res] (identical? res (core/-eval (c/compile {} (elm/count source)) {} nil nil))
       #elm/list [#elm/integer "1"] 1
+      #elm/list [#elm/integer "1" {:type "Null"}] 1
       #elm/list [#elm/integer "1" #elm/integer "1"] 2
+      #elm/list [#elm/integer "1" {:type "Null"} #elm/integer "1"] 2
+      #elm/list [#elm/integer "1" #elm/integer "1" {:type "Null"}] 2
 
       #elm/list [{:type "Null"}] 0
       #elm/list [] 0

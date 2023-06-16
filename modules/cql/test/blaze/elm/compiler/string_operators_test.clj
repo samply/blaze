@@ -4,6 +4,8 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+    [blaze.db.api :as d]
+    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.test-util :as tu]
@@ -182,8 +184,10 @@
 ;;
 ;; If the argument is null, the result is 0.
 (deftest compile-length-test
+  ;; It's important to use identical? here because we like to test that length
+  ;; returns a long instead of an integer.
   (testing "static"
-    (are [x res] (= res (c/compile {} (elm/length x)))
+    (are [x res] (identical? res (c/compile {} (elm/length x)))
       #elm/string "" 0
       #elm/string "a" 1
       #elm/list [] 0
@@ -192,10 +196,30 @@
       {:type "Null"} 0))
 
   (testing "dynamic"
-    (are [x res] (= res (tu/dynamic-compile-eval (elm/length x)))
+    (are [x res] (identical? res (tu/dynamic-compile-eval (elm/length x)))
       #elm/parameter-ref "empty-string" 0
       #elm/parameter-ref "a" 1
       #elm/parameter-ref "nil" 0))
+
+  (testing "retrieve"
+    (are [count]
+      (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+        [(into [[:put {:fhir/type :fhir/Patient :id "0"}]]
+               (map (fn [id]
+                      [:put {:fhir/type :fhir/Observation :id (str id)
+                             :subject #fhir/Reference{:reference "Patient/0"}}]))
+               (range count))]
+
+        (let [context
+              {:node node
+               :eval-context "Patient"
+               :library {}}
+              expr (c/compile context #elm/length #elm/retrieve{:type "Observation"})
+              db (d/db node)
+              patient (d/resource-handle db "Patient" "0")]
+
+          (identical? count (core/-eval expr {:db db} patient nil))))
+      0 1 2))
 
   (tu/testing-unary-form elm/length))
 

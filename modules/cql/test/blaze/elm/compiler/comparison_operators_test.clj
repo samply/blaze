@@ -85,6 +85,14 @@
 
     (tu/testing-binary-null elm/equal #elm/integer "1"))
 
+  (testing "Long"
+    (are [x y res] (= res (tu/compile-binop elm/equal elm/long x y))
+      "1" "1" true
+      "1" "2" false
+      "2" "1" false)
+
+    (tu/testing-binary-null elm/equal #elm/long "1"))
+
   (testing "Decimal"
     (are [x y res] (= res (tu/compile-binop elm/equal elm/decimal x y))
       "1.1" "1.1" true
@@ -95,6 +103,11 @@
       "1.10" "1.1" true)
 
     (tu/testing-binary-null elm/equal #elm/decimal "1.1"))
+
+  (testing "Mixed Integer Long"
+    (are [x y res] (= res (c/compile {} (elm/equal [x y])))
+      #elm/integer "1" #elm/long "1" true
+      #elm/long "1" #elm/integer "1" true))
 
   (testing "Mixed Integer Decimal"
     (are [x y res] (= res (c/compile {} (elm/equal [x y])))
@@ -462,6 +475,18 @@
 
     (tu/testing-binary-null elm/greater #elm/integer "1"))
 
+  (testing "Long"
+    (are [x y res] (= res (tu/compile-binop elm/greater elm/long x y))
+      "2" "1" true
+      "1" "1" false)
+
+    (tu/testing-binary-null elm/greater #elm/long "1"))
+
+  (testing "Mixed Integer Long"
+    (are [x y res] (= res (c/compile {} (elm/greater [x y])))
+      #elm/integer "2" #elm/long "1" true
+      #elm/long "2" #elm/integer "1" true))
+
   (testing "Decimal"
     (are [x y res] (= res (tu/compile-binop elm/greater elm/decimal x y))
       "2.1" "1.1" true
@@ -566,6 +591,21 @@
       "1" "2" false)
 
     (tu/testing-binary-null elm/greater-or-equal #elm/integer "1"))
+  
+  (testing "Long"
+    (are [x y res] (= res (tu/compile-binop elm/greater-or-equal elm/long x y))
+      "1" "1" true
+      "2" "1" true
+      "1" "2" false)
+
+    (tu/testing-binary-null elm/greater-or-equal #elm/long "1"))
+
+  (testing "Mixed Integer Long"
+    (are [x y res] (= res (c/compile {} (elm/greater-or-equal [x y])))
+      #elm/integer "1" #elm/long "1" true
+      #elm/integer "2" #elm/long "1" true
+      #elm/long "1" #elm/integer "1" true
+      #elm/long "2" #elm/integer "1" true))
 
   (testing "Decimal"
     (are [x y res] (= res (tu/compile-binop elm/greater-or-equal elm/decimal x y))
@@ -676,6 +716,18 @@
       "1" "1" false)
 
     (tu/testing-binary-null elm/less #elm/integer "1"))
+  
+  (testing "Long"
+    (are [x y res] (= res (tu/compile-binop elm/less elm/long x y))
+      "1" "2" true
+      "1" "1" false)
+
+    (tu/testing-binary-null elm/less #elm/long "1"))
+
+  (testing "Mixed Integer Long"
+    (are [x y res] (= res (c/compile {} (elm/less [x y])))
+      #elm/integer "1" #elm/long "2" true
+      #elm/long "1" #elm/integer "2" true))
 
   (testing "Decimal"
     (are [x y res] (= res (tu/compile-binop elm/less elm/decimal x y))
@@ -799,6 +851,21 @@
       "2" "1" false)
 
     (tu/testing-binary-null elm/less-or-equal #elm/integer "1"))
+  
+  (testing "Long"
+    (are [x y res] (= res (tu/compile-binop elm/less-or-equal elm/long x y))
+      "1" "1" true
+      "1" "2" true
+      "2" "1" false)
+
+    (tu/testing-binary-null elm/less-or-equal #elm/long "1"))
+
+  (testing "Mixed Integer Long"
+    (are [x y res] (= res (c/compile {} (elm/less-or-equal [x y])))
+      #elm/integer "1" #elm/long "1" true
+      #elm/integer "1" #elm/long "2" true
+      #elm/long "1" #elm/integer "1" true
+      #elm/long "1" #elm/integer "2" true))
 
   (testing "Decimal"
     (are [x y res] (= res (tu/compile-binop elm/less-or-equal elm/decimal x y))

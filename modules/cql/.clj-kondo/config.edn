@@ -9,9 +9,7 @@
   blaze.elm.compiler.macros/defnaryop clojure.core/defn
   blaze.elm.compiler.macros/defaggop clojure.core/defn
   blaze.elm.compiler.macros/defbinopp clojure.core/defn
-  blaze.elm.compiler.macros/defunopp clojure.core/defn
-  prometheus.alpha/defcounter clojure.core/def
-  prometheus.alpha/defhistogram clojure.core/def}
+  blaze.elm.compiler.macros/defunopp clojure.core/defn}
 
  :linters
  {;; because of macros in modules/cql/src/blaze/elm/compiler.clj
@@ -36,7 +34,19 @@
   {:level :warning}
 
   :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}}
+  {:level :warning :warn-only-on-interop true}
+
+  :consistent-alias
+  {:aliases
+   {blaze.anomaly ba
+    blaze.coll.core coll
+    blaze.db.api d
+    cognitect.anomalies anom
+    clojure.java.io io
+    clojure.spec.alpha s
+    clojure.string str
+    cuerdas.core c-str
+    jsonista.core j}}}
 
  :output
  {:exclude-files ["^test/data_readers.clj"]}
