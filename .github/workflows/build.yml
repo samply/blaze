@@ -1589,6 +1589,7 @@ jobs:
     - missing-resource-content-test
     - distributed-test
     - jepsen-distributed-test
+    - custom-search-parameters-test
     runs-on: ubuntu-22.04
     permissions:
       packages: write

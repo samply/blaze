@@ -197,7 +197,7 @@
                                            (some? (seq stratifier))))
             {:keys [luids] :as evaluated-populations}
             (evaluate-populations context population)
-            evaluated-stratifiers
+            {:keys [luids] :as evaluated-stratifiers}
             (evaluate-stratifiers (assoc context :luids luids)
                                   evaluated-populations
                                   stratifier)]
@@ -211,6 +211,7 @@
 
        (seq (:result evaluated-stratifiers))
        (assoc :stratifier (:result evaluated-stratifiers)))
+     :luids luids
      :tx-ops
      (into (:tx-ops evaluated-populations)
            (:tx-ops evaluated-stratifiers))}))

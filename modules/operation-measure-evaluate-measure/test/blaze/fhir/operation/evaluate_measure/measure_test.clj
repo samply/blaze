@@ -184,6 +184,23 @@
     [Encounter]")
 
 
+(def library-patient-encounter
+  "library Retrieve
+  using FHIR version '4.0.0'
+  include FHIRHelpers version '4.0.0'
+
+  context Patient
+
+  define InInitialPopulation:
+    true
+
+  define AllEncounters:
+    [Encounter]
+
+  define Gender:
+    Patient.gender")
+
+
 (deftest evaluate-measure-test
   (testing "Encounter population basis"
     (with-system-data
@@ -214,7 +231,7 @@
                          :criteria (cql-expression "InInitialPopulation")}]}]}]
 
         (testing "population report"
-          (let [params {:period [#system/date"2000" #system/date"2020"]
+          (let [params {:period [#system/date"2000" #system/date"2100"]
                         :report-type "population"}]
             (given (:resource (measure/evaluate-measure context measure params))
               :fhir/type := :fhir/MeasureReport
@@ -222,7 +239,7 @@
               [:group 0 :population 0 :count] := 3)))
 
         (testing "subject-list report"
-          (let [params {:period [#system/date"2000" #system/date"2020"]
+          (let [params {:period [#system/date"2000" #system/date"2100"]
                         :report-type "subject-list"}
                 {:keys [resource tx-ops]} (measure/evaluate-measure context measure params)]
 
@@ -238,6 +255,111 @@
               [0 1 :entry 0 :item :reference] := "Encounter/0-0"
               [0 1 :entry 1 :item :reference] := "Encounter/1-0"
               [0 1 :entry 2 :item :reference] := "Encounter/1-1"))))))
+
+  (testing "two groups"
+    (with-system-data
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} system]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]
+        [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"female"}]
+        [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference "Patient/1"}}]
+        [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code"female"}]
+        [:put {:fhir/type :fhir/Encounter :id "2-0" :subject #fhir/Reference{:reference "Patient/2"}}]
+        [:put {:fhir/type :fhir/Encounter :id "2-1" :subject #fhir/Reference{:reference "Patient/2"}}]
+        [:put {:fhir/type :fhir/Patient :id "3" :gender #fhir/code"female"}]
+        [:put {:fhir/type :fhir/Encounter :id "3-0" :subject #fhir/Reference{:reference "Patient/3"}}]
+        [:put {:fhir/type :fhir/Encounter :id "3-1" :subject #fhir/Reference{:reference "Patient/3"}}]
+        [:put {:fhir/type :fhir/Encounter :id "3-2" :subject #fhir/Reference{:reference "Patient/3"}}]]
+       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+               :content [(library-content library-patient-encounter)]}]]]
+
+      (let [db (d/db node)
+            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                     :blaze/base-url "" ::reitit/router router}
+            measure {:fhir/type :fhir/Measure :id "0"
+                     :library [#fhir/canonical"0"]
+                     :group
+                     [{:fhir/type :fhir.Measure/group
+                       :population
+                       [{:fhir/type :fhir.Measure.group/population
+                         :code (population-concept "initial-population")
+                         :criteria (cql-expression "InInitialPopulation")}]
+                       :stratifier
+                       [{:fhir/type :fhir.Measure.group/stratifier
+                         :code #fhir/CodeableConcept{:text #fhir/string"gender"}
+                         :criteria (cql-expression "Gender")}]}
+                      {:fhir/type :fhir.Measure/group
+                       :extension
+                       [#fhir/Extension
+                               {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
+                                :value #fhir/code"Encounter"}]
+                       :population
+                       [{:fhir/type :fhir.Measure.group/population
+                         :code (population-concept "initial-population")
+                         :criteria (cql-expression "AllEncounters")}]}]}]
+
+        (testing "population report"
+          (let [params {:period [#system/date"2000" #system/date"2100"]
+                        :report-type "population"}]
+            (given (:resource (measure/evaluate-measure context measure params))
+              :fhir/type := :fhir/MeasureReport
+              [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
+              [:group 0 :population 0 :count] := 4
+              [:group 1 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
+              [:group 1 :population 0 :count] := 6)))
+
+        (testing "subject-list report"
+          (let [params {:period [#system/date"2000" #system/date"2100"]
+                        :report-type "subject-list"}
+                {:keys [resource tx-ops]} (measure/evaluate-measure context measure params)]
+
+            (given resource
+              :fhir/type := :fhir/MeasureReport
+              [:group count] := 2
+              [:group 0 :population count] := 1
+              [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
+              [:group 0 :population 0 :count] := 4
+              [:group 0 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAA"
+              [:group 0 :stratifier count] := 1
+              [:group 0 :stratifier 0 :stratum count] := 2
+              [:group 0 :stratifier 0 :stratum 0 :value :text] := "female"
+              [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := 3
+              [:group 0 :stratifier 0 :stratum 0 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAC"
+              [:group 0 :stratifier 0 :stratum 1 :value :text] := "male"
+              [:group 0 :stratifier 0 :stratum 1 :population 0 :count] := 1
+              [:group 0 :stratifier 0 :stratum 1 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAB"
+              [:group 1 :population count] := 1
+              [:group 1 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
+              [:group 1 :population 0 :count] := 6
+              [:group 1 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAD")
+
+            (given tx-ops
+              count := 4
+              [0 0] := :create
+              [0 1 :id] := "AAAAAAAAAAAAAAAA"
+              [0 1 :entry count] := 4
+              [0 1 :entry 0 :item :reference] := "Patient/0"
+              [0 1 :entry 1 :item :reference] := "Patient/1"
+              [0 1 :entry 2 :item :reference] := "Patient/2"
+              [0 1 :entry 3 :item :reference] := "Patient/3"
+              [1 0] := :create
+              [1 1 :id] := "AAAAAAAAAAAAAAAB"
+              [1 1 :entry count] := 1
+              [1 1 :entry 0 :item :reference] := "Patient/0"
+              [2 0] := :create
+              [2 1 :id] := "AAAAAAAAAAAAAAAC"
+              [2 1 :entry count] := 3
+              [2 1 :entry 0 :item :reference] := "Patient/1"
+              [2 1 :entry 1 :item :reference] := "Patient/2"
+              [2 1 :entry 2 :item :reference] := "Patient/3"
+              [3 0] := :create
+              [3 1 :id] := "AAAAAAAAAAAAAAAD"
+              [3 1 :entry count] := 6
+              [3 1 :entry 0 :item :reference] := "Encounter/1-0"
+              [3 1 :entry 1 :item :reference] := "Encounter/2-0"
+              [3 1 :entry 2 :item :reference] := "Encounter/2-1"
+              [3 1 :entry 3 :item :reference] := "Encounter/3-0"
+              [3 1 :entry 4 :item :reference] := "Encounter/3-1"
+              [3 1 :entry 5 :item :reference] := "Encounter/3-2"))))))
 
   (testing "missing criteria"
     (with-system-data
