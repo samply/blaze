@@ -25,6 +25,7 @@
 
   :consistent-alias
   {:aliases
-   {blaze.db.api d}}}
+   {blaze.db.api d
+    ring.util.response ring}}}
 
  :skip-comments true}

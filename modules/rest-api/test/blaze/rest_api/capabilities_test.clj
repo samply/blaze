@@ -234,4 +234,38 @@
         [:rest 0 :resource 0 :type] := #fhir/code"Measure"
         [:rest 0 :resource 0 :operation 0 :name] := "evaluate-measure"
         [:rest 0 :resource 0 :operation 0 :definition] :=
-        #fhir/canonical"http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"))))
+        #fhir/canonical"http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure")
+
+      (testing "with documentation"
+        (given
+          (-> @((capabilities/capabilities-handler
+                  {:version "version-131640"
+                   :structure-definitions
+                   [{:url "http://hl7.org/fhir/StructureDefinition/Measure"
+                     :name "Measure"
+                     :kind "resource"}]
+                   :search-param-registry search-param-registry
+                   :resource-patterns
+                   [#:blaze.rest-api.resource-pattern
+                           {:type "Measure"
+                            :interactions
+                            {:read
+                             #:blaze.rest-api.interaction
+                                     {:handler (fn [_])}}}]
+                   :operations
+                   [#:blaze.rest-api.operation
+                           {:code "evaluate-measure"
+                            :def-uri
+                            "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
+                            :resource-types ["Measure"]
+                            :type-handler (fn [_])
+                            :instance-handler (fn [_])
+                            :documentation "documentation-161800"}]})
+                {})
+              :body)
+          :fhir/type := :fhir/CapabilityStatement
+          [:rest 0 :resource 0 :type] := #fhir/code"Measure"
+          [:rest 0 :resource 0 :operation 0 :name] := "evaluate-measure"
+          [:rest 0 :resource 0 :operation 0 :definition] :=
+          #fhir/canonical"http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
+          [:rest 0 :resource 0 :operation 0 :documentation] := #fhir/markdown"documentation-161800")))))

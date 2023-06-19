@@ -126,6 +126,9 @@
         (testing "Transaction time in Last-Modified header"
           (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
 
+        (testing "t in ETag header"
+          (is (= "W/\"2\"" (get headers "ETag"))))
+
         (given body
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"

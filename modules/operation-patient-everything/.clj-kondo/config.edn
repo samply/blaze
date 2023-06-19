@@ -1,7 +1,8 @@
 {:lint-as
  {blaze.anomaly/when-ok clojure.core/let
-  blaze.fhir.operation.graphql-test/with-handler clojure.core/fn
-  blaze.test-util/with-system clojure.core/with-open}
+  blaze.async.comp/do-sync clojure.core/let
+  blaze.db.api-stub/with-system-data clojure.core/with-open
+  blaze.operation.patient.everything-test/with-handler clojure.core/fn}
 
  :linters
  {:unsorted-required-namespaces
@@ -22,6 +23,7 @@
   :consistent-alias
   {:aliases
    {blaze.db.api d
+    blaze.test-util tu
     ring.util.response ring}}}
 
  :skip-comments true}

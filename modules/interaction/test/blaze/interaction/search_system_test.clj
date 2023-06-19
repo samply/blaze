@@ -162,7 +162,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "Returns all existing resources"
-        (let [{:keys [status body]}
+        (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler {::reitit/match match})]
 
           (is (= 200 status))
@@ -188,10 +188,10 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url "/Patient/0")
-                   (-> body :entry first :fullUrl))))
+                   (:fullUrl first-entry))))
 
           (testing "the entry has the right resource"
-            (given (-> body :entry first :resource)
+            (given (:resource first-entry)
               :fhir/type := :fhir/Patient
               :id := "0"
               [:meta :versionId] := #fhir/id"1"
@@ -220,7 +220,7 @@
             (is (= (str base-url "?_summary=count&_count=50&__t=1")
                    (link-url body "self"))))
 
-          (testing "the bundle contains no entries"
+          (testing "the bundle contains no entry"
             (is (empty? (:entry body))))))
 
       (testing "with param _count equal to zero"
@@ -242,7 +242,7 @@
           (testing "has a self link"
             (is (= (str base-url "?_count=0&__t=1") (link-url body "self"))))
 
-          (testing "the bundle contains no entries"
+          (testing "the bundle contains no entry"
             (is (empty? (:entry body))))))))
 
   (testing "with two patients"

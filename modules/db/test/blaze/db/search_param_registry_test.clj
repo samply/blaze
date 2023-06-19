@@ -187,3 +187,17 @@
           ::anom/category := ::anom/fault
           ::anom/message := "msg-121005"
           ::x := ::y)))))
+
+
+(deftest compartment-resources-test
+  (testing "Patient"
+    (with-system [{:blaze.db/keys [search-param-registry]} config]
+      (given (sr/compartment-resources search-param-registry "Patient")
+        count := 100
+        [0] := ["Account" "subject"]
+        [1] := ["AdverseEvent" "subject"]
+        [2] := ["AllergyIntolerance" "patient"]
+        [3] := ["AllergyIntolerance" "recorder"]
+        [4] := ["AllergyIntolerance" "asserter"]
+        [5] := ["Appointment" "actor"]
+        [99] := ["VisionPrescription" "patient"]))))

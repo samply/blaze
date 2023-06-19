@@ -14,9 +14,7 @@
     [clojure.spec.test.alpha :as st]
     [clojure.tools.namespace.repl :refer [refresh]]
     [java-time.api :as time]
-    [taoensso.timbre :as log])
-  (:import
-    [com.github.benmanes.caffeine.cache Cache]))
+    [taoensso.timbre :as log]))
 
 
 ;; Spec Instrumentation
