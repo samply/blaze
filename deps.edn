@@ -16,6 +16,9 @@
   blaze.operation/measure-evaluate-measure
   {:local/root "modules/operation-measure-evaluate-measure"}
 
+  blaze.operation/patient-everything
+  {:local/root "modules/operation-patient-everything"}
+
   blaze/openid-auth
   {:local/root "modules/openid-auth"}
 

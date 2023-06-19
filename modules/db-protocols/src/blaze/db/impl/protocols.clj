@@ -44,7 +44,7 @@
 
   (-include [db resource-handle code] [db resource-handle code target-type])
 
-  (-rev-include [db resource-handle source-type code])
+  (-rev-include [db resource-handle] [db resource-handle source-type code])
 
   (-new-batch-db [db]))
 
@@ -108,4 +108,5 @@
   (-get [_ code] [_ code type])
   (-list-by-type [_ type])
   (-list-by-target [_ target])
-  (-linked-compartments [_ resource]))
+  (-linked-compartments [_ resource])
+  (-compartment-resources [_ type]))

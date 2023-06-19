@@ -617,6 +617,9 @@ jobs:
     - name: Read Ignores T
       run: .github/scripts/read-ignores-t.sh
 
+    - name: Patient Everything
+      run: .github/scripts/patient-everything.sh
+
   not-enforcing-referential-integrity-test:
     needs: build
     runs-on: ubuntu-22.04
@@ -1486,6 +1489,9 @@ jobs:
 
     - name: Read Ignores T
       run: .github/scripts/read-ignores-t.sh
+
+    - name: Patient Everything
+      run: .github/scripts/patient-everything.sh
 
     - name: Docker Stats
       run: docker stats --no-stream

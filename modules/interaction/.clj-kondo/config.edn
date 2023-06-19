@@ -35,6 +35,9 @@
 
   :consistent-alias
   {:aliases
-   {blaze.db.api d}}}
+   {blaze.db.api d
+    blaze.test-util tu
+    cuerdas.core c-str
+    ring.util.response ring}}}
 
  :skip-comments true}

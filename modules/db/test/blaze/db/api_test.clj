@@ -5364,18 +5364,46 @@
 
 (deftest rev-include-test
   (testing "Patient"
-    (doseq [code ["subject" "patient"]]
-      (testing code
+    (testing "all resources"
+      (testing "with patient only"
+        (with-system-data [{:blaze.db/keys [node]} system]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+          (let [db (d/db node)
+                patient (d/resource-handle db "Patient" "0")]
+
+            (is (empty? (d/rev-include db patient))))))
+
+      (testing "with three resources"
         (with-system-data [{:blaze.db/keys [node]} system]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Observation :id "0"
+                   :subject #fhir/Reference{:reference "Patient/0"}}]
+            [:put {:fhir/type :fhir/Condition :id "0"
+                   :subject #fhir/Reference{:reference "Patient/0"}}]
+            [:put {:fhir/type :fhir/Specimen :id "0"
+                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+          (let [db (d/db node)
+                patient (d/resource-handle db "Patient" "0")]
+
+            (given (d/rev-include db patient)
+              count := 3
+              [0 fhir-spec/fhir-type] := :fhir/Condition
+              [0 :id] := "0"
+              [1 fhir-spec/fhir-type] := :fhir/Observation
+              [1 :id] := "0"
+              [2 fhir-spec/fhir-type] := :fhir/Specimen
+              [2 :id] := "0")))))
+
+    (doseq [code ["subject" "patient"]]
+      (testing (str "Observation with search parameter " code)
+        (with-system-data [{:blaze.db/keys [node]} system]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Observation :id "0"
+                   :subject #fhir/Reference{:reference "Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "1"
-                   :subject
-                   #fhir/Reference
-                           {:reference "Patient/0"}}]
-            [:put {:fhir/type :fhir/Observation :id "2"
-                   :subject
-                   #fhir/Reference
-                           {:reference "Patient/0"}}]]]
+                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
           (let [db (d/db node)
                 patient (d/resource-handle db "Patient" "0")]
@@ -5383,9 +5411,9 @@
             (given (d/rev-include db patient "Observation" code)
               count := 2
               [0 fhir-spec/fhir-type] := :fhir/Observation
-              [0 :id] := "1"
+              [0 :id] := "0"
               [1 fhir-spec/fhir-type] := :fhir/Observation
-              [1 :id] := "2")))))
+              [1 :id] := "1")))))
 
     (testing "non-reference search parameter code"
       (with-system-data [{:blaze.db/keys [node]} system]

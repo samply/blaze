@@ -20,7 +20,9 @@
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.all :as search-param-all]
     [blaze.db.impl.search-param.util :as u]
-    [blaze.db.kv :as kv])
+    [blaze.db.kv :as kv]
+    [blaze.db.search-param-registry :as sr]
+    [blaze.fhir.spec.type :as type])
   (:import
     [clojure.lang IReduceInit]
     [java.io Writer]
@@ -170,6 +172,13 @@
     (index/targets! context resource-handle (codec/c-hash code)
                     (codec/tid target-type)))
 
+  (-rev-include [db resource-handle]
+    (coll/eduction
+      (mapcat
+        (fn [[source-type code]]
+          (p/-rev-include db resource-handle source-type code)))
+      (sr/compartment-resources (:search-param-registry node)
+                                (name (type/type resource-handle)))))
 
   (-rev-include [_ resource-handle source-type code]
     (let [{:keys [svri]} context

@@ -223,6 +223,18 @@
   :ret nat-int?)
 
 
+(s/fdef d/include
+  :args (s/cat :db :blaze.db/db :resource-handle :blaze.db/resource-handle
+               :code string? :type (s/? :fhir.resource/type))
+  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+
+
+(s/fdef d/rev-include
+  :args (s/cat :db :blaze.db/db :resource-handle :blaze.db/resource-handle
+               :source-type (s/? :fhir.resource/type) :code (s/? string?))
+  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+
+
 
 ;; ---- Batch DB --------------------------------------------------------------
 

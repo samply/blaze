@@ -241,7 +241,7 @@
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
 
-                (testing "the bundle contains no entries"
+                (testing "the bundle contains no entry"
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
@@ -318,7 +318,7 @@
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
 
-                (testing "the bundle contains no entries"
+                (testing "the bundle contains no entry"
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
@@ -387,7 +387,7 @@
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
 
-                (testing "the bundle contains no entries"
+                (testing "the bundle contains no entry"
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
@@ -458,7 +458,7 @@
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
 
-                (testing "the bundle contains no entries"
+                (testing "the bundle contains no entry"
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
@@ -505,7 +505,7 @@
             (testing "the total count is 2"
               (is (= #fhir/unsignedInt 2 (:total body))))
 
-            (testing "the bundle contains no entries"
+            (testing "the bundle contains no entry"
               (is (empty? (:entry body))))))
 
         (testing "with _summary=count and status=final"
@@ -524,7 +524,7 @@
             (testing "the total count is 1"
               (is (= #fhir/unsignedInt 1 (:total body))))
 
-            (testing "the bundle contains no entries"
+            (testing "the bundle contains no entry"
               (is (empty? (:entry body))))))
 
         (testing "with no query param"

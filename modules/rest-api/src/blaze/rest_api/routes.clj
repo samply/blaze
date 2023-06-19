@@ -259,6 +259,7 @@
       (fn [resource-type]
         [(str "/" resource-type "/{id}/$" code)
          {:interaction (str "operation-instance-" code)
+          :conflicting true
           :middleware [[wrap-db node db-sync-timeout]]
           :get instance-handler
           :post {:middleware [wrap-resource]

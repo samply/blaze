@@ -106,10 +106,13 @@
             []
             (keep
               (fn [{:blaze.rest-api.operation/keys
-                    [code def-uri type-handler instance-handler]}]
+                    [code def-uri type-handler instance-handler documentation]}]
                 (when (or type-handler instance-handler)
-                  {:name code
-                   :definition (type/canonical def-uri)})))
+                  (cond->
+                    {:name code
+                     :definition (type/canonical def-uri)}
+                    documentation
+                    (assoc :documentation (type/->Markdown documentation))))))
             operations))))))
 
 
