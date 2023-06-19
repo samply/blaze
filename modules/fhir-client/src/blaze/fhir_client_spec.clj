@@ -24,7 +24,19 @@
 
 
 (s/fdef fhir-client/update
-  :args (s/cat :base-uri string? :resource :blaze/resource
+  :args (s/cat :base-uri string? :resource map?
+               :opts (s/? :blaze.fhir-client/options))
+  :ret ac/completable-future?)
+
+
+(s/fdef fhir-client/transaction
+  :args (s/cat :base-uri string? :resource map?
+               :opts (s/? :blaze.fhir-client/options))
+  :ret ac/completable-future?)
+
+
+(s/fdef fhir-client/batch
+  :args (s/cat :base-uri string? :resource map?
                :opts (s/? :blaze.fhir-client/options))
   :ret ac/completable-future?)
 

@@ -1,5 +1,6 @@
 (ns blaze.fhir-client-test
   (:require
+    [blaze.async.comp :as ac]
     [blaze.fhir-client :as fhir-client]
     [blaze.fhir-client-spec]
     [blaze.fhir.spec.type]
@@ -12,6 +13,7 @@
     [taoensso.timbre :as log])
   (:import
     [com.pgssoft.httpclient HttpClientMock Condition]
+    [java.net.http HttpClient]
     [java.nio.file Files Path]
     [java.nio.file.attribute FileAttribute]))
 
@@ -35,6 +37,17 @@
       :fhir/type := :fhir/CapabilityStatement)))
 
 
+(deftest handle-error-test
+  (let [http-client (proxy [HttpClient] []
+                      (sendAsync [_ _]
+                        (ac/failed-future (ex-info "" {}))))]
+
+    (given-failed-future (fhir-client/metadata "http://localhost:8080/fhir"
+                                               {:http-client http-client})
+      ::anom/category := ::anom/fault
+      ::anom/message := "Missing response status code.")))
+
+
 (deftest read-test
   (testing "success"
     (let [http-client (HttpClientMock.)]
@@ -43,10 +56,17 @@
           (.doReturn (j/write-value-as-string {:resourceType "Patient" :id "0"}))
           (.withHeader "content-type" "application/fhir+json"))
 
-      (given @(fhir-client/read "http://localhost:8080/fhir" "Patient" "0"
-                                {:http-client http-client})
-        :fhir/type := :fhir/Patient
-        :id := "0")))
+      (testing "with map opts"
+        (given @(fhir-client/read "http://localhost:8080/fhir" "Patient" "0"
+                                  {:http-client http-client})
+          :fhir/type := :fhir/Patient
+          :id := "0"))
+
+      (testing "with k/v sequence opts"
+        (given @(fhir-client/read "http://localhost:8080/fhir" "Patient" "0"
+                                  :http-client http-client)
+          :fhir/type := :fhir/Patient
+          :id := "0"))))
 
   (testing "with application/json Content-Type"
     (let [http-client (HttpClientMock.)]
@@ -75,7 +95,7 @@
 
       (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
                                              "Patient" "0"
-                                              {:http-client http-client})
+                                             {:http-client http-client})
         ::anom/category := ::anom/not-found
         [:fhir/issues 0 :severity] := #fhir/code"error"
         [:fhir/issues 0 :code] := #fhir/code"not-found")))
@@ -112,7 +132,7 @@
 
       (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
                                              "Patient" "0"
-                                              {:http-client http-client})
+                                             {:http-client http-client})
         ::anom/category := ::anom/unavailable)))
 
   (testing "Gateway timeout without JSON response (external load-balancer)"
@@ -183,6 +203,76 @@
                                                {:http-client http-client})
         ::anom/category := ::anom/conflict
         [:fhir/issues 0 :severity] := #fhir/code"error"))))
+
+
+(deftest create-test
+  (testing "success"
+    (let [http-client (HttpClientMock.)
+          resource {:fhir/type :fhir/Patient}]
+
+      (-> (.onPost http-client "http://localhost:8080/fhir/Patient")
+          (.doReturn 201 (j/write-value-as-string {:resourceType "Patient" :id "P144216"}))
+          (.withHeader "content-type" "application/fhir+json"))
+
+      (given @(fhir-client/create "http://localhost:8080/fhir" resource
+                                  {:http-client http-client})
+        :fhir/type := :fhir/Patient
+        :id := "P144216")))
+
+  (testing "rejected"
+    (let [http-client (HttpClientMock.)]
+
+      (-> (.onPost http-client "http://localhost:8080/fhir/Patient")
+          (.doReturn 422 (j/write-value-as-string {:resourceType "OperationOutcome"
+                                                   :issue [{:severity "error"}]}))
+          (.withHeader "content-type" "application/fhir+json"))
+
+      (given-failed-future (fhir-client/create "http://localhost:8080/fhir" {:fhir/type :fhir/Patient}
+                                               {:http-client http-client})
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Unexpected response status 422."))))
+
+
+(deftest delete-test
+  (testing "success"
+    (let [http-client (HttpClientMock.)]
+
+      (-> (.onDelete http-client "http://localhost:8080/fhir/Patient/P145440")
+          (.doReturnStatus 204))
+
+      (is @(fhir-client/delete "http://localhost:8080/fhir" "Patient" "P145440"
+                               {:http-client http-client})))))
+
+
+(deftest transaction-test
+  (testing "success"
+    (let [http-client (HttpClientMock.)
+          resource {:fhir/type :fhir/Bundle :fhir.Bundle/type "transaction"}]
+
+      (-> (.onPost http-client "http://localhost:8080/fhir")
+          (.doReturn (j/write-value-as-string {:resourceType "Bundle" :type "transaction-response" :id "0"}))
+          (.withHeader "content-type" "application/fhir+json"))
+
+      (given @(fhir-client/transaction "http://localhost:8080/fhir" resource
+                                       {:http-client http-client})
+        :fhir/type := :fhir/Bundle
+        :type := #fhir/code"transaction-response"
+        :id := "0"))))
+
+(deftest batch-test
+  (testing "success"
+    (let [http-client (HttpClientMock.)
+          resource {:fhir/type :fhir/Bundle :fhir.Bundle/type "batch"}]
+
+      (-> (.onPost http-client "http://localhost:8080/fhir")
+          (.doReturn (j/write-value-as-string {:resourceType "Bundle" :type "batch-response" :id "0"}))
+          (.withHeader "content-type" "application/fhir+json"))
+
+      (given @(fhir-client/batch "http://localhost:8080/fhir" resource
+                                 {:http-client http-client})
+        :fhir/type := :fhir/Bundle
+        :type := #fhir/code"batch-response"
+        :id := "0"))))
 
 
 (deftest execute-type-get-test
