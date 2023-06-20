@@ -1,5 +1,6 @@
 (ns blaze.fhir.spec-test
   (:require
+    [blaze.anomaly :as ba]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec-spec]
     [blaze.fhir.spec.generators :as fg]
@@ -198,6 +199,9 @@
         [:fhir/issues 0 :fhir.issues/code] := "invariant"
         [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `{}`. Expected type is `Resource`."
         [:fhir/issues 0 :fhir.issues/expression] := "entry[0].resource"))
+
+  (testing "missing resourceType"
+    (is (ba/anomaly? (fhir-spec/conform-json {}))))
 
   (testing "empty patient resource"
     (testing "gets type annotated"

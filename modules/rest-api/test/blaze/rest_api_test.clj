@@ -85,7 +85,9 @@
               {:code "evaluate-measure"
                :resource-types ["Measure"]
                :type-handler (handler ::evaluate-measure-type)
-               :instance-handler (handler ::evaluate-measure-instance)}]}
+               :instance-handler (handler ::evaluate-measure-instance)}]
+     :metadata-handler (handler ::metadata)
+     :admin-handler (handler ::admin)}
     (fn [_])))
 
 
@@ -166,7 +168,10 @@
       "/Measure/$evaluate-measure" :post ::evaluate-measure-type
       "/Measure/0/$evaluate-measure" :get ::evaluate-measure-instance
       "/Measure/0/$evaluate-measure" :post ::evaluate-measure-instance
-      "/Measure/0" :get ::read)
+      "/Measure/0" :get ::read
+      "/__metadata/StructureDefinition" :get ::metadata
+      "/__admin" :get ::admin
+      "/__admin/more" :get ::admin)
 
     (testing "of minimal router"
       (are [path request-method handler]

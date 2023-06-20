@@ -1,5 +1,6 @@
 (ns blaze.system-test
   (:require
+    [blaze.async.comp :as ac]
     [blaze.db.api-stub :refer [mem-node-system]]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.interaction.delete]
@@ -126,7 +127,7 @@
   [_ _]
   (reify pp/PageStore
     (-get [_ _])
-    (-put [_ _])))
+    (-put [_ _] (ac/completed-future "token"))))
 
 
 (defn input-stream [bs]

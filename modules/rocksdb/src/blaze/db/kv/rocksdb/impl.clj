@@ -1,13 +1,17 @@
 (ns blaze.db.kv.rocksdb.impl
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
-    [blaze.coll.core :as coll])
+    [blaze.coll.core :as coll]
+    [clojure.core.protocols :as p]
+    [clojure.datafy :as datafy])
   (:import
     [clojure.lang ILookup]
+    [java.time Instant]
     [org.rocksdb
      BlockBasedTableConfig BloomFilter BuiltinComparator ColumnFamilyDescriptor
      ColumnFamilyHandle ColumnFamilyOptions CompressionType DBOptions
-     RocksDBException Statistics Status$Code WriteBatchInterface WriteOptions]))
+     RocksDBException Statistics Status$Code TableProperties WriteBatchInterface
+     WriteOptions]))
 
 
 (set! *warn-on-reflection* true)
@@ -161,3 +165,36 @@
     Status$Code/NotFound
     (ba/not-found (format "Property with name `%s` was not found on column-family with name `%s`." name (clojure.core/name column-family)))
     (ba/fault (ex-message e))))
+
+
+(extend-protocol p/Datafiable
+  TableProperties
+  (datafy [props]
+    (cond->
+      {:data-size (.getDataSize props)
+       :index-size (.getIndexSize props)
+       :index-partitions (.getIndexPartitions props)
+       :top-level-index-size (.getTopLevelIndexSize props)
+       :filter-size (.getFilterSize props)
+       :total-raw-key-size (.getRawKeySize props)
+       :total-raw-value-size (.getRawValueSize props)
+       :num-data-blocks (.getNumDataBlocks props)
+       :num-entries (.getNumEntries props)
+       :format-version (.getFormatVersion props)
+       :fixed-key-len (.getFixedKeyLen props)
+       :column-family-id (.getColumnFamilyId props)
+       :creation-time (Instant/ofEpochSecond (.getCreationTime props))
+       :comparator-name (.getComparatorName props)
+       :compression-name (.getCompressionName props)
+       :user-collected-properties (.getUserCollectedProperties props)
+       :readable-properties (.getReadableProperties props)}
+      (pos? (.getOldestKeyTime props))
+      (assoc :oldest-key-time (Instant/ofEpochSecond (.getOldestKeyTime props))))))
+
+
+(defn- datafy-table [[name props]]
+  (assoc (datafy/datafy props) :name name))
+
+
+(defn datafy-tables [props]
+  (into [] (map datafy-table) props))

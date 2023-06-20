@@ -2,6 +2,7 @@
   (:require
     [blaze.anomaly :as ba]
     [blaze.byte-buffer :as bb]
+    [blaze.byte-string :as bs]
     [blaze.db.kv :as kv]
     [blaze.db.kv-spec]
     [blaze.db.kv.rocksdb :as rocksdb]
@@ -11,6 +12,7 @@
     [blaze.test-util :as tu :refer [bytes= given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
+    [clojure.string :as str]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
     [integrant.core :as ig]
@@ -679,6 +681,16 @@
         (is (nil? (kv/get db :a (ba 0x00))))))))
 
 
+(deftest column-families-test
+  (with-system [{db ::kv/rocksdb} (system (new-temp-dir!))]
+
+    (is (= [:default] (rocksdb/column-families db))))
+
+  (with-system [{db ::kv/rocksdb} (a-system (new-temp-dir!))]
+
+    (is (= [:default :a] (rocksdb/column-families db)))))
+
+
 (deftest get-property-test
   (with-system [{db ::kv/rocksdb} (system (new-temp-dir!))]
 
@@ -714,6 +726,52 @@
           (given (fn db :a "name-143127")
             ::anom/category := ::anom/not-found
             ::anom/message := "Property with name `name-143127` was not found on column-family with name `a`."))))))
+
+
+(deftest table-properties-test
+  (with-system [{db ::kv/rocksdb} (system (new-temp-dir!))]
+    (run!
+      (fn [i]
+        (kv/put!
+          db
+          (bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i))))
+          (apply ba (range 10000))))
+      (range 10000 20000))
+
+    (given (rocksdb/table-properties db)
+      count := 1
+      [0 :comparator-name] := "leveldb.BytewiseComparator"
+      [0 :compression-name] := "LZ4"
+      [0 :data-size] := 2168082
+      [0 :index-size] := 86351
+      [0 :num-data-blocks] := 6631
+      [0 :num-entries] := 6631
+      [0 :top-level-index-size] := 0
+      [0 :total-raw-key-size] := 66310
+      [0 :total-raw-value-size] := 66310000))
+
+  (testing "with column-family"
+    (with-system [{db ::kv/rocksdb} (a-system (new-temp-dir!))]
+      (run!
+        (fn [i]
+          (kv/put!
+            db
+            [[:a
+              (bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i))))
+              (apply ba (range 10000))]]))
+        (range 10000 20000))
+
+      (given (rocksdb/table-properties db :a)
+        count := 1
+        [0 :comparator-name] := "leveldb.BytewiseComparator"
+        [0 :compression-name] := "LZ4"
+        [0 :data-size] := 2168082
+        [0 :index-size] := 86351
+        [0 :num-data-blocks] := 6631
+        [0 :num-entries] := 6631
+        [0 :top-level-index-size] := 0
+        [0 :total-raw-key-size] := 66310
+        [0 :total-raw-value-size] := 66310000))))
 
 
 (deftest compact-range-test
