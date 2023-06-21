@@ -18,24 +18,24 @@
 (test/use-fixtures :each tu/fixture)
 
 
-(def system
+(def config
   {::kv/mem {:column-families {:tx-error-index nil}}})
 
 
 (deftest tx-test
   (testing "finds the transaction error"
-    (with-system [{kv-store ::kv/mem} system]
+    (with-system [{kv-store ::kv/mem} config]
       (kv/put! kv-store [(tx-error/index-entry 1 {::anom/category ::anom/fault})])
 
       (given (tx-error/tx-error kv-store 1)
         ::anom/category := ::anom/fault)))
 
   (testing "doesn't find a non-existing transaction error"
-    (with-system [{kv-store ::kv/mem} system]
+    (with-system [{kv-store ::kv/mem} config]
       (kv/put! kv-store [(tx-error/index-entry 1 {::anom/category ::anom/fault})])
 
       (is (nil? (tx-error/tx-error kv-store 2)))))
 
   (testing "nothing is found on empty db"
-    (with-system [{kv-store ::kv/mem} system]
+    (with-system [{kv-store ::kv/mem} config]
       (is (nil? (tx-error/tx-error kv-store 1))))))

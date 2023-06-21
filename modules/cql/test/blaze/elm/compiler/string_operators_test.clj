@@ -5,7 +5,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.test-util :as tu]
@@ -203,7 +203,7 @@
 
   (testing "retrieve"
     (are [count]
-      (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [(into [[:put {:fhir/type :fhir/Patient :id "0"}]]
                (map (fn [id]
                       [:put {:fhir/type :fhir/Observation :id (str id)

@@ -23,7 +23,7 @@
 (def ^Cache cache (-> (Caffeine/newBuilder) (.recordStats) (.build)))
 
 
-(def system
+(def config
   {:blaze.db/cache-collector
    {:caches {"name-135224" cache "name-093214" nil}}})
 
@@ -50,7 +50,7 @@
 
 
 (deftest cache-collector-test
-  (with-system [{collector :blaze.db/cache-collector} system]
+  (with-system [{collector :blaze.db/cache-collector} config]
 
     (testing "all zero on fresh cache"
       (given (metrics/collect collector)

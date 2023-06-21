@@ -53,7 +53,7 @@
     ::prepared-put-statement))
 
 
-(def system
+(def config
   {::page-store/cassandra {:secure-rng (ig/ref :blaze.test/fixed-rng)}
    :blaze.test/fixed-rng {}})
 
@@ -77,5 +77,5 @@
                       (ac/completed-future ::result-set))
        cass/close (fn [session]
                     (assert (= ::session session)))]
-      (with-system [{store ::page-store/cassandra} system]
+      (with-system [{store ::page-store/cassandra} config]
         (is (= token @(page-store/put! store clauses)))))))

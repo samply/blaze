@@ -10,13 +10,13 @@
 (log/set-level! :info)
 
 
-(def system
+(def config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
 
 (deftest linked-compartments-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     ;; 1.6 µs - Mac mini M1
     (testing "Condition subject"
       (criterium/quick-bench

@@ -4,7 +4,7 @@
     [blaze.anomaly-spec]
     [blaze.cql-translator :as cql-translator]
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.elm.compiler.library :as library]
     [blaze.fhir.operation.evaluate-measure.measure.stratifier :as stratifier]
     [blaze.fhir.operation.evaluate-measure.measure.stratifier-spec]
@@ -187,7 +187,7 @@
 (deftest evaluate
   (testing "one component"
     (testing "gender"
-      (with-system-data [system mem-node-system]
+      (with-system-data [system mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"male"}]
           [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code"female"}]
@@ -237,7 +237,7 @@
               [:tx-ops count] := 3)))))
 
     (testing "CodeableConcept"
-      (with-system-data [system mem-node-system]
+      (with-system-data [system mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
                  :code #fhir/CodeableConcept
@@ -264,7 +264,7 @@
               [:result :stratum 0 :population 0 :count] := #fhir/integer 1)))))
 
     (testing "Quantity"
-      (with-system-data [system mem-node-system]
+      (with-system-data [system mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
                  :subject #fhir/Reference{:reference "Patient/0"}
@@ -303,7 +303,7 @@
 
     (testing "errors"
       (testing "with expression"
-        (with-system [system mem-node-system]
+        (with-system [system mem-node-config]
           (let [context (context system empty-library)
                 evaluated-populations {:handles [[]]}]
             (given (stratifier/evaluate
@@ -319,7 +319,7 @@
               :fhir.issue/expression := "Measure.group[1].stratifier[2].criteria"))))
 
       (testing "with unknown expression"
-        (with-system [system mem-node-system]
+        (with-system [system mem-node-config]
           (let [context (context system empty-library)
                 evaluated-populations {:handles [[]]}]
             (given (stratifier/evaluate (assoc context :report-type "population")
@@ -329,7 +329,7 @@
               :expression-name := "Gender"))))
 
       (testing "gender"
-        (with-system-data [system mem-node-system]
+        (with-system-data [system mem-node-config]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
           (let [{:keys [db] :as context} (context system library-age-gender)
@@ -344,7 +344,7 @@
 
   (testing "two components"
     (testing "subject-based measure"
-      (with-system-data [system mem-node-system]
+      (with-system-data [system mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Patient :id "1"
                  :gender #fhir/code"male"
@@ -380,7 +380,7 @@
               [:result :stratum 3 :population 0 :count] := #fhir/integer 1)))))
 
     (testing "Encounter measure"
-      (with-system-data [system mem-node-system]
+      (with-system-data [system mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0" :birthDate #fhir/date"2000"}]
           [:put {:fhir/type :fhir/Patient :id "1" :birthDate #fhir/date"2001"}]
           [:put {:fhir/type :fhir/Patient :id "2" :birthDate #fhir/date"2003"}]
@@ -435,7 +435,7 @@
               [:result :stratum 3 :population 0 :count] := #fhir/integer 1)))))
 
     (testing "Quantity"
-      (with-system-data [system mem-node-system]
+      (with-system-data [system mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0" :birthDate #fhir/date"2000"}]
           [:put {:fhir/type :fhir/Observation :id "0"
                  :subject #fhir/Reference{:reference "Patient/0"}
@@ -481,7 +481,7 @@
 
     (testing "errors"
       (testing "with expression"
-        (with-system [system mem-node-system]
+        (with-system [system mem-node-config]
           (let [context (context system empty-library)
                 evaluated-populations {:handles [[]]}]
             (given (stratifier/evaluate
@@ -497,7 +497,7 @@
               :fhir.issue/expression := "Measure.group[1].stratifier[2].component[0].criteria"))))
 
       (testing "with unknown expression"
-        (with-system [system mem-node-system]
+        (with-system [system mem-node-config]
           (let [context (context system empty-library)
                 evaluated-populations {:handles [[]]}]
             (given (stratifier/evaluate (assoc context :report-type "population")

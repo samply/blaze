@@ -36,13 +36,13 @@
   (sr/get search-param-registry "birthdate" "Patient"))
 
 
-(def system
+(def config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
 
 (deftest birth-date-param-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (given (birth-date-param search-param-registry)
       :name := "birthdate"
       :code := "birthdate"
@@ -50,7 +50,7 @@
 
 
 (deftest compile-value-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "invalid date value"
       (given (search-param/compile-values
                (birth-date-param search-param-registry) nil ["a"])
@@ -79,7 +79,7 @@
 
 
 (deftest index-entries-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Patient"
       (testing "birthDate"
         (let [patient {:fhir/type :fhir/Patient

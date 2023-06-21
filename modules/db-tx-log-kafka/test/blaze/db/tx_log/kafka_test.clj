@@ -41,7 +41,7 @@
 (def tx-cmd {:op "create" :type "Patient" :id "0" :hash patient-hash-0})
 
 
-(def system
+(def config
   {::tx-log/kafka
    {:bootstrap-servers bootstrap-servers
     :last-t-executor (ig/ref ::kafka/last-t-executor)}
@@ -105,7 +105,7 @@
            AutoCloseable
            (close [_])))
        kafka/create-last-t-consumer no-op-consumer]
-      (with-system [{tx-log ::tx-log/kafka} system]
+      (with-system [{tx-log ::tx-log/kafka} config]
         (is (= 1 @(tx-log/submit tx-log [tx-cmd] nil)))))
 
     (testing "RecordTooLargeException"
@@ -121,7 +121,7 @@
              AutoCloseable
              (close [_])))
          kafka/create-last-t-consumer no-op-consumer]
-        (with-system [{tx-log ::tx-log/kafka} system]
+        (with-system [{tx-log ::tx-log/kafka} config]
           (given-failed-future (tx-log/submit tx-log [tx-cmd] nil)
             ::anom/category := ::anom/unsupported
             ::anom/message := "A transaction with 1 commands generated a Kafka message which is larger than the configured maximum of null bytes. In order to prevent this error, increase the maximum message size by setting DB_KAFKA_MAX_REQUEST_SIZE to a higher number. msg-173357"))))
@@ -139,7 +139,7 @@
              AutoCloseable
              (close [_])))
          kafka/create-last-t-consumer no-op-consumer]
-        (with-system [{tx-log ::tx-log/kafka} system]
+        (with-system [{tx-log ::tx-log/kafka} config]
           (given-failed-future @(tx-log/submit tx-log [tx-cmd] nil)
             ::anom/category := ::anom/fault
             ::anom/message := "msg-175337")))))
@@ -161,7 +161,7 @@
            AutoCloseable
            (close [_])))
        kafka/create-last-t-consumer no-op-consumer]
-      (with-system [{tx-log ::tx-log/kafka} system]
+      (with-system [{tx-log ::tx-log/kafka} config]
         (with-open [queue (tx-log/new-queue tx-log 1)]
           (is (empty? (tx-log/poll! queue (time/seconds 1))))))))
 
@@ -178,19 +178,19 @@
              (Map/of (first partitions) 104614))
            AutoCloseable
            (close [_])))]
-      (with-system [{tx-log ::tx-log/kafka} system]
+      (with-system [{tx-log ::tx-log/kafka} config]
         (is (= 104614 @(tx-log/last-t tx-log)))))))
 
 
-(def config {:bootstrap-servers "localhost:9092"})
+(def producer-config {:bootstrap-servers "localhost:9092"})
 
 
 (deftest create-producer-test
-  (is (instance? KafkaProducer (kafka/create-producer config))))
+  (is (instance? KafkaProducer (kafka/create-producer producer-config))))
 
 
 (deftest create-consumer-test
-  (given (.assignment (kafka/create-consumer config))
+  (given (.assignment (kafka/create-consumer producer-config))
     count := 1
     [0] := (TopicPartition. "tx" 0)))
 

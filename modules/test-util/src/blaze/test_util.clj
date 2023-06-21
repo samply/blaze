@@ -36,8 +36,11 @@
      ~@body))
 
 
-(defmacro with-system [[binding-form system] & body]
-  `(let [system# (ig/init ~system)]
+(defmacro with-system
+  "Runs `body` inside a system that is initialized from `config`, bound to
+  `binding-form` and finally halted."
+  [[binding-form config] & body]
+  `(let [system# (ig/init ~config)]
      (try
        (let [~binding-form system#]
          ~@body)

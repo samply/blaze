@@ -33,13 +33,13 @@
   (sr/get search-param-registry "phonetic" "Patient"))
 
 
-(def system
+(def config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
 
 (deftest phonetic-param-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (given (phonetic-param search-param-registry)
       :name := "phonetic"
       :code := "phonetic"
@@ -47,7 +47,7 @@
 
 
 (deftest index-entries-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Patient phonetic"
       (testing "missing family is not a problem"
         (let [patient {:fhir/type :fhir/Patient

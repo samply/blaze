@@ -62,7 +62,7 @@
   (respond (ring/response ::health-handler)))
 
 
-(def system
+(def config
   {:blaze.handler/app
    {:rest-api rest-api
     :health-handler health-handler
@@ -72,7 +72,7 @@
 (deftest handler-test
   (testing "with frontend"
     (with-system [{handler :blaze.handler/app}
-                  (assoc-in system [:blaze.handler/app :frontend] frontend)]
+                  (assoc-in config [:blaze.handler/app :frontend] frontend)]
       (testing "rest-api"
         (testing "without accept header"
           (given (call handler {:uri "/" :request-method :get})
@@ -120,7 +120,7 @@
           :status := 405))))
 
   (testing "without frontend"
-    (with-system [{handler :blaze.handler/app} system]
+    (with-system [{handler :blaze.handler/app} config]
       (testing "rest-api"
         (testing "without accept header"
           (given (call handler {:uri "/" :request-method :get})

@@ -8,7 +8,7 @@
     [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.db.api-stub
-     :refer [create-mem-node-system with-system-data]]
+     :refer [create-mem-node-config with-system-data]]
     [blaze.db.resource-store :as rs]
     [blaze.executors :as ex]
     [blaze.fhir.response.create-spec]
@@ -79,16 +79,16 @@
       [:explain ::s/problems 1 :val] := ::invalid)))
 
 
-(defn create-system [node-config]
-  (assoc (create-mem-node-system node-config)
+(defn create-config [node-config]
+  (assoc (create-mem-node-config node-config)
     :blaze.interaction/update
     {:node (ig/ref :blaze.db/node)
      :executor (ig/ref :blaze.test/executor)}
     :blaze.test/executor {}))
 
 
-(def system
-  (create-system {}))
+(def config
+  (create-config {}))
 
 
 (defn wrap-defaults [handler]
@@ -101,7 +101,7 @@
 
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (tu/extract-txs-body more)]
-    `(with-system-data [{handler# :blaze.interaction/update} system]
+    `(with-system-data [{handler# :blaze.interaction/update} config]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults wrap-error)]
          ~@body))))
@@ -413,7 +413,7 @@
               [:meta :lastUpdated] := Instant/EPOCH))))))
 
   (testing "with disabled referential integrity check"
-    (with-system [{handler :blaze.interaction/update} (create-system {:enforce-referential-integrity false})]
+    (with-system [{handler :blaze.interaction/update} (create-config {:enforce-referential-integrity false})]
       (let [{:keys [status headers body]}
             @((-> handler wrap-defaults wrap-error)
               {:path-params {:id "0"}

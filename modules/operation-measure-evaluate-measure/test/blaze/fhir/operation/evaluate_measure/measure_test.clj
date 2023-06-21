@@ -2,7 +2,7 @@
   (:require
     [blaze.anomaly :as ba]
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.fhir.operation.evaluate-measure.measure :as measure]
     [blaze.fhir.operation.evaluate-measure.measure-spec]
     [blaze.fhir.operation.evaluate-measure.measure.population-spec]
@@ -82,8 +82,8 @@
     (update bundle :entry conj library)))
 
 
-(def system
-  (assoc mem-node-system
+(def config
+  (assoc mem-node-config
     :blaze.test/fixed-rng-fn {}))
 
 
@@ -92,7 +92,7 @@
    (evaluate name "population"))
   ([name report-type]
    (with-system-data
-     [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} system]
+     [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
      [(tx-ops (:entry (read-data name)))]
 
      (let [db (d/db node)
@@ -204,7 +204,7 @@
 (deftest evaluate-measure-test
   (testing "Encounter population basis"
     (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} system]
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference "Patient/0"}}]
         [:put {:fhir/type :fhir/Patient :id "1"}]
@@ -258,7 +258,7 @@
 
   (testing "two groups"
     (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} system]
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]
         [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"female"}]
         [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference "Patient/1"}}]
@@ -363,7 +363,7 @@
 
   (testing "missing criteria"
     (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} system]
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
       [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                :content [(library-content (library-gender true))]}]]]
 
@@ -389,7 +389,7 @@
 
   (testing "evaluation timeout"
     (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} system]
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
        [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                :content [(library-content (library-gender true))]}]]]
@@ -418,7 +418,7 @@
     (doseq [subject-ref ["0" ["Patient" "0"]]
             [library count] [[(library true) 1] [(library false) 0]]]
       (with-system-data
-        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} system]
+        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                  :content [(library-content library)]}]]]
@@ -453,7 +453,7 @@
     (testing "with stratifiers"
       (doseq [[library count] [[(library-gender true) 1] [(library-gender false) 0]]]
         (with-system-data
-          [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} system]
+          [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
           [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]
             [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                    :content [(library-content library)]}]]]
@@ -494,7 +494,7 @@
 
     (testing "invalid subject"
       (with-system-data
-        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} system]
+        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
         [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                  :content [(library-content (library-gender true))]}]]]
 
@@ -518,7 +518,7 @@
 
     (testing "missing subject"
       (with-system-data
-        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} system]
+        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
         [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                  :content [(library-content (library-gender true))]}]]]
 
@@ -542,7 +542,7 @@
 
     (testing "deleted subject"
       (with-system-data
-        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} system]
+        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                  :content [(library-content (library-gender true))]}]]

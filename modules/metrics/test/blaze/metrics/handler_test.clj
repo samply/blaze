@@ -41,13 +41,13 @@
       [:explain ::s/problems 0 :val] := ::invalid)))
 
 
-(def system
+(def config
   {:blaze.metrics/handler {:registry (ig/ref :blaze.metrics/registry)}
    :blaze.metrics/registry {}})
 
 
 (deftest handler-test
-  (with-system [{:blaze.metrics/keys [handler]} system]
+  (with-system [{:blaze.metrics/keys [handler]} config]
     (given (handler nil)
       :status := 200
       [:headers "Content-Type"] := "text/plain; version=0.0.4; charset=utf-8"

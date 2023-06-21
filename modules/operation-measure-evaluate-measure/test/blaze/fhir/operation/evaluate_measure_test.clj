@@ -2,7 +2,7 @@
   (:require
     [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.db.resource-store :as rs]
     [blaze.executors :as ex]
     [blaze.fhir.operation.evaluate-measure :as evaluate-measure]
@@ -156,8 +156,8 @@
     (is (s/valid? :blaze.metrics/collector collector))))
 
 
-(def system
-  (assoc mem-node-system
+(def config
+  (assoc mem-node-config
     ::evaluate-measure/handler
     {:node (ig/ref :blaze.db/node)
      :executor (ig/ref :blaze.test/executor)
@@ -178,7 +178,7 @@
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
-                         handler# ::evaluate-measure/handler} system]
+                         handler# ::evaluate-measure/handler} config]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# 100)
                                   wrap-error)]

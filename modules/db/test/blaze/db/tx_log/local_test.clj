@@ -72,7 +72,7 @@
       (throw (Exception. "put-error")))))
 
 
-(def system
+(def config
   {::tx-log/local
    {:kv-store (ig/ref :blaze.db/transaction-kv-store)
     :clock (ig/ref :blaze.test/fixed-clock)}
@@ -114,7 +114,7 @@
 
 (deftest tx-log-test
   (testing "an empty transaction log"
-    (with-system [{tx-log ::tx-log/local} system]
+    (with-system [{tx-log ::tx-log/local} config]
       (testing "the last `t` is zero"
         (is (zero? @(tx-log/last-t tx-log))))
 
@@ -125,7 +125,7 @@
   (testing "an already filled transaction log"
     (with-system [{tx-log ::tx-log/local}
                   (assoc-kv-store-init-data
-                    system
+                    config
                     [[(codec/encode-key 1)
                       (codec/encode-tx-data
                         (Instant/ofEpochSecond 0)
@@ -147,7 +147,7 @@
             [:tx-cmds 0 :hash] := patient-hash-0)))))
 
   (testing "with one submitted command in one transaction"
-    (with-system [{tx-log ::tx-log/local} system]
+    (with-system [{tx-log ::tx-log/local} config]
       @(tx-log/submit
          tx-log
          [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
@@ -163,7 +163,7 @@
           [:tx-cmds 0 :hash] := patient-hash-0))))
 
   (testing "with two submitted commands in two transactions"
-    (with-system [{tx-log ::tx-log/local} system]
+    (with-system [{tx-log ::tx-log/local} config]
       @(tx-log/submit
          tx-log
          [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
@@ -186,7 +186,7 @@
           [:tx-cmds 0 :refs] := [["Patient" "0"]]))))
 
   (testing "with local payload"
-    (with-system [{tx-log ::tx-log/local} system]
+    (with-system [{tx-log ::tx-log/local} config]
       (with-open [queue (tx-log/new-queue tx-log 1)]
         @(tx-log/submit
            tx-log
@@ -200,7 +200,7 @@
     (testing "with invalid key"
       (with-system [{tx-log ::tx-log/local
                      kv-store [::kv/mem :blaze.db/transaction-kv-store]}
-                    system]
+                    config]
         (kv/put! kv-store (byte-array 0) (byte-array 0))
 
         (testing "the invalid transaction data is ignored"
@@ -210,7 +210,7 @@
     (testing "with invalid key followed by valid entry"
       (with-system [{tx-log ::tx-log/local
                      kv-store [::kv/mem :blaze.db/transaction-kv-store]}
-                    system]
+                    config]
         (kv/put! kv-store (byte-array 0) (byte-array 0))
         (kv/put! kv-store (codec/encode-key 1) (codec/encode-tx-data
                                                  (Instant/ofEpochSecond 0)
@@ -230,7 +230,7 @@
     (testing "with two invalid keys followed by valid entry"
       (with-system [{tx-log ::tx-log/local
                      kv-store [::kv/mem :blaze.db/transaction-kv-store]}
-                    system]
+                    config]
         (kv/put! kv-store (byte-array 0) (byte-array 0))
         (kv/put! kv-store (byte-array 1) (byte-array 0))
         (kv/put! kv-store (codec/encode-key 1) (codec/encode-tx-data
@@ -251,7 +251,7 @@
     (testing "with empty value"
       (with-system [{tx-log ::tx-log/local
                      kv-store [::kv/mem :blaze.db/transaction-kv-store]}
-                    system]
+                    config]
         (kv/put! kv-store (byte-array Long/BYTES) (byte-array 0))
 
         (testing "the invalid transaction data is ignored"
@@ -261,7 +261,7 @@
     (testing "with invalid cbor value"
       (with-system [{tx-log ::tx-log/local
                      kv-store [::kv/mem :blaze.db/transaction-kv-store]}
-                    system]
+                    config]
         (kv/put! kv-store (byte-array Long/BYTES) (invalid-cbor-content))
 
         (testing "the invalid transaction data is ignored"
@@ -271,7 +271,7 @@
     (testing "with invalid instant value"
       (with-system [{tx-log ::tx-log/local
                      kv-store [::kv/mem :blaze.db/transaction-kv-store]}
-                    system]
+                    config]
         (kv/put! kv-store (byte-array Long/BYTES) (write-cbor {:instant ""}))
 
         (testing "the invalid transaction data is ignored"
@@ -281,7 +281,7 @@
     (testing "with invalid tx-cmd value"
       (with-system [{tx-log ::tx-log/local
                      kv-store [::kv/mem :blaze.db/transaction-kv-store]}
-                    system]
+                    config]
         (kv/put! kv-store (byte-array Long/BYTES) (write-cbor {:tx-cmds [{}]}))
 
         (testing "the invalid transaction data is ignored"

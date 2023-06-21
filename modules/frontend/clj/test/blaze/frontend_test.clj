@@ -37,7 +37,7 @@
       [:explain ::s/problems 0 :val] := ::invalid)))
 
 
-(def system
+(def config
   {:blaze/frontend
    {:context-path "/fhir"}})
 
@@ -49,7 +49,7 @@
 
 
 (deftest handler-test
-  (with-system [{handler :blaze/frontend} system]
+  (with-system [{handler :blaze/frontend} config]
     (given (call handler {:uri "/fhir" :request-method :get})
       :status := 200
       [:body str] :# #".+/public/index.html$"

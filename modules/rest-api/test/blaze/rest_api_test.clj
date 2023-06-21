@@ -1,7 +1,7 @@
 (ns blaze.rest-api-test
   (:require
     [blaze.async.comp :as ac]
-    [blaze.db.api-stub :refer [mem-node-system]]
+    [blaze.db.api-stub :refer [mem-node-config]]
     [blaze.db.impl.search-param]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.structure-definition-repo.protocols :as sdrp]
@@ -349,7 +349,7 @@
 
 
 (def ^:private system
-  (assoc mem-node-system
+  (assoc mem-node-config
     :blaze/rest-api
     {:base-url "http://localhost:8080"
      :version "0.1.0"

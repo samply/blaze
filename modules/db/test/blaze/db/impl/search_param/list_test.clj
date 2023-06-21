@@ -21,13 +21,13 @@
   (sr/get search-param-registry "_list" "Patient"))
 
 
-(def system
+(def config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
 
 (deftest list-param-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (given (list-param search-param-registry)
       :name := "_list"
       :code := "_list")))

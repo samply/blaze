@@ -23,7 +23,7 @@
 (log/set-level! :info)
 
 
-(def system
+(def config
   {:blaze.db/node
    {:tx-log (ig/ref :blaze.db/tx-log)
     :tx-cache (ig/ref :blaze.db/tx-cache)
@@ -81,14 +81,19 @@
    {:structure-definition-repo structure-definition-repo}})
 
 
-(defmacro with-system-data [[binding-form system] txs & body]
-  `(with-system [system# ~system]
+(defmacro with-system-data
+  "Runs `body` inside a system that is initialized from `config`, bound to
+  `binding-form` and finally halted.
+
+  Additionally the database is initialized with `txs`."
+  [[binding-form config] txs & body]
+  `(with-system [system# ~config]
      (run! #(deref (d/transact (:blaze.db/node system#) %)) ~txs)
      (let [~binding-form system#] ~@body)))
 
 
 (deftest transact-test
-  (with-system [{:blaze.db/keys [node]} system]
+  (with-system [{:blaze.db/keys [node]} config]
     ;;  58.8 µs / 1.76 µs - Macbook Pro M1 Pro, Oracle OpenJDK 17.0.2
     (criterium/bench
       @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))))
@@ -111,7 +116,7 @@
 
 
 (deftest type-test
-  (with-system-data [{:blaze.db/keys [node]} system]
+  (with-system-data [{:blaze.db/keys [node]} config]
     (into [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
           (map observation-tx-data)
           (range 2))

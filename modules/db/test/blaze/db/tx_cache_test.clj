@@ -21,7 +21,7 @@
 (test/use-fixtures :each tu/fixture)
 
 
-(def system
+(def config
   {:blaze.db/tx-cache
    {:kv-store (ig/ref ::kv/mem)}
    ::kv/mem {:column-families {}}})
@@ -57,5 +57,5 @@
 
 
 (deftest empty-store-test
-  (with-system [{cache :blaze.db/tx-cache} system]
+  (with-system [{cache :blaze.db/tx-cache} config]
     (is (nil? (.get ^LoadingCache cache 0)))))

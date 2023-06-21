@@ -7,7 +7,7 @@
   (:require
     [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.db.resource-store :as rs]
     [blaze.db.spec]
     [blaze.interaction.read]
@@ -31,8 +31,8 @@
 (test/use-fixtures :each tu/fixture)
 
 
-(def system
-  (assoc mem-node-system :blaze.interaction/read {}))
+(def config
+  (assoc mem-node-config :blaze.interaction/read {}))
 
 
 (def match
@@ -51,7 +51,7 @@
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
-                         handler# :blaze.interaction/read} system]
+                         handler# :blaze.interaction/read} config]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# 100)
                                   wrap-error)]
@@ -61,7 +61,7 @@
 (defmacro with-vread-handler [[handler-binding] & more]
   (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
-                         handler# :blaze.interaction/read} system]
+                         handler# :blaze.interaction/read} config]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults
                                   (wrap-versioned-instance-db node# 100)

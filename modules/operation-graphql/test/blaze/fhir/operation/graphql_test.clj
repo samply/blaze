@@ -1,7 +1,7 @@
 (ns blaze.fhir.operation.graphql-test
   (:require
     [blaze.async.comp :as ac]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.db.resource-store :as rs]
     [blaze.executors :as ex]
     [blaze.fhir.operation.graphql :as graphql]
@@ -68,8 +68,8 @@
       (is (ex/executor? executor)))))
 
 
-(def system
-  (assoc mem-node-system
+(def config
+  (assoc mem-node-config
     ::graphql/handler
     {:node (ig/ref :blaze.db/node)
      :executor (ig/ref :blaze.test/executor)}
@@ -79,7 +79,7 @@
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
-                         handler# ::graphql/handler} system]
+                         handler# ::graphql/handler} config]
        ~txs
        (let [~handler-binding (-> handler# (wrap-db node# 100) wrap-error)]
          ~@body))))

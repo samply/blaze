@@ -33,13 +33,13 @@
   (first (search-param/compile-values (birthdate search-param-registry) nil [value])))
 
 
-(def system
+(def config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
 
 (deftest compile-value-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Date"
       (are [value op lower-bound upper-bound]
         (given (compile-birthdate search-param-registry value)
@@ -53,7 +53,7 @@
 
 
 (deftest index-entries-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Patient _profile"
       (let [patient
             {:fhir/type :fhir/Patient :id "id-140855"

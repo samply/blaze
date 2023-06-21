@@ -3,7 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#delete"
   (:require
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.executors :as ex]
     [blaze.interaction.delete]
     [blaze.test-util :as tu :refer [given-thrown]]
@@ -45,8 +45,8 @@
       [:explain ::s/problems 1 :val] := ::invalid)))
 
 
-(def system
-  (assoc mem-node-system
+(def config
+  (assoc mem-node-config
     :blaze.interaction/delete
     {:node (ig/ref :blaze.db/node)
      :executor (ig/ref :blaze.test/executor)}
@@ -55,7 +55,7 @@
 
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (tu/extract-txs-body more)]
-    `(with-system-data [{handler# :blaze.interaction/delete} system]
+    `(with-system-data [{handler# :blaze.interaction/delete} config]
        ~txs
        (let [~handler-binding handler#]
          ~@body))))

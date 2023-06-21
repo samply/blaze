@@ -159,7 +159,8 @@
   [{:keys [storage] :as config} env]
   (let [key (get env "STORAGE" "in-memory")]
     (log/info "Use storage variant" key)
-    (update config :base-config merge (get storage (keyword key)))))
+    (-> (assoc-in config [:base-config :blaze.db/storage] (keyword key))
+        (update :base-config merge (get storage (keyword key))))))
 
 
 (defn- merge-features
@@ -200,6 +201,11 @@
 (defmethod ig/init-key :blaze/version
   [_ version]
   version)
+
+
+(defmethod ig/init-key :blaze.db/storage
+  [_ storage]
+  storage)
 
 
 (defmethod ig/init-key :blaze/clock
