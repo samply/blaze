@@ -12,9 +12,10 @@ COPY target/blaze-0.21.0-standalone.jar /app/
 WORKDIR /app
 USER 1001
 
+ENV LD_PRELOAD="libjemalloc.so.2"
 ENV STORAGE="standalone"
 ENV INDEX_DB_DIR="/app/data/index"
 ENV TRANSACTION_DB_DIR="/app/data/transaction"
 ENV RESOURCE_DB_DIR="/app/data/resource"
 
-CMD ["sh", "-c", "LD_PRELOAD=/usr/lib/$(arch)-linux-gnu/libjemalloc.so.2 exec java -jar blaze-0.21.0-standalone.jar"]
+CMD ["java", "-jar",  "blaze-0.21.0-standalone.jar"]
