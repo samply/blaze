@@ -146,7 +146,7 @@
   (str (Files/createTempDirectory "blaze" (make-array FileAttribute 0))))
 
 
-(defn- system [dir]
+(defn- config [dir]
   {::kv/rocksdb
    {:dir dir
     :block-cache (ig/ref ::rocksdb/block-cache)
@@ -162,21 +162,26 @@
 
 
 (deftest valid-test
-  (with-system [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
     (with-open [snapshot (kv/new-snapshot db)
                 iter (kv/new-iterator snapshot)]
       (testing "iterator is initially invalid"
         (is (not (kv/valid? iter)))))))
 
 
-(defmacro with-system-data [[binding-form system] entries & body]
-  `(with-system [{db# ::kv/rocksdb :as system#} ~system]
+(defmacro with-system-data
+  "Runs `body` inside a system that is initialized from `config`, bound to
+  `binding-form` and finally halted.
+
+  Additionally the database is initialized with `entries`."
+  [[binding-form config] entries & body]
+  `(with-system [{db# ::kv/rocksdb :as system#} ~config]
      (kv/put! db# ~entries)
      (let [~binding-form system#] ~@body)))
 
 
 (deftest seek-to-first-test
-  (with-system-data [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x02) (ba 0x20)]]
 
@@ -190,7 +195,7 @@
 
 
 (deftest seek-to-last-test
-  (with-system-data [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x02) (ba 0x20)]]
 
@@ -203,7 +208,7 @@
       (is (bytes= (ba 0x20) (kv/value iter))))))
 
 
-(defn- reverse-comparator-system [dir]
+(defn- reverse-comparator-config [dir]
   {::kv/rocksdb
    {:dir dir
     :block-cache (ig/ref ::rocksdb/block-cache)
@@ -214,7 +219,7 @@
 
 
 (deftest seek-test
-  (with-system-data [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x03) (ba 0x30)]]
 
@@ -250,7 +255,7 @@
         (is (not (kv/valid? iter))))))
 
   (testing "reverse comparator"
-    (with-system-data [{db ::kv/rocksdb} (reverse-comparator-system (new-temp-dir!))]
+    (with-system-data [{db ::kv/rocksdb} (reverse-comparator-config (new-temp-dir!))]
       [[:a (ba 0x01) (ba 0x10)]
        [:a (ba 0x03) (ba 0x30)]]
 
@@ -287,7 +292,7 @@
 
 
 (deftest seek-buffer-test
-  (with-system-data [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x03) (ba 0x30)]]
 
@@ -323,7 +328,7 @@
         (is (not (kv/valid? iter))))))
 
   (testing "reverse comparator"
-    (with-system-data [{db ::kv/rocksdb} (reverse-comparator-system (new-temp-dir!))]
+    (with-system-data [{db ::kv/rocksdb} (reverse-comparator-config (new-temp-dir!))]
       [[:a (ba 0x01) (ba 0x10)]
        [:a (ba 0x03) (ba 0x30)]]
 
@@ -360,7 +365,7 @@
 
 
 (deftest seek-for-prev-test
-  (with-system-data [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x03) (ba 0x30)]]
 
@@ -397,7 +402,7 @@
 
 
 (deftest next-test
-  (with-system-data [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x03) (ba 0x30)]]
 
@@ -422,7 +427,7 @@
 
 
 (deftest prev-test
-  (with-system-data [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x03) (ba 0x30)]]
 
@@ -447,7 +452,7 @@
 
 
 (deftest key-test
-  (with-system-data [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x01 0x02) (ba 0x00)]]
 
     (with-open [snapshot (kv/new-snapshot db)
@@ -478,7 +483,7 @@
 
 
 (deftest value-test
-  (with-system-data [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x00) (ba 0x01 0x02)]]
 
     (with-open [snapshot (kv/new-snapshot db)
@@ -508,7 +513,7 @@
           (is (= 0x02 (bb/get-byte! buf))))))))
 
 
-(defn- a-b-system [dir]
+(defn- a-b-config [dir]
   {::kv/rocksdb
    {:dir dir
     :block-cache (ig/ref ::rocksdb/block-cache)
@@ -519,7 +524,7 @@
 
 
 (deftest different-column-families-test
-  (with-system-data [{db ::kv/rocksdb} (a-b-system (new-temp-dir!))]
+  (with-system-data [{db ::kv/rocksdb} (a-b-config (new-temp-dir!))]
     [[:a (ba 0x00) (ba 0x01)]
      [:b (ba 0x00) (ba 0x02)]]
 
@@ -539,7 +544,7 @@
         (is (ba/not-found? (ba/try-anomaly (kv/new-iterator snapshot :c))))))))
 
 
-(defn- a-system [dir]
+(defn- a-config [dir]
   {::kv/rocksdb
    {:dir dir
     :block-cache (ig/ref ::rocksdb/block-cache)
@@ -550,7 +555,7 @@
 
 
 (deftest snapshot-get-test
-  (with-system-data [{db ::kv/rocksdb} (a-system (new-temp-dir!))]
+  (with-system-data [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
     [[(ba 0x00) (ba 0x01)]
      [:a (ba 0x00) (ba 0x02)]]
 
@@ -570,7 +575,7 @@
 
 
 (deftest get-test
-  (with-system-data [{db ::kv/rocksdb} (a-system (new-temp-dir!))]
+  (with-system-data [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
     [[(ba 0x00) (ba 0x01)]
      [:a (ba 0x00) (ba 0x02)]]
 
@@ -588,7 +593,7 @@
 
 
 (deftest multi-get-test
-  (with-system-data [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x00) (ba 0x10)]
      [(ba 0x01) (ba 0x11)]]
 
@@ -602,7 +607,7 @@
 
 
 (deftest put-test
-  (with-system [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
 
     (testing "key value"
       (kv/put! db (ba 0x00) (ba 0x01))
@@ -617,7 +622,7 @@
 
 
 (deftest delete-test
-  (with-system-data [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x00) (ba 0x10)]]
 
     (kv/delete! db [(ba 0x00)])
@@ -625,7 +630,7 @@
     (is (nil? (kv/get db (ba 0x00))))))
 
 
-(defn- merge-system [dir]
+(defn- merge-config [dir]
   {::kv/rocksdb
    {:dir dir
     :block-cache (ig/ref ::rocksdb/block-cache)
@@ -635,7 +640,7 @@
    ::rocksdb/stats {}})
 
 
-(defn- merge-a-system [dir]
+(defn- merge-a-config [dir]
   {::kv/rocksdb
    {:dir dir
     :block-cache (ig/ref ::rocksdb/block-cache)
@@ -647,7 +652,7 @@
 
 (deftest write-test
   (testing "default column-family"
-    (with-system-data [{db ::kv/rocksdb} (merge-system (new-temp-dir!))]
+    (with-system-data [{db ::kv/rocksdb} (merge-config (new-temp-dir!))]
       [[(ba 0x00) (ba 0x10)]]
 
       (testing "put"
@@ -664,7 +669,7 @@
         (is (nil? (kv/get db (ba 0x00)))))))
 
   (testing "custom column-family"
-    (with-system-data [{db ::kv/rocksdb} (merge-a-system (new-temp-dir!))]
+    (with-system-data [{db ::kv/rocksdb} (merge-a-config (new-temp-dir!))]
       [[:a (ba 0x00) (ba 0x10)]]
 
       (testing "put"
@@ -682,17 +687,17 @@
 
 
 (deftest column-families-test
-  (with-system [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
 
     (is (= [:default] (rocksdb/column-families db))))
 
-  (with-system [{db ::kv/rocksdb} (a-system (new-temp-dir!))]
+  (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
 
     (is (= [:default :a] (rocksdb/column-families db)))))
 
 
 (deftest get-property-test
-  (with-system [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
 
     (is (= "0" (rocksdb/get-property db "rocksdb.num-files-at-level0")))
     (is (= "0" (rocksdb/get-property db "rocksdb.num-files-at-level1")))
@@ -710,7 +715,7 @@
           ::anom/message := "Property with name `name-143100` was not found."))))
 
   (testing "with column-family"
-    (with-system [{db ::kv/rocksdb} (a-system (new-temp-dir!))]
+    (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
 
       (is (= "0" (rocksdb/get-property db :a "rocksdb.num-files-at-level0")))
       (is (= "0" (rocksdb/get-property db :a "rocksdb.num-files-at-level1")))
@@ -729,7 +734,7 @@
 
 
 (deftest table-properties-test
-  (with-system [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
     (run!
       (fn [i]
         (kv/put!
@@ -751,7 +756,7 @@
       [0 :total-raw-value-size] := 66310000))
 
   (testing "with column-family"
-    (with-system [{db ::kv/rocksdb} (a-system (new-temp-dir!))]
+    (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
       (run!
         (fn [i]
           (kv/put!
@@ -775,7 +780,7 @@
 
 
 (deftest compact-range-test
-  (with-system-data [{db ::kv/rocksdb} (system (new-temp-dir!))]
+  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x00) (ba 0x10)]]
 
     (rocksdb/compact-range! db)
@@ -783,7 +788,7 @@
     (is (bytes= (ba 0x10) (kv/get db (ba 0x00)))))
 
   (testing "with column-family"
-    (with-system-data [{db ::kv/rocksdb} (a-system (new-temp-dir!))]
+    (with-system-data [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
       [[:a (ba 0x00) (ba 0x10)]]
 
       (rocksdb/compact-range! db :a true 1)

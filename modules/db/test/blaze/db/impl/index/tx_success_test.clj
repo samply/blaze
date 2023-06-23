@@ -22,14 +22,14 @@
 (test/use-fixtures :each tu/fixture)
 
 
-(def system
+(def config
   {::kv/mem {:column-families {:tx-success-index {:reverse-comparator? true}}}
    :blaze.db/tx-cache {:kv-store (ig/ref ::kv/mem)}})
 
 
 (deftest tx-test
   (testing "finds the transaction"
-    (with-system [{kv-store ::kv/mem cache :blaze.db/tx-cache} system]
+    (with-system [{kv-store ::kv/mem cache :blaze.db/tx-cache} config]
       (kv/put! kv-store [(tx-success/index-entry 1 Instant/EPOCH)])
 
       (given (tx-success/tx cache 1)
@@ -37,19 +37,19 @@
         :blaze.db.tx/instant := Instant/EPOCH)))
 
   (testing "doesn't find a non-existing transaction"
-    (with-system [{kv-store ::kv/mem cache :blaze.db/tx-cache} system]
+    (with-system [{kv-store ::kv/mem cache :blaze.db/tx-cache} config]
       (kv/put! kv-store [(tx-success/index-entry 1 Instant/EPOCH)])
 
       (is (nil? (tx-success/tx cache 2)))))
 
   (testing "nothing is found on empty db"
-    (with-system [{cache :blaze.db/tx-cache} system]
+    (with-system [{cache :blaze.db/tx-cache} config]
       (is (nil? (tx-success/tx cache 1))))))
 
 
 (deftest last-t-test
   (testing "finds the transaction"
-    (with-system [{kv-store ::kv/mem} system]
+    (with-system [{kv-store ::kv/mem} config]
       (kv/put!
         kv-store
         [(tx-success/index-entry 1 Instant/EPOCH)
@@ -58,5 +58,5 @@
       (is (= 2 (tx-success/last-t kv-store)))))
 
   (testing "is nil on empty db"
-    (with-system [{kv-store ::kv/mem} system]
+    (with-system [{kv-store ::kv/mem} config]
       (is (nil? (tx-success/last-t kv-store))))))

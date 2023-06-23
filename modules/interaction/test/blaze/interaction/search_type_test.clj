@@ -5,7 +5,7 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.db.resource-store :as rs]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
@@ -162,8 +162,8 @@
       [:explain ::s/problems 2 :val] := ::invalid)))
 
 
-(def system
-  (assoc mem-node-system
+(def config
+  (assoc mem-node-config
     :blaze.interaction/search-type
     {:clock (ig/ref :blaze.test/fixed-clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
@@ -191,7 +191,7 @@
 (defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
-                         handler# :blaze.interaction/search-type} system]
+                         handler# :blaze.interaction/search-type} config]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
                                   wrap-error)

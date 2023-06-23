@@ -24,13 +24,13 @@
   (fn [params] (some #(when (= name (:name %)) %) params)))
 
 
-(def system
+(def config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
 
 (deftest capabilities-handler-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "minimal config"
       (given
         (-> @((capabilities/capabilities-handler

@@ -24,24 +24,29 @@
 (test/use-fixtures :each tu/fixture)
 
 
-(def system
+(def config
   {::kv/mem {:column-families {}}})
 
 
-(def reverse-comparator-system
+(def reverse-comparator-config
   {::kv/mem {:column-families {:a {:reverse-comparator? true}}}})
 
 
-(def a-system
+(def a-config
   {::kv/mem {:column-families {:a nil}}})
 
 
-(def a-b-system
+(def a-b-config
   {::kv/mem {:column-families {:a nil :b nil}}})
 
 
-(defmacro with-system-data [[binding-form system] entries & body]
-  `(with-system [~binding-form (assoc-in ~system [::kv/mem :init-data] ~entries)]
+(defmacro with-system-data
+  "Runs `body` inside a system that is initialized from `config`, bound to
+  `binding-form` and finally halted.
+
+  Additionally the database is initialized with `entries`."
+  [[binding-form config] entries & body]
+  `(with-system [~binding-form (assoc-in ~config [::kv/mem :init-data] ~entries)]
      ~@body))
 
 
@@ -78,7 +83,7 @@
 
 
 (deftest valid-test
-  (with-system [{kv-store ::kv/mem} system]
+  (with-system [{kv-store ::kv/mem} config]
     (with-open [snapshot (kv/new-snapshot kv-store)
                 iter (kv/new-iterator snapshot)]
       (testing "iterator is initially invalid"
@@ -90,7 +95,7 @@
 
 
 (deftest seek-to-first-test
-  (with-system-data [{kv-store ::kv/mem} system]
+  (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x02) (ba 0x20)]]
 
@@ -108,7 +113,7 @@
 
 
 (deftest seek-to-last-test
-  (with-system-data [{kv-store ::kv/mem} system]
+  (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x02) (ba 0x20)]]
 
@@ -126,7 +131,7 @@
 
 
 (deftest seek-test
-  (with-system-data [{kv-store ::kv/mem} system]
+  (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x03) (ba 0x30)]]
 
@@ -166,7 +171,7 @@
         (is (iterator-closed-anom? (ba/try-anomaly (kv/seek! iter (ba 0x00))))))))
 
   (testing "reverse comparator"
-    (with-system-data [{kv-store ::kv/mem} reverse-comparator-system]
+    (with-system-data [{kv-store ::kv/mem} reverse-comparator-config]
       [[:a (ba 0x01) (ba 0x10)]
        [:a (ba 0x03) (ba 0x30)]]
 
@@ -207,7 +212,7 @@
 
 
 (deftest seek-buffer-test
-  (with-system-data [{kv-store ::kv/mem} system]
+  (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x03) (ba 0x30)]]
 
@@ -247,7 +252,7 @@
         (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-buffer! iter (bb 0x00))))))))
 
   (testing "reverse comparator"
-    (with-system-data [{kv-store ::kv/mem} reverse-comparator-system]
+    (with-system-data [{kv-store ::kv/mem} reverse-comparator-config]
       [[:a (ba 0x01) (ba 0x10)]
        [:a (ba 0x03) (ba 0x30)]]
 
@@ -288,7 +293,7 @@
 
 
 (deftest seek-for-prev-test
-  (with-system-data [{kv-store ::kv/mem} system]
+  (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x03) (ba 0x30)]]
 
@@ -329,7 +334,7 @@
 
 
 (deftest next-test
-  (with-system-data [{kv-store ::kv/mem} system]
+  (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x03) (ba 0x30)]]
 
@@ -357,7 +362,7 @@
 
 
 (deftest prev-test
-  (with-system-data [{kv-store ::kv/mem} system]
+  (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x01) (ba 0x10)]
      [(ba 0x03) (ba 0x30)]]
 
@@ -385,7 +390,7 @@
 
 
 (deftest key-test
-  (with-system-data [{kv-store ::kv/mem} system]
+  (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x01 0x02) (ba 0x00)]]
 
     (with-open [snapshot (kv/new-snapshot kv-store)
@@ -420,7 +425,7 @@
 
 
 (deftest value-test
-  (with-system-data [{kv-store ::kv/mem} system]
+  (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x00) (ba 0x01 0x02)]]
 
     (with-open [snapshot (kv/new-snapshot kv-store)
@@ -455,7 +460,7 @@
 
 
 (deftest different-column-families-test
-  (with-system-data [{kv-store ::kv/mem} a-b-system]
+  (with-system-data [{kv-store ::kv/mem} a-b-config]
     [[:a (ba 0x00) (ba 0x01)]
      [:b (ba 0x00) (ba 0x02)]]
 
@@ -476,7 +481,7 @@
 
 
 (deftest snapshot-get-test
-  (with-system-data [{kv-store ::kv/mem} a-system]
+  (with-system-data [{kv-store ::kv/mem} a-config]
     [[(ba 0x00) (ba 0x01)]
      [:a (ba 0x00) (ba 0x02)]]
 
@@ -496,7 +501,7 @@
 
 
 (deftest get-test
-  (with-system-data [{kv-store ::kv/mem} a-system]
+  (with-system-data [{kv-store ::kv/mem} a-config]
     [[(ba 0x00) (ba 0x01)]
      [:a (ba 0x00) (ba 0x02)]]
 
@@ -514,7 +519,7 @@
 
 
 (deftest multi-get-test
-  (with-system-data [{kv-store ::kv/mem} system]
+  (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x00) (ba 0x10)]
      [(ba 0x01) (ba 0x11)]]
 
@@ -528,7 +533,7 @@
 
 
 (deftest put-test
-  (with-system [{kv-store ::kv/mem} system]
+  (with-system [{kv-store ::kv/mem} config]
 
     (testing "key value"
       (kv/put! kv-store (ba 0x00) (ba 0x01))
@@ -539,7 +544,7 @@
 
 
 (deftest delete-test
-  (with-system-data [{kv-store ::kv/mem} system]
+  (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x00) (ba 0x10)]]
 
     (kv/delete! kv-store [(ba 0x00)])
@@ -549,7 +554,7 @@
 
 (deftest write-test
   (testing "default column-family"
-    (with-system-data [{kv-store ::kv/mem} system]
+    (with-system-data [{kv-store ::kv/mem} config]
       [[(ba 0x00) (ba 0x10)]]
 
       (testing "put"
@@ -564,7 +569,7 @@
         (is (nil? (kv/get kv-store (ba 0x00)))))))
 
   (testing "custom column-family"
-    (with-system-data [{kv-store ::kv/mem} a-system]
+    (with-system-data [{kv-store ::kv/mem} a-config]
       [[:a (ba 0x00) (ba 0x10)]]
 
       (testing "put"

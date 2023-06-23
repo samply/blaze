@@ -327,7 +327,7 @@
           add-subsetted-xf)))
 
 
-(defrecord Node [context tx-log tx-cache kv-store resource-store
+(defrecord Node [context tx-log tx-cache kv-store resource-store sync-fn
                  search-param-registry resource-indexer state run? poll-timeout
                  finished]
   np/Node
@@ -336,8 +336,7 @@
 
   (-sync [node]
     (log/trace "sync on last t")
-    (-> (tx-log/last-t tx-log)
-        (ac/then-compose #(np/-sync node %))))
+    (sync-fn node))
 
   (-sync [node t]
     (log/trace "sync on t =" t)
@@ -515,15 +514,25 @@
                                                  expected-kv-store-version))))))
 
 
+(defn- sync-fn [storage]
+  (condp identical? storage
+    :distributed
+    (fn sync-distributed [^Node node]
+      (-> (tx-log/last-t (.-tx_log node))
+          (ac/then-compose #(np/-sync node %))))
+    (fn sync-standalone [^Node node]
+      (ac/completed-future (db/db node (:t @(.-state node)))))))
+
+
 (defmethod ig/init-key :blaze.db/node
-  [_ {:keys [tx-log tx-cache indexer-executor kv-store resource-indexer
+  [_ {:keys [storage tx-log tx-cache indexer-executor kv-store resource-indexer
              resource-store search-param-registry poll-timeout]
       :or {poll-timeout (time/seconds 1)}
       :as config}]
   (init-msg config)
   (check-version! kv-store)
   (let [node (->Node (ctx config) tx-log tx-cache kv-store resource-store
-                     search-param-registry resource-indexer
+                     (sync-fn storage) search-param-registry resource-indexer
                      (atom (initial-state kv-store))
                      (volatile! true)
                      poll-timeout

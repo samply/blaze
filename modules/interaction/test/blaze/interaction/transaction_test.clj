@@ -6,7 +6,7 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.async.comp :as ac]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.db.resource-store :as rs]
     [blaze.executors :as ex]
     [blaze.fhir.spec.type :as type]
@@ -136,8 +136,8 @@
       :blaze.interaction.transaction/executor :instanceof ThreadPoolExecutor)))
 
 
-(def system
-  (assoc mem-node-system
+(def config
+  (assoc mem-node-config
     :blaze.interaction/transaction
     {:node (ig/ref :blaze.db/node)
      :executor (ig/ref :blaze.interaction.transaction/executor)
@@ -194,7 +194,7 @@
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{handler# :blaze.interaction/transaction
-                         router# ::router} system]
+                         router# ::router} config]
        ~txs
        (let [~handler-binding (-> handler# (wrap-defaults router#)
                                   wrap-error)]

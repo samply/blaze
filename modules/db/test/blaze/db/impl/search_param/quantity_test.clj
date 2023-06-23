@@ -29,7 +29,7 @@
 (test/use-fixtures :each tu/fixture)
 
 
-(def system
+(def config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
@@ -57,7 +57,7 @@
 
 
 (deftest value-quantity-param-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (given (value-quantity-param search-param-registry)
       :name := "value-quantity"
       :code := "value-quantity"
@@ -83,7 +83,7 @@
 
 
 (deftest compile-value-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "eq"
       (are [value lower-bound upper-bound]
         (given (compile-quantity-value search-param-registry value)
@@ -130,7 +130,7 @@
 
 
 (deftest index-entries-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Observation value-quantity"
       (testing "with value, system and code"
         (let [observation

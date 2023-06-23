@@ -40,13 +40,13 @@
   (sr/get search-param-registry "code-value-concept" "Observation"))
 
 
-(def system
+(def config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
 
 (deftest code-value-quantity-param-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (given (code-value-quantity-param search-param-registry)
       :name := "code-value-quantity"
       :code := "code-value-quantity"
@@ -64,7 +64,7 @@
 
 
 (deftest compile-value-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "eq"
       (are [value lower-bound upper-bound]
         (given (compile-code-quantity-value search-param-registry value)
@@ -127,7 +127,7 @@
 
 
 (deftest index-entries-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Observation code-value-quantity"
       (let [observation
             {:fhir/type :fhir/Observation

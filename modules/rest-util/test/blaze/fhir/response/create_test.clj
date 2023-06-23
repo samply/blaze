@@ -1,7 +1,7 @@
 (ns blaze.fhir.response.create-test
   (:require
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.fhir.response.create :refer [build-response]]
     [blaze.fhir.response.create-spec]
     [blaze.test-util :as tu]
@@ -29,7 +29,7 @@
 
 
 (deftest build-response-test
-  (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+  (with-system-data [{:blaze.db/keys [node]} mem-node-config]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
     (let [db (d/db node)

@@ -25,7 +25,7 @@
 (test/use-fixtures :each tu/fixture)
 
 
-(def system
+(def config
   {:blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
    :blaze.test/fixed-rng {}
    :blaze.page-store.local/collector {:page-store (ig/ref :blaze.page-store/local)}})
@@ -54,12 +54,12 @@
       [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "is a page store"
-    (with-system [{store :blaze.page-store/local} system]
+    (with-system [{store :blaze.page-store/local} config]
       (is (s/valid? :blaze/page-store store)))))
 
 
 (deftest get-test
-  (with-system [{store :blaze.page-store/local} system]
+  (with-system [{store :blaze.page-store/local} config]
     @(page-store/put! store [["active" "true"]])
 
     (testing "returns the clauses stored"
@@ -72,7 +72,7 @@
 
 
 (deftest put-test
-  (with-system [{store :blaze.page-store/local} system]
+  (with-system [{store :blaze.page-store/local} config]
     (testing "shall not be called with an empty list of clauses"
       (given-failed-future (page-store/put! store [])
         ::anom/category := ::anom/incorrect
@@ -103,12 +103,12 @@
       [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "is a collector"
-    (with-system [{collector :blaze.page-store.local/collector} system]
+    (with-system [{collector :blaze.page-store.local/collector} config]
       (is (s/valid? :blaze.metrics/collector collector)))))
 
 
 (deftest collector-test
-  (with-system [{collector :blaze.page-store.local/collector} system]
+  (with-system [{collector :blaze.page-store.local/collector} config]
     (let [metrics (metrics/collect collector)]
 
       (given metrics

@@ -209,7 +209,8 @@
   ;; The resource cache collector exports metrics of the resource cache.
   ;;
   :blaze.db/node
-  {:tx-log #blaze/ref :blaze.db/tx-log
+  {:storage #blaze/ref :blaze.db/storage
+   :tx-log #blaze/ref :blaze.db/tx-log
    :tx-cache #blaze/ref :blaze.db/tx-cache
    :indexer-executor #blaze/ref :blaze.db.node/indexer-executor
    :resource-store #blaze/ref :blaze.db/resource-cache

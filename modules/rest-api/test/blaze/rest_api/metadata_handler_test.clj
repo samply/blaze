@@ -39,7 +39,7 @@
       [:explain ::s/problems 0 :val] := ::invalid)))
 
 
-(def system
+(def config
   {:blaze.rest-api/metadata-handler
    {:structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)}
 
@@ -47,7 +47,7 @@
 
 
 (defmacro with-handler [[handler-binding] & body]
-  `(with-system [{handler# :blaze.rest-api/metadata-handler} system]
+  `(with-system [{handler# :blaze.rest-api/metadata-handler} config]
      (let [~handler-binding handler#]
        ~@body)))
 

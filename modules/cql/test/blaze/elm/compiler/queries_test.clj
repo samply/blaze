@@ -6,7 +6,7 @@
   (:require
     [blaze.anomaly :as ba]
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.elm.code :as code]
     [blaze.elm.code-spec]
     [blaze.elm.compiler :as c]
@@ -128,7 +128,7 @@
           (is (= '(eduction-query distinct [1 1]) (core/-form expr)))))))
 
   (testing "Retrieve queries"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [db (d/db node)
@@ -272,7 +272,7 @@
 ;; condition. This operation is known as a semi-join in database languages.
 (deftest compile-with-clause-test
   (testing "Equiv With with two Observations comparing there subjects."
-    (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
                :subject
@@ -312,7 +312,7 @@
                  (queries/-form xform-factory)))))))
 
   (testing "Equiv With with one Patient and one Observation comparing the patient with the operation subject."
-    (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
                :subject

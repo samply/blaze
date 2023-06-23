@@ -13,7 +13,7 @@
     [blaze.db.node.tx-indexer.verify :as verify]
     [blaze.db.node.tx-indexer.verify-spec]
     [blaze.db.search-param-registry]
-    [blaze.db.test-util :refer [system with-system-data]]
+    [blaze.db.test-util :refer [config with-system-data]]
     [blaze.db.tx-cache]
     [blaze.db.tx-log.local]
     [blaze.fhir.hash :as hash]
@@ -49,7 +49,7 @@
     (let [hash (hash/generate patient-0)]
       (doseq [op [:create :put]
               if-none-match [nil "*"]]
-        (with-system [{:blaze.db/keys [node]} system]
+        (with-system [{:blaze.db/keys [node]} config]
           (given (verify/verify-tx-cmds
                    (d/db node) 1
                    [(cond-> {:op (name op) :type "Patient" :id "0" :hash hash}
@@ -78,7 +78,7 @@
   (testing "adding a second version of a patient to a store containing it already"
     (let [hash (hash/generate patient-0-v2)]
       (doseq [if-match [nil 1]]
-        (with-system-data [{:blaze.db/keys [node]} system]
+        (with-system-data [{:blaze.db/keys [node]} config]
           [[[:put patient-0]]]
 
           (given (verify/verify-tx-cmds
@@ -107,7 +107,7 @@
             [4 2 ss-tu/decode-val] := {:total 1 :num-changes 2})))))
 
   (testing "deleting a patient from an empty store"
-    (with-system [{:blaze.db/keys [node]} system]
+    (with-system [{:blaze.db/keys [node]} config]
       (given (verify/verify-tx-cmds
                (d/db node) 1
                [{:op "delete" :type "Patient" :id "0"}])
@@ -132,7 +132,7 @@
         [4 2 ss-tu/decode-val] := {:total 0 :num-changes 1})))
 
   (testing "deleting an already deleted patient"
-    (with-system-data [{:blaze.db/keys [node]} system]
+    (with-system-data [{:blaze.db/keys [node]} config]
       [[[:delete "Patient" "0"]]]
 
       (given (verify/verify-tx-cmds
@@ -159,7 +159,7 @@
         [4 2 ss-tu/decode-val] := {:total 0 :num-changes 2})))
 
   (testing "deleting an existing patient"
-    (with-system-data [{:blaze.db/keys [node]} system]
+    (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put patient-0]]]
 
       (given (verify/verify-tx-cmds
@@ -187,7 +187,7 @@
 
   (testing "adding a second patient to a store containing already one"
     (let [hash (hash/generate patient-1)]
-      (with-system-data [{:blaze.db/keys [node]} system]
+      (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put patient-0]]]
 
         (given (verify/verify-tx-cmds
@@ -215,7 +215,7 @@
 
   (testing "update conflict"
     (testing "using non-matching if-match"
-      (with-system-data [{:blaze.db/keys [node]} system]
+      (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put patient-0]]]
 
         (given (verify/verify-tx-cmds
@@ -228,7 +228,7 @@
           :http/status := 412)))
 
     (testing "using if-none-match of `*`"
-      (with-system-data [{:blaze.db/keys [node]} system]
+      (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put patient-0]]]
 
         (given (verify/verify-tx-cmds
@@ -241,7 +241,7 @@
           :http/status := 412)))
 
     (testing "using matching if-none-match"
-      (with-system-data [{:blaze.db/keys [node]} system]
+      (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put patient-0]]]
 
         (given (verify/verify-tx-cmds
@@ -255,7 +255,7 @@
 
   (testing "conditional create"
     (testing "conflict"
-      (with-system-data [{:blaze.db/keys [node]} system]
+      (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put {:fhir/type :fhir/Patient :id "0"
                  :birthDate #fhir/date"2020"}]
           [:put {:fhir/type :fhir/Patient :id "1"
@@ -271,7 +271,7 @@
           :http/status := 412)))
 
     (testing "match"
-      (with-system-data [{:blaze.db/keys [node]} system]
+      (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put patient-2]]]
 
         (is
@@ -283,7 +283,7 @@
                 :if-none-exist [["identifier" "120426"]]}])))))
 
     (testing "conflict because matching resource is deleted"
-      (with-system-data [{:blaze.db/keys [node]} system]
+      (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put patient-2]]]
 
         (given
@@ -298,7 +298,7 @@
 
     (testing "on recreation"
       (let [hash (hash/generate patient-0)]
-        (with-system-data [{:blaze.db/keys [node]} system]
+        (with-system-data [{:blaze.db/keys [node]} config]
           [[[:put patient-0]]
            [[:delete "Patient" "0"]]]
 

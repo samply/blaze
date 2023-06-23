@@ -19,7 +19,7 @@
     [blaze.db.search-param-registry]
     [blaze.db.search-param-registry.spec :refer [search-param-registry?]]
     [blaze.db.spec :refer [loading-cache?]]
-    [blaze.db.test-util :refer [system]]
+    [blaze.db.test-util :refer [config]]
     [blaze.db.tx-log-spec]
     [blaze.db.tx-log.local-spec]
     [blaze.db.tx-log.spec :refer [tx-log?]]
@@ -58,10 +58,10 @@
       (ac/completed-future nil))))
 
 
-(def ^:private resource-store-failing-on-get-system
+(def ^:private resource-store-failing-on-get-config
   (merge-with
     merge
-    system
+    config
     {:blaze.db/node
      {:resource-store (ig/ref ::resource-store-failing-on-get)}
      :blaze.db.node/resource-indexer
@@ -85,10 +85,10 @@
           (ac/then-apply-async identity delayed-executor)))))
 
 
-(def ^:private resource-store-slow-on-put-system
+(def ^:private resource-store-slow-on-put-config
   (merge-with
     merge
-    system
+    config
     {:blaze.db/node
      {:resource-store (ig/ref ::resource-store-slow-on-put)}
      :blaze.db.node/resource-indexer
@@ -97,8 +97,8 @@
      {:resource-store (ig/ref ::rs/kv)}}))
 
 
-(defn- with-index-store-version [system version]
-  (assoc-in system [[::kv/mem :blaze.db/index-kv-store] :init-data]
+(defn- with-index-store-version [config version]
+  (assoc-in config [[::kv/mem :blaze.db/index-kv-store] :init-data]
             [[version/key (version/encode-value version)]
              (tx-success/index-entry 1 Instant/EPOCH)]))
 
@@ -123,63 +123,63 @@
       [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
 
   (testing "invalid tx-log"
-    (given-thrown (ig/init (assoc-in system [:blaze.db/node :tx-log] ::invalid))
+    (given-thrown (ig/init (assoc-in config [:blaze.db/node :tx-log] ::invalid))
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `tx-log?
       [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid tx-cache"
-    (given-thrown (ig/init (assoc-in system [:blaze.db/node :tx-cache] ::invalid))
+    (given-thrown (ig/init (assoc-in config [:blaze.db/node :tx-cache] ::invalid))
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `loading-cache?
       [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid indexer-executor"
-    (given-thrown (ig/init (assoc-in system [:blaze.db/node :indexer-executor] ::invalid))
+    (given-thrown (ig/init (assoc-in config [:blaze.db/node :indexer-executor] ::invalid))
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `ex/executor?
       [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid kv-store"
-    (given-thrown (ig/init (assoc-in system [:blaze.db/node :kv-store] ::invalid))
+    (given-thrown (ig/init (assoc-in config [:blaze.db/node :kv-store] ::invalid))
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `kv/store?
       [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid resource-indexer"
-    (given-thrown (ig/init (assoc-in system [:blaze.db/node :resource-indexer] ::invalid))
+    (given-thrown (ig/init (assoc-in config [:blaze.db/node :resource-indexer] ::invalid))
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `map?
       [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid resource-store"
-    (given-thrown (ig/init (assoc-in system [:blaze.db/node :resource-store] ::invalid))
+    (given-thrown (ig/init (assoc-in config [:blaze.db/node :resource-store] ::invalid))
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `resource-store?
       [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid search-param-registry"
-    (given-thrown (ig/init (assoc-in system [:blaze.db/node :search-param-registry] ::invalid))
+    (given-thrown (ig/init (assoc-in config [:blaze.db/node :search-param-registry] ::invalid))
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `search-param-registry?
       [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid enforce-referential-integrity"
-    (given-thrown (ig/init (assoc-in system [:blaze.db/node :enforce-referential-integrity] ::invalid))
+    (given-thrown (ig/init (assoc-in config [:blaze.db/node :enforce-referential-integrity] ::invalid))
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `boolean?
       [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "incompatible version"
-    (given-thrown (ig/init (with-index-store-version system -1))
+    (given-thrown (ig/init (with-index-store-version config -1))
       :key := :blaze.db/node
       :reason := ::ig/build-threw-exception
       [:cause-data :expected-version] := 0
@@ -205,7 +205,7 @@
   (testing "with slow transaction result fetching"
     (testing "create"
       (testing "one Patient"
-        (with-system [{:blaze.db/keys [node]} system]
+        (with-system [{:blaze.db/keys [node]} config]
           @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
                (ac/then-compose
                  (fn [t]
@@ -220,7 +220,7 @@
 
     (testing "with failing resource storage"
       (testing "on get"
-        (with-system [{:blaze.db/keys [node]} resource-store-failing-on-get-system]
+        (with-system [{:blaze.db/keys [node]} resource-store-failing-on-get-config]
           (try
             @(-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
                  (ac/then-compose
@@ -238,7 +238,7 @@
            (ac/failed-future (ex-info "" (ba/fault "" ::x ::y))))]
 
         (testing "fetching the result immediately"
-          (with-system [{:blaze.db/keys [node]} resource-store-slow-on-put-system]
+          (with-system [{:blaze.db/keys [node]} resource-store-slow-on-put-config]
             (given-failed-future
               (-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
                   (ac/then-compose (partial node/tx-result node)))
@@ -246,7 +246,7 @@
               ::x ::y)))
 
         (testing "wait before fetching the result"
-          (with-system [{:blaze.db/keys [node]} system]
+          (with-system [{:blaze.db/keys [node]} config]
             (given-failed-future
               (-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
                   (ac/then-compose
@@ -277,5 +277,5 @@
 
 
 (deftest existing-data-with-compatible-version
-  (with-system [{:blaze.db/keys [node]} (with-index-store-version system 0)]
+  (with-system [{:blaze.db/keys [node]} (with-index-store-version config 0)]
     (is node)))

@@ -6,7 +6,7 @@
   (:require
     [blaze.anomaly :as ba]
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.external-data]
@@ -64,7 +64,7 @@
 (deftest compile-retrieve-test
   (testing "Patient context"
     (testing "Patient"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [context
@@ -84,7 +84,7 @@
             (is (= '(retrieve-resource) (core/-form expr)))))))
 
     (testing "Observation"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "1"
                  :subject
@@ -107,7 +107,7 @@
             (is (= '(compartment-list-retrieve "Observation") (core/-form expr))))))
 
       (testing "with one code"
-        (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+        (with-system-data [{:blaze.db/keys [node]} mem-node-config]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "0"
                    :subject
@@ -149,7 +149,7 @@
                      (core/-form expr)))))))
 
       (testing "with two codes"
-        (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+        (with-system-data [{:blaze.db/keys [node]} mem-node-config]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "0"
                    :subject
@@ -198,7 +198,7 @@
               [1 :id] := "2"))))
 
       (testing "with one concept"
-        (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+        (with-system-data [{:blaze.db/keys [node]} mem-node-config]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "0"
                    :subject
@@ -251,7 +251,7 @@
 
   (testing "Specimen context"
     (testing "Patient"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Specimen :id "0"
                  :subject
@@ -271,7 +271,7 @@
 
   (testing "Unfiltered context"
     (testing "Medication"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-system]
+      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [[[:put {:fhir/type :fhir/Medication :id "0"
                  :code
                  #fhir/CodeableConcept
@@ -301,7 +301,7 @@
             [0 :id] := "0"))))
 
     (testing "unknown code property"
-      (with-system [{:blaze.db/keys [node]} mem-node-system]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
         (let [context
               {:node node
                :eval-context "Unfiltered"
@@ -322,7 +322,7 @@
 
   (testing "with related context"
     (testing "with pre-compiled database query"
-      (with-system [{:blaze.db/keys [node]} mem-node-system]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
         (let [library {:codeSystems
                        {:def [{:name "sys-def-174848" :id "system-174915"}]}
                        :statements
@@ -340,7 +340,7 @@
             type := WithRelatedContextQueryRetrieveExpression))))
 
     (testing "unknown code property"
-      (with-system [{:blaze.db/keys [node]} mem-node-system]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
         (let [library {:codeSystems
                        {:def [{:name "sys-def-174848" :id "system-174915"}]}
                        :statements
