@@ -4,6 +4,28 @@ It's recommended to use [Prometheus][1] and [Grafana][2] to monitor the runtime 
 
 ![](monitoring/prometheus.png)
 
+## Prometheus Config
+
+A basic Prometheus config looks like this:
+
+```yml
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+- job_name: 'node'
+  static_configs:
+  - targets: ['<server-ip-addr>:9100']
+  - labels:
+      instance: 'blaze'
+
+- job_name: 'blaze'
+  static_configs:
+  - targets: ['<server-ip-addr>:8081']
+  - labels:
+      instance: 'blaze'
+```
+
 ## Import the Blaze Dashboard
 
 In order to import the Blaze dashboard into your Grafana instance, please copy the contents of [blaze.json](monitoring/blaze.json) and pate it into the import dialog on the Import dashboard site:

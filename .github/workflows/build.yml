@@ -58,6 +58,7 @@ jobs:
         - kv
         - luid
         - metrics
+        - module-base
         - openid-auth
         - operation-graphql
         - operation-measure-evaluate-measure
@@ -619,6 +620,9 @@ jobs:
 
     - name: Patient Everything
       run: .github/scripts/patient-everything.sh
+
+    - name: Patient Identical Update
+      run:  .github/scripts/patient-identical-update.sh
 
   not-enforcing-referential-integrity-test:
     needs: build
@@ -1518,6 +1522,9 @@ jobs:
 
     - name: Patient Everything
       run: .github/scripts/patient-everything.sh
+
+    - name: Patient Identical Update
+      run:  .github/scripts/patient-identical-update.sh
 
     - name: Docker Stats
       run: docker stats --no-stream

@@ -36,7 +36,9 @@
   :consistent-alias
   {:aliases
    {blaze.db.api d
+    blaze.db.kv kv
     blaze.test-util tu
+    blaze.util u
     cuerdas.core c-str
     ring.util.response ring}}}
 

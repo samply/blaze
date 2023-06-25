@@ -50,7 +50,8 @@
    {:blaze/keys [base-url]
     ::reitit/keys [router]
     :keys [request-method]
-    ::keys [params]}
+    ::keys [params]
+    :as request}
    measure]
   (let [context (assoc context
                   :blaze/base-url base-url
@@ -67,14 +68,12 @@
               (= :post request-method)
               (let [id (luid context)]
                 (-> (d/transact node (tx-ops result id))
-                    ;; it's important to switch to the transaction
-                    ;; executor here, because otherwise the central
-                    ;; indexing thread would execute response building.
-                    (ac/then-apply-async identity executor)
                     (ac/then-compose
                       (fn [db-after]
                         (response/build-response
-                          (response-context context db-after) nil
+                          (response-context request db-after)
+                          nil
+                          nil
                           (d/resource-handle db-after "MeasureReport" id))))))))))))
 
 

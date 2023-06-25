@@ -100,8 +100,7 @@
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
     :blaze.interaction/read {}
     :blaze.interaction/delete
-    {:node (ig/ref :blaze.db/node)
-     :executor (ig/ref :blaze.test/executor)}
+    {:node (ig/ref :blaze.db/node)}
     :blaze.interaction/search-system
     {:clock (ig/ref :blaze.test/fixed-clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)

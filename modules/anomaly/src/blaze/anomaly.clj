@@ -28,6 +28,10 @@
   (identical? ::anom/not-found (::anom/category x)))
 
 
+(defn conflict? [x]
+  (identical? ::anom/conflict (::anom/category x)))
+
+
 (defn fault? [x]
   (identical? ::anom/fault (::anom/category x)))
 
@@ -70,8 +74,11 @@
    (anomaly* ::anom/fault msg kvs)))
 
 
-(defn busy [msg & {:as kvs}]
-  (anomaly* ::anom/busy msg kvs))
+(defn busy
+  ([]
+   (busy nil))
+  ([msg & {:as kvs}]
+   (anomaly* ::anom/busy msg kvs)))
 
 
 (defn- format-exception

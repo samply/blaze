@@ -5,13 +5,13 @@
     [blaze.fhir.spec.type]
     [blaze.test-util :as tu :refer [given-failed-future]]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
+    [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
     [jsonista.core :as j]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
-    [com.pgssoft.httpclient HttpClientMock Condition]
+    [com.pgssoft.httpclient Condition HttpClientMock]
     [java.nio.file Files Path]
     [java.nio.file.attribute FileAttribute]))
 
@@ -75,7 +75,7 @@
 
       (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
                                              "Patient" "0"
-                                              {:http-client http-client})
+                                             {:http-client http-client})
         ::anom/category := ::anom/not-found
         [:fhir/issues 0 :severity] := #fhir/code"error"
         [:fhir/issues 0 :code] := #fhir/code"not-found")))
@@ -112,7 +112,7 @@
 
       (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
                                              "Patient" "0"
-                                              {:http-client http-client})
+                                             {:http-client http-client})
         ::anom/category := ::anom/unavailable)))
 
   (testing "Gateway timeout without JSON response (external load-balancer)"
@@ -183,6 +183,28 @@
                                                {:http-client http-client})
         ::anom/category := ::anom/conflict
         [:fhir/issues 0 :severity] := #fhir/code"error"))))
+
+
+(deftest transact-test
+  (let [http-client (HttpClientMock.)
+        bundle {:fhir/type :fhir/Bundle
+                :type #fhir/code"transaction"
+                :entry
+                [{:fhir/type :fhir.Bundle/entry
+                  :resource
+                  {:fhir/type :fhir/Patient :id "0"}
+                  :request
+                  {:fhir/type :fhir.Bundle.entry/request
+                   :method #fhir/code"PUT"
+                   :url #fhir/uri"Patient/0"}}]}]
+
+    (-> (.onPost http-client "http://localhost:8080/fhir")
+        (.doReturn (j/write-value-as-string {:resourceType "Bundle"}))
+        (.withHeader "content-type" "application/fhir+json"))
+
+    (given @(fhir-client/transact "http://localhost:8080/fhir" bundle
+                                  {:http-client http-client})
+      :fhir/type := :fhir/Bundle)))
 
 
 (deftest execute-type-get-test

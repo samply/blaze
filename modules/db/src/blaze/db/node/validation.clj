@@ -17,6 +17,11 @@
   [(name (fhir-spec/fhir-type resource)) id])
 
 
+(defmethod extract-type-id :keep
+  [[_ type id]]
+  [type id])
+
+
 (defmethod extract-type-id :delete
   [[_ type id]]
   [type id])

@@ -364,7 +364,20 @@
                 node
                 [[:put {:fhir/type :fhir/Patient :id "0"} [:if-none-match 1]]])
               ::anom/category := ::anom/conflict
-              ::anom/message := "Resource `Patient/0` with version 1 already exists.")))))
+              ::anom/message := "Resource `Patient/0` with version 1 already exists."))))
+
+      (testing "with identical content"
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]
+           [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]]
+
+          (testing "versionId is still 1"
+            (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+              :fhir/type := :fhir/Patient
+              :id := "0"
+              [:meta :versionId] := #fhir/id"1"
+              :gender := #fhir/code"female"
+              [meta :blaze.db/op] := :put)))))
 
     (testing "Diamond Reference Dependencies"
       (with-system-data [{:blaze.db/keys [node]} config]
@@ -4439,13 +4452,11 @@
                 [(type/coding
                    {:system #fhir/uri"system"
                     :code code})]})})]
-      (with-system [{:blaze.db/keys [node]} config]
-        @(d/transact
-           node
-           [[:put {:fhir/type :fhir/Patient :id "0"}]
-            [:put (observation "0" #fhir/code"code-1")]
-            [:put (observation "1" #fhir/code"code-2")]
-            [:put (observation "2" #fhir/code"code-3")]])
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put (observation "0" #fhir/code"code-1")]
+          [:put (observation "1" #fhir/code"code-2")]
+          [:put (observation "2" #fhir/code"code-3")]]]
 
         (given @(pull-compartment-query
                   node "Patient" "0" "Observation"
@@ -4465,19 +4476,15 @@
                 [(type/coding
                    {:system #fhir/uri"system"
                     :code code})]})})]
-      (with-system [{:blaze.db/keys [node]} config]
-        @(d/transact
-           node
-           [[:put {:fhir/type :fhir/Patient :id "0"}]
-            [:put (observation "0" #fhir/code"code-1")]
-            [:put (observation "1" #fhir/code"code-2")]
-            [:put (observation "2" #fhir/code"code-2")]
-            [:put (observation "3" #fhir/code"code-2")]])
-        @(d/transact
-           node
-           [[:put (observation "0" #fhir/code"code-2")]
-            [:put (observation "1" #fhir/code"code-1")]
-            [:put (observation "3" #fhir/code"code-2")]])
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put (observation "0" #fhir/code"code-1")]
+          [:put (observation "1" #fhir/code"code-2")]
+          [:put (observation "2" #fhir/code"code-2")]
+          [:put (observation "3" #fhir/code"code-2")]]
+         [[:put (observation "0" #fhir/code"code-2")]
+          [:put (observation "1" #fhir/code"code-1")]
+          [:put (observation "3" #fhir/code"code-2")]]]
 
         (given @(pull-compartment-query
                   node "Patient" "0" "Observation"
@@ -4490,7 +4497,7 @@
           [1 :id] := "2"
           [1 :meta :versionId] := #fhir/id"1"
           [2 :id] := "3"
-          [2 :meta :versionId] := #fhir/id"2"))))
+          [2 :meta :versionId] := #fhir/id"1"))))
 
   (testing "doesn't return deleted resources"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -4520,15 +4527,11 @@
                 [(type/coding
                    {:system #fhir/uri"system"
                     :code code})]})})]
-      (with-system [{:blaze.db/keys [node]} config]
-        @(d/transact
-           node
-           [[:put {:fhir/type :fhir/Patient :id "0"}]
-            [:put (observation "0" #fhir/code"code")]
-            [:put (observation "1" #fhir/code"code")]])
-        @(d/transact
-           node
-           [[:delete "Observation" "0"]])
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put (observation "0" #fhir/code"code")]
+          [:put (observation "1" #fhir/code"code")]]
+         [[:delete "Observation" "0"]]]
 
         (given @(pull-compartment-query
                   node "Patient" "0" "Observation"

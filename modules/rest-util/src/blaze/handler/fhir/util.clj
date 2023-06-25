@@ -3,14 +3,9 @@
   (:refer-clojure :exclude [sync])
   (:require
     [blaze.fhir.spec]
+    [blaze.util :as u]
     [clojure.spec.alpha :as s]
     [reitit.core :as reitit]))
-
-
-(defn to-seq
-  "Coerces `x` to a sequence."
-  [x]
-  (if (or (nil? x) (sequential? x)) x [x]))
 
 
 (defn parse-nat-long [s]
@@ -26,7 +21,7 @@
   if there is any."
   {:arglists '([query-params])}
   [{v "__t"}]
-  (some parse-nat-long (to-seq v)))
+  (some parse-nat-long (u/to-seq v)))
 
 
 (def ^:private ^:const default-page-size 50)
@@ -40,7 +35,7 @@
   value of 50. Limits value to 10000."
   {:arglists '([query-params])}
   [{v "_count"}]
-  (or (some #(some-> (parse-nat-long %) (min max-page-size)) (to-seq v))
+  (or (some #(some-> (parse-nat-long %) (min max-page-size)) (u/to-seq v))
       default-page-size))
 
 
@@ -51,7 +46,7 @@
   default value of 0."
   {:arglists '([query-params])}
   [{v "__page-offset"}]
-  (or (some parse-nat-long (to-seq v)) 0))
+  (or (some parse-nat-long (u/to-seq v)) 0))
 
 
 (defn page-type
@@ -61,7 +56,7 @@
   Values have to be valid FHIR resource type names."
   {:arglists '([query-params])}
   [{v "__page-type"}]
-  (some #(when (s/valid? :fhir.resource/type %) %) (to-seq v)))
+  (some #(when (s/valid? :fhir.resource/type %) %) (u/to-seq v)))
 
 
 (defn page-id
@@ -71,7 +66,7 @@
   Values have to be valid FHIR id's."
   {:arglists '([query-params])}
   [{v "__page-id"}]
-  (some #(when (s/valid? :blaze.resource/id %) %) (to-seq v)))
+  (some #(when (s/valid? :blaze.resource/id %) %) (u/to-seq v)))
 
 
 (defn type-url

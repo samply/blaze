@@ -136,7 +136,7 @@
 (deftype CassandraResourceStore [session get-statement put-statement]
   rs/ResourceStore
   (-get [_ hash]
-    (log/trace "get" hash)
+    (log/trace "get resource with hash:" hash)
     (execute-get session get-statement hash))
 
   (-multi-get [_ hashes]

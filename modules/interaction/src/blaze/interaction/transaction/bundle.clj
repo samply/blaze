@@ -1,7 +1,7 @@
 (ns blaze.interaction.transaction.bundle
   "FHIR Bundle specific stuff."
   (:require
-    [blaze.anomaly :as ba]
+    [blaze.anomaly :as ba :refer [when-ok]]
     [blaze.fhir.spec.type :as type]
     [blaze.interaction.transaction.bundle.links :as links]
     [blaze.interaction.transaction.bundle.url :as url]
@@ -10,17 +10,7 @@
     [ring.util.codec :as ring-codec]))
 
 
-(defn- write? [{{:keys [method]} :request}]
-  (#{"POST" "PUT" "DELETE"} (type/value method)))
-
-
-(defn writes
-  "Returns only the writes from `entries`"
-  [entries]
-  (filterv write? entries))
-
-
-(defmulti entry-tx-op (fn [{{:keys [method]} :request}] (type/value method)))
+(defmulti entry-tx-op (fn [_ {{:keys [method]} :request}] (type/value method)))
 
 
 (defn- conditional-clauses [if-none-exist]
@@ -29,29 +19,46 @@
 
 
 (defmethod entry-tx-op "POST"
-  [{:keys [resource] {if-none-exist :ifNoneExist} :request}]
+  [_ {:keys [resource] {if-none-exist :ifNoneExist} :request :as entry}]
   (let [clauses (conditional-clauses if-none-exist)]
-    (cond->
-      [:create resource]
-      (seq clauses)
-      (conj clauses))))
+    (assoc entry
+      :tx-op
+      (cond->
+        [:create (iu/strip-meta resource)]
+        (seq clauses)
+        (conj clauses)))))
 
 
 (defmethod entry-tx-op "PUT"
-  [{{if-match :ifMatch if-none-match :ifNoneMatch} :request :keys [resource]}]
-  (iu/put-tx-op resource if-match if-none-match))
+  [db {{if-match :ifMatch if-none-match :ifNoneMatch} :request :keys [resource]
+       :as entry}]
+  (when-ok [tx-op (iu/update-tx-op db (iu/strip-meta resource) if-match
+                                   if-none-match)]
+    (assoc entry :tx-op tx-op)))
 
 
 (defmethod entry-tx-op "DELETE"
-  [{{:keys [url]} :request}]
+  [_ {{:keys [url]} :request :as entry}]
   (let [[type id] (url/match-url (type/value url))]
-    [:delete type id]))
+    (assoc entry :tx-op [:delete type id])))
+
+
+(defmethod entry-tx-op :default
+  [_ entry]
+  entry)
+
+
+(defn assoc-tx-ops
+  "Returns `entries` with transaction operation associated under :tx-op. Or an
+  anomaly in case of errors."
+  [db entries]
+  (transduce
+    (comp (map (partial entry-tx-op db)) (halt-when ba/anomaly?))
+    conj
+    (links/resolve-entry-links entries)))
 
 
 (defn tx-ops
-  "Returns transaction operations of all `entries` of a transaction bundle."
+  "Returns a coll of all transaction operators from `entries`."
   [entries]
-  (transduce
-    (comp (map entry-tx-op) (halt-when ba/anomaly?))
-    conj
-    (links/resolve-entry-links entries)))
+  (into [] (keep :tx-op) entries))

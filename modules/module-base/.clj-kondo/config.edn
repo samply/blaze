@@ -1,4 +1,7 @@
-{:linters
+{:lint-as
+ {prometheus.alpha/defcounter clojure.core/def}
+
+ :linters
  {:unsorted-required-namespaces
   {:level :error}
 
@@ -12,6 +15,11 @@
   {:level :warning}
 
   :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}}
+  {:level :warning :warn-only-on-interop true}
+
+  :consistent-alias
+  {:aliases
+   {blaze.util u
+    clojure.spec.alpha s}}}
 
  :skip-comments true}

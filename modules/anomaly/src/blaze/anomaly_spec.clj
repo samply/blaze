@@ -26,6 +26,11 @@
   :ret boolean?)
 
 
+(s/fdef ba/conflict?
+  :args (s/cat :x any?)
+  :ret boolean?)
+
+
 (s/fdef ba/fault?
   :args (s/cat :x any?)
   :ret boolean?)
@@ -67,7 +72,7 @@
 
 
 (s/fdef ba/busy
-  :args (s/cat :msg (s/nilable string?) :kvs (s/* (s/cat :k keyword? :v any?)))
+  :args (s/cat :msg (s/? (s/nilable string?)) :kvs (s/* (s/cat :k keyword? :v any?)))
   :ret ::anom/anomaly)
 
 

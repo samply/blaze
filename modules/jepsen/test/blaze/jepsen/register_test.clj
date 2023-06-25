@@ -6,7 +6,8 @@
     [blaze.jepsen.register :as register]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is]]))
+    [clojure.test :as test :refer [deftest]]
+    [juxt.iota :refer [given]]))
 
 
 (st/instrument)
@@ -32,4 +33,6 @@
 
 (deftest read-test
   (with-redefs [fhir-client/read fhir-client-read]
-    (is (= multiple-birth (register/read {:base-uri base-uri} id)))))
+    (given (register/read {:base-uri base-uri} id)
+      :type := :ok
+      :value := multiple-birth)))

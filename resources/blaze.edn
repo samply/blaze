@@ -107,13 +107,11 @@
 
   :blaze.interaction/create
   {:node #blaze/ref :blaze.db/node
-   :executor #blaze/ref :blaze.server/executor
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction/delete
-  {:node #blaze/ref :blaze.db/node
-   :executor #blaze/ref :blaze.server/executor}
+  {:node #blaze/ref :blaze.db/node}
 
   :blaze.interaction/read {}
 
@@ -134,15 +132,11 @@
 
   :blaze.interaction/transaction
   {:node #blaze/ref :blaze.db/node
-   :executor #blaze/ref :blaze.interaction.transaction/executor
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
 
-  :blaze.interaction.transaction/executor {}
-
   :blaze.interaction/update
-  {:node #blaze/ref :blaze.db/node
-   :executor #blaze/ref :blaze.server/executor}
+  {:node #blaze/ref :blaze.db/node}
 
   ;;
   ;; FHIR Operation Evaluate Measure

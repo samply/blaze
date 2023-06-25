@@ -40,7 +40,7 @@
       (testing "created"
         (testing "with no Prefer header"
           (let [{:keys [status headers body]}
-                @(build-response context nil resource-handle)]
+                @(build-response context nil nil resource-handle)]
 
             (testing "Returns 201"
               (is (= 201 status)))
@@ -65,7 +65,7 @@
                 (assoc context
                   :blaze.preference/return :blaze.preference.return/minimal)
                 {:keys [body]}
-                @(build-response context nil resource-handle)]
+                @(build-response context nil nil resource-handle)]
 
             (testing "Contains no body"
               (is (nil? body)))))
@@ -75,15 +75,25 @@
                 (assoc context
                   :blaze.preference/return :blaze.preference.return/representation)
                 {:keys [body]}
-                @(build-response context nil resource-handle)]
+                @(build-response context nil nil resource-handle)]
 
             (testing "Contains the resource as body"
-              (is (= resource body))))))
+              (is (= resource body)))))
+
+        (testing "with return=OperationOutcome Prefer header"
+          (let [context
+                (assoc context
+                  :blaze.preference/return :blaze.preference.return/OperationOutcome)
+                {:keys [body]}
+                @(build-response context nil nil resource-handle)]
+
+            (testing "Contains the OperationOutcome as body"
+              (is (= :fhir/OperationOutcome (:fhir/type body)))))))
 
       (testing "updated"
         (testing "with no Prefer header"
           (let [{:keys [status headers body]}
-                @(build-response context resource-handle resource-handle)]
+                @(build-response context nil resource-handle resource-handle)]
 
             (testing "Returns 200"
               (is (= 200 status)))
@@ -104,7 +114,7 @@
                 (assoc context
                   :blaze.preference/return :blaze.preference.return/minimal)
                 {:keys [body]}
-                @(build-response context resource-handle resource-handle)]
+                @(build-response context nil resource-handle resource-handle)]
 
             (testing "Contains no body"
               (is (nil? body)))))
@@ -114,7 +124,27 @@
                 (assoc context
                   :blaze.preference/return :blaze.preference.return/representation)
                 {:keys [body]}
-                @(build-response context resource-handle resource-handle)]
+                @(build-response context nil resource-handle resource-handle)]
+
+            (testing "Contains the resource as body"
+              (is (= resource body))))))
+
+      (testing "kept"
+        (testing "with no Prefer header"
+          (let [{:keys [status headers body]}
+                @(build-response context [:keep "Patient" "0" #blaze/hash"C9ADE22457D5AD750735B6B166E3CE8D6878D09B64C2C2868DCB6DE4C9EFBD4F"] nil
+                                 resource-handle)]
+
+            (testing "Returns 200"
+              (is (= 200 status)))
+
+            (testing "Transaction time in Last-Modified header"
+              (is (= "Thu, 1 Jan 1970 00:00:00 GMT"
+                     (get headers "Last-Modified"))))
+
+            (testing "Version in ETag header"
+              ;; 1 is the T of the transaction of the resource update
+              (is (= "W/\"1\"" (get headers "ETag"))))
 
             (testing "Contains the resource as body"
               (is (= resource body)))))))))
