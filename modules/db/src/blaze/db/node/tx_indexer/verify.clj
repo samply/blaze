@@ -9,6 +9,7 @@
     [blaze.db.impl.index.type-stats :as type-stats]
     [blaze.db.kv.spec]
     [blaze.fhir.hash :as hash]
+    [blaze.util :as u]
     [clojure.string :as str]
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log]))
@@ -150,10 +151,14 @@
           (update-in [:stats tid :total] inc-0)))))
 
 
+(defn- print-etags [ts]
+  (str/join "," (map (partial format "W/\"%d\"") ts)))
+
+
 (defn- verify-tx-cmd-put-msg [type id if-match if-none-match]
   (cond
     if-match
-    (format "verify-tx-cmd :put %s/%s if-match: %d" type id if-match)
+    (format "verify-tx-cmd :put %s/%s if-match: %s" type id (print-etags if-match))
     if-none-match
     (format "verify-tx-cmd :put %s/%s if-none-match: %s" type id if-none-match)
     :else
@@ -161,11 +166,12 @@
 
 
 (defn- precondition-failed-msg [if-match type id]
-  (format "Precondition `W/\"%d\"` failed on `%s/%s`." if-match type id))
+  (format "Precondition `%s` failed on `%s/%s`." (print-etags if-match) type id))
 
 
-(defn- precondition-failed-anomaly [if-match type id]
-  (ba/conflict (precondition-failed-msg if-match type id) :http/status 412))
+(defn- precondition-failed-anomaly [if-match type id tx-cmd]
+  (ba/conflict (precondition-failed-msg if-match type id)
+               :http/status 412 :blaze.db/tx-cmd tx-cmd))
 
 
 (defn- precondition-any-failed-msg [type id]
@@ -185,21 +191,25 @@
 
 
 (defmethod verify-tx-cmd "put"
-  [db-before t res {:keys [type id hash if-match if-none-match]}]
-  (log/trace (verify-tx-cmd-put-msg type id if-match if-none-match))
+  [db-before t res {:keys [type id hash if-match if-none-match] :as tx-cmd}]
+  (log/trace (verify-tx-cmd-put-msg type id (u/to-seq if-match) if-none-match))
   (with-open [_ (prom/timer duration-seconds "verify-put")]
     (let [tid (codec/tid type)
-          {:keys [num-changes op] :or {num-changes 0} old-t :t}
+          if-match (u/to-seq if-match)
+          {:keys [num-changes op] :or {num-changes 0} old-t :t old-hash :hash}
           (d/resource-handle db-before type id)]
       (cond
-        (and if-match (not= if-match old-t))
-        (throw-anom (precondition-failed-anomaly if-match type id))
+        (and if-match (not (some #{old-t} if-match)))
+        (throw-anom (precondition-failed-anomaly if-match type id tx-cmd))
 
         (and (some? old-t) (= "*" if-none-match))
         (throw-anom (precondition-any-failed-anomaly type id))
 
         (and (some? old-t) (= if-none-match old-t))
         (throw-anom (precondition-version-failed-anomaly type id if-none-match))
+
+        (= old-hash hash)
+        res
 
         :else
         (cond->
@@ -208,6 +218,31 @@
               (update-in [:stats tid :num-changes] inc-0))
           (or (nil? old-t) (identical? :delete op))
           (update-in [:stats tid :total] inc-0))))))
+
+
+(defn- verify-tx-cmd-keep-msg [type id if-match]
+  (if if-match
+    (format "verify-tx-cmd :keep %s/%s if-match: %s" type id (print-etags if-match))
+    (format "verify-tx-cmd :keep %s/%s" type id)))
+
+
+(defmethod verify-tx-cmd "keep"
+  [db-before _ res {:keys [type id hash if-match] :as tx-cmd}]
+  (log/trace (verify-tx-cmd-keep-msg type id (u/to-seq if-match)))
+  (with-open [_ (prom/timer duration-seconds "verify-keep")]
+    (let [if-match (u/to-seq if-match)
+          {old-hash :hash old-t :t} (d/resource-handle db-before type id)]
+      (cond
+        (and if-match (not (some #{old-t} if-match)))
+        (throw-anom (precondition-failed-anomaly if-match type id tx-cmd))
+
+        (not= hash old-hash)
+        (let [msg (format "Keep failed on `%s/%s`." type id)]
+          (log/trace msg)
+          (throw-anom (ba/conflict msg :blaze.db/tx-cmd tx-cmd)))
+
+        :else
+        res))))
 
 
 (defmethod verify-tx-cmd "delete"

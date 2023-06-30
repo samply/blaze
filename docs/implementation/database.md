@@ -176,10 +176,10 @@ After concatenation, the strings are hashed with the [Murmur3][7] algorithm in i
 For this example, we don't use the hashed versions of the key parts except for the content-hash.
 
 | Key (search-param, type, value, id, content-hash) |
-|---|
-| gender, Patient, female, 1, 6744ed32 |
-| gender, Patient, female, 2, b7e3e5f8 |
-| gender, Patient, male, 0, ba9c9b24 |
+|---------------------------------------------------|
+| gender, Patient, female, 1, 6744ed32              |
+| gender, Patient, female, 2, b7e3e5f8              |
+| gender, Patient, male, 0, ba9c9b24                |
 
 In case one searches for female patients, Blaze will seek into the index with the key prefix (gender, Patient, female) and scan over it while the prefix stays the same. The result will be the `[id, hash]` tuples:
 * `[1, 6744ed32]` and
@@ -213,7 +213,43 @@ That tuples are further processed against the `ResourceAsOf` index in order to c
 * this node submits the transaction commands to the central transaction log
 * all nodes (inkl. the transaction submitter) receive the transaction commands from the central transaction log
 
-**TODO: continue...**
+### Transaction Commands
+
+### Create
+
+**TODO**
+
+### Put
+
+The `put` command is used to create or update a resource.
+
+#### Properties
+
+| Name          | Required | Data Type     | Description                                 |
+|---------------|----------|---------------|---------------------------------------------|
+| type          | yes      | string        | resource type                               |
+| id            | yes      | string        | resource id                                 |
+| hash          | yes      | string        | resource content hash                       |
+| refs          | no       | list          | references to other resources               |
+| if-match      | no       | number        | the t the resource to update has to match   |
+| if-none-match | no       | "*" or number | the t the resource to update must not match |
+
+### Keep
+
+The `keep` command can be used instead of a `put` command if it's likely that the update of the resource will result in no changes. In that sense, the `keep` command is an optimization of the `put` command that has to be retried if it fails.   
+
+#### Properties
+
+| Name     | Required | Data Type | Description                                                   |
+|----------|----------|-----------|---------------------------------------------------------------|
+| type     | yes      | string    | resource type                                                 |
+| id       | yes      | string    | resource id                                                   |
+| hash     | yes      | string    | the resource content hash the resource to update has to match |
+| if-match | no       | number    | the t the resource to update has to match                     |
+
+### Delete
+
+**TODO**
 
 [1]: <https://www.datomic.com>
 [2]: <https://xtdb.com>

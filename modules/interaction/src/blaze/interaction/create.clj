@@ -3,14 +3,13 @@
 
   https://www.hl7.org/fhir/http.html#create"
   (:require
-    [blaze.anomaly :as ba]
+    [blaze.anomaly :as ba :refer [if-ok]]
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.db.spec]
     [blaze.fhir.response.create :as response]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.util :as handler-util]
-    [blaze.interaction.create.spec]
     [blaze.interaction.util :as iu]
     [clojure.spec.alpha :as s]
     [clojure.string :as str]
@@ -37,9 +36,7 @@
     (ba/incorrect
       (resource-type-mismatch-msg type body)
       :fhir/issue "invariant"
-      :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH")
-
-    :else body))
+      :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH")))
 
 
 (defn- create-op [resource conditional-clauses]
@@ -66,39 +63,36 @@
           (:hash resource-handle)))
 
 
-(defn- handler [{:keys [node executor] :as context}]
+(defn- handler [{:keys [node] :as context}]
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         :keys [headers body]
         :as request}]
-    (let [id (iu/luid context)
-          conditional-clauses (conditional-clauses headers)]
-      (-> (ac/completed-future (validate-resource type body))
-          (ac/then-apply #(assoc % :id id))
-          (ac/then-compose
-            #(d/transact node [(create-op % conditional-clauses)]))
-          ;; it's important to switch to the executor here, because otherwise
-          ;; the central indexing thread would execute response building.
-          (ac/then-apply-async identity executor)
-          (ac/then-compose
-            (fn [db-after]
-              (if-let [handle (d/resource-handle db-after type id)]
-                (response/build-response
-                  (response-context request db-after) nil handle)
-                (let [handle (first (d/type-query db-after type conditional-clauses))]
+    (if-ok [_ (validate-resource type body)]
+      (let [id (iu/luid context)
+            conditional-clauses (conditional-clauses headers)
+            tx-op (create-op (assoc (iu/strip-meta body) :id id) conditional-clauses)]
+        (-> (d/transact node [tx-op])
+            (ac/then-compose
+              (fn [db-after]
+                (if-let [handle (d/resource-handle db-after type id)]
                   (response/build-response
-                    (response-context request db-after) handle handle)))))
-          (ac/exceptionally
-            (fn [e]
-              (cond-> e
-                (ba/not-found? e)
-                (assoc
-                  ::anom/category ::anom/fault
-                  ::anom/message (resource-content-not-found-msg e)
-                  :fhir/issue "incomplete"))))))))
+                    (response-context request db-after) tx-op nil handle)
+                  (let [handle (first (d/type-query db-after type conditional-clauses))]
+                    (response/build-response
+                      (response-context request db-after) tx-op handle handle)))))
+            (ac/exceptionally
+              (fn [e]
+                (cond-> e
+                  (ba/not-found? e)
+                  (assoc
+                    ::anom/category ::anom/fault
+                    ::anom/message (resource-content-not-found-msg e)
+                    :fhir/issue "incomplete"))))))
+      ac/completed-future)))
 
 
 (defmethod ig/pre-init-spec :blaze.interaction/create [_]
-  (s/keys :req-un [:blaze.db/node ::executor :blaze/clock :blaze/rng-fn]))
+  (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn]))
 
 
 (defmethod ig/init-key :blaze.interaction/create [_ context]

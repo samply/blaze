@@ -40,15 +40,15 @@ curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&_sum
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|---------|-------:|---------:|-------:|-------:|
-| LE1080 | 100k    | 8310-5  |  115 k |     0.07 |  0.003 | 0.59 ² |
-| LE1080 | 100k    | 55758-7 |  1.0 M |     0.50 |  0.008 |   0.50 |
+| LE1080 | 100k    | 8310-5  |  115 k |     0.06 |  0.002 | 0.53 ² |
+| LE1080 | 100k    | 55758-7 |  1.0 M |     0.52 |  0.006 |   0.51 |
 | LE1080 | 100k    | 72514-3 |  2.7 M |     1.36 |  0.016 |   0.49 |
 | CCX42  | 100k    | 8310-5  |  115 k |     0.07 |  0.005 | 0.62 ² |
 | CCX42  | 100k    | 55758-7 |  1.0 M |     0.53 |  0.062 |   0.52 |
 | CCX42  | 100k    | 72514-3 |  2.7 M |     1.31 |  0.017 |   0.47 |
-| LE1080 | 1M      | 8310-5  |  1.1 M |     0.60 |  0.004 |   0.51 |
-| LE1080 | 1M      | 55758-7 | 10.1 M |     5.59 |  0.020 |   0.55 |
-| LE1080 | 1M      | 72514-3 | 27.3 M |    14.55 |  0.039 |   0.53 |
+| LE1080 | 1M      | 8310-5  |  1.1 M |     0.59 |  0.008 |   0.50 |
+| LE1080 | 1M      | 55758-7 | 10.1 M |     5.46 |  0.097 |   0.53 |
+| LE1080 | 1M      | 72514-3 | 27.3 M |    14.60 |  0.077 |   0.53 |
 
 ¹ time in seconds per 1 million resources, ² Because the measurement of the duration includes the whole HTTP stack, durations of small results like the 115 k includes an overhead that results in a duration more like 0.6 seconds per 1 million hits.
 
@@ -66,15 +66,15 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev |  T/1M ¹ |
 |--------|---------|---------|-------:|---------:|-------:|--------:|
-| LE1080 | 100k    | 8310-5  |  115 k |     2.29 |  0.008 |   19.84 |  
-| LE1080 | 100k    | 55758-7 |  1.0 M |    18.29 |  0.107 |   18.15 |
-| LE1080 | 100k    | 72514-3 |  2.7 M |    50.09 |  0.549 |   18.22 |
+| LE1080 | 100k    | 8310-5  |  115 k |     1.91 |  0.025 |   16.58 |  
+| LE1080 | 100k    | 55758-7 |  1.0 M |    15.85 |  0.224 |   15.73 |
+| LE1080 | 100k    | 72514-3 |  2.7 M |    42.12 |  0.591 |   15.32 |
 | CCX42  | 100k    | 8310-5  |  115 k |     2.46 |  0.044 |   21.34 |           
 | CCX42  | 100k    | 55758-7 |  1.0 M |    19.74 |  0.237 |   19.60 |         
 | CCX42  | 100k    | 72514-3 |  2.7 M |    52.95 |  0.484 |   19.26 |         
-| LE1080 | 1M      | 8310-5  |  1.1 M |    26.17 |  0.186 |   22.57 |         
-| LE1080 | 1M      | 55758-7 | 10.1 M |   237.82 |  1.534 |   23.45 |         
-| LE1080 | 1M      | 72514-3 | 27.3 M |  1038.65 | 61.478 | 37.98 ² |
+| LE1080 | 1M      | 8310-5  |  1.1 M |    21.26 |  0.289 |   18.34 |         
+| LE1080 | 1M      | 55758-7 | 10.1 M |   209.43 |  2.313 |   20.65 |         
+| LE1080 | 1M      | 72514-3 | 27.3 M |   857.24 |  6.096 | 31.35 ² |
 
 ¹ time in seconds per 1 million resources, ² resource cache size (11 million) is smaller than the number of resources returned (27.3 million)
 
@@ -94,15 +94,15 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev |  T/1M ¹ |
 |--------|---------|---------|-------:|---------:|-------:|--------:|
-| LE1080 | 100k    | 8310-5  |  115 k |     1.74 |  0.035 |   15.14 |
-| LE1080 | 100k    | 55758-7 |  1.0 M |    12.92 |  0.080 |   12.82 |
-| LE1080 | 100k    | 72514-3 |  2.7 M |    34.31 |  0.294 |   12.48 |
+| LE1080 | 100k    | 8310-5  |  115 k |     1.30 |  0.027 |   11.26 |
+| LE1080 | 100k    | 55758-7 |  1.0 M |    10.47 |  0.126 |   10.39 |
+| LE1080 | 100k    | 72514-3 |  2.7 M |    27.67 |  0.263 |   10.06 |
 | CCX42  | 100k    | 8310-5  |  115 k |     1.78 |  0.052 |   15.41 |           
 | CCX42  | 100k    | 55758-7 |  1.0 M |    14.46 |  0.177 |   14.35 |           
 | CCX42  | 100k    | 72514-3 |  2.7 M |    37.82 |  0.107 |   13.76 |
-| LE1080 | 1M      | 8310-5  |  1.1 M |    19.88 |  0.112 |   17.15 |          
-| LE1080 | 1M      | 55758-7 | 10.1 M |   178.90 |  0.786 |   17.64 |          
-| LE1080 | 1M      | 72514-3 | 27.3 M |   808.84 | 55.742 | 29.58 ² |
+| LE1080 | 1M      | 8310-5  |  1.1 M |    14.50 |  0.161 |   12.50 |          
+| LE1080 | 1M      | 55758-7 | 10.1 M |   153.23 |  0.716 |   15.11 |          
+| LE1080 | 1M      | 72514-3 | 27.3 M |   650.05 |  9.788 | 23.77 ² |
 
 ¹ time in seconds per 1 million resources, ² resource cache size (11 million) is smaller than the number of resources returned (27.3 million)
 
@@ -243,8 +243,8 @@ curl -s "http://localhost:8080/fhir/Observation?date=$YEAR&_summary=count"
 | LE1080 | 100k    | 2019 |  6.0 M |     4.31 |  0.087 |   0.72 |
 | CCX42  | 100k    | 2013 |  3.1 M |     2.00 |  0.028 |   0.63 |
 | CCX42  | 100k    | 2019 |  6.0 M |     3.91 |  0.142 |   0.65 |
-| LE1080 | 1M      | 2013 | 31.1 M |    22.69 |  0.426 |   0.73 |
-| LE1080 | 1M      | 2019 | 60.0 M |    45.18 |  0.574 |   0.75 |
+| LE1080 | 1M      | 2013 | 31.1 M |    21.49 |  0.328 |   0.69 |
+| LE1080 | 1M      | 2019 | 60.0 M |    44.07 |  1.014 |   0.73 |
 
 ¹ time in seconds per 1 million resources
 
@@ -264,10 +264,10 @@ blazectl download --server http://localhost:8080/fhir Observation -q "date=$YEAR
 | LE1080 | 100k    | 2019 |  6.0 M |   124.12 |  2.017 |   20.76 |
 | CCX42  | 100k    | 2013 |  3.1 M |   128.16 |  0.406 |   41.00 |
 | CCX42  | 100k    | 2019 |  6.0 M |   276.13 |  2.020 | 46.18 ² |
-| LE1080 | 1M      | 2013 |
-| LE1080 | 1M      | 2019 | 60.0 M |  3285.64 |  3.663 | 54.71 ² |
+| LE1080 | 1M      | 2013 | 31.1 M |   938.28 | 12.990 | 30.19 ² |
+| LE1080 | 1M      | 2019 | 60.0 M |  2306.56 |  7.608 | 38.40 ² |
 
-¹ time in seconds per 1 million resources, ² resource cache size (5 million) is smaller than the number of resources returned (6 million)
+¹ time in seconds per 1 million resources, ² resource cache size is smaller than the number of resources returned
 
 ### Download of Resources with Subsetting
 
@@ -287,10 +287,10 @@ blazectl download --server http://localhost:8080/fhir Observation -q "date=$YEAR
 | LE1080 | 100k    | 2019 |  6.0 M |    81.32 |  0.454 |   13.60 |
 | CCX42  | 100k    | 2013 |  3.1 M |    85.59 |  0.293 |   27.38 |
 | CCX42  | 100k    | 2019 |  6.0 M |   179.29 |  1.786 | 29.99 ² |
-| LE1080 | 1M      | 2013 |
-| LE1080 | 1M      | 2019 | 60.0 M |  2720.06 |  7.280 | 45.29 ² |
+| LE1080 | 1M      | 2013 | 31.1 M |   615.23 |  7.651 | 19.80 ² |
+| LE1080 | 1M      | 2019 | 60.0 M |  1792.99 |  6.333 | 29.85 ² |
 
-¹ time in seconds per 1 million resources, ² resource cache size (5 million) is smaller than the number of resources returned (6 million)
+¹ time in seconds per 1 million resources, ² resource cache size is smaller than the number of resources returned
 
 ## Used Dataset
 

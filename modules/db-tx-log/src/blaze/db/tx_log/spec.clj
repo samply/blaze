@@ -24,7 +24,7 @@
 
 
 (s/def :blaze.db.tx-cmd/op
-  #{"create" "put" "delete"})
+  #{"create" "put" "keep" "delete"})
 
 
 (s/def :blaze.db.tx-cmd/type
@@ -44,7 +44,7 @@
 
 
 (s/def :blaze.db.tx-cmd/if-match
-  :blaze.db/t)
+  (s/or :t :blaze.db/t :ts (s/coll-of :blaze.db/t :kind vector? :min-count 1)))
 
 
 (s/def :blaze.db.tx-cmd/if-none-match
@@ -71,6 +71,14 @@
           :opt-un [:blaze.db.tx-cmd/refs
                    :blaze.db.tx-cmd/if-match
                    :blaze.db.tx-cmd/if-none-match]))
+
+
+(defmethod tx-cmd "keep" [_]
+  (s/keys :req-un [:blaze.db.tx-cmd/op
+                   :blaze.db.tx-cmd/type
+                   :blaze.resource/id
+                   :blaze.resource/hash]
+          :opt-un [:blaze.db.tx-cmd/if-match]))
 
 
 (defmethod tx-cmd "delete" [_]

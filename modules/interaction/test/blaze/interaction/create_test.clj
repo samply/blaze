@@ -5,17 +5,19 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
+    [blaze.anomaly :as ba]
     [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.db.api-stub
      :refer [create-mem-node-config with-system-data]]
     [blaze.db.resource-store :as rs]
-    [blaze.executors :as ex]
+    [blaze.db.spec :refer [node?]]
     [blaze.fhir.response.create-spec]
     [blaze.fhir.spec.type]
     [blaze.interaction.create]
     [blaze.interaction.test-util :refer [wrap-error]]
     [blaze.interaction.util-spec]
+    [blaze.log]
     [blaze.test-util :as tu :refer [given-thrown with-system]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -60,19 +62,17 @@
       :key := :blaze.interaction/create
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
-  (testing "invalid executor"
-    (given-thrown (ig/init {:blaze.interaction/create {:executor ::invalid}})
+  (testing "invalid node"
+    (given-thrown (ig/init {:blaze.interaction/create {:node ::invalid}})
       :key := :blaze.interaction/create
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:explain ::s/problems 3 :pred] := `ex/executor?
-      [:explain ::s/problems 3 :val] := ::invalid)))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:explain ::s/problems 2 :pred] := `node?
+      [:explain ::s/problems 2 :val] := ::invalid)))
 
 
 (defn create-config [node-config]
@@ -208,7 +208,35 @@
             :fhir/type := :fhir/Patient
             :id := "AAAAAAAAAAAAAAAA"
             [:meta :versionId] := #fhir/id"1"
-            [:meta :lastUpdated] := Instant/EPOCH))))
+            [:meta :lastUpdated] := Instant/EPOCH)))
+
+      (testing "Meta source is preserved"
+        (with-handler [handler]
+          (let [{:keys [status body]}
+                @(handler
+                   {::reitit/match patient-match
+                    :body {:fhir/type :fhir/Patient
+                           :meta #fhir/Meta{:source #fhir/uri"source-110438"}}})]
+
+            (is (= 201 status))
+
+            (given body
+              [:meta :source] := #fhir/uri"source-110438"))))
+
+      (testing "Meta versionId is removed"
+        (with-redefs [rs/put!
+                      (fn [store entries]
+                        (if (nil? (:meta (first (vals entries))))
+                          (rs/-put store entries)
+                          (ac/completed-future (ba/fault))))]
+          (with-handler [handler]
+            (let [{:keys [status]}
+                  @(handler
+                     {::reitit/match patient-match
+                      :body {:fhir/type :fhir/Patient
+                             :meta #fhir/Meta{:versionId #fhir/id"1"}}})]
+
+              (is (= 201 status)))))))
 
     (testing "with return=minimal Prefer header"
       (with-handler [handler]

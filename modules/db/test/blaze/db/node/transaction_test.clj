@@ -5,9 +5,12 @@
     [blaze.db.node.transaction :as tx]
     [blaze.db.node.transaction-spec]
     [blaze.fhir.spec.type]
-    [blaze.test-util :as tu]
+    [blaze.test-util :as tu :refer [satisfies-prop]]
+    [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
+    [clojure.test.check.generators :as gen]
+    [clojure.test.check.properties :as prop]
     [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]]))
 
@@ -51,13 +54,13 @@
 
         (testing "without value"
           (given (tx/prepare-ops
-                 context
-                 [[:create
-                   {:fhir/type :fhir/Observation :id "0"
-                    :subject #fhir/Reference
-                           {:reference #fhir/string
-                                   {:extension [#fhir/Extension{:url "foo"}]}}}]])
-          [0 0 :refs] :? empty?)))
+                   context
+                   [[:create
+                     {:fhir/type :fhir/Observation :id "0"
+                      :subject #fhir/Reference
+                             {:reference #fhir/string
+                                     {:extension [#fhir/Extension{:url "foo"}]}}}]])
+            [0 0 :refs] :? empty?)))
 
       (testing "with disabled referential integrity check"
         (given (tx/prepare-ops
@@ -106,8 +109,26 @@
           [0 0 :refs] :? empty?)))
 
     (testing "with matches"
-      (given (tx/prepare-ops context [[:put {:fhir/type :fhir/Patient :id "0"} [:if-match 4]]])
-        [0 0 :if-match] := 4)))
+      (satisfies-prop 100
+        (prop/for-all [if-match (gen/vector (s/gen :blaze.db/t) 1 10)]
+          (let [tx-op [:put {:fhir/type :fhir/Patient :id "0"} (into [:if-match] if-match)]]
+            (= if-match (:if-match (ffirst (tx/prepare-ops context [tx-op])))))))))
+
+  (testing "keep"
+    (let [hash #blaze/hash"7B3980C2BFCF43A8CDD61662E1AABDA9CA6431964820BC8D52958AEC9A270378"]
+      (testing "without any if-match ts"
+        (given (tx/prepare-ops context [[:keep "Patient" "0" hash]])
+          [0 0 :op] := "keep"
+          [0 0 :type] := "Patient"
+          [0 0 :id] := "0"
+          [0 0 :hash] := hash
+          [1] := {}))
+
+      (testing "with matches"
+        (satisfies-prop 100
+          (prop/for-all [if-match (gen/vector (s/gen :blaze.db/t) 1 10)]
+            (let [tx-op [:keep "Patient" "0" hash if-match]]
+              (= if-match (:if-match (ffirst (tx/prepare-ops context [tx-op]))))))))))
 
   (testing "delete"
     (given (tx/prepare-ops context [[:delete "Patient" "0"]])

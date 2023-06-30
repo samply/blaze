@@ -5,7 +5,6 @@
   The specs at the beginning of the namespace describe the config which has to
   be given to `init!``. The server port has a default of `8080`."
   (:require
-    [blaze.executors :as ex]
     [blaze.log]
     [clojure.java.io :as io]
     [clojure.string :as str]
@@ -117,8 +116,6 @@
     :health-handler (ig/ref :blaze.handler/health)
     :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")}
 
-   :blaze.server/executor {}
-
    :blaze/server
    {:port (->Cfg "SERVER_PORT" nat-int? 8080)
     :handler (ig/ref :blaze.handler/app)
@@ -221,17 +218,3 @@
 (defmethod ig/init-key :blaze/secure-rng
   [_ _]
   (SecureRandom.))
-
-
-(defn- executor-init-msg []
-  (format "Init server executor with %d threads"
-          (.availableProcessors (Runtime/getRuntime))))
-
-
-(defmethod ig/init-key :blaze.server/executor
-  [_ _]
-  (log/info (executor-init-msg))
-  (ex/cpu-bound-pool "server-%d"))
-
-
-(derive :blaze.server/executor :blaze.metrics/thread-pool-executor)

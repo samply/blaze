@@ -38,12 +38,17 @@
     (d/pull db new-handle)))
 
 
+(defn- keep? [[op]]
+  (identical? :keep op))
+
+
 (defn build-response
-  [{:blaze/keys [db] :as context} old-handle {:keys [id] :as new-handle}]
+  [{:blaze/keys [db] :as context} tx-op old-handle {:keys [id] :as new-handle}]
   (let [type (name (fhir-spec/fhir-type new-handle))
         tx (d/tx db (:t new-handle))
         vid (str (:blaze.db/t tx))
-        created (or (nil? old-handle) (identical? :delete (:op old-handle)))]
+        created (and (not (keep? tx-op))
+                     (or (nil? old-handle) (identical? :delete (:op old-handle))))]
     (log/trace (format "build-response of %s/%s with vid = %s" type id vid))
     (do-sync [body (body context new-handle)]
       (cond->

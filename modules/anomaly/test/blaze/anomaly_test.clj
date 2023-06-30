@@ -62,6 +62,17 @@
     (is (not (ba/anomaly? nil)))))
 
 
+(deftest conflict?-test
+  (testing "a conflict anomaly has to have the right category"
+    (is (ba/conflict? {::anom/category ::anom/conflict})))
+
+  (testing "anomalies with other categories are no conflict anomalies"
+    (is (not (ba/conflict? {::anom/category ::anom/fault}))))
+
+  (testing "nil is no conflict anomaly"
+    (is (not (ba/anomaly? nil)))))
+
+
 (deftest fault?-test
   (testing "a fault anomaly has to have the right category"
     (is (ba/fault? {::anom/category ::anom/fault})))
@@ -152,7 +163,6 @@
   (testing "without message"
     (is (= (ba/fault) {::anom/category ::anom/fault})))
 
-
   (testing "with nil message"
     (is (= (ba/fault nil) {::anom/category ::anom/fault})))
 
@@ -169,6 +179,9 @@
 
 
 (deftest busy-test
+  (testing "without message"
+    (is (= (ba/busy) {::anom/category ::anom/busy})))
+
   (testing "with nil message"
     (is (= (ba/busy nil) {::anom/category ::anom/busy})))
 

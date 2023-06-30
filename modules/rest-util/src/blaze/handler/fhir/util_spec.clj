@@ -9,11 +9,6 @@
     [reitit.core :as reitit]))
 
 
-(s/fdef util/to-seq
-  :args (s/cat :x any?)
-  :ret (s/nilable sequential?))
-
-
 (s/fdef util/t
   :args (s/cat :query-params (s/nilable :ring.request/query-params))
   :ret (s/nilable :blaze.db/t))

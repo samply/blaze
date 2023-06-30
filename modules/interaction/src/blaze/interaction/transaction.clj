@@ -6,14 +6,12 @@
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
     [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.db.api :as d]
-    [blaze.executors :as ex]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.transaction.bundle :as bundle]
     [blaze.interaction.transaction.bundle.url :as url]
-    [blaze.interaction.transaction.spec]
     [blaze.interaction.util :as iu]
     [blaze.spec]
     [clojure.spec.alpha :as s]
@@ -332,30 +330,32 @@
 
 
 (defn- update-entry
-  [{:keys [db] :as context} type {:keys [num-changes id] :as handle}]
+  [{:keys [db] :as context} type tx-op old-handle {:keys [id] :as handle}]
   (let [tx (d/tx db (:t handle))
-        vid (str (:blaze.db/t tx))]
+        vid (str (:blaze.db/t tx))
+        created (and (not (iu/keep? tx-op))
+                     (or (nil? old-handle) (identical? :delete (:op old-handle))))]
     {:fhir/type :fhir.Bundle/entry
      :response
      (cond->
        {:fhir/type :fhir.Bundle.entry/response
-        :status (if (= 1 num-changes) "201" "200")
+        :status (if created "201" "200")
         :etag (str "W/\"" vid "\"")
         :lastModified (:blaze.db.tx/instant tx)}
-       (= 1 num-changes)
+       created
        (assoc :location (location context type id vid)))}))
 
 
 (defmethod build-response-entry "PUT"
   [{:keys [db return-preference] :as context}
    _
-   {{:fhir/keys [type] :keys [id]} :resource}]
+   {{:fhir/keys [type] :keys [id]} :resource :keys [tx-op]}]
   (let [type (name type)
-        handle (d/resource-handle db type id)]
+        [new-handle old-handle] (take 2 (d/instance-history db type id))]
     (if (identical? :blaze.preference.return/representation return-preference)
-      (do-sync [resource (pull db handle)]
-        (assoc (update-entry context type handle) :resource resource))
-      (ac/completed-future (update-entry context type handle)))))
+      (do-sync [resource (pull db new-handle)]
+        (assoc (update-entry context type tx-op old-handle new-handle) :resource resource))
+      (ac/completed-future (update-entry context type tx-op old-handle new-handle)))))
 
 
 (defmethod build-response-entry "DELETE"
@@ -372,9 +372,7 @@
 
 (defn- build-response-entries* [{:keys [db] :as context} entries]
   (with-open [batch-db (d/new-batch-db db)]
-    (->> entries
-         (map-indexed (partial build-response-entry (assoc context :db batch-db)))
-         doall)))
+    (into [] (map-indexed (partial build-response-entry (assoc context :db batch-db))) entries)))
 
 
 (defn- build-response-entries [context entries]
@@ -517,17 +515,21 @@
       (mapv ac/join futures))))
 
 
+(defn- transact [{:keys [node] :as context} entries]
+  (if-ok [entries (bundle/assoc-tx-ops (d/db node) entries)]
+    (-> (let [tx-ops (bundle/tx-ops entries)]
+          (if (empty? tx-ops)
+            (d/sync node)
+            (d/transact node tx-ops)))
+        (ac/then-compose #(build-response-entries (assoc context :db %) entries)))
+    ac/completed-future))
+
+
 (defmethod process-entries "transaction"
-  [{:keys [node executor] :as context} _ entries]
-  (let [writes (bundle/writes entries)]
-    (-> (if (empty? writes)
-          (d/sync node)
-          (d/transact node (bundle/tx-ops writes)))
-        ;; it's important to switch to the executor here, because otherwise
-        ;; the central indexing thread would execute response building.
-        (ac/then-compose-async
-          #(build-response-entries (assoc context :db %) entries)
-          executor))))
+  [context _ entries]
+  (ac/retry2 #(transact context entries)
+             #(and (ba/conflict? %) (= "keep" (-> % :blaze.db/tx-cmd :op))
+                   (nil? (:http/status %)))))
 
 
 (defn- process-context
@@ -550,28 +552,15 @@
 
 
 (defmethod ig/pre-init-spec :blaze.interaction/transaction [_]
-  (s/keys :req-un [:blaze.db/node ::executor :blaze/clock :blaze/rng-fn]))
+  (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn]))
 
 
 (defmethod ig/init-key :blaze.interaction/transaction [_ context]
   (log/info "Init FHIR transaction interaction handler")
   (fn [{{:keys [type] :as bundle} :body :as request}]
-    (-> (ac/completed-future (validate-and-prepare-bundle context bundle))
-        (ac/then-compose
-          #(if (empty? %)
-             (ac/completed-future [])
-             (process-entries (process-context context request) request %)))
-        (ac/then-apply #(ring/response (response-bundle context type %))))))
-
-
-(defn- executor-init-msg []
-  (format "Init FHIR transaction interaction executor with %d threads"
-          (.availableProcessors (Runtime/getRuntime))))
-
-
-(defmethod ig/init-key ::executor [_ _]
-  (log/info (executor-init-msg))
-  (ex/cpu-bound-pool "blaze-transaction-interaction-%d"))
-
-
-(derive ::executor :blaze.metrics/thread-pool-executor)
+    (if-ok [bundle (validate-and-prepare-bundle context bundle)]
+      (-> (if (empty? bundle)
+            (ac/completed-future [])
+            (process-entries (process-context context request) request bundle))
+          (ac/then-apply #(ring/response (response-bundle context type %))))
+      ac/completed-future)))

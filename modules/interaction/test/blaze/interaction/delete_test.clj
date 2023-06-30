@@ -4,8 +4,9 @@
   https://www.hl7.org/fhir/http.html#delete"
   (:require
     [blaze.db.api-stub :refer [mem-node-config with-system-data]]
-    [blaze.executors :as ex]
+    [blaze.db.spec :refer [node?]]
     [blaze.interaction.delete]
+    [blaze.log]
     [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -33,16 +34,14 @@
     (given-thrown (ig/init {:blaze.interaction/delete {}})
       :key := :blaze.interaction/delete
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))))
 
   (testing "invalid executor"
-    (given-thrown (ig/init {:blaze.interaction/delete {:executor ::invalid}})
+    (given-thrown (ig/init {:blaze.interaction/delete {:node ::invalid}})
       :key := :blaze.interaction/delete
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 1 :pred] := `ex/executor?
-      [:explain ::s/problems 1 :val] := ::invalid)))
+      [:explain ::s/problems 0 :pred] := `node?
+      [:explain ::s/problems 0 :val] := ::invalid)))
 
 
 (def config

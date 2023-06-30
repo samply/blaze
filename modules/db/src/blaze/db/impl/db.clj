@@ -21,7 +21,7 @@
     node)
 
   (-as-of [_ t]
-    (assert (<= ^long t ^long basis-t))
+    (assert (<= ^long t ^long basis-t) (format "(<= %d %d)" t basis-t))
     (Db. node kv-store basis-t t))
 
   (-basis-t [_]

@@ -152,7 +152,10 @@
       (fn [future state _ {:keys [e] new-t :t new-error-t :error-t}]
         (cond
           (<= t (max new-t new-error-t))
-          (do (ac/complete! future (db/db node new-t))
+          (do (log/trace "complete database future with new db with t =" new-t)
+              ;; it's important to complete async here, because otherwise all
+              ;; the later work will happen on the indexer thread
+              (ac/complete-async! future #(db/db node new-t))
               (remove-watch state future))
 
           e
@@ -180,11 +183,13 @@
 
 
 (defn- commit-error! [{:keys [kv-store state]} t anomaly]
+  (log/trace "commit transaction error with t =" t)
   (kv/put! kv-store [(tx-error/index-entry t anomaly)])
   (advance-error-t! state t))
 
 
 (defn- store-tx-entries! [kv-store entries]
+  (log/trace "store" (count entries) "transaction index entries")
   (with-open [_ (prom/timer duration-seconds "store-tx-entries")]
     (kv/put! kv-store entries)))
 
@@ -208,6 +213,7 @@
 
 
 (defn- commit-success! [{:keys [kv-store state]} t instant]
+  (log/trace "commit transaction success with t =" t)
   (kv/put! kv-store (tx-success-entries t instant))
   (advance-t! state t))
 
