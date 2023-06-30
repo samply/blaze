@@ -25,15 +25,13 @@ calc-print-stats() {
   # shorten the count
   if (( $(echo "$COUNT > 1000000" | bc) )); then
     COUNT=$(echo "scale=2; $COUNT / 1000000" | bc)
-    COUNT_SUFFIX="M"
-    COUNT_FORMAT="%4.1f"
+    COUNT_FORMAT="%4.1f M"
   else
     COUNT=$(echo "scale=2; $COUNT / 1000" | bc)
-    COUNT_SUFFIX="k"
-    COUNT_FORMAT="%4.0f"
+    COUNT_FORMAT="%4.0f k"
   fi
 
-  printf "| $COUNT_FORMAT %s | %8.2f | %6.3f | %6.2f |\n" "$COUNT" "$COUNT_SUFFIX" "$AVG" "$(echo "$STATS" | jq .stddev)" "$AVG_1M"
+  printf "| $COUNT_FORMAT | %8.2f | %6.3f | %6.2f |\n" "$COUNT" "$AVG" "$(echo "$STATS" | jq .stddev)" "$AVG_1M"
 }
 
 count-resources-raw() {

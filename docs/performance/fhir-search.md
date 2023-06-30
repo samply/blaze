@@ -72,9 +72,9 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 | CCX42  | 100k    | 8310-5  |  115 k |     2.46 |  0.044 |   21.34 |           
 | CCX42  | 100k    | 55758-7 |  1.0 M |    19.74 |  0.237 |   19.60 |         
 | CCX42  | 100k    | 72514-3 |  2.7 M |    52.95 |  0.484 |   19.26 |         
-| LE1080 | 1M      | 8310-5  |  1.1 M |    21.26 |  0.289 |   18.34 |         
-| LE1080 | 1M      | 55758-7 | 10.1 M |   209.43 |  2.313 |   20.65 |         
-| LE1080 | 1M      | 72514-3 | 27.3 M |   857.24 |  6.096 | 31.35 ² |
+| LE1080 | 1M      | 8310-5  |  1.1 M |    19.11 |  0.383 |   16.48 |         
+| LE1080 | 1M      | 55758-7 | 10.1 M |   201.66 |  2.506 |   19.88 |         
+| LE1080 | 1M      | 72514-3 | 27.3 M |   809.80 |  6.294 | 29.61 ² |
 
 ¹ time in seconds per 1 million resources, ² resource cache size (11 million) is smaller than the number of resources returned (27.3 million)
 
@@ -100,9 +100,9 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 | CCX42  | 100k    | 8310-5  |  115 k |     1.78 |  0.052 |   15.41 |           
 | CCX42  | 100k    | 55758-7 |  1.0 M |    14.46 |  0.177 |   14.35 |           
 | CCX42  | 100k    | 72514-3 |  2.7 M |    37.82 |  0.107 |   13.76 |
-| LE1080 | 1M      | 8310-5  |  1.1 M |    14.50 |  0.161 |   12.50 |          
-| LE1080 | 1M      | 55758-7 | 10.1 M |   153.23 |  0.716 |   15.11 |          
-| LE1080 | 1M      | 72514-3 | 27.3 M |   650.05 |  9.788 | 23.77 ² |
+| LE1080 | 1M      | 8310-5  |  1.1 M |    12.38 |  0.136 |   10.68 |          
+| LE1080 | 1M      | 55758-7 | 10.1 M |   143.98 |  1.816 |   14.19 |          
+| LE1080 | 1M      | 72514-3 | 27.3 M |   617.21 |  5.668 | 22.57 ² |
 
 ¹ time in seconds per 1 million resources, ² resource cache size (11 million) is smaller than the number of resources returned (27.3 million)
 

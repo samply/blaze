@@ -1,5 +1,26 @@
 # CQL Performance
 
+## Systems
+
+The following systems were used for performance evaluation:
+
+| System | Provider | CPU        | Cores |     RAM |    SSD | Heap Mem | Block Cache | Resource Cache ¹ |
+|--------|----------|------------|------:|--------:|-------:|---------:|------------:|-----------------:|
+| LE1080 | on-prem  | EPYC 7543P |    16 | 128 GiB |   2 TB |   16 GiB |      32 GiB |              5 M | 
+
+¹ Size of the resource cache (DB_RESOURCE_CACHE_SIZE)
+
+## Datasets
+
+The following datasets were used:
+
+| Dataset | # Pat. ¹ | # Res. ² | # Obs. ³ |
+|---------|---------:|---------:|---------:|
+| 100k    |    100 k |    104 M |     59 M |
+| 1M      |      1 M |   1044 M |    593 M |
+
+¹ Number of Patients, ² Total Number of Resources, ³ Number of Observations
+
 ## Simple Code Search
 
 In this section, CQL Queries for selecting Patients which have Observation resources with a certain code are used.
@@ -17,24 +38,22 @@ define InInitialPopulation:
   exists [Observation: Code '17861-6' from loinc]
 ```
 
-The GC settings were: `-XX:+UseG1GC -XX:MaxGCPauseMillis=50`.
-
 The CQL query is executed with the following `blazectl` command:
 
 ```sh
 blazectl evaluate-measure "cql/observation-$CODE.yml" --server http://localhost:8080/fhir | jq -rf cql/result.jq
 ```
 
-| CPU        | Heap Mem | Block Cache | # Pat. ¹ | # Obs. ² | Code    | # Hits | Time (s) | StdDev | T / 1M ³ |
-|------------|---------:|------------:|---------:|---------:|---------|-------:|---------:|-------:|---------:|
-| EPYC 7543P |     1 GB |        4 GB |    100 k |     28 M | 17861-6 |   15 k |     0.23 |  0.037 |      2.3 |
-| EPYC 7543P |     1 GB |        4 GB |    100 k |     28 M | 39156-5 |   99 k |     0.25 |  0.034 |      2.5 |
-| EPYC 7543P |     1 GB |        4 GB |    100 k |     28 M | 29463-7 |  100 k |     0.25 |  0.035 |      2.5 |
-| EPYC 7543P |     1 GB |       32 GB |      1 M |    278 M | 17861-6 |  149 k |     2.37 |  0.096 |      2.4 |
-| EPYC 7543P |     1 GB |       32 GB |      1 M |    278 M | 39156-5 |  995 k |     2.64 |  0.103 |      2.6 |
-| EPYC 7543P |     1 GB |       32 GB |      1 M |    278 M | 29463-7 |    1 M |     2.65 |  0.082 |      2.7 |
+| System | Dataset | Code    | # Hits | Time (s) | StdDev |  Pat./s |
+|--------|---------|---------|-------:|---------:|-------:|--------:|
+| LE1080 | 100k    | 17861-6 |    2 k |     0.26 |  0.158 | 384.5 k | 
+| LE1080 | 100k    | 8310-5  |   60 k |     0.28 |  0.142 | 351.4 k | 
+| LE1080 | 100k    | 72514-3 |  100 k |     0.27 |  0.128 | 367.0 k |
+| LE1080 | 1M      | 17861-6 |   25 k |     2.61 |  0.208 | 383.1 k | 
+| LE1080 | 1M      | 8310-5  |  603 k |     2.68 |  0.201 | 372.8 k | 
+| LE1080 | 1M      | 72514-3 |  998 k |     2.82 |  0.192 | 354.9 k |
 
-¹ Number of Patients, ² Number of Observations, ³ Time in seconds per 1 million patients, The amount of system memory was 128 GB in all cases.
+The evaluation of patient based measures doesn't depend on the number of hits (patients). The time needed to evaluate a CQL expression over all patients only depends on the total number of patients. The measurements show that Blaze can evaluate about 350 k Patients per second.
 
 ## Code and Value Search
 
@@ -51,10 +70,8 @@ code "body-weight": '29463-7' from loinc
 context Patient
 
 define InInitialPopulation:
-  exists [Observation: "body-weight"] O where O.value < 73.3 'kg'
+  exists [Observation: "body-weight"] O where O.value < 75.3 'kg'
 ```
-
-The GC settings were: `-XX:+UseG1GC -XX:MaxGCPauseMillis=50`.
 
 The CQL query is executed with the following `blazectl` command:
 
@@ -62,46 +79,11 @@ The CQL query is executed with the following `blazectl` command:
 blazectl evaluate-measure "cql/observation-$CODE-$VALUE.yml" --server http://localhost:8080/fhir | jq -rf cql/result.jq
 ```
 
-| CPU        | Heap Mem | Block Cache | # Pat. ¹ | # Obs. ² | Code    | Value | # Hits | Time (s) | StdDev |
-|------------|---------:|------------:|---------:|---------:|---------|------:|-------:|---------:|-------:|
-| EPYC 7543P |     2 GB |        4 GB |    100 k |     28 M | 29463-7 |  11.1 |   10 k |     1.02 |  0.023 |
-| EPYC 7543P |     2 GB |        4 GB |    100 k |     28 M | 29463-7 |  73.3 |   50 k |     0.70 |  0.026 |
-| EPYC 7543P |     2 GB |        4 GB |    100 k |     28 M | 29463-7 |   185 |  100 k |     0.28 |  0.025 |
-| EPYC 7543P |    20 GB |       32 GB |      1 M |    278 M | 17861-6 |  11.1 |  100 k |     ---- |  ----- |
-| EPYC 7543P |    20 GB |       32 GB |      1 M |    278 M | 39156-5 |  73.3 |  500 k |     3.20 |  0.179 |
-| EPYC 7543P |    20 GB |       32 GB |      1 M |    278 M | 29463-7 |   185 |    1 M |     5.92 |  0.082 |
-
-¹ Number of Patients, ² Number of Observations, The amount of system memory was 128 GB in all cases.
-
-## Observation Code Search
-
-In this section, CQL Queries for selecting Patients which have Observation resources with a certain code and value are used.
-
-```text
-library "observation-category-laboratory"
-using FHIR version '4.0.0'
-include FHIRHelpers version '4.0.0'
-
-codesystem "observation-category": 'http://terminology.hl7.org/CodeSystem/observation-category'
-code "laboratory": 'laboratory' from "observation-category"
-
-context Patient
-
-define InInitialPopulation:
-  [Observation: category in "laboratory"]
-```
-
-The GC settings were: `-XX:+UseG1GC -XX:MaxGCPauseMillis=50`.
-
-The CQL query is executed with the following `blazectl` command:
-
-```sh
-blazectl evaluate-measure "cql/observation-category-$CODE.yml" --server http://localhost:8080/fhir | jq -rf cql/result.jq
-```
-
-| CPU        | Heap Mem | Block Cache | # Pat. ¹ | # Obs. ² | Code       | # Hits | Time (s) | StdDev |
-|------------|---------:|------------:|---------:|---------:|------------|-------:|---------:|-------:|
-| EPYC 7543P |     1 GB |        4 GB |    100 k |     28 M | laboratory |   17 M |     10.1 |  0.315 |
-| EPYC 7543P |     1 GB |       40 GB |      1 M |    278 M | laboratory |  170 M |     92.8 |  2.057 |
-
-¹ Number of Patients, ² Number of Observations, The amount of system memory was 128 GB in all cases.
+| System | Dataset | Code    |   Value | # Hits | Time (s) | StdDev |  Pat./s |
+|--------|---------|---------|--------:|-------:|---------:|-------:|--------:|
+| LE1080 | 100k    | 29463-7 | 13.6 kg |   10 k |     0.68 |  0.031 | 146.9 k | 
+| LE1080 | 100k    | 29463-7 | 75.3 kg |   50 k |     0.51 |  0.033 | 197.1 k | 
+| LE1080 | 100k    | 29463-7 |  185 kg |  100 k |     0.30 |  0.106 | 331.6 k |
+| LE1080 | 1M      | 29463-7 | 13.6 kg |   99 k |   151.05 |  4.674 |   6.6 k | 
+| LE1080 | 1M      | 29463-7 | 75.3 kg |  500 k |   104.68 |  2.022 |   9.6 k | 
+| LE1080 | 1M      | 29463-7 |  185 kg |  998 k |     3.19 |  0.176 | 313.8 k |

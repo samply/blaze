@@ -115,14 +115,14 @@ The `SystemStats` index keeps track of the total number of resources, and the nu
 
 The indices not depending on `t` directly point to the resource versions by their content hash. 
 
-| Name                                | Key Parts                                                    | Value |
-|-------------------------------------|--------------------------------------------------------------|-------|
-| SearchParamValueResource            | search-param, type, value, id, content-hash                  | -     |
-| ResourceSearchParamValue            | type, id, content-hash, search-param, value                  | -     |
-| CompartmentSearchParamValueResource | co-c-hash, co-res-id, sp-c-hash, tid, value, id, hash-prefix | -     |
-| CompartmentResource                 | co-c-hash, co-res-id, tid, id                                | -     |
-| SearchParam                         | code, tid                                                    | id    |
-| ActiveSearchParams                  | id                                                           | -     |
+| Name                                | Key Parts                                                        | Value |
+|-------------------------------------|------------------------------------------------------------------|-------|
+| SearchParamValueResource            | search-param, type, value, id, content-hash                      | -     |
+| ResourceSearchParamValue            | type, id, content-hash, search-param, value                      | -     |
+| CompartmentSearchParamValueResource | co-c-hash, co-res-id, search-param, type, value, id, hash-prefix | -     |
+| CompartmentResource                 | co-c-hash, co-res-id, tid, id                                    | -     |
+| SearchParam                         | code, tid                                                        | id    |
+| ActiveSearchParams                  | id                                                               | -     |
 
 #### SearchParamValueResource
 
