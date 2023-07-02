@@ -3,13 +3,12 @@
 
   https://www.hl7.org/fhir/http.html#update"
   (:require
-    [blaze.anomaly :as ba]
+    [blaze.anomaly :as ba :refer [if-ok]]
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.fhir.response.create :as response]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.util :as handler-util]
-    [blaze.interaction.update.spec]
     [blaze.interaction.util :as iu]
     [clojure.spec.alpha :as s]
     [cognitect.anomalies :as anom]
@@ -56,13 +55,7 @@
     (->> body :meta :tag (some iu/subsetted?))
     (ba/incorrect
       "Resources with tag SUBSETTED may be incomplete and so can't be used in updates."
-      :fhir/issue "processing")
-
-    :else body))
-
-
-(defn- tx-op [resource {:strs [if-match if-none-match]}]
-  (iu/put-tx-op resource if-match if-none-match))
+      :fhir/issue "processing")))
 
 
 (defn- response-context [{:keys [headers] :as request} db-after]
@@ -72,42 +65,47 @@
       (assoc :blaze.preference/return return-preference))))
 
 
-(defn- db-before [db-after]
-  (d/as-of db-after (dec (d/basis-t db-after))))
-
-
 (defn- resource-content-not-found-msg [{:blaze.db/keys [resource-handle]}]
   (format "The resource `%s/%s` was successfully updated but it's content with hash `%s` was not found during response creation."
           (name (type/type resource-handle)) (:id resource-handle)
           (:hash resource-handle)))
 
 
-(defmethod ig/pre-init-spec :blaze.interaction/update [_]
-  (s/keys :req-un [:blaze.db/node ::executor]))
-
-
-(defmethod ig/init-key :blaze.interaction/update [_ {:keys [node executor]}]
-  (log/info "Init FHIR update interaction handler")
-  (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
-        {:keys [id]} :path-params
-        :keys [headers body]
-        :as request}]
-    (-> (ac/completed-future (validate-resource type id body))
-        (ac/then-compose #(d/transact node [(tx-op % headers)]))
-        ;; it's important to switch to the executor here, because otherwise
-        ;; the central indexing thread would execute response building.
-        (ac/then-apply-async identity executor)
+(defn- update-resource
+  [{:keys [node]}
+   {{:strs [if-match if-none-match]} :headers :as request}
+   {:fhir/keys [type] :keys [id] :as resource}]
+  (if-ok [tx-op (iu/update-tx-op (d/db node) resource if-match if-none-match)]
+    (-> (d/transact node [tx-op])
         (ac/then-compose
           (fn [db-after]
-            (response/build-response
-              (response-context request db-after)
-              (d/resource-handle (db-before db-after) type id)
-              (d/resource-handle db-after type id))))
-        (ac/exceptionally
-          (fn [e]
-            (cond-> e
-              (ba/not-found? e)
-              (assoc
-                ::anom/category ::anom/fault
-                ::anom/message (resource-content-not-found-msg e)
-                :fhir/issue "incomplete")))))))
+            (let [[new-handle old-handle] (take 2 (d/instance-history db-after (name type) id))]
+              (response/build-response
+                (response-context request db-after)
+                tx-op
+                old-handle
+                new-handle)))))
+    ac/completed-future))
+
+
+(defmethod ig/pre-init-spec :blaze.interaction/update [_]
+  (s/keys :req-un [:blaze.db/node]))
+
+
+(defmethod ig/init-key :blaze.interaction/update [_ context]
+  (log/info "Init FHIR update interaction handler")
+  (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
+        {:keys [id]} :path-params :keys [body] :as request}]
+    (if-ok [_ (validate-resource type id body)]
+      (-> (ac/retry2 #(update-resource context request (iu/strip-meta body))
+                     #(and (ba/conflict? %) (= "keep" (-> % :blaze.db/tx-cmd :op))
+                           (nil? (:http/status %))))
+          (ac/exceptionally
+            (fn [e]
+              (cond-> e
+                (ba/not-found? e)
+                (assoc
+                  ::anom/category ::anom/fault
+                  ::anom/message (resource-content-not-found-msg e)
+                  :fhir/issue "incomplete")))))
+      ac/completed-future)))

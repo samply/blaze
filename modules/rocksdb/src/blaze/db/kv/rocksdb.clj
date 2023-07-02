@@ -87,6 +87,10 @@
     (.releaseSnapshot db snapshot)))
 
 
+(defn column-families [store]
+  (p/-column-families store))
+
+
 (defn get-property
   ([store name]
    (p/-get-property store name))
@@ -99,6 +103,13 @@
    (p/-get-long-property store name))
   ([store column-family name]
    (p/-get-long-property store column-family name)))
+
+
+(defn table-properties
+  ([store]
+   (p/-table-properties store))
+  ([store column-family]
+   (p/-table-properties store column-family)))
 
 
 (deftype RocksKvStore [^RocksDB db ^WriteOptions write-opts cfhs]
@@ -142,7 +153,7 @@
       (.write db write-opts wb)))
 
   p/Rocks
-  (-get-column-families [_]
+  (-column-families [_]
     (keys cfhs))
 
   (-get-property [_ name]
@@ -168,6 +179,13 @@
       (.getLongProperty db (impl/get-cfh cfhs column-family) name)
       (catch RocksDBException e
         (impl/column-family-property-error e column-family name))))
+
+  (-table-properties [_]
+    (impl/datafy-tables (.getPropertiesOfAllTables db)))
+
+  (-table-properties [_ column-family]
+    (let [cfh (impl/get-cfh cfhs column-family)]
+      (impl/datafy-tables (.getPropertiesOfAllTables db cfh))))
 
   AutoCloseable
   (close [_]

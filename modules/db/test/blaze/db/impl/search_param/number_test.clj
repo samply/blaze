@@ -39,13 +39,13 @@
       (first)))
 
 
-(def system
+(def config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
 
 (deftest compile-value-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "eq"
       (are [value lower-bound upper-bound]
         (given (compile-number-value search-param-registry value)
@@ -82,7 +82,7 @@
 
 
 (deftest index-entries-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "RiskAssessment probability"
       (let [risk-assessment
             {:fhir/type :fhir/RiskAssessment

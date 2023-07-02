@@ -54,28 +54,97 @@
   (respond (ring/response ::rest-api)))
 
 
+(defn- frontend [_ respond _]
+  (respond (ring/response ::frontend)))
+
+
 (defn- health-handler [_ respond _]
   (respond (ring/response ::health-handler)))
 
 
-(def system
-  {:blaze.handler/app {:rest-api rest-api :health-handler health-handler}})
+(def config
+  {:blaze.handler/app
+   {:rest-api rest-api
+    :health-handler health-handler
+    :context-path "/fhir"}})
 
 
 (deftest handler-test
-  (testing "rest-api"
-    (with-system [{handler :blaze.handler/app} system]
-      (given (call handler {:uri "/" :request-method :get})
-        :status := 200
-        :body := ::rest-api)))
+  (testing "with frontend"
+    (with-system [{handler :blaze.handler/app}
+                  (assoc-in config [:blaze.handler/app :frontend] frontend)]
+      (testing "rest-api"
+        (testing "without accept header"
+          (given (call handler {:uri "/" :request-method :get})
+            :status := 200
+            :body := ::rest-api))
 
-  (testing "health-handler"
-    (with-system [{handler :blaze.handler/app} system]
-      (given (call handler {:uri "/health" :request-method :get})
-        :status := 200
-        :body := ::health-handler)))
+        (testing "with text/html as second accept header"
+          (given (call handler {:uri "/" :request-method :get
+                                :headers {"accept" "application/json,text/html"}})
+            :status := 200
+            :body := ::rest-api))
 
-  (testing "options request"
-    (with-system [{handler :blaze.handler/app} system]
-      (given (call handler {:uri "/health" :request-method :options})
-        :status := 405))))
+        (testing "with _format query param"
+          (doseq [format ["xml" "text/xml" "application/xml" "application/fhir%2Bxml"
+                          "json" "application/json" "application/fhir%2Bjson"]]
+            (given (call handler {:uri "/" :request-method :get
+                                  :headers {"accept" "text/html"}
+                                  :query-string (str "_format=" format)})
+              :status := 200
+              :body := ::rest-api))))
+
+      (testing "frontend"
+        (testing "with HTML accept header"
+          (doseq [accept ["text/html" "application/xhtml+xml"]]
+            (given (call handler {:uri "/" :request-method :get
+                                  :headers {"accept" accept}})
+              :status := 200
+              :body := ::frontend)))
+
+        (testing "with _format query param"
+          (doseq [format ["html" "text/html"]]
+            (given (call handler {:uri "/" :request-method :get
+                                  :headers {"accept" "application/fhir+json"}
+                                  :query-string (str "_format=" format)})
+              :status := 200
+              :body := ::frontend))))
+
+      (testing "health-handler"
+        (given (call handler {:uri "/health" :request-method :get})
+          :status := 200
+          :body := ::health-handler))
+
+      (testing "options request"
+        (given (call handler {:uri "/health" :request-method :options})
+          :status := 405))))
+
+  (testing "without frontend"
+    (with-system [{handler :blaze.handler/app} config]
+      (testing "rest-api"
+        (testing "without accept header"
+          (given (call handler {:uri "/" :request-method :get})
+            :status := 200
+            :body := ::rest-api))
+
+        (testing "with text/html as second accept header"
+          (given (call handler {:uri "/" :request-method :get
+                                :headers {"accept" "application/json,text/html"}})
+            :status := 200
+            :body := ::rest-api)))
+
+      (testing "frontend is disabled"
+        (doseq [accept ["text/html" "application/xhtml+xml"]]
+          (given (call handler {:uri "/" :request-method :get
+                                :headers {"accept" accept}})
+            :status := 200
+            :body := ::rest-api)))
+
+      (testing "health-handler"
+        (given (call handler {:uri "/health" :request-method :get})
+          :status := 200
+          :body := ::health-handler))
+
+      (testing "options request"
+        (given (call handler {:uri "/health" :request-method :options})
+          :status := 405)))))

@@ -18,7 +18,7 @@
     [java-time.api :as time]))
 
 
-(defn create-mem-node-system [node-config]
+(defn create-mem-node-config [node-config]
   {:blaze.db/node
    (merge
      {:tx-log (ig/ref :blaze.db/tx-log)
@@ -78,11 +78,16 @@
    {:structure-definition-repo structure-definition-repo}})
 
 
-(def mem-node-system
-  (create-mem-node-system {}))
+(def mem-node-config
+  (create-mem-node-config {}))
 
 
-(defmacro with-system-data [[binding-form system] txs & body]
-  `(with-system [system# ~system]
+(defmacro with-system-data
+  "Runs `body` inside a system that is initialized from `config`, bound to
+  `binding-form` and finally halted.
+
+  Additionally the database is initialized with `txs`."
+  [[binding-form config] txs & body]
+  `(with-system [system# ~config]
      (run! #(deref (d/transact (:blaze.db/node system#) %)) ~txs)
      (let [~binding-form system#] ~@body)))

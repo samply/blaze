@@ -33,7 +33,10 @@
   {:aliases
    {blaze.anomaly ba
     blaze.async.comp ac
+    blaze.db.api d
+    blaze.db.kv kv
     blaze.db.impl.protocols p
+    blaze.db.search-param-registry sr
     blaze.executors ex
     buddy.auth auth
     cognitect.anomalies anom

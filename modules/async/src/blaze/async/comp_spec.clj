@@ -37,6 +37,11 @@
   :ret boolean?)
 
 
+(s/fdef ac/complete-async!
+  :args (s/cat :future ac/completable-future? :f ifn?)
+  :ret boolean?)
+
+
 (s/fdef ac/or-timeout!
   :args (s/cat :future ac/completable-future? :timeout pos-int?
                :unit #(instance? TimeUnit %))
@@ -75,7 +80,7 @@
 
 
 (s/fdef ac/supply-async
-  :args (s/cat :f fn? :executor (s/? ex/executor?))
+  :args (s/cat :f ifn? :executor (s/? ex/executor?))
   :ret ac/completable-future?)
 
 
@@ -85,28 +90,33 @@
 
 
 (s/fdef ac/then-apply
-  :args (s/cat :stage ac/completion-stage? :f fn?)
+  :args (s/cat :stage ac/completion-stage? :f ifn?)
   :ret ac/completion-stage?)
 
 
 (s/fdef ac/then-apply-async
-  :args (s/cat :stage ac/completion-stage? :f fn?
+  :args (s/cat :stage ac/completion-stage? :f ifn?
                :executor (s/? ex/executor?))
   :ret ac/completion-stage?)
 
 
 (s/fdef ac/then-compose
-  :args (s/cat :stage ac/completion-stage? :f fn?)
+  :args (s/cat :stage ac/completion-stage? :f ifn?)
   :ret ac/completion-stage?)
 
 
 (s/fdef ac/then-compose-async
-  :args (s/cat :stage ac/completion-stage? :f fn?
+  :args (s/cat :stage ac/completion-stage? :f ifn?
                :executor (s/? ex/executor?))
   :ret ac/completion-stage?)
 
 
 (s/fdef ac/handle
+  :args (s/cat :stage ac/completion-stage? :f ifn?)
+  :ret ac/completion-stage?)
+
+
+(s/fdef ac/handle-async
   :args (s/cat :stage ac/completion-stage? :f ifn?)
   :ret ac/completion-stage?)
 
@@ -121,13 +131,18 @@
   :ret ac/completion-stage?)
 
 
+(s/fdef ac/exceptionally-compose-async
+  :args (s/cat :stage ac/completion-stage? :f ifn?)
+  :ret ac/completion-stage?)
+
+
 (s/fdef ac/when-complete
-  :args (s/cat :stage ac/completion-stage? :f fn?)
+  :args (s/cat :stage ac/completion-stage? :f ifn?)
   :ret ac/completion-stage?)
 
 
 (s/fdef ac/when-complete-async
-  :args (s/cat :stage ac/completion-stage? :f fn?
+  :args (s/cat :stage ac/completion-stage? :f ifn?
                :executor ex/executor?)
   :ret ac/completion-stage?)
 

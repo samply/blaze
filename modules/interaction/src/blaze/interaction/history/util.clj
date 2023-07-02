@@ -3,6 +3,7 @@
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
     [blaze.interaction.util :as iu]
+    [blaze.util :as u]
     [reitit.core :as reitit])
   (:import
     [java.time Instant OffsetDateTime]
@@ -22,7 +23,7 @@
     #(try
        (Instant/from (OffsetDateTime/parse %))
        (catch DateTimeParseException _))
-    (fhir-util/to-seq v)))
+    (u/to-seq v)))
 
 
 (defn page-t
@@ -30,7 +31,7 @@
   start with a database as-of `page-t`."
   {:arglists '([query-params])}
   [{v "__page-t"}]
-  (some fhir-util/parse-nat-long (fhir-util/to-seq v)))
+  (some fhir-util/parse-nat-long (u/to-seq v)))
 
 
 (defn nav-url

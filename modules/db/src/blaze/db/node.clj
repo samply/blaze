@@ -152,7 +152,10 @@
       (fn [future state _ {:keys [e] new-t :t new-error-t :error-t}]
         (cond
           (<= t (max new-t new-error-t))
-          (do (ac/complete! future (db/db node new-t))
+          (do (log/trace "complete database future with new db with t =" new-t)
+              ;; it's important to complete async here, because otherwise all
+              ;; the later work will happen on the indexer thread
+              (ac/complete-async! future #(db/db node new-t))
               (remove-watch state future))
 
           e
@@ -180,11 +183,13 @@
 
 
 (defn- commit-error! [{:keys [kv-store state]} t anomaly]
+  (log/trace "commit transaction error with t =" t)
   (kv/put! kv-store [(tx-error/index-entry t anomaly)])
   (advance-error-t! state t))
 
 
 (defn- store-tx-entries! [kv-store entries]
+  (log/trace "store" (count entries) "transaction index entries")
   (with-open [_ (prom/timer duration-seconds "store-tx-entries")]
     (kv/put! kv-store entries)))
 
@@ -208,6 +213,7 @@
 
 
 (defn- commit-success! [{:keys [kv-store state]} t instant]
+  (log/trace "commit transaction success with t =" t)
   (kv/put! kv-store (tx-success-entries t instant))
   (advance-t! state t))
 
@@ -327,7 +333,7 @@
           add-subsetted-xf)))
 
 
-(defrecord Node [context tx-log tx-cache kv-store resource-store
+(defrecord Node [context tx-log tx-cache kv-store resource-store sync-fn
                  search-param-registry resource-indexer state run? poll-timeout
                  finished]
   np/Node
@@ -336,8 +342,7 @@
 
   (-sync [node]
     (log/trace "sync on last t")
-    (-> (tx-log/last-t tx-log)
-        (ac/then-compose #(np/-sync node %))))
+    (sync-fn node))
 
   (-sync [node t]
     (log/trace "sync on t =" t)
@@ -515,15 +520,25 @@
                                                  expected-kv-store-version))))))
 
 
+(defn- sync-fn [storage]
+  (condp identical? storage
+    :distributed
+    (fn sync-distributed [^Node node]
+      (-> (tx-log/last-t (.-tx_log node))
+          (ac/then-compose #(np/-sync node %))))
+    (fn sync-standalone [^Node node]
+      (ac/completed-future (db/db node (:t @(.-state node)))))))
+
+
 (defmethod ig/init-key :blaze.db/node
-  [_ {:keys [tx-log tx-cache indexer-executor kv-store resource-indexer
+  [_ {:keys [storage tx-log tx-cache indexer-executor kv-store resource-indexer
              resource-store search-param-registry poll-timeout]
       :or {poll-timeout (time/seconds 1)}
       :as config}]
   (init-msg config)
   (check-version! kv-store)
   (let [node (->Node (ctx config) tx-log tx-cache kv-store resource-store
-                     search-param-registry resource-indexer
+                     (sync-fn storage) search-param-registry resource-indexer
                      (atom (initial-state kv-store))
                      (volatile! true)
                      poll-timeout

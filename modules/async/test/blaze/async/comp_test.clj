@@ -24,7 +24,7 @@
     (is (= ::x @(ac/completed-future ::x))))
 
   (testing "on exceptionally completed future"
-    (given-failed-future (ac/completed-future (ba/fault ""))
+    (given-failed-future (ac/completed-future (ba/fault))
       ::anom/category := ::anom/fault)))
 
 
@@ -57,6 +57,18 @@
         @all
         (catch Exception e
           (is (= "e" (ex-message (ex-cause e)))))))))
+
+
+(deftest complete-test
+  (let [future (ac/future)]
+    (ac/complete! future 1)
+    (is (= 1 @future))))
+
+
+(deftest complete-async-test
+  (let [future (ac/future)]
+    (ac/complete-async! future (constantly 1))
+    (is (= 1 @future))))
 
 
 (deftest or-timeout!-test
@@ -194,6 +206,20 @@
       (is (= "e" @f')))))
 
 
+(deftest handle-async-test
+  (testing "with success"
+    (let [f (ac/future)
+          f' (ac/handle-async f (fn [x _] x))]
+      (ac/complete! f 1)
+      (is (= 1 @f'))))
+
+  (testing "with error"
+    (let [f (ac/future)
+          f' (ac/handle-async f (fn [_ e] (::anom/message e)))]
+      (ac/complete-exceptionally! f (ex-info "e" {}))
+      (is (= "e" @f')))))
+
+
 (deftest exceptionally-test
   (testing "the exception of a failed future will be converted to an anomaly"
     (is (= @(-> (ac/failed-future (Exception. "msg-125548"))
@@ -204,6 +230,36 @@
     (is (= @(-> (ac/completed-future "foo")
                 (ac/then-apply (constantly (ba/fault "msg-131026")))
                 (ac/exceptionally ::anom/message))
+           "msg-131026"))))
+
+
+(deftest exceptionally-compose-test
+  (testing "the exception of a failed future will be converted to an anomaly"
+    (is (= @(-> (ac/failed-future (Exception. "msg-125548"))
+                (ac/exceptionally-compose
+                  (comp ac/completed-future ::anom/message)))
+           "msg-125548")))
+
+  (testing "the anomaly returned in a in-between stage shows up"
+    (is (= @(-> (ac/completed-future "foo")
+                (ac/then-apply (constantly (ba/fault "msg-131026")))
+                (ac/exceptionally-compose
+                  (comp ac/completed-future ::anom/message)))
+           "msg-131026"))))
+
+
+(deftest exceptionally-compose-async-test
+  (testing "the exception of a failed future will be converted to an anomaly"
+    (is (= @(-> (ac/failed-future (Exception. "msg-125548"))
+                (ac/exceptionally-compose-async
+                  (comp ac/completed-future ::anom/message)))
+           "msg-125548")))
+
+  (testing "the anomaly returned in a in-between stage shows up"
+    (is (= @(-> (ac/completed-future "foo")
+                (ac/then-apply (constantly (ba/fault "msg-131026")))
+                (ac/exceptionally-compose-async
+                  (comp ac/completed-future ::anom/message)))
            "msg-131026"))))
 
 
@@ -271,7 +327,7 @@
       (is (nil? @(do-sync [_ (ac/completed-future 1)])))))
 
   (testing "on normally exceptionally future"
-    (given-failed-future (do-sync [x (ac/completed-future (ba/fault ""))] (inc x))
+    (given-failed-future (do-sync [x (ac/completed-future (ba/fault))] (inc x))
       ::anom/category := ::anom/fault)))
 
 
@@ -285,14 +341,14 @@
       (let [counter (atom 0)
             future-fn #(ac/completed-future
                          (let [n (swap! counter inc)]
-                           (if (= 2 n) ::x (ba/busy ""))))]
+                           (if (= 2 n) ::x (ba/busy))))]
         (is (= ::x @(ac/retry future-fn 1)))))
 
     (testing "first call not retryable"
       (let [counter (atom 0)
             future-fn #(ac/completed-future
                          (let [n (swap! counter inc)]
-                           (if (= 2 n) ::x (ba/fault ""))))]
+                           (if (= 2 n) ::x (ba/fault))))]
         (given-failed-future (ac/retry future-fn 1)
           ::anom/category := ::anom/fault))))
 
@@ -301,14 +357,14 @@
       (let [counter (atom 0)
             future-fn #(ac/completed-future
                          (let [n (swap! counter inc)]
-                           (if (= 3 n) ::x (ba/busy ""))))]
+                           (if (= 3 n) ::x (ba/busy))))]
         (is (= ::x @(ac/retry future-fn 2)))))
 
     (testing "one retry"
       (let [counter (atom 0)
             future-fn #(ac/completed-future
                          (let [n (swap! counter inc)]
-                           (if (= 3 n) ::x (ba/busy ""))))]
+                           (if (= 3 n) ::x (ba/busy))))]
         (given-failed-future (ac/retry future-fn 1)
           ::anom/category := ::anom/busy))))
 
@@ -317,7 +373,7 @@
       (let [counter (atom 0)
             future-fn #(ac/completed-future
                          (let [n (swap! counter inc)]
-                           (if (= 2 n) ::x (ba/busy ""))))
+                           (if (= 2 n) ::x (ba/busy))))
             start (System/nanoTime)]
         @(ac/retry future-fn 1)
         (is (< 1e8 (- (System/nanoTime) start)))))
@@ -326,7 +382,7 @@
       (let [counter (atom 0)
             future-fn #(ac/completed-future
                          (let [n (swap! counter inc)]
-                           (if (= 3 n) ::x (ba/busy ""))))
+                           (if (= 3 n) ::x (ba/busy))))
             start (System/nanoTime)]
         @(ac/retry future-fn 2)
         (is (< 3e8 (- (System/nanoTime) start)))))
@@ -335,7 +391,26 @@
       (let [counter (atom 0)
             future-fn #(ac/completed-future
                          (let [n (swap! counter inc)]
-                           (if (= 4 n) ::x (ba/busy ""))))
+                           (if (= 4 n) ::x (ba/busy))))
             start (System/nanoTime)]
         @(ac/retry future-fn 3)
         (is (< 7e8 (- (System/nanoTime) start)))))))
+
+
+(deftest retry2-test
+  (testing "with first call successful"
+    (let [f #(ac/completed-future ::result)]
+      (is (= ::result @(ac/retry2 f (constantly true))))))
+
+  (testing "with second call successful"
+    (let [counter (atom 2)
+          f #(ac/completed-future
+               (if (zero? (swap! counter dec))
+                 ::result
+                 (ba/fault)))]
+      (testing "first call retryable"
+        (is (= ::result @(ac/retry2 f (constantly true)))))
+
+      (testing "first call not retryable"
+        (given-failed-future (ac/retry2 f (constantly false))
+          ::anom/category := ::anom/fault)))))

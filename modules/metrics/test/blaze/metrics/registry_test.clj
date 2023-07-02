@@ -48,7 +48,7 @@
   (metrics/collector [(metrics/counter-metric "foo_total" "" [] [])]))
 
 
-(def system
+(def config
   {:blaze.metrics/registry {:collectors [collector]}})
 
 
@@ -58,5 +58,5 @@
 
 (deftest registry-test
   (testing "with one collector"
-    (with-system [{:blaze.metrics/keys [registry]} system]
+    (with-system [{:blaze.metrics/keys [registry]} config]
       (is (= 1 (count (filter (comp #{"foo"} :name) (samples registry))))))))

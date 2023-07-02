@@ -5,7 +5,6 @@
   The specs at the beginning of the namespace describe the config which has to
   be given to `init!``. The server port has a default of `8080`."
   (:require
-    [blaze.executors :as ex]
     [blaze.log]
     [clojure.java.io :as io]
     [clojure.string :as str]
@@ -85,7 +84,7 @@
 
 
 (def ^:private root-config
-  {:blaze/version "0.21.0"
+  {:blaze/version "0.22.0"
 
    :blaze/clock {}
 
@@ -114,9 +113,8 @@
 
    :blaze.handler/app
    {:rest-api (ig/ref :blaze/rest-api)
-    :health-handler (ig/ref :blaze.handler/health)}
-
-   :blaze.server/executor {}
+    :health-handler (ig/ref :blaze.handler/health)
+    :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")}
 
    :blaze/server
    {:port (->Cfg "SERVER_PORT" nat-int? 8080)
@@ -158,7 +156,8 @@
   [{:keys [storage] :as config} env]
   (let [key (get env "STORAGE" "in-memory")]
     (log/info "Use storage variant" key)
-    (update config :base-config merge (get storage (keyword key)))))
+    (-> (assoc-in config [:base-config :blaze.db/storage] (keyword key))
+        (update :base-config merge (get storage (keyword key))))))
 
 
 (defn- merge-features
@@ -170,7 +169,7 @@
       (let [enabled? (feature-enabled? env feature)]
         (log/info "Feature" name (if enabled? "enabled" "disabled"))
         (if enabled?
-          (merge res config)
+          (merge-with merge res config)
           res)))
     base-config
     features))
@@ -201,6 +200,11 @@
   version)
 
 
+(defmethod ig/init-key :blaze.db/storage
+  [_ storage]
+  storage)
+
+
 (defmethod ig/init-key :blaze/clock
   [_ _]
   (Clock/systemDefaultZone))
@@ -214,17 +218,3 @@
 (defmethod ig/init-key :blaze/secure-rng
   [_ _]
   (SecureRandom.))
-
-
-(defn- executor-init-msg []
-  (format "Init server executor with %d threads"
-          (.availableProcessors (Runtime/getRuntime))))
-
-
-(defmethod ig/init-key :blaze.server/executor
-  [_ _]
-  (log/info (executor-init-msg))
-  (ex/cpu-bound-pool "server-%d"))
-
-
-(derive :blaze.server/executor :blaze.metrics/thread-pool-executor)

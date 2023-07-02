@@ -6,7 +6,6 @@
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
     [blaze.db.spec]
-    [blaze.interaction.delete.spec]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [reitit.core :as reitit]
@@ -37,15 +36,12 @@
 
 
 (defmethod ig/pre-init-spec :blaze.interaction/delete [_]
-  (s/keys :req-un [:blaze.db/node ::executor]))
+  (s/keys :req-un [:blaze.db/node]))
 
 
-(defmethod ig/init-key :blaze.interaction/delete [_ {:keys [node executor]}]
+(defmethod ig/init-key :blaze.interaction/delete [_ {:keys [node]}]
   (log/info "Init FHIR delete interaction handler")
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params}]
     (-> (d/transact node [[:delete type id]])
-        ;; it's important to switch to the executor here,
-        ;; because otherwise the central indexing thread would execute
-        ;; response building.
-        (ac/then-apply-async build-response executor))))
+        (ac/then-apply build-response))))

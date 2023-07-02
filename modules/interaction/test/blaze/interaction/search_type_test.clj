@@ -5,7 +5,7 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.db.resource-store :as rs]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
@@ -162,8 +162,8 @@
       [:explain ::s/problems 2 :val] := ::invalid)))
 
 
-(def system
-  (assoc mem-node-system
+(def config
+  (assoc mem-node-config
     :blaze.interaction/search-type
     {:clock (ig/ref :blaze.test/fixed-clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
@@ -191,7 +191,7 @@
 (defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
-                         handler# :blaze.interaction/search-type} system]
+                         handler# :blaze.interaction/search-type} config]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
                                   wrap-error)
@@ -289,7 +289,7 @@
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
 
-                (testing "the bundle contains no entries"
+                (testing "the bundle contains no entry"
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
@@ -351,7 +351,7 @@
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
 
-                (testing "the bundle contains no entries"
+                (testing "the bundle contains no entry"
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
@@ -411,7 +411,7 @@
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
 
-                (testing "the bundle contains no entries"
+                (testing "the bundle contains no entry"
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
@@ -471,7 +471,7 @@
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
 
-                (testing "the bundle contains no entries"
+                (testing "the bundle contains no entry"
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
@@ -580,7 +580,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "Returns all existing resources of type"
-        (let [{:keys [status body]}
+        (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler {::reitit/match patient-match})]
 
           (is (= 200 status))
@@ -603,17 +603,17 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/0")
-                   (-> body :entry first :fullUrl))))
+                   (:fullUrl first-entry))))
 
           (testing "the entry has the right resource"
-            (given (-> body :entry first :resource)
+            (given (:resource first-entry)
               :fhir/type := :fhir/Patient
               :id := "0"
               [:meta :versionId] := #fhir/id"1"
               [:meta :lastUpdated] := Instant/EPOCH))
 
-          (testing "the entry has the right search information"
-            (given (-> body :entry first :search)
+          (testing "the entry has the right search mode"
+            (given (:search first-entry)
               fhir-spec/fhir-type := :fhir.Bundle.entry/search
               :mode := #fhir/code"match"))))
 
@@ -638,7 +638,7 @@
             (is (= (str base-url context-path "/Patient?_summary=count&_count=50&__t=1")
                    (link-url body "self"))))
 
-          (testing "the bundle contains no entries"
+          (testing "the bundle contains no entry"
             (is (empty? (:entry body))))))
 
       (testing "with param _count equal to zero"
@@ -662,7 +662,7 @@
             (is (= (str base-url context-path "/Patient?_count=0&__t=1")
                    (link-url body "self"))))
 
-          (testing "the bundle contains no entries"
+          (testing "the bundle contains no entry"
             (is (empty? (:entry body))))))))
 
   (testing "with two patients"
@@ -1052,7 +1052,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
-      (let [{:keys [status body]}
+      (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
                {::reitit/match patient-match
                 :params {"_id" "0"}})]
@@ -1073,10 +1073,10 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/0")
-                 (-> body :entry first :fullUrl))))
+                 (:fullUrl first-entry))))
 
         (testing "the entry has the right resource"
-          (given (-> body :entry first :resource)
+          (given (:resource first-entry)
             :fhir/type := :fhir/Patient
             :id := "0"))))
 
@@ -1086,7 +1086,7 @@
           [:put {:fhir/type :fhir/Patient :id "1"}]
           [:put {:fhir/type :fhir/Patient :id "2"}]]]
 
-        (let [{:keys [status body]}
+        (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
                  {::reitit/match patient-match
                   :params {"_id" "0,2"}})]
@@ -1107,14 +1107,14 @@
 
           (testing "the first entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/0")
-                   (-> body :entry first :fullUrl))))
+                   (:fullUrl first-entry))))
 
           (testing "the second entry has the right fullUrl"
             (is (= (str base-url context-path "/Patient/2")
                    (-> body :entry second :fullUrl))))
 
           (testing "the first entry has the right resource"
-            (given (-> body :entry first :resource)
+            (given (:resource first-entry)
               :fhir/type := :fhir/Patient
               :id := "0"))
 
@@ -1267,7 +1267,7 @@
           #fhir/Meta
                   {:profile [#fhir/canonical"profile-uri-151511"]}}]]]
 
-      (let [{:keys [status body]}
+      (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
                {::reitit/match patient-match
                 :params {"_profile" "profile-uri-151511"}})]
@@ -1288,10 +1288,10 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/1")
-                 (-> body :entry first :fullUrl))))
+                 (:fullUrl first-entry))))
 
         (testing "the entry has the right resource"
-          (given (-> body :entry first :resource)
+          (given (:resource first-entry)
             :fhir/type := :fhir/Patient
             [:meta :profile 0] := #fhir/canonical"profile-uri-151511"
             :id := "1")))))
@@ -1307,7 +1307,7 @@
                  #fhir/Reference
                          {:reference "Patient/0"}}]}]]]
 
-      (let [{:keys [status body]}
+      (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
                {::reitit/match patient-match
                 :params {"_list" "0"}})]
@@ -1328,10 +1328,10 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/0")
-                 (-> body :entry first :fullUrl))))
+                 (:fullUrl first-entry))))
 
         (testing "the entry has the right resource"
-          (given (-> body :entry first :resource)
+          (given (:resource first-entry)
             :fhir/type := :fhir/Patient
             :id := "0")))))
 
@@ -1357,7 +1357,7 @@
                         :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
       (doseq [value ["ge70" " ge70" "ge70 " "ge 70" " ge 70 "]]
-        (let [{:keys [status body]}
+        (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
                  {::reitit/match observation-match
                   :params {"value-quantity" value}})]
@@ -1378,10 +1378,10 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Observation/1")
-                   (-> body :entry first :fullUrl))))
+                   (:fullUrl first-entry))))
 
           (testing "the entry has the right resources"
-            (given (-> body :entry first :resource)
+            (given (:resource first-entry)
               :fhir/type := :fhir/Observation
               :id := "1")
             (given (-> body :entry second :resource)
@@ -1438,7 +1438,7 @@
                         :code #fhir/code"mm[Hg]"
                         :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
-      (let [{:keys [status body]}
+      (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
                {::reitit/match patient-match
                 :params {"_has:Observation:patient:code-value-quantity" "8480-6$ge130"}})]
@@ -1459,10 +1459,10 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/0")
-                 (-> body :entry first :fullUrl))))
+                 (:fullUrl first-entry))))
 
         (testing "the entry has the right resource"
-          (given (-> body :entry first :resource)
+          (given (:resource first-entry)
             :fhir/type := :fhir/Patient
             :id := "0")))))
 
@@ -1473,7 +1473,7 @@
         [:put {:fhir/type :fhir/Patient :id "1"
                :identifier [#fhir/Identifier{:value "1"}]}]]]
 
-      (let [{:keys [status body]}
+      (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
                {::reitit/match patient-match
                 :params {"identifier" "0"}})]
@@ -1494,10 +1494,10 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/0")
-                 (-> body :entry first :fullUrl))))
+                 (:fullUrl first-entry))))
 
         (testing "the entry has the right resource"
-          (given (-> body :entry first :resource)
+          (given (:resource first-entry)
             [:identifier 0 :value] := "0")))))
 
   (testing "Patient language search"
@@ -1528,7 +1528,7 @@
                                   {:system #fhir/uri"urn:ietf:bcp:47"
                                    :code #fhir/code"de"}]}}]}]]]
 
-      (let [{:keys [status body]}
+      (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
                {::reitit/match patient-match
                 :params {"language" ["de" "en"]}})]
@@ -1549,7 +1549,7 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Patient/0")
-                 (-> body :entry first :fullUrl))))
+                 (:fullUrl first-entry))))
 
         (testing "the entry has the right resource"
           (is (= "0" (-> body :entry first :resource :id)))))))
@@ -1559,7 +1559,7 @@
       [[[:put {:fhir/type :fhir/Library :id "0" :title "ab"}]
         [:put {:fhir/type :fhir/Library :id "1" :title "b"}]]]
 
-      (let [{:keys [status body]}
+      (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
                {::reitit/match {:data {:fhir.resource/type "Library"}}
                 :params {"title" "A"}})]
@@ -1577,10 +1577,10 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Library/0")
-                 (-> body :entry first :fullUrl))))
+                 (:fullUrl first-entry))))
 
         (testing "the entry has the right resource"
-          (given (-> body :entry first :resource)
+          (given (:resource first-entry)
             :fhir/type := :fhir/Library
             :id := "0")))))
 
@@ -1591,7 +1591,7 @@
        [[:put {:fhir/type :fhir/MeasureReport :id "1"
                :measure #fhir/canonical"http://server.com/Measure/1"}]]]
 
-      (let [{:keys [status body]}
+      (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
                {::reitit/match measure-report-match
                 :params {"measure" "http://server.com/Measure/0"}})]
@@ -1612,10 +1612,10 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/MeasureReport/0")
-                 (-> body :entry first :fullUrl))))
+                 (:fullUrl first-entry))))
 
         (testing "the entry has the right resource"
-          (given (-> body :entry first :resource)
+          (given (:resource first-entry)
             :measure := #fhir/canonical"http://server.com/Measure/0")))))
 
   (testing "List item search"
@@ -1639,7 +1639,7 @@
                                   {:system #fhir/uri"system-122917"
                                    :value "value-143818"}}}]}]]]
 
-      (let [{:keys [status body]}
+      (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
                {::reitit/match list-match
                 :params {"item:identifier" "system-122917|value-143818"}})]
@@ -1660,10 +1660,10 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/List/id-143814")
-                 (-> body :entry first :fullUrl))))
+                 (:fullUrl first-entry))))
 
         (testing "the entry has the right resource"
-          (given (-> body :entry first :resource)
+          (given (:resource first-entry)
             :id := "id-143814")))))
 
   (testing "Observation combo-code-value-quantity search"
@@ -1755,7 +1755,7 @@
                                 {:system #fhir/uri"http://fhir.de/CodeSystem/dimdi/icd-10-gm"
                                  :code #fhir/code"C71.4"}]}}]]]
 
-      (let [{:keys [status body]}
+      (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
                {::reitit/match condition-match
                 :params {"code" "C71.4,C71.4"}})]
@@ -1776,10 +1776,10 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Condition/0")
-                 (-> body :entry first :fullUrl))))
+                 (:fullUrl first-entry))))
 
         (testing "the entry has the right resource"
-          (given (-> body :entry first :resource)
+          (given (:resource first-entry)
             [:code :coding 0 :code] := #fhir/code"C71.4")))))
 
   (testing "Paging works with OR Search Parameters"
@@ -1803,7 +1803,7 @@
                         [#fhir/Coding
                                 {:code #fhir/code"1"}]}}]]]
 
-      (let [{:keys [status body]}
+      (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
                {::reitit/match condition-match
                 :params {"code" "0,1" "_count" "2"
@@ -1822,7 +1822,7 @@
 
         (testing "the entry has the right fullUrl"
           (is (= (str base-url context-path "/Condition/1")
-                 (-> body :entry first :fullUrl)))))))
+                 (:fullUrl first-entry)))))))
 
   (testing "forward chaining"
     (with-handler [handler]
@@ -1861,7 +1861,7 @@
                         [#fhir/Coding{:code #fhir/code"foo"}]}}]]]
 
       (testing "success"
-        (let [{:keys [status body]}
+        (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
                  {::reitit/match encounter-match
                   :params {"diagnosis:Condition.code" "foo"}})]
@@ -1879,7 +1879,7 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url context-path "/Encounter/0")
-                   (-> body :entry first :fullUrl))))))
+                   (:fullUrl first-entry))))))
 
       (testing "ambiguous type"
         (let [{:keys [status body]}

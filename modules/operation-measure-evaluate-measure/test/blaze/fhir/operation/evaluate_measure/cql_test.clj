@@ -4,7 +4,7 @@
     [blaze.anomaly-spec]
     [blaze.cql-translator :as cql-translator]
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.elm.compiler.library :as library]
     [blaze.elm.expression :as expr]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
@@ -110,7 +110,7 @@
 
 (deftest evaluate-expression-test
   (testing "finds the male patient"
-    (with-system-data [system mem-node-system]
+    (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"male"}]
         [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code"female"}]]]
@@ -130,7 +130,7 @@
             (is (= 1 (cql/evaluate-expression context "InInitialPopulation" "Patient" :boolean))))))))
 
   (testing "returns all encounters"
-    (with-system-data [system mem-node-system]
+    (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference "Patient/0"}}]
         [:put {:fhir/type :fhir/Patient :id "1"}]
@@ -161,7 +161,7 @@
             (is (= 3 (cql/evaluate-expression context "InInitialPopulation" "Patient" "Encounter"))))))))
 
   (testing "missing expression"
-    (with-system [system mem-node-system]
+    (with-system [system mem-node-config]
       (let [context (context system library-empty)]
         (doseq [return-handles? [true false]
                 :let [context (assoc context :return-handles? return-handles?)]]
@@ -171,7 +171,7 @@
             :expression-name := "InInitialPopulation")))))
 
   (testing "expression context doesn't match the subject type"
-    (with-system [system mem-node-system]
+    (with-system [system mem-node-config]
       (let [context (context system library-gender)]
         (doseq [return-handles? [true false]
                 :let [context (assoc context :return-handles? return-handles?)]]
@@ -184,7 +184,7 @@
 
   (testing "population basis doesn't match the expression return type"
     (testing "boolean"
-      (with-system [system mem-node-system]
+      (with-system [system mem-node-config]
         (let [context (context system library-encounter)]
           (doseq [return-handles? [true false]
                   :let [context (assoc context :return-handles? return-handles?)]]
@@ -196,7 +196,7 @@
               :expression-result-type := "List<Encounter>")))))
 
     (testing "Encounter"
-      (with-system [system mem-node-system]
+      (with-system [system mem-node-config]
         (let [context (context system library-gender)]
           (doseq [return-handles? [true false]
                   :let [context (assoc context :return-handles? return-handles?)]]
@@ -208,7 +208,7 @@
               :expression-result-type := "Boolean"))))))
 
   (testing "failing eval"
-    (with-system-data [system mem-node-system]
+    (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [context (context system library-gender)]
@@ -220,7 +220,7 @@
               ::anom/message := "Error while evaluating the expression `InInitialPopulation`: msg-222453"))))))
 
   (testing "timeout eclipsed"
-    (with-system-data [system mem-node-system]
+    (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [context (assoc (context system library-gender) :timeout-eclipsed? (constantly true))]
@@ -233,21 +233,21 @@
 
 (deftest evaluate-individual-expression-test
   (testing "match"
-    (with-system-data [system mem-node-system]
+    (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]]
       (let [{:keys [db] :as context} (context system library-gender)
             patient (d/resource-handle db "Patient" "0")]
         (is (true? (cql/evaluate-individual-expression context patient "InInitialPopulation"))))))
 
   (testing "no match"
-    (with-system-data [system mem-node-system]
+    (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
       (let [{:keys [db] :as context} (context system library-gender)
             patient (d/resource-handle db "Patient" "0")]
         (is (nil? (cql/evaluate-individual-expression context patient "InInitialPopulation"))))))
 
   (testing "missing expression"
-    (with-system-data [system mem-node-system]
+    (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
       (let [{:keys [db] :as context} (context system library-empty)
             patient (d/resource-handle db "Patient" "0")]
@@ -257,7 +257,7 @@
           :expression-name := "InInitialPopulation"))))
 
   (testing "error"
-    (with-system-data [system mem-node-system]
+    (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
       (let [{:keys [db] :as context} (assoc (context system library-error)
                                        :parameters {"Numbers" [1 2]})
@@ -280,7 +280,7 @@
 
 (deftest calc-strata-test
   (testing "missing expression"
-    (with-system [system mem-node-system]
+    (with-system [system mem-node-config]
       (let [context (context system library-empty)]
         (given (cql/calc-strata context "Gender" [])
           ::anom/category := ::anom/incorrect
@@ -288,7 +288,7 @@
           :expression-name := "Gender"))))
 
   (testing "failing eval"
-    (with-system-data [system mem-node-system]
+    (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [db] :as context} (context system library-gender)]
@@ -298,7 +298,7 @@
             ::anom/message := "Error while evaluating the expression `Gender`: msg-221825")))))
 
   (testing "multiple values"
-    (with-system-data [system mem-node-system]
+    (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [db] :as context} (context system library-gender)]
@@ -308,7 +308,7 @@
             ::anom/message := "CQL expression `Gender` returned more than one value for resource `Patient/0`.")))))
 
   (testing "timeout eclipsed"
-    (with-system-data [system mem-node-system]
+    (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [db] :as context} (assoc (context system library-gender) :timeout-eclipsed? (constantly true))]
@@ -317,7 +317,7 @@
           ::anom/message := "Timeout of 42000 millis eclipsed while evaluating."))))
 
   (testing "gender"
-    (with-system-data [system mem-node-system]
+    (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"male"}]
         [:put {:fhir/type :fhir/Patient :id "2" :gender #fhir/code"female"}]
@@ -349,7 +349,7 @@
 
 (deftest calc-function-strata-test
   (testing "Encounter status"
-    (with-system-data [system mem-node-system]
+    (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1"}]
         [:put {:fhir/type :fhir/Patient :id "2"}]
@@ -398,7 +398,7 @@
             [0 :subject-handle :id] := "1")))))
 
   (testing "missing function"
-    (with-system [system mem-node-system]
+    (with-system [system mem-node-config]
       (let [context (context system library-empty)]
         (given (cql/calc-function-strata context "Gender" [])
           ::anom/category := ::anom/incorrect
@@ -406,7 +406,7 @@
           :function-name := "Gender"))))
 
   (testing "failing eval"
-    (with-system-data [system mem-node-system]
+    (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
       (let [{:keys [db] :as context} (context system library-encounter-status)]
         (with-redefs [expr/eval (failing-eval "msg-111807")]
@@ -417,7 +417,7 @@
 
 (deftest calc-multi-component-strata-test
   (testing "failing eval"
-    (with-system-data [system mem-node-system]
+    (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
       (let [{:keys [db] :as context} (context system library-gender)]
         (with-redefs [expr/eval (failing-eval "msg-111557")]

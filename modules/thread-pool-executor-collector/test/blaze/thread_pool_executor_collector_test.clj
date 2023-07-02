@@ -51,7 +51,7 @@
       [:explain ::s/problems 0 :val] := nil)))
 
 
-(def system
+(def config
   {:blaze/thread-pool-executor-collector
    {:executors {:a (ig/ref ::pool)}}
    ::pool {}})
@@ -63,7 +63,7 @@
 
 (deftest collector-test
   (with-system [{collector :blaze/thread-pool-executor-collector ::keys [pool]}
-                system]
+                config]
 
     (testing "fresh pool"
       (given (metrics/collect collector)

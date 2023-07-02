@@ -1,0 +1,16 @@
+"CarePlan",5
+"CareTeam",10
+"Claim",176
+"Condition",15
+"DiagnosticReport",231
+"DocumentReference",78
+"Encounter",78
+"ExplanationOfBenefit",78
+"ImagingStudy",45
+"Immunization",13
+"MedicationAdministration",180
+"MedicationRequest",98
+"Observation",2265
+"Patient",1
+"Procedure",150
+"Provenance",1

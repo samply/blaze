@@ -18,7 +18,7 @@
 (test/use-fixtures :each tu/fixture)
 
 
-(def system
+(def config
   {::kv/mem {:column-families {}}})
 
 
@@ -39,7 +39,7 @@
 
 (deftest keys-test
   (testing "normal read"
-    (with-system [{kv-store ::kv/mem} system]
+    (with-system [{kv-store ::kv/mem} config]
       (kv/put!
         kv-store
         [[(ba 0x00) bytes/empty]
@@ -51,7 +51,7 @@
                (into [] (i/keys! iter decode-1 (bs/from-hex "00"))))))))
 
   (testing "too small ByteBuffer will be replaced with a larger one"
-    (with-system [{kv-store ::kv/mem} system]
+    (with-system [{kv-store ::kv/mem} config]
       (kv/put!
         kv-store
         [[(ba 0x00) bytes/empty]
@@ -63,7 +63,7 @@
                (into [] (i/keys! iter decode-1 (bs/from-hex "00")))))))
 
     (testing "new ByteBuffer is bigger than a two times increase"
-      (with-system [{kv-store ::kv/mem} system]
+      (with-system [{kv-store ::kv/mem} config]
         (kv/put!
           kv-store
           [[(ba 0x00) bytes/empty]

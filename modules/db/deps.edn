@@ -38,7 +38,7 @@
   {:local/root "../spec"}
 
   commons-codec/commons-codec
-  {:mvn/version "1.15"}}
+  {:mvn/version "1.16.0"}}
 
  :aliases
  {:test
@@ -51,7 +51,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.71.1119"}}
+    {:mvn/version "1.85.1342"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

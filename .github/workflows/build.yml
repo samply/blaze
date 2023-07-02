@@ -58,6 +58,7 @@ jobs:
         - kv
         - luid
         - metrics
+        - module-base
         - openid-auth
         - operation-graphql
         - operation-measure-evaluate-measure
@@ -617,6 +618,12 @@ jobs:
     - name: Read Ignores T
       run: .github/scripts/read-ignores-t.sh
 
+    - name: Patient Everything
+      run: .github/scripts/patient-everything.sh
+
+    - name: Patient Identical Update
+      run:  .github/scripts/patient-identical-update.sh
+
   not-enforcing-referential-integrity-test:
     needs: build
     runs-on: ubuntu-22.04
@@ -1060,6 +1067,32 @@ jobs:
     - name: Download Both Resources
       run:  test "2" = "$(curl -s http://localhost:8080/fhir/Binary | jq .total)"
 
+  frontend-test:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@v3
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@v3
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_FRONTEND=true -p 8080:8080 -v blaze-data:/app/data blaze:latest
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Check Frontend
+      run:  .github/scripts/check-frontend.sh
+
   missing-resource-content-test:
     needs: build
     runs-on: ubuntu-22.04
@@ -1487,6 +1520,12 @@ jobs:
     - name: Read Ignores T
       run: .github/scripts/read-ignores-t.sh
 
+    - name: Patient Everything
+      run: .github/scripts/patient-everything.sh
+
+    - name: Patient Identical Update
+      run:  .github/scripts/patient-identical-update.sh
+
     - name: Docker Stats
       run: docker stats --no-stream
 
@@ -1586,9 +1625,11 @@ jobs:
     - openid-auth-test
     - doc-copy-data-test
     - big-binary-test
+    - frontend-test
     - missing-resource-content-test
     - distributed-test
     - jepsen-distributed-test
+    - custom-search-parameters-test
     runs-on: ubuntu-22.04
     permissions:
       packages: write

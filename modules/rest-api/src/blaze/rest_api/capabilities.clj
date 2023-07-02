@@ -106,10 +106,13 @@
             []
             (keep
               (fn [{:blaze.rest-api.operation/keys
-                    [code def-uri type-handler instance-handler]}]
+                    [code def-uri type-handler instance-handler documentation]}]
                 (when (or type-handler instance-handler)
-                  {:name code
-                   :definition (type/canonical def-uri)})))
+                  (cond->
+                    {:name code
+                     :definition (type/canonical def-uri)}
+                    documentation
+                    (assoc :documentation (type/->Markdown documentation))))))
             operations))))))
 
 
@@ -124,7 +127,7 @@
      history-system-handler]
     :or {context-path ""}
     :as context}]
-  (let [release-date #fhir/dateTime"2023-06-12"
+  (let [release-date #fhir/dateTime"2023-07-02"
         capability-statement
         {:fhir/type :fhir/CapabilityStatement
          :status #fhir/code"active"

@@ -1,6 +1,7 @@
 (ns blaze.system-test
   (:require
-    [blaze.db.api-stub :refer [mem-node-system]]
+    [blaze.async.comp :as ac]
+    [blaze.db.api-stub :refer [mem-node-config]]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.interaction.delete]
     [blaze.interaction.read]
@@ -64,8 +65,8 @@
       {:a "default"})))
 
 
-(def system
-  (assoc mem-node-system
+(def config
+  (assoc mem-node-config
     :blaze/rest-api
     {:base-url "http://localhost:8080"
      :version "0.1.0"
@@ -99,8 +100,7 @@
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
     :blaze.interaction/read {}
     :blaze.interaction/delete
-    {:node (ig/ref :blaze.db/node)
-     :executor (ig/ref :blaze.test/executor)}
+    {:node (ig/ref :blaze.db/node)}
     :blaze.interaction/search-system
     {:clock (ig/ref :blaze.test/fixed-clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
@@ -126,7 +126,7 @@
   [_ _]
   (reify pp/PageStore
     (-get [_ _])
-    (-put [_ _])))
+    (-put [_ _] (ac/completed-future "token"))))
 
 
 (defn input-stream [bs]
@@ -145,7 +145,7 @@
 
 
 (deftest auth-test
-  (with-system [{:blaze/keys [rest-api]} system]
+  (with-system [{:blaze/keys [rest-api]} config]
     (testing "Patient search"
       (given (call rest-api {:request-method :get :uri "/Patient"})
         :status := 200))
@@ -159,14 +159,14 @@
 
 
 (deftest not-found-test
-  (with-system [{:blaze/keys [rest-api]} system]
+  (with-system [{:blaze/keys [rest-api]} config]
     (given (call rest-api {:request-method :get :uri "/"})
       :status := 404
       [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
 
 
 (deftest not-acceptable-test
-  (with-system [{:blaze/keys [rest-api]} system]
+  (with-system [{:blaze/keys [rest-api]} config]
     (given (call rest-api {:request-method :get :uri "/Patient"
                            :headers {"accept" "text/plain"}})
       :status := 406
@@ -174,7 +174,7 @@
 
 
 (deftest read-test
-  (with-system [{:blaze/keys [rest-api]} system]
+  (with-system [{:blaze/keys [rest-api]} config]
     (given (call rest-api {:request-method :get :uri "/Patient/0"})
       :status := 404
       [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
@@ -192,7 +192,7 @@
 
 
 (deftest batch-read-test
-  (with-system [{:blaze/keys [rest-api]} system]
+  (with-system [{:blaze/keys [rest-api]} config]
     (given (call rest-api {:request-method :post :uri ""
                            :headers {"content-type" "application/fhir+json"}
                            :body (input-stream (fhir-spec/unform-json read-bundle))})
@@ -202,7 +202,7 @@
 
 
 (deftest batch-unsupported-media-type-test
-  (with-system [{:blaze/keys [rest-api]} system]
+  (with-system [{:blaze/keys [rest-api]} config]
     (given (call rest-api {:request-method :post :uri ""
                            :headers {"content-type" "text/plain"}})
       :status := 415
@@ -221,7 +221,7 @@
 
 
 (deftest batch-metadata-test
-  (with-system [{:blaze/keys [rest-api]} system]
+  (with-system [{:blaze/keys [rest-api]} config]
     (given (call rest-api {:request-method :post :uri ""
                            :headers {"content-type" "application/fhir+json"}
                            :body (input-stream (fhir-spec/unform-json metadata-bundle))})
@@ -231,7 +231,7 @@
 
 
 (deftest delete-test
-  (with-system [{:blaze/keys [rest-api]} system]
+  (with-system [{:blaze/keys [rest-api]} config]
     (given (call rest-api {:request-method :delete :uri "/Patient/0"})
       :status := 204
       :body := nil)
@@ -242,7 +242,7 @@
 
 
 (deftest search-system-test
-  (with-system [{:blaze/keys [rest-api]} system]
+  (with-system [{:blaze/keys [rest-api]} config]
     (given (call rest-api {:request-method :get :uri ""})
       :status := 200
       [:body fhir-spec/parse-json :resourceType] := "Bundle")))
@@ -250,14 +250,14 @@
 
 (deftest search-type-test
   (testing "using GET"
-    (with-system [{:blaze/keys [rest-api]} system]
+    (with-system [{:blaze/keys [rest-api]} config]
       (given (call rest-api {:request-method :get :uri "/Patient"})
         :status := 200
         [:headers "Link"] := "<http://localhost:8080/Patient?_count=50&__t=0>;rel=\"self\""
         [:body fhir-spec/parse-json :resourceType] := "Bundle")))
 
   (testing "using POST"
-    (with-system [{:blaze/keys [rest-api]} system]
+    (with-system [{:blaze/keys [rest-api]} config]
       (given (call rest-api {:request-method :post :uri "/Patient/_search"
                              :headers {"content-type" "application/x-www-form-urlencoded"}
                              :body (input-stream (byte-array 0))})
@@ -265,7 +265,7 @@
         [:body fhir-spec/parse-json :resourceType] := "Bundle"))
 
     (testing "with unsupported media-type"
-      (with-system [{:blaze/keys [rest-api]} system]
+      (with-system [{:blaze/keys [rest-api]} config]
         (given (call rest-api {:request-method :post :uri "/Patient/_search"
                                :headers {"content-type" "application/fhir+json"}
                                :body (input-stream (byte-array 0))})
@@ -274,7 +274,7 @@
 
 
 (deftest redirect-slash-test
-  (with-system [{:blaze/keys [rest-api]} system]
+  (with-system [{:blaze/keys [rest-api]} config]
     (given (call rest-api {:request-method :get :uri "/Patient/"})
       :status := 301
       [:headers "Location"] := "/Patient")))

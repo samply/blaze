@@ -5,7 +5,7 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.db.resource-store :as rs]
     [blaze.interaction.search-system]
     [blaze.interaction.search.nav-spec]
@@ -90,8 +90,8 @@
       [:explain ::s/problems 2 :val] := ::invalid)))
 
 
-(def system
-  (assoc mem-node-system
+(def config
+  (assoc mem-node-config
     :blaze.interaction/search-system
     {:node (ig/ref :blaze.db/node)
      :clock (ig/ref :blaze.test/fixed-clock)
@@ -121,7 +121,7 @@
 (defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
-                         handler# :blaze.interaction/search-system} system]
+                         handler# :blaze.interaction/search-system} config]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
                                   wrap-error)
@@ -162,7 +162,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "Returns all existing resources"
-        (let [{:keys [status body]}
+        (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler {::reitit/match match})]
 
           (is (= 200 status))
@@ -188,10 +188,10 @@
 
           (testing "the entry has the right fullUrl"
             (is (= (str base-url "/Patient/0")
-                   (-> body :entry first :fullUrl))))
+                   (:fullUrl first-entry))))
 
           (testing "the entry has the right resource"
-            (given (-> body :entry first :resource)
+            (given (:resource first-entry)
               :fhir/type := :fhir/Patient
               :id := "0"
               [:meta :versionId] := #fhir/id"1"
@@ -220,7 +220,7 @@
             (is (= (str base-url "?_summary=count&_count=50&__t=1")
                    (link-url body "self"))))
 
-          (testing "the bundle contains no entries"
+          (testing "the bundle contains no entry"
             (is (empty? (:entry body))))))
 
       (testing "with param _count equal to zero"
@@ -242,7 +242,7 @@
           (testing "has a self link"
             (is (= (str base-url "?_count=0&__t=1") (link-url body "self"))))
 
-          (testing "the bundle contains no entries"
+          (testing "the bundle contains no entry"
             (is (empty? (:entry body))))))))
 
   (testing "with two patients"

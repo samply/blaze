@@ -46,7 +46,17 @@
   (p/-linked-compartments search-param-registry resource))
 
 
-(deftype MemSearchParamRegistry [index target-index compartment-index]
+(defn compartment-resources
+  "Returns a seq of [type code] tuples of resources in compartment of `type`.
+
+  Example:
+  * [\"Observation\" \"subject\"] and others for \"Patient\""
+  [search-param-registry type]
+  (p/-compartment-resources search-param-registry type))
+
+
+(deftype MemSearchParamRegistry [index target-index compartment-index
+                                 compartment-resource-index]
   p/SearchParamRegistry
   (-get [_ code]
     (get-in index ["Resource" code]))
@@ -75,7 +85,10 @@
         cat)
       conj
       #{}
-      (compartment-index (name (fhir-spec/fhir-type resource))))))
+      (compartment-index (name (fhir-spec/fhir-type resource)))))
+
+  (-compartment-resources [_ type]
+    (compartment-resource-index type [])))
 
 
 (def ^:private object-mapper
@@ -138,9 +151,14 @@
     resource-defs))
 
 
-(defn- index-compartments [search-param-index]
-  (->> (read-classpath-json-resource "blaze/db/compartment/patient.json")
-       (index-compartment-def search-param-index)))
+(defn- index-compartment-resources [{def-code :code resource-defs :resource}]
+  {def-code
+   (into
+     []
+     (mapcat
+       (fn [{res-type :code param-codes :param}]
+         (coll/eduction (map (partial vector res-type)) param-codes)))
+     resource-defs)})
 
 
 (def ^:private list-search-param
@@ -236,9 +254,11 @@
     (cond-> "Init in-memory fixed R4 search parameter registry"
       extra-bundle-file
       (str " including extra search parameters from file: " extra-bundle-file)))
-  (let [entries (read-bundle-entries extra-bundle-file)]
+  (let [entries (read-bundle-entries extra-bundle-file)
+        patient-compartment (read-classpath-json-resource "blaze/db/compartment/patient.json")]
     (when-ok [url-index (build-url-index entries)
               index (build-index url-index entries)]
       (->MemSearchParamRegistry (add-special index)
                                 (build-target-index url-index entries)
-                                (index-compartments index)))))
+                                (index-compartment-def index patient-compartment)
+                                (index-compartment-resources patient-compartment)))))

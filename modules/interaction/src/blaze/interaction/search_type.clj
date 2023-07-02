@@ -88,7 +88,7 @@
   (-> (into
         []
         (comp (mapcat ac/join)
-              (map #(search-util/entry context %)))
+              (map (partial search-util/entry context)))
         match-futures)
       (into
         (comp (mapcat ac/join)

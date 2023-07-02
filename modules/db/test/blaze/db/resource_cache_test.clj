@@ -37,7 +37,7 @@
 (def patient-1-hash (hash/generate patient-1))
 
 
-(def system
+(def config
   {:blaze.db/resource-cache
    {:resource-store (ig/ref ::rs/kv)
     :max-size 100}
@@ -69,7 +69,7 @@
       [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid max-size"
-    (given-thrown (ig/init (assoc-in system [:blaze.db/resource-cache :max-size] ::invalid))
+    (given-thrown (ig/init (assoc-in config [:blaze.db/resource-cache :max-size] ::invalid))
       :key := :blaze.db/resource-cache
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `nat-int?
@@ -78,7 +78,7 @@
 
 (deftest get-test
   (testing "success"
-    (with-system [{cache :blaze.db/resource-cache store ::rs/kv} system]
+    (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
       @(rs/put! store {patient-0-hash patient-0
                        patient-1-hash patient-1})
 
@@ -87,14 +87,14 @@
         patient-1 patient-1-hash)))
 
   (testing "not-found"
-    (with-system [{cache :blaze.db/resource-cache} system]
+    (with-system [{cache :blaze.db/resource-cache} config]
 
       (is (nil? @(rs/get cache patient-0-hash))))))
 
 
 (deftest multi-get-test
   (testing "found both"
-    (with-system [{cache :blaze.db/resource-cache store ::rs/kv} system]
+    (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
       @(rs/put! store {patient-0-hash patient-0
                        patient-1-hash patient-1})
 
@@ -103,7 +103,7 @@
              @(rs/multi-get cache [patient-0-hash patient-1-hash])))))
 
   (testing "found one"
-    (with-system [{cache :blaze.db/resource-cache store ::rs/kv} system]
+    (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
       @(rs/put! store {patient-0-hash patient-0})
 
       (is (= {patient-0-hash patient-0}
@@ -111,7 +111,7 @@
 
 
 (deftest put-test
-  (with-system [{cache :blaze.db/resource-cache store ::rs/kv} system]
+  (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
     (is (nil? @(rs/put! cache {patient-0-hash patient-0
                                patient-1-hash patient-1})))
     (is (= {patient-0-hash patient-0
@@ -120,7 +120,7 @@
 
 
 (deftest stats-test
-  (with-system [{cache :blaze.db/resource-cache store ::rs/kv} system]
+  (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
     (is (zero? (.hitCount ^CacheStats (ccp/-stats cache))))
     (is (zero? (ccp/-estimated-size cache)))
 
@@ -139,7 +139,7 @@
 
 
 (deftest invalidate-all-test
-  (with-system [{cache :blaze.db/resource-cache store ::rs/kv} system]
+  (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
     @(rs/put! store {patient-0-hash patient-0})
     @(rs/get cache patient-0-hash)
 

@@ -1,21 +1,24 @@
 #!/bin/bash -e
 
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+. "$SCRIPT_DIR/util.sh"
+
 BASE="http://localhost:8080/fhir"
 START_EPOCH="$(date +"%s")"
+PATIENT_TOTAL="$(curl -sH 'Accept: application/fhir+json' "$BASE/Patient?_summary=count" | jq -r .total)"
 
 for CODE in "body-weight"
 do
   for VALUE in "10" "50" "100"
   do
     echo "Counting Patients with Observations with code $CODE and value $VALUE..."
-    for i in {0..50}
+    COUNT="$(blazectl --server "$BASE" evaluate-measure "$SCRIPT_DIR/observation-$CODE-$VALUE.yml" 2> /dev/null | jq -r '.group[0].population[0].count')"
+    for i in {0..21}
     do
       blazectl evaluate-measure "cql/observation-$CODE-$VALUE.yml" --server "$BASE" 2> /dev/null |\
         jq -rf cql/duration.jq >> "$START_EPOCH-$CODE-$VALUE.times"
     done
 
-    # Skip first line because it will not benefit from caching
-    tail -n +2 "$START_EPOCH-$CODE-$VALUE.times" |\
-      awk '{sum += $1; sumsq += $1^2} END {printf("Avg    : %.3f\nStdDev : %.3f\n", sum/NR, sqrt(sumsq/NR - (sum/NR)^2))}'
+    calc-cql-print-stats "$START_EPOCH-$CODE-$VALUE.times" "$PATIENT_TOTAL" "$COUNT"
   done
 done

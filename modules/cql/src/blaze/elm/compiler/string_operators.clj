@@ -61,7 +61,7 @@
 
 ;; 17.8. Length
 (defunop length [x]
-  (count x))
+  (long (count x)))
 
 
 ;; 17.9. Lower

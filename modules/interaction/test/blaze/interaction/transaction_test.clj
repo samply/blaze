@@ -6,9 +6,11 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.async.comp :as ac]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+    [blaze.db.kv :as kv]
+    [blaze.db.node :as node]
     [blaze.db.resource-store :as rs]
-    [blaze.executors :as ex]
+    [blaze.db.spec :refer [node?]]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.util :as handler-util]
     [blaze.interaction.create]
@@ -35,10 +37,10 @@
     [ring.util.response :as ring]
     [taoensso.timbre :as log])
   (:import
-    [java.time Instant]
-    [java.util.concurrent ThreadPoolExecutor]))
+    [java.time Instant]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
@@ -115,38 +117,28 @@
       :key := :blaze.interaction/transaction
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
-  (testing "invalid executor"
-    (given-thrown (ig/init {:blaze.interaction/transaction {:executor ::invalid}})
+  (testing "invalid node"
+    (given-thrown (ig/init {:blaze.interaction/transaction {:node ::invalid}})
       :key := :blaze.interaction/transaction
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:explain ::s/problems 3 :pred] := `ex/executor?
-      [:explain ::s/problems 3 :val] := ::invalid)))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:explain ::s/problems 2 :pred] := `node?
+      [:explain ::s/problems 2 :val] := ::invalid)))
 
 
-(deftest init-executor-test
-  (testing "nil config"
-    (given (ig/init {:blaze.interaction.transaction/executor nil})
-      :blaze.interaction.transaction/executor :instanceof ThreadPoolExecutor)))
-
-
-(def system
-  (assoc mem-node-system
+(def config
+  (assoc mem-node-config
     :blaze.interaction/transaction
     {:node (ig/ref :blaze.db/node)
-     :executor (ig/ref :blaze.interaction.transaction/executor)
      :clock (ig/ref :blaze.test/fixed-clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
 
     :blaze.interaction/create
     {:node (ig/ref :blaze.db/node)
-     :executor (ig/ref :blaze.test/executor)
      :clock (ig/ref :blaze.test/fixed-clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
 
@@ -160,12 +152,10 @@
     {:node (ig/ref :blaze.db/node)}
 
     :blaze.interaction/delete
-    {:node (ig/ref :blaze.db/node)
-     :executor (ig/ref :blaze.test/executor)}
+    {:node (ig/ref :blaze.db/node)}
 
     :blaze.interaction/update
-    {:node (ig/ref :blaze.db/node)
-     :executor (ig/ref :blaze.test/executor)}
+    {:node (ig/ref :blaze.db/node)}
 
     ::router
     {:node (ig/ref :blaze.db/node)
@@ -175,9 +165,7 @@
      :delete-handler (ig/ref :blaze.interaction/delete)
      :update-handler (ig/ref :blaze.interaction/update)}
 
-    :blaze.interaction.transaction/executor {}
     :blaze.test/fixed-rng-fn {}
-    :blaze.test/executor {}
     :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
     :blaze.test/fixed-rng {}))
 
@@ -191,13 +179,15 @@
         :batch-handler (batch-handler router)))))
 
 
-(defmacro with-handler [[handler-binding] & more]
+(defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{handler# :blaze.interaction/transaction
-                         router# ::router} system]
+                         router# ::router
+                         node# :blaze.db/node} config]
        ~txs
        (let [~handler-binding (-> handler# (wrap-defaults router#)
-                                  wrap-error)]
+                                  wrap-error)
+             ~(or node-binding '_) node#]
          ~@body))))
 
 
@@ -270,8 +260,7 @@
           (let [entries
                 [{:fhir/type :fhir.Bundle/entry
                   :resource
-                  {:fhir/type :fhir/Patient
-                   :id "0"}
+                  {:fhir/type :fhir/Patient :id "0"}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
                    :method #fhir/code"PUT"
@@ -343,8 +332,7 @@
         (testing "and updated resource"
           (let [entries
                 [{:resource
-                  {:fhir/type :fhir/Patient
-                   :id "0"
+                  {:fhir/type :fhir/Patient :id "0"
                    :gender #fhir/code"male"}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
@@ -417,7 +405,130 @@
                     (given response
                       :status := "200"
                       :etag := "W/\"2\""
-                      :lastModified := Instant/EPOCH))))))))
+                      :lastModified := Instant/EPOCH)))))))
+
+        (testing "with identical content"
+          (let [entries
+                [{:resource
+                  {:fhir/type :fhir/Patient :id "0"
+                   :meta (type/map->Meta {:versionId #fhir/id"1"
+                                          :lastUpdated Instant/EPOCH})
+                   :gender #fhir/code"female"}
+                  :request
+                  {:fhir/type :fhir.Bundle.entry/request
+                   :method #fhir/code"PUT"
+                   :url #fhir/uri"Patient/0"}}]]
+
+            (testing "without return preference"
+              (with-handler [handler]
+                [[[:put {:fhir/type :fhir/Patient :id "0"
+                         :gender #fhir/code"female"}]]]
+
+                (let [{:keys [status body]
+                       {[{:keys [resource response]}] :entry} :body}
+                      @(handler
+                         {:body
+                          {:fhir/type :fhir/Bundle
+                           :type (type/code type)
+                           :entry entries}})]
+
+                  (testing "response status"
+                    (is (= 200 status)))
+
+                  (testing "bundle"
+                    (given body
+                      :fhir/type := :fhir/Bundle
+                      :id := "AAAAAAAAAAAAAAAA"
+                      :type := (type/code (str type "-response"))))
+
+                  (testing "entry resource"
+                    (is (nil? resource)))
+
+                  (testing "entry response"
+                    (given response
+                      :status := "200"
+                      :etag := "W/\"1\""
+                      :lastModified := Instant/EPOCH)))))
+
+            (testing "with representation return preference"
+              (with-handler [handler]
+                [[[:put {:fhir/type :fhir/Patient :id "0"
+                         :gender #fhir/code"female"}]]]
+
+                (let [{:keys [status body]
+                       {[{:keys [resource response]}] :entry} :body}
+                      @(handler
+                         {:headers {"prefer" "return=representation"}
+                          :body
+                          {:fhir/type :fhir/Bundle
+                           :type (type/code type)
+                           :entry entries}})]
+
+                  (testing "response status"
+                    (is (= 200 status)))
+
+                  (testing "bundle"
+                    (given body
+                      :fhir/type := :fhir/Bundle
+                      :id := "AAAAAAAAAAAAAAAA"
+                      :type := (type/code (str type "-response"))))
+
+                  (testing "entry resource"
+                    (given resource
+                      :fhir/type := :fhir/Patient
+                      :id := "0"
+                      :gender := #fhir/code"female"
+                      [:meta :versionId] := #fhir/id"1"
+                      [:meta :lastUpdated] := Instant/EPOCH))
+
+                  (testing "entry response"
+                    (given response
+                      :status := "200"
+                      :etag := "W/\"1\""
+                      :lastModified := Instant/EPOCH)))))
+
+            (testing "and content changing transaction in between"
+              (with-redefs [kv/put!
+                            (fn
+                              ([store entries]
+                               (Thread/sleep 20)
+                               (kv/-put store entries))
+                              ([store key value]
+                               (kv/-put store key value)))]
+                (with-handler [handler node]
+                  [[[:put {:fhir/type :fhir/Patient :id "0"
+                           :gender #fhir/code"female"}]]]
+
+                  ;; don't wait for the transaction to be finished because the handler
+                  ;; call should see the first version of the patient
+                  @(node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"
+                                                :gender #fhir/code"male"}]])
+
+                  (let [{:keys [status body]
+                         {[{:keys [resource response]}] :entry} :body}
+                        @(handler
+                           {:body
+                            {:fhir/type :fhir/Bundle
+                             :type (type/code type)
+                             :entry entries}})]
+
+                    (testing "response status"
+                      (is (= 200 status)))
+
+                    (testing "bundle"
+                      (given body
+                        :fhir/type := :fhir/Bundle
+                        :id := "AAAAAAAAAAAAAAAA"
+                        :type := (type/code (str type "-response"))))
+
+                    (testing "entry resource"
+                      (is (nil? resource)))
+
+                    (testing "entry response"
+                      (given response
+                        :status := "200"
+                        :etag := "W/\"4\""
+                        :lastModified := Instant/EPOCH)))))))))
 
       (testing "and create interaction"
         (let [entries
@@ -1081,8 +1192,7 @@
                      :entry
                      [{:fhir/type :fhir.Bundle/entry
                        :resource
-                       {:fhir/type :fhir/Patient
-                        :id "0"
+                       {:fhir/type :fhir/Patient :id "0"
                         :meta
                         {:tag
                          [#fhir/Coding
@@ -1139,8 +1249,7 @@
                      :entry
                      [{:fhir/type :fhir.Bundle/entry
                        :resource
-                       {:fhir/type :fhir/Patient
-                        :id "A_B"}
+                       {:fhir/type :fhir/Patient :id "A_B"}
                        :request
                        {:fhir/type :fhir.Bundle.entry/request
                         :method #fhir/code"PUT"
@@ -1168,8 +1277,7 @@
                      :entry
                      [{:fhir/type :fhir.Bundle/entry
                        :resource
-                       {:fhir/type :fhir/Patient
-                        :id "1"}
+                       {:fhir/type :fhir/Patient :id "1"}
                        :request
                        {:fhir/type :fhir.Bundle.entry/request
                         :method #fhir/code"PUT"
@@ -1189,34 +1297,114 @@
                 [:issue 0 :expression 1] := "Bundle.entry[0].resource.id")))))
 
       (testing "on optimistic locking failure"
-        (with-handler [handler]
-          [[[:create {:fhir/type :fhir/Patient :id "0"}]]
-           [[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        (testing "with different content"
+          (with-handler [handler]
+            [[[:create {:fhir/type :fhir/Patient :id "0"
+                        :gender #fhir/code"female"}]]
+             [[:put {:fhir/type :fhir/Patient :id "0"
+                     :gender #fhir/code"male"}]]]
 
-          (let [{:keys [status body]}
-                @(handler
-                   {:body
-                    {:fhir/type :fhir/Bundle
-                     :type #fhir/code"transaction"
-                     :entry
-                     [{:fhir/type :fhir.Bundle/entry
-                       :resource
-                       {:fhir/type :fhir/Patient
-                        :id "0"}
-                       :request
-                       {:fhir/type :fhir.Bundle.entry/request
-                        :method #fhir/code"PUT"
-                        :url #fhir/uri"Patient/0"
-                        :ifMatch "W/\"1\""}}]}})]
+            (let [{:keys [status body]}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type #fhir/code"transaction"
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Patient :id "0"
+                          :gender #fhir/code"female"}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"PUT"
+                          :url #fhir/uri"Patient/0"
+                          :ifMatch "W/\"1\""}}]}})]
 
-            (testing "returns error"
-              (is (= 412 status))
+              (testing "returns error"
+                (is (= 412 status))
 
-              (given body
-                :fhir/type := :fhir/OperationOutcome
-                [:issue 0 :severity] := #fhir/code"error"
-                [:issue 0 :code] := #fhir/code"conflict"
-                [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`.")))))
+                (given body
+                  :fhir/type := :fhir/OperationOutcome
+                  [:issue 0 :severity] := #fhir/code"error"
+                  [:issue 0 :code] := #fhir/code"conflict"
+                  [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`.")))))
+
+        (testing "with identical content"
+          (with-handler [handler]
+            [[[:create {:fhir/type :fhir/Patient :id "0"
+                        :gender #fhir/code"male"}]]
+             [[:put {:fhir/type :fhir/Patient :id "0"
+                     :gender #fhir/code"female"}]]]
+
+            (let [{:keys [status body]}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type #fhir/code"transaction"
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Patient :id "0"
+                          :gender #fhir/code"female"}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"PUT"
+                          :url #fhir/uri"Patient/0"
+                          :ifMatch "W/\"1\""}}]}})]
+
+              (testing "returns error"
+                (is (= 412 status))
+
+                (given body
+                  :fhir/type := :fhir/OperationOutcome
+                  [:issue 0 :severity] := #fhir/code"error"
+                  [:issue 0 :code] := #fhir/code"conflict"
+                  [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`."))))
+
+          (testing "and content changing transaction in between"
+            (with-redefs [kv/put!
+                          (fn
+                            ([store entries]
+                             (Thread/sleep 20)
+                             (kv/-put store entries))
+                            ([store key value]
+                             (kv/-put store key value)))]
+              (with-handler [handler node]
+                [[[:create {:fhir/type :fhir/Patient :id "0"
+                            :gender #fhir/code"female"}]]]
+
+                ;; don't wait for the transaction to be finished because the handler
+                ;; call should see the first version of the patient
+                @(node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"
+                                              :gender #fhir/code"male"}]])
+
+                (let [{:keys [status body]}
+                      @(handler
+                         {:body
+                          {:fhir/type :fhir/Bundle
+                           :type #fhir/code"transaction"
+                           :entry
+                           [{:fhir/type :fhir.Bundle/entry
+                             :resource
+                             {:fhir/type :fhir/Patient :id "0"
+                              :gender #fhir/code"female"}
+                             :request
+                             {:fhir/type :fhir.Bundle.entry/request
+                              :method #fhir/code"PUT"
+                              :url #fhir/uri"Patient/0"
+                              :ifMatch "W/\"1\""}}]}})]
+
+                  (testing "returns error"
+                    (is (= 412 status))
+
+                    (given body
+                      :fhir/type := :fhir/OperationOutcome
+                      [:issue 0 :severity] := #fhir/code"error"
+                      [:issue 0 :code] := #fhir/code"conflict"
+                      [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`.")))
+
+                (testing "we did not retry to the error transaction is 3"
+                  (is (= 3 (:error-t @(:state node))))))))))
 
       (testing "on duplicate resources"
         (with-handler [handler]
@@ -1228,16 +1416,14 @@
                      :entry
                      [{:fhir/type :fhir.Bundle/entry
                        :resource
-                       {:fhir/type :fhir/Patient
-                        :id "0"}
+                       {:fhir/type :fhir/Patient :id "0"}
                        :request
                        {:fhir/type :fhir.Bundle.entry/request
                         :method #fhir/code"PUT"
                         :url #fhir/uri"Patient/0"}}
                       {:fhir/type :fhir.Bundle/entry
                        :resource
-                       {:fhir/type :fhir/Patient
-                        :id "0"}
+                       {:fhir/type :fhir/Patient :id "0"}
                        :request
                        {:fhir/type :fhir.Bundle.entry/request
                         :method #fhir/code"PUT"
@@ -1604,8 +1790,7 @@
                    :entry
                    [{:fhir/type :fhir.Bundle/entry
                      :resource
-                     {:fhir/type :fhir/Patient
-                      :id "0"
+                     {:fhir/type :fhir/Patient :id "0"
                       :meta
                       {:tag
                        [#fhir/Coding
@@ -1689,40 +1874,132 @@
                   [:issue 0 :expression 0] := "Bundle.entry[0].request.url"))))))
 
       (testing "on optimistic locking failure"
-        (with-handler [handler]
-          [[[:create {:fhir/type :fhir/Patient :id "0"}]]
-           [[:put {:fhir/type :fhir/Patient :id "0"}]]]
+        (testing "with different content"
+          (with-handler [handler]
+            [[[:create {:fhir/type :fhir/Patient :id "0"
+                        :gender #fhir/code"female"}]]
+             [[:put {:fhir/type :fhir/Patient :id "0"
+                     :gender #fhir/code"male"}]]]
 
-          (let [{:keys [status] {[{:keys [response]}] :entry} :body}
-                @(handler
-                   {:body
-                    {:fhir/type :fhir/Bundle
-                     :type #fhir/code"batch"
-                     :entry
-                     [{:fhir/type :fhir.Bundle/entry
-                       :resource
-                       {:fhir/type :fhir/Patient
-                        :id "0"}
-                       :request
-                       {:fhir/type :fhir.Bundle.entry/request
-                        :method #fhir/code"PUT"
-                        :url #fhir/uri"Patient/0"
-                        :ifMatch "W/\"1\""}}]}})]
+            (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type #fhir/code"batch"
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Patient :id "0"
+                          :gender #fhir/code"female"}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"PUT"
+                          :url #fhir/uri"Patient/0"
+                          :ifMatch "W/\"1\""}}]}})]
 
-            (testing "response status"
-              (is (= 200 status)))
+              (testing "response status"
+                (is (= 200 status)))
 
-            (testing "returns error"
-              (testing "with status"
-                (is (= "412" (:status response))))
+              (testing "returns error"
+                (testing "with status"
+                  (is (= "412" (:status response))))
 
-              (testing "with outcome"
-                (given (:outcome response)
-                  :fhir/type := :fhir/OperationOutcome
-                  [:issue 0 :severity] := #fhir/code"error"
-                  [:issue 0 :code] := #fhir/code"conflict"
-                  [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`."
-                  [:issue 0 :expression 0] := "Bundle.entry[0]"))))))
+                (testing "with outcome"
+                  (given (:outcome response)
+                    :fhir/type := :fhir/OperationOutcome
+                    [:issue 0 :severity] := #fhir/code"error"
+                    [:issue 0 :code] := #fhir/code"conflict"
+                    [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`."
+                    [:issue 0 :expression 0] := "Bundle.entry[0]"))))))
+
+        (testing "with identical content"
+          (with-handler [handler]
+            [[[:create {:fhir/type :fhir/Patient :id "0"
+                        :gender #fhir/code"male"}]]
+             [[:put {:fhir/type :fhir/Patient :id "0"
+                     :gender #fhir/code"female"}]]]
+
+            (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type #fhir/code"batch"
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Patient :id "0"
+                          :gender #fhir/code"female"}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"PUT"
+                          :url #fhir/uri"Patient/0"
+                          :ifMatch "W/\"1\""}}]}})]
+
+              (testing "response status"
+                (is (= 200 status)))
+
+              (testing "returns error"
+                (testing "with status"
+                  (is (= "412" (:status response))))
+
+                (testing "with outcome"
+                  (given (:outcome response)
+                    :fhir/type := :fhir/OperationOutcome
+                    [:issue 0 :severity] := #fhir/code"error"
+                    [:issue 0 :code] := #fhir/code"conflict"
+                    [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`."
+                    [:issue 0 :expression 0] := "Bundle.entry[0]")))))
+
+          (testing "and content changing transaction in between"
+            (with-redefs [kv/put!
+                          (fn
+                            ([store entries]
+                             (Thread/sleep 20)
+                             (kv/-put store entries))
+                            ([store key value]
+                             (kv/-put store key value)))]
+              (with-handler [handler node]
+                [[[:create {:fhir/type :fhir/Patient :id "0"
+                            :gender #fhir/code"female"}]]]
+
+                ;; don't wait for the transaction to be finished because the handler
+                ;; call should see the first version of the patient
+                @(node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"
+                                              :gender #fhir/code"male"}]])
+
+                (let [{:keys [status] {[{:keys [response]}] :entry} :body}
+                      @(handler
+                         {:body
+                          {:fhir/type :fhir/Bundle
+                           :type #fhir/code"batch"
+                           :entry
+                           [{:fhir/type :fhir.Bundle/entry
+                             :resource
+                             {:fhir/type :fhir/Patient :id "0"
+                              :gender #fhir/code"female"}
+                             :request
+                             {:fhir/type :fhir.Bundle.entry/request
+                              :method #fhir/code"PUT"
+                              :url #fhir/uri"Patient/0"
+                              :ifMatch "W/\"1\""}}]}})]
+
+                  (testing "response status"
+                    (is (= 200 status)))
+
+                  (testing "returns error"
+                    (testing "with status"
+                      (is (= "412" (:status response))))
+
+                    (testing "with outcome"
+                      (given (:outcome response)
+                        :fhir/type := :fhir/OperationOutcome
+                        [:issue 0 :severity] := #fhir/code"error"
+                        [:issue 0 :code] := #fhir/code"conflict"
+                        [:issue 0 :diagnostics] := "Precondition `W/\"1\"` failed on `Patient/0`."
+                        [:issue 0 :expression 0] := "Bundle.entry[0]"))))
+
+                (testing "we did not retry to the error transaction is 3"
+                  (is (= 3 (:error-t @(:state node))))))))))
 
       (testing "without return preference"
         (with-handler [handler]
@@ -1752,6 +2029,82 @@
                 :location := (str base-url "/Patient/0/_history/1")
                 :etag := "W/\"1\""
                 :lastModified := Instant/EPOCH))))
+
+        (testing "with identical content"
+          (with-handler [handler]
+            [[[:create {:fhir/type :fhir/Patient :id "0"
+                        :birthDate #fhir/date"2020"}]]]
+
+            (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
+                  @(handler
+                     {:body
+                      {:fhir/type :fhir/Bundle
+                       :type #fhir/code"batch"
+                       :entry
+                       [{:fhir/type :fhir.Bundle/entry
+                         :resource
+                         {:fhir/type :fhir/Patient :id "0"
+                          :birthDate #fhir/date"2020"}
+                         :request
+                         {:fhir/type :fhir.Bundle.entry/request
+                          :method #fhir/code"PUT"
+                          :url #fhir/uri"Patient/0"}}]}})]
+
+              (testing "response status"
+                (is (= 200 status)))
+
+              (testing "entry resource"
+                (is (nil? resource)))
+
+              (testing "entry response"
+                (given response
+                  :status := "200"
+                  :etag := "W/\"1\""
+                  :lastModified := Instant/EPOCH))))
+
+          (testing "and content changing transaction in between"
+            (with-redefs [kv/put!
+                          (fn
+                            ([store entries]
+                             (Thread/sleep 20)
+                             (kv/-put store entries))
+                            ([store key value]
+                             (kv/-put store key value)))]
+              (with-handler [handler node]
+                [[[:create {:fhir/type :fhir/Patient :id "0"
+                            :birthDate #fhir/date"2020"}]]]
+
+                ;; don't wait for the transaction to be finished because the handler
+                ;; call should see the first version of the patient
+                @(node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"
+                                              :birthDate #fhir/date"2021"}]])
+
+                (let [{:keys [status] {[{:keys [resource response]}] :entry} :body}
+                      @(handler
+                         {:body
+                          {:fhir/type :fhir/Bundle
+                           :type #fhir/code"batch"
+                           :entry
+                           [{:fhir/type :fhir.Bundle/entry
+                             :resource
+                             {:fhir/type :fhir/Patient :id "0"
+                              :birthDate #fhir/date"2020"}
+                             :request
+                             {:fhir/type :fhir.Bundle.entry/request
+                              :method #fhir/code"PUT"
+                              :url #fhir/uri"Patient/0"}}]}})]
+
+                  (testing "response status"
+                    (is (= 200 status)))
+
+                  (testing "entry resource"
+                    (is (nil? resource)))
+
+                  (testing "entry response"
+                    (given response
+                      :status := "200"
+                      :etag := "W/\"4\""
+                      :lastModified := Instant/EPOCH)))))))
 
         (testing "leading slash in URL is removed"
           (with-handler [handler]

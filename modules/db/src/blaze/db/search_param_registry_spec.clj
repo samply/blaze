@@ -9,13 +9,13 @@
 
 (s/fdef sr/get
   :args (s/cat :search-param-registry :blaze.db/search-param-registry
-               :code string? :type (s/? string?))
+               :code string? :type (s/? :fhir.resource/type))
   :ret (s/nilable :blaze.db/search-param))
 
 
 (s/fdef sr/list-by-type
   :args (s/cat :search-param-registry :blaze.db/search-param-registry
-               :type string?)
+               :type :fhir.resource/type)
   :ret (s/coll-of :blaze.db/search-param :kind vector?))
 
 
@@ -30,3 +30,9 @@
                :resource :blaze/resource)
   :ret (s/or :compartments (s/coll-of (s/tuple string? :blaze.resource/id))
              :anomaly ::anom/anomaly))
+
+
+(s/fdef sr/compartment-resources
+  :args (s/cat :search-param-registry :blaze.db/search-param-registry
+               :type :fhir.resource/type)
+  :ret (s/coll-of (s/tuple :fhir.resource/type string?)))

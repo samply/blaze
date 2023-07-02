@@ -66,6 +66,19 @@
   (.complete ^CompletableFuture future x))
 
 
+(defn- ->Supplier [f]
+  (reify Supplier
+    (get [_]
+      (ba/throw-when (f)))))
+
+
+(defn complete-async!
+  "Completes `future` with the result of `f` invoked with no arguments from an
+  asynchronous task using the default executor."
+  [future f]
+  (.completeAsync ^CompletableFuture future (->Supplier f)))
+
+
 (defn or-timeout!
   "Exceptionally completes `future` with a TimeoutException if not otherwise
   completed before `timeout` in `unit`.
@@ -133,12 +146,6 @@
   Returns true if `future` is now cancelled."
   [future]
   (.cancel ^CompletableFuture future false))
-
-
-(defn- ->Supplier [f]
-  (reify Supplier
-    (get [_]
-      (ba/throw-when (f)))))
 
 
 (defn supply-async
@@ -236,6 +243,12 @@
   (-completion-cause [e] e))
 
 
+(defn- ->BiFunction [f]
+  (reify BiFunction
+    (apply [_ x e]
+      (ba/throw-when (f x (some-> e -completion-cause ba/anomaly))))))
+
+
 (defn handle
   "Returns a CompletionStage that, when `stage` completes either normally or
   exceptionally, is executed with `stage`'s result and exception as arguments to
@@ -247,9 +260,22 @@
   [stage f]
   (.handle
     ^CompletionStage stage
-    (reify BiFunction
-      (apply [_ x e]
-        (ba/throw-when (f x (some-> e -completion-cause ba/anomaly)))))))
+    (->BiFunction f)))
+
+
+(defn handle-async
+  "Returns a CompletionStage that, when `stage` completes either normally or
+  exceptionally, is executed using `stage`'s default asynchronous execution
+  facility, with `stage`'s result and exception as arguments to the function
+  `f`.
+
+  When `stage` is complete, the function `f` is invoked with the result (or nil
+  if none) and the anomaly (or nil if none) of `stage` as arguments, and the
+  `f`'s result is used to complete the returned stage."
+  [stage f]
+  (.handleAsync
+    ^CompletionStage stage
+    (->BiFunction f)))
 
 
 (defn exceptionally
@@ -272,6 +298,24 @@
           (if (nil? e)
             stage
             (f e))))
+      (then-compose identity)))
+
+
+(defn exceptionally-compose-async
+  "Returns a CompletionStage that, when `stage` completes exceptionally, is
+  composed using the results of the function `f` applied to `stage`'s anomaly,
+  using `stage`'s default asynchronous execution facility."
+  [stage f]
+  (-> stage
+      (handle
+        (fn [_ e]
+          (if (nil? e)
+            stage
+            (-> stage
+                (handle-async
+                  (fn [_ e]
+                    (f e)))
+                (then-compose identity)))))
       (then-compose identity)))
 
 
@@ -340,7 +384,31 @@
 
 
 (defn retry
-  "Please be aware that `num-retries` shouldn't be higher than the max stack
+  "Returns a CompletionStage that, when the CompletionStage as result of calling
+  the function`f` with no arguments completes normally will complete with its
+  result.
+
+  Otherwise retires by calling `f` again with no arguments. Wait's between
+  retries starting with 100 ms growing exponentially.
+
+  Please be aware that `num-retries` shouldn't be higher than the max stack
   depth. Otherwise, the CompletionStage would fail with a StackOverflowException."
-  [future-fn num-retries]
-  (retry* future-fn num-retries 0))
+  [f num-retries]
+  (retry* f num-retries 0))
+
+
+(defn retry2
+  "Returns a CompletionStage that, when the CompletionStage as result of calling
+  the function`f` with no arguments completes normally will complete with its
+  result.
+
+  Otherwise retires by calling `f` again with no arguments if calling the
+  function `retry?` with the anomaly returned by the CompletionStage returns
+  true."
+  [f retry?]
+  (-> (f)
+      (exceptionally-compose-async
+        (fn [e]
+          (if (retry? e)
+            (retry2 f retry?)
+            (completed-future e))))))

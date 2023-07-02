@@ -1,8 +1,7 @@
 (ns blaze.interaction.search.params.include
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
-    [blaze.handler.fhir.util :as fhir-util]
-    [blaze.util :refer [conj-vec]]
+    [blaze.util :as u]
     [clojure.string :as str]))
 
 
@@ -26,13 +25,13 @@
     (comp
       (filter (fn [[k]] (= name k)))
       (mapcat
-        (fn [[_k v]] (keep #(forward-value handling %) (fhir-util/to-seq v)))))
+        (fn [[_k v]] (keep #(forward-value handling %) (u/to-seq v)))))
     (completing
       (fn [res x]
         (if (ba/anomaly? x)
           (reduced x)
           (let [[source-type include-def] x]
-            (update res source-type conj-vec include-def)))))
+            (update res source-type u/conj-vec include-def)))))
     {}
     query-params))
 
@@ -50,13 +49,13 @@
     (comp
       (filter (fn [[k]] (= name k)))
       (mapcat
-        (fn [[_k v]] (keep #(reverse-value handling %) (fhir-util/to-seq v)))))
+        (fn [[_k v]] (keep #(reverse-value handling %) (u/to-seq v)))))
     (completing
       (fn [res x]
         (if (ba/anomaly? x)
           (reduced x)
           (let [[target-type include-def] x]
-            (update res target-type conj-vec include-def)))))
+            (update res target-type u/conj-vec include-def)))))
     {}
     query-params))
 

@@ -120,6 +120,21 @@
     handle-error))
 
 
+(defn transact [uri bundle opts]
+  (log/trace "Transact")
+  (hc/post
+    uri
+    (merge
+      {:accept :fhir+json
+       :content-type :fhir+json
+       :body (generate-body bundle)
+       :as :fhir
+       :async? true}
+      opts)
+    :body
+    handle-error))
+
+
 (defn- next-url [page]
   (type/value (:url (first (filter (comp #{"next"} :relation) (:link page))))))
 

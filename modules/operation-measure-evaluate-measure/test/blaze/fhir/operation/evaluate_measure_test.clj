@@ -2,7 +2,7 @@
   (:require
     [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.db.resource-store :as rs]
     [blaze.executors :as ex]
     [blaze.fhir.operation.evaluate-measure :as evaluate-measure]
@@ -156,8 +156,8 @@
     (is (s/valid? :blaze.metrics/collector collector))))
 
 
-(def system
-  (assoc mem-node-system
+(def config
+  (assoc mem-node-config
     ::evaluate-measure/handler
     {:node (ig/ref :blaze.db/node)
      :executor (ig/ref :blaze.test/executor)
@@ -178,7 +178,7 @@
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
-                         handler# ::evaluate-measure/handler} system]
+                         handler# ::evaluate-measure/handler} config]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# 100)
                                   wrap-error)]
@@ -513,44 +513,79 @@
                 [:group 0 :stratifier 0 :stratum 1 :value :text] := #fhir/string"male")))))
 
       (testing "as POST request"
-        (with-handler [handler]
-          [[[:put {:fhir/type :fhir/Measure :id "0"
-                   :url #fhir/uri"url-181501"
-                   :library [#fhir/canonical"library-url-094115"]}]
-            [:put {:fhir/type :fhir/Library :id "0"
-                   :url #fhir/uri"library-url-094115"
-                   :content [library-content]}]]]
+        (testing "with no Prefer header"
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Measure :id "0"
+                     :url #fhir/uri"url-181501"
+                     :library [#fhir/canonical"library-url-094115"]}]
+              [:put {:fhir/type :fhir/Library :id "0"
+                     :url #fhir/uri"library-url-094115"
+                     :content [library-content]}]]]
 
-          (let [{:keys [status headers body]}
-                @(handler
-                   {:request-method :post
-                    :body
-                    {:fhir/type :fhir/Parameters
-                     :parameter
-                     [{:fhir/type :fhir.Parameters/parameter
-                       :name "measure"
-                       :value #fhir/string"url-181501"}
-                      {:fhir/type :fhir.Parameters/parameter
-                       :name "periodStart"
-                       :value #fhir/date"2014"}
-                      {:fhir/type :fhir.Parameters/parameter
-                       :name "periodEnd"
-                       :value #fhir/date"2015"}]}})]
+            (let [{:keys [status headers body]}
+                  @(handler
+                     {:request-method :post
+                      :body
+                      {:fhir/type :fhir/Parameters
+                       :parameter
+                       [{:fhir/type :fhir.Parameters/parameter
+                         :name "measure"
+                         :value #fhir/string"url-181501"}
+                        {:fhir/type :fhir.Parameters/parameter
+                         :name "periodStart"
+                         :value #fhir/date"2014"}
+                        {:fhir/type :fhir.Parameters/parameter
+                         :name "periodEnd"
+                         :value #fhir/date"2015"}]}})]
 
-            (is (= 201 status))
+              (is (= 201 status))
 
-            (testing "Location header"
-              (is (= "base-url-144638/MeasureReport/AAAAAAAAAAAAAAAA/_history/2"
-                     (get headers "Location"))))
+              (testing "Location header"
+                (is (= "base-url-144638/MeasureReport/AAAAAAAAAAAAAAAA/_history/2"
+                       (get headers "Location"))))
 
-            (given body
-              :fhir/type := :fhir/MeasureReport
-              :status := #fhir/code"complete"
-              :type := #fhir/code"summary"
-              :measure := #fhir/canonical"url-181501"
-              :date := #fhir/dateTime"1970-01-01T00:00:00Z"
-              [:period :start] := #fhir/dateTime"2014"
-              [:period :end] := #fhir/dateTime"2015")))))
+              (given body
+                :fhir/type := :fhir/MeasureReport
+                :status := #fhir/code"complete"
+                :type := #fhir/code"summary"
+                :measure := #fhir/canonical"url-181501"
+                :date := #fhir/dateTime"1970-01-01T00:00:00Z"
+                [:period :start] := #fhir/dateTime"2014"
+                [:period :end] := #fhir/dateTime"2015"))))
+
+        (testing "with return=minimal Prefer header"
+          (with-handler [handler]
+            [[[:put {:fhir/type :fhir/Measure :id "0"
+                     :url #fhir/uri"url-181501"
+                     :library [#fhir/canonical"library-url-094115"]}]
+              [:put {:fhir/type :fhir/Library :id "0"
+                     :url #fhir/uri"library-url-094115"
+                     :content [library-content]}]]]
+
+            (let [{:keys [status headers body]}
+                  @(handler
+                     {:request-method :post
+                      :headers {"prefer" "return=minimal"}
+                      :body
+                      {:fhir/type :fhir/Parameters
+                       :parameter
+                       [{:fhir/type :fhir.Parameters/parameter
+                         :name "measure"
+                         :value #fhir/string"url-181501"}
+                        {:fhir/type :fhir.Parameters/parameter
+                         :name "periodStart"
+                         :value #fhir/date"2014"}
+                        {:fhir/type :fhir.Parameters/parameter
+                         :name "periodEnd"
+                         :value #fhir/date"2015"}]}})]
+
+              (is (= 201 status))
+
+              (testing "Location header"
+                (is (= "base-url-144638/MeasureReport/AAAAAAAAAAAAAAAA/_history/2"
+                       (get headers "Location"))))
+
+              (is (nil? body)))))))
 
     (testing "on instance endpoint"
       (testing "as GET request"

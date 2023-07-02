@@ -4,7 +4,7 @@
   https://www.hl7.org/fhir/http.html#vsearch"
   (:require
     [blaze.async.comp :as ac]
-    [blaze.db.api-stub :refer [mem-node-system with-system-data]]
+    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.db.resource-store :as rs]
     [blaze.fhir.spec.type]
     [blaze.interaction.search-compartment]
@@ -82,8 +82,8 @@
       [:explain ::s/problems 2 :val] := ::invalid)))
 
 
-(def system
-  (assoc mem-node-system
+(def config
+  (assoc mem-node-config
     :blaze.interaction/search-compartment
     {:clock (ig/ref :blaze.test/fixed-clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
@@ -105,7 +105,7 @@
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (tu/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
-                         handler# :blaze.interaction/search-compartment} system]
+                         handler# :blaze.interaction/search-compartment} config]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# 100)
                                   wrap-error)]
@@ -241,7 +241,7 @@
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
 
-                (testing "the bundle contains no entries"
+                (testing "the bundle contains no entry"
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
@@ -318,7 +318,7 @@
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
 
-                (testing "the bundle contains no entries"
+                (testing "the bundle contains no entry"
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
@@ -387,7 +387,7 @@
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
 
-                (testing "the bundle contains no entries"
+                (testing "the bundle contains no entry"
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
@@ -458,7 +458,7 @@
                 (testing "the total count is 1"
                   (is (= #fhir/unsignedInt 1 (:total body))))
 
-                (testing "the bundle contains no entries"
+                (testing "the bundle contains no entry"
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
@@ -505,7 +505,7 @@
             (testing "the total count is 2"
               (is (= #fhir/unsignedInt 2 (:total body))))
 
-            (testing "the bundle contains no entries"
+            (testing "the bundle contains no entry"
               (is (empty? (:entry body))))))
 
         (testing "with _summary=count and status=final"
@@ -524,7 +524,7 @@
             (testing "the total count is 1"
               (is (= #fhir/unsignedInt 1 (:total body))))
 
-            (testing "the bundle contains no entries"
+            (testing "the bundle contains no entry"
               (is (empty? (:entry body))))))
 
         (testing "with no query param"

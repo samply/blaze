@@ -26,7 +26,7 @@
   (HttpClientMock.))
 
 
-(def system
+(def config
   {::ts/extern
    {:base-uri "http://localhost:8080/fhir"
     :http-client (ig/ref ::http-client)}
@@ -57,7 +57,7 @@
 
 
 (deftest terminology-service-test
-  (with-system [{ts ::ts/extern ::keys [http-client]} system]
+  (with-system [{ts ::ts/extern ::keys [http-client]} config]
 
     (-> (.onGet ^HttpClientMock http-client "http://localhost:8080/fhir/ValueSet/$expand?url=http://hl7.org/fhir/ValueSet/administrative-gender")
         (.doReturn (j/write-value-as-string {:resourceType "ValueSet" :id "0"}))

@@ -6,7 +6,8 @@
     [blaze.db.impl.index.tx-success :as tx-success]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.spec.type :as type]))
+    [blaze.fhir.spec.type :as type]
+    [taoensso.timbre :as log]))
 
 
 (defmulti prepare-op (fn [_ [op]] op))
@@ -37,7 +38,7 @@
 
 
 (defmethod prepare-op :put
-  [{:keys [references-fn]} [op resource [precond-op precond]]]
+  [{:keys [references-fn]} [op resource [precond-op & precond-vals]]]
   (let [hash (hash/generate resource)
         refs (references-fn resource)]
     {:hash-resource
@@ -51,9 +52,21 @@
        (seq refs)
        (assoc :refs refs)
        (identical? :if-match precond-op)
-       (assoc :if-match precond)
+       (assoc :if-match (vec precond-vals))
        (identical? :if-none-match precond-op)
-       (assoc :if-none-match (prepare-if-none-match precond)))}))
+       (assoc :if-none-match (prepare-if-none-match (first precond-vals))))}))
+
+
+(defmethod prepare-op :keep
+  [_ [_ type id hash if-match]]
+  {:blaze.db/tx-cmd
+   (cond->
+     {:op "keep"
+      :type type
+      :id id
+      :hash hash}
+     if-match
+     (assoc :if-match if-match))})
 
 
 (defmethod prepare-op :delete
@@ -93,6 +106,7 @@
 
 
 (defn load-tx-result [{:keys [tx-cache kv-store] :as node} t]
+  (log/trace "load transaction result with t =" t)
   (if (tx-success/tx tx-cache t)
     (db/db node t)
     (if-let [anomaly (tx-error/tx-error kv-store t)]

@@ -6,6 +6,11 @@
     [clojure.spec.alpha :as s]))
 
 
+(s/fdef rocksdb/column-families
+  :args (s/cat :store ::kv/rocksdb)
+  :ret (s/coll-of simple-keyword?))
+
+
 (s/fdef rocksdb/get-property
   :args (s/cat :store ::kv/rocksdb
                :name-or-column-family (s/alt :name string? :column-family simple-keyword?)
@@ -13,8 +18,13 @@
   :ret string?)
 
 
-(s/fdef rocksdb/get-property
+(s/fdef rocksdb/get-long-property
   :args (s/cat :store ::kv/rocksdb
                :name-or-column-family (s/alt :name string? :column-family simple-keyword?)
                :name (s/? string?))
+  :ret int?)
+
+
+(s/fdef rocksdb/table-properties
+  :args (s/cat :store ::kv/rocksdb :column-family (s/? simple-keyword?))
   :ret int?)

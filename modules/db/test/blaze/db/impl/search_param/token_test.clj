@@ -33,13 +33,13 @@
   (sr/get search-param-registry "code" "Observation"))
 
 
-(def system
+(def config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
 
 (deftest code-param-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (given (code-param search-param-registry)
       :name := "code"
       :code := "code"
@@ -47,7 +47,7 @@
 
 
 (deftest index-entries-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Observation _id"
       (let [observation
             {:fhir/type :fhir/Observation
@@ -631,7 +631,7 @@
 
 
 (deftest compartment-ids-test
-  (with-system [{:blaze.db/keys [search-param-registry]} system]
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Observation"
       (let [subject-param (subject-param search-param-registry)]
 

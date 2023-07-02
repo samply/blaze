@@ -68,3 +68,8 @@
               define Error: (")
       ::anom/category := ::anom/incorrect
       ::anom/message := "Syntax error at <EOF>")))
+
+
+(comment
+  (translate "library \"schaedeldachfraktur\"\nusing FHIR version '4.0.0'\ninclude FHIRHelpers version '4.0.0'\n\ncodesystem icd10: 'http://fhir.de/CodeSystem/bfarm/icd-10-gm'\ncode \"Schädeldachfraktur\": 'S02.0' from icd10\n\ncontext Patient\n\ndefine InInitialPopulation:\n   Length([Condition: \"Schädeldachfraktur\"]) >= 2\n")
+  )

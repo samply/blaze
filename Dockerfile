@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:17.0.7_7-jre-jammy
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install libjemalloc2 -y && \
@@ -7,14 +7,15 @@ RUN apt-get update && apt-get upgrade -y && \
     rm -rf /var/lib/apt/lists/
 
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
-COPY target/blaze-0.21.0-standalone.jar /app/
+COPY target/blaze-0.22.0-standalone.jar /app/
 
 WORKDIR /app
 USER 1001
 
+ENV LD_PRELOAD="libjemalloc.so.2"
 ENV STORAGE="standalone"
 ENV INDEX_DB_DIR="/app/data/index"
 ENV TRANSACTION_DB_DIR="/app/data/transaction"
 ENV RESOURCE_DB_DIR="/app/data/resource"
 
-CMD ["sh", "-c", "LD_PRELOAD=/usr/lib/$(arch)-linux-gnu/libjemalloc.so.2 exec java -jar blaze-0.21.0-standalone.jar"]
+CMD ["java", "-jar",  "blaze-0.22.0-standalone.jar"]

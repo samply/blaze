@@ -1,5 +1,0 @@
-library: cql/observation-29463-7.cql
-group:
-- type: Patient
-  population:
-  - expression: InInitialPopulation

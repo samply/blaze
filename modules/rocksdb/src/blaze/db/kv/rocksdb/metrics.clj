@@ -397,6 +397,6 @@
        "Returns the memory usage of the table reader."
        ["name" "column_family"]
        (for [[name store] stores
-             column-family (p/-get-column-families store)]
+             column-family (p/-column-families store)]
          {:label-values [name (clojure.core/name column-family)]
           :value (p/-get-long-property store column-family "rocksdb.estimate-table-readers-mem")}))]))

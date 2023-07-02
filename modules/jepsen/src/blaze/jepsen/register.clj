@@ -32,15 +32,35 @@
 
 (defn read [{:keys [base-uri] :as context} id]
   @(-> (fhir-client/read base-uri "Patient" id context)
-       (ac/then-apply :multipleBirth)
-       (ac/exceptionally #(when-not (ba/not-found? %) %))))
+       (ac/then-apply
+         (fn [resource]
+           {:type :ok :value (:multipleBirth resource)}))
+       (ac/exceptionally
+         (fn [e]
+           {:type (if (ba/not-found? e) :ok :fail) :value nil}))))
 
 
 (defn write! [{:keys [base-uri] :as context} id value]
-  @(fhir-client/update
-     base-uri
-     {:fhir/type :fhir/Patient :id id :multipleBirth value}
-     context))
+  @(-> (if (even? value)
+         (fhir-client/update
+           base-uri
+           {:fhir/type :fhir/Patient :id id :multipleBirth value}
+           context)
+         (fhir-client/transact
+           base-uri
+           {:fhir/type :fhir/Bundle
+            :type #fhir/code"transaction"
+            :entry
+            [{:fhir/type :fhir.Bundle/entry
+              :resource
+              {:fhir/type :fhir/Patient :id id :multipleBirth value}
+              :request
+              {:fhir/type :fhir.Bundle.entry/request
+               :method #fhir/code"PUT"
+               :url (type/uri (str "Patient/" id))}}]}
+           context))
+       (ac/then-apply (constantly {:type :ok}))
+       (ac/exceptionally (constantly {:type :fail}))))
 
 
 (defn failing-write! [{:keys [base-uri] :as context}]
@@ -65,9 +85,8 @@
 
   (invoke! [_ test op]
     (case (:f op)
-      :read (assoc op :type :ok :value (read context (:id test)))
-      :write (do (write! context (:id test) (:value op))
-                 (assoc op :type :ok))))
+      :read (merge op (read context (:id test)))
+      :write (merge op (write! context (:id test) (:value op)))))
 
   (teardown! [this _test]
     this)

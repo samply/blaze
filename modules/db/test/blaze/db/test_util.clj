@@ -20,7 +20,7 @@
              :blaze.db/search-param-registry))
 
 
-(def system
+(def config
   {:blaze.db/node
    {:tx-log (ig/ref :blaze.db/tx-log)
     :tx-cache (ig/ref :blaze.db/tx-cache)
@@ -80,7 +80,12 @@
    :blaze.db.node.resource-indexer/executor {}})
 
 
-(defmacro with-system-data [[binding-form system] txs & body]
-  `(with-system [system# ~system]
+(defmacro with-system-data
+  "Runs `body` inside a system that is initialized from `config`, bound to
+  `binding-form` and finally halted.
+
+  Additionally the database is initialized with `txs`."
+  [[binding-form config] txs & body]
+  `(with-system [system# ~config]
      (run! #(deref (d/transact (:blaze.db/node system#) %)) ~txs)
      (let [~binding-form system#] ~@body)))

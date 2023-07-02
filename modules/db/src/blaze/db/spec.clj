@@ -11,8 +11,12 @@
     [com.github.benmanes.caffeine.cache LoadingCache]))
 
 
+(defn node? [x]
+  (satisfies? np/Node x))
+
+
 (s/def :blaze.db/node
-  #(satisfies? np/Node %))
+  node?)
 
 
 (defn loading-cache? [x]
@@ -73,7 +77,7 @@
 
 (defmethod put-precond-op :if-match [_]
   (s/cat :op #{:if-match}
-         :t :blaze.db/t))
+         :ts (s/+ :blaze.db/t)))
 
 
 (defmethod put-precond-op :if-none-match [_]
@@ -89,6 +93,14 @@
   (s/cat :op #{:put}
          :resource :blaze/resource
          :precondition (s/? :blaze.db.tx-op.put/precondition)))
+
+
+(defmethod tx-op :keep [_]
+  (s/cat :op #{:keep}
+         :type :fhir.resource/type
+         :id :blaze.resource/id
+         :hash :blaze.resource/hash
+         :if-match (s/? (s/coll-of :blaze.db/t :kind vector? :min-count 1))))
 
 
 (defmethod tx-op :delete [_]

@@ -126,7 +126,7 @@
     (is (s/valid? :blaze.metrics/collector collector))))
 
 
-(def system
+(def config
   {[::kv/mem :blaze.db/index-kv-store]
    {:column-families
     {:search-param-value-index nil
@@ -157,7 +157,7 @@
 
 
 (deftest fails-on-kv-put-test
-  (with-system [{:blaze.db.node/keys [resource-indexer]} system]
+  (with-system [{:blaze.db.node/keys [resource-indexer]} config]
     (let [patient {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate patient)]
       (with-redefs [kv/put! (fn [_ _] (throw (Exception. "msg-200802")))]
@@ -179,7 +179,7 @@
 
 (deftest skips-on-failing-fhir-path-eval-test
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
-                 :blaze.db.node/keys [resource-indexer]} system]
+                 :blaze.db.node/keys [resource-indexer]} config]
 
     (let [observation {:fhir/type :fhir/Observation :id "0"
                        :subject #fhir/Reference{:reference "foo"}}
@@ -203,7 +203,7 @@
 (deftest index-condition-resource-test
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
                  resource-store ::rs/kv
-                 :blaze.db.node/keys [resource-indexer]} system]
+                 :blaze.db.node/keys [resource-indexer]} config]
     (let [resource
           {:fhir/type :fhir/Condition :id "id-204446"
            :code
@@ -310,7 +310,7 @@
 (deftest index-observation-resource-test
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
                  resource-store ::rs/kv
-                 :blaze.db.node/keys [resource-indexer]} system]
+                 :blaze.db.node/keys [resource-indexer]} config]
     (let [resource {:fhir/type :fhir/Observation :id "id-192702"
                     :status #fhir/code"status-193613"
                     :category
@@ -429,7 +429,7 @@
 
 (deftest index-delete-cmd-test
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
-                 :blaze.db.node/keys [resource-indexer]} system]
+                 :blaze.db.node/keys [resource-indexer]} config]
     @(resource-indexer/index-resources
        resource-indexer
        {:t 0

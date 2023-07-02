@@ -16,12 +16,12 @@
 (test/use-fixtures :each tu/fixture)
 
 
-(def system
+(def config
   {:blaze.handler/health {}})
 
 
 (deftest handler-test
-  (with-system [{handler :blaze.handler/health} system]
+  (with-system [{handler :blaze.handler/health} config]
     (given (call handler {})
       :status := 200
       :body := "OK")))

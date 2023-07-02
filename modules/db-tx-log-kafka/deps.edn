@@ -15,7 +15,7 @@
   {:local/root "../module-base"}
 
   org.apache.kafka/kafka-clients
-  {:mvn/version "3.4.1"}}
+  {:mvn/version "3.5.0"}}
 
  :aliases
  {:test
@@ -28,7 +28,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.71.1119"}}
+    {:mvn/version "1.85.1342"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

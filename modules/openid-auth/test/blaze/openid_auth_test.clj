@@ -27,7 +27,7 @@
         (.doReturnStatus 404))))
 
 
-(def system
+(def config
   {::openid-auth/backend
    {:http-client (ig/ref ::http-client)
     :scheduler (ig/ref :blaze/scheduler)
@@ -53,6 +53,6 @@
 
 
 (deftest backend-test
-  (with-system [{::openid-auth/keys [backend]} system]
+  (with-system [{::openid-auth/keys [backend]} config]
     (is (satisfies? p/IAuthentication backend))
     (Thread/sleep 2000)))

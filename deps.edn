@@ -1,11 +1,17 @@
 {:paths ["src" "resources"]
 
  :deps
- {blaze/db-resource-store-cassandra
+ {blaze/admin-api
+  {:local/root "modules/admin-api"}
+
+  blaze/db-resource-store-cassandra
   {:local/root "modules/db-resource-store-cassandra"}
 
   blaze/db-tx-log-kafka
   {:local/root "modules/db-tx-log-kafka"}
+
+  blaze/frontend
+  {:local/root "modules/frontend"}
 
   blaze/interaction
   {:local/root "modules/interaction"}
@@ -15,6 +21,9 @@
 
   blaze.operation/measure-evaluate-measure
   {:local/root "modules/operation-measure-evaluate-measure"}
+
+  blaze.operation/patient-everything
+  {:local/root "modules/operation-patient-everything"}
 
   blaze/openid-auth
   {:local/root "modules/openid-auth"}
@@ -69,7 +78,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.71.1119"}}
+    {:mvn/version "1.85.1342"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
@@ -83,7 +92,7 @@
   :outdated
   {:replace-deps
    {com.github.liquidz/antq
-    {:mvn/version "2.4.1070"}
+    {:mvn/version "2.5.1095"}
 
     org.slf4j/slf4j-nop
     {:mvn/version "2.0.7"}}
@@ -133,5 +142,4 @@
     "--exclude" "com.taoensso/timbre"
     "--exclude" "org.antlr/antlr4"
     "--exclude" "org.clojure/alpha.spec"
-    "--exclude" "com.walmartlabs/lacinia"
-    "--exclude" "lambdaisland/kaocha"]}}}
+    "--exclude" "com.walmartlabs/lacinia"]}}}

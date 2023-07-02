@@ -21,7 +21,7 @@
     node)
 
   (-as-of [_ t]
-    (assert (<= ^long t ^long basis-t))
+    (assert (<= ^long t ^long basis-t) (format "(<= %d %d)" t basis-t))
     (Db. node kv-store basis-t t))
 
   (-basis-t [_]
@@ -147,6 +147,10 @@
   (-include [_ resource-handle code target-type]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-include batch-db resource-handle code target-type)))
+
+  (-rev-include [_ resource-handle]
+    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
+      (p/-rev-include batch-db resource-handle)))
 
   (-rev-include [_ resource-handle source-type code]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]

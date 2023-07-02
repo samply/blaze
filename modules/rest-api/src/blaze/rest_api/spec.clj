@@ -117,6 +117,10 @@
   (s/or :ref ig/ref? :handler fn?))
 
 
+(s/def :blaze.rest-api.operation/documentation
+  string?)
+
+
 (s/def :blaze.rest-api/operation
   (s/keys
     :req
@@ -126,7 +130,8 @@
     [:blaze.rest-api.operation/resource-types
      :blaze.rest-api.operation/system-handler
      :blaze.rest-api.operation/type-handler
-     :blaze.rest-api.operation/instance-handler]))
+     :blaze.rest-api.operation/instance-handler
+     :blaze.rest-api.operation/documentation]))
 
 
 (s/def :blaze.rest-api/operations
