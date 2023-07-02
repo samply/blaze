@@ -8,4 +8,4 @@ code "body-weight": '29463-7' from loinc
 context Patient
 
 define InInitialPopulation:
-  exists [Observation: "body-weight"] O where O.value < 73.3 'kg'
+  exists [Observation: "body-weight"] O where O.value < 75.3 'kg'
