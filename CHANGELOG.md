@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.22.0
+
+It's not recommended to downgrade from this version to an older version because [#1041](https://github.com/samply/blaze/pull/1041) introduces a new transaction command called `keep` that would be ignored by older versions. However the transaction log is only read at the moment transactions happen or if the index is rebuild. So it will be ok to downgrade in emergency without rebuilding the index.
+
+### New Features
+
+* Implement Operation Patient $everything ([#1037](https://github.com/samply/blaze/pull/1037))
+* Add Basic Frontend ([#951](https://github.com/samply/blaze/pull/951))
+ 
+### Enhancements
+
+* Ensure History Changes only if Resource Changes ([#1041](https://github.com/samply/blaze/pull/1041))
+
+### Performance
+
+* Improve Database Sync Efficiency ([#1039](https://github.com/samply/blaze/pull/1039))
+
+### Bugfixes
+
+* Fix Evaluate Measure Generating Duplicate List IDs ([#1036](https://github.com/samply/blaze/pull/1036))
+* Fix Comparison of Length Result not Possible in CQL ([#1035](https://github.com/samply/blaze/pull/1035))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/68?closed=1).
+
 ## v0.21.0
 
 ### New Features

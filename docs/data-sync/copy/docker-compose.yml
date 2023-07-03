@@ -1,6 +1,6 @@
 services:
   src:
-    image: "samply/blaze:0.21"
+    image: "samply/blaze:0.22"
     environment:
       BASE_URL: "http://localhost:8080"
       JAVA_TOOL_OPTIONS: "-Xmx2g"
@@ -11,7 +11,7 @@ services:
     - "blaze-data-src:/app/data"
 
   dst:
-    image: "samply/blaze:0.21"
+    image: "samply/blaze:0.22"
     environment:
       BASE_URL: "http://localhost:8082"
       SERVER_PORT: "8082"
