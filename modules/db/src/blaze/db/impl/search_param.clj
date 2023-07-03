@@ -146,18 +146,19 @@
             linked-compartments)]
       (coll/eduction
         (mapcat
-          (fn index-entry [[modifier value]]
+          (fn index-entry [[modifier value include-in-compartments?]]
             (let [c-hash (c-hash-w-modifier c-hash code modifier)]
               (transduce
-                (map
+                (keep
                   (fn index-compartment-entry [compartment]
-                    (c-sp-vr/index-entry
-                      compartment
-                      c-hash
-                      tid
-                      value
-                      id
-                      hash)))
+                    (when include-in-compartments?
+                      (c-sp-vr/index-entry
+                        compartment
+                        c-hash
+                        tid
+                        value
+                        id
+                        hash))))
                 conj
                 [(sp-vr/index-entry c-hash tid value id hash)
                  (r-sp-v/index-entry tid id hash c-hash value)]

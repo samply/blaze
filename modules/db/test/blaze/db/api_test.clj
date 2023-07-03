@@ -4666,55 +4666,7 @@
                       node "Patient" "0" "Condition"
                       [["code" "system|code-a"]])
               count := 1
-              [0 :id] := "1"))
-
-          (testing "with code only"
-            (given @(pull-compartment-query
-                      node "Patient" "0" "Condition"
-                      [["code" "code-b"]])
-              count := 1
-              [0 :id] := "2"))
-
-          (testing "with system|"
-            (given @(pull-compartment-query
-                      node "Patient" "0" "Condition"
-                      [["code" "system|"]])
-              count := 2
-              [0 :id] := "1"
-              [1 :id] := "2"))))
-
-      (testing "quantity search parameter"
-        (testing "as first clause"
-          (testing "with [number]|[system]|[code]"
-            (given @(pull-compartment-query
-                      node "Patient" "0" "Observation"
-                      [["value-quantity" "42|http://unitsofmeasure.org|kg/m2"]])
-              count := 1
-              [0 :id] := "3"))
-
-          (testing "with [number]|[code]"
-            (given @(pull-compartment-query
-                      node "Patient" "0" "Observation"
-                      [["value-quantity" "23|kg/m2"]])
-              count := 1
-              [0 :id] := "4")))
-
-        (testing "as second clause"
-          (testing "with [number]|[system]|[code]"
-            (given @(pull-compartment-query
-                      node "Patient" "0" "Observation"
-                      [["code" "system|"]
-                       ["value-quantity" "42|http://unitsofmeasure.org|kg/m2"]])
-              count := 1
-              [0 :id] := "3"))
-
-          (testing "with [number]|[code]"
-            (given @(pull-compartment-query
-                      node "Patient" "0" "Observation"
-                      [["code" "system|"]
-                       ["value-quantity" "23|kg/m2"]])
-              count := 1
-              [0 :id] := "4")))))))
+              [0 :id] := "1")))))))
 
 
 (deftest compile-compartment-query-test

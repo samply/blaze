@@ -58,7 +58,7 @@
   [_ code]
   ;; TODO: system
   (when-let [value (type/value code)]
-    [[nil (codec/v-hash value)]]))
+    [[nil (codec/v-hash value) true]]))
 
 
 (defn token-coding-entries [{:keys [code system]}]
@@ -70,7 +70,7 @@
       system
       (conj [nil (codec/v-hash (str system "|"))])
       (and code system)
-      (conj [nil (codec/v-hash (str system "|" code))])
+      (conj [nil (codec/v-hash (str system "|" code)) true])
       (and code (nil? system))
       (conj [nil (codec/v-hash (str "|" code))]))))
 
