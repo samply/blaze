@@ -266,6 +266,7 @@
     ["_id"
      "_lastUpdated"
      "_profile"
+     "active"
      "address"
      "birthdate"
      "bodysite"
