@@ -26,6 +26,8 @@
   :consistent-alias
   {:aliases
    {blaze.db.api d
+    blaze.elm.compiler.external-data ed
+    blaze.elm.expression expr
     ring.util.response ring}}}
 
  :skip-comments true}

@@ -8,6 +8,7 @@
     [blaze.elm.compiler.library :as library]
     [blaze.fhir.operation.evaluate-measure.measure.stratifier :as stratifier]
     [blaze.fhir.operation.evaluate-measure.measure.stratifier-spec]
+    [blaze.fhir.operation.evaluate-measure.test-util :as em-tu]
     [blaze.test-util :as tu :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
@@ -180,10 +181,6 @@
      :function-defs function-defs}))
 
 
-(defn- handle [subject-handle]
-  {:population-handle subject-handle :subject-handle subject-handle})
-
-
 (deftest evaluate
   (testing "one component"
     (testing "gender"
@@ -194,7 +191,8 @@
           [:put {:fhir/type :fhir/Patient :id "3" :gender #fhir/code"male"}]]]
 
         (let [{:keys [db] :as context} (context system library-age-gender)
-              evaluated-populations {:handles [(mapv handle (d/type-list db "Patient"))]}]
+              handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))
+              evaluated-populations {:handles [handles]}]
 
           (testing "report-type population"
             (given (stratifier/evaluate (assoc context :report-type "population")
@@ -248,8 +246,8 @@
         (let [{:keys [db] :as context} (context system library-observation-code)
               evaluated-populations
               {:handles
-               [[{:population-handle (d/resource-handle db "Observation" "0")
-                  :subject-handle (d/resource-handle db "Patient" "0")}]]}]
+               [[{:population-handle (em-tu/resource db "Observation" "0")
+                  :subject-handle (em-tu/resource db "Patient" "0")}]]}]
 
           (testing "report-type population"
             (given (stratifier/evaluate
@@ -278,10 +276,10 @@
         (let [{:keys [db] :as context} (context system library-observation-value-age)
               evaluated-populations
               {:handles
-               [[{:population-handle (d/resource-handle db "Observation" "0")
-                  :subject-handle (d/resource-handle db "Patient" "0")}
-                 {:population-handle (d/resource-handle db "Observation" "1")
-                  :subject-handle (d/resource-handle db "Patient" "0")}]]}]
+               [[{:population-handle (em-tu/resource db "Observation" "0")
+                  :subject-handle (em-tu/resource db "Patient" "0")}
+                 {:population-handle (em-tu/resource db "Observation" "1")
+                  :subject-handle (em-tu/resource db "Patient" "0")}]]}]
 
           (testing "report-type population"
             (given (stratifier/evaluate
@@ -333,7 +331,8 @@
           [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
           (let [{:keys [db] :as context} (context system library-age-gender)
-                evaluated-populations {:handles [(mapv handle (d/type-list db "Patient"))]}]
+                handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))
+                evaluated-populations {:handles [handles]}]
 
             (given (stratifier/evaluate (assoc context
                                           :report-type "population"
@@ -356,7 +355,8 @@
                  :gender #fhir/code"male"
                  :birthDate #fhir/date"1950"}]]]
         (let [{:keys [db] :as context} (context system library-age-gender)
-              evaluated-populations {:handles [(mapv handle (d/type-list db "Patient"))]}]
+              handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))
+              evaluated-populations {:handles [handles]}]
 
           (testing "report-type population"
             (given (stratifier/evaluate (assoc context :report-type "population")
@@ -401,14 +401,14 @@
         (let [{:keys [db] :as context} (context system library-encounter-status-age)
               evaluated-populations
               {:handles
-               [[{:population-handle (d/resource-handle db "Encounter" "0")
-                  :subject-handle (d/resource-handle db "Patient" "0")}
-                 {:population-handle (d/resource-handle db "Encounter" "1")
-                  :subject-handle (d/resource-handle db "Patient" "0")}
-                 {:population-handle (d/resource-handle db "Encounter" "2")
-                  :subject-handle (d/resource-handle db "Patient" "1")}
-                 {:population-handle (d/resource-handle db "Encounter" "3")
-                  :subject-handle (d/resource-handle db "Patient" "2")}]]}]
+               [[{:population-handle (em-tu/resource db "Encounter" "0")
+                  :subject-handle (em-tu/resource db "Patient" "0")}
+                 {:population-handle (em-tu/resource db "Encounter" "1")
+                  :subject-handle (em-tu/resource db "Patient" "0")}
+                 {:population-handle (em-tu/resource db "Encounter" "2")
+                  :subject-handle (em-tu/resource db "Patient" "1")}
+                 {:population-handle (em-tu/resource db "Encounter" "3")
+                  :subject-handle (em-tu/resource db "Patient" "2")}]]}]
 
           (testing "report-type population"
             (given (stratifier/evaluate
@@ -451,10 +451,10 @@
         (let [{:keys [db] :as context} (context system library-observation-value-age)
               evaluated-populations
               {:handles
-               [[{:population-handle (d/resource-handle db "Observation" "0")
-                  :subject-handle (d/resource-handle db "Patient" "0")}
-                 {:population-handle (d/resource-handle db "Observation" "1")
-                  :subject-handle (d/resource-handle db "Patient" "0")}]]}]
+               [[{:population-handle (em-tu/resource db "Observation" "0")
+                  :subject-handle (em-tu/resource db "Patient" "0")}
+                 {:population-handle (em-tu/resource db "Observation" "1")
+                  :subject-handle (em-tu/resource db "Patient" "0")}]]}]
 
           (testing "report-type population"
             (given (stratifier/evaluate

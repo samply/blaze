@@ -8,9 +8,11 @@
     [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.external-data]
+    [blaze.elm.compiler.external-data :as ed]
+    [blaze.elm.compiler.external-data-spec]
     [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.expression :as expr]
+    [blaze.elm.expression-spec]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type]
     [blaze.test-util :refer [with-system]]
@@ -20,9 +22,11 @@
     [juxt.iota :refer [given]])
   (:import
     [blaze.elm.compiler.external_data
-     WithRelatedContextQueryRetrieveExpression]))
+     WithRelatedContextQueryRetrieveExpression]
+    [java.time OffsetDateTime]))
 
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (tu/instrument-compile)
 
@@ -73,15 +77,15 @@
                :library {}}
               expr (c/compile context tu/patient-retrieve-elm)
               db (d/db node)
-              patient (d/resource-handle db "Patient" "0")]
+              patient (ed/mk-resource db (d/resource-handle db "Patient" "0"))]
 
           (testing "eval"
-            (given (core/-eval expr {:db db} patient nil)
+            (given (expr/eval {:db db :now (OffsetDateTime/now)} expr patient)
               [0 fhir-spec/fhir-type] := :fhir/Patient
               [0 :id] := "0"))
 
           (testing "form"
-            (is (= '(retrieve-resource) (core/-form expr)))))))
+            (is (= '(retrieve-resource) (c/form expr)))))))
 
     (testing "Observation"
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
@@ -96,15 +100,15 @@
                :library {}}
               expr (c/compile context #elm/retrieve{:type "Observation"})
               db (d/db node)
-              patient (d/resource-handle db "Patient" "0")]
+              patient (ed/mk-resource db (d/resource-handle db "Patient" "0"))]
 
           (testing "eval"
-            (given (core/-eval expr {:db db} patient nil)
+            (given (expr/eval {:db db :now (OffsetDateTime/now)} expr patient)
               [0 fhir-spec/fhir-type] := :fhir/Observation
               [0 :id] := "1"))
 
           (testing "form"
-            (is (= '(compartment-list-retrieve "Observation") (core/-form expr))))))
+            (is (= '(compartment-list-retrieve "Observation") (c/form expr))))))
 
       (testing "with one code"
         (with-system-data [{:blaze.db/keys [node]} mem-node-config]
@@ -136,17 +140,17 @@
                                                           "code-192300"]]}
                 expr (c/compile context elm)
                 db (d/db node)
-                patient (d/resource-handle db "Patient" "0")]
+                patient (ed/mk-resource db (d/resource-handle db "Patient" "0"))]
 
             (testing "eval"
-              (given (core/-eval expr {:db db} patient nil)
+              (given (expr/eval {:db db :now (OffsetDateTime/now)} expr patient)
                 count := 1
                 [0 fhir-spec/fhir-type] := :fhir/Observation
                 [0 :id] := "1"))
 
             (testing "form"
               (is (= '(compartment-query-retrieve "Observation" [["code" "system-192253|code-192300"]])
-                     (core/-form expr)))))))
+                     (c/form expr)))))))
 
       (testing "with two codes"
         (with-system-data [{:blaze.db/keys [node]} mem-node-config]
@@ -188,9 +192,9 @@
                                         #elm/code ["sys-def-131750" "code-140541"]]}
                 expr (c/compile context elm)
                 db (d/db node)
-                patient (d/resource-handle db "Patient" "0")]
+                patient (ed/mk-resource db (d/resource-handle db "Patient" "0"))]
 
-            (given (core/-eval expr {:db db} patient nil)
+            (given (expr/eval {:db db :now (OffsetDateTime/now)} expr patient)
               count := 2
               [0 fhir-spec/fhir-type] := :fhir/Observation
               [0 :id] := "1"
@@ -240,9 +244,9 @@
                                        #elm/code ["sys-def-131750" "code-140541"]]]}}
                 expr (c/compile context elm)
                 db (d/db node)
-                patient (d/resource-handle db "Patient" "0")]
+                patient (ed/mk-resource db (d/resource-handle db "Patient" "0"))]
 
-            (given (core/-eval expr {:db db} patient nil)
+            (given (expr/eval {:db db :now (OffsetDateTime/now)} expr patient)
               count := 2
               [0 fhir-spec/fhir-type] := :fhir/Observation
               [0 :id] := "1"
@@ -254,8 +258,7 @@
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Specimen :id "0"
-                 :subject
-                 #fhir/Reference{:reference "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
         (let [context
               {:node node
@@ -263,9 +266,9 @@
                :library {}}
               expr (c/compile context tu/patient-retrieve-elm)
               db (d/db node)
-              specimen (d/resource-handle db "Specimen" "0")]
+              specimen (ed/mk-resource db (d/resource-handle db "Specimen" "0"))]
 
-          (given (core/-eval expr {:db db} specimen nil)
+          (given (expr/eval {:db db :now (OffsetDateTime/now)} expr specimen)
             [0 fhir-spec/fhir-type] := :fhir/Patient
             [0 :id] := "0")))))
 
@@ -295,7 +298,7 @@
               expr (c/compile context elm)
               db (d/db node)]
 
-          (given (core/-eval expr {:db db} nil nil)
+          (given (expr/eval {:db db :now (OffsetDateTime/now)} expr nil)
             count := 1
             [0 fhir-spec/fhir-type] := :fhir/Medication
             [0 :id] := "0"))))

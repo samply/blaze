@@ -1,0 +1,8 @@
+library: cql/measures/calcium-years.cql
+group:
+- type: Observation
+  population:
+  - expression: Calcium
+  stratifier:
+  - code: year
+    expression: ObsYear

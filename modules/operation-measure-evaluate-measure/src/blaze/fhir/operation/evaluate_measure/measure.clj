@@ -4,6 +4,7 @@
     [blaze.coll.core :as coll]
     [blaze.cql-translator :as cql-translator]
     [blaze.db.api :as d]
+    [blaze.elm.compiler.external-data :as ed]
     [blaze.elm.compiler.library :as library]
     [blaze.fhir.operation.evaluate-measure.measure.population :as population]
     [blaze.fhir.operation.evaluate-measure.measure.stratifier :as stratifier]
@@ -317,7 +318,7 @@
   (if-let [{:keys [op] :as handle} (d/resource-handle db type id)]
     (if (identical? :delete op)
       (ba/incorrect (missing-subject-msg type id))
-      handle)
+      (ed/mk-resource db handle))
     (ba/incorrect (missing-subject-msg type id))))
 
 
