@@ -1,7 +1,7 @@
 (ns blaze.elm.compiler.library-spec
   (:require
     [blaze.anomaly-spec]
-    [blaze.elm.compiler :as-alias compiler]
+    [blaze.elm.compiler :as-alias c]
     [blaze.elm.compiler-spec]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.expression-def :as-alias expression-def]
@@ -20,22 +20,22 @@
   :fhir.resource/type)
 
 
-(s/def ::compiler/expression-def
-  (s/keys :req-un [::expression-def/name ::expression-def/context ::compiler/expression]))
+(s/def ::c/expression-def
+  (s/keys :req-un [::expression-def/name ::expression-def/context ::c/expression]))
 
 
-(s/def ::compiler/expression-defs
+(s/def ::c/expression-defs
   (s/map-of :elm/name core/expr?))
 
 
-(s/def ::compiler/parameter-default-values
-  (s/map-of :elm/name ::compiler/expression))
+(s/def ::c/parameter-default-values
+  (s/map-of :elm/name ::c/expression))
 
 
-(s/def ::compiler/library
-  (s/keys :req-un [::compiler/expression-defs ::compiler/parameter-default-values]))
+(s/def ::c/library
+  (s/keys :req-un [::c/expression-defs ::c/parameter-default-values]))
 
 
 (s/fdef library/compile-library
   :args (s/cat :node :blaze.db/node :library :elm/library :opts map?)
-  :ret (s/or :library ::compiler/library :anomaly ::anom/anomaly))
+  :ret (s/or :library ::c/library :anomaly ::anom/anomaly))

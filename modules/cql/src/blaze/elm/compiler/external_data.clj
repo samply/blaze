@@ -5,24 +5,59 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.anomaly :as ba :refer [if-ok]]
+    [blaze.coll.core :as coll]
     [blaze.db.api :as d]
+    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.structured-values]
     [blaze.elm.spec]
     [blaze.elm.util :as elm-util]
+    [blaze.fhir.spec.type.protocols :as p]
     [clojure.string :as str])
   (:import
     [blaze.elm.compiler.structured_values SourcePropertyExpression]
+    [clojure.lang ILookup]
     [java.util List]))
 
 
 (set! *warn-on-reflection* true)
 
 
+;; A resource that is a wrapper of a resource-handle that will lazily pull the
+;; resource content if some property other than :id is accessed.
+(deftype Resource [db handle content]
+  p/FhirType
+  (-type [_]
+    (p/-type handle))
+
+  ILookup
+  (valAt [r key]
+    (.valAt r key nil))
+  (valAt [_ key not-found]
+    (case key
+      :id (rh/id handle)
+      (-> (or @content (vreset! content @(d/pull-content db handle)))
+          (get key not-found)))))
+
+
+(defn resource? [x]
+  (instance? Resource x))
+
+
+(defn mk-resource [db handle]
+  (Resource. db handle (volatile! nil)))
+
+
+(defn resource-mapper [db]
+  (map (partial mk-resource db)))
+
+
 (defrecord CompartmentListRetrieveExpression [context data-type]
   core/Expression
   (-eval [_ {:keys [db]} {:keys [id]} _]
-    (d/list-compartment-resource-handles db context id data-type))
+    (coll/eduction
+      (resource-mapper db)
+      (d/list-compartment-resource-handles db context id data-type)))
   (-form [_]
     `(~'compartment-list-retrieve ~data-type)))
 
@@ -30,7 +65,7 @@
 (defrecord CompartmentQueryRetrieveExpression [query data-type clauses]
   core/Expression
   (-eval [_ {:keys [db]} {:keys [id]} _]
-    (d/execute-query db query id))
+    (coll/eduction (resource-mapper db) (d/execute-query db query id)))
   (-form [_]
     `(~'compartment-query-retrieve ~data-type ~clauses)))
 
@@ -75,23 +110,17 @@
     [(subs s 0 idx) (subs s (inc idx))]))
 
 
-(defn- pull [db x]
-  (if (d/resource-handle? x)
-    @(d/pull-content db x)
-    x))
-
-
 ;; TODO: find a better solution than hard coding this case
 (defrecord SpecimenPatientExpression []
   core/Expression
-  (-eval [_ {:keys [db]} resource-or-handle _]
-    (let [{{:keys [reference]} :subject} (pull db resource-or-handle)]
+  (-eval [_ {:keys [db]} resource _]
+    (let [{{:keys [reference]} :subject} resource]
       (when reference
         (when-let [[type id] (split-reference reference)]
           (when (and (= "Patient" type) (string? id))
             (let [{:keys [op] :as handle} (d/resource-handle db "Patient" id)]
               (when-not (identical? :delete op)
-                [@(d/pull-content db handle)]))))))))
+                [(mk-resource db handle)]))))))))
 
 
 (def ^:private specimen-patient-expr
@@ -140,7 +169,9 @@
   (-eval [_ {:keys [db] :as context} resource scope]
     (when-let [{:keys [id]} (core/-eval context-expr context resource scope)]
       (when (string? id)
-        (d/execute-query db query id)))))
+        (coll/eduction
+          (resource-mapper db)
+          (d/execute-query db query id))))))
 
 
 (defrecord WithRelatedContextCodeRetrieveExpression
@@ -152,7 +183,9 @@
       (when-let [type (some-> type name)]
         (when id
           (ba/throw-when
-            (d/compartment-query db type id data-type clauses)))))))
+            (coll/eduction
+              (resource-mapper db)
+              (d/compartment-query db type id data-type clauses))))))))
 
 
 (defn related-context-expr
@@ -179,14 +212,14 @@
   (if (empty? codes)
     (reify core/Expression
       (-eval [_ {:keys [db]} _ _]
-        (vec (d/type-list db data-type)))
+        (coll/eduction (resource-mapper db) (d/type-list db data-type)))
       (-form [_]
         `(~'retrieve ~data-type)))
     (let [clauses [(into [code-property] (map code->clause-value) codes)]]
       (if-ok [query (d/compile-type-query node data-type clauses)]
         (reify core/Expression
           (-eval [_ {:keys [db]} _ _]
-            (vec (d/execute-query db query))))
+            (coll/eduction (resource-mapper db) (d/execute-query db query))))
         ba/throw-anom))))
 
 

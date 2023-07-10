@@ -63,7 +63,7 @@
   (-create [_ context resource scope]
     (filter #(core/-eval expr context resource (assoc scope alias %))))
   (-form [_]
-    `(~'where ~(symbol alias) ~(core/-form expr))))
+    `(~'where (~'fn [~(symbol alias)] ~(core/-form expr)))))
 
 
 (defn- where-xform-factory [alias expr]
@@ -75,7 +75,7 @@
   (-create [_ context resource scope]
     (map #(core/-eval expr context resource (assoc scope alias %))))
   (-form [_]
-    `(~'return ~(symbol alias) ~(core/-form expr))))
+    `(~'return (~'fn [~(symbol alias)] ~(core/-form expr)))))
 
 
 (defrecord DistinctXformFactory []

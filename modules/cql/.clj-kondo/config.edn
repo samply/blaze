@@ -41,6 +41,9 @@
    {blaze.anomaly ba
     blaze.coll.core coll
     blaze.db.api d
+    blaze.elm.compiler c
+    blaze.elm.compiler.external-data ed
+    blaze.elm.expression expr
     cognitect.anomalies anom
     clojure.java.io io
     clojure.spec.alpha s

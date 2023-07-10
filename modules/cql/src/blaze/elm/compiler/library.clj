@@ -1,7 +1,7 @@
 (ns blaze.elm.compiler.library
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.elm.compiler :as compiler]
+    [blaze.elm.compiler :as c]
     [blaze.elm.compiler.function :as function]
     [blaze.elm.deps-infer :as deps-infer]
     [blaze.elm.equiv-relationships :as equiv-relationships]
@@ -15,7 +15,7 @@
   anomaly on errors."
   [context def]
   (let [context (assoc context :eval-context (:context def))]
-    (-> (ba/try-anomaly (update def :expression (partial compiler/compile context)))
+    (-> (ba/try-anomaly (update def :expression (partial c/compile context)))
         (ba/exceptionally #(assoc % :context context :elm/expression (:expression def))))))
 
 
@@ -64,7 +64,7 @@
   [context {:keys [default] :as parameter-def}]
   (if (some? default)
     (-> (ba/try-anomaly
-          (assoc parameter-def :default (compiler/compile context default)))
+          (assoc parameter-def :default (c/compile context default)))
         (ba/exceptionally
           #(assoc % :context context :elm/expression default)))
     parameter-def))

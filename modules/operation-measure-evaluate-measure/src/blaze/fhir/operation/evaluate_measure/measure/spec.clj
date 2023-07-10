@@ -1,6 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.spec
   (:require
     [blaze.db.spec]
+    [blaze.elm.compiler.external-data :as ed]
     [blaze.fhir.operation.evaluate-measure.measure :as-alias measure]
     [blaze.fhir.spec.spec]
     [clojure.spec.alpha :as s]))
@@ -16,11 +17,11 @@
 
 
 (s/def ::measure/population-handle
-  :blaze.db/resource-handle)
+  ed/resource?)
 
 
 (s/def ::measure/subject-handle
-  :blaze.db/resource-handle)
+  ed/resource?)
 
 
 (s/def ::measure/handle

@@ -1,0 +1,8 @@
+library: cql/measures/hemoglobin-years.cql
+group:
+- type: Observation
+  population:
+  - expression: Hemoglobin
+  stratifier:
+  - code: year
+    expression: ObsYear

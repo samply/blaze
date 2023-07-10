@@ -2,6 +2,7 @@
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
     [blaze.db.api :as d]
+    [blaze.elm.compiler.external-data :as ed]
     [blaze.elm.expression :as expr]
     [blaze.elm.util :as elm-util]
     [blaze.fhir.spec :as fhir-spec]
@@ -208,6 +209,7 @@
   [{:keys [db] :as context} expression-def subject-type population-basis]
   (transduce
     (comp
+      (ed/resource-mapper db)
       (partition-all eval-parallel-chunk-size)
       (map #(evaluate-expression** context expression-def % population-basis)))
     (expression-combine-op context)

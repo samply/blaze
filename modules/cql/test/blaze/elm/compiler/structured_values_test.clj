@@ -94,8 +94,7 @@
           (let [elm
                 {:path "identifier"
                  :scope "R"
-                 :type "Property"
-                 :life/source-type "{http://hl7.org/fhir}Patient"}
+                 :type "Property"}
                 identifier
                 #fhir/Identifier
                     {:system #fhir/uri"foo"
@@ -157,8 +156,7 @@
           (let [elm
                 {:path "gender"
                  :scope "R"
-                 :type "Property"
-                 :life/source-type "{http://hl7.org/fhir}Patient"}
+                 :type "Property"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :gender #fhir/code"male"}
@@ -206,8 +204,7 @@
           (let [elm
                 {:path "value"
                  :scope "R"
-                 :type "Property"
-                 :life/source-type "{http://hl7.org/fhir}Observation"}
+                 :type "Property"}
                 entity
                 {:fhir/type :fhir/Observation :id "0"
                  :value "value-114318"}
@@ -239,8 +236,7 @@
               elm
               {:path "identifier"
                :source #elm/expression-ref "Patient"
-               :type "Property"
-               :life/source-type "{http://hl7.org/fhir}Patient"}
+               :type "Property"}
               identifier
               #fhir/Identifier
                   {:system #fhir/uri"foo"
@@ -280,8 +276,7 @@
               elm
               {:path "gender"
                :source #elm/expression-ref "Patient"
-               :type "Property"
-               :life/source-type "{http://hl7.org/fhir}Patient"}
+               :type "Property"}
               source
               {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code"male"}
@@ -328,8 +323,7 @@
               elm
               {:path "value"
                :source #elm/expression-ref "Observation"
-               :type "Property"
-               :life/source-type "{http://hl7.org/fhir}Observation"}
+               :type "Property"}
               source
               {:fhir/type :fhir/Observation :id "0"
                :value "value-114318"}

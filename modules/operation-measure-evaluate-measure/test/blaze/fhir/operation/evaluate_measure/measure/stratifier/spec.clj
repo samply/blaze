@@ -12,7 +12,7 @@
 
 
 (s/def ::stratifier/evaluated-populations
-  (s/keys :req-un [::handles]))
+  (s/keys :req-un [::stratifier/handles]))
 
 
 (s/def ::stratifier/context

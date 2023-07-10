@@ -1,6 +1,8 @@
 (ns blaze.fhir.operation.evaluate-measure.cql-spec
   (:require
     [blaze.db.spec]
+    [blaze.elm.compiler.external-data :as ed]
+    [blaze.elm.compiler.external-data-spec]
     [blaze.elm.compiler.library-spec]
     [blaze.elm.expression-spec]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
@@ -23,7 +25,7 @@
 
 (s/fdef cql/evaluate-individual-expression
   :args (s/cat :context ::cql/evaluate-individual-expression-context
-               :subject-handle :blaze.db/resource-handle
+               :subject-handle ed/resource?
                :name string?)
   :ret (s/or :value any?
              :anomaly ::anom/anomaly))

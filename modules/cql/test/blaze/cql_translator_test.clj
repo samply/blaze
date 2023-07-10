@@ -24,15 +24,18 @@
   (testing "Simple Retrieve"
     (given-translation
       "library Test
-       using FHIR version '3.0.0'
+       using FHIR version '4.0.0'
        define Patients: [Patient]"
       [0 :expression :type] := "Retrieve"
-      [0 :expression :dataType] := "{http://hl7.org/fhir}Patient"))
+      [0 :expression :dataType] := "{http://hl7.org/fhir}Patient"
+      [0 :expression :resultTypeSpecifier :type] := "ListTypeSpecifier"
+      [0 :expression :resultTypeSpecifier :elementType :type] := "NamedTypeSpecifier"
+      [0 :expression :resultTypeSpecifier :elementType :name] := "{http://hl7.org/fhir}Patient"))
 
-  (testing "Retrieve with Code"
+  (testing "Retrieve with code"
     (given-translation
       "library Test
-       using FHIR version '3.0.0'
+       using FHIR version '4.0.0'
        codesystem test: 'test'
        code T0: '0' from test
        define Observations: [Observation: T0]"
@@ -40,7 +43,29 @@
       [0 :expression :dataType] := "{http://hl7.org/fhir}Observation"
       [0 :expression :codes :type] := "ToList"
       [0 :expression :codes :operand :type] := "CodeRef"
-      [0 :expression :codes :operand :name] := "T0"))
+      [0 :expression :codes :operand :name] := "T0"
+      [0 :expression :resultTypeSpecifier :type] := "ListTypeSpecifier"
+      [0 :expression :resultTypeSpecifier :elementType :type] := "NamedTypeSpecifier"
+      [0 :expression :resultTypeSpecifier :elementType :name] := "{http://hl7.org/fhir}Observation"))
+
+  (testing "Query"
+    (given-translation
+      "library Test
+       using FHIR version '4.0.0'
+       include FHIRHelpers version '4.0.0'
+       define Observations: [Observation] O where O.status = 'final'"
+      [0 :expression :type] := "Query"
+      [0 :expression :source 0 :alias] := "O"
+      [0 :expression :source 0 :expression :type] := "Retrieve"
+      [0 :expression :source 0 :expression :dataType] := "{http://hl7.org/fhir}Observation"
+      [0 :expression :source 0 :expression :resultTypeSpecifier :type] := "ListTypeSpecifier"
+      [0 :expression :source 0 :expression :resultTypeSpecifier :elementType :type] := "NamedTypeSpecifier"
+      [0 :expression :source 0 :expression :resultTypeSpecifier :elementType :name] := "{http://hl7.org/fhir}Observation"
+      [0 :expression :where :type] := "Equal"
+      [0 :expression :where :resultTypeName] := "{urn:hl7-org:elm-types:r1}Boolean"
+      [0 :expression :where :operand 0 :type] := "FunctionRef"
+      [0 :expression :where :operand 0 :operand 0 :type] := "Property"
+      [0 :expression :where :operand 0 :operand 0 :scope] := "O"))
 
   (testing "Returns a valid :elm/library"
     (are [cql] (s/valid? :elm/library (translate cql))
@@ -68,8 +93,3 @@
               define Error: (")
       ::anom/category := ::anom/incorrect
       ::anom/message := "Syntax error at <EOF>")))
-
-
-(comment
-  (translate "library \"schaedeldachfraktur\"\nusing FHIR version '4.0.0'\ninclude FHIRHelpers version '4.0.0'\n\ncodesystem icd10: 'http://fhir.de/CodeSystem/bfarm/icd-10-gm'\ncode \"Schädeldachfraktur\": 'S02.0' from icd10\n\ncontext Patient\n\ndefine InInitialPopulation:\n   Length([Condition: \"Schädeldachfraktur\"]) >= 2\n")
-  )

@@ -111,7 +111,7 @@
           (is (= [1 1] (core/-eval expr {} nil nil))))
 
         (testing "form"
-          (is (= '(vector-query (return S (alias-ref S)) [1 1])
+          (is (= '(vector-query (return (fn [S] (alias-ref S))) [1 1])
                  (core/-form expr))))))
 
     (testing "with query hint optimize first"
@@ -129,69 +129,113 @@
 
   (testing "Retrieve queries"
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :gender #fhir/code"female"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :gender #fhir/code"male"}]]]
 
       (let [db (d/db node)
             retrieve {:type "Retrieve" :dataType "{http://hl7.org/fhir}Patient"}
             where {:type "Equal"
                    :operand
-                   [{:path "gender"
-                     :scope "P"
-                     :type "Property"
-                     :resultTypeName "{http://hl7.org/fhir}string"
-                     :life/source-type "{http://hl7.org/fhir}Patient"}
-                    #elm/integer "2"]}
+                   [{:type "FunctionRef"
+                     :name "ToString"
+                     :operand
+                     [{:path "gender"
+                       :scope "P"
+                       :type "Property"
+                       :resultTypeName "{http://hl7.org/fhir}string"}]}
+                    #elm/string "female"]}
             return {:path "gender"
                     :scope "P"
                     :type "Property"
-                    :resultTypeName "{http://hl7.org/fhir}string"
-                    :life/source-type "{http://hl7.org/fhir}Patient"}]
+                    :resultTypeName "{http://hl7.org/fhir}string"}]
 
-        (let [elm {:type "Query"
-                   :source
-                   [{:alias "P"
-                     :expression retrieve}]}
-              expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
+        (testing "source only"
+          (let [elm {:type "Query"
+                     :source
+                     [{:alias "P"
+                       :expression retrieve}]}
+                expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
 
-          (testing "eval"
-            (given (core/-eval expr {:db db} nil nil)
-              [0 fhir-spec/fhir-type] := :fhir/Patient
-              [0 :id] := "0"))
+            (testing "eval"
+              (given (core/-eval expr {:db db} nil nil)
+                count := 2
+                [0 fhir-spec/fhir-type] := :fhir/Patient
+                [0 :id] := "0"
+                [1 fhir-spec/fhir-type] := :fhir/Patient
+                [1 :id] := "1"))
 
-          (testing "form"
-            (is (= '(vector-query distinct (retrieve "Patient")) (core/-form expr)))))
+            (testing "form"
+              (is (= '(vector-query distinct (retrieve "Patient")) (core/-form expr))))))
 
-        (let [elm {:type "Query"
-                   :source
-                   [{:alias "P"
-                     :expression retrieve}]
-                   :where where}
-              expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
-          (testing "eval"
-            (is (empty? (core/-eval expr {:db db} nil nil))))
+        (testing "with where clause"
+          (let [elm {:type "Query"
+                     :source
+                     [{:alias "P"
+                       :expression retrieve}]
+                     :where where}
+                expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
 
-          (testing "form"
-            (is (= '(vector-query
-                      (comp (where P (equal (:gender P) 2)) distinct)
-                      (retrieve "Patient"))
-                   (core/-form expr)))))
+            (testing "eval"
+              (given (core/-eval expr {:db db} nil nil)
+                count := 1
+                [0 fhir-spec/fhir-type] := :fhir/Patient
+                [0 :id] := "0"))
 
-        (let [elm {:type "Query"
-                   :source
-                   [{:alias "P"
-                     :expression retrieve}]
-                   :return {:expression return}}
-              expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
-          (is (nil? (first (core/-eval expr {:db db} nil nil)))))
+            (testing "form"
+              (is (= '(vector-query
+                        (comp
+                          (where
+                            (fn [P]
+                              (equal (call "ToString" (:gender P)) "female")))
+                          distinct)
+                        (retrieve "Patient"))
+                     (core/-form expr))))))
 
-        (let [elm {:type "Query"
-                   :source
-                   [{:alias "P"
-                     :expression retrieve}]
-                   :where where
-                   :return {:expression return}}
-              expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
-          (is (empty? (core/-eval expr {:db db} nil nil)))))))
+        (testing "with return clause"
+          (let [elm {:type "Query"
+                     :source
+                     [{:alias "P"
+                       :expression retrieve}]
+                     :return {:expression return}}
+                expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
+
+            (testing "eval"
+              (given (core/-eval expr {:db db} nil nil)
+                count := 2
+                [0] := #fhir/code"female"
+                [1] := #fhir/code"male"))
+
+            (testing "form"
+              (is (= '(vector-query
+                        (distinct (return (fn [P] (:gender P))))
+                        (retrieve "Patient"))
+                     (core/-form expr))))))
+
+        (testing "with where and return clauses"
+          (let [elm {:type "Query"
+                     :source
+                     [{:alias "P"
+                       :expression retrieve}]
+                     :where where
+                     :return {:expression return}}
+                expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
+
+            (testing "eval"
+              (given (core/-eval expr {:db db} nil nil)
+                count := 1
+                [0] := #fhir/code"female"))
+
+            (testing "form"
+              (is (= '(vector-query
+                        (comp
+                          (where
+                            (fn [P]
+                              (equal (call "ToString" (:gender P)) "female")))
+                          (distinct (return (fn [P] (:gender P)))))
+                        (retrieve "Patient"))
+                     (core/-form expr)))))))))
 
   (testing "Unsupported With clause"
     (let [elm {:type "Query"
@@ -288,14 +332,12 @@
                    :scope "O0"
                    :type "Property"
                    :resultTypeName "{http://hl7.org/fhir}Reference"
-                   :life/scopes #{"O0"}
-                   :life/source-type "{http://hl7.org/fhir}Observation"}
+                   :life/scopes #{"O0"}}
                   {:path "subject"
                    :scope "O1"
                    :type "Property"
                    :resultTypeName "{http://hl7.org/fhir}Reference"
-                   :life/scopes #{"O1"}
-                   :life/source-type "{http://hl7.org/fhir}Observation"}]}
+                   :life/scopes #{"O1"}}]}
             compile-context
             {:node node :eval-context "Unfiltered"}
             xform-factory (queries/compile-with-equiv-clause compile-context "O0" elm)
@@ -329,8 +371,7 @@
                    :scope "O"
                    :type "Property"
                    :resultTypeName "{http://hl7.org/fhir}Reference"
-                   :life/scopes #{"O"}
-                   :life/source-type "{http://hl7.org/fhir}Observation"}]}
+                   :life/scopes #{"O"}}]}
             compile-context
             {:node node :eval-context "Unfiltered"}
             xform-factory (queries/compile-with-equiv-clause compile-context "P" elm)
