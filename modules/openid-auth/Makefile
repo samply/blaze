@@ -1,16 +1,19 @@
 lint:
 	clj-kondo --lint src test deps.edn
 
-prep:
-	clojure -X:deps prep
-
-test: prep
+test:
 	clojure -M:test:kaocha --profile :ci
 
-test-coverage: prep
+test-coverage:
 	clojure -M:test:coverage
+
+deps-tree:
+	clojure -X:deps tree
+
+deps-list:
+	clojure -X:deps list
 
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: lint prep test test-coverage clean
+.PHONY: lint test test-coverage deps-tree deps-list clean

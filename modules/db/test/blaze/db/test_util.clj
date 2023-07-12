@@ -9,7 +9,8 @@
     [blaze.db.tx-cache]
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.local]
-    [blaze.test-util :refer [structure-definition-repo with-system]]
+    [blaze.fhir.test-util :refer [structure-definition-repo]]
+    [blaze.module.test-util :refer [with-system]]
     [integrant.core :as ig]
     [java-time.api :as time]))
 

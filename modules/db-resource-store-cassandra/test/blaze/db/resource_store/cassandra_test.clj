@@ -11,8 +11,10 @@
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec :as fhir-spec]
+    [blaze.fhir.test-util :refer [given-failed-future]]
     [blaze.log]
-    [blaze.test-util :as tu :refer [given-failed-future given-thrown with-system]]
+    [blaze.module.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -22,10 +24,11 @@
     [jsonista.core :as j]
     [taoensso.timbre :as log])
   (:import
-    [com.datastax.oss.driver.api.core CqlSession DriverTimeoutException ConsistencyLevel]
-    [com.datastax.oss.driver.api.core.cql PreparedStatement BoundStatement
-                                          Statement Row AsyncResultSet SimpleStatement]
-    [com.datastax.oss.driver.api.core.metadata Node EndPoint]
+    [com.datastax.oss.driver.api.core
+     ConsistencyLevel CqlSession DriverTimeoutException]
+    [com.datastax.oss.driver.api.core.cql
+     AsyncResultSet BoundStatement PreparedStatement Row SimpleStatement Statement]
+    [com.datastax.oss.driver.api.core.metadata EndPoint Node]
     [com.datastax.oss.driver.api.core.servererrors WriteTimeoutException WriteType]
     [com.fasterxml.jackson.dataformat.cbor CBORFactory]
     [java.net InetSocketAddress]

@@ -1,5 +1,11 @@
 {:deps
- {blaze/kv
+ {blaze/byte-string
+  {:local/root "../byte-string"}
+
+  blaze/coll
+  {:local/root "../coll"}
+
+  blaze/kv
   {:local/root "../kv"}
 
   blaze/metrics
@@ -16,8 +22,8 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/test-util
-    {:local/root "../test-util"}}}
+   {blaze/module-test-util
+    {:local/root "../module-test-util"}}}
 
   :kaocha
   {:extra-deps

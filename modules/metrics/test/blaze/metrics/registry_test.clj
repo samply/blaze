@@ -2,7 +2,8 @@
   (:require
     [blaze.metrics.core :as metrics]
     [blaze.metrics.registry]
-    [blaze.test-util :as tu :refer [given-thrown with-system]]
+    [blaze.module.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.datafy :as datafy]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -18,12 +19,6 @@
 
 (st/instrument)
 (log/set-level! :trace)
-
-
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
 
 
 (test/use-fixtures :each tu/fixture)

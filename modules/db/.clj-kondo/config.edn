@@ -5,7 +5,7 @@
   blaze.db.api-test-perf/with-system-data clojure.core/with-open
   blaze.db.impl.macros/with-open-coll clojure.core/with-open
   blaze.db.test-util/with-system-data clojure.core/with-open
-  blaze.test-util/with-system clojure.core/with-open
+  blaze.module.test-util/with-system clojure.core/with-open
   prometheus.alpha/defcounter clojure.core/def
   prometheus.alpha/defhistogram clojure.core/def}
 

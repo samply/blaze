@@ -15,7 +15,7 @@
     [blaze.elm.expression-spec]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type]
-    [blaze.test-util :refer [with-system]]
+    [blaze.module.test-util :refer [with-system]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]

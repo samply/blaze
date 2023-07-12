@@ -4,10 +4,11 @@
     [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.async.comp-spec]
     [blaze.executors :as ex]
-    [blaze.test-util :as tu :refer [given-failed-future]]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom])
+    [cognitect.anomalies :as anom]
+    [juxt.iota :refer [given]])
   (:import
     [java.util.concurrent TimeUnit]))
 
@@ -17,6 +18,11 @@
 
 
 (test/use-fixtures :each tu/fixture)
+
+
+(defmacro given-failed-future [future & body]
+  `(given (try (deref ~future) (is false) (catch Exception e# (ba/anomaly e#)))
+     ~@body))
 
 
 (deftest completed-future-test

@@ -1,5 +1,5 @@
 {:lint-as
- {blaze.test-util/with-system clojure.core/with-open
+ {blaze.module.test-util/with-system clojure.core/with-open
   prometheus.alpha/defcounter clojure.core/def
   prometheus.alpha/defhistogram clojure.core/def}
 

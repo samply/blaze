@@ -1,6 +1,6 @@
 {:lint-as
  {blaze.db.kv.mem-test/with-system-data clojure.core/with-open
-  blaze.test-util/with-system clojure.core/with-open}
+  blaze.module.test-util/with-system clojure.core/with-open}
 
  :linters
  {:unsorted-required-namespaces

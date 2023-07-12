@@ -2,8 +2,9 @@
   (:refer-clojure :exclude [error-handler])
   (:require
     [blaze.anomaly :as ba]
+    [blaze.module.test-util :refer [with-system]]
     [blaze.server]
-    [blaze.test-util :as tu :refer [given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]

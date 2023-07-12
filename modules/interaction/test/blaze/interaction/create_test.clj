@@ -8,8 +8,7 @@
     [blaze.anomaly :as ba]
     [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
-    [blaze.db.api-stub
-     :refer [create-mem-node-config with-system-data]]
+    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
     [blaze.db.resource-store :as rs]
     [blaze.db.spec :refer [node?]]
     [blaze.fhir.response.create-spec]
@@ -18,7 +17,8 @@
     [blaze.interaction.test-util :refer [wrap-error]]
     [blaze.interaction.util-spec]
     [blaze.log]
-    [blaze.test-util :as tu :refer [given-thrown with-system]]
+    [blaze.module.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -76,7 +76,7 @@
 
 
 (defn create-config [node-config]
-  (assoc (create-mem-node-config node-config)
+  (assoc (api-stub/create-mem-node-config node-config)
     :blaze.interaction/create
     {:node (ig/ref :blaze.db/node)
      :executor (ig/ref :blaze.test/executor)
@@ -99,7 +99,7 @@
 
 
 (defmacro with-handler [[handler-binding] & more]
-  (let [[txs body] (tu/extract-txs-body more)]
+  (let [[txs body] (api-stub/extract-txs-body more)]
     `(with-system-data [{handler# :blaze.interaction/create} config]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults wrap-error)]

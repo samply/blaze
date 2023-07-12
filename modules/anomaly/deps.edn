@@ -1,14 +1,12 @@
 {:deps
- {
-  ;; TODO: only needed for prepping
-  blaze/fhir-structure
-  {:local/root "../fhir-structure"}
-
-  blaze/spec
+ {blaze/spec
   {:local/root "../spec"}
 
   com.cognitect/anomalies
-  {:mvn/version "0.1.12"}}
+  {:mvn/version "0.1.12"}
+
+  io.aviso/pretty
+  {:mvn/version "1.1.1"}}
 
  :aliases
  {:test

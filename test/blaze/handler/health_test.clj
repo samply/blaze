@@ -1,8 +1,9 @@
 (ns blaze.handler.health-test
   (:require
+    [blaze.fhir.test-util.ring :refer [call]]
     [blaze.handler.health]
-    [blaze.test-util :as tu :refer [with-system]]
-    [blaze.test-util.ring :refer [call]]
+    [blaze.module.test-util :refer [with-system]]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest]]
     [juxt.iota :refer [given]]

@@ -1,9 +1,10 @@
 (ns blaze.scheduler-test
   (:require
     [blaze.executors :as ex]
+    [blaze.module.test-util :refer [with-system]]
     [blaze.scheduler :as sched]
     [blaze.scheduler-spec]
-    [blaze.test-util :as tu :refer [with-system]]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [integrant.core :as ig]

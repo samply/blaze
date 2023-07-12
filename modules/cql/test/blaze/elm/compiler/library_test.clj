@@ -6,7 +6,8 @@
     [blaze.elm.compiler.library :as library]
     [blaze.elm.compiler.library-spec]
     [blaze.fhir.spec.type.system]
-    [blaze.test-util :refer [with-system]]
+    [blaze.module.test-util :refer [with-system]]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [cognitect.anomalies :as anom]
@@ -16,13 +17,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 ;; 5.1. Library

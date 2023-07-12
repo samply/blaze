@@ -2,9 +2,9 @@
   (:require
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec-spec]
+    [blaze.fhir.test-util.ring :refer [call]]
     [blaze.rest-api.middleware.output :refer [wrap-output]]
     [blaze.test-util :as tu]
-    [blaze.test-util.ring :refer [call]]
     [clojure.data.xml :as xml]
     [clojure.java.io :as io]
     [clojure.spec.test.alpha :as st]

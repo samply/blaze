@@ -2,7 +2,7 @@
  {blaze.anomaly/when-ok clojure.core/let
   blaze.async.comp/do-sync clojure.core/let
   blaze.rest-api.metadata-handler-test/with-handler clojure.core/fn
-  blaze.test-util/with-system clojure.core/with-open
+  blaze.module.test-util/with-system clojure.core/with-open
   prometheus.alpha/defcounter clojure.core/def
   prometheus.alpha/defhistogram clojure.core/def}
 

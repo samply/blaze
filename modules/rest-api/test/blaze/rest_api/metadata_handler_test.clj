@@ -1,8 +1,9 @@
 (ns blaze.rest-api.metadata-handler-test
   (:require
     [blaze.fhir.structure-definition-repo.spec :refer [structure-definition-repo?]]
+    [blaze.module.test-util :refer [with-system]]
     [blaze.rest-api.metadata-handler]
-    [blaze.test-util :as tu :refer [given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
