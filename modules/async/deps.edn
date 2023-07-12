@@ -5,10 +5,6 @@
   blaze/executor
   {:local/root "../executor"}
 
-  ;; TODO: only needed for prepping
-  blaze/fhir-structure
-  {:local/root "../fhir-structure"}
-
   com.taoensso/timbre
   {:mvn/version "5.2.1"}}
 

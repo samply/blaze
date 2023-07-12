@@ -7,7 +7,7 @@
   (:require
     [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
-    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
     [blaze.db.resource-store :as rs]
     [blaze.interaction.history.instance]
     [blaze.interaction.history.util-spec]
@@ -77,7 +77,7 @@
 
 
 (def config
-  (assoc mem-node-config
+  (assoc api-stub/mem-node-config
     :blaze.interaction.history/instance
     {:node (ig/ref :blaze.db/node)
      :clock (ig/ref :blaze.test/fixed-clock)
@@ -95,7 +95,7 @@
 
 
 (defmacro with-handler [[handler-binding] & more]
-  (let [[txs body] (tu/extract-txs-body more)]
+  (let [[txs body] (api-stub/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
                          handler# :blaze.interaction.history/instance} config]
        ~txs

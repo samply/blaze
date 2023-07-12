@@ -1,10 +1,5 @@
 {:deps
- {
-  ;; TODO: only needed for prepping
-  blaze/fhir-structure
-  {:local/root "../fhir-structure"}
-
-  com.google.protobuf/protobuf-java
+ {com.google.protobuf/protobuf-java
   {:mvn/version "3.23.3"}}
 
  :aliases

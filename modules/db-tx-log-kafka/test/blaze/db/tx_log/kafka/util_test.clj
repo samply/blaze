@@ -3,6 +3,7 @@
     [blaze.db.tx-log.kafka.util :as u]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
+    [blaze.fhir.test-util]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
@@ -10,10 +11,10 @@
     [taoensso.timbre :as log])
   (:import
     [java.time Instant]
+    [java.util Optional]
     [org.apache.kafka.clients.consumer ConsumerRecord]
-    [org.apache.kafka.common.record TimestampType]
     [org.apache.kafka.common.header.internals RecordHeaders]
-    [java.util Optional]))
+    [org.apache.kafka.common.record TimestampType]))
 
 
 (set! *warn-on-reflection* true)

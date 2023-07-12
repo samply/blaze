@@ -45,8 +45,8 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/test-util
-    {:local/root "../test-util"}}}
+   {blaze/fhir-test-util
+    {:local/root "../fhir-test-util"}}}
 
   :kaocha
   {:extra-deps
@@ -59,8 +59,8 @@
   {:extra-paths ["test-perf"]
 
    :extra-deps
-   {blaze/test-util
-    {:local/root "../test-util"}
+   {blaze/fhir-test-util
+    {:local/root "../fhir-test-util"}
 
     criterium/criterium
     {:mvn/version "0.4.6"}

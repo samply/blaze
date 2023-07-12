@@ -1,7 +1,8 @@
 (ns blaze.db.search-param-registry-test-perf
   (:require
     [blaze.db.search-param-registry :as sr]
-    [blaze.test-util :refer [structure-definition-repo with-system]]
+    [blaze.fhir.test-util :refer [structure-definition-repo]]
+    [blaze.module.test-util :refer [with-system]]
     [clojure.test :refer [deftest testing]]
     [criterium.core :as criterium]
     [taoensso.timbre :as log]))

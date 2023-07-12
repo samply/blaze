@@ -1,4 +1,4 @@
-(ns blaze.test-util.ring
+(ns blaze.fhir.test-util.ring
   (:require
     [blaze.async.comp :as ac]))
 

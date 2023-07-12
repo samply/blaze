@@ -1,23 +1,5 @@
 {:deps
- {blaze/anomaly
-  {:local/root "../anomaly"}
-
-  blaze/async
-  {:local/root "../async"}
-
-  blaze/byte-buffer
-  {:local/root "../byte-buffer"}
-
-  blaze/executor
-  {:local/root "../executor"}
-
-  blaze/fhir-structure
-  {:local/root "../fhir-structure"}
-
-  integrant/integrant
-  {:mvn/version "0.8.1"}
-
-  org.clojars.akiel/iota
+ {org.clojars.akiel/iota
   {:mvn/version "0.1"}
 
   org.clojure/test.check

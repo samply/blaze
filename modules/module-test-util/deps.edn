@@ -1,0 +1,6 @@
+{:deps
+ {blaze/test-util
+  {:local/root "../test-util"}
+
+  integrant/integrant
+  {:mvn/version "0.8.1"}}}

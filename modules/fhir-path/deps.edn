@@ -10,11 +10,8 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/test-util
-    {:local/root "../test-util"}
-
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}}}
+   {blaze/fhir-test-util
+    {:local/root "../fhir-test-util"}}}
 
   :kaocha
   {:extra-deps

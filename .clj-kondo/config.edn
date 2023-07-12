@@ -1,5 +1,5 @@
 {:lint-as
- {blaze.test-util/with-system clojure.core/with-open}
+ {blaze.module.test-util/with-system clojure.core/with-open}
 
  :linters
  {:unsorted-required-namespaces

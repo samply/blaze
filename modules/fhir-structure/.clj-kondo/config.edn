@@ -1,7 +1,7 @@
 {:lint-as
  {blaze.fhir.spec.type.macros/def-primitive-type clojure.core/deftype
   blaze.fhir.spec.type.macros/defextended clojure.core/defrecord
-  blaze.test-util/with-system clojure.core/with-open}
+  blaze.module.test-util/with-system clojure.core/with-open}
 
  :hooks
  {:macroexpand

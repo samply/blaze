@@ -1,7 +1,7 @@
 {:lint-as
  {blaze.anomaly/when-ok clojure.core/let
   blaze.fhir.operation.graphql-test/with-handler clojure.core/fn
-  blaze.test-util/with-system clojure.core/with-open}
+  blaze.module.test-util/with-system clojure.core/with-open}
 
  :linters
  {:unsorted-required-namespaces

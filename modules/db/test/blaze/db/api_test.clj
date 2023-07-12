@@ -23,8 +23,10 @@
     [blaze.fhir.spec.generators :as fg]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
+    [blaze.fhir.test-util :refer [given-failed-future]]
     [blaze.log]
-    [blaze.test-util :as tu :refer [given-failed-future satisfies-prop with-system]]
+    [blaze.module.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [satisfies-prop]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [clojure.test.check.generators :as gen]
@@ -4159,7 +4161,7 @@
       (testing "an unknown search-param errors"
         (doseq [target [node (d/db node)]]
           (given (d/compile-type-query target "Patient" [["foo" "bar"]
-                                                       ["active" "true"]])
+                                                         ["active" "true"]])
             ::anom/category := ::anom/not-found
             ::anom/message := "The search-param with code `foo` and type `Patient` was not found.")))
 
