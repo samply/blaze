@@ -3,7 +3,7 @@
   {:local/root "../async"}
 
   com.datastax.oss/java-driver-core
-  {:mvn/version "4.16.0"}
+  {:mvn/version "4.17.0"}
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   com.fasterxml.jackson.core/jackson-databind
