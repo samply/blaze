@@ -5,8 +5,8 @@ PATIENT_ID=$(curl -s "$BASE/Patient?identifier=http://hl7.org/fhir/sid/us-ssn|99
 OBSERVATION_COUNT=$(curl -s "$BASE/Patient/$PATIENT_ID/Observation?_summary=count" | jq .total)
 
 if [ "$OBSERVATION_COUNT" = "1277" ]; then
-  echo "Success: lab count ($OBSERVATION_COUNT) equals the expected count"
+  echo "OK 👍: lab count ($OBSERVATION_COUNT) equals the expected count"
 else
-  echo "Fail: lab count ($OBSERVATION_COUNT) != 1277"
+  echo "Fail 😞: lab count ($OBSERVATION_COUNT) != 1277"
   exit 1
 fi

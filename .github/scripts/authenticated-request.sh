@@ -10,15 +10,15 @@ fi
 BASE="http://localhost:8080/fhir"
 
 if [ "200" = "$(curl -s --oauth2-bearer "$ACCESS_TOKEN" -o /dev/null -w '%{response_code}' "$BASE")" ]; then
-  echo "OK: successful authenticated system search request"
+  echo "OK 👍: successful authenticated system search request"
 else
-  echo "Fail: failed authenticated system search request"
+  echo "Fail 😞: failed authenticated system search request"
   exit 1
 fi
 
 if [ "200" = "$(curl -s --oauth2-bearer "$ACCESS_TOKEN" -H "Content-Type: application/fhir+json" -d @.github/openid-auth-test/batch-bundle.json "$BASE" | jq -r '.entry[].response.status')" ]; then
-  echo "OK: successful authenticated batch request"
+  echo "OK 👍: successful authenticated batch request"
 else
-  echo "Fail: failed authenticated batch request"
+  echo "Fail 😞: failed authenticated batch request"
   exit 1
 fi

@@ -20,7 +20,7 @@ size() {
   if [ "$DOWNLOAD_SIZE" = "$COUNT_SIZE" ]; then
     echo "$DOWNLOAD_SIZE"
   else
-    echo "Fail: the download size is $DOWNLOAD_SIZE, expected $COUNT_SIZE"
+    echo "Fail 😞: the download size is $DOWNLOAD_SIZE, expected $COUNT_SIZE"
     exit 1
   fi
 }
