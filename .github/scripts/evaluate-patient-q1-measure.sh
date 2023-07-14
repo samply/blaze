@@ -88,17 +88,17 @@ MEASURE_ID=$(create-measure "$MEASURE_URI" "$LIBRARY_URI" | post "$BASE" "Measur
 MALE_PATIENT_ID=$(curl -s "$BASE/Patient?gender=male&_count=1" | jq -r '.entry[].resource.id')
 COUNT=$(evaluate-measure "$BASE" "$MEASURE_ID" "$MALE_PATIENT_ID" | jq -r ".group[0].population[0].count")
 if [ "$COUNT" = "1" ]; then
-  echo "Success: count ($COUNT) equals the expected count"
+  echo "OK 👍: count ($COUNT) equals the expected count"
 else
-  echo "Fail: count ($COUNT) != 1"
+  echo "Fail 😞: count ($COUNT) != 1"
   exit 1
 fi
 
 FEMALE_PATIENT_ID=$(curl -s "$BASE/Patient?gender=female&_count=1" | jq -r ".entry[].resource.id")
 COUNT=$(evaluate-measure "$BASE" "$MEASURE_ID" "$FEMALE_PATIENT_ID" | jq -r ".group[0].population[0].count")
 if [ "$COUNT" = "0" ]; then
-  echo "Success: count ($COUNT) equals the expected count"
+  echo "OK 👍: count ($COUNT) equals the expected count"
 else
-  echo "Fail: count ($COUNT) != 0"
+  echo "Fail 😞: count ($COUNT) != 0"
   exit 1
 fi

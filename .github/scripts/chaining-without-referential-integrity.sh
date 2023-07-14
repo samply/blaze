@@ -8,8 +8,8 @@ curl -sXPUT -d '{"resourceType" : "Patient", "id": "0", "gender": "male"}' -H 'C
 RESULT="$(curl -sH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$BASE/Observation?patient.gender=male&_summary=count" | jq -r '.total')"
 
 if [ "$RESULT" = "1" ]; then
-  echo "Success: chaining works"
+  echo "OK 👍: chaining works"
 else
-  echo "Fail: chaining doesn't work"
+  echo "Fail 😞: chaining doesn't work"
   exit 1
 fi
