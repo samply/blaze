@@ -14,7 +14,7 @@
   {:local/root "../module-base"}
 
   com.github.ben-manes.caffeine/caffeine
-  {:mvn/version "3.1.7"}
+  {:mvn/version "3.1.8"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
   {:mvn/version "2.15.2"}
@@ -47,7 +47,7 @@
  {:build
   {:deps
    {io.github.clojure/tools.build
-    {:git/tag "v0.9.4" :git/sha "76b78fe"}}
+    {:git/tag "v0.9.5" :git/sha "24f2894"}}
    :ns-default build}
 
   :test
