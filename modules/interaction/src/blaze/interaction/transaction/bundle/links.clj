@@ -4,9 +4,11 @@
     [blaze.fhir.spec.type :as type]))
 
 
-(defn- resolve-link [index link]
-  (if-let [{:fhir/keys [type] :keys [id]} (get index link)]
-    (str (name type) "/" id)
+(defn- resolve-link [index creator link]
+  (if-let [{:fhir/keys [type] :keys [id]} (get index (type/value link))]
+    (if (record? link)
+      (assoc link :value (str (name type) "/" id))
+      (creator (str (name type) "/" id)))
     link))
 
 
@@ -18,9 +20,13 @@
   (let [type (fhir-spec/fhir-type value)]
     (cond
       (identical? :fhir/Reference type)
-      (if-let [reference (:reference value)]
-        (assoc value :reference (resolve-link index reference))
-        value)
+      (update value :reference (partial resolve-link index type/string))
+
+      (identical? :fhir/uri type)
+      (resolve-link index type/uri value)
+
+      (identical? :fhir/url type)
+      (resolve-link index type/url value)
 
       (fhir-spec/primitive? type)
       value
@@ -31,7 +37,7 @@
 
 (defn- resolve-element-links [context value]
   (if (sequential? value)
-    (mapv #(resolve-single-element-links context %) value)
+    (mapv (partial resolve-single-element-links context) value)
     (resolve-single-element-links context value)))
 
 
@@ -49,7 +55,9 @@
 (defn- index-resources-by-full-url [entries]
   (reduce
     (fn [r {:keys [fullUrl resource]}]
-      (assoc r (some-> fullUrl type/value) resource))
+      (if-let [fullUrl (type/value fullUrl)]
+        (assoc r fullUrl resource)
+        r))
     {}
     entries))
 
