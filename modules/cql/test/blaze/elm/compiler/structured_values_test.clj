@@ -8,7 +8,8 @@
     [blaze.elm.code-spec]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.compiler.core-spec]
+    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
     [blaze.fhir.spec.type]
@@ -41,12 +42,28 @@
 ;; elements of the tuple. Note that the value of an element may be any
 ;; expression, including another Tuple.
 (deftest compile-tuple-test
-  (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
-    #elm/tuple{"id" #elm/integer "1"}
-    {:id 1}
+  (testing "Static"
+    (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
+      #elm/tuple{"id" #elm/integer "1"}
+      {:id 1}
 
-    #elm/tuple{"id" #elm/integer "1" "name" #elm/string "john"}
-    {:id 1 :name "john"}))
+      #elm/tuple{"id" #elm/integer "1" "name" #elm/string "john"}
+      {:id 1 :name "john"}))
+
+  (testing "Dynamic"
+    (are [elm res] (= res (tu/dynamic-compile-eval elm))
+      #elm/tuple{"id" #elm/parameter-ref "1"}
+      {:id 1}
+
+      #elm/tuple{"id" #elm/parameter-ref "1" "name" #elm/parameter-ref "a"}
+      {:id 1 :name "a"})
+
+    (testing "static"
+      (is (false? (core/-static (tu/dynamic-compile #elm/tuple{"id" #elm/parameter-ref "1"})))))
+
+    (testing "form"
+      (is (= '{:id (param-ref "x")}
+             (core/-form (tu/dynamic-compile #elm/tuple{"id" #elm/parameter-ref "x"})))))))
 
 
 ;; 2.2. Instance
@@ -97,20 +114,24 @@
                  :type "Property"}
                 identifier
                 #fhir/Identifier
-                    {:system #fhir/uri"foo"
-                     :value "bar"}
+                        {:system #fhir/uri"foo"
+                         :value "bar"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :identifier [identifier]}
                 expr
                 (c/compile
                   {:eval-context "Patient"}
-                  elm)
-                result (coll/first (core/-eval expr nil nil {"R" entity}))]
-            (is (= identifier result))
+                  elm)]
+
+            (testing "eval"
+              (is (= identifier (coll/first (core/-eval expr nil nil {"R" entity})))))
+
+            (testing "expression is dynamic"
+              (is (false? (core/-static expr))))
 
             (testing "form"
-              (is (= '(:identifier R) (core/-form expr))))))
+              (has-form expr '(:identifier R)))))
 
         (testing "without source-type"
           (let [elm
@@ -119,17 +140,24 @@
                  :type "Property"}
                 identifier
                 #fhir/Identifier
-                    {:system #fhir/uri"foo"
-                     :value "bar"}
+                        {:system #fhir/uri"foo"
+                         :value "bar"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :identifier [identifier]}
                 expr
                 (c/compile
                   {:eval-context "Patient"}
-                  elm)
-                result (coll/first (core/-eval expr nil nil {"R" entity}))]
-            (is (= identifier result)))))
+                  elm)]
+
+            (testing "eval"
+              (is (= identifier (coll/first (core/-eval expr nil nil {"R" entity})))))
+
+            (testing "expression is dynamic"
+              (is (false? (core/-static expr))))
+
+            (testing "form"
+              (has-form expr '(:identifier R))))))
 
       (testing "Patient.extension"
         (testing "without source-type"
@@ -139,17 +167,24 @@
                  :type "Property"}
                 extension
                 #fhir/Extension
-                    {:url "foo"
-                     :valueString "bar"}
+                        {:url "foo"
+                         :valueString "bar"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :extension [extension]}
                 expr
                 (c/compile
                   {:eval-context "Patient"}
-                  elm)
-                result (coll/first (core/-eval expr nil nil {"R" entity}))]
-            (is (= extension result)))))
+                  elm)]
+
+            (testing "eval"
+              (is (= extension (coll/first (core/-eval expr nil nil {"R" entity})))))
+
+            (testing "expression is dynamic"
+              (is (false? (core/-static expr))))
+
+            (testing "form"
+              (has-form expr '(:extension R))))))
 
       (testing "Patient.gender"
         (testing "with source-type"
@@ -164,7 +199,15 @@
                 (c/compile
                   {:eval-context "Patient"}
                   elm)]
-            (is (= #fhir/code"male" (core/-eval expr nil nil {"R" entity})))))
+
+            (testing "eval"
+              (is (= #fhir/code"male" (core/-eval expr nil nil {"R" entity}))))
+
+            (testing "expression is dynamic"
+              (is (false? (core/-static expr))))
+
+            (testing "form"
+              (has-form expr '(:gender R)))))
 
         (testing "without source-type"
           (let [elm
@@ -178,7 +221,15 @@
                 (c/compile
                   {:eval-context "Patient"}
                   elm)]
-            (is (= #fhir/code"male" (core/-eval expr nil nil {"R" entity}))))))
+
+            (testing "eval"
+              (is (= #fhir/code"male" (core/-eval expr nil nil {"R" entity}))))
+
+            (testing "expression is dynamic"
+              (is (false? (core/-static expr))))
+
+            (testing "form"
+              (has-form expr '(:gender R))))))
 
       (testing "Patient.birthDate.value"
         (let [elm
@@ -193,11 +244,19 @@
               (c/compile
                 {:eval-context "Patient"}
                 elm)]
-          (are [birth-date res] (= res (core/-eval expr nil nil {"R" (entity birth-date)}))
-            #fhir/date"2023-05-07" #system/date"2023-05-07"
-            #fhir/date{:id "foo" :value "2023-05-07"} #system/date"2023-05-07"
-            #fhir/date{:id "foo"} nil
-            #fhir/date{:extension [#fhir/Extension{:url "foo"}]} nil)))
+
+          (testing "eval"
+            (are [birth-date res] (= res (core/-eval expr nil nil {"R" (entity birth-date)}))
+              #fhir/date"2023-05-07" #system/date"2023-05-07"
+              #fhir/date{:id "foo" :value "2023-05-07"} #system/date"2023-05-07"
+              #fhir/date{:id "foo"} nil
+              #fhir/date{:extension [#fhir/Extension{:url "foo"}]} nil))
+
+          (testing "expression is dynamic"
+            (is (false? (core/-static expr))))
+
+          (testing "form"
+            (has-form expr '(:value (:birthDate R))))))
 
       (testing "Observation.value"
         (testing "with source-type"
@@ -212,7 +271,15 @@
                 (c/compile
                   {:eval-context "Patient"}
                   elm)]
-            (is (= "value-114318" (core/-eval expr nil nil {"R" entity})))))
+
+            (testing "eval"
+              (is (= "value-114318" (core/-eval expr nil nil {"R" entity}))))
+
+            (testing "expression is dynamic"
+              (is (false? (core/-static expr))))
+
+            (testing "form"
+              (has-form expr '(:value R)))))
 
         (testing "without source-type"
           (let [elm
@@ -226,7 +293,15 @@
                 (c/compile
                   {:eval-context "Patient"}
                   elm)]
-            (is (= "value-114318" (core/-eval expr nil nil {"R" entity}))))))))
+
+            (testing "eval"
+              (is (= "value-114318" (core/-eval expr nil nil {"R" entity}))))
+
+            (testing "expression is dynamic"
+              (is (false? (core/-static expr))))
+
+            (testing "form"
+              (has-form expr '(:value R))))))))
 
   (testing "with source"
     (testing "Patient.identifier"
@@ -239,17 +314,21 @@
                :type "Property"}
               identifier
               #fhir/Identifier
-                  {:system #fhir/uri"foo"
-                   :value "bar"}
+                      {:system #fhir/uri"foo"
+                       :value "bar"}
               source
               {:fhir/type :fhir/Patient :id "0"
                :identifier [identifier]}
-              expr (c/compile {:library library :eval-context "Patient"} elm)
-              result (coll/first (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil))]
-          (is (= identifier result))
+              expr (c/compile {:library library :eval-context "Patient"} elm)]
+
+          (testing "eval"
+            (is (= identifier (coll/first (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil)))))
+
+          (testing "expression is dynamic"
+            (is (false? (core/-static expr))))
 
           (testing "form"
-            (is (= '(:identifier (expr-ref "Patient")) (core/-form expr))))))
+            (has-form expr '(:identifier (expr-ref "Patient"))))))
 
       (testing "without source-type"
         (let [library {:statements {:def [{:type "ExpressionDef"
@@ -260,14 +339,21 @@
                :type "Property"}
               identifier
               #fhir/Identifier
-                  {:system #fhir/uri"foo"
-                   :value "bar"}
+                      {:system #fhir/uri"foo"
+                       :value "bar"}
               source
               {:fhir/type :fhir/Patient :id "0"
                :identifier [identifier]}
-              expr (c/compile {:library library :eval-context "Patient"} elm)
-              result (coll/first (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil))]
-          (is (= identifier result)))))
+              expr (c/compile {:library library :eval-context "Patient"} elm)]
+
+          (testing "eval"
+            (is (= identifier (coll/first (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil)))))
+
+          (testing "expression is dynamic"
+            (is (false? (core/-static expr))))
+
+          (testing "form"
+            (has-form expr '(:identifier (expr-ref "Patient")))))))
 
     (testing "Patient.gender"
       (testing "with source-type"
@@ -280,9 +366,16 @@
               source
               {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code"male"}
-              expr (c/compile {:library library :eval-context "Patient"} elm)
-              result (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil)]
-          (is (= #fhir/code"male" result))))
+              expr (c/compile {:library library :eval-context "Patient"} elm)]
+
+          (testing "eval"
+            (is (= #fhir/code"male" (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil))))
+
+          (testing "expression is dynamic"
+            (is (false? (core/-static expr))))
+
+          (testing "form"
+            (has-form expr '(:gender (expr-ref "Patient"))))))
 
       (testing "without source-type"
         (let [library {:statements {:def [{:type "ExpressionDef"
@@ -294,9 +387,16 @@
               source
               {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code"male"}
-              expr (c/compile {:library library :eval-context "Patient"} elm)
-              result (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil)]
-          (is (= #fhir/code"male" result)))))
+              expr (c/compile {:library library :eval-context "Patient"} elm)]
+
+          (testing "eval"
+            (is (= #fhir/code"male" (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil))))
+
+          (testing "expression is dynamic"
+            (is (false? (core/-static expr))))
+
+          (testing "form"
+            (has-form expr '(:gender (expr-ref "Patient")))))))
 
     (testing "Patient.birthDate.value"
       (let [library {:statements {:def [{:type "ExpressionDef"
@@ -310,11 +410,19 @@
               {:fhir/type :fhir/Patient :id "0"
                :birthDate x})
             expr (c/compile {:library library :eval-context "Patient"} elm)]
-        (are [birth-date res] (= res (core/-eval expr {:expression-defs {"Patient" {:expression (source birth-date)}}} nil nil))
-          #fhir/date"2023-05-07" #system/date"2023-05-07"
-          #fhir/date{:id "foo" :value "2023-05-07"} #system/date"2023-05-07"
-          #fhir/date{:id "foo"} nil
-          #fhir/date{:extension [#fhir/Extension{:url "foo"}]} nil)))
+
+        (testing "eval"
+          (are [birth-date res] (= res (core/-eval expr {:expression-defs {"Patient" {:expression (source birth-date)}}} nil nil))
+            #fhir/date"2023-05-07" #system/date"2023-05-07"
+            #fhir/date{:id "foo" :value "2023-05-07"} #system/date"2023-05-07"
+            #fhir/date{:id "foo"} nil
+            #fhir/date{:extension [#fhir/Extension{:url "foo"}]} nil))
+
+        (testing "expression is dynamic"
+          (is (false? (core/-static expr))))
+
+        (testing "form"
+          (has-form expr '(:value (:birthDate (expr-ref "Patient")))))))
 
     (testing "Observation.value"
       (testing "with source-type"
@@ -327,9 +435,16 @@
               source
               {:fhir/type :fhir/Observation :id "0"
                :value "value-114318"}
-              expr (c/compile {:library library :eval-context "Patient"} elm)
-              result (core/-eval expr {:expression-defs {"Observation" {:expression source}}} nil nil)]
-          (is (= "value-114318" result))))
+              expr (c/compile {:library library :eval-context "Patient"} elm)]
+
+          (testing "eval"
+            (is (= "value-114318" (core/-eval expr {:expression-defs {"Observation" {:expression source}}} nil nil))))
+
+          (testing "expression is dynamic"
+            (is (false? (core/-static expr))))
+
+          (testing "form"
+            (has-form expr '(:value (expr-ref "Observation"))))))
 
       (testing "without source-type"
         (let [library {:statements {:def [{:type "ExpressionDef"
@@ -341,9 +456,16 @@
               source
               {:fhir/type :fhir/Observation :id "0"
                :value "value-114318"}
-              expr (c/compile {:library library :eval-context "Patient"} elm)
-              result (core/-eval expr {:expression-defs {"Observation" {:expression source}}} nil nil)]
-          (is (= "value-114318" result)))))
+              expr (c/compile {:library library :eval-context "Patient"} elm)]
+
+          (testing "eval"
+            (is (= "value-114318" (core/-eval expr {:expression-defs {"Observation" {:expression source}}} nil nil))))
+
+          (testing "expression is dynamic"
+            (is (false? (core/-static expr))))
+
+          (testing "form"
+            (has-form expr '(:value (expr-ref "Observation")))))))
 
     (testing "Tuple"
       (are [elm result]

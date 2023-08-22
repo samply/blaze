@@ -6,6 +6,7 @@
   (:require
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
@@ -50,7 +51,13 @@
     [#elm/integer "2"] 2
     [#elm/list []] nil
     [{:type "Null"} #elm/list [#elm/string "a"]] ["a"]
-    [#elm/list [{:type "Null"} #elm/string "a"]] "a"))
+    [#elm/list [{:type "Null"} #elm/string "a"]] "a")
+
+  (testing "expression is dynamic"
+    (are [elm] (false? (core/-static (tu/dynamic-compile (elm/coalesce elm))))
+      []
+      [{:type "Null"}]
+      [#elm/list []])))
 
 
 ;; 14.3. IsFalse
@@ -70,6 +77,8 @@
       #elm/parameter-ref "true" false
       #elm/parameter-ref "false" true
       #elm/parameter-ref "nil" false))
+
+  (tu/testing-unary-dynamic elm/is-false)
 
   (tu/testing-unary-form elm/is-false))
 
@@ -92,6 +101,8 @@
       #elm/parameter-ref "false" false
       #elm/parameter-ref "nil" true))
 
+  (tu/testing-unary-dynamic elm/is-null)
+
   (tu/testing-unary-form elm/is-null))
 
 
@@ -112,5 +123,7 @@
       #elm/parameter-ref "true" true
       #elm/parameter-ref "false" false
       #elm/parameter-ref "nil" false))
+
+  (tu/testing-unary-dynamic elm/is-true)
 
   (tu/testing-unary-form elm/is-true))

@@ -40,6 +40,7 @@
   {:aliases
    {blaze.anomaly ba
     blaze.coll.core coll
+    blaze.cql-translator t
     blaze.db.api d
     blaze.elm.compiler c
     blaze.elm.compiler.external-data ed

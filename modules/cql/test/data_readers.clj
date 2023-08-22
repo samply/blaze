@@ -67,11 +67,28 @@
  elm/interval blaze.elm.literal/interval
  elm/contains blaze.elm.literal/contains
  elm/intersect blaze.elm.literal/intersect
+ elm/point-from blaze.elm.literal/point-from
  elm/current blaze.elm.literal/current
  elm/distinct blaze.elm.literal/distinct
  elm/exists blaze.elm.literal/exists
  elm/first blaze.elm.literal/first
+ elm/last blaze.elm.literal/last
  elm/singleton-from blaze.elm.literal/singleton-from
+ elm/all-true blaze.elm.literal/all-true
+ elm/any-true blaze.elm.literal/any-true
+ elm/avg blaze.elm.literal/avg
+ elm/count blaze.elm.literal/count
+ elm/geometric-mean blaze.elm.literal/geometric-mean
+ elm/product blaze.elm.literal/product
+ elm/max blaze.elm.literal/max
+ elm/median blaze.elm.literal/median
+ elm/min blaze.elm.literal/min
+ elm/mode blaze.elm.literal/mode
+ elm/population-variance blaze.elm.literal/population-variance
+ elm/population-std-dev blaze.elm.literal/population-std-dev
+ elm/sum blaze.elm.literal/sum
+ elm/std-dev blaze.elm.literal/std-dev
+ elm/variance blaze.elm.literal/variance
  elm/as blaze.elm.literal/as
  elm/can-convert-quantity blaze.elm.literal/can-convert-quantity
  elm/convert-quantity blaze.elm.literal/convert-quantity

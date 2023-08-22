@@ -11,6 +11,8 @@
 ;; 13.1. And
 (defn- nil-and-expr [x]
   (reify core/Expression
+    (-static [_]
+      false)
     (-eval [_ context resource scope]
       (when (false? (core/-eval x context resource scope))
         false))
@@ -37,6 +39,8 @@
     false false
     nil (nil-and-expr a)
     (reify core/Expression
+      (-static [_]
+        false)
       (-eval [_ context resource scope]
         (let [a (core/-eval a context resource scope)]
           (if (false? a)
@@ -74,6 +78,8 @@
 ;; 13.4. Or
 (defn- nil-or-expr [x]
   (reify core/Expression
+    (-static [_]
+      false)
     (-eval [_ context resource scope]
       (when (true? (core/-eval x context resource scope))
         true))
@@ -100,6 +106,8 @@
     false a
     nil (nil-or-expr a)
     (reify core/Expression
+      (-static [_]
+        false)
       (-eval [_ context resource scope]
         (let [a (core/-eval a context resource scope)]
           (if (true? a)
@@ -130,6 +138,8 @@
   (condp identical? b
     true
     (reify core/Expression
+      (-static [_]
+        false)
       (-eval [_ context resource scope]
         (let [a (core/-eval a context resource scope)]
           (when (some? a)
@@ -139,6 +149,8 @@
     false a
     nil nil
     (reify core/Expression
+      (-static [_]
+        false)
       (-eval [_ context resource scope]
         (when-some [a (core/-eval a context resource scope)]
           (when-some [b (core/-eval b context resource scope)]

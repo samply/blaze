@@ -1,10 +1,38 @@
 (ns blaze.elm.compiler.macros
   (:require
-    [blaze.elm.compiler.core :as core]))
+    [blaze.elm.compiler.core :as core]
+    [blaze.elm.expression.cache :as-alias expr-cache]))
+
+
+(set! *warn-on-reflection* true)
 
 
 (defn- compile-kw [name]
   (keyword "elm.compiler.type" (clojure.core/name name)))
+
+
+(defn generate-binding-vector
+  "Creates a binding vector of at least `[operand-binding operand]` and
+  optionally `[operand-binding operand expr-binding expr-sym]` if `expr-binding`
+  is given."
+  [operand-binding operand expr-binding expr-sym]
+  (cond-> [operand-binding operand] expr-binding (conj expr-binding expr-sym)))
+
+
+(defn generate-unop [name operand-sym operand-binding expr-binding expr-sym body]
+  (let [context-sym (gensym "context")
+        resource-sym (gensym "resource")
+        scope-sym (gensym "scope")]
+    `(reify core/Expression
+       (~'-static [~'_]
+         false)
+       (~'-eval [~'_ ~context-sym ~resource-sym ~scope-sym]
+         (let ~(generate-binding-vector
+                 operand-binding `(core/-eval ~operand-sym ~context-sym ~resource-sym ~scope-sym)
+                 expr-binding expr-sym)
+           ~@body))
+       (~'-form [~'_]
+         (list (quote ~name) (core/-form ~operand-sym))))))
 
 
 (defmacro defunop
@@ -12,34 +40,18 @@
   [name & more]
   (let [attr-map (when (map? (first more)) (first more))
         more (if (map? (first more)) (next more) more)
-        [[operand-binding expr-binding] & body] more]
-    (if expr-binding
-      `(defmethod core/compile* ~(compile-kw name)
-         [context# expr#]
-         (let [operand# (core/compile* (merge context# ~attr-map) (:operand expr#))]
-           (if (core/static? operand#)
-             (let [~operand-binding operand#
-                   ~expr-binding expr#]
-               ~@body)
-             (reify core/Expression
-               (~'-eval [~'_ context# resource# scope#]
-                 (let [~operand-binding (core/-eval operand# context# resource# scope#)
-                       ~expr-binding expr#]
-                   ~@body))
-               (~'-form [~'_]
-                 (list (quote ~name) (core/-form operand#)))))))
-      `(defmethod core/compile* ~(compile-kw name)
-         [context# expr#]
-         (let [operand# (core/compile* (merge context# ~attr-map) (:operand expr#))]
-           (if (core/static? operand#)
-             (let [~operand-binding operand#]
-               ~@body)
-             (reify core/Expression
-               (~'-eval [~'_ context# resource# scope#]
-                 (let [~operand-binding (core/-eval operand# context# resource# scope#)]
-                   ~@body))
-               (~'-form [~'_]
-                 (list (quote ~name) (core/-form operand#))))))))))
+        [[operand-binding expr-binding] & body] more
+        context-sym (gensym "context")
+        operand-sym (gensym "operand")
+        expr-sym (gensym "expr")]
+    `(defmethod core/compile* ~(compile-kw name)
+       [~context-sym ~expr-sym]
+       (let [~operand-sym (core/compile* (merge ~context-sym ~(dissoc attr-map :cache)) (:operand ~expr-sym))]
+         (if (core/static? ~operand-sym)
+           (let [~operand-binding ~operand-sym
+                 ~(or expr-binding '_) ~expr-sym]
+             ~@body)
+           ~(generate-unop name operand-sym operand-binding expr-binding expr-sym body))))))
 
 
 (defmacro defbinop
@@ -58,6 +70,8 @@
                  ~op-2-binding operand-2#]
              ~@body)
            (reify core/Expression
+             (~'-static [~'_]
+               false)
              (~'-eval [~'_ context# resource# scope#]
                (let [~op-1-binding (core/-eval operand-1# context# resource# scope#)
                      ~op-2-binding (core/-eval operand-2# context# resource# scope#)]
@@ -75,11 +89,16 @@
            operand-2# (core/compile* context# operand-2#)
            operand-3# (core/compile* context# operand-3#)]
        (reify core/Expression
+         (~'-static [~'_]
+           false)
          (~'-eval [~'_ context# resource# scope#]
            (let [~op-1-binding (core/-eval operand-1# context# resource# scope#)
                  ~op-2-binding (core/-eval operand-2# context# resource# scope#)
                  ~op-3-binding (core/-eval operand-3# context# resource# scope#)]
-             ~@body))))))
+             ~@body))
+         (~'-form [~'_]
+           (list (quote ~name) (core/-form operand-1#) (core/-form operand-2#)
+                 (core/-form operand-3#)))))))
 
 
 (defmacro defnaryop
@@ -89,6 +108,8 @@
      [context# {operands# :operand}]
      (let [operands# (mapv #(core/compile* context# %) operands#)]
        (reify core/Expression
+         (~'-static [~'_]
+           false)
          (~'-eval [~'_ context# resource# scope#]
            (let [~operands-binding (mapv #(core/-eval % context# resource# scope#) operands#)]
              ~@body))
@@ -103,9 +124,13 @@
      [context# {source# :source}]
      (let [source# (core/compile* context# source#)]
        (reify core/Expression
+         (~'-static [~'_]
+           false)
          (~'-eval [~'_ context# resource# scope#]
            (let [~source-binding (core/-eval source# context# resource# scope#)]
-             ~@body))))))
+             ~@body))
+         (~'-form [~'_]
+           (list (quote ~name) (core/-form source#)))))))
 
 
 (defmacro defunopp
@@ -117,6 +142,8 @@
            ~precision-binding (some-> precision# core/to-chrono-unit)
            ~(or expr-binding '_) expr#]
        (reify core/Expression
+         (~'-static [~'_]
+           false)
          (~'-eval [~'_ context# resource# scope#]
            (let [~operand-binding (core/-eval operand# context# resource# scope#)]
              ~@body))
@@ -142,6 +169,8 @@
                  ~precision-binding chrono-precision#]
              ~@body)
            (reify core/Expression
+             (~'-static [~'_]
+               false)
              (~'-eval [~'_ context# resource# scope#]
                (let [~op-1-binding (core/-eval operand-1# context# resource# scope#)
                      ~op-2-binding (core/-eval operand-2# context# resource# scope#)

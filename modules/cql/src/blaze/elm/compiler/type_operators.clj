@@ -19,16 +19,6 @@
 
 
 ;; 22.1. As
-(defrecord AsExpression [operand type pred]
-  core/Expression
-  (-eval [_ context resource scope]
-    (let [value (core/-eval operand context resource scope)]
-      (when (pred value)
-        value)))
-  (-form [_]
-    `(~'as ~type ~(core/-form operand))))
-
-
 (defn- matches-elm-named-type-fn [type-name]
   (case type-name
     "Boolean" ['elm/boolean boolean?]
@@ -92,7 +82,15 @@
   [context {:keys [operand] :as expression}]
   (when-some [operand (core/compile* context operand)]
     (let [[type pred] (matches-type-fn expression)]
-      (->AsExpression operand type pred))))
+      (reify core/Expression
+        (-static [_]
+          false)
+        (-eval [_ context resource scope]
+          (let [value (core/-eval operand context resource scope)]
+            (when (pred value)
+              value)))
+        (-form [_]
+          `(~'as ~type ~(core/-form operand)))))))
 
 
 ;; TODO 22.2. CanConvert
@@ -104,16 +102,16 @@
 
 
 ;; 22.4. Children
-(defrecord ChildrenOperatorExpression [source]
-  core/Expression
-  (-eval [_ context resource scope]
-    (p/children (core/-eval source context resource scope))))
-
-
 (defmethod core/compile* :elm.compiler.type/children
   [context {:keys [source]}]
   (when-let [source (core/compile* context source)]
-    (->ChildrenOperatorExpression source)))
+    (reify core/Expression
+      (-static [_]
+        false)
+      (-eval [_ context resource scope]
+        (p/children (core/-eval source context resource scope)))
+      (-form [_]
+        (list 'children (core/-form source))))))
 
 
 ;; TODO 22.5. Convert
@@ -131,39 +129,35 @@
 
 
 ;; 22.8. ConvertsToDate
-(defrecord ConvertsToDateOperatorExpression [operand]
-  core/Expression
-  (-eval [_ {:keys [now] :as context} resource scope]
-    (when-let [operand (core/-eval operand context resource scope)]
-      (when (some? operand)
-        (some? (p/to-date operand now)))))
-  (-form [_]
-    (list 'converts-to-date (core/-form operand))))
-
-
 (defmethod core/compile* :elm.compiler.type/converts-to-date
   [context {:keys [operand]}]
   (when-let [operand (core/compile* context operand)]
-    (->ConvertsToDateOperatorExpression operand)))
+    (reify core/Expression
+      (-static [_]
+        false)
+      (-eval [_ {:keys [now] :as context} resource scope]
+        (when-let [operand (core/-eval operand context resource scope)]
+          (when (some? operand)
+            (some? (p/to-date operand now)))))
+      (-form [_]
+        (list 'converts-to-date (core/-form operand))))))
 
 
 ;; 22.9. ConvertsToDateTime
-(defrecord ConvertsToDateTimeOperatorExpression [operand]
-  core/Expression
-  (-eval [_ {:keys [now] :as context} resource scope]
-    (when-let [operand (core/-eval operand context resource scope)]
-      (when (some? operand)
-        (some? (p/to-date-time operand now)))))
-  (-form [_]
-    (list 'converts-to-date-time (core/-form operand))))
-
-
 (defmethod core/compile* :elm.compiler.type/converts-to-date-time
   [context {:keys [operand]}]
   (when-let [operand (core/compile* context operand)]
     (if (system/date? operand)
       (some? (p/to-date-time operand nil))
-      (->ConvertsToDateTimeOperatorExpression operand))))
+      (reify core/Expression
+        (-static [_]
+          false)
+        (-eval [_ {:keys [now] :as context} resource scope]
+          (when-let [operand (core/-eval operand context resource scope)]
+            (when (some? operand)
+              (some? (p/to-date-time operand now)))))
+        (-form [_]
+          (list 'converts-to-date-time (core/-form operand)))))))
 
 
 ;; 22.10. ConvertsToDecimal
@@ -203,44 +197,33 @@
 
 
 ;; 22.16. ConvertsToTime
-(defrecord ConvertsToTimeOperatorExpression [operand]
-  core/Expression
-  (-eval [_ {:keys [now] :as context} resource scope]
-    (when-let [operand (core/-eval operand context resource scope)]
-      (when (some? operand)
-        (some? (p/to-time operand now)))))
-  (-form [_]
-    (list 'converts-to-time (core/-form operand))))
-
-
 (defmethod core/compile* :elm.compiler.type/converts-to-time
   [context {:keys [operand]}]
   (when-let [operand (core/compile* context operand)]
-    (->ConvertsToTimeOperatorExpression operand)))
+    (reify core/Expression
+      (-static [_]
+        false)
+      (-eval [_ {:keys [now] :as context} resource scope]
+        (when-some [operand (core/-eval operand context resource scope)]
+          (some? (p/to-time operand now))))
+      (-form [_]
+        (list 'converts-to-time (core/-form operand))))))
 
 
 ;; 22.17. Descendents
-(defrecord DescendentsOperatorExpression [source]
-  core/Expression
-  (-eval [_ context resource scope]
-    (p/descendents (core/-eval source context resource scope))))
-
-
 (defmethod core/compile* :elm.compiler.type/descendents
   [context {:keys [source]}]
   (when-let [source (core/compile* context source)]
-    (->DescendentsOperatorExpression source)))
+    (reify core/Expression
+      (-static [_]
+        false)
+      (-eval [_ context resource scope]
+        (p/descendents (core/-eval source context resource scope)))
+      (-form [_]
+        (list 'descendents (core/-form source))))))
 
 
 ;; 22.18. Is
-(defrecord IsExpression [operand type pred]
-  core/Expression
-  (-eval [_ context resource scope]
-    (pred (core/-eval operand context resource scope)))
-  (-form [_]
-    `(~'is ~type ~(core/-form operand))))
-
-
 (defn- matches-elm-named-type-is [type-name]
   (case type-name
     "Boolean" ['elm/boolean boolean?]
@@ -288,8 +271,15 @@
 
 (defmethod core/compile* :elm.compiler.type/is
   [context {:keys [operand] :as expression}]
-  (let [[type pred] (matches-type-is expression)]
-    (->IsExpression (core/compile* context operand) type pred)))
+  (let [[type pred] (matches-type-is expression)
+        operand (core/compile* context operand)]
+    (reify core/Expression
+      (-static [_]
+        false)
+      (-eval [_ context resource scope]
+        (pred (core/-eval operand context resource scope)))
+      (-form [_]
+        `(~'is ~type ~(core/-form operand))))))
 
 
 ;; 22.19. ToBoolean
@@ -309,33 +299,33 @@
 
 
 ;; 22.22. ToDate
-(defrecord ToDateOperatorExpression [operand]
-  core/Expression
-  (-eval [_ {:keys [now] :as context} resource scope]
-    (p/to-date (core/-eval operand context resource scope) now)))
-
-
 (defmethod core/compile* :elm.compiler.type/to-date
   [context {:keys [operand]}]
   (when-let [operand (core/compile* context operand)]
-    (->ToDateOperatorExpression operand)))
+    (if (system/date? operand)
+      (p/to-date operand nil)
+      (reify core/Expression
+        (-static [_]
+          false)
+        (-eval [_ {:keys [now] :as context} resource scope]
+          (p/to-date (core/-eval operand context resource scope) now))
+        (-form [_]
+          (list 'to-date (core/-form operand)))))))
 
 
 ;; 22.23. ToDateTime
-(defrecord ToDateTimeOperatorExpression [operand]
-  core/Expression
-  (-eval [_ {:keys [now] :as context} resource scope]
-    (p/to-date-time (core/-eval operand context resource scope) now))
-  (-form [_]
-    (list 'to-date-time (core/-form operand))))
-
-
 (defmethod core/compile* :elm.compiler.type/to-date-time
   [context {:keys [operand]}]
   (when-let [operand (core/compile* context operand)]
     (if (system/date? operand)
       (p/to-date-time operand nil)
-      (->ToDateTimeOperatorExpression operand))))
+      (reify core/Expression
+        (-static [_]
+          false)
+        (-eval [_ {:keys [now] :as context} resource scope]
+          (p/to-date-time (core/-eval operand context resource scope) now))
+        (-form [_]
+          (list 'to-date-time (core/-form operand)))))))
 
 
 ;; 22.24. ToDecimal
@@ -374,13 +364,13 @@
 
 
 ;; 22.31. ToTime
-(defrecord ToTimeOperatorExpression [operand]
-  core/Expression
-  (-eval [_ {:keys [now] :as context} resource scope]
-    (p/to-time (core/-eval operand context resource scope) now)))
-
-
 (defmethod core/compile* :elm.compiler.type/to-time
   [context {:keys [operand]}]
   (when-let [operand (core/compile* context operand)]
-    (->ToTimeOperatorExpression operand)))
+    (reify core/Expression
+      (-static [_]
+        false)
+      (-eval [_ {:keys [now] :as context} resource scope]
+        (p/to-time (core/-eval operand context resource scope) now))
+      (-form [_]
+        (list 'to-time (core/-form operand))))))

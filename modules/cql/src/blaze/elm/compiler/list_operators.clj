@@ -15,19 +15,22 @@
     [clojure.lang ExceptionInfo]))
 
 
+(set! *warn-on-reflection* true)
+
+
 ;; 20.1. List
-(defrecord ListOperatorExpression [elements]
-  core/Expression
-  (-eval [_ context resource scope]
-    (mapv #(core/-eval % context resource scope) elements)))
-
-
 (defmethod core/compile* :elm.compiler.type/list
   [context {elements :element}]
   (let [elements (mapv #(core/compile* context %) elements)]
     (if (every? core/static? elements)
       elements
-      (->ListOperatorExpression elements))))
+      (reify core/Expression
+        (-static [_]
+          false)
+        (-eval [_ context resource scope]
+          (mapv #(core/-eval % context resource scope) elements))
+        (-form [_]
+          `(~'list ~@(map core/-form elements)))))))
 
 
 ;; 20.3. Current
@@ -35,11 +38,19 @@
   [_ {:keys [scope]}]
   (if scope
     (reify core/Expression
+      (-static [_]
+        false)
       (-eval [_ _ _ scopes]
-        (get scopes scope)))
+        (get scopes scope))
+      (-form [_]
+        (list 'current scope)))
     (reify core/Expression
+      (-static [_]
+        false)
       (-eval [_ _ _ scope]
-        scope))))
+        scope)
+      (-form [_]
+        'current))))
 
 
 ;; 20.4. Distinct
@@ -70,36 +81,41 @@
         condition (core/compile* context condition)]
     (if scope
       (reify core/Expression
+        (-static [_]
+          false)
         (-eval [_ context resource scopes]
           (when-let [source (core/-eval source context resource scopes)]
             (filterv
               (fn [x]
                 (core/-eval condition context resource (assoc scopes scope x)))
-              source))))
+              source)))
+        (-form [_]
+          (list 'filter (core/-form source) (core/-form condition) scope)))
       (reify core/Expression
+        (-static [_]
+          false)
         (-eval [_ context resource scopes]
           (when-let [source (core/-eval source context resource scopes)]
-            (filterv
-              (fn [_]
-                (core/-eval condition context resource scopes))
-              source)))))))
+            (filterv (partial core/-eval condition context resource) source)))
+        (-form [_]
+          (list 'filter (core/-form source) (core/-form condition)))))))
 
 
 ;; 20.10. First
 ;;
 ;; TODO: orderBy
-(defrecord FirstExpression [source]
-  core/Expression
-  (-eval [_ context resource scopes]
-    (coll/first (core/-eval source context resource scopes))))
-
-
 (defmethod core/compile* :elm.compiler.type/first
   [context {:keys [source]}]
   (let [source (core/compile* (assoc context :optimizations #{:first :non-distinct}) source)]
     (if (core/static? source)
       (first source)
-      (->FirstExpression source))))
+      (reify core/Expression
+        (-static [_]
+          false)
+        (-eval [_ context resource scopes]
+          (coll/first (core/-eval source context resource scopes)))
+        (-form [_]
+          (list 'first (core/-form source)))))))
 
 
 ;; 20.11. Flatten
@@ -123,19 +139,24 @@
         element (core/compile* context element)]
     (if scope
       (reify core/Expression
+        (-static [_]
+          false)
         (-eval [_ context resource scopes]
           (when-let [source (core/-eval source context resource scopes)]
             (mapv
               (fn [x]
                 (core/-eval element context resource (assoc scopes scope x)))
-              source))))
+              source)))
+        (-form [_]
+          (list 'for-each (core/-form source) (core/-form element) scope)))
       (reify core/Expression
+        (-static [_]
+          false)
         (-eval [_ context resource scopes]
           (when-let [source (core/-eval source context resource scopes)]
-            (mapv
-              (fn [_]
-                (core/-eval element context resource scopes))
-              source)))))))
+            (mapv (partial core/-eval element context resource) source)))
+        (-form [_]
+          (list 'for-each (core/-form source) (core/-form element)))))))
 
 
 ;; 20.16. IndexOf
@@ -144,6 +165,8 @@
   (let [source (core/compile* context source)
         element (core/compile* context element)]
     (reify core/Expression
+      (-static [_]
+        false)
       (-eval [_ context resource scopes]
         (when-let [source (core/-eval source context resource scopes)]
           (when-let [element (core/-eval element context resource scopes)]
@@ -155,7 +178,9 @@
                       (p/equal element x)
                       idx))
                   source))
-              -1)))))))
+              -1))))
+      (-form [_]
+        (list 'index-of (core/-form source) (core/-form element))))))
 
 
 ;; 20.18. Last
@@ -164,9 +189,15 @@
 (defmethod core/compile* :elm.compiler.type/last
   [context {:keys [source]}]
   (let [source (core/compile* context source)]
-    (reify core/Expression
-      (-eval [_ context resource scopes]
-        (peek (core/-eval source context resource scopes))))))
+    (if (core/static? source)
+      (peek source)
+      (reify core/Expression
+        (-static [_]
+          false)
+        (-eval [_ context resource scopes]
+          (peek (core/-eval source context resource scopes)))
+        (-form [_]
+          (list 'last (core/-form source)))))))
 
 
 ;; 20.24. Repeat
@@ -188,23 +219,20 @@
 (defmethod core/compile* :elm.compiler.type/slice
   [context {:keys [source] start-index :startIndex end-index :endIndex}]
   (let [source (core/compile* context source)
-        start-index (some->> start-index (core/compile* context))
-        end-index (some->> end-index (core/compile* context))]
+        start-index (core/compile* context start-index)
+        end-index (core/compile* context end-index)]
     (reify core/Expression
+      (-static [_]
+        false)
       (-eval [_ context resource scopes]
         (when-let [source (core/-eval source context resource scopes)]
           (let [start-index (or (core/-eval start-index context resource scopes) 0)
                 end-index (or (core/-eval end-index context resource scopes) (count source))]
             (if (or (neg? start-index) (< end-index start-index))
               []
-              (subvec source start-index end-index))))))))
-
-
-(defrecord SortByDirectionExpression [source comp]
-  core/Expression
-  (-eval [_ context resource scopes]
-    (when-let [source (core/-eval source context resource scopes)]
-      (sort-by identity comp source))))
+              (subvec source start-index end-index)))))
+      (-form [_]
+        (list 'slice (core/-form source) (core/-form start-index) (core/-form end-index))))))
 
 
 ;; 20.27. Sort
@@ -217,7 +245,15 @@
       (fn [source {:keys [type direction]}]
         (case type
           "ByDirection"
-          (->SortByDirectionExpression source (queries/comparator direction))))
+          (let [comp (queries/comparator direction)]
+            (reify core/Expression
+              (-static [_]
+                false)
+              (-eval [_ context resource scopes]
+                (when-let [source (core/-eval source context resource scopes)]
+                  (sort-by identity comp source)))
+              (-form [_]
+                (list 'sort (core/-form source) (keyword direction)))))))
       source
       sort-by-items)))
 

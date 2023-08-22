@@ -37,7 +37,11 @@
     (case key
       :id (rh/id handle)
       (-> (or @content (vreset! content @(d/pull-content db handle)))
-          (get key not-found)))))
+          (get key not-found))))
+
+  Object
+  (toString [_]
+    (.toString handle)))
 
 
 (defn resource? [x]
@@ -50,24 +54,6 @@
 
 (defn resource-mapper [db]
   (map (partial mk-resource db)))
-
-
-(defrecord CompartmentListRetrieveExpression [context data-type]
-  core/Expression
-  (-eval [_ {:keys [db]} {:keys [id]} _]
-    (coll/eduction
-      (resource-mapper db)
-      (d/list-compartment-resource-handles db context id data-type)))
-  (-form [_]
-    `(~'compartment-list-retrieve ~data-type)))
-
-
-(defrecord CompartmentQueryRetrieveExpression [query data-type clauses]
-  core/Expression
-  (-eval [_ {:keys [db]} {:keys [id]} _]
-    (coll/eduction (resource-mapper db) (d/execute-query db query id)))
-  (-form [_]
-    `(~'compartment-query-retrieve ~data-type ~clauses)))
 
 
 (defn- code->clause-value [{:keys [system code]}]
@@ -102,7 +88,13 @@
   [node context data-type property codes]
   (let [clauses (-to-clauses codes property)
         query (d/compile-compartment-query node context data-type clauses)]
-    (->CompartmentQueryRetrieveExpression query data-type clauses)))
+    (reify core/Expression
+      (-static [_]
+        false)
+      (-eval [_ {:keys [db]} {:keys [id]} _]
+        (coll/eduction (resource-mapper db) (d/execute-query db query id)))
+      (-form [_]
+        `(~'retrieve ~data-type ~(d/query-clauses query))))))
 
 
 (defn- split-reference [s]
@@ -113,6 +105,8 @@
 ;; TODO: find a better solution than hard coding this case
 (defrecord SpecimenPatientExpression []
   core/Expression
+  (-static [_]
+    false)
   (-eval [_ {:keys [db]} resource _]
     (let [{{:keys [reference]} :subject} resource]
       (when reference
@@ -120,7 +114,9 @@
           (when (and (= "Patient" type) (string? id))
             (let [{:keys [op] :as handle} (d/resource-handle db "Patient" id)]
               (when-not (identical? :delete op)
-                [(mk-resource db handle)]))))))))
+                [(mk-resource db handle)])))))))
+  (-form [_]
+    '(retrieve (Specimen) "Patient")))
 
 
 (def ^:private specimen-patient-expr
@@ -136,59 +132,51 @@
     (case data-type
       "Patient"
       specimen-patient-expr)
-    (->CompartmentListRetrieveExpression context data-type)))
-
-
-(defrecord ResourceRetrieveExpression []
-  core/Expression
-  (-eval [_ _ resource _]
-    [resource])
-  (-form [_]
-    (list 'retrieve-resource)))
+    (reify core/Expression
+      (-static [_]
+        false)
+      (-eval [_ {:keys [db]} {:keys [id]} _]
+        (coll/eduction
+          (resource-mapper db)
+          (d/list-compartment-resource-handles db context id data-type)))
+      (-form [_]
+        `(~'retrieve ~data-type)))))
 
 
 (def ^:private resource-expr
-  (->ResourceRetrieveExpression))
+  (reify core/Expression
+    (-static [_]
+      false)
+    (-eval [_ _ resource _]
+      [resource])
+    (-form [_]
+      '(retrieve-resource))))
 
 
-(defrecord WithRelatedContextRetrieveExpression
-  [related-context-expr data-type]
-  core/Expression
-  (-eval [_ context resource scope]
-    (when-let [context-resource (core/-eval related-context-expr context resource scope)]
-      (core/-eval
-        (context-expr (-> context-resource :fhir/type name) data-type)
-        context
-        context-resource
-        scope))))
+(defn- unsupported-type-ns-anom [value-type-ns]
+  (ba/unsupported (format "Unsupported related context retrieve expression with result type namespace of `%s`." value-type-ns)))
 
 
-(defrecord WithRelatedContextQueryRetrieveExpression
-  [context-expr query]
-  core/Expression
-  (-eval [_ {:keys [db] :as context} resource scope]
-    (when-let [{:keys [id]} (core/-eval context-expr context resource scope)]
-      (when (string? id)
-        (coll/eduction
-          (resource-mapper db)
-          (d/execute-query db query id))))))
+(def ^:private unsupported-related-context-expr-without-type-anom
+  (ba/unsupported "Unsupported related context retrieve expression without result type."))
 
 
-(defrecord WithRelatedContextCodeRetrieveExpression
-  [context-expr data-type clauses]
-  core/Expression
-  (-eval [_ {:keys [db] :as context} resource scope]
-    (when-let [{:fhir/keys [type] :keys [id]}
-               (core/-eval context-expr context resource scope)]
-      (when-let [type (some-> type name)]
-        (when id
-          (ba/throw-when
-            (coll/eduction
-              (resource-mapper db)
-              (d/compartment-query db type id data-type clauses))))))))
+(defn- related-context-expr-without-codes [related-context-expr data-type]
+  (reify core/Expression
+    (-static [_]
+      false)
+    (-eval [_ context resource scope]
+      (when-let [context-resource (core/-eval related-context-expr context resource scope)]
+        (core/-eval
+          (context-expr (-> context-resource :fhir/type name) data-type)
+          context
+          context-resource
+          scope)))
+    (-form [_]
+      (list 'retrieve (core/-form related-context-expr) data-type))))
 
 
-(defn related-context-expr
+(defn- related-context-expr
   [node context-expr data-type code-property codes]
   (if (seq codes)
     (if-let [result-type-name (:result-type-name (meta context-expr))]
@@ -196,21 +184,28 @@
         (if (= "http://hl7.org/fhir" value-type-ns)
           (let [clauses [(into [code-property] (map code->clause-value) codes)]]
             (if-ok [query (d/compile-compartment-query node context-type data-type clauses)]
-              (->WithRelatedContextQueryRetrieveExpression context-expr query)
+              (reify core/Expression
+                (-static [_]
+                  false)
+                (-eval [_ {:keys [db] :as context} resource scope]
+                  (when-let [{:keys [id]} (core/-eval context-expr context resource scope)]
+                    (when (string? id)
+                      (coll/eduction
+                        (resource-mapper db)
+                        (d/execute-query db query id)))))
+                (-form [_]
+                  (list 'retrieve (core/-form context-expr) data-type (d/query-clauses query))))
               ba/throw-anom))
-
-          (->WithRelatedContextCodeRetrieveExpression
-            context-expr data-type
-            [(cons code-property (map code->clause-value codes))])))
-      (->WithRelatedContextCodeRetrieveExpression
-        context-expr data-type
-        [(cons code-property (map code->clause-value codes))]))
-    (->WithRelatedContextRetrieveExpression context-expr data-type)))
+          (ba/throw-anom (unsupported-type-ns-anom value-type-ns))))
+      (ba/throw-anom unsupported-related-context-expr-without-type-anom))
+    (related-context-expr-without-codes context-expr data-type)))
 
 
 (defn- unfiltered-context-expr [node data-type code-property codes]
   (if (empty? codes)
     (reify core/Expression
+      (-static [_]
+        false)
       (-eval [_ {:keys [db]} _ _]
         (coll/eduction (resource-mapper db) (d/type-list db data-type)))
       (-form [_]
@@ -218,8 +213,12 @@
     (let [clauses [(into [code-property] (map code->clause-value) codes)]]
       (if-ok [query (d/compile-type-query node data-type clauses)]
         (reify core/Expression
+          (-static [_]
+            false)
           (-eval [_ {:keys [db]} _ _]
-            (coll/eduction (resource-mapper db) (d/execute-query db query))))
+            (coll/eduction (resource-mapper db) (d/execute-query db query)))
+          (-form [_]
+            `(~'retrieve ~data-type ~(d/query-clauses query))))
         ba/throw-anom))))
 
 

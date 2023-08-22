@@ -9,7 +9,8 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.clinical-values]
     [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.compiler.core-spec]
+    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
     [blaze.elm.concept-spec]
     [blaze.elm.date-time :as date-time]
     [blaze.elm.literal]
@@ -51,11 +52,16 @@
     (let [context
           {:library
            {:codeSystems
-            {:def [{:name "sys-def-115852" :id "system-115910"}]}}}]
-      (given (c/compile context #elm/code ["sys-def-115852" "code-115927"])
+            {:def [{:name "sys-def-115852" :id "system-115910"}]}}}
+          expr (c/compile context #elm/code ["sys-def-115852" "code-115927"])]
+
+      (given expr
         type := Code
         :system := "system-115910"
-        :code := "code-115927")))
+        :code := "code-115927")
+
+      (testing "form"
+        (has-form expr '(code "system-115910" nil "code-115927")))))
 
   (testing "with version"
     (let [context
@@ -64,12 +70,17 @@
             {:def
              [{:name "sys-def-120434"
                :id "system-120411"
-               :version "version-120408"}]}}}]
-      (given (c/compile context #elm/code ["sys-def-120434" "code-120416"])
+               :version "version-120408"}]}}}
+          expr (c/compile context #elm/code ["sys-def-120434" "code-120416"])]
+
+      (given expr
         type := Code
         :system := "system-120411"
         :version := "version-120408"
-        :code := "code-120416")))
+        :code := "code-120416")
+
+      (testing "form"
+        (has-form expr '(code "system-120411" "version-120408" "code-120416")))))
 
   (testing "missing code system"
     (let [context {:library {:codeSystems {:def []}}}]
@@ -298,6 +309,12 @@
       #elm/quantity [2 "milliseconds"] (date-time/period 0 0 2)
       #elm/quantity [1 "s"] (quantity/quantity 1 "s")
       #elm/quantity [1 "cm2"] (quantity/quantity 1 "cm2")))
+
+  (testing "form"
+    (are [elm res] (= res (c/form (c/compile {} elm)))
+      #elm/quantity [1] '(quantity 1 "1")
+      #elm/quantity [1 "s"] '(quantity 1 "s")
+      #elm/quantity [2 "cm2"] '(quantity 2 "cm2")))
 
   (testing "Periods"
     (satisfies-prop 100

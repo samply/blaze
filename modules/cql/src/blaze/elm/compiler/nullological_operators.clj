@@ -28,6 +28,8 @@
       (if (= "List" (:type operand))
         (let [operand (core/compile* context operand)]
           (reify core/Expression
+            (-static [_]
+              false)
             (-eval [_ context resource scope]
               (reduce
                 (fn [_ elem]
@@ -38,10 +40,14 @@
                 (core/-eval operand context resource scope)))))
         (let [operand (core/compile* context operand)]
           (reify core/Expression
+            (-static [_]
+              false)
             (-eval [_ context resource scope]
               (core/-eval operand context resource scope))))))
     (let [operands (mapv #(core/compile* context %) operands)]
       (reify core/Expression
+        (-static [_]
+          false)
         (-eval [_ context resource scope]
           (reduce
             (fn [_ operand]

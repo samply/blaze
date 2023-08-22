@@ -2,6 +2,8 @@
   (:require
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.compiler.core-spec]
+    [blaze.elm.expression :as-alias expr]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [blaze.elm.spec]
@@ -52,31 +54,42 @@
      [{:name "true"}
       {:name "false"}
       {:name "nil"}
+      {:name "-1"}
       {:name "1"}
       {:name "2"}
       {:name "3"}
       {:name "4"}
       {:name "empty-string"}
+      {:name "x"}
+      {:name "y"}
+      {:name "z"}
       {:name "a"}
       {:name "ab"}
       {:name "b"}
       {:name "ba"}
       {:name "A"}
       {:name "12:54:00"}
-      {:name "2020-01-02T03:04:05.006Z"}]}}})
+      {:name "2020-01-02T03:04:05.006Z"}
+      {:name "[1]"}
+      {:name "[1 2]"}]}}})
 
 
 (def dynamic-eval-ctx
   {:parameters
-   {"true" true "false" false "nil" nil "1" 1 "2" 2 "3" 3 "4" 4
-    "empty-string" "" "a" "a" "ab" "ab" "b" "b" "ba" "ba" "A" "A"
+   {"true" true "false" false "nil" nil "-1" -1 "1" 1 "2" 2 "3" 3 "4" 4
+    "empty-string" "" "x" "x" "y" "y" "z" "z" "a" "a" "ab" "ab" "b" "b" "ba" "ba" "A" "A"
     "12:54:00" (system/time 12 54 00)
-    "2020-01-02T03:04:05.006Z" (system/date-time 2020 1 2 3 4 5 6 ZoneOffset/UTC)}
+    "2020-01-02T03:04:05.006Z" (system/date-time 2020 1 2 3 4 5 6 ZoneOffset/UTC)
+    "[1]" [1] "[1 2]" [1 2]}
    :now now})
 
 
+(defn dynamic-compile [elm]
+  (c/compile dynamic-compile-ctx elm))
+
+
 (defn dynamic-compile-eval [elm]
-  (core/-eval (c/compile dynamic-compile-ctx elm) dynamic-eval-ctx nil nil))
+  (core/-eval (dynamic-compile elm) dynamic-eval-ctx nil nil))
 
 
 (defn binary-operand [type]
@@ -119,7 +132,8 @@
      (is (nil? (c/compile {} (~elm-constructor [{:type "Null"} ~non-null-op-2]))))))
 
 
-(defmacro testing-binary-dynamic-null [elm-constructor non-null-op-1 non-null-op-2]
+(defmacro testing-binary-dynamic-null
+  [elm-constructor non-null-op-1 non-null-op-2]
   `(testing "Dynamic Null"
      (let [elm# (~elm-constructor
                   [#elm/parameter-ref "nil"
@@ -132,6 +146,26 @@
      (let [elm# (~elm-constructor
                   [#elm/parameter-ref "nil"
                    ~non-null-op-2])]
+       (is (nil? (dynamic-compile-eval elm#))))))
+
+
+(defmacro testing-ternary-dynamic-null
+  [elm-constructor non-null-op-1 non-null-op-2 non-null-op-3]
+  `(testing "Dynamic Null"
+     (let [elm# (~elm-constructor
+                  [#elm/parameter-ref "nil"
+                   ~non-null-op-2
+                   ~non-null-op-3])]
+       (is (nil? (dynamic-compile-eval elm#))))
+     (let [elm# (~elm-constructor
+                  [~non-null-op-1
+                   #elm/parameter-ref "nil"
+                   ~non-null-op-3])]
+       (is (nil? (dynamic-compile-eval elm#))))
+     (let [elm# (~elm-constructor
+                  [~non-null-op-1
+                   ~non-null-op-2
+                   #elm/parameter-ref "nil"])]
        (is (nil? (dynamic-compile-eval elm#))))))
 
 
@@ -163,22 +197,25 @@
   (c/compile {} (constructor [(op-constructor op-1) (op-constructor op-2) precision])))
 
 
+(defmacro has-form [expr form]
+  `(is (= ~form (core/-form ~expr))))
+
+
 (defmacro testing-constant-form [elm-constructor]
   (let [form-name (symbol (name elm-constructor))]
     `(testing "form"
-       (let [compile-ctx# {:library {:parameters {:def [{:name "x"}]}}}
-             elm# ~elm-constructor
-             expr# (c/compile compile-ctx# elm#)]
-         (is (= (quote ~form-name) (core/-form expr#)))))))
+       (let [expr# (dynamic-compile ~elm-constructor)]
+         (has-form expr# (quote ~form-name))))))
 
 
-(defmacro testing-unary-form [elm-constructor]
+(defmacro testing-unary-form
+  "Works with unary and aggregate operators."
+  [elm-constructor]
   (let [form-name (symbol (name elm-constructor))]
     `(testing "form"
-       (let [compile-ctx# {:library {:parameters {:def [{:name "x"}]}}}
-             elm# (~elm-constructor (elm/parameter-ref "x"))
-             expr# (c/compile compile-ctx# elm#)]
-         (is (= (quote (~form-name (~'param-ref "x"))) (core/-form expr#)))))))
+       (let [elm# (~elm-constructor (elm/parameter-ref "x"))
+             expr# (dynamic-compile elm#)]
+         (has-form expr# '(~form-name (~'param-ref "x")))))))
 
 
 (defmacro testing-unary-precision-form
@@ -187,23 +224,21 @@
   ([elm-constructor & precisions]
    (let [form-name (symbol (name elm-constructor))]
      `(testing "form"
-        (let [compile-ctx# {:library {:parameters {:def [{:name "x"}]}}}]
-          (doseq [precision# ~(vec precisions)]
-            (let [elm# (~elm-constructor [(elm/parameter-ref "x") precision#])
-                  expr# (c/compile compile-ctx# elm#)]
-              (is (= (list '~form-name '(~'param-ref "x") precision#)
-                     (core/-form expr#))))))))))
+        (doseq [precision# ~(vec precisions)]
+          (let [elm# (~elm-constructor [(elm/parameter-ref "x") precision#])
+                expr# (dynamic-compile elm#)]
+            (has-form expr#
+              (list '~form-name '(~'param-ref "x") precision#))))))))
 
 
 (defmacro testing-binary-form [elm-constructor]
   (let [form-name (symbol (name elm-constructor))]
     `(testing "form"
-       (let [compile-ctx# {:library {:parameters {:def [{:name "x"} {:name "y"}]}}}
-             elm# (~elm-constructor [(elm/parameter-ref "x")
+       (let [elm# (~elm-constructor [(elm/parameter-ref "x")
                                      (elm/parameter-ref "y")])
-             expr# (c/compile compile-ctx# elm#)]
-         (is (= (quote (~form-name (~'param-ref "x") (~'param-ref "y")))
-                (core/-form expr#)))))))
+             expr# (dynamic-compile elm#)]
+         (has-form expr#
+           (quote (~form-name (~'param-ref "x") (~'param-ref "y"))))))))
 
 
 (defmacro testing-binary-precision-form
@@ -212,10 +247,71 @@
   ([elm-constructor & precisions]
    (let [form-name (symbol (name elm-constructor))]
      `(testing "form"
-        (let [compile-ctx# {:library {:parameters {:def [{:name "x"} {:name "y"}]}}}]
-          (doseq [precision# ~(vec precisions)]
-            (let [elm# (~elm-constructor [(elm/parameter-ref "x")
-                                          (elm/parameter-ref "y") precision#])
-                  expr# (c/compile compile-ctx# elm#)]
-              (is (= (list '~form-name '(~'param-ref "x") '(~'param-ref "y")
-                           precision#) (core/-form expr#))))))))))
+        (doseq [precision# ~(vec precisions)]
+          (let [elm# (~elm-constructor [(elm/parameter-ref "x")
+                                        (elm/parameter-ref "y") precision#])
+                expr# (dynamic-compile elm#)]
+            (has-form expr#
+              (list '~form-name '(~'param-ref "x") '(~'param-ref "y") precision#))))))))
+
+
+(defmacro testing-ternary-form [elm-constructor]
+  (let [form-name (symbol (name elm-constructor))]
+    `(testing "form"
+       (let [elm# (~elm-constructor [(elm/parameter-ref "x")
+                                     (elm/parameter-ref "y")
+                                     (elm/parameter-ref "z")])
+             expr# (dynamic-compile elm#)]
+         (has-form expr#
+           (quote (~form-name (~'param-ref "x") (~'param-ref "y") (~'param-ref "z"))))))))
+
+
+(defn with-locator [constructor locator]
+  (comp #(assoc % :locator locator) constructor))
+
+
+(defmacro testing-constant-dynamic [elm-constructor]
+  `(testing "expression is dynamic"
+     (is (false? (core/-static (dynamic-compile ~elm-constructor))))))
+
+
+(defmacro testing-unary-dynamic [elm-constructor]
+  `(testing "expression is dynamic"
+     (is (false? (core/-static (dynamic-compile (~elm-constructor
+                                                  #elm/parameter-ref "x")))))))
+
+
+(defmacro testing-unary-precision-dynamic
+  [elm-constructor & precisions]
+  `(testing "expression is dynamic"
+     (doseq [precision# ~(vec precisions)]
+       (is (false? (core/-static (dynamic-compile (~elm-constructor
+                                                    [(elm/parameter-ref "x")
+                                                     precision#]))))))))
+
+
+(defmacro testing-binary-dynamic [elm-constructor]
+  `(testing "expression is dynamic"
+     (is (false? (core/-static (dynamic-compile (~elm-constructor
+                                                  [#elm/parameter-ref "x"
+                                                   #elm/parameter-ref "y"])))))))
+
+
+(defmacro testing-binary-precision-dynamic
+  ([elm-constructor]
+   `(testing-binary-precision-dynamic ~elm-constructor "year" "month"))
+  ([elm-constructor & precisions]
+   `(testing "expression is dynamic"
+      (doseq [precision# ~(vec precisions)]
+        (is (false? (core/-static (dynamic-compile (~elm-constructor
+                                                     [(elm/parameter-ref "x")
+                                                      (elm/parameter-ref "y")
+                                                      precision#])))))))))
+
+
+(defmacro testing-ternary-dynamic [elm-constructor]
+  `(testing "expression is dynamic"
+     (is (false? (core/-static (dynamic-compile (~elm-constructor
+                                                  [#elm/parameter-ref "x"
+                                                   #elm/parameter-ref "y"
+                                                   #elm/parameter-ref "z"])))))))

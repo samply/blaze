@@ -7,6 +7,7 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.clinical-operators]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
@@ -76,6 +77,8 @@
 
   (tu/testing-binary-null elm/calculate-age-at #elm/date"2018")
   (tu/testing-binary-null elm/calculate-age-at #elm/date-time"2018-01-01")
+
+  (tu/testing-binary-dynamic elm/calculate-age-at)
 
   (tu/testing-binary-precision-form elm/calculate-age-at "year" "month" "day"))
 

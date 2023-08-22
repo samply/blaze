@@ -1,6 +1,7 @@
 (ns blaze.elm.code
   "Implementation of the code type."
   (:require
+    [blaze.elm.compiler.core :as core]
     [blaze.elm.concept :as concept]
     [blaze.elm.protocols :as p]))
 
@@ -21,7 +22,15 @@
 
   p/Descendents
   (descendents [_]
-    [code nil system version]))
+    [code nil system version])
+
+  core/Expression
+  (-static [_]
+    true)
+  (-eval [this _ _ _]
+    this)
+  (-form [_]
+    `(~'code ~system ~version ~code)))
 
 
 (defn to-code

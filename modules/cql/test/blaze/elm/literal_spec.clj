@@ -247,8 +247,9 @@
 
 
 (s/fdef elm/round
-  :args (s/cat :ops (s/spec (s/cat :x :elm/expression
-                                   :precision (s/? :elm/expression))))
+  :args (s/cat :ops (s/alt :single :elm/expression
+                           :multi (s/spec (s/cat :x :elm/expression
+                                                 :precision (s/? :elm/expression)))))
   :ret :elm/expression)
 
 
@@ -413,7 +414,7 @@
 
 ;; 20.3. Current
 (s/fdef elm/current
-  :args (s/cat :scope string?)
+  :args (s/cat :scope (s/nilable string?))
   :ret :elm/expression)
 
 

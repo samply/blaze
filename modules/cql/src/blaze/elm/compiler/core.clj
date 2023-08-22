@@ -12,6 +12,7 @@
 
 
 (defprotocol Expression
+  (-static [expression])
   (-eval [expression context resource scope]
     "Evaluates `expression` on `resource` using `context` and optional `scope`
     for scoped expressions inside queries.")
@@ -24,12 +25,16 @@
 
 (extend-protocol Expression
   nil
+  (-static [_]
+    true)
   (-eval [expr _ _ _]
     expr)
   (-form [_]
     'nil)
 
   Object
+  (-static [_]
+    true)
   (-eval [expr _ _ _]
     expr)
   (-form [expr]
@@ -37,7 +42,7 @@
 
 
 (defn static? [x]
-  (not (instance? blaze.elm.compiler.core.Expression x)))
+  (-static x))
 
 
 (defmulti compile*
