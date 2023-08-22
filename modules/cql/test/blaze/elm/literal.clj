@@ -1,6 +1,6 @@
 (ns blaze.elm.literal
   (:refer-clojure
-    :exclude [abs and boolean count distinct first flatten list long max min not or
+    :exclude [abs and boolean count distinct first flatten last list long max min not or
               time])
   (:require
     [blaze.elm.spec]
@@ -262,6 +262,7 @@
    :element elements})
 
 
+;; 15.2. If
 (defn if-expr [[condition then else]]
   {:type "If" :condition condition :then then :else else})
 
@@ -355,12 +356,13 @@
 
 
 ;; 16.19. Round
-(defn round [[operand precision]]
-  (cond->
-    {:type "Round"
-     :operand operand}
-    precision
-    (assoc :precision precision)))
+(defn round [arg]
+  (let [[operand precision] (if (sequential? arg) arg [arg])]
+    (cond->
+      {:type "Round"
+       :operand operand}
+      precision
+      (assoc :precision precision))))
 
 
 ;; 16.20. Subtract
@@ -402,6 +404,13 @@
    :operand ops})
 
 
+;; 17.7. LastPositionOf
+(defn last-position-of [[pattern s]]
+  {:type "LastPositionOf"
+   :pattern pattern
+   :string s})
+
+
 ;; 17.8. Length
 (defn length [x]
   {:type "Length"
@@ -417,6 +426,19 @@
 ;; 17.10. Matches
 (defn matches [ops]
   {:type "Matches"
+   :operand ops})
+
+
+;; 17.12. PositionOf
+(defn position-of [[pattern s]]
+  {:type "PositionOf"
+   :pattern pattern
+   :string s})
+
+
+;; 17.13. ReplaceMatches
+(defn replace-matches [ops]
+  {:type "ReplaceMatches"
    :operand ops})
 
 
@@ -533,6 +555,11 @@
         minute (assoc :minute minute)
         second (assoc :second second)
         millisecond (assoc :millisecond millisecond)))))
+
+
+;; 18.21. TimeOfDay
+(def time-of-day
+  {:type "TimeOfDay"})
 
 
 ;; 18.22. Today
@@ -716,7 +743,7 @@
 
 ;; 20.3. Current
 (defn current [scope]
-  {:type "Current" :scope scope})
+  (cond-> {:type "Current"} scope (assoc :scope scope)))
 
 
 ;; 20.4. Distinct
@@ -737,6 +764,16 @@
 ;; 20.11. Flatten
 (defn flatten [list]
   {:type "Flatten" :operand list})
+
+
+;; 20.16. IndexOf
+(defn index-of [[source element]]
+  {:type "IndexOf" :source source :element element})
+
+
+;; 20.18. Last
+(defn last [source]
+  {:type "Last" :source source})
 
 
 ;; 20.25. SingletonFrom

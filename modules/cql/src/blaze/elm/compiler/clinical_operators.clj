@@ -20,6 +20,8 @@
     (when-let [date (core/compile* context date)]
       (let [chrono-precision (some-> precision core/to-chrono-unit)]
         (reify core/Expression
+          (-static [_]
+            false)
           (-eval [_ context resource scope]
             (p/duration-between
               (core/-eval birth-date context resource scope)

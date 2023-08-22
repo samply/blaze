@@ -11,8 +11,9 @@
     [blaze.elm.code-spec]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.queries :as queries]
-    [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
     [blaze.elm.quantity :as quantity]
@@ -62,9 +63,9 @@
            [{:alias "S"
              :expression
              #elm/list
-                 [#elm/quantity [2 "m"]
-                  #elm/quantity [1 "m"]
-                  #elm/quantity [1 "m"]]}]
+                     [#elm/quantity [2 "m"]
+                      #elm/quantity [1 "m"]
+                      #elm/quantity [1 "m"]]}]
            :sort
            {:by
             [{:type "ByExpression"
@@ -83,12 +84,12 @@
              [{:alias "S"
                :expression
                #elm/list
-                   [#elm/instance ["{urn:hl7-org:elm-types:r1}Code"
-                                  {"system" #elm/string "foo"
-                                   "code" #elm/string "c"}]
-                    #elm/instance ["{urn:hl7-org:elm-types:r1}Code"
-                                  {"system" #elm/string "bar"
-                                   "code" #elm/string "c"}]]}]
+                       [#elm/instance ["{urn:hl7-org:elm-types:r1}Code"
+                                       {"system" #elm/string "foo"
+                                        "code" #elm/string "c"}]
+                        #elm/instance ["{urn:hl7-org:elm-types:r1}Code"
+                                       {"system" #elm/string "bar"
+                                        "code" #elm/string "c"}]]}]
              :sort
              {:by
               [{:type "ByExpression"
@@ -111,8 +112,7 @@
           (is (= [1 1] (core/-eval expr {} nil nil))))
 
         (testing "form"
-          (is (= '(vector-query (return (fn [S] (alias-ref S))) [1 1])
-                 (core/-form expr))))))
+          (has-form expr '(vector-query (return (fn [S] (alias-ref S))) [1 1])))))
 
     (testing "with query hint optimize first"
       (let [elm {:type "Query"
@@ -125,7 +125,7 @@
           (is (= [1] (into [] (core/-eval expr {} nil nil)))))
 
         (testing "form"
-          (is (= '(eduction-query distinct [1 1]) (core/-form expr)))))))
+          (has-form expr '(eduction-query distinct [1 1]))))))
 
   (testing "Retrieve queries"
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
@@ -167,7 +167,7 @@
                 [1 :id] := "1"))
 
             (testing "form"
-              (is (= '(vector-query distinct (retrieve "Patient")) (core/-form expr))))))
+              (has-form expr '(vector-query distinct (retrieve "Patient"))))))
 
         (testing "with where clause"
           (let [elm {:type "Query"
@@ -184,14 +184,14 @@
                 [0 :id] := "0"))
 
             (testing "form"
-              (is (= '(vector-query
-                        (comp
-                          (where
-                            (fn [P]
-                              (equal (call "ToString" (:gender P)) "female")))
-                          distinct)
-                        (retrieve "Patient"))
-                     (core/-form expr))))))
+              (has-form expr
+                '(vector-query
+                   (comp
+                     (where
+                       (fn [P]
+                         (equal (call "ToString" (:gender P)) "female")))
+                     distinct)
+                   (retrieve "Patient"))))))
 
         (testing "with return clause"
           (let [elm {:type "Query"
@@ -208,10 +208,10 @@
                 [1] := #fhir/code"male"))
 
             (testing "form"
-              (is (= '(vector-query
-                        (distinct (return (fn [P] (:gender P))))
-                        (retrieve "Patient"))
-                     (core/-form expr))))))
+              (has-form expr
+                '(vector-query
+                   (distinct (return (fn [P] (:gender P))))
+                   (retrieve "Patient"))))))
 
         (testing "with where and return clauses"
           (let [elm {:type "Query"
@@ -228,14 +228,14 @@
                 [0] := #fhir/code"female"))
 
             (testing "form"
-              (is (= '(vector-query
-                        (comp
-                          (where
-                            (fn [P]
-                              (equal (call "ToString" (:gender P)) "female")))
-                          (distinct (return (fn [P] (:gender P)))))
-                        (retrieve "Patient"))
-                     (core/-form expr)))))))))
+              (has-form expr
+                '(vector-query
+                   (comp
+                     (where
+                       (fn [P]
+                         (equal (call "ToString" (:gender P)) "female")))
+                     (distinct (return (fn [P] (:gender P)))))
+                   (retrieve "Patient")))))))))
 
   (testing "Unsupported With clause"
     (let [elm {:type "Query"
@@ -286,7 +286,7 @@
       (is (= ::result (core/-eval expr {} nil {"foo" ::result}))))
 
     (testing "form"
-      (is (= '(alias-ref foo) (core/-form expr))))))
+      (has-form expr '(alias-ref foo)))))
 
 
 ;; 10.7. IdentifierRef
@@ -300,7 +300,7 @@
   (let [expr (c/compile {} {:type "IdentifierRef" :name "foo"})]
 
     (testing "form"
-      (is (= '(:foo default) (core/-form expr))))))
+      (has-form expr '(:foo default)))))
 
 
 ;; TODO 10.9. QueryLetRef

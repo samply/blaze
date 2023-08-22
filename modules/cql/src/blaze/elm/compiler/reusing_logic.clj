@@ -31,6 +31,8 @@
 
 (defrecord ExpressionRef [name]
   core/Expression
+  (-static [_]
+    false)
   (-eval [_ {:keys [expression-defs] :as context} resource _]
     (if-let [{:keys [expression]} (get expression-defs name)]
       (core/-eval expression context resource nil)
@@ -70,6 +72,8 @@
         ;; Unfiltered context. So we map the referenced expression over all
         ;; concrete resources.
         (reify core/Expression
+          (-static [_]
+            false)
           (-eval [_ {:keys [db expression-defs] :as context} _ _]
             (if-some [{:keys [expression]} (get expression-defs name)]
               (mapv
@@ -104,6 +108,8 @@
 
 (defrecord ToQuantityFunctionExpression [operand]
   core/Expression
+  (-static [_]
+    false)
   (-eval [_ context resource scope]
     (-to-quantity (core/-eval operand context resource scope)))
   (-form [_]
@@ -112,13 +118,19 @@
 
 (defrecord ToCodeFunctionExpression [operand]
   core/Expression
+  (-static [_]
+    false)
   (-eval [_ context resource scope]
     (let [{:keys [system version code]} (core/-eval operand context resource scope)]
-      (code/to-code (type/value system) (type/value version) (type/value code)))))
+      (code/to-code (type/value system) (type/value version) (type/value code))))
+  (-form [_]
+    `(~'call "ToCode" ~(core/-form operand))))
 
 
 (defrecord ToDateFunctionExpression [operand]
   core/Expression
+  (-static [_]
+    false)
   (-eval [_ context resource scope]
     (type/value (core/-eval operand context resource scope)))
   (-form [_]
@@ -127,6 +139,8 @@
 
 (defrecord ToDateTimeFunctionExpression [operand]
   core/Expression
+  (-static [_]
+    false)
   (-eval [_ {:keys [now] :as context} resource scope]
     (p/to-date-time (type/value (core/-eval operand context resource scope)) now))
   (-form [_]
@@ -135,6 +149,8 @@
 
 (defrecord ToStringFunctionExpression [operand]
   core/Expression
+  (-static [_]
+    false)
   (-eval [_ context resource scope]
     (some-> (type/value (core/-eval operand context resource scope)) str))
   (-form [_]
@@ -158,6 +174,8 @@
 
 (defrecord ToIntervalFunctionExpression [operand]
   core/Expression
+  (-static [_]
+    false)
   (-eval [_ context resource scope]
     (-to-interval (core/-eval operand context resource scope) context))
   (-form [_]
@@ -210,6 +228,8 @@
 (defmethod core/compile* :elm.compiler.type/operand-ref
   [_ {:keys [name]}]
   (reify core/Expression
+    (-static [_]
+      false)
     (-eval [_ _ _ scope]
       (scope name))
     (-form [_]

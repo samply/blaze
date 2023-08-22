@@ -5,6 +5,8 @@
 
 (defn arity-n [name fn-expr operand-names operands]
   (reify core/Expression
+    (-static [_]
+      false)
     (-eval [_ context resource scope]
       (let [values (map #(core/-eval % context resource scope) operands)]
         (core/-eval fn-expr context resource (merge scope (zipmap operand-names values)))))

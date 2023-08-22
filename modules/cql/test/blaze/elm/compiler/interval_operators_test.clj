@@ -6,12 +6,14 @@
   (:require
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.interval-operators]
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.decimal :as decimal]
     [blaze.elm.interval :refer [interval]]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
+    [blaze.test-util :refer [given-thrown]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]))
 
@@ -249,6 +251,8 @@
         "2019-04-17" "2019-04-17" false
         "2019-04-17" "2019-04-18" false)))
 
+  (tu/testing-binary-precision-dynamic elm/after)
+
   (tu/testing-binary-precision-form elm/after))
 
 
@@ -386,6 +390,8 @@
         "2019-04-17" "2019-04-17" false
         "2019-04-17" "2019-04-16" false)))
 
+  (tu/testing-binary-precision-dynamic elm/before)
+
   (tu/testing-binary-precision-form elm/before))
 
 
@@ -444,6 +450,8 @@
       {:type "Null"}
       [(interval #system/date-time"2012-01-01" #system/date-time"2012-05-25")]))
 
+  (tu/testing-binary-dynamic elm/collapse)
+
   (tu/testing-binary-form elm/collapse))
 
 
@@ -490,6 +498,8 @@
 
     (tu/testing-binary-null elm/contains #elm/list [] #elm/integer "1"))
 
+  (tu/testing-binary-precision-dynamic elm/contains)
+
   (tu/testing-binary-precision-form elm/contains))
 
 
@@ -521,6 +531,8 @@
 
   (tu/testing-unary-null elm/end)
 
+  (tu/testing-unary-dynamic elm/end)
+
   (tu/testing-unary-form elm/end))
 
 
@@ -547,6 +559,8 @@
       [#elm/integer "1" #elm/integer "3"] [#elm/integer "2" #elm/integer "3"] false))
 
   (tu/testing-binary-null elm/ends interval-zero)
+
+  (tu/testing-binary-dynamic elm/ends)
 
   (tu/testing-binary-precision-form elm/ends))
 
@@ -599,6 +613,8 @@
         [#elm/integer "3" #elm/integer "5"] [#elm/integer "1" #elm/integer "3"] (interval 4 5)))
 
     (tu/testing-binary-null elm/except interval-zero))
+
+  (tu/testing-binary-dynamic elm/except)
 
   (tu/testing-binary-form elm/except))
 
@@ -694,6 +710,8 @@
 
     (tu/testing-binary-null elm/includes interval-zero))
 
+  (tu/testing-binary-precision-dynamic elm/includes)
+
   (tu/testing-binary-precision-form elm/includes))
 
 
@@ -759,6 +777,8 @@
 
     (tu/testing-binary-null elm/intersect interval-zero))
 
+  (tu/testing-binary-dynamic elm/intersect)
+
   (tu/testing-binary-form elm/intersect))
 
 
@@ -792,6 +812,8 @@
 
   (tu/testing-binary-null elm/meets-before interval-zero)
 
+  (tu/testing-binary-precision-dynamic elm/meets-before)
+
   (tu/testing-binary-precision-form elm/meets-before))
 
 
@@ -816,6 +838,8 @@
       [#elm/integer "4" #elm/integer "5"] [#elm/integer "1" #elm/integer "2"] false))
 
   (tu/testing-binary-null elm/meets-after interval-zero)
+
+  (tu/testing-binary-precision-dynamic elm/meets-after)
 
   (tu/testing-binary-precision-form elm/meets-after))
 
@@ -872,6 +896,8 @@
 
   (tu/testing-binary-null elm/overlaps interval-zero)
 
+  (tu/testing-binary-precision-dynamic elm/overlaps)
+
   (tu/testing-binary-precision-form elm/overlaps))
 
 
@@ -897,12 +923,36 @@
 ;;
 ;; If the source interval is null, the result is null.
 (deftest compile-point-from-test
-  (testing "Integer"
-    (are [x res] (= res (tu/compile-unop elm/point-from elm/interval x))
-      [#elm/integer "1" #elm/integer "1"] 1
-      [#elm/integer "2" #elm/integer "2"] 2))
+  (testing "Static"
+    (testing "Integer"
+      (are [x res] (= res (tu/compile-unop elm/point-from elm/interval x))
+        [#elm/integer "1" #elm/integer "1"] 1
+        [#elm/integer "2" #elm/integer "2"] 2)
+
+      (given-thrown (tu/compile-unop elm/point-from
+                                     (tu/with-locator elm/interval "locator-214950")
+                                     [#elm/integer "1" #elm/integer "2"])
+        :message := "Invalid non-unit interval in `PointFrom` expression at locator-214950."
+        [:expression :type] := "PointFrom"
+        [:expression :operand :type] := "Interval"
+        [:expression :operand :locator] := "locator-214950")))
+
+  (testing "Dynamic"
+    (testing "Integer"
+      (are [elm res] (= res (tu/dynamic-compile-eval elm))
+        #elm/point-from #elm/interval [#elm/integer "1" #elm/parameter-ref "1"] 1
+        #elm/point-from #elm/interval [#elm/integer "2" #elm/parameter-ref "2"] 2)
+
+      (given-thrown (tu/dynamic-compile-eval (elm/point-from ((tu/with-locator elm/interval "locator-161410")
+                                                              [#elm/integer "1" #elm/parameter-ref "2"])))
+        :message := "Invalid non-unit interval in `PointFrom` expression at locator-161410."
+        [:expression :type] := "PointFrom"
+        [:expression :operand :type] := "Interval"
+        [:expression :operand :locator] := "locator-161410")))
 
   (tu/testing-unary-null elm/point-from)
+
+  (tu/testing-unary-dynamic elm/point-from)
 
   (tu/testing-unary-form elm/point-from))
 
@@ -936,6 +986,8 @@
         #elm/interval [#elm/integer "1" #elm/integer "1"] #elm/integer "2" false))
 
     (tu/testing-binary-null elm/proper-contains interval-zero))
+
+  (tu/testing-binary-precision-dynamic elm/proper-contains)
 
   (tu/testing-binary-precision-form elm/proper-contains))
 
@@ -977,6 +1029,8 @@
         [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "2"] false))
 
     (tu/testing-binary-null elm/proper-includes interval-zero))
+
+  (tu/testing-binary-precision-dynamic elm/proper-includes)
 
   (tu/testing-binary-precision-form elm/proper-includes))
 
@@ -1032,6 +1086,8 @@
 
   (tu/testing-unary-null elm/start)
 
+  (tu/testing-unary-dynamic elm/start)
+
   (tu/testing-unary-form elm/start))
 
 
@@ -1058,6 +1114,8 @@
       [#elm/integer "2" #elm/integer "3"] [#elm/integer "1" #elm/integer "3"] false))
 
   (tu/testing-binary-null elm/starts interval-zero)
+
+  (tu/testing-binary-precision-dynamic elm/starts)
 
   (tu/testing-binary-precision-form elm/starts))
 
@@ -1095,6 +1153,8 @@
 
     (tu/testing-binary-null elm/union interval-zero))
 
+  (tu/testing-binary-dynamic elm/union)
+
   (tu/testing-binary-form elm/union))
 
 
@@ -1113,5 +1173,7 @@
       [#elm/integer "1" #elm/integer "2"] 1))
 
   (tu/testing-unary-null elm/width)
+
+  (tu/testing-unary-dynamic elm/width)
 
   (tu/testing-unary-form elm/width))

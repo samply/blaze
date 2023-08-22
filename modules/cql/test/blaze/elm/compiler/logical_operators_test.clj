@@ -5,6 +5,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.elm.compiler :as c]
+    [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.logical-operators]
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.literal :as elm]
@@ -72,54 +73,55 @@
       #elm/parameter-ref "nil" #elm/parameter-ref "nil" nil))
 
   (testing "form"
-    (let [compile-ctx# {:library {:parameters {:def [{:name "a"} {:name "b"}]}}}]
-      (are [x y form] (= form (c/form (c/compile compile-ctx# (elm/and [x y]))))
-        #elm/boolean "true" #elm/boolean "true" true
-        #elm/boolean "true" #elm/boolean "false" false
-        #elm/boolean "true" {:type "Null"} nil
-        #elm/boolean "true" #elm/parameter-ref "b" '(param-ref "b")
-
-        #elm/boolean "false" #elm/boolean "true" false
-        #elm/boolean "false" #elm/boolean "false" false
-        #elm/boolean "false" {:type "Null"} false
-        #elm/boolean "false" #elm/parameter-ref "b" false
-
-        {:type "Null"} #elm/boolean "true" nil
-        {:type "Null"} #elm/boolean "false" false
-        {:type "Null"} {:type "Null"} nil
-        {:type "Null"} #elm/parameter-ref "b" '(and nil (param-ref "b"))
-
-        #elm/parameter-ref "a" #elm/boolean "true" '(param-ref "a")
-        #elm/parameter-ref "a" #elm/boolean "false" false
-        #elm/parameter-ref "a" {:type "Null"} '(and nil (param-ref "a"))
-        #elm/parameter-ref "a" #elm/parameter-ref "b" '(and (param-ref "a") (param-ref "b"))))))
-
-
-;; 13.2. Implies
-;;
-;; The Implies operator returns the logical implication of its arguments. Note
-;; that this operator is defined using 3-valued logic semantics. This means that
-;; if the left operand evaluates to true, this operator returns the boolean
-;; evaluation of the right operand. If the left operand evaluates to false, this
-;; operator returns true. Otherwise, this operator returns true if the right
-;; operand evaluates to true, and null otherwise.
-;;
-;; Note that implies may use short-circuit evaluation in the case that the first
-;; operand evaluates to false.
-(deftest compile-implies-test
-  (testing "Static"
-    (are [x y res] (= res (c/compile {} (elm/or [(elm/not x) y])))
+    (are [x y form] (= form (c/form (tu/dynamic-compile (elm/and [x y]))))
       #elm/boolean "true" #elm/boolean "true" true
       #elm/boolean "true" #elm/boolean "false" false
       #elm/boolean "true" {:type "Null"} nil
+      #elm/boolean "true" #elm/parameter-ref "b" '(param-ref "b")
+
+      #elm/boolean "false" #elm/boolean "true" false
+      #elm/boolean "false" #elm/boolean "false" false
+      #elm/boolean "false" {:type "Null"} false
+      #elm/boolean "false" #elm/parameter-ref "b" false
+
+      {:type "Null"} #elm/boolean "true" nil
+      {:type "Null"} #elm/boolean "false" false
+      {:type "Null"} {:type "Null"} nil
+      {:type "Null"} #elm/parameter-ref "b" '(and nil (param-ref "b"))
+
+      #elm/parameter-ref "a" #elm/boolean "true" '(param-ref "a")
+      #elm/parameter-ref "a" #elm/boolean "false" false
+      #elm/parameter-ref "a" {:type "Null"} '(and nil (param-ref "a"))
+      #elm/parameter-ref "a" #elm/parameter-ref "b" '(and (param-ref "a") (param-ref "b"))))
+
+  (testing "static"
+    (are [x y static] (identical? static (core/-static (tu/dynamic-compile (elm/and [x y]))))
+      #elm/boolean "true" #elm/boolean "true" true
+      #elm/boolean "true" #elm/boolean "false" true
+      #elm/boolean "true" {:type "Null"} true
+      #elm/boolean "true" #elm/parameter-ref "b" false
 
       #elm/boolean "false" #elm/boolean "true" true
       #elm/boolean "false" #elm/boolean "false" true
       #elm/boolean "false" {:type "Null"} true
+      #elm/boolean "false" #elm/parameter-ref "b" true
 
       {:type "Null"} #elm/boolean "true" true
-      {:type "Null"} #elm/boolean "false" nil
-      {:type "Null"} {:type "Null"} nil)))
+      {:type "Null"} #elm/boolean "false" true
+      {:type "Null"} {:type "Null"} true
+      {:type "Null"} #elm/parameter-ref "b" false
+
+      #elm/parameter-ref "a" #elm/boolean "true" false
+      #elm/parameter-ref "a" #elm/boolean "false" true
+      #elm/parameter-ref "a" {:type "Null"} false
+      #elm/parameter-ref "a" #elm/parameter-ref "b" false)))
+
+
+;; 13.2. Implies
+;;
+;; Normalized to (Or (Not x) y)
+(deftest compile-implies-test
+  (tu/unsupported-binary-operand "Implies"))
 
 
 ;; 13.3. Not
@@ -131,14 +133,16 @@
   (testing "Static"
     (are [x res] (= res (c/compile {} (elm/not x)))
       #elm/boolean "true" false
-      #elm/boolean "false" true
-      {:type "Null"} nil))
+      #elm/boolean "false" true))
 
   (testing "Dynamic"
     (are [x res] (= res (tu/dynamic-compile-eval (elm/not x)))
       #elm/parameter-ref "true" false
-      #elm/parameter-ref "false" true
-      #elm/parameter-ref "nil" nil))
+      #elm/parameter-ref "false" true))
+
+  (tu/testing-unary-null elm/not)
+
+  (tu/testing-unary-dynamic elm/not)
 
   (tu/testing-unary-form elm/not))
 
@@ -186,27 +190,48 @@
       #elm/parameter-ref "nil" #elm/parameter-ref "nil" nil))
 
   (testing "form"
-    (let [compile-ctx# {:library {:parameters {:def [{:name "a"} {:name "b"}]}}}]
-      (are [x y form] (= form (c/form (c/compile compile-ctx# (elm/or [x y]))))
-        #elm/boolean "true" #elm/boolean "true" true
-        #elm/boolean "true" #elm/boolean "false" true
-        #elm/boolean "true" {:type "Null"} true
-        #elm/boolean "true" #elm/parameter-ref "b" true
+    (are [x y form] (= form (c/form (tu/dynamic-compile (elm/or [x y]))))
+      #elm/boolean "true" #elm/boolean "true" true
+      #elm/boolean "true" #elm/boolean "false" true
+      #elm/boolean "true" {:type "Null"} true
+      #elm/boolean "true" #elm/parameter-ref "b" true
 
-        #elm/boolean "false" #elm/boolean "true" true
-        #elm/boolean "false" #elm/boolean "false" false
-        #elm/boolean "false" {:type "Null"} nil
-        #elm/boolean "false" #elm/parameter-ref "b" '(param-ref "b")
+      #elm/boolean "false" #elm/boolean "true" true
+      #elm/boolean "false" #elm/boolean "false" false
+      #elm/boolean "false" {:type "Null"} nil
+      #elm/boolean "false" #elm/parameter-ref "b" '(param-ref "b")
 
-        {:type "Null"} #elm/boolean "true" true
-        {:type "Null"} #elm/boolean "false" nil
-        {:type "Null"} {:type "Null"} nil
-        {:type "Null"} #elm/parameter-ref "b" '(or nil (param-ref "b"))
+      {:type "Null"} #elm/boolean "true" true
+      {:type "Null"} #elm/boolean "false" nil
+      {:type "Null"} {:type "Null"} nil
+      {:type "Null"} #elm/parameter-ref "b" '(or nil (param-ref "b"))
 
-        #elm/parameter-ref "a" #elm/boolean "true" true
-        #elm/parameter-ref "a" #elm/boolean "false" '(param-ref "a")
-        #elm/parameter-ref "a" {:type "Null"} '(or nil (param-ref "a"))
-        #elm/parameter-ref "a" #elm/parameter-ref "b" '(or (param-ref "a") (param-ref "b"))))))
+      #elm/parameter-ref "a" #elm/boolean "true" true
+      #elm/parameter-ref "a" #elm/boolean "false" '(param-ref "a")
+      #elm/parameter-ref "a" {:type "Null"} '(or nil (param-ref "a"))
+      #elm/parameter-ref "a" #elm/parameter-ref "b" '(or (param-ref "a") (param-ref "b"))))
+
+  (testing "static"
+    (are [x y static] (identical? static (core/-static (tu/dynamic-compile (elm/or [x y]))))
+      #elm/boolean "true" #elm/boolean "true" true
+      #elm/boolean "true" #elm/boolean "false" true
+      #elm/boolean "true" {:type "Null"} true
+      #elm/boolean "true" #elm/parameter-ref "b" true
+
+      #elm/boolean "false" #elm/boolean "true" true
+      #elm/boolean "false" #elm/boolean "false" true
+      #elm/boolean "false" {:type "Null"} true
+      #elm/boolean "false" #elm/parameter-ref "b" false
+
+      {:type "Null"} #elm/boolean "true" true
+      {:type "Null"} #elm/boolean "false" true
+      {:type "Null"} {:type "Null"} true
+      {:type "Null"} #elm/parameter-ref "b" false
+
+      #elm/parameter-ref "a" #elm/boolean "true" true
+      #elm/parameter-ref "a" #elm/boolean "false" false
+      #elm/parameter-ref "a" {:type "Null"} false
+      #elm/parameter-ref "a" #elm/parameter-ref "b" false)))
 
 
 ;; 13.5. Xor
@@ -255,24 +280,45 @@
       #elm/parameter-ref "nil" #elm/parameter-ref "nil" nil))
 
   (testing "form"
-    (let [compile-ctx# {:library {:parameters {:def [{:name "a"} {:name "b"}]}}}]
-      (are [x y form] (= form (c/form (c/compile compile-ctx# (elm/xor [x y]))))
-        #elm/boolean "true" #elm/boolean "true" false
-        #elm/boolean "true" #elm/boolean "false" true
-        #elm/boolean "true" {:type "Null"} nil
-        #elm/boolean "true" #elm/parameter-ref "b" '(not (param-ref "b"))
+    (are [x y form] (= form (c/form (tu/dynamic-compile (elm/xor [x y]))))
+      #elm/boolean "true" #elm/boolean "true" false
+      #elm/boolean "true" #elm/boolean "false" true
+      #elm/boolean "true" {:type "Null"} nil
+      #elm/boolean "true" #elm/parameter-ref "b" '(not (param-ref "b"))
 
-        #elm/boolean "false" #elm/boolean "true" true
-        #elm/boolean "false" #elm/boolean "false" false
-        #elm/boolean "false" {:type "Null"} nil
-        #elm/boolean "false" #elm/parameter-ref "b" '(param-ref "b")
+      #elm/boolean "false" #elm/boolean "true" true
+      #elm/boolean "false" #elm/boolean "false" false
+      #elm/boolean "false" {:type "Null"} nil
+      #elm/boolean "false" #elm/parameter-ref "b" '(param-ref "b")
 
-        {:type "Null"} #elm/boolean "true" nil
-        {:type "Null"} #elm/boolean "false" nil
-        {:type "Null"} {:type "Null"} nil
-        {:type "Null"} #elm/parameter-ref "b" nil
+      {:type "Null"} #elm/boolean "true" nil
+      {:type "Null"} #elm/boolean "false" nil
+      {:type "Null"} {:type "Null"} nil
+      {:type "Null"} #elm/parameter-ref "b" nil
 
-        #elm/parameter-ref "a" #elm/boolean "true" '(not (param-ref "a"))
-        #elm/parameter-ref "a" #elm/boolean "false" '(param-ref "a")
-        #elm/parameter-ref "a" {:type "Null"} nil
-        #elm/parameter-ref "a" #elm/parameter-ref "b" '(xor (param-ref "a") (param-ref "b"))))))
+      #elm/parameter-ref "a" #elm/boolean "true" '(not (param-ref "a"))
+      #elm/parameter-ref "a" #elm/boolean "false" '(param-ref "a")
+      #elm/parameter-ref "a" {:type "Null"} nil
+      #elm/parameter-ref "a" #elm/parameter-ref "b" '(xor (param-ref "a") (param-ref "b"))))
+
+  (testing "static"
+    (are [x y static] (identical? static (core/-static (tu/dynamic-compile (elm/xor [x y]))))
+      #elm/boolean "true" #elm/boolean "true" true
+      #elm/boolean "true" #elm/boolean "false" true
+      #elm/boolean "true" {:type "Null"} true
+      #elm/boolean "true" #elm/parameter-ref "b" false
+
+      #elm/boolean "false" #elm/boolean "true" true
+      #elm/boolean "false" #elm/boolean "false" true
+      #elm/boolean "false" {:type "Null"} true
+      #elm/boolean "false" #elm/parameter-ref "b" false
+
+      {:type "Null"} #elm/boolean "true" true
+      {:type "Null"} #elm/boolean "false" true
+      {:type "Null"} {:type "Null"} true
+      {:type "Null"} #elm/parameter-ref "b" true
+
+      #elm/parameter-ref "a" #elm/boolean "true" false
+      #elm/parameter-ref "a" #elm/boolean "false" false
+      #elm/parameter-ref "a" {:type "Null"} true
+      #elm/parameter-ref "a" #elm/parameter-ref "b" false)))

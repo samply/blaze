@@ -8,6 +8,7 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.arithmetic-operators-spec]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.date-time :as date-time]
     [blaze.elm.date-time-spec]
@@ -86,7 +87,14 @@
         [0M "m"] (quantity/quantity 0M "m")
         [1M "m"] (quantity/quantity 1M "m"))))
 
+  (testing "Dynamic"
+    (are [elm res] (= res (tu/dynamic-compile-eval (elm/abs elm)))
+      #elm/parameter-ref "1" 1
+      #elm/parameter-ref "-1" 1))
+
   (tu/testing-unary-null elm/abs)
+
+  (tu/testing-unary-dynamic elm/abs)
 
   (tu/testing-unary-form elm/abs))
 
@@ -362,6 +370,8 @@
       #elm/time "00:00:00" #elm/quantity [1 "minute"] (date-time/local-time 0 1 0)
       #elm/time "00:00:00" #elm/quantity [1 "second"] (date-time/local-time 0 0 1)))
 
+  (tu/testing-binary-dynamic elm/add)
+
   (tu/testing-binary-form elm/add))
 
 
@@ -377,6 +387,8 @@
     #elm/decimal "1.1" 2)
 
   (tu/testing-unary-null elm/ceiling)
+
+  (tu/testing-unary-dynamic elm/ceiling)
 
   (tu/testing-unary-form elm/ceiling))
 
@@ -468,6 +480,8 @@
         (let [elm (elm/equal [(elm/multiply [(elm/divide [decimal decimal]) decimal]) decimal])]
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
+  (tu/testing-binary-dynamic elm/divide)
+
   (tu/testing-binary-form elm/divide))
 
 
@@ -482,6 +496,8 @@
     #elm/decimal "0" 1M)
 
   (tu/testing-unary-null elm/exp)
+
+  (tu/testing-unary-dynamic elm/exp)
 
   (tu/testing-unary-form elm/exp))
 
@@ -498,6 +514,8 @@
     #elm/decimal "1.1" 1)
 
   (tu/testing-unary-null elm/floor)
+
+  (tu/testing-unary-dynamic elm/floor)
 
   (tu/testing-unary-form elm/floor))
 
@@ -543,6 +561,8 @@
 
     (tu/testing-binary-null elm/log #elm/decimal "1.1"))
 
+  (tu/testing-binary-dynamic elm/log)
+
   (tu/testing-binary-form elm/log))
 
 
@@ -586,6 +606,8 @@
     #elm/decimal "-1" nil)
 
   (tu/testing-unary-null elm/ln)
+
+  (tu/testing-unary-dynamic elm/ln)
 
   (tu/testing-unary-form elm/ln))
 
@@ -714,6 +736,8 @@
       #elm/integer "1" #elm/integer "0" nil
       #elm/decimal "1" #elm/decimal "0" nil))
 
+  (tu/testing-binary-dynamic elm/modulo)
+
   (tu/testing-binary-form elm/modulo))
 
 
@@ -757,6 +781,8 @@
 
     (tu/testing-binary-null elm/multiply #elm/quantity [1]))
 
+  (tu/testing-binary-dynamic elm/multiply)
+
   (tu/testing-binary-form elm/multiply))
 
 
@@ -786,6 +812,8 @@
       #elm/quantity [1M "m"] (quantity/quantity -1M "m")))
 
   (tu/testing-unary-null elm/negate)
+
+  (tu/testing-unary-dynamic elm/negate)
 
   (tu/testing-unary-form elm/negate))
 
@@ -820,6 +848,8 @@
       #elm/decimal "2.5" #elm/integer "2" 6.25M
       #elm/decimal "10" #elm/integer "2" 100M
       #elm/decimal "10" #elm/integer "2" 100M))
+
+  (tu/testing-binary-dynamic elm/power)
 
   (tu/testing-binary-form elm/power))
 
@@ -905,6 +935,8 @@
 
   (tu/testing-unary-null elm/predecessor)
 
+  (tu/testing-unary-dynamic elm/predecessor)
+
   (tu/testing-unary-form elm/predecessor))
 
 
@@ -954,14 +986,16 @@
             eval-ctx {:parameters {"x" nil}}]
         (is (nil? (core/-eval expr eval-ctx nil nil))))))
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}]
-      (are [elm form] (= form (core/-form (c/compile compile-ctx elm)))
-        #elm/round [#elm/parameter-ref "x"]
-        '(round (param-ref "x"))
 
-        #elm/round [#elm/parameter-ref "x" #elm/integer "3"]
-        '(round (param-ref "x") 3)))))
+  (tu/testing-unary-null elm/round)
+
+  (tu/testing-unary-dynamic elm/round)
+
+  (tu/testing-unary-form elm/round)
+
+  (tu/testing-binary-dynamic elm/round)
+
+  (tu/testing-binary-form elm/round))
 
 
 ;; 16.20. Subtract
@@ -1181,6 +1215,8 @@
       #elm/time "00:00:00" #elm/quantity [1 "minute"] (date-time/local-time 23 59 0)
       #elm/time "00:00:00" #elm/quantity [1 "second"] (date-time/local-time 23 59 59)))
 
+  (tu/testing-binary-dynamic elm/subtract)
+
   (tu/testing-binary-form elm/subtract))
 
 
@@ -1252,6 +1288,8 @@
 
   (tu/testing-unary-null elm/successor)
 
+  (tu/testing-unary-dynamic elm/successor)
+
   (tu/testing-unary-form elm/successor))
 
 
@@ -1267,6 +1305,8 @@
       #elm/decimal "1.1" 1))
 
   (tu/testing-unary-null elm/truncate)
+
+  (tu/testing-unary-dynamic elm/truncate)
 
   (tu/testing-unary-form elm/truncate))
 
@@ -1328,5 +1368,7 @@
 
     (tu/testing-binary-null elm/truncated-divide #elm/integer "1"
                             #elm/decimal "1.1"))
+
+  (tu/testing-binary-dynamic elm/truncated-divide)
 
   (tu/testing-binary-form elm/truncated-divide))

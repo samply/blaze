@@ -7,6 +7,7 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.comparison-operators]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
@@ -260,6 +261,8 @@
 
     (tu/testing-binary-null elm/equal (tu/code "a" "0")))
 
+  (tu/testing-binary-dynamic elm/equal)
+
   (tu/testing-binary-form elm/equal))
 
 
@@ -439,6 +442,8 @@
       {:type "Null"} (tu/code "a" "0") false
       (tu/code "a" "0") {:type "Null"} false))
 
+  (tu/testing-binary-dynamic elm/equivalent)
+
   (tu/testing-binary-form elm/equivalent))
 
 
@@ -554,6 +559,8 @@
       "00:00:00" "00:00:00" false)
 
     (tu/testing-binary-null elm/greater #elm/time "00:00:00"))
+
+  (tu/testing-binary-dynamic elm/greater)
 
   (tu/testing-binary-form elm/greater))
 
@@ -682,6 +689,8 @@
       [1 "m"] [101 "cm"] false)
 
     (tu/testing-binary-null elm/greater-or-equal #elm/quantity [1]))
+
+  (tu/testing-binary-dynamic elm/greater-or-equal)
 
   (tu/testing-binary-form elm/greater-or-equal))
 
@@ -815,6 +824,8 @@
 
     (tu/testing-binary-null elm/less #elm/quantity [1]))
 
+  (tu/testing-binary-dynamic elm/less)
+
   (tu/testing-binary-form elm/less))
 
 
@@ -935,6 +946,8 @@
       [101 "cm"] [1 "m"] false)
 
     (tu/testing-binary-null elm/less-or-equal #elm/quantity [1]))
+
+  (tu/testing-binary-dynamic elm/less-or-equal)
 
   (tu/testing-binary-form elm/less-or-equal))
 
