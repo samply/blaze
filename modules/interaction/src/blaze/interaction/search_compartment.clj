@@ -54,7 +54,7 @@
     {:keys [page-offset] :as params} :params} clauses]
   {:fhir/type :fhir.Bundle/link
    :relation "self"
-   :url (nav/url base-url match params clauses (iu/t db)
+   :url (nav/url base-url match params clauses (d/t db)
                  {"__page-offset" page-offset})})
 
 
@@ -65,7 +65,7 @@
 (defn- next-link
   [{:keys [page-store match params] :blaze/keys [base-url db]} clauses entries]
   (do-sync [url (nav/token-url! page-store base-url match params clauses
-                                (iu/t db) (next-link-offset params entries))]
+                                (d/t db) (next-link-offset params entries))]
     {:fhir/type :fhir.Bundle/link
      :relation "next"
      :url url}))

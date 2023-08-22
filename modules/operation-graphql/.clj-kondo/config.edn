@@ -22,6 +22,7 @@
   :consistent-alias
   {:aliases
    {blaze.db.api d
+    cognitect.anomalies anom
     ring.util.response ring}}}
 
  :skip-comments true}

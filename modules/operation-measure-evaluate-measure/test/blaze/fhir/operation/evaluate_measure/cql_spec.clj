@@ -25,7 +25,7 @@
 
 (s/fdef cql/evaluate-individual-expression
   :args (s/cat :context ::cql/evaluate-individual-expression-context
-               :subject-handle ed/resource?
+               :subject ed/resource?
                :name string?)
   :ret (s/or :value any?
              :anomaly ::anom/anomaly))

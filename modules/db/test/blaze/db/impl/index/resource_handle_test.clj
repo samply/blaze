@@ -103,3 +103,12 @@
         (let [rh-1 (resource-handle tid id t)
               rh-2 (resource-handle tid id t)]
           (= rh-1 rh-2))))))
+
+
+(deftest to-string-test
+  (satisfies-prop 100
+    (prop/for-all [id (s/gen :blaze.resource/id)
+                   t (s/gen :blaze.db/t)]
+
+      (= (format "Condition[id = %s, t = %d]" id t)
+         (str (resource-handle 1495153489 id t))))))

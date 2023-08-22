@@ -61,12 +61,6 @@
   (luid/successive-luids clock (rng-fn)))
 
 
-(defn t
-  "Returns the effective `t` of `db`."
-  [db]
-  (or (d/as-of-t db) (d/basis-t db)))
-
-
 (defn- prep-if-none-match [if-none-match]
   (if (= "*" if-none-match)
     :any

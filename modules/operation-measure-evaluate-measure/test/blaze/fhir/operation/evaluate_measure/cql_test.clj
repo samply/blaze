@@ -185,7 +185,7 @@
             :expression-context := "Patient")))))
 
   (testing "population basis doesn't match the expression return type"
-    (testing "boolean"
+    (testing "Boolean"
       (with-system [system mem-node-config]
         (let [context (context system library-encounter)]
           (doseq [return-handles? [true false]

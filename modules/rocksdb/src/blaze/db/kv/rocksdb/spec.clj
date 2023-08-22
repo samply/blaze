@@ -4,6 +4,7 @@
     [blaze.db.kv.rocksdb :as-alias rocksdb]
     [blaze.db.kv.rocksdb.db-options :as-alias db-options]
     [blaze.db.kv.rocksdb.protocols :as p]
+    [blaze.db.kv.rocksdb.table :as-alias table]
     [blaze.db.kv.rocksdb.write-options :as-alias write-options]
     [blaze.db.kv.spec]
     [clojure.spec.alpha :as s])
@@ -63,3 +64,15 @@
 
 (s/def ::rocksdb/opts
   (s/merge ::rocksdb/db-options ::rocksdb/write-options))
+
+
+(s/def ::table/data-size
+  int?)
+
+
+(s/def ::table/index-size
+  int?)
+
+
+(s/def ::rocksdb/table
+  (s/keys :req-un [::table/data-size ::table/index-size]))

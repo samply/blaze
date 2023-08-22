@@ -14,6 +14,6 @@ register-test: prep
 	clojure -M:register test --concurrency 16 --time-limit 60 -n localhost:8080 --delta-time 0.01
 
 clean:
-	rm -rf .clj-kondo/.cache .cpcache target
+	rm -rf .clj-kondo/.cache .cpcache target store
 
 .PHONY: lint prep test test-coverage clean
