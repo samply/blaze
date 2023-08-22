@@ -1,8 +1,9 @@
 (ns blaze.openid-auth-test
   (:require
+    [blaze.module.test-util :refer [with-system]]
     [blaze.openid-auth :as openid-auth]
     [blaze.openid-auth.spec]
-    [blaze.test-util :as tu :refer [given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-thrown]]
     [buddy.auth.protocols :as p]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]

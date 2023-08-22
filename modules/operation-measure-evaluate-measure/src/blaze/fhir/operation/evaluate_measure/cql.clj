@@ -2,6 +2,7 @@
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
     [blaze.db.api :as d]
+    [blaze.elm.compiler.external-data :as ed]
     [blaze.elm.expression :as expr]
     [blaze.elm.util :as elm-util]
     [blaze.fhir.spec :as fhir-spec]
@@ -40,9 +41,9 @@
           (ex-message e)))
 
 
-(defn- evaluate-expression-1* [context subject-handle name expression]
+(defn- evaluate-expression-1* [context subject name expression]
   (try
-    (expr/eval context expression subject-handle)
+    (expr/eval context expression subject)
     (catch Exception e
       (let [ex-data (ex-data e)]
         ;; only log if the exception hasn't ex-data because exception with
@@ -67,12 +68,12 @@
 
 
 (defn- evaluate-expression-1
-  [{:keys [timeout-eclipsed?] :as context} subject-handle name expression]
+  [{:keys [timeout-eclipsed?] :as context} subject name expression]
   (if (timeout-eclipsed?)
     {::anom/category ::anom/interrupted
      ::anom/message (timeout-eclipsed-msg context)
      :timeout (:timeout context)}
-    (evaluate-expression-1* context subject-handle name expression)))
+    (evaluate-expression-1* context subject name expression)))
 
 
 (defn- close-batch-db! [{:keys [db]}]
@@ -140,43 +141,47 @@
     (expression-combine-sum-op context)))
 
 
-(defn- handle [subject-handle]
-  {:population-handle subject-handle :subject-handle subject-handle})
+(defn- handle [subject]
+  {:population-handle subject :subject-handle subject})
 
 
-(defn- conj-all! [handles subject-handle population-handles]
+(defn- conj-all! [resources subject population-resources]
   (reduce
-    (fn [handles population-handle]
-      (conj! handles {:population-handle population-handle
-                      :subject-handle subject-handle}))
-    handles
-    population-handles))
+    (fn [resources population-resource]
+      (conj! resources {:population-handle population-resource
+                        :subject-handle subject}))
+    resources
+    population-resources))
 
 
 (defn- expression-reduce-subject-based-conj-op [{:keys [name expression]}]
-  (fn [context subject-handle]
-    (if-ok [res (evaluate-expression-1 context subject-handle name expression)]
-      (cond-> context res (update ::result conj! (handle subject-handle)))
-      #(reduced (assoc context ::result %)))))
+  (fn [{:keys [db] :as context} subject-handle]
+    (let [subject (ed/mk-resource db subject-handle)]
+      (if-ok [res (evaluate-expression-1 context subject name expression)]
+        (cond-> context res (update ::result conj! (handle subject)))
+        #(reduced (assoc context ::result %))))))
 
 
 (defn- expression-reduce-conj-op [{:keys [name expression]}]
-  (fn [context subject-handle]
-    (if-ok [res (evaluate-expression-1 context subject-handle name expression)]
-      (update context ::result conj-all! subject-handle res)
-      #(reduced (assoc context ::result %)))))
+  (fn [{:keys [db] :as context} subject-handle]
+    (let [subject (ed/mk-resource db subject-handle)]
+      (if-ok [res (evaluate-expression-1 context subject name expression)]
+        (update context ::result conj-all! subject res)
+        #(reduced (assoc context ::result %))))))
 
 
 (defn- expression-reduce-subject-based-sum-op [{:keys [name expression]}]
-  (fn [context subject-handle]
-    (if-ok [res (evaluate-expression-1 context subject-handle name expression)]
+  (fn [{:keys [db] :as context} subject-handle]
+    (if-ok [res (evaluate-expression-1 context (ed/mk-resource db subject-handle)
+                                       name expression)]
       (cond-> context res (update ::result inc))
       #(reduced (assoc context ::result %)))))
 
 
 (defn- expression-reduce-sum-op [{:keys [name expression]}]
-  (fn [context subject-handle]
-    (if-ok [res (evaluate-expression-1 context subject-handle name expression)]
+  (fn [{:keys [db] :as context} subject-handle]
+    (if-ok [res (evaluate-expression-1 context (ed/mk-resource db subject-handle)
+                                       name expression)]
       (update context ::result + (count res))
       #(reduced (assoc context ::result %)))))
 
@@ -294,13 +299,12 @@
 
 
 (defn evaluate-individual-expression
-  "Evaluates the expression with `name` on `subject-handle` according to
-  `context`.
+  "Evaluates the expression with `name` on `subject` according to `context`.
 
   Returns an anomaly in case of errors."
-  [context subject-handle name]
+  [context subject name]
   (when-ok [{:keys [name expression]} (expression-def context name)]
-    (evaluate-expression-1 context subject-handle name expression)))
+    (evaluate-expression-1 context subject name expression)))
 
 
 (defn- stratum-result-reduce-op [result stratum subject-handle]

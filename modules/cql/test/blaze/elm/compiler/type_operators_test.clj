@@ -8,6 +8,7 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.clinical-operators]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.compiler.type-operators]
     [blaze.elm.concept :as concept]
@@ -49,58 +50,58 @@
   (testing "FHIR types"
     (are [elm resource res] (= res (core/-eval (c/compile {} elm) {} nil {"R" resource}))
       #elm/as ["{http://hl7.org/fhir}boolean"
-              {:path "deceased"
-               :scope "R"
-               :type "Property"}]
+               {:path "deceased"
+                :scope "R"
+                :type "Property"}]
       {:fhir/type :fhir/Patient :id "0" :deceased true}
       true
 
       #elm/as ["{http://hl7.org/fhir}integer"
-              {:path "value"
-               :scope "R"
-               :type "Property"}]
+               {:path "value"
+                :scope "R"
+                :type "Property"}]
       {:fhir/type :fhir/Observation :value (int 1)}
       (int 1)
 
       #elm/as ["{http://hl7.org/fhir}string"
-              {:path "name"
-               :scope "R"
-               :type "Property"}]
+               {:path "name"
+                :scope "R"
+                :type "Property"}]
       {:fhir/type :fhir/Account :name "a"}
       "a"
 
       #elm/as ["{http://hl7.org/fhir}decimal"
-              {:path "duration"
-               :scope "R"
-               :type "Property"}]
+               {:path "duration"
+                :scope "R"
+                :type "Property"}]
       {:fhir/type :fhir/Media :duration 1.1M}
       1.1M
 
       #elm/as ["{http://hl7.org/fhir}uri"
-              {:path "url"
-               :scope "R"
-               :type "Property"}]
+               {:path "url"
+                :scope "R"
+                :type "Property"}]
       {:fhir/type :fhir/Measure :url #fhir/uri"a"}
       #fhir/uri"a"
 
       #elm/as ["{http://hl7.org/fhir}url"
-              {:path "address"
-               :scope "R"
-               :type "Property"}]
+               {:path "address"
+                :scope "R"
+                :type "Property"}]
       {:fhir/type :fhir/Endpoint :address #fhir/url"a"}
       #fhir/url"a"
 
       #elm/as ["{http://hl7.org/fhir}dateTime"
-              {:path "value"
-               :scope "R"
-               :type "Property"}]
+               {:path "value"
+                :scope "R"
+                :type "Property"}]
       {:fhir/type :fhir/Observation :value #fhir/dateTime"2019-09-04"}
       #fhir/dateTime"2019-09-04"
 
       #elm/as ["{http://hl7.org/fhir}Quantity"
-              {:path "value"
-               :scope "R"
-               :type "Property"}]
+               {:path "value"
+                :scope "R"
+                :type "Property"}]
       {:fhir/type :fhir/Observation :value #fhir/dateTime"2019-09-04"}
       nil))
 
@@ -118,8 +119,13 @@
       #elm/as ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date-time"2019-09-04"]
       (system/date-time 2019 9 4)))
 
+  (testing "expression is dynamic"
+    (is (false? (core/-static (tu/dynamic-compile
+                                #elm/as["{urn:hl7-org:elm-types:r1}Integer"
+                                        #elm/parameter-ref "x"])))))
+
   (testing "form"
-    (are [elm form] (= form (core/-form (c/compile {} elm)))
+    (are [elm form] (= form (c/form (c/compile {} elm)))
       #elm/as ["{urn:hl7-org:elm-types:r1}Integer" {:type "Null"}]
       nil
 
@@ -127,9 +133,9 @@
       '(as elm/integer 1)
 
       #elm/as ["{http://hl7.org/fhir}dateTime"
-              {:path "value"
-               :scope "R"
-               :type "Property"}]
+               {:path "value"
+                :scope "R"
+                :type "Property"}]
       '(as fhir/dateTime (:value R))
 
       {:type "As"
@@ -194,11 +200,9 @@
   (tu/testing-binary-null elm/can-convert-quantity #elm/quantity [1 "m"]
                           #elm/string "m")
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "q"}]}}}
-          elm #elm/can-convert-quantity[#elm/parameter-ref "q" #elm/string "g"]
-          expr (c/compile compile-ctx elm)]
-      (is (= '(can-convert-quantity (param-ref "q") "g") (core/-form expr))))))
+  (tu/testing-binary-dynamic elm/can-convert-quantity)
+
+  (tu/testing-binary-form elm/can-convert-quantity))
 
 
 ;; 22.4. Children
@@ -220,7 +224,11 @@
 
   ;; TODO: other types
 
-  (tu/testing-unary-null elm/children))
+  (tu/testing-unary-null elm/children)
+
+  (tu/testing-unary-dynamic elm/children)
+
+  (tu/testing-unary-form elm/children))
 
 
 ;; TODO 22.5. Convert
@@ -274,11 +282,9 @@
 
   (tu/testing-binary-null elm/convert-quantity #elm/quantity [5 "mg"] #elm/string "m")
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "q"}]}}}
-          elm #elm/convert-quantity[#elm/parameter-ref "q" #elm/string "g"]
-          expr (c/compile compile-ctx elm)]
-      (is (= '(convert-quantity (param-ref "q") "g") (core/-form expr))))))
+  (tu/testing-binary-dynamic elm/convert-quantity)
+
+  (tu/testing-binary-form elm/convert-quantity))
 
 
 ;; 22.7. ConvertsToBoolean
@@ -330,7 +336,7 @@
       "bar"
       ""))
 
-  (testing "integer"
+  (testing "Integer"
     (is (true? (tu/compile-unop elm/converts-to-boolean elm/integer "1")))
 
     (is (true? (tu/compile-unop elm/converts-to-boolean elm/integer "0")))
@@ -339,7 +345,7 @@
       "2"
       "-1"))
 
-  (testing "long"
+  (testing "Long"
     (is (true? (tu/compile-unop elm/converts-to-boolean elm/long "1")))
 
     (is (true? (tu/compile-unop elm/converts-to-boolean elm/long "0")))
@@ -348,7 +354,7 @@
       "2"
       "-1"))
 
-  (testing "decimal"
+  (testing "Decimal"
     (are [x] (true? (tu/compile-unop elm/converts-to-boolean elm/decimal x))
       "1"
       "1.0"
@@ -366,22 +372,21 @@
       "1.1"
       "0.9"))
 
-  (testing "boolean"
+  (testing "Boolean"
     (is (true? (tu/compile-unop elm/converts-to-boolean elm/boolean "true")))
 
     (is (true? (tu/compile-unop elm/converts-to-boolean elm/boolean "false"))))
 
-  (testing "dynamic"
+  (testing "Dynamic"
     (are [x res] (= res (tu/dynamic-compile-eval (elm/converts-to-boolean x)))
       #elm/parameter-ref "A" false))
 
   (tu/testing-unary-null elm/converts-to-boolean)
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/converts-to-boolean #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-      (is (= '(converts-to-boolean (param-ref "x")) (core/-form expr))))))
+  (tu/testing-unary-dynamic elm/converts-to-boolean)
+
+  (tu/testing-unary-form elm/converts-to-boolean))
+
 
 ;; 22.8. ConvertsToDate
 ;;
@@ -435,6 +440,8 @@
 
   (tu/testing-unary-null elm/converts-to-date)
 
+  (tu/testing-unary-dynamic elm/converts-to-date)
+
   (tu/testing-unary-form elm/converts-to-date))
 
 
@@ -483,9 +490,11 @@
         "2020"
         "2020-03"
         "2020-03-08"
-        "2020-03-08T12:13" )))
+        "2020-03-08T12:13")))
 
   (tu/testing-unary-null elm/converts-to-date-time)
+
+  (tu/testing-unary-dynamic elm/converts-to-date-time)
 
   (tu/testing-unary-form elm/converts-to-date-time))
 
@@ -538,7 +547,7 @@
     (are [x] (true? (tu/compile-unop elm/converts-to-decimal elm/decimal x))
       "1.1"))
 
-  (testing "dynamic"
+  (testing "Dynamic"
     (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-decimal x)))
       #elm/parameter-ref "A")
     (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-decimal x)))
@@ -546,11 +555,9 @@
 
   (tu/testing-unary-null elm/converts-to-decimal)
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/converts-to-decimal #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-      (is (= '(converts-to-decimal (param-ref "x")) (core/-form expr))))))
+  (tu/testing-unary-dynamic elm/converts-to-decimal)
+
+  (tu/testing-unary-form elm/converts-to-decimal))
 
 
 ;; 22.11. ConvertsToLong
@@ -598,7 +605,7 @@
     (are [x] (true? (tu/compile-unop elm/converts-to-long elm/long x))
       "1"))
 
-  (testing "dynamic"
+  (testing "Dynamic"
     (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-long x)))
       #elm/parameter-ref "A")
     (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-long x)))
@@ -606,11 +613,9 @@
 
   (tu/testing-unary-null elm/converts-to-long)
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/converts-to-long #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-      (is (= '(converts-to-long (param-ref "x")) (core/-form expr))))))
+  (tu/testing-unary-dynamic elm/converts-to-long)
+
+  (tu/testing-unary-form elm/converts-to-long))
 
 
 ;; 22.12. ConvertsToInteger
@@ -657,7 +662,7 @@
     (are [x] (true? (tu/compile-unop elm/converts-to-integer elm/integer x))
       "1"))
 
-  (testing "dynamic"
+  (testing "Dynamic"
     (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-integer x)))
       #elm/parameter-ref "A")
     (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-integer x)))
@@ -665,11 +670,9 @@
 
   (tu/testing-unary-null elm/converts-to-integer)
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/converts-to-integer #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-      (is (= '(converts-to-integer (param-ref "x")) (core/-form expr))))))
+  (tu/testing-unary-dynamic elm/converts-to-integer)
+
+  (tu/testing-unary-form elm/converts-to-integer))
 
 
 ;; 22.13. ConvertsToQuantity
@@ -732,7 +735,7 @@
       [[1 "m"] [1 "s"]]
       [[10 "s"] [1 "s"]]))
 
-  (testing "dynamic"
+  (testing "Dynamic"
     (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-quantity x)))
       #elm/parameter-ref "A")
     (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-quantity x)))
@@ -740,11 +743,9 @@
 
   (tu/testing-unary-null elm/converts-to-quantity)
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/converts-to-quantity #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-      (is (= '(converts-to-quantity (param-ref "x")) (core/-form expr))))))
+  (tu/testing-unary-dynamic elm/converts-to-quantity)
+
+  (tu/testing-unary-form elm/converts-to-quantity))
 
 
 ;; 22.14. ConvertsToRatio
@@ -775,17 +776,15 @@
       "a"
       "0'm';0'm'"))
 
-  (testing "dynamic"
+  (testing "Dynamic"
     (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-ratio x)))
       #elm/parameter-ref "A"))
 
   (tu/testing-unary-null elm/converts-to-ratio)
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/converts-to-ratio #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-      (is (= '(converts-to-ratio (param-ref "x")) (core/-form expr))))))
+  (tu/testing-unary-dynamic elm/converts-to-ratio)
+
+  (tu/testing-unary-form elm/converts-to-ratio))
 
 
 ;; 22.15. ConvertsToString
@@ -852,17 +851,16 @@
     (are [x] (false? (c/compile {} (elm/converts-to-string (elm/tuple x))))
       {"foo" #elm/integer "1"}))
 
-  (testing "dynamic"
+  (testing "Dynamic"
     (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-string x)))
       #elm/parameter-ref "A"))
 
   (tu/testing-unary-null elm/converts-to-string)
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/converts-to-string #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-      (is (= '(converts-to-string (param-ref "x")) (core/-form expr))))))
+  (tu/testing-unary-dynamic elm/converts-to-string)
+
+  (tu/testing-unary-form elm/converts-to-string))
+
 
 ;; 22.16. ConvertsToTime
 ;;
@@ -888,13 +886,17 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-converts-to-time-test
-  (let [eval #(core/-eval % {:now tu/now} nil nil)]
+  (let [compile (partial tu/compile-unop elm/converts-to-time)
+        eval #(core/-eval % {:now tu/now} nil nil)]
     (testing "String"
-      (are [x] (true? (eval (tu/compile-unop elm/converts-to-time elm/string x)))
+      (testing "expression is dynamic"
+        (is (not (core/static? (compile elm/string "")))))
+
+      (are [x] (true? (eval (compile elm/string x)))
         "12:54:30"
         "12:54:30.010")
 
-      (are [x] (false? (eval (tu/compile-unop elm/converts-to-time elm/string x)))
+      (are [x] (false? (eval (compile elm/string x)))
         "aaaa"
         "12:54"
         "24:54:00"
@@ -902,22 +904,30 @@
         "14-30-00.0"))
 
     (testing "Time"
-      (are [x] (true? (eval (tu/compile-unop elm/converts-to-time elm/time x)))
+      (testing "expression is dynamic"
+        (is (not (core/static? (compile elm/time "12:54")))))
+
+      (are [x] (true? (eval (compile elm/time x)))
         "12:54"
         "12:54:00"
         "12:54:30.010"))
 
     (testing "DateTime"
-      (are [x] (true? (eval (tu/compile-unop elm/converts-to-time elm/date-time x)))
+      (testing "expression is dynamic"
+        (is (not (core/static? (compile elm/string "2020-03-08T12:54:00")))))
+
+      (are [x] (true? (eval (compile elm/date-time x)))
         "2020-03-08T12:54:00"
         "2020-03-08T12:54:30.010"))
 
-    (testing "dynamic"
+    (testing "Dynamic"
       (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-time x)))
         #elm/parameter-ref "12:54:00"
         #elm/parameter-ref "2020-01-02T03:04:05.006Z")))
 
   (tu/testing-unary-null elm/converts-to-time)
+
+  (tu/testing-unary-dynamic elm/converts-to-time)
 
   (tu/testing-unary-form elm/converts-to-time))
 
@@ -934,6 +944,9 @@
 ;; If the source is null, the result is null.
 (deftest compile-to-descendents-test
   (testing "Code"
+    (testing "expression is dynamic"
+      (is (not (core/static? (c/compile {} (elm/descendents (tu/code "system-134534" "code-134551")))))))
+
     (are [x res] (= res (core/-eval (c/compile {} (elm/descendents x))
                                     {:now tu/now} nil nil))
       (tu/code "system-134534" "code-134551")
@@ -941,7 +954,11 @@
 
   ;; TODO: other types
 
-  (tu/testing-unary-null elm/descendents))
+  (tu/testing-unary-null elm/descendents)
+
+  (tu/testing-unary-dynamic elm/descendents)
+
+  (tu/testing-unary-form elm/descendents))
 
 
 ;; 22.18. Is
@@ -1087,8 +1104,13 @@
       #elm/is ["{urn:hl7-org:elm-types:r1}DateTime" #elm/string "2019-09-04"]
       #elm/is ["{urn:hl7-org:elm-types:r1}DateTime" {:type "Null"}]))
 
+  (testing "expression is dynamic"
+    (is (false? (core/-static (tu/dynamic-compile
+                                #elm/is["{urn:hl7-org:elm-types:r1}Integer"
+                                        #elm/parameter-ref "x"])))))
+
   (testing "form"
-    (are [elm form] (= form (core/-form (c/compile {} elm)))
+    (are [elm form] (= form (c/form (c/compile {} elm)))
       #elm/is ["{urn:hl7-org:elm-types:r1}Integer" {:type "Null"}]
       '(is elm/integer nil)
 
@@ -1131,88 +1153,88 @@
 ;;
 ;; If the argument is null the result is null.
 (deftest compile-to-boolean-test
-  (testing "String"
-    (are [x] (true? (tu/compile-unop elm/to-boolean elm/string x))
-      "true"
-      "t"
-      "yes"
-      "y"
-      "1"
-      "True"
-      "T"
-      "TRUE"
-      "YES"
-      "Yes"
-      "Y")
+  (testing "Static"
+    (testing "String"
+      (are [x] (true? (tu/compile-unop elm/to-boolean elm/string x))
+        "true"
+        "t"
+        "yes"
+        "y"
+        "1"
+        "True"
+        "T"
+        "TRUE"
+        "YES"
+        "Yes"
+        "Y")
 
-    (are [x] (false? (tu/compile-unop elm/to-boolean elm/string x))
-      "false"
-      "f"
-      "no"
-      "n"
-      "0"
-      "False"
-      "F"
-      "FALSE"
-      "NO"
-      "No"
-      "N")
+      (are [x] (false? (tu/compile-unop elm/to-boolean elm/string x))
+        "false"
+        "f"
+        "no"
+        "n"
+        "0"
+        "False"
+        "F"
+        "FALSE"
+        "NO"
+        "No"
+        "N")
 
-    (are [x] (nil? (tu/compile-unop elm/to-boolean elm/string x))
-      "foo"
-      "bar"
-      ""))
+      (are [x] (nil? (tu/compile-unop elm/to-boolean elm/string x))
+        "foo"
+        "bar"
+        ""))
 
-  (testing "integer"
-    (is (true? (tu/compile-unop elm/to-boolean elm/integer "1")))
+    (testing "Integer"
+      (is (true? (tu/compile-unop elm/to-boolean elm/integer "1")))
 
-    (is (false? (tu/compile-unop elm/to-boolean elm/integer "0")))
+      (is (false? (tu/compile-unop elm/to-boolean elm/integer "0")))
 
-    (are [x] (nil? (tu/compile-unop elm/to-boolean elm/integer x))
-      "2"
-      "-1"))
+      (are [x] (nil? (tu/compile-unop elm/to-boolean elm/integer x))
+        "2"
+        "-1"))
 
-  (testing "long"
-    (is (true? (tu/compile-unop elm/to-boolean elm/long "1")))
+    (testing "Long"
+      (is (true? (tu/compile-unop elm/to-boolean elm/long "1")))
 
-    (is (false? (tu/compile-unop elm/to-boolean elm/long "0")))
+      (is (false? (tu/compile-unop elm/to-boolean elm/long "0")))
 
-    (are [x] (nil? (tu/compile-unop elm/to-boolean elm/long x))
-      "2"
-      "-1"))
+      (are [x] (nil? (tu/compile-unop elm/to-boolean elm/long x))
+        "2"
+        "-1"))
 
-  (testing "decimal"
-    (are [x] (true? (tu/compile-unop elm/to-boolean elm/decimal x))
-      "1"
-      "1.0"
-      "1.00"
-      "1.00000000")
+    (testing "Decimal"
+      (are [x] (true? (tu/compile-unop elm/to-boolean elm/decimal x))
+        "1"
+        "1.0"
+        "1.00"
+        "1.00000000")
 
-    (are [x] (false? (tu/compile-unop elm/to-boolean elm/decimal x))
-      "0"
-      "0.0"
-      "0.00"
-      "0.00000000")
+      (are [x] (false? (tu/compile-unop elm/to-boolean elm/decimal x))
+        "0"
+        "0.0"
+        "0.00"
+        "0.00000000")
 
-    (are [x] (nil? (tu/compile-unop elm/to-boolean elm/decimal x))
-      "0.1"
-      "-1.0"
-      "2.0"
-      "1.1"
-      "0.9"))
+      (are [x] (nil? (tu/compile-unop elm/to-boolean elm/decimal x))
+        "0.1"
+        "-1.0"
+        "2.0"
+        "1.1"
+        "0.9"))
 
-  (testing "boolean"
-    (is (true? (tu/compile-unop elm/to-boolean elm/boolean "true")))
+    (testing "Boolean"
+      (is (true? (tu/compile-unop elm/to-boolean elm/boolean "true")))
 
-    (is (false? (tu/compile-unop elm/to-boolean elm/boolean "false"))))
+      (is (false? (tu/compile-unop elm/to-boolean elm/boolean "false")))))
+
 
   (tu/testing-unary-null elm/to-boolean)
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/to-boolean #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-      (is (= '(to-boolean (param-ref "x")) (core/-form expr))))))
+  (tu/testing-unary-dynamic elm/to-boolean)
+
+  (tu/testing-unary-form elm/to-boolean))
 
 
 ;; 22.20. ToChars
@@ -1231,9 +1253,9 @@
 
   (testing "Integer"
     (are [x] (nil? (tu/compile-unop elm/to-chars elm/integer x))
-      "1" ))
+      "1"))
 
-  (testing "dynamic"
+  (testing "Dynamic"
     (are [x res] (= res (tu/dynamic-compile-eval (elm/to-chars x)))
       #elm/parameter-ref "A" '("A")
       #elm/parameter-ref "ab" '("a" "b")
@@ -1241,11 +1263,10 @@
 
   (tu/testing-unary-null elm/to-chars)
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/to-chars #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-      (is (= '(to-chars (param-ref "x")) (core/-form expr))))))
+  (tu/testing-unary-dynamic elm/to-chars)
+
+  (tu/testing-unary-form elm/to-chars))
+
 
 ;; 22.21. ToConcept
 ;;
@@ -1272,11 +1293,9 @@
 
   (tu/testing-unary-null elm/to-concept)
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/to-concept #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-    (is (= '(to-concept (param-ref "x")) (core/-form expr))))))
+  (tu/testing-unary-dynamic elm/to-concept)
+
+  (tu/testing-unary-form elm/to-concept))
 
 
 ;; 22.22. ToDate
@@ -1300,9 +1319,13 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-date-test
-  (let [eval #(core/-eval % {:now tu/now} nil nil)]
+  (let [compile (partial tu/compile-unop elm/to-date)
+        eval #(core/-eval % {:now tu/now} nil nil)]
     (testing "String"
-      (are [x res] (= res (eval (tu/compile-unop elm/to-date elm/string x)))
+      (testing "expression is dynamic"
+        (is (not (core/static? (compile elm/string "")))))
+
+      (are [x res] (= res (eval (compile elm/string x)))
         "2019" #system/date"2019"
         "2019-01" #system/date"2019-01"
         "2019-01-01" #system/date"2019-01-01"
@@ -1312,13 +1335,20 @@
         "2019-02-29" nil))
 
     (testing "Date"
-      (are [x res] (= res (eval (tu/compile-unop elm/to-date elm/date x)))
-        "2019" #system/date"2019"
-        "2019-01" #system/date"2019-01"
-        "2019-01-01" #system/date"2019-01-01"))
+      (testing "Static"
+        (testing "expression is static"
+          (is (core/static? (compile elm/date "2023"))))
+
+        (are [x res] (= res (compile elm/date x))
+          "2020" #system/date"2020"
+          "2020-03" #system/date"2020-03"
+          "2020-03-08" #system/date"2020-03-08")))
 
     (testing "DateTime"
-      (are [x res] (= res (eval (tu/compile-unop elm/to-date elm/date-time x)))
+      (testing "expression is dynamic"
+        (is (not (core/static? (compile elm/string "2019")))))
+
+      (are [x res] (= res (eval (compile elm/date-time x)))
         "2019" #system/date"2019"
         "2019-01" #system/date"2019-01"
         "2019-01-01" #system/date"2019-01-01"
@@ -1326,7 +1356,7 @@
         "2019-01-01T12:13:14" #system/date"2019-01-01"
         "2019-01-01T12:13:14.000-01:00" #system/date"2019-01-01")
 
-      (testing "dynamic"
+      (testing "Dynamic"
         (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
               elm #elm/to-date #elm/parameter-ref "x"
               expr (c/compile compile-ctx elm)
@@ -1340,7 +1370,11 @@
             #system/date-time"2023-05-07T16:07:00" #system/date"2023-05-07"
             #system/date-time"2023-05-07T16:07:00+02:00" #system/date"2023-05-07")))))
 
-  (tu/testing-unary-null elm/to-date))
+  (tu/testing-unary-null elm/to-date)
+
+  (tu/testing-unary-dynamic elm/to-date)
+
+  (tu/testing-unary-form elm/to-date))
 
 
 ;; 22.23. ToDateTime
@@ -1368,9 +1402,13 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-date-time-test
-  (let [eval #(core/-eval % {:now tu/now} nil nil)]
+  (let [compile (partial tu/compile-unop elm/to-date-time)
+        eval #(core/-eval % {:now tu/now} nil nil)]
     (testing "String"
-      (are [x res] (= res (eval (tu/compile-unop elm/to-date-time elm/string x)))
+      (testing "expression is dynamic"
+        (is (not (core/static? (compile elm/string "")))))
+
+      (are [x res] (= res (eval (compile elm/string x)))
         "2020" #system/date-time"2020"
         "2020-03" #system/date-time"2020-03"
         "2020-03-08" #system/date-time"2020-03-08"
@@ -1384,19 +1422,24 @@
 
     (testing "Date"
       (testing "Static"
-        (are [x res] (= res (tu/compile-unop elm/to-date-time elm/date x))
+        (testing "expression is static"
+          (is (core/static? (compile elm/date "2023"))))
+
+        (are [x res] (= res (compile elm/date x))
           "2020" #system/date-time"2020"
           "2020-03" #system/date-time"2020-03"
           "2020-03-08" #system/date-time"2020-03-08")))
 
     (testing "DateTime"
-      (are [x res] (= res (eval (tu/compile-unop elm/to-date-time elm/date-time x)))
+      (are [x res] (= res (eval (compile elm/date-time x)))
         "2020" #system/date-time"2020"
         "2020-03" #system/date-time"2020-03"
         "2020-03-08" #system/date-time"2020-03-08"
         "2020-03-08T12:13" #system/date-time"2020-03-08T12:13")))
 
   (tu/testing-unary-null elm/to-date-time)
+
+  (tu/testing-unary-dynamic elm/to-date-time)
 
   (tu/testing-unary-form elm/to-date-time))
 
@@ -1447,11 +1490,9 @@
 
   (tu/testing-unary-null elm/to-decimal)
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/to-decimal #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-      (is (= '(to-decimal (param-ref "x")) (core/-form expr))))))
+  (tu/testing-unary-dynamic elm/to-decimal)
+
+  (tu/testing-unary-form elm/to-decimal))
 
 
 ;; 22.25. ToInteger
@@ -1493,11 +1534,9 @@
 
   (tu/testing-unary-null elm/to-integer)
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/to-integer #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-      (is (= '(to-integer (param-ref "x")) (core/-form expr))))))
+  (tu/testing-unary-dynamic elm/to-integer)
+
+  (tu/testing-unary-form elm/to-integer))
 
 
 ;; 22.26. ToList
@@ -1513,22 +1552,26 @@
 ;;
 ;; The operator is used to implement list promotion efficiently.
 (deftest compile-to-list-test
-  (testing "Boolean"
-    (are [x res] (= res (tu/compile-unop elm/to-list elm/boolean x))
-      "false" [false]))
+  (testing "Static"
+    (testing "Boolean"
+      (are [x res] (= res (tu/compile-unop elm/to-list elm/boolean x))
+        "false" [false]))
 
-  (testing "Integer"
-    (are [x res] (= res (tu/compile-unop elm/to-list elm/integer x))
-      "1" [1]))
+    (testing "Integer"
+      (are [x res] (= res (tu/compile-unop elm/to-list elm/integer x))
+        "1" [1]))
 
-  (testing "Null"
-    (is (= [] (c/compile {} #elm/to-list{:type "Null"}))))
+    (testing "Null"
+      (is (= [] (c/compile {} #elm/to-list{:type "Null"})))))
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/to-list #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-      (is (= '(to-list (param-ref "x")) (core/-form expr))))))
+  (testing "Dynamic"
+    (are [x res] (= res (tu/dynamic-compile-eval (elm/to-list x)))
+      #elm/parameter-ref "nil" []
+      #elm/parameter-ref "a" ["a"]))
+
+  (tu/testing-unary-dynamic elm/to-list)
+
+  (tu/testing-unary-form elm/to-list))
 
 
 ;; 22.27. ToLong
@@ -1574,11 +1617,9 @@
 
   (tu/testing-unary-null elm/to-long)
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/to-long #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-      (is (= '(to-long (param-ref "x")) (core/-form expr))))))
+  (tu/testing-unary-dynamic elm/to-long)
+
+  (tu/testing-unary-form elm/to-long))
 
 
 ;; 22.28. ToQuantity
@@ -1656,11 +1697,9 @@
 
   (tu/testing-unary-null elm/to-quantity)
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/to-quantity #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-      (is (= '(to-quantity (param-ref "x")) (core/-form expr))))))
+  (tu/testing-unary-dynamic elm/to-quantity)
+
+  (tu/testing-unary-form elm/to-quantity))
 
 
 ;; 22.29. ToRatio
@@ -1710,11 +1749,9 @@
 
   (tu/testing-unary-null elm/to-ratio)
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/to-ratio #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-      (is (= '(to-ratio (param-ref "x")) (core/-form expr))))))
+  (tu/testing-unary-dynamic elm/to-ratio)
+
+  (tu/testing-unary-form elm/to-ratio))
 
 
 ;; 22.30. ToString
@@ -1792,11 +1829,9 @@
 
   (tu/testing-unary-null elm/to-string)
 
-  (testing "form"
-    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
-          elm #elm/to-string #elm/parameter-ref "x"
-          expr (c/compile compile-ctx elm)]
-      (is (= '(to-string (param-ref "x")) (core/-form expr))))))
+  (tu/testing-unary-dynamic elm/to-string)
+
+  (tu/testing-unary-form elm/to-string))
 
 
 ;; 22.31. ToTime
@@ -1847,9 +1882,13 @@
         "2020-03-08T12:54:00" (system/time 12 54 00)
         "2020-03-08T12:54:30.010" (system/time 12 54 30 10)))
 
-    (testing "dynamic"
+    (testing "Dynamic"
       (are [x res] (= res (tu/dynamic-compile-eval (elm/to-time x)))
         #elm/parameter-ref "12:54:00" (system/time 12 54 00)
         #elm/parameter-ref "2020-01-02T03:04:05.006Z" (system/time 3 4 5 6))))
 
-  (tu/testing-unary-null elm/to-time))
+  (tu/testing-unary-null elm/to-time)
+
+  (tu/testing-unary-dynamic elm/to-time)
+
+  (tu/testing-unary-form elm/to-time))

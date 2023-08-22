@@ -3,7 +3,7 @@
   {:local/root "../async"}
 
   com.datastax.oss/java-driver-core
-  {:mvn/version "4.16.0"}
+  {:mvn/version "4.17.0"}
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   com.fasterxml.jackson.core/jackson-databind
@@ -11,18 +11,18 @@
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   io.netty/netty-handler
-  {:mvn/version "4.1.94.Final"}}
+  {:mvn/version "4.1.96.Final"}}
 
  :aliases
  {:test
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/test-util
-    {:local/root "../test-util"}
+   {blaze/byte-buffer
+    {:local/root "../byte-buffer"}
 
-    org.clojars.akiel/iota
-    {:mvn/version "0.1"}}}
+    blaze/test-util
+    {:local/root "../test-util"}}}
 
   :kaocha
   {:extra-deps

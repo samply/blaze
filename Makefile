@@ -38,4 +38,7 @@ deps-tree:
 deps-list:
 	clojure -X:deps list
 
-.PHONY: $(MODULES) lint-root lint prep test-root test test-coverage clean-root clean build-frontend uberjar outdated deps-tree deps-list
+cloc: clean
+	cloc --exclude-ext=iml,json,csv .github dev docs modules profiling scripts src test
+
+.PHONY: $(MODULES) lint-root lint prep test-root test test-coverage clean-root clean build-frontend uberjar outdated deps-tree deps-list cloc

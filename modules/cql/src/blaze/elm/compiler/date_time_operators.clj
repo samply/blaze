@@ -28,64 +28,6 @@
       (.toLocalDateTime)))
 
 
-(defrecord YearExpression [year]
-  system/SystemType
-  (-type [_] :system/date)
-  core/Expression
-  (-eval [_ context resource scope]
-    (some-> (core/-eval year context resource scope) system/date)))
-
-
-(defrecord DateTimeYearExpression [year]
-  core/Expression
-  (-eval [_ context resource scope]
-    (some-> (core/-eval year context resource scope) system/date-time)))
-
-
-(defrecord YearMonthExpression [year month]
-  system/SystemType
-  (-type [_] :system/date)
-  core/Expression
-  (-eval [_ context resource scope]
-    (when-let [year (core/-eval year context resource scope)]
-      (if-let [month (core/-eval month context resource scope)]
-        (system/date year month)
-        (system/date year)))))
-
-
-(defrecord DateTimeYearMonthExpression [year month]
-  core/Expression
-  (-eval [_ context resource scope]
-    (when-let [year (core/-eval year context resource scope)]
-      (if-let [month (core/-eval month context resource scope)]
-        (system/date-time year month)
-        (system/date-time year)))))
-
-
-(defrecord LocalDateExpression [year month day]
-  system/SystemType
-  (-type [_] :system/date)
-  core/Expression
-  (-eval [_ context resource scope]
-    (when-let [year (core/-eval year context resource scope)]
-      (if-let [month (core/-eval month context resource scope)]
-        (if-let [day (core/-eval day context resource scope)]
-          (system/date year month day)
-          (system/date year month))
-        (system/date year)))))
-
-
-(defrecord DateTimeYearMonthDayExpression [year month day]
-  core/Expression
-  (-eval [_ context resource scope]
-    (when-let [year (core/-eval year context resource scope)]
-      (if-let [month (core/-eval month context resource scope)]
-        (if-let [day (core/-eval day context resource scope)]
-          (system/date-time year month day)
-          (system/date-time year month))
-        (system/date-time year)))))
-
-
 ;; 18.6. Date
 (defmethod core/compile* :elm.compiler.type/date
   [context {:keys [year month day]}]
@@ -97,19 +39,55 @@
       (system/date year month day)
 
       (some? day)
-      (->LocalDateExpression year month day)
+      (reify
+        system/SystemType
+        (-type [_] :system/date)
+        core/Expression
+        (-static [_]
+          false)
+        (-eval [_ context resource scope]
+          (when-let [year (core/-eval year context resource scope)]
+            (if-let [month (core/-eval month context resource scope)]
+              (if-let [day (core/-eval day context resource scope)]
+                (system/date year month day)
+                (system/date year month))
+              (system/date year))))
+        (-form [_]
+          (list 'date (core/-form year) (core/-form month) (core/-form day))))
 
       (and (int? month) (int? year))
       (system/date year month)
 
       (some? month)
-      (->YearMonthExpression year month)
+      (reify
+        system/SystemType
+        (-type [_] :system/date)
+        core/Expression
+        (-static [_]
+          false)
+        (-eval [_ context resource scope]
+          (when-let [year (core/-eval year context resource scope)]
+            (if-let [month (core/-eval month context resource scope)]
+              (system/date year month)
+              (system/date year))))
+        (-form [_]
+          (list 'date (core/-form year) (core/-form month))))
 
       (int? year)
       (system/date year)
 
       :else
-      (some-> year ->YearExpression))))
+      (when year
+        (reify
+          system/SystemType
+          (-type [_] :system/date)
+          core/Expression
+          (-static [_]
+            false)
+          (-eval [_ context resource scope]
+            (some-> (core/-eval year context resource scope) system/date))
+          (-form [_]
+            (list 'date (core/-form year))))))))
 
 
 ;; 18.7. DateFrom
@@ -136,12 +114,21 @@
         (and (int? millisecond) (int? second) (int? minute) (int? hour)
              (int? day) (int? month) (int? year))
         (reify core/Expression
+          (-static [_]
+            false)
           (-eval [_ {:keys [now]} _ _]
             (to-local-date-time-with-offset
-              now year month day hour minute second millisecond timezone-offset)))
+              now year month day hour minute second millisecond timezone-offset))
+          (-form [_]
+            (list 'date-time (core/-form year) (core/-form month)
+                  (core/-form day) (core/-form hour) (core/-form minute)
+                  (core/-form second) (core/-form millisecond)
+                  (core/-form timezone-offset))))
 
         (some? hour)
         (reify core/Expression
+          (-static [_]
+            false)
           (-eval [_ {:keys [now] :as context} resource scope]
             (to-local-date-time-with-offset
               now
@@ -152,7 +139,12 @@
               (or (core/-eval minute context resource scope) 0)
               (or (core/-eval second context resource scope) 0)
               (or (core/-eval millisecond context resource scope) 0)
-              timezone-offset)))
+              timezone-offset))
+          (-form [_]
+            (list 'date-time (core/-form year) (core/-form month)
+                  (core/-form day) (core/-form hour) (core/-form minute)
+                  (core/-form second) (core/-form millisecond)
+                  (core/-form timezone-offset))))
 
         :else
         (throw (ex-info "Need at least an hour if timezone offset is given."
@@ -161,6 +153,8 @@
       (some? timezone-offset)
       (if (some? hour)
         (reify core/Expression
+          (-static [_]
+            false)
           (-eval [_ {:keys [now] :as context} resource scope]
             (to-local-date-time-with-offset
               now
@@ -171,7 +165,12 @@
               (or (core/-eval minute context resource scope) 0)
               (or (core/-eval second context resource scope) 0)
               (or (core/-eval millisecond context resource scope) 0)
-              (core/-eval timezone-offset context resource scope))))
+              (core/-eval timezone-offset context resource scope)))
+          (-form [_]
+            (list 'date-time (core/-form year) (core/-form month)
+                  (core/-form day) (core/-form hour) (core/-form minute)
+                  (core/-form second) (core/-form millisecond)
+                  (core/-form timezone-offset))))
         (throw (ex-info "Need at least an hour if timezone offset is given."
                         {:expression expression})))
 
@@ -183,6 +182,8 @@
 
         (some? hour)
         (reify core/Expression
+          (-static [_]
+            false)
           (-eval [_ context resource scope]
             (system/date-time
               (core/-eval year context resource scope)
@@ -191,25 +192,57 @@
               (core/-eval hour context resource scope)
               (or (core/-eval minute context resource scope) 0)
               (or (core/-eval second context resource scope) 0)
-              (or (core/-eval millisecond context resource scope) 0))))
+              (or (core/-eval millisecond context resource scope) 0)))
+          (-form [_]
+            (list 'date-time (core/-form year) (core/-form month)
+                  (core/-form day) (core/-form hour) (core/-form minute)
+                  (core/-form second) (core/-form millisecond))))
 
         (and (int? day) (int? month) (int? year))
         (system/date-time year month day)
 
         (some? day)
-        (->DateTimeYearMonthDayExpression year month day)
+        (reify core/Expression
+          (-static [_]
+            false)
+          (-eval [_ context resource scope]
+            (when-let [year (core/-eval year context resource scope)]
+              (if-let [month (core/-eval month context resource scope)]
+                (if-let [day (core/-eval day context resource scope)]
+                  (system/date-time year month day)
+                  (system/date-time year month))
+                (system/date-time year))))
+          (-form [_]
+            (list 'date-time (core/-form year) (core/-form month)
+                  (core/-form day))))
 
         (and (int? month) (int? year))
         (system/date-time year month)
 
         (some? month)
-        (->DateTimeYearMonthExpression year month)
+        (reify core/Expression
+          (-static [_]
+            false)
+          (-eval [_ context resource scope]
+            (when-let [year (core/-eval year context resource scope)]
+              (if-let [month (core/-eval month context resource scope)]
+                (system/date-time year month)
+                (system/date-time year))))
+          (-form [_]
+            (list 'date-time (core/-form year) (core/-form month))))
 
         (int? year)
         (system/date-time year)
 
         :else
-        (some-> year ->DateTimeYearExpression)))))
+        (when year
+          (reify core/Expression
+            (-static [_]
+              false)
+            (-eval [_ context resource scope]
+              (some-> (core/-eval year context resource scope) system/date-time))
+            (-form [_]
+              (list 'date-time (core/-form year)))))))))
 
 
 ;; 18.9. DateTimeComponentFrom
@@ -230,6 +263,8 @@
 ;; 18.13. Now
 (defrecord NowExpression []
   core/Expression
+  (-static [_]
+    false)
   (-eval [_ {:keys [now]} _ _]
     now))
 
@@ -269,48 +304,66 @@
 
       (some? millisecond)
       (reify core/Expression
+        (-static [_]
+          false)
         (-eval [_ context resource scope]
           (date-time/local-time (core/-eval hour context resource scope)
                                 (core/-eval minute context resource scope)
                                 (core/-eval second context resource scope)
-                                (core/-eval millisecond context resource scope))))
+                                (core/-eval millisecond context resource scope)))
+        (-form [_]
+          (list 'time (core/-form hour) (core/-form minute) (core/-form second)
+                (core/-form millisecond))))
 
       (and (int? second) (int? minute) (int? hour))
       (date-time/local-time hour minute second)
 
       (some? second)
       (reify core/Expression
+        (-static [_]
+          false)
         (-eval [_ context resource scope]
           (date-time/local-time (core/-eval hour context resource scope)
                                 (core/-eval minute context resource scope)
-                                (core/-eval second context resource scope))))
+                                (core/-eval second context resource scope)))
+        (-form [_]
+          (list 'time (core/-form hour) (core/-form minute) (core/-form second))))
 
       (and (int? minute) (int? hour))
       (date-time/local-time hour minute)
 
       (some? minute)
       (reify core/Expression
+        (-static [_]
+          false)
         (-eval [_ context resource scope]
           (date-time/local-time (core/-eval hour context resource scope)
-                                (core/-eval minute context resource scope))))
+                                (core/-eval minute context resource scope)))
+        (-form [_]
+          (list 'time (core/-form hour) (core/-form minute))))
 
       (int? hour)
       (date-time/local-time hour)
 
       :else
       (reify core/Expression
+        (-static [_]
+          false)
         (-eval [_ context resource scope]
-          (date-time/local-time (core/-eval hour context resource scope)))))))
-
-
-(defrecord TimeOfDayExpression []
-  core/Expression
-  (-eval [_ {:keys [now]} _ _]
-    (.toLocalTime ^OffsetDateTime now)))
+          (date-time/local-time (core/-eval hour context resource scope)))
+        (-form [_]
+          (list 'time (core/-form hour)))))))
 
 
 (def ^:private time-of-day-expr
-  (->TimeOfDayExpression))
+  (reify
+    core/Expression
+    (-static [_]
+      false)
+    (-eval [_ {:keys [now]} _ _]
+      (.toLocalTime ^OffsetDateTime now))
+    (-form [_]
+      'time-of-day)))
 
 
 ;; 18.21. TimeOfDay
@@ -321,6 +374,8 @@
 
 (def ^:private today-expr
   (reify core/Expression
+    (-static [_]
+      false)
     (-eval [_ {:keys [now]} _ _]
       (DateDate/fromLocalDate (.toLocalDate ^OffsetDateTime now)))
     (-form [_]

@@ -6,7 +6,7 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
     [blaze.async.comp :as ac]
-    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
     [blaze.db.kv :as kv]
     [blaze.db.node :as node]
     [blaze.db.resource-store :as rs]
@@ -131,7 +131,7 @@
 
 
 (def config
-  (assoc mem-node-config
+  (assoc api-stub/mem-node-config
     :blaze.interaction/transaction
     {:node (ig/ref :blaze.db/node)
      :clock (ig/ref :blaze.test/fixed-clock)
@@ -180,7 +180,7 @@
 
 
 (defmacro with-handler [[handler-binding & [node-binding]] & more]
-  (let [[txs body] (tu/extract-txs-body more)]
+  (let [[txs body] (api-stub/extract-txs-body more)]
     `(with-system-data [{handler# :blaze.interaction/transaction
                          router# ::router
                          node# :blaze.db/node} config]
@@ -1542,6 +1542,35 @@
                         :url #fhir/uri"Patient"}}]}})]
             (given body
               [:entry 0 :resource :id] := "AAAAAAAAAAAAAAAA"
+              [:entry 1 :resource :id] := "AAAAAAAAAAAAAAAB"))))
+
+      (testing "resolves links"
+        (with-handler [handler]
+          (let [{:keys [body]}
+                @(handler
+                   {:headers {"prefer" "return=representation"}
+                    :body
+                    {:fhir/type :fhir/Bundle
+                     :type #fhir/code"transaction"
+                     :entry
+                     [{:fullUrl #fhir/uri"urn:uuid:44cf9905-f381-4849-8a35-79a6b29ae1b5"
+                       :resource
+                       {:fhir/type :fhir/DocumentReference
+                        :content
+                        [{:fhir/type :fhir.DocumentReference/content
+                          :attachment
+                          #fhir/Attachment{:url #fhir/url"urn:uuid:5b016a4d-d393-48df-8d92-7ac4d1b8e56d"}}]}
+                       :request
+                       {:method #fhir/code"POST"
+                        :url #fhir/uri"DocumentReference"}}
+                      {:fullUrl #fhir/uri"urn:uuid:5b016a4d-d393-48df-8d92-7ac4d1b8e56d"
+                       :resource
+                       {:fhir/type :fhir/Binary}
+                       :request
+                       {:method #fhir/code"POST"
+                        :url #fhir/uri"Binary"}}]}})]
+            (given body
+              [:entry 0 :resource :content 0 :attachment :url] := #fhir/url"Binary/AAAAAAAAAAAAAAAB"
               [:entry 1 :resource :id] := "AAAAAAAAAAAAAAAB")))))
 
     (testing "and conditional create interaction"

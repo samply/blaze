@@ -88,7 +88,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1347'
+        cli: '1.11.1.1403'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -118,7 +118,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1347'
+        cli: '1.11.1.1403'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -161,7 +161,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1347'
+        cli: '1.11.1.1403'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -189,7 +189,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1347'
+        cli: '1.11.1.1403'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -880,7 +880,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1347'
+        cli: '1.11.1.1403'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -1543,7 +1543,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1347'
+        cli: '1.11.1.1403'
 
     - name: Check out Git repository
       uses: actions/checkout@v3
@@ -1755,7 +1755,7 @@ jobs:
       uses: actions/configure-pages@v3
 
     - name: Upload artifact
-      uses: actions/upload-pages-artifact@v1
+      uses: actions/upload-pages-artifact@v2
       with:
         path: docs/.vitepress/dist
 

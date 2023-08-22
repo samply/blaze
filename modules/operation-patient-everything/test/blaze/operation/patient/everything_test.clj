@@ -1,7 +1,7 @@
 (ns blaze.operation.patient.everything-test
   (:require
     [blaze.async.comp :as ac]
-    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.handler.util :as handler-util]
     [blaze.middleware.fhir.db :as db]
@@ -62,7 +62,7 @@
 
 
 (def config
-  (assoc mem-node-config
+  (assoc api-stub/mem-node-config
     :blaze.operation.patient/everything
     {:clock (ig/ref :blaze.test/fixed-clock)
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
@@ -84,7 +84,7 @@
 
 
 (defmacro with-handler [[handler-binding & [node-binding]] & more]
-  (let [[txs body] (tu/extract-txs-body more)]
+  (let [[txs body] (api-stub/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
                          handler# :blaze.operation.patient/everything} config]
        ~txs

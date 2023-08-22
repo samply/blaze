@@ -127,7 +127,7 @@
     (let [key (Object.)
           queue (ArrayBlockingQueue. 10)
           queue-start (inc (:t (swap! state update :queues assoc key queue)))]
-      (log/trace "new-queue offset =" offset ", queue-start =" queue-start)
+      (log/trace "new-queue offset =" offset "queue-start =" queue-start)
       (->LocalQueue kv-store (volatile! offset) queue queue-start
                     #(swap! state update :queues dissoc key)))))
 

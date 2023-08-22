@@ -4,9 +4,10 @@
     [blaze.db.tx-log :as tx-log]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
+    [blaze.fhir.test-util]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [is deftest]]
+    [clojure.test :as test :refer [deftest is]]
     [java-time.api :as time])
   (:import
     [java.lang AutoCloseable]

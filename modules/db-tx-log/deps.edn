@@ -16,8 +16,8 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/test-util
-    {:local/root "../test-util"}}}
+   {blaze/fhir-test-util
+    {:local/root "../fhir-test-util"}}}
 
   :kaocha
   {:extra-deps

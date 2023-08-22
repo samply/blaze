@@ -15,15 +15,15 @@
   {:local/root "../module-base"}
 
   org.apache.kafka/kafka-clients
-  {:mvn/version "3.5.0"}}
+  {:mvn/version "3.5.1"}}
 
  :aliases
  {:test
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/test-util
-    {:local/root "../test-util"}}}
+   {blaze/fhir-test-util
+    {:local/root "../fhir-test-util"}}}
 
   :kaocha
   {:extra-deps

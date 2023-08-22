@@ -35,7 +35,7 @@
 
 (defn- decoder
   "Returns a function which decodes an resource handle out of a key and a value
-  byte buffers from the resource-as-of index.
+  byte buffers from the SystemAsOf index.
 
   Closes over a shared byte array for id decoding, because the String
   constructor creates a copy of the id bytes anyway. Can only be used from one

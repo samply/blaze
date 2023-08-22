@@ -1,8 +1,10 @@
 (ns blaze.terminology-service.extern-test
   (:require
+    [blaze.fhir.test-util]
+    [blaze.module.test-util :refer [with-system]]
     [blaze.terminology-service :as ts]
     [blaze.terminology-service.extern]
-    [blaze.test-util :as tu :refer [given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]

@@ -9,7 +9,8 @@
     [blaze.db.kv.rocksdb-spec]
     [blaze.db.kv.rocksdb.impl-spec]
     [blaze.db.kv.rocksdb.metrics :as-alias metrics]
-    [blaze.test-util :as tu :refer [bytes= given-thrown with-system]]
+    [blaze.module.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [bytes= given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.string :as str]
@@ -734,26 +735,27 @@
 
 
 (deftest table-properties-test
-  (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
-    (run!
-      (fn [i]
-        (kv/put!
-          db
-          (bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i))))
-          (apply ba (range 10000))))
-      (range 10000 20000))
+  (testing "default column-family"
+    (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
+      (run!
+        (fn [i]
+          (kv/put!
+            db
+            (bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i))))
+            (apply ba (range 10000))))
+        (range 10000 20000))
 
-    (given (rocksdb/table-properties db)
-      count := 1
-      [0 :comparator-name] := "leveldb.BytewiseComparator"
-      [0 :compression-name] := "LZ4"
-      [0 :data-size] := 2168082
-      [0 :index-size] := 86351
-      [0 :num-data-blocks] := 6631
-      [0 :num-entries] := 6631
-      [0 :top-level-index-size] := 0
-      [0 :total-raw-key-size] := 66310
-      [0 :total-raw-value-size] := 66310000))
+      (given (rocksdb/table-properties db)
+        count := 1
+        [0 :comparator-name] := "leveldb.BytewiseComparator"
+        [0 :compression-name] := "LZ4"
+        [0 :data-size] := 2168082
+        [0 :index-size] := 86351
+        [0 :num-data-blocks] := 6631
+        [0 :num-entries] := 6631
+        [0 :top-level-index-size] := 0
+        [0 :total-raw-key-size] := 66310
+        [0 :total-raw-value-size] := 66310000)))
 
   (testing "with column-family"
     (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
@@ -776,7 +778,13 @@
         [0 :num-entries] := 6631
         [0 :top-level-index-size] := 0
         [0 :total-raw-key-size] := 66310
-        [0 :total-raw-value-size] := 66310000))))
+        [0 :total-raw-value-size] := 66310000)))
+
+  (testing "with unknown column-family"
+    (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
+      (given (rocksdb/table-properties db :column-family-143119)
+        ::anom/category := ::anom/not-found
+        ::anom/message := "column family `column-family-143119` not found"))))
 
 
 (deftest compact-range-test

@@ -1,5 +1,6 @@
 (ns blaze.db.kv.rocksdb
   (:require
+    [blaze.anomaly :as ba :refer [when-ok]]
     [blaze.db.kv :as kv]
     [blaze.db.kv.rocksdb.impl :as impl]
     [blaze.db.kv.rocksdb.metrics :as metrics]
@@ -184,7 +185,7 @@
     (impl/datafy-tables (.getPropertiesOfAllTables db)))
 
   (-table-properties [_ column-family]
-    (let [cfh (impl/get-cfh cfhs column-family)]
+    (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
       (impl/datafy-tables (.getPropertiesOfAllTables db cfh))))
 
   AutoCloseable

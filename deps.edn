@@ -59,7 +59,7 @@
  {:build
   {:deps
    {io.github.clojure/tools.build
-    {:git/tag "v0.9.4" :git/sha "76b78fe"}}
+    {:git/tag "v0.9.5" :git/sha "24f2894"}}
    :ns-default build}
 
   :test
@@ -92,7 +92,7 @@
   :outdated
   {:replace-deps
    {com.github.liquidz/antq
-    {:mvn/version "2.5.1095"}
+    {:mvn/version "2.5.1109"}
 
     org.slf4j/slf4j-nop
     {:mvn/version "2.0.7"}}

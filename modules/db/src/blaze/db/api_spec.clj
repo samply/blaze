@@ -31,6 +31,11 @@
   :ret :blaze.db/node)
 
 
+(s/fdef d/t
+  :args (s/cat :db :blaze.db/db)
+  :ret :blaze.db/t)
+
+
 (s/fdef d/basis-t
   :args (s/cat :db :blaze.db/db)
   :ret :blaze.db/t)

@@ -3,7 +3,8 @@
     [blaze.db.kv :as-alias kv]
     [blaze.db.kv.rocksdb :as rocksdb]
     [blaze.db.kv.rocksdb.spec]
-    [clojure.spec.alpha :as s]))
+    [clojure.spec.alpha :as s]
+    [cognitect.anomalies :as anom]))
 
 
 (s/fdef rocksdb/column-families
@@ -27,4 +28,4 @@
 
 (s/fdef rocksdb/table-properties
   :args (s/cat :store ::kv/rocksdb :column-family (s/? simple-keyword?))
-  :ret int?)
+  :ret (s/or :properties ::rocksdb/table :anomaly ::anom/anomaly))

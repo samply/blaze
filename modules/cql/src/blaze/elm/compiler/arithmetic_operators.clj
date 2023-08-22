@@ -43,9 +43,15 @@
   (p/floor x))
 
 
+;; TODO: 16.7. HighBoundary
+
+
 ;; 16.8. Log
 (defbinop log [x base]
   (p/log x base))
+
+
+;; TODO: 16.9. LowBoundary
 
 
 ;; 16.10. Ln
@@ -123,6 +129,9 @@
   (p/power x exp))
 
 
+;; TODO: 16.17. Precision
+
+
 ;; 16.18. Predecessor
 (defunop predecessor [x]
   (p/predecessor x))
@@ -136,6 +145,8 @@
     (if (and (core/static? operand) (core/static? precision))
       (p/round operand precision)
       (reify core/Expression
+        (-static [_]
+          false)
         (-eval [_ context resource scope]
           (p/round (core/-eval operand context resource scope)
                    (core/-eval precision context resource scope)))

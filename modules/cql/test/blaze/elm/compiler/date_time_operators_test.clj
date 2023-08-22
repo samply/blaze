@@ -6,6 +6,7 @@
   (:require
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.date-time :as date-time]
     [blaze.elm.literal :as elm]
@@ -18,7 +19,7 @@
     [clojure.test.check.properties :as prop]
     [java-time.api :as time])
   (:import
-    [blaze.fhir.spec.type.system DateDate DateYear DateYearMonth]
+    [blaze.fhir.spec.type.system DateDate]
     [java.time OffsetDateTime]
     [java.time.temporal Temporal]))
 
@@ -164,20 +165,57 @@
           eval-ctx {:parameters {"day" 23}}]
       (is (= #system/date"2019-03-23" (core/-eval expr eval-ctx nil nil)))))
 
-  (testing "an ELM year (only literals) always compiles to a DateYear"
+  (testing "an ELM year (only literals) always compiles to a System.Date"
     (satisfies-prop 100
       (prop/for-all [year (s/gen :elm/literal-year)]
-        (instance? DateYear (c/compile {} year)))))
+        (system/date? (c/compile {} year)))))
 
-  (testing "an ELM year-month (only literals) always compiles to a DateYearMonth"
+  (testing "an ELM year-month (only literals) always compiles to a System.Date"
     (satisfies-prop 100
       (prop/for-all [year-month (s/gen :elm/literal-year-month)]
-        (instance? DateYearMonth (c/compile {} year-month)))))
+        (system/date? (c/compile {} year-month)))))
 
   (testing "an ELM date (only literals) always compiles to something implementing Temporal"
     (satisfies-prop 100
       (prop/for-all [date (s/gen :elm/literal-date)]
-        (instance? Temporal (c/compile {} date))))))
+        (instance? Temporal (c/compile {} date)))))
+
+  (testing "form and static"
+    (let [compile-ctx {:library
+                       {:parameters
+                        {:def
+                         [{:name "year"}
+                          {:name "month"}
+                          {:name "day"}]}}}]
+
+      (testing "year"
+        (let [elm #elm/date [#elm/parameter-ref "year"]
+              expr (c/compile compile-ctx elm)]
+
+          (is (= '(date (param-ref "year")) (core/-form expr)))
+
+          (is (false? (core/-static expr)))))
+
+      (testing "year-month"
+        (let [elm #elm/date [#elm/parameter-ref "year"
+                             #elm/parameter-ref "month"]
+              expr (c/compile compile-ctx elm)]
+
+          (is (= '(date (param-ref "year") (param-ref "month"))
+                 (core/-form expr)))
+
+          (is (false? (core/-static expr)))))
+
+      (testing "date"
+        (let [elm #elm/date [#elm/parameter-ref "year"
+                             #elm/parameter-ref "month"
+                             #elm/parameter-ref "day"]
+              expr (c/compile compile-ctx elm)]
+
+          (is (= '(date (param-ref "year") (param-ref "month") (param-ref "day"))
+                 (core/-form expr)))
+
+          (is (false? (core/-static expr))))))))
 
 
 ;; 18.7. DateFrom
@@ -197,6 +235,8 @@
     #elm/date-time"2019-04-17T12:48" #system/date"2019-04-17")
 
   (tu/testing-unary-null elm/date-from)
+
+  (tu/testing-unary-dynamic elm/date-from)
 
   (tu/testing-unary-form elm/date-from))
 
@@ -327,7 +367,7 @@
     (are [elm] (thrown? Exception (c/compile {} elm))
       #elm/date-time"10000-12-31T23:59:59.999"))
 
-  (testing "with offset"
+  (testing "with timezone offset"
     (are [elm res] (= res (core/-eval (c/compile {} elm) {:now tu/now} nil nil))
       #elm/date-time[#elm/integer "2019" #elm/integer "3" #elm/integer "23"
                      #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
@@ -359,17 +399,178 @@
                      #elm/decimal "7"]
       (system/date-time 2012 3 10 3 20 0 999)))
 
-  (testing "with decimal offset"
+  (testing "with decimal timezone offset"
     (are [elm res] (= res (core/-eval (c/compile {} elm) {:now tu/now} nil nil))
       #elm/date-time[#elm/integer "2019" #elm/integer "3" #elm/integer "23"
                      #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
                      #elm/decimal "1.5"]
       (system/date-time 2019 3 23 10 43 14)))
 
-  (testing "an ELM date-time (only literals) always evaluates to something implementing Temporal"
+  (testing "an ELM date-time (only literals) always evaluates to a System.DateTime"
     (satisfies-prop 100
       (prop/for-all [date-time (s/gen :elm/literal-date-time)]
-        (instance? Temporal (core/-eval (c/compile {} date-time) {:now tu/now} nil nil))))))
+        (system/date-time? (core/-eval (c/compile {} date-time) {:now tu/now} nil nil)))))
+
+  (testing "form and static"
+    (let [compile-ctx {:library
+                       {:parameters
+                        {:def
+                         [{:name "year"}
+                          {:name "month"}
+                          {:name "day"}
+                          {:name "hour"}
+                          {:name "minute"}
+                          {:name "second"}
+                          {:name "millisecond"}
+                          {:name "timezone-offset"}]}}}]
+
+      (testing "year"
+        (let [elm #elm/date-time [#elm/parameter-ref "year"]
+              expr (c/compile compile-ctx elm)]
+
+          (is (= '(date-time (param-ref "year")) (core/-form expr)))
+
+          (is (false? (core/-static expr)))))
+
+      (testing "year-month"
+        (let [elm #elm/date-time [#elm/parameter-ref "year"
+                                  #elm/parameter-ref "month"]
+              expr (c/compile compile-ctx elm)]
+
+          (is (= '(date-time (param-ref "year") (param-ref "month"))
+                 (core/-form expr)))
+
+          (is (false? (core/-static expr)))))
+
+      (testing "date"
+        (let [elm #elm/date-time [#elm/parameter-ref "year"
+                                  #elm/parameter-ref "month"
+                                  #elm/parameter-ref "day"]
+              expr (c/compile compile-ctx elm)]
+
+          (is (= '(date-time (param-ref "year") (param-ref "month")
+                             (param-ref "day"))
+                 (core/-form expr)))
+
+          (is (false? (core/-static expr)))))
+
+      (testing "with timezone offset"
+        (testing "All Static"
+          (let [elm #elm/date-time [#elm/integer "1"
+                                    #elm/integer "2"
+                                    #elm/integer "3"
+                                    #elm/integer "4"
+                                    #elm/integer "5"
+                                    #elm/integer "6"
+                                    #elm/integer "7"
+                                    #elm/integer "8"]
+                expr (c/compile compile-ctx elm)]
+
+            (is (= '(date-time 1 2 3 4 5 6 7 8) (core/-form expr)))
+
+            (is (false? (core/-static expr)))))
+
+        (testing "Offset Static"
+          (let [elm #elm/date-time [#elm/parameter-ref "year"
+                                    #elm/parameter-ref "month"
+                                    #elm/parameter-ref "day"
+                                    #elm/parameter-ref "hour"
+                                    #elm/parameter-ref "minute"
+                                    #elm/parameter-ref "second"
+                                    #elm/parameter-ref "millisecond"
+                                    #elm/integer "1"]
+                expr (c/compile compile-ctx elm)]
+
+            (is (= '(date-time (param-ref "year") (param-ref "month")
+                               (param-ref "day") (param-ref "hour")
+                               (param-ref "minute") (param-ref "second")
+                               (param-ref "millisecond") 1)
+                   (core/-form expr)))
+
+            (is (false? (core/-static expr)))))
+
+        (testing "Dynamic"
+          (let [elm #elm/date-time [#elm/parameter-ref "year"
+                                    #elm/parameter-ref "month"
+                                    #elm/parameter-ref "day"
+                                    #elm/parameter-ref "hour"
+                                    #elm/parameter-ref "minute"
+                                    #elm/parameter-ref "second"
+                                    #elm/parameter-ref "millisecond"
+                                    #elm/parameter-ref "timezone-offset"]
+                expr (c/compile compile-ctx elm)]
+
+            (is (= '(date-time (param-ref "year") (param-ref "month")
+                               (param-ref "day") (param-ref "hour")
+                               (param-ref "minute") (param-ref "second")
+                               (param-ref "millisecond")
+                               (param-ref "timezone-offset"))
+                   (core/-form expr)))
+
+            (is (false? (core/-static expr))))))
+
+      (testing "without timezone offset"
+        (testing "hour"
+          (let [elm #elm/date-time [#elm/parameter-ref "year"
+                                    #elm/parameter-ref "month"
+                                    #elm/parameter-ref "day"
+                                    #elm/parameter-ref "hour"]
+                expr (c/compile compile-ctx elm)]
+
+            (is (= '(date-time (param-ref "year") (param-ref "month")
+                               (param-ref "day") (param-ref "hour") 0 0 0)
+                   (core/-form expr)))
+
+            (is (false? (core/-static expr)))))
+
+        (testing "minute"
+          (let [elm #elm/date-time [#elm/parameter-ref "year"
+                                    #elm/parameter-ref "month"
+                                    #elm/parameter-ref "day"
+                                    #elm/parameter-ref "hour"
+                                    #elm/parameter-ref "minute"]
+                expr (c/compile compile-ctx elm)]
+
+            (is (= '(date-time (param-ref "year") (param-ref "month")
+                               (param-ref "day") (param-ref "hour")
+                               (param-ref "minute") 0 0)
+                   (core/-form expr)))
+
+            (is (false? (core/-static expr)))))
+
+        (testing "second"
+          (let [elm #elm/date-time [#elm/parameter-ref "year"
+                                    #elm/parameter-ref "month"
+                                    #elm/parameter-ref "day"
+                                    #elm/parameter-ref "hour"
+                                    #elm/parameter-ref "minute"
+                                    #elm/parameter-ref "second"]
+                expr (c/compile compile-ctx elm)]
+
+            (is (= '(date-time (param-ref "year") (param-ref "month")
+                               (param-ref "day") (param-ref "hour")
+                               (param-ref "minute") (param-ref "second") 0)
+                   (core/-form expr)))
+
+            (is (false? (core/-static expr)))))
+
+        (testing "millisecond"
+          (let [elm #elm/date-time [#elm/parameter-ref "year"
+                                    #elm/parameter-ref "month"
+                                    #elm/parameter-ref "day"
+                                    #elm/parameter-ref "hour"
+                                    #elm/parameter-ref "minute"
+                                    #elm/parameter-ref "second"
+                                    #elm/parameter-ref "millisecond"]
+                expr (c/compile compile-ctx elm)]
+
+            (is (= '(date-time (param-ref "year") (param-ref "month")
+                               (param-ref "day") (param-ref "hour")
+                               (param-ref "minute") (param-ref "second")
+                               (param-ref "millisecond"))
+                   (core/-form expr)))
+
+            (is (false? (core/-static expr)))))))))
 
 
 ;; 18.9. DateTimeComponentFrom
@@ -400,6 +601,9 @@
 
     (are [x precision res] (= res (eval (compile elm/date-time x precision)))
       "2019-04-17T12:48" "Hour" 12))
+
+  (tu/testing-unary-precision-dynamic elm/date-time-component-from "Year" "Month"
+                                      "Day" "Hour" "Minute" "Second" "Millisecond")
 
   (tu/testing-unary-precision-form elm/date-time-component-from "Year" "Month"
                                    "Day" "Hour" "Minute" "Second" "Millisecond"))
@@ -471,6 +675,8 @@
           "2018-01" "2018-01" "Day"
           "2018-01-01" "2018-01-01" "Hour"))))
 
+  (tu/testing-binary-precision-dynamic elm/difference-between "Year" "Month" "Day")
+
   (tu/testing-binary-precision-form elm/difference-between "Year" "Month" "Day"))
 
 
@@ -502,8 +708,8 @@
   (let [compile (partial tu/compile-binop-precision elm/duration-between)]
 
     (testing "Year precision"
-      (doseq [op-xtor [elm/date elm/date-time]]
-        (are [x y res] (= res (compile op-xtor x y "Year"))
+      (doseq [op-ctor [elm/date elm/date-time]]
+        (are [x y res] (= res (compile op-ctor x y "Year"))
           "2018" "2019" 1
           "2018" "2017" -1
           "2018" "2018" 0)))
@@ -538,6 +744,8 @@
           "2018" "2018" "Month"
           "2018-01" "2018-01" "Day"
           "2018-01-01" "2018-01-01" "Hour"))))
+
+  (tu/testing-binary-precision-dynamic elm/duration-between "Year" "Month" "Day")
 
   (tu/testing-binary-precision-form elm/duration-between "Year" "Month" "Day"))
 
@@ -646,6 +854,8 @@
         "2019-04-17" "2019-04-17" true
         "2019-04-17" "2019-04-18" true)))
 
+  (tu/testing-binary-precision-dynamic elm/same-as)
+
   (tu/testing-binary-precision-form elm/same-as))
 
 
@@ -747,6 +957,8 @@
         "2019-04" "2019-05" true
         "2019-04" "2019-04" true
         "2019-04" "2019-03" true)))
+
+  (tu/testing-binary-precision-dynamic elm/same-or-before)
 
   (tu/testing-binary-precision-form elm/same-or-before))
 
@@ -850,6 +1062,8 @@
         "2019-04" "2019-04" true
         "2019-04" "2019-05" true)))
 
+  (tu/testing-binary-precision-dynamic elm/same-or-after)
+
   (tu/testing-binary-precision-form elm/same-or-after))
 
 
@@ -923,7 +1137,59 @@
   (testing "an ELM time (only literals) always compiles to a LocalTime"
     (satisfies-prop 100
       (prop/for-all [time (s/gen :elm/time)]
-        (date-time/local-time? (c/compile {} time))))))
+        (date-time/local-time? (c/compile {} time)))))
+
+  (testing "form and static"
+    (let [compile-ctx {:library
+                       {:parameters
+                        {:def
+                         [{:name "hour"}
+                          {:name "minute"}
+                          {:name "second"}
+                          {:name "millisecond"}]}}}]
+
+      (testing "hour"
+        (let [elm #elm/time [#elm/parameter-ref "hour"]
+              expr (c/compile compile-ctx elm)]
+
+          (is (= '(time (param-ref "hour")) (core/-form expr)))
+
+          (is (false? (core/-static expr)))))
+
+      (testing "minute"
+        (let [elm #elm/time [#elm/parameter-ref "hour"
+                             #elm/parameter-ref "minute"]
+              expr (c/compile compile-ctx elm)]
+
+          (is (= '(time (param-ref "hour") (param-ref "minute"))
+                 (core/-form expr)))
+
+          (is (false? (core/-static expr)))))
+
+      (testing "second"
+        (let [elm #elm/time [#elm/parameter-ref "hour"
+                             #elm/parameter-ref "minute"
+                             #elm/parameter-ref "second"]
+              expr (c/compile compile-ctx elm)]
+
+          (is (= '(time (param-ref "hour") (param-ref "minute")
+                        (param-ref "second"))
+                 (core/-form expr)))
+
+          (is (false? (core/-static expr)))))
+
+      (testing "millisecond"
+        (let [elm #elm/time [#elm/parameter-ref "hour"
+                             #elm/parameter-ref "minute"
+                             #elm/parameter-ref "second"
+                             #elm/parameter-ref "millisecond"]
+              expr (c/compile compile-ctx elm)]
+
+          (is (= '(time (param-ref "hour") (param-ref "minute")
+                        (param-ref "second") (param-ref "millisecond"))
+                 (core/-form expr)))
+
+          (is (false? (core/-static expr))))))))
 
 
 ;; 18.21. TimeOfDay
@@ -932,8 +1198,12 @@
 ;; associated with the evaluation request. See the Now operator for more
 ;; information on the rationale for defining the TimeOfDay operator in this way.
 (deftest compile-time-of-day-test
-  (are [res] (= res (core/-eval (c/compile {} {:type "TimeOfDay"}) {:now tu/now} nil nil))
-    (time/local-time tu/now)))
+  (are [res] (= res (core/-eval (c/compile {} elm/time-of-day) {:now tu/now} nil nil))
+    (time/local-time tu/now))
+
+  (tu/testing-constant-dynamic elm/time-of-day)
+
+  (tu/testing-constant-form elm/time-of-day))
 
 
 ;; 18.22. Today
@@ -945,5 +1215,7 @@
 (deftest compile-today-test
   (are [res] (= res (core/-eval (c/compile {} elm/today) {:now tu/now} nil nil))
     (DateDate/fromLocalDate (.toLocalDate ^OffsetDateTime tu/now)))
+
+  (tu/testing-constant-dynamic elm/today)
 
   (tu/testing-constant-form elm/today))

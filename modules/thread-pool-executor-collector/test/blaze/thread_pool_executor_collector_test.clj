@@ -2,7 +2,8 @@
   (:require
     [blaze.executors :as ex]
     [blaze.metrics.core :as metrics]
-    [blaze.test-util :as tu :refer [given-thrown with-system]]
+    [blaze.module.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [given-thrown]]
     [blaze.thread-pool-executor-collector]
     [blaze.thread-pool-executor-collector.spec :as spec]
     [clojure.spec.alpha :as s]

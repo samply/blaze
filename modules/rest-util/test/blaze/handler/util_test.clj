@@ -1,8 +1,9 @@
 (ns blaze.handler.util-test
   (:require
     [blaze.async.comp-spec]
+    [blaze.fhir.test-util :refer [given-failed-future]]
     [blaze.handler.util :as handler-util]
-    [blaze.test-util :as tu :refer [given-failed-future]]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
     [cognitect.anomalies :as anom]

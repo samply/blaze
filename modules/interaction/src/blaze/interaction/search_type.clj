@@ -267,7 +267,7 @@
 
 (defn- self-link-url-fn [{:blaze/keys [base-url db] :as request} params]
   (fn [clauses offset]
-    (nav/url base-url (match request "type") params clauses (iu/t db) offset)))
+    (nav/url base-url (match request "type") params clauses (d/t db) offset)))
 
 
 (defn- gen-token-fn
@@ -287,7 +287,7 @@
   [{:blaze/keys [base-url db] :as request} params]
   (fn [token clauses]
     (nav/token-url base-url (match request "page") params token clauses
-                   (iu/t db) nil)))
+                   (d/t db) nil)))
 
 
 (defn- next-link-url-fn
@@ -296,7 +296,7 @@
   [{:blaze/keys [base-url db] :as request} params]
   (fn [token clauses offset]
     (nav/token-url base-url (match request "page") params token clauses
-                   (iu/t db) offset)))
+                   (d/t db) offset)))
 
 
 (defn- search-context

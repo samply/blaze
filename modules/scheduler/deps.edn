@@ -1,5 +1,8 @@
 {:deps
- {blaze/module-base
+ {blaze/executor
+  {:local/root "../executor"}
+
+  blaze/module-base
   {:local/root "../module-base"}}
 
  :aliases
@@ -7,8 +10,8 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/test-util
-    {:local/root "../test-util"}}}
+   {blaze/module-test-util
+    {:local/root "../module-test-util"}}}
 
   :kaocha
   {:extra-deps

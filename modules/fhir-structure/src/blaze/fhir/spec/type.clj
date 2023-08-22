@@ -39,7 +39,9 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(defn type [x]
+(defn type
+  "Returns the FHIR type if `x` if it has some."
+  [x]
   (p/-type x))
 
 

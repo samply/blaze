@@ -15,7 +15,9 @@
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
     [blaze.fhir.spec.type]
-    [blaze.test-util :as tu :refer [structure-definition-repo with-system]]
+    [blaze.fhir.test-util :refer [structure-definition-repo]]
+    [blaze.module.test-util :refer [with-system]]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest testing]]
     [cognitect.anomalies :as anom]
@@ -135,15 +137,15 @@
              :status #fhir/code"final"
              :code
              #fhir/CodeableConcept
-                 {:coding
-                  [#fhir/Coding
-                      {:system #fhir/uri"http://loinc.org"
-                       :code #fhir/code"8480-6"}]}
+                     {:coding
+                      [#fhir/Coding
+                              {:system #fhir/uri"http://loinc.org"
+                               :code #fhir/code"8480-6"}]}
              :value
              #fhir/Quantity
-                 {:value 100M
-                  :code #fhir/code"mm[Hg]"
-                  :system #fhir/uri"http://unitsofmeasure.org"}}
+                     {:value 100M
+                      :code #fhir/code"mm[Hg]"
+                      :system #fhir/uri"http://unitsofmeasure.org"}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]
              [_ k6] [_ k7] [_ k8] [_ k9] [_ k10] [_ k11]
@@ -296,10 +298,10 @@
                               [value]
                               (instance? GetChildrenExpression expr)
                               [#fhir/CodeableConcept
-                                  {:coding
-                                   [#fhir/Coding
-                                       {:system #fhir/uri"system-204435"
-                                        :code #fhir/code"code-204441"}]}]
+                                      {:coding
+                                       [#fhir/Coding
+                                               {:system #fhir/uri"system-204435"
+                                                :code #fhir/code"code-204441"}]}]
                               :else
                               {::anom/category ::anom/fault
                                ::x ::y}))]

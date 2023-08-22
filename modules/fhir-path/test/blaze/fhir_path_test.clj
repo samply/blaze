@@ -6,6 +6,7 @@
     [blaze.fhir-path-spec]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type]
+    [blaze.fhir.test-util]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]

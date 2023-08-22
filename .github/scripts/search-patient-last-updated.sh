@@ -11,8 +11,8 @@ NOW=$(date +%Y-%m-%dT%H:%M:%S)
 PATIENT_COUNT=$(curl -sH 'Prefer: handling=strict' "$BASE/Patient?_lastUpdated=gt$NOW&_summary=count" | jq -r .total)
 
 if [ "$PATIENT_COUNT" -eq 0 ]; then
-  echo "Success: no patents are updated after $NOW"
+  echo "OK 👍: no patents are updated after $NOW"
 else
-  echo "Fail: $PATIENT_COUNT patents are updated after $NOW"
+  echo "Fail 😞: $PATIENT_COUNT patents are updated after $NOW"
   exit 1
 fi

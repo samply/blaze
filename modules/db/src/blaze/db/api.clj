@@ -75,6 +75,12 @@
   (p/-as-of db t))
 
 
+(defn t
+  "Returns the effective `t` of `db`."
+  [db]
+  (or (p/-as-of-t db) (p/-basis-t db)))
+
+
 (defn basis-t
   "Returns the `t` of the most recent transaction reachable via `db`."
   [db]

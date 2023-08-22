@@ -6,11 +6,9 @@
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.coll.core :as coll]
-    [blaze.db.api :as d]
     [blaze.elm.code :as code]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.protocols :as p]
-    [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [clojure.string :as str])
   (:import
@@ -21,16 +19,6 @@
 
 
 ;; 2.1. Tuple
-(defrecord TupleExpression [elements]
-  core/Expression
-  (-eval [_ context resource scope]
-    (reduce-kv
-      (fn [r key value]
-        (assoc r key (core/-eval value context resource scope)))
-      {}
-      elements)))
-
-
 (defn- invalid-structured-type-access-msg [key]
   (format "Invalid structured type access with key `%s` on a collection." key))
 
@@ -40,6 +28,7 @@
     (invalid-structured-type-access-msg key)
     :key key
     :first-elem (coll/first coll)))
+
 
 (extend-protocol p/StructuredType
   IReduceInit
@@ -63,7 +52,21 @@
   (let [elements (compile-elements context elements)]
     (if (every? core/static? (vals elements))
       elements
-      (->TupleExpression elements))))
+      (reify core/Expression
+        (-static [_]
+          false)
+        (-eval [_ context resource scope]
+          (reduce-kv
+            (fn [r key value]
+              (assoc r key (core/-eval value context resource scope)))
+            {}
+            elements))
+        (-form [_]
+          (reduce-kv
+            (fn [r key value]
+              (assoc r key (core/-form value)))
+            {}
+            elements))))))
 
 
 ;; 2.2. Instance
@@ -78,54 +81,52 @@
 
 
 ;; 2.3. Property
-(defn- pull [db x]
-  (if (d/resource-handle? x)
-    @(d/pull-content db x)
-    x))
-
-
-(defn- get-property [db key x]
-  (if (fhir-spec/fhir-type x)
-    (get (pull db x) key)
-    (p/get x key)))
-
-
 (defrecord SourcePropertyExpression [source key]
   core/Expression
-  (-eval [_ {:keys [db] :as context} resource scope]
-    (get-property db key (core/-eval source context resource scope)))
+  (-static [_]
+    false)
+  (-eval [_ context resource scope]
+    (p/get (core/-eval source context resource scope) key))
   (-form [_]
     `(~key ~(core/-form source))))
 
 
 (defrecord SourcePropertyValueExpression [source key]
   core/Expression
-  (-eval [_ {:keys [db] :as context} resource scope]
-    (type/value (get-property db key (core/-eval source context resource scope))))
+  (-static [_]
+    false)
+  (-eval [_ context resource scope]
+    (type/value (p/get (core/-eval source context resource scope) key)))
   (-form [_]
     `(:value (~key ~(core/-form source)))))
 
 
 (defrecord SingleScopePropertyExpression [key]
   core/Expression
-  (-eval [_ {:keys [db]} _ value]
-    (get-property db key value))
+  (-static [_]
+    false)
+  (-eval [_ _ _ value]
+    (p/get value key))
   (-form [_]
     `(~key ~'default)))
 
 
 (defrecord ScopePropertyExpression [scope-key key]
   core/Expression
-  (-eval [_ {:keys [db]} _ scope]
-    (get-property db key (get scope scope-key)))
+  (-static [_]
+    false)
+  (-eval [_ _ _ scope]
+    (p/get (get scope scope-key) key))
   (-form [_]
     `(~key ~(symbol (name scope-key)))))
 
 
 (defrecord ScopePropertyValueExpression [scope-key key]
   core/Expression
-  (-eval [_ {:keys [db]} _ scope]
-    (type/value (get-property db key (get scope scope-key))))
+  (-static [_]
+    false)
+  (-eval [_ _ _ scope]
+    (type/value (p/get (get scope scope-key) key)))
   (-form [_]
     `(:value (~key ~(symbol (name scope-key))))))
 

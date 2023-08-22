@@ -21,14 +21,22 @@
         separator (some->> separator (core/compile* context))]
     (if separator
       (reify core/Expression
+        (-static [_]
+          false)
         (-eval [_ context resource scope]
           (when-let [source (core/-eval source context resource scope)]
             (string/combine (core/-eval separator context resource scope)
-                            source))))
+                            source)))
+        (-form [_]
+          (list 'combine (core/-form source) (core/-form separator))))
       (reify core/Expression
+        (-static [_]
+          false)
         (-eval [_ context resource scope]
           (when-let [source (core/-eval source context resource scope)]
-            (string/combine source)))))))
+            (string/combine source)))
+        (-form [_]
+          (list 'combine (core/-form source)))))))
 
 
 ;; 17.2. Concatenate
@@ -53,10 +61,14 @@
   (let [pattern (core/compile* context pattern)
         string (core/compile* context string)]
     (reify core/Expression
+      (-static [_]
+        false)
       (-eval [_ context resource scope]
         (when-let [^String pattern (core/-eval pattern context resource scope)]
           (when-let [^String string (core/-eval string context resource scope)]
-            (.lastIndexOf string pattern)))))))
+            (.lastIndexOf string pattern))))
+      (-form [_]
+        (list 'last-position-of (core/-form pattern) (core/-form string))))))
 
 
 ;; 17.8. Length
@@ -81,10 +93,14 @@
   (let [pattern (core/compile* context pattern)
         string (core/compile* context string)]
     (reify core/Expression
+      (-static [_]
+        false)
       (-eval [_ context resource scope]
         (when-let [^String pattern (core/-eval pattern context resource scope)]
           (when-let [^String string (core/-eval string context resource scope)]
-            (.indexOf string pattern)))))))
+            (.indexOf string pattern))))
+      (-form [_]
+        (list 'position-of (core/-form pattern) (core/-form string))))))
 
 
 ;; 17.13. ReplaceMatches
@@ -100,6 +116,8 @@
         separator (some->> separator (core/compile* context))]
     (if separator
       (reify core/Expression
+        (-static [_]
+          false)
         (-eval [_ context resource scope]
           (when-let [string (core/-eval string context resource scope)]
             (if (= "" string)
@@ -121,11 +139,17 @@
                         (conj result (str (.append acc char))))))
                   ;; TODO: implement split with more than one char.
                   (throw (Exception. "TODO: implement split with separators longer than one char.")))
-                [string])))))
+                [string]))))
+        (-form [_]
+          (list 'split (core/-form string) (core/-form separator))))
       (reify core/Expression
+        (-static [_]
+          false)
         (-eval [_ context resource scope]
           (when-let [string (core/-eval string context resource scope)]
-            [string]))))))
+            [string]))
+        (-form [_]
+          (list 'split (core/-form string)))))))
 
 
 ;; 17.16. StartsWith
@@ -142,18 +166,27 @@
         length (some->> length (core/compile* context))]
     (if length
       (reify core/Expression
+        (-static [_]
+          false)
         (-eval [_ context resource scope]
           (when-let [^String string (core/-eval string context resource scope)]
             (when-let [start-index (core/-eval start-index context resource scope)]
               (when (and (<= 0 start-index) (< start-index (count string)))
                 (subs string start-index (min (+ start-index length)
-                                              (count string))))))))
+                                              (count string)))))))
+        (-form [_]
+          (list 'substring (core/-form string) (core/-form start-index)
+                (core/-form length))))
       (reify core/Expression
+        (-static [_]
+          false)
         (-eval [_ context resource scope]
           (when-let [^String string (core/-eval string context resource scope)]
             (when-let [start-index (core/-eval start-index context resource scope)]
               (when (and (<= 0 start-index) (< start-index (count string)))
-                (subs string start-index)))))))))
+                (subs string start-index)))))
+        (-form [_]
+          (list 'substring (core/-form string) (core/-form start-index)))))))
 
 
 ;; 17.18. Upper

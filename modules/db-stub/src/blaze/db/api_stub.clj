@@ -13,7 +13,8 @@
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log-spec]
     [blaze.db.tx-log.local]
-    [blaze.test-util :refer [structure-definition-repo with-system]]
+    [blaze.fhir.test-util :refer [structure-definition-repo]]
+    [blaze.module.test-util :refer [with-system]]
     [integrant.core :as ig]
     [java-time.api :as time]))
 
@@ -91,3 +92,9 @@
   `(with-system [system# ~config]
      (run! #(deref (d/transact (:blaze.db/node system#) %)) ~txs)
      (let [~binding-form system#] ~@body)))
+
+
+(defn extract-txs-body [more]
+  (if (vector? (first more))
+    [(first more) (next more)]
+    [[] more]))

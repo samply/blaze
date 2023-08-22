@@ -13,8 +13,10 @@
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
-    [blaze.fhir.spec.type]
-    [blaze.test-util :as tu :refer [structure-definition-repo with-system]]
+    [blaze.fhir.spec.type :as type]
+    [blaze.fhir.test-util :refer [structure-definition-repo]]
+    [blaze.module.test-util :refer [with-system]]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -212,6 +214,42 @@
             :hash-prefix := (hash/prefix hash)
             :code := "code"
             :v-hash := (codec/v-hash "system-171339|")))))
+
+    (testing "Patient active"
+      (doseq [active [#fhir/boolean true #fhir/boolean false]]
+        (let [patient
+              {:fhir/type :fhir/Patient :id "id-122929"
+               :active active}
+              hash (hash/generate patient)
+              [[_ k0] [_ k1]]
+              (search-param/index-entries
+                (sr/get search-param-registry "active" "Patient")
+                [] hash patient)]
+
+          (testing "first SearchParamValueResource key is about `value`"
+            (given (sp-vr-tu/decode-key-human (bb/wrap k0))
+              :code := "active"
+              :type := "Patient"
+              :v-hash := (codec/v-hash (str (type/value active)))
+              :id := "id-122929"
+              :hash-prefix := (hash/prefix hash)))
+
+          (testing "first ResourceSearchParamValue key is about `value`"
+            (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
+              :type := "Patient"
+              :id := "id-122929"
+              :hash-prefix := (hash/prefix hash)
+              :code := "active"
+              :v-hash := (codec/v-hash (str (type/value active)))))))
+
+      (testing "boolean without values doesn't produce index entries"
+        (let [patient
+              {:fhir/type :fhir/Patient :id "id-122929"
+               :active #fhir/boolean{:id "foo"}}
+              hash (hash/generate patient)]
+          (is (empty? (search-param/index-entries
+                        (sr/get search-param-registry "active" "Patient")
+                        [] hash patient))))))
 
     (testing "Patient identifier"
       (let [patient

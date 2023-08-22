@@ -2,11 +2,12 @@
   (:require
     [blaze.cql-translator :as t]
     [blaze.db.api-stub :refer [mem-node-config]]
-    [blaze.elm.compiler :as compiler]
+    [blaze.elm.compiler :as c]
     [blaze.elm.compiler.library :as library]
     [blaze.elm.compiler.library-spec]
     [blaze.fhir.spec.type.system]
-    [blaze.test-util :refer [with-system]]
+    [blaze.module.test-util :refer [with-system]]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [cognitect.anomalies :as anom]
@@ -16,13 +17,7 @@
 (st/instrument)
 
 
-(defn- fixture [f]
-  (st/instrument)
-  (f)
-  (st/unstrument))
-
-
-(test/use-fixtures :each fixture)
+(test/use-fixtures :each tu/fixture)
 
 
 ;; 5.1. Library
@@ -83,7 +78,7 @@
       (with-system [{:blaze.db/keys [node]} mem-node-config]
         (given (library/compile-library node library {})
           [:expression-defs "Gender" :context] := "Patient"
-          [:expression-defs "Gender" :expression compiler/form] := '(:gender (expr-ref "Patient"))))))
+          [:expression-defs "Gender" :expression c/form] := '(:gender (expr-ref "Patient"))))))
 
   (testing "one function"
     (let [library (t/translate "library Test
@@ -95,7 +90,7 @@
         (given (library/compile-library node library {})
           [:expression-defs "InInitialPopulation" :context] := "Patient"
           [:expression-defs "InInitialPopulation" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
-          [:expression-defs "InInitialPopulation" :expression compiler/form] := '(call "Gender" (expr-ref "Patient"))
+          [:expression-defs "InInitialPopulation" :expression c/form] := '(call "Gender" (expr-ref "Patient"))
           [:function-defs "Gender" :context] := "Patient"
           [:function-defs "Gender" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
           [:function-defs "Gender" :function] :? fn?))))
@@ -110,7 +105,7 @@
       (with-system [{:blaze.db/keys [node]} mem-node-config]
         (given (library/compile-library node library {})
           [:expression-defs "InInitialPopulation" :context] := "Patient"
-          [:expression-defs "InInitialPopulation" :expression compiler/form] := '(call "Inc2" 1)))))
+          [:expression-defs "InInitialPopulation" :expression c/form] := '(call "Inc2" 1)))))
 
   (testing "with compile-time error"
     (testing "function"

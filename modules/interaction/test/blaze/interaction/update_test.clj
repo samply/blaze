@@ -7,7 +7,7 @@
   (:require
     [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
-    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
     [blaze.db.kv :as kv]
     [blaze.db.node :as node]
     [blaze.db.resource-store :as rs]
@@ -83,7 +83,7 @@
 
 
 (def config
-  (assoc mem-node-config
+  (assoc api-stub/mem-node-config
     :blaze.interaction/update
     {:node (ig/ref :blaze.db/node)
      :executor (ig/ref :blaze.test/executor)}
@@ -104,8 +104,8 @@
 
 (defn- decode-more [more]
   (if (symbol? (first more))
-    (into [(first more)] (tu/extract-txs-body (next more)))
-    (into [`config] (tu/extract-txs-body more))))
+    (into [(first more)] (api-stub/extract-txs-body (next more)))
+    (into [`config] (api-stub/extract-txs-body more))))
 
 
 (defmacro with-handler [[handler-binding & [node-binding]] & more]

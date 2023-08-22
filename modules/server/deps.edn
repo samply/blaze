@@ -6,7 +6,7 @@
   {:local/root "../module-base"}
 
   info.sunng/ring-jetty9-adapter
-  {:mvn/version "0.22.0"
+  {:mvn/version "0.22.1"
    :exclusions
    [commons-fileupload/commons-fileupload
     crypto-equality/crypto-equality
@@ -17,8 +17,8 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/test-util
-    {:local/root "../test-util"}
+   {blaze/module-test-util
+    {:local/root "../module-test-util"}
 
     hato/hato
     {:mvn/version "0.9.0"}}}

@@ -1,0 +1,18 @@
+{:deps
+ {blaze/anomaly
+  {:local/root "../anomaly"}
+
+  blaze/async
+  {:local/root "../async"}
+
+  blaze/byte-buffer
+  {:local/root "../byte-buffer"}
+
+  blaze/executor
+  {:local/root "../executor"}
+
+  blaze/fhir-structure
+  {:local/root "../fhir-structure"}
+
+  blaze/module-test-util
+  {:local/root "../module-test-util"}}}

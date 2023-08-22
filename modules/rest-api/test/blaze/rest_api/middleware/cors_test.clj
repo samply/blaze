@@ -1,8 +1,8 @@
 (ns blaze.rest-api.middleware.cors-test
   (:require
+    [blaze.fhir.test-util.ring :refer [call]]
     [blaze.rest-api.middleware.cors :refer [wrap-cors]]
     [blaze.test-util :as tu]
-    [blaze.test-util.ring :refer [call]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest]]
     [juxt.iota :refer [given]]))

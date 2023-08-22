@@ -8,8 +8,9 @@
     [blaze.elm.code-spec]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.parameters :refer [->ParameterRef]]
-    [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
     [clojure.spec.test.alpha :as st]
@@ -47,7 +48,7 @@
       (is (= (->ParameterRef "parameter-def-101820") expr))
 
       (testing "form"
-        (is (= '(param-ref "parameter-def-101820") (core/-form expr))))))
+        (has-form expr '(param-ref "parameter-def-101820")))))
 
   (testing "definition not found"
     (let [context {:library {}}]

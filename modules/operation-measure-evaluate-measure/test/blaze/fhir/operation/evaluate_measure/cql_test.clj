@@ -9,9 +9,11 @@
     [blaze.elm.expression :as expr]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
     [blaze.fhir.operation.evaluate-measure.cql-spec]
+    [blaze.fhir.operation.evaluate-measure.test-util :as em-tu]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type]
-    [blaze.test-util :as tu :refer [with-system]]
+    [blaze.module.test-util :refer [with-system]]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -183,7 +185,7 @@
             :expression-context := "Patient")))))
 
   (testing "population basis doesn't match the expression return type"
-    (testing "boolean"
+    (testing "Boolean"
       (with-system [system mem-node-config]
         (let [context (context system library-encounter)]
           (doseq [return-handles? [true false]
@@ -236,21 +238,21 @@
     (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]]
       (let [{:keys [db] :as context} (context system library-gender)
-            patient (d/resource-handle db "Patient" "0")]
+            patient (em-tu/resource db "Patient" "0")]
         (is (true? (cql/evaluate-individual-expression context patient "InInitialPopulation"))))))
 
   (testing "no match"
     (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
       (let [{:keys [db] :as context} (context system library-gender)
-            patient (d/resource-handle db "Patient" "0")]
+            patient (em-tu/resource db "Patient" "0")]
         (is (nil? (cql/evaluate-individual-expression context patient "InInitialPopulation"))))))
 
   (testing "missing expression"
     (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
       (let [{:keys [db] :as context} (context system library-empty)
-            patient (d/resource-handle db "Patient" "0")]
+            patient (em-tu/resource db "Patient" "0")]
         (given (cql/evaluate-individual-expression context patient "InInitialPopulation")
           ::anom/category := ::anom/incorrect
           ::anom/message := "Missing expression with name `InInitialPopulation`."
@@ -261,7 +263,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
       (let [{:keys [db] :as context} (assoc (context system library-error)
                                        :parameters {"Numbers" [1 2]})
-            patient (d/resource-handle db "Patient" "0")]
+            patient (em-tu/resource db "Patient" "0")]
         (given (cql/evaluate-individual-expression context patient "InInitialPopulation")
           ::anom/category := ::anom/conflict
           ::anom/message := "More than one element in `SingletonFrom` expression."
@@ -272,10 +274,6 @@
 
 (def two-value-eval
   (fn [_ _ _] ["1" "2"]))
-
-
-(defn- handle [subject-handle]
-  {:population-handle subject-handle :subject-handle subject-handle})
 
 
 (deftest calc-strata-test
@@ -291,9 +289,10 @@
     (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (let [{:keys [db] :as context} (context system library-gender)]
+      (let [{:keys [db] :as context} (context system library-gender)
+            handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))]
         (with-redefs [expr/eval (failing-eval "msg-221825")]
-          (given (cql/calc-strata context "Gender" (mapv handle (d/type-list db "Patient")))
+          (given (cql/calc-strata context "Gender" handles)
             ::anom/category := ::anom/fault
             ::anom/message := "Error while evaluating the expression `Gender`: msg-221825")))))
 
@@ -301,9 +300,10 @@
     (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (let [{:keys [db] :as context} (context system library-gender)]
+      (let [{:keys [db] :as context} (context system library-gender)
+            handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))]
         (with-redefs [expr/eval two-value-eval]
-          (given (cql/calc-strata context "Gender" (mapv handle (d/type-list db "Patient")))
+          (given (cql/calc-strata context "Gender" handles)
             ::anom/category := ::anom/incorrect
             ::anom/message := "CQL expression `Gender` returned more than one value for resource `Patient/0`.")))))
 
@@ -311,8 +311,9 @@
     (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (let [{:keys [db] :as context} (assoc (context system library-gender) :timeout-eclipsed? (constantly true))]
-        (given (cql/calc-strata context "Gender" (mapv handle (d/type-list db "Patient")))
+      (let [{:keys [db] :as context} (assoc (context system library-gender) :timeout-eclipsed? (constantly true))
+            handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))]
+        (given (cql/calc-strata context "Gender" handles)
           ::anom/category := ::anom/interrupted
           ::anom/message := "Timeout of 42000 millis eclipsed while evaluating."))))
 
@@ -324,7 +325,8 @@
         [:put {:fhir/type :fhir/Patient :id "3" :gender #fhir/code"male"}]]]
 
       (let [{:keys [db] :as context} (context system library-gender)
-            result (cql/calc-strata context "Gender" (mapv handle (d/type-list db "Patient")))]
+            handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))
+            result (cql/calc-strata context "Gender" handles)]
 
         (testing "contains a nil entry for the patient with id 0"
           (given (result nil)
@@ -367,14 +369,14 @@
 
       (let [{:keys [db] :as context} (context system library-encounter-status)
             handles
-            [{:population-handle (d/resource-handle db "Encounter" "0")
-              :subject-handle (d/resource-handle db "Patient" "0")}
-             {:population-handle (d/resource-handle db "Encounter" "1")
-              :subject-handle (d/resource-handle db "Patient" "0")}
-             {:population-handle (d/resource-handle db "Encounter" "2")
-              :subject-handle (d/resource-handle db "Patient" "1")}
-             {:population-handle (d/resource-handle db "Encounter" "3")
-              :subject-handle (d/resource-handle db "Patient" "2")}]
+            [{:population-handle (em-tu/resource db "Encounter" "0")
+              :subject-handle (em-tu/resource db "Patient" "0")}
+             {:population-handle (em-tu/resource db "Encounter" "1")
+              :subject-handle (em-tu/resource db "Patient" "0")}
+             {:population-handle (em-tu/resource db "Encounter" "2")
+              :subject-handle (em-tu/resource db "Patient" "1")}
+             {:population-handle (em-tu/resource db "Encounter" "3")
+              :subject-handle (em-tu/resource db "Patient" "2")}]
             result (cql/calc-function-strata context "Status" handles)]
 
         (testing "contains a nil entry for the encounter with id 0"
@@ -408,9 +410,10 @@
   (testing "failing eval"
     (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
-      (let [{:keys [db] :as context} (context system library-encounter-status)]
+      (let [{:keys [db] :as context} (context system library-encounter-status)
+            handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))]
         (with-redefs [expr/eval (failing-eval "msg-111807")]
-          (given (cql/calc-function-strata context "Status" (mapv handle (d/type-list db "Patient")))
+          (given (cql/calc-function-strata context "Status" handles)
             ::anom/category := ::anom/fault
             ::anom/message := "Error while evaluating the expression `Status`: msg-111807"))))))
 
@@ -419,8 +422,9 @@
   (testing "failing eval"
     (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
-      (let [{:keys [db] :as context} (context system library-gender)]
+      (let [{:keys [db] :as context} (context system library-gender)
+            handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))]
         (with-redefs [expr/eval (failing-eval "msg-111557")]
-          (given (cql/calc-multi-component-strata context ["Gender"] (mapv handle (d/type-list db "Patient")))
+          (given (cql/calc-multi-component-strata context ["Gender"] handles)
             ::anom/category := ::anom/fault
             ::anom/message := "Error while evaluating the expression `Gender`: msg-111557"))))))

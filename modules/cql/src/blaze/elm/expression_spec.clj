@@ -1,30 +1,17 @@
 (ns blaze.elm.expression-spec
   (:require
     [blaze.db.api-spec]
-    [blaze.elm.compiler :as-alias compiler]
+    [blaze.elm.compiler :as-alias c]
+    [blaze.elm.compiler.external-data :as ed]
     [blaze.elm.compiler.library-spec]
     [blaze.elm.compiler.spec]
     [blaze.elm.expression :as expr]
+    [blaze.elm.expression.spec]
     [blaze.fhir.spec]
-    [clojure.spec.alpha :as s]
-    [java-time.api :as time]))
-
-
-(s/def ::now
-  time/offset-date-time?)
-
-
-(s/def ::parameters
-  (s/map-of :elm/name ::compiler/expression))
-
-
-(s/def :blaze.elm.expression/context
-  (s/keys :req-un [:blaze.db/db ::now]
-          :opt-un [::compiler/expression-defs ::parameters]))
+    [clojure.spec.alpha :as s]))
 
 
 (s/fdef expr/eval
-  :args (s/cat :context :blaze.elm.expression/context
-               :expression :blaze.elm.compiler/expression
-               :resource (s/nilable (s/or :resource :blaze/resource
-                                          :resource-handle :blaze.db/resource-handle))))
+  :args (s/cat :context ::expr/context
+               :expression ::c/expression
+               :resource (s/nilable ed/resource?)))

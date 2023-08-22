@@ -7,6 +7,7 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.aggregate-operators]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.test-util :as tu]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
@@ -48,7 +49,11 @@
 
       #elm/list [{:type "Null"}] true
       #elm/list [] true
-      {:type "Null"} true)))
+      {:type "Null"} true))
+
+  (tu/testing-unary-dynamic elm/all-true)
+
+  (tu/testing-unary-form elm/all-true))
 
 
 ;; 21.2. AnyTrue
@@ -70,7 +75,11 @@
 
       #elm/list [{:type "Null"}] false
       #elm/list [] false
-      {:type "Null"} false)))
+      {:type "Null"} false))
+
+  (tu/testing-unary-dynamic elm/any-true)
+
+  (tu/testing-unary-form elm/any-true))
 
 
 ;; 21.3. Avg
@@ -92,7 +101,11 @@
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
-      {:type "Null"} nil)))
+      {:type "Null"} nil))
+
+  (tu/testing-unary-dynamic elm/avg)
+
+  (tu/testing-unary-form elm/avg))
 
 
 ;; 21.4. Count
@@ -116,7 +129,11 @@
 
       #elm/list [{:type "Null"}] 0
       #elm/list [] 0
-      {:type "Null"} 0)))
+      {:type "Null"} 0))
+
+  (tu/testing-unary-dynamic elm/count)
+
+  (tu/testing-unary-form elm/count))
 
 
 ;; 21.5. GeometricMean
@@ -139,7 +156,11 @@
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
-      {:type "Null"} nil)))
+      {:type "Null"} nil))
+
+  (tu/testing-unary-dynamic elm/geometric-mean)
+
+  (tu/testing-unary-form elm/geometric-mean))
 
 
 ;; 21.6. Product
@@ -162,7 +183,11 @@
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
-      {:type "Null"} nil)))
+      {:type "Null"} nil))
+
+  (tu/testing-unary-dynamic elm/product)
+
+  (tu/testing-unary-form elm/product))
 
 
 ;; 21.7. Max
@@ -186,7 +211,11 @@
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
-      {:type "Null"} nil)))
+      {:type "Null"} nil))
+
+  (tu/testing-unary-dynamic elm/max)
+
+  (tu/testing-unary-form elm/max))
 
 
 ;; 21.8. Median
@@ -209,7 +238,11 @@
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
-      {:type "Null"} nil)))
+      {:type "Null"} nil))
+
+  (tu/testing-unary-dynamic elm/median)
+
+  (tu/testing-unary-form elm/median))
 
 
 ;; 21.9. Min
@@ -233,7 +266,11 @@
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
-      {:type "Null"} nil)))
+      {:type "Null"} nil))
+
+  (tu/testing-unary-dynamic elm/min)
+
+  (tu/testing-unary-form elm/min))
 
 
 ;; 21.10. Mode
@@ -256,7 +293,11 @@
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
-      {:type "Null"} nil)))
+      {:type "Null"} nil))
+
+  (tu/testing-unary-dynamic elm/mode)
+
+  (tu/testing-unary-form elm/mode))
 
 
 ;; 21.11. PopulationVariance
@@ -277,7 +318,11 @@
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
-      {:type "Null"} nil)))
+      {:type "Null"} nil))
+
+  (tu/testing-unary-dynamic elm/population-variance)
+
+  (tu/testing-unary-form elm/population-variance))
 
 
 ;; 21.12. PopulationStdDev
@@ -298,7 +343,11 @@
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
-      {:type "Null"} nil)))
+      {:type "Null"} nil))
+
+  (tu/testing-unary-dynamic elm/population-std-dev)
+
+  (tu/testing-unary-form elm/population-std-dev))
 
 
 ;; 21.13. Sum
@@ -320,7 +369,11 @@
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
-      {:type "Null"} nil)))
+      {:type "Null"} nil))
+
+  (tu/testing-unary-dynamic elm/sum)
+
+  (tu/testing-unary-form elm/sum))
 
 
 ;; 21.14. StdDev
@@ -341,7 +394,11 @@
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
-      {:type "Null"} nil)))
+      {:type "Null"} nil))
+
+  (tu/testing-unary-dynamic elm/std-dev)
+
+  (tu/testing-unary-form elm/std-dev))
 
 
 ;; 21.15. Variance
@@ -362,4 +419,8 @@
 
       #elm/list [{:type "Null"}] nil
       #elm/list [] nil
-      {:type "Null"} nil)))
+      {:type "Null"} nil))
+
+  (tu/testing-unary-dynamic elm/variance)
+
+  (tu/testing-unary-form elm/variance))

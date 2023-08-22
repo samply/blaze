@@ -44,7 +44,9 @@
         (unchecked-multiply-int 31)
         (unchecked-add-int (.hashCode id))
         (unchecked-multiply-int 31)
-        (unchecked-add-int t))))
+        (unchecked-add-int t)))
+  (toString [_]
+    (str (codec/tid->type tid) "[id = " id ", t = " t "]")))
 
 
 (defn state->num-changes

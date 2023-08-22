@@ -22,6 +22,8 @@
 
 (defrecord ParameterRef [name]
   core/Expression
+  (-static [_]
+    false)
   (-eval [_ {:keys [parameters] :as context} _ _]
     (let [value (get parameters name ::not-found)]
       (if (identical? ::not-found value)

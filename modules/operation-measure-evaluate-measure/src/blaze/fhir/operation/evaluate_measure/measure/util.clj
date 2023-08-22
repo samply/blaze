@@ -1,7 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.util
   (:require
     [blaze.anomaly :as ba]
-    [blaze.db.impl.index.resource-handle :as rh]
     [blaze.fhir.spec.type :as type]))
 
 
@@ -35,8 +34,8 @@
   (type/map->Reference {:reference (str "List/" list-id)}))
 
 
-(defn- resource-handle-reference [resource-handle]
-  (type/map->Reference {:reference (rh/reference resource-handle)}))
+(defn- resource-reference [{:keys [id] :as resource}]
+  (type/map->Reference {:reference (str (name (type/type resource)) "/" id)}))
 
 
 (defn- population-tx-ops [list-id handles]
@@ -49,7 +48,7 @@
      (mapv
        (fn [{:keys [population-handle]}]
          {:fhir/type :fhir.List/entry
-          :item (resource-handle-reference population-handle)})
+          :item (resource-reference population-handle)})
        handles)}]])
 
 

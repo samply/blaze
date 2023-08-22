@@ -1,6 +1,7 @@
 {:lint-as
- {blaze.db.kv.rocksdb-test/with-system-data clojure.core/with-open
-  blaze.test-util/with-system clojure.core/with-open}
+ {blaze.anomaly/when-ok clojure.core/let
+  blaze.db.kv.rocksdb-test/with-system-data clojure.core/with-open
+  blaze.module.test-util/with-system clojure.core/with-open}
 
  :linters
  {:unsorted-required-namespaces
@@ -20,6 +21,7 @@
 
   :consistent-alias
   {:aliases
-   {blaze.db.kv.rocksdb.protocols p}}}
+   {blaze.db.kv.rocksdb.protocols p
+    cognitect.anomalies anom}}}
 
  :skip-comments true}

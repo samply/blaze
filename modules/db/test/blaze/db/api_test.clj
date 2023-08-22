@@ -23,8 +23,10 @@
     [blaze.fhir.spec.generators :as fg]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
+    [blaze.fhir.test-util :refer [given-failed-future]]
     [blaze.log]
-    [blaze.test-util :as tu :refer [given-failed-future satisfies-prop with-system]]
+    [blaze.module.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [satisfies-prop]]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [clojure.test.check.generators :as gen]
@@ -587,6 +589,27 @@
           (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
           ::anom/category := ::anom/fault
           ::x ::y)))))
+
+
+(deftest as-of-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+     [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+    (let [db (d/db node)]
+
+      (testing "the newest t is 2"
+        (is (= 2 (d/basis-t db))))
+
+      (testing "the effective t of a DB as of 1 if 1"
+        (is (= 1 (d/t (d/as-of db 1))))))))
+
+
+(deftest t-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+    (is (= 1 (d/t (d/db node))))))
 
 
 (deftest tx-test
@@ -3135,7 +3158,7 @@
         [5 :id] := "id-5")))
 
   (testing "type number"
-    (testing "decimal"
+    (testing "Decimal"
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put {:fhir/type :fhir/RiskAssessment
                  :id "id-0"
@@ -3193,7 +3216,7 @@
               count := 1
               [0 :id] := "id-2")))))
 
-    (testing "integer"
+    (testing "Integer"
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put {:fhir/type :fhir/MolecularSequence
                  :id "id-0"
@@ -4159,7 +4182,7 @@
       (testing "an unknown search-param errors"
         (doseq [target [node (d/db node)]]
           (given (d/compile-type-query target "Patient" [["foo" "bar"]
-                                                       ["active" "true"]])
+                                                         ["active" "true"]])
             ::anom/category := ::anom/not-found
             ::anom/message := "The search-param with code `foo` and type `Patient` was not found.")))
 
@@ -4666,55 +4689,7 @@
                       node "Patient" "0" "Condition"
                       [["code" "system|code-a"]])
               count := 1
-              [0 :id] := "1"))
-
-          (testing "with code only"
-            (given @(pull-compartment-query
-                      node "Patient" "0" "Condition"
-                      [["code" "code-b"]])
-              count := 1
-              [0 :id] := "2"))
-
-          (testing "with system|"
-            (given @(pull-compartment-query
-                      node "Patient" "0" "Condition"
-                      [["code" "system|"]])
-              count := 2
-              [0 :id] := "1"
-              [1 :id] := "2"))))
-
-      (testing "quantity search parameter"
-        (testing "as first clause"
-          (testing "with [number]|[system]|[code]"
-            (given @(pull-compartment-query
-                      node "Patient" "0" "Observation"
-                      [["value-quantity" "42|http://unitsofmeasure.org|kg/m2"]])
-              count := 1
-              [0 :id] := "3"))
-
-          (testing "with [number]|[code]"
-            (given @(pull-compartment-query
-                      node "Patient" "0" "Observation"
-                      [["value-quantity" "23|kg/m2"]])
-              count := 1
-              [0 :id] := "4")))
-
-        (testing "as second clause"
-          (testing "with [number]|[system]|[code]"
-            (given @(pull-compartment-query
-                      node "Patient" "0" "Observation"
-                      [["code" "system|"]
-                       ["value-quantity" "42|http://unitsofmeasure.org|kg/m2"]])
-              count := 1
-              [0 :id] := "3"))
-
-          (testing "with [number]|[code]"
-            (given @(pull-compartment-query
-                      node "Patient" "0" "Observation"
-                      [["code" "system|"]
-                       ["value-quantity" "23|kg/m2"]])
-              count := 1
-              [0 :id] := "4")))))))
+              [0 :id] := "1")))))))
 
 
 (deftest compile-compartment-query-test

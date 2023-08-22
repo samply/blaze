@@ -1,7 +1,7 @@
 {:lint-as
  {blaze.fhir.spec.type.macros/def-primitive-type clojure.core/deftype
   blaze.fhir.spec.type.macros/defextended clojure.core/defrecord
-  blaze.test-util/with-system clojure.core/with-open}
+  blaze.module.test-util/with-system clojure.core/with-open}
 
  :hooks
  {:macroexpand
@@ -28,6 +28,16 @@
 
   :warn-on-reflection
   {:level :warning :warn-only-on-interop true}
+
+  :consistent-alias
+  {:aliases
+   {blaze.anomaly ba
+    blaze.executors ex
+    cognitect.anomalies anom
+    clojure.spec.alpha s
+    clojure.string str
+    integrant.core ig
+    taoensso.timbre log}}
 
   :unused-private-var
   {:exclude [blaze.fhir.spec.type/at-utc]}}

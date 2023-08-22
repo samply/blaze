@@ -11,8 +11,9 @@
     [blaze.db.tx-log :as tx-log]
     [blaze.db.tx-log.local]
     [blaze.fhir.spec.type :as type]
+    [blaze.fhir.test-util :refer [structure-definition-repo]]
     [blaze.log]
-    [blaze.test-util :refer [structure-definition-repo with-system]]
+    [blaze.module.test-util :refer [with-system]]
     [clojure.test :refer [deftest]]
     [criterium.core :as criterium]
     [integrant.core :as ig]
@@ -108,10 +109,10 @@
           :method (type/codeable-concept {:text (type/string (str version))})
           :code
           #fhir/CodeableConcept
-              {:coding
-               [#fhir/Coding
-                   {:system #fhir/uri"system-191514"
-                    :code #fhir/code"code-191518"}]}}]))
+                  {:coding
+                   [#fhir/Coding
+                           {:system #fhir/uri"system-191514"
+                            :code #fhir/code"code-191518"}]}}]))
 
 
 

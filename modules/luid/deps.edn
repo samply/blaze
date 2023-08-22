@@ -1,10 +1,5 @@
 {:deps
- {
-  ;; TODO: only needed for prepping
-  blaze/fhir-structure
-  {:local/root "../fhir-structure"}
-
-  blaze/module-base
+ {blaze/module-base
   {:local/root "../module-base"}
 
   blaze/spec

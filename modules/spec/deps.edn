@@ -1,3 +1,3 @@
 {:deps
  {clojure.java-time/clojure.java-time
-  {:mvn/version "1.2.0"}}}
+  {:mvn/version "1.3.0"}}}

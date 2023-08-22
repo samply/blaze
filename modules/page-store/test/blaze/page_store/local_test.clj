@@ -1,13 +1,15 @@
 (ns blaze.page-store.local-test
   (:require
     [blaze.anomaly-spec]
+    [blaze.fhir.test-util :refer [given-failed-future]]
     [blaze.metrics.core :as metrics]
     [blaze.metrics.spec]
+    [blaze.module.test-util :refer [with-system]]
     [blaze.page-store :as page-store]
     [blaze.page-store-spec]
     [blaze.page-store.local]
     [blaze.page-store.spec :refer [page-store?]]
-    [blaze.test-util :as tu :refer [given-failed-future given-thrown with-system]]
+    [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]

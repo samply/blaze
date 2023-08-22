@@ -15,7 +15,7 @@
   blaze.interaction.search-type-test/with-handler clojure.core/fn
   blaze.interaction.transaction-test/with-handler clojure.core/fn
   blaze.interaction.update-test/with-handler clojure.core/fn
-  blaze.test-util/with-system clojure.core/with-open}
+  blaze.module.test-util/with-system clojure.core/with-open}
 
  :linters
  {:unsorted-required-namespaces
@@ -39,6 +39,7 @@
     blaze.db.kv kv
     blaze.test-util tu
     blaze.util u
+    cognitect.anomalies anom
     cuerdas.core c-str
     ring.util.response ring}}}
 

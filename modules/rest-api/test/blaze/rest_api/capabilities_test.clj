@@ -1,9 +1,11 @@
 (ns blaze.rest-api.capabilities-test
   (:require
     [blaze.db.impl.search-param]
+    [blaze.fhir.test-util :refer [structure-definition-repo]]
+    [blaze.module.test-util :refer [with-system]]
     [blaze.rest-api.capabilities :as capabilities]
     [blaze.rest-api.capabilities-spec]
-    [blaze.test-util :as tu :refer [structure-definition-repo with-system]]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [juxt.iota :refer [given]]

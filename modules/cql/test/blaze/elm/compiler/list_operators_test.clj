@@ -6,16 +6,20 @@
   (:require
     [blaze.anomaly-spec]
     [blaze.elm.compiler :as c]
+    [blaze.elm.compiler-spec]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.list-operators]
-    [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
+    [blaze.elm.expression-spec]
+    [blaze.elm.expression.cache :as-alias expr-cache]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [blaze.elm.quantity :as quantity]
     [blaze.test-util :refer [satisfies-prop]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest testing]]
+    [clojure.test :as test :refer [are deftest is testing]]
     [clojure.test.check.properties :as prop]))
 
 
@@ -44,21 +48,27 @@
 ;;
 ;; If any argument is null, the resulting list will have null for that element.
 (deftest compile-list-test
-  (are [elm res] (= res (core/-eval (c/compile {} elm) {} nil nil))
-    #elm/list []
-    []
+  (testing "Static"
+    (are [elm res] (= res (c/compile {} elm))
+      #elm/list [] []
+      #elm/list [{:type "Null"}] [nil]
+      #elm/list [#elm/integer "1"] [1]
+      #elm/list [#elm/integer "1" {:type "Null"}] [1 nil]
+      #elm/list [#elm/integer "1" #elm/integer "2"] [1 2])
 
-    #elm/list [{:type "Null"}]
-    [nil]
+    (testing "form"
+      (is (= [] (c/form (c/compile {} #elm/list []))))))
 
-    #elm/list [#elm/integer "1"]
-    [1]
+  (testing "Dynamic"
+    (are [elm res] (= res (tu/dynamic-compile-eval elm))
+      #elm/list [#elm/parameter-ref "nil"] [nil]
+      #elm/list [#elm/parameter-ref "1"] [1]
+      #elm/list [#elm/parameter-ref "1" #elm/parameter-ref "nil"] [1 nil]
+      #elm/list [#elm/parameter-ref "1" #elm/parameter-ref "2"] [1 2])
 
-    #elm/list [#elm/integer "1" {:type "Null"}]
-    [1 nil]
-
-    #elm/list [#elm/integer "1" #elm/integer "2"]
-    [1 2]))
+    (testing "form"
+      (let [expr (tu/dynamic-compile #elm/list [#elm/parameter-ref "x"])]
+        (has-form expr '(list (param-ref "x")))))))
 
 
 ;; 20.2. Contains
@@ -78,14 +88,22 @@
   (testing "default scope"
     (satisfies-prop 100
       (prop/for-all [x (s/gen int?)]
-        (= x (core/-eval (c/compile {} {:type "Current"}) {} nil x)))))
+        (= x (core/-eval (c/compile {} #elm/current nil) {} nil x))))
+
+    (testing "form"
+      (let [expr (c/compile {} #elm/current nil)]
+        (has-form expr 'current))))
 
   (testing "named scope"
     (satisfies-prop 100
       (prop/for-all [scope (s/gen string?)
                      x (s/gen int?)]
-        (let [expr (c/compile {} {:type "Current" :scope scope})]
-          (= x (core/-eval expr {} nil {scope x})))))))
+        (let [expr (c/compile {} (elm/current scope))]
+          (= x (core/-eval expr {} nil {scope x})))))
+
+    (testing "form"
+      (let [expr (c/compile {} #elm/current "x")]
+        (has-form expr '(current "x"))))))
 
 
 ;; 20.4. Distinct
@@ -113,6 +131,8 @@
 
   (tu/testing-unary-null elm/distinct)
 
+  (tu/testing-unary-dynamic elm/distinct)
+
   (tu/testing-unary-form elm/distinct))
 
 
@@ -137,14 +157,25 @@
 ;;
 ;; If the argument is null, the result is false.
 (deftest compile-exists-test
-  (are [list res] (= res (c/compile {} (elm/exists list)))
-    #elm/list [#elm/integer "1"] true
-    #elm/list [#elm/integer "1" #elm/integer "1"] true
-    #elm/list [] false
+  (testing "Static"
+    (are [list res] (= res (c/compile {} (elm/exists list)))
+      #elm/list [#elm/integer "1"] true
+      #elm/list [#elm/integer "1" #elm/integer "1"] true
+      #elm/list [{:type "Null"}] false
+      #elm/list [] false
 
-    {:type "Null"} false)
+      {:type "Null"} false))
 
-  (tu/testing-unary-form elm/exists))
+  (testing "Dynamic"
+    (are [list res] (= res (tu/dynamic-compile-eval (elm/exists list)))
+      #elm/list [#elm/parameter-ref "1"] true
+      #elm/list [#elm/parameter-ref "1" #elm/parameter-ref "1"] true
+      #elm/list [#elm/parameter-ref "nil"] false
+      #elm/list [] false
+
+      {:type "Null"} false)
+
+    (tu/testing-unary-form elm/exists)))
 
 
 ;; 20.9. Filter
@@ -154,11 +185,46 @@
 ;;
 ;; If the source argument is null, the result is null.
 (deftest compile-filter-test
-  (are [source condition res] (= res (core/-eval (c/compile {} {:type "Filter" :source source :condition condition :scope "A"}) {} nil nil))
-    #elm/list [#elm/integer "1"] #elm/boolean "false" []
-    #elm/list [#elm/integer "1"] #elm/equal [#elm/current "A" #elm/integer "1"] [1]
+  (testing "eval"
+    (let [eval #(core/-eval % {} nil nil)]
+      (testing "with scope"
+        (are [source condition res] (= res (eval (c/compile {} {:type "Filter"
+                                                                :source source
+                                                                :condition condition
+                                                                :scope "A"})))
+          #elm/list [#elm/integer "1"] #elm/boolean "false" []
+          #elm/list [#elm/integer "1"] #elm/equal [#elm/current "A" #elm/integer "1"] [1]
 
-    {:type "Null"} #elm/boolean "true" nil))
+          {:type "Null"} #elm/boolean "true" nil))
+
+      (testing "without scope"
+        (are [source condition res] (= res (eval (c/compile {} {:type "Filter"
+                                                                :source source
+                                                                :condition condition})))
+          #elm/list [#elm/integer "1"] #elm/boolean "false" []
+          #elm/list [#elm/integer "1"] #elm/equal [#elm/current nil #elm/integer "1"] [1]
+
+          {:type "Null"} #elm/boolean "true" nil))))
+
+  (testing "form and static"
+    (testing "with scope"
+      (let [expr (tu/dynamic-compile {:type "Filter"
+                                      :source #elm/parameter-ref "x"
+                                      :condition #elm/parameter-ref "y"
+                                      :scope "A"})]
+
+        (has-form expr '(filter (param-ref "x") (param-ref "y") "A"))
+
+        (is (false? (core/-static expr)))))
+
+    (testing "without scope"
+      (let [expr (tu/dynamic-compile {:type "Filter"
+                                      :source #elm/parameter-ref "x"
+                                      :condition #elm/parameter-ref "y"})]
+
+        (has-form expr '(filter (param-ref "x") (param-ref "y")))
+
+        (is (false? (core/-static expr)))))))
 
 
 ;; 20.10. First
@@ -169,11 +235,21 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-first-test
-  (are [source res] (= res (core/-eval (c/compile {} (elm/first source)) {} nil nil))
-    #elm/list [#elm/integer "1"] 1
-    #elm/list [#elm/integer "1" #elm/integer "2"] 1
+  (testing "Static"
+    (are [source res] (= res (core/-eval (c/compile {} (elm/first source)) {} nil nil))
+      #elm/list [#elm/integer "1"] 1
+      #elm/list [#elm/integer "1" #elm/integer "2"] 1))
 
-    {:type "Null"} nil))
+  (testing "Dynamic"
+    (are [source res] (= res (tu/dynamic-compile-eval (elm/first source)))
+      #elm/parameter-ref "[1]" 1
+      #elm/parameter-ref "[1 2]" 1))
+
+  (tu/testing-unary-null elm/first)
+
+  (tu/testing-unary-dynamic elm/first)
+
+  (tu/testing-unary-form elm/first))
 
 
 ;; 20.11. Flatten
@@ -192,6 +268,8 @@
 
   (tu/testing-unary-null elm/flatten)
 
+  (tu/testing-unary-dynamic elm/flatten)
+
   (tu/testing-unary-form elm/flatten))
 
 
@@ -207,18 +285,46 @@
 ;; If the element argument evaluates to null for some item in the source list,
 ;; the resulting list will contain a null for that element.
 (deftest compile-for-each-test
-  (testing "Without scope"
-    (are [source element res] (= res (core/-eval (c/compile {} {:type "ForEach" :source source :element element}) {} nil nil))
-      #elm/list [#elm/integer "1"] {:type "Null"} [nil]
+  (testing "eval"
+    (let [eval #(core/-eval % {} nil nil)]
+      (testing "with scope"
+        (are [source element res] (= res (eval (c/compile {} {:type "ForEach"
+                                                              :source source
+                                                              :element element
+                                                              :scope "A"})))
+          #elm/list [#elm/integer "1"] #elm/current "A" [1]
+          #elm/list [#elm/integer "1" #elm/integer "2"] #elm/add [#elm/current "A" #elm/integer "1"] [2 3]
 
-      {:type "Null"} {:type "Null"} nil))
+          {:type "Null"} {:type "Null"} nil))
 
-  (testing "With scope"
-    (are [source element res] (= res (core/-eval (c/compile {} {:type "ForEach" :source source :element element :scope "A"}) {} nil nil))
-      #elm/list [#elm/integer "1"] #elm/current "A" [1]
-      #elm/list [#elm/integer "1" #elm/integer "2"] #elm/add [#elm/current "A" #elm/integer "1"] [2 3]
+      (testing "without scope"
+        (are [source element res] (= res (eval (c/compile {} {:type "ForEach"
+                                                              :source source
+                                                              :element element})))
+          #elm/list [#elm/integer "1"] #elm/current nil [1]
+          #elm/list [#elm/integer "1" #elm/integer "2"] #elm/add [#elm/current nil #elm/integer "1"] [2 3]
 
-      {:type "Null"} {:type "Null"} nil)))
+          {:type "Null"} {:type "Null"} nil))))
+
+  (testing "form and static"
+    (testing "with scope"
+      (let [expr (tu/dynamic-compile {:type "ForEach"
+                                      :source #elm/parameter-ref "x"
+                                      :element #elm/parameter-ref "y"
+                                      :scope "A"})]
+
+        (has-form expr '(for-each (param-ref "x") (param-ref "y") "A"))
+
+        (is (false? (core/-static expr)))))
+
+    (testing "without scope"
+      (let [expr (tu/dynamic-compile {:type "ForEach"
+                                      :source #elm/parameter-ref "x"
+                                      :element #elm/parameter-ref "y"})]
+
+        (has-form expr '(for-each (param-ref "x") (param-ref "y")))
+
+        (is (false? (core/-static expr)))))))
 
 
 ;; 20.13. In
@@ -249,7 +355,7 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-index-of-test
-  (are [source element res] (= res (core/-eval (c/compile {} {:type "IndexOf" :source source :element element}) {} nil nil))
+  (are [source element res] (= res (core/-eval (c/compile {} (elm/index-of [source element])) {} nil nil))
     #elm/list [] #elm/integer "1" -1
     #elm/list [#elm/integer "1"] #elm/integer "1" 0
     #elm/list [#elm/integer "1" #elm/integer "1"] #elm/integer "1" 0
@@ -257,7 +363,13 @@
 
     #elm/list [] {:type "Null"} nil
     {:type "Null"} #elm/integer "1" nil
-    {:type "Null"} {:type "Null"} nil))
+    {:type "Null"} {:type "Null"} nil)
+
+  (tu/testing-binary-dynamic-null elm/index-of #elm/list [] #elm/integer "1")
+
+  (tu/testing-binary-dynamic elm/index-of)
+
+  (tu/testing-binary-form elm/index-of))
 
 
 ;; 20.17. Intersect
@@ -273,11 +385,21 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-last-test
-  (are [source res] (= res (core/-eval (c/compile {} {:type "Last" :source source}) {} nil nil))
-    #elm/list [#elm/integer "1"] 1
-    #elm/list [#elm/integer "1" #elm/integer "2"] 2
+  (testing "Static"
+    (are [source res] (= res (core/-eval (c/compile {} (elm/last source)) {} nil nil))
+      #elm/list [#elm/integer "1"] 1
+      #elm/list [#elm/integer "1" #elm/integer "2"] 2))
 
-    {:type "Null"} nil))
+  (testing "Dynamic"
+    (are [source res] (= res (tu/dynamic-compile-eval (elm/last source)))
+      #elm/parameter-ref "[1]" 1
+      #elm/parameter-ref "[1 2]" 2))
+
+  (tu/testing-unary-null elm/last)
+
+  (tu/testing-unary-dynamic elm/last)
+
+  (tu/testing-unary-form elm/last))
 
 
 ;; 20.19. Not Equal
@@ -337,7 +459,11 @@
   (are [list] (thrown? Exception (core/-eval (c/compile {} (elm/singleton-from list)) {} nil nil))
     #elm/list [#elm/integer "1" #elm/integer "1"])
 
-  (tu/testing-unary-null elm/singleton-from))
+  (tu/testing-unary-null elm/singleton-from)
+
+  (tu/testing-unary-dynamic elm/singleton-from)
+
+  (tu/testing-unary-form elm/singleton-from))
 
 
 ;; 20.26. Slice
@@ -366,7 +492,19 @@
 
 
     {:type "Null"} #elm/integer "0" #elm/integer "0" nil
-    {:type "Null"} {:type "Null"} {:type "Null"} nil))
+    {:type "Null"} {:type "Null"} {:type "Null"} nil)
+
+  (let [expr (tu/dynamic-compile {:type "Slice"
+                                  :source #elm/parameter-ref "x"
+                                  :startIndex #elm/parameter-ref "y"
+                                  :endIndex #elm/parameter-ref "z"})]
+
+    (testing "expression is dynamic"
+      (is (false? (core/-static expr))))
+
+    (testing "form"
+      (is (= '(slice (param-ref "x") (param-ref "y") (param-ref "z"))
+             (core/-form expr))))))
 
 
 ;; 20.27. Sort
@@ -387,7 +525,17 @@
     #elm/list [#elm/integer "1" #elm/integer "2"]
     {:type "ByDirection" :direction "desc"} [2 1]
 
-    {:type "Null"} {:type "ByDirection" :direction "asc"} nil))
+    {:type "Null"} {:type "ByDirection" :direction "asc"} nil)
+
+  (let [expr (tu/dynamic-compile {:type "Sort"
+                                  :source #elm/parameter-ref "x"
+                                  :by [{:type "ByDirection" :direction "asc"}]})]
+
+    (testing "expression is dynamic"
+      (is (false? (core/-static expr))))
+
+    (testing "form"
+      (is (= '(sort (param-ref "x") :asc) (core/-form expr))))))
 
 
 ;; 20.28. Times
@@ -446,6 +594,8 @@
      {:id 2 :name "hans" :location "Berlin"}])
 
   (tu/testing-binary-null elm/times #elm/list[#elm/tuple{"name" #elm/string "hans"}])
+
+  (tu/testing-binary-dynamic elm/times)
 
   (tu/testing-binary-form elm/times))
 

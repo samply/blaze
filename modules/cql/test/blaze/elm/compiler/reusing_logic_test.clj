@@ -5,10 +5,12 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.anomaly :as ba]
+    [blaze.elm.code :as code]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
+    [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.function :as function]
-    [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
     [blaze.elm.interval :as interval]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
@@ -59,11 +61,14 @@
           expr (c/compile {:library library} #elm/expression-ref "name-170312")]
       (is (= ::result (core/-eval expr {:expression-defs {"name-170312" {:expression ::result}}} nil nil)))))
 
-  (testing "form"
+  (testing "form and static"
     (let [library {:statements {:def [{:type "ExpressionDef"
                                        :name "name-170312"}]}}
           expr (c/compile {:library library} #elm/expression-ref "name-170312")]
-      (is (= '(expr-ref "name-170312") (core/-form expr))))))
+
+      (has-form expr '(expr-ref "name-170312"))
+
+      (is (false? (core/-static expr))))))
 
 
 ;; 9.4. FunctionRef
@@ -83,11 +88,15 @@
           compile-ctx {:function-defs {function-name {:function (partial function/arity-n function-name fn-expr [])}}}
           elm (elm/function-ref [function-name])
           expr (c/compile compile-ctx elm)]
+
       (testing "eval"
         (is (= 1 (core/-eval expr {} nil nil))))
 
+      (testing "static"
+        (is (false? (core/-static expr))))
+
       (testing "form"
-        (is (= `(~'call ~function-name) (core/-form expr))))))
+        (has-form expr (list 'call function-name)))))
 
   (testing "Custom function with arity 1"
     (let [function-name "name-180815"
@@ -96,14 +105,18 @@
                        :function-defs {function-name {:function (partial function/arity-n function-name fn-expr ["x"])}}}
           elm (elm/function-ref [function-name #elm/parameter-ref "a"])
           expr (c/compile compile-ctx elm)]
+
       (testing "eval"
         (are [a res] (= res (core/-eval expr {:parameters {"a" a}} nil nil))
           1 -1
           -1 1
           0 0))
 
+      (testing "static"
+        (is (false? (core/-static expr))))
+
       (testing "form"
-        (is (= `(~'call ~function-name (~'param-ref "a")) (core/-form expr))))))
+        (has-form expr (list 'call function-name '(param-ref "a"))))))
 
   (testing "Custom function with arity 2"
     (let [function-name "name-184652"
@@ -112,33 +125,42 @@
                        :function-defs {function-name {:function (partial function/arity-n function-name fn-expr ["x" "y"])}}}
           elm (elm/function-ref [function-name #elm/parameter-ref "a" #elm/parameter-ref "b"])
           expr (c/compile compile-ctx elm)]
+
       (testing "eval"
         (are [a b res] (= res (core/-eval expr {:parameters {"a" a "b" b}} nil nil))
           1 1 2
           1 0 1
           0 1 1))
 
+      (testing "static"
+        (is (false? (core/-static expr))))
+
       (testing "form"
-        (is (= `(~'call ~function-name (~'param-ref "a") (~'param-ref "b")) (core/-form expr))))))
+        (has-form expr (list 'call function-name '(param-ref "a") '(param-ref "b"))))))
 
   (testing "ToQuantity"
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
           elm #elm/function-ref ["ToQuantity" #elm/parameter-ref "x"]
           expr (c/compile compile-ctx elm)]
+
       (testing "eval"
         (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
           {:value 23M :code "kg"} (quantity/quantity 23M "kg")
           {:value 42M} (quantity/quantity 42M "1")
           {} nil))
 
+      (testing "static"
+        (is (false? (core/-static expr))))
+
       (testing "form"
-        (is (= '(call "ToQuantity" (param-ref "x")) (core/-form expr))))))
+        (has-form expr '(call "ToQuantity" (param-ref "x"))))))
 
   (testing "ToDate"
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
           elm #elm/function-ref ["ToDate" #elm/parameter-ref "x"]
           expr (c/compile compile-ctx elm)
-          eval-ctx (fn [x] {:now tu/now :parameters {"x" x}})]
+          eval-ctx (fn [x] {:now tu/now :parameters {"x" x}})
+          ]
       (testing "eval"
         (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
           #fhir/date{:id "foo"} nil
@@ -147,14 +169,18 @@
           #fhir/date"2023-05" #system/date"2023-05"
           #fhir/date"2023-05-07" #system/date"2023-05-07"))
 
+      (testing "static"
+        (is (false? (core/-static expr))))
+
       (testing "form"
-        (is (= '(call "ToDate" (param-ref "x")) (core/-form expr))))))
+        (has-form expr '(call "ToDate" (param-ref "x"))))))
 
   (testing "ToDateTime"
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
           elm #elm/function-ref ["ToDateTime" #elm/parameter-ref "x"]
           expr (c/compile compile-ctx elm)
           eval-ctx (fn [x] {:now tu/now :parameters {"x" x}})]
+
       (testing "eval"
         (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
           #fhir/dateTime{:id "foo"} nil
@@ -169,13 +195,17 @@
           #fhir/instant"2021-02-23T15:12:45Z" #system/date-time"2021-02-23T15:12:45"
           #fhir/instant"2021-02-23T15:12:45+01:00" #system/date-time"2021-02-23T14:12:45"))
 
+      (testing "static"
+        (is (false? (core/-static expr))))
+
       (testing "form"
-        (is (= '(call "ToDateTime" (param-ref "x")) (core/-form expr))))))
+        (has-form expr '(call "ToDateTime" (param-ref "x"))))))
 
   (testing "ToString"
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
           elm #elm/function-ref ["ToString" #elm/parameter-ref "x"]
           expr (c/compile compile-ctx elm)]
+
       (testing "eval"
         (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
           "string-195733" "string-195733"
@@ -183,14 +213,36 @@
           #fhir/code{:id "foo" :value "code-211914"} "code-211914"
           #fhir/code{:id "foo"} nil))
 
+      (testing "static"
+        (is (false? (core/-static expr))))
+
       (testing "form"
-        (is (= '(call "ToString" (param-ref "x")) (core/-form expr))))))
+        (has-form expr '(call "ToString" (param-ref "x"))))))
+
+  (testing "ToCode"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/function-ref ["ToCode" #elm/parameter-ref "x"]
+          expr (c/compile compile-ctx elm)]
+
+      (testing "eval"
+        (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
+          {:system "system-140820"
+           :version "version-140924"
+           :code "code-140828"}
+          (code/to-code "system-140820" "version-140924" "code-140828")))
+
+      (testing "static"
+        (is (false? (core/-static expr))))
+
+      (testing "form"
+        (has-form expr '(call "ToCode" (param-ref "x"))))))
 
   (testing "ToInterval"
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
           elm #elm/function-ref ["ToInterval" #elm/parameter-ref "x"]
           expr (c/compile compile-ctx elm)
           eval-ctx (fn [x] {:now tu/now :parameters {"x" x}})]
+
       (testing "eval"
         (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
           #fhir/Period
@@ -212,8 +264,11 @@
             (system/date-time 2021 2 23 14 12 45)
             nil)))
 
+      (testing "static"
+        (is (false? (core/-static expr))))
+
       (testing "form"
-        (is (= '(call "ToInterval" (param-ref "x")) (core/-form expr)))))))
+        (has-form expr '(call "ToInterval" (param-ref "x")))))))
 
 
 ;; 9.5 OperandRef
@@ -221,5 +276,7 @@
 ;; The OperandRef expression allows the value of an operand to be referenced as
 ;; part of an expression within the body of a function definition.
 (deftest compile-operand-ref-test
-  (testing "form"
-    (is (= '(operand-ref "x") (core/-form (c/compile {} #elm/operand-ref"x"))))))
+  (testing "form and static"
+    (let [expr (c/compile {} #elm/operand-ref"x")]
+      (has-form expr '(operand-ref "x"))
+      (is (false? (core/-static expr))))))

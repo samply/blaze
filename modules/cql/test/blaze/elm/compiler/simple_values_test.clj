@@ -36,12 +36,12 @@
 ;; the boolean value true or the string "antithrombotic".
 (deftest compile-literal-test
   (testing "Boolean Literal"
-    (are [elm res] (= res (c/compile {} elm))
+    (are [elm res] (let [expr (c/compile {} elm)] (= res expr (c/form expr)))
       #elm/boolean "true" true
       #elm/boolean "false" false))
 
   (testing "Decimal Literal"
-    (are [elm res] (= res (c/compile {} elm))
+    (are [elm res] (let [expr (c/compile {} elm)] (= res expr (c/form expr)))
       #elm/decimal "-1" -1M
       #elm/decimal "0" 0M
       #elm/decimal "1" 1M
@@ -62,7 +62,7 @@
         ::anom/message := "Incorrect decimal literal `x`.")))
 
   (testing "Long Literal"
-    (are [elm res] (= res (c/compile {} elm))
+    (are [elm res] (let [expr (c/compile {} elm)] (= res expr (c/form expr)))
       #elm/long "-1" -1
       #elm/long "0" 0
       #elm/long "1" 1)
@@ -73,7 +73,7 @@
         ::anom/message := "Incorrect long literal `x`.")))
 
   (testing "Integer Literal"
-    (are [elm res] (= res (c/compile {} elm))
+    (are [elm res] (let [expr (c/compile {} elm)] (= res expr (c/form expr)))
       #elm/integer "-1" -1
       #elm/integer "0" 0
       #elm/integer "1" 1)

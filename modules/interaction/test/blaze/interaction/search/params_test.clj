@@ -2,10 +2,11 @@
   (:require
     [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
+    [blaze.fhir.test-util :refer [given-failed-future]]
     [blaze.interaction.search.params :as params]
     [blaze.interaction.search.params-spec]
     [blaze.page-store.protocols :as p]
-    [blaze.test-util :as tu :refer [given-failed-future]]
+    [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]
     [cognitect.anomalies :as anom]

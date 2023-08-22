@@ -5,6 +5,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
     [blaze.anomaly :as ba :refer [throw-anom]]
+    [blaze.elm.compiler.core :as core]
     [blaze.elm.protocols :as p]
     [cuerdas.core :as c-str])
   (:import
@@ -71,6 +72,16 @@
   "Creates a quantity with numerical value and string unit."
   [value unit]
   (Quantities/getQuantity ^Number value ^Unit (parse-unit unit)))
+
+
+(extend-protocol core/Expression
+  Quantity
+  (-static [_]
+    true)
+  (-eval [quantity _ _ _]
+    quantity)
+  (-form [quantity]
+    `(~'quantity ~(.getValue quantity) ~(format-unit (.getUnit quantity)))))
 
 
 (defprotocol QuantityDivide

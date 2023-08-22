@@ -8,7 +8,8 @@
     [blaze.fhir.spec.impl.xml-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.structure-definition-repo :as sdr]
-    [blaze.test-util :as tu :refer [structure-definition-repo]]
+    [blaze.fhir.test-util :refer [structure-definition-repo]]
+    [blaze.test-util :as tu]
     [clojure.alpha.spec :as s2]
     [clojure.data.xml.name :as xml-name]
     [clojure.data.xml.node :as xml-node]
@@ -44,7 +45,7 @@
 
 
 (deftest primitive-type->spec-defs-test
-  (testing "boolean"
+  (testing "Boolean"
     (is (= (-> (primitive-type "boolean")
                impl/primitive-type->spec-defs
                regexes->str)
@@ -63,7 +64,7 @@
             {:key :fhir.cbor/boolean
              :spec-form `(specs/cbor-primitive type/boolean)}])))
 
-  (testing "integer"
+  (testing "Integer"
     (is (= (-> (primitive-type "integer")
                impl/primitive-type->spec-defs
                regexes->str)
@@ -101,7 +102,7 @@
             {:key :fhir.cbor/string
              :spec-form `(specs/cbor-primitive type/string)}])))
 
-  (testing "decimal"
+  (testing "Decimal"
     (is (= (-> (primitive-type "decimal")
                impl/primitive-type->spec-defs
                regexes->str)

@@ -22,6 +22,8 @@
   [type low high low-closed-expression high-closed-expression low-closed
    high-closed]
   core/Expression
+  (-static [_]
+    false)
   (-eval [_ context resource scope]
     (let [low (core/-eval low context resource scope)
           high (core/-eval high context resource scope)

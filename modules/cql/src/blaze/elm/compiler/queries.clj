@@ -63,7 +63,7 @@
   (-create [_ context resource scope]
     (filter #(core/-eval expr context resource (assoc scope alias %))))
   (-form [_]
-    `(~'where ~(symbol alias) ~(core/-form expr))))
+    `(~'where (~'fn [~(symbol alias)] ~(core/-form expr)))))
 
 
 (defn- where-xform-factory [alias expr]
@@ -75,7 +75,7 @@
   (-create [_ context resource scope]
     (map #(core/-eval expr context resource (assoc scope alias %))))
   (-form [_]
-    `(~'return ~(symbol alias) ~(core/-form expr))))
+    `(~'return (~'fn [~(symbol alias)] ~(core/-form expr)))))
 
 
 (defrecord DistinctXformFactory []
@@ -137,6 +137,8 @@
 
 (defrecord EductionQueryExpression [xform-factory source]
   core/Expression
+  (-static [_]
+    false)
   (-eval [_ context resource scope]
     (coll/eduction
       (-create xform-factory context resource scope)
@@ -151,6 +153,8 @@
 
 (defrecord IntoVectorQueryExpression [xform-factory source]
   core/Expression
+  (-static [_]
+    false)
   (-eval [_ context resource scope]
     (into
       []
@@ -200,6 +204,8 @@
 
 (defrecord SortQueryExpression [source sort-by-item]
   core/Expression
+  (-static [_]
+    false)
   (-eval [_ context resource scope]
     ;; TODO: build a comparator of all sort by items
     (->> (vec (core/-eval source context resource scope))
@@ -217,6 +223,8 @@
 
 (defrecord XformSortQueryExpression [xform-factory source sort-by-item]
   core/Expression
+  (-static [_]
+    false)
   (-eval [_ context resource scope]
     ;; TODO: build a comparator of all sort by items
     (->> (into
@@ -302,6 +310,8 @@
 ;; 10.3. AliasRef
 (defrecord AliasRefExpression [key]
   core/Expression
+  (-static [_]
+    false)
   (-eval [_ _ _ scopes]
     (get scopes key))
   (-form [_]

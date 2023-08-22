@@ -1,8 +1,8 @@
 (ns blaze.interaction.history.util
   (:require
+    [blaze.db.api :as d]
     [blaze.fhir.spec.type :as type]
     [blaze.handler.fhir.util :as fhir-util]
-    [blaze.interaction.util :as iu]
     [blaze.util :as u]
     [reitit.core :as reitit])
   (:import
@@ -48,7 +48,7 @@
   [{:blaze/keys [base-url db] ::reitit/keys [match]} query-params page-t & more]
   (let [path (reitit/match->path
                match
-               (cond-> (assoc query-params "__t" (iu/t db) "__page-t" page-t)
+               (cond-> (assoc query-params "__t" (d/t db) "__page-t" page-t)
                  (= 1 (count more))
                  (assoc "__page-id" (first more))
                  (= 2 (count more))

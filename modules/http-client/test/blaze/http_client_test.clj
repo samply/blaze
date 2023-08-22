@@ -2,7 +2,8 @@
   (:require
     [blaze.http-client]
     [blaze.http-client.spec]
-    [blaze.test-util :as tu :refer [given-thrown with-system]]
+    [blaze.module.test-util :refer [with-system]]
+    [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.core.protocols :refer [Datafiable]]
     [clojure.datafy :refer [datafy]]
     [clojure.spec.alpha :as s]

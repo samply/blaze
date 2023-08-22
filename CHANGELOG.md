@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.22.1
+
+### Bugfixes
+
+* Resolve Relative Attachment.url Values Like References ([#804](https://github.com/samply/blaze/issues/804))
+
+### Performance
+
+* Skip Indexing Unnecessary Compartment Values ([#1045](https://github.com/samply/blaze/pull/1045))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/75?closed=1).
+
 ## v0.22.0
 
 It's not recommended to downgrade from this version to an older version because [#1041](https://github.com/samply/blaze/pull/1041) introduces a new transaction command called `keep` that would be ignored by older versions. However the transaction log is only read at the moment transactions happen or if the index is rebuild. So it will be ok to downgrade in emergency without rebuilding the index.
