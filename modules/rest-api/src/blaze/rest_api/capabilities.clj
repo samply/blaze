@@ -127,7 +127,7 @@
      history-system-handler]
     :or {context-path ""}
     :as context}]
-  (let [release-date #fhir/dateTime"2023-07-02"
+  (let [release-date #fhir/dateTime"2023-08-22"
         capability-statement
         {:fhir/type :fhir/CapabilityStatement
          :status #fhir/code"active"
