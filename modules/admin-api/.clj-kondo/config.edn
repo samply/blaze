@@ -22,6 +22,7 @@
    {blaze.async.comp ac
     blaze.db.kv.rocksdb rocksdb
     clojure.spec.alpha s
+    cognitect.anomalies anom
     integrant.core ig
     ring.util.response ring
     taoensso.timbre log}}}

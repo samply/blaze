@@ -28,6 +28,7 @@
    {blaze.db.api d
     blaze.elm.compiler.external-data ed
     blaze.elm.expression expr
+    cognitect.anomalies anom
     ring.util.response ring}}}
 
  :skip-comments true}

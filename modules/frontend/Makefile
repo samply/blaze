@@ -28,6 +28,6 @@ test-coverage: build
 	clojure -M:test:coverage
 
 clean:
-	rm -rf .clj-kondo/.cache .cpcache target build
+	rm -rf .clj-kondo/.cache .cpcache target build node_modules .svelte-kit
 
 .PHONY: install update lint-js lint-clj lint check test-js build test test-coverage clean

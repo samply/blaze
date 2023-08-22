@@ -45,7 +45,7 @@
 
 
 (deftest primitive-type->spec-defs-test
-  (testing "boolean"
+  (testing "Boolean"
     (is (= (-> (primitive-type "boolean")
                impl/primitive-type->spec-defs
                regexes->str)
@@ -64,7 +64,7 @@
             {:key :fhir.cbor/boolean
              :spec-form `(specs/cbor-primitive type/boolean)}])))
 
-  (testing "integer"
+  (testing "Integer"
     (is (= (-> (primitive-type "integer")
                impl/primitive-type->spec-defs
                regexes->str)
@@ -102,7 +102,7 @@
             {:key :fhir.cbor/string
              :spec-form `(specs/cbor-primitive type/string)}])))
 
-  (testing "decimal"
+  (testing "Decimal"
     (is (= (-> (primitive-type "decimal")
                impl/primitive-type->spec-defs
                regexes->str)

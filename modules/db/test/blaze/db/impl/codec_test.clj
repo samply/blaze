@@ -66,7 +66,7 @@
       (prop/for-all [i (s/gen int?)]
         (= i (codec/decode-number (codec/number i))))))
 
-  (testing "long"
+  (testing "Long"
     (are [n hex] (= hex (bs/hex (codec/number n)))
       Long/MIN_VALUE "3F8000000000000000"
       (inc Long/MIN_VALUE) "3F8000000000000001"
@@ -125,7 +125,7 @@
       576460752303423489 "C00800000000000001"
       Long/MAX_VALUE "C07FFFFFFFFFFFFFFF"))
 
-  (testing "integer"
+  (testing "Integer"
     (are [n hex] (= hex (bs/hex (codec/number n)))
       Integer/MIN_VALUE "5F80000000"
       (int -1) "7F"

@@ -16,4 +16,4 @@
                :hash :blaze.resource/hash
                :num-changes nat-int?
                :op keyword?)
-  :ret bytes?)
+  :ret (s/coll-of :blaze.db.kv/put-entry-w-cf))

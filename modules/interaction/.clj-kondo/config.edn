@@ -39,6 +39,7 @@
     blaze.db.kv kv
     blaze.test-util tu
     blaze.util u
+    cognitect.anomalies anom
     cuerdas.core c-str
     ring.util.response ring}}}
 

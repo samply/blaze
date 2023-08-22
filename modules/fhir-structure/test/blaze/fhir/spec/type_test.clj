@@ -122,7 +122,7 @@
       #fhir/boolean true
       #fhir/boolean{:id "foo"}))
 
-  (testing "boolean"
+  (testing "Boolean"
     (is (= #fhir/boolean{:value true} #fhir/boolean true)))
 
   (testing "interned"
@@ -197,7 +197,7 @@
       #fhir/integer 1
       #fhir/integer{:id "foo"}))
 
-  (testing "integer"
+  (testing "Integer"
     (is (= #fhir/integer{:value 1} #fhir/integer 1)))
 
   (testing "interned"
@@ -253,7 +253,7 @@
       #fhir/long 1
       #fhir/long{:id "foo"}))
 
-  (testing "long"
+  (testing "Long"
     (is (= #fhir/long{:value 1} #fhir/long 1)))
 
   (testing "interned"
@@ -372,7 +372,7 @@
       #fhir/decimal 1M
       #fhir/decimal{:id "foo"}))
 
-  (testing "decimal"
+  (testing "Decimal"
     (is (= #fhir/decimal{:value 1M} #fhir/decimal 1M)))
 
   (testing "interned"

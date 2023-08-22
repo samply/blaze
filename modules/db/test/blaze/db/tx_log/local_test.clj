@@ -1,5 +1,6 @@
 (ns blaze.db.tx-log.local-test
   (:require
+    [blaze.async.comp :as ac]
     [blaze.byte-string :as bs]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem]
@@ -301,3 +302,60 @@
 
         (with-open [queue (tx-log/new-queue tx-log 1)]
           (is (empty? (tx-log/poll! queue (time/millis 10)))))))))
+
+
+(deftest new-queue-test
+  (testing "it is possible to open two queues"
+    (testing "with one existing transaction"
+      (with-system [{tx-log ::tx-log/local}
+                    (assoc-kv-store-init-data
+                      config
+                      [[(codec/encode-key 1)
+                        (codec/encode-tx-data
+                          (Instant/ofEpochSecond 0)
+                          [{:op "create" :type "Patient" :id "0"
+                            :hash patient-hash-0}])]])]
+
+        (let [fn #(with-open [queue (tx-log/new-queue tx-log 0)]
+                    (->> (fn [] (tx-log/poll! queue (time/millis 10)))
+                         (repeatedly 10)
+                         (flatten)
+                         (first)))
+              tx-data-1 (ac/supply-async fn)
+              tx-data-2 (ac/supply-async fn)]
+
+          (is (= @tx-data-1 @tx-data-2))
+
+          (given @tx-data-1
+            :t := 1
+            :instant := (Instant/ofEpochSecond 0)
+            [:tx-cmds 0 :op] := "create"
+            [:tx-cmds 0 :type] := "Patient"
+            [:tx-cmds 0 :id] := "0"
+            [:tx-cmds 0 :hash] := patient-hash-0))))
+
+    (testing "with one incoming incoming transaction"
+      (with-system [{tx-log ::tx-log/local} config]
+
+        (let [fn #(with-open [queue (tx-log/new-queue tx-log 0)]
+                    (->> (fn [] (tx-log/poll! queue (time/millis 10)))
+                         (repeatedly 50)
+                         (flatten)
+                         (first)))
+              tx-data-1 (ac/supply-async fn)
+              tx-data-2 (ac/supply-async fn)]
+
+          @(tx-log/submit
+             tx-log
+             [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+             nil)
+
+          (is (= @tx-data-1 @tx-data-2))
+
+          (given @tx-data-1
+            :t := 1
+            :instant := (Instant/ofEpochSecond 0)
+            [:tx-cmds 0 :op] := "create"
+            [:tx-cmds 0 :type] := "Patient"
+            [:tx-cmds 0 :id] := "0"
+            [:tx-cmds 0 :hash] := patient-hash-0))))))

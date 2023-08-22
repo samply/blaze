@@ -18,5 +18,6 @@
 
 
 (s/def ::population/context
-  (s/merge ::cql/context
-           (s/keys :req-un [(or ::population/subject-type ::population/subject-handle)])))
+  (s/merge
+    ::cql/context
+    (s/keys :req-un [(or ::population/subject-type ::population/subject-handle)])))

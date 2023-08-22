@@ -591,6 +591,27 @@
           ::x ::y)))))
 
 
+(deftest as-of-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+     [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+    (let [db (d/db node)]
+
+      (testing "the newest t is 2"
+        (is (= 2 (d/basis-t db))))
+
+      (testing "the effective t of a DB as of 1 if 1"
+        (is (= 1 (d/t (d/as-of db 1))))))))
+
+
+(deftest t-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+    (is (= 1 (d/t (d/db node))))))
+
+
 (deftest tx-test
   (with-system-data [{:blaze.db/keys [node]} config]
     [[[:put {:fhir/type :fhir/Patient :id "id-142136"}]]]
@@ -3137,7 +3158,7 @@
         [5 :id] := "id-5")))
 
   (testing "type number"
-    (testing "decimal"
+    (testing "Decimal"
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put {:fhir/type :fhir/RiskAssessment
                  :id "id-0"
@@ -3195,7 +3216,7 @@
               count := 1
               [0 :id] := "id-2")))))
 
-    (testing "integer"
+    (testing "Integer"
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put {:fhir/type :fhir/MolecularSequence
                  :id "id-0"

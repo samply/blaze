@@ -23,11 +23,6 @@
   :ret :blaze.db.query/search-clauses)
 
 
-(s/fdef iu/t
-  :args (s/cat :db :blaze.db/db)
-  :ret :blaze.db/t)
-
-
 (s/fdef iu/update-tx-op
   :args (s/cat :db :blaze.db/db :resource :blaze/resource
                :if-match (s/nilable string?)
