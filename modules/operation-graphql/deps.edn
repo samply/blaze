@@ -10,7 +10,7 @@
 
   com.walmartlabs/lacinia
   {:git/url "https://github.com/alexanderkiel/lacinia.git"
-   :git/sha "d3aa6a7a4b452521f5f311683cc996e782f1f59d"}
+   :git/sha "3d744f2dd771729e513829b489ed33ccf3fd4a61"}
 
   org.antlr/antlr4
   {:mvn/version "4.10.1"
