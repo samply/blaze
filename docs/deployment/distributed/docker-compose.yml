@@ -1,13 +1,13 @@
 services:
   zookeeper:
-    image: "docker.io/bitnami/zookeeper:3"
+    image: "docker.io/bitnami/zookeeper:3@sha256:8104cf1ff552cb2c0270ed71c8d2aed31ac4b69cb109695871a2d08193dea7c1"
     volumes:
     - "zookeeper-data:/bitnami"
     environment:
       ALLOW_ANONYMOUS_LOGIN: "yes"
 
   kafka:
-    image: "docker.io/bitnami/kafka:2"
+    image: "docker.io/bitnami/kafka:2@sha256:2096ad73e2cbe3b615bcb7953b19f021cde62011435465c08707d5cfd9ecc9da"
     hostname: "kafka"
     environment:
       KAFKA_CFG_ZOOKEEPER_CONNECT: "zookeeper:2181"
@@ -30,7 +30,7 @@ services:
     - zookeeper
 
   kafka-topic-creator:
-    image: "docker.io/bitnami/kafka:2"
+    image: "docker.io/bitnami/kafka:2@sha256:2096ad73e2cbe3b615bcb7953b19f021cde62011435465c08707d5cfd9ecc9da"
     command: "/opt/bitnami/kafka/bin/kafka-init.sh"
     volumes:
     - "./kafka-init.sh:/opt/bitnami/kafka/bin/kafka-init.sh:ro"
@@ -42,7 +42,7 @@ services:
     - kafka
 
   cassandra-1:
-    image: "docker.io/bitnami/cassandra:3"
+    image: "docker.io/bitnami/cassandra:3@sha256:60b13bf8f0a01ad6db72689be114c8fabf9134c7a2b5ba6d855b79ad457344e9"
     volumes:
     - "./cassandra-init.cql:/docker-entrypoint-initdb.d/cassandra-init.cql:ro"
     - "cassandra-1-data:/bitnami"
@@ -53,7 +53,7 @@ services:
       HEAP_NEWSIZE: "200M"
 
   cassandra-2:
-    image: "docker.io/bitnami/cassandra:3"
+    image: "docker.io/bitnami/cassandra:3@sha256:60b13bf8f0a01ad6db72689be114c8fabf9134c7a2b5ba6d855b79ad457344e9"
     volumes:
     - "cassandra-2-data:/bitnami"
     environment:
@@ -62,7 +62,7 @@ services:
       HEAP_NEWSIZE: "200M"
 
   cassandra-3:
-    image: "docker.io/bitnami/cassandra:3"
+    image: "docker.io/bitnami/cassandra:3@sha256:60b13bf8f0a01ad6db72689be114c8fabf9134c7a2b5ba6d855b79ad457344e9"
     volumes:
     - "cassandra-3-data:/bitnami"
     environment:
@@ -71,7 +71,7 @@ services:
       HEAP_NEWSIZE: "200M"
 
   blaze-1:
-    image: "samply/blaze:0.22"
+    image: "samply/blaze:0.22@sha256:97f9b80ca8db6706d0c4e2c82f3a2133f0fc3527d60e0603784665715a280744"
     hostname: "blaze-1"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx4g"
@@ -102,7 +102,7 @@ services:
     restart: unless-stopped
 
   blaze-2:
-    image: "samply/blaze:0.22"
+    image: "samply/blaze:0.22@sha256:97f9b80ca8db6706d0c4e2c82f3a2133f0fc3527d60e0603784665715a280744"
     hostname: "blaze-2"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx4g"
@@ -133,7 +133,7 @@ services:
     restart: unless-stopped
 
   ingress:
-    image: "haproxy:2.4"
+    image: "haproxy:2.4@sha256:23d22506bf85f2104cbd9f8147ffeb7f413a404614a66f3b206eb620c8d191cf"
     ports:
     - "8080:8080"
     volumes:

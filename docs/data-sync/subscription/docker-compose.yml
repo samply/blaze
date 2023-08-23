@@ -1,6 +1,6 @@
 services:
   blaze:
-    image: "samply/blaze:0.22"
+    image: "samply/blaze:0.22@sha256:97f9b80ca8db6706d0c4e2c82f3a2133f0fc3527d60e0603784665715a280744"
     environment:
       BASE_URL: "http://localhost:8080"
       JAVA_TOOL_OPTIONS: "-Xmx2g"
@@ -12,7 +12,7 @@ services:
     - "blaze-data:/app/data"
 
   hapi:
-    image: "hapiproject/hapi:latest"
+    image: "hapiproject/hapi:latest@sha256:c00367865ae5dad4e171cbb68bfc1c39818854079d1565bee4c86a45e78335d0"
     ports:
     - "8090:8080"
     environment:

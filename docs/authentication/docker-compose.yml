@@ -1,6 +1,6 @@
 services:
   keycloak:
-    image: "jboss/keycloak:15.0.2"
+    image: "jboss/keycloak:15.0.2@sha256:d8ed1ee5df42a178c341f924377da75db49eab08ea9f058ff39a8ed7ee05ec93"
     environment:
       KEYCLOAK_USER: admin
       KEYCLOAK_PASSWORD: admin
@@ -10,7 +10,7 @@ services:
     volumes:
     - "../../.github/openid-auth-test/realm.json:/tmp/realm.json"
   blaze:
-    image: "samply/blaze:0.22"
+    image: "samply/blaze:0.22@sha256:97f9b80ca8db6706d0c4e2c82f3a2133f0fc3527d60e0603784665715a280744"
     environment:
       BASE_URL: "http://localhost:8080"
       JAVA_TOOL_OPTIONS: "-Xmx2g"
