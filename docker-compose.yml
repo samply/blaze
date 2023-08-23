@@ -1,6 +1,6 @@
 services:
   blaze:
-    image: "samply/blaze:0.22"
+    image: "samply/blaze:0.22@sha256:97f9b80ca8db6706d0c4e2c82f3a2133f0fc3527d60e0603784665715a280744"
     environment:
       BASE_URL: "http://localhost:8080"
       JAVA_TOOL_OPTIONS: "-Xmx2g"

@@ -1,7 +1,7 @@
 version: '3.2'
 services:
   prometheus:
-    image: "prom/prometheus:v2.26.0"
+    image: "prom/prometheus:v2.26.0@sha256:38d40a760569b1c5aec4a36e8a7f11e86299e9191b9233672a5d41296d8fa74e"
     ports:
     - "9090:9090"
     volumes:
@@ -9,6 +9,6 @@ services:
       source: ./compose/prometheus.yml
       target: /etc/prometheus/prometheus.yml
   grafana:
-    image: "grafana/grafana:7.5.3"
+    image: "grafana/grafana:7.5.3@sha256:88d5dec7f18a06c726211eefca40b04c58cc94e99819c5dead046633d535b82d"
     ports:
     - "3000:3000"

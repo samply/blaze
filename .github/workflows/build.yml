@@ -25,7 +25,7 @@ jobs:
         clj-kondo: '2023.01.20'
 
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Lint
       run: make lint
@@ -80,7 +80,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@cd89f46ac9d01407894225f350157564c9c7cee2 # v3
       with:
         distribution: 'temurin'
         java-version: ${{ matrix.java-version }}
@@ -91,10 +91,10 @@ jobs:
         cli: '1.11.1.1403'
 
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@v3
+      uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
@@ -110,7 +110,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@cd89f46ac9d01407894225f350157564c9c7cee2 # v3
       with:
         distribution: 'temurin'
         java-version: '17'
@@ -121,10 +121,10 @@ jobs:
         cli: '1.11.1.1403'
 
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@v3
+      uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-17-maven-test-coverage-${{ hashFiles('**/deps.edn') }}
@@ -133,7 +133,7 @@ jobs:
       run: make test-coverage
 
     - name: Codecov Upload
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@eaaf4bedf32dbdc6b720b63067d99c4d77d6047d # v3
       with:
         name: codecov-umbrella
         file: modules/**/target/coverage/codecov.json
@@ -153,7 +153,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@cd89f46ac9d01407894225f350157564c9c7cee2 # v3
       with:
         distribution: 'temurin'
         java-version: ${{ matrix.java-version }}
@@ -164,10 +164,10 @@ jobs:
         cli: '1.11.1.1403'
 
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@v3
+      uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ hashFiles('deps.edn') }}
@@ -181,7 +181,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@cd89f46ac9d01407894225f350157564c9c7cee2 # v3
       with:
         distribution: 'temurin'
         java-version: '17'
@@ -192,10 +192,10 @@ jobs:
         cli: '1.11.1.1403'
 
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@v3
+      uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-17-maven-build-${{ hashFiles('**/deps.edn') }}
@@ -204,23 +204,23 @@ jobs:
       run: make uberjar
 
     - name: Upload Blaze Uberjar
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3
       with:
         name: blaze-uberjar
         path: target/blaze-*-standalone.jar
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@4c0219f9ac95b02789c1075625400b2acbff50b1 # v2
 
     - name: Build and Export to Docker
-      uses: docker/build-push-action@v4
+      uses: docker/build-push-action@2eb1c1961a95fc15694676618e422e8ba1d63825 # v4
       with:
         context: .
         tags: blaze:latest
         outputs: type=docker,dest=/tmp/blaze.tar
 
     - name: Upload Blaze Image
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3
       with:
         name: blaze-image
         path: /tmp/blaze.tar
@@ -233,7 +233,7 @@ jobs:
 
     steps:
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -242,7 +242,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Run Trivy Vulnerability Scanner
       uses: aquasecurity/trivy-action@master
@@ -255,7 +255,7 @@ jobs:
 
     - name: Upload Trivy Scan Results to GitHub Security Tab
       if: ${{ (github.repository_owner == 'samply') || (vars.IMAGE_SCAN_UPLOAD == 'true') }}
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@a09933a12a80f87b87005513f0abb1494c27a716 # v2
       with:
         sarif_file: trivy-results.sarif
 
@@ -265,13 +265,13 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -630,13 +630,13 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -675,13 +675,13 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -716,13 +716,13 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -751,13 +751,13 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -789,10 +789,10 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -815,10 +815,10 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -843,13 +843,13 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -872,7 +872,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@cd89f46ac9d01407894225f350157564c9c7cee2 # v3
       with:
         distribution: 'temurin'
         java-version: '17'
@@ -883,10 +883,10 @@ jobs:
         cli: '1.11.1.1403'
 
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@v3
+      uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-17-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
@@ -898,7 +898,7 @@ jobs:
       run: sudo apt-get install gnuplot
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -927,10 +927,10 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -962,10 +962,10 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -994,13 +994,13 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -1038,10 +1038,10 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -1073,10 +1073,10 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -1099,10 +1099,10 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -1143,13 +1143,13 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -1535,7 +1535,7 @@ jobs:
 
     steps:
     - name: Setup Java
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@cd89f46ac9d01407894225f350157564c9c7cee2 # v3
       with:
         distribution: 'temurin'
         java-version: '17'
@@ -1546,10 +1546,10 @@ jobs:
         cli: '1.11.1.1403'
 
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@v3
+      uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-17-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
@@ -1561,7 +1561,7 @@ jobs:
       run: sudo apt-get install gnuplot
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -1639,16 +1639,16 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Download Blaze Uberjar
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-uberjar
         path: target
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
       with:
         name: blaze-image
         path: /tmp
@@ -1657,13 +1657,13 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v2
+      uses: docker/setup-qemu-action@2b82ce82d56a2a04d2637cd93a637ae1b359c0a7 # v2
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@4c0219f9ac95b02789c1075625400b2acbff50b1 # v2
 
     - name: Login to GHCR
-      uses: docker/login-action@v2
+      uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
@@ -1671,7 +1671,7 @@ jobs:
 
     - name: GHCR meta
       id: ghcr-meta
-      uses: docker/metadata-action@v4
+      uses: docker/metadata-action@818d4b7b91585d195f67373fd9cb0332e31a7175 # v4
       with:
         images: |
           ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
@@ -1683,7 +1683,7 @@ jobs:
           type=semver,pattern={{major}}.{{minor}}
 
     - name: Build and push to GHCR
-      uses: docker/build-push-action@v4
+      uses: docker/build-push-action@2eb1c1961a95fc15694676618e422e8ba1d63825 # v4
       with:
         context: .
         platforms: linux/amd64,linux/arm64
@@ -1693,7 +1693,7 @@ jobs:
 
     - name: Login to DockerHub
       if: ${{ env.dockerhub_username != '' }}
-      uses: docker/login-action@v2
+      uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -1701,7 +1701,7 @@ jobs:
     - name: DockerHub meta
       if: ${{ env.dockerhub_username != '' }}
       id: dockerhub-meta
-      uses: docker/metadata-action@v4
+      uses: docker/metadata-action@818d4b7b91585d195f67373fd9cb0332e31a7175 # v4
       with:
         images: |
           ${{ github.repository_owner }}/${{ github.event.repository.name }}
@@ -1714,7 +1714,7 @@ jobs:
 
     - name: Build and push to DockerHub
       if: ${{ env.dockerhub_username != '' }}
-      uses: docker/build-push-action@v4
+      uses: docker/build-push-action@2eb1c1961a95fc15694676618e422e8ba1d63825 # v4
       with:
         context: .
         platforms: linux/amd64,linux/arm64
@@ -1723,7 +1723,7 @@ jobs:
         labels: ${{ steps.dockerhub-meta.outputs.labels }}
 
     - name: Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: target/blaze-*-standalone.jar
@@ -1732,10 +1732,10 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3
 
     - name: Setup Node
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@5e21ff4d9bc1a8cf6de233a3057d20ec6b3fb69d # v3
       with:
         node-version: 18
         cache: npm
@@ -1752,10 +1752,10 @@ jobs:
       run: npm run docs:build
 
     - name: Setup Pages
-      uses: actions/configure-pages@v3
+      uses: actions/configure-pages@f156874f8191504dae5b037505266ed5dda6c382 # v3
 
     - name: Upload artifact
-      uses: actions/upload-pages-artifact@v2
+      uses: actions/upload-pages-artifact@a753861a5debcf57bf8b404356158c8e1e33150c # v2
       with:
         path: docs/.vitepress/dist
 
@@ -1772,4 +1772,4 @@ jobs:
     steps:
     - name: Deploy to GitHub Pages
       id: deployment
-      uses: actions/deploy-pages@v2
+      uses: actions/deploy-pages@9dbe3824824f8a1377b8e298bafde1a50ede43e5 # v2
