@@ -337,11 +337,11 @@
     (testing "with one incoming incoming transaction"
       (with-system [{tx-log ::tx-log/local} config]
 
-        (let [fn #(with-open [queue (tx-log/new-queue tx-log 0)]
-                    (->> (fn [] (tx-log/poll! queue (time/millis 10)))
-                         (repeatedly 50)
-                         (flatten)
-                         (first)))
+        (let [fn #(with-open [queue (tx-log/new-queue tx-log 1)]
+                    (loop [tx-data nil]
+                      (if (seq tx-data)
+                        (first tx-data)
+                        (recur (tx-log/poll! queue (time/millis 100))))))
               tx-data-1 (ac/supply-async fn)
               tx-data-2 (ac/supply-async fn)]
 
