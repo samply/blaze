@@ -9,6 +9,6 @@ services:
       source: ./compose/prometheus.yml
       target: /etc/prometheus/prometheus.yml
   grafana:
-    image: "grafana/grafana:7.5.3@sha256:88d5dec7f18a06c726211eefca40b04c58cc94e99819c5dead046633d535b82d"
+    image: "grafana/grafana:7.5.17@sha256:15abb652aa82eeb9f45589278b34ae6ef0e96f74c389cadde31831eb0b1ce228"
     ports:
     - "3000:3000"
