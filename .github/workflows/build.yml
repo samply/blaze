@@ -919,7 +919,7 @@ jobs:
       run: .github/scripts/check-capability-statement.sh
 
     - name: Jepsen Register Test
-      run: make -C modules/jepsen register-test
+      run: make -C modules/jepsen register-test-fast
 
   openid-auth-test:
     needs: build
@@ -1603,7 +1603,7 @@ jobs:
       run: .github/scripts/check-capability-statement.sh
 
     - name: Jepsen Register Test
-      run: make -C modules/jepsen register-test
+      run: make -C modules/jepsen register-test-slow
 
     - name: Docker Stats
       run: docker stats --no-stream
