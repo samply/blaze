@@ -1,6 +1,6 @@
 services:
   keycloak:
-    image: "jboss/keycloak:15.0.2@sha256:d8ed1ee5df42a178c341f924377da75db49eab08ea9f058ff39a8ed7ee05ec93"
+    image: "jboss/keycloak:15.1.1@sha256:1d255a8a1a8a2654093e7afdea111f88d09bce2d235dee6b2f0868f9aa07c348"
     environment:
       KEYCLOAK_USER: admin
       KEYCLOAK_PASSWORD: admin
