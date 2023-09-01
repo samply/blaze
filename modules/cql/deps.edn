@@ -11,7 +11,7 @@
   {:mvn/version "2.15.2"}
 
   info.cqframework/cql-to-elm
-  {:mvn/version "2.11.0"
+  {:mvn/version "3.0.0"
    :exclusions [xpp3/xpp3_xpath]}
 
   info.cqframework/elm-jackson
