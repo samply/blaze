@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import '@fontsource/inter/variable.css';
+	import '@fontsource-variable/inter';
 	import { page } from '$app/stores';
 	import NavItem from './nav-item.svelte';
 
