@@ -18,7 +18,7 @@
   {:mvn/version "2.11.0"}
 
   info.cqframework/model-jackson
-  {:mvn/version "2.11.0"}
+  {:mvn/version "3.0.0"}
 
   info.cqframework/quick
   {:mvn/version "2.11.0"}
