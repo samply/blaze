@@ -21,13 +21,22 @@ test-js: check
 build: test-js
 	npm run build
 
-test: build
+prep: build
+	clojure -X:deps prep
+
+test: prep
 	clojure -M:test:kaocha --profile :ci
 
-test-coverage: build
+test-coverage: prep
 	clojure -M:test:coverage
+
+deps-tree:
+	clojure -X:deps tree
+
+deps-list:
+	clojure -X:deps list
 
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target build node_modules .svelte-kit
 
-.PHONY: install update lint-js lint-clj lint check test-js build test test-coverage clean
+.PHONY: install update lint-js lint-clj lint check test-js build prep test test-coverage deps-tree deps-list clean

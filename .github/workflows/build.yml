@@ -52,6 +52,7 @@ jobs:
         - fhir-client
         - fhir-path
         - fhir-structure
+        - frontend
         - http-client
         - interaction
         - jepsen

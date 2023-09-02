@@ -1,8 +1,8 @@
 (ns blaze.frontend-test
   (:require
-    [blaze.fhir.test-util.ring :refer [call]]
     [blaze.frontend]
     [blaze.module.test-util :refer [with-system]]
+    [blaze.module.test-util.ring :refer [call]]
     [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
@@ -46,7 +46,11 @@
 (def ^String assets-path "/__frontend/immutable/assets")
 
 
-(def css-file? #(and (.isFile ^File %) (str/ends-with? (.getName ^File %) "css")))
+(defn- file-name [file]
+  (.getName ^File file))
+
+
+(def css-file? #(and (.isFile ^File %) (str/ends-with? (file-name %) "css")))
 
 
 (deftest handler-test
@@ -65,7 +69,7 @@
 
     (testing "CSS assets"
       (doseq [file (filter css-file? (file-seq (File. "build/public" assets-path)))]
-        (given (call handler {:uri (str "/fhir" assets-path "/" (.getName file)) :request-method :get})
+        (given (call handler {:uri (str "/fhir" assets-path "/" (file-name file)) :request-method :get})
           :status := 200
           [:headers "Content-Type"] := "text/css"
           [:headers "Cache-Control"] := "public, max-age=604800, immutable")))))

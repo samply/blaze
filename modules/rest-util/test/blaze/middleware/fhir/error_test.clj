@@ -1,8 +1,8 @@
 (ns blaze.middleware.fhir.error-test
   (:refer-clojure :exclude [error-handler])
   (:require
-    [blaze.fhir.test-util.ring :refer [call]]
     [blaze.middleware.fhir.error :refer [wrap-error]]
+    [blaze.module.test-util.ring :refer [call]]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest is testing]]
