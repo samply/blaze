@@ -19,8 +19,8 @@
   {:extra-paths ["clj/test"]
 
    :extra-deps
-   {blaze/fhir-test-util
-    {:local/root "../fhir-test-util"}
+   {blaze/module-test-util
+    {:local/root "../module-test-util"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}}}

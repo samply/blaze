@@ -1,8 +1,8 @@
 (ns blaze.handler.app-test
   (:require
-    [blaze.fhir.test-util.ring :refer [call]]
     [blaze.handler.app]
     [blaze.module.test-util :refer [with-system]]
+    [blaze.module.test-util.ring :refer [call]]
     [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
