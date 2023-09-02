@@ -28,11 +28,12 @@
 
 
 (defn- handles [db patient-id]
-  (when-let [patient (patient-handle db patient-id)]
+  (if-let [patient (patient-handle db patient-id)]
     (let [handles (into [] (take max-size) (d/rev-include db patient))]
       (if (= max-size (count handles))
         (ba/conflict (too-costly-msg patient-id) :fhir/issue "too-costly")
-        (into [patient] handles)))))
+        (into [patient] handles)))
+    (ba/not-found (format "The Patient with id `%s` was not found." patient-id))))
 
 
 (defn- luid [{:keys [clock rng-fn]}]
@@ -56,5 +57,5 @@
   (log/info "Init FHIR Patient $everything operation handler")
   (fn [{{:keys [id]} :path-params :blaze/keys [db] :as request}]
     (when-ok [handles (handles db id)]
-      (do-sync [resources (d/pull-many db (or handles []))]
+      (do-sync [resources (d/pull-many db handles)]
         (ring/response (bundle (merge context request) resources))))))

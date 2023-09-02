@@ -98,49 +98,31 @@
   (testing "Patient not found"
     (with-handler [handler]
       (let [{:keys [status body]}
-            @(handler {:path-params {:id "0"}})]
+            @(handler {:path-params {:id "145801"}})]
 
-        (is (= 200 status))
+        (is (= 404 status))
 
-        (testing "the body contains a bundle"
-          (is (= :fhir/Bundle (:fhir/type body))))
-
-        (testing "the bundle id is an LUID"
-          (is (= "AAAAAAAAAAAAAAAA" (:id body))))
-
-        (testing "the bundle type is searchset"
-          (is (= #fhir/code"searchset" (:type body))))
-
-        (testing "the total count is 0"
-          (is (= #fhir/unsignedInt 0 (:total body))))
-
-        (testing "the bundle contains no entry"
-          (is (empty? (:entry body)))))))
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"not-found"
+          [:issue 0 :diagnostics] := "The Patient with id `145801` was not found."))))
 
   (testing "Patient deleted"
     (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-       [[:delete "Patient" "0"]]]
+      [[[:put {:fhir/type :fhir/Patient :id "150158"}]]
+       [[:delete "Patient" "150158"]]]
 
       (let [{:keys [status body]}
-            @(handler {:path-params {:id "0"}})]
+            @(handler {:path-params {:id "150158"}})]
 
-        (is (= 200 status))
+        (is (= 404 status))
 
-        (testing "the body contains a bundle"
-          (is (= :fhir/Bundle (:fhir/type body))))
-
-        (testing "the bundle id is an LUID"
-          (is (= "AAAAAAAAAAAAAAAA" (:id body))))
-
-        (testing "the bundle type is searchset"
-          (is (= #fhir/code"searchset" (:type body))))
-
-        (testing "the total count is 0"
-          (is (= #fhir/unsignedInt 0 (:total body))))
-
-        (testing "the bundle contains no entry"
-          (is (empty? (:entry body)))))))
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"not-found"
+          [:issue 0 :diagnostics] := "The Patient with id `150158` was not found."))))
 
   (testing "Patient only"
     (with-handler [handler]
