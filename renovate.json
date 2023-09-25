@@ -6,5 +6,6 @@
     "docker:pinDigests"
   ],
   "baseBranches": ["develop"],
-  "ignorePaths": ["docs/**"]
+  "ignorePaths": ["docs/**"],
+  "prConcurrentLimit": 3
 }
