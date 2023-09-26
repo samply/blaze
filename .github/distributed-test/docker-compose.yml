@@ -124,7 +124,7 @@ services:
     restart: unless-stopped
 
   ingress:
-    image: "haproxy:2.8@sha256:0601440a5266c810f30bbdf197d9d036b51c1c5c1d454eeddc09bb3cdd9d92b3"
+    image: "haproxy:2.8@sha256:d533c21b446c45e47dc5b89933df1e256ec09976dc5e83a4c1bea209c2baeeaa"
     ports:
     - "8080:8080"
     volumes:
