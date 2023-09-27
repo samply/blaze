@@ -7,6 +7,7 @@
     [blaze.db.impl.iterators-spec]
     [blaze.db.impl.search-param.spec]
     [blaze.db.kv.spec]
+    [blaze.fhir.hash.spec]
     [clojure.spec.alpha :as s]))
 
 
@@ -21,5 +22,6 @@
 (s/fdef cr/index-entry
   :args (s/cat :compartment :blaze.db/compartment
                :tid :blaze.db/tid
-               :id :blaze.db/id-byte-string)
+               :id :blaze.db/id-byte-string
+               :hash :blaze.resource/hash)
   :ret :blaze.db.kv/put-entry)

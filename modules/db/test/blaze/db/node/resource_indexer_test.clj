@@ -327,8 +327,10 @@
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
       (testing "CompartmentResource index"
-        (is (= (cr-tu/decode-index-entries kv-store :compartment :type :id)
-               [[["Patient" "id-145552"] "Condition" "id-204446"]])))
+        (is (= (cr-tu/decode-index-entries kv-store :compartment :type :id
+                                           :hash-prefix)
+               [[["Patient" "id-145552"] "Condition" "id-204446"
+                 #blaze/hash-prefix"4AB29C7B"]])))
 
       (testing "CompartmentSearchParamValueResource index"
         (is (every? #{[["Patient" "id-145552"] "Condition" "id-204446"
@@ -459,8 +461,10 @@
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
       (testing "CompartmentResource index"
-        (is (= (cr-tu/decode-index-entries kv-store :compartment :type :id)
-               [[["Patient" "id-180857"] "Observation" "id-192702"]])))
+        (is (= (cr-tu/decode-index-entries kv-store :compartment :type :id
+                                           :hash-prefix)
+               [[["Patient" "id-180857"] "Observation" "id-192702"
+                 #blaze/hash-prefix"651D1F37"]])))
 
       (testing "CompartmentSearchParamValueResource index"
         (is (every? #{[["Patient" "id-180857"] "Observation" "id-192702"

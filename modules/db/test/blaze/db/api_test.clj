@@ -4352,9 +4352,7 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
        [[:put {:fhir/type :fhir/Observation :id "0"
-               :subject
-               #fhir/Reference
-                       {:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
       (given @(pull-compartment-resources node "Patient" "0" "Observation")
         count := 1
@@ -4366,13 +4364,9 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
        [[:put {:fhir/type :fhir/Observation :id "0"
-               :subject
-               #fhir/Reference
-                       {:reference "Patient/0"}}]]
+               :subject #fhir/Reference{:reference "Patient/0"}}]]
        [[:put {:fhir/type :fhir/Observation :id "1"
-               :subject
-               #fhir/Reference
-                       {:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
       (given @(pull-compartment-resources node "Patient" "0" "Observation")
         count := 2
@@ -4387,29 +4381,43 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
        [[:put {:fhir/type :fhir/Observation :id "0"
-               :subject
-               #fhir/Reference
-                       {:reference "Patient/0"}}]]
+               :subject #fhir/Reference{:reference "Patient/0"}}]]
        [[:delete "Observation" "0"]]]
 
       (is (empty? (d/list-compartment-resource-handles
                     (d/db node) "Patient" "0" "Observation")))))
 
+  (testing "when an Observation changes the Patient compartment"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]]
+       [[:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/1"}}]]]
+
+      (testing "the old compartment no longer contains that Observation"
+        (is (empty? (d/list-compartment-resource-handles
+                      (d/db node) "Patient" "0" "Observation"))))
+
+      (testing "and the new compartment contains the Observation now"
+        (given @(pull-compartment-resources
+                  node "Patient" "1" "Observation")
+          count := 1
+          [0 :fhir/type] := :fhir/Observation
+          [0 :id] := "0"
+          [0 :meta :versionId] := #fhir/id"2"
+          [0 :subject :reference] := "Patient/1"))))
+
   (testing "it is possible to start at a later id"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
        [[:put {:fhir/type :fhir/Observation :id "0"
-               :subject
-               #fhir/Reference
-                       {:reference "Patient/0"}}]]
+               :subject #fhir/Reference{:reference "Patient/0"}}]]
        [[:put {:fhir/type :fhir/Observation :id "1"
-               :subject
-               #fhir/Reference
-                       {:reference "Patient/0"}}]]
+               :subject #fhir/Reference{:reference "Patient/0"}}]]
        [[:put {:fhir/type :fhir/Observation :id "2"
-               :subject
-               #fhir/Reference
-                       {:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
       (is (= 2 (count (d/list-compartment-resource-handles
                         (d/db node) "Patient" "0" "Observation" "1"))))
@@ -4558,6 +4566,34 @@
           count := 1
           [0 :fhir/type] := :fhir/Observation
           [0 :id] := "1"))))
+
+  (testing "when an Observation changes the Patient compartment"
+    (let [coding #fhir/Coding{:system #fhir/uri"system"
+                              :code #fhir/code"code"}]
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :code (type/codeable-concept {:coding [coding]})
+                 :subject #fhir/Reference{:reference "Patient/0"}}]]
+         [[:put {:fhir/type :fhir/Patient :id "1"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :code (type/codeable-concept {:coding [coding]})
+                 :subject #fhir/Reference{:reference "Patient/1"}}]]]
+
+        (testing "the old compartment no longer contains that Observation"
+          (is (empty? (d/compartment-query
+                        (d/db node) "Patient" "0" "Observation"
+                        [["code" "system|code"]]))))
+
+        (testing "and the new compartment contains the Observation now"
+          (given @(pull-compartment-query
+                    node "Patient" "1" "Observation"
+                    [["code" "system|code"]])
+            count := 1
+            [0 :fhir/type] := :fhir/Observation
+            [0 :id] := "0"
+            [0 :meta :versionId] := #fhir/id"2"
+            [0 :subject :reference] := "Patient/1")))))
 
   (testing "returns the Observation in the Patient/0 compartment on the second criteria value"
     (with-system-data [{:blaze.db/keys [node]} config]

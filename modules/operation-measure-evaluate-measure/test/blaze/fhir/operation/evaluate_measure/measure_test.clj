@@ -202,6 +202,113 @@
 
 
 (deftest evaluate-measure-test
+  (testing "when an Observation changes the Patient compartment"
+    (testing "searching only by Observation existence"
+      (let [library
+            "library Retrieve
+             using FHIR version '4.0.0'
+             include FHIRHelpers version '4.0.0'
+
+             define InInitialPopulation:
+                exists [Observation]"]
+        (with-system-data
+          [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Observation :id "0"
+                   :subject #fhir/Reference{:reference "Patient/0"}}]]
+           [[:put {:fhir/type :fhir/Patient :id "1"}]
+            [:put {:fhir/type :fhir/Observation :id "0"
+                   :subject #fhir/Reference{:reference "Patient/1"}}]]
+           [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+                   :content [(library-content library)]}]]]
+
+          (let [db (d/db node)
+                context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                         :blaze/base-url "" ::reitit/router router}
+                measure {:fhir/type :fhir/Measure :id "0"
+                         :library [#fhir/canonical"0"]
+                         :group
+                         [{:fhir/type :fhir.Measure/group
+                           :population
+                           [{:fhir/type :fhir.Measure.group/population
+                             :code (population-concept "initial-population")
+                             :criteria (cql-expression "InInitialPopulation")}]}]}]
+
+            (testing "subject-list report"
+              (let [params {:period [#system/date"2000" #system/date"2100"]
+                            :report-type "subject-list"}
+                    {:keys [resource tx-ops]} (measure/evaluate-measure context measure params)]
+
+                (given resource
+                  :fhir/type := :fhir/MeasureReport
+                  [:group count] := 1
+                  [:group 0 :population count] := 1
+                  [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
+                  [:group 0 :population 0 :count] := 1
+                  [:group 0 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAA")
+
+                (given tx-ops
+                  [0 0] := :create
+                  [0 1 :id] := "AAAAAAAAAAAAAAAA"
+                  [0 1 :entry count] := 1
+                  [0 1 :entry 0 :item :reference] := "Patient/1")))))))
+
+    (testing "searching by code"
+      (let [library
+            "library Retrieve
+             using FHIR version '4.0.0'
+             include FHIRHelpers version '4.0.0'
+
+             codesystem loinc: 'http://loinc.org'
+
+             define InInitialPopulation:
+                exists [Observation: Code '29463-7' from loinc]"
+            coding #fhir/Coding{:system #fhir/uri"http://loinc.org"
+                                :code #fhir/code"29463-7"}]
+        (with-system-data
+          [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Observation :id "0"
+                   :code (type/codeable-concept {:coding [coding]})
+                   :subject #fhir/Reference{:reference "Patient/0"}}]]
+           [[:put {:fhir/type :fhir/Patient :id "1"}]
+            [:put {:fhir/type :fhir/Observation :id "0"
+                   :code (type/codeable-concept {:coding [coding]})
+                   :subject #fhir/Reference{:reference "Patient/1"}}]]
+           [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+                   :content [(library-content library)]}]]]
+
+          (let [db (d/db node)
+                context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                         :blaze/base-url "" ::reitit/router router}
+                measure {:fhir/type :fhir/Measure :id "0"
+                         :library [#fhir/canonical"0"]
+                         :group
+                         [{:fhir/type :fhir.Measure/group
+                           :population
+                           [{:fhir/type :fhir.Measure.group/population
+                             :code (population-concept "initial-population")
+                             :criteria (cql-expression "InInitialPopulation")}]}]}]
+
+            (testing "subject-list report"
+              (let [params {:period [#system/date"2000" #system/date"2100"]
+                            :report-type "subject-list"}
+                    {:keys [resource tx-ops]} (measure/evaluate-measure context measure params)]
+
+                (given resource
+                  :fhir/type := :fhir/MeasureReport
+                  [:group count] := 1
+                  [:group 0 :population count] := 1
+                  [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
+                  [:group 0 :population 0 :count] := 1
+                  [:group 0 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAA")
+
+                (given tx-ops
+                  [0 0] := :create
+                  [0 1 :id] := "AAAAAAAAAAAAAAAA"
+                  [0 1 :entry count] := 1
+                  [0 1 :entry 0 :item :reference] := "Patient/1"))))))))
+
   (testing "Encounter population basis"
     (with-system-data
       [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
@@ -235,6 +342,8 @@
                         :report-type "population"}]
             (given (:resource (measure/evaluate-measure context measure params))
               :fhir/type := :fhir/MeasureReport
+              [:group count] := 1
+              [:group 0 :population count] := 1
               [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
               [:group 0 :population 0 :count] := 3)))
 
@@ -245,6 +354,8 @@
 
             (given resource
               :fhir/type := :fhir/MeasureReport
+              [:group count] := 1
+              [:group 0 :population count] := 1
               [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
               [:group 0 :population 0 :count] := 3
               [:group 0 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAA")
@@ -252,6 +363,7 @@
             (given tx-ops
               [0 0] := :create
               [0 1 :id] := "AAAAAAAAAAAAAAAA"
+              [0 1 :entry count] := 3
               [0 1 :entry 0 :item :reference] := "Encounter/0-0"
               [0 1 :entry 1 :item :reference] := "Encounter/1-0"
               [0 1 :entry 2 :item :reference] := "Encounter/1-1"))))))
