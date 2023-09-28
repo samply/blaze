@@ -8,6 +8,7 @@
     [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
     [blaze.db.impl.search-param :as search-param]
     [blaze.db.impl.search-param-spec]
+    [blaze.db.impl.search-param.core :as sc]
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.hash-spec]
@@ -271,4 +272,69 @@
               :id := "id-121825"
               :hash-prefix := (hash/prefix hash)
               :code := "item"
-              :v-hash := (codec/v-hash "http://foo.com/bar-141221"))))))))
+              :v-hash := (codec/v-hash "http://foo.com/bar-141221"))))))
+
+    (testing "Encounter rank"
+      (let [resource {:fhir/type :fhir/Encounter :id "id-094518"
+                      :diagnosis [{:fhir/type :fhir.Encounter/diagnosis
+                                   :rank #fhir/positiveInt 94656}]}
+            hash (hash/generate resource)
+            [[_ k0] [_ k1]]
+            (search-param/index-entries
+              (sc/search-param
+                {}
+                {:type "number"
+                 :name "rank"
+                 :code "rank"
+                 :base ["Encounter"]
+                 :url "Encounter-rank",
+                 :expression "Encounter.diagnosis.rank"})
+              [] hash resource)]
+
+        (testing "SearchParamValueResource key"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k0))
+            :code := "rank"
+            :type := "Encounter"
+            :v-hash := (codec/number (BigDecimal/valueOf 94656))
+            :id := "id-094518"
+            :hash-prefix := (hash/prefix hash)))
+
+        (testing "ResourceSearchParamValue key"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
+            :type := "Encounter"
+            :id := "id-094518"
+            :hash-prefix := (hash/prefix hash)
+            :code := "rank"
+            :v-hash := (codec/number (BigDecimal/valueOf 94656))))))
+
+    (testing "Appointment priority"
+      (let [resource {:fhir/type :fhir/Appointment :id "id-102236"
+                      :priority #fhir/unsignedInt 102229}
+            hash (hash/generate resource)
+            [[_ k0] [_ k1]]
+            (search-param/index-entries
+              (sc/search-param
+                {}
+                {:type "number"
+                 :name "priority"
+                 :code "priority"
+                 :base ["Appointment"]
+                 :url "Appointment-priority",
+                 :expression "Appointment.priority"})
+              [] hash resource)]
+
+        (testing "SearchParamValueResource key"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k0))
+            :code := "priority"
+            :type := "Appointment"
+            :v-hash := (codec/number (BigDecimal/valueOf 102229))
+            :id := "id-102236"
+            :hash-prefix := (hash/prefix hash)))
+
+        (testing "ResourceSearchParamValue key"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
+            :type := "Appointment"
+            :id := "id-102236"
+            :hash-prefix := (hash/prefix hash)
+            :code := "priority"
+            :v-hash := (codec/number (BigDecimal/valueOf 102229))))))))
