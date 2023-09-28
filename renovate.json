@@ -1,0 +1,17 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base",
+    "helpers:pinGitHubActionDigests",
+    "docker:pinDigests"
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": ["npm"],
+      "minimumReleaseAge": "5 days"
+    }
+  ],
+  "baseBranches": ["develop"],
+  "ignorePaths": ["docs/**"],
+  "prConcurrentLimit": 3
+}
