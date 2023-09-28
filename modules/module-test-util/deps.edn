@@ -1,5 +1,8 @@
 {:deps
- {blaze/test-util
+ {blaze/async
+  {:local/root "../async"}
+
+  blaze/test-util
   {:local/root "../test-util"}
 
   integrant/integrant

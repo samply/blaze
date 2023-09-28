@@ -6,7 +6,7 @@
   {:local/root "../module-base"}
 
   info.sunng/ring-jetty9-adapter
-  {:mvn/version "0.22.1"
+  {:mvn/version "0.22.2"
    :exclusions
    [commons-fileupload/commons-fileupload
     crypto-equality/crypto-equality
@@ -26,7 +26,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.85.1342"}}
+    {:mvn/version "1.87.1366"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

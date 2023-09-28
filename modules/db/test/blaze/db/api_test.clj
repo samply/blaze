@@ -3278,20 +3278,16 @@
                  :id "0"
                  :diagnosis
                  [{:fhir/type :fhir.Encounter/diagnosis
-                   :condition
-                   #fhir/Reference{:reference "Condition/0"}}
+                   :condition #fhir/Reference{:reference "Condition/0"}}
                   {:fhir/type :fhir.Encounter/diagnosis
-                   :condition
-                   #fhir/Reference{:reference "Condition/1"}}]}]
+                   :condition #fhir/Reference{:reference "Condition/1"}}]}]
           [:put {:fhir/type :fhir/Encounter
                  :id "1"
                  :diagnosis
                  [{:fhir/type :fhir.Encounter/diagnosis
-                   :condition
-                   #fhir/Reference{:reference "Condition/1"}}
+                   :condition #fhir/Reference{:reference "Condition/1"}}
                   {:fhir/type :fhir.Encounter/diagnosis
-                   :condition
-                   #fhir/Reference{:reference "Condition/2"}}]}]
+                   :condition #fhir/Reference{:reference "Condition/2"}}]}]
           [:put {:fhir/type :fhir/Condition :id "0"}]
           [:put {:fhir/type :fhir/Condition :id "1"}]
           [:put {:fhir/type :fhir/Condition :id "2"}]]]

@@ -9,7 +9,7 @@
   {:local/root "../fhir-structure"}
 
   org.apache.httpcomponents.core5/httpcore5
-  {:mvn/version "5.2.2"}
+  {:mvn/version "5.2.3"}
 
   metosin/reitit-ring
   {:mvn/version "0.7.0-alpha5"}
@@ -32,7 +32,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.85.1342"}}
+    {:mvn/version "1.87.1366"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

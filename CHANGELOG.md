@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.22.2
+
+### Enhancements
+
+* Index all Value Types of Numerical Search Params ([#1165](https://github.com/samply/blaze/issues/1165))
+
+### Bugfixes
+
+* Fix Error Handling on Non-Existing Patient ([#1104](https://github.com/samply/blaze/issues/1104))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/77?closed=1).
+
 ## v0.22.1
 
 ### Bugfixes

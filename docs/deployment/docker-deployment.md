@@ -27,7 +27,7 @@ Blaze should log something like this:
 2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:67] - JVM version: 17.0.7
 2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:68] - Maximum available memory: 1738 MiB
 2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:69] - Number of available processors: 2
-2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:70] - Successfully started 🔥 Blaze version 0.22.1 in 9.0 seconds
+2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:70] - Successfully started 🔥 Blaze version 0.22.2 in 9.0 seconds
 ```
 
 In order to test connectivity, query the health endpoint:
@@ -47,7 +47,7 @@ that should return:
 ```json
 {
   "name": "Blaze",
-  "version": "0.22.1"
+  "version": "0.22.2"
 }
 ```
 

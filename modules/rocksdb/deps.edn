@@ -15,7 +15,7 @@
   {:local/root "../module-base"}
 
   org.rocksdb/rocksdbjni
-  {:mvn/version "8.3.2"}}
+  {:mvn/version "8.5.3"}}
 
  :aliases
  {:test
@@ -28,7 +28,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.85.1342"}}
+    {:mvn/version "1.87.1366"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

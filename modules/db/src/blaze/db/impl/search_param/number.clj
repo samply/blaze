@@ -29,10 +29,24 @@
   [[nil (codec/number (type/value value))]])
 
 
+(defn- encode-int [value]
+  ;; TODO: we should not store the decimal form
+  (codec/number (BigDecimal/valueOf ^long (type/value value))))
+
+
 (defmethod index-entries :fhir/integer
   [_ value]
-  ;; TODO: we should not store the decimal form
-  [[nil (codec/number (BigDecimal/valueOf ^long (type/value value)))]])
+  [[nil (encode-int value)]])
+
+
+(defmethod index-entries :fhir/unsignedInt
+  [_ value]
+  [[nil (encode-int value)]])
+
+
+(defmethod index-entries :fhir/positiveInt
+  [_ value]
+  [[nil (encode-int value)]])
 
 
 (defmethod index-entries :default
@@ -40,7 +54,7 @@
   (log/warn (u/format-skip-indexing-msg value url "number")))
 
 
-(defrecord SearchParamQuantity [name url type base code c-hash expression]
+(defrecord SearchParamNumber [name url type base code c-hash expression]
   p/SearchParam
   (-compile-value [_ _ value]
     (let [[op value] (u/separate-op value)]
@@ -88,6 +102,6 @@
   [_ {:keys [name url type base code expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile expression)]
-      (->SearchParamQuantity name url type base code (codec/c-hash code)
-                             expression))
+      (->SearchParamNumber name url type base code (codec/c-hash code)
+                           expression))
     (ba/unsupported (u/missing-expression-msg url))))

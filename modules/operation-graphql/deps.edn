@@ -9,11 +9,10 @@
   {:local/root "../spec"}
 
   com.walmartlabs/lacinia
-  {:git/url "https://github.com/alexanderkiel/lacinia.git"
-   :git/sha "d3aa6a7a4b452521f5f311683cc996e782f1f59d"}
+  {:mvn/version "1.2.1"}
 
   org.antlr/antlr4
-  {:mvn/version "4.10.1"
+  {:mvn/version "4.13.0"
    :exclusions
    [com.ibm.icu/icu4j
     org.abego.treelayout/org.abego.treelayout.core
@@ -30,7 +29,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.85.1342"}}
+    {:mvn/version "1.87.1366"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

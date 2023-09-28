@@ -19,8 +19,8 @@
   {:extra-paths ["clj/test"]
 
    :extra-deps
-   {blaze/fhir-test-util
-    {:local/root "../fhir-test-util"}
+   {blaze/module-test-util
+    {:local/root "../module-test-util"}
 
     org.clojars.akiel/iota
     {:mvn/version "0.1"}}}
@@ -28,7 +28,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.85.1342"}}
+    {:mvn/version "1.87.1366"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
