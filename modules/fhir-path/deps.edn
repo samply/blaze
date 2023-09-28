@@ -16,7 +16,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.86.1355"}}
+    {:mvn/version "1.87.1366"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
