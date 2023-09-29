@@ -12,6 +12,6 @@
     }
   ],
   "baseBranches": ["develop"],
-  "ignorePaths": ["docs/**"],
+  "ignorePaths": ["docs/**", "docker-compose.yml"],
   "prConcurrentLimit": 3
 }
