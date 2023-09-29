@@ -115,14 +115,14 @@ The `SystemStats` index keeps track of the total number of resources, and the nu
 
 The indices not depending on `t` directly point to the resource versions by their content hash. 
 
-| Name                                | Key Parts                                                        | Value |
-|-------------------------------------|------------------------------------------------------------------|-------|
-| SearchParamValueResource            | search-param, type, value, id, content-hash                      | -     |
-| ResourceSearchParamValue            | type, id, content-hash, search-param, value                      | -     |
-| CompartmentSearchParamValueResource | co-c-hash, co-res-id, search-param, type, value, id, hash-prefix | -     |
-| CompartmentResource                 | co-c-hash, co-res-id, tid, id                                    | -     |
-| SearchParam                         | code, tid                                                        | id    |
-| ActiveSearchParams                  | id                                                               | -     |
+| Name                                | Key Parts                                                         | Value |
+|-------------------------------------|-------------------------------------------------------------------|-------|
+| SearchParamValueResource            | search-param, type, value, id, content-hash                       | -     |
+| ResourceSearchParamValue            | type, id, content-hash, search-param, value                       | -     |
+| CompartmentSearchParamValueResource | co-c-hash, co-res-id, search-param, type, value, id, content-hash | -     |
+| CompartmentResource                 | co-c-hash, co-res-id, type, id, content-hash                      | -     |
+| SearchParam                         | code, tid                                                         | id    |
+| ActiveSearchParams                  | id                                                                | -     |
 
 #### SearchParamValueResource
 
@@ -206,6 +206,23 @@ That tuples are further processed against the `ResourceAsOf` index in order to c
 ##### Special
 
 **TODO: continue...**
+
+#### ResourceSearchParamValue
+
+**TODO: continue...**
+
+#### CompartmentSearchParamValueResource
+
+**TODO: continue...**
+
+#### CompartmentResource
+
+The `CompartmentResource` index contains all resources that are in a certain compartment. The components of its key are:
+* `co-c-hash` - a 4-byte hash of the compartment code
+* `co-res-id` - the id of the resource that builds the compartment
+* `type` - a 4-byte hash of the resource type
+* `id` - the logical id of the resource
+* `content-hash` - a 4-byte prefix of the content-hash of the resource version
 
 ## Transaction Handling
 

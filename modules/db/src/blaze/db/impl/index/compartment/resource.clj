@@ -6,15 +6,13 @@
     [blaze.coll.core :as coll]
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.iterators :as i]))
+    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
+    [blaze.db.impl.iterators :as i]
+    [blaze.db.impl.search-param.util :as u]
+    [blaze.fhir.hash :as hash]))
 
 
 (set! *unchecked-math* :warn-on-boxed)
-
-
-(def ^:private ^:const ^long max-key-size
-  (+ codec/c-hash-size codec/max-id-size 1 codec/tid-size codec/max-id-size))
 
 
 (def ^:private ^:const ^long except-co-res-id-prefix-size
@@ -29,56 +27,43 @@
   (unchecked-add-int except-co-res-id-prefix-size (bs/size co-res-id)))
 
 
-(defn- decode-key
-  ([] (bb/allocate-direct max-key-size))
-  ([buf]
-   (bb/set-position! buf (unchecked-add-int (bb/position buf) codec/c-hash-size))
-   (let [id-size (long (bb/size-up-to-null buf))]
-     (bb/set-position! buf (+ (bb/position buf) id-size 1 codec/tid-size))
-     (bs/from-byte-buffer! buf))))
-
-
-(def ^:private remove-deleted-xf
-  (remove rh/deleted?))
-
-
-(defn- resource-handles-xf [resource-handle tid]
-  (comp
-    (keep #(resource-handle tid %))
-    remove-deleted-xf))
-
-
 (defn- encode-seek-key
-  "Encodes the key without the id used for seeking to the start of scans."
-  [compartment tid]
+  ([compartment tid]
+   (let [co-c-hash (coll/nth compartment 0)
+         co-res-id (coll/nth compartment 1)]
+     (-> (bb/allocate (key-prefix-size co-res-id))
+         (bb/put-int! co-c-hash)
+         (bb/put-byte-string! co-res-id)
+         (bb/put-byte! 0)
+         (bb/put-int! tid)
+         bb/flip!
+         bs/from-byte-buffer!)))
+  ([compartment tid id]
+   (let [co-c-hash (coll/nth compartment 0)
+         co-res-id (coll/nth compartment 1)]
+     (-> (bb/allocate (+ (key-prefix-size co-res-id) (bs/size id) 1))
+         (bb/put-int! co-c-hash)
+         (bb/put-byte-string! co-res-id)
+         (bb/put-byte! 0)
+         (bb/put-int! tid)
+         (bb/put-byte-string! id)
+         (bb/put-byte! (bs/size id))
+         bb/flip!
+         bs/from-byte-buffer!))))
+
+
+(defn- encode-key [compartment tid id hash]
   (let [co-c-hash (coll/nth compartment 0)
         co-res-id (coll/nth compartment 1)]
-    (-> (bb/allocate (key-prefix-size co-res-id))
+    (-> (bb/allocate (+ (key-prefix-size co-res-id) (bs/size id) 1 hash/prefix-size))
         (bb/put-int! co-c-hash)
         (bb/put-byte-string! co-res-id)
         (bb/put-byte! 0)
         (bb/put-int! tid)
-        bb/flip!
-        bs/from-byte-buffer!)))
-
-
-(defn- encode-key-buf
-  "Encodes the full key."
-  [compartment tid id]
-  (let [co-c-hash (coll/nth compartment 0)
-        co-res-id (coll/nth compartment 1)]
-    (-> (bb/allocate (unchecked-add-int (key-prefix-size co-res-id) (bs/size id)))
-        (bb/put-int! co-c-hash)
-        (bb/put-byte-string! co-res-id)
-        (bb/put-byte! 0)
-        (bb/put-int! tid)
-        (bb/put-byte-string! id))))
-
-
-(defn- encode-key
-  "Encodes the full key."
-  [compartment tid id]
-  (-> (encode-key-buf compartment tid id) bb/flip! bs/from-byte-buffer!))
+        (bb/put-byte-string! id)
+        (bb/put-byte! (bs/size id))
+        (hash/prefix-into-byte-buffer! (hash/prefix hash))
+        bb/array)))
 
 
 (defn resource-handles!
@@ -92,25 +77,24 @@
   {:arglists
    '([context compartment tid]
      [context compartment tid start-id])}
-  ([{:keys [cri resource-handle]} compartment tid]
+  ([{:keys [cri] :as context} compartment tid]
    (let [seek-key (encode-seek-key compartment tid)]
      (coll/eduction
-       (resource-handles-xf resource-handle tid)
-       (i/prefix-keys! cri seek-key decode-key seek-key))))
-  ([{:keys [cri resource-handle]} compartment tid start-id]
+       (u/resource-handle-mapper context tid)
+       (i/prefix-keys! cri seek-key sp-vr/decode-id-hash-prefix seek-key))))
+  ([{:keys [cri] :as context} compartment tid start-id]
    (coll/eduction
-     (resource-handles-xf resource-handle tid)
+     (u/resource-handle-mapper context tid)
      (i/prefix-keys!
        cri
        (encode-seek-key compartment tid)
-       decode-key
-       (encode-key compartment tid start-id)))))
+       sp-vr/decode-id-hash-prefix
+       (encode-seek-key compartment tid start-id)))))
 
 
 (defn index-entry
   "Returns an entry of the CompartmentResource index build from `compartment`,
-  `tid` and `id`."
-  [compartment tid id]
-  [:compartment-resource-type-index
-   (bb/array (encode-key-buf compartment tid id))
+  `tid`, `id` and `hash`."
+  [compartment tid id hash]
+  [:compartment-resource-type-index (encode-key compartment tid id hash)
    bytes/empty])

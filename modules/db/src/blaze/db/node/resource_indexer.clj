@@ -46,16 +46,17 @@
 (defn- compartment-resource-type-entry
   "Returns an entry into the :compartment-resource-type-index where `resource`
   is linked to `compartment`."
-  {:arglists '([compartment resource])}
-  [[comp-code comp-id] {:keys [id] :as resource}]
+  {:arglists '([compartment hash resource])}
+  [[comp-code comp-id] hash {:keys [id] :as resource}]
   (cr/index-entry
     [(codec/c-hash comp-code) (codec/id-byte-string comp-id)]
     (codec/tid (name (fhir-spec/fhir-type resource)))
-    (codec/id-byte-string id)))
+    (codec/id-byte-string id)
+    hash))
 
 
-(defn- compartment-resource-type-entries [resource compartments]
-  (mapv #(compartment-resource-type-entry % resource) compartments))
+(defn- compartment-resource-type-entries [hash resource compartments]
+  (mapv #(compartment-resource-type-entry % hash resource) compartments))
 
 
 (defn- skip-indexing-msg [search-param resource cause-msg]
@@ -99,7 +100,7 @@
   (let [resource (enhance-resource last-updated resource)
         compartments (linked-compartments search-param-registry hash resource)]
     (into
-      (compartment-resource-type-entries resource compartments)
+      (compartment-resource-type-entries hash resource compartments)
       (mapcat #(search-param-index-entries % compartments hash resource))
       (search-params search-param-registry resource))))
 

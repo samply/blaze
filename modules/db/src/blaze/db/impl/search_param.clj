@@ -86,7 +86,7 @@
 
 
 (defn- compartment-keys
-  "Returns a reducible collection of `[prefix id hash-prefix]` triples."
+  "Returns a reducible collection of `[id hash-prefix]` tuples."
   [search-param context compartment tid compiled-values]
   (coll/eduction
     (mapcat #(p/-compartment-keys search-param context compartment tid %))
