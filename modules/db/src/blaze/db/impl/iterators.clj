@@ -20,7 +20,6 @@
     [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
     [blaze.coll.core :as coll]
-    [blaze.db.impl.arrays-support :as arrays-support]
     [blaze.db.kv :as kv])
   (:import
     [clojure.lang IReduceInit]))
@@ -70,40 +69,14 @@
       (reduce-iter! iter kv/prev! rf init))))
 
 
-(defn- new-capacity ^long [^long old-capacity ^long min-capacity]
-  (arrays-support/new-length old-capacity (- min-capacity old-capacity)
-                             (bit-shift-right old-capacity 1)))
-
-(defn- read!
-  "Reads from `iter` using the function `read` and `buf`.
-
-  When `buf` is too small, a new direct byte buffer will be created. Returns the
-  byte buffer used to read."
-  [read buf iter]
-  (bb/clear! buf)
-  (let [size (unchecked-long (read iter buf))]
-    (if (< (bb/capacity buf) size)
-      (let [buf (bb/allocate-direct (new-capacity (bb/capacity buf) size))]
-        (read iter buf)
-        buf)
-      buf)))
-
-
-(defn- read-key! [buf iter]
-  (read! kv/key! buf iter))
-
-
-(defn- key-reader
-  "Returns a stateful transducer that will read the key from a downstream
-  iterator and keeps track of the buffer used."
-  [buf]
-  (let [buf-state (volatile! buf)]
-    (map #(vswap! buf-state read-key! %))))
+(def key-reader
+  "Returns a transducer that will read the key from a downstream iterator."
+  (map (comp bb/wrap kv/key)))
 
 
 (defn- key-decoder [decode]
   (comp
-    (key-reader (decode))
+    key-reader
     (map decode)))
 
 
@@ -132,7 +105,7 @@
   with the bytes from `prefix`."
   [prefix]
   (let [prefix-size (bs/size prefix)
-        prefix-buf (bb/allocate-direct prefix-size)]
+        prefix-buf (bb/allocate prefix-size)]
     (bb/put-byte-string! prefix-buf prefix)
     (bb/flip! prefix-buf)
     (take-while
@@ -143,7 +116,7 @@
 
 (defn- prefix-xf [prefix decode]
   (comp
-    (key-reader (decode))
+    key-reader
     (comp
       (take-while-prefix-matches prefix)
       (map decode))))
@@ -185,13 +158,8 @@
   (coll/eduction (prefix-xf prefix decode) (iter-prev! iter start-key)))
 
 
-(defn- read-value! [bb iter]
-  (read! kv/value! bb iter))
-
-
 (defn- kv-decoder [decode]
-  (let [[kb vb] (mapv volatile! (decode))]
-    (map #(decode (vswap! kb read-key! %) (vswap! vb read-value! %)))))
+  (map #(decode (bb/wrap (kv/key %)) (bb/wrap (kv/value %)))))
 
 
 (defn kvs!

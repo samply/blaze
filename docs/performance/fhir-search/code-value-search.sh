@@ -3,7 +3,8 @@
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 . "$SCRIPT_DIR/util.sh"
 
-BASE="${1:-http://localhost:8080/fhir}"
+COMPOSE_FILE="$1"
+BASE="${2:-http://localhost:8080/fhir}"
 UNIT="kg"
 
 count-resources() {
@@ -33,14 +34,17 @@ download-resources-subject() {
   download-resources-raw "$BASE" "$SEARCH_PARAMS" "download-$CODE-value-$VALUE-subject.times"
 }
 
+restart "$COMPOSE_FILE"
 count-resources "29463-7" "26.8"
 download-resources "29463-7" "26.8"
 download-resources-subject "29463-7" "26.8"
 
+restart "$COMPOSE_FILE"
 count-resources "29463-7" "79.5"
 download-resources "29463-7" "79.5"
 download-resources-subject "29463-7" "79.5"
 
+restart "$COMPOSE_FILE"
 count-resources "29463-7" "183"
 download-resources "29463-7" "183"
 download-resources-subject "29463-7" "183"

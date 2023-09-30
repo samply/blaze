@@ -14,20 +14,14 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(def ^:private ^:const ^long key-buffer-capacity
-  "Most search param value keys should fit into this size."
-  128)
-
-
 (defn- decode-value
   "Decodes the value from the key."
-  ([] (bb/allocate-direct key-buffer-capacity))
-  ([buf]
-   (bb/set-position! buf (unchecked-add-int (bb/position buf) codec/tid-size))
-   (let [id-size (long (bb/size-up-to-null buf))]
-     (bb/set-position! buf (+ (bb/position buf) id-size 1 hash/prefix-size
-                              codec/c-hash-size))
-     (bs/from-byte-buffer! buf))))
+  [buf]
+  (bb/set-position! buf (unchecked-add-int (bb/position buf) codec/tid-size))
+  (let [id-size (long (bb/size-up-to-null buf))]
+    (bb/set-position! buf (+ (bb/position buf) id-size 1 hash/prefix-size
+                             codec/c-hash-size))
+    (bs/from-byte-buffer! buf)))
 
 
 (defn- key-size ^long [id]

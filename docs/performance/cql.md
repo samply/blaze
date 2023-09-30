@@ -7,7 +7,7 @@ The following systems were used for performance evaluation:
 | System | Provider | CPU        | Cores |     RAM |    SSD | Heap Mem | Block Cache | Resource Cache ¹ |
 |--------|----------|------------|------:|--------:|-------:|---------:|------------:|-----------------:|
 | LEA47  | on-prem  | EPYC 7543P |    16 | 128 GiB |   2 TB |   32 GiB |      32 GiB |             10 M | 
-| LEA58  | on-prem  | EPYC 7543P |    32 | 256 GiB |   2 TB |   64 GiB |      32 GiB |             20 M | 
+| LEA58  | on-prem  | EPYC 7543P |    32 | 256 GiB |   2 TB |   64 GiB |      64 GiB |             20 M | 
 
 ¹ Size of the resource cache (DB_RESOURCE_CACHE_SIZE)
 
@@ -52,12 +52,12 @@ cql/search.sh observation-72514-3
 | LEA47  | 100k    | 17861-6 |    2 k |     0.26 |  0.158 | 384.5 k | 
 | LEA47  | 100k    | 8310-5  |   60 k |     0.28 |  0.142 | 351.4 k | 
 | LEA47  | 100k    | 72514-3 |  100 k |     0.27 |  0.128 | 367.0 k |
-| LEA47  | 1M      | 17861-6 |   25 k |     2.55 |  0.216 | 392.9 k | 
-| LEA47  | 1M      | 8310-5  |  603 k |     2.94 |  0.014 | 339.9 k | 
-| LEA47  | 1M      | 72514-3 |  998 k |     2.78 |  0.057 | 360.2 k |
-| LEA58  | 1M      | 17861-6 |   25 k |     2.87 |  0.291 | 348.5 k |
-| LEA58  | 1M      | 8310-5  |  603 k |     3.02 |  0.257 | 330.8 k | 
-| LEA58  | 1M      | 72514-3 |  998 k |     3.06 |  0.426 | 326.7 k |
+| LEA47  | 1M      | 17861-6 |   25 k |     0.93 |  0.003 |   1.1 M | 
+| LEA47  | 1M      | 8310-5  |  603 k |     1.24 |  0.009 | 808.6 k | 
+| LEA47  | 1M      | 72514-3 |  998 k |     1.43 |  0.007 | 698.1 k |
+| LEA58  | 1M      | 17861-6 |   25 k |     0.76 |  0.007 |   1.3 M |
+| LEA58  | 1M      | 8310-5  |  603 k |     0.96 |  0.006 |   1.0 M | 
+| LEA58  | 1M      | 72514-3 |  998 k |     1.07 |  0.006 | 937.4 k |
 
 The evaluation of patient based measures doesn't depend on the number of hits (patients). The time needed to evaluate a CQL expression over all patients only depends on the total number of patients. The measurements show that Blaze can evaluate about 350 k Patients per second.
 
@@ -92,12 +92,12 @@ cql/search.sh observation-body-weight-100
 | LEA47  | 100k    | 29463-7 | 13.6 kg |   10 k |     0.68 |  0.031 | 146.9 k | 
 | LEA47  | 100k    | 29463-7 | 75.3 kg |   50 k |     0.51 |  0.033 | 197.1 k | 
 | LEA47  | 100k    | 29463-7 |  185 kg |  100 k |     0.30 |  0.106 | 331.6 k |
-| LEA47  | 1M      | 29463-7 | 13.6 kg |   99 k |    92.38 |  1.117 |  10.8 k | 
-| LEA47  | 1M      | 29463-7 | 75.3 kg |  500 k |    11.02 |  0.078 |  90.7 k | 
-| LEA47  | 1M      | 29463-7 |  185 kg |  998 k |     3.14 |  0.109 | 318.0 k |
-| LEA58  | 1M      | 29463-7 | 13.6 kg |   99 k |     8.24 |  0.072 | 121.4 k | 
-| LEA58  | 1M      | 29463-7 | 75.3 kg |  500 k |     6.59 |  0.140 | 151.8 k | 
-| LEA58  | 1M      | 29463-7 |  185 kg |  998 k |     3.04 |  0.209 | 329.0 k |
+| LEA47  | 1M      | 29463-7 | 13.6 kg |   99 k |    91.49 |  1.195 |  10.9 k | 
+| LEA47  | 1M      | 29463-7 | 75.3 kg |  500 k |    10.66 |  0.851 |  93.8 k | 
+| LEA47  | 1M      | 29463-7 |  185 kg |  998 k |     1.50 |  0.010 | 665.1 k |
+| LEA58  | 1M      | 29463-7 | 13.6 kg |   99 k |     5.06 |  0.051 | 197.7 k | 
+| LEA58  | 1M      | 29463-7 | 75.3 kg |  500 k |     3.48 |  0.022 | 287.6 k | 
+| LEA58  | 1M      | 29463-7 |  185 kg |  998 k |     1.13 |  0.005 | 886.2 k |
 
 ## Code, Date and Age Search
 
@@ -129,10 +129,10 @@ cql/search.sh calcium-date-age
 |--------|---------|------------|-------:|---------:|-------:|--------:|
 | LEA47  | 100k    | hemoglobin |   20 k |     0.35 |  0.034 | 286.5 k |
 | LEA47  | 100k    | calcium    |   20 k |     1.50 |  0.035 |  66.6 k |
-| LEA47  | 1M      | hemoglobin |  200 k |     4.78 |  0.321 | 209.4 k |
-| LEA47  | 1M      | calcium    |  199 k |   182.90 |  3.900 |   5.5 k |
-| LEA58  | 1M      | hemoglobin |  200 k |     3.55 |  0.038 | 281.8 k |
-| LEA58  | 1M      | calcium    |  199 k |    10.10 |  0.033 |  99.0 k |
+| LEA47  | 1M      | hemoglobin |  200 k |     2.99 |  0.026 | 334.6 k |
+| LEA47  | 1M      | calcium    |  199 k |   120.68 |  1.678 |   8.3 k |
+| LEA58  | 1M      | hemoglobin |  200 k |     1.60 |  0.006 | 623.2 k |
+| LEA58  | 1M      | calcium    |  199 k |     6.44 |  0.030 | 155.2 k |
 
 ## Double Code Search
 
@@ -160,7 +160,8 @@ cql/search.sh condition-two
 
 | System | Dataset | # Hits | Time (s) | StdDev |  Pat./s |
 |--------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      |   87 k |     4.72 |  0.087 | 211.9 k |
+| LEA47  | 1M      |   87 k |     1.09 |  0.005 | 918.4 k |
+| LEA58  | 1M      |   87 k |     0.87 |  0.003 |   1.1 M |
 
 ## Ten Frequent Code Search
 
@@ -192,7 +193,8 @@ cql/search.sh condition-ten-frequent
 
 | System | Dataset | # Hits | Time (s) | StdDev |  Pat./s |
 |--------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      |  954 k |     7.69 |  0.148 | 130.0 k |
+| LEA47  | 1M      |  954 k |     1.80 |  0.008 | 554.5 k |
+| LEA58  | 1M      |  954 k |     1.34 |  0.003 | 747.8 k |
 
 ## Ten Rare Code Search
 
@@ -224,7 +226,8 @@ cql/search.sh condition-ten-rare
 
 | System | Dataset | # Hits | Time (s) | StdDev |  Pat./s |
 |--------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      |    4 k |    17.59 |  0.194 |  56.8 k |
+| LEA47  | 1M      |    4 k |     2.65 |  0.014 | 377.9 k |
+| LEA58  | 1M      |    4 k |     1.88 |  0.006 | 530.9 k |
 
 ## 50 Rare Code Search
 
@@ -234,6 +237,8 @@ cql/search.sh condition-50-rare
 
 | System | Dataset | # Hits | Time (s) | StdDev |  Pat./s |
 |--------|---------|-------:|---------:|-------:|--------:|
+| LEA47  | 1M      |  155 k |     9.35 |  0.047 | 106.9 k |
+| LEA58  | 1M      |  155 k |     6.45 |  0.034 | 155.0 k |
 
 ## All Code Search
 
@@ -243,4 +248,5 @@ cql/search.sh condition-all
 
 | System | Dataset | # Hits | Time (s) | StdDev |  Pat./s |
 |--------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      |  995 k |    29.22 |  0.625 |  34.2 k |
+| LEA47  | 1M      |  995 k |     4.75 |  0.014 | 210.5 k |
+| LEA58  | 1M      |  995 k |     3.36 |  0.020 | 297.2 k |

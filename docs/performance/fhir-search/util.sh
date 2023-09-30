@@ -12,6 +12,12 @@ calc-avg() {
     awk '{sum += $1; sumsq += $1^2} END {printf("{\"avg\": %f, \"stddev\": %f}", sum/NR, sqrt(sumsq/NR - (sum/NR)^2))}'
 }
 
+restart() {
+  docker-compose -f "$1" down
+  docker-compose -f "$1" up -d
+  sleep 30
+}
+
 calc-print-stats() {
   TIMES_FILE="$1"
   COUNT="$2"
@@ -41,8 +47,8 @@ count-resources-raw() {
 
   COUNT=$(curl -s "$BASE/Observation?$SEARCH_PARAMS&_summary=count" | jq .total)
 
-  # this are 12 tests of which 10 will be taken for the statistics
-  for i in {0..11}; do
+  # this are 7 tests of which 5 will be taken for the statistics
+  for i in {0..6}; do
     curl -s "$BASE/Observation?$SEARCH_PARAMS&_summary=count" -o /dev/null -w '%{time_starttransfer}\n' >> "$TIMES_FILE"
   done
 
@@ -56,8 +62,8 @@ download-resources-raw() {
 
   COUNT=$(curl -s "$BASE/Observation?$SEARCH_PARAMS&_summary=count" | jq .total)
 
-  # this are 7 tests of which 5 will be taken for the statistics
-  for i in {0..6}; do
+  # this are 5 tests of which 3 will be taken for the statistics
+  for i in {0..4}; do
     $TIME -f "%e" -a -o "$TIMES_FILE" blazectl download --server "$BASE" Observation -q "$SEARCH_PARAMS&_count=1000" >/dev/null 2>/dev/null
   done
 

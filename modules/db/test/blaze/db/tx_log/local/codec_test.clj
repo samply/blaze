@@ -47,7 +47,7 @@
 
 (deftest decode-tx-data-test
   (testing "empty value buffer"
-    (given (codec/decode-tx-data (bb/allocate-direct 8) (bb/allocate-direct 0))
+    (given (codec/decode-tx-data (bb/allocate 8) (bb/allocate 0))
       :instant := nil
       :tx-cmds := []
       :t 0)))
