@@ -8,5 +8,5 @@ context Patient
 
 define InInitialPopulation:
   exists [Observation: Code '49765-1' from loinc] O
-  where year from O.effective between 2015 and 2019
-  and AgeInYearsAt(O.effective) < 59
+  where year from (O.effective as dateTime as dateTime) between 2015 and 2019
+  and AgeInYearsAt(O.effective as dateTime) < 59
