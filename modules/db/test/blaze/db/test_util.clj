@@ -30,6 +30,7 @@
     :kv-store (ig/ref :blaze.db/index-kv-store)
     :resource-indexer (ig/ref :blaze.db.node/resource-indexer)
     :search-param-registry search-param-registry
+    :scheduler (ig/ref :blaze/scheduler)
     :poll-timeout (time/millis 10)}
 
    ::tx-log/local
@@ -60,6 +61,7 @@
      :resource-as-of-index nil
      :type-as-of-index nil
      :system-as-of-index nil
+     :patient-last-change-index nil
      :type-stats-index nil
      :system-stats-index nil}}
 
@@ -78,7 +80,9 @@
     :search-param-registry search-param-registry
     :executor (ig/ref :blaze.db.node.resource-indexer/executor)}
 
-   :blaze.db.node.resource-indexer/executor {}})
+   :blaze.db.node.resource-indexer/executor {}
+
+   :blaze/scheduler {}})
 
 
 (defmacro with-system-data

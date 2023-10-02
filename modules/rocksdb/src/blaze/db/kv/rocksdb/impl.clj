@@ -9,8 +9,8 @@
     [java.time Instant]
     [org.rocksdb
      BlockBasedTableConfig BloomFilter BuiltinComparator ColumnFamilyDescriptor
-     ColumnFamilyHandle ColumnFamilyOptions CompressionType DBOptions
-     RocksDBException Statistics Status$Code TableProperties WriteBatchInterface
+     ColumnFamilyHandle ColumnFamilyMetaData ColumnFamilyOptions CompressionType DBOptions
+     LevelMetaData RocksDBException SstFileMetaData Statistics Status$Code TableProperties WriteBatchInterface
      WriteOptions]))
 
 
@@ -32,7 +32,9 @@
             memtable-whole-key-filtering?
             optimize-filters-for-hits?
             reverse-comparator?
-            merge-operator]
+            merge-operator
+            enable-blob-files?
+            min-blob-size]
      :or {write-buffer-size-in-mb 64
           max-write-buffer-number 2
           level0-file-num-compaction-trigger 4
@@ -43,7 +45,9 @@
           bloom-filter? false
           memtable-whole-key-filtering? false
           optimize-filters-for-hits? false
-          reverse-comparator? false}}]]
+          reverse-comparator? false
+          enable-blob-files? false
+          min-blob-size 0}}]]
   (ColumnFamilyDescriptor.
     (.getBytes (name key))
     (cond->
@@ -79,7 +83,11 @@
       reverse-comparator?
       (.setComparator BuiltinComparator/REVERSE_BYTEWISE_COMPARATOR)
       merge-operator
-      (.setMergeOperatorName (name merge-operator)))))
+      (.setMergeOperatorName (name merge-operator))
+      enable-blob-files?
+      (.setEnableBlobFiles true)
+      min-blob-size
+      (.setMinBlobSize (long min-blob-size)))))
 
 
 (defn db-options
@@ -110,7 +118,7 @@
 
 
 (defn- column-family-not-found-msg [column-family]
-  (format "column family `%s` not found" (name column-family)))
+  (format "Column family `%s` not found." (name column-family)))
 
 
 (defn get-cfh ^ColumnFamilyHandle [cfhs column-family]
@@ -169,32 +177,54 @@
 
 (extend-protocol p/Datafiable
   TableProperties
-  (datafy [props]
+  (datafy [table]
     (cond->
-      {:data-size (.getDataSize props)
-       :index-size (.getIndexSize props)
-       :index-partitions (.getIndexPartitions props)
-       :top-level-index-size (.getTopLevelIndexSize props)
-       :filter-size (.getFilterSize props)
-       :total-raw-key-size (.getRawKeySize props)
-       :total-raw-value-size (.getRawValueSize props)
-       :num-data-blocks (.getNumDataBlocks props)
-       :num-entries (.getNumEntries props)
-       :format-version (.getFormatVersion props)
-       :fixed-key-len (.getFixedKeyLen props)
-       :column-family-id (.getColumnFamilyId props)
-       :creation-time (Instant/ofEpochSecond (.getCreationTime props))
-       :comparator-name (.getComparatorName props)
-       :compression-name (.getCompressionName props)
-       :user-collected-properties (.getUserCollectedProperties props)
-       :readable-properties (.getReadableProperties props)}
-      (pos? (.getOldestKeyTime props))
-      (assoc :oldest-key-time (Instant/ofEpochSecond (.getOldestKeyTime props))))))
+      {:data-size (.getDataSize table)
+       :index-size (.getIndexSize table)
+       :index-partitions (.getIndexPartitions table)
+       :top-level-index-size (.getTopLevelIndexSize table)
+       :filter-size (.getFilterSize table)
+       :total-raw-key-size (.getRawKeySize table)
+       :total-raw-value-size (.getRawValueSize table)
+       :num-data-blocks (.getNumDataBlocks table)
+       :num-entries (.getNumEntries table)
+       :format-version (.getFormatVersion table)
+       :fixed-key-len (.getFixedKeyLen table)
+       :column-family-id (.getColumnFamilyId table)
+       :creation-time (Instant/ofEpochSecond (.getCreationTime table))
+       :comparator-name (.getComparatorName table)
+       :compression-name (.getCompressionName table)
+       :user-collected-properties (.getUserCollectedProperties table)
+       :readable-properties (.getReadableProperties table)}
+      (pos? (.getOldestKeyTime table))
+      (assoc :oldest-key-time (Instant/ofEpochSecond (.getOldestKeyTime table))))))
 
 
-(defn- datafy-table [[name props]]
-  (assoc (datafy/datafy props) :name name))
+(defn- datafy-table [[name table]]
+  (assoc (datafy/datafy table) :name name))
 
 
-(defn datafy-tables [props]
-  (into [] (map datafy-table) props))
+(defn datafy-tables [tables]
+  (mapv datafy-table tables))
+
+
+(extend-protocol p/Datafiable
+  ColumnFamilyMetaData
+  (datafy [meta-data]
+    {:name (String. (.name meta-data))
+     :size (.size meta-data)
+     :num-files (.fileCount meta-data)
+     :levels (mapv datafy/datafy (.levels meta-data))})
+  LevelMetaData
+  (datafy [level-mata-data]
+    {:level (.level level-mata-data)
+     :size (.size level-mata-data)
+     :num-files (count (.files level-mata-data))})
+  SstFileMetaData
+  (datafy [file-meta-date]
+    {:file-name (.fileName file-meta-date)
+     :path (.path file-meta-date)
+     :size (.size file-meta-date)
+     :num-reads-sampled (.numReadsSampled file-meta-date)
+     :num-entries (.numEntries file-meta-date)
+     :num-deletions (.numDeletions file-meta-date)}))

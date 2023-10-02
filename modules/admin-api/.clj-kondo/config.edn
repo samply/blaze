@@ -1,5 +1,6 @@
 {:lint-as
- {blaze.admin-api-test/with-handler clojure.core/fn}
+ {blaze.admin-api-test/with-handler clojure.core/fn
+  blaze.anomaly/if-ok clojure.core/let}
 
  :linters
  {:unsorted-required-namespaces
@@ -21,6 +22,7 @@
   {:aliases
    {blaze.async.comp ac
     blaze.db.kv.rocksdb rocksdb
+    blaze.elm.expression.cache ec
     clojure.spec.alpha s
     cognitect.anomalies anom
     integrant.core ig

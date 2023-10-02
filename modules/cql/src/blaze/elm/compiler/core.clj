@@ -5,6 +5,7 @@
     [clojure.string :as str]
     [cuerdas.core :as c-str])
   (:import
+    [clojure.lang IReduceInit]
     [java.time.temporal ChronoUnit]))
 
 
@@ -13,6 +14,10 @@
 
 (defprotocol Expression
   (-static [expression])
+  (-attach-cache [expression cache])
+  (-patient-count [expression])
+  (-resolve-refs [expression expression-defs])
+  (-resolve-params [expression parameters])
   (-eval [expression context resource scope]
     "Evaluates `expression` on `resource` using `context` and optional `scope`
     for scoped expressions inside queries.")
@@ -23,10 +28,22 @@
   (satisfies? Expression x))
 
 
+(defn static? [x]
+  (-static x))
+
+
 (extend-protocol Expression
   nil
   (-static [_]
     true)
+  (-attach-cache [expr _]
+    expr)
+  (-patient-count [_]
+    0)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr _]
+    expr)
   (-eval [expr _ _ _]
     expr)
   (-form [_]
@@ -35,14 +52,34 @@
   Object
   (-static [_]
     true)
+  (-attach-cache [expr _]
+    expr)
+  (-patient-count [_]
+    0)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr _]
+    expr)
   (-eval [expr _ _ _]
     expr)
   (-form [expr]
-    expr))
+    expr)
 
-
-(defn static? [x]
-  (-static x))
+  IReduceInit
+  (-static [_]
+    true)
+  (-attach-cache [expr _]
+    expr)
+  (-patient-count [_]
+    0)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr _]
+    expr)
+  (-eval [expr _ _ _]
+    expr)
+  (-form [expr]
+    (mapv -form expr)))
 
 
 (defmulti compile*

@@ -8,7 +8,7 @@
     [blaze.elm.compiler.comparison-operators]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.compiler.test-util :as ctu]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [clojure.spec.test.alpha :as st]
@@ -16,12 +16,12 @@
 
 
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 
@@ -79,23 +79,23 @@
 ;; If either argument is null, the result is null.
 (deftest compile-equal-test
   (testing "Integer"
-    (are [x y res] (= res (tu/compile-binop elm/equal elm/integer x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equal elm/integer x y))
       "1" "1" true
       "1" "2" false
       "2" "1" false)
 
-    (tu/testing-binary-null elm/equal #elm/integer "1"))
+    (ctu/testing-binary-null elm/equal #elm/integer "1"))
 
   (testing "Long"
-    (are [x y res] (= res (tu/compile-binop elm/equal elm/long x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equal elm/long x y))
       "1" "1" true
       "1" "2" false
       "2" "1" false)
 
-    (tu/testing-binary-null elm/equal #elm/long "1"))
+    (ctu/testing-binary-null elm/equal #elm/long "1"))
 
   (testing "Decimal"
-    (are [x y res] (= res (tu/compile-binop elm/equal elm/decimal x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equal elm/decimal x y))
       "1.1" "1.1" true
       "1.1" "2.1" false
       "2.1" "1.1" false
@@ -103,7 +103,7 @@
       "1.1" "1.10" true
       "1.10" "1.1" true)
 
-    (tu/testing-binary-null elm/equal #elm/decimal "1.1"))
+    (ctu/testing-binary-null elm/equal #elm/decimal "1.1"))
 
   (testing "Mixed Integer Long"
     (are [x y res] (= res (c/compile {} (elm/equal [x y])))
@@ -126,15 +126,15 @@
       #elm/string "1" #elm/decimal "1" false))
 
   (testing "String"
-    (are [x y res] (= res (tu/compile-binop elm/equal elm/string x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equal elm/string x y))
       "a" "a" true
       "a" "b" false
       "b" "a" false)
 
-    (tu/testing-binary-null elm/equal #elm/string "a"))
+    (ctu/testing-binary-null elm/equal #elm/string "a"))
 
   (testing "Quantity"
-    (are [x y res] (= res (tu/compile-binop elm/equal elm/quantity x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equal elm/quantity x y))
       [1] [1] true
       [1] [2] false
 
@@ -144,10 +144,10 @@
       [1 "s"] [2 "s"] false
       [1 "s"] [1 "m"] false)
 
-    (tu/testing-binary-null elm/equal #elm/quantity [1]))
+    (ctu/testing-binary-null elm/equal #elm/quantity [1]))
 
   (testing "Ratio"
-    (are [x y res] (= res (tu/compile-binop elm/equal elm/ratio x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equal elm/ratio x y))
       [[1] [1]] [[1] [1]] true
       [[1] [1]] [[2] [1]] false
       [[1] [100]] [[10] [1000]] false
@@ -161,17 +161,17 @@
       [[1 "s"] [1 "s"]] [[1 "m"] [1 "m"]] false
       [[1 "s"] [1 "m"]] [[1 "m"] [1 "s"]] false)
 
-    (tu/testing-binary-null elm/equal #elm/ratio [[1] [1]]))
+    (ctu/testing-binary-null elm/equal #elm/ratio [[1] [1]]))
 
   (testing "Tuple"
-    (are [x y res] (= res (tu/compile-binop elm/equal elm/tuple x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equal elm/tuple x y))
       {} {} true
       {"id" #elm/string "1"} {"id" #elm/string "1"} true
       {"id" #elm/string "1"} {"id" #elm/string "2"} false
       {"id" #elm/string "1"} {"foo" #elm/string "1"} false))
 
   (testing "List"
-    (are [x y res] (= res (tu/compile-binop elm/equal elm/list x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equal elm/list x y))
       [#elm/integer "1"] [#elm/integer "1"] true
       [] [] true
 
@@ -184,59 +184,59 @@
       [{:type "Null"}] [{:type "Null"}] nil
       [#elm/date"2019"] [#elm/date"2019-01"] nil)
 
-    (tu/testing-binary-null elm/equal #elm/list []))
+    (ctu/testing-binary-null elm/equal #elm/list []))
 
   (testing "Interval"
-    (are [x y res] (= res (tu/compile-binop elm/equal elm/interval x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equal elm/interval x y))
       [#elm/integer "1" #elm/integer "2"]
       [#elm/integer "1" #elm/integer "2"] true)
 
-    (tu/testing-binary-null elm/equal #elm/interval [#elm/integer "1" #elm/integer "2"]))
+    (ctu/testing-binary-null elm/equal #elm/interval [#elm/integer "1" #elm/integer "2"]))
 
   (testing "Date with year precision"
-    (are [x y res] (= res (tu/compile-binop elm/equal elm/date x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equal elm/date x y))
       "2013" "2013" true
       "2012" "2013" false
       "2013" "2012" false)
 
-    (tu/testing-binary-null elm/equal #elm/date"2013"))
+    (ctu/testing-binary-null elm/equal #elm/date"2013"))
 
   (testing "Date with year-month precision"
-    (are [x y res] (= res (tu/compile-binop elm/equal elm/date x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equal elm/date x y))
       "2013-01" "2013-01" true
       "2013-01" "2013-02" false
       "2013-02" "2013-01" false)
 
-    (tu/testing-binary-null elm/equal #elm/date"2013-01"))
+    (ctu/testing-binary-null elm/equal #elm/date"2013-01"))
 
   (testing "Date with full precision"
-    (are [x y res] (= res (tu/compile-binop elm/equal elm/date x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equal elm/date x y))
       "2013-01-01" "2013-01-01" true
       "2013-01-01" "2013-01-02" false
       "2013-01-02" "2013-01-01" false)
 
-    (tu/testing-binary-null elm/equal #elm/date"2013-01-01"))
+    (ctu/testing-binary-null elm/equal #elm/date"2013-01-01"))
 
   (testing "Date with differing precisions"
-    (are [x y res] (= res (tu/compile-binop elm/equal elm/date x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equal elm/date x y))
       "2013" "2013-01" nil))
 
   (testing "Today() = Today()"
-    (are [x y] (true? (core/-eval (c/compile {} (elm/equal [x y])) {:now tu/now} nil nil))
+    (are [x y] (true? (core/-eval (c/compile {} (elm/equal [x y])) {:now ctu/now} nil nil))
       {:type "Today"} {:type "Today"}))
 
   (testing "DateTime with full precision (there is only one precision)"
-    (are [x y res] (= res (tu/compile-binop elm/equal elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equal elm/date-time x y))
       "2013-01-01T00:00:00" "2013-01-01T00:00:00" true
 
       "2013-01-01T00:00" "2013-01-01T00:00:00" true
 
       "2013-01-01T00" "2013-01-01T00:00:00" true)
 
-    (tu/testing-binary-null elm/equal #elm/date-time"2013-01-01"))
+    (ctu/testing-binary-null elm/equal #elm/date-time"2013-01-01"))
 
   (testing "Time"
-    (are [x y res] (= res (tu/compile-binop elm/equal elm/time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equal elm/time x y))
       "12:30:15" "12:30:15" true
       "12:30:15" "12:30:16" false
       "12:30:16" "12:30:15" false
@@ -245,25 +245,31 @@
 
       "12:00" "12" nil)
 
-    (tu/testing-binary-null elm/equal #elm/time "12:30:15"))
+    (ctu/testing-binary-null elm/equal #elm/time "12:30:15"))
 
   (testing "Code"
     (are [x y res] (= res (core/-eval (c/compile {} (elm/equal [x y])) {} nil nil))
-      (tu/code "a" "0") (tu/code "a" "0") true
-      (tu/code "a" "0") (tu/code "a" "1") false
-      (tu/code "a" "0") (tu/code "b" "0") false
+      (ctu/code "a" "0") (ctu/code "a" "0") true
+      (ctu/code "a" "0") (ctu/code "a" "1") false
+      (ctu/code "a" "0") (ctu/code "b" "0") false
 
-      (tu/code "a" "0") (tu/code "a" "2010" "0") false
-      (tu/code "a" "2010" "0") (tu/code "a" "0") false
+      (ctu/code "a" "0") (ctu/code "a" "2010" "0") false
+      (ctu/code "a" "2010" "0") (ctu/code "a" "0") false
 
-      (tu/code "a" "2010" "0") (tu/code "a" "2020" "0") false
-      (tu/code "a" "2020" "0") (tu/code "a" "2010" "0") false)
+      (ctu/code "a" "2010" "0") (ctu/code "a" "2020" "0") false
+      (ctu/code "a" "2020" "0") (ctu/code "a" "2010" "0") false)
 
-    (tu/testing-binary-null elm/equal (tu/code "a" "0")))
+    (ctu/testing-binary-null elm/equal (ctu/code "a" "0")))
 
-  (tu/testing-binary-dynamic elm/equal)
+  (ctu/testing-binary-dynamic elm/equal)
 
-  (tu/testing-binary-form elm/equal))
+  (ctu/testing-binary-attach-cache elm/equal)
+
+  (ctu/testing-binary-resolve-expr-ref elm/equal)
+
+  (ctu/testing-binary-resolve-param elm/equal)
+
+  (ctu/testing-binary-form elm/equal))
 
 
 ;; 12.2. Equivalent
@@ -328,7 +334,7 @@
       {:type "Null"} {:type "Null"} true))
 
   (testing "Boolean"
-    (are [x y res] (= res (tu/compile-binop elm/equivalent elm/boolean x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equivalent elm/boolean x y))
       "true" "true" true
       "true" "false" false)
 
@@ -337,7 +343,7 @@
       #elm/boolean "true" {:type "Null"} false))
 
   (testing "Integer"
-    (are [x y res] (= res (tu/compile-binop elm/equivalent elm/integer x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equivalent elm/integer x y))
       "1" "1" true
       "1" "2" false
       "2" "1" false)
@@ -347,7 +353,7 @@
       #elm/integer "1" {:type "Null"} false))
 
   (testing "Decimal"
-    (are [x y res] (= res (tu/compile-binop elm/equivalent elm/decimal x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equivalent elm/decimal x y))
       "1.1" "1.1" true
       "1.1" "2.1" false
       "2.1" "1.1" false
@@ -365,7 +371,7 @@
       #elm/decimal "1" #elm/integer "1" true))
 
   (testing "Quantity"
-    (are [x y res] (= res (tu/compile-binop elm/equivalent elm/quantity x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equivalent elm/quantity x y))
       [1] [1] true
       [1] [2] false
 
@@ -383,7 +389,7 @@
       #elm/quantity [1 "s"] {:type "Null"} false))
 
   (testing "Ratio"
-    (are [x y res] (= res (tu/compile-binop elm/equivalent elm/ratio x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equivalent elm/ratio x y))
       [[1] [1]] [[1] [1]] true
       [[1] [100]] [[10] [1000]] true
       [[1] [1]] [[2] [1]] false
@@ -409,7 +415,7 @@
       #elm/ratio [[1 "s"] [1 "s"]] {:type "Null"} false))
 
   (testing "List"
-    (are [x y res] (= res (tu/compile-binop elm/equivalent elm/list x y))
+    (are [x y res] (= res (ctu/compile-binop elm/equivalent elm/list x y))
       [#elm/integer "1"] [#elm/integer "1"] true
       [] [] true
 
@@ -429,22 +435,28 @@
 
   (testing "Code"
     (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
-      (tu/code "a" "0") (tu/code "a" "0") true
-      (tu/code "a" "0") (tu/code "a" "1") false
-      (tu/code "a" "0") (tu/code "b" "0") false
+      (ctu/code "a" "0") (ctu/code "a" "0") true
+      (ctu/code "a" "0") (ctu/code "a" "1") false
+      (ctu/code "a" "0") (ctu/code "b" "0") false
 
-      (tu/code "a" "0") (tu/code "a" "2010" "0") true
-      (tu/code "a" "2010" "0") (tu/code "a" "0") true
+      (ctu/code "a" "0") (ctu/code "a" "2010" "0") true
+      (ctu/code "a" "2010" "0") (ctu/code "a" "0") true
 
-      (tu/code "a" "2010" "0") (tu/code "a" "2020" "0") true
-      (tu/code "a" "2020" "0") (tu/code "a" "2010" "0") true
+      (ctu/code "a" "2010" "0") (ctu/code "a" "2020" "0") true
+      (ctu/code "a" "2020" "0") (ctu/code "a" "2010" "0") true
 
-      {:type "Null"} (tu/code "a" "0") false
-      (tu/code "a" "0") {:type "Null"} false))
+      {:type "Null"} (ctu/code "a" "0") false
+      (ctu/code "a" "0") {:type "Null"} false))
 
-  (tu/testing-binary-dynamic elm/equivalent)
+  (ctu/testing-binary-dynamic elm/equivalent)
 
-  (tu/testing-binary-form elm/equivalent))
+  (ctu/testing-binary-attach-cache elm/equivalent)
+
+  (ctu/testing-binary-resolve-expr-ref elm/equivalent)
+
+  (ctu/testing-binary-resolve-param elm/equivalent)
+
+  (ctu/testing-binary-form elm/equivalent))
 
 
 ;; 12.3. Greater
@@ -474,18 +486,18 @@
 ;; DateTime, Time, and Quantity types.
 (deftest compile-greater-test
   (testing "Integer"
-    (are [x y res] (= res (tu/compile-binop elm/greater elm/integer x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater elm/integer x y))
       "2" "1" true
       "1" "1" false)
 
-    (tu/testing-binary-null elm/greater #elm/integer "1"))
+    (ctu/testing-binary-null elm/greater #elm/integer "1"))
 
   (testing "Long"
-    (are [x y res] (= res (tu/compile-binop elm/greater elm/long x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater elm/long x y))
       "2" "1" true
       "1" "1" false)
 
-    (tu/testing-binary-null elm/greater #elm/long "1"))
+    (ctu/testing-binary-null elm/greater #elm/long "1"))
 
   (testing "Mixed Integer Long"
     (are [x y res] (= res (c/compile {} (elm/greater [x y])))
@@ -493,21 +505,21 @@
       #elm/long "2" #elm/integer "1" true))
 
   (testing "Decimal"
-    (are [x y res] (= res (tu/compile-binop elm/greater elm/decimal x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater elm/decimal x y))
       "2.1" "1.1" true
       "1.1" "1.1" false)
 
-    (tu/testing-binary-null elm/greater #elm/decimal "1.1"))
+    (ctu/testing-binary-null elm/greater #elm/decimal "1.1"))
 
   (testing "String"
-    (are [x y res] (= res (tu/compile-binop elm/greater elm/string x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater elm/string x y))
       "b" "a" true
       "a" "a" false)
 
-    (tu/testing-binary-null elm/greater #elm/string "a"))
+    (ctu/testing-binary-null elm/greater #elm/string "a"))
 
   (testing "Quantity"
-    (are [x y res] (= res (tu/compile-binop elm/greater elm/quantity x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater elm/quantity x y))
       [2] [1] true
       [1] [1] false
 
@@ -518,51 +530,57 @@
       [1 "m"] [1 "m"] false
       [100 "cm"] [1 "m"] false)
 
-    (tu/testing-binary-null elm/greater #elm/quantity [1]))
+    (ctu/testing-binary-null elm/greater #elm/quantity [1]))
 
   (testing "Date with year precision"
-    (are [x y res] (= res (tu/compile-binop elm/greater elm/date x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater elm/date x y))
       "2014" "2013" true
       "2013" "2013" false)
 
-    (tu/testing-binary-null elm/greater #elm/date"2013"))
+    (ctu/testing-binary-null elm/greater #elm/date"2013"))
 
   (testing "DateTime with year precision"
-    (are [x y res] (= res (tu/compile-binop elm/greater elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater elm/date-time x y))
       "2014" "2013" true
       "2013" "2013" false)
 
-    (tu/testing-binary-null elm/greater #elm/date-time"2013"))
+    (ctu/testing-binary-null elm/greater #elm/date-time"2013"))
 
   (testing "DateTime with year-month precision"
-    (are [x y res] (= res (tu/compile-binop elm/greater elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater elm/date-time x y))
       "2013-07" "2013-06" true
       "2013-06" "2013-06" false)
 
-    (tu/testing-binary-null elm/greater #elm/date-time"2013-06"))
+    (ctu/testing-binary-null elm/greater #elm/date-time"2013-06"))
 
   (testing "DateTime with date precision"
-    (are [x y res] (= res (tu/compile-binop elm/greater elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater elm/date-time x y))
       "2013-06-16" "2013-06-15" true
       "2013-06-15" "2013-06-15" false)
 
-    (tu/testing-binary-null elm/greater #elm/date-time"2013-06-15"))
+    (ctu/testing-binary-null elm/greater #elm/date-time"2013-06-15"))
 
   (testing "Comparing dates with mixed precisions (year and year-month) results in null."
-    (are [x y res] (= res (tu/compile-binop elm/greater elm/date x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater elm/date x y))
       "2013" "2013-01" nil
       "2013-01" "2013" nil))
 
   (testing "Time"
-    (are [x y res] (= res (tu/compile-binop elm/greater elm/time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater elm/time x y))
       "00:00:01" "00:00:00" true
       "00:00:00" "00:00:00" false)
 
-    (tu/testing-binary-null elm/greater #elm/time "00:00:00"))
+    (ctu/testing-binary-null elm/greater #elm/time "00:00:00"))
 
-  (tu/testing-binary-dynamic elm/greater)
+  (ctu/testing-binary-dynamic elm/greater)
 
-  (tu/testing-binary-form elm/greater))
+  (ctu/testing-binary-attach-cache elm/greater)
+
+  (ctu/testing-binary-resolve-expr-ref elm/greater)
+
+  (ctu/testing-binary-resolve-param elm/greater)
+
+  (ctu/testing-binary-form elm/greater))
 
 
 ;; 12.4. GreaterOrEqual
@@ -592,20 +610,20 @@
 ;; Date, DateTime, Time, and Quantity types.
 (deftest compile-greater-or-equal-test
   (testing "Integer"
-    (are [x y res] (= res (tu/compile-binop elm/greater-or-equal elm/integer x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/integer x y))
       "1" "1" true
       "2" "1" true
       "1" "2" false)
 
-    (tu/testing-binary-null elm/greater-or-equal #elm/integer "1"))
-  
+    (ctu/testing-binary-null elm/greater-or-equal #elm/integer "1"))
+
   (testing "Long"
-    (are [x y res] (= res (tu/compile-binop elm/greater-or-equal elm/long x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/long x y))
       "1" "1" true
       "2" "1" true
       "1" "2" false)
 
-    (tu/testing-binary-null elm/greater-or-equal #elm/long "1"))
+    (ctu/testing-binary-null elm/greater-or-equal #elm/long "1"))
 
   (testing "Mixed Integer Long"
     (are [x y res] (= res (c/compile {} (elm/greater-or-equal [x y])))
@@ -615,67 +633,67 @@
       #elm/long "2" #elm/integer "1" true))
 
   (testing "Decimal"
-    (are [x y res] (= res (tu/compile-binop elm/greater-or-equal elm/decimal x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/decimal x y))
       "1.1" "1.1" true
       "2.1" "1.1" true
       "1.1" "2.1" false)
 
-    (tu/testing-binary-null elm/greater-or-equal #elm/decimal "1.1"))
+    (ctu/testing-binary-null elm/greater-or-equal #elm/decimal "1.1"))
 
   (testing "String"
-    (are [x y res] (= res (tu/compile-binop elm/greater-or-equal elm/string x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/string x y))
       "a" "a" true
       "b" "a" true
       "a" "b" false)
 
-    (tu/testing-binary-null elm/greater-or-equal #elm/string "a"))
+    (ctu/testing-binary-null elm/greater-or-equal #elm/string "a"))
 
   (testing "Date with full precision"
-    (are [x y res] (= res (tu/compile-binop elm/greater-or-equal elm/date x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/date x y))
       "2013-06-16" "2013-06-15" true
       "2013-06-15" "2013-06-15" true
       "2013-06-14" "2013-06-15" false)
 
-    (tu/testing-binary-null elm/greater-or-equal #elm/date"2013-06-15"))
+    (ctu/testing-binary-null elm/greater-or-equal #elm/date"2013-06-15"))
 
   (testing "DateTime with year precision"
-    (are [x y res] (= res (tu/compile-binop elm/greater-or-equal elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/date-time x y))
       "2014" "2013" true
       "2013" "2013" true
       "2012" "2013" false)
 
-    (tu/testing-binary-null elm/greater-or-equal #elm/date"2013"))
+    (ctu/testing-binary-null elm/greater-or-equal #elm/date"2013"))
 
   (testing "DateTime with year-month precision"
-    (are [x y res] (= res (tu/compile-binop elm/greater-or-equal elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/date-time x y))
       "2013-07" "2013-06" true
       "2013-06" "2013-06" true
       "2013-05" "2013-06" false)
 
-    (tu/testing-binary-null elm/greater-or-equal #elm/date"2013-06"))
+    (ctu/testing-binary-null elm/greater-or-equal #elm/date"2013-06"))
 
   (testing "DateTime with date precision"
-    (are [x y res] (= res (tu/compile-binop elm/greater-or-equal elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/date-time x y))
       "2013-06-16" "2013-06-15" true
       "2013-06-15" "2013-06-15" true
       "2013-06-14" "2013-06-15" false)
 
-    (tu/testing-binary-null elm/greater-or-equal #elm/date"2013-06-15"))
+    (ctu/testing-binary-null elm/greater-or-equal #elm/date"2013-06-15"))
 
   (testing "DateTime with mixed precision"
-    (are [x y] (nil? (tu/compile-binop elm/greater-or-equal elm/date-time x y))
+    (are [x y] (nil? (ctu/compile-binop elm/greater-or-equal elm/date-time x y))
       "2005-06-17" "2005"))
 
   (testing "Time"
-    (are [x y res] (= res (tu/compile-binop elm/greater-or-equal elm/time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/time x y))
       "00:00:00" "00:00:00" true
       "00:00:01" "00:00:00" true
       "00:00:00" "00:00:01" false)
 
-    (tu/testing-binary-null elm/greater-or-equal #elm/time "00:00:00"))
+    (ctu/testing-binary-null elm/greater-or-equal #elm/time "00:00:00"))
 
   (testing "Quantity"
-    (are [x y res] (= res (tu/compile-binop elm/greater-or-equal elm/quantity x y))
+    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/quantity x y))
       [1] [1] true
       [2] [1] true
       [1] [2] false
@@ -688,11 +706,17 @@
       [100 "cm"] [1 "m"] true
       [1 "m"] [101 "cm"] false)
 
-    (tu/testing-binary-null elm/greater-or-equal #elm/quantity [1]))
+    (ctu/testing-binary-null elm/greater-or-equal #elm/quantity [1]))
 
-  (tu/testing-binary-dynamic elm/greater-or-equal)
+  (ctu/testing-binary-dynamic elm/greater-or-equal)
 
-  (tu/testing-binary-form elm/greater-or-equal))
+  (ctu/testing-binary-attach-cache elm/greater-or-equal)
+
+  (ctu/testing-binary-resolve-expr-ref elm/greater-or-equal)
+
+  (ctu/testing-binary-resolve-param elm/greater-or-equal)
+
+  (ctu/testing-binary-form elm/greater-or-equal))
 
 
 ;; 12.5. Less
@@ -720,18 +744,18 @@
 ;; DateTime, Time, and Quantity types.
 (deftest compile-less-test
   (testing "Integer"
-    (are [x y res] (= res (tu/compile-binop elm/less elm/integer x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less elm/integer x y))
       "1" "2" true
       "1" "1" false)
 
-    (tu/testing-binary-null elm/less #elm/integer "1"))
-  
+    (ctu/testing-binary-null elm/less #elm/integer "1"))
+
   (testing "Long"
-    (are [x y res] (= res (tu/compile-binop elm/less elm/long x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less elm/long x y))
       "1" "2" true
       "1" "1" false)
 
-    (tu/testing-binary-null elm/less #elm/long "1"))
+    (ctu/testing-binary-null elm/less #elm/long "1"))
 
   (testing "Mixed Integer Long"
     (are [x y res] (= res (c/compile {} (elm/less [x y])))
@@ -739,80 +763,80 @@
       #elm/long "1" #elm/integer "2" true))
 
   (testing "Decimal"
-    (are [x y res] (= res (tu/compile-binop elm/less elm/decimal x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less elm/decimal x y))
       "1.1" "2.1" true
       "1.1" "1.1" false)
 
-    (tu/testing-binary-null elm/less #elm/decimal "1.1"))
+    (ctu/testing-binary-null elm/less #elm/decimal "1.1"))
 
   (testing "String"
-    (are [x y res] (= res (tu/compile-binop elm/less elm/string x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less elm/string x y))
       "a" "b" true
       "a" "a" false)
 
-    (tu/testing-binary-null elm/less #elm/string "a"))
+    (ctu/testing-binary-null elm/less #elm/string "a"))
 
   (testing "Date with year precision"
-    (are [x y res] (= res (tu/compile-binop elm/less elm/date x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less elm/date x y))
       "2012" "2013" true
       "2013" "2013" false)
 
-    (tu/testing-binary-null elm/less #elm/date"2013"))
+    (ctu/testing-binary-null elm/less #elm/date"2013"))
 
   (testing "Comparing dates with mixed precisions (year and year-month) results in null."
-    (are [x y res] (= res (tu/compile-binop elm/less elm/date x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less elm/date x y))
       "2013" "2013-01" nil
       "2013-01" "2013" nil))
 
   (testing "Date with full precision"
-    (are [x y res] (= res (tu/compile-binop elm/less elm/date x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less elm/date x y))
       "2013-06-14" "2013-06-15" true
       "2013-06-15" "2013-06-15" false)
 
-    (tu/testing-binary-null elm/less #elm/date"2013-06-15"))
+    (ctu/testing-binary-null elm/less #elm/date"2013-06-15"))
 
   (testing "Comparing dates with mixed precisions (year-month and full) results in null."
-    (are [x y res] (= res (tu/compile-binop elm/less elm/date x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less elm/date x y))
       "2013-01" "2013-01-01" nil
       "2013-01-01" "2013-01" nil))
 
   (testing "DateTime with year precision"
-    (are [x y res] (= res (tu/compile-binop elm/less elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less elm/date-time x y))
       "2012" "2013" true
       "2013" "2013" false)
 
-    (tu/testing-binary-null elm/less #elm/date-time"2013"))
+    (ctu/testing-binary-null elm/less #elm/date-time"2013"))
 
   (testing "DateTime with year-month precision"
-    (are [x y res] (= res (tu/compile-binop elm/less elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less elm/date-time x y))
       "2013-05" "2013-06" true
       "2013-06" "2013-06" false)
 
-    (tu/testing-binary-null elm/less #elm/date-time"2013-06"))
+    (ctu/testing-binary-null elm/less #elm/date-time"2013-06"))
 
   (testing "DateTime with date precision"
-    (are [x y res] (= res (tu/compile-binop elm/less elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less elm/date-time x y))
       "2013-06-14" "2013-06-15" true
       "2013-06-15" "2013-06-15" false)
 
-    (tu/testing-binary-null elm/less #elm/date-time"2013-06-15"))
+    (ctu/testing-binary-null elm/less #elm/date-time"2013-06-15"))
 
   (testing "DateTime with full precision (there is only one precision)"
-    (are [x y res] (= res (tu/compile-binop elm/less elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less elm/date-time x y))
       "2013-06-15T11" "2013-06-15T12" true
       "2013-06-15T12" "2013-06-15T12" false)
 
-    (tu/testing-binary-null elm/less #elm/date-time"2013-06-15T12"))
+    (ctu/testing-binary-null elm/less #elm/date-time"2013-06-15T12"))
 
   (testing "Time with full precision (there is only one precision)"
-    (are [x y res] (= res (tu/compile-binop elm/less elm/time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less elm/time x y))
       "12:30:14" "12:30:15" true
       "12:30:15" "12:30:15" false)
 
-    (tu/testing-binary-null elm/less #elm/time "12:30:15"))
+    (ctu/testing-binary-null elm/less #elm/time "12:30:15"))
 
   (testing "Quantity"
-    (are [x y res] (= res (tu/compile-binop elm/less elm/quantity x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less elm/quantity x y))
       [1] [2] true
       [1] [1] false
 
@@ -822,11 +846,17 @@
       [1 "m"] [101 "cm"] true
       [1 "m"] [100 "cm"] false)
 
-    (tu/testing-binary-null elm/less #elm/quantity [1]))
+    (ctu/testing-binary-null elm/less #elm/quantity [1]))
 
-  (tu/testing-binary-dynamic elm/less)
+  (ctu/testing-binary-dynamic elm/less)
 
-  (tu/testing-binary-form elm/less))
+  (ctu/testing-binary-attach-cache elm/less)
+
+  (ctu/testing-binary-resolve-expr-ref elm/less)
+
+  (ctu/testing-binary-resolve-param elm/less)
+
+  (ctu/testing-binary-form elm/less))
 
 
 ;; 12.6. LessOrEqual
@@ -856,20 +886,20 @@
 ;; DateTime, Time, and Quantity types.
 (deftest compile-less-or-equal-test
   (testing "Integer"
-    (are [x y res] (= res (tu/compile-binop elm/less-or-equal elm/integer x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/integer x y))
       "1" "1" true
       "1" "2" true
       "2" "1" false)
 
-    (tu/testing-binary-null elm/less-or-equal #elm/integer "1"))
-  
+    (ctu/testing-binary-null elm/less-or-equal #elm/integer "1"))
+
   (testing "Long"
-    (are [x y res] (= res (tu/compile-binop elm/less-or-equal elm/long x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/long x y))
       "1" "1" true
       "1" "2" true
       "2" "1" false)
 
-    (tu/testing-binary-null elm/less-or-equal #elm/long "1"))
+    (ctu/testing-binary-null elm/less-or-equal #elm/long "1"))
 
   (testing "Mixed Integer Long"
     (are [x y res] (= res (c/compile {} (elm/less-or-equal [x y])))
@@ -879,20 +909,20 @@
       #elm/long "1" #elm/integer "2" true))
 
   (testing "Decimal"
-    (are [x y res] (= res (tu/compile-binop elm/less-or-equal elm/decimal x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/decimal x y))
       "1.1" "1.1" true
       "1.1" "2.1" true
       "2.1" "1.1" false)
 
-    (tu/testing-binary-null elm/less-or-equal #elm/decimal "1.1"))
+    (ctu/testing-binary-null elm/less-or-equal #elm/decimal "1.1"))
 
   (testing "Date with full precision"
-    (are [x y res] (= res (tu/compile-binop elm/less-or-equal elm/date x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/date x y))
       "2013-06-14" "2013-06-15" true
       "2013-06-15" "2013-06-15" true
       "2013-06-16" "2013-06-15" false)
 
-    (tu/testing-binary-null elm/less-or-equal #elm/date"2013-06-15"))
+    (ctu/testing-binary-null elm/less-or-equal #elm/date"2013-06-15"))
 
   (testing "Mixed Date and DateTime"
     (are [x y res] (= res (c/compile {} (elm/less-or-equal [x y])))
@@ -900,39 +930,39 @@
       #elm/date-time"2013-06-15T00" #elm/date"2013-06-15" nil))
 
   (testing "DateTime with year precision"
-    (are [x y res] (= res (tu/compile-binop elm/less-or-equal elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/date-time x y))
       "2012" "2013" true
       "2013" "2013" true
       "2014" "2013" false)
 
-    (tu/testing-binary-null elm/less-or-equal #elm/date"2013"))
+    (ctu/testing-binary-null elm/less-or-equal #elm/date"2013"))
 
   (testing "DateTime with year-month precision"
-    (are [x y res] (= res (tu/compile-binop elm/less-or-equal elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/date-time x y))
       "2013-05" "2013-06" true
       "2013-06" "2013-06" true
       "2013-07" "2013-06" false)
 
-    (tu/testing-binary-null elm/less-or-equal #elm/date"2013-06"))
+    (ctu/testing-binary-null elm/less-or-equal #elm/date"2013-06"))
 
   (testing "DateTime with date precision"
-    (are [x y res] (= res (tu/compile-binop elm/less-or-equal elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/date-time x y))
       "2013-06-14" "2013-06-15" true
       "2013-06-15" "2013-06-15" true
       "2013-06-16" "2013-06-15" false)
 
-    (tu/testing-binary-null elm/less-or-equal #elm/date"2013-06-15"))
+    (ctu/testing-binary-null elm/less-or-equal #elm/date"2013-06-15"))
 
   (testing "Time"
-    (are [x y res] (= res (tu/compile-binop elm/less-or-equal elm/time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/time x y))
       "00:00:00" "00:00:00" true
       "00:00:00" "00:00:01" true
       "00:00:01" "00:00:00" false)
 
-    (tu/testing-binary-null elm/less-or-equal #elm/time "00:00:00"))
+    (ctu/testing-binary-null elm/less-or-equal #elm/time "00:00:00"))
 
   (testing "Quantity"
-    (are [x y res] (= res (tu/compile-binop elm/less-or-equal elm/quantity x y))
+    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/quantity x y))
       [1] [2] true
       [1] [1] true
       [2] [1] false
@@ -945,15 +975,21 @@
       [1 "m"] [100 "cm"] true
       [101 "cm"] [1 "m"] false)
 
-    (tu/testing-binary-null elm/less-or-equal #elm/quantity [1]))
+    (ctu/testing-binary-null elm/less-or-equal #elm/quantity [1]))
 
-  (tu/testing-binary-dynamic elm/less-or-equal)
+  (ctu/testing-binary-dynamic elm/less-or-equal)
 
-  (tu/testing-binary-form elm/less-or-equal))
+  (ctu/testing-binary-attach-cache elm/less-or-equal)
+
+  (ctu/testing-binary-resolve-expr-ref elm/less-or-equal)
+
+  (ctu/testing-binary-resolve-param elm/less-or-equal)
+
+  (ctu/testing-binary-form elm/less-or-equal))
 
 
 ;; 12.7. NotEqual
 ;;
 ;; Normalized to Not Equal
 (deftest compile-not-equal-test
-  (tu/unsupported-binary-operand "NotEqual"))
+  (ctu/unsupported-binary-operand "NotEqual"))

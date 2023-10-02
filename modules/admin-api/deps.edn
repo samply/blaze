@@ -2,6 +2,9 @@
  {blaze/async
   {:local/root "../async"}
 
+  blaze/cql
+  {:local/root "../cql"}
+
   blaze/module-base
   {:local/root "../module-base"}
 
@@ -12,15 +15,18 @@
   {:local/root "../rocksdb"}
 
   blaze/spec
-  {:local/root "../spec"}}
+  {:local/root "../spec"}
+
+  fi.metosin/reitit-openapi
+  {:mvn/version "0.7.0-alpha5"}}
 
  :aliases
  {:test
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/module-test-util
-    {:local/root "../module-test-util"}}}
+   {blaze/db-stub
+    {:local/root "../db-stub"}}}
 
   :kaocha
   {:extra-deps

@@ -231,7 +231,7 @@
 (def ^:private bloom-filter-useful-total
   (counter-metric
     "blaze_rocksdb_bloom_filter_useful_total"
-    "Number of times bloom filter has avoided file reads."
+    "Number of times Bloom filter has avoided file reads."
     TickerType/BLOOM_FILTER_USEFUL))
 
 
@@ -399,4 +399,4 @@
        (for [[name store] stores
              column-family (p/-column-families store)]
          {:label-values [name (clojure.core/name column-family)]
-          :value (p/-get-long-property store column-family "rocksdb.estimate-table-readers-mem")}))]))
+          :value (p/-long-property store column-family "rocksdb.estimate-table-readers-mem")}))]))

@@ -19,18 +19,17 @@
     [java-time.api :as time]))
 
 
-(defn create-mem-node-config [node-config]
+(def mem-node-config
   {:blaze.db/node
-   (merge
-     {:tx-log (ig/ref :blaze.db/tx-log)
-      :tx-cache (ig/ref :blaze.db/tx-cache)
-      :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
-      :resource-store (ig/ref ::rs/kv)
-      :kv-store (ig/ref :blaze.db/index-kv-store)
-      :resource-indexer (ig/ref :blaze.db.node/resource-indexer)
-      :search-param-registry (ig/ref :blaze.db/search-param-registry)
-      :poll-timeout (time/millis 10)}
-     node-config)
+   {:tx-log (ig/ref :blaze.db/tx-log)
+    :tx-cache (ig/ref :blaze.db/tx-cache)
+    :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
+    :resource-store (ig/ref ::rs/kv)
+    :kv-store (ig/ref :blaze.db/index-kv-store)
+    :resource-indexer (ig/ref :blaze.db.node/resource-indexer)
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :scheduler (ig/ref :blaze/scheduler)
+    :poll-timeout (time/millis 10)}
 
    ::tx-log/local
    {:kv-store (ig/ref :blaze.db/transaction-kv-store)
@@ -57,8 +56,10 @@
      :resource-as-of-index nil
      :type-as-of-index nil
      :system-as-of-index nil
+     :patient-last-change-index nil
      :type-stats-index nil
-     :system-stats-index nil}}
+     :system-stats-index nil
+     :cql-bloom-filter nil}}
 
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
@@ -76,11 +77,9 @@
    :blaze.db.node.resource-indexer/executor {}
 
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:structure-definition-repo structure-definition-repo}
 
-
-(def mem-node-config
-  (create-mem-node-config {}))
+   :blaze/scheduler {}})
 
 
 (defmacro with-system-data

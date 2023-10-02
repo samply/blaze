@@ -10,7 +10,7 @@
 
 (s/fdef impl/column-family-descriptor
   :args (s/cat :block-cache (s/nilable ::rocksdb/block-cache)
-               :opts (s/tuple keyword? (s/nilable map?))))
+               :opts (s/tuple simple-keyword? (s/nilable ::rocksdb/column-family-options))))
 
 
 (s/fdef impl/db-options

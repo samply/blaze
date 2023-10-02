@@ -2,13 +2,13 @@
   (:require
     [blaze.util :as u]
     [clojure.string :as str]
-    [prometheus.alpha :as prom]))
+    [prometheus.alpha :as prom :refer [defcounter defhistogram]]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(prom/defcounter requests-total
+(defcounter requests-total
   "Number of requests to this service.
    Distinguishes between the returned status code, the handler being used to
    process the request together with the http method."
@@ -17,7 +17,7 @@
   "code" "interaction" "method")
 
 
-(prom/defhistogram request-duration-seconds
+(defhistogram request-duration-seconds
   "The HTTP request latencies in seconds."
   {:namespace "http"
    :subsystem "fhir"}

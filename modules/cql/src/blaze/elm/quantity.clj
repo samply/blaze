@@ -78,6 +78,12 @@
   Quantity
   (-static [_]
     true)
+  (-attach-cache [quantity _]
+    quantity)
+  (-resolve-refs [quantity _]
+    quantity)
+  (-resolve-params [quantity _]
+    quantity)
   (-eval [quantity _ _ _]
     quantity)
   (-form [quantity]

@@ -1,6 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.stratifier
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
+    [blaze.async.comp :as ac :refer [do-sync]]
     [blaze.fhir.operation.evaluate-measure.cql :as cql]
     [blaze.fhir.operation.evaluate-measure.measure.util :as u]
     [blaze.fhir.spec.type :as type]))
@@ -65,7 +66,7 @@
 
 
 (defn- calc-strata [{:keys [population-basis] :as context} name handles]
-  (if (identical? :boolean (or population-basis :boolean))
+  (if (nil? population-basis)
     (cql/calc-strata context name handles)
     (cql/calc-function-strata context name handles)))
 
@@ -74,11 +75,10 @@
   {:arglists '([context evaluated-populations stratifier])}
   [{:keys [group-idx stratifier-idx] :as context} evaluated-populations
    {:keys [code criteria]}]
-  (when-ok [name (u/expression #(stratifier-path group-idx stratifier-idx)
-                               criteria)
-            strata (calc-strata context name
-                                (-> evaluated-populations :handles first))]
-    (stratifier context code (-> evaluated-populations :result first :code) strata)))
+  (if-ok [name (u/expression #(stratifier-path group-idx stratifier-idx) criteria)]
+    (do-sync [strata (calc-strata context name (-> evaluated-populations :handles first))]
+      (stratifier context code (-> evaluated-populations :result first :code) strata))
+    ac/completed-future))
 
 
 (defn- stratifier-component-path [{:keys [group-idx stratifier-idx component-idx]}]
@@ -170,14 +170,15 @@
 
 (defn- evaluate-multi-component-stratifier
   [context evaluated-populations {:keys [component]}]
-  (when-ok [{:keys [codes expression-names]} (extract-stratifier-components context component)
-            strata (cql/calc-multi-component-strata
-                     context
-                     expression-names
-                     (-> evaluated-populations :handles first))]
-    (multi-component-stratifier context codes
-                                (-> evaluated-populations :result first :code)
-                                strata)))
+  (if-ok [{:keys [codes expression-names]} (extract-stratifier-components context component)]
+    (do-sync [strata (cql/calc-multi-component-strata
+                       context
+                       expression-names
+                       (-> evaluated-populations :handles first))]
+      (multi-component-stratifier context codes
+                                  (-> evaluated-populations :result first :code)
+                                  strata))
+    ac/completed-future))
 
 
 (defn evaluate

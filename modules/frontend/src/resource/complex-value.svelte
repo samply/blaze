@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { FhirObject } from './resource-card';
+	import type { FhirObject } from './resource-card.js';
 
 	import CodeableConcept from '../values/codeable-concept.svelte';
 	import Coding from '../values/coding.svelte';

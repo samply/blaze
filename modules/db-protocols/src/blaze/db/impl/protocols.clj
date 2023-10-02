@@ -24,6 +24,8 @@
     [db compartment tid]
     [db compartment tid start-id])
 
+  (-patient-compartment-last-change-t [db patient-id])
+
   (-count-query [db query]
     "Returns a CompletableFuture that will complete with the count of the
     matching resource handles.")
@@ -109,4 +111,4 @@
   (-list-by-type [_ type])
   (-list-by-target [_ target])
   (-linked-compartments [_ resource])
-  (-compartment-resources [_ type]))
+  (-compartment-resources [_ compartment-type] [_ compartment-type type]))

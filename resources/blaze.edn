@@ -139,6 +139,11 @@
   {:node #blaze/ref :blaze.db/node}
 
   ;;
+  ;; CQL Evaluation Engine
+  ;;
+  :blaze.cql/retrieve-total {}
+
+  ;;
   ;; FHIR Operation Evaluate Measure
   ;;
   ;; Special operation which enables Blaze to evaluate Measure resources,
@@ -211,6 +216,7 @@
    :kv-store #blaze/ref :blaze.db/index-kv-store
    :resource-indexer #blaze/ref :blaze.db.node/resource-indexer
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
+   :scheduler #blaze/ref :blaze/scheduler
    :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]}
 
   :blaze.db.node/indexer-executor {}
@@ -232,7 +238,7 @@
 
   :blaze.db.node.tx-indexer/duration-seconds {}
 
-  :blaze.db/cache-collector
+  :blaze/cache-collector
   {:caches
    {"tx-cache" #blaze/ref :blaze.db/tx-cache
     "resource-cache" #blaze/ref :blaze.db/resource-cache}}
@@ -274,7 +280,9 @@
   ;;
   :blaze.db/search-param-registry
   {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo
-   :extra-bundle-file #blaze/cfg ["DB_SEARCH_PARAM_BUNDLE" string?]}}
+   :extra-bundle-file #blaze/cfg ["DB_SEARCH_PARAM_BUNDLE" string?]}
+
+  :blaze/scheduler {}}
 
  :storage
  {:in-memory
@@ -299,6 +307,8 @@
      :resource-as-of-index nil
      :type-as-of-index nil
      :system-as-of-index nil
+     :patient-as-of-index nil
+     :patient-last-change-index nil
      :type-stats-index nil
      :system-stats-index nil}}
 
@@ -436,6 +446,18 @@
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :system-as-of-index
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 8
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :patient-as-of-index
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 8
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :patient-last-change-index
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
       :target-file-size-base-in-mb 8
@@ -644,6 +666,18 @@
       :target-file-size-base-in-mb 8
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
+     :patient-as-of-index
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 8
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :patient-last-change-index
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 8
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
      :type-stats-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
@@ -770,6 +804,43 @@
      :scheduler #blaze/ref :blaze/scheduler
      :provider-url #blaze/cfg ["OPENID_PROVIDER_URL" string?]}
 
-    :blaze/http-client {}
+    :blaze/http-client {}}}
 
-    :blaze/scheduler {}}}]}
+  {:name "CQL Expression Cache"
+   :toggle "CQL_EXPR_CACHE_SIZE"
+   :config
+   {:blaze.fhir.operation.evaluate-measure/handler
+    {:blaze.elm.expression/cache #blaze/ref :blaze.elm.expression/cache}
+
+    :blaze.elm.expression/cache
+    {:node #blaze/ref :blaze.db/node
+     :max-size-in-mb #blaze/cfg ["CQL_EXPR_CACHE_SIZE" nat-int? 128]
+     :refresh #blaze/cfg ["CQL_EXPR_CACHE_REFRESH" java-time.api/duration? "PT24H"]
+     :executor #blaze/ref :blaze.elm.expression.cache/executor}
+
+    :blaze.elm.expression.cache/executor
+    {:num-threads #blaze/cfg ["CQL_EXPR_CACHE_THREADS" pos-int? 4]}
+
+    :blaze.elm.expression.cache/bloom-filter-creation-duration-seconds {}
+    :blaze.elm.expression.cache/bloom-filter-useful-total {}
+    :blaze.elm.expression.cache/bloom-filter-not-useful-total {}
+    :blaze.elm.expression.cache/bloom-filter-false-positive-total {}
+    :blaze.elm.expression.cache/bloom-filter-bytes {}
+
+    :blaze/cache-collector
+    {:caches
+     {"cql-expr-cache" #blaze/ref :blaze.elm.expression/cache}}
+
+    [:blaze.db.kv/rocksdb :blaze.db/index-kv-store]
+    {:column-families
+     {:cql-bloom-filter
+      {:write-buffer-size-in-mb 2
+       :max-bytes-for-level-base-in-mb 8
+       :target-file-size-base-in-mb 2
+       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+       :enable-blob-files? true
+       :min-blob-size 512}}}
+
+    ;; TODO: only merge if the admin API already exists
+    :blaze/admin-api
+    {:blaze.elm.expression/cache #blaze/ref :blaze.elm.expression/cache}}}]}

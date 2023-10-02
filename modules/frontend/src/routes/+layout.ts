@@ -1,4 +1,4 @@
-import type { CapabilityStatement } from '../fhir';
+import type { CapabilityStatement } from '../fhir.js';
 import { base } from '$app/paths';
 import { error } from '@sveltejs/kit';
 

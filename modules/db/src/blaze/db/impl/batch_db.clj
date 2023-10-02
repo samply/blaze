@@ -9,6 +9,7 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index :as index]
     [blaze.db.impl.index.compartment.resource :as cr]
+    [blaze.db.impl.index.patient-last-change :as plc]
     [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.index.search-param-value-resource :as sp-vr]
@@ -37,13 +38,16 @@
     (:total (type-stats/get! iter tid t) 0)))
 
 
-(defrecord BatchDb [node basis-t context]
+(defrecord BatchDb [node basis-t t context]
   p/Db
   (-node [_]
     node)
 
   (-basis-t [_]
     basis-t)
+
+  (-as-of-t [_]
+    (when (not= basis-t t) t))
 
 
 
@@ -89,6 +93,13 @@
 
   (-compartment-resource-handles [_ compartment tid start-id]
     (cr/resource-handles! context compartment tid start-id))
+
+
+
+  ;; ---- Patient-Compartment-Level Functions ---------------------------------
+
+  (-patient-compartment-last-change-t [_ patient-id]
+    (plc/last-change-t (:plci context) patient-id t))
 
 
 
@@ -236,8 +247,9 @@
 
   AutoCloseable
   (close [_]
-    (let [{:keys [snapshot raoi svri rsvi cri csvri]} context]
+    (let [{:keys [snapshot raoi plci svri rsvi cri csvri]} context]
       (.close ^AutoCloseable raoi)
+      (.close ^AutoCloseable plci)
       (.close ^AutoCloseable svri)
       (.close ^AutoCloseable rsvi)
       (.close ^AutoCloseable cri)
@@ -321,9 +333,11 @@
     (->BatchDb
       node
       basis-t
+      t
       (let [raoi (kv/new-iterator snapshot :resource-as-of-index)]
         {:snapshot snapshot
          :raoi raoi
+         :plci (kv/new-iterator snapshot :patient-last-change-index)
          :resource-handle (rao/resource-handle raoi t)
          :svri (kv/new-iterator snapshot :search-param-value-index)
          :rsvi (kv/new-iterator snapshot :resource-value-index)

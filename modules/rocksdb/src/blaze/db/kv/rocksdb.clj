@@ -7,12 +7,15 @@
     [blaze.db.kv.rocksdb.metrics.spec]
     [blaze.db.kv.rocksdb.protocols :as p]
     [blaze.db.kv.rocksdb.spec]
+    [clojure.datafy :as datafy]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
+    [java.io File]
     [java.lang AutoCloseable]
     [java.nio ByteBuffer]
+    [java.nio.file Path]
     [java.util ArrayList]
     [org.rocksdb
      ColumnFamilyHandle CompactRangeOptions Env LRUCache Priority
@@ -88,32 +91,66 @@
     (.releaseSnapshot db snapshot)))
 
 
-(defn column-families [store]
+(defn path
+  [store]
+  (p/-path store))
+
+
+(defn column-families
+  "Returns a sorted seq of column family names as keywords."
+  [store]
   (p/-column-families store))
 
 
-(defn get-property
+(defn drop-column-family!
+  "Drops `column-family`.
+
+  This call only records a drop record in the manifest and prevents the column
+  family from flushing and compacting."
+  [store column-family]
+  (p/-drop-column-family store column-family))
+
+
+(defn property
   ([store name]
-   (p/-get-property store name))
+   (p/-property store name))
   ([store column-family name]
-   (p/-get-property store column-family name)))
+   (p/-property store column-family name)))
 
 
-(defn get-long-property
+(defn long-property
   ([store name]
-   (p/-get-long-property store name))
+   (p/-long-property store name))
   ([store column-family name]
-   (p/-get-long-property store column-family name)))
+   (p/-long-property store column-family name)))
 
 
-(defn table-properties
+(defn agg-long-property
+  [store name]
+  (p/-agg-long-property store name))
+
+
+(defn map-property
+  ([store name]
+   (p/-map-property store name))
+  ([store column-family name]
+   (p/-map-property store column-family name)))
+
+
+(defn tables
+  "Returns a coll of tables used by `store` or an anomaly if the optional
+  `column-family` doesn't exist. "
   ([store]
-   (p/-table-properties store))
+   (p/-tables store))
   ([store column-family]
-   (p/-table-properties store column-family)))
+   (p/-tables store column-family)))
 
 
-(deftype RocksKvStore [^RocksDB db ^WriteOptions write-opts cfhs]
+(defn column-family-meta-data [store column-family]
+  (p/-column-family-meta-data store column-family))
+
+
+(deftype RocksKvStore [^RocksDB db ^Path path ^WriteOptions write-opts cfhs]
   kv/KvStore
   (-new-snapshot [_]
     (let [snapshot (.getSnapshot db)]
@@ -154,39 +191,70 @@
       (.write db write-opts wb)))
 
   p/Rocks
-  (-column-families [_]
-    (keys cfhs))
+  (-path [_]
+    path)
 
-  (-get-property [_ name]
+  (-column-families [_]
+    (sort (keys cfhs)))
+
+  (-drop-column-family [_ column-family]
+    (.dropColumnFamily db (impl/get-cfh cfhs column-family)))
+
+  (-property [_ name]
     (try
       (.getProperty db name)
       (catch RocksDBException e
         (impl/property-error e name))))
 
-  (-get-property [_ column-family name]
-    (try
-      (.getProperty db (impl/get-cfh cfhs column-family) name)
-      (catch RocksDBException e
-        (impl/column-family-property-error e column-family name))))
+  (-property [_ column-family name]
+    (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
+      (try
+        (.getProperty db cfh name)
+        (catch RocksDBException e
+          (impl/column-family-property-error e column-family name)))))
 
-  (-get-long-property [_ name]
+  (-long-property [_ name]
     (try
       (.getLongProperty db name)
       (catch RocksDBException e
         (impl/property-error e name))))
 
-  (-get-long-property [_ column-family name]
-    (try
-      (.getLongProperty db (impl/get-cfh cfhs column-family) name)
-      (catch RocksDBException e
-        (impl/column-family-property-error e column-family name))))
+  (-long-property [_ column-family name]
+    (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
+      (try
+        (.getLongProperty db cfh name)
+        (catch RocksDBException e
+          (impl/column-family-property-error e column-family name)))))
 
-  (-table-properties [_]
+  (-agg-long-property [_ name]
+    (try
+      (.getAggregatedLongProperty db name)
+      (catch RocksDBException e
+        (impl/property-error e name))))
+
+  (-map-property [_ name]
+    (try
+      (.getMapProperty db name)
+      (catch RocksDBException e
+        (impl/property-error e name))))
+
+  (-map-property [_ column-family name]
+    (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
+      (try
+        (.getMapProperty db cfh name)
+        (catch RocksDBException e
+          (impl/column-family-property-error e column-family name)))))
+
+  (-tables [_]
     (impl/datafy-tables (.getPropertiesOfAllTables db)))
 
-  (-table-properties [_ column-family]
+  (-tables [_ column-family]
     (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
       (impl/datafy-tables (.getPropertiesOfAllTables db cfh))))
+
+  (-column-family-meta-data [_ column-family]
+    (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
+      (datafy/datafy (.getColumnFamilyMetaData db cfh))))
 
   AutoCloseable
   (close [_]
@@ -201,6 +269,10 @@
   down to the last level containing any data."
   ([store]
    (.compactRange ^RocksDB (.db ^RocksKvStore store)))
+  ([store column-family]
+   (.compactRange
+     ^RocksDB (.db ^RocksKvStore store)
+     (impl/get-cfh (.cfhs ^RocksKvStore store) column-family)))
   ([store column-family change-level target-level]
    (.compactRange
      ^RocksDB (.db ^RocksKvStore store)
@@ -240,7 +312,8 @@
 
 
 (defmethod ig/pre-init-spec ::kv/rocksdb [_]
-  (s/keys :req-un [::dir ::stats] :opt-un [::block-cache ::opts]))
+  (s/keys :req-un [::dir ::stats]
+          :opt-un [::block-cache ::opts ::column-families]))
 
 
 (defn- init-log-msg [dir opts]
@@ -256,7 +329,7 @@
                (merge {:default nil} column-families))
         cfhs (ArrayList.)
         db (RocksDB/open (impl/db-options stats opts) dir cfds cfhs)]
-    (->RocksKvStore db (impl/write-options opts)
+    (->RocksKvStore db (.toPath (File. ^String dir)) (impl/write-options opts)
                     (index-column-family-handles cfhs))))
 
 

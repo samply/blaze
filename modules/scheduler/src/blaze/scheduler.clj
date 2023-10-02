@@ -7,13 +7,26 @@
     [java-time.api :as time]
     [taoensso.timbre :as log])
   (:import
-    [java.util.concurrent Executors Future ScheduledExecutorService TimeUnit]))
+    [java.util.concurrent Future ScheduledExecutorService TimeUnit]))
 
 
 (set! *warn-on-reflection* true)
 
 
-(defn schedule-at-fixed-rate [scheduler f initial-delay period]
+(defn submit
+  "Submits the function `f` to be called later.
+
+  Returns a future that can be used in `cancel`."
+  [scheduler f]
+  (p/-submit scheduler f))
+
+
+(defn schedule-at-fixed-rate
+  "Schedules the function `f` to be called at a rate of `period` with an
+  `initial-delay`.
+
+  Returns a future that can be used in `cancel`."
+  [scheduler f initial-delay period]
   (p/-schedule-at-fixed-rate scheduler f initial-delay period))
 
 
@@ -23,6 +36,9 @@
 
 (extend-protocol p/Scheduler
   ScheduledExecutorService
+  (-submit [scheduler f]
+    (.submit scheduler ^Runnable f))
+
   (-schedule-at-fixed-rate [scheduler f initial-delay period]
     (.scheduleAtFixedRate
       scheduler
@@ -35,7 +51,7 @@
 (defmethod ig/init-key :blaze/scheduler
   [_ _]
   (log/info "Start scheduler")
-  (Executors/newSingleThreadScheduledExecutor))
+  (ex/scheduled-pool 4 "scheduler-%d"))
 
 
 (defmethod ig/halt-key! :blaze/scheduler
@@ -45,3 +61,6 @@
   (if (ex/await-termination scheduler 10 TimeUnit/SECONDS)
     (log/info "Scheduler was stopped successfully")
     (log/warn "Got timeout while stopping the scheduler")))
+
+
+(derive :blaze/scheduler :blaze.metrics/thread-pool-executor)

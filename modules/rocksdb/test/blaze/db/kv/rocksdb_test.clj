@@ -694,23 +694,37 @@
 
   (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
 
-    (is (= [:default :a] (rocksdb/column-families db)))))
+    (is (= [:a :default] (rocksdb/column-families db)))))
 
 
-(deftest get-property-test
+(deftest drop-column-family-test
+  (let [dir (new-temp-dir!)]
+    (testing "open a DB with an :a and a :default column family"
+      (with-system [{db ::kv/rocksdb} (a-config dir)]
+
+        (testing "delete the column family :a"
+          (rocksdb/drop-column-family! db :a))))
+
+    (testing "reopen the same DB with the :default column family only"
+      (with-system [{db ::kv/rocksdb} (config dir)]
+
+        (is (= [:default] (rocksdb/column-families db)))))))
+
+
+(deftest property-test
   (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
 
-    (is (= "0" (rocksdb/get-property db "rocksdb.num-files-at-level0")))
-    (is (= "0" (rocksdb/get-property db "rocksdb.num-files-at-level1")))
+    (is (= "0" (rocksdb/property db "rocksdb.num-files-at-level0")))
+    (is (= "0" (rocksdb/property db "rocksdb.num-files-at-level1")))
 
-    (is (= 0 (rocksdb/get-long-property db "rocksdb.estimate-table-readers-mem")))
+    (is (= 0 (rocksdb/long-property db "rocksdb.estimate-table-readers-mem")))
 
-    (is (string? (rocksdb/get-property db "rocksdb.stats")))
+    (is (string? (rocksdb/property db "rocksdb.stats")))
 
-    (is (string? (rocksdb/get-property db "rocksdb.sstables")))
+    (is (string? (rocksdb/property db "rocksdb.sstables")))
 
     (testing "not-found"
-      (doseq [fn [rocksdb/get-property rocksdb/get-long-property]]
+      (doseq [fn [rocksdb/property rocksdb/long-property]]
         (given (fn db "name-143100")
           ::anom/category := ::anom/not-found
           ::anom/message := "Property with name `name-143100` was not found."))))
@@ -718,23 +732,29 @@
   (testing "with column-family"
     (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
 
-      (is (= "0" (rocksdb/get-property db :a "rocksdb.num-files-at-level0")))
-      (is (= "0" (rocksdb/get-property db :a "rocksdb.num-files-at-level1")))
+      (is (= "0" (rocksdb/property db :a "rocksdb.num-files-at-level0")))
+      (is (= "0" (rocksdb/property db :a "rocksdb.num-files-at-level1")))
 
-      (is (= 0 (rocksdb/get-long-property db :a "rocksdb.estimate-table-readers-mem")))
+      (is (= 0 (rocksdb/long-property db :a "rocksdb.estimate-table-readers-mem")))
 
-      (is (string? (rocksdb/get-property db :a "rocksdb.stats")))
+      (is (string? (rocksdb/property db :a "rocksdb.stats")))
 
-      (is (string? (rocksdb/get-property db :a "rocksdb.sstables")))
+      (is (string? (rocksdb/property db :a "rocksdb.sstables")))
 
-      (testing "not-found"
-        (doseq [fn [rocksdb/get-property rocksdb/get-long-property]]
+      (testing "column family not found"
+        (doseq [fn [rocksdb/property rocksdb/long-property rocksdb/map-property]]
+          (given (fn db :foo "rocksdb.stats")
+            ::anom/category := ::anom/not-found
+            ::anom/message := "Column family `foo` not found.")))
+
+      (testing "property not found"
+        (doseq [fn [rocksdb/property rocksdb/long-property rocksdb/map-property]]
           (given (fn db :a "name-143127")
             ::anom/category := ::anom/not-found
             ::anom/message := "Property with name `name-143127` was not found on column-family with name `a`."))))))
 
 
-(deftest table-properties-test
+(deftest tables-test
   (testing "default column-family"
     (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
       (run!
@@ -745,7 +765,7 @@
             (apply ba (range 10000))))
         (range 10000 20000))
 
-      (given (rocksdb/table-properties db)
+      (given (rocksdb/tables db)
         count := 1
         [0 :comparator-name] := "leveldb.BytewiseComparator"
         [0 :compression-name] := "LZ4"
@@ -768,7 +788,7 @@
               (apply ba (range 10000))]]))
         (range 10000 20000))
 
-      (given (rocksdb/table-properties db :a)
+      (given (rocksdb/tables db :a)
         count := 1
         [0 :comparator-name] := "leveldb.BytewiseComparator"
         [0 :compression-name] := "LZ4"
@@ -782,9 +802,9 @@
 
   (testing "with unknown column-family"
     (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
-      (given (rocksdb/table-properties db :column-family-143119)
+      (given (rocksdb/tables db :column-family-143119)
         ::anom/category := ::anom/not-found
-        ::anom/message := "column family `column-family-143119` not found"))))
+        ::anom/message := "Column family `column-family-143119` not found."))))
 
 
 (deftest compact-range-test

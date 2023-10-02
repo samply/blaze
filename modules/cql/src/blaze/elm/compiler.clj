@@ -44,5 +44,21 @@
   (core/compile* context expression))
 
 
+(defn attach-cache [expression cache]
+  (core/-attach-cache expression cache))
+
+
+(defn resolve-refs
+  "Resolves expressions defined in `expression-defs` in `expression`."
+  [expression expression-defs]
+  (core/-resolve-refs expression expression-defs))
+
+
+(defn resolve-params
+  "Resolves `parameters` in `expression`."
+  [expression parameters]
+  (core/-resolve-params expression parameters))
+
+
 (defn form [expression]
   (core/-form expression))

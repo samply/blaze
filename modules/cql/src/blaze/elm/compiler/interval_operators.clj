@@ -24,6 +24,33 @@
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [_ cache]
+    (->IntervalExpression
+      type
+      (core/-attach-cache low cache)
+      (core/-attach-cache high cache)
+      (core/-attach-cache low-closed-expression cache)
+      (core/-attach-cache high-closed-expression cache)
+      low-closed
+      high-closed))
+  (-resolve-refs [_ expression-defs]
+    (->IntervalExpression
+      type
+      (core/-resolve-refs low expression-defs)
+      (core/-resolve-refs high expression-defs)
+      (core/-resolve-refs low-closed-expression expression-defs)
+      (core/-resolve-refs high-closed-expression expression-defs)
+      low-closed
+      high-closed))
+  (-resolve-params [_ parameters]
+    (->IntervalExpression
+      type
+      (core/-resolve-params low parameters)
+      (core/-resolve-params high parameters)
+      (core/-resolve-params low-closed-expression parameters)
+      (core/-resolve-params high-closed-expression parameters)
+      low-closed
+      high-closed))
   (-eval [_ context resource scope]
     (let [low (core/-eval low context resource scope)
           high (core/-eval high context resource scope)
@@ -43,7 +70,9 @@
           (if (nil? high)
             (ao/max-value type)
             high)
-          (p/predecessor high))))))
+          (p/predecessor high)))))
+  (-form [_]
+    (list 'interval (core/-form low) (core/-form high))))
 
 
 (defmethod core/compile* :elm.compiler.type/interval
@@ -87,6 +116,11 @@
   (p/after operand-1 operand-2 precision))
 
 
+(comment
+  (macroexpand-1
+    '(defbinopp after [operand-1 operand-2 precision]
+       (p/after operand-1 operand-2 precision))))
+
 ;; 19.3. Before
 (defbinopp before [operand-1 operand-2 precision]
   (p/before operand-1 operand-2 precision))
@@ -113,6 +147,13 @@
   [list-or-interval x precision]
   (p/contains list-or-interval x precision))
 
+;; TODO: remove
+(comment
+  (macroexpand-1 '(defbinopp contains
+                    {:optimizations #{:first :non-distinct}}
+                    [list-or-interval x precision]
+                    (p/contains list-or-interval x precision)))
+  )
 
 ;; 19.6. End
 (defunop end [{:keys [end]}]
@@ -197,6 +238,15 @@
       (throw (ex-info (core/append-locator "Invalid non-unit interval in `PointFrom` expression at" locator)
                       {:expression expression})))))
 
+(comment
+  (macroexpand-1
+    '(defunop point-from [interval {{:keys [locator]} :operand :as expression}]
+       (when interval
+         (if (p/equal (:start interval) (:end interval))
+           (:start interval)
+           (throw (ex-info (core/append-locator "Invalid non-unit interval in `PointFrom` expression at" locator)
+                           {:expression expression})))))))
+
 
 ;; 19.24. ProperContains
 (defbinopp proper-contains [list-or-interval x precision]
@@ -224,6 +274,12 @@
 (defunop start [{:keys [start]}]
   start)
 
+
+(comment
+  (macroexpand-1
+    '(defunop start [{:keys [start]}]
+       start))
+  )
 
 ;; 19.30. Starts
 (defbinopp starts [x y _]

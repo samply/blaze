@@ -2,6 +2,7 @@
  {blaze.anomaly/if-ok clojure.core/let
   blaze.anomaly/when-ok clojure.core/let
   blaze.db.api-stub/with-system-data clojure.core/with-open
+  blaze.db.impl.macros/with-open-coll clojure.core/with-open
   blaze.module.test-util/with-system clojure.core/with-open
   blaze.elm.compiler.macros/defunop clojure.core/defn
   blaze.elm.compiler.macros/defbinop clojure.core/defn
@@ -9,7 +10,9 @@
   blaze.elm.compiler.macros/defnaryop clojure.core/defn
   blaze.elm.compiler.macros/defaggop clojure.core/defn
   blaze.elm.compiler.macros/defbinopp clojure.core/defn
-  blaze.elm.compiler.macros/defunopp clojure.core/defn}
+  blaze.elm.compiler.macros/defunopp clojure.core/defn
+  prometheus.alpha/defcounter clojure.core/def
+  prometheus.alpha/defhistogram clojure.core/def}
 
  :linters
  {;; because of macros in modules/cql/src/blaze/elm/compiler.clj
@@ -44,6 +47,10 @@
     blaze.db.api d
     blaze.elm.compiler c
     blaze.elm.compiler.external-data ed
+    blaze.elm.compiler.library library
+    blaze.elm.compiler.test-util ctu
+    blaze.elm.expression.cache ec
+    blaze.elm.expression.cache.bloom-filter bloom-filter
     blaze.elm.expression expr
     cognitect.anomalies anom
     clojure.java.io io

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { FhirObject } from '../resource/resource-card';
-	import type { Dosage } from '../fhir';
+	import type { FhirObject } from '../resource/resource-card.js';
+	import type { Dosage } from '../fhir.js';
 
 	export let values: FhirObject[];
 

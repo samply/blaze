@@ -138,22 +138,34 @@
 
 
 ;; 16.19. Round
+(defn round-op [operand precision]
+  (reify core/Expression
+    (-static [_]
+      false)
+    (-attach-cache [_ cache]
+      (round-op (core/-attach-cache operand cache)
+                (core/-attach-cache precision cache)))
+    (-resolve-refs [_ expression-defs]
+      (round-op (core/-resolve-refs operand expression-defs)
+                (core/-resolve-refs precision expression-defs)))
+    (-resolve-params [_ parameters]
+      (round-op (core/-resolve-params operand parameters)
+                (core/-resolve-params precision parameters)))
+    (-eval [_ context resource scope]
+      (p/round (core/-eval operand context resource scope)
+               (core/-eval precision context resource scope)))
+    (-form [_]
+      (->> (some-> (core/-form precision) list)
+           (cons (core/-form operand))
+           (cons 'round)))))
+
 (defmethod core/compile* :elm.compiler.type/round
   [context {:keys [operand precision]}]
   (let [operand (core/compile* context operand)
         precision (some->> precision (core/compile* context))]
     (if (and (core/static? operand) (core/static? precision))
       (p/round operand precision)
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scope]
-          (p/round (core/-eval operand context resource scope)
-                   (core/-eval precision context resource scope)))
-        (-form [_]
-          (->> (some-> (core/-form precision) list)
-               (cons (core/-form operand))
-               (cons 'round)))))))
+      (round-op operand precision))))
 
 
 ;; 16.20. Subtract

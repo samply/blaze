@@ -13,7 +13,7 @@
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.queries :as queries]
-    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
+    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
     [blaze.elm.quantity :as quantity]
@@ -26,12 +26,12 @@
 
 
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 
@@ -48,34 +48,48 @@
   (testing "Non-retrieve queries"
     (testing "Sort"
       (testing "ByDirection"
-        (are [query res] (= res (core/-eval (c/compile {} query) {} nil nil))
-          {:type "Query"
-           :source
-           [{:alias "S"
-             :expression #elm/list [#elm/integer "2" #elm/integer "1" #elm/integer "1"]}]
-           :sort {:by [{:type "ByDirection" :direction "asc"}]}}
-          [1 2]))
+        (let [elm {:type "Query"
+                   :source
+                   [{:alias "S"
+                     :expression #elm/list [#elm/integer "2" #elm/integer "1" #elm/integer "1"]}]
+                   :sort {:by [{:type "ByDirection" :direction "asc"}]}}
+              expr (c/compile {} elm)]
+
+          (testing "eval"
+            (is (= [1 2] (core/-eval expr {} nil nil))))
+
+          (testing "form"
+            (has-form expr '(sorted-vector-query distinct [2 1 1] asc)))))
 
       (testing "ByExpression"
-        (are [query res] (= res (core/-eval (c/compile {} query) {} nil nil))
-          {:type "Query"
-           :source
-           [{:alias "S"
-             :expression
-             #elm/list
-                     [#elm/quantity [2 "m"]
-                      #elm/quantity [1 "m"]
-                      #elm/quantity [1 "m"]]}]
-           :sort
-           {:by
-            [{:type "ByExpression"
-              :direction "asc"
-              :expression
-              {:type "Property"
-               :path "value"
-               :scope "S"
-               :resultTypeName "{urn:hl7-org:elm-types:r1}decimal"}}]}}
-          [(quantity/quantity 1 "m") (quantity/quantity 2 "m")])
+        (let [elm {:type "Query"
+                   :source
+                   [{:alias "S"
+                     :expression
+                     #elm/list
+                             [#elm/quantity [2 "m"]
+                              #elm/quantity [1 "m"]
+                              #elm/quantity [1 "m"]]}]
+                   :sort
+                   {:by
+                    [{:type "ByExpression"
+                      :direction "asc"
+                      :expression
+                      {:type "Property"
+                       :path "value"
+                       :scope "S"
+                       :resultTypeName "{urn:hl7-org:elm-types:r1}decimal"}}]}}
+              expr (c/compile {} elm)]
+
+          (testing "eval"
+            (is (= [(quantity/quantity 1 "m") (quantity/quantity 2 "m")] (core/-eval expr {} nil nil))))
+
+          (testing "form"
+            (has-form expr '(sorted-vector-query distinct
+                                                 [(quantity 2 "m")
+                                                  (quantity 1 "m")
+                                                  (quantity 1 "m")]
+                                                 [asc (:value S)]))))
 
         (testing "with IdentifierRef"
           (are [query res] (= res (core/-eval (c/compile {} query) {} nil nil))
@@ -350,7 +364,10 @@
           (is (= [lhs-entity] (into [] xform [lhs-entity]))))
 
         (testing "form"
-          (is (= '(with (retrieve "Observation"))
+          (is (= '(with (retrieve "Observation")
+                        (fn [O1] (:subject O1))
+                        nil
+                        (fn [O0] (:subject O0)))
                  (queries/-form xform-factory)))))))
 
   (testing "Equiv With with one Patient and one Observation comparing the patient with the operation subject."

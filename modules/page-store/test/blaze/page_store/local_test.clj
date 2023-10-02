@@ -16,6 +16,7 @@
     [cognitect.anomalies :as anom]
     [cuerdas.core :as c-str]
     [integrant.core :as ig]
+    [java-time.api :as time]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log]))
 
@@ -54,6 +55,24 @@
       :key := :blaze.page-store/local
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid max size"
+    (given-thrown (ig/init {:blaze.page-store/local {:max-size-in-mb ::invalid}})
+      :key := :blaze.page-store/local
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :secure-rng))
+      [:explain ::s/problems 1 :path 0] := :max-size-in-mb
+      [:explain ::s/problems 1 :pred] := `nat-int?
+      [:explain ::s/problems 1 :val] := ::invalid))
+
+  (testing "invalid expire duration"
+    (given-thrown (ig/init {:blaze.page-store/local {:expire-duration ::invalid}})
+      :key := :blaze.page-store/local
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :secure-rng))
+      [:explain ::s/problems 1 :path 0] := :expire-duration
+      [:explain ::s/problems 1 :pred] := `time/duration?
+      [:explain ::s/problems 1 :val] := ::invalid))
 
   (testing "is a page store"
     (with-system [{store :blaze.page-store/local} config]

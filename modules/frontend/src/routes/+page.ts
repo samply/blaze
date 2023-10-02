@@ -1,6 +1,6 @@
-import type { CapabilityStatement, Bundle, BundleEntry, Resource } from '../fhir';
-import { bundleLink } from '../fhir';
-import type { ResourceInfo } from './+layout';
+import type { CapabilityStatement, Bundle, BundleEntry, Resource } from '../fhir.js';
+import { bundleLink } from '../fhir.js';
+import type { ResourceInfo } from './+layout.js';
 import { base } from '$app/paths';
 import { error } from '@sveltejs/kit';
 

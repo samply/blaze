@@ -1,5 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.stratifier-spec
   (:require
+    [blaze.async.comp :as ac]
     [blaze.fhir.operation.evaluate-measure.cql-spec]
     [blaze.fhir.operation.evaluate-measure.measure.spec]
     [blaze.fhir.operation.evaluate-measure.measure.stratifier :as stratifier]
@@ -11,4 +12,5 @@
 (s/fdef stratifier/evaluate
   :args (s/cat :context ::stratifier/context
                :evaluated-populations ::stratifier/evaluated-populations
-               :stratifier map?))
+               :stratifier map?)
+  :ret ac/completable-future?)

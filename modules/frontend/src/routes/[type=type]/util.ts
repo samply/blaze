@@ -1,9 +1,14 @@
-import type { SearchSetBundle, SearchSetBundleEntry, Resource, OperationOutcome } from '../../fhir';
-import type { RouteParams } from './$types';
+import type {
+	SearchSetBundle,
+	SearchSetBundleEntry,
+	Resource,
+	OperationOutcome
+} from '../../fhir.js';
+import type { RouteParams } from './$types.js';
 import { base } from '$app/paths';
 import { error } from '@sveltejs/kit';
-import { processParams } from '../../util';
-import { fhirObject, type FhirObject } from '../../resource/resource-card';
+import { processParams } from '../../util.js';
+import { fhirObject, type FhirObject } from '../../resource/resource-card.js';
 
 export async function transformBundle(
 	fetch: typeof window.fetch,

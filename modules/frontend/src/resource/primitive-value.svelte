@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { FhirPrimitive } from './resource-card';
+	import type { FhirPrimitive } from './resource-card.js';
 
 	import Canonical from '../values/canonical.svelte';
 	import Date from '../values/date.svelte';

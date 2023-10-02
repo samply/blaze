@@ -1,4 +1,4 @@
-(ns blaze.db.cache-collector.protocols)
+(ns blaze.cache-collector.protocols)
 
 
 (defprotocol StatsCache

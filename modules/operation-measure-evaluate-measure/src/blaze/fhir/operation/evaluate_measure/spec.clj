@@ -1,20 +1,24 @@
 (ns blaze.fhir.operation.evaluate-measure.spec
   (:require
     [blaze.executors :as ex]
-    [blaze.fhir.operation.evaluate-measure :as-alias measure]
+    [blaze.fhir.operation.evaluate-measure :as-alias evaluate-measure]
     [clojure.spec.alpha :as s]
     [java-time.api :as time]))
 
 
-(s/def ::measure/executor
+(s/def ::evaluate-measure/executor
   ex/executor?)
 
 
-(s/def ::measure/num-threads
+(s/def ::evaluate-measure/num-threads
   pos-int?)
 
 
-(s/def ::measure/timeout
+(s/def ::evaluate-measure/max-size
+  nat-int?)
+
+
+(s/def ::evaluate-measure/timeout
   time/duration?)
 
 

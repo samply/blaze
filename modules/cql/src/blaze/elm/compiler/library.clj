@@ -60,11 +60,12 @@
   itself is returned.
 
   Returns an anomaly on errors."
-  {:arglists '([context expression-def])}
+  {:arglists '([context parameter-def])}
   [context {:keys [default] :as parameter-def}]
   (if (some? default)
     (-> (ba/try-anomaly
-          (assoc parameter-def :default (c/compile context default)))
+          (let [context (assoc context :eval-context "Unfiltered")]
+            (assoc parameter-def :default (c/compile context default))))
         (ba/exceptionally
           #(assoc % :context context :elm/expression default)))
     parameter-def))
@@ -81,6 +82,38 @@
     (-> library :parameters :def)))
 
 
+(defn- resolve-refs-xf [expression-defs]
+  (map
+    (fn [[name expr-def]]
+      [name (update expr-def :expression c/resolve-refs expression-defs)])))
+
+
+(defn- remove-unfiltered [expression-defs]
+  (into {} (remove (comp #{"Unfiltered"} :context val)) expression-defs))
+
+
+(defn- resolve-refs
+  "Resolves all non-unfiltered references.
+
+  Unfiltered references can be resolved later with `resolve-all-refs`."
+  [expr-defs]
+  (into {} (resolve-refs-xf (remove-unfiltered expr-defs)) expr-defs))
+
+
+(defn resolve-all-refs [expression-defs]
+  (into {} (resolve-refs-xf expression-defs) expression-defs))
+
+
+(defn- resolve-param-refs-xf [parameters]
+  (map
+    (fn [[name expr-def]]
+      [name (update expr-def :expression c/resolve-params parameters)])))
+
+
+(defn resolve-param-refs [expression-defs parameters]
+  (into {} (resolve-param-refs-xf parameters) expression-defs))
+
+
 (defn compile-library
   "Compiles `library` using `node`.
 
@@ -94,6 +127,6 @@
     (when-ok [{:keys [function-defs] :as context} (compile-function-defs context library)
               expression-defs (expression-defs context library)
               parameter-default-values (parameter-default-values context library)]
-      {:expression-defs expression-defs
+      {:expression-defs (resolve-refs expression-defs)
        :function-defs function-defs
        :parameter-default-values parameter-default-values})))

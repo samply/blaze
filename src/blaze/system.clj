@@ -7,17 +7,36 @@
   (:require
     [blaze.log]
     [clojure.java.io :as io]
+    [clojure.spec.alpha :as s]
     [clojure.string :as str]
     [clojure.tools.reader.edn :as edn]
     [clojure.walk :as walk]
     [integrant.core :as ig]
-    [spec-coerce.alpha :refer [coerce]]
+    [java-time.api :as time]
+    [spec-coerce.alpha :as sc :refer [coerce]]
     [taoensso.timbre :as log])
   (:import
     [java.io PushbackReader]
     [java.security SecureRandom]
     [java.time Clock]
     [java.util.concurrent ThreadLocalRandom]))
+
+
+
+;; ---- Coercers --------------------------------------------------------------
+
+(defmethod sc/pred-coercer `java-time.amount/duration?
+  [_]
+  (reify
+    sc/Coercer
+    (-coerce [_ x]
+      (cond
+        (string? x)
+        (try
+          (time/duration x)
+          (catch Exception _
+            ::s/invalid))
+        :else ::s/invalid))))
 
 
 
@@ -169,7 +188,7 @@
       (let [enabled? (feature-enabled? env feature)]
         (log/info "Feature" name (if enabled? "enabled" "disabled"))
         (if enabled?
-          (merge-with merge res config)
+          (merge-with (partial merge-with merge) res config)
           res)))
     base-config
     features))

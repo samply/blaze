@@ -4734,6 +4734,51 @@
           [0 :id] := "0")))))
 
 
+(deftest patient-compartment-last-change-t-test
+  (testing "non-existing patient"
+    (with-system [{:blaze.db/keys [node]} config]
+
+      (testing "just returns nil"
+        (is (nil? (d/patient-compartment-last-change-t (d/db node) "0"))))))
+
+  (testing "single patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (testing "has no resources in its compartment"
+        (is (nil? (d/patient-compartment-last-change-t (d/db node) "0"))))))
+
+
+  (testing "observation created in same transaction as patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+      (is (= 1 (d/patient-compartment-last-change-t (d/db node) "0")))))
+
+  (testing "observation created after the patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+      (testing "the last change comes from the second transaction"
+        (is (= 2 (d/patient-compartment-last-change-t (d/db node) "0"))))
+
+      (testing "at t=1 there was no change"
+        (is (nil? (d/patient-compartment-last-change-t (d/as-of (d/db node) 1) "0"))))))
+
+  (testing "patient with last change in t=1 isn't affected by later patient added in t=2"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/1"}}]]]
+
+      (is (nil? (d/patient-compartment-last-change-t (d/db node) "0"))))))
+
+
 (defmethod ig/init-key ::defective-resource-store [_ {:keys [hashes-to-store]}]
   (let [store (atom {})]
     (reify
