@@ -5,7 +5,6 @@
   successful transactions happened. In other words, this index maps each t which
   is just a monotonically increasing number to a real point in time."
   (:require
-    [blaze.byte-buffer :as bb]
     [blaze.db.impl.index.cbor :as cbor]
     [blaze.db.kv :as kv])
   (:import
@@ -49,9 +48,7 @@
               iter (kv/new-iterator snapshot :tx-success-index)]
     (kv/seek-to-first! iter)
     (when (kv/valid? iter)
-      (let [buf (bb/allocate-direct Long/BYTES)]
-        (kv/key! iter buf)
-        (bb/get-long! buf)))))
+      (Longs/fromByteArray (kv/key iter)))))
 
 
 (defn- encode-value

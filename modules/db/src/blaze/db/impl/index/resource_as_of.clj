@@ -7,8 +7,7 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.iterators :as i]
-    [blaze.db.kv :as kv]
-    [blaze.fhir.hash :as hash])
+    [blaze.db.kv :as kv])
   (:import
     [com.google.common.primitives Ints]))
 
@@ -17,22 +16,8 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(def ^:private ^:const ^long max-key-size
-  (+ codec/tid-size codec/max-id-size codec/t-size))
-
-
 (def ^:private ^:const ^long except-id-key-size
   (+ codec/tid-size codec/t-size))
-
-
-(def ^:private ^:const ^long value-size
-  (+ hash/size codec/state-size))
-
-
-(defn- key-reader [iter kb]
-  (fn [_]
-    (bb/clear! kb)
-    (kv/key! iter kb)))
 
 
 (defn- focus-id!
@@ -66,8 +51,8 @@
 
   Returns true if the id changed over the previously seen one. Keeps the id
   buffer up to date."
-  [kb ib]
-  (fn [_]
+  [ib]
+  (fn [kb]
     (focus-id! kb)
     (cond
       (zero? (bb/limit ib))
@@ -86,24 +71,24 @@
         true))))
 
 
-(defn- tid-marker [kb tid-box ib id-marker]
-  (fn [x]
+(defn- tid-marker [tid-box ib id-marker]
+  (fn [kb]
     (let [tid (bb/get-int! kb)
           last-tid @tid-box]
       (cond
         (nil? last-tid)
         (do
           (vreset! tid-box tid)
-          (id-marker x))
+          (id-marker kb))
 
         (= tid last-tid)
-        (id-marker x)
+        (id-marker kb)
 
         :else
         (do
           (vreset! tid-box tid)
           (bb/set-limit! ib 0)
-          (id-marker x)
+          (id-marker kb)
           true)))))
 
 
@@ -119,32 +104,29 @@
 
   Uses `iter` to read the `hash` and `state` when needed. Supplies `tid` to the
   created entry."
-  [tid iter kb ib base-t]
-  (let [vb (bb/allocate-direct value-size)]
-    #(let [t (codec/descending-long (bb/get-long! kb))]
-       (when (<= t ^long base-t)
-         (bb/clear! vb)
-         (kv/value! iter vb)
-         (new-entry! tid ib vb t)))))
+  [tid iter ib base-t]
+  (fn [kb]
+    (let [t (codec/descending-long (bb/get-long! kb))]
+      (when (<= t ^long base-t)
+        (new-entry! tid ib (bb/wrap (kv/value iter)) t)))))
 
 
 (defn- system-entry-creator
-  [tid-box iter kb ib base-t]
-  (let [vb (bb/allocate-direct value-size)]
-    #(let [t (codec/descending-long (bb/get-long! kb))]
-       (when (<= t ^long base-t)
-         (bb/clear! vb)
-         (kv/value! iter vb)
-         (new-entry! @tid-box ib vb t)))))
+  [tid-box iter ib base-t]
+  (fn [kb]
+    (let [t (codec/descending-long (bb/get-long! kb))]
+      (when (<= t ^long base-t)
+        (new-entry! @tid-box ib (bb/wrap (kv/value iter)) t)))))
 
 
 (defn- group-by-id
   "Returns a stateful transducer which takes flags from `id-marker` and supplies
   resource handle entries to the reduce function after id changes happen."
-  [entry-creator]
+  [id-marker entry-creator]
   (let [state (volatile! nil)
-        search-entry! #(when-let [e (entry-creator)]
-                         (vreset! state e))]
+        search-entry! (fn [kb]
+                        (when-let [e (entry-creator kb)]
+                          (vreset! state e)))]
     (fn [rf]
       (fn
         ([] (rf))
@@ -155,21 +137,21 @@
                           (unreduced (rf result e)))
                         result)]
            (rf result)))
-        ([result id-changed?]
-         (if id-changed?
+        ([result kb]
+         (if (id-marker kb)
            (if-let [e @state]
              (let [result (rf result e)]
                (vreset! state nil)
                (when-not (reduced? result)
-                 (search-entry!))
+                 (search-entry! kb))
                result)
              (do
-               (search-entry!)
+               (search-entry! kb)
                result))
            (if @state
              result
              (do
-               (search-entry!)
+               (search-entry! kb)
                result))))))))
 
 
@@ -186,8 +168,8 @@
   (bb/array (encode-key-buf tid id t)))
 
 
-(defn- starts-with-tid? [^long tid kb]
-  (fn [_] (= tid (bb/get-int! kb))))
+(defn- starts-with-tid? [^long tid]
+  (fn [kb] (= tid (bb/get-int! kb))))
 
 
 (def ^:private remove-deleted-xf
@@ -195,14 +177,12 @@
 
 
 (defn- type-list-xf [{:keys [raoi t]} tid]
-  (let [kb (bb/allocate-direct max-key-size)
-        ib (bb/set-limit! (bb/allocate codec/max-id-size) 0)
-        entry-creator (type-entry-creator tid raoi kb ib t)]
+  (let [ib (bb/set-limit! (bb/allocate codec/max-id-size) 0)
+        entry-creator (type-entry-creator tid raoi ib t)]
     (comp
-      (map (key-reader raoi kb))
-      (take-while (starts-with-tid? tid kb))
-      (map (id-marker kb ib))
-      (group-by-id entry-creator)
+      i/key-reader
+      (take-while (starts-with-tid? tid))
+      (group-by-id (id-marker ib) entry-creator)
       remove-deleted-xf)))
 
 
@@ -304,13 +284,12 @@
 
 
 (defn- system-list-xf [{:keys [raoi t]} start-tid]
-  (let [kb (bb/allocate-direct max-key-size)
-        tid-box (volatile! start-tid)
+  (let [tid-box (volatile! start-tid)
         ib (bb/set-limit! (bb/allocate codec/max-id-size) 0)]
     (comp
-      (map (key-reader raoi kb))
-      (map (tid-marker kb tid-box ib (id-marker kb ib)))
-      (group-by-id (system-entry-creator tid-box raoi kb ib t))
+      i/key-reader
+      (group-by-id (tid-marker tid-box ib (id-marker ib))
+                   (system-entry-creator tid-box raoi ib t))
       remove-deleted-xf)))
 
 
@@ -345,18 +324,14 @@
   after decoding."
   []
   (let [ib (byte-array codec/max-id-size)]
-    (fn
-      ([]
-       [(bb/allocate-direct max-key-size)
-        (bb/allocate-direct value-size)])
-      ([kb vb]
-       (rh/resource-handle
-         (bb/get-int! kb)
-         (let [id-size (- (bb/remaining kb) codec/t-size)]
-           (bb/copy-into-byte-array! kb ib 0 id-size)
-           (codec/id ib 0 id-size))
-         (codec/descending-long (bb/get-long! kb))
-         vb)))))
+    (fn [kb vb]
+      (rh/resource-handle
+        (bb/get-int! kb)
+        (let [id-size (- (bb/remaining kb) codec/t-size)]
+          (bb/copy-into-byte-array! kb ib 0 id-size)
+          (codec/id ib 0 id-size))
+        (codec/descending-long (bb/get-long! kb))
+        vb))))
 
 
 (defn- instance-history-key-valid? [^long tid id ^long end-t]
@@ -377,40 +352,30 @@
     (i/kvs! raoi (decoder) (start-key tid id start-t))))
 
 
-(defn- resource-handle** [raoi tb kb vb tid id t]
-  ;; fill target buffer
-  (bb/clear! tb)
-  (bb/put-int! tb tid)
-  (bb/put-byte-string! tb id)
-  (bb/put-long! tb (codec/descending-long t))
-  ;; flip target buffer to be ready for seek
-  (bb/flip! tb)
-  (kv/seek-buffer! raoi tb)
-  (when (kv/valid? raoi)
-    ;; read key
-    (bb/clear! kb)
-    (kv/key! raoi kb)
-    ;; we have to check that we are still on target, because otherwise we
-    ;; would find the next resource
-    ;; focus target buffer on tid and id
-    (bb/rewind! tb)
-    (bb/set-limit! tb (unchecked-subtract-int (bb/limit tb) codec/t-size))
-    ;; focus key buffer on tid and id
-    (bb/set-limit! kb (unchecked-subtract-int (bb/limit kb) codec/t-size))
-    (when (= tb kb)
-      ;; focus key buffer on t
-      (let [limit (bb/limit kb)]
-        (bb/set-position! kb limit)
-        (bb/set-limit! kb (unchecked-add-int limit codec/t-size)))
-      ;; read value
-      (bb/clear! vb)
-      (kv/value! raoi vb)
-      ;; create resource handle
-      (rh/resource-handle
-        tid
-        (codec/id-string id)
-        (codec/descending-long (bb/get-long! kb))
-        vb))))
+(defn- resource-handle** [raoi tid id t]
+  (let [tb (encode-key-buf tid id t)]
+    (kv/seek! raoi (bb/array tb))
+    (when (kv/valid? raoi)
+      ;; read key
+      (let [kb (bb/wrap (kv/key raoi))]
+        ;; we have to check that we are still on target, because otherwise we
+        ;; would find the next resource
+        ;; focus target buffer on tid and id
+        (bb/rewind! tb)
+        (bb/set-limit! tb (unchecked-subtract-int (bb/limit tb) codec/t-size))
+        ;; focus key buffer on tid and id
+        (bb/set-limit! kb (unchecked-subtract-int (bb/limit kb) codec/t-size))
+        (when (= tb kb)
+          ;; focus key buffer on t
+          (let [limit (bb/limit kb)]
+            (bb/set-position! kb limit)
+            (bb/set-limit! kb (unchecked-add-int limit codec/t-size)))
+          ;; create resource handle
+          (rh/resource-handle
+            tid
+            (codec/id-string id)
+            (codec/descending-long (bb/get-long! kb))
+            (bb/wrap (kv/value raoi))))))))
 
 
 (defn resource-handle
@@ -421,14 +386,11 @@
 
   The returned function can't be called concurrently."
   [raoi t]
-  (let [tb (bb/allocate-direct max-key-size)
-        kb (bb/allocate-direct max-key-size)
-        vb (bb/allocate-direct value-size)]
-    (fn resource-handle
-      ([tid id]
-       (resource-handle tid id t))
-      ([tid id t]
-       (resource-handle** raoi tb kb vb tid id t)))))
+  (fn resource-handle
+    ([tid id]
+     (resource-handle tid id t))
+    ([tid id t]
+     (resource-handle** raoi tid id t))))
 
 
 (defn num-of-instance-changes

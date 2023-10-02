@@ -29,13 +29,11 @@
 
 (defn- decode-1
   "Decode function with a ByteBuffer of size one."
-  ([]
-   (bb/allocate-direct 1))
-  ([kb]
-   (let [len (bb/remaining kb)
-         bs (byte-array len)]
-     (bb/copy-into-byte-array! kb bs 0 len)
-     (vec bs))))
+  [kb]
+  (let [len (bb/remaining kb)
+        bs (byte-array len)]
+    (bb/copy-into-byte-array! kb bs 0 len)
+    (vec bs)))
 
 
 (deftest keys-test

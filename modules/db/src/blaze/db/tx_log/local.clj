@@ -11,7 +11,6 @@
   (:require
     [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
-    [blaze.byte-buffer :as bb]
     [blaze.byte-string :as bs]
     [blaze.db.impl.iterators :as i]
     [blaze.db.kv :as kv]
@@ -24,6 +23,7 @@
     [prometheus.alpha :as prom :refer [defhistogram]]
     [taoensso.timbre :as log])
   (:import
+    [com.google.common.primitives Longs]
     [java.lang AutoCloseable]
     [java.time Instant]
     [java.util.concurrent ArrayBlockingQueue BlockingQueue TimeUnit]
@@ -139,11 +139,8 @@
   (with-open [snapshot (kv/new-snapshot kv-store)
               iter (kv/new-iterator snapshot)]
     (kv/seek-to-last! iter)
-    (let [buf (bb/allocate-direct Long/BYTES)]
-      (when (kv/valid? iter)
-        (kv/key! iter buf)
-        (when (<= Long/BYTES (bb/remaining buf))
-          (bb/get-long! buf))))))
+    (when (kv/valid? iter)
+      (Longs/fromByteArray (kv/key iter)))))
 
 
 (defmethod ig/pre-init-spec :blaze.db.tx-log/local [_]

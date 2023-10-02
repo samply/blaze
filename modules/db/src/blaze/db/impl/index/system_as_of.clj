@@ -6,8 +6,7 @@
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.iterators :as i]
-    [blaze.fhir.hash :as hash])
+    [blaze.db.impl.iterators :as i])
   (:import
     [com.google.common.primitives Longs]))
 
@@ -18,14 +17,6 @@
 
 (def ^:private ^:const ^long t-tid-size
   (+ codec/t-size codec/tid-size))
-
-
-(def ^:private ^:const ^long max-key-size
-  (+ t-tid-size codec/max-id-size))
-
-
-(def ^:private ^:const ^long value-size
-  (+ hash/size codec/state-size))
 
 
 (defn- key-valid? [^long end-t]
@@ -49,18 +40,14 @@
   after decoding."
   []
   (let [ib (byte-array codec/max-id-size)]
-    (fn
-      ([]
-       [(bb/allocate-direct max-key-size)
-        (bb/allocate-direct value-size)])
-      ([kb vb]
-       (let [t (codec/descending-long (bb/get-long! kb))]
-         (rh/resource-handle
-           (bb/get-int! kb)
-           (let [id-size (bb/remaining kb)]
-             (bb/copy-into-byte-array! kb ib 0 id-size)
-             (codec/id ib 0 id-size))
-           t vb))))))
+    (fn [kb vb]
+      (let [t (codec/descending-long (bb/get-long! kb))]
+        (rh/resource-handle
+          (bb/get-int! kb)
+          (let [id-size (bb/remaining kb)]
+            (bb/copy-into-byte-array! kb ib 0 id-size)
+            (codec/id ib 0 id-size))
+          t vb)))))
 
 
 (defn encode-key

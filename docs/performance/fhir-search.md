@@ -10,7 +10,7 @@ The following systems were used for performance evaluation:
 
 | System | Provider | CPU        | Cores |     RAM |    SSD | Heap Mem | Block Cache | Resource Cache ¹ |
 |--------|----------|------------|------:|--------:|-------:|---------:|------------:|-----------------:|
-| LEA47  | on-prem  | EPYC 7543P |    16 | 128 GiB |   2 TB |   32 GiB |      16 GiB |             11 M | 
+| LEA47  | on-prem  | EPYC 7543P |    16 | 128 GiB |   2 TB |   32 GiB |      32 GiB |             10 M | 
 | CCX42  | Hetzner  | EPYC 7763  |    16 |  64 GiB | 360 GB |   16 GiB |       8 GiB |              5 M | 
 
 ¹ Size of the resource cache (DB_RESOURCE_CACHE_SIZE)
@@ -40,17 +40,17 @@ curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&_sum
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|---------|-------:|---------:|-------:|-------:|
-| LEA47  | 100k    | 8310-5  |  115 k |     0.06 |  0.002 | 0.53 ² |
-| LEA47  | 100k    | 55758-7 |  1.0 M |     0.52 |  0.006 |   0.51 |
-| LEA47  | 100k    | 72514-3 |  2.7 M |     1.36 |  0.016 |   0.49 |
-| CCX42  | 100k    | 8310-5  |  115 k |     0.07 |  0.005 | 0.62 ² |
+| LEA47  | 100k    | 8310-5  |  115 k |     0.08 |  0.005 |   0.66 |
+| LEA47  | 100k    | 55758-7 |  1.0 M |     0.56 |  0.017 |   0.55 |
+| LEA47  | 100k    | 72514-3 |  2.7 M |     1.63 |  0.017 |   0.59 |
+| CCX42  | 100k    | 8310-5  |  115 k |     0.07 |  0.005 |   0.62 |
 | CCX42  | 100k    | 55758-7 |  1.0 M |     0.53 |  0.062 |   0.52 |
 | CCX42  | 100k    | 72514-3 |  2.7 M |     1.31 |  0.017 |   0.47 |
-| LEA47  | 1M      | 8310-5  |  1.1 M |     0.59 |  0.008 |   0.50 |
-| LEA47  | 1M      | 55758-7 | 10.1 M |     5.46 |  0.097 |   0.53 |
-| LEA47  | 1M      | 72514-3 | 27.3 M |    14.60 |  0.077 |   0.53 |
+| LEA47  | 1M      | 8310-5  |  1.1 M |     0.67 |  0.011 |   0.57 |
+| LEA47  | 1M      | 55758-7 | 10.1 M |     6.08 |  0.066 |   0.59 |
+| LEA47  | 1M      | 72514-3 | 27.3 M |    16.37 |  0.234 |   0.59 |
 
-¹ time in seconds per 1 million resources, ² Because the measurement of the duration includes the whole HTTP stack, durations of small results like the 115 k includes an overhead that results in a duration more like 0.6 seconds per 1 million hits.
+¹ time in seconds per 1 million resources
 
 According to the measurements the time needed by Blaze to count resources only depends on the number of hits and equals roughly in **0.5 seconds per 1 million hits**.
 
@@ -64,19 +64,19 @@ Download is done using the following `blazectl` command:
 blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&_count=1000" > /dev/null"
 ```
 
-| System | Dataset | Code    | # Hits | Time (s) | StdDev |  T/1M ¹ |
-|--------|---------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 100k    | 8310-5  |  115 k |     1.91 |  0.025 |   16.58 |  
-| LEA47  | 100k    | 55758-7 |  1.0 M |    15.85 |  0.224 |   15.73 |
-| LEA47  | 100k    | 72514-3 |  2.7 M |    42.12 |  0.591 |   15.32 |
-| CCX42  | 100k    | 8310-5  |  115 k |     2.46 |  0.044 |   21.34 |           
-| CCX42  | 100k    | 55758-7 |  1.0 M |    19.74 |  0.237 |   19.60 |         
-| CCX42  | 100k    | 72514-3 |  2.7 M |    52.95 |  0.484 |   19.26 |         
-| LEA47  | 1M      | 8310-5  |  1.1 M |    19.11 |  0.383 |   16.48 |         
-| LEA47  | 1M      | 55758-7 | 10.1 M |   201.66 |  2.506 |   19.88 |         
-| LEA47  | 1M      | 72514-3 | 27.3 M |   809.80 |  6.294 | 29.61 ² |
+| System | Dataset | Code    | # Hits | Time (s) |  StdDev |  T/1M ¹ |
+|--------|---------|---------|-------:|---------:|--------:|--------:|
+| LEA47  | 100k    | 8310-5  |  115 k |     2.06 |   0.014 |   17.88 |  
+| LEA47  | 100k    | 55758-7 |  1.0 M |    17.34 |   0.175 |   17.21 |
+| LEA47  | 100k    | 72514-3 |  2.7 M |    45.62 |   0.464 |   16.60 |
+| CCX42  | 100k    | 8310-5  |  115 k |     2.46 |   0.044 |   21.34 |           
+| CCX42  | 100k    | 55758-7 |  1.0 M |    19.74 |   0.237 |   19.60 |         
+| CCX42  | 100k    | 72514-3 |  2.7 M |    52.95 |   0.484 |   19.26 |         
+| LEA47  | 1M      | 8310-5  |  1.1 M |    21.51 |   0.192 |   18.55 |         
+| LEA47  | 1M      | 55758-7 | 10.1 M |   233.01 |   2.150 |   22.98 |         
+| LEA47  | 1M      | 72514-3 | 27.3 M |   966.59 | 150.132 | 35.34 ² |
 
-¹ time in seconds per 1 million resources, ² resource cache size (11 million) is smaller than the number of resources returned (27.3 million)
+¹ time in seconds per 1 million resources, ² resource cache size (10 million) is smaller than the number of resources returned (27.3 million)
 
 According to the measurements the time needed by Blaze to deliver resources only depends on the number of hits and equals roughly in **20 seconds per 1 million hits**.
 
@@ -94,17 +94,17 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev |  T/1M ¹ |
 |--------|---------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 100k    | 8310-5  |  115 k |     1.30 |  0.027 |   11.26 |
-| LEA47  | 100k    | 55758-7 |  1.0 M |    10.47 |  0.126 |   10.39 |
-| LEA47  | 100k    | 72514-3 |  2.7 M |    27.67 |  0.263 |   10.06 |
+| LEA47  | 100k    | 8310-5  |  115 k |     1.42 |  0.043 |   12.32 |
+| LEA47  | 100k    | 55758-7 |  1.0 M |    10.96 |  0.097 |   10.87 |
+| LEA47  | 100k    | 72514-3 |  2.7 M |    27.62 |  0.277 |   10.05 |
 | CCX42  | 100k    | 8310-5  |  115 k |     1.78 |  0.052 |   15.41 |           
 | CCX42  | 100k    | 55758-7 |  1.0 M |    14.46 |  0.177 |   14.35 |           
 | CCX42  | 100k    | 72514-3 |  2.7 M |    37.82 |  0.107 |   13.76 |
-| LEA47  | 1M      | 8310-5  |  1.1 M |    12.38 |  0.136 |   10.68 |          
-| LEA47  | 1M      | 55758-7 | 10.1 M |   143.98 |  1.816 |   14.19 |          
-| LEA47  | 1M      | 72514-3 | 27.3 M |   617.21 |  5.668 | 22.57 ² |
+| LEA47  | 1M      | 8310-5  |  1.1 M |    15.21 |  0.161 |   13.11 |          
+| LEA47  | 1M      | 55758-7 | 10.1 M |   167.34 |  0.942 |   16.50 |          
+| LEA47  | 1M      | 72514-3 | 27.3 M |   662.15 |  8.179 | 24.21 ² |
 
-¹ time in seconds per 1 million resources, ² resource cache size (11 million) is smaller than the number of resources returned (27.3 million)
+¹ time in seconds per 1 million resources, ² resource cache size (10 million) is smaller than the number of resources returned (27.3 million)
 
 According to the measurements, the time needed by Blaze to deliver subsetted Observations containing only the subject reference only depends on the number of hits and equals roughly in **15 seconds per 1 million hits**.
 
@@ -122,9 +122,9 @@ curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&valu
 
 | System | Dataset | Code    | Value | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|---------|------:|-------:|---------:|-------:|-------:|
-| LEA47  | 100k    | 29463-7 |  26.8 |
-| LEA47  | 100k    | 29463-7 |  79.5 |
-| LEA47  | 100k    | 29463-7 |   183 |
+| LEA47  | 100k    | 29463-7 |  26.8 |  158 k |    11.43 |  0.048 |  72.32 |
+| LEA47  | 100k    | 29463-7 |  79.5 |  790 k |    11.66 |  0.060 |  14.76 |
+| LEA47  | 100k    | 29463-7 |   183 |  1.6 M |    11.36 |  0.041 |   7.17 |
 | CCX42  | 100k    | 29463-7 |  26.8 |  158 k |    56.45 |  0.149 | 357.08 |
 | CCX42  | 100k    | 29463-7 |  79.5 |  790 k |    56.72 |  0.174 |  71.84 |
 | CCX42  | 100k    | 29463-7 |   183 |  1.6 M |    56.77 |  0.135 |  35.87 |
@@ -148,9 +148,9 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 | System | Dataset | Code    | Value | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|---------|------:|-------:|---------:|-------:|-------:|
-| LEA47  | 100k    | 29463-7 |  26.8 |
-| LEA47  | 100k    | 29463-7 |  79.5 |
-| LEA47  | 100k    | 29463-7 |   183 |
+| LEA47  | 100k    | 29463-7 |  26.8 |  158 k |    13.73 |  0.017 |  86.83 |
+| LEA47  | 100k    | 29463-7 |  79.5 |  790 k |    22.93 |  0.231 |  29.04 |
+| LEA47  | 100k    | 29463-7 |   183 |  1.6 M |    32.80 |  0.281 |  20.72 |
 | CCX42  | 100k    | 29463-7 |  26.8 |  158 k |    59.19 |  0.060 | 374.44 |
 | CCX42  | 100k    | 29463-7 |  79.5 |  790 k |    70.26 |  0.142 |  88.98 |
 | CCX42  | 100k    | 29463-7 |   183 |  1.6 M |    83.82 |  0.076 |  52.97 |
@@ -174,9 +174,9 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 | System | Dataset | Code    | Value | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|---------|------:|-------:|---------:|-------:|-------:|
-| LEA47  | 100k    | 29463-7 |  26.8 |
-| LEA47  | 100k    | 29463-7 |  79.5 |
-| LEA47  | 100k    | 29463-7 |   183 |
+| LEA47  | 100k    | 29463-7 |  26.8 |  158 k |    12.90 |  0.008 |  81.60 |
+| LEA47  | 100k    | 29463-7 |  79.5 |  790 k |    18.70 |  0.364 |  23.67 |
+| LEA47  | 100k    | 29463-7 |   183 |  1.6 M |    25.26 |  0.123 |  15.96 |
 | CCX42  | 100k    | 29463-7 |  26.8 |  158 k |    58.07 |  0.028 | 367.36 |
 | CCX42  | 100k    | 29463-7 |  79.5 |  790 k |    65.31 |  0.197 |  82.71 |
 | CCX42  | 100k    | 29463-7 |   183 |  1.6 M |    74.40 |  0.183 |  47.01 |
@@ -239,12 +239,12 @@ curl -s "http://localhost:8080/fhir/Observation?date=$YEAR&_summary=count"
 
 | System | Dataset | Year | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|------|-------:|---------:|-------:|-------:|
-| LEA47  | 100k    | 2013 |  3.1 M |     2.32 |  0.044 |   0.74 |
-| LEA47  | 100k    | 2019 |  6.0 M |     4.31 |  0.087 |   0.72 |
+| LEA47  | 100k    | 2013 |  3.1 M |     2.51 |  0.038 |   0.80 |
+| LEA47  | 100k    | 2019 |  6.0 M |     4.67 |  0.031 |   0.78 |
 | CCX42  | 100k    | 2013 |  3.1 M |     2.00 |  0.028 |   0.63 |
 | CCX42  | 100k    | 2019 |  6.0 M |     3.91 |  0.142 |   0.65 |
-| LEA47  | 1M      | 2013 | 31.1 M |    21.49 |  0.328 |   0.69 |
-| LEA47  | 1M      | 2019 | 60.0 M |    44.07 |  1.014 |   0.73 |
+| LEA47  | 1M      | 2013 | 31.1 M |    23.31 |  0.206 |   0.75 |
+| LEA47  | 1M      | 2019 | 60.0 M |    45.98 |  0.582 |   0.76 |
 
 ¹ time in seconds per 1 million resources
 
@@ -260,12 +260,12 @@ blazectl download --server http://localhost:8080/fhir Observation -q "date=$YEAR
 
 | System | Dataset | Year | # Hits | Time (s) | StdDev |  T/1M ¹ |
 |--------|---------|------|-------:|---------:|-------:|--------:|
-| LEA47  | 100k    | 2013 |  3.1 M |    63.11 |  0.564 |   20.19 |
-| LEA47  | 100k    | 2019 |  6.0 M |   124.12 |  2.017 |   20.76 |
+| LEA47  | 100k    | 2013 |  3.1 M |    58.40 |  1.051 |   18.68 |
+| LEA47  | 100k    | 2019 |  6.0 M |   110.71 |  0.404 |   18.51 |
 | CCX42  | 100k    | 2013 |  3.1 M |   128.16 |  0.406 |   41.00 |
 | CCX42  | 100k    | 2019 |  6.0 M |   276.13 |  2.020 | 46.18 ² |
-| LEA47  | 1M      | 2013 | 31.1 M |   938.28 | 12.990 | 30.19 ² |
-| LEA47  | 1M      | 2019 | 60.0 M |  2306.56 |  7.608 | 38.40 ² |
+| LEA47  | 1M      | 2013 | 31.1 M |   991.28 | 12.329 | 31.90 ² |
+| LEA47  | 1M      | 2019 | 60.0 M |  2083.44 | 31.983 | 34.69 ² |
 
 ¹ time in seconds per 1 million resources, ² resource cache size is smaller than the number of resources returned
 
@@ -283,12 +283,12 @@ blazectl download --server http://localhost:8080/fhir Observation -q "date=$YEAR
 
 | System | Dataset | Year | # Hits | Time (s) | StdDev |  T/1M ¹ |
 |--------|---------|------|-------:|---------:|-------:|--------:|
-| LEA47  | 100k    | 2013 |  3.1 M |    41.90 |  0.150 |   13.40 |
-| LEA47  | 100k    | 2019 |  6.0 M |    81.32 |  0.454 |   13.60 |
+| LEA47  | 100k    | 2013 |  3.1 M |    36.81 |  0.165 |   11.77 |
+| LEA47  | 100k    | 2019 |  6.0 M |    70.11 |  1.357 |   11.72 |
 | CCX42  | 100k    | 2013 |  3.1 M |    85.59 |  0.293 |   27.38 |
 | CCX42  | 100k    | 2019 |  6.0 M |   179.29 |  1.786 | 29.99 ² |
-| LEA47  | 1M      | 2013 | 31.1 M |   615.23 |  7.651 | 19.80 ² |
-| LEA47  | 1M      | 2019 | 60.0 M |  1792.99 |  6.333 | 29.85 ² |
+| LEA47  | 1M      | 2013 | 31.1 M |   673.36 | 10.199 | 21.67 ² |
+| LEA47  | 1M      | 2019 | 60.0 M |  1516.90 |  0.482 | 25.25 ² |
 
 ¹ time in seconds per 1 million resources, ² resource cache size is smaller than the number of resources returned
 

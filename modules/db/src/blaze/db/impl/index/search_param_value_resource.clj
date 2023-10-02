@@ -13,25 +13,19 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(def ^:private ^:const ^long key-buffer-capacity
-  "Most search param value keys should fit into this size."
-  128)
-
-
 (defn decode-key
   "Returns a triple of `[prefix id hash-prefix]`.
 
   The prefix contains the c-hash, tid and value parts as encoded byte string."
-  ([] (bb/allocate-direct key-buffer-capacity))
-  ([buf]
-   (let [id-size (impl/id-size buf)
-         all-size (bb/remaining buf)
-         prefix-size (- all-size 2 id-size hash/prefix-size)
-         prefix (bs/from-byte-buffer! buf prefix-size)
-         _ (bb/get-byte! buf)
-         id (bs/from-byte-buffer! buf id-size)]
-     (bb/get-byte! buf)
-     [prefix id (hash/prefix-from-byte-buffer! buf)])))
+  [buf]
+  (let [id-size (impl/id-size buf)
+        all-size (bb/remaining buf)
+        prefix-size (- all-size 2 id-size hash/prefix-size)
+        prefix (bs/from-byte-buffer! buf prefix-size)
+        _ (bb/get-byte! buf)
+        id (bs/from-byte-buffer! buf id-size)]
+    (bb/get-byte! buf)
+    [prefix id (hash/prefix-from-byte-buffer! buf)]))
 
 
 (defn keys!
@@ -100,17 +94,16 @@
 
 (defn decode-value-id-hash-prefix
   "Returns a triple of `[value id hash-prefix]`."
-  ([] (bb/allocate-direct key-buffer-capacity))
-  ([buf]
-   (let [id-size (impl/id-size buf)
-         _ (bb/set-position! buf base-key-size)
-         all-size (bb/remaining buf)
-         value-size (- all-size 2 id-size hash/prefix-size)
-         value (bs/from-byte-buffer! buf value-size)
-         _ (bb/get-byte! buf)
-         id (bs/from-byte-buffer! buf id-size)]
-     (bb/get-byte! buf)
-     [value id (hash/prefix-from-byte-buffer! buf)])))
+  [buf]
+  (let [id-size (impl/id-size buf)
+        _ (bb/set-position! buf base-key-size)
+        all-size (bb/remaining buf)
+        value-size (- all-size 2 id-size hash/prefix-size)
+        value (bs/from-byte-buffer! buf value-size)
+        _ (bb/get-byte! buf)
+        id (bs/from-byte-buffer! buf id-size)]
+    (bb/get-byte! buf)
+    [value id (hash/prefix-from-byte-buffer! buf)]))
 
 
 (defn all-keys!
@@ -160,14 +153,13 @@
 
 (defn decode-id-hash-prefix
   "Returns a tuple of `[id hash-prefix]`."
-  ([] (bb/allocate-direct key-buffer-capacity))
-  ([buf]
-   (let [id-size (impl/id-size buf)
-         all-size (unchecked-inc-int (unchecked-add-int id-size hash/prefix-size))
-         _ (bb/set-position! buf (unchecked-subtract-int (bb/limit buf) all-size))
-         id (bs/from-byte-buffer! buf id-size)]
-     (bb/get-byte! buf)
-     [id (hash/prefix-from-byte-buffer! buf)])))
+  [buf]
+  (let [id-size (impl/id-size buf)
+        all-size (unchecked-inc-int (unchecked-add-int id-size hash/prefix-size))
+        _ (bb/set-position! buf (unchecked-subtract-int (bb/limit buf) all-size))
+        id (bs/from-byte-buffer! buf id-size)]
+    (bb/get-byte! buf)
+    [id (hash/prefix-from-byte-buffer! buf)]))
 
 
 (defn prefix-keys!

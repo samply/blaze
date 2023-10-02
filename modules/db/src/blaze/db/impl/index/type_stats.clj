@@ -19,6 +19,7 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.kv :as kv])
   (:import
+    [com.google.common.primitives Ints]
     [java.lang AutoCloseable]))
 
 
@@ -36,7 +37,13 @@
 
 (def ^:private ^:const ^long key-size (+ codec/tid-size codec/t-size))
 (def ^:private ^:const ^long value-size (+ Long/BYTES Long/BYTES))
-(def ^:private ^:const ^long kv-capacity (max key-size value-size))
+
+
+(defn- encode-key [tid t]
+  (-> (bb/allocate key-size)
+      (bb/put-int! tid)
+      (bb/put-long! (codec/descending-long ^long t))
+      bb/array))
 
 
 (defn- decode-value! [buf]
@@ -51,25 +58,10 @@
   Needs to use an iterator because there could be no entry at `t`. So `kv/seek!`
   is used to get near `t`."
   [iter tid t]
-  (let [buf (bb/allocate-direct kv-capacity)]
-    (bb/put-int! buf tid)
-    (bb/put-long! buf (codec/descending-long ^long t))
-    (bb/flip! buf)
-    (kv/seek-buffer! iter buf)
-    (when (kv/valid? iter)
-      (bb/clear! buf)
-      (kv/key! iter buf)
-      (when (= ^long tid (bb/get-int! buf))
-        (bb/clear! buf)
-        (kv/value! iter buf)
-        (decode-value! buf)))))
-
-
-(defn- encode-key [tid t]
-  (-> (bb/allocate key-size)
-      (bb/put-int! tid)
-      (bb/put-long! (codec/descending-long ^long t))
-      bb/array))
+  (kv/seek! iter (encode-key tid t))
+  (when (kv/valid? iter)
+    (when (= ^long tid (Ints/fromByteArray (kv/key iter)))
+      (decode-value! (bb/wrap (kv/value iter))))))
 
 
 (defn- encode-value [{:keys [total num-changes]}]
