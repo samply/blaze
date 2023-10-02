@@ -21,6 +21,15 @@
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [expr _]
+    expr)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr parameters]
+    (let [value (get parameters name ::not-found)]
+      (if (identical? ::not-found value)
+        expr
+        value)))
   (-eval [_ {:keys [parameters] :as context} _ _]
     (let [value (get parameters name ::not-found)]
       (if (identical? ::not-found value)

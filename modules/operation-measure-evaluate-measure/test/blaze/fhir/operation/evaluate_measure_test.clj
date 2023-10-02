@@ -4,10 +4,12 @@
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.resource-store :as rs]
+   [blaze.elm.expression :as-alias expr]
    [blaze.executors :as ex]
    [blaze.fhir.operation.evaluate-measure :as evaluate-measure]
    [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.test-util]
    [blaze.metrics.spec]
    [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.middleware.fhir.db-spec]
@@ -146,9 +148,13 @@
   (assoc api-stub/mem-node-config
          ::evaluate-measure/handler
          {:node (ig/ref :blaze.db/node)
+          ::expr/cache (ig/ref ::expr/cache)
           :executor (ig/ref :blaze.test/executor)
           :clock (ig/ref :blaze.test/fixed-clock)
           :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+         ::expr/cache
+         {:node (ig/ref :blaze.db/node)
+          :executor (ig/ref :blaze.test/executor)}
          :blaze.test/executor {}
          :blaze.test/fixed-rng-fn {}))
 

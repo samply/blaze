@@ -1,7 +1,10 @@
 (ns blaze.fhir.operation.evaluate-measure.measure-spec
   (:require
+   [blaze.async.comp :as ac]
    [blaze.cql-translator-spec]
    [blaze.db.spec]
+   [blaze.elm.expression :as-alias expr]
+   [blaze.elm.expression.spec]
    [blaze.fhir.operation.evaluate-measure.cql-spec]
    [blaze.fhir.operation.evaluate-measure.measure :as measure]
    [blaze.fhir.operation.evaluate-measure.measure.spec]
@@ -9,10 +12,14 @@
    [blaze.http.spec]
    [blaze.spec]
    [clojure.spec.alpha :as s]
-   [cognitect.anomalies :as anom]
    [reitit.core :as reitit])
   (:import
    [java.time.temporal Temporal]))
+
+(s/def ::context
+  (s/keys :req [:blaze/base-url ::reitit/router]
+          :opt [::expr/cache]
+          :req-un [:blaze/clock :blaze/rng-fn :blaze.db/db]))
 
 (defn- temporal? [x]
   (instance? Temporal x))
@@ -29,12 +36,5 @@
    [::measure/subject-ref]))
 
 (s/fdef measure/evaluate-measure
-  :args
-  (s/cat
-   :context (s/keys :req [:blaze/base-url ::reitit/router]
-                    :req-un [:blaze/clock :blaze/rng-fn :blaze.db/db])
-   :measure :blaze/resource
-   :params ::params)
-  :ret
-  (s/or :result (s/keys :req-un [:blaze/resource] :opt-un [:blaze.db/tx-ops])
-        :anomaly ::anom/anomaly))
+  :args (s/cat :context ::context :measure :blaze/resource :params ::params)
+  :ret ac/completable-future?)

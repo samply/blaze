@@ -195,7 +195,7 @@
       "2012" "2013" false?
       "2013" "2012" false?)
 
-    (ctu/testing-binary-null elm/equal #elm/date "2013"))
+    (ctu/testing-binary-null elm/equal #elm/date"2013"))
 
   (testing "Date with year-month precision"
     (are [x y pred] (pred (ctu/compile-binop elm/equal elm/date x y))
@@ -203,7 +203,7 @@
       "2013-01" "2013-02" false?
       "2013-02" "2013-01" false?)
 
-    (ctu/testing-binary-null elm/equal #elm/date "2013-01"))
+    (ctu/testing-binary-null elm/equal #elm/date"2013-01"))
 
   (testing "Date with full precision"
     (are [x y pred] (pred (ctu/compile-binop elm/equal elm/date x y))
@@ -211,7 +211,7 @@
       "2013-01-01" "2013-01-02" false?
       "2013-01-02" "2013-01-01" false?)
 
-    (ctu/testing-binary-null elm/equal #elm/date "2013-01-01"))
+    (ctu/testing-binary-null elm/equal #elm/date"2013-01-01"))
 
   (testing "Date with differing precisions"
     (are [x y pred] (pred (ctu/compile-binop elm/equal elm/date x y))
@@ -258,6 +258,12 @@
     (ctu/testing-binary-null elm/equal (ctu/code "a" "0")))
 
   (ctu/testing-binary-dynamic elm/equal)
+
+  (ctu/testing-binary-attach-cache elm/equal)
+
+  (ctu/testing-binary-resolve-expr-ref elm/equal)
+
+  (ctu/testing-binary-resolve-param elm/equal)
 
   (ctu/testing-binary-form elm/equal))
 
@@ -439,6 +445,12 @@
 
   (ctu/testing-binary-dynamic elm/equivalent)
 
+  (ctu/testing-binary-attach-cache elm/equivalent)
+
+  (ctu/testing-binary-resolve-expr-ref elm/equivalent)
+
+  (ctu/testing-binary-resolve-param elm/equivalent)
+
   (ctu/testing-binary-form elm/equivalent))
 
 ;; 12.3. Greater
@@ -519,7 +531,7 @@
       "2014" "2013" true?
       "2013" "2013" false?)
 
-    (ctu/testing-binary-null elm/greater #elm/date "2013"))
+    (ctu/testing-binary-null elm/greater #elm/date"2013"))
 
   (testing "DateTime with year precision"
     (are [x y pred] (pred (ctu/compile-binop elm/greater elm/date-time x y))
@@ -555,6 +567,12 @@
     (ctu/testing-binary-null elm/greater #elm/time "00:00:00"))
 
   (ctu/testing-binary-dynamic elm/greater)
+
+  (ctu/testing-binary-attach-cache elm/greater)
+
+  (ctu/testing-binary-resolve-expr-ref elm/greater)
+
+  (ctu/testing-binary-resolve-param elm/greater)
 
   (ctu/testing-binary-form elm/greater))
 
@@ -629,7 +647,7 @@
       "2013-06-15" "2013-06-15" true?
       "2013-06-14" "2013-06-15" false?)
 
-    (ctu/testing-binary-null elm/greater-or-equal #elm/date "2013-06-15"))
+    (ctu/testing-binary-null elm/greater-or-equal #elm/date"2013-06-15"))
 
   (testing "DateTime with year precision"
     (are [x y pred] (pred (ctu/compile-binop elm/greater-or-equal elm/date-time x y))
@@ -637,7 +655,7 @@
       "2013" "2013" true?
       "2012" "2013" false?)
 
-    (ctu/testing-binary-null elm/greater-or-equal #elm/date "2013"))
+    (ctu/testing-binary-null elm/greater-or-equal #elm/date"2013"))
 
   (testing "DateTime with year-month precision"
     (are [x y pred] (pred (ctu/compile-binop elm/greater-or-equal elm/date-time x y))
@@ -645,7 +663,7 @@
       "2013-06" "2013-06" true?
       "2013-05" "2013-06" false?)
 
-    (ctu/testing-binary-null elm/greater-or-equal #elm/date "2013-06"))
+    (ctu/testing-binary-null elm/greater-or-equal #elm/date"2013-06"))
 
   (testing "DateTime with date precision"
     (are [x y pred] (pred (ctu/compile-binop elm/greater-or-equal elm/date-time x y))
@@ -653,7 +671,7 @@
       "2013-06-15" "2013-06-15" true?
       "2013-06-14" "2013-06-15" false?)
 
-    (ctu/testing-binary-null elm/greater-or-equal #elm/date "2013-06-15"))
+    (ctu/testing-binary-null elm/greater-or-equal #elm/date"2013-06-15"))
 
   (testing "DateTime with mixed precision"
     (are [x y] (nil? (ctu/compile-binop elm/greater-or-equal elm/date-time x y))
@@ -684,6 +702,12 @@
     (ctu/testing-binary-null elm/greater-or-equal #elm/quantity [1]))
 
   (ctu/testing-binary-dynamic elm/greater-or-equal)
+
+  (ctu/testing-binary-attach-cache elm/greater-or-equal)
+
+  (ctu/testing-binary-resolve-expr-ref elm/greater-or-equal)
+
+  (ctu/testing-binary-resolve-param elm/greater-or-equal)
 
   (ctu/testing-binary-form elm/greater-or-equal))
 
@@ -749,7 +773,7 @@
       "2012" "2013" true?
       "2013" "2013" false?)
 
-    (ctu/testing-binary-null elm/less #elm/date "2013"))
+    (ctu/testing-binary-null elm/less #elm/date"2013"))
 
   (testing "Comparing dates with mixed precisions (year and year-month) results in null."
     (are [x y pred] (pred (ctu/compile-binop elm/less elm/date x y))
@@ -761,7 +785,7 @@
       "2013-06-14" "2013-06-15" true?
       "2013-06-15" "2013-06-15" false?)
 
-    (ctu/testing-binary-null elm/less #elm/date "2013-06-15"))
+    (ctu/testing-binary-null elm/less #elm/date"2013-06-15"))
 
   (testing "Comparing dates with mixed precisions (year-month and full) results in null."
     (are [x y pred] (pred (ctu/compile-binop elm/less elm/date x y))
@@ -817,6 +841,12 @@
     (ctu/testing-binary-null elm/less #elm/quantity [1]))
 
   (ctu/testing-binary-dynamic elm/less)
+
+  (ctu/testing-binary-attach-cache elm/less)
+
+  (ctu/testing-binary-resolve-expr-ref elm/less)
+
+  (ctu/testing-binary-resolve-param elm/less)
 
   (ctu/testing-binary-form elm/less))
 
@@ -883,7 +913,7 @@
       "2013-06-15" "2013-06-15" true?
       "2013-06-16" "2013-06-15" false?)
 
-    (ctu/testing-binary-null elm/less-or-equal #elm/date "2013-06-15"))
+    (ctu/testing-binary-null elm/less-or-equal #elm/date"2013-06-15"))
 
   (testing "Mixed Date and DateTime"
     (are [x y pred] (pred (c/compile {} (elm/less-or-equal [x y])))
@@ -896,7 +926,7 @@
       "2013" "2013" true?
       "2014" "2013" false?)
 
-    (ctu/testing-binary-null elm/less-or-equal #elm/date "2013"))
+    (ctu/testing-binary-null elm/less-or-equal #elm/date"2013"))
 
   (testing "DateTime with year-month precision"
     (are [x y pred] (pred (ctu/compile-binop elm/less-or-equal elm/date-time x y))
@@ -904,7 +934,7 @@
       "2013-06" "2013-06" true?
       "2013-07" "2013-06" false?)
 
-    (ctu/testing-binary-null elm/less-or-equal #elm/date "2013-06"))
+    (ctu/testing-binary-null elm/less-or-equal #elm/date"2013-06"))
 
   (testing "DateTime with date precision"
     (are [x y pred] (pred (ctu/compile-binop elm/less-or-equal elm/date-time x y))
@@ -912,7 +942,7 @@
       "2013-06-15" "2013-06-15" true?
       "2013-06-16" "2013-06-15" false?)
 
-    (ctu/testing-binary-null elm/less-or-equal #elm/date "2013-06-15"))
+    (ctu/testing-binary-null elm/less-or-equal #elm/date"2013-06-15"))
 
   (testing "Time"
     (are [x y pred] (pred (ctu/compile-binop elm/less-or-equal elm/time x y))
@@ -939,6 +969,12 @@
     (ctu/testing-binary-null elm/less-or-equal #elm/quantity [1]))
 
   (ctu/testing-binary-dynamic elm/less-or-equal)
+
+  (ctu/testing-binary-attach-cache elm/less-or-equal)
+
+  (ctu/testing-binary-resolve-expr-ref elm/less-or-equal)
+
+  (ctu/testing-binary-resolve-param elm/less-or-equal)
 
   (ctu/testing-binary-form elm/less-or-equal))
 

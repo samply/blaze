@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { type Bundle, bundleLink } from './fhir';
+	import { type Bundle, bundleLink } from './fhir.js';
 	import { dev } from '$app/environment';
 	import { base } from '$app/paths';
 	import { fade } from 'svelte/transition';

@@ -3,10 +3,10 @@
 		type CapabilityStatement,
 		type CapabilityStatementSearchParam,
 		SearchParamType
-	} from '../../fhir';
-	import type { QueryParam } from './query-param';
-	import { sortByProperty } from '../../util';
-	import { defaultCount } from '../../util';
+	} from '../../fhir.js';
+	import type { QueryParam } from './query-param.js';
+	import { sortByProperty } from '../../util.js';
+	import { defaultCount } from '../../util.js';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
@@ -30,7 +30,7 @@
 		updateAtIndex,
 		moveUpAtIndex,
 		moveDownAtIndex
-	} from '../../util';
+	} from '../../util.js';
 
 	export let capabilityStatement: CapabilityStatement;
 

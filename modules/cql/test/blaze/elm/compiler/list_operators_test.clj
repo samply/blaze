@@ -5,22 +5,34 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
    [blaze.anomaly-spec]
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler-spec]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.external-data :as ed]
    [blaze.elm.compiler.list-operators]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.expression :as expr]
    [blaze.elm.expression-spec]
+   [blaze.elm.expression.cache-spec]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
    [blaze.elm.quantity :as quantity]
+   [blaze.elm.spec :as elm-spec]
+   [blaze.fhir.test-util]
+   [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
-   [clojure.test.check.properties :as prop]))
+   [clojure.test.check.properties :as prop]
+   [integrant.core :as ig])
+  (:import
+   [java.time OffsetDateTime]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (ctu/instrument-compile)
 
@@ -128,6 +140,14 @@
 
   (ctu/testing-unary-dynamic elm/distinct)
 
+  (ctu/testing-unary-attach-cache elm/distinct)
+
+  (ctu/testing-unary-resolve-expr-ref elm/distinct)
+
+  (ctu/testing-unary-resolve-param elm/distinct)
+
+  (ctu/testing-unary-equals-hash-code elm/distinct)
+
   (ctu/testing-unary-form elm/distinct))
 
 ;; 20.5. Equal
@@ -144,9 +164,47 @@
 
 ;; 20.8. Exists
 ;;
-;; The Exists operator returns true if the list contains any elements.
+;; The Exists operator returns true if the list contains any non-null elements.
 ;;
 ;; If the argument is null, the result is false.
+(def ^:private exists-config
+  (assoc mem-node-config
+         ::expr/cache
+         {:node (ig/ref :blaze.db/node)
+          :executor (ig/ref :blaze.test/executor)}
+         :blaze.test/executor {}))
+
+(defmethod elm-spec/expression :elm.spec.type/exists-test [_]
+  map?)
+
+(defmethod core/compile* :elm.compiler.type/exists-test
+  [_ _]
+  (reify core/Expression
+    (-static [_]
+      false)
+    (-attach-cache [_ _]
+      (reify core/Expression
+        (-static [_]
+          false)
+        (-attach-cache [expr _]
+          expr)
+        (-resolve-refs [expr _]
+          expr)
+        (-resolve-params [expr _]
+          expr)
+        (-eval [expr _ _ _]
+          expr)
+        (-form [_]
+          'exists-test-with-cache)))
+    (-resolve-refs [expr _]
+      expr)
+    (-resolve-params [expr _]
+      expr)
+    (-eval [expr _ _ _]
+      expr)
+    (-form [_]
+      'exists-test)))
+
 (deftest compile-exists-test
   (testing "Static"
     (are [list res] (= res (c/compile {} (elm/exists list)))
@@ -166,7 +224,107 @@
 
       {:type "Null"} false)
 
-    (ctu/testing-unary-form elm/exists)))
+    (testing "equals"
+      (let [x (ctu/dynamic-compile #elm/exists #elm/list [#elm/parameter-ref "1"])
+            y (ctu/dynamic-compile #elm/exists #elm/list [#elm/parameter-ref "1"])]
+        (is (.equals ^Object x y))))
+
+    (testing "hashCode"
+      (let [x (ctu/dynamic-compile #elm/exists #elm/list [#elm/parameter-ref "1"])
+            y (ctu/dynamic-compile #elm/exists #elm/list [#elm/parameter-ref "1"])]
+        (is (= (.hashCode ^Object x) (.hashCode ^Object y)))))
+
+    (testing "doesn't attach the cache downstream because there is no need for double caching"
+      (with-system [{::expr/keys [cache]} exists-config]
+        (let [elm (elm/exists {:type "ExistsTest"})
+              expr (c/compile {:eval-context "Patient"} elm)
+              ;; ensure Bloom filter is available
+              _ (do (c/attach-cache expr cache) (Thread/sleep 100))
+              expr (c/attach-cache expr cache)]
+
+          (is (= '(exists exists-test) (core/-form expr)))
+
+          (testing "also not at a second cache attachment"
+            (is (= '(exists exists-test) (core/-form (c/attach-cache expr cache))))))))
+
+    (testing "with caching expressions"
+      (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]} exists-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [db (d/db node)
+              patient (ed/mk-resource db (d/resource-handle db "Patient" "0"))
+              elm #elm/exists #elm/retrieve{:type "Observation"}
+              compile-context
+              {:node node
+               :eval-context "Patient"
+               :library {}}
+              expr (c/compile compile-context elm)
+              eval-context
+              {:db db
+               :now (OffsetDateTime/now)}]
+
+          (testing "has no Observation at the beginning"
+            (let [expr (c/attach-cache expr cache)]
+              (is (false? (expr/eval eval-context expr patient)))))
+
+          (Thread/sleep 100)
+
+          (testing "has still no Observation after the Bloom filter is filled"
+            (let [expr (c/attach-cache expr cache)]
+              (is (false? (expr/eval eval-context expr patient)))))
+
+          (let [tx-op [:put {:fhir/type :fhir/Observation :id "0"
+                             :subject #fhir/Reference{:reference "Patient/0"}}]
+                db-after @(d/transact node [tx-op])]
+
+            (testing "has an Observation after transaction"
+              (let [expr (c/attach-cache expr cache)
+                    patient (ed/mk-resource db-after (d/resource-handle db "Patient" "0"))]
+                (is (true? (expr/eval (assoc eval-context :db db-after) expr patient)))))
+
+            (testing "has still no Observation at the old database"
+              (let [expr (c/attach-cache expr cache)]
+                (is (false? (expr/eval eval-context expr patient)))))))))
+
+    (testing "without caching expressions"
+      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [db (d/db node)
+              patient (ed/mk-resource db (d/resource-handle db "Patient" "0"))
+              elm #elm/exists #elm/retrieve{:type "Observation"}
+              compile-context
+              {:node node
+               :eval-context "Patient"
+               :library {}}
+              expr (c/compile compile-context elm)
+              eval-context
+              {:db db
+               :now (OffsetDateTime/now)}]
+
+          (testing "has no Observation at the beginning"
+            (is (false? (expr/eval eval-context expr patient))))
+
+          (let [tx-op [:put {:fhir/type :fhir/Observation :id "0"
+                             :subject #fhir/Reference{:reference "Patient/0"}}]
+                db-after @(d/transact node [tx-op])]
+
+            (testing "has an Observation after transaction"
+              (let [patient (ed/mk-resource db-after (d/resource-handle db "Patient" "0"))]
+                (is (true? (expr/eval (assoc eval-context :db db-after) expr patient)))))
+
+            (testing "has still no Observation at the old database"
+              (is (false? (expr/eval eval-context expr patient)))))))))
+
+  (ctu/testing-unary-dynamic elm/exists)
+
+  (ctu/testing-unary-resolve-expr-ref elm/exists)
+
+  (ctu/testing-unary-resolve-param elm/exists)
+
+  (ctu/testing-unary-equals-hash-code elm/exists)
+
+  (ctu/testing-unary-form elm/exists))
 
 ;; 20.9. Filter
 ;;
@@ -238,6 +396,12 @@
 
   (ctu/testing-unary-dynamic elm/first)
 
+  (ctu/testing-unary-attach-cache elm/first)
+
+  (ctu/testing-unary-resolve-expr-ref elm/first)
+
+  (ctu/testing-unary-resolve-param elm/first)
+
   (ctu/testing-unary-form elm/first))
 
 ;; 20.11. Flatten
@@ -257,6 +421,14 @@
   (ctu/testing-unary-null elm/flatten)
 
   (ctu/testing-unary-dynamic elm/flatten)
+
+  (ctu/testing-unary-attach-cache elm/flatten)
+
+  (ctu/testing-unary-resolve-expr-ref elm/flatten)
+
+  (ctu/testing-unary-resolve-param elm/flatten)
+
+  (ctu/testing-unary-equals-hash-code elm/flatten)
 
   (ctu/testing-unary-form elm/flatten))
 
@@ -352,6 +524,12 @@
 
   (ctu/testing-binary-dynamic elm/index-of)
 
+  (ctu/testing-binary-attach-cache elm/index-of)
+
+  (ctu/testing-binary-resolve-expr-ref elm/index-of)
+
+  (ctu/testing-binary-resolve-param elm/index-of)
+
   (ctu/testing-binary-form elm/index-of))
 
 ;; 20.17. Intersect
@@ -379,6 +557,12 @@
   (ctu/testing-unary-null elm/last)
 
   (ctu/testing-unary-dynamic elm/last)
+
+  (ctu/testing-unary-attach-cache elm/last)
+
+  (ctu/testing-unary-resolve-expr-ref elm/last)
+
+  (ctu/testing-unary-resolve-param elm/last)
 
   (ctu/testing-unary-form elm/last))
 
@@ -436,6 +620,14 @@
   (ctu/testing-unary-null elm/singleton-from)
 
   (ctu/testing-unary-dynamic elm/singleton-from)
+
+  (ctu/testing-unary-attach-cache elm/singleton-from)
+
+  (ctu/testing-unary-resolve-expr-ref elm/singleton-from)
+
+  (ctu/testing-unary-resolve-param elm/singleton-from)
+
+  (ctu/testing-unary-equals-hash-code elm/singleton-from)
 
   (ctu/testing-unary-form elm/singleton-from))
 
@@ -566,6 +758,12 @@
   (ctu/testing-binary-null elm/times #elm/list[#elm/tuple{"name" #elm/string "hans"}])
 
   (ctu/testing-binary-dynamic elm/times)
+
+  (ctu/testing-binary-attach-cache elm/times)
+
+  (ctu/testing-binary-resolve-expr-ref elm/times)
+
+  (ctu/testing-binary-resolve-param elm/times)
 
   (ctu/testing-binary-form elm/times))
 

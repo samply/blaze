@@ -27,6 +27,7 @@
     :kv-store (ig/ref :blaze.db/index-kv-store)
     :resource-indexer (ig/ref :blaze.db.node/resource-indexer)
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :scheduler (ig/ref :blaze/scheduler)
     :poll-timeout (time/millis 10)}
 
    ::tx-log/local
@@ -54,8 +55,11 @@
      :resource-as-of-index nil
      :type-as-of-index nil
      :system-as-of-index nil
+     :patient-last-change-index nil
      :type-stats-index nil
-     :system-stats-index nil}}
+     :system-stats-index nil
+     :cql-bloom-filter nil
+     :cql-bloom-filter-by-t nil}}
 
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
@@ -73,7 +77,9 @@
    :blaze.db.node.resource-indexer/executor {}
 
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:structure-definition-repo structure-definition-repo}
+
+   :blaze/scheduler {}})
 
 (defmacro with-system-data
   "Runs `body` inside a system that is initialized from `config`, bound to

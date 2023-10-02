@@ -1,6 +1,6 @@
 import { base } from '$app/paths';
 import { error } from '@sveltejs/kit';
-import { fhirObject } from '../../../resource/resource-card';
+import { fhirObject } from '../../../resource/resource-card.js';
 
 export async function load({ fetch, params }) {
 	const res = await fetch(`${base}/${params.type}/${params.id}`, {

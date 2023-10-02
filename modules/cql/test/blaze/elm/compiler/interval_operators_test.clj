@@ -211,9 +211,9 @@
       "2019-04-17" "2019-04-17" false?
       "2019-04-17" "2019-04-18" false?)
 
-    (ctu/testing-binary-null elm/after #elm/date "2019")
-    (ctu/testing-binary-null elm/after #elm/date "2019-04")
-    (ctu/testing-binary-null elm/after #elm/date "2019-04-17")
+    (ctu/testing-binary-null elm/after #elm/date"2019")
+    (ctu/testing-binary-null elm/after #elm/date"2019-04")
+    (ctu/testing-binary-null elm/after #elm/date"2019-04-17")
 
     (testing "with year precision"
       (are [x y pred] (pred (ctu/compile-binop-precision elm/after elm/date x y "year"))
@@ -352,9 +352,9 @@
       "2019-04-17" "2019-04-17" false?
       "2019-04-17" "2019-04-16" false?)
 
-    (ctu/testing-binary-null elm/before #elm/date "2019")
-    (ctu/testing-binary-null elm/before #elm/date "2019-04")
-    (ctu/testing-binary-null elm/before #elm/date "2019-04-17")
+    (ctu/testing-binary-null elm/before #elm/date"2019")
+    (ctu/testing-binary-null elm/before #elm/date"2019-04")
+    (ctu/testing-binary-null elm/before #elm/date"2019-04-17")
 
     (testing "with year precision"
       (are [x y pred] (pred (ctu/compile-binop-precision elm/before elm/date x y
@@ -462,6 +462,12 @@
       [(interval #system/date-time"2012-01-01" #system/date-time"2012-05-25")]))
 
   (ctu/testing-binary-dynamic elm/collapse)
+
+  (ctu/testing-binary-attach-cache elm/collapse)
+
+  (ctu/testing-binary-resolve-expr-ref elm/collapse)
+
+  (ctu/testing-binary-resolve-param elm/collapse)
 
   (ctu/testing-binary-form elm/collapse))
 
@@ -575,6 +581,14 @@
 
   (ctu/testing-unary-dynamic elm/end)
 
+  (ctu/testing-unary-attach-cache elm/end)
+
+  (ctu/testing-unary-resolve-expr-ref elm/end)
+
+  (ctu/testing-unary-resolve-param elm/end)
+
+  (ctu/testing-unary-equals-hash-code elm/end)
+
   (ctu/testing-unary-form elm/end))
 
 ;; 19.7. Ends
@@ -607,6 +621,12 @@
         [#elm/integer "1" #elm/parameter-ref "3"] [#elm/integer "2" #elm/parameter-ref "3"] false?)))
 
   (ctu/testing-binary-null elm/ends interval-zero)
+
+  (ctu/testing-binary-attach-cache elm/ends)
+
+  (ctu/testing-binary-resolve-expr-ref elm/ends)
+
+  (ctu/testing-binary-resolve-param elm/ends)
 
   (ctu/testing-binary-dynamic elm/ends)
 
@@ -664,6 +684,12 @@
     (ctu/testing-binary-null elm/except interval-zero))
 
   (ctu/testing-binary-dynamic elm/except)
+
+  (ctu/testing-binary-attach-cache elm/except)
+
+  (ctu/testing-binary-resolve-expr-ref elm/except)
+
+  (ctu/testing-binary-resolve-param elm/except)
 
   (ctu/testing-binary-form elm/except))
 
@@ -825,6 +851,12 @@
     (ctu/testing-binary-null elm/intersect interval-zero))
 
   (ctu/testing-binary-dynamic elm/intersect)
+
+  (ctu/testing-binary-attach-cache elm/intersect)
+
+  (ctu/testing-binary-resolve-expr-ref elm/intersect)
+
+  (ctu/testing-binary-resolve-param elm/intersect)
 
   (ctu/testing-binary-form elm/intersect))
 
@@ -1006,6 +1038,14 @@
 
   (ctu/testing-unary-dynamic elm/point-from)
 
+  (ctu/testing-unary-attach-cache elm/point-from)
+
+  (ctu/testing-unary-resolve-expr-ref elm/point-from)
+
+  (ctu/testing-unary-resolve-param elm/point-from)
+
+  (ctu/testing-unary-equals-hash-code elm/point-from)
+
   (ctu/testing-unary-form elm/point-from))
 
 ;; 19.24. ProperContains
@@ -1153,6 +1193,14 @@
 
   (ctu/testing-unary-dynamic elm/start)
 
+  (ctu/testing-unary-attach-cache elm/start)
+
+  (ctu/testing-unary-resolve-expr-ref elm/start)
+
+  (ctu/testing-unary-resolve-param elm/start)
+
+  (ctu/testing-unary-equals-hash-code elm/start)
+
   (ctu/testing-unary-form elm/start))
 
 ;; 19.30. Starts
@@ -1222,6 +1270,12 @@
 
   (ctu/testing-binary-dynamic elm/union)
 
+  (ctu/testing-binary-attach-cache elm/union)
+
+  (ctu/testing-binary-resolve-expr-ref elm/union)
+
+  (ctu/testing-binary-resolve-param elm/union)
+
   (ctu/testing-binary-form elm/union))
 
 ;; 19.32. Width
@@ -1241,5 +1295,13 @@
   (ctu/testing-unary-null elm/width)
 
   (ctu/testing-unary-dynamic elm/width)
+
+  (ctu/testing-unary-attach-cache elm/width)
+
+  (ctu/testing-unary-resolve-expr-ref elm/width)
+
+  (ctu/testing-unary-resolve-param elm/width)
+
+  (ctu/testing-unary-equals-hash-code elm/width)
 
   (ctu/testing-unary-form elm/width))

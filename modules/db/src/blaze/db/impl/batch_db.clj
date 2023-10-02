@@ -9,6 +9,7 @@
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index :as index]
    [blaze.db.impl.index.compartment.resource :as cr]
+   [blaze.db.impl.index.patient-last-change :as plc]
    [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
@@ -40,7 +41,10 @@
   (-basis-t [_]
     basis-t)
 
-  ;; ---- Instance-Level Functions --------------------------------------------
+  (-as-of-t [_]
+    (when (not= basis-t t) t))
+
+;; ---- Instance-Level Functions --------------------------------------------
 
   (-resource-handle [_ tid id]
     (resource-handle tid id))
@@ -76,6 +80,12 @@
 
   (-compartment-resource-handles [context compartment tid start-id]
     (cr/resource-handles context compartment tid start-id))
+
+  ;; ---- Patient-Compartment-Level Functions ---------------------------------
+
+  (-patient-compartment-last-change-t [_ patient-id]
+    (with-open [plci (kv/new-iterator snapshot :patient-last-change-index)]
+      (plc/last-change-t plci patient-id t)))
 
   ;; ---- Common Query Functions ----------------------------------------------
 
@@ -148,7 +158,7 @@
           source-tid (codec/tid source-type)]
       (coll/eduction
        (u/resource-handle-mapper context source-tid)
-       (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
+       (with-open-coll [svri (kv/new-iterator (:snapshot context) :search-param-value-index)]
          (sp-vr/prefix-keys! svri (codec/c-hash code) source-tid
                              reference reference)))))
 

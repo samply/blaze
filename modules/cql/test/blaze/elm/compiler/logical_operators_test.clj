@@ -138,6 +138,14 @@
 
   (ctu/testing-unary-dynamic elm/not)
 
+  (ctu/testing-unary-attach-cache elm/not)
+
+  (ctu/testing-unary-resolve-expr-ref elm/not)
+
+  (ctu/testing-unary-resolve-param elm/not)
+
+  (ctu/testing-unary-equals-hash-code elm/not)
+
   (ctu/testing-unary-form elm/not))
 
 ;; 13.4. Or

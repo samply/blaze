@@ -3,9 +3,9 @@
 		type CapabilityStatement,
 		RestfulInteraction,
 		ConditionalDeleteStatus
-	} from '../../fhir';
-	import type { FhirObject } from '../../resource/resource-card';
-	import { isTabActive } from '../../util';
+	} from '../../fhir.js';
+	import type { FhirObject } from '../../resource/resource-card.js';
+	import { isTabActive } from '../../util.js';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { fade } from 'svelte/transition';
@@ -38,7 +38,7 @@
 		<div in:fade={fadeParams} class="px-4 py-5 sm:px-6">
 			<div class="flex">
 				<h3 class="flex-grow text-base font-semibold leading-6 text-gray-900">
-					{capabilityStatement.software?.name}
+					{capabilityStatement.software?.name} v{capabilityStatement.software?.version}
 				</h3>
 			</div>
 			<p class="mt-1 max-w-2xl text-sm text-gray-500">

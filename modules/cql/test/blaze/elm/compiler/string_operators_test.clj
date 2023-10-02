@@ -127,6 +127,12 @@
 
   (ctu/testing-binary-dynamic elm/ends-with)
 
+  (ctu/testing-binary-attach-cache elm/ends-with)
+
+  (ctu/testing-binary-resolve-expr-ref elm/ends-with)
+
+  (ctu/testing-binary-resolve-param elm/ends-with)
+
   (ctu/testing-binary-form elm/ends-with))
 
 ;; 17.4. Equal
@@ -170,6 +176,12 @@
 
   (ctu/testing-binary-dynamic elm/indexer)
 
+  (ctu/testing-binary-attach-cache elm/index-of)
+
+  (ctu/testing-binary-resolve-expr-ref elm/index-of)
+
+  (ctu/testing-binary-resolve-param elm/index-of)
+
   (ctu/testing-binary-form elm/indexer))
 
 ;; 17.7. LastPositionOf
@@ -190,6 +202,12 @@
   (ctu/testing-binary-dynamic-null elm/last-position-of #elm/string "a" #elm/string "a")
 
   (ctu/testing-binary-dynamic elm/last-position-of)
+
+  (ctu/testing-binary-attach-cache elm/last-position-of)
+
+  (ctu/testing-binary-resolve-expr-ref elm/last-position-of)
+
+  (ctu/testing-binary-resolve-param elm/last-position-of)
 
   (ctu/testing-binary-form elm/last-position-of))
 
@@ -241,6 +259,14 @@
 
   (ctu/testing-unary-dynamic elm/length)
 
+  (ctu/testing-unary-attach-cache elm/length)
+
+  (ctu/testing-unary-resolve-expr-ref elm/length)
+
+  (ctu/testing-unary-resolve-param elm/length)
+
+  (ctu/testing-unary-equals-hash-code elm/length)
+
   (ctu/testing-unary-form elm/length))
 
 ;; 17.9. Lower
@@ -269,6 +295,14 @@
 
   (ctu/testing-unary-dynamic elm/lower)
 
+  (ctu/testing-unary-attach-cache elm/lower)
+
+  (ctu/testing-unary-resolve-expr-ref elm/lower)
+
+  (ctu/testing-unary-resolve-param elm/lower)
+
+  (ctu/testing-unary-equals-hash-code elm/lower)
+
   (ctu/testing-unary-form elm/lower))
 
 ;; 17.10. Matches
@@ -294,6 +328,12 @@
 
   (ctu/testing-binary-dynamic elm/matches)
 
+  (ctu/testing-binary-attach-cache elm/matches)
+
+  (ctu/testing-binary-resolve-expr-ref elm/matches)
+
+  (ctu/testing-binary-resolve-param elm/matches)
+
   (ctu/testing-binary-form elm/matches))
 
 ;; 17.11. NotEqual
@@ -318,6 +358,12 @@
   (ctu/testing-binary-dynamic-null elm/position-of #elm/string "a" #elm/string "a")
 
   (ctu/testing-binary-dynamic elm/position-of)
+
+  (ctu/testing-binary-attach-cache elm/position-of)
+
+  (ctu/testing-binary-resolve-expr-ref elm/position-of)
+
+  (ctu/testing-binary-resolve-param elm/position-of)
 
   (ctu/testing-binary-form elm/position-of))
 
@@ -433,6 +479,12 @@
 
   (ctu/testing-binary-dynamic elm/starts-with)
 
+  (ctu/testing-binary-attach-cache elm/starts-with)
+
+  (ctu/testing-binary-resolve-expr-ref elm/starts-with)
+
+  (ctu/testing-binary-resolve-param elm/starts-with)
+
   (ctu/testing-binary-form elm/starts-with))
 
 ;; 17.17. Substring
@@ -514,5 +566,13 @@
   (ctu/testing-unary-null elm/upper)
 
   (ctu/testing-unary-dynamic elm/upper)
+
+  (ctu/testing-unary-attach-cache elm/upper)
+
+  (ctu/testing-unary-resolve-expr-ref elm/upper)
+
+  (ctu/testing-unary-resolve-param elm/upper)
+
+  (ctu/testing-unary-equals-hash-code elm/upper)
 
   (ctu/testing-unary-form elm/upper))

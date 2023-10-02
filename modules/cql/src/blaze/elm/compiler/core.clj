@@ -12,6 +12,10 @@
 
 (defprotocol Expression
   (-static [expression])
+  (-attach-cache [expression cache])
+  (-patient-count [expression])
+  (-resolve-refs [expression expression-defs])
+  (-resolve-params [expression parameters])
   (-eval [expression context resource scope]
     "Evaluates `expression` on `resource` using `context` and optional `scope`
     for scoped expressions inside queries.")
@@ -27,6 +31,14 @@
   nil
   (-static [_]
     true)
+  (-attach-cache [expr _]
+    expr)
+  (-patient-count [_]
+    0)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr _]
+    expr)
   (-eval [expr _ _ _]
     expr)
   (-form [_]
@@ -35,6 +47,14 @@
   Object
   (-static [_]
     true)
+  (-attach-cache [expr _]
+    expr)
+  (-patient-count [_]
+    0)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr _]
+    expr)
   (-eval [expr _ _ _]
     expr)
   (-form [expr]
@@ -43,6 +63,14 @@
   IReduceInit
   (-static [_]
     true)
+  (-attach-cache [expr _]
+    expr)
+  (-patient-count [_]
+    0)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr _]
+    expr)
   (-eval [expr _ _ _]
     expr)
   (-form [expr]

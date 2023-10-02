@@ -10,6 +10,7 @@
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
+   [com.google.common.base CaseFormat]
    [java.io ByteArrayOutputStream]))
 
 (set! *warn-on-reflection* true)
@@ -89,8 +90,15 @@
    (fn [request respond raise]
      (handler request #(respond (handle-response opts request %)) raise))))
 
+(defn- camel [s]
+  (.to CaseFormat/LOWER_HYPHEN CaseFormat/LOWER_CAMEL s))
+
+(def ^:private json-object-mapper
+  "Converts usual kebab-case keyword keys into camelCase string keys."
+  (j/object-mapper {:encode-key-fn (comp camel name)}))
+
 (defn- handle-json-response [response]
-  (-> (update response :body j/write-value-as-bytes)
+  (-> (update response :body #(j/write-value-as-bytes % json-object-mapper))
       (ring/content-type "application/json;charset=utf-8")))
 
 (defn wrap-json-output

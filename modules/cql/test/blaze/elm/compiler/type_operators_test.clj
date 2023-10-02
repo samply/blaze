@@ -178,6 +178,12 @@
 
   (ctu/testing-binary-dynamic elm/can-convert-quantity)
 
+  (ctu/testing-binary-attach-cache elm/can-convert-quantity)
+
+  (ctu/testing-binary-resolve-expr-ref elm/can-convert-quantity)
+
+  (ctu/testing-binary-resolve-param elm/can-convert-quantity)
+
   (ctu/testing-binary-form elm/can-convert-quantity))
 
 ;; 22.4. Children
@@ -202,6 +208,12 @@
   (ctu/testing-unary-null elm/children)
 
   (ctu/testing-unary-dynamic elm/children)
+
+  (ctu/testing-unary-attach-cache elm/children)
+
+  (ctu/testing-unary-resolve-expr-ref elm/children)
+
+  (ctu/testing-unary-resolve-param elm/children)
 
   (ctu/testing-unary-form elm/children))
 
@@ -257,6 +269,12 @@
   (ctu/testing-binary-null elm/convert-quantity #elm/quantity [5 "mg"] #elm/string "m")
 
   (ctu/testing-binary-dynamic elm/convert-quantity)
+
+  (ctu/testing-binary-attach-cache elm/convert-quantity)
+
+  (ctu/testing-binary-resolve-expr-ref elm/convert-quantity)
+
+  (ctu/testing-binary-resolve-param elm/convert-quantity)
 
   (ctu/testing-binary-form elm/convert-quantity))
 
@@ -358,6 +376,14 @@
 
   (ctu/testing-unary-dynamic elm/converts-to-boolean)
 
+  (ctu/testing-unary-attach-cache elm/converts-to-boolean)
+
+  (ctu/testing-unary-resolve-expr-ref elm/converts-to-boolean)
+
+  (ctu/testing-unary-resolve-param elm/converts-to-boolean)
+
+  (ctu/testing-unary-equals-hash-code elm/converts-to-boolean)
+
   (ctu/testing-unary-form elm/converts-to-boolean))
 
 ;; 22.8. ConvertsToDate
@@ -414,6 +440,12 @@
 
   (ctu/testing-unary-dynamic elm/converts-to-date)
 
+  (ctu/testing-unary-attach-cache elm/converts-to-date)
+
+  (ctu/testing-unary-resolve-expr-ref elm/converts-to-date)
+
+  (ctu/testing-unary-resolve-param elm/converts-to-date)
+
   (ctu/testing-unary-form elm/converts-to-date))
 
 ;; 22.9. ConvertsToDateTime
@@ -466,6 +498,12 @@
   (ctu/testing-unary-null elm/converts-to-date-time)
 
   (ctu/testing-unary-dynamic elm/converts-to-date-time)
+
+  (ctu/testing-unary-attach-cache elm/converts-to-date-time)
+
+  (ctu/testing-unary-resolve-expr-ref elm/converts-to-date-time)
+
+  (ctu/testing-unary-resolve-param elm/converts-to-date-time)
 
   (ctu/testing-unary-form elm/converts-to-date-time))
 
@@ -527,6 +565,14 @@
 
   (ctu/testing-unary-dynamic elm/converts-to-decimal)
 
+  (ctu/testing-unary-attach-cache elm/converts-to-decimal)
+
+  (ctu/testing-unary-resolve-expr-ref elm/converts-to-decimal)
+
+  (ctu/testing-unary-resolve-param elm/converts-to-decimal)
+
+  (ctu/testing-unary-equals-hash-code elm/converts-to-decimal)
+
   (ctu/testing-unary-form elm/converts-to-decimal))
 
 ;; 22.11. ConvertsToLong
@@ -584,6 +630,14 @@
 
   (ctu/testing-unary-dynamic elm/converts-to-long)
 
+  (ctu/testing-unary-attach-cache elm/converts-to-long)
+
+  (ctu/testing-unary-resolve-expr-ref elm/converts-to-long)
+
+  (ctu/testing-unary-resolve-param elm/converts-to-long)
+
+  (ctu/testing-unary-equals-hash-code elm/converts-to-long)
+
   (ctu/testing-unary-form elm/converts-to-long))
 
 ;; 22.12. ConvertsToInteger
@@ -639,6 +693,14 @@
   (ctu/testing-unary-null elm/converts-to-integer)
 
   (ctu/testing-unary-dynamic elm/converts-to-integer)
+
+  (ctu/testing-unary-attach-cache elm/converts-to-integer)
+
+  (ctu/testing-unary-resolve-expr-ref elm/converts-to-integer)
+
+  (ctu/testing-unary-resolve-param elm/converts-to-integer)
+
+  (ctu/testing-unary-equals-hash-code elm/converts-to-integer)
 
   (ctu/testing-unary-form elm/converts-to-integer))
 
@@ -712,6 +774,14 @@
 
   (ctu/testing-unary-dynamic elm/converts-to-quantity)
 
+  (ctu/testing-unary-attach-cache elm/converts-to-quantity)
+
+  (ctu/testing-unary-resolve-expr-ref elm/converts-to-quantity)
+
+  (ctu/testing-unary-resolve-param elm/converts-to-quantity)
+
+  (ctu/testing-unary-equals-hash-code elm/converts-to-quantity)
+
   (ctu/testing-unary-form elm/converts-to-quantity))
 
 ;; 22.14. ConvertsToRatio
@@ -749,6 +819,14 @@
   (ctu/testing-unary-null elm/converts-to-ratio)
 
   (ctu/testing-unary-dynamic elm/converts-to-ratio)
+
+  (ctu/testing-unary-attach-cache elm/converts-to-ratio)
+
+  (ctu/testing-unary-resolve-expr-ref elm/converts-to-ratio)
+
+  (ctu/testing-unary-resolve-param elm/converts-to-ratio)
+
+  (ctu/testing-unary-equals-hash-code elm/converts-to-ratio)
 
   (ctu/testing-unary-form elm/converts-to-ratio))
 
@@ -824,6 +902,14 @@
 
   (ctu/testing-unary-dynamic elm/converts-to-string)
 
+  (ctu/testing-unary-attach-cache elm/converts-to-string)
+
+  (ctu/testing-unary-resolve-expr-ref elm/converts-to-string)
+
+  (ctu/testing-unary-resolve-param elm/converts-to-string)
+
+  (ctu/testing-unary-equals-hash-code elm/converts-to-string)
+
   (ctu/testing-unary-form elm/converts-to-string))
 
 ;; 22.16. ConvertsToTime
@@ -893,6 +979,12 @@
 
   (ctu/testing-unary-dynamic elm/converts-to-time)
 
+  (ctu/testing-unary-attach-cache elm/converts-to-time)
+
+  (ctu/testing-unary-resolve-expr-ref elm/converts-to-time)
+
+  (ctu/testing-unary-resolve-param elm/converts-to-time)
+
   (ctu/testing-unary-form elm/converts-to-time))
 
 ;; 22.17. Descendents
@@ -920,6 +1012,12 @@
   (ctu/testing-unary-null elm/descendents)
 
   (ctu/testing-unary-dynamic elm/descendents)
+
+  (ctu/testing-unary-attach-cache elm/descendents)
+
+  (ctu/testing-unary-resolve-expr-ref elm/descendents)
+
+  (ctu/testing-unary-resolve-param elm/descendents)
 
   (ctu/testing-unary-form elm/descendents))
 
@@ -1162,6 +1260,14 @@
 
   (ctu/testing-unary-dynamic elm/to-boolean)
 
+  (ctu/testing-unary-attach-cache elm/to-boolean)
+
+  (ctu/testing-unary-resolve-expr-ref elm/to-boolean)
+
+  (ctu/testing-unary-resolve-param elm/to-boolean)
+
+  (ctu/testing-unary-equals-hash-code elm/to-boolean)
+
   (ctu/testing-unary-form elm/to-boolean))
 
 ;; 22.20. ToChars
@@ -1192,6 +1298,14 @@
 
   (ctu/testing-unary-dynamic elm/to-chars)
 
+  (ctu/testing-unary-attach-cache elm/to-chars)
+
+  (ctu/testing-unary-resolve-expr-ref elm/to-chars)
+
+  (ctu/testing-unary-resolve-param elm/to-chars)
+
+  (ctu/testing-unary-equals-hash-code elm/to-chars)
+
   (ctu/testing-unary-form elm/to-chars))
 
 ;; 22.21. ToConcept
@@ -1220,6 +1334,14 @@
   (ctu/testing-unary-null elm/to-concept)
 
   (ctu/testing-unary-dynamic elm/to-concept)
+
+  (ctu/testing-unary-attach-cache elm/to-concept)
+
+  (ctu/testing-unary-resolve-expr-ref elm/to-concept)
+
+  (ctu/testing-unary-resolve-param elm/to-concept)
+
+  (ctu/testing-unary-equals-hash-code elm/to-concept)
 
   (ctu/testing-unary-form elm/to-concept))
 
@@ -1299,6 +1421,12 @@
 
   (ctu/testing-unary-dynamic elm/to-date)
 
+  (ctu/testing-unary-attach-cache elm/to-date)
+
+  (ctu/testing-unary-resolve-expr-ref elm/to-date)
+
+  (ctu/testing-unary-resolve-param elm/to-date)
+
   (ctu/testing-unary-form elm/to-date))
 
 ;; 22.23. ToDateTime
@@ -1365,6 +1493,12 @@
 
   (ctu/testing-unary-dynamic elm/to-date-time)
 
+  (ctu/testing-unary-attach-cache elm/to-date-time)
+
+  (ctu/testing-unary-resolve-expr-ref elm/to-date-time)
+
+  (ctu/testing-unary-resolve-param elm/to-date-time)
+
   (ctu/testing-unary-form elm/to-date-time))
 
 ;; 22.24. ToDecimal
@@ -1415,6 +1549,14 @@
 
   (ctu/testing-unary-dynamic elm/to-decimal)
 
+  (ctu/testing-unary-attach-cache elm/to-decimal)
+
+  (ctu/testing-unary-resolve-expr-ref elm/to-decimal)
+
+  (ctu/testing-unary-resolve-param elm/to-decimal)
+
+  (ctu/testing-unary-equals-hash-code elm/to-decimal)
+
   (ctu/testing-unary-form elm/to-decimal))
 
 ;; 22.25. ToInteger
@@ -1458,6 +1600,14 @@
 
   (ctu/testing-unary-dynamic elm/to-integer)
 
+  (ctu/testing-unary-attach-cache elm/to-integer)
+
+  (ctu/testing-unary-resolve-expr-ref elm/to-integer)
+
+  (ctu/testing-unary-resolve-param elm/to-integer)
+
+  (ctu/testing-unary-equals-hash-code elm/to-integer)
+
   (ctu/testing-unary-form elm/to-integer))
 
 ;; 22.26. ToList
@@ -1491,6 +1641,14 @@
       #elm/parameter-ref "a" ["a"]))
 
   (ctu/testing-unary-dynamic elm/to-list)
+
+  (ctu/testing-unary-attach-cache elm/to-list)
+
+  (ctu/testing-unary-resolve-expr-ref elm/to-list)
+
+  (ctu/testing-unary-resolve-param elm/to-list)
+
+  (ctu/testing-unary-equals-hash-code elm/to-list)
 
   (ctu/testing-unary-form elm/to-list))
 
@@ -1538,6 +1696,14 @@
   (ctu/testing-unary-null elm/to-long)
 
   (ctu/testing-unary-dynamic elm/to-long)
+
+  (ctu/testing-unary-attach-cache elm/to-long)
+
+  (ctu/testing-unary-resolve-expr-ref elm/to-long)
+
+  (ctu/testing-unary-resolve-param elm/to-long)
+
+  (ctu/testing-unary-equals-hash-code elm/to-long)
 
   (ctu/testing-unary-form elm/to-long))
 
@@ -1618,6 +1784,14 @@
 
   (ctu/testing-unary-dynamic elm/to-quantity)
 
+  (ctu/testing-unary-attach-cache elm/to-quantity)
+
+  (ctu/testing-unary-resolve-expr-ref elm/to-quantity)
+
+  (ctu/testing-unary-resolve-param elm/to-quantity)
+
+  (ctu/testing-unary-equals-hash-code elm/to-quantity)
+
   (ctu/testing-unary-form elm/to-quantity))
 
 ;; 22.29. ToRatio
@@ -1668,6 +1842,14 @@
   (ctu/testing-unary-null elm/to-ratio)
 
   (ctu/testing-unary-dynamic elm/to-ratio)
+
+  (ctu/testing-unary-attach-cache elm/to-ratio)
+
+  (ctu/testing-unary-resolve-expr-ref elm/to-ratio)
+
+  (ctu/testing-unary-resolve-param elm/to-ratio)
+
+  (ctu/testing-unary-equals-hash-code elm/to-ratio)
 
   (ctu/testing-unary-form elm/to-ratio))
 
@@ -1748,6 +1930,14 @@
 
   (ctu/testing-unary-dynamic elm/to-string)
 
+  (ctu/testing-unary-attach-cache elm/to-string)
+
+  (ctu/testing-unary-resolve-expr-ref elm/to-string)
+
+  (ctu/testing-unary-resolve-param elm/to-string)
+
+  (ctu/testing-unary-equals-hash-code elm/to-string)
+
   (ctu/testing-unary-form elm/to-string))
 
 ;; 22.31. ToTime
@@ -1806,5 +1996,11 @@
   (ctu/testing-unary-null elm/to-time)
 
   (ctu/testing-unary-dynamic elm/to-time)
+
+  (ctu/testing-unary-attach-cache elm/to-time)
+
+  (ctu/testing-unary-resolve-expr-ref elm/to-time)
+
+  (ctu/testing-unary-resolve-param elm/to-time)
 
   (ctu/testing-unary-form elm/to-time))

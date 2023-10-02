@@ -128,6 +128,10 @@
                :clauses :blaze.db.query/clauses)
   :ret (s/or :query :blaze.db/query :anomaly ::anom/anomaly))
 
+(s/fdef d/patient-compartment-last-change-t
+  :args (s/cat :db :blaze.db/db :patient-id :blaze.resource/id)
+  :ret (s/nilable :blaze.db/t))
+
 ;; ---- Common Query Functions ------------------------------------------------
 
 (s/fdef d/execute-query

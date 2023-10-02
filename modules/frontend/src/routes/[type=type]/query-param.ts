@@ -1,4 +1,4 @@
-import type { SearchParamType } from '../../fhir';
+import type { SearchParamType } from '../../fhir.js';
 
 export interface QueryParam {
 	id: number;

@@ -1,8 +1,8 @@
-import type { HistoryBundle, Resource } from '../../fhir';
+import type { HistoryBundle, Resource } from '../../fhir.js';
 import { base } from '$app/paths';
 import { error } from '@sveltejs/kit';
-import { processParams } from '../../util';
-import { transformBundle } from '../../history/util';
+import { processParams } from '../../util.js';
+import { transformBundle } from '../../history/util.js';
 
 export async function load({ fetch, url }) {
 	const res = await fetch(`${base}/_history?${processParams(url.searchParams)}`, {

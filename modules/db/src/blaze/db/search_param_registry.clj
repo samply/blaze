@@ -40,15 +40,20 @@
   (p/-linked-compartments search-param-registry resource))
 
 (defn compartment-resources
-  "Returns a seq of [type code] tuples of resources in compartment of `type`.
+  "Returns a seq of [type code] tuples of resources in compartment of
+  `compartment-type` or a list of codes if the optional `type` is given.
 
   Example:
-  * [\"Observation\" \"subject\"] and others for \"Patient\""
-  [search-param-registry type]
-  (p/-compartment-resources search-param-registry type))
+  * [\"Observation\" \"subject\"] and others for \"Patient\"
+  * [\"subject\"] and others for \"Patient\" and \"Observation\""
+  ([search-param-registry compartment-type]
+   (p/-compartment-resources search-param-registry compartment-type))
+  ([search-param-registry compartment-type type]
+   (p/-compartment-resources search-param-registry compartment-type type)))
 
 (deftype MemSearchParamRegistry [index target-index compartment-index
-                                 compartment-resource-index]
+                                 compartment-resource-index
+                                 compartment-resource-index-by-type]
   p/SearchParamRegistry
   (-get [_ code type]
     (or (get-in index [type code])
@@ -76,8 +81,11 @@
      #{}
      (compartment-index (name (fhir-spec/fhir-type resource)))))
 
-  (-compartment-resources [_ type]
-    (compartment-resource-index type [])))
+  (-compartment-resources [_ compartment-type]
+    (compartment-resource-index compartment-type []))
+
+  (-compartment-resources [_ compartment-type type]
+    (get-in compartment-resource-index-by-type [compartment-type type] [])))
 
 (def ^:private object-mapper
   (j/object-mapper
@@ -138,6 +146,14 @@
     (mapcat
      (fn [{res-type :code param-codes :param}]
        (coll/eduction (map (partial vector res-type)) param-codes)))
+    resource-defs)})
+
+(defn- index-compartment-resources-by-type [{def-code :code resource-defs :resource}]
+  {def-code
+   (reduce
+    (fn [res {res-type :code param-codes :param}]
+      (cond-> res param-codes (assoc res-type param-codes)))
+    {}
     resource-defs)})
 
 (def ^:private list-search-param
@@ -227,7 +243,9 @@
         patient-compartment (read-classpath-json-resource "blaze/db/compartment/patient.json")]
     (when-ok [url-index (build-url-index entries)
               index (build-index url-index entries)]
-      (->MemSearchParamRegistry (add-special index)
-                                (build-target-index url-index entries)
-                                (index-compartment-def index patient-compartment)
-                                (index-compartment-resources patient-compartment)))))
+      (->MemSearchParamRegistry
+       (add-special index)
+       (build-target-index url-index entries)
+       (index-compartment-def index patient-compartment)
+       (index-compartment-resources patient-compartment)
+       (index-compartment-resources-by-type patient-compartment)))))

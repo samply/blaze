@@ -30,6 +30,12 @@
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [expr _]
+    expr)
+  (-resolve-refs [expr expression-defs]
+    (or (:expression (get expression-defs name)) expr))
+  (-resolve-params [expr _]
+    expr)
   (-eval [_ {:keys [expression-defs] :as context} resource _]
     (if-let [{:keys [expression]} (get expression-defs name)]
       (core/-eval expression context resource nil)
@@ -67,6 +73,12 @@
         (reify core/Expression
           (-static [_]
             false)
+          (-attach-cache [expr _]
+            expr)
+          (-resolve-refs [expr _]
+            expr)
+          (-resolve-params [expr _]
+            expr)
           (-eval [_ {:keys [db expression-defs] :as context} _ _]
             (if-some [{:keys [expression]} (get expression-defs name)]
               (mapv
@@ -100,6 +112,12 @@
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [_ cache]
+    (->ToQuantityFunctionExpression (core/-attach-cache operand cache)))
+  (-resolve-refs [_ expression-defs]
+    (->ToQuantityFunctionExpression (core/-resolve-refs operand expression-defs)))
+  (-resolve-params [_ parameters]
+    (->ToQuantityFunctionExpression (core/-resolve-params operand parameters)))
   (-eval [_ context resource scope]
     (-to-quantity (core/-eval operand context resource scope)))
   (-form [_]
@@ -109,6 +127,12 @@
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [_ cache]
+    (->ToCodeFunctionExpression (core/-attach-cache operand cache)))
+  (-resolve-refs [_ expression-defs]
+    (->ToCodeFunctionExpression (core/-resolve-refs operand expression-defs)))
+  (-resolve-params [_ parameters]
+    (->ToCodeFunctionExpression (core/-resolve-params operand parameters)))
   (-eval [_ context resource scope]
     (let [{:keys [system version code]} (core/-eval operand context resource scope)]
       (code/to-code (type/value system) (type/value version) (type/value code))))
@@ -119,6 +143,12 @@
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [_ cache]
+    (->ToDateFunctionExpression (core/-attach-cache operand cache)))
+  (-resolve-refs [_ expression-defs]
+    (->ToDateFunctionExpression (core/-resolve-refs operand expression-defs)))
+  (-resolve-params [_ parameters]
+    (->ToDateFunctionExpression (core/-resolve-params operand parameters)))
   (-eval [_ context resource scope]
     (type/value (core/-eval operand context resource scope)))
   (-form [_]
@@ -128,6 +158,12 @@
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [_ cache]
+    (->ToDateTimeFunctionExpression (core/-attach-cache operand cache)))
+  (-resolve-refs [_ expression-defs]
+    (->ToDateTimeFunctionExpression (core/-resolve-refs operand expression-defs)))
+  (-resolve-params [_ parameters]
+    (->ToDateTimeFunctionExpression (core/-resolve-params operand parameters)))
   (-eval [_ {:keys [now] :as context} resource scope]
     (p/to-date-time (type/value (core/-eval operand context resource scope)) now))
   (-form [_]
@@ -137,6 +173,12 @@
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [_ cache]
+    (->ToStringFunctionExpression (core/-attach-cache operand cache)))
+  (-resolve-refs [_ expression-defs]
+    (->ToStringFunctionExpression (core/-resolve-refs operand expression-defs)))
+  (-resolve-params [_ parameters]
+    (->ToStringFunctionExpression (core/-resolve-params operand parameters)))
   (-eval [_ context resource scope]
     (some-> (type/value (core/-eval operand context resource scope)) str))
   (-form [_]
@@ -159,6 +201,12 @@
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [_ cache]
+    (->ToIntervalFunctionExpression (core/-attach-cache operand cache)))
+  (-resolve-refs [_ expression-defs]
+    (->ToIntervalFunctionExpression (core/-resolve-refs operand expression-defs)))
+  (-resolve-params [_ parameters]
+    (->ToIntervalFunctionExpression (core/-resolve-params operand parameters)))
   (-eval [_ context resource scope]
     (-to-interval (core/-eval operand context resource scope) context))
   (-form [_]
@@ -209,6 +257,12 @@
   (reify core/Expression
     (-static [_]
       false)
+    (-attach-cache [expr _]
+      expr)
+    (-resolve-refs [expr _]
+      expr)
+    (-resolve-params [expr _]
+      expr)
     (-eval [_ _ _ scope]
       (scope name))
     (-form [_]

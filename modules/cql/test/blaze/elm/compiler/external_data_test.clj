@@ -16,7 +16,6 @@
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.expression :as expr]
    [blaze.elm.expression-spec]
-   [blaze.elm.expression.cache :as-alias expr-cache]
    [blaze.elm.util-spec]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type]
@@ -51,7 +50,7 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (is (= "Patient[id = 0, t = 1]" (str (ctu/resource (d/db node) "Patient" "0")))))))
+      (is (= "Patient[id = 0, t = 1, last-change-t = 1]" (str (ctu/resource (d/db node) "Patient" "0")))))))
 
 ;; 11.1. Retrieve
 ;;
@@ -396,9 +395,7 @@
                         define InInitialPopulation:
                           [\"name-133756\" -> Observation]
                         ")
-              compile-context {::expr-cache/enabled? false}
-              {:keys [expression-defs]} (library/compile-library
-                                         node library compile-context)
+              {:keys [expression-defs]} (library/compile-library node library {})
               db (d/db node)
               patient (ctu/resource db "Patient" "0")
               eval-context (assoc (eval-context db) :expression-defs expression-defs)
@@ -443,9 +440,7 @@
                         define InInitialPopulation:
                           [\"name-133730\" -> Observation: Code 'code-133657' from sys]
                         ")
-              compile-context {::expr-cache/enabled? false}
-              {:keys [expression-defs]} (library/compile-library
-                                         node library compile-context)
+              {:keys [expression-defs]} (library/compile-library node library {})
               db (d/db node)
               patient (ctu/resource db "Patient" "0")
               eval-context (assoc (eval-context db) :expression-defs expression-defs)

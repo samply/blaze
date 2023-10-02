@@ -16,12 +16,38 @@
       asType
       (when (= "ToDateTime" type) "{urn:hl7-org:elm-types:r1}DateTime")))
 
-(defrecord IntervalExpression
-           [type low high low-closed-expression high-closed-expression low-closed
-            high-closed]
+(defrecord IntervalExpression [type low high low-closed-expression
+                               high-closed-expression low-closed high-closed]
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [_ cache]
+    (->IntervalExpression
+     type
+     (core/-attach-cache low cache)
+     (core/-attach-cache high cache)
+     (core/-attach-cache low-closed-expression cache)
+     (core/-attach-cache high-closed-expression cache)
+     low-closed
+     high-closed))
+  (-resolve-refs [_ expression-defs]
+    (->IntervalExpression
+     type
+     (core/-resolve-refs low expression-defs)
+     (core/-resolve-refs high expression-defs)
+     (core/-resolve-refs low-closed-expression expression-defs)
+     (core/-resolve-refs high-closed-expression expression-defs)
+     low-closed
+     high-closed))
+  (-resolve-params [_ parameters]
+    (->IntervalExpression
+     type
+     (core/-resolve-params low parameters)
+     (core/-resolve-params high parameters)
+     (core/-resolve-params low-closed-expression parameters)
+     (core/-resolve-params high-closed-expression parameters)
+     low-closed
+     high-closed))
   (-eval [_ context resource scope]
     (let [low (core/-eval low context resource scope)
           high (core/-eval high context resource scope)

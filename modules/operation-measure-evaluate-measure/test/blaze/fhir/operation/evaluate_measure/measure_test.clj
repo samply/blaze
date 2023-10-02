@@ -3,6 +3,7 @@
    [blaze.anomaly :as ba]
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.elm.expression :as-alias expr]
    [blaze.fhir.operation.evaluate-measure.measure :as measure]
    [blaze.fhir.operation.evaluate-measure.measure-spec]
    [blaze.fhir.operation.evaluate-measure.measure.population-spec]
@@ -10,6 +11,7 @@
    [blaze.fhir.operation.evaluate-measure.measure.util-spec]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.test-util :refer [given-failed-future]]
    [blaze.log]
    [blaze.test-util :as tu]
    [clojure.java.io :as io]
@@ -17,6 +19,7 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
@@ -71,25 +74,36 @@
         library (library-entry (slurp-resource (str name ".cql")))]
     (update bundle :entry conj library)))
 
-(def config
+(def ^:private config
   (assoc mem-node-config
-         :blaze.test/fixed-rng-fn {}))
+         ::expr/cache
+         {:node (ig/ref :blaze.db/node)
+          :executor (ig/ref :blaze.test/executor)}
+         :blaze.test/fixed-rng-fn {}
+         :blaze.test/executor {}))
 
 (defn- evaluate
   ([name]
    (evaluate name "population"))
   ([name report-type]
    (with-system-data
-     [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
+     [{:blaze.db/keys [node]
+       ::expr/keys [cache]
+       :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
      [(tx-ops (:entry (read-data name)))]
 
      (let [db (d/db node)
            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                    :blaze/base-url "" ::reitit/router router}
+                    ::expr/cache cache
+                    :blaze/base-url "" ::reitit/router router
+                    :executor executor}
+           measure @(d/pull node (d/resource-handle db "Measure" "0"))
            period [#system/date"2000" #system/date"2020"]]
-       (measure/evaluate-measure context
-                                 @(d/pull node (d/resource-handle db "Measure" "0"))
-                                 {:period period :report-type report-type})))))
+       (try
+         @(measure/evaluate-measure context measure
+                                    {:period period :report-type report-type})
+         (catch Exception e
+           (ex-data (ex-cause e))))))))
 
 (defn- first-population [result]
   (if (::anom/category result)
@@ -181,7 +195,7 @@
 (deftest evaluate-measure-test
   (testing "Encounter population basis"
     (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference "Patient/0"}}]
         [:put {:fhir/type :fhir/Patient :id "1"}]
@@ -193,7 +207,7 @@
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                     :blaze/base-url "" ::reitit/router router}
+                     :executor executor :blaze/base-url "" ::reitit/router router}
             measure {:fhir/type :fhir/Measure :id "0"
                      :library [#fhir/canonical"0"]
                      :group
@@ -210,7 +224,7 @@
         (testing "population report"
           (let [params {:period [#system/date"2000" #system/date"2100"]
                         :report-type "population"}]
-            (given (:resource (measure/evaluate-measure context measure params))
+            (given (:resource @(measure/evaluate-measure context measure params))
               :fhir/type := :fhir/MeasureReport
               [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
               [:group 0 :population 0 :count] := 3)))
@@ -218,7 +232,7 @@
         (testing "subject-list report"
           (let [params {:period [#system/date"2000" #system/date"2100"]
                         :report-type "subject-list"}
-                {:keys [resource tx-ops]} (measure/evaluate-measure context measure params)]
+                {:keys [resource tx-ops]} @(measure/evaluate-measure context measure params)]
 
             (given resource
               :fhir/type := :fhir/MeasureReport
@@ -235,7 +249,7 @@
 
   (testing "two groups"
     (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]
         [:put {:fhir/type :fhir/Patient :id "1" :gender #fhir/code"female"}]
         [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference "Patient/1"}}]
@@ -251,7 +265,7 @@
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                     :blaze/base-url "" ::reitit/router router}
+                     :executor executor :blaze/base-url "" ::reitit/router router}
             measure {:fhir/type :fhir/Measure :id "0"
                      :library [#fhir/canonical"0"]
                      :group
@@ -277,7 +291,7 @@
         (testing "population report"
           (let [params {:period [#system/date"2000" #system/date"2100"]
                         :report-type "population"}]
-            (given (:resource (measure/evaluate-measure context measure params))
+            (given (:resource @(measure/evaluate-measure context measure params))
               :fhir/type := :fhir/MeasureReport
               [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
               [:group 0 :population 0 :count] := 4
@@ -287,7 +301,7 @@
         (testing "subject-list report"
           (let [params {:period [#system/date"2000" #system/date"2100"]
                         :report-type "subject-list"}
-                {:keys [resource tx-ops]} (measure/evaluate-measure context measure params)]
+                {:keys [resource tx-ops]} @(measure/evaluate-measure context measure params)]
 
             (given resource
               :fhir/type := :fhir/MeasureReport
@@ -358,7 +372,7 @@
                          :code (population-concept "initial-population")}]}]}
             params {:period [#system/date"2000" #system/date"2020"]
                     :report-type "population"}]
-        (given (measure/evaluate-measure context measure params)
+        (given-failed-future (measure/evaluate-measure context measure params)
           ::anom/category := ::anom/incorrect
           ::anom/message := "Syntax error at <EOF>"
           :measure-id := measure-id
@@ -384,7 +398,7 @@
                          :code (population-concept "initial-population")}]}]}
             params {:period [#system/date"2000" #system/date"2020"]
                     :report-type "population"}]
-        (given (measure/evaluate-measure context measure params)
+        (given-failed-future (measure/evaluate-measure context measure params)
           ::anom/category := ::anom/incorrect
           ::anom/message := "Missing criteria."
           :measure-id := measure-id
@@ -393,7 +407,7 @@
 
   (testing "evaluation timeout"
     (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
        [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                :content [(library-content (library-gender true))]}]]]
@@ -401,6 +415,7 @@
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn
                      :db db :timeout (time/seconds 0)
+                     :executor executor
                      :blaze/base-url "" ::reitit/router router}
             measure-id "measure-id-132321"
             measure {:fhir/type :fhir/Measure :id measure-id
@@ -413,7 +428,7 @@
                          :criteria (cql-expression "InInitialPopulation")}]}]}
             params {:period [#system/date"2000" #system/date"2020"]
                     :report-type "population"}]
-        (given (measure/evaluate-measure context measure params)
+        (given-failed-future (measure/evaluate-measure context measure params)
           ::anom/category := ::anom/interrupted
           ::anom/message := "Timeout of 0 millis eclipsed while evaluating."
           :measure-id := measure-id))))
@@ -422,13 +437,14 @@
     (doseq [subject-ref ["0" ["Patient" "0"]]
             [library count] [[(library true) 1] [(library false) 0]]]
       (with-system-data
-        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
+        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                  :content [(library-content library)]}]]]
 
         (let [db (d/db node)
               context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                       :executor executor
                        :blaze/base-url "" ::reitit/router router}
               measure {:fhir/type :fhir/Measure :id "0"
                        :url #fhir/uri"measure-155437"
@@ -442,7 +458,7 @@
               params {:period [#system/date"2000" #system/date"2020"]
                       :report-type "subject"
                       :subject-ref subject-ref}]
-          (given (:resource (measure/evaluate-measure context measure params))
+          (given (:resource @(measure/evaluate-measure context measure params))
             :fhir/type := :fhir/MeasureReport
             :status := #fhir/code"complete"
             :type := #fhir/code"individual"
@@ -457,13 +473,14 @@
     (testing "with stratifiers"
       (doseq [[library count] [[(library-gender true) 1] [(library-gender false) 0]]]
         (with-system-data
-          [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
+          [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
           [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]
             [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                    :content [(library-content library)]}]]]
 
           (let [db (d/db node)
                 context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                         :executor executor
                          :blaze/base-url "" ::reitit/router router}
                 measure {:fhir/type :fhir/Measure :id "0"
                          :url #fhir/uri"measure-155502"
@@ -481,7 +498,7 @@
                 params {:period [#system/date"2000" #system/date"2020"]
                         :report-type "subject"
                         :subject-ref "0"}]
-            (given (:resource (measure/evaluate-measure context measure params))
+            (given (:resource @(measure/evaluate-measure context measure params))
               :fhir/type := :fhir/MeasureReport
               :status := #fhir/code"complete"
               :type := #fhir/code"individual"
@@ -516,7 +533,7 @@
               params {:period [#system/date"2000" #system/date"2020"]
                       :report-type "subject"
                       :subject-ref ["Observation" "0"]}]
-          (given (measure/evaluate-measure context measure params)
+          (given-failed-future (measure/evaluate-measure context measure params)
             ::anom/category := ::anom/incorrect
             ::anom/message := "Type mismatch between evaluation subject `Observation` and Measure subject `Patient`."))))
 
@@ -540,7 +557,7 @@
               params {:period [#system/date"2000" #system/date"2020"]
                       :report-type "subject"
                       :subject-ref "0"}]
-          (given (measure/evaluate-measure context measure params)
+          (given-failed-future (measure/evaluate-measure context measure params)
             ::anom/category := ::anom/incorrect
             ::anom/message := "Subject with type `Patient` and id `0` was not found."))))
 
@@ -566,7 +583,7 @@
               params {:period [#system/date"2000" #system/date"2020"]
                       :report-type "subject"
                       :subject-ref "0"}]
-          (given (measure/evaluate-measure context measure params)
+          (given-failed-future (measure/evaluate-measure context measure params)
             ::anom/category := ::anom/incorrect
             ::anom/message := "Subject with type `Patient` and id `0` was not found."))))))
 

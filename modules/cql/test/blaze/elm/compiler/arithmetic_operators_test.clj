@@ -93,6 +93,14 @@
 
   (ctu/testing-unary-dynamic elm/abs)
 
+  (ctu/testing-unary-attach-cache elm/abs)
+
+  (ctu/testing-unary-resolve-expr-ref elm/abs)
+
+  (ctu/testing-unary-resolve-param elm/abs)
+
+  (ctu/testing-unary-equals-hash-code elm/abs)
+
   (ctu/testing-unary-form elm/abs))
 
 ;; 16.2. Add
@@ -366,6 +374,12 @@
 
   (ctu/testing-binary-dynamic elm/add)
 
+  (ctu/testing-binary-attach-cache elm/add)
+
+  (ctu/testing-binary-resolve-expr-ref elm/add)
+
+  (ctu/testing-binary-resolve-param elm/add)
+
   (ctu/testing-binary-form elm/add))
 
 ;; 16.3. Ceiling
@@ -382,6 +396,14 @@
   (ctu/testing-unary-null elm/ceiling)
 
   (ctu/testing-unary-dynamic elm/ceiling)
+
+  (ctu/testing-unary-attach-cache elm/ceiling)
+
+  (ctu/testing-unary-resolve-expr-ref elm/ceiling)
+
+  (ctu/testing-unary-resolve-param elm/ceiling)
+
+  (ctu/testing-unary-equals-hash-code elm/ceiling)
 
   (ctu/testing-unary-form elm/ceiling))
 
@@ -474,6 +496,12 @@
 
   (ctu/testing-binary-dynamic elm/divide)
 
+  (ctu/testing-binary-attach-cache elm/divide)
+
+  (ctu/testing-binary-resolve-expr-ref elm/divide)
+
+  (ctu/testing-binary-resolve-param elm/divide)
+
   (ctu/testing-binary-form elm/divide))
 
 ;; 16.5. Exp
@@ -489,6 +517,14 @@
   (ctu/testing-unary-null elm/exp)
 
   (ctu/testing-unary-dynamic elm/exp)
+
+  (ctu/testing-unary-attach-cache elm/exp)
+
+  (ctu/testing-unary-resolve-expr-ref elm/exp)
+
+  (ctu/testing-unary-resolve-param elm/exp)
+
+  (ctu/testing-unary-equals-hash-code elm/exp)
 
   (ctu/testing-unary-form elm/exp))
 
@@ -506,6 +542,14 @@
   (ctu/testing-unary-null elm/floor)
 
   (ctu/testing-unary-dynamic elm/floor)
+
+  (ctu/testing-unary-attach-cache elm/floor)
+
+  (ctu/testing-unary-resolve-expr-ref elm/floor)
+
+  (ctu/testing-unary-resolve-param elm/floor)
+
+  (ctu/testing-unary-equals-hash-code elm/floor)
 
   (ctu/testing-unary-form elm/floor))
 
@@ -551,6 +595,12 @@
 
   (ctu/testing-binary-dynamic elm/log)
 
+  (ctu/testing-binary-attach-cache elm/log)
+
+  (ctu/testing-binary-resolve-expr-ref elm/log)
+
+  (ctu/testing-binary-resolve-param elm/log)
+
   (ctu/testing-binary-form elm/log))
 
 ;; 16.9. LowBoundary
@@ -594,6 +644,14 @@
   (ctu/testing-unary-null elm/ln)
 
   (ctu/testing-unary-dynamic elm/ln)
+
+  (ctu/testing-unary-attach-cache elm/ln)
+
+  (ctu/testing-unary-resolve-expr-ref elm/ln)
+
+  (ctu/testing-unary-resolve-param elm/ln)
+
+  (ctu/testing-unary-equals-hash-code elm/ln)
 
   (ctu/testing-unary-form elm/ln))
 
@@ -721,6 +779,12 @@
 
   (ctu/testing-binary-dynamic elm/modulo)
 
+  (ctu/testing-binary-attach-cache elm/modulo)
+
+  (ctu/testing-binary-resolve-expr-ref elm/modulo)
+
+  (ctu/testing-binary-resolve-param elm/modulo)
+
   (ctu/testing-binary-form elm/modulo))
 
 ;; 16.14. Multiply
@@ -765,6 +829,12 @@
 
   (ctu/testing-binary-dynamic elm/multiply)
 
+  (ctu/testing-binary-attach-cache elm/multiply)
+
+  (ctu/testing-binary-resolve-expr-ref elm/multiply)
+
+  (ctu/testing-binary-resolve-param elm/multiply)
+
   (ctu/testing-binary-form elm/multiply))
 
 ;; 16.15. Negate
@@ -795,6 +865,14 @@
   (ctu/testing-unary-null elm/negate)
 
   (ctu/testing-unary-dynamic elm/negate)
+
+  (ctu/testing-unary-attach-cache elm/negate)
+
+  (ctu/testing-unary-resolve-expr-ref elm/negate)
+
+  (ctu/testing-unary-resolve-param elm/negate)
+
+  (ctu/testing-unary-equals-hash-code elm/negate)
 
   (ctu/testing-unary-form elm/negate))
 
@@ -830,6 +908,12 @@
       #elm/decimal "10" #elm/integer "2" 100M))
 
   (ctu/testing-binary-dynamic elm/power)
+
+  (ctu/testing-binary-attach-cache elm/power)
+
+  (ctu/testing-binary-resolve-expr-ref elm/power)
+
+  (ctu/testing-binary-resolve-param elm/power)
 
   (ctu/testing-binary-form elm/power))
 
@@ -915,6 +999,14 @@
 
   (ctu/testing-unary-dynamic elm/predecessor)
 
+  (ctu/testing-unary-attach-cache elm/predecessor)
+
+  (ctu/testing-unary-resolve-expr-ref elm/predecessor)
+
+  (ctu/testing-unary-resolve-param elm/predecessor)
+
+  (ctu/testing-unary-equals-hash-code elm/predecessor)
+
   (ctu/testing-unary-form elm/predecessor))
 
 ;; 16.19. Round
@@ -967,9 +1059,21 @@
 
   (ctu/testing-unary-dynamic elm/round)
 
+  (ctu/testing-unary-attach-cache elm/round)
+
+  (ctu/testing-unary-resolve-expr-ref elm/round)
+
+  (ctu/testing-unary-resolve-param elm/round)
+
   (ctu/testing-unary-form elm/round)
 
   (ctu/testing-binary-dynamic elm/round)
+
+  (ctu/testing-binary-attach-cache elm/round)
+
+  (ctu/testing-binary-resolve-expr-ref elm/round)
+
+  (ctu/testing-binary-resolve-param elm/round)
 
   (ctu/testing-binary-form elm/round))
 
@@ -1191,6 +1295,12 @@
 
   (ctu/testing-binary-dynamic elm/subtract)
 
+  (ctu/testing-binary-attach-cache elm/subtract)
+
+  (ctu/testing-binary-resolve-expr-ref elm/subtract)
+
+  (ctu/testing-binary-resolve-param elm/subtract)
+
   (ctu/testing-binary-form elm/subtract))
 
 ;; 16.21. Successor
@@ -1263,6 +1373,14 @@
 
   (ctu/testing-unary-dynamic elm/successor)
 
+  (ctu/testing-unary-attach-cache elm/successor)
+
+  (ctu/testing-unary-resolve-expr-ref elm/successor)
+
+  (ctu/testing-unary-resolve-param elm/successor)
+
+  (ctu/testing-unary-equals-hash-code elm/successor)
+
   (ctu/testing-unary-form elm/successor))
 
 ;; 16.22. Truncate
@@ -1279,6 +1397,14 @@
   (ctu/testing-unary-null elm/truncate)
 
   (ctu/testing-unary-dynamic elm/truncate)
+
+  (ctu/testing-unary-attach-cache elm/truncate)
+
+  (ctu/testing-unary-resolve-expr-ref elm/truncate)
+
+  (ctu/testing-unary-resolve-param elm/truncate)
+
+  (ctu/testing-unary-equals-hash-code elm/truncate)
 
   (ctu/testing-unary-form elm/truncate))
 
@@ -1341,5 +1467,11 @@
                              #elm/decimal "1.1"))
 
   (ctu/testing-binary-dynamic elm/truncated-divide)
+
+  (ctu/testing-binary-attach-cache elm/truncated-divide)
+
+  (ctu/testing-binary-resolve-expr-ref elm/truncated-divide)
+
+  (ctu/testing-binary-resolve-param elm/truncated-divide)
 
   (ctu/testing-binary-form elm/truncated-divide))

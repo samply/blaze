@@ -49,6 +49,12 @@
 
   (ctu/testing-unary-dynamic elm/all-true)
 
+  (ctu/testing-unary-attach-cache elm/all-true)
+
+  (ctu/testing-unary-resolve-expr-ref elm/all-true)
+
+  (ctu/testing-unary-resolve-param elm/all-true)
+
   (ctu/testing-unary-form elm/all-true))
 
 ;; 21.2. AnyTrue
@@ -74,6 +80,12 @@
 
   (ctu/testing-unary-dynamic elm/any-true)
 
+  (ctu/testing-unary-attach-cache elm/any-true)
+
+  (ctu/testing-unary-resolve-expr-ref elm/any-true)
+
+  (ctu/testing-unary-resolve-param elm/any-true)
+
   (ctu/testing-unary-form elm/any-true))
 
 ;; 21.3. Avg
@@ -98,6 +110,12 @@
       {:type "Null"} nil))
 
   (ctu/testing-unary-dynamic elm/avg)
+
+  (ctu/testing-unary-attach-cache elm/avg)
+
+  (ctu/testing-unary-resolve-expr-ref elm/avg)
+
+  (ctu/testing-unary-resolve-param elm/avg)
 
   (ctu/testing-unary-form elm/avg))
 
@@ -126,6 +144,12 @@
 
   (ctu/testing-unary-dynamic elm/count)
 
+  (ctu/testing-unary-attach-cache elm/count)
+
+  (ctu/testing-unary-resolve-expr-ref elm/count)
+
+  (ctu/testing-unary-resolve-param elm/count)
+
   (ctu/testing-unary-form elm/count))
 
 ;; 21.5. GeometricMean
@@ -152,6 +176,12 @@
 
   (ctu/testing-unary-dynamic elm/geometric-mean)
 
+  (ctu/testing-unary-attach-cache elm/geometric-mean)
+
+  (ctu/testing-unary-resolve-expr-ref elm/geometric-mean)
+
+  (ctu/testing-unary-resolve-param elm/geometric-mean)
+
   (ctu/testing-unary-form elm/geometric-mean))
 
 ;; 21.6. Product
@@ -177,6 +207,12 @@
       {:type "Null"} nil))
 
   (ctu/testing-unary-dynamic elm/product)
+
+  (ctu/testing-unary-attach-cache elm/product)
+
+  (ctu/testing-unary-resolve-expr-ref elm/product)
+
+  (ctu/testing-unary-resolve-param elm/product)
 
   (ctu/testing-unary-form elm/product))
 
@@ -205,6 +241,12 @@
 
   (ctu/testing-unary-dynamic elm/max)
 
+  (ctu/testing-unary-attach-cache elm/max)
+
+  (ctu/testing-unary-resolve-expr-ref elm/max)
+
+  (ctu/testing-unary-resolve-param elm/max)
+
   (ctu/testing-unary-form elm/max))
 
 ;; 21.8. Median
@@ -230,6 +272,12 @@
       {:type "Null"} nil))
 
   (ctu/testing-unary-dynamic elm/median)
+
+  (ctu/testing-unary-attach-cache elm/median)
+
+  (ctu/testing-unary-resolve-expr-ref elm/median)
+
+  (ctu/testing-unary-resolve-param elm/median)
 
   (ctu/testing-unary-form elm/median))
 
@@ -258,6 +306,12 @@
 
   (ctu/testing-unary-dynamic elm/min)
 
+  (ctu/testing-unary-attach-cache elm/min)
+
+  (ctu/testing-unary-resolve-expr-ref elm/min)
+
+  (ctu/testing-unary-resolve-param elm/min)
+
   (ctu/testing-unary-form elm/min))
 
 ;; 21.10. Mode
@@ -284,6 +338,12 @@
 
   (ctu/testing-unary-dynamic elm/mode)
 
+  (ctu/testing-unary-attach-cache elm/mode)
+
+  (ctu/testing-unary-resolve-expr-ref elm/mode)
+
+  (ctu/testing-unary-resolve-param elm/mode)
+
   (ctu/testing-unary-form elm/mode))
 
 ;; 21.11. PopulationVariance
@@ -308,6 +368,12 @@
 
   (ctu/testing-unary-dynamic elm/population-variance)
 
+  (ctu/testing-unary-attach-cache elm/population-variance)
+
+  (ctu/testing-unary-resolve-expr-ref elm/population-variance)
+
+  (ctu/testing-unary-resolve-param elm/population-variance)
+
   (ctu/testing-unary-form elm/population-variance))
 
 ;; 21.12. PopulationStdDev
@@ -331,6 +397,12 @@
       {:type "Null"} nil))
 
   (ctu/testing-unary-dynamic elm/population-std-dev)
+
+  (ctu/testing-unary-attach-cache elm/population-std-dev)
+
+  (ctu/testing-unary-resolve-expr-ref elm/population-std-dev)
+
+  (ctu/testing-unary-resolve-param elm/population-std-dev)
 
   (ctu/testing-unary-form elm/population-std-dev))
 
@@ -357,6 +429,12 @@
 
   (ctu/testing-unary-dynamic elm/sum)
 
+  (ctu/testing-unary-attach-cache elm/sum)
+
+  (ctu/testing-unary-resolve-expr-ref elm/sum)
+
+  (ctu/testing-unary-resolve-param elm/sum)
+
   (ctu/testing-unary-form elm/sum))
 
 ;; 21.14. StdDev
@@ -381,6 +459,12 @@
 
   (ctu/testing-unary-dynamic elm/std-dev)
 
+  (ctu/testing-unary-attach-cache elm/std-dev)
+
+  (ctu/testing-unary-resolve-expr-ref elm/std-dev)
+
+  (ctu/testing-unary-resolve-param elm/std-dev)
+
   (ctu/testing-unary-form elm/std-dev))
 
 ;; 21.15. Variance
@@ -404,5 +488,11 @@
       {:type "Null"} nil))
 
   (ctu/testing-unary-dynamic elm/variance)
+
+  (ctu/testing-unary-attach-cache elm/variance)
+
+  (ctu/testing-unary-resolve-expr-ref elm/variance)
+
+  (ctu/testing-unary-resolve-param elm/variance)
 
   (ctu/testing-unary-form elm/variance))

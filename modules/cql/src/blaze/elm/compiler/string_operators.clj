@@ -13,28 +13,49 @@
 (set! *warn-on-reflection* true)
 
 ;; 17.1. Combine
+(defn combine-op
+  ([source]
+   (reify core/Expression
+     (-static [_]
+       false)
+     (-attach-cache [_ cache]
+       (combine-op (core/-attach-cache source cache)))
+     (-resolve-refs [_ expression-defs]
+       (combine-op (core/-resolve-refs source expression-defs)))
+     (-resolve-params [_ parameters]
+       (combine-op (core/-resolve-params source parameters)))
+     (-eval [_ context resource scope]
+       (when-let [source (core/-eval source context resource scope)]
+         (string/combine source)))
+     (-form [_]
+       (list 'combine (core/-form source)))))
+  ([source separator]
+   (reify core/Expression
+     (-static [_]
+       false)
+     (-attach-cache [_ cache]
+       (combine-op (core/-attach-cache source cache)
+                   (core/-attach-cache separator cache)))
+     (-resolve-refs [_ expression-defs]
+       (combine-op (core/-resolve-refs source expression-defs)
+                   (core/-resolve-refs separator expression-defs)))
+     (-resolve-params [_ parameters]
+       (combine-op (core/-resolve-params source parameters)
+                   (core/-resolve-params separator parameters)))
+     (-eval [_ context resource scope]
+       (when-let [source (core/-eval source context resource scope)]
+         (string/combine (core/-eval separator context resource scope)
+                         source)))
+     (-form [_]
+       (list 'combine (core/-form source) (core/-form separator))))))
+
 (defmethod core/compile* :elm.compiler.type/combine
   [context {:keys [source separator]}]
   (let [source (core/compile* context source)
         separator (some->> separator (core/compile* context))]
     (if separator
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scope]
-          (when-let [source (core/-eval source context resource scope)]
-            (string/combine (core/-eval separator context resource scope)
-                            source)))
-        (-form [_]
-          (list 'combine (core/-form source) (core/-form separator))))
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scope]
-          (when-let [source (core/-eval source context resource scope)]
-            (string/combine source)))
-        (-form [_]
-          (list 'combine (core/-form source)))))))
+      (combine-op source separator)
+      (combine-op source))))
 
 ;; 17.2. Concatenate
 (defnaryop concatenate [strings]
@@ -50,19 +71,30 @@
   (p/indexer x index))
 
 ;; 17.7. LastPositionOf
+(defn last-position-of-op [pattern string]
+  (reify core/Expression
+    (-static [_]
+      false)
+    (-attach-cache [_ cache]
+      (last-position-of-op (core/-attach-cache pattern cache)
+                           (core/-attach-cache string cache)))
+    (-resolve-refs [_ expression-defs]
+      (last-position-of-op (core/-resolve-refs pattern expression-defs)
+                           (core/-resolve-refs string expression-defs)))
+    (-resolve-params [_ parameters]
+      (last-position-of-op (core/-resolve-params pattern parameters)
+                           (core/-resolve-params string parameters)))
+    (-eval [_ context resource scope]
+      (when-let [^String pattern (core/-eval pattern context resource scope)]
+        (when-let [^String string (core/-eval string context resource scope)]
+          (.lastIndexOf string pattern))))
+    (-form [_]
+      (list 'last-position-of (core/-form pattern) (core/-form string)))))
+
 (defmethod core/compile* :elm.compiler.type/last-position-of
   [context {:keys [pattern string]}]
-  (let [pattern (core/compile* context pattern)
-        string (core/compile* context string)]
-    (reify core/Expression
-      (-static [_]
-        false)
-      (-eval [_ context resource scope]
-        (when-let [^String pattern (core/-eval pattern context resource scope)]
-          (when-let [^String string (core/-eval string context resource scope)]
-            (.lastIndexOf string pattern))))
-      (-form [_]
-        (list 'last-position-of (core/-form pattern) (core/-form string))))))
+  (last-position-of-op (core/compile* context pattern)
+                       (core/compile* context string)))
 
 ;; 17.8. Length
 (defunop length [x]
@@ -78,19 +110,30 @@
     (some? (re-matches (re-pattern pattern) s))))
 
 ;; 17.12. PositionOf
+(defn position-of-op [pattern string]
+  (reify core/Expression
+    (-static [_]
+      false)
+    (-attach-cache [_ cache]
+      (position-of-op (core/-attach-cache pattern cache)
+                      (core/-attach-cache string cache)))
+    (-resolve-refs [_ expression-defs]
+      (position-of-op (core/-resolve-refs pattern expression-defs)
+                      (core/-resolve-refs string expression-defs)))
+    (-resolve-params [_ parameters]
+      (position-of-op (core/-resolve-params pattern parameters)
+                      (core/-resolve-params string parameters)))
+    (-eval [_ context resource scope]
+      (when-let [^String pattern (core/-eval pattern context resource scope)]
+        (when-let [^String string (core/-eval string context resource scope)]
+          (.indexOf string pattern))))
+    (-form [_]
+      (list 'position-of (core/-form pattern) (core/-form string)))))
+
 (defmethod core/compile* :elm.compiler.type/position-of
   [context {:keys [pattern string]}]
-  (let [pattern (core/compile* context pattern)
-        string (core/compile* context string)]
-    (reify core/Expression
-      (-static [_]
-        false)
-      (-eval [_ context resource scope]
-        (when-let [^String pattern (core/-eval pattern context resource scope)]
-          (when-let [^String string (core/-eval string context resource scope)]
-            (.indexOf string pattern))))
-      (-form [_]
-        (list 'position-of (core/-form pattern) (core/-form string))))))
+  (position-of-op (core/compile* context pattern)
+                  (core/compile* context string)))
 
 ;; 17.13. ReplaceMatches
 (defternop replace-matches [s pattern substitution]
@@ -98,46 +141,67 @@
     (str/replace s (re-pattern pattern) substitution)))
 
 ;; 17.14. Split
+(defn- split-op
+  ([string]
+   (reify core/Expression
+     (-static [_]
+       false)
+     (-attach-cache [_ cache]
+       (split-op (core/-attach-cache string cache)))
+     (-resolve-refs [_ expression-defs]
+       (split-op (core/-resolve-refs string expression-defs)))
+     (-resolve-params [_ parameters]
+       (split-op (core/-resolve-params string parameters)))
+     (-eval [_ context resource scope]
+       (when-let [string (core/-eval string context resource scope)]
+         [string]))
+     (-form [_]
+       (list 'split (core/-form string)))))
+  ([string separator]
+   (reify core/Expression
+     (-static [_]
+       false)
+     (-attach-cache [_ cache]
+       (split-op (core/-attach-cache string cache)
+                 (core/-attach-cache separator cache)))
+     (-resolve-refs [_ expression-defs]
+       (split-op (core/-resolve-refs string expression-defs)
+                 (core/-resolve-refs separator expression-defs)))
+     (-resolve-params [_ parameters]
+       (split-op (core/-resolve-params string parameters)
+                 (core/-resolve-params separator parameters)))
+     (-eval [_ context resource scope]
+       (when-let [string (core/-eval string context resource scope)]
+         (if (= "" string)
+           [string]
+           (if-let [separator (core/-eval separator context resource scope)]
+             (case (count separator)
+               0
+               [string]
+               1
+               (loop [[char & more] string
+                      result []
+                      acc (StringBuilder.)]
+                 (if (= (str char) separator)
+                   (if more
+                     (recur more (conj result (str acc)) (StringBuilder.))
+                     (conj result (str acc)))
+                   (if more
+                     (recur more result (.append acc char))
+                     (conj result (str (.append acc char))))))
+               ;; TODO: implement split with more than one char.
+               (throw (Exception. "TODO: implement split with separators longer than one char.")))
+             [string]))))
+     (-form [_]
+       (list 'split (core/-form string) (core/-form separator))))))
+
 (defmethod core/compile* :elm.compiler.type/split
   [context {string :stringToSplit :keys [separator]}]
   (let [string (core/compile* context string)
         separator (some->> separator (core/compile* context))]
     (if separator
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scope]
-          (when-let [string (core/-eval string context resource scope)]
-            (if (= "" string)
-              [string]
-              (if-let [separator (core/-eval separator context resource scope)]
-                (case (count separator)
-                  0
-                  [string]
-                  1
-                  (loop [[char & more] string
-                         result []
-                         acc (StringBuilder.)]
-                    (if (= (str char) separator)
-                      (if more
-                        (recur more (conj result (str acc)) (StringBuilder.))
-                        (conj result (str acc)))
-                      (if more
-                        (recur more result (.append acc char))
-                        (conj result (str (.append acc char))))))
-                  ;; TODO: implement split with more than one char.
-                  (throw (Exception. "TODO: implement split with separators longer than one char.")))
-                [string]))))
-        (-form [_]
-          (list 'split (core/-form string) (core/-form separator))))
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scope]
-          (when-let [string (core/-eval string context resource scope)]
-            [string]))
-        (-form [_]
-          (list 'split (core/-form string)))))))
+      (split-op string separator)
+      (split-op string))))
 
 ;; 17.16. StartsWith
 (defbinop starts-with [s prefix]
@@ -145,34 +209,40 @@
     (str/starts-with? s prefix)))
 
 ;; 17.17. Substring
+(defn substring-op
+  ([string start-index]
+   (reify core/Expression
+     (-static [_]
+       false)
+     (-eval [_ context resource scope]
+       (when-let [^String string (core/-eval string context resource scope)]
+         (when-let [start-index (core/-eval start-index context resource scope)]
+           (when (and (<= 0 start-index) (< start-index (count string)))
+             (subs string start-index)))))
+     (-form [_]
+       (list 'substring (core/-form string) (core/-form start-index)))))
+  ([string start-index length]
+   (reify core/Expression
+     (-static [_]
+       false)
+     (-eval [_ context resource scope]
+       (when-let [^String string (core/-eval string context resource scope)]
+         (when-let [start-index (core/-eval start-index context resource scope)]
+           (when (and (<= 0 start-index) (< start-index (count string)))
+             (subs string start-index (min (+ start-index length)
+                                           (count string)))))))
+     (-form [_]
+       (list 'substring (core/-form string) (core/-form start-index)
+             (core/-form length))))))
+
 (defmethod core/compile* :elm.compiler.type/substring
   [context {string :stringToSub start-index :startIndex :keys [length]}]
   (let [string (core/compile* context string)
         start-index (core/compile* context start-index)
         length (some->> length (core/compile* context))]
     (if length
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scope]
-          (when-let [^String string (core/-eval string context resource scope)]
-            (when-let [start-index (core/-eval start-index context resource scope)]
-              (when (and (<= 0 start-index) (< start-index (count string)))
-                (subs string start-index (min (+ start-index length)
-                                              (count string)))))))
-        (-form [_]
-          (list 'substring (core/-form string) (core/-form start-index)
-                (core/-form length))))
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scope]
-          (when-let [^String string (core/-eval string context resource scope)]
-            (when-let [start-index (core/-eval start-index context resource scope)]
-              (when (and (<= 0 start-index) (< start-index (count string)))
-                (subs string start-index)))))
-        (-form [_]
-          (list 'substring (core/-form string) (core/-form start-index)))))))
+      (substring-op string start-index length)
+      (substring-op string start-index))))
 
 ;; 17.18. Upper
 (defunop upper [s]

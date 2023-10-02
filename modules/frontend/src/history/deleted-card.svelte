@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { code, uri, instant } from '../fhir';
-	import { HttpVerb } from '../fhir';
+	import type { code, uri, instant } from '../fhir.js';
+	import { HttpVerb } from '../fhir.js';
 	import DateTime from '../values/date-time.svelte';
 	import MethodBadge from './method-badge.svelte';
 

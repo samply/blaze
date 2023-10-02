@@ -5,6 +5,8 @@
    [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
+   [blaze.elm.expression :as-alias expr]
+   [blaze.elm.expression.spec]
    [blaze.executors :as ex]
    [blaze.fhir.operation.evaluate-measure.measure :as measure]
    [blaze.fhir.operation.evaluate-measure.measure.spec]
@@ -41,19 +43,15 @@
       (assoc :blaze.preference/return return-preference))))
 
 (defn- handle
-  [{:keys [node executor] :as context}
+  [{:keys [node] :as context}
    {:blaze/keys [base-url]
     ::reitit/keys [router]
     :keys [request-method]
     ::keys [params]
     :as request}
    measure]
-  (let [context (assoc context
-                       :blaze/base-url base-url
-                       ::reitit/router router)]
-    (-> (ac/supply-async
-         #(measure/evaluate-measure context measure params)
-         executor)
+  (let [context (assoc context :blaze/base-url base-url ::reitit/router router)]
+    (-> (measure/evaluate-measure context measure params)
         (ac/then-compose
          (fn process-result [result]
            (cond
@@ -118,6 +116,7 @@
 
 (defmethod ig/pre-init-spec ::handler [_]
   (s/keys :req-un [:blaze.db/node ::executor :blaze/clock :blaze/rng-fn]
+          :opt [::expr/cache]
           :opt-un [::timeout]))
 
 (defmethod ig/init-key ::handler [_ context]

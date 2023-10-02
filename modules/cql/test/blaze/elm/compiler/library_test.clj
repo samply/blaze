@@ -79,7 +79,7 @@
           [:expression-defs "Patient" :context] := "Patient"
           [:expression-defs "Patient" :expression c/form] := '(singleton-from (retrieve-resource))
           [:expression-defs "Gender" :context] := "Patient"
-          [:expression-defs "Gender" :expression c/form] := '(:gender (expr-ref "Patient"))))))
+          [:expression-defs "Gender" :expression c/form] := '(:gender (singleton-from (retrieve-resource)))))))
 
   (testing "one function"
     (let [library (t/translate "library Test
@@ -91,7 +91,7 @@
         (given (library/compile-library node library default-opts)
           [:expression-defs "InInitialPopulation" :context] := "Patient"
           [:expression-defs "InInitialPopulation" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
-          [:expression-defs "InInitialPopulation" :expression c/form] := '(call "Gender" (expr-ref "Patient"))
+          [:expression-defs "InInitialPopulation" :expression c/form] := '(call "Gender" (singleton-from (retrieve-resource)))
           [:function-defs "Gender" :context] := "Patient"
           [:function-defs "Gender" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
           [:function-defs "Gender" :function] :? fn?))))

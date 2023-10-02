@@ -6,11 +6,13 @@
    [blaze.db.api :as d]
    [blaze.db.api-spec]
    [blaze.db.impl.db-spec]
+   [blaze.db.impl.index.patient-last-change :as plc]
    [blaze.db.impl.index.tx-success :as tx-success]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem-spec]
    [blaze.db.node :as node]
    [blaze.db.node-spec]
+   [blaze.db.node.patient-last-change-index-spec]
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.node.tx-indexer :as-alias tx-indexer]
    [blaze.db.node.version :as version]
@@ -266,3 +268,12 @@
 (deftest existing-data-with-compatible-version
   (with-system [{:blaze.db/keys [node]} (with-index-store-version config 0)]
     (is node)))
+
+(deftest patient-last-change-index-state-test
+  (testing "the state is set to current on a fresh start of the node"
+    (with-system [{:blaze.db/keys [node]} config]
+      ;; Wait for index building finished
+      (Thread/sleep 100)
+
+      (given (plc/state (:kv-store node))
+        :type := :current))))

@@ -41,26 +41,48 @@
    {}
    elements))
 
+(defn tuple [elements]
+  (reify core/Expression
+    (-static [_]
+      false)
+    (-attach-cache [_ cache]
+      (tuple
+       (reduce-kv
+        (fn [r key value]
+          (assoc r key (core/-attach-cache value cache)))
+        {}
+        elements)))
+    (-resolve-refs [_ expression-defs]
+      (tuple
+       (reduce-kv
+        (fn [r key value]
+          (assoc r key (core/-resolve-refs value expression-defs)))
+        {}
+        elements)))
+    (-resolve-params [_ parameters]
+      (tuple
+       (reduce-kv
+        (fn [r key value]
+          (assoc r key (core/-resolve-params value parameters)))
+        {}
+        elements)))
+    (-eval [_ context resource scope]
+      (reduce-kv
+       (fn [r key value]
+         (assoc r key (core/-eval value context resource scope)))
+       {}
+       elements))
+    (-form [_]
+      (reduce-kv
+       (fn [r key value]
+         (assoc r key (core/-form value)))
+       {}
+       elements))))
+
 (defmethod core/compile* :elm.compiler.type/tuple
   [context {elements :element}]
   (let [elements (compile-elements context elements)]
-    (if (every? core/static? (vals elements))
-      elements
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scope]
-          (reduce-kv
-           (fn [r key value]
-             (assoc r key (core/-eval value context resource scope)))
-           {}
-           elements))
-        (-form [_]
-          (reduce-kv
-           (fn [r key value]
-             (assoc r key (core/-form value)))
-           {}
-           elements))))))
+    (cond-> elements (some (comp not core/static?) (vals elements)) tuple)))
 
 ;; 2.2. Instance
 (defmethod core/compile* :elm.compiler.type/instance
@@ -77,6 +99,12 @@
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [_ cache]
+    (->SourcePropertyExpression (core/-attach-cache source cache) key))
+  (-resolve-refs [_ expression-defs]
+    (->SourcePropertyExpression (core/-resolve-refs source expression-defs) key))
+  (-resolve-params [_ parameters]
+    (->SourcePropertyExpression (core/-resolve-params source parameters) key))
   (-eval [_ context resource scope]
     (p/get (core/-eval source context resource scope) key))
   (-form [_]
@@ -86,6 +114,12 @@
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [_ cache]
+    (->SourcePropertyValueExpression (core/-attach-cache source cache) key))
+  (-resolve-refs [_ expression-defs]
+    (->SourcePropertyValueExpression (core/-resolve-refs source expression-defs) key))
+  (-resolve-params [_ parameters]
+    (->SourcePropertyValueExpression (core/-resolve-params source parameters) key))
   (-eval [_ context resource scope]
     (type/value (p/get (core/-eval source context resource scope) key)))
   (-form [_]
@@ -95,6 +129,12 @@
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [expr _]
+    expr)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr _]
+    expr)
   (-eval [_ _ _ value]
     (p/get value key))
   (-form [_]
@@ -104,6 +144,12 @@
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [expr _]
+    expr)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr _]
+    expr)
   (-eval [_ _ _ scope]
     (p/get (get scope scope-key) key))
   (-form [_]
@@ -113,6 +159,12 @@
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [expr _]
+    expr)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr _]
+    expr)
   (-eval [_ _ _ scope]
     (type/value (p/get (get scope scope-key) key)))
   (-form [_]

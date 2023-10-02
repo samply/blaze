@@ -228,6 +228,14 @@
 
   (ctu/testing-unary-dynamic elm/date-from)
 
+  (ctu/testing-unary-attach-cache elm/date-from)
+
+  (ctu/testing-unary-resolve-expr-ref elm/date-from)
+
+  (ctu/testing-unary-resolve-param elm/date-from)
+
+  (ctu/testing-unary-equals-hash-code elm/date-from)
+
   (ctu/testing-unary-form elm/date-from))
 
 ;; 18.8. DateTime
@@ -802,9 +810,9 @@
       "2019-04-17" "2019-04-17" true?
       "2019-04-17" "2019-04-18" false?)
 
-    (ctu/testing-binary-null elm/same-as #elm/date "2019")
-    (ctu/testing-binary-null elm/same-as #elm/date "2019-04")
-    (ctu/testing-binary-null elm/same-as #elm/date "2019-04-17")
+    (ctu/testing-binary-null elm/same-as #elm/date"2019")
+    (ctu/testing-binary-null elm/same-as #elm/date"2019-04")
+    (ctu/testing-binary-null elm/same-as #elm/date"2019-04-17")
 
     (testing "with year precision"
       (are [x y pred] (pred (ctu/compile-binop-precision elm/same-as elm/date x y "year"))
@@ -906,9 +914,9 @@
       "2019-04-17" "2019-04-17" true?
       "2019-04-17" "2019-04-16" false?)
 
-    (ctu/testing-binary-null elm/same-or-before #elm/date "2019")
-    (ctu/testing-binary-null elm/same-or-before #elm/date "2019-04")
-    (ctu/testing-binary-null elm/same-or-before #elm/date "2019-04-17")
+    (ctu/testing-binary-null elm/same-or-before #elm/date"2019")
+    (ctu/testing-binary-null elm/same-or-before #elm/date"2019-04")
+    (ctu/testing-binary-null elm/same-or-before #elm/date"2019-04-17")
 
     (testing "with year precision"
       (are [x y pred] (pred (ctu/compile-binop-precision elm/same-or-before elm/date x y "year"))
@@ -1013,9 +1021,9 @@
       "2019-04-17" "2019-04-17" true?
       "2019-04-17" "2019-04-18" false?)
 
-    (ctu/testing-binary-null elm/same-or-after #elm/date "2019")
-    (ctu/testing-binary-null elm/same-or-after #elm/date "2019-04")
-    (ctu/testing-binary-null elm/same-or-after #elm/date "2019-04-17")
+    (ctu/testing-binary-null elm/same-or-after #elm/date"2019")
+    (ctu/testing-binary-null elm/same-or-after #elm/date"2019-04")
+    (ctu/testing-binary-null elm/same-or-after #elm/date"2019-04-17")
 
     (testing "with year precision"
       (are [x y pred] (pred (ctu/compile-binop-precision elm/same-or-after elm/date x y "year"))

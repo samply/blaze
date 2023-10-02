@@ -21,6 +21,12 @@
   (reify core/Expression
     (-static [_]
       false)
+    (-attach-cache [_ cache]
+      (list-op (mapv #(core/-attach-cache % cache) elements)))
+    (-resolve-refs [_ expression-defs]
+      (list-op (mapv #(core/-resolve-refs % expression-defs) elements)))
+    (-resolve-params [_ parameters]
+      (list-op (mapv #(core/-resolve-params % parameters) elements)))
     (-eval [_ context resource scope]
       (mapv #(core/-eval % context resource scope) elements))
     (-form [_]
@@ -38,6 +44,12 @@
     (reify core/Expression
       (-static [_]
         false)
+      (-attach-cache [expr _]
+        expr)
+      (-resolve-refs [expr _]
+        expr)
+      (-resolve-params [expr _]
+        expr)
       (-eval [_ _ _ scopes]
         (get scopes scope))
       (-form [_]
@@ -45,6 +57,12 @@
     (reify core/Expression
       (-static [_]
         false)
+      (-attach-cache [expr _]
+        expr)
+      (-resolve-refs [expr _]
+        expr)
+      (-resolve-params [expr _]
+        expr)
       (-eval [_ _ _ scope]
         scope)
       (-form [_]
@@ -65,7 +83,8 @@
 
 ;; 20.8. Exists
 (defunop exists
-  {:optimizations #{:first :non-distinct}}
+  {:optimizations #{:first :non-distinct}
+   :cache true}
   [list]
   (not (coll/empty? list)))
 
@@ -98,18 +117,27 @@
 ;; 20.10. First
 ;;
 ;; TODO: orderBy
+(defn first-op [source]
+  (reify core/Expression
+    (-static [_]
+      false)
+    (-attach-cache [_ cache]
+      (first-op (core/-attach-cache source cache)))
+    (-resolve-refs [_ expression-defs]
+      (first-op (core/-resolve-refs source expression-defs)))
+    (-resolve-params [_ parameters]
+      (first-op (core/-resolve-params source parameters)))
+    (-eval [_ context resource scopes]
+      (coll/first (core/-eval source context resource scopes)))
+    (-form [_]
+      (list 'first (core/-form source)))))
+
 (defmethod core/compile* :elm.compiler.type/first
   [context {:keys [source]}]
   (let [source (core/compile* (assoc context :optimizations #{:first :non-distinct}) source)]
     (if (core/static? source)
       (first source)
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scopes]
-          (coll/first (core/-eval source context resource scopes)))
-        (-form [_]
-          (list 'first (core/-form source)))))))
+      (first-op source))))
 
 ;; 20.11. Flatten
 (defunop flatten [list]
@@ -151,43 +179,64 @@
           (list 'for-each (core/-form source) (core/-form element)))))))
 
 ;; 20.16. IndexOf
+(defn- index-of-op [source element]
+  (reify core/Expression
+    (-static [_]
+      false)
+    (-attach-cache [_ cache]
+      (index-of-op (core/-attach-cache source cache)
+                   (core/-attach-cache element cache)))
+    (-resolve-refs [_ expression-defs]
+      (index-of-op (core/-resolve-refs source expression-defs)
+                   (core/-resolve-refs element expression-defs)))
+    (-resolve-params [_ parameters]
+      (index-of-op (core/-resolve-params source parameters)
+                   (core/-resolve-params element parameters)))
+    (-eval [_ context resource scopes]
+      (when-let [source (core/-eval source context resource scopes)]
+        (when-let [element (core/-eval element context resource scopes)]
+          (or
+           (first
+            (keep-indexed
+             (fn [idx x]
+               (when
+                (p/equal element x)
+                 idx))
+             source))
+           -1))))
+    (-form [_]
+      (list 'index-of (core/-form source) (core/-form element)))))
+
 (defmethod core/compile* :elm.compiler.type/index-of
   [context {:keys [source element]}]
   (let [source (core/compile* context source)
         element (core/compile* context element)]
-    (reify core/Expression
-      (-static [_]
-        false)
-      (-eval [_ context resource scopes]
-        (when-let [source (core/-eval source context resource scopes)]
-          (when-let [element (core/-eval element context resource scopes)]
-            (or
-             (first
-              (keep-indexed
-               (fn [idx x]
-                 (when
-                  (p/equal element x)
-                   idx))
-               source))
-             -1))))
-      (-form [_]
-        (list 'index-of (core/-form source) (core/-form element))))))
+    (index-of-op source element)))
 
 ;; 20.18. Last
 ;;
 ;; TODO: orderBy
+(defn- last-op [source]
+  (reify core/Expression
+    (-static [_]
+      false)
+    (-attach-cache [_ cache]
+      (last-op (core/-attach-cache source cache)))
+    (-resolve-refs [_ expression-defs]
+      (last-op (core/-resolve-refs source expression-defs)))
+    (-resolve-params [_ parameters]
+      (last-op (core/-resolve-params source parameters)))
+    (-eval [_ context resource scopes]
+      (peek (core/-eval source context resource scopes)))
+    (-form [_]
+      (list 'last (core/-form source)))))
+
 (defmethod core/compile* :elm.compiler.type/last
   [context {:keys [source]}]
   (let [source (core/compile* context source)]
     (if (core/static? source)
       (peek source)
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scopes]
-          (peek (core/-eval source context resource scopes)))
-        (-form [_]
-          (list 'last (core/-form source)))))))
+      (last-op source))))
 
 ;; 20.24. Repeat
 ;;

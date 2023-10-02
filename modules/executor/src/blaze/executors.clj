@@ -40,6 +40,11 @@
   [thread-counter name-template]
   (format name-template (swap! thread-counter inc)))
 
+(defn- thread-factory [counter name-template]
+  (reify ThreadFactory
+    (newThread [_ r]
+      (Thread. ^Runnable r ^String (thread-name! counter name-template)))))
+
 (defn cpu-bound-pool
   "Returns a thread pool with a fixed number of threads which is the number of
   available processors."
@@ -47,10 +52,7 @@
   (let [thread-counter (atom 0)]
     (Executors/newFixedThreadPool
      (.availableProcessors (Runtime/getRuntime))
-     (reify ThreadFactory
-       (newThread [_ r]
-         (Thread. ^Runnable r ^String (thread-name! thread-counter
-                                                    name-template)))))))
+     (thread-factory thread-counter name-template))))
 
 (defn io-pool
   "Returns a thread pool with a fixed number of threads which is suitable for
@@ -59,10 +61,13 @@
   (let [thread-counter (atom 0)]
     (Executors/newFixedThreadPool
      n
-     (reify ThreadFactory
-       (newThread [_ r]
-         (Thread. ^Runnable r ^String (thread-name! thread-counter
-                                                    name-template)))))))
+     (thread-factory thread-counter name-template))))
+
+(defn scheduled-pool [n name-template]
+  (let [thread-counter (atom 0)]
+    (Executors/newScheduledThreadPool
+     n
+     (thread-factory thread-counter name-template))))
 
 (defn single-thread-executor
   ([]

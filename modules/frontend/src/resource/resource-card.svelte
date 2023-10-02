@@ -1,13 +1,13 @@
 <script lang="ts">
-	import type { FhirObject } from './resource-card';
+	import type { FhirObject } from './resource-card.js';
 
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { fade } from 'svelte/transition';
 	import { quintIn } from 'svelte/easing';
 
-	import { isTabActive } from './../util';
-	import { willBeRendered as willMetaBeRendered } from '../values/meta';
+	import { isTabActive } from './../util.js';
+	import { willBeRendered as willMetaBeRendered } from '../values/meta.js';
 
 	import TabItem from '../tab-item.svelte';
 	import TabItemEmbedded from '../tab-item-embedded.svelte';

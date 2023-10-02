@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { FhirProperty } from '../resource-card';
+	import type { FhirProperty } from '../resource-card.js';
 	import ArrayCode from './array.svelte';
 	import Value from './value.svelte';
 

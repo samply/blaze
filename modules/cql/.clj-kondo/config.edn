@@ -3,10 +3,12 @@
   "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"
   "../../async/resources/clj-kondo.exports/blaze/async"
   "../../db-stub/resources/clj-kondo.exports/blaze/db-stub"
+  "../../module-base/resources/clj-kondo.exports/prom-metrics/prom-metrics"
   "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
 
  :lint-as
- {blaze.elm.compiler.macros/defunop clojure.core/defn
+ {blaze.db.impl.macros/with-open-coll clojure.core/with-open
+  blaze.elm.compiler.macros/defunop clojure.core/defn
   blaze.elm.compiler.macros/defbinop clojure.core/defn
   blaze.elm.compiler.macros/defternop clojure.core/defn
   blaze.elm.compiler.macros/defnaryop clojure.core/defn

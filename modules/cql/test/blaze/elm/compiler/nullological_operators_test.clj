@@ -74,6 +74,14 @@
 
   (ctu/testing-unary-dynamic elm/is-false)
 
+  (ctu/testing-unary-attach-cache elm/is-false)
+
+  (ctu/testing-unary-resolve-expr-ref elm/is-false)
+
+  (ctu/testing-unary-resolve-param elm/is-false)
+
+  (ctu/testing-unary-equals-hash-code elm/is-false)
+
   (ctu/testing-unary-form elm/is-false))
 
 ;; 14.4. IsNull
@@ -96,6 +104,14 @@
 
   (ctu/testing-unary-dynamic elm/is-null)
 
+  (ctu/testing-unary-attach-cache elm/is-null)
+
+  (ctu/testing-unary-resolve-expr-ref elm/is-null)
+
+  (ctu/testing-unary-resolve-param elm/is-null)
+
+  (ctu/testing-unary-equals-hash-code elm/is-null)
+
   (ctu/testing-unary-form elm/is-null))
 
 ;; 14.5. IsTrue
@@ -117,5 +133,13 @@
       #elm/parameter-ref "nil" false?))
 
   (ctu/testing-unary-dynamic elm/is-true)
+
+  (ctu/testing-unary-attach-cache elm/is-true)
+
+  (ctu/testing-unary-resolve-expr-ref elm/is-true)
+
+  (ctu/testing-unary-resolve-param elm/is-true)
+
+  (ctu/testing-unary-equals-hash-code elm/is-true)
 
   (ctu/testing-unary-form elm/is-true))

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Period } from '../fhir';
+	import type { Period } from '../fhir.js';
 	import DateTime from './date-time.svelte';
 	import UseBadge from './util/gray-badge.svelte';
 

@@ -8,10 +8,46 @@
    [blaze.elm.protocols :as p]))
 
 ;; 15.1. Case
+(defn- attach-cache [items cache]
+  (map
+   (fn [[when then]]
+     [(core/-attach-cache when cache)
+      (core/-attach-cache then cache)])
+   items))
+
+(defn- resolve-refs [items expression-defs]
+  (map
+   (fn [[when then]]
+     [(core/-resolve-refs when expression-defs)
+      (core/-resolve-refs then expression-defs)])
+   items))
+
+(defn- resolve-param-refs [items parameters]
+  (map
+   (fn [[when then]]
+     [(core/-resolve-params when parameters)
+      (core/-resolve-params then parameters)])
+   items))
+
 (defn- comparand-case-op [comparand items else]
   (reify core/Expression
     (-static [_]
       false)
+    (-attach-cache [_ cache]
+      (comparand-case-op
+       (core/-attach-cache comparand cache)
+       (attach-cache items cache)
+       (core/-attach-cache else cache)))
+    (-resolve-refs [_ expression-defs]
+      (comparand-case-op
+       (core/-resolve-refs comparand expression-defs)
+       (resolve-refs items expression-defs)
+       (core/-resolve-refs else expression-defs)))
+    (-resolve-params [_ parameters]
+      (comparand-case-op
+       (core/-resolve-params comparand parameters)
+       (resolve-param-refs items parameters)
+       (core/-resolve-params else parameters)))
     (-eval [_ context resource scope]
       (let [comparand (core/-eval comparand context resource scope)]
         (loop [[[when then] & next-items] items]
@@ -27,6 +63,18 @@
   (reify core/Expression
     (-static [_]
       false)
+    (-attach-cache [_ cache]
+      (multi-conditional-case-op
+       (attach-cache items cache)
+       (core/-attach-cache else cache)))
+    (-resolve-refs [_ expression-defs]
+      (multi-conditional-case-op
+       (resolve-refs items expression-defs)
+       (core/-resolve-refs else expression-defs)))
+    (-resolve-params [_ parameters]
+      (multi-conditional-case-op
+       (resolve-param-refs items parameters)
+       (core/-resolve-params else parameters)))
     (-eval [_ context resource scope]
       (loop [[[when then] & next-items] items]
         (if (core/-eval when context resource scope)
@@ -57,6 +105,21 @@
     core/Expression
     (-static [_]
       false)
+    (-attach-cache [_ cache]
+      (if-op
+       (core/-attach-cache condition cache)
+       (core/-attach-cache then cache)
+       (core/-attach-cache else cache)))
+    (-resolve-refs [_ expression-defs]
+      (if-op
+       (core/-resolve-refs condition expression-defs)
+       (core/-resolve-refs then expression-defs)
+       (core/-resolve-refs else expression-defs)))
+    (-resolve-params [_ parameters]
+      (if-op
+       (core/-resolve-params condition parameters)
+       (core/-resolve-params then parameters)
+       (core/-resolve-params else parameters)))
     (-eval [_ context resource scope]
       (if (core/-eval condition context resource scope)
         (core/-eval then context resource scope)
