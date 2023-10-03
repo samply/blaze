@@ -12,7 +12,7 @@
   {:mvn/version "5.2.3"}
 
   metosin/reitit-ring
-  {:mvn/version "0.7.0-alpha5"}
+  {:mvn/version "0.6.0"}
 
   ring/ring-core
   {:mvn/version "1.10.0"
