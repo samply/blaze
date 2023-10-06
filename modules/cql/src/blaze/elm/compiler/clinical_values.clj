@@ -130,5 +130,31 @@
 ;; Not needed because it's not an expression.
 
 ;; 3.12. ValueSetRef
-;;
-;; TODO
+(defn- value-set-not-found-anom [context name]
+  (ba/incorrect
+    (format "ValueSet `%s` not found." name) :context context))
+
+(defrecord ValueSetRef [name]
+  core/Expression
+  (-eval [_ {:keys [valueSets] :as context} _ _]
+    (let [value (get valueSets name ::not-found)]
+      (if (identical? ::not-found value)
+        (throw-anom (value-set-not-found-anom context name))
+        ;expand valueset
+        ))))
+
+(defn- find-value-set-def
+  "Returns the value-set-def with `name` from `library` or nil if not found."
+  {:arglists '([library name])}
+  [{{value-set-defs :def} :valueSets} name]
+  (some #(when (= name (:name %)) %) value-set-defs))
+
+(defn- value-set-def-not-found-anom [context name]
+  (ba/incorrect
+    (format "ValueSet definition `%s` not found." name) :context context))
+
+(defmethod core/compile* :elm.compiler.type/value-set-ref
+  [{:keys [library] :as context} {:keys [name]}]
+  (if-let [{:keys [name]} (find-value-set-def library name)]
+    (->ValueSetRef name) ; expand valueset
+    (throw-anom (value-set-def-not-found-anom context name))))

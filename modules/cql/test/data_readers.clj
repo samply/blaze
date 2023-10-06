@@ -11,6 +11,7 @@
  elm/concept-ref blaze.elm.literal/concept-ref
  elm/quantity blaze.elm.literal/quantity
  elm/ratio blaze.elm.literal/ratio
+ elm/value-set-ref blaze.elm.literal/value-set-ref
  elm/parameter-ref blaze.elm.literal/parameter-ref
  elm/expression-ref blaze.elm.literal/expression-ref
  elm/function-ref blaze.elm.literal/function-ref

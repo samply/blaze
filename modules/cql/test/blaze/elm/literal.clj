@@ -122,6 +122,11 @@
                   (assoc :unit denominator-unit))})
 
 
+;; 3.12. ValueSetRef
+(defn value-set-ref [name]
+  {:type "ValueSetRef" :name name})
+
+
 ;; 7. Parameters
 
 ;; 7.2. ParameterRef
