@@ -122,7 +122,8 @@
 
   (-put [_ entries]
     (ac/supply-async
-      #(kv/put! kv-store (coll/eduction entry-freezer entries))
+      #(with-open [_ (prom/timer duration-seconds "put-resources")]
+         (kv/put! kv-store (coll/eduction entry-freezer entries)))
       executor)))
 
 
