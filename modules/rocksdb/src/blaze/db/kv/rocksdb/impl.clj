@@ -7,10 +7,11 @@
   (:import
     [clojure.lang ILookup]
     [java.time Instant]
+    [java.util List]
     [org.rocksdb
      BlockBasedTableConfig BloomFilter BuiltinComparator ColumnFamilyDescriptor
-     ColumnFamilyHandle ColumnFamilyMetaData ColumnFamilyOptions CompressionType DBOptions
-     LevelMetaData RocksDBException SstFileMetaData Statistics Status$Code TableProperties WriteBatchInterface
+     ColumnFamilyHandle ColumnFamilyMetaData ColumnFamilyOptions CompactionJobInfo CompactionReason CompressionType DBOptions
+     LevelMetaData RocksDBException SstFileMetaData Statistics Status Status$Code TableProperties WriteBatchInterface
      WriteOptions]))
 
 
@@ -93,6 +94,7 @@
 (defn db-options
   ^DBOptions
   [stats
+   listener
    {:keys [wal-dir
            max-background-jobs
            compaction-readahead-size]
@@ -106,7 +108,8 @@
     (.setCompactionReadaheadSize (long compaction-readahead-size))
     (.setEnablePipelinedWrite true)
     (.setCreateIfMissing true)
-    (.setCreateMissingColumnFamilies true)))
+    (.setCreateMissingColumnFamilies true)
+    (.setListeners ^List (list listener))))
 
 
 (defn write-options [{:keys [sync? disable-wal?]}]
@@ -228,3 +231,21 @@
      :num-reads-sampled (.numReadsSampled file-meta-date)
      :num-entries (.numEntries file-meta-date)
      :num-deletions (.numDeletions file-meta-date)}))
+
+
+(extend-protocol p/Datafiable
+  CompactionJobInfo
+  (datafy [jobInfo]
+    {:column-family-name (String. (.columnFamilyName jobInfo))
+     :status (datafy/datafy (.status jobInfo))
+     :thread-id (.threadId jobInfo)
+     :job-id (.jobId jobInfo)
+     :baseInputLevel (.baseInputLevel jobInfo)
+     :outputLevel (.outputLevel jobInfo)
+     :compactionReason (datafy/datafy (.compactionReason jobInfo))})
+  Status
+  (datafy [status]
+    (.getCodeString status))
+  CompactionReason
+  (datafy [reason]
+    (.name reason)))

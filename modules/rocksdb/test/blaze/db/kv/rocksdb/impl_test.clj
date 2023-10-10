@@ -16,7 +16,7 @@
     [java.nio.file Files]
     [java.nio.file.attribute FileAttribute]
     [org.rocksdb
-     BlockBasedTableConfig ColumnFamilyDescriptor ColumnFamilyHandle
+     AbstractEventListener BlockBasedTableConfig ColumnFamilyDescriptor ColumnFamilyHandle
      ColumnFamilyOptions CompressionType DBOptions LRUCache RocksDB RocksDBException
      Statistics WriteBatchInterface WriteOptions]))
 
@@ -149,9 +149,13 @@
       :bloom-filter? true)))
 
 
+(defn- event-listener []
+  (proxy [AbstractEventListener] []))
+
+
 (deftest db-options-test
   (testing "with defaults"
-    (given (datafy/datafy (impl/db-options (Statistics.) nil))
+    (given (datafy/datafy (impl/db-options (Statistics.) (event-listener) nil))
       :wal-dir := ""
       :max-background-jobs := 2
       :compaction-readahead-size := 0
@@ -160,7 +164,7 @@
       :create-missing-column-families := true)
 
     (are [key value]
-      (given (datafy/datafy (impl/db-options (Statistics.) {key value}))
+      (given (datafy/datafy (impl/db-options (Statistics.) (event-listener) {key value}))
         key := value)
 
       :wal-dir "wal"

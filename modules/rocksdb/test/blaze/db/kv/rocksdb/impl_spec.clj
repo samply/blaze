@@ -14,7 +14,9 @@
 
 
 (s/fdef impl/db-options
-  :args (s/cat :stats ::rocksdb/stats :opts (s/nilable ::rocksdb/db-options)))
+  :args (s/cat :stats ::rocksdb/stats
+               :listener ::rocksdb/listener
+               :opts (s/nilable ::rocksdb/db-options)))
 
 
 (s/fdef impl/write-options

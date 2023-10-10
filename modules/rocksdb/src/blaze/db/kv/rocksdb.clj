@@ -18,7 +18,7 @@
     [java.nio.file Path]
     [java.util ArrayList]
     [org.rocksdb
-     ColumnFamilyHandle CompactRangeOptions Env LRUCache Priority
+     AbstractEventListener ColumnFamilyHandle CompactRangeOptions CompactionJobInfo Env LRUCache Priority
      ReadOptions RocksDB RocksDBException RocksIterator Snapshot Statistics
      StatsLevel WriteBatch WriteOptions]))
 
@@ -321,6 +321,14 @@
           dir (pr-str opts)))
 
 
+(defn listener []
+  (proxy [AbstractEventListener] []
+    (onCompactionBegin [_db compactionJobInfo]
+      (log/debug "RocksDB event CompactionBegin:" (datafy/datafy compactionJobInfo)))
+    (onCompactionCompleted [_db compactionJobInfo]
+      (log/debug "RocksDB event CompactionCompleted:" (datafy/datafy compactionJobInfo)))))
+
+
 (defmethod ig/init-key ::kv/rocksdb
   [_ {:keys [dir block-cache stats opts column-families]}]
   (log/info (init-log-msg dir opts))
@@ -328,7 +336,7 @@
                (partial impl/column-family-descriptor block-cache)
                (merge {:default nil} column-families))
         cfhs (ArrayList.)
-        db (RocksDB/open (impl/db-options stats opts) dir cfds cfhs)]
+        db (RocksDB/open (impl/db-options stats (listener) opts) dir cfds cfhs)]
     (->RocksKvStore db (.toPath (File. ^String dir)) (impl/write-options opts)
                     (index-column-family-handles cfhs))))
 

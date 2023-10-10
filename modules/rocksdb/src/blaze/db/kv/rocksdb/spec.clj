@@ -10,7 +10,7 @@
     [blaze.db.kv.spec]
     [clojure.spec.alpha :as s])
   (:import
-    [org.rocksdb Cache Env Statistics]))
+    [org.rocksdb AbstractEventListener Cache Env Statistics]))
 
 
 (s/def ::kv/rocksdb
@@ -31,6 +31,10 @@
 
 (s/def ::rocksdb/stats
   #(instance? Statistics %))
+
+
+(s/def ::rocksdb/listener
+  #(instance? AbstractEventListener %))
 
 
 (s/def ::db-options/wal-dir
