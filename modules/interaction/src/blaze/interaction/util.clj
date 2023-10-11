@@ -6,8 +6,7 @@
     [blaze.fhir.spec.type :as type]
     [blaze.luid :as luid]
     [blaze.util :as u]
-    [clojure.string :as str]
-    [cuerdas.core :as c-str]))
+    [clojure.string :as str]))
 
 
 (defn etag->t [etag]
@@ -41,7 +40,9 @@
         param (str/trim param)]
     (if params
       (ba/unsupported "More than one sort parameter is unsupported.")
-      [[:sort (c-str/ltrim param "-") (if (str/starts-with? param "-") :desc :asc)]])))
+      [(if (str/starts-with? param "-")
+         [:sort (subs param 1) :desc]
+         [:sort param :asc])])))
 
 
 (defn clauses [{:strs [_sort] :as query-params}]

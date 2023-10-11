@@ -1,4 +1,13 @@
-(ns blaze.elm.util)
+(ns blaze.elm.util
+  (:import
+    [com.google.common.base CaseFormat]))
+
+
+(set! *warn-on-reflection* true)
+
+
+(defn pascal->kebab [s]
+  (.to CaseFormat/UPPER_CAMEL CaseFormat/LOWER_HYPHEN s))
 
 
 (defn parse-qualified-name

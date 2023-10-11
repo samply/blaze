@@ -45,6 +45,7 @@
     blaze.elm.compiler c
     blaze.elm.compiler.external-data ed
     blaze.elm.expression expr
+    blaze.elm.util elm-util
     cognitect.anomalies anom
     clojure.java.io io
     clojure.spec.alpha s

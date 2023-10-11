@@ -1,9 +1,9 @@
 (ns blaze.elm.compiler.core
   (:require
     [blaze.elm.protocols :as p]
+    [blaze.elm.util :as elm-util]
     [blaze.fhir.spec.type.system :as system]
-    [clojure.string :as str]
-    [cuerdas.core :as c-str])
+    [clojure.string :as str])
   (:import
     [java.time.temporal ChronoUnit]))
 
@@ -54,7 +54,7 @@
   {:arglists '([context expression])}
   (fn [_ {:keys [type] :as expr}]
     (assert (string? type) (format "Missing :type in expression `%s`." (pr-str expr)))
-    (keyword "elm.compiler.type" (c-str/kebab type))))
+    (keyword "elm.compiler.type" (elm-util/pascal->kebab type))))
 
 
 (defmethod compile* :default
