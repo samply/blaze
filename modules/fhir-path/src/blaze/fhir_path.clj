@@ -8,10 +8,10 @@
     [blaze.fhir.spec.type.system :as system]
     [clojure.string :as str]
     [cognitect.anomalies :as anom]
-    [cuerdas.core :as c-str]
     [taoensso.timbre :as log])
   (:import
     [clojure.lang IReduceInit PersistentVector]
+    [com.google.common.base CharMatcher]
     [java.io StringReader]
     [org.antlr.v4.runtime CharStreams CommonTokenStream]
     [org.antlr.v4.runtime.tree TerminalNode]
@@ -441,6 +441,9 @@
       :paramsCtx paramsCtx)))
 
 
+(def ^:private ^CharMatcher quote-matcher (CharMatcher/is \'))
+
+
 (extend-protocol FPCompiler
   fhirpathParser$TermExpressionContext
   (-compile [ctx]
@@ -529,7 +532,7 @@
 
   fhirpathParser$StringLiteralContext
   (-compile [ctx]
-    [(c-str/trim (.getText (.getSymbol (.STRING ctx))) "'")])
+    [(.trimFrom quote-matcher (.getText (.getSymbol (.STRING ctx))))])
 
   fhirpathParser$NumberLiteralContext
   (-compile [ctx]
