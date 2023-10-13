@@ -6,7 +6,7 @@
   {:mvn/version "5.12.0"}
 
   com.fasterxml.jackson.core/jackson-core
-  {:mvn/version "2.15.2"}
+  {:mvn/version "2.15.3"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-smile
   {:mvn/version "2.15.2"}
