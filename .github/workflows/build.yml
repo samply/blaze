@@ -22,6 +22,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
+        cli: '1.11.1.1403'
         clj-kondo: '2023.01.20'
 
     - name: Check out Git repository
@@ -75,7 +76,7 @@ jobs:
         java-version:
         - '11'
         - '17'
-        - '20'
+        - '21'
 
     runs-on: ubuntu-22.04
 
@@ -148,7 +149,7 @@ jobs:
         java-version:
         - '11'
         - '17'
-        - '20'
+        - '21'
 
     runs-on: ubuntu-22.04
 
