@@ -10,6 +10,7 @@
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.special :as special]
     [blaze.db.impl.search-param.util :as u]
+    [blaze.db.kv :as kv]
     [blaze.fhir.spec]
     [clojure.string :as str])
   (:import
@@ -53,11 +54,16 @@
 
 (defn- resolve-resource-handles
   "Resolves a coll of resource handles of resources of type `tid`, referenced in
-  the resource with `resource-handle` by `search-param`."
+  the resource with `resource-handle` by `search-param`.
+
+  Example:
+   * `search-param`    - Encounter.subject
+   * `tid`             - Patient
+   * `resource-handle` - an Encounter
+   * result            - a coll with one Patient"
   {:arglists '([context search-param tid resource-handle])}
   [{:keys [rsvi] :as context} {:keys [c-hash]} tid resource-handle]
-  (into
-    []
+  (coll/eduction
     (u/reference-resource-handle-mapper context)
     (let [tid-byte-string (codec/tid-byte-string tid)
           {:keys [tid id hash]} resource-handle]
@@ -68,20 +74,28 @@
 (def ^:private id-cmp
   (reify Comparator
     (compare [_ a b]
-      (let [^String id-a (rh/id a)]
-        (.compareTo id-a (rh/id b))))))
+      (.compareTo ^String (rh/id a) (rh/id b)))))
 
 
 (defn- drop-lesser-ids [start-id]
   (drop-while #(neg? (let [^String id (rh/id %)] (.compareTo id start-id)))))
 
 
-(defn- resource-handles*
+(defn- resource-handles**
   [context tid [search-param chain-search-param join-tid value]]
   (into
     (sorted-set-by id-cmp)
     (mapcat #(resolve-resource-handles context chain-search-param tid %))
     (p/-resource-handles search-param context join-tid nil value)))
+
+
+(defn- resource-handles*
+  [{:keys [snapshot] :as context} tid data]
+  (with-open [svri (kv/new-iterator snapshot :search-param-value-index)
+              rsvi (kv/new-iterator snapshot :resource-value-index)]
+    (resource-handles**
+      (assoc context :svri svri :rsvi rsvi)
+      tid data)))
 
 
 ;; TODO: make this cache public and configurable?
@@ -93,6 +107,10 @@
 
 
 (defn- resource-handles
+  "Returns a sorted set of resource handles of resources of type `tid`,
+  referenced from resources of the type `join-tid` by `chain-search-param` that
+  have `value` according to `search-param`."
+  {:arglists '([context tid [search-param chain-search-param join-tid value]])}
   [{:keys [t] :as context} tid
    [{:keys [c-hash]} {chain-c-hash :c-hash} join-tid value :as data]]
   (let [key [t tid join-tid chain-c-hash c-hash value]]

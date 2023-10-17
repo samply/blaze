@@ -1150,7 +1150,11 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"
                :active true}]
         [:put {:fhir/type :fhir/Patient :id "1"
-               :active true}]
+               :active false}]
+        [:put {:fhir/type :fhir/Patient :id "2"
+               :active false}]
+        [:put {:fhir/type :fhir/Patient :id "3"
+               :active false}]
         [:put {:fhir/type :fhir/Observation :id "0"
                :subject
                #fhir/Reference
@@ -1166,7 +1170,7 @@
                        {:value 130M
                         :code #fhir/code"mm[Hg]"
                         :system #fhir/uri"http://unitsofmeasure.org"}}]
-        [:put {:fhir/type :fhir/Observation :id "O1"
+        [:put {:fhir/type :fhir/Observation :id "1"
                :subject
                #fhir/Reference
                        {:reference "Patient/0"}
@@ -1181,7 +1185,7 @@
                        {:value 150M
                         :code #fhir/code"mm[Hg]"
                         :system #fhir/uri"http://unitsofmeasure.org"}}]
-        [:put {:fhir/type :fhir/Observation :id "O2"
+        [:put {:fhir/type :fhir/Observation :id "2"
                :subject
                #fhir/Reference
                        {:reference "Patient/1"}
@@ -1194,6 +1198,21 @@
                :value
                #fhir/Quantity
                        {:value 100M
+                        :code #fhir/code"mm[Hg]"
+                        :system #fhir/uri"http://unitsofmeasure.org"}}]
+        [:put {:fhir/type :fhir/Observation :id "3"
+               :subject
+               #fhir/Reference
+                       {:reference "Patient/3"}
+               :code
+               #fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding
+                                {:system #fhir/uri"http://loinc.org"
+                                 :code #fhir/code"8480-6"}]}
+               :value
+               #fhir/Quantity
+                       {:value 10M
                         :code #fhir/code"mm[Hg]"
                         :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
@@ -1227,11 +1246,11 @@
 
       (testing "as second clause"
         (testing "select the Patient with > 130 mm[Hg]"
-          (let [clauses [["active" "true"]
-                         ["_has:Observation:patient:code-value-quantity" "8480-6$ge130"]]]
+          (let [clauses [["active" "false"]
+                         ["_has:Observation:patient:code-value-quantity" "8480-6$10"]]]
             (given (pull-type-query node "Patient" clauses)
               count := 1
-              [0 :id] := "0")))))
+              [0 :id] := "3")))))
 
     (testing "errors"
       (testing "missing modifier"

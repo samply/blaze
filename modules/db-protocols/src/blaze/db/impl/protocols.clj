@@ -88,7 +88,10 @@
   (-resource-handles
     [search-param context tid modifier compiled-value]
     [search-param context tid modifier compiled-value start-id]
-    "Returns a reducible collection.")
+    "Returns a reducible collection.
+
+    Changes the state of `context`. Consuming the collection requires exclusive
+    access to `context`.")
   (-sorted-resource-handles
     [search-param context tid direction]
     [search-param context tid direction start-id]
