@@ -446,6 +446,12 @@ jobs:
     - name: Download MedicationRequest Resources - Including Medications
       run: blazectl --no-progress --server http://localhost:8080/fhir download MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
 
+    - name: Download male Patient Resources having inpatient Encounters in 2010
+      run: .github/scripts/download-resources-query.sh Patient "gender=male&_has:Encounter:patient:class=IMP&_has:Encounter:patient:date=2010" 8
+
+    - name: Download female Patient Resources having inpatient Encounters in 2010
+      run: .github/scripts/download-resources-query.sh Patient "gender=female&_has:Encounter:patient:class=IMP&_has:Encounter:patient:date=2010" 11
+
     - name: Download Observations using _elements=subject
       run: .github/scripts/download-observations-elements.sh
 
@@ -1344,6 +1350,12 @@ jobs:
 
     - name: Download MedicationRequest Resources - Including Medications
       run: blazectl --no-progress --server http://localhost:8080/fhir download MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
+
+    - name: Download male Patient Resources having inpatient Encounters in 2010
+      run: .github/scripts/download-resources-query.sh Patient "gender=male&_has:Encounter:patient:class=IMP&_has:Encounter:patient:date=2010" 8
+
+    - name: Download female Patient Resources having inpatient Encounters in 2010
+      run: .github/scripts/download-resources-query.sh Patient "gender=female&_has:Encounter:patient:class=IMP&_has:Encounter:patient:date=2010" 11
 
     - name: Download Observations using _elements=subject
       run: .github/scripts/download-observations-elements.sh

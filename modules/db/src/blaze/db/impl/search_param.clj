@@ -40,7 +40,10 @@
 (defn resource-handles
   "Returns a reducible collection of distinct resource handles.
 
-  Concatenates resource handles of each value in compiled `values`."
+  Concatenates resource handles of each value in compiled `values`.
+
+  Changes the state of `context`. Consuming the collection requires exclusive
+  access to `context`."
   ([search-param context tid modifier values]
    (if (= 1 (count values))
      (p/-resource-handles search-param context tid modifier (first values))
@@ -100,7 +103,9 @@
     (compartment-keys search-param context compartment tid compiled-values)))
 
 
-(defn matches? [search-param context resource-handle modifier compiled-values]
+(defn matches?
+  "Changes the state of `context`. Requires exclusive access to `context`."
+  [search-param context resource-handle modifier compiled-values]
   (p/-matches? search-param context resource-handle modifier compiled-values))
 
 

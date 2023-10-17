@@ -146,8 +146,8 @@
   "Returns a reducible collection of [id hash-prefix] tuples starting at
   `start-id` (optional).
 
-  Changes the state of `iter`. Consuming the collection requires exclusive
-  access to `iter`. Doesn't close `iter`."
+  Changes the state of `context`. Consuming the collection requires exclusive
+  access to `context`."
   ([{:keys [svri]} c-hash tid value]
    (sp-vr/prefix-keys! svri c-hash tid value value))
   ([{:keys [svri]} c-hash tid value start-id]
