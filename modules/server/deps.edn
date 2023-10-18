@@ -6,7 +6,7 @@
   {:local/root "../module-base"}
 
   info.sunng/ring-jetty9-adapter
-  {:mvn/version "0.22.3"
+  {:mvn/version "0.30.1"
    :exclusions
    [commons-fileupload/commons-fileupload
     crypto-equality/crypto-equality
