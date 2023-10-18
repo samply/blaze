@@ -5,9 +5,9 @@
     [blaze.test-util :as tu :refer [satisfies-prop]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
+    [clojure.string :as str]
     [clojure.test :as test :refer [deftest]]
-    [clojure.test.check.properties :as prop]
-    [cuerdas.core :as c-str]))
+    [clojure.test.check.properties :as prop]))
 
 
 (st/instrument)
@@ -16,7 +16,7 @@
 (test/use-fixtures :each tu/fixture)
 
 
-(def token (c-str/repeat "A" 32))
+(def token (str/join (repeat 32 "A")))
 
 
 (deftest encode-decode-test

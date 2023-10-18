@@ -50,7 +50,6 @@
     clojure.java.io io
     clojure.spec.alpha s
     clojure.string str
-    cuerdas.core c-str
     jsonista.core j}}}
 
  :output

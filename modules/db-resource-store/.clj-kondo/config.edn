@@ -21,7 +21,7 @@
 
   :consistent-alias
   {:aliases
-   {cognitect.anomalies anom
-    cuerdas.core c-str}}}
+   {clojure.string str
+    cognitect.anomalies anom}}}
 
  :skip-comments true}

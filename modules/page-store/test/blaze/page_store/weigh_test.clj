@@ -1,8 +1,8 @@
 (ns blaze.page-store.weigh-test
   (:require
     [blaze.page-store.weigh :as w]
-    [clojure.test :refer [are deftest testing]]
-    [cuerdas.core :as c-str]))
+    [clojure.string :as str]
+    [clojure.test :refer [are deftest testing]]))
 
 
 (deftest weigh-test
@@ -10,8 +10,8 @@
     (are [s size] (= size (w/weigh s))
       "" 40
       "a" 48
-      (c-str/repeat "a" 8) 48
-      (c-str/repeat "a" 9) 56))
+      (str/join (repeat 8 "a")) 48
+      (str/join (repeat 9 "a")) 56))
 
   (testing "Vector"
     (are [v size] (= size (w/weigh v))

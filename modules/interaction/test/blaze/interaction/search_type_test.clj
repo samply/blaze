@@ -23,7 +23,6 @@
     [clojure.spec.test.alpha :as st]
     [clojure.string :as str]
     [clojure.test :as test :refer [deftest is testing]]
-    [cuerdas.core :as c-str]
     [integrant.core :as ig]
     [java-time.api :as time]
     [juxt.iota :refer [given]]
@@ -564,7 +563,7 @@
         (let [{:keys [status body]}
               @(handler
                  {::reitit/match patient-page-match
-                  :params {"__t" "0" "__token" (c-str/repeat "A" 32)}})]
+                  :params {"__t" "0" "__token" (str/join (repeat 32 "A"))}})]
 
           (is (= 404 status))
 
@@ -573,7 +572,7 @@
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-found"
             [:issue 0 :diagnostics] := (format "Clauses of token `%s` not found."
-                                               (c-str/repeat "A" 32)))))))
+                                               (str/join (repeat 32 "A"))))))))
 
   (testing "with one patient"
     (with-handler [handler]

@@ -32,11 +32,11 @@
     [clojure.test.check.generators :as gen]
     [clojure.test.check.properties :as prop]
     [cognitect.anomalies :as anom]
-    [cuerdas.core :refer [pascal]]
     [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log])
   (:import
+    [com.google.common.base CaseFormat]
     [java.time Instant]
     [java.util.concurrent TimeUnit]))
 
@@ -163,6 +163,10 @@
   (gen/such-that unique-ids? (gen/vector (create-tx-op resource-gen) 1 max-ops)))
 
 
+(defn- kebab->pascal [s]
+  (.to CaseFormat/LOWER_HYPHEN CaseFormat/UPPER_CAMEL s))
+
+
 (deftest transact-test
   (testing "create"
     (testing "one Patient"
@@ -206,7 +210,7 @@
               [tx-ops]
 
               (= (count tx-ops)
-                 (count @(d/pull-many node (d/type-list (d/db node) (pascal (name gen))))))))))))
+                 (count @(d/pull-many node (d/type-list (d/db node) (kebab->pascal (name gen))))))))))))
 
   (testing "conditional create"
     (testing "one Patient"
