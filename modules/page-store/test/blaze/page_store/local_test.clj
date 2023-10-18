@@ -12,9 +12,9 @@
     [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
+    [clojure.string :as str]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
-    [cuerdas.core :as c-str]
     [integrant.core :as ig]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log]))
@@ -33,7 +33,7 @@
    :blaze.page-store.local/collector {:page-store (ig/ref :blaze.page-store/local)}})
 
 
-(def token (str (c-str/repeat "A" 31) "B"))
+(def token (str (str/join (repeat 31 "A")) "B"))
 
 
 (deftest init-test
@@ -68,9 +68,9 @@
       (is (= [["active" "true"]] @(page-store/get store token))))
 
     (testing "not-found"
-      (given-failed-future (page-store/get store (c-str/repeat "B" 32))
+      (given-failed-future (page-store/get store (str/join (repeat 32 "B")))
         ::anom/category := ::anom/not-found
-        ::anom/message := (format "Clauses of token `%s` not found." (c-str/repeat "B" 32))))))
+        ::anom/message := (format "Clauses of token `%s` not found." (str/join (repeat 32 "B")))))))
 
 
 (deftest put-test

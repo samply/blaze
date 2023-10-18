@@ -17,9 +17,9 @@
     [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
+    [clojure.string :as str]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
-    [cuerdas.core :as c-str]
     [integrant.core :as ig]
     [jsonista.core :as j]
     [taoensso.timbre :as log])
@@ -47,7 +47,7 @@
 
 (defn hash [s]
   (assert (= 1 (count s)))
-  (hash/from-hex (c-str/repeat s 64)))
+  (hash/from-hex (str/join (repeat 64 s))))
 
 
 (def bound-get-statement (reify BoundStatement))

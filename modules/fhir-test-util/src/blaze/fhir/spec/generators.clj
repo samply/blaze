@@ -4,8 +4,9 @@
     [blaze.fhir.spec.type :as type]
     [blaze.fhir.spec.type.system :as system]
     [clojure.string :as str]
-    [clojure.test.check.generators :as gen]
-    [cuerdas.core :refer [pascal]]))
+    [clojure.test.check.generators :as gen])
+  (:import
+    [com.google.common.base CaseFormat]))
 
 
 (set! *warn-on-reflection* true)
@@ -469,6 +470,10 @@
        (fhir-type :fhir.Bundle/entry)))
 
 
+(defn- kebab->pascal [s]
+  (.to CaseFormat/LOWER_HYPHEN CaseFormat/UPPER_CAMEL s))
+
+
 (defmacro def-resource-gen [type [& fields]]
   (let [fields (partition 2 fields)
         field-syms (map first fields)]
@@ -476,7 +481,7 @@
                      :or ~(into {} (map vec) fields)}]
        (->> (gen/tuple ~@field-syms)
             (to-map [~@(map keyword field-syms)])
-            (fhir-type ~(keyword "fhir" (pascal type)))))))
+            (fhir-type ~(keyword "fhir" (kebab->pascal (str type))))))))
 
 
 (def-resource-gen patient

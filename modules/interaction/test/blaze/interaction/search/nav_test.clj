@@ -6,8 +6,8 @@
     [blaze.page-store.protocols :as p]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cuerdas.core :as c-str]))
+    [clojure.string :as str]
+    [clojure.test :as test :refer [deftest is testing]]))
 
 
 (st/instrument)
@@ -186,7 +186,7 @@
   (reify p/PageStore
     (-put [_ clauses]
       (assert (= clauses-1 clauses))
-      (ac/completed-future (c-str/repeat "A" 32)))))
+      (ac/completed-future (str/join (repeat 32 "A"))))))
 
 
 (deftest token-url-test

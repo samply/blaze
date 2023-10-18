@@ -39,8 +39,8 @@
     blaze.db.kv kv
     blaze.test-util tu
     blaze.util u
+    clojure.string str
     cognitect.anomalies anom
-    cuerdas.core c-str
     ring.util.response ring}}}
 
  :skip-comments true}

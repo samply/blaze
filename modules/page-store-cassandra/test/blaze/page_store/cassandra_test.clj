@@ -14,8 +14,8 @@
     [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
+    [clojure.string :as str]
     [clojure.test :as test :refer [deftest is testing]]
-    [cuerdas.core :as c-str]
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
@@ -61,7 +61,7 @@
 
 
 (def clauses [["active" "true"]])
-(def token (str (c-str/repeat "A" 31) "B"))
+(def token (str (str/join (repeat 31 "A")) "B"))
 
 
 (deftest put-test
