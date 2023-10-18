@@ -9,6 +9,14 @@
     {
       "matchDatasources": ["npm"],
       "minimumReleaseAge": "5 days"
+    },
+    {
+      "matchPackagePatterns": ["com.fasterxml.jackson"],
+      "groupName": "jackson"
+    },
+    {
+      "matchPackagePatterns": ["info.cqframework"],
+      "groupName": "cqframework"
     }
   ],
   "baseBranches": ["develop"],
