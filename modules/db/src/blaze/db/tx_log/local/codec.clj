@@ -1,7 +1,6 @@
 (ns blaze.db.tx-log.local.codec
   (:require
     [blaze.byte-buffer :as bb]
-    [blaze.db.impl.codec :as codec]
     [blaze.fhir.hash :as hash]
     [jsonista.core :as j]
     [taoensso.timbre :as log])
@@ -55,16 +54,12 @@
     (Instant/ofEpochMilli x)))
 
 
-(defn decode-tx-data
-  ([]
-   [(bb/allocate-direct codec/t-size)
-    (bb/allocate-direct 1024)])
-  ([kb vb]
-   (let [t (bb/get-long! kb)
-         size (bb/remaining vb)
-         value (byte-array size)]
-     (bb/copy-into-byte-array! vb value 0 size)
-     (-> (parse value t)
-         (update :tx-cmds #(mapv decode-hash %))
-         (update :instant decode-instant)
-         (assoc :t t)))))
+(defn decode-tx-data [kb vb]
+  (let [t (bb/get-long! kb)
+        size (bb/remaining vb)
+        value (byte-array size)]
+    (bb/copy-into-byte-array! vb value 0 size)
+    (-> (parse value t)
+        (update :tx-cmds #(mapv decode-hash %))
+        (update :instant decode-instant)
+        (assoc :t t))))

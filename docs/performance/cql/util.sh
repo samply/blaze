@@ -24,9 +24,12 @@ calc-cql-print-stats() {
   fi
 
   # shorten the patients per second
-  if (( $(echo "$PATIENTS_PER_SEC > 1000" | bc) )); then
+  if (( $(echo "$PATIENTS_PER_SEC > 1000000" | bc) )); then
+    PATIENTS_PER_SEC=$(echo "scale=2; $PATIENTS_PER_SEC / 1000000" | bc)
+    PATIENTS_PER_SEC_FORMAT="%5.1f M"
+  elif (( $(echo "$PATIENTS_PER_SEC > 1000" | bc) )); then
     PATIENTS_PER_SEC=$(echo "scale=2; $PATIENTS_PER_SEC / 1000" | bc)
-    PATIENTS_PER_SEC_FORMAT="%4.1f k"
+    PATIENTS_PER_SEC_FORMAT="%5.1f k"
   else
     PATIENTS_PER_SEC_FORMAT="%6.0f"
   fi

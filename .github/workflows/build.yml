@@ -22,6 +22,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
+        cli: '1.11.1.1403'
         clj-kondo: '2023.01.20'
 
     - name: Check out Git repository
@@ -75,7 +76,7 @@ jobs:
         java-version:
         - '11'
         - '17'
-        - '20'
+        - '21'
 
     runs-on: ubuntu-22.04
 
@@ -148,7 +149,7 @@ jobs:
         java-version:
         - '11'
         - '17'
-        - '20'
+        - '21'
 
     runs-on: ubuntu-22.04
 
@@ -256,7 +257,7 @@ jobs:
 
     - name: Upload Trivy Scan Results to GitHub Security Tab
       if: ${{ (github.repository_owner == 'samply') || (vars.IMAGE_SCAN_UPLOAD == 'true') }}
-      uses: github/codeql-action/upload-sarif@ddccb873888234080b77e9bc2d4764d5ccaaccf9 # v2
+      uses: github/codeql-action/upload-sarif@0116bc2df50751f9724a2e35ef1f24d22f90e4e1 # v2
       with:
         sarif_file: trivy-results.sarif
 
@@ -444,6 +445,12 @@ jobs:
 
     - name: Download MedicationRequest Resources - Including Medications
       run: blazectl --no-progress --server http://localhost:8080/fhir download MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
+
+    - name: Download male Patient Resources having inpatient Encounters in 2010
+      run: .github/scripts/download-resources-query.sh Patient "gender=male&_has:Encounter:patient:class=IMP&_has:Encounter:patient:date=2010" 8
+
+    - name: Download female Patient Resources having inpatient Encounters in 2010
+      run: .github/scripts/download-resources-query.sh Patient "gender=female&_has:Encounter:patient:class=IMP&_has:Encounter:patient:date=2010" 11
 
     - name: Download Observations using _elements=subject
       run: .github/scripts/download-observations-elements.sh
@@ -1343,6 +1350,12 @@ jobs:
 
     - name: Download MedicationRequest Resources - Including Medications
       run: blazectl --no-progress --server http://localhost:8080/fhir download MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
+
+    - name: Download male Patient Resources having inpatient Encounters in 2010
+      run: .github/scripts/download-resources-query.sh Patient "gender=male&_has:Encounter:patient:class=IMP&_has:Encounter:patient:date=2010" 8
+
+    - name: Download female Patient Resources having inpatient Encounters in 2010
+      run: .github/scripts/download-resources-query.sh Patient "gender=female&_has:Encounter:patient:class=IMP&_has:Encounter:patient:date=2010" 11
 
     - name: Download Observations using _elements=subject
       run: .github/scripts/download-observations-elements.sh

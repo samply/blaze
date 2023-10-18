@@ -13,10 +13,6 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(def ^:private ^:const ^long max-key-size
-  (+ codec/c-hash-size codec/max-id-size 1 codec/tid-size codec/max-id-size))
-
-
 (def ^:private ^:const ^long except-co-res-id-prefix-size
   (+ codec/c-hash-size 1 codec/tid-size))
 
@@ -29,13 +25,11 @@
   (unchecked-add-int except-co-res-id-prefix-size (bs/size co-res-id)))
 
 
-(defn- decode-key
-  ([] (bb/allocate-direct max-key-size))
-  ([buf]
-   (bb/set-position! buf (unchecked-add-int (bb/position buf) codec/c-hash-size))
-   (let [id-size (long (bb/size-up-to-null buf))]
-     (bb/set-position! buf (+ (bb/position buf) id-size 1 codec/tid-size))
-     (bs/from-byte-buffer! buf))))
+(defn- decode-key [buf]
+  (bb/set-position! buf (unchecked-add-int (bb/position buf) codec/c-hash-size))
+  (let [id-size (long (bb/size-up-to-null buf))]
+    (bb/set-position! buf (+ (bb/position buf) id-size 1 codec/tid-size))
+    (bs/from-byte-buffer! buf)))
 
 
 (def ^:private remove-deleted-xf

@@ -8,7 +8,9 @@
     [blaze.db.impl.search-param.util :as u]))
 
 
-(defn- other-clauses-filter [context clauses]
+(defn- other-clauses-filter
+  "Changes the state of `context`. Requires exclusive access to `context`."
+  [context clauses]
   (filter
     (fn [resource-handle]
       (loop [[[search-param modifier _ values] & clauses] clauses]

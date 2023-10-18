@@ -9,6 +9,7 @@
     [blaze.elm.protocols :as p]
     [cuerdas.core :as c-str])
   (:import
+    [com.google.common.base CharMatcher]
     [javax.measure Quantity UnconvertibleException Unit]
     [javax.measure.format UnitFormat]
     [javax.measure.spi ServiceProvider]
@@ -225,6 +226,9 @@
       (catch Exception _))))
 
 
+(def ^:private ^CharMatcher quote-matcher (CharMatcher/is \'))
+
+
 ;; 22.28. ToQuantity
 (extend-protocol p/ToQuantity
   Number
@@ -237,7 +241,7 @@
     (let [[_ value unit] (re-matches #"([+-]?\d+(?:\.\d+)?)\s*('[^']+')?" s)]
       (when value
         (when-let [value (p/to-decimal value)]
-          (quantity value (or (c-str/trim unit "'") "1")))))))
+          (quantity value (if unit (.trimFrom quote-matcher unit) "1")))))))
 
 
 ;; 22.30. ToString

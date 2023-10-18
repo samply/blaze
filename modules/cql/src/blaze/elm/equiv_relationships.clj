@@ -3,14 +3,14 @@
   expression resulting in equiv semi-joins and semi-differences."
   (:require
     [blaze.elm.spec]
-    [cuerdas.core :as c-str]))
+    [blaze.elm.util :as elm-util]))
 
 
 (defmulti find-equiv-rels
   {:arglists '([expression])}
   (fn [{:keys [type]}]
     (assert type)
-    (keyword "elm.equiv-relationships.type" (c-str/kebab type))))
+    (keyword "elm.equiv-relationships.type" (elm-util/pascal->kebab type))))
 
 
 (defn- update-expression-defs [expression-defs]

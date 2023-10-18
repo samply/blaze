@@ -1,5 +1,5 @@
 # Update the SHA by calling crane digest eclipse-temurin:17-jre-jammy
-FROM eclipse-temurin:17-jre-jammy@sha256:8985c594276a679fdd382dfedf1fca237ea3d3603f75a9dd64d4bdd88b7ccfab
+FROM eclipse-temurin:17-jre-jammy@sha256:aa9b1434f46fa6fcaec6cb5b4003bb19a4c4244b1660169e672a18f42c04c473
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install libjemalloc2 -y && \
@@ -8,7 +8,7 @@ RUN apt-get update && apt-get upgrade -y && \
     rm -rf /var/lib/apt/lists/
 
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
-COPY target/blaze-0.22.2-standalone.jar /app/
+COPY target/blaze-0.22.3-standalone.jar /app/
 
 WORKDIR /app
 USER 1001
@@ -19,4 +19,4 @@ ENV INDEX_DB_DIR="/app/data/index"
 ENV TRANSACTION_DB_DIR="/app/data/transaction"
 ENV RESOURCE_DB_DIR="/app/data/resource"
 
-CMD ["java", "-jar",  "blaze-0.22.2-standalone.jar"]
+CMD ["java", "-jar",  "blaze-0.22.3-standalone.jar"]

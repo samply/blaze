@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.22.3
+
+### Bugfixes
+
+* Fix Empty Results in Certain Reverse Chaining FHIR Search Queries ([#1215](https://github.com/samply/blaze/issues/1215))
+
+### Performance
+
+* Remove Usage of Small Direct Byte Buffers ([#1176](https://github.com/samply/blaze/pull/1176))
+* Replace Allocation Heavy Functions ([#1198](https://github.com/samply/blaze/pull/1198))
+
+### Operation
+
+* Add Put Metric to Resource Store ([#1187](https://github.com/samply/blaze/pull/1187))
+
+### Documentation
+
+* Update CQL Performance Documentation ([#1177](https://github.com/samply/blaze/pull/1177))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/78?closed=1).
+
 ## v0.22.2
 
 ### Enhancements

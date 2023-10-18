@@ -12,23 +12,21 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 
-(defn decode-key-human
-  ([] (bb/allocate-direct 128))
-  ([buf]
-   (let [id-size (bb/get-byte! buf (- (bb/limit buf) hash/prefix-size 1))
-         value-size (- (bb/remaining buf) id-size 2 hash/prefix-size
-                       codec/c-hash-size codec/tid-size)
-         c-hash (bb/get-int! buf)
-         tid (bb/get-int! buf)
-         value (bs/from-byte-buffer! buf value-size)
-         _ (bb/get-byte! buf)
-         id (bs/from-byte-buffer! buf id-size)
-         _ (bb/get-byte! buf)]
-     {:code (codec/c-hash->code c-hash (Integer/toHexString c-hash))
-      :type (codec/tid->type tid)
-      :v-hash value
-      :id (codec/id-string id)
-      :hash-prefix (hash/prefix-from-byte-buffer! buf)})))
+(defn decode-key-human [buf]
+  (let [id-size (bb/get-byte! buf (- (bb/limit buf) hash/prefix-size 1))
+        value-size (- (bb/remaining buf) id-size 2 hash/prefix-size
+                      codec/c-hash-size codec/tid-size)
+        c-hash (bb/get-int! buf)
+        tid (bb/get-int! buf)
+        value (bs/from-byte-buffer! buf value-size)
+        _ (bb/get-byte! buf)
+        id (bs/from-byte-buffer! buf id-size)
+        _ (bb/get-byte! buf)]
+    {:code (codec/c-hash->code c-hash (Integer/toHexString c-hash))
+     :type (codec/tid->type tid)
+     :v-hash value
+     :id (codec/id-string id)
+     :hash-prefix (hash/prefix-from-byte-buffer! buf)}))
 
 
 (defn decode-index-entries [kv-store & keys]

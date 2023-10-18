@@ -3,7 +3,8 @@
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 . "$SCRIPT_DIR/util.sh"
 
-BASE="${1:-http://localhost:8080/fhir}"
+COMPOSE_FILE="$1"
+BASE="${2:-http://localhost:8080/fhir}"
 START_EPOCH="$(date +"%s")"
 
 count-resources() {
@@ -27,10 +28,12 @@ download-resources-elements-subject() {
   download-resources-raw "$BASE" "date=$YEAR&_elements=subject" "$START_EPOCH-download-subject-$YEAR.times"
 }
 
+restart "$COMPOSE_FILE"
 count-resources "2013"
 download-resources "2013"
 download-resources-elements-subject "2013"
 
+restart "$COMPOSE_FILE"
 count-resources "2019"
 download-resources "2019"
 download-resources-elements-subject "2019"
