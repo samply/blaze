@@ -26,7 +26,7 @@
   {:mvn/version "5.2.1"}
 
   funcool/cuerdas
-  {:mvn/version "2022.06.16-403"}
+  {:mvn/version "2023.10.15-405"}
 
   metosin/jsonista
   {:mvn/version "0.3.8"}
