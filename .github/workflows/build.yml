@@ -26,7 +26,7 @@ jobs:
         clj-kondo: '2023.01.20'
 
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Lint
       run: make lint
@@ -93,7 +93,7 @@ jobs:
         cli: '1.11.1.1403'
 
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Cache Local Maven Repo
       uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3
@@ -123,7 +123,7 @@ jobs:
         cli: '1.11.1.1403'
 
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Cache Local Maven Repo
       uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3
@@ -166,7 +166,7 @@ jobs:
         cli: '1.11.1.1403'
 
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Cache Local Maven Repo
       uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3
@@ -194,7 +194,7 @@ jobs:
         cli: '1.11.1.1403'
 
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Cache Local Maven Repo
       uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3
@@ -244,7 +244,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Run Trivy Vulnerability Scanner
       uses: aquasecurity/trivy-action@master
@@ -267,7 +267,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -638,7 +638,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -683,7 +683,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -724,7 +724,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -759,7 +759,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -797,7 +797,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
       uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
@@ -823,7 +823,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
       uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
@@ -851,7 +851,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -891,7 +891,7 @@ jobs:
         cli: '1.11.1.1403'
 
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Cache Local Maven Repo
       uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3
@@ -935,7 +935,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
       uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
@@ -970,7 +970,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
       uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
@@ -1002,7 +1002,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -1046,7 +1046,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
       uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
@@ -1081,7 +1081,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
       uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
@@ -1107,7 +1107,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
       uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
@@ -1151,7 +1151,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -1560,7 +1560,7 @@ jobs:
         cli: '1.11.1.1403'
 
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Cache Local Maven Repo
       uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3
@@ -1653,7 +1653,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Uberjar
       uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
@@ -1746,7 +1746,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Setup Node
       uses: actions/setup-node@5e21ff4d9bc1a8cf6de233a3057d20ec6b3fb69d # v3
