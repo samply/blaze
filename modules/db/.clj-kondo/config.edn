@@ -35,6 +35,8 @@
     blaze.async.comp ac
     blaze.db.api d
     blaze.db.kv kv
+    blaze.db.impl.index.reverse-reference rr
+    blaze.db.impl.index.system-as-of sao
     blaze.db.impl.protocols p
     blaze.db.search-param-registry sr
     blaze.executors ex

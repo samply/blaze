@@ -84,13 +84,8 @@
   "Returns a reducible collection of decoded keys of `iter` starting with
   `start-key`.
 
-  The `decode` function has to return a direct ByteBuffer when called with no
-  argument. That same ByteBuffer will be used for each key read and will be
-  passed to the decode function for decoding into a value which will end up in
+  The `decode` function is used for decoding the value which will end up in
   the collection.
-
-  If the capacity of the ByteBuffer isn't sufficient, a new ByteBuffer with
-  double the capacity will be created and used for further reads.
 
   Changes the state of `iter`. Consuming the collection requires exclusive
   access to `iter`. Doesn't close `iter`."
@@ -126,13 +121,8 @@
   "Returns a reducible collection of decoded keys of `iter` starting with
   `start-key` and ending when `prefix` no longer matches.
 
-  The `decode` function has to return a direct ByteBuffer when called with no
-  argument. That same ByteBuffer will be used for each key read and will be
-  passed to the decode function for decoding into a value which will end up in
+  The `decode` function is used for decoding the value which will end up in
   the collection.
-
-  If the capacity of the ByteBuffer isn't sufficient, a new ByteBuffer with
-  double the capacity will be created and used for further reads.
 
   Changes the state of `iter`. Consuming the collection requires exclusive
   access to `iter`. Doesn't close `iter`."
@@ -144,13 +134,8 @@
   "Returns a reducible collection of decoded keys of `iter` starting with
   `start-key` and ending when `prefix` no longer matches, iterating in reverse.
 
-  The `decode` function has to return a direct ByteBuffer when called with no
-  argument. That same ByteBuffer will be used for each key read and will be
-  passed to the decode function for decoding into a value which will end up in
+  The `decode` function is used for decoding the value which will end up in
   the collection.
-
-  If the capacity of the ByteBuffer isn't sufficient, a new ByteBuffer with
-  double the capacity will be created and used for further reads.
 
   Changes the state of `iter`. Consuming the collection requires exclusive
   access to `iter`. Doesn't close `iter`."

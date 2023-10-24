@@ -109,7 +109,11 @@ It is important that we don't use reflection. In order to see reflection warning
 * add `-Dclojure.server.repl='{:address,\"0.0.0.0\",:port,5555,:accept,clojure.core.server/repl}'` to the `JAVA_TOOL_OPTIONS` env var
 * bind port 5555
 * create remote REPL in Cursive
-* 
+
+## Print Debugging
+
+You can use [hashp][3] for print styple debugging.
 
 [1]: <https://github.com/weavejester/integrant>
 [2]: <https://github.com/bbatsov/clojure-style-guide>
+[3]: <https://github.com/weavejester/hashp>

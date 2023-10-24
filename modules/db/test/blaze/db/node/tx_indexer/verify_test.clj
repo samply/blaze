@@ -2,6 +2,7 @@
   (:require
     [blaze.db.api :as d]
     [blaze.db.impl.codec :as codec]
+    [blaze.db.impl.index.reverse-reference-test-util :as rr-tu]
     [blaze.db.impl.index.resource-as-of-test-util :as rao-tu]
     [blaze.db.impl.index.rts-as-of-test-util :as rts-tu]
     [blaze.db.impl.index.system-as-of-test-util :as sao-tu]
@@ -44,6 +45,8 @@
 (def patient-1 {:fhir/type :fhir/Patient :id "1"})
 (def patient-2 {:fhir/type :fhir/Patient :id "2"
                 :identifier [#fhir/Identifier{:value "120426"}]})
+(def observation-0 {:fhir/type :fhir/Observation :id "0"
+                    :subject #fhir/Reference{:reference "Patient/0"}})
 
 
 (deftest verify-tx-cmds-test
@@ -458,4 +461,52 @@
 
             [4 0] := :system-stats-index
             [4 1 ss-tu/decode-key] := {:t 3}
-            [4 2 ss-tu/decode-val] := {:total 1 :num-changes 3}))))))
+            [4 2 ss-tu/decode-val] := {:total 1 :num-changes 3})))))
+
+  (testing "a transaction violating referential integrity fails"
+    (testing "creating an Observation were the subject doesn't exist"
+      (with-system [{:blaze.db/keys [node]} config]
+        (given (verify/verify-tx-cmds
+                 (d/db node) 1
+                 [{:op "create" :type "Observation" :id "0"
+                   :hash (hash/generate observation-0)
+                   :refs [["Patient" "0"]]}])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))
+
+  (testing "creating an Observation which references a Patient"
+    (let [hash (hash/generate observation-0)]
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put patient-0]]]
+
+        (given #p (verify/verify-tx-cmds
+                 (d/db node) 2
+                 [{:op "create" :type "Observation" :id "1"
+                   :hash hash
+                   :refs [["Patient" "0"]]}])
+
+          count := 6
+
+          [0 0] := :resource-as-of-index
+          [0 1 rao-tu/decode-key] := {:type "Observation" :id "1" :t 2}
+          [0 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op :create}
+
+          [1 0] := :type-as-of-index
+          [1 1 tao-tu/decode-key] := {:type "Observation" :t 2 :id "1"}
+          [1 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op :create}
+
+          [2 0] := :system-as-of-index
+          [2 1 sao-tu/decode-key] := {:t 2 :type "Observation" :id "1"}
+          [2 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op :create}
+
+          [3 0] := :type-stats-index
+          [3 1 ts-tu/decode-key] := {:type "Observation" :t 2}
+          [3 2 ts-tu/decode-val] := {:total 1 :num-changes 1}
+
+          [4 0] := :system-stats-index
+          [4 1 ss-tu/decode-key] := {:t 2}
+          [4 2 ss-tu/decode-val] := {:total 2 :num-changes 2}
+
+          [5 0] := :reverse-reference-index
+          [5 1 rr-tu/decode-key] := {:dst-type "Patient" :dst-id "0"
+                                     :src-type "Observation" :src-id "1"})))))

@@ -47,7 +47,8 @@
 
 
 (defn from-byte-buffer!
-  "Returns the remaining bytes from `byte-buffer` as byte string."
+  "Returns all the remaining or `size` (optional) many bytes from `byte-buffer`
+  as byte string."
   {:inline
    (fn
      ([byte-buffer]

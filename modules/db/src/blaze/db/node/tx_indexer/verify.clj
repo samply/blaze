@@ -132,7 +132,8 @@
     (throw-anom (ba/conflict (id-collision-msg type id)))))
 
 
-(defn- index-entries [tid id t hash num-changes op]
+(defn- index-entries [tid id t hash refs num-changes op]
+  ;; TODO: use refs here to build the ReverseReference index
   (rts/index-entries tid (codec/id-byte-string id) t hash num-changes op))
 
 
@@ -140,12 +141,12 @@
 
 
 (defmethod verify-tx-cmd "create"
-  [db-before t res {:keys [type id hash]}]
+  [db-before t res {:keys [type id hash refs]}]
   (log/trace (verify-tx-cmd-create-msg type id))
   (with-open [_ (prom/timer duration-seconds "verify-create")]
     (check-id-collision! db-before type id)
     (let [tid (codec/tid type)]
-      (-> (update res :entries into (index-entries tid id t hash 1 :create))
+      (-> (update res :entries into (index-entries tid id t hash refs 1 :create))
           (update :new-resources conj [type id])
           (update-in [:stats tid :num-changes] inc-0)
           (update-in [:stats tid :total] inc-0)))))
