@@ -35,9 +35,11 @@
     blaze.async.comp ac
     blaze.db.api d
     blaze.db.kv kv
+    blaze.db.impl.index.patient-last-change plc
     blaze.db.impl.protocols p
     blaze.db.search-param-registry sr
     blaze.executors ex
+    blaze.scheduler sched
     buddy.auth auth
     cognitect.anomalies anom
     clojure.java.io io

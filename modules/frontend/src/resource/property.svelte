@@ -4,7 +4,7 @@
 		isPrimitive,
 		type FhirPrimitive,
 		type FhirObject
-	} from './resource-card';
+	} from './resource-card.js';
 	import PrimitiveValue from './primitive-value.svelte';
 	import ComplexValue from './complex-value.svelte';
 	import Attachment from '../values/attachment.svelte';

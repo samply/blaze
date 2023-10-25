@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { FhirObject } from '../resource/resource-card';
+	import type { FhirObject } from '../resource/resource-card.js';
 
 	export let values: FhirObject[];
 </script>

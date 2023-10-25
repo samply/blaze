@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { HttpVerb } from '../fhir';
+	import { HttpVerb } from '../fhir.js';
 
 	export let method: HttpVerb;
 

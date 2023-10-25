@@ -4,6 +4,7 @@
     [blaze.fhir.spec :as fhir-spec]
     [clojure.data.xml :as xml]
     [clojure.java.io :as io]
+    [cuerdas.core :as c-str]
     [jsonista.core :as j]
     [muuntaja.parse :as parse]
     [prometheus.alpha :as prom]
@@ -103,8 +104,13 @@
      (handler request #(respond (handle-response opts request %)) raise))))
 
 
+(def ^:private json-object-mapper
+  "Converts usual kebab-case keyword keys into camelCase string keys."
+  (j/object-mapper {:encode-key-fn (comp c-str/camel name)}))
+
+
 (defn- handle-json-response [response]
-  (-> (update response :body j/write-value-as-bytes)
+  (-> (update response :body #(j/write-value-as-bytes % json-object-mapper))
       (ring/content-type "application/json;charset=utf-8")))
 
 

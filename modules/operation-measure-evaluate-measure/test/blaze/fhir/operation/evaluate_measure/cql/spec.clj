@@ -1,13 +1,12 @@
 (ns blaze.fhir.operation.evaluate-measure.cql.spec
   (:require
     [blaze.elm.compiler :as-alias compiler]
+    [blaze.elm.expression :as-alias expr]
+    [blaze.fhir.operation.evaluate-measure :as-alias evaluate-measure]
     [blaze.fhir.operation.evaluate-measure.cql :as-alias cql]
+    [blaze.fhir.operation.evaluate-measure.spec]
     [clojure.spec.alpha :as s]
     [java-time.api :as time]))
-
-
-(s/def ::cql/now
-  time/offset-date-time?)
 
 
 (s/def ::cql/timeout-eclipsed?
@@ -19,21 +18,22 @@
 
 
 (s/def ::cql/context
-  (s/keys :req-un [:blaze.db/db ::cql/now ::cql/timeout-eclipsed? ::cql/timeout
-                   ::compiler/expression-defs]))
+  (s/merge
+    ::expr/context
+    (s/keys :req-un [::cql/timeout-eclipsed? ::cql/timeout
+                     ::compiler/expression-defs])))
 
 
 (s/def ::cql/return-handles?
   boolean?)
 
 
+(s/def ::cql/population-basis
+  (s/nilable :fhir.resource/type))
+
+
 (s/def ::cql/evaluate-expression-context
-  (s/merge ::cql/context (s/keys :opt-un [::cql/return-handles?])))
-
-
-(s/def ::cql/parameters
-  (s/map-of string? any?))
-
-
-(s/def ::cql/evaluate-individual-expression-context
-  (s/merge ::cql/context (s/keys :opt-un [::cql/parameters])))
+  (s/merge
+    ::cql/context
+    (s/keys :req-un [::evaluate-measure/executor]
+            :opt-un [::cql/return-handles? ::cql/population-basis])))

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { SearchEntryMode } from '../../fhir';
+	import { SearchEntryMode } from '../../fhir.js';
 
 	export let searchMode: SearchEntryMode;
 

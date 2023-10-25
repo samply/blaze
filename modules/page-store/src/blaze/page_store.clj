@@ -8,7 +8,7 @@
 
 (defn get
   "Returns a CompletableFuture that will complete with the clauses stored under
-  `token` or complete exceptionally if no clauses were found."
+  `token` or will complete exceptionally if no clauses were found."
   [store token]
   (p/-get store token))
 

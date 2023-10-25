@@ -1,7 +1,7 @@
-import type { HistoryBundle, Resource } from '../../../../fhir';
+import type { HistoryBundle, Resource } from '../../../../fhir.js';
 import { base } from '$app/paths';
 import { error } from '@sveltejs/kit';
-import { transformBundle } from '../../../../history/util';
+import { transformBundle } from '../../../../history/util.js';
 
 export async function load({ fetch, params }) {
 	const res = await fetch(`${base}/${params.type}/${params.id}/_history`, {

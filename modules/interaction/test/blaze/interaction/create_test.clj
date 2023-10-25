@@ -8,7 +8,7 @@
     [blaze.anomaly :as ba]
     [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
-    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+    [blaze.db.api-stub :as api-stub :refer [mem-node-config with-system-data]]
     [blaze.db.resource-store :as rs]
     [blaze.db.spec :refer [node?]]
     [blaze.fhir.response.create-spec]
@@ -75,8 +75,8 @@
       [:explain ::s/problems 2 :val] := ::invalid)))
 
 
-(defn create-config [node-config]
-  (assoc (api-stub/create-mem-node-config node-config)
+(def config
+  (assoc mem-node-config
     :blaze.interaction/create
     {:node (ig/ref :blaze.db/node)
      :executor (ig/ref :blaze.test/executor)
@@ -84,10 +84,6 @@
      :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
     :blaze.test/executor {}
     :blaze.test/fixed-rng-fn {}))
-
-
-(def config
-  (create-config {}))
 
 
 (defn wrap-defaults [handler]
@@ -403,7 +399,8 @@
               [:issue 0 :diagnostics] := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."))))))
 
   (testing "with disabled referential integrity check"
-    (with-system [{handler :blaze.interaction/create} (create-config {:enforce-referential-integrity false})]
+    (with-system [{handler :blaze.interaction/create}
+                  (assoc-in config [:blaze.db/node :enforce-referential-integrity] false)]
       (let [{:keys [status headers body]}
             @((-> handler wrap-defaults wrap-error)
               {::reitit/match observation-match

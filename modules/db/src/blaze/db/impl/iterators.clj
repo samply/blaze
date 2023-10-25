@@ -176,7 +176,11 @@
 
   Changes the state of `iter`. Consuming the collection requires exclusive
   access to `iter`. Doesn't close `iter`."
-  [iter decode start-key]
-  (coll/eduction
-    (kv-decoder decode)
-    (iter! iter start-key)))
+  ([iter decode]
+   (coll/eduction
+     (kv-decoder decode)
+     (iter! iter)))
+  ([iter decode start-key]
+   (coll/eduction
+     (kv-decoder decode)
+     (iter! iter start-key))))

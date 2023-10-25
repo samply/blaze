@@ -6,6 +6,7 @@
     [blaze.db.impl.batch-db :as batch-db]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.db :as db]
+    [blaze.db.impl.index.patient-last-change :as plc]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.index.t-by-instant :as t-by-instant]
     [blaze.db.impl.index.tx-error :as tx-error]
@@ -15,6 +16,7 @@
     [blaze.db.impl.search-param.all :as search-param-all]
     [blaze.db.impl.search-param.chained :as spc]
     [blaze.db.kv :as kv]
+    [blaze.db.node.patient-last-change-index :as node-plc]
     [blaze.db.node.protocols :as np]
     [blaze.db.node.resource-indexer :as resource-indexer]
     [blaze.db.node.resource-indexer.spec]
@@ -31,6 +33,7 @@
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
     [blaze.module :refer [reg-collector]]
+    [blaze.scheduler :as sched]
     [blaze.spec]
     [blaze.util :refer [conj-vec]]
     [clojure.spec.alpha :as s]
@@ -167,9 +170,9 @@
     future))
 
 
-(defn- index-tx [db-before tx-data]
+(defn- index-tx [search-param-registry db-before tx-data]
   (with-open [_ (prom/timer duration-seconds "index-transactions")]
-    (tx-indexer/index-tx db-before tx-data)))
+    (tx-indexer/index-tx search-param-registry db-before tx-data)))
 
 
 (defn- advance-t! [state t]
@@ -222,13 +225,13 @@
   "This is the main transaction handling function.
 
   If indexes resources and transaction data and commits either success or error."
-  [{:keys [resource-indexer kv-store] :as node}
+  [{:keys [resource-indexer kv-store search-param-registry] :as node}
    {:keys [t instant tx-cmds] :as tx-data}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
   (prom/observe! transaction-sizes (count tx-cmds))
   (let [timer (prom/timer duration-seconds "index-resources")
         future (resource-indexer/index-resources resource-indexer tx-data)
-        result (index-tx (np/-db node) tx-data)]
+        result (index-tx search-param-registry (np/-db node) tx-data)]
     (if (ba/anomaly? result)
       (commit-error! node t result)
       (do
@@ -242,7 +245,11 @@
     (tx-log/poll! queue poll-timeout)))
 
 
-(defn- poll-and-index! [node queue poll-timeout]
+(defn- poll-and-index!
+  "Polls `queue` once and indexes the resulting transaction data.
+
+  Waits up to `poll-timeout` for the transaction data to become available."
+  [node queue poll-timeout]
   (log/trace "poll transaction queue")
   (run! (partial index-tx-data! node) (poll-tx-queue! queue poll-timeout)))
 
@@ -482,7 +489,8 @@
      :blaze.db/kv-store
      ::resource-indexer
      :blaze.db/resource-store
-     :blaze.db/search-param-registry]
+     :blaze.db/search-param-registry
+     :blaze/scheduler]
     :opt-un
     [:blaze.db/enforce-referential-integrity]))
 
@@ -530,9 +538,45 @@
       (ac/completed-future (db/db node (:t @(.-state node)))))))
 
 
+(defn- index-patient-last-change-index!
+  [{:keys [kv-store] :as node} current-t {:keys [t] :as tx-data}]
+  (log/debug "Build PatientLastChange index with t =" t)
+  (when-ok [entries (node-plc/index-entries node tx-data)]
+    (store-tx-entries! kv-store entries))
+  (vreset! current-t t))
+
+
+(defn- poll-and-index-patient-last-change-index!
+  [node queue current-t poll-timeout]
+  (run! (partial index-patient-last-change-index! node current-t)
+        (poll-tx-queue! queue poll-timeout)))
+
+
+(defn build-patient-last-change-index
+  [{:keys [tx-log kv-store run? state poll-timeout] :as node}]
+  (let [{:keys [type t]} (plc/state kv-store)]
+    (when (identical? :building type)
+      (let [start-t (inc t)
+            end-t (:t @state)
+            current-t (volatile! start-t)]
+        (log/info "Building PatientLastChange index starting at t =" start-t)
+        (with-open [queue (tx-log/new-queue tx-log start-t)]
+          (while (and @run? (< @current-t end-t))
+            (try
+              (poll-and-index-patient-last-change-index! node queue current-t poll-timeout)
+              (catch Exception e
+                (log/error "Error while building the PatientLastChange index." e)))))
+        (if (>= @current-t end-t)
+          (do
+            (store-tx-entries! kv-store [(plc/state-index-entry {:type :current})])
+            (log/info "Finished building PatientLastChange index."))
+          (log/info "Partially build PatientLastChange index up to t =" @current-t
+                    "at a goal of t =" end-t "Will continue at next start."))))))
+
+
 (defmethod ig/init-key :blaze.db/node
   [_ {:keys [storage tx-log tx-cache indexer-executor kv-store resource-indexer
-             resource-store search-param-registry poll-timeout]
+             resource-store search-param-registry scheduler poll-timeout]
       :or {poll-timeout (time/seconds 1)}
       :as config}]
   (init-msg config)
@@ -543,6 +587,8 @@
                      (volatile! true)
                      poll-timeout
                      (ac/future))]
+    (when (= :building (:type (plc/state kv-store)))
+      (sched/submit scheduler #(build-patient-last-change-index node)))
     (execute node indexer-executor)
     node))
 

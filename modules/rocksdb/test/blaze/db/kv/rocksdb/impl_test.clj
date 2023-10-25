@@ -16,7 +16,7 @@
     [java.nio.file Files]
     [java.nio.file.attribute FileAttribute]
     [org.rocksdb
-     BlockBasedTableConfig ColumnFamilyDescriptor ColumnFamilyHandle
+     AbstractEventListener BlockBasedTableConfig ColumnFamilyDescriptor ColumnFamilyHandle
      ColumnFamilyOptions CompressionType DBOptions LRUCache RocksDB RocksDBException
      Statistics WriteBatchInterface WriteOptions]))
 
@@ -55,7 +55,9 @@
      :target-file-size-base-in-mb (bit-shift-right (.targetFileSizeBase options) 20)
      :table-format-config (datafy/datafy (.tableFormatConfig options))
      :memtable-whole-key-filtering? (.memtableWholeKeyFiltering options)
-     :optimize-filters-for-hits? (.optimizeFiltersForHits options)})
+     :optimize-filters-for-hits? (.optimizeFiltersForHits options)
+     :enable-blob-files? (.enableBlobFiles options)
+     :min-blob-size (.minBlobSize options)})
 
   BlockBasedTableConfig
   (datafy [config]
@@ -106,7 +108,9 @@
         [:options :table-format-config :block-cache?] := true
         [:options :table-format-config :bloom-filter?] := false
         [:options :memtable-whole-key-filtering?] := false
-        [:options :optimize-filters-for-hits?] := false)))
+        [:options :optimize-filters-for-hits?] := false
+        [:options :enable-blob-files?] := false
+        [:options :min-blob-size] := 0)))
 
   (testing "without block cache"
     (given (column-family-descriptor nil :default nil)
@@ -145,9 +149,13 @@
       :bloom-filter? true)))
 
 
+(defn- event-listener []
+  (proxy [AbstractEventListener] []))
+
+
 (deftest db-options-test
   (testing "with defaults"
-    (given (datafy/datafy (impl/db-options (Statistics.) nil))
+    (given (datafy/datafy (impl/db-options (Statistics.) (event-listener) nil))
       :wal-dir := ""
       :max-background-jobs := 2
       :compaction-readahead-size := 0
@@ -156,7 +164,7 @@
       :create-missing-column-families := true)
 
     (are [key value]
-      (given (datafy/datafy (impl/db-options (Statistics.) {key value}))
+      (given (datafy/datafy (impl/db-options (Statistics.) (event-listener) {key value}))
         key := value)
 
       :wal-dir "wal"
@@ -243,7 +251,7 @@
     (let [entries [[:cf-1 (byte-array 0) (byte-array 0)]]]
       (given (ba/try-anomaly (impl/put-wb! {} (cf-put-wb nil) entries))
         ::anom/category := ::anom/not-found
-        ::anom/message := "column family `cf-1` not found"))))
+        ::anom/message := "Column family `cf-1` not found."))))
 
 
 (defn- kv-delete-wb [state]
@@ -404,7 +412,7 @@
     (let [entries [[:put :cf-1 (byte-array 0) (byte-array 0)]]]
       (given (ba/try-anomaly (impl/write-wb! {} (cf-put-wb nil) entries))
         ::anom/category := ::anom/not-found
-        ::anom/message := "column family `cf-1` not found")))
+        ::anom/message := "Column family `cf-1` not found.")))
 
   (testing "non matching op"
     ;; although a non-matching op isn't allowed in the spec, it could happen at

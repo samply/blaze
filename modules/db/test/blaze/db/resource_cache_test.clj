@@ -1,6 +1,6 @@
 (ns blaze.db.resource-cache-test
   (:require
-    [blaze.db.cache-collector.protocols :as ccp]
+    [blaze.cache-collector.protocols :as ccp]
     [blaze.db.kv :as kv]
     [blaze.db.kv.mem]
     [blaze.db.resource-cache :as resource-cache]

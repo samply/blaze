@@ -3,7 +3,7 @@
     [blaze.scheduler.protocol :as p]
     [clojure.spec.alpha :as s])
   (:import
-    [java.util.concurrent ScheduledFuture]))
+    [java.util.concurrent Future]))
 
 
 (s/def :blaze/scheduler
@@ -11,4 +11,4 @@
 
 
 (s/def :blaze.scheduler/future
-  #(instance? ScheduledFuture %))
+  #(instance? Future %))

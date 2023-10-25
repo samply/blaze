@@ -67,6 +67,27 @@
       [0 :expression :where :operand 0 :operand 0 :type] := "Property"
       [0 :expression :where :operand 0 :operand 0 :scope] := "O"))
 
+  (testing "Age"
+    (given-translation
+      "library Test
+       using FHIR version '4.0.0'
+       context Patient
+       define InInitialPopulation: AgeInYears() < 18"
+      [0 :name] := "Patient"
+      [0 :context] := "Patient"
+      [0 :expression :type] := "SingletonFrom"
+      [0 :expression :operand :type] := "Retrieve"
+      [0 :expression :operand :dataType] := "{http://hl7.org/fhir}Patient"
+      [1 :name] := "InInitialPopulation"
+      [1 :context] := "Patient"
+      [1 :expression :type] := "Less"
+      [1 :expression :resultTypeName] := "{urn:hl7-org:elm-types:r1}Boolean"
+      [1 :expression :operand 0 :type] := "CalculateAge"
+      [1 :expression :operand 0 :operand :type] := "Property"
+      [1 :expression :operand 0 :operand :source :type] := "ExpressionRef"
+      [1 :expression :operand 0 :operand :source :name] := "Patient"
+      [1 :expression :operand 1 :type] := "Literal"))
+
   (testing "Returns a valid :elm/library"
     (are [cql] (s/valid? :elm/library (translate cql))
       "library Test

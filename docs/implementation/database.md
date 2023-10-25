@@ -38,16 +38,17 @@ There are two different sets of indices, ones which depend on the database value
 
 ### Indices depending on t
 
-| Name         | Key Parts | Value                         |
-|--------------|-----------|-------------------------------|
-| ResourceAsOf | type id t | content-hash, num-changes, op |
-| TypeAsOf     | type t id | content-hash, num-changes, op |
-| SystemAsOf   | t type id | content-hash, num-changes, op |
-| TxSuccess    | t         | instant                       |
-| TxError      | t         | anomaly                       |
-| TByInstant   | instant   | t                             |
-| TypeStats    | type t    | total, num-changes            |
-| SystemStats  | t         | total, num-changes            |
+| Name              | Key Parts | Value                         |
+|-------------------|-----------|-------------------------------|
+| ResourceAsOf      | type id t | content-hash, num-changes, op |
+| TypeAsOf          | type t id | content-hash, num-changes, op |
+| SystemAsOf        | t type id | content-hash, num-changes, op |
+| PatientLastChange | pat-id t  | -                             |
+| TxSuccess         | t         | instant                       |
+| TxError           | t         | anomaly                       |
+| TByInstant        | instant   | t                             |
+| TypeStats         | type t    | total, num-changes            |
+| SystemStats       | t         | total, num-changes            |
 
 #### ResourceAsOf
 
@@ -83,11 +84,15 @@ In addition to direct resource lookup, the `ResourceAsOf` index is used for list
 
 #### TypeAsOf
 
-The `TypeAsOf` index contains the same information as the `ResourceAsOf` index with the difference that the components of the key are ordered `type`,  `t` and  `id` instead of `type`, `id` and `t`. The index is used for listing all versions of all resources of a particular type. Such history listings start with the `t` of the database value going into the past. This is done by not only choosing the resource version with the latest `t` less or equal the database values `t` but instead using all older versions. Such versions even include deleted versions because in FHIR it is allowed to bring back a resource to a new life after it was already deleted. The listing is done by simply scanning through the index in reverse. Because the key is ordered by `type`,  `t` and  `id`, the entries will be first ordered by time, newest first, and second by resource identifier.
+The `TypeAsOf` index contains the same information as the `ResourceAsOf` index with the difference that the components of the key are ordered `type`,  `t` and `id` instead of `type`, `id` and `t`. The index is used for listing all versions of all resources of a particular type. Such history listings start with the `t` of the database value going into the past. This is done by not only choosing the resource version with the latest `t` less or equal the database values `t` but instead using all older versions. Such versions even include deleted versions because in FHIR it is allowed to bring back a resource to a new life after it was already deleted. The listing is done by simply scanning through the index in reverse. Because the key is ordered by `type`,  `t` and  `id`, the entries will be first ordered by time, newest first, and second by resource identifier.
 
 #### SystemAsOf
 
 In the same way the `TypeAsOf` index uses a different key ordering in comparison to the `ResourceAsOf` index, the `SystemAsOf` index will use the key order `t`, `type` and `id` in order to provide a global time axis order by resource type and by identifier secondarily.
+
+#### PatientLastChange
+
+The `PatientLastChange` index contains all changes to resources in the compartment of a particular Patient on reverse chronological order. Using the `PatientLastChange` index it's possible to detect the `t` of the last change in a Patient compartment. The CQL cache uses this index to invalidate cached results of expressions in the Patient context. 
 
 #### TxSuccess
 
@@ -115,23 +120,24 @@ The `SystemStats` index keeps track of the total number of resources, and the nu
 
 The indices not depending on `t` directly point to the resource versions by their content hash. 
 
-| Name                                | Key Parts                                                        | Value |
-|-------------------------------------|------------------------------------------------------------------|-------|
-| SearchParamValueResource            | search-param, type, value, id, content-hash                      | -     |
-| ResourceSearchParamValue            | type, id, content-hash, search-param, value                      | -     |
-| CompartmentSearchParamValueResource | co-c-hash, co-res-id, search-param, type, value, id, hash-prefix | -     |
-| CompartmentResource                 | co-c-hash, co-res-id, tid, id                                    | -     |
-| SearchParam                         | code, tid                                                        | id    |
-| ActiveSearchParams                  | id                                                               | -     |
+| Name                                | Key Parts                                                      | Value |
+|-------------------------------------|----------------------------------------------------------------|-------|
+| SearchParamValueResource            | search-param, type, value, id, hash-prefix                     | -     |
+| ResourceSearchParamValue            | type, id, content-hash, search-param, value                    | -     |
+| CompartmentSearchParamValueResource | comp-code, comp-id, search-param, type, value, id, hash-prefix | -     |
+| CompartmentResource                 | comp-code, comp-id, type, id                                   | -     |
+| SearchParam                         | code, type                                                     | id    |
+| ActiveSearchParams                  | id                                                             | -     |
 
 #### SearchParamValueResource
 
 The `SearchParamValueResource` index contains all values from resources that are reachable from search parameters. The components of its key are:
-* `search-param` - a 4-byte hash of the search parameters code used to identify the search parameter
-* `type` - a 4-byte hash of the resource type
-* `value` - the encoded value of the resource reachable by the search parameters FHIRPath expression. The encoding depends on the search parameters type.
-* `id` - the logical id of the resource
-* `content-hash` - a 4-byte prefix of the content-hash of the resource version
+
+ * `search-param` - a 4-byte hash of the search parameters code used to identify the search parameter
+ * `type` - a 4-byte hash of the resource type
+ * `value` - the encoded value of the resource reachable by the search parameters FHIRPath expression. The encoding depends on the search parameters type.
+ * `id` - the logical id of the resource
+ * `content-hash` - a 4-byte prefix of the content-hash of the resource version
 
 The way the `SearchParamValueResource` index is used, depends on the type of the search parameter. The following sections will explain this in detail for each type:
 
@@ -207,11 +213,20 @@ That tuples are further processed against the `ResourceAsOf` index in order to c
 
 **TODO: continue...**
 
+#### CompartmentResource
+
+The `CompartmentResource` index contains all resources that belong to a certain compartment. The components of its key are:
+
+ * `comp-code` - a 4-byte hash of the compartment code, ex. `Patient`
+ * `comp-id` - the logical id of the compartment, ex. the logical id of the Patient
+ * `type` - a 4-byte hash of the resource type of the resource that belongs to the compartment, ex. `Observation`
+ * `id` - the logical id of the resource that belongs to the compartment, ex. the logical id of the Observation
+
 ## Transaction Handling
 
-* a transaction bundle is POST'ed to one arbitrary node
-* this node submits the transaction commands to the central transaction log
-* all nodes (inkl. the transaction submitter) receive the transaction commands from the central transaction log
+ * a transaction bundle is POST'ed to one arbitrary node
+ * this node submits the transaction commands to the central transaction log
+ * all nodes (inkl. the transaction submitter) receive the transaction commands from the central transaction log
 
 ### Transaction Commands
 

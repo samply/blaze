@@ -105,10 +105,9 @@
   (str (Files/createTempDirectory "blaze" (make-array FileAttribute 0))))
 
 
-(defn- system [dir]
+(def ^:private config
   {::kv/rocksdb
-   {:dir dir
-    :block-cache (ig/ref ::rocksdb/block-cache)
+   {:block-cache (ig/ref ::rocksdb/block-cache)
     :stats (ig/ref ::rocksdb/stats)}
    ::rocksdb/block-cache {}
    ::rocksdb/stats {}})
@@ -127,7 +126,8 @@
 
   (testing "one store"
     (testing "default column family"
-      (with-system [{store ::kv/rocksdb} (system (new-temp-dir!))]
+      (with-system [{store ::kv/rocksdb} (update config ::kv/rocksdb assoc
+                                                 :dir (new-temp-dir!))]
         (let [collector (metrics/table-reader-collector {"foo" store})
               metrics (metrics-core/collect collector)]
 
@@ -141,7 +141,9 @@
             [0 :samples 0 :value] := 0.0))))
 
     (testing "two custom column families"
-      (with-system [{store ::kv/rocksdb} (assoc-in (system (new-temp-dir!)) [::kv/rocksdb :column-families] {:a nil :b nil})]
+      (with-system [{store ::kv/rocksdb} (update config ::kv/rocksdb assoc
+                                                 :dir (new-temp-dir!)
+                                                 :column-families {:a nil :b nil})]
         (let [collector (metrics/table-reader-collector {"foo" store})
               metrics (metrics-core/collect collector)]
 
@@ -151,11 +153,11 @@
             [0 :name] := "blaze_rocksdb_table_reader_usage_bytes"
             [0 :samples count] := 3
             [0 :samples 0 :label-names] := ["name" "column_family"]
-            [0 :samples 0 :label-values] := ["foo" "default"]
+            [0 :samples 0 :label-values] := ["foo" "a"]
             [0 :samples 0 :value] := 0.0
             [0 :samples 1 :label-names] := ["name" "column_family"]
-            [0 :samples 1 :label-values] := ["foo" "a"]
+            [0 :samples 1 :label-values] := ["foo" "b"]
             [0 :samples 1 :value] := 0.0
             [0 :samples 2 :label-names] := ["name" "column_family"]
-            [0 :samples 2 :label-values] := ["foo" "b"]
+            [0 :samples 2 :label-values] := ["foo" "default"]
             [0 :samples 2 :value] := 0.0))))))

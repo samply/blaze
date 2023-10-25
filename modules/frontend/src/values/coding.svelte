@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Coding } from '../fhir';
+	import type { Coding } from '../fhir.js';
 	import ExternalLink from './util/external-link.svelte';
 
 	export let value: Coding;

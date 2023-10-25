@@ -10,6 +10,9 @@
   blaze/byte-string
   {:local/root "../byte-string"}
 
+  blaze/cache-collector
+  {:local/root "../cache-collector"}
+
   blaze/coll
   {:local/root "../coll"}
 
@@ -33,6 +36,9 @@
 
   blaze/db-resource-store
   {:local/root "../db-resource-store"}
+
+  blaze/scheduler
+  {:local/root "../scheduler"}
 
   blaze/spec
   {:local/root "../spec"}

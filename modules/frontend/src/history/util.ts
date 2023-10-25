@@ -1,5 +1,5 @@
-import type { HistoryBundle, HistoryBundleEntry, Resource } from '../fhir';
-import { fhirObject, type FhirObject } from '../resource/resource-card';
+import type { HistoryBundle, HistoryBundleEntry, Resource } from '../fhir.js';
+import { fhirObject, type FhirObject } from '../resource/resource-card.js';
 
 export async function transformBundle(
 	fetch: typeof window.fetch,

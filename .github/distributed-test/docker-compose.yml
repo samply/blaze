@@ -81,6 +81,7 @@ services:
       DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
       DB_RESOURCE_CACHE_SIZE: "100000"
       LOG_LEVEL: "debug"
+      ENABLE_FRONTEND: "true"
     ports:
     - "8081:8081"
     volumes:
@@ -111,6 +112,7 @@ services:
       DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
       DB_RESOURCE_CACHE_SIZE: "100000"
       LOG_LEVEL: "debug"
+      ENABLE_FRONTEND: "true"
     ports:
     - "8082:8081"
     volumes:

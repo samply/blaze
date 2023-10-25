@@ -39,6 +39,11 @@
        :cf (.getCfName status)})
     (.getThreadList (Env/getDefault)))
 
-  (rocksdb/table-properties (index-kv-store) :resource-as-of-index)
+  (rocksdb/tables (index-kv-store) :resource-as-of-index)
+
+  (rocksdb/column-family-meta-data (index-kv-store) :search-param-value-index)
+  (rocksdb/column-family-meta-data (index-kv-store) :compartment-search-param-value-index)
+  (rocksdb/column-family-meta-data (index-kv-store) :resource-as-of-index)
+  (rocksdb/column-family-meta-data (index-kv-store) :patient-last-change-index)
 
   )

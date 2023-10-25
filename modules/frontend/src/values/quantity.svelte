@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Quantity } from '../fhir';
+	import type { Quantity } from '../fhir.js';
 
 	export let value: Quantity;
 </script>

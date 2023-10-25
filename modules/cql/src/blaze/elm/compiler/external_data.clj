@@ -13,7 +13,8 @@
     [blaze.elm.spec]
     [blaze.elm.util :as elm-util]
     [blaze.fhir.spec.type.protocols :as p]
-    [clojure.string :as str])
+    [clojure.string :as str]
+    [prometheus.alpha :as prom :refer [defcounter]])
   (:import
     [blaze.elm.compiler.structured_values SourcePropertyExpression]
     [clojure.lang ILookup]
@@ -23,9 +24,15 @@
 (set! *warn-on-reflection* true)
 
 
+(defcounter retrieve-total
+  "Number of times a retrieve expression as evaluated."
+  {:namespace "blaze"
+   :subsystem "cql"})
+
+
 ;; A resource that is a wrapper of a resource-handle that will lazily pull the
 ;; resource content if some property other than :id is accessed.
-(deftype Resource [db handle content]
+(deftype Resource [db id handle ^long lastChangeT content]
   p/FhirType
   (-type [_]
     (p/-type handle))
@@ -35,21 +42,45 @@
     (.valAt r key nil))
   (valAt [_ key not-found]
     (case key
-      :id (rh/id handle)
+      :id id
       (-> (or @content (vreset! content @(d/pull-content db handle)))
           (get key not-found))))
 
+  core/Expression
+  (-static [_]
+    true)
+  (-attach-cache [expr _]
+    expr)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr _]
+    expr)
+  (-eval [expr _ _ _]
+    expr)
+  (-form [_]
+    (list 'resource (name (p/-type handle)) id (rh/t handle)))
+
   Object
   (toString [_]
-    (.toString handle)))
+    (str (name (p/-type handle)) "[id = " id ", t = " (rh/t handle) ", last-change-t = " lastChangeT "]")))
 
 
 (defn resource? [x]
   (instance? Resource x))
 
 
+(defn- patient-last-change-t [db handle]
+  (or (d/patient-compartment-last-change-t db (rh/id handle)) (rh/t handle)))
+
+
+(defn- last-change-t [db handle]
+  (if (identical? :fhir/Patient (p/-type handle))
+    (patient-last-change-t db handle)
+    (d/t db)))
+
+
 (defn mk-resource [db handle]
-  (Resource. db handle (volatile! nil)))
+  (Resource. db (rh/id handle) handle (last-change-t db handle) (volatile! nil)))
 
 
 (defn resource-mapper [db]
@@ -91,7 +122,14 @@
     (reify core/Expression
       (-static [_]
         false)
+      (-attach-cache [expr _]
+        expr)
+      (-resolve-refs [expr _]
+        expr)
+      (-resolve-params [expr _]
+        expr)
       (-eval [_ {:keys [db]} {:keys [id]} _]
+        (prom/inc! retrieve-total)
         (coll/eduction (resource-mapper db) (d/execute-query db query id)))
       (-form [_]
         `(~'retrieve ~data-type ~(d/query-clauses query))))))
@@ -107,7 +145,14 @@
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [expr _]
+    expr)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr _]
+    expr)
   (-eval [_ {:keys [db]} resource _]
+    (prom/inc! retrieve-total)
     (let [{{:keys [reference]} :subject} resource]
       (when reference
         (when-let [[type id] (split-reference reference)]
@@ -135,7 +180,14 @@
     (reify core/Expression
       (-static [_]
         false)
+      (-attach-cache [expr _]
+        expr)
+      (-resolve-refs [expr _]
+        expr)
+      (-resolve-params [expr _]
+        expr)
       (-eval [_ {:keys [db]} {:keys [id]} _]
+        (prom/inc! retrieve-total)
         (coll/eduction
           (resource-mapper db)
           (d/list-compartment-resource-handles db context id data-type)))
@@ -147,6 +199,12 @@
   (reify core/Expression
     (-static [_]
       false)
+    (-attach-cache [expr _]
+      expr)
+    (-resolve-refs [expr _]
+      expr)
+    (-resolve-params [expr _]
+      expr)
     (-eval [_ _ resource _]
       [resource])
     (-form [_]
@@ -165,7 +223,14 @@
   (reify core/Expression
     (-static [_]
       false)
+    (-attach-cache [expr _]
+      expr)
+    (-resolve-refs [expr _]
+      expr)
+    (-resolve-params [expr _]
+      expr)
     (-eval [_ context resource scope]
+      (prom/inc! retrieve-total)
       (when-let [context-resource (core/-eval related-context-expr context resource scope)]
         (core/-eval
           (context-expr (-> context-resource :fhir/type name) data-type)
@@ -187,7 +252,14 @@
               (reify core/Expression
                 (-static [_]
                   false)
+                (-attach-cache [expr _]
+                  expr)
+                (-resolve-refs [expr _]
+                  expr)
+                (-resolve-params [expr _]
+                  expr)
                 (-eval [_ {:keys [db] :as context} resource scope]
+                  (prom/inc! retrieve-total)
                   (when-let [{:keys [id]} (core/-eval context-expr context resource scope)]
                     (when (string? id)
                       (coll/eduction
@@ -206,7 +278,14 @@
     (reify core/Expression
       (-static [_]
         false)
+      (-attach-cache [expr _]
+        expr)
+      (-resolve-refs [expr _]
+        expr)
+      (-resolve-params [expr _]
+        expr)
       (-eval [_ {:keys [db]} _ _]
+        (prom/inc! retrieve-total)
         (coll/eduction (resource-mapper db) (d/type-list db data-type)))
       (-form [_]
         `(~'retrieve ~data-type)))
@@ -215,7 +294,14 @@
         (reify core/Expression
           (-static [_]
             false)
+          (-attach-cache [expr _]
+            expr)
+          (-resolve-refs [expr _]
+            expr)
+          (-resolve-params [expr _]
+            expr)
           (-eval [_ {:keys [db]} _ _]
+            (prom/inc! retrieve-total)
             (coll/eduction (resource-mapper db) (d/execute-query db query)))
           (-form [_]
             `(~'retrieve ~data-type ~(d/query-clauses query))))

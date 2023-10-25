@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toTitleCase, joinStrings, isTabActive, withTab, moveDownAtIndex } from './util';
+import { toTitleCase, joinStrings, isTabActive, withTab, moveDownAtIndex } from './util.js';
 
 describe('toTitleCase test', () => {
 	it('works with empty strings', () => {

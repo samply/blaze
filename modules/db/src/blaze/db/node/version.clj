@@ -1,8 +1,7 @@
 (ns blaze.db.node.version
   (:refer-clojure :exclude [key])
-  (:require
-    [blaze.byte-buffer :as bb])
   (:import
+    [com.google.common.primitives Longs]
     [java.nio.charset StandardCharsets]))
 
 
@@ -14,10 +13,8 @@
 
 
 (defn encode-value [version]
-  (-> (bb/allocate Integer/BYTES)
-      (bb/put-int! version)
-      (bb/array)))
+  (Longs/toByteArray version))
 
 
 (defn decode-value [bytes]
-  (bb/get-int! (bb/wrap bytes)))
+  (Longs/fromByteArray bytes))

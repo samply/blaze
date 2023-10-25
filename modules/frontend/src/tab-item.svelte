@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { isTabActive, withTab } from './util';
+	import { isTabActive, withTab } from './util.js';
 
 	export let name: string;
 	export let label: string;

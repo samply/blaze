@@ -6,7 +6,7 @@
     [blaze.cassandra :as cass]
     [blaze.cassandra.spec]
     [blaze.module :refer [reg-collector]]
-    [blaze.page-store :as page-store]
+    [blaze.page-store :as-alias page-store]
     [blaze.page-store.cassandra.codec :as codec]
     [blaze.page-store.cassandra.statement :as statement]
     [blaze.page-store.local.token :as token]
@@ -52,7 +52,7 @@
 
 
 (defn- map-execute-get-error [token e]
-  (assoc e :op :get :blaze.page-store/token token))
+  (assoc e :op :get ::page-store/token token))
 
 
 (defn- execute-get* [session statement token]
@@ -75,7 +75,7 @@
 (defn- map-execute-put-error [token clauses e]
   (assoc e
     :op :put
-    :blaze.page-store/token token
+    ::page-store/token token
     :blaze.db.query/clauses clauses))
 
 
@@ -138,7 +138,7 @@
   (.close ^AutoCloseable store))
 
 
-(derive :blaze.page-store/cassandra :blaze/page-store)
+(derive ::page-store/cassandra :blaze/page-store)
 
 
 (reg-collector ::duration-seconds

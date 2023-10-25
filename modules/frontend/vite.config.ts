@@ -24,6 +24,7 @@ export default defineConfig({
 				bypass: function (req) {
 					if (
 						!hasHeader(req, 'application/fhir+json') &&
+						!hasHeader(req, 'application/json') &&
 						!req.url?.startsWith('/fhir/__metadata') &&
 						!hasFormatSearchParam(req)
 					) {

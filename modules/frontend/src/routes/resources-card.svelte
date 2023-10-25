@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ResourceInfo } from './+layout';
+	import type { ResourceInfo } from './+layout.js';
 	import ResourceRow from './resource-row.svelte';
 
 	export let resources: ResourceInfo[];

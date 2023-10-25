@@ -13,10 +13,9 @@
     [blaze.elm.compiler.external-data :as ed]
     [blaze.elm.compiler.external-data-spec]
     [blaze.elm.compiler.library :as library]
-    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
+    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
     [blaze.elm.expression :as expr]
     [blaze.elm.expression-spec]
-    [blaze.elm.expression.cache :as-alias expr-cache]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type]
     [blaze.module.test-util :refer [with-system]]
@@ -30,12 +29,12 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 
@@ -56,7 +55,7 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (is (= "Patient[id = 0, t = 1]" (str (resource (d/db node) "Patient" "0")))))))
+      (is (= "Patient[id = 0, t = 1, last-change-t = 1]" (str (resource (d/db node) "Patient" "0")))))))
 
 
 ;; 11.1. Retrieve
@@ -93,7 +92,7 @@
               {:node node
                :eval-context "Patient"
                :library {}}
-              expr (c/compile context tu/patient-retrieve-elm)
+              expr (c/compile context ctu/patient-retrieve-elm)
               db (d/db node)
               patient (resource db "Patient" "0")]
 
@@ -306,7 +305,7 @@
               {:node node
                :eval-context "Specimen"
                :library {}}
-              expr (c/compile context tu/patient-retrieve-elm)
+              expr (c/compile context ctu/patient-retrieve-elm)
               db (d/db node)
               specimen (resource db "Specimen" "0")]
 
@@ -401,9 +400,7 @@
                          define InInitialPopulation:
                            [\"name-133756\" -> Observation]
                          ")
-              compile-context {::expr-cache/enabled? false}
-              {:keys [expression-defs]} (library/compile-library
-                                          node library compile-context)
+              {:keys [expression-defs]} (library/compile-library node library {})
               db (d/db node)
               patient (resource db "Patient" "0")
               eval-context (assoc (eval-context db) :expression-defs expression-defs)
@@ -448,9 +445,7 @@
                          define InInitialPopulation:
                            [\"name-133730\" -> Observation: Code 'code-133657' from sys]
                          ")
-              compile-context {::expr-cache/enabled? false}
-              {:keys [expression-defs]} (library/compile-library
-                                          node library compile-context)
+              {:keys [expression-defs]} (library/compile-library node library {})
               db (d/db node)
               patient (resource db "Patient" "0")
               eval-context (assoc (eval-context db) :expression-defs expression-defs)

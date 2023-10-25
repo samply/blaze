@@ -47,6 +47,10 @@
    (merge (anomaly* category msg) kvs)))
 
 
+(defn interrupted [msg & {:as kvs}]
+  (anomaly* ::anom/interrupted msg kvs))
+
+
 (defn incorrect [msg & {:as kvs}]
   (anomaly* ::anom/incorrect msg kvs))
 

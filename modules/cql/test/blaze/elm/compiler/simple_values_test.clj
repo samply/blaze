@@ -7,7 +7,7 @@
     [blaze.anomaly :as ba]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.simple-values]
-    [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.compiler.test-util :as ctu]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [clojure.spec.test.alpha :as st]
@@ -17,12 +17,12 @@
 
 
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 

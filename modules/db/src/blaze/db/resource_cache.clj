@@ -4,7 +4,7 @@
   Caffeine is used because it have better performance characteristics as a
   ConcurrentHashMap."
   (:require
-    [blaze.db.cache-collector.protocols :as ccp]
+    [blaze.cache-collector.protocols :as ccp]
     [blaze.db.resource-cache.spec]
     [blaze.db.resource-store :as rs]
     [blaze.db.resource-store.spec]

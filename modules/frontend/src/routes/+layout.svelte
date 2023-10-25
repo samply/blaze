@@ -20,11 +20,7 @@
 					</div>
 					<div class="hidden md:block">
 						<div class="ml-10 flex items-baseline space-x-4">
-							<NavItem
-								active={$page.route.id != '/_history' && $page.route.id != '/metadata'}
-								id="/"
-								label="Home"
-							/>
+							<NavItem active={$page.route.id == '/'} id="/" label="Home" />
 							<NavItem active={$page.route.id == '/_history'} id="/_history" label="History" />
 							<NavItem active={$page.route.id == '/metadata'} id="/metadata" label="Metadata" />
 							<NavItem active={$page.route.id == '/__admin'} id="/__admin" label="Admin" />

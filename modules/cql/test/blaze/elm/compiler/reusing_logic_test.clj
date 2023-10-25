@@ -10,7 +10,7 @@
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.function :as function]
-    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
+    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
     [blaze.elm.interval :as interval]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
@@ -23,12 +23,12 @@
 
 
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 
@@ -159,7 +159,7 @@
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
           elm #elm/function-ref ["ToDate" #elm/parameter-ref "x"]
           expr (c/compile compile-ctx elm)
-          eval-ctx (fn [x] {:now tu/now :parameters {"x" x}})
+          eval-ctx (fn [x] {:now ctu/now :parameters {"x" x}})
           ]
       (testing "eval"
         (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
@@ -179,7 +179,7 @@
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
           elm #elm/function-ref ["ToDateTime" #elm/parameter-ref "x"]
           expr (c/compile compile-ctx elm)
-          eval-ctx (fn [x] {:now tu/now :parameters {"x" x}})]
+          eval-ctx (fn [x] {:now ctu/now :parameters {"x" x}})]
 
       (testing "eval"
         (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
@@ -241,7 +241,7 @@
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
           elm #elm/function-ref ["ToInterval" #elm/parameter-ref "x"]
           expr (c/compile compile-ctx elm)
-          eval-ctx (fn [x] {:now tu/now :parameters {"x" x}})]
+          eval-ctx (fn [x] {:now ctu/now :parameters {"x" x}})]
 
       (testing "eval"
         (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))

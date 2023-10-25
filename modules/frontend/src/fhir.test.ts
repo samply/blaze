@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bundleLink } from './fhir';
+import { bundleLink } from './fhir.js';
 
 describe('bundleLink test', () => {
 	it('missing link property', () => {

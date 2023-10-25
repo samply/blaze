@@ -4,10 +4,10 @@ import type {
 	StructureDefinition,
 	ElementDefinition,
 	ElementDefinitionType
-} from '../fhir';
-import { StructureDefinitionKind } from '../fhir';
-import { toTitleCase } from '../util';
-import { fetchStructureDefinition } from '../metadata';
+} from '../fhir.js';
+import { StructureDefinitionKind } from '../fhir.js';
+import { toTitleCase } from '../util.js';
+import { fetchStructureDefinition } from '../metadata.js';
 
 export function isPrimitive(type: Type) {
 	return type.code[0].toLowerCase() == type.code[0];

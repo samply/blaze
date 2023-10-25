@@ -13,6 +13,11 @@
 (defbinop equal [operand-1 operand-2]
   (p/equal operand-1 operand-2))
 
+(comment
+  (macroexpand-1
+    '(defbinop equal [operand-1 operand-2]
+       (p/equal operand-1 operand-2))))
+
 
 ;; 12.2. Equivalent
 (defbinop equivalent [operand-1 operand-2]

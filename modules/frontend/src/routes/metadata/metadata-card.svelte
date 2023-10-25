@@ -3,9 +3,9 @@
 		type CapabilityStatement,
 		RestfulInteraction,
 		ConditionalDeleteStatus
-	} from '../../fhir';
-	import type { FhirObject } from '../../resource/resource-card';
-	import { isTabActive } from '../../util';
+	} from '../../fhir.js';
+	import type { FhirObject } from '../../resource/resource-card.js';
+	import { isTabActive } from '../../util.js';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { fade } from 'svelte/transition';

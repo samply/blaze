@@ -3,6 +3,7 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.db.impl.batch-db :as batch-db]
+    [blaze.db.impl.index.patient-last-change :as plc]
     [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.macros :refer [with-open-coll]]
     [blaze.db.impl.protocols :as p]
@@ -82,6 +83,15 @@
   (-compartment-resource-handles [_ compartment tid start-id]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-compartment-resource-handles batch-db compartment tid start-id)))
+
+
+
+  ;; ---- Patient-Compartment-Level Functions ---------------------------------
+
+  (-patient-compartment-last-change-t [_ patient-id]
+    (with-open [snapshot (kv/new-snapshot kv-store)
+                plci (kv/new-iterator snapshot :patient-last-change-index)]
+      (plc/last-change-t plci patient-id t)))
 
 
 

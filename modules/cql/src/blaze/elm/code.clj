@@ -27,6 +27,12 @@
   core/Expression
   (-static [_]
     true)
+  (-attach-cache [expr _]
+    expr)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr _]
+    expr)
   (-eval [this _ _ _]
     this)
   (-form [_]

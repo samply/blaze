@@ -1,6 +1,7 @@
 {:lint-as
  {blaze.anomaly/if-ok clojure.core/let
   blaze.anomaly/when-ok clojure.core/let
+  blaze.async.comp/do-sync clojure.core/let
   blaze.db.api-stub/with-system-data clojure.core/with-open
   blaze.fhir.operation.evaluate-measure-test/with-handler clojure.core/fn
   blaze.module.test-util/with-system clojure.core/with-open
@@ -27,7 +28,10 @@
   {:aliases
    {blaze.db.api d
     blaze.elm.compiler.external-data ed
+    blaze.elm.compiler.library library
     blaze.elm.expression expr
+    blaze.elm.expression.cache ec
+    blaze.fhir.operation.evaluate-measure.cql cql
     cognitect.anomalies anom
     ring.util.response ring}}}
 

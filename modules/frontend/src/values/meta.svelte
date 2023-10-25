@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Meta } from '../fhir';
+	import type { Meta } from '../fhir.js';
 	import ExternalLink from './util/external-link.svelte';
 
 	export let value: Meta;

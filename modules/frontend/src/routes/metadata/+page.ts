@@ -1,4 +1,4 @@
-import { fhirObject } from '../../resource/resource-card';
+import { fhirObject } from '../../resource/resource-card.js';
 
 export async function load({ fetch, parent }) {
 	const capabilityStatement = (await parent()).capabilityStatement;

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { SearchSetBundleEntry } from '../../fhir';
-	import type { FhirObject } from '../../resource/resource-card';
+	import type { SearchSetBundleEntry } from '../../fhir.js';
+	import type { FhirObject } from '../../resource/resource-card.js';
 	import ResourceCard from '../../resource/resource-card.svelte';
 	import SearchModeBadge from './search-mode-badge.svelte';
 

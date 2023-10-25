@@ -1,7 +1,7 @@
-import type { StructureDefinition } from '../fhir';
+import type { StructureDefinition } from '../fhir.js';
 import { describe, it, expect } from 'vitest';
 import { error } from '@sveltejs/kit';
-import { calcPropertiesDeep, type FhirObject } from './resource-card';
+import { calcPropertiesDeep, type FhirObject } from './resource-card.js';
 import { readFileSync } from 'fs';
 
 const structureDefinitionPatient = await readStructureDefinition('Patient');
