@@ -22,7 +22,8 @@
       (are [unit] (quantity/quantity 1 unit)
         "U/L"
         "10*3/uL"
-        "mm[Hg]"))
+        "mm[Hg]"
+        "[arb'U]/mL"))
 
     (testing "we can't parse 20 of this units"
       (->> (str/split (slurp (io/resource "blaze/elm/fhir-ucum-units.tsv")) #"\n")
