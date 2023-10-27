@@ -603,7 +603,8 @@
     "q46-between-date" 1
     "q47-managing-organization" 1
     "q48-concept" 2
-    "q49-length" 1)
+    "q49-length" 1
+    "q50-specimen-condition-reference" 1)
 
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
@@ -787,5 +788,5 @@
 
 (comment
   (log/set-level! :debug)
-  (evaluate "q49-length")
+  (evaluate "q50-specimen-condition-reference")
   )
