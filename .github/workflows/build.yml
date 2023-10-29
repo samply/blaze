@@ -104,43 +104,6 @@ jobs:
     - name: Test
       run: make -C modules/${{ matrix.module }} test
 
-  test-coverage:
-    if: ${{ github.event_name == 'pull_request' }}
-    needs: [ test ]
-
-    runs-on: ubuntu-22.04
-
-    steps:
-    - name: Setup Java
-      uses: actions/setup-java@0ab4596768b603586c0de567f2430c30f5b0d2b0 # v3
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-
-    - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@master
-      with:
-        cli: '1.11.1.1403'
-
-    - name: Check out Git repository
-      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
-
-    - name: Cache Local Maven Repo
-      uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3
-      with:
-        path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-17-maven-test-coverage-${{ hashFiles('**/deps.edn') }}
-
-    - name: Test Coverage
-      run: make test-coverage
-
-    - name: Codecov Upload
-      uses: codecov/codecov-action@eaaf4bedf32dbdc6b720b63067d99c4d77d6047d # v3
-      with:
-        name: codecov-umbrella
-        file: modules/**/target/coverage/codecov.json
-        fail_ci_if_error: true
-
   test-root:
     needs: [ lint ]
 
