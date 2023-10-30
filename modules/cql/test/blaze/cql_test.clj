@@ -6,8 +6,6 @@
     [blaze.cql-translator :refer [translate]]
     [blaze.cql-translator-spec]
     [blaze.elm.compiler :refer [compile]]
-    [blaze.elm.deps-infer :as deps-infer]
-    [blaze.elm.equiv-relationships :as equiv-relationships]
     [blaze.elm.expression :as expr]
     [blaze.elm.expression-spec]
     [blaze.elm.normalizer :as normalizer]
@@ -73,8 +71,6 @@
   (if-ok [elm (to-source-elm cql)]
     (-> elm
         normalizer/normalize-library
-        equiv-relationships/find-equiv-rels-library
-        deps-infer/infer-library-deps
         :statements :def first :expression)
     #(throw (ex-info "CQL-to-ELM translation error" %))))
 

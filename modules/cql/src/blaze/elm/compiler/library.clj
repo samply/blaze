@@ -3,8 +3,6 @@
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.function :as function]
-    [blaze.elm.deps-infer :as deps-infer]
-    [blaze.elm.equiv-relationships :as equiv-relationships]
     [blaze.elm.normalizer :as normalizer]))
 
 
@@ -86,10 +84,7 @@
 
   There are currently no options."
   [node library opts]
-  (let [library (-> library
-                    normalizer/normalize-library
-                    equiv-relationships/find-equiv-rels-library
-                    deps-infer/infer-library-deps)
+  (let [library (normalizer/normalize-library library)
         context (assoc opts :node node :library library)]
     (when-ok [{:keys [function-defs] :as context} (compile-function-defs context library)
               expression-defs (expression-defs context library)

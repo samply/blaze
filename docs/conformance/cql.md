@@ -105,11 +105,11 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 10.8.  | LetClause          | ✗          |                    |       |
 | 10.9.  | QueryLetRef        | ✗          |                    |       |
 | 10.10. | RelationshipClause | ✓          |                    |       |
-| 10.11. | ReturnClause       | !          | always distinct    |       |
+| 10.11. | ReturnClause       | ✓          |                    |       |
 | 10.12. | AggregateClause    | ✗          |                    |       |
 | 10.13. | SortClause         | ✓          |                    |       |
-| 10.14. | With               | !          | only equiv version |       |
-| 10.15. | Without            | ✗          |                    |       |
+| 10.14. | With               | ✓          |                    |       |
+| 10.15. | Without            | ✓          |                    |       |
 
 ### 11. External Data
 

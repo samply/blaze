@@ -50,58 +50,42 @@
   (testing "FHIR types"
     (are [elm resource res] (= res (core/-eval (c/compile {} elm) {} nil {"R" resource}))
       #elm/as ["{http://hl7.org/fhir}boolean"
-               {:path "deceased"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "deceased"]]
       {:fhir/type :fhir/Patient :id "0" :deceased true}
       true
 
       #elm/as ["{http://hl7.org/fhir}integer"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       {:fhir/type :fhir/Observation :value (int 1)}
       (int 1)
 
       #elm/as ["{http://hl7.org/fhir}string"
-               {:path "name"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "name"]]
       {:fhir/type :fhir/Account :name "a"}
       "a"
 
       #elm/as ["{http://hl7.org/fhir}decimal"
-               {:path "duration"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "duration"]]
       {:fhir/type :fhir/Media :duration 1.1M}
       1.1M
 
       #elm/as ["{http://hl7.org/fhir}uri"
-               {:path "url"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "url"]]
       {:fhir/type :fhir/Measure :url #fhir/uri"a"}
       #fhir/uri"a"
 
       #elm/as ["{http://hl7.org/fhir}url"
-               {:path "address"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "address"]]
       {:fhir/type :fhir/Endpoint :address #fhir/url"a"}
       #fhir/url"a"
 
       #elm/as ["{http://hl7.org/fhir}dateTime"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       {:fhir/type :fhir/Observation :value #fhir/dateTime"2019-09-04"}
       #fhir/dateTime"2019-09-04"
 
       #elm/as ["{http://hl7.org/fhir}Quantity"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       {:fhir/type :fhir/Observation :value #fhir/dateTime"2019-09-04"}
       nil))
 
@@ -133,9 +117,7 @@
       '(as elm/integer 1)
 
       #elm/as ["{http://hl7.org/fhir}dateTime"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       '(as fhir/dateTime (:value R))
 
       {:type "As"
@@ -145,9 +127,7 @@
         {:type "NamedTypeSpecifier"
          :name "{http://hl7.org/fhir}Quantity"}}
        :operand
-       {:path "value"
-        :scope "R"
-        :type "Property"}}
+       #elm/scope-property ["R" "value"]}
       '(as (list fhir/Quantity) (:value R)))))
 
 
@@ -971,94 +951,64 @@
   (testing "FHIR types"
     (are [elm resource] (true? (core/-eval (c/compile {} elm) {} nil {"R" resource}))
       #elm/is ["{http://hl7.org/fhir}boolean"
-               {:path "deceased"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "deceased"]]
       {:fhir/type :fhir/Patient :id "0" :deceased true}
 
       #elm/is ["{http://hl7.org/fhir}integer"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       {:fhir/type :fhir/Observation :value (int 1)}
 
       #elm/is ["{http://hl7.org/fhir}decimal"
-               {:path "duration"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "duration"]]
       {:fhir/type :fhir/Media :duration 1.1M}
 
       #elm/is ["{http://hl7.org/fhir}string"
-               {:path "name"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "name"]]
       {:fhir/type :fhir/Account :name "a"}
 
       #elm/is ["{http://hl7.org/fhir}uri"
-               {:path "url"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "url"]]
       {:fhir/type :fhir/Measure :url #fhir/uri"a"}
 
       #elm/is ["{http://hl7.org/fhir}url"
-               {:path "address"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "address"]]
       {:fhir/type :fhir/Endpoint :address #fhir/url"a"}
 
       #elm/is ["{http://hl7.org/fhir}dateTime"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       {:fhir/type :fhir/Observation :value #fhir/dateTime"2019-09-04"})
 
     (are [elm resource] (false? (core/-eval (c/compile {} elm) {} nil {"R" resource}))
       #elm/is ["{http://hl7.org/fhir}boolean"
-               {:path "deceased"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "deceased"]]
       {:fhir/type :fhir/Patient :id "0" :deceased "foo"}
 
       #elm/is ["{http://hl7.org/fhir}integer"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       {:fhir/type :fhir/Observation :value true}
 
       #elm/is ["{http://hl7.org/fhir}decimal"
-               {:path "duration"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "duration"]]
       {:fhir/type :fhir/Media :duration #fhir/uri"a"}
 
       #elm/is ["{http://hl7.org/fhir}string"
-               {:path "name"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "name"]]
       {:fhir/type :fhir/Account :name (int 1)}
 
       #elm/is ["{http://hl7.org/fhir}uri"
-               {:path "url"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "url"]]
       {:fhir/type :fhir/Measure :url 1.1M}
 
       #elm/is ["{http://hl7.org/fhir}url"
-               {:path "address"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "address"]]
       {:fhir/type :fhir/Endpoint :address #fhir/dateTime"2019-09-04"}
 
       #elm/is ["{http://hl7.org/fhir}dateTime"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       {:fhir/type :fhir/Observation :value #fhir/url"a"}
 
       #elm/is ["{http://hl7.org/fhir}Quantity"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       {:fhir/type :fhir/Observation :value #fhir/dateTime"2019-09-04"}))
 
   (testing "ELM types"
@@ -1118,9 +1068,7 @@
       '(is elm/integer 1)
 
       #elm/is ["{http://hl7.org/fhir}dateTime"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       '(is fhir/dateTime (:value R))
 
       {:type "Is"

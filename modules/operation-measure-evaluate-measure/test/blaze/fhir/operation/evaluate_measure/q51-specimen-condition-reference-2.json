@@ -29,21 +29,11 @@
         "code": {
           "coding": [
             {
-              "system": "http://hl7.org/fhir/sid/icd-10",
-              "code": "C41.9"
+              "system": "http://fhir.de/CodeSystem/bfarm/icd-10-gm",
+              "code": "E13.9"
             }
           ]
         },
-        "bodySite": [
-          {
-            "coding": [
-              {
-                "system": "urn:oid:2.16.840.1.113883.6.43.1",
-                "code": "C44.6"
-              }
-            ]
-          }
-        ],
         "subject": {
           "reference": "Patient/0"
         }
@@ -60,23 +50,13 @@
         "code": {
           "coding": [
             {
-              "system": "http://hl7.org/fhir/sid/icd-10",
-              "code": "C41.9"
+              "system": "http://fhir.de/CodeSystem/bfarm/icd-10-gm",
+              "code": "E13.9"
             }
           ]
         },
-        "bodySite": [
-          {
-            "coding": [
-              {
-                "system": "urn:oid:2.16.840.1.113883.6.43.1",
-                "code": "C44.6"
-              }
-            ]
-          }
-        ],
         "subject": {
-          "reference": "Patient/0"
+          "reference": "Patient/1"
         }
       },
       "request": {
@@ -86,59 +66,52 @@
     },
     {
       "resource": {
-        "resourceType": "Procedure",
+        "resourceType": "Specimen",
         "id": "0",
-        "category": {
+        "extension": [
+          {
+            "url": "https://www.medizininformatik-initiative.de/fhir/ext/modul-biobank/StructureDefinition/Diagnose",
+            "valueReference": {
+              "reference": "Condition/0"
+            }
+          }
+        ],
+        "type": {
           "coding": [
             {
-              "system": "http://dktk.dkfz.de/fhir/onco/core/CodeSystem/SYSTTherapieartCS",
-              "code": "ST"
+              "system": "http://snomed.info/sct",
+              "code": "119364003"
             }
           ]
         },
-        "reasonReference": [
-          {
-            "reference": "Condition/0"
-          }
-        ],
         "subject": {
           "reference": "Patient/0"
         }
       },
       "request": {
         "method": "PUT",
-        "url": "Procedure/1"
+        "url": "Specimen/0"
       }
     },
     {
       "resource": {
-        "resourceType": "Condition",
-        "id": "2",
-        "code": {
+        "resourceType": "Specimen",
+        "id": "1",
+        "type": {
           "coding": [
             {
-              "system": "http://hl7.org/fhir/sid/icd-10",
-              "code": "C41.9"
+              "system": "http://snomed.info/sct",
+              "code": "119364003"
             }
           ]
         },
-        "bodySite": [
-          {
-            "coding": [
-              {
-                "system": "urn:oid:2.16.840.1.113883.6.43.1",
-                "code": "C44.6"
-              }
-            ]
-          }
-        ],
         "subject": {
           "reference": "Patient/1"
         }
       },
       "request": {
         "method": "PUT",
-        "url": "Condition/2"
+        "url": "Specimen/1"
       }
     },
     {

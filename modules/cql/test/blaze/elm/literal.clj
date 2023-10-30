@@ -65,6 +65,19 @@
    :element (reduce #(conj %1 {:name (key %2) :value (val %2)}) [] elements)})
 
 
+;; 2.3. Property
+(defn source-property [[source path]]
+  {:type "Property"
+   :source source
+   :path path})
+
+
+(defn scope-property [[scope path]]
+  {:type "Property"
+   :scope scope
+   :path path})
+
+
 
 ;; 3. Clinical Values
 
@@ -149,6 +162,16 @@
 (defn operand-ref [name]
   {:type "OperandRef"
    :name name})
+
+
+
+;; 10. Queries
+
+;; 10.2. AliasedQuerySource
+(defn aliased-query-source [[expression alias]]
+  {:type "AliasedQuerySource"
+   :expression expression
+   :alias alias})
 
 
 
@@ -391,6 +414,12 @@
 
 
 ;; 17. String Operators
+
+;; 17.2. Concatenate
+(defn concatenate [ops]
+  {:type "Concatenate"
+   :operand ops})
+
 
 ;; 17.3. EndsWith
 (defn ends-with [ops]

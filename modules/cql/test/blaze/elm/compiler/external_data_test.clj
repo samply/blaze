@@ -56,7 +56,7 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (is (= "Patient[id = 0, t = 1]" (str (resource (d/db node) "Patient" "0")))))))
+      (is (= "Patient[id = 0, t = 1]" (str (tu/resource (d/db node) "Patient" "0")))))))
 
 
 ;; 11.1. Retrieve
@@ -95,7 +95,7 @@
                :library {}}
               expr (c/compile context tu/patient-retrieve-elm)
               db (d/db node)
-              patient (resource db "Patient" "0")]
+              patient (tu/resource db "Patient" "0")]
 
           (testing "eval"
             (given (expr/eval (eval-context db) expr patient)
@@ -120,7 +120,7 @@
                :library {}}
               expr (c/compile context #elm/retrieve{:type "Observation"})
               db (d/db node)
-              patient (resource db "Patient" "0")]
+              patient (tu/resource db "Patient" "0")]
 
           (testing "eval"
             (given (expr/eval (eval-context db) expr patient)
@@ -161,7 +161,7 @@
                                                           "code-192300"]]}
                 expr (c/compile context elm)
                 db (d/db node)
-                patient (resource db "Patient" "0")]
+                patient (tu/resource db "Patient" "0")]
 
             (testing "eval"
               (given (expr/eval (eval-context db) expr patient)
@@ -213,7 +213,7 @@
                                         #elm/code ["sys-def-131750" "code-140541"]]}
                 expr (c/compile context elm)
                 db (d/db node)
-                patient (resource db "Patient" "0")]
+                patient (tu/resource db "Patient" "0")]
 
             (testing "eval"
               (given (expr/eval (eval-context db) expr patient)
@@ -267,14 +267,14 @@
                 elm #elm/retrieve
                             {:type "Observation"
                              :codes
-                             {:type "Property"
-                              :path "codes"
-                              :source #elm/concept
-                                     [[#elm/code ["sys-def-131750" "code-192300"]
-                                       #elm/code ["sys-def-131750" "code-140541"]]]}}
+                             #elm/source-property
+                                     [#elm/concept
+                                             [[#elm/code ["sys-def-131750" "code-192300"]
+                                               #elm/code ["sys-def-131750" "code-140541"]]]
+                                      "codes"]}
                 expr (c/compile context elm)
                 db (d/db node)
-                patient (resource db "Patient" "0")]
+                patient (tu/resource db "Patient" "0")]
 
             (testing "eval"
               (given (expr/eval (eval-context db) expr patient)
@@ -308,10 +308,11 @@
                :library {}}
               expr (c/compile context tu/patient-retrieve-elm)
               db (d/db node)
-              specimen (resource db "Specimen" "0")]
+              specimen (tu/resource db "Specimen" "0")]
 
           (testing "eval"
             (given (expr/eval (eval-context db) expr specimen)
+              count := 1
               [0 fhir-spec/fhir-type] := :fhir/Patient
               [0 :id] := "0"))
 
@@ -405,7 +406,7 @@
               {:keys [expression-defs]} (library/compile-library
                                           node library compile-context)
               db (d/db node)
-              patient (resource db "Patient" "0")
+              patient (tu/resource db "Patient" "0")
               eval-context (assoc (eval-context db) :expression-defs expression-defs)
               expr (:expression (get expression-defs "InInitialPopulation"))]
 
@@ -452,7 +453,7 @@
               {:keys [expression-defs]} (library/compile-library
                                           node library compile-context)
               db (d/db node)
-              patient (resource db "Patient" "0")
+              patient (tu/resource db "Patient" "0")
               eval-context (assoc (eval-context db) :expression-defs expression-defs)
               expr (:expression (get expression-defs "InInitialPopulation"))]
 
