@@ -1,0 +1,88 @@
+"system","code","display","count"
+"http://snomed.info/sct","234466008","Acquired coagulation disorder (disorder)",5
+"http://snomed.info/sct","132281000119108","Acute deep venous thrombosis (disorder)",437
+"http://snomed.info/sct","91861009","Acute myeloid leukemia, disease (disorder)",66
+"http://snomed.info/sct","706870000","Acute pulmonary embolism (disorder)",482
+"http://snomed.info/sct","67782005","Acute respiratory distress syndrome (disorder)",9
+"http://snomed.info/sct","65710008","Acute respiratory failure (disorder)",529
+"http://snomed.info/sct","26929004","Alzheimer's disease (disorder)",4
+"http://snomed.info/sct","271737000","Anemia (disorder)",59
+"http://snomed.info/sct","5758002","Bacteremia (finding)",2287
+"http://snomed.info/sct","87628006","Bacterial infectious disease (disorder)",16
+"http://snomed.info/sct","162864005","Body mass index 30+ - obesity (finding)",47
+"http://snomed.info/sct","840539006","COVID-19",4
+"http://snomed.info/sct","373587001","Chiari malformation type II (disorder)",20
+"http://snomed.info/sct","124171000119105","Chronic intractable migraine without aura",4531
+"http://snomed.info/sct","431855005","Chronic kidney disease stage 1 (disorder)",22
+"http://snomed.info/sct","431856006","Chronic kidney disease stage 2 (disorder)",17
+"http://snomed.info/sct","433144002","Chronic kidney disease stage 3 (disorder)",14
+"http://snomed.info/sct","82423001","Chronic pain",4470
+"http://snomed.info/sct","302297009","Congenital deformity of foot (disorder)",22
+"http://snomed.info/sct","190905008","Cystic Fibrosis",4
+"http://snomed.info/sct","44054006","Diabetes",15
+"http://snomed.info/sct","127013003","Diabetic renal disease (disorder)",23
+"http://snomed.info/sct","422034002","Diabetic retinopathy associated with type II diabetes mellitus (disorder)",9
+"http://snomed.info/sct","409089005","Febrile neutropenia (disorder)",7217
+"http://snomed.info/sct","707577004","Female Infertility",3
+"http://snomed.info/sct","160903007","Full-time employment (finding)",5285
+"http://snomed.info/sct","266948004","Has a criminal record (finding)",64
+"http://snomed.info/sct","84114007","Heart failure (disorder)",15
+"http://snomed.info/sct","429280009","History of amputation of foot (situation)",88
+"http://snomed.info/sct","428251008","History of appendectomy",5111
+"http://snomed.info/sct","698423002","History of disarticulation at wrist (situation)",5
+"http://snomed.info/sct","161622006","History of lower limb amputation (situation)",82
+"http://snomed.info/sct","120991000119102","History of undergoing in utero procedure while a fetus (situation)",1
+"http://snomed.info/sct","161621004","History of upper limb amputation (situation)",8
+"http://snomed.info/sct","32911000","Homeless (finding)",1
+"http://snomed.info/sct","105531004","Housing unsatisfactory (finding)",30
+"http://snomed.info/sct","230745008","Hydrocephalus (disorder)",18
+"http://snomed.info/sct","80394007","Hyperglycemia (disorder)",6
+"http://snomed.info/sct","55822004","Hyperlipidemia",18
+"http://snomed.info/sct","59621000","Hypertension",142
+"http://snomed.info/sct","302870006","Hypertriglyceridemia (disorder)",17
+"http://snomed.info/sct","389087006","Hypoxemia (disorder)",1491
+"http://snomed.info/sct","196416002","Impacted molars",4452
+"http://snomed.info/sct","40095003","Injury of kidney (disorder)",3
+"http://snomed.info/sct","414564002","Kyphosis deformity of spine (disorder)",4
+"http://snomed.info/sct","713458007","Lack of access to transportation (finding)",20
+"http://snomed.info/sct","423315002","Limited social contact (finding)",439
+"http://snomed.info/sct","707418001","Male infertility due to cystic fibrosis (disorder)",1
+"http://snomed.info/sct","254837009","Malignant neoplasm of breast (disorder)",2481
+"http://snomed.info/sct","414667000","Meningomyelocele (disorder)",22
+"http://snomed.info/sct","237602007","Metabolic syndrome X (disorder)",48
+"http://snomed.info/sct","90781000119102","Microalbuminuria due to type 2 diabetes mellitus (disorder)",18
+"http://snomed.info/sct","361055000","Misuses drugs (finding)",19
+"http://snomed.info/sct","368581000119106","Neuropathy due to type 2 diabetes mellitus (disorder)",7
+"http://snomed.info/sct","47318007","Neutropenia (disorder)",2330
+"http://snomed.info/sct","1551000119108","Nonproliferative diabetic retinopathy due to type 2 diabetes mellitus (disorder)",3
+"http://snomed.info/sct","741062008","Not in labor force (finding)",362
+"http://snomed.info/sct","78275009","Obstructive sleep apnea syndrome (disorder)",3622
+"http://snomed.info/sct","224295006","Only received primary school education (finding)",68
+"http://snomed.info/sct","64859006","Osteoporosis (disorder)",6
+"http://snomed.info/sct","160904001","Part-time employment (finding)",896
+"http://snomed.info/sct","233604007","Pneumonia",2
+"http://snomed.info/sct","233604007","Pneumonia (disorder)",1489
+"http://snomed.info/sct","68496003","Polyp of colon",5
+"http://snomed.info/sct","15777000","Prediabetes",57
+"http://snomed.info/sct","1501000119109","Proliferative diabetic retinopathy due to type II diabetes mellitus (disorder)",2
+"http://snomed.info/sct","157141000119108","Proteinuria due to type 2 diabetes mellitus (disorder)",14
+"http://snomed.info/sct","87433001","Pulmonary emphysema (disorder)",1
+"http://snomed.info/sct","5251000175109","Received certificate of high school equivalency (finding)",64
+"http://snomed.info/sct","224299000","Received higher education (finding)",18
+"http://snomed.info/sct","446654005","Refugee (person)",17
+"http://snomed.info/sct","424393004","Reports of violence in the environment (finding)",207
+"http://snomed.info/sct","271825005","Respiratory distress (finding)",1491
+"http://snomed.info/sct","160968000","Risk activity involvement (finding)",60
+"http://snomed.info/sct","298382003","Scoliosis deformity of spine (disorder)",12
+"http://snomed.info/sct","770349000","Sepsis caused by virus (disorder)",339
+"http://snomed.info/sct","224355006","Served in armed forces (finding)",7
+"http://snomed.info/sct","80583007","Severe anxiety (panic) (finding",47
+"http://snomed.info/sct","73430006","Sleep apnea (disorder)",1758
+"http://snomed.info/sct","449868002","Smokes tobacco daily",1
+"http://snomed.info/sct","422650009","Social isolation (finding)",409
+"http://snomed.info/sct","73595000","Stress (finding)",1890
+"http://snomed.info/sct","230690007","Stroke",1
+"http://snomed.info/sct","266934004","Transport problems (finding)",15
+"http://snomed.info/sct","73438004","Unemployed (finding)",16
+"http://snomed.info/sct","10939881000119105","Unhealthy alcohol drinking behavior (finding)",43
+"http://snomed.info/sct","706893006","Victim of intimate partner abuse (finding)",301

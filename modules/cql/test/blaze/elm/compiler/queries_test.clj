@@ -4,7 +4,6 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :as ba]
     [blaze.db.api :as d]
     [blaze.db.api-stub :refer [mem-node-config with-system-data]]
     [blaze.elm.code :as code]
@@ -12,7 +11,6 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.queries :as queries]
     [blaze.elm.compiler.test-util :as tu :refer [has-form]]
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
@@ -21,7 +19,6 @@
     [blaze.fhir.spec.type]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
-    [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]]))
 
 
@@ -50,46 +47,37 @@
       (testing "ByDirection"
         (are [query res] (= res (core/-eval (c/compile {} query) {} nil nil))
           {:type "Query"
-           :source
-           [{:alias "S"
-             :expression #elm/list [#elm/integer "2" #elm/integer "1" #elm/integer "1"]}]
+           :source [#elm/aliased-query-source [#elm/list [#elm/integer "2"
+                                                          #elm/integer "1"
+                                                          #elm/integer "1"]
+                                               "S"]]
            :sort {:by [{:type "ByDirection" :direction "asc"}]}}
           [1 2]))
 
       (testing "ByExpression"
         (are [query res] (= res (core/-eval (c/compile {} query) {} nil nil))
           {:type "Query"
-           :source
-           [{:alias "S"
-             :expression
-             #elm/list
-                     [#elm/quantity [2 "m"]
-                      #elm/quantity [1 "m"]
-                      #elm/quantity [1 "m"]]}]
+           :source [#elm/aliased-query-source [#elm/list [#elm/quantity [2 "m"]
+                                                          #elm/quantity [1 "m"]
+                                                          #elm/quantity [1 "m"]]
+                                               "S"]]
            :sort
            {:by
             [{:type "ByExpression"
               :direction "asc"
-              :expression
-              {:type "Property"
-               :path "value"
-               :scope "S"
-               :resultTypeName "{urn:hl7-org:elm-types:r1}decimal"}}]}}
+              :expression #elm/scope-property ["S" "value"]}]}}
           [(quantity/quantity 1 "m") (quantity/quantity 2 "m")])
 
         (testing "with IdentifierRef"
           (are [query res] (= res (core/-eval (c/compile {} query) {} nil nil))
             {:type "Query"
-             :source
-             [{:alias "S"
-               :expression
-               #elm/list
-                       [#elm/instance ["{urn:hl7-org:elm-types:r1}Code"
-                                       {"system" #elm/string "foo"
-                                        "code" #elm/string "c"}]
-                        #elm/instance ["{urn:hl7-org:elm-types:r1}Code"
-                                       {"system" #elm/string "bar"
-                                        "code" #elm/string "c"}]]}]
+             :source [#elm/aliased-query-source [#elm/list [#elm/instance ["{urn:hl7-org:elm-types:r1}Code"
+                                                                           {"system" #elm/string "foo"
+                                                                            "code" #elm/string "c"}]
+                                                            #elm/instance ["{urn:hl7-org:elm-types:r1}Code"
+                                                                           {"system" #elm/string "bar"
+                                                                            "code" #elm/string "c"}]]
+                                                 "S"]]
              :sort
              {:by
               [{:type "ByExpression"
@@ -102,9 +90,7 @@
 
     (testing "Return non-distinct"
       (let [elm {:type "Query"
-                 :source
-                 [{:alias "S"
-                   :expression #elm/list [#elm/integer "1" #elm/integer "1"]}]
+                 :source [#elm/aliased-query-source [#elm/list [#elm/integer "1" #elm/integer "1"] "S"]]
                  :return {:distinct false :expression {:type "AliasRef" :name "S"}}}
             expr (c/compile {} elm)]
 
@@ -112,13 +98,13 @@
           (is (= [1 1] (core/-eval expr {} nil nil))))
 
         (testing "form"
-          (has-form expr '(vector-query (return (fn [S] (alias-ref S))) [1 1])))))
+          (has-form expr '(vector-query (map (fn [S] (alias-ref S))) [1 1])))))
 
     (testing "with query hint optimize first"
       (let [elm {:type "Query"
-                 :source
-                 [{:alias "S"
-                   :expression #elm/list [#elm/integer "1" #elm/integer "1"]}]}
+                 :source [#elm/aliased-query-source [#elm/list [#elm/integer "1"
+                                                                #elm/integer "1"]
+                                                     "S"]]}
             expr (c/compile {:optimizations #{:first}} elm)]
 
         (testing "eval"
@@ -135,27 +121,18 @@
                :gender #fhir/code"male"}]]]
 
       (let [db (d/db node)
-            retrieve {:type "Retrieve" :dataType "{http://hl7.org/fhir}Patient"}
-            where {:type "Equal"
-                   :operand
-                   [{:type "FunctionRef"
-                     :name "ToString"
-                     :operand
-                     [{:path "gender"
-                       :scope "P"
-                       :type "Property"
-                       :resultTypeName "{http://hl7.org/fhir}string"}]}
-                    #elm/string "female"]}
-            return {:path "gender"
-                    :scope "P"
-                    :type "Property"
-                    :resultTypeName "{http://hl7.org/fhir}string"}]
+            retrieve #elm/retrieve{:type "Patient"}
+            where #elm/equal[{:type "FunctionRef"
+                              :name "ToString"
+                              :operand [#elm/scope-property ["P" "gender"]]}
+                             #elm/string "female"]
+            return #elm/scope-property ["P" "gender"]]
 
         (testing "source only"
           (let [elm {:type "Query"
                      :source
-                     [{:alias "P"
-                       :expression retrieve}]}
+                     [{:expression retrieve
+                       :alias "P"}]}
                 expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
 
             (testing "eval"
@@ -172,8 +149,8 @@
         (testing "with where clause"
           (let [elm {:type "Query"
                      :source
-                     [{:alias "P"
-                       :expression retrieve}]
+                     [{:expression retrieve
+                       :alias "P"}]
                      :where where}
                 expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
 
@@ -187,7 +164,7 @@
               (has-form expr
                 '(vector-query
                    (comp
-                     (where
+                     (filter
                        (fn [P]
                          (equal (call "ToString" (:gender P)) "female")))
                      distinct)
@@ -196,8 +173,8 @@
         (testing "with return clause"
           (let [elm {:type "Query"
                      :source
-                     [{:alias "P"
-                       :expression retrieve}]
+                     [{:expression retrieve
+                       :alias "P"}]
                      :return {:expression return}}
                 expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
 
@@ -210,14 +187,16 @@
             (testing "form"
               (has-form expr
                 '(vector-query
-                   (distinct (return (fn [P] (:gender P))))
+                   (comp
+                     (map (fn [P] (:gender P)))
+                     distinct)
                    (retrieve "Patient"))))))
 
         (testing "with where and return clauses"
           (let [elm {:type "Query"
                      :source
-                     [{:alias "P"
-                       :expression retrieve}]
+                     [{:expression retrieve
+                       :alias "P"}]
                      :where where
                      :return {:expression return}}
                 expr (c/compile {:node node :eval-context "Unfiltered"} elm)]
@@ -231,49 +210,203 @@
               (has-form expr
                 '(vector-query
                    (comp
-                     (where
+                     (filter
                        (fn [P]
                          (equal (call "ToString" (:gender P)) "female")))
-                     (distinct (return (fn [P] (:gender P)))))
+                     (comp
+                       (map
+                         (fn [P] (:gender P)))
+                       distinct))
                    (retrieve "Patient")))))))))
 
-  (testing "Unsupported With clause"
-    (let [elm {:type "Query"
-               :source
-               [{:expression
-                 {:type "Retrieve"
-                  :dataType "{http://hl7.org/fhir}Condition"}
-                 :alias "C"}]
-               :relationship
-               [{:type "With"
-                 :alias "P"
-                 :expression
-                 {:type "Retrieve" :dataType "{http://hl7.org/fhir}Procedure"}
-                 :suchThat
-                 {:type "Equal"
-                  :operand [#elm/integer "1" #elm/integer "1"]}}]}]
-      (given (ba/try-anomaly (c/compile {} elm))
-        ::anom/category := ::anom/unsupported
-        ::anom/message := "Unsupported With clause in query expression.")))
+  (testing "With clause"
+    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Encounter :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :encounter #fhir/Reference{:reference "Encounter/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
-  (testing "Unsupported Without clause"
-    (let [elm {:type "Query"
-               :source
-               [{:expression
-                 {:type "Retrieve"
-                  :dataType "{http://hl7.org/fhir}Condition"}
-                 :alias "C"}]
-               :relationship
-               [{:type "Without"
-                 :alias "P"
-                 :expression
-                 {:type "Retrieve" :dataType "{http://hl7.org/fhir}Procedure"}
-                 :suchThat
-                 {:type "Equal"
-                  :operand [#elm/integer "1" #elm/integer "1"]}}]}]
-      (given (ba/try-anomaly (c/compile {} elm))
-        ::anom/category := ::anom/unsupported
-        ::anom/message := "Unsupported Without clause in query expression."))))
+      (let [db (d/db node)
+            patient (tu/resource db "Patient" "0")]
+
+        (let [elm {:type "Query"
+                   :source [#elm/aliased-query-source [#elm/retrieve{:type "Observation"} "O"]]
+                   :relationship
+                   [{:type "With"
+                     :expression #elm/retrieve{:type "Encounter"}
+                     :alias "E"
+                     :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                                           #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]}
+              expr (c/compile {:node node :eval-context "Patient"} elm)]
+
+          (testing "eval"
+            (given (core/-eval expr {:db db} patient nil)
+              count := 1
+              [0 fhir-spec/fhir-type] := :fhir/Observation
+              [0 :id] := "0"))
+
+          (testing "form"
+            (has-form expr
+              '(vector-query
+                 (comp
+                   (filter
+                     (fn [O]
+                       (exists
+                         (fn [E]
+                           (equal
+                             (:reference (:encounter O))
+                             (concatenate "Encounter/" (:id E))))
+                         (retrieve "Encounter"))))
+                   distinct)
+                 (retrieve "Observation")))))
+
+        (testing "including return clause"
+          (let [elm {:type "Query"
+                     :source [#elm/aliased-query-source [#elm/retrieve{:type "Observation"} "O"]]
+                     :relationship
+                     [{:type "With"
+                       :expression #elm/retrieve{:type "Encounter"}
+                       :alias "E"
+                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                                             #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]
+                     :return {:expression #elm/scope-property ["O" "id"]}}
+                expr (c/compile {:node node :eval-context "Patient"} elm)]
+
+            (testing "eval"
+              (given (core/-eval expr {:db db} patient nil)
+                count := 1
+                [0] := "0"))
+
+            (testing "form"
+              (has-form expr
+                '(vector-query
+                   (comp
+                     (filter
+                       (fn [O]
+                         (exists
+                           (fn [E]
+                             (equal
+                               (:reference (:encounter O))
+                               (concatenate "Encounter/" (:id E))))
+                           (retrieve "Encounter"))))
+                     (comp
+                       (map
+                         (fn [O] (:id O)))
+                       distinct))
+                   (retrieve "Observation"))))))
+
+        (testing "including non-distinct return clause"
+          (let [elm {:type "Query"
+                     :source [#elm/aliased-query-source [#elm/retrieve{:type "Observation"} "O"]]
+                     :relationship
+                     [{:type "With"
+                       :expression #elm/retrieve{:type "Encounter"}
+                       :alias "E"
+                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                                             #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]
+                     :return {:distinct false :expression #elm/scope-property ["O" "id"]}}
+                expr (c/compile {:node node :eval-context "Patient"} elm)]
+
+            (testing "eval"
+              (given (core/-eval expr {:db db} patient nil)
+                count := 1
+                [0] := "0"))
+
+            (testing "form"
+              (has-form expr
+                '(vector-query
+                   (comp
+                     (filter
+                       (fn [O]
+                         (exists
+                           (fn [E]
+                             (equal
+                               (:reference (:encounter O))
+                               (concatenate "Encounter/" (:id E))))
+                           (retrieve "Encounter"))))
+                     (map
+                       (fn [O] (:id O))))
+                   (retrieve "Observation"))))))
+
+        (testing "including where clause"
+          (let [elm {:type "Query"
+                     :source [#elm/aliased-query-source [#elm/retrieve{:type "Observation"} "O"]]
+                     :relationship
+                     [{:type "With"
+                       :expression #elm/retrieve{:type "Encounter"}
+                       :alias "E"
+                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                                             #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]
+                     :where #elm/equal [#elm/string "1" #elm/scope-property ["O" "id"]]}
+                expr (c/compile {:node node :eval-context "Patient"} elm)]
+
+            (testing "eval"
+              (is (empty? (core/-eval expr {:db db} patient nil))))
+
+            (testing "form"
+              (has-form expr
+                '(vector-query
+                   (comp
+                     (filter
+                       (fn [O] (equal "1" (:id O))))
+                     (filter
+                       (fn [O]
+                         (exists
+                           (fn [E]
+                             (equal
+                               (:reference (:encounter O))
+                               (concatenate "Encounter/" (:id E))))
+                           (retrieve "Encounter"))))
+                     distinct)
+                   (retrieve "Observation")))))))))
+
+  (testing "Without clause"
+    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Encounter :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :encounter #fhir/Reference{:reference "Encounter/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+      (let [elm {:type "Query"
+                 :source [#elm/aliased-query-source [#elm/retrieve{:type "Observation"} "O"]]
+                 :relationship
+                 [{:type "Without"
+                   :expression #elm/retrieve{:type "Encounter"}
+                   :alias "E"
+                   :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                                         #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]}
+            expr (c/compile {:node node :eval-context "Patient"} elm)
+            db (d/db node)
+            patient (tu/resource db "Patient" "0")]
+
+        (testing "eval"
+          (given (core/-eval expr {:db db} patient nil)
+            count := 1
+            [0 fhir-spec/fhir-type] := :fhir/Observation
+            [0 :id] := "1"))
+
+        (testing "form"
+          (has-form expr
+            '(vector-query
+               (comp
+                 (filter
+                   (fn [O]
+                     (not-exists
+                       (fn [E]
+                         (equal
+                           (:reference (:encounter O))
+                           (concatenate "Encounter/" (:id E))))
+                       (retrieve "Encounter"))))
+                 distinct)
+               (retrieve "Observation"))))))))
 
 
 ;; 10.3. AliasRef
@@ -307,75 +440,3 @@
 ;;
 ;; The QueryLetRef expression allows for the reference of a specific let
 ;; definition within the scope of a query.
-
-
-;; 10.14. With
-;;
-;; The With clause restricts the elements of a given source to only those
-;; elements that have elements in the related source that satisfy the suchThat
-;; condition. This operation is known as a semi-join in database languages.
-(deftest compile-with-clause-test
-  (testing "Equiv With with two Observations comparing there subjects."
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject
-               #fhir/Reference{:reference "Patient/0"}}]]]
-
-      (let [elm {:alias "O1"
-                 :type "WithEquiv"
-                 :expression
-                 {:type "Retrieve"
-                  :dataType "{http://hl7.org/fhir}Observation"}
-                 :equivOperand
-                 [{:path "subject"
-                   :scope "O0"
-                   :type "Property"
-                   :resultTypeName "{http://hl7.org/fhir}Reference"
-                   :life/scopes #{"O0"}}
-                  {:path "subject"
-                   :scope "O1"
-                   :type "Property"
-                   :resultTypeName "{http://hl7.org/fhir}Reference"
-                   :life/scopes #{"O1"}}]}
-            compile-context
-            {:node node :eval-context "Unfiltered"}
-            xform-factory (queries/compile-with-equiv-clause compile-context "O0" elm)
-            eval-context {:db (d/db node)}
-            xform (queries/-create xform-factory eval-context nil nil)
-            lhs-entity {:fhir/type :fhir/Observation
-                        :subject #fhir/Reference{:reference "Patient/0"}}]
-
-        (testing "filtering"
-          (is (= [lhs-entity] (into [] xform [lhs-entity]))))
-
-        (testing "form"
-          (is (= '(with (retrieve "Observation"))
-                 (queries/-form xform-factory)))))))
-
-  (testing "Equiv With with one Patient and one Observation comparing the patient with the operation subject."
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject
-               #fhir/Reference{:reference "Patient/0"}}]]]
-
-      (let [elm {:alias "O"
-                 :type "WithEquiv"
-                 :expression
-                 {:type "Retrieve"
-                  :dataType "{http://hl7.org/fhir}Observation"}
-                 :equivOperand
-                 [{:name "P" :type "AliasRef" :life/scopes #{"P"}}
-                  {:path "subject"
-                   :scope "O"
-                   :type "Property"
-                   :resultTypeName "{http://hl7.org/fhir}Reference"
-                   :life/scopes #{"O"}}]}
-            compile-context
-            {:node node :eval-context "Unfiltered"}
-            xform-factory (queries/compile-with-equiv-clause compile-context "P" elm)
-            eval-context {:db (d/db node)}
-            xform (queries/-create xform-factory eval-context nil nil)
-            lhs-entity #fhir/Reference{:reference "Patient/0"}]
-        (is (= [lhs-entity] (into [] xform [lhs-entity])))))))

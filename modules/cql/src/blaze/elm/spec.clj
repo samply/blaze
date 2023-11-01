@@ -783,11 +783,6 @@
   (s/keys :req-un [:elm/expression :elm/alias :elm.query/suchThat]))
 
 
-(defmethod relationship-clause "WithEquiv" [_]
-  (s/keys :req-un [:elm/expression :elm/alias :elm.query.life/equivOperand]
-          :opt-un [:elm.query/suchThat]))
-
-
 ;; 10.15. Without
 (defmethod relationship-clause "Without" [_]
   (s/keys :req-un [:elm/expression :elm/alias :elm.query/suchThat]))

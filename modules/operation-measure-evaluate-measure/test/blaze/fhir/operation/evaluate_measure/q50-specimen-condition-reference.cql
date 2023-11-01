@@ -9,10 +9,7 @@ code "Diabetes mellitus": 'E13.9' from icd
 
 context Patient
 
-define ConditionRefs:
-    from [Condition: "Diabetes mellitus"] C
-    return 'Condition/' + C.id
-
 define InInitialPopulation:
     exists [Specimen: "Serum Specimen"] S
-    where S.extension.where(url='https://www.medizininformatik-initiative.de/fhir/ext/modul-biobank/StructureDefinition/Diagnose').value.reference in ConditionRefs
+      with [Condition: "Diabetes mellitus"] C
+      such that (S.extension.where(url='https://www.medizininformatik-initiative.de/fhir/ext/modul-biobank/StructureDefinition/Diagnose').first().value as Reference).reference = 'Condition/' + C.id

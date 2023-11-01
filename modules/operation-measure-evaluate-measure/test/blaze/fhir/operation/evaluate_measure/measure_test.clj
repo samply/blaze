@@ -604,7 +604,8 @@
     "q47-managing-organization" 1
     "q48-concept" 2
     "q49-length" 1
-    "q50-specimen-condition-reference" 1)
+    "q50-specimen-condition-reference" 1
+    "q51-specimen-condition-reference-2" 1)
 
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"

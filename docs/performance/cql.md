@@ -250,3 +250,14 @@ cql/search.sh condition-all
 |--------|---------|-------:|---------:|-------:|--------:|
 | LEA47  | 1M      |  995 k |     4.75 |  0.014 | 210.5 k |
 | LEA58  | 1M      |  995 k |     3.36 |  0.020 | 297.2 k |
+
+## Inpatient Stress Search
+
+```sh
+cql/search.sh inpatient-stress
+```
+
+| System | Dataset | # Hits | Time (s) | StdDev |  Pat./s |
+|--------|---------|-------:|---------:|-------:|--------:|
+| LEA47  | 100k    |    334 |     0.26 |  0.005 | 381.9 k |
+| LEA58  | 1M      |    3 k |     3.01 |  0.017 | 331.8 k |

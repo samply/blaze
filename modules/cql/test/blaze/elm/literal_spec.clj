@@ -98,6 +98,7 @@
           :ret :elm/expression)
 
 
+
 ;; 9. Reusing Logic
 
 ;; 9.2. ExpressionRef
@@ -106,6 +107,18 @@
   :ret :elm/expression)
 
 
+
+;; 10. Queries
+
+;; 10.2. AliasedQuerySource
+(s/fdef elm/aliased-query-source
+  :args (s/cat :args (s/tuple :elm/expression string?)))
+
+
+
+;; 12. Comparison Operators
+
+;; 12.1. Equal
 (s/fdef elm/equal
   :args (s/cat :ops (s/tuple :elm/expression :elm/expression))
   :ret :elm/expression)

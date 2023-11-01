@@ -1,5 +1,5 @@
 (ns blaze.coll.core
-  (:refer-clojure :exclude [count eduction empty? first nth])
+  (:refer-clojure :exclude [count eduction empty? first nth some])
   (:import
     [clojure.lang Counted Indexed IReduceInit Seqable Sequential]))
 
@@ -12,6 +12,12 @@
   "Like `clojure.core/first` but for reducible collections."
   [coll]
   (reduce #(reduced %2) nil coll))
+
+
+(defn some
+  "Like `clojure.core/some` but for reducible collections."
+  [pred coll]
+  (reduce #(when (pred %2) (reduced true)) nil coll))
 
 
 (defn empty?

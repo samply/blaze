@@ -18,9 +18,11 @@ calc-cql-print-stats() {
   if (( $(echo "$COUNT > 1000000" | bc) )); then
     COUNT=$(echo "scale=2; $COUNT / 1000000" | bc)
     COUNT_FORMAT="%4.1f M"
-  else
+  elif (( $(echo "$COUNT > 1000" | bc) )); then
     COUNT=$(echo "scale=2; $COUNT / 1000" | bc)
     COUNT_FORMAT="%4.0f k"
+  else
+    COUNT_FORMAT="%6.0f"
   fi
 
   # shorten the patients per second

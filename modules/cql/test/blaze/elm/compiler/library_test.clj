@@ -72,9 +72,9 @@
 
   (testing "one dynamic expression"
     (let [library (t/translate "library Test
-      using FHIR version '4.0.0'
-      context Patient
-      define Gender: Patient.gender")]
+        using FHIR version '4.0.0'
+        context Patient
+        define Gender: Patient.gender")]
       (with-system [{:blaze.db/keys [node]} mem-node-config]
         (given (library/compile-library node library {})
           [:expression-defs "Gender" :context] := "Patient"
@@ -82,10 +82,10 @@
 
   (testing "one function"
     (let [library (t/translate "library Test
-      using FHIR version '4.0.0'
-      context Patient
-      define function Gender(P Patient): P.gender
-      define InInitialPopulation: Gender(Patient)")]
+        using FHIR version '4.0.0'
+        context Patient
+        define function Gender(P Patient): P.gender
+        define InInitialPopulation: Gender(Patient)")]
       (with-system [{:blaze.db/keys [node]} mem-node-config]
         (given (library/compile-library node library {})
           [:expression-defs "InInitialPopulation" :context] := "Patient"
@@ -97,11 +97,11 @@
 
   (testing "two functions, one calling the other"
     (let [library (t/translate "library Test
-      using FHIR version '4.0.0'
-      context Patient
-      define function Inc(i System.Integer): i + 1
-      define function Inc2(i System.Integer): Inc(i) + 1
-      define InInitialPopulation: Inc2(1)")]
+        using FHIR version '4.0.0'
+        context Patient
+        define function Inc(i System.Integer): i + 1
+        define function Inc2(i System.Integer): Inc(i) + 1
+        define InInitialPopulation: Inc2(1)")]
       (with-system [{:blaze.db/keys [node]} mem-node-config]
         (given (library/compile-library node library {})
           [:expression-defs "InInitialPopulation" :context] := "Patient"
@@ -118,7 +118,7 @@
 
     (testing "expression"
       (let [library (t/translate "library Test
-        define Error: singleton from {1, 2}")]
+          define Error: singleton from {1, 2}")]
         (with-system [{:blaze.db/keys [node]} mem-node-config]
           (given (library/compile-library node library {})
             ::anom/category := ::anom/conflict
@@ -126,7 +126,7 @@
 
   (testing "with parameter default"
     (let [library (t/translate "library Test
-    parameter \"Measurement Period\" Interval<Date> default Interval[@2020-01-01, @2020-12-31]")]
+        parameter \"Measurement Period\" Interval<Date> default Interval[@2020-01-01, @2020-12-31]")]
       (with-system [{:blaze.db/keys [node]} mem-node-config]
         (given (library/compile-library node library {})
           [:parameter-default-values "Measurement Period" :start] := #system/date"2020-01-01"
@@ -134,8 +134,51 @@
 
   (testing "with invalid parameter default"
     (let [library (t/translate "library Test
-    parameter \"Measurement Start\" Integer default singleton from {1, 2}")]
+        parameter \"Measurement Start\" Integer default singleton from {1, 2}")]
       (with-system [{:blaze.db/keys [node]} mem-node-config]
         (given (library/compile-library node library {})
           ::anom/category := ::anom/conflict
-          ::anom/message "More than one element in `SingletonFrom` expression.")))))
+          ::anom/message "More than one element in `SingletonFrom` expression."))))
+
+  (testing "query with semi-join"
+    (let [library (t/translate "library \"q50-specimen-condition-reference\"
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        context Patient
+
+        define InInitialPopulation:
+            exists [Observation] O
+              with [Encounter] E
+              such that O.encounter.reference = 'Encounter/' + E.id")]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (given (library/compile-library node library {})
+          [:expression-defs "InInitialPopulation" :context] := "Patient"
+          [:expression-defs "InInitialPopulation" :expression c/form] :=
+          '(exists
+             (eduction-query
+               (comp
+                 (filter
+                   (fn
+                     [O]
+                     (exists
+                       (fn
+                         [E]
+                         (equal
+                           (call
+                             "ToString"
+                             (:reference
+                               (:encounter
+                                 O)))
+                           (concatenate
+                             "Encounter/"
+                             (call
+                               "ToString"
+                               (:id
+                                 E)))))
+                       (retrieve
+                         "Encounter"))))
+                 distinct)
+               (retrieve
+                 "Observation")))
+          [:function-defs "hasDiagnosis" :function] := nil)))))

@@ -1,8 +1,10 @@
 (ns blaze.elm.compiler.test-util
   (:require
+    [blaze.db.api :as d]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
+    [blaze.elm.compiler.external-data :as ed]
     [blaze.elm.expression :as-alias expr]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
@@ -315,3 +317,7 @@
                                                   [#elm/parameter-ref "x"
                                                    #elm/parameter-ref "y"
                                                    #elm/parameter-ref "z"])))))))
+
+
+(defn resource [db type id]
+  (ed/mk-resource db (d/resource-handle db type id)))
