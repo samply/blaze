@@ -3,6 +3,8 @@
     [blaze.anomaly :as ba]
     [blaze.async.comp :as ac]
     [blaze.metrics.core :as metrics]
+    [blaze.page-store :as-alias page-store]
+    [blaze.page-store.local.spec]
     [blaze.page-store.local.token :as token]
     [blaze.page-store.protocols :as p]
     [blaze.page-store.spec]
@@ -45,11 +47,12 @@
       (+ token-weigh (w/weigh clauses)))))
 
 
-(defmethod ig/pre-init-spec :blaze.page-store/local [_]
-  (s/keys :req-un [:blaze.page-store/secure-rng]))
+(defmethod ig/pre-init-spec ::page-store/local [_]
+  (s/keys :req-un [::page-store/secure-rng]
+          :opt-un [::max-size-in-mb ::expire-duration]))
 
 
-(defmethod ig/init-key :blaze.page-store/local
+(defmethod ig/init-key ::page-store/local
   [_ {:keys [secure-rng max-size-in-mb expire-duration]
       :or {max-size-in-mb 10 expire-duration (time/hours 24)}}]
   (log/info "Open local page store with a capacity of" max-size-in-mb
@@ -63,7 +66,7 @@
         (.build))))
 
 
-(derive :blaze.page-store/local :blaze/page-store)
+(derive ::page-store/local :blaze/page-store)
 
 
 (defmethod ig/pre-init-spec :blaze.page-store.local/collector [_]
