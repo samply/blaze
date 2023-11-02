@@ -182,7 +182,7 @@
       nil))
 
   (testing "print"
-    (are [uri s] (= (pr-str uri) s)
+    (are [boolean s] (= (pr-str boolean) s)
       #fhir/boolean{:id "0"} "#fhir/boolean{:id \"0\"}")))
 
 

@@ -8,7 +8,7 @@
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.interval-operators]
-    [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
     [blaze.elm.decimal :as decimal]
     [blaze.elm.interval :refer [interval]]
     [blaze.elm.literal :as elm]
@@ -114,7 +114,16 @@
 
   (testing "Invalid interval"
     (are [elm] (thrown? Exception (core/-eval (c/compile {} elm) {} nil nil))
-      #elm/interval [#elm/integer "5" #elm/integer "3"])))
+      #elm/interval [#elm/integer "5" #elm/integer "3"]))
+
+  (testing "form"
+    (let [elm# (elm/interval [(elm/as ["{urn:hl7-org:elm-types:r1}Integer" #elm/parameter-ref "x"])
+                              (elm/as ["{urn:hl7-org:elm-types:r1}Integer" #elm/parameter-ref "y"])])
+          expr# (tu/dynamic-compile elm#)]
+      (has-form expr#
+        (list 'interval
+              (list 'as 'elm/integer (list 'param-ref "x"))
+              (list 'as 'elm/integer (list 'param-ref "y")))))))
 
 
 ;; 19.2. After
@@ -433,7 +442,7 @@
       [(interval 1 2)]
 
       #elm/list [#elm/interval [#elm/integer "1" #elm/integer "2"]
-                #elm/interval [#elm/integer "2" #elm/integer "3"]]
+                 #elm/interval [#elm/integer "2" #elm/integer "3"]]
       {:type "Null"}
       [(interval 1 3)]
 
@@ -446,7 +455,7 @@
   (testing "DateTime"
     (are [source per res] (= res (core/-eval (c/compile {} (elm/collapse [source per])) {} nil nil))
       #elm/list [#elm/interval [#elm/date-time"2012-01-01" #elm/date-time"2012-01-15"]
-                #elm/interval [#elm/date-time"2012-01-16" #elm/date-time"2012-05-25"]]
+                 #elm/interval [#elm/date-time"2012-01-16" #elm/date-time"2012-05-25"]]
       {:type "Null"}
       [(interval #system/date-time"2012-01-01" #system/date-time"2012-05-25")]))
 

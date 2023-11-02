@@ -94,20 +94,20 @@
         (let [expr (tu/dynamic-compile
                      {:type "Case"
                       :caseItem
-                      [{:when #elm/parameter-ref "true"
-                        :then #elm/integer "1"}]
-                      :else #elm/integer "2"})]
-          (has-form expr '(case (param-ref "true") 1 2))))
+                      [{:when #elm/parameter-ref "x"
+                        :then #elm/parameter-ref "y"}]
+                      :else #elm/parameter-ref "z"})]
+          (has-form expr '(case (param-ref "x") (param-ref "y") (param-ref "z")))))
 
       (testing "comparand-based"
         (let [expr (tu/dynamic-compile
                      {:type "Case"
                       :comparand #elm/parameter-ref "a"
                       :caseItem
-                      [{:when #elm/parameter-ref "b"
-                        :then #elm/integer "1"}]
-                      :else #elm/integer "2"})]
-          (has-form expr '(case (param-ref "a") (param-ref "b") 1 2))))))
+                      [{:when #elm/parameter-ref "x"
+                        :then #elm/parameter-ref "y"}]
+                      :else #elm/parameter-ref "z"})]
+          (has-form expr '(case (param-ref "a") (param-ref "x") (param-ref "y") (param-ref "z")))))))
 
   (testing "expression is dynamic"
     (testing "multi-conditional"
@@ -149,4 +149,16 @@
   (testing "expression is dynamic"
     (is (false? (core/-static (tu/dynamic-compile #elm/if [#elm/parameter-ref "x"
                                                            #elm/parameter-ref "y"
-                                                           #elm/parameter-ref "z"]))))))
+                                                           #elm/parameter-ref "z"])))))
+
+  (testing "form"
+    (let [expr (c/compile {} #elm/if [#elm/boolean "true" #elm/integer "1" #elm/integer "2"])]
+      (has-form expr 1))
+
+    (let [expr (c/compile {} #elm/if [#elm/boolean "false" #elm/integer "1" #elm/integer "2"])]
+      (has-form expr 2))
+
+    (let [expr (tu/dynamic-compile #elm/if [#elm/parameter-ref "x"
+                                            #elm/parameter-ref "y"
+                                            #elm/parameter-ref "z"])]
+      (has-form expr '(if (param-ref "x") (param-ref "y") (param-ref "z"))))))

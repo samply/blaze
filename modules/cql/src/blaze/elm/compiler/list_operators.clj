@@ -19,18 +19,20 @@
 
 
 ;; 20.1. List
+(defn list-op [elements]
+  (reify core/Expression
+    (-static [_]
+      false)
+    (-eval [_ context resource scope]
+      (mapv #(core/-eval % context resource scope) elements))
+    (-form [_]
+      `(~'list ~@(map core/-form elements)))))
+
+
 (defmethod core/compile* :elm.compiler.type/list
   [context {elements :element}]
   (let [elements (mapv #(core/compile* context %) elements)]
-    (if (every? core/static? elements)
-      elements
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scope]
-          (mapv #(core/-eval % context resource scope) elements))
-        (-form [_]
-          `(~'list ~@(map core/-form elements)))))))
+    (cond-> elements (some (comp not core/static?) elements) list-op)))
 
 
 ;; 20.3. Current

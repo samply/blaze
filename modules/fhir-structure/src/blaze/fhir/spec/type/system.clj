@@ -236,10 +236,22 @@
       (instance? DateTimeDate x) (.equals date (.toDate ^DateTimeDate x)))))
 
 
+(defmethod print-method DateYear [^DateYear date ^Writer w]
+  (.write w "#system/date\"")
+  (.write w (str date))
+  (.write w "\""))
+
+
 (defmethod print-dup DateYear [^DateYear date ^Writer w]
   (.write w "#=(blaze.fhir.spec.type.system.DateYear/of ")
   (.write w (str date))
   (.write w ")"))
+
+
+(defmethod print-method DateYearMonth [^DateYearMonth date ^Writer w]
+  (.write w "#system/date\"")
+  (.write w (str date))
+  (.write w "\""))
 
 
 (defmethod print-dup DateYearMonth [^DateYearMonth date ^Writer w]
@@ -248,6 +260,12 @@
   (.write w " ")
   (.write w (str (.month date)))
   (.write w ")"))
+
+
+(defmethod print-method DateDate [^DateDate date ^Writer w]
+  (.write w "#system/date\"")
+  (.write w (str date))
+  (.write w "\""))
 
 
 (defmethod print-dup DateDate [^DateDate date ^Writer w]
@@ -312,10 +330,22 @@
   (ba/try-one DateTimeException ::anom/incorrect (parse-date-time* s)))
 
 
+(defmethod print-method DateTimeYear [^DateTimeYear date-time ^Writer w]
+  (.write w "#system/date-time\"")
+  (.write w (str date-time))
+  (.write w "\""))
+
+
 (defmethod print-dup DateTimeYear [^DateTimeYear date-time ^Writer w]
   (.write w "#=(blaze.fhir.spec.type.system.DateTimeYear/of ")
   (.write w (str date-time))
   (.write w ")"))
+
+
+(defmethod print-method DateTimeYearMonth [^DateTimeYearMonth date-time ^Writer w]
+  (.write w "#system/date-time\"")
+  (.write w (str date-time))
+  (.write w "\""))
 
 
 (defmethod print-dup DateTimeYearMonth [^DateTimeYearMonth date-time ^Writer w]
@@ -326,6 +356,12 @@
   (.write w ")"))
 
 
+(defmethod print-method DateTimeDate [^DateTimeDate date-time ^Writer w]
+  (.write w "#system/date-time\"")
+  (.write w (str date-time))
+  (.write w "\""))
+
+
 (defmethod print-dup DateTimeDate [^DateTimeDate date-time ^Writer w]
   (.write w "#=(blaze.fhir.spec.type.system.DateTimeDate/of ")
   (.write w (str (.year date-time)))
@@ -333,6 +369,68 @@
   (.write w (str (.month date-time)))
   (.write w " ")
   (.write w (str (.day date-time)))
+  (.write w ")"))
+
+
+(defmethod print-method LocalDateTime [^LocalDateTime dateTime ^Writer w]
+  (.write w "#system/date-time\"")
+  (.write w (str dateTime))
+  (.write w "\""))
+
+
+(defmethod print-dup LocalDateTime [^LocalDateTime dateTime ^Writer w]
+  (.write w "#=(java.time.LocalDateTime/of ")
+  (.write w (str (.getYear dateTime)))
+  (.write w " ")
+  (.write w (str (.getMonthValue dateTime)))
+  (.write w " ")
+  (.write w (str (.getDayOfMonth dateTime)))
+  (.write w " ")
+  (.write w (str (.getHour dateTime)))
+  (.write w " ")
+  (.write w (str (.getMinute dateTime)))
+  (.write w " ")
+  (.write w (str (.getSecond dateTime)))
+  (.write w " ")
+  (.write w (str (.getNano dateTime)))
+  (.write w ")"))
+
+
+(defmethod print-method OffsetDateTime [^OffsetDateTime dateTime ^Writer w]
+  (.write w "#system/date-time\"")
+  (.write w (str dateTime))
+  (.write w "\""))
+
+
+(defmethod print-dup OffsetDateTime [^OffsetDateTime dateTime ^Writer w]
+  (.write w "#=(java.time.OffsetDateTime/of ")
+  (.write w (str (.getYear dateTime)))
+  (.write w " ")
+  (.write w (str (.getMonthValue dateTime)))
+  (.write w " ")
+  (.write w (str (.getDayOfMonth dateTime)))
+  (.write w " ")
+  (.write w (str (.getHour dateTime)))
+  (.write w " ")
+  (.write w (str (.getMinute dateTime)))
+  (.write w " ")
+  (.write w (str (.getSecond dateTime)))
+  (.write w " ")
+  (.write w (str (.getNano dateTime)))
+  (.write w ",#=(java.time.ZoneOffset/of \"")
+  (.write w (.getId (.getOffset dateTime)))
+  (.write w "\"))"))
+
+
+(defmethod print-dup LocalTime [^LocalTime time ^Writer w]
+  (.write w "#=(java.time.LocalTime/of ")
+  (.write w (str (.getHour time)))
+  (.write w " ")
+  (.write w (str (.getMinute time)))
+  (.write w " ")
+  (.write w (str (.getSecond time)))
+  (.write w " ")
+  (.write w (str (.getNano time)))
   (.write w ")"))
 
 
@@ -411,10 +509,6 @@
   (-equals [date-time x]
     (cond
       (instance? OffsetDateTime x) (.equals date-time x))))
-
-
-(defmethod print-method OffsetDateTime [^OffsetDateTime date-time ^Writer w]
-  (.write w (.toString date-time)))
 
 
 (defprotocol LowerBound

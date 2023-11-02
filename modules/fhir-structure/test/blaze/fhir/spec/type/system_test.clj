@@ -243,7 +243,13 @@
           #system/date"2020" #system/date-time"2020-01" nil
           #system/date"2020-01" #system/date-time"2020" nil
           #system/date"2020-01" #system/date-time"2020-01-01" nil
-          #system/date"2020-01-01" #system/date-time"2020-01" nil)))))
+          #system/date"2020-01-01" #system/date-time"2020-01" nil))))
+
+  (testing "print"
+    (are [date s] (= (pr-str date) s)
+      #system/date"2020" "#system/date\"2020\""
+      #system/date"2020-01" "#system/date\"2020-01\""
+      #system/date"2020-01-02" "#system/date\"2020-01-02\"")))
 
 
 (deftest parse-date-test
@@ -505,7 +511,17 @@
       #system/date-time"2020-01" :month-of-year 1
       #system/date-time"2020-01-02" :year 2020
       #system/date-time"2020-01-02" :month-of-year 1
-      #system/date-time"2020-01-02" :day-of-month 2)))
+      #system/date-time"2020-01-02" :day-of-month 2))
+
+  (testing "print"
+    (are [date s] (= (pr-str date) s)
+      #system/date-time"2020" "#system/date-time\"2020\""
+      #system/date-time"2020-01" "#system/date-time\"2020-01\""
+      #system/date-time"2020-01-02" "#system/date-time\"2020-01-02\""
+      #system/date-time"2020-12-31T23:59:59" "#system/date-time\"2020-12-31T23:59:59\""
+      #system/date-time"2020-12-31T23:59:59Z" "#system/date-time\"2020-12-31T23:59:59Z\""
+      #system/date-time"2020-12-31T23:59:59.001" "#system/date-time\"2020-12-31T23:59:59.001\""
+      #system/date-time"2020-12-31T23:59:59.001Z" "#system/date-time\"2020-12-31T23:59:59.001Z\"")))
 
 
 (deftest parse-date-time-test

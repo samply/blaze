@@ -43,7 +43,9 @@
           (if (nil? high)
             (ao/max-value type)
             high)
-          (p/predecessor high))))))
+          (p/predecessor high)))))
+  (-form [_]
+    (list 'interval (core/-form low) (core/-form high))))
 
 
 (defmethod core/compile* :elm.compiler.type/interval

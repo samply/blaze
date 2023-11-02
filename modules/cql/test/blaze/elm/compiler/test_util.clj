@@ -215,7 +215,7 @@
   [elm-constructor]
   (let [form-name (symbol (name elm-constructor))]
     `(testing "form"
-       (let [elm# (~elm-constructor (elm/parameter-ref "x"))
+       (let [elm# (~elm-constructor #elm/parameter-ref "x")
              expr# (dynamic-compile elm#)]
          (has-form expr# '(~form-name (~'param-ref "x")))))))
 
@@ -227,7 +227,7 @@
    (let [form-name (symbol (name elm-constructor))]
      `(testing "form"
         (doseq [precision# ~(vec precisions)]
-          (let [elm# (~elm-constructor [(elm/parameter-ref "x") precision#])
+          (let [elm# (~elm-constructor [#elm/parameter-ref "x" precision#])
                 expr# (dynamic-compile elm#)]
             (has-form expr#
               (list '~form-name '(~'param-ref "x") precision#))))))))
@@ -236,8 +236,8 @@
 (defmacro testing-binary-form [elm-constructor]
   (let [form-name (symbol (name elm-constructor))]
     `(testing "form"
-       (let [elm# (~elm-constructor [(elm/parameter-ref "x")
-                                     (elm/parameter-ref "y")])
+       (let [elm# (~elm-constructor [#elm/parameter-ref "x"
+                                     #elm/parameter-ref "y"])
              expr# (dynamic-compile elm#)]
          (has-form expr#
            (quote (~form-name (~'param-ref "x") (~'param-ref "y"))))))))
@@ -250,8 +250,8 @@
    (let [form-name (symbol (name elm-constructor))]
      `(testing "form"
         (doseq [precision# ~(vec precisions)]
-          (let [elm# (~elm-constructor [(elm/parameter-ref "x")
-                                        (elm/parameter-ref "y") precision#])
+          (let [elm# (~elm-constructor [#elm/parameter-ref "x"
+                                        #elm/parameter-ref "y" precision#])
                 expr# (dynamic-compile elm#)]
             (has-form expr#
               (list '~form-name '(~'param-ref "x") '(~'param-ref "y") precision#))))))))
@@ -260,9 +260,9 @@
 (defmacro testing-ternary-form [elm-constructor]
   (let [form-name (symbol (name elm-constructor))]
     `(testing "form"
-       (let [elm# (~elm-constructor [(elm/parameter-ref "x")
-                                     (elm/parameter-ref "y")
-                                     (elm/parameter-ref "z")])
+       (let [elm# (~elm-constructor [#elm/parameter-ref "x"
+                                     #elm/parameter-ref "y"
+                                     #elm/parameter-ref "z"])
              expr# (dynamic-compile elm#)]
          (has-form expr#
            (quote (~form-name (~'param-ref "x") (~'param-ref "y") (~'param-ref "z"))))))))
@@ -288,7 +288,7 @@
   `(testing "expression is dynamic"
      (doseq [precision# ~(vec precisions)]
        (is (false? (core/-static (dynamic-compile (~elm-constructor
-                                                    [(elm/parameter-ref "x")
+                                                    [#elm/parameter-ref "x"
                                                      precision#]))))))))
 
 
@@ -306,8 +306,8 @@
    `(testing "expression is dynamic"
       (doseq [precision# ~(vec precisions)]
         (is (false? (core/-static (dynamic-compile (~elm-constructor
-                                                     [(elm/parameter-ref "x")
-                                                      (elm/parameter-ref "y")
+                                                     [#elm/parameter-ref "x"
+                                                      #elm/parameter-ref "y"
                                                       precision#])))))))))
 
 

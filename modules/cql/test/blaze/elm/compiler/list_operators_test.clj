@@ -57,7 +57,10 @@
       #elm/list [#elm/integer "1" #elm/integer "2"] [1 2])
 
     (testing "form"
-      (is (= [] (c/form (c/compile {} #elm/list []))))))
+      (are [elm res] (= res (c/form (c/compile {} elm)))
+        #elm/list [] []
+        #elm/list [#elm/date "2023-11-02"] [#system/date "2023-11-02"]
+        #elm/list [#elm/date-time "2023-11-02T14:23"] [#system/date-time "2023-11-02T14:23"])))
 
   (testing "Dynamic"
     (are [elm res] (= res (tu/dynamic-compile-eval elm))
