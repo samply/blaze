@@ -251,6 +251,8 @@
 
   Operators are :put, :merge and :delete.
 
+  Delete entries have no value.
+
   Writes are atomic. Blocks."
   [store entries]
   (-write store entries))
