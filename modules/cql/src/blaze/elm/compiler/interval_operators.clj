@@ -62,7 +62,7 @@
                                        (core/compile* context))
         high-closed-expression (some->> high-closed-expression
                                         (core/compile* context))]
-    (assert (string? type) (prn-str low))
+    (assert (string? type) (format "Can't determine the type of type in `%s`." (pr-str low)))
     (if (and (core/static? low)
              (core/static? high)
              (core/static? low-closed-expression)

@@ -10,7 +10,7 @@
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.parameters :refer [->ParameterRef]]
-    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
+    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
     [clojure.spec.test.alpha :as st]
@@ -20,12 +20,12 @@
 
 
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 

@@ -203,7 +203,8 @@
 ;; 19.5. Contains
 (extend-protocol p/Contains
   nil
-  (contains [_ _ _]))
+  (contains [_ _ _]
+    false))
 
 
 ;; 19.10. Except

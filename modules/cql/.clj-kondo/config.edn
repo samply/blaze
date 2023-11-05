@@ -44,6 +44,7 @@
     blaze.db.api d
     blaze.elm.compiler c
     blaze.elm.compiler.external-data ed
+    blaze.elm.compiler.test-util ctu
     blaze.elm.expression expr
     blaze.elm.util elm-util
     cognitect.anomalies anom

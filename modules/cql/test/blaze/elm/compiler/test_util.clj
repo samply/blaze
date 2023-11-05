@@ -70,6 +70,10 @@
       {:name "b"}
       {:name "ba"}
       {:name "A"}
+      {:name "2019"}
+      {:name "2020"}
+      {:name "2021"}
+      {:name "2022"}
       {:name "12:54:00"}
       {:name "2020-01-02T03:04:05.006Z"}
       {:name "[1]"}
@@ -80,6 +84,10 @@
   {:parameters
    {"true" true "false" false "nil" nil "-1" -1 "1" 1 "2" 2 "3" 3 "4" 4
     "empty-string" "" "x" "x" "y" "y" "z" "z" "a" "a" "ab" "ab" "b" "b" "ba" "ba" "A" "A"
+    "2019" (system/date 2019)
+    "2020" (system/date 2020)
+    "2021" (system/date 2021)
+    "2022" (system/date 2022)
     "12:54:00" (system/time 12 54 00)
     "2020-01-02T03:04:05.006Z" (system/date-time 2020 1 2 3 4 5 6 ZoneOffset/UTC)
     "[1]" [1] "[1 2]" [1 2]}

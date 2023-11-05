@@ -9,7 +9,7 @@
     [blaze.elm.compiler.arithmetic-operators-spec]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.compiler.test-util :as ctu]
     [blaze.elm.date-time :as date-time]
     [blaze.elm.date-time-spec]
     [blaze.elm.decimal :as decimal]
@@ -17,6 +17,7 @@
     [blaze.elm.literal-spec]
     [blaze.elm.protocols :as p]
     [blaze.elm.quantity :as quantity]
+    [blaze.elm.util-spec]
     [blaze.fhir.spec.type.system :as system]
     [blaze.test-util :refer [satisfies-prop]]
     [clojure.spec.alpha :as s]
@@ -31,12 +32,12 @@
 
 
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 
@@ -58,19 +59,19 @@
 (deftest compile-abs-test
   (testing "Static"
     (testing "Integer"
-      (are [x res] (= res (tu/compile-unop elm/abs elm/integer x))
+      (are [x res] (= res (ctu/compile-unop elm/abs elm/integer x))
         "-1" 1
         "0" 0
         "1" 1))
 
     (testing "Decimal"
-      (are [x res] (= res (tu/compile-unop elm/abs elm/decimal x))
+      (are [x res] (= res (ctu/compile-unop elm/abs elm/decimal x))
         "-1" 1M
         "0" 0M
         "1" 1M))
 
     (testing "Quantity"
-      (are [x res] (= res (tu/compile-unop elm/abs elm/quantity x))
+      (are [x res] (= res (ctu/compile-unop elm/abs elm/quantity x))
         [-1] (quantity/quantity 1 "1")
         [0] (quantity/quantity 0 "1")
         [1] (quantity/quantity 1 "1")
@@ -88,15 +89,15 @@
         [1M "m"] (quantity/quantity 1M "m"))))
 
   (testing "Dynamic"
-    (are [elm res] (= res (tu/dynamic-compile-eval (elm/abs elm)))
+    (are [elm res] (= res (ctu/dynamic-compile-eval (elm/abs elm)))
       #elm/parameter-ref "1" 1
       #elm/parameter-ref "-1" 1))
 
-  (tu/testing-unary-null elm/abs)
+  (ctu/testing-unary-null elm/abs)
 
-  (tu/testing-unary-dynamic elm/abs)
+  (ctu/testing-unary-dynamic elm/abs)
 
-  (tu/testing-unary-form elm/abs))
+  (ctu/testing-unary-form elm/abs))
 
 
 ;; 16.2. Add
@@ -150,14 +151,14 @@
 (deftest compile-add-test
   (testing "Integer"
     (testing "Static"
-      (are [x y res] (= res (tu/compile-binop elm/add elm/integer x y))
+      (are [x y res] (= res (ctu/compile-binop elm/add elm/integer x y))
         "-1" "-1" -2
         "-1" "0" -1
         "-1" "1" 0
         "1" "0" 1
         "1" "1" 2))
 
-    (tu/testing-binary-null elm/add #elm/integer "1"))
+    (ctu/testing-binary-null elm/add #elm/integer "1"))
 
   (testing "Adding zero integer to any integer or decimal doesn't change it"
     (satisfies-prop 100
@@ -180,22 +181,22 @@
 
   (testing "Decimal"
     (testing "Static"
-      (are [x y res] (= res (tu/compile-binop elm/add elm/decimal x y))
+      (are [x y res] (= res (ctu/compile-binop elm/add elm/decimal x y))
         "-1.1" "-1.1" -2.2M
         "-1.1" "0" -1.1M
         "-1.1" "1.1" 0M
         "1.1" "0" 1.1M
         "1.1" "1.1" 2.2M)
 
-      (tu/testing-binary-null elm/add #elm/decimal "1.1"))
+      (ctu/testing-binary-null elm/add #elm/decimal "1.1"))
 
     (testing "Mix with integer"
       (are [x y res] (= res (c/compile {} (elm/add [x y])))
         #elm/decimal "1.1" #elm/integer "1" 2.1M
         #elm/integer "1" #elm/decimal "1.1" 2.1M)
 
-      (tu/testing-binary-null elm/add #elm/integer "1" #elm/decimal "1.1")
-      (tu/testing-binary-null elm/add #elm/decimal "1.1" #elm/integer "1"))
+      (ctu/testing-binary-null elm/add #elm/integer "1" #elm/decimal "1.1")
+      (ctu/testing-binary-null elm/add #elm/decimal "1.1" #elm/integer "1"))
 
     (testing "Trailing zeros are preserved"
       (are [x y res] (= res (str (core/-eval (c/compile {} (elm/add [x y])) {} nil nil)))
@@ -222,7 +223,7 @@
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
   (testing "Time-based quantity"
-    (are [x y res] (= res (tu/compile-binop elm/add elm/quantity x y))
+    (are [x y res] (= res (ctu/compile-binop elm/add elm/quantity x y))
       [1 "year"] [1 "year"] (date-time/period 2 0 0)
       [1 "year"] [1 "month"] (date-time/period 1 1 0)
       [1 "year"] [1 "day"] (date-time/period 1 0 (* 24 3600 1000))
@@ -234,12 +235,12 @@
       [1 "year"] [13.1M "month"] (date-time/period 2 1.1M 0)))
 
   (testing "UCUM quantity"
-    (are [x y res] (p/equal res (tu/compile-binop elm/add elm/quantity x y))
+    (are [x y res] (p/equal res (ctu/compile-binop elm/add elm/quantity x y))
       [1 "m"] [1 "m"] (quantity/quantity 2 "m")
       [1 "m"] [1 "cm"] (quantity/quantity 1.01M "m")))
 
   (testing "Incompatible UCUM Quantity Subtractions"
-    (are [x y] (thrown? UnconvertibleException (tu/compile-binop elm/add elm/quantity x y))
+    (are [x y] (thrown? UnconvertibleException (ctu/compile-binop elm/add elm/quantity x y))
       [1 "cm2"] [1 "cm"]
       [1 "m"] [1 "s"]))
 
@@ -262,18 +263,18 @@
 
   (testing "Date + Quantity"
     (are [x y res] (= res (core/-eval (c/compile {} (elm/add [x y])) {} nil nil))
-      #elm/date"2019" #elm/quantity [1 "year"] #system/date"2020"
-      #elm/date"2019" #elm/quantity [13 "months"] #system/date"2020"
+      #elm/date "2019" #elm/quantity [1 "year"] #system/date"2020"
+      #elm/date "2019" #elm/quantity [13 "months"] #system/date"2020"
 
-      #elm/date"2019-01" #elm/quantity [1 "month"] #system/date"2019-02"
-      #elm/date"2019-01" #elm/quantity [12 "month"] #system/date"2020-01"
-      #elm/date"2019-01" #elm/quantity [13 "month"] #system/date"2020-02"
-      #elm/date"2019-01" #elm/quantity [1 "year"] #system/date"2020-01"
+      #elm/date "2019-01" #elm/quantity [1 "month"] #system/date"2019-02"
+      #elm/date "2019-01" #elm/quantity [12 "month"] #system/date"2020-01"
+      #elm/date "2019-01" #elm/quantity [13 "month"] #system/date"2020-02"
+      #elm/date "2019-01" #elm/quantity [1 "year"] #system/date"2020-01"
 
-      #elm/date"2019-01-01" #elm/quantity [1 "year"] #system/date"2020-01-01"
-      #elm/date"2012-02-29" #elm/quantity [1 "year"] #system/date"2013-02-28"
-      #elm/date"2019-01-01" #elm/quantity [1 "month"] #system/date"2019-02-01"
-      #elm/date"2019-01-01" #elm/quantity [1 "day"] #system/date"2019-01-02"))
+      #elm/date "2019-01-01" #elm/quantity [1 "year"] #system/date"2020-01-01"
+      #elm/date "2012-02-29" #elm/quantity [1 "year"] #system/date"2013-02-28"
+      #elm/date "2019-01-01" #elm/quantity [1 "month"] #system/date"2019-02-01"
+      #elm/date "2019-01-01" #elm/quantity [1 "day"] #system/date"2019-01-02"))
 
   (testing "Adding a positive amount of years to a year makes it greater"
     (satisfies-prop 100
@@ -301,7 +302,7 @@
       (prop/for-all [date-time (s/gen :elm/literal-date-time)
                      years (s/gen :elm/pos-years)]
         (let [elm (elm/greater [(elm/add [date-time years]) date-time])]
-          (not (false? (core/-eval (c/compile {} elm) {:now tu/now} nil nil)))))))
+          (not (false? (core/-eval (c/compile {} elm) {:now ctu/now} nil nil)))))))
 
   (testing "Adding a positive amount of months to a year-month makes it greater"
     (satisfies-prop 100
@@ -322,7 +323,7 @@
       (prop/for-all [date-time (s/gen :elm/literal-date-time)
                      months (s/gen :elm/pos-months)]
         (let [elm (elm/greater-or-equal [(elm/add [date-time months]) date-time])]
-          (not (false? (core/-eval (c/compile {} elm) {:now tu/now} nil nil)))))))
+          (not (false? (core/-eval (c/compile {} elm) {:now ctu/now} nil nil)))))))
 
   ;; TODO: is that right?
   (testing "Adding a positive amount of days to a year doesn't change it."
@@ -352,7 +353,7 @@
       (prop/for-all [date-time (s/gen :elm/literal-date-time)
                      days (s/gen :elm/pos-days)]
         (let [elm (elm/greater-or-equal [(elm/add [date-time days]) date-time])]
-          (not (false? (core/-eval (c/compile {} elm) {:now tu/now} nil nil)))))))
+          (not (false? (core/-eval (c/compile {} elm) {:now ctu/now} nil nil)))))))
 
   (testing "DateTime + Quantity"
     (are [x y res] (= res (core/-eval (c/compile {} (elm/add [x y])) {} nil nil))
@@ -370,9 +371,9 @@
       #elm/time "00:00:00" #elm/quantity [1 "minute"] (date-time/local-time 0 1 0)
       #elm/time "00:00:00" #elm/quantity [1 "second"] (date-time/local-time 0 0 1)))
 
-  (tu/testing-binary-dynamic elm/add)
+  (ctu/testing-binary-dynamic elm/add)
 
-  (tu/testing-binary-form elm/add))
+  (ctu/testing-binary-form elm/add))
 
 
 ;; 16.3. Ceiling
@@ -386,11 +387,11 @@
     #elm/integer "1" 1
     #elm/decimal "1.1" 2)
 
-  (tu/testing-unary-null elm/ceiling)
+  (ctu/testing-unary-null elm/ceiling)
 
-  (tu/testing-unary-dynamic elm/ceiling)
+  (ctu/testing-unary-dynamic elm/ceiling)
 
-  (tu/testing-unary-form elm/ceiling))
+  (ctu/testing-unary-form elm/ceiling))
 
 
 ;; 16.4. Divide
@@ -411,7 +412,7 @@
 (deftest compile-divide-test
   (testing "Decimal"
     (testing "Static"
-      (are [x y res] (= res (tu/compile-binop elm/divide elm/decimal x y))
+      (are [x y res] (= res (ctu/compile-binop elm/divide elm/decimal x y))
         "1" "2" 0.5M
         "1.1" "2" 0.55M
         "10" "3" 3.33333333M
@@ -419,60 +420,60 @@
         "1" "0" nil
         "1" "0.0" nil))
 
-    (tu/testing-binary-null elm/divide #elm/decimal "1.1"))
+    (ctu/testing-binary-null elm/divide #elm/decimal "1.1"))
 
   (testing "Integer"
     (testing "Static"
-      (are [x y res] (= res (tu/compile-binop elm/divide elm/integer x y))
+      (are [x y res] (= res (ctu/compile-binop elm/divide elm/integer x y))
         "1" "2" 0.5M
         "10" "3" 3.33333333M
 
         "1" "0" nil))
 
-    (tu/testing-binary-null elm/divide #elm/integer "1"))
+    (ctu/testing-binary-null elm/divide #elm/integer "1"))
 
   (testing "Decimal/Integer"
     (testing "Static"
-      (are [x y res] (= res (tu/compile-binop elm/divide elm/decimal elm/integer x y))
+      (are [x y res] (= res (ctu/compile-binop elm/divide elm/decimal elm/integer x y))
         "3" "2" 1.5M
 
         "1" "0" nil))
 
-    (tu/testing-binary-null elm/divide #elm/decimal "1.1" #elm/integer "1"))
+    (ctu/testing-binary-null elm/divide #elm/decimal "1.1" #elm/integer "1"))
 
   (testing "Integer/Decimal"
     (testing "Static"
-      (are [x y res] (= res (tu/compile-binop elm/divide elm/integer elm/decimal x y))
+      (are [x y res] (= res (ctu/compile-binop elm/divide elm/integer elm/decimal x y))
         "3" "2" 1.5M
 
         "1" "0" nil
         "1" "0.0" nil))
 
-    (tu/testing-binary-null elm/divide #elm/integer "1" #elm/decimal "1.1"))
+    (ctu/testing-binary-null elm/divide #elm/integer "1" #elm/decimal "1.1"))
 
   (testing "Quantity"
     (testing "Static"
-      (are [x y res] (p/equal res (tu/compile-binop elm/divide elm/quantity x y))
+      (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity x y))
         [1 "m"] [1 "s"] (quantity/quantity 1 "m/s")
         [1M "m"] [1M "s"] (quantity/quantity 1M "m/s")
 
         [12 "cm2"] [3 "cm"] (quantity/quantity 4 "cm")))
 
-    (tu/testing-binary-null elm/divide #elm/quantity [1]))
+    (ctu/testing-binary-null elm/divide #elm/quantity [1]))
 
   (testing "Quantity/Integer"
     (testing "Static"
-      (are [x y res] (p/equal res (tu/compile-binop elm/divide elm/quantity elm/integer x y))
+      (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity elm/integer x y))
         [1M "m"] "2" (quantity/quantity 0.5M "m")))
 
-    (tu/testing-binary-null elm/divide #elm/quantity [1] #elm/integer "1"))
+    (ctu/testing-binary-null elm/divide #elm/quantity [1] #elm/integer "1"))
 
   (testing "Quantity/Decimal"
     (testing "Static"
-      (are [x y res] (p/equal res (tu/compile-binop elm/divide elm/quantity elm/decimal x y))
+      (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity elm/decimal x y))
         [2.5M "m"] "2.5" (quantity/quantity 1M "m")))
 
-    (tu/testing-binary-null elm/divide #elm/quantity [1] #elm/decimal "1.1"))
+    (ctu/testing-binary-null elm/divide #elm/quantity [1] #elm/decimal "1.1"))
 
   (testing "(d / d) * d = d"
     (satisfies-prop 100
@@ -480,9 +481,9 @@
         (let [elm (elm/equal [(elm/multiply [(elm/divide [decimal decimal]) decimal]) decimal])]
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
-  (tu/testing-binary-dynamic elm/divide)
+  (ctu/testing-binary-dynamic elm/divide)
 
-  (tu/testing-binary-form elm/divide))
+  (ctu/testing-binary-form elm/divide))
 
 
 ;; 16.5. Exp
@@ -495,11 +496,11 @@
     #elm/integer "0" 1M
     #elm/decimal "0" 1M)
 
-  (tu/testing-unary-null elm/exp)
+  (ctu/testing-unary-null elm/exp)
 
-  (tu/testing-unary-dynamic elm/exp)
+  (ctu/testing-unary-dynamic elm/exp)
 
-  (tu/testing-unary-form elm/exp))
+  (ctu/testing-unary-form elm/exp))
 
 
 ;; 16.6. Floor
@@ -513,11 +514,11 @@
     #elm/integer "1" 1
     #elm/decimal "1.1" 1)
 
-  (tu/testing-unary-null elm/floor)
+  (ctu/testing-unary-null elm/floor)
 
-  (tu/testing-unary-dynamic elm/floor)
+  (ctu/testing-unary-dynamic elm/floor)
 
-  (tu/testing-unary-form elm/floor))
+  (ctu/testing-unary-form elm/floor))
 
 
 ;; 16.7. HighBoundary
@@ -550,7 +551,7 @@
 
       #elm/integer "0" #elm/integer "2" nil)
 
-    (tu/testing-binary-null elm/log #elm/integer "1"))
+    (ctu/testing-binary-null elm/log #elm/integer "1"))
 
   (testing "Decimal"
     (are [x base res] (= res (c/compile {} (elm/log [x base])))
@@ -559,11 +560,11 @@
 
       #elm/decimal "0" #elm/integer "2" nil)
 
-    (tu/testing-binary-null elm/log #elm/decimal "1.1"))
+    (ctu/testing-binary-null elm/log #elm/decimal "1.1"))
 
-  (tu/testing-binary-dynamic elm/log)
+  (ctu/testing-binary-dynamic elm/log)
 
-  (tu/testing-binary-form elm/log))
+  (ctu/testing-binary-form elm/log))
 
 
 ;; 16.9. LowBoundary
@@ -605,11 +606,11 @@
     #elm/integer "-1" nil
     #elm/decimal "-1" nil)
 
-  (tu/testing-unary-null elm/ln)
+  (ctu/testing-unary-null elm/ln)
 
-  (tu/testing-unary-dynamic elm/ln)
+  (ctu/testing-unary-dynamic elm/ln)
 
-  (tu/testing-unary-form elm/ln))
+  (ctu/testing-unary-form elm/ln))
 
 
 ;; 16.11. MaxValue
@@ -714,31 +715,31 @@
 ;; The Modulo operator is defined for the Integer and Decimal types.
 (deftest compile-modulo-test
   (testing "Integer"
-    (are [x div res] (= res (tu/compile-binop elm/modulo elm/integer x div))
+    (are [x div res] (= res (ctu/compile-binop elm/modulo elm/integer x div))
       "1" "2" 1
       "3" "2" 1
       "5" "3" 2)
 
-    (tu/testing-binary-null elm/modulo #elm/integer "1"))
+    (ctu/testing-binary-null elm/modulo #elm/integer "1"))
 
   (testing "Decimal"
-    (are [x div res] (= res (tu/compile-binop elm/modulo elm/decimal x div))
+    (are [x div res] (= res (ctu/compile-binop elm/modulo elm/decimal x div))
       "1" "2" 1M
       "3" "2" 1M
       "5" "3" 2M
 
       "2.5" "2" 0.5M)
 
-    (tu/testing-binary-null elm/modulo #elm/decimal "1.1"))
+    (ctu/testing-binary-null elm/modulo #elm/decimal "1.1"))
 
   (testing "Mixed Integer and Decimal"
     (are [x div res] (= res (core/-eval (c/compile {} (elm/modulo [x div])) {} nil nil))
       #elm/integer "1" #elm/integer "0" nil
       #elm/decimal "1" #elm/decimal "0" nil))
 
-  (tu/testing-binary-dynamic elm/modulo)
+  (ctu/testing-binary-dynamic elm/modulo)
 
-  (tu/testing-binary-form elm/modulo))
+  (ctu/testing-binary-form elm/modulo))
 
 
 ;; 16.14. Multiply
@@ -755,22 +756,22 @@
 ;; The Multiply operator is defined for the Integer, Decimal and Quantity types.
 (deftest compile-multiply-test
   (testing "Integer"
-    (are [x y res] (= res (tu/compile-binop elm/multiply elm/integer x y))
+    (are [x y res] (= res (ctu/compile-binop elm/multiply elm/integer x y))
       "1" "2" 2
       "2" "2" 4)
 
-    (tu/testing-binary-null elm/multiply #elm/integer "1"))
+    (ctu/testing-binary-null elm/multiply #elm/integer "1"))
 
   (testing "Decimal"
     (testing "Decimal"
-      (are [x y res] (= res (tu/compile-binop elm/multiply elm/decimal x y))
+      (are [x y res] (= res (ctu/compile-binop elm/multiply elm/decimal x y))
         "1" "2" 2M
         "1.23456" "1.23456" 1.52413839M)
 
-      (tu/testing-binary-null elm/multiply #elm/decimal "1.1"))
+      (ctu/testing-binary-null elm/multiply #elm/decimal "1.1"))
 
     (testing "Arithmetic overflow results in nil"
-      (are [x y] (nil? (tu/compile-binop elm/multiply elm/decimal x y))
+      (are [x y] (nil? (ctu/compile-binop elm/multiply elm/decimal x y))
         "99999999999999999999" "2"
         "99999999999999999999.99999999" "2")))
 
@@ -779,11 +780,11 @@
       #elm/quantity [1 "m"] #elm/integer "2" (quantity/quantity 2 "m")
       #elm/quantity [1 "m"] #elm/quantity [2 "m"] (quantity/quantity 2 "m2"))
 
-    (tu/testing-binary-null elm/multiply #elm/quantity [1]))
+    (ctu/testing-binary-null elm/multiply #elm/quantity [1]))
 
-  (tu/testing-binary-dynamic elm/multiply)
+  (ctu/testing-binary-dynamic elm/multiply)
 
-  (tu/testing-binary-form elm/multiply))
+  (ctu/testing-binary-form elm/multiply))
 
 
 ;; 16.15. Negate
@@ -811,11 +812,11 @@
       #elm/quantity [1 "m"] (quantity/quantity -1 "m")
       #elm/quantity [1M "m"] (quantity/quantity -1M "m")))
 
-  (tu/testing-unary-null elm/negate)
+  (ctu/testing-unary-null elm/negate)
 
-  (tu/testing-unary-dynamic elm/negate)
+  (ctu/testing-unary-dynamic elm/negate)
 
-  (tu/testing-unary-form elm/negate))
+  (ctu/testing-unary-form elm/negate))
 
 
 ;; 16.16. Power
@@ -829,19 +830,19 @@
 ;; If either argument is null, the result is null.
 (deftest compile-power-test
   (testing "Integer"
-    (are [x y res] (= res (tu/compile-binop elm/power elm/integer x y))
+    (are [x y res] (= res (ctu/compile-binop elm/power elm/integer x y))
       "10" "2" 100
       "2" "-2" 0.25M)
 
-    (tu/testing-binary-null elm/power #elm/integer "1"))
+    (ctu/testing-binary-null elm/power #elm/integer "1"))
 
   (testing "Decimal"
-    (are [x y res] (= res (tu/compile-binop elm/power elm/decimal x y))
+    (are [x y res] (= res (ctu/compile-binop elm/power elm/decimal x y))
       "2.5" "2" 6.25M
       "10" "2" 100M
       "4" "0.5" 2M)
 
-    (tu/testing-binary-null elm/power #elm/decimal "1.1"))
+    (ctu/testing-binary-null elm/power #elm/decimal "1.1"))
 
   (testing "Mixed"
     (are [x y res] (= res (c/compile {} (elm/power [x y])))
@@ -849,9 +850,9 @@
       #elm/decimal "10" #elm/integer "2" 100M
       #elm/decimal "10" #elm/integer "2" 100M))
 
-  (tu/testing-binary-dynamic elm/power)
+  (ctu/testing-binary-dynamic elm/power)
 
-  (tu/testing-binary-form elm/power))
+  (ctu/testing-binary-form elm/power))
 
 
 ;; 16.17. Precision
@@ -904,12 +905,12 @@
 
   (testing "Date"
     (are [x res] (= res (c/compile {} (elm/predecessor x)))
-      #elm/date"0001" nil
-      #elm/date"0001-01" nil
-      #elm/date"0001-01-01" nil
-      #elm/date"2019" #system/date"2018"
-      #elm/date"2019-01" #system/date"2018-12"
-      #elm/date"2019-01-01" #system/date"2018-12-31"))
+      #elm/date "0001" nil
+      #elm/date "0001-01" nil
+      #elm/date "0001-01-01" nil
+      #elm/date "2019" #system/date"2018"
+      #elm/date "2019-01" #system/date"2018-12"
+      #elm/date "2019-01-01" #system/date"2018-12-31"))
 
   (testing "DateTime"
     (are [x res] (= res (c/compile {} (elm/predecessor x)))
@@ -930,14 +931,14 @@
   (testing "Quantity"
     (are [x res] (= res (c/compile {} (elm/predecessor x)))
       (elm/quantity [decimal/min]) nil
-      #_#_#elm/quantity [0 "m"] (quantity/quantity -1 "m")   ; TODO: implement
+      #_#_#elm/quantity [0 "m"] (quantity/quantity -1 "m")  ; TODO: implement
       #elm/quantity [0M "m"] (quantity/quantity -1E-8M "m")))
 
-  (tu/testing-unary-null elm/predecessor)
+  (ctu/testing-unary-null elm/predecessor)
 
-  (tu/testing-unary-dynamic elm/predecessor)
+  (ctu/testing-unary-dynamic elm/predecessor)
 
-  (tu/testing-unary-form elm/predecessor))
+  (ctu/testing-unary-form elm/predecessor))
 
 
 ;; 16.19. Round
@@ -987,15 +988,15 @@
         (is (nil? (core/-eval expr eval-ctx nil nil))))))
 
 
-  (tu/testing-unary-null elm/round)
+  (ctu/testing-unary-null elm/round)
 
-  (tu/testing-unary-dynamic elm/round)
+  (ctu/testing-unary-dynamic elm/round)
 
-  (tu/testing-unary-form elm/round)
+  (ctu/testing-unary-form elm/round)
 
-  (tu/testing-binary-dynamic elm/round)
+  (ctu/testing-binary-dynamic elm/round)
 
-  (tu/testing-binary-form elm/round))
+  (ctu/testing-binary-form elm/round))
 
 
 ;; 16.20. Subtract
@@ -1124,64 +1125,64 @@
 
   (testing "Date - Quantity"
     (are [x y res] (= res (c/compile {} (elm/subtract [x y])))
-      #elm/date"2019" #elm/quantity [1 "year"] #system/date"2018"
-      #elm/date"2019" #elm/quantity [13 "months"] #system/date"2018"
+      #elm/date "2019" #elm/quantity [1 "year"] #system/date"2018"
+      #elm/date "2019" #elm/quantity [13 "months"] #system/date"2018"
 
-      #elm/date"2019-01" #elm/quantity [1 "month"] #system/date"2018-12"
-      #elm/date"2019-01" #elm/quantity [12 "month"] #system/date"2018-01"
-      #elm/date"2019-01" #elm/quantity [13 "month"] #system/date"2017-12"
-      #elm/date"2019-01" #elm/quantity [1 "year"] #system/date"2018-01"
+      #elm/date "2019-01" #elm/quantity [1 "month"] #system/date"2018-12"
+      #elm/date "2019-01" #elm/quantity [12 "month"] #system/date"2018-01"
+      #elm/date "2019-01" #elm/quantity [13 "month"] #system/date"2017-12"
+      #elm/date "2019-01" #elm/quantity [1 "year"] #system/date"2018-01"
 
-      #elm/date"2019-01-01" #elm/quantity [1 "year"] #system/date"2018-01-01"
-      #elm/date"2012-02-29" #elm/quantity [1 "year"] #system/date"2011-02-28"
-      #elm/date"2019-01-01" #elm/quantity [1 "month"] #system/date"2018-12-01"
-      #elm/date"2019-01-01" #elm/quantity [1 "day"] #system/date"2018-12-31"
+      #elm/date "2019-01-01" #elm/quantity [1 "year"] #system/date"2018-01-01"
+      #elm/date "2012-02-29" #elm/quantity [1 "year"] #system/date"2011-02-28"
+      #elm/date "2019-01-01" #elm/quantity [1 "month"] #system/date"2018-12-01"
+      #elm/date "2019-01-01" #elm/quantity [1 "day"] #system/date"2018-12-31"
 
-      #elm/date"2022" #elm/quantity [2022 "year"] nil
-      #elm/date"2022-07" #elm/quantity [2022 "year"] nil
-      #elm/date"2022-07-07" #elm/quantity [2022 "year"] nil))
+      #elm/date "2022" #elm/quantity [2022 "year"] nil
+      #elm/date "2022-07" #elm/quantity [2022 "year"] nil
+      #elm/date "2022-07-07" #elm/quantity [2022 "year"] nil))
 
   (testing "Subtracting a positive amount of years from a year makes it smaller"
-      (satisfies-prop 100
-        (prop/for-all [year (s/gen :elm/year)
-                       years (s/gen :elm/pos-years)]
-          (let [elm (elm/less [(elm/subtract [year years]) year])]
-            (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
+    (satisfies-prop 100
+      (prop/for-all [year (s/gen :elm/year)
+                     years (s/gen :elm/pos-years)]
+        (let [elm (elm/less [(elm/subtract [year years]) year])]
+          (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
   (testing "Subtracting a positive amount of years from a year-month makes it smaller"
-      (satisfies-prop 100
-        (prop/for-all [year-month (s/gen :elm/year-month)
-                       years (s/gen :elm/pos-years)]
-          (let [elm (elm/less [(elm/subtract [year-month years]) year-month])]
-            (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
+    (satisfies-prop 100
+      (prop/for-all [year-month (s/gen :elm/year-month)
+                     years (s/gen :elm/pos-years)]
+        (let [elm (elm/less [(elm/subtract [year-month years]) year-month])]
+          (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
   (testing "Subtracting a positive amount of years from a date makes it smaller"
-      (satisfies-prop 100
-        (prop/for-all [date (s/gen :elm/literal-date)
-                       years (s/gen :elm/pos-years)]
-          (let [elm (elm/less [(elm/subtract [date years]) date])]
-            (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
+    (satisfies-prop 100
+      (prop/for-all [date (s/gen :elm/literal-date)
+                     years (s/gen :elm/pos-years)]
+        (let [elm (elm/less [(elm/subtract [date years]) date])]
+          (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
   (testing "Subtracting a positive amount of months from a year-month makes it smaller"
-      (satisfies-prop 100
-        (prop/for-all [year-month (s/gen :elm/year-month)
-                       months (s/gen :elm/pos-months)]
-          (let [elm (elm/less [(elm/subtract [year-month months]) year-month])]
-            (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
+    (satisfies-prop 100
+      (prop/for-all [year-month (s/gen :elm/year-month)
+                     months (s/gen :elm/pos-months)]
+        (let [elm (elm/less [(elm/subtract [year-month months]) year-month])]
+          (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
   (testing "Subtracting a positive amount of months from a date makes it smaller or lets it equal because a date can be also a year and subtracting a small amount of months from a year doesn't change it."
-      (satisfies-prop 100
-        (prop/for-all [date (s/gen :elm/literal-date)
-                       months (s/gen :elm/pos-months)]
-          (let [elm (elm/less-or-equal [(elm/subtract [date months]) date])]
-            (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
+    (satisfies-prop 100
+      (prop/for-all [date (s/gen :elm/literal-date)
+                     months (s/gen :elm/pos-months)]
+        (let [elm (elm/less-or-equal [(elm/subtract [date months]) date])]
+          (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
   (testing "Subtracting a positive amount of days from a date makes it smaller or lets it equal because a date can be also a year or year-month and subtracting any amount of days from a year or year-month doesn't change it."
-      (satisfies-prop 100
-        (prop/for-all [date (s/gen :elm/literal-date)
-                       days (s/gen :elm/pos-days)]
-          (let [elm (elm/less-or-equal [(elm/subtract [date days]) date])]
-            (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
+    (satisfies-prop 100
+      (prop/for-all [date (s/gen :elm/literal-date)
+                     days (s/gen :elm/pos-days)]
+        (let [elm (elm/less-or-equal [(elm/subtract [date days]) date])]
+          (not (false? (core/-eval (c/compile {} elm) {} nil nil)))))))
 
   (testing "DateTime - Quantity"
     (are [x y res] (= res (c/compile {} (elm/subtract [x y])))
@@ -1215,9 +1216,9 @@
       #elm/time "00:00:00" #elm/quantity [1 "minute"] (date-time/local-time 23 59 0)
       #elm/time "00:00:00" #elm/quantity [1 "second"] (date-time/local-time 23 59 59)))
 
-  (tu/testing-binary-dynamic elm/subtract)
+  (ctu/testing-binary-dynamic elm/subtract)
 
-  (tu/testing-binary-form elm/subtract))
+  (ctu/testing-binary-form elm/subtract))
 
 
 ;; 16.21. Successor
@@ -1257,12 +1258,12 @@
 
   (testing "Date"
     (are [x res] (= res (c/compile {} (elm/successor x)))
-      #elm/date"9999" nil
-      #elm/date"9999-12" nil
-      #elm/date"9999-12-31" nil
-      #elm/date"2019" #system/date"2020"
-      #elm/date"2019-01" #system/date"2019-02"
-      #elm/date"2019-01-01" #system/date"2019-01-02"))
+      #elm/date "9999" nil
+      #elm/date "9999-12" nil
+      #elm/date "9999-12-31" nil
+      #elm/date "2019" #system/date"2020"
+      #elm/date "2019-01" #system/date"2019-02"
+      #elm/date "2019-01-01" #system/date"2019-01-02"))
 
   (testing "DateTime"
     (are [x res] (= res (c/compile {} (elm/successor x)))
@@ -1283,14 +1284,14 @@
   (testing "Quantity"
     (are [x res] (= res (c/compile {} (elm/successor x)))
       (elm/quantity [decimal/max]) nil
-      #_#_#elm/quantity [0 "m"] (quantity/quantity 1 "m")    ; TODO: implement
+      #_#_#elm/quantity [0 "m"] (quantity/quantity 1 "m")   ; TODO: implement
       #elm/quantity [0M "m"] (quantity/quantity 1E-8M "m")))
 
-  (tu/testing-unary-null elm/successor)
+  (ctu/testing-unary-null elm/successor)
 
-  (tu/testing-unary-dynamic elm/successor)
+  (ctu/testing-unary-dynamic elm/successor)
 
-  (tu/testing-unary-form elm/successor))
+  (ctu/testing-unary-form elm/successor))
 
 
 ;; 16.22. Truncate
@@ -1304,11 +1305,11 @@
       #elm/integer "1" 1
       #elm/decimal "1.1" 1))
 
-  (tu/testing-unary-null elm/truncate)
+  (ctu/testing-unary-null elm/truncate)
 
-  (tu/testing-unary-dynamic elm/truncate)
+  (ctu/testing-unary-dynamic elm/truncate)
 
-  (tu/testing-unary-form elm/truncate))
+  (ctu/testing-unary-form elm/truncate))
 
 
 ;; 16.23. TruncatedDivide
@@ -1324,51 +1325,51 @@
 (deftest compile-truncated-divide-test
   (testing "Decimal"
     (testing "Static"
-      (are [num div res] (= res (tu/compile-binop elm/truncated-divide
-                                                  elm/decimal num div))
+      (are [num div res] (= res (ctu/compile-binop elm/truncated-divide
+                                                   elm/decimal num div))
         "4.14" "2.06" 2M
 
         "1" "0" nil
         "1" "0.0" nil))
 
-    (tu/testing-binary-null elm/truncated-divide #elm/decimal "1.1"))
+    (ctu/testing-binary-null elm/truncated-divide #elm/decimal "1.1"))
 
   (testing "Integer"
     (testing "Static"
-      (are [num div res] (= res (tu/compile-binop elm/truncated-divide
-                                                  elm/integer num div))
+      (are [num div res] (= res (ctu/compile-binop elm/truncated-divide
+                                                   elm/integer num div))
         "1" "2" 0
         "2" "2" 1
 
         "1" "0" nil))
 
-    (tu/testing-binary-null elm/truncated-divide #elm/integer "1"))
+    (ctu/testing-binary-null elm/truncated-divide #elm/integer "1"))
 
   (testing "Decimal/Integer"
     (testing "Static"
-      (are [num div res] (= res (tu/compile-binop elm/truncated-divide
-                                                  elm/decimal elm/integer
-                                                  num div))
+      (are [num div res] (= res (ctu/compile-binop elm/truncated-divide
+                                                   elm/decimal elm/integer
+                                                   num div))
         "3" "2" 1M
 
         "1" "0" nil))
 
-    (tu/testing-binary-null elm/truncated-divide #elm/decimal "1.1"
-                            #elm/integer "1"))
+    (ctu/testing-binary-null elm/truncated-divide #elm/decimal "1.1"
+                             #elm/integer "1"))
 
   (testing "Integer/Decimal"
     (testing "Static"
-      (are [num div res] (= res (tu/compile-binop elm/truncated-divide
-                                                  elm/integer elm/decimal
-                                                  num div))
+      (are [num div res] (= res (ctu/compile-binop elm/truncated-divide
+                                                   elm/integer elm/decimal
+                                                   num div))
         "3" "2" 1M
 
         "1" "0" nil
         "1" "0.0" nil))
 
-    (tu/testing-binary-null elm/truncated-divide #elm/integer "1"
-                            #elm/decimal "1.1"))
+    (ctu/testing-binary-null elm/truncated-divide #elm/integer "1"
+                             #elm/decimal "1.1"))
 
-  (tu/testing-binary-dynamic elm/truncated-divide)
+  (ctu/testing-binary-dynamic elm/truncated-divide)
 
-  (tu/testing-binary-form elm/truncated-divide))
+  (ctu/testing-binary-form elm/truncated-divide))

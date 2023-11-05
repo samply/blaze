@@ -7,7 +7,7 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.compiler.test-util :as ctu]
     [blaze.elm.date-time :as date-time]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
@@ -26,12 +26,12 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 
@@ -76,10 +76,10 @@
     (is (nil? (c/compile {} #elm/date [{:type "null"}]))))
 
   (testing "Static year"
-    (is (= #system/date"2019" (c/compile {} #elm/date"2019"))))
+    (is (= #system/date"2019" (c/compile {} #elm/date "2019"))))
 
   (testing "Static year over 9.999"
-    (given-thrown (c/compile {} #elm/date"10000")
+    (given-thrown (c/compile {} #elm/date "10000")
       :message := "Invalid value for Year (valid values 1 - 9999): 10000"))
 
   (testing "Dynamic year has type :system/date"
@@ -110,7 +110,7 @@
 
   (testing "Static year-month"
     (are [elm res] (= res (c/compile {} elm))
-      #elm/date"2019-03"
+      #elm/date "2019-03"
       #system/date"2019-03"))
 
   (testing "Dynamic year-month has type :system/date"
@@ -153,7 +153,7 @@
 
   (testing "Static date"
     (are [elm res] (= res (c/compile {} elm))
-      #elm/date"2019-03-23"
+      #elm/date "2019-03-23"
       #system/date"2019-03-23"))
 
   (testing "Dynamic date"
@@ -226,19 +226,19 @@
 ;; If the argument is null, the result is null.
 (deftest compile-date-from-test
   (are [x res] (= res (c/compile {} (elm/date-from x)))
-    #elm/date"2019" #system/date"2019"
-    #elm/date"2019-04" #system/date"2019-04"
-    #elm/date"2019-04-17" #system/date"2019-04-17"
+    #elm/date "2019" #system/date"2019"
+    #elm/date "2019-04" #system/date"2019-04"
+    #elm/date "2019-04-17" #system/date"2019-04-17"
     #elm/date-time"2019" #system/date"2019"
     #elm/date-time"2019-04" #system/date"2019-04"
     #elm/date-time"2019-04-17" #system/date"2019-04-17"
     #elm/date-time"2019-04-17T12:48" #system/date"2019-04-17")
 
-  (tu/testing-unary-null elm/date-from)
+  (ctu/testing-unary-null elm/date-from)
 
-  (tu/testing-unary-dynamic elm/date-from)
+  (ctu/testing-unary-dynamic elm/date-from)
 
-  (tu/testing-unary-form elm/date-from))
+  (ctu/testing-unary-form elm/date-from))
 
 
 ;; 18.8. DateTime
@@ -368,7 +368,7 @@
       #elm/date-time"10000-12-31T23:59:59.999"))
 
   (testing "with timezone offset"
-    (are [elm res] (= res (core/-eval (c/compile {} elm) {:now tu/now} nil nil))
+    (are [elm res] (= res (core/-eval (c/compile {} elm) {:now ctu/now} nil nil))
       #elm/date-time[#elm/integer "2019" #elm/integer "3" #elm/integer "23"
                      #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
                      #elm/decimal "-2"]
@@ -400,7 +400,7 @@
       (system/date-time 2012 3 10 3 20 0 999)))
 
   (testing "with decimal timezone offset"
-    (are [elm res] (= res (core/-eval (c/compile {} elm) {:now tu/now} nil nil))
+    (are [elm res] (= res (core/-eval (c/compile {} elm) {:now ctu/now} nil nil))
       #elm/date-time[#elm/integer "2019" #elm/integer "3" #elm/integer "23"
                      #elm/integer "12" #elm/integer "13" #elm/integer "14" #elm/integer "0"
                      #elm/decimal "1.5"]
@@ -409,7 +409,7 @@
   (testing "an ELM date-time (only literals) always evaluates to a System.DateTime"
     (satisfies-prop 100
       (prop/for-all [date-time (s/gen :elm/literal-date-time)]
-        (system/date-time? (core/-eval (c/compile {} date-time) {:now tu/now} nil nil)))))
+        (system/date-time? (core/-eval (c/compile {} date-time) {:now ctu/now} nil nil)))))
 
   (testing "form and static"
     (let [compile-ctx {:library
@@ -584,8 +584,8 @@
 ;; Millisecond. Note specifically that since there is variability how weeks are
 ;; counted, Week precision is not supported, and will result in an error.
 (deftest compile-date-time-component-from-test
-  (let [compile (partial tu/compile-unop-precision elm/date-time-component-from)
-        eval #(core/-eval % {:now tu/now} nil nil)]
+  (let [compile (partial ctu/compile-unop-precision elm/date-time-component-from)
+        eval #(core/-eval % {:now ctu/now} nil nil)]
 
     (doseq [op-ctor [elm/date elm/date-time]]
       (are [x precision res] (= res (eval (compile op-ctor x precision)))
@@ -602,11 +602,11 @@
     (are [x precision res] (= res (eval (compile elm/date-time x precision)))
       "2019-04-17T12:48" "Hour" 12))
 
-  (tu/testing-unary-precision-dynamic elm/date-time-component-from "Year" "Month"
-                                      "Day" "Hour" "Minute" "Second" "Millisecond")
+  (ctu/testing-unary-precision-dynamic elm/date-time-component-from "Year" "Month"
+                                       "Day" "Hour" "Minute" "Second" "Millisecond")
 
-  (tu/testing-unary-precision-form elm/date-time-component-from "Year" "Month"
-                                   "Day" "Hour" "Minute" "Second" "Millisecond"))
+  (ctu/testing-unary-precision-form elm/date-time-component-from "Year" "Month"
+                                    "Day" "Hour" "Minute" "Second" "Millisecond"))
 
 
 ;; 18.10. DifferenceBetween
@@ -635,7 +635,7 @@
 ;; Note that this operator can be implemented using Uncertainty as described in
 ;; the CQL specification, Chapter 5, Precision-Based Timing.
 (deftest compile-difference-between-test
-  (let [compile (partial tu/compile-binop-precision elm/difference-between)]
+  (let [compile (partial ctu/compile-binop-precision elm/difference-between)]
 
     (testing "Year precision"
       (doseq [op-xtor [elm/date elm/date-time]]
@@ -675,9 +675,9 @@
           "2018-01" "2018-01" "Day"
           "2018-01-01" "2018-01-01" "Hour"))))
 
-  (tu/testing-binary-precision-dynamic elm/difference-between "Year" "Month" "Day")
+  (ctu/testing-binary-precision-dynamic elm/difference-between "Year" "Month" "Day")
 
-  (tu/testing-binary-precision-form elm/difference-between "Year" "Month" "Day"))
+  (ctu/testing-binary-precision-form elm/difference-between "Year" "Month" "Day"))
 
 
 ;; 18.11. DurationBetween
@@ -705,7 +705,7 @@
 ;; Note that this operator can be implemented using Uncertainty as described in
 ;; the CQL specification, Chapter 5, Precision-Based Timing.
 (deftest compile-duration-between-test
-  (let [compile (partial tu/compile-binop-precision elm/duration-between)]
+  (let [compile (partial ctu/compile-binop-precision elm/duration-between)]
 
     (testing "Year precision"
       (doseq [op-ctor [elm/date elm/date-time]]
@@ -745,9 +745,9 @@
           "2018-01" "2018-01" "Day"
           "2018-01-01" "2018-01-01" "Hour"))))
 
-  (tu/testing-binary-precision-dynamic elm/duration-between "Year" "Month" "Day")
+  (ctu/testing-binary-precision-dynamic elm/duration-between "Year" "Month" "Day")
 
-  (tu/testing-binary-precision-form elm/duration-between "Year" "Month" "Day"))
+  (ctu/testing-binary-precision-form elm/duration-between "Year" "Month" "Day"))
 
 
 ;; 18.12. Not Equal
@@ -768,9 +768,9 @@
 ;; request, allowing the evaluation to be performed with the same timezone
 ;; offset information as the data delivered with the evaluation request.
 (deftest compile-now-test
-  (are [elm res] (= res (core/-eval (c/compile {} elm) {:now tu/now} nil nil))
+  (are [elm res] (= res (core/-eval (c/compile {} elm) {:now ctu/now} nil nil))
     {:type "Now"}
-    tu/now))
+    ctu/now))
 
 
 ;; 18.14. SameAs
@@ -811,7 +811,7 @@
 ;; If either argument is null, the result is null.
 (deftest compile-same-as-test
   (testing "Date"
-    (are [x y res] (= res (tu/compile-binop elm/same-as elm/date x y))
+    (are [x y res] (= res (ctu/compile-binop elm/same-as elm/date x y))
       "2019" "2019" true
       "2019" "2020" false
       "2019-04" "2019-04" true
@@ -819,12 +819,12 @@
       "2019-04-17" "2019-04-17" true
       "2019-04-17" "2019-04-18" false)
 
-    (tu/testing-binary-null elm/same-as #elm/date"2019")
-    (tu/testing-binary-null elm/same-as #elm/date"2019-04")
-    (tu/testing-binary-null elm/same-as #elm/date"2019-04-17")
+    (ctu/testing-binary-null elm/same-as #elm/date "2019")
+    (ctu/testing-binary-null elm/same-as #elm/date "2019-04")
+    (ctu/testing-binary-null elm/same-as #elm/date "2019-04-17")
 
     (testing "with year precision"
-      (are [x y res] (= res (tu/compile-binop-precision elm/same-as elm/date x y "year"))
+      (are [x y res] (= res (ctu/compile-binop-precision elm/same-as elm/date x y "year"))
         "2019" "2019" true
         "2019" "2020" false
         "2019-04" "2019-04" true
@@ -833,7 +833,7 @@
         "2019-04-17" "2019-04-18" true)))
 
   (testing "DateTime"
-    (are [x y res] (= res (tu/compile-binop elm/same-as elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/same-as elm/date-time x y))
       "2019" "2019" true
       "2019" "2020" false
       "2019-04" "2019-04" true
@@ -841,12 +841,12 @@
       "2019-04-17" "2019-04-17" true
       "2019-04-17" "2019-04-18" false)
 
-    (tu/testing-binary-null elm/same-as #elm/date-time"2019")
-    (tu/testing-binary-null elm/same-as #elm/date-time"2019-04")
-    (tu/testing-binary-null elm/same-as #elm/date-time"2019-04-17")
+    (ctu/testing-binary-null elm/same-as #elm/date-time"2019")
+    (ctu/testing-binary-null elm/same-as #elm/date-time"2019-04")
+    (ctu/testing-binary-null elm/same-as #elm/date-time"2019-04-17")
 
     (testing "with year precision"
-      (are [x y res] (= res (tu/compile-binop-precision elm/same-as elm/date-time x y "year"))
+      (are [x y res] (= res (ctu/compile-binop-precision elm/same-as elm/date-time x y "year"))
         "2019" "2019" true
         "2019" "2020" false
         "2019-04" "2019-04" true
@@ -854,9 +854,13 @@
         "2019-04-17" "2019-04-17" true
         "2019-04-17" "2019-04-18" true)))
 
-  (tu/testing-binary-precision-dynamic elm/same-as)
+  (ctu/testing-binary-dynamic elm/same-as)
 
-  (tu/testing-binary-precision-form elm/same-as))
+  (ctu/testing-binary-precision-dynamic elm/same-as)
+
+  (ctu/testing-binary-form elm/same-as)
+
+  (ctu/testing-binary-precision-form elm/same-as))
 
 
 ;; 18.15. SameOrBefore
@@ -904,12 +908,12 @@
 ;; If either argument is null, the result is null.
 (deftest compile-same-or-before-test
   (testing "Interval"
-    (are [x y res] (= res (tu/compile-binop elm/same-or-before elm/interval x y))
+    (are [x y res] (= res (ctu/compile-binop elm/same-or-before elm/interval x y))
       [#elm/integer "1" #elm/integer "2"]
       [#elm/integer "2" #elm/integer "3"] true))
 
   (testing "Date"
-    (are [x y res] (= res (tu/compile-binop elm/same-or-before elm/date x y))
+    (are [x y res] (= res (ctu/compile-binop elm/same-or-before elm/date x y))
       "2019" "2020" true
       "2019" "2019" true
       "2019" "2018" false
@@ -920,12 +924,12 @@
       "2019-04-17" "2019-04-17" true
       "2019-04-17" "2019-04-16" false)
 
-    (tu/testing-binary-null elm/same-or-before #elm/date"2019")
-    (tu/testing-binary-null elm/same-or-before #elm/date"2019-04")
-    (tu/testing-binary-null elm/same-or-before #elm/date"2019-04-17")
+    (ctu/testing-binary-null elm/same-or-before #elm/date "2019")
+    (ctu/testing-binary-null elm/same-or-before #elm/date "2019-04")
+    (ctu/testing-binary-null elm/same-or-before #elm/date "2019-04-17")
 
     (testing "with year precision"
-      (are [x y res] (= res (tu/compile-binop-precision elm/same-or-before elm/date x y "year"))
+      (are [x y res] (= res (ctu/compile-binop-precision elm/same-or-before elm/date x y "year"))
         "2019" "2020" true
         "2019" "2019" true
         "2019" "2018" false
@@ -934,7 +938,7 @@
         "2019-04" "2019-03" true)))
 
   (testing "DateTime"
-    (are [x y res] (= res (tu/compile-binop elm/same-or-before elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/same-or-before elm/date-time x y))
       "2019" "2020" true
       "2019" "2019" true
       "2019" "2018" false
@@ -945,12 +949,12 @@
       "2019-04-17" "2019-04-17" true
       "2019-04-17" "2019-04-16" false)
 
-    (tu/testing-binary-null elm/same-or-before #elm/date-time"2019")
-    (tu/testing-binary-null elm/same-or-before #elm/date-time"2019-04")
-    (tu/testing-binary-null elm/same-or-before #elm/date-time"2019-04-17")
+    (ctu/testing-binary-null elm/same-or-before #elm/date-time"2019")
+    (ctu/testing-binary-null elm/same-or-before #elm/date-time"2019-04")
+    (ctu/testing-binary-null elm/same-or-before #elm/date-time"2019-04-17")
 
     (testing "with year precision"
-      (are [x y res] (= res (tu/compile-binop-precision elm/same-or-before elm/date-time x y "year"))
+      (are [x y res] (= res (ctu/compile-binop-precision elm/same-or-before elm/date-time x y "year"))
         "2019" "2020" true
         "2019" "2019" true
         "2019" "2018" false
@@ -958,9 +962,13 @@
         "2019-04" "2019-04" true
         "2019-04" "2019-03" true)))
 
-  (tu/testing-binary-precision-dynamic elm/same-or-before)
+  (ctu/testing-binary-dynamic elm/same-or-before)
 
-  (tu/testing-binary-precision-form elm/same-or-before))
+  (ctu/testing-binary-precision-dynamic elm/same-or-before)
+
+  (ctu/testing-binary-form elm/same-or-before)
+
+  (ctu/testing-binary-precision-form elm/same-or-before))
 
 
 ;; 18.15. SameOrAfter
@@ -1008,12 +1016,12 @@
 ;; If either argument is null, the result is null.
 (deftest compile-same-or-after-test
   (testing "Interval"
-    (are [x y res] (= res (tu/compile-binop elm/same-or-after elm/interval x y))
+    (are [x y res] (= res (ctu/compile-binop elm/same-or-after elm/interval x y))
       [#elm/integer "2" #elm/integer "3"]
       [#elm/integer "1" #elm/integer "2"] true))
 
   (testing "Date"
-    (are [x y res] (= res (tu/compile-binop elm/same-or-after elm/date x y))
+    (are [x y res] (= res (ctu/compile-binop elm/same-or-after elm/date x y))
       "2019" "2018" true
       "2019" "2019" true
       "2019" "2020" false
@@ -1024,12 +1032,12 @@
       "2019-04-17" "2019-04-17" true
       "2019-04-17" "2019-04-18" false)
 
-    (tu/testing-binary-null elm/same-or-after #elm/date"2019")
-    (tu/testing-binary-null elm/same-or-after #elm/date"2019-04")
-    (tu/testing-binary-null elm/same-or-after #elm/date"2019-04-17")
+    (ctu/testing-binary-null elm/same-or-after #elm/date "2019")
+    (ctu/testing-binary-null elm/same-or-after #elm/date "2019-04")
+    (ctu/testing-binary-null elm/same-or-after #elm/date "2019-04-17")
 
     (testing "with year precision"
-      (are [x y res] (= res (tu/compile-binop-precision elm/same-or-after elm/date x y "year"))
+      (are [x y res] (= res (ctu/compile-binop-precision elm/same-or-after elm/date x y "year"))
         "2019" "2018" true
         "2019" "2019" true
         "2019" "2020" false
@@ -1038,7 +1046,7 @@
         "2019-04" "2019-05" true)))
 
   (testing "DateTime"
-    (are [x y res] (= res (tu/compile-binop elm/same-or-after elm/date-time x y))
+    (are [x y res] (= res (ctu/compile-binop elm/same-or-after elm/date-time x y))
       "2019" "2018" true
       "2019" "2019" true
       "2019" "2020" false
@@ -1049,12 +1057,12 @@
       "2019-04-17" "2019-04-17" true
       "2019-04-17" "2019-04-18" false)
 
-    (tu/testing-binary-null elm/same-or-after #elm/date-time"2019")
-    (tu/testing-binary-null elm/same-or-after #elm/date-time"2019-04")
-    (tu/testing-binary-null elm/same-or-after #elm/date-time"2019-04-17")
+    (ctu/testing-binary-null elm/same-or-after #elm/date-time"2019")
+    (ctu/testing-binary-null elm/same-or-after #elm/date-time"2019-04")
+    (ctu/testing-binary-null elm/same-or-after #elm/date-time"2019-04-17")
 
     (testing "with year precision"
-      (are [x y res] (= res (tu/compile-binop-precision elm/same-or-after elm/date-time x y "year"))
+      (are [x y res] (= res (ctu/compile-binop-precision elm/same-or-after elm/date-time x y "year"))
         "2019" "2018" true
         "2019" "2019" true
         "2019" "2020" false
@@ -1062,9 +1070,13 @@
         "2019-04" "2019-04" true
         "2019-04" "2019-05" true)))
 
-  (tu/testing-binary-precision-dynamic elm/same-or-after)
+  (ctu/testing-binary-dynamic elm/same-or-after)
 
-  (tu/testing-binary-precision-form elm/same-or-after))
+  (ctu/testing-binary-precision-dynamic elm/same-or-after)
+
+  (ctu/testing-binary-form elm/same-or-after)
+
+  (ctu/testing-binary-precision-form elm/same-or-after))
 
 
 ;; 18.18. Time
@@ -1198,12 +1210,12 @@
 ;; associated with the evaluation request. See the Now operator for more
 ;; information on the rationale for defining the TimeOfDay operator in this way.
 (deftest compile-time-of-day-test
-  (are [res] (= res (core/-eval (c/compile {} elm/time-of-day) {:now tu/now} nil nil))
-    (time/local-time tu/now))
+  (are [res] (= res (core/-eval (c/compile {} elm/time-of-day) {:now ctu/now} nil nil))
+    (time/local-time ctu/now))
 
-  (tu/testing-constant-dynamic elm/time-of-day)
+  (ctu/testing-constant-dynamic elm/time-of-day)
 
-  (tu/testing-constant-form elm/time-of-day))
+  (ctu/testing-constant-form elm/time-of-day))
 
 
 ;; 18.22. Today
@@ -1213,9 +1225,9 @@
 ;; more information on the rationale for defining the Today operator in this
 ;; way.
 (deftest compile-today-test
-  (are [res] (= res (core/-eval (c/compile {} elm/today) {:now tu/now} nil nil))
-    (DateDate/fromLocalDate (.toLocalDate ^OffsetDateTime tu/now)))
+  (are [res] (= res (core/-eval (c/compile {} elm/today) {:now ctu/now} nil nil))
+    (DateDate/fromLocalDate (.toLocalDate ^OffsetDateTime ctu/now)))
 
-  (tu/testing-constant-dynamic elm/today)
+  (ctu/testing-constant-dynamic elm/today)
 
-  (tu/testing-constant-form elm/today))
+  (ctu/testing-constant-form elm/today))

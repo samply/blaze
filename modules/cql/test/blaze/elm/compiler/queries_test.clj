@@ -11,7 +11,7 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
+    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
     [blaze.elm.quantity :as quantity]
@@ -23,12 +23,12 @@
 
 
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 
@@ -251,7 +251,7 @@
                :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
       (let [db (d/db node)
-            patient (tu/resource db "Patient" "0")]
+            patient (ctu/resource db "Patient" "0")]
 
         (let [elm {:type "Query"
                    :source [#elm/aliased-query-source [#elm/retrieve{:type "Observation"} "O"]]
@@ -405,7 +405,7 @@
                                          #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]}
             expr (c/compile {:node node :eval-context "Patient"} elm)
             db (d/db node)
-            patient (tu/resource db "Patient" "0")]
+            patient (ctu/resource db "Patient" "0")]
 
         (testing "eval"
           (given (core/-eval expr {:db db} patient nil)

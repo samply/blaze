@@ -251,12 +251,12 @@
 
 
 ;; 18.10. DifferenceBetween
-(defbinopp difference-between [operand-1 operand-2 precision]
+(defbinopp difference-between [operand-1 operand-2 ^:required precision]
   (p/difference-between operand-1 operand-2 precision))
 
 
 ;; 18.11. DurationBetween
-(defbinopp duration-between [operand-1 operand-2 precision]
+(defbinopp duration-between [operand-1 operand-2 ^:required precision]
   (p/duration-between operand-1 operand-2 precision))
 
 

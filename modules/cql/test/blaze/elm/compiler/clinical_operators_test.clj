@@ -8,7 +8,7 @@
     [blaze.elm.compiler.clinical-operators]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.compiler.test-util :as ctu]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [clojure.spec.test.alpha :as st]
@@ -16,12 +16,12 @@
 
 
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 
@@ -39,7 +39,7 @@
 ;;
 ;; Normalized to CalculateAgeAt
 (deftest compile-calculate-age-test
-  (tu/unsupported-unary-operand "CalculateAge"))
+  (ctu/unsupported-unary-operand "CalculateAge"))
 
 
 ;; 23.4. CalculateAgeAt
@@ -58,29 +58,29 @@
 ;; that have elapsed between the first datetime and the second datetime.
 (deftest compile-calculate-age-at-test
   (testing "Static"
-    (are [elm res] (= res (core/-eval (c/compile {} elm) {:now tu/now} nil nil))
-      #elm/calculate-age-at [#elm/date"2018" #elm/date"2019" "year"] 1
-      #elm/calculate-age-at [#elm/date"2018" #elm/date"2018" "year"] 0
-      #elm/calculate-age-at [#elm/date"2018" #elm/date"2019" "month"] nil
+    (are [elm res] (= res (core/-eval (c/compile {} elm) {:now ctu/now} nil nil))
+      #elm/calculate-age-at [#elm/date "2018" #elm/date "2019" "year"] 1
+      #elm/calculate-age-at [#elm/date "2018" #elm/date "2018" "year"] 0
+      #elm/calculate-age-at [#elm/date "2018" #elm/date "2019" "month"] nil
 
-      #elm/calculate-age-at [#elm/date"2018-01" #elm/date"2019-02" "year"] 1
-      #elm/calculate-age-at [#elm/date"2018-01" #elm/date"2018-12" "year"] 0
-      #elm/calculate-age-at [#elm/date"2018-01" #elm/date"2018-12" "month"] 11
-      #elm/calculate-age-at [#elm/date"2018-01" #elm/date"2018-12" "day"] nil
+      #elm/calculate-age-at [#elm/date "2018-01" #elm/date "2019-02" "year"] 1
+      #elm/calculate-age-at [#elm/date "2018-01" #elm/date "2018-12" "year"] 0
+      #elm/calculate-age-at [#elm/date "2018-01" #elm/date "2018-12" "month"] 11
+      #elm/calculate-age-at [#elm/date "2018-01" #elm/date "2018-12" "day"] nil
 
-      #elm/calculate-age-at [#elm/date"2018-01-01" #elm/date"2019-02-02" "year"] 1
-      #elm/calculate-age-at [#elm/date"2018-01" #elm/date"2018-12-15" "year"] 0
-      #elm/calculate-age-at [#elm/date"2018-01-01" #elm/date"2018-12-02" "month"] 11
-      #elm/calculate-age-at [#elm/date"2018-01-01" #elm/date"2018-02-01" "day"] 31
+      #elm/calculate-age-at [#elm/date "2018-01-01" #elm/date "2019-02-02" "year"] 1
+      #elm/calculate-age-at [#elm/date "2018-01" #elm/date "2018-12-15" "year"] 0
+      #elm/calculate-age-at [#elm/date "2018-01-01" #elm/date "2018-12-02" "month"] 11
+      #elm/calculate-age-at [#elm/date "2018-01-01" #elm/date "2018-02-01" "day"] 31
 
       #elm/calculate-age-at [#elm/date-time"2018-01-01" #elm/date-time"2018-02-01" "day"] 31))
 
-  (tu/testing-binary-null elm/calculate-age-at #elm/date"2018")
-  (tu/testing-binary-null elm/calculate-age-at #elm/date-time"2018-01-01")
+  (ctu/testing-binary-null elm/calculate-age-at #elm/date "2018")
+  (ctu/testing-binary-null elm/calculate-age-at #elm/date-time"2018-01-01")
 
-  (tu/testing-binary-dynamic elm/calculate-age-at)
+  (ctu/testing-binary-dynamic elm/calculate-age-at)
 
-  (tu/testing-binary-precision-form elm/calculate-age-at "year" "month" "day"))
+  (ctu/testing-binary-precision-form elm/calculate-age-at "year" "month" "day"))
 
 
 ;; 23.5. Equal

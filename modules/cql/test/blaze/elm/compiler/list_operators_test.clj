@@ -10,7 +10,7 @@
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.list-operators]
-    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
+    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
     [blaze.elm.expression-spec]
     [blaze.elm.expression.cache :as-alias expr-cache]
     [blaze.elm.literal :as elm]
@@ -24,12 +24,12 @@
 
 
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 
@@ -63,14 +63,14 @@
         #elm/list [#elm/date-time "2023-11-02T14:23"] [#system/date-time "2023-11-02T14:23"])))
 
   (testing "Dynamic"
-    (are [elm res] (= res (tu/dynamic-compile-eval elm))
+    (are [elm res] (= res (ctu/dynamic-compile-eval elm))
       #elm/list [#elm/parameter-ref "nil"] [nil]
       #elm/list [#elm/parameter-ref "1"] [1]
       #elm/list [#elm/parameter-ref "1" #elm/parameter-ref "nil"] [1 nil]
       #elm/list [#elm/parameter-ref "1" #elm/parameter-ref "2"] [1 2])
 
     (testing "form"
-      (let [expr (tu/dynamic-compile #elm/list [#elm/parameter-ref "x"])]
+      (let [expr (ctu/dynamic-compile #elm/list [#elm/parameter-ref "x"])]
         (has-form expr '(list (param-ref "x")))))))
 
 
@@ -132,11 +132,11 @@
     #elm/list [#elm/quantity [100 "cm"] #elm/quantity [1 "m"]] [(quantity/quantity 100 "cm")]
     #elm/list [#elm/quantity [1 "m"] #elm/quantity [100 "cm"]] [(quantity/quantity 1 "m")])
 
-  (tu/testing-unary-null elm/distinct)
+  (ctu/testing-unary-null elm/distinct)
 
-  (tu/testing-unary-dynamic elm/distinct)
+  (ctu/testing-unary-dynamic elm/distinct)
 
-  (tu/testing-unary-form elm/distinct))
+  (ctu/testing-unary-form elm/distinct))
 
 
 ;; 20.5. Equal
@@ -170,7 +170,7 @@
       {:type "Null"} false))
 
   (testing "Dynamic"
-    (are [list res] (= res (tu/dynamic-compile-eval (elm/exists list)))
+    (are [list res] (= res (ctu/dynamic-compile-eval (elm/exists list)))
       #elm/list [#elm/parameter-ref "1"] true
       #elm/list [#elm/parameter-ref "1" #elm/parameter-ref "1"] true
       #elm/list [#elm/parameter-ref "nil"] false
@@ -178,7 +178,7 @@
 
       {:type "Null"} false)
 
-    (tu/testing-unary-form elm/exists)))
+    (ctu/testing-unary-form elm/exists)))
 
 
 ;; 20.9. Filter
@@ -211,7 +211,7 @@
 
   (testing "form and static"
     (testing "with scope"
-      (let [expr (tu/dynamic-compile {:type "Filter"
+      (let [expr (ctu/dynamic-compile {:type "Filter"
                                       :source #elm/parameter-ref "x"
                                       :condition #elm/parameter-ref "y"
                                       :scope "A"})]
@@ -221,7 +221,7 @@
         (is (false? (core/-static expr)))))
 
     (testing "without scope"
-      (let [expr (tu/dynamic-compile {:type "Filter"
+      (let [expr (ctu/dynamic-compile {:type "Filter"
                                       :source #elm/parameter-ref "x"
                                       :condition #elm/parameter-ref "y"})]
 
@@ -244,15 +244,15 @@
       #elm/list [#elm/integer "1" #elm/integer "2"] 1))
 
   (testing "Dynamic"
-    (are [source res] (= res (tu/dynamic-compile-eval (elm/first source)))
+    (are [source res] (= res (ctu/dynamic-compile-eval (elm/first source)))
       #elm/parameter-ref "[1]" 1
       #elm/parameter-ref "[1 2]" 1))
 
-  (tu/testing-unary-null elm/first)
+  (ctu/testing-unary-null elm/first)
 
-  (tu/testing-unary-dynamic elm/first)
+  (ctu/testing-unary-dynamic elm/first)
 
-  (tu/testing-unary-form elm/first))
+  (ctu/testing-unary-form elm/first))
 
 
 ;; 20.11. Flatten
@@ -269,11 +269,11 @@
     #elm/list [#elm/integer "1" #elm/list [#elm/integer "2" #elm/list [#elm/integer "3"]]] [1 2 3]
     #elm/list [#elm/list [#elm/integer "1" #elm/list [#elm/integer "2"]] #elm/integer "3"] [1 2 3])
 
-  (tu/testing-unary-null elm/flatten)
+  (ctu/testing-unary-null elm/flatten)
 
-  (tu/testing-unary-dynamic elm/flatten)
+  (ctu/testing-unary-dynamic elm/flatten)
 
-  (tu/testing-unary-form elm/flatten))
+  (ctu/testing-unary-form elm/flatten))
 
 
 ;; 20.12. ForEach
@@ -311,7 +311,7 @@
 
   (testing "form and static"
     (testing "with scope"
-      (let [expr (tu/dynamic-compile {:type "ForEach"
+      (let [expr (ctu/dynamic-compile {:type "ForEach"
                                       :source #elm/parameter-ref "x"
                                       :element #elm/parameter-ref "y"
                                       :scope "A"})]
@@ -321,7 +321,7 @@
         (is (false? (core/-static expr)))))
 
     (testing "without scope"
-      (let [expr (tu/dynamic-compile {:type "ForEach"
+      (let [expr (ctu/dynamic-compile {:type "ForEach"
                                       :source #elm/parameter-ref "x"
                                       :element #elm/parameter-ref "y"})]
 
@@ -368,11 +368,11 @@
     {:type "Null"} #elm/integer "1" nil
     {:type "Null"} {:type "Null"} nil)
 
-  (tu/testing-binary-dynamic-null elm/index-of #elm/list [] #elm/integer "1")
+  (ctu/testing-binary-dynamic-null elm/index-of #elm/list [] #elm/integer "1")
 
-  (tu/testing-binary-dynamic elm/index-of)
+  (ctu/testing-binary-dynamic elm/index-of)
 
-  (tu/testing-binary-form elm/index-of))
+  (ctu/testing-binary-form elm/index-of))
 
 
 ;; 20.17. Intersect
@@ -394,15 +394,15 @@
       #elm/list [#elm/integer "1" #elm/integer "2"] 2))
 
   (testing "Dynamic"
-    (are [source res] (= res (tu/dynamic-compile-eval (elm/last source)))
+    (are [source res] (= res (ctu/dynamic-compile-eval (elm/last source)))
       #elm/parameter-ref "[1]" 1
       #elm/parameter-ref "[1 2]" 2))
 
-  (tu/testing-unary-null elm/last)
+  (ctu/testing-unary-null elm/last)
 
-  (tu/testing-unary-dynamic elm/last)
+  (ctu/testing-unary-dynamic elm/last)
 
-  (tu/testing-unary-form elm/last))
+  (ctu/testing-unary-form elm/last))
 
 
 ;; 20.19. Not Equal
@@ -462,11 +462,11 @@
   (are [list] (thrown? Exception (core/-eval (c/compile {} (elm/singleton-from list)) {} nil nil))
     #elm/list [#elm/integer "1" #elm/integer "1"])
 
-  (tu/testing-unary-null elm/singleton-from)
+  (ctu/testing-unary-null elm/singleton-from)
 
-  (tu/testing-unary-dynamic elm/singleton-from)
+  (ctu/testing-unary-dynamic elm/singleton-from)
 
-  (tu/testing-unary-form elm/singleton-from))
+  (ctu/testing-unary-form elm/singleton-from))
 
 
 ;; 20.26. Slice
@@ -497,7 +497,7 @@
     {:type "Null"} #elm/integer "0" #elm/integer "0" nil
     {:type "Null"} {:type "Null"} {:type "Null"} nil)
 
-  (let [expr (tu/dynamic-compile {:type "Slice"
+  (let [expr (ctu/dynamic-compile {:type "Slice"
                                   :source #elm/parameter-ref "x"
                                   :startIndex #elm/parameter-ref "y"
                                   :endIndex #elm/parameter-ref "z"})]
@@ -530,7 +530,7 @@
 
     {:type "Null"} {:type "ByDirection" :direction "asc"} nil)
 
-  (let [expr (tu/dynamic-compile {:type "Sort"
+  (let [expr (ctu/dynamic-compile {:type "Sort"
                                   :source #elm/parameter-ref "x"
                                   :by [{:type "ByDirection" :direction "asc"}]})]
 
@@ -551,7 +551,7 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-times-test
-  (are [x y res] (= res (tu/compile-binop elm/times elm/list x y))
+  (are [x y res] (= res (ctu/compile-binop elm/times elm/list x y))
     [#elm/tuple{"id" #elm/integer "1"}] [#elm/tuple{"name" #elm/string "john"}]
     [{:id 1 :name "john"}]
 
@@ -596,11 +596,11 @@
      {:id 1 :name "john" :location "Berlin"}
      {:id 2 :name "hans" :location "Berlin"}])
 
-  (tu/testing-binary-null elm/times #elm/list[#elm/tuple{"name" #elm/string "hans"}])
+  (ctu/testing-binary-null elm/times #elm/list[#elm/tuple{"name" #elm/string "hans"}])
 
-  (tu/testing-binary-dynamic elm/times)
+  (ctu/testing-binary-dynamic elm/times)
 
-  (tu/testing-binary-form elm/times))
+  (ctu/testing-binary-form elm/times))
 
 
 ;; 20.29. Union

@@ -157,22 +157,24 @@
   (let [attr-map (when (map? (first more)) (first more))
         more (if (map? (first more)) (next more) more)
         [[op-1-binding op-2-binding precision-binding] & body] more
+        precision-required (:required (meta precision-binding))
         context (gensym "context")
         op-1 (gensym "op-1")
         op-2 (gensym "op-2")
         precision (gensym "precision")]
     `(do
-       (defn ~(symbol (str name "-op")) [~op-1 ~op-2]
-           (reify core/Expression
-             (~'-static [~'_]
-               false)
-             (~'-eval [~'_ context# resource# scope#]
-             (let [~op-1-binding (core/-eval ~op-1 context# resource# scope#)
-                   ~op-2-binding (core/-eval ~op-2 context# resource# scope#)
-                   ~precision-binding nil]
-                 ~@body))
-             (~'-form [~'_]
-             (list (quote ~name) (core/-form ~op-1) (core/-form ~op-2)))))
+       ~(when-not precision-required
+          `(defn ~(symbol (str name "-op")) [~op-1 ~op-2]
+             (reify core/Expression
+               (~'-static [~'_]
+                 false)
+               (~'-eval [~'_ context# resource# scope#]
+                 (let [~op-1-binding (core/-eval ~op-1 context# resource# scope#)
+                       ~op-2-binding (core/-eval ~op-2 context# resource# scope#)
+                       ~precision-binding nil]
+                   ~@body))
+               (~'-form [~'_]
+                 (list (quote ~name) (core/-form ~op-1) (core/-form ~op-2))))))
 
        (defn ~(symbol (str name "-precision-op"))
          [~op-1 ~op-2 ~precision-binding ~precision]
@@ -187,17 +189,31 @@
              (list (quote ~name) (core/-form ~op-1) (core/-form ~op-2)
                    ~precision))))
 
-       (defmethod core/compile* ~(compile-kw name)
-         [~context {[~op-1 ~op-2] :operand ~precision :precision}]
-         (let [context# ~(if attr-map `(merge ~context ~attr-map) context)
-               ~op-1 (core/compile* context# ~op-1)
-               ~op-2 (core/compile* context# ~op-2)
-               ~precision-binding (some-> ~precision core/to-chrono-unit)]
-           (if (and (core/static? ~op-1) (core/static? ~op-2))
-             (let [~op-1-binding ~op-1
-                   ~op-2-binding ~op-2]
-               ~@body)
-             (if ~precision
-               (~(symbol (str name "-precision-op")) ~op-1 ~op-2
-                 ~precision-binding ~precision)
-               (~(symbol (str name "-op")) ~op-1 ~op-2))))))))
+       ~(if precision-required
+          `(defmethod core/compile* ~(compile-kw name)
+             [~context {[~op-1 ~op-2] :operand ~precision :precision}]
+             (let [context# ~(if attr-map `(merge ~context ~attr-map) context)
+                   ~op-1 (core/compile* context# ~op-1)
+                   ~op-2 (core/compile* context# ~op-2)
+                   ~precision-binding (core/to-chrono-unit ~precision)]
+               (if (and (core/static? ~op-1) (core/static? ~op-2))
+                 (let [~op-1-binding ~op-1
+                       ~op-2-binding ~op-2]
+                   ~@body)
+                 (~(symbol (str name "-precision-op")) ~op-1 ~op-2
+                   ~precision-binding ~precision))))
+
+          `(defmethod core/compile* ~(compile-kw name)
+             [~context {[~op-1 ~op-2] :operand ~precision :precision}]
+             (let [context# ~(if attr-map `(merge ~context ~attr-map) context)
+                   ~op-1 (core/compile* context# ~op-1)
+                   ~op-2 (core/compile* context# ~op-2)
+                   ~precision-binding (some-> ~precision core/to-chrono-unit)]
+               (if (and (core/static? ~op-1) (core/static? ~op-2))
+                 (let [~op-1-binding ~op-1
+                       ~op-2-binding ~op-2]
+                   ~@body)
+                 (if ~precision
+                   (~(symbol (str name "-precision-op")) ~op-1 ~op-2
+                     ~precision-binding ~precision)
+                   (~(symbol (str name "-op")) ~op-1 ~op-2)))))))))

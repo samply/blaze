@@ -13,10 +13,11 @@
     [blaze.elm.compiler.external-data :as ed]
     [blaze.elm.compiler.external-data-spec]
     [blaze.elm.compiler.library :as library]
-    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
+    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
     [blaze.elm.expression :as expr]
     [blaze.elm.expression-spec]
     [blaze.elm.expression.cache :as-alias expr-cache]
+    [blaze.elm.util-spec]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type]
     [blaze.module.test-util :refer [with-system]]
@@ -30,12 +31,12 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 
@@ -56,7 +57,7 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (is (= "Patient[id = 0, t = 1]" (str (tu/resource (d/db node) "Patient" "0")))))))
+      (is (= "Patient[id = 0, t = 1]" (str (ctu/resource (d/db node) "Patient" "0")))))))
 
 
 ;; 11.1. Retrieve
@@ -93,9 +94,9 @@
               {:node node
                :eval-context "Patient"
                :library {}}
-              expr (c/compile context tu/patient-retrieve-elm)
+              expr (c/compile context ctu/patient-retrieve-elm)
               db (d/db node)
-              patient (tu/resource db "Patient" "0")]
+              patient (ctu/resource db "Patient" "0")]
 
           (testing "eval"
             (given (expr/eval (eval-context db) expr patient)
@@ -120,7 +121,7 @@
                :library {}}
               expr (c/compile context #elm/retrieve{:type "Observation"})
               db (d/db node)
-              patient (tu/resource db "Patient" "0")]
+              patient (ctu/resource db "Patient" "0")]
 
           (testing "eval"
             (given (expr/eval (eval-context db) expr patient)
@@ -161,7 +162,7 @@
                                                           "code-192300"]]}
                 expr (c/compile context elm)
                 db (d/db node)
-                patient (tu/resource db "Patient" "0")]
+                patient (ctu/resource db "Patient" "0")]
 
             (testing "eval"
               (given (expr/eval (eval-context db) expr patient)
@@ -213,7 +214,7 @@
                                         #elm/code ["sys-def-131750" "code-140541"]]}
                 expr (c/compile context elm)
                 db (d/db node)
-                patient (tu/resource db "Patient" "0")]
+                patient (ctu/resource db "Patient" "0")]
 
             (testing "eval"
               (given (expr/eval (eval-context db) expr patient)
@@ -274,7 +275,7 @@
                                       "codes"]}
                 expr (c/compile context elm)
                 db (d/db node)
-                patient (tu/resource db "Patient" "0")]
+                patient (ctu/resource db "Patient" "0")]
 
             (testing "eval"
               (given (expr/eval (eval-context db) expr patient)
@@ -306,9 +307,9 @@
               {:node node
                :eval-context "Specimen"
                :library {}}
-              expr (c/compile context tu/patient-retrieve-elm)
+              expr (c/compile context ctu/patient-retrieve-elm)
               db (d/db node)
-              specimen (tu/resource db "Specimen" "0")]
+              specimen (ctu/resource db "Specimen" "0")]
 
           (testing "eval"
             (given (expr/eval (eval-context db) expr specimen)
@@ -406,7 +407,7 @@
               {:keys [expression-defs]} (library/compile-library
                                           node library compile-context)
               db (d/db node)
-              patient (tu/resource db "Patient" "0")
+              patient (ctu/resource db "Patient" "0")
               eval-context (assoc (eval-context db) :expression-defs expression-defs)
               expr (:expression (get expression-defs "InInitialPopulation"))]
 
@@ -453,7 +454,7 @@
               {:keys [expression-defs]} (library/compile-library
                                           node library compile-context)
               db (d/db node)
-              patient (tu/resource db "Patient" "0")
+              patient (ctu/resource db "Patient" "0")
               eval-context (assoc (eval-context db) :expression-defs expression-defs)
               expr (:expression (get expression-defs "InInitialPopulation"))]
 

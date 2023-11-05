@@ -1,10 +1,9 @@
 (ns blaze.elm.literal
   (:refer-clojure
-    :exclude [abs and boolean count distinct first flatten last list long max min not or
-              time])
+    :exclude [abs and boolean count distinct first flatten last list long max
+              min not or time])
   (:require
     [blaze.elm.spec]
-    [clojure.spec.alpha :as s]
     [clojure.string :as str]))
 
 
@@ -597,38 +596,19 @@
 
 
 ;; 19.1. Interval
-(s/def ::interval-arg
-  (s/cat :low-open (s/? #{:<})
-         :low :elm/expression
-         :high :elm/expression
-         :high-open (s/? #{:>})))
-
-
-(defn interval [arg]
-  (let [{:keys [low-open low high high-open]} (s/conform ::interval-arg arg)]
+(defn interval [args]
+  (let [low-open (= :< (clojure.core/first args))
+        [low high high-open] (cond-> args low-open rest)]
     {:type "Interval"
      :low low
      :high high
-     :lowClosed (nil? low-open)
+     :lowClosed (false? low-open)
      :highClosed (nil? high-open)
      :resultTypeSpecifier
      {:type "IntervalTypeSpecifier",
       :pointType
       {:type "NamedTypeSpecifier"
        :name (clojure.core/or (:resultTypeName low) (:resultTypeName high))}}}))
-
-
-(defn closed-interval [[low high]]
-  {:type "Interval"
-   :low low
-   :high high
-   :lowClosed true
-   :highClosed true
-   :resultTypeSpecifier
-   {:type "IntervalTypeSpecifier",
-    :pointType
-    {:type "NamedTypeSpecifier"
-     :name (clojure.core/or (:resultTypeName low) (:resultTypeName high))}}})
 
 
 ;; 19.2. After

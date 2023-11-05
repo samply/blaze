@@ -3,6 +3,7 @@
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
     [blaze.elm.spec]
+    [blaze.elm.util-spec]
     [blaze.test-util :as tu]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]

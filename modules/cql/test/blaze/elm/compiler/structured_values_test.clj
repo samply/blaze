@@ -9,7 +9,7 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
+    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
     [blaze.fhir.spec.type]
@@ -21,12 +21,12 @@
 
 
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 
@@ -51,7 +51,7 @@
       {:id 1 :name "john"}))
 
   (testing "Dynamic"
-    (are [elm res] (= res (tu/dynamic-compile-eval elm))
+    (are [elm res] (= res (ctu/dynamic-compile-eval elm))
       #elm/tuple{"id" #elm/parameter-ref "1"}
       {:id 1}
 
@@ -59,11 +59,11 @@
       {:id 1 :name "a"})
 
     (testing "static"
-      (is (false? (core/-static (tu/dynamic-compile #elm/tuple{"id" #elm/parameter-ref "1"})))))
+      (is (false? (core/-static (ctu/dynamic-compile #elm/tuple{"id" #elm/parameter-ref "1"})))))
 
     (testing "form"
       (is (= '{:id (param-ref "x")}
-             (core/-form (tu/dynamic-compile #elm/tuple{"id" #elm/parameter-ref "x"})))))))
+             (core/-form (ctu/dynamic-compile #elm/tuple{"id" #elm/parameter-ref "x"})))))))
 
 
 ;; 2.2. Instance
@@ -75,7 +75,7 @@
 ;; be any expression, including another Instance.
 (deftest compile-instance-test
   (testing "Code"
-    (given (c/compile {} (tu/code "system-134534" "code-134551"))
+    (given (c/compile {} (ctu/code "system-134534" "code-134551"))
       type := Code
       :system := "system-134534"
       :code := "code-134551")))
