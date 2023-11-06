@@ -1,14 +1,18 @@
 (ns blaze.db.impl.search-param.token
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.async.comp :as ac]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
+    [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
     [blaze.db.impl.index.search-param-value-resource :as sp-vr]
+    [blaze.db.impl.macros :refer [with-open-coll]]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.core :as sc]
     [blaze.db.impl.search-param.util :as u]
+    [blaze.db.kv :as kv]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
@@ -206,6 +210,34 @@
     (mapcat (partial index-entries url))))
 
 
+(defrecord SearchParamId [name type code]
+  p/SearchParam
+  (-compile-value [_ _ value]
+    (codec/id-byte-string value))
+
+  (-resource-handles [_ context tid _ value]
+    (some-> ((:resource-handle context) tid value) vector))
+
+  (-resource-handles [_ context tid _ value start-id]
+    (when (= value start-id)
+      (some-> ((:resource-handle context) tid value) vector)))
+
+  (-count-resource-handles [_ context tid _ value]
+    (ac/completed-future (if ((:resource-handle context) tid value) 1 0)))
+
+  (-sorted-resource-handles [_ context tid _]
+    ;; TODO: improve
+    (with-open-coll [raoi (kv/new-iterator (:snapshot context) :resource-as-of-index)]
+      (rao/type-list (assoc context :raoi raoi) tid)))
+
+  (-sorted-resource-handles [_ context tid _ start-id]
+    ;; TODO: improve
+    (with-open-coll [raoi (kv/new-iterator (:snapshot context) :resource-as-of-index)]
+      (rao/type-list (assoc context :raoi raoi) tid start-id)))
+
+  (-index-values [_ _ _]))
+
+
 (defn- fix-expr
   "https://github.com/samply/blaze/issues/366"
   [url expression]
@@ -219,10 +251,12 @@
 
 (defmethod sc/search-param "token"
   [_ {:keys [name url type base code target expression]}]
-  (if expression
-    (when-ok [expression (fhir-path/compile (fix-expr url expression))]
-      (->SearchParamToken name url type base code target (codec/c-hash code) expression))
-    (ba/unsupported (u/missing-expression-msg url))))
+  (if (= "_id" code)
+    (->SearchParamId "_id" "id" "_id")
+    (if expression
+      (when-ok [expression (fhir-path/compile (fix-expr url expression))]
+        (->SearchParamToken name url type base code target (codec/c-hash code) expression))
+      (ba/unsupported (u/missing-expression-msg url)))))
 
 
 (defmethod sc/search-param "reference"

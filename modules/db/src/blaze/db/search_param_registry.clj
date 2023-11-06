@@ -17,11 +17,9 @@
 
 
 (defn get
-  "Returns the search parameter with `code` and optional `type`."
-  ([search-param-registry code]
-   (p/-get search-param-registry code))
-  ([search-param-registry code type]
-   (p/-get search-param-registry code type)))
+  "Returns the search parameter with `code` and `type`."
+  [search-param-registry code type]
+  (p/-get search-param-registry code type))
 
 
 (defn list-by-type
@@ -58,12 +56,9 @@
 (deftype MemSearchParamRegistry [index target-index compartment-index
                                  compartment-resource-index]
   p/SearchParamRegistry
-  (-get [_ code]
-    (get-in index ["Resource" code]))
-
-  (-get [this code type]
+  (-get [_ code type]
     (or (get-in index [type code])
-        (p/-get this code)))
+        (get-in index ["Resource" code])))
 
   (-list-by-type [_ type]
     (-> (into [] (map val) (index "Resource"))

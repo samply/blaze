@@ -1,6 +1,7 @@
 (ns blaze.db.impl.search-param.token-test
   (:require
     [blaze.byte-buffer :as bb]
+    [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
     [blaze.db.impl.index.search-param-value-resource-spec]
@@ -58,27 +59,12 @@
       (let [observation
             {:fhir/type :fhir/Observation
              :id "id-161849"}
-            hash (hash/generate observation)
-            [[_ k0] [_ k1]]
-            (index-entries
-              (sr/get search-param-registry "_id" "Observation")
-              [] hash observation)]
+            hash (hash/generate observation)]
 
-        (testing "SearchParamValueResource key"
-          (given (sp-vr-tu/decode-key-human (bb/wrap k0))
-            :code := "_id"
-            :type := "Observation"
-            :v-hash := (codec/v-hash "id-161849")
-            :id := "id-161849"
-            :hash-prefix := (hash/prefix hash)))
-
-        (testing "ResourceSearchParamValue key"
-          (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
-            :type := "Observation"
-            :id := "id-161849"
-            :hash-prefix := (hash/prefix hash)
-            :code := "_id"
-            :v-hash := (codec/v-hash "id-161849")))))
+        (testing "id's don't need to be indexed"
+          (is (coll/empty? (search-param/index-entries
+                             (sr/get search-param-registry "_id" "Observation")
+                             [] hash observation))))))
 
     (testing "Observation code"
       (let [observation
@@ -86,10 +72,10 @@
              :id "id-183201"
              :code
              #fhir/CodeableConcept
-                 {:coding
-                  [#fhir/Coding
-                      {:system #fhir/uri"system-171339"
-                       :code #fhir/code"code-171327"}]}}
+                     {:coding
+                      [#fhir/Coding
+                              {:system #fhir/uri"system-171339"
+                               :code #fhir/code"code-171327"}]}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (index-entries
@@ -149,9 +135,9 @@
              :id "id-183201"
              :code
              #fhir/CodeableConcept
-                 {:coding
-                  [#fhir/Coding
-                      {:code #fhir/code"code-134035"}]}}
+                     {:coding
+                      [#fhir/Coding
+                              {:code #fhir/code"code-134035"}]}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (index-entries
@@ -195,9 +181,9 @@
              :id "id-183201"
              :code
              #fhir/CodeableConcept
-                 {:coding
-                  [#fhir/Coding
-                      {:system #fhir/uri"system-171339"}]}}
+                     {:coding
+                      [#fhir/Coding
+                              {:system #fhir/uri"system-171339"}]}}
             hash (hash/generate observation)
             [[_ k0] [_ k1]]
             (index-entries
@@ -260,8 +246,8 @@
             {:fhir/type :fhir/Patient :id "id-122929"
              :identifier
              [#fhir/Identifier
-                 {:system #fhir/uri"system-123000"
-                  :value "value-123005"}]}
+                     {:system #fhir/uri"system-123000"
+                      :value "value-123005"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (index-entries
@@ -321,7 +307,7 @@
             {:fhir/type :fhir/Patient :id "id-122929"
              :identifier
              [#fhir/Identifier
-                 {:value "value-140132"}]}
+                     {:value "value-140132"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (index-entries
@@ -365,7 +351,7 @@
             {:fhir/type :fhir/Patient :id "id-122929"
              :identifier
              [#fhir/Identifier
-                 {:system #fhir/uri"system-140316"}]}
+                     {:system #fhir/uri"system-140316"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1]]
             (index-entries
@@ -473,10 +459,10 @@
                       {:fhir/type :fhir.Specimen/collection
                        :bodySite
                        #fhir/CodeableConcept
-                           {:coding
-                            [#fhir/Coding
-                                {:system #fhir/uri"system-103824"
-                                 :code #fhir/code"code-103812"}]}}}
+                               {:coding
+                                [#fhir/Coding
+                                        {:system #fhir/uri"system-103824"
+                                         :code #fhir/code"code-103812"}]}}}
             hash (hash/generate specimen)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (index-entries
@@ -536,8 +522,8 @@
             {:fhir/type :fhir/Encounter :id "id-105153"
              :class
              #fhir/Coding
-                 {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ActCode"
-                  :code #fhir/code"AMB"}}
+                     {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ActCode"
+                      :code #fhir/code"AMB"}}
             hash (hash/generate specimen)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
             (index-entries
@@ -652,7 +638,7 @@
 
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
           (given (search-param/index-entries
-                   (sr/get search-param-registry "_id" "Patient")
+                   (sr/get search-param-registry "code" "Observation")
                    [] hash resource)
             ::anom/category := ::anom/fault))))
 

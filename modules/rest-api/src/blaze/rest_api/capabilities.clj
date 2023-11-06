@@ -198,7 +198,7 @@
              :type "special"}
             {:name "_sort"
              :type "special"
-             :documentation "Only `_lastUpdated` and `-_lastUpdated` is supported at the moment."}
+             :documentation "Only `_id`, `_lastUpdated` and `-_lastUpdated` are supported at the moment."}
             {:name "_summary"
              :type "token"
              :documentation "Only `count` is supported at the moment."}]}]}]

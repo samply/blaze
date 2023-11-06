@@ -9,7 +9,7 @@
 
 (s/fdef sr/get
   :args (s/cat :search-param-registry :blaze.db/search-param-registry
-               :code string? :type (s/? :fhir.resource/type))
+               :code string? :type :fhir.resource/type)
   :ret (s/nilable :blaze.db/search-param))
 
 

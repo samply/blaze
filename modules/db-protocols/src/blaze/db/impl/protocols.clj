@@ -108,7 +108,7 @@
 
 
 (defprotocol SearchParamRegistry
-  (-get [_ code] [_ code type])
+  (-get [_ code type])
   (-list-by-type [_ type])
   (-list-by-target [_ target])
   (-linked-compartments [_ resource])
