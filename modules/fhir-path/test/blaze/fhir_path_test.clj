@@ -97,7 +97,7 @@
 
 
 (deftest integer-test
-  (is (= 0 (first (eval "0" "foo")))))
+  (is (zero? (first (eval "0" "foo")))))
 
 
 (deftest decimal-test

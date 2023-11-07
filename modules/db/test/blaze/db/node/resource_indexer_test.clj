@@ -228,7 +228,6 @@
         (is (= (sp-vr-tu/decode-index-entries kv-store :code :v-hash)
                [["active" (codec/v-hash "true")]
                 ["deceased" (codec/v-hash "false")]
-                ["_id" (codec/v-hash "id-104313")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
       (testing "ResourceSearchParamValue index"
@@ -238,7 +237,6 @@
         (is (= (r-sp-v-tu/decode-index-entries kv-store :code :v-hash)
                [["active" (codec/v-hash "true")]
                 ["deceased" (codec/v-hash "false")]
-                ["_id" (codec/v-hash "id-104313")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
       (testing "CompartmentResource index"
@@ -300,7 +298,6 @@
                              (codec/id-byte-string "id-145552"))]
                 ["subject" (codec/v-hash "id-145552")]
                 ["_profile" (codec/v-hash "url-164445")]
-                ["_id" (codec/v-hash "id-204446")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
       (testing "ResourceSearchParamValue index"
@@ -323,7 +320,6 @@
                              (codec/id-byte-string "id-145552"))]
                 ["subject" (codec/v-hash "id-145552")]
                 ["_profile" (codec/v-hash "url-164445")]
-                ["_id" (codec/v-hash "id-204446")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
       (testing "CompartmentResource index"
@@ -455,7 +451,6 @@
                              (codec/id-byte-string "id-180857"))]
                 ["subject" (codec/v-hash "Patient/id-180857")]
                 ["status" (codec/v-hash "status-193613")]
-                ["_id" (codec/v-hash "id-192702")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
       (testing "CompartmentResource index"

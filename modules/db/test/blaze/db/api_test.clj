@@ -944,7 +944,68 @@
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [1 :fhir/type] := :fhir/Patient
-          [1 :id] := "1"))))
+          [1 :id] := "1"))
+
+      (testing "search by id"
+        (doseq [id ["0" "1"]]
+          (given (pull-type-query node "Patient" [["_id" id]])
+            count := 1
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := id)
+
+          (testing "it is possible to start with that id"
+            (given (pull-type-query node "Patient" [["_id" id]] id)
+              count := 1
+              [0 :fhir/type] := :fhir/Patient
+              [0 :id] := id))
+
+          (testing "will find nothing if started with another id"
+            (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" id]] "2"))))
+
+          (is (= 1 (count-type-query node "Patient" [["_id" id]]))))
+
+        (testing "finds nothing with id not in database"
+          (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" "2"]])))
+          (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" "2"]] "2")))
+          (is (zero? (count-type-query node "Patient" [["_id" "2"]]))))
+
+        (testing "finds more than one patient"
+          (given (pull-type-query node "Patient" [["_id" "0" "1"]])
+            count := 2
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0"
+            [1 :fhir/type] := :fhir/Patient
+            [1 :id] := "1")
+
+          (is (= 2 (count-type-query node "Patient" [["_id" "0" "1"]]))))
+
+        (testing "as second clause"
+          (given (pull-type-query node "Patient" [["active" "true"] ["_id" "0"]])
+            count := 1
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0")
+
+          (is (zero? (count-type-query node "Patient" [["active" "true"] ["_id" "1"]])))))
+
+      (testing "sorting by _id"
+        (testing "ascending"
+          (given (pull-type-query node "Patient" [[:sort "_id" :asc]])
+            count := 2
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0"
+            [1 :fhir/type] := :fhir/Patient
+            [1 :id] := "1")
+
+          (testing "it is possible to start with the second patient"
+            (given (pull-type-query node "Patient" [[:sort "_id" :asc]] "1")
+              count := 1
+              [0 :fhir/type] := :fhir/Patient
+              [0 :id] := "1")))
+
+        (testing "descending"
+          (given (d/type-query (d/db node) "Patient" [[:sort "_id" :desc]])
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Unsupported sort direction `desc` for search param `_id`.")))))
 
   (testing "a node with two patients in two transactions"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -2664,8 +2725,6 @@
                 ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
                  "combo-value-quantity" #blaze/byte-string"9B780D9180"]
                 ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
-                 "_id" #blaze/byte-string"165494C5"]
-                ["Observation" "id-0" #blaze/hash-prefix"36A9F36D"
                  "_lastUpdated" #blaze/byte-string"80008001"]
                 ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
                  "context-quantity" #blaze/byte-string"0000000080"]
@@ -2673,8 +2732,6 @@
                  "context-quantity" #blaze/byte-string"5C38E45A80"]
                 ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
                  "context-quantity" #blaze/byte-string"9B780D9180"]
-                ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
-                 "_id" #blaze/byte-string"165494C5"]
                 ["TestScript" "id-0" #blaze/hash-prefix"51E67D28"
                  "_lastUpdated" #blaze/byte-string"80008001"]])))
 
@@ -3346,14 +3403,14 @@
         [:put {:fhir/type :fhir/Observation :id "4"
                :effective #fhir/dateTime"1990-06-14T12:24:49Z"}]]]
 
-      (given (pull-type-query node "Observation" [["date" "1990-06-14T12:24:48Z"]])
+      (given (pull-type-query node "Observation" [[:sort "_id" :asc] ["date" "1990-06-14T12:24:48Z"]])
         count := 3
         [0 :id] := "1"
         [1 :id] := "2"
         [2 :id] := "3")
 
       (testing "it is possible to start with the second observation"
-        (given (pull-type-query node "Observation" [["date" "1990-06-14T12:24:48Z"]] "2")
+        (given (pull-type-query node "Observation" [[:sort "_id" :asc] ["date" "1990-06-14T12:24:48Z"]] "2")
           count := 2
           [0 :id] := "2"
           [1 :id] := "3"))
@@ -4190,8 +4247,18 @@
           (given (-> (d/compile-type-query target "Patient" [["_lastUpdated" "lt3000-01-01"]
                                                              ["active" "true"]])
                      (d/query-clauses))
+            count := 2
             [0] := ["active" "true"]
             [1] := ["_lastUpdated" "lt3000-01-01"])))
+
+      (testing "sort clause comes first"
+        (doseq [target [node (d/db node)]]
+          (given (-> (d/compile-type-query target "Patient" [[:sort "_id" :asc]
+                                                             ["active" "true"]])
+                     (d/query-clauses))
+            count := 2
+            [0] := [:sort "_id" :asc]
+            [1] := ["active" "true"])))
 
       (testing "special all clause is removed"
         (doseq [target [node (d/db node)]]

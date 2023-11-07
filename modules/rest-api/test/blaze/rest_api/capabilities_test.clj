@@ -87,7 +87,7 @@
         [:rest 0 :searchParam 11 :type] := "special"
         [:rest 0 :searchParam 12 :name] := "_sort"
         [:rest 0 :searchParam 12 :type] := "special"
-        [:rest 0 :searchParam 12 :documentation] := "Only `_lastUpdated` and `-_lastUpdated` is supported at the moment."
+        [:rest 0 :searchParam 12 :documentation] := "Only `_id`, `_lastUpdated` and `-_lastUpdated` are supported at the moment."
         [:rest 0 :searchParam 13 :name] := "_summary"
         [:rest 0 :searchParam 13 :type] := "token"
         [:rest 0 :searchParam 13 :documentation] := "Only `count` is supported at the moment."))

@@ -97,8 +97,11 @@
     (seq ret)
     (reduced (ba/incorrect "Sort clauses are only allowed at first position."))
 
-    (not= "_lastUpdated" param)
+    (not (#{"_id" "_lastUpdated"} param))
     (reduced (ba/incorrect (format "Unknown search-param `%s` in sort clause." param)))
+
+    (and (= "_id" param) (= :desc direction))
+    (reduced (ba/unsupported "Unsupported sort direction `desc` for search param `_id`."))
 
     :else
     (let [[search-param] (spc/parse-search-param registry type param)]
@@ -118,8 +121,9 @@
 
 (defn- type-priority [type]
   (case type
-    "token" 0
-    1))
+    "id" 0
+    "token" 1
+    2))
 
 
 (defn- order-clauses

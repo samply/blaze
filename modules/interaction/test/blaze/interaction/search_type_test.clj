@@ -1181,7 +1181,61 @@
             (is (= #fhir/unsignedInt 0 (:total body))))
 
           (testing "the bundle contains one entry"
-            (is (= 0 (count (:entry body)))))))))
+            (is (zero? (count (:entry body)))))))))
+
+  (testing "_id sort"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "2"}]]
+       [[:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+      (testing "ascending"
+        (let [{:keys [status body]}
+              @(handler
+                 {::reitit/match patient-match
+                  :params {"_sort" "_id"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the total count is 3"
+            (is (= #fhir/unsignedInt 3 (:total body))))
+
+          (testing "the bundle contains three entries"
+            (is (= 3 (count (:entry body)))))
+
+          (testing "the resources are sorted ascending"
+            (given (:entry body)
+              [0 :resource :id] := "0"
+              [1 :resource :id] := "1"
+              [2 :resource :id] := "2"))
+
+          (testing "has a self link"
+            (is (= (str base-url context-path "/Patient?_sort=_id&_count=50&__t=3&__page-id=0")
+                   (link-url body "self"))))
+
+          (testing "has a first link"
+            (is (= (str base-url context-path "/Patient/__page?_sort=_id&_count=50&__t=3")
+                   (link-url body "first"))))))
+
+      (testing "descending"
+        (let [{:keys [status body]}
+              @(handler
+                 {::reitit/match patient-match
+                  :params {"_sort" "-_id"}})]
+
+          (is (= 422 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"not-supported"
+            [:issue 0 :diagnostics] := "Unsupported sort direction `desc` for search param `_id`.")))))
 
   (testing "_lastUpdated sort"
     (with-handler [handler]

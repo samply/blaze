@@ -1200,10 +1200,13 @@ jobs:
     - name: Download Observation Resources of male Patients
       run: .github/scripts/download-resources-query.sh Observation "patient.gender=male" 20466
 
-    - name: Download Observation Resources of male Patients Sorted Ascending
+    - name: Download Observation Resources of male Patients Sorted by ID
+      run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "_id" 20466
+
+    - name: Download Observation Resources of male Patients Sorted Ascending by Last Updated
       run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "_lastUpdated" 20466
 
-    - name: Download Observation Resources of male Patients Sorted Descending
+    - name: Download Observation Resources of male Patients Sorted Descending by Last Updated
       run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "-_lastUpdated" 20466
 
     - name: Download Observation Resources of female Patients
@@ -1212,8 +1215,14 @@ jobs:
     - name: Download Observation Resources of the year 1970
       run: .github/scripts/download-resources-query.sh Observation "date=1970" 59
 
+    - name: Download Observation Resources of the year 1970 Sorted by ID
+      run: .github/scripts/download-resources-query-sort.sh Observation "date=1970" "_id" 59
+
     - name: Download Observation Resources of the year 1980
       run: .github/scripts/download-resources-query.sh Observation "date=1980" 0
+
+    - name: Download Observation Resources of the year 1980 Sorted by ID
+      run: .github/scripts/download-resources-query-sort.sh Observation "date=1980" "_id" 0
 
     - name: Download Observation Resources of the year 1990
       run: .github/scripts/download-resources-query.sh Observation "date=1990" 19
@@ -1227,8 +1236,14 @@ jobs:
     - name: Download Observation Resources of the year 2020
       run: .github/scripts/download-resources-query.sh Observation "date=2020" 17419
 
+    - name: Download Observation Resources of the year 2020 Sorted by ID
+      run: .github/scripts/download-resources-query-sort.sh Observation "date=2020" "_id" 17419
+
     - name: Download Observation Resources not of the year 2020
       run: .github/scripts/download-resources-query.sh Observation "date=ne2020" 25510
+
+    - name: Download Observation Resources not of the year 2020 Sorted by ID
+      run: .github/scripts/download-resources-query-sort.sh Observation "date=ne2020" "_id" 25510
 
     - name: Download Observation Resources greater than the year 2010
       run: .github/scripts/download-resources-query.sh Observation "date=gt2010" 38486
