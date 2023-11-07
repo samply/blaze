@@ -2,9 +2,10 @@
   "This namespace provides functions to work with Java 9 Reactive Streams.
 
   https://www.baeldung.com/java-9-reactive-streams"
-  (:refer-clojure :exclude [mapcat])
+  (:refer-clojure :exclude [map mapcat])
   (:require
-    [blaze.async.comp :as ac])
+    [blaze.async.comp :as ac]
+    [taoensso.timbre :as log])
   (:import
     [java.util.concurrent Flow$Processor Flow$Publisher Flow$Subscriber
                           Flow$Subscription SubmissionPublisher]))
@@ -74,6 +75,25 @@
     future))
 
 
+(defn map
+  "Returns a Processor which applies `f`."
+  [f]
+  (let [subscription (volatile! nil)]
+    (proxy [SubmissionPublisher Flow$Processor] []
+      (onSubscribe [s]
+        (vreset! subscription s)
+        (request! s 1))
+      (onNext [x]
+        (.submit ^SubmissionPublisher this (f x))
+        (request! @subscription 1))
+      (onError [e]
+        (log/error "on error" e)
+        (.closeExceptionally ^SubmissionPublisher this e))
+      (onComplete []
+        (log/trace "on complete")
+        (.close ^SubmissionPublisher this)))))
+
+
 (defn mapcat
   "Returns a Processor which applies `f` to each value received assuming the
   result is a collection and produces the collection items individually."
@@ -87,6 +107,34 @@
         (run! #(.submit ^SubmissionPublisher this %) (f x))
         (request! @subscription 1))
       (onError [e]
+        (log/error "on error" e)
         (.closeExceptionally ^SubmissionPublisher this e))
       (onComplete []
+        (log/trace "on complete")
+        (.close ^SubmissionPublisher this)))))
+
+
+(defn async-map
+  "Returns a Processor which applies `f` expecting an asynchronous result."
+  [f]
+  (let [subscription (volatile! nil)]
+    (proxy [SubmissionPublisher Flow$Processor] []
+      (onSubscribe [s]
+        (vreset! subscription s)
+        (request! s 1))
+      (onNext [x]
+        (-> (f x)
+            (ac/then-apply
+              (fn [y]
+                (.submit ^SubmissionPublisher this y)
+                (request! @subscription 1)))
+            (ac/exceptionally
+              (fn [e]
+                (log/error "exceptionally" e)
+                (.closeExceptionally ^SubmissionPublisher this e)))))
+      (onError [e]
+        (log/error "on error" e)
+        (.closeExceptionally ^SubmissionPublisher this e))
+      (onComplete []
+        (log/trace "on complete")
         (.close ^SubmissionPublisher this)))))
