@@ -1,6 +1,7 @@
 (ns blaze.db.impl.index.system-as-of-spec
   (:require
     [blaze.byte-string-spec]
+    [blaze.coll.spec :as cs]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index.resource-handle-spec]
     [blaze.db.impl.index.system-as-of :as sao]
@@ -17,4 +18,4 @@
                :start-tid (s/nilable :blaze.db/tid)
                :start-id (s/nilable :blaze.db/id-byte-string)
                :end-t :blaze.db/t)
-  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+  :ret (cs/coll-of :blaze.db/resource-handle))

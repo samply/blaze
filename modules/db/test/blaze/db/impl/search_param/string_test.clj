@@ -48,6 +48,10 @@
       :c-hash := (codec/c-hash "phonetic"))))
 
 
+(defn- index-entries [search-param linked-compartments hash resource]
+  (vec (search-param/index-entries search-param linked-compartments hash resource)))
+
+
 (deftest index-entries-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Patient phonetic"
@@ -57,7 +61,7 @@
                        :name [#fhir/HumanName{}]}
               hash (hash/generate patient)]
 
-          (is (empty? (search-param/index-entries
+          (is (empty? (index-entries
                         (phonetic-param search-param-registry) [] hash
                         patient)))))
 
@@ -67,7 +71,7 @@
                        :name [#fhir/HumanName{:family "Õ"}]}
               hash (hash/generate patient)]
 
-          (is (empty? (search-param/index-entries
+          (is (empty? (index-entries
                         (phonetic-param search-param-registry) [] hash
                         patient)))))
 
@@ -76,7 +80,7 @@
                      :name [#fhir/HumanName{:family "family-102508"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1]]
-            (search-param/index-entries
+            (index-entries
               (phonetic-param search-param-registry) [] hash patient)]
 
         (testing "SearchParamValueResource key"
@@ -103,7 +107,7 @@
                                     :city "city-105431"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
-            (search-param/index-entries
+            (index-entries
               (sr/get search-param-registry "address" "Patient")
               [] hash patient)]
 
@@ -147,7 +151,7 @@
                       :description #fhir/markdown"desc-121328"}
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
-            (search-param/index-entries
+            (index-entries
               (sr/get search-param-registry "description" "ActivityDefinition")
               [] hash resource)]
 

@@ -47,7 +47,7 @@
       (with-open [snapshot (kv/new-snapshot kv-store)
                   iter (kv/new-iterator snapshot)]
         (is (= [[0x00] [0x01]]
-               (into [] (i/keys! iter decode-1 (bs/from-hex "00"))))))))
+               (vec (i/keys! iter decode-1 (bs/from-hex "00"))))))))
 
   (testing "too small ByteBuffer will be replaced with a larger one"
     (with-system [{kv-store ::kv/mem} config]
@@ -59,7 +59,7 @@
       (with-open [snapshot (kv/new-snapshot kv-store)
                   iter (kv/new-iterator snapshot)]
         (is (= [[0x00] [0x00 0x01]]
-               (into [] (i/keys! iter decode-1 (bs/from-hex "00")))))))
+               (vec (i/keys! iter decode-1 (bs/from-hex "00")))))))
 
     (testing "new ByteBuffer is bigger than a two times increase"
       (with-system [{kv-store ::kv/mem} config]
@@ -71,4 +71,4 @@
         (with-open [snapshot (kv/new-snapshot kv-store)
                     iter (kv/new-iterator snapshot)]
           (is (= [[0x00] [0x00 0x01 0x02]]
-                 (into [] (i/keys! iter decode-1 (bs/from-hex "00"))))))))))
+                 (vec (i/keys! iter decode-1 (bs/from-hex "00"))))))))))

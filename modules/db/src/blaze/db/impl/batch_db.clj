@@ -17,6 +17,7 @@
     [blaze.db.impl.index.t-by-instant :as t-by-instant]
     [blaze.db.impl.index.type-as-of :as tao]
     [blaze.db.impl.index.type-stats :as type-stats]
+    [blaze.db.impl.macros :refer [with-open-coll]]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.all :as search-param-all]
     [blaze.db.impl.search-param.util :as u]
@@ -24,7 +25,6 @@
     [blaze.db.search-param-registry :as sr]
     [blaze.fhir.spec.type :as type])
   (:import
-    [clojure.lang IReduceInit]
     [java.io Writer]
     [java.lang AutoCloseable]))
 
@@ -126,10 +126,8 @@
     (let [{:keys [snapshot t]} context
           start-t (if (some-> start-t (<= t)) start-t t)
           end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
-      (reify IReduceInit
-        (reduce [_ rf init]
-          (with-open [taoi (kv/new-iterator snapshot :type-as-of-index)]
-            (reduce rf init (tao/type-history taoi tid start-t start-id end-t)))))))
+      (with-open-coll [taoi (kv/new-iterator snapshot :type-as-of-index)]
+        (tao/type-history taoi tid start-t start-id end-t))))
 
   (-total-num-of-type-changes [_ type since]
     (let [{:keys [snapshot t]} context
@@ -148,10 +146,8 @@
     (let [{:keys [snapshot t]} context
           start-t (if (some-> start-t (<= t)) start-t t)
           end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
-      (reify IReduceInit
-        (reduce [_ rf init]
-          (with-open [saoi (kv/new-iterator snapshot :system-as-of-index)]
-            (reduce rf init (sao/system-history saoi start-t start-tid start-id end-t)))))))
+      (with-open-coll [saoi (kv/new-iterator snapshot :system-as-of-index)]
+        (sao/system-history saoi start-t start-tid start-id end-t))))
 
   (-total-num-of-system-changes [_ since]
     (let [{:keys [snapshot t]} context

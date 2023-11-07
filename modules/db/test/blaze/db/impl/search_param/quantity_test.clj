@@ -131,6 +131,10 @@
         ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`."))))
 
 
+(defn- index-entries [search-param linked-compartments hash resource]
+  (vec (search-param/index-entries search-param linked-compartments hash resource)))
+
+
 (deftest index-entries-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Observation value-quantity"
@@ -146,7 +150,7 @@
                         :system #fhir/uri"http://unitsofmeasure.org"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
-              (search-param/index-entries
+              (index-entries
                 (sr/get search-param-registry "value-quantity" "Observation")
                 [] hash observation)]
 
@@ -209,7 +213,7 @@
                         :unit #fhir/string"mmHg"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3]]
-              (search-param/index-entries
+              (index-entries
                 (sr/get search-param-registry "value-quantity" "Observation")
                 [] hash observation)]
 
@@ -257,7 +261,7 @@
                         :code #fhir/code"mm[Hg]"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3]]
-              (search-param/index-entries
+              (index-entries
                 (sr/get search-param-registry "value-quantity" "Observation")
                 [] hash observation)]
 
@@ -305,7 +309,7 @@
                         :code #fhir/code"mm[Hg]"}}
               hash (hash/generate observation)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
-              (search-param/index-entries
+              (index-entries
                 (sr/get search-param-registry "value-quantity" "Observation")
                 [] hash observation)]
 
@@ -368,7 +372,7 @@
                         :system #fhir/uri"http://unitsofmeasure.org"}}
               hash (hash/generate observation)]
 
-          (is (empty? (search-param/index-entries
+          (is (empty? (index-entries
                         (sr/get search-param-registry "value-quantity" "Observation")
                         [] hash observation)))))
 
@@ -379,7 +383,7 @@
                :status #fhir/code"final"}
               hash (hash/generate observation)]
 
-          (is (empty? (search-param/index-entries
+          (is (empty? (index-entries
                         (sr/get search-param-registry "value-quantity" "Observation")
                         [] hash observation))))))
 

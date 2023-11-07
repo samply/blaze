@@ -55,6 +55,10 @@
         (codec-date/encode-upper-bound #system/date-time"2020-10-30")))))
 
 
+(defn- index-entries [search-param linked-compartments hash resource]
+  (vec (search-param/index-entries search-param linked-compartments hash resource)))
+
+
 (deftest index-entries-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Patient _profile"
@@ -63,7 +67,7 @@
              :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-141443"]}}
             hash (hash/generate patient)
             [[_ k0] [_ k1]]
-            (search-param/index-entries
+            (index-entries
               (sr/get search-param-registry "_profile" "Patient")
               [] hash patient)]
 
@@ -89,7 +93,7 @@
             hash (hash/generate specimen)]
         (is
           (empty?
-            (search-param/index-entries
+            (index-entries
               (sr/get search-param-registry "patient" "Specimen")
               [] hash specimen)))))
 
@@ -99,7 +103,7 @@
                       :url #fhir/uri"url-111854"}
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
-            (search-param/index-entries
+            (index-entries
               (sr/get search-param-registry "url" "ActivityDefinition")
               [] hash resource)]
 
@@ -127,7 +131,7 @@
                           :item #fhir/Reference{:reference "Patient/0"}}]}
               hash (hash/generate resource)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
-              (search-param/index-entries
+              (index-entries
                 (sr/get search-param-registry "item" "List")
                 [] hash resource)]
 
@@ -193,7 +197,7 @@
                                             :value "value-122931"}}}]}
               hash (hash/generate resource)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
-              (search-param/index-entries
+              (index-entries
                 (sr/get search-param-registry "item" "List")
                 [] hash resource)]
 
@@ -254,7 +258,7 @@
                                   {:reference "http://foo.com/bar-141221"}}]}
               hash (hash/generate resource)
               [[_ k0] [_ k1]]
-              (search-param/index-entries
+              (index-entries
                 (sr/get search-param-registry "item" "List")
                 [] hash resource)]
 
@@ -280,7 +284,7 @@
                                    :rank #fhir/positiveInt 94656}]}
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
-            (search-param/index-entries
+            (index-entries
               (sc/search-param
                 {}
                 {:type "number"
@@ -312,7 +316,7 @@
                       :priority #fhir/unsignedInt 102229}
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
-            (search-param/index-entries
+            (index-entries
               (sc/search-param
                 {}
                 {:type "number"

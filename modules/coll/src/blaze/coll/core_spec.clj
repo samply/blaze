@@ -11,6 +11,11 @@
   :ret any?)
 
 
+(s/fdef coll/some
+  :args (s/cat :pred ifn? :coll (s/nilable #(instance? IReduceInit %)))
+  :ret any?)
+
+
 (s/fdef coll/empty?
   :args (s/cat :coll (s/nilable #(instance? IReduceInit %)))
   :ret boolean?)
@@ -22,7 +27,7 @@
 
 
 (s/fdef coll/count
-  :args (s/cat :coll #(instance? IReduceInit %))
+  :args (s/cat :coll counted?)
   :ret nat-int?)
 
 

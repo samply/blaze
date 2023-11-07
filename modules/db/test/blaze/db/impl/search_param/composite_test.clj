@@ -128,6 +128,10 @@
   (transduce (halt-when ba/anomaly?) conj coll))
 
 
+(defn- index-entries [search-param linked-compartments hash resource]
+  (vec (search-param/index-entries search-param linked-compartments hash resource)))
+
+
 (deftest index-entries-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Observation code-value-quantity"
@@ -150,7 +154,7 @@
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]
              [_ k6] [_ k7] [_ k8] [_ k9] [_ k10] [_ k11]
              [_ k12] [_ k13] [_ k14] [_ k15] [_ k16] [_ k17]]
-            (search-param/index-entries
+            (index-entries
               (code-value-quantity-param search-param-registry)
               [] hash observation)]
 

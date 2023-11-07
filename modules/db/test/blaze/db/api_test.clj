@@ -5,6 +5,7 @@
     [blaze.anomaly-spec]
     [blaze.async.comp :as ac]
     [blaze.async.comp-spec]
+    [blaze.coll.core :as coll]
     [blaze.db.api :as d]
     [blaze.db.api-spec]
     [blaze.db.impl.db-spec]
@@ -690,7 +691,7 @@
 (deftest type-list-and-total-test
   (testing "a new node has no patients"
     (with-system [{:blaze.db/keys [node]} config]
-      (is (empty? (d/type-list (d/db node) "Patient")))
+      (is (coll/empty? (d/type-list (d/db node) "Patient")))
       (is (zero? (d/type-total (d/db node) "Patient")))))
 
   (testing "a node with one patient"
@@ -698,11 +699,11 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "has one list entry"
-        (is (= 1 (count (d/type-list (d/db node) "Patient"))))
         (is (= 1 (d/type-total (d/db node) "Patient"))))
 
       (testing "contains that patient"
         (given @(d/pull-many node (d/type-list (d/db node) "Patient"))
+          count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [0 :meta fhir-spec/fhir-type] := :fhir/Meta
@@ -715,7 +716,7 @@
        [[:delete "Patient" "0"]]]
 
       (testing "doesn't contain it in the list"
-        (is (empty? (d/type-list (d/db node) "Patient")))
+        (is (coll/empty? (d/type-list (d/db node) "Patient")))
         (is (zero? (d/type-total (d/db node) "Patient"))))))
 
   (testing "a node with one recreated patient"
@@ -725,7 +726,7 @@
        [[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "has one list entry"
-        (is (= 1 (count (d/type-list (d/db node) "Patient"))))
+        (is (= 1 (count (vec (d/type-list (d/db node) "Patient")))))
         (is (= 1 (d/type-total (d/db node) "Patient"))))))
 
   (testing "a node with two patients in two transactions"
@@ -734,11 +735,11 @@
        [[:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (testing "has two list entries"
-        (is (= 2 (count (d/type-list (d/db node) "Patient"))))
         (is (= 2 (d/type-total (d/db node) "Patient"))))
 
       (testing "contains both patients in id order"
         (given @(d/pull-many node (d/type-list (d/db node) "Patient"))
+          count := 2
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [0 :meta :versionId] := #fhir/id"1"
@@ -754,8 +755,7 @@
           [0 :meta :versionId] := #fhir/id"2"))
 
       (testing "overshooting the start-id returns an empty collection"
-        (is (empty? (d/type-list (d/db node) "Patient" "2")))
-        (is (zero? (count (d/type-list (d/db node) "Patient" "2")))))))
+        (is (coll/empty? (d/type-list (d/db node) "Patient" "2"))))))
 
   (testing "a node with two patients in one transaction"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -763,11 +763,11 @@
         [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (testing "has two list entries"
-        (is (= 2 (count (d/type-list (d/db node) "Patient"))))
         (is (= 2 (d/type-total (d/db node) "Patient"))))
 
       (testing "contains both patients in id order"
         (given @(d/pull-many node (d/type-list (d/db node) "Patient"))
+          count := 2
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [0 :meta :versionId] := #fhir/id"1"
@@ -783,7 +783,7 @@
           [0 :meta :versionId] := #fhir/id"1"))
 
       (testing "overshooting the start-id returns an empty collection"
-        (is (empty? (d/type-list (d/db node) "Patient" "2"))))))
+        (is (coll/empty? (d/type-list (d/db node) "Patient" "2"))))))
 
   (testing "a node with one updated patient"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -791,11 +791,11 @@
        [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
 
       (testing "has one list entry"
-        (is (= 1 (count (d/type-list (d/db node) "Patient"))))
         (is (= 1 (d/type-total (d/db node) "Patient"))))
 
       (testing "contains the updated patient"
         (given @(d/pull-many node (d/type-list (d/db node) "Patient"))
+          count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [0 :active] := true
@@ -807,11 +807,11 @@
        [[:put {:fhir/type :fhir/Observation :id "0"}]]]
 
       (testing "has one patient list entry"
-        (is (= 1 (count (d/type-list (d/db node) "Patient"))))
+        (is (= 1 (count (vec (d/type-list (d/db node) "Patient")))))
         (is (= 1 (d/type-total (d/db node) "Patient"))))
 
       (testing "has one observation list entry"
-        (is (= 1 (count (d/type-list (d/db node) "Observation"))))
+        (is (= 1 (count (vec (d/type-list (d/db node) "Observation")))))
         (is (= 1 (d/type-total (d/db node) "Observation"))))))
 
   (testing "the database is immutable"
@@ -824,11 +824,11 @@
 
           (testing "the original database"
             (testing "has still only one list entry"
-              (is (= 1 (count (d/type-list db "Patient"))))
               (is (= 1 (d/type-total db "Patient"))))
 
             (testing "contains still the original patient"
               (given @(d/pull-many node (d/type-list db "Patient"))
+                count := 1
                 [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
                 [0 :active] := false
@@ -843,7 +843,6 @@
 
           (testing "the original database"
             (testing "has still only one patient"
-              (is (= 1 (count (d/type-list db "Patient"))))
               (is (= 1 (d/type-total db "Patient"))))
 
             (testing "contains still only the first patient"
@@ -859,6 +858,7 @@
         [:put {:fhir/type :fhir/Patient :id "00"}]]]
 
       (given @(d/pull-many node (d/type-list (d/db node) "Patient"))
+        count := 2
         [0 :id] := "0"
         [1 :id] := "00"))))
 
@@ -884,7 +884,8 @@
 (deftest type-query-test
   (with-system [{:blaze.db/keys [node]} config]
     (testing "a new node has no patients"
-      (is (empty? (d/type-query (d/db node) "Patient" [["gender" "male"]]))))
+      (is (coll/empty? (d/type-query (d/db node) "Patient" [["gender" "male"]])))
+      (is (coll/empty? (d/type-query (d/db node) "Patient" [["gender" "male"]] "0"))))
 
     (testing "sort clauses are only allowed at first position"
       (given (d/type-query (d/db node) "Patient" [["gender" "male"]
@@ -2485,8 +2486,9 @@
               [1 :id] := "id-1")))
 
         (testing "with invalid decimal value"
-          (let [clauses [["value-quantity" "a"]]]
-            (d/type-query (d/db node) "Observation" clauses))))
+          (given (d/type-query (d/db node) "Observation" [["value-quantity" "a"]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Invalid decimal value `a` in search parameter `value-quantity`.")))
 
       (testing "status and value-quantity"
         (let [clauses [["status" "final"] ["value-quantity" "2.11|kg/m2"]]]
@@ -3669,7 +3671,7 @@
                                   :end #fhir/dateTime"2001-07"}}]]]
 
     (let [db (d/db node)
-          num-encounter #(count (d/type-query db "Encounter" %))]
+          num-encounter #(count (vec (d/type-query db "Encounter" %)))]
       (are [year n] (= n (num-encounter [["date" (format "gt%d-01-01" year)]
                                          ["date" (format "lt%d-01-01" (inc year))]]))
         1999 2
@@ -3717,7 +3719,7 @@
         [tx-ops]
 
         (let [db (d/db node)
-              num-encounter #(count (d/type-query db "Encounter" %))]
+              num-encounter #(count (vec (d/type-query db "Encounter" %)))]
           (= (num-encounter [["date" (str year)]])
              (num-encounter [["date" (format "sa%d-12-31" (dec year))]
                              ["date" (format "eb%d-01-01" (inc year))]])))))))
@@ -3731,7 +3733,7 @@
         [tx-ops]
 
         (let [db (d/db node)
-              num-encounter #(count (d/type-query db "Encounter" %))]
+              num-encounter #(count (vec (d/type-query db "Encounter" %)))]
           (= (num-encounter [["date" (str "ap" year)]])
              (num-encounter [["date" (format "ge%d-01-01" year)]
                              ["date" (format "lt%d-01-01" (inc year))]])))))))
@@ -4286,8 +4288,7 @@
 (deftest system-list-and-total-test
   (testing "a new node has no resources"
     (with-system [{:blaze.db/keys [node]} config]
-      (is (zero? (count (d/system-list (d/db node)))))
-      (is (empty? (d/system-list (d/db node))))
+      (is (coll/empty? (d/system-list (d/db node))))
       (is (zero? (d/system-total (d/db node))))))
 
   (testing "a node with one patient"
@@ -4295,11 +4296,11 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "has one list entry"
-        (is (= 1 (count (d/system-list (d/db node)))))
         (is (= 1 (d/system-total (d/db node)))))
 
       (testing "contains that patient"
         (given @(d/pull-many node (d/system-list (d/db node)))
+          count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [0 :meta :versionId] := #fhir/id"1"))))
@@ -4310,8 +4311,7 @@
        [[:delete "Patient" "0"]]]
 
       (testing "doesn't contain it in the list"
-        (is (zero? (count (d/system-list (d/db node)))))
-        (is (empty? (d/system-list (d/db node))))
+        (is (coll/empty? (d/system-list (d/db node))))
         (is (zero? (d/system-total (d/db node)))))))
 
   (testing "a node with two resources in two transactions"
@@ -4320,11 +4320,11 @@
        [[:put {:fhir/type :fhir/Observation :id "0"}]]]
 
       (testing "has two list entries"
-        (is (= 2 (count (d/system-list (d/db node)))))
         (is (= 2 (d/system-total (d/db node)))))
 
       (testing "contains both resources in the order of their type hashes"
         (given @(d/pull-many node (d/system-list (d/db node)))
+          count := 2
           [0 :fhir/type] := :fhir/Observation
           [0 :id] := "0"
           [0 :meta :versionId] := #fhir/id"2"
@@ -4334,6 +4334,7 @@
 
       (testing "it is possible to start with the patient"
         (given @(d/pull-many node (d/system-list (d/db node) "Patient" "0"))
+          count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [0 :meta :versionId] := #fhir/id"1"))
@@ -4342,13 +4343,19 @@
                 because in type hash order, Measure comes before
                 Patient but after Observation"
         (given @(d/pull-many node (d/system-list (d/db node) "Measure" "0"))
+          count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [0 :meta :versionId] := #fhir/id"1"))
 
       (testing "overshooting the start-id returns an empty collection"
-        (is (zero? (count (d/system-list (d/db node) "Patient" "1"))))
-        (is (empty? (d/system-list (d/db node) "Patient" "1")))))))
+        (is (coll/empty? (d/system-list (d/db node) "Patient" "1")))))))
+
+
+(deftest system-query-test
+  (with-system [{:blaze.db/keys [node]} config]
+    (testing "a new node has no resources"
+      (is (coll/empty? (d/system-query (d/db node) [["_id" "0"]]))))))
 
 
 
@@ -4366,10 +4373,8 @@
 (deftest list-compartment-resources-test
   (testing "a new node has an empty list of resources in the Patient/0 compartment"
     (with-system [{:blaze.db/keys [node]} config]
-      (is (empty? (d/list-compartment-resource-handles
-                    (d/db node) "Patient" "0" "Observation")))
-      (is (zero? (count (d/list-compartment-resource-handles
-                          (d/db node) "Patient" "0" "Observation"))))))
+      (is (coll/empty? (d/list-compartment-resource-handles
+                         (d/db node) "Patient" "0" "Observation")))))
 
   (testing "a node contains one Observation in the Patient/0 compartment"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -4415,8 +4420,8 @@
                        {:reference "Patient/0"}}]]
        [[:delete "Observation" "0"]]]
 
-      (is (empty? (d/list-compartment-resource-handles
-                    (d/db node) "Patient" "0" "Observation")))))
+      (is (coll/empty? (d/list-compartment-resource-handles
+                         (d/db node) "Patient" "0" "Observation")))))
 
   (testing "it is possible to start at a later id"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -4434,9 +4439,6 @@
                #fhir/Reference
                        {:reference "Patient/0"}}]]]
 
-      (is (= 2 (count (d/list-compartment-resource-handles
-                        (d/db node) "Patient" "0" "Observation" "1"))))
-
       (given @(pull-compartment-resources node "Patient" "0" "Observation" "1")
         count := 2
         [0 :fhir/type] := :fhir/Observation
@@ -4448,8 +4450,8 @@
 
   (testing "Unknown compartment is not a problem"
     (with-system [{:blaze.db/keys [node]} config]
-      (is (empty? (d/list-compartment-resource-handles
-                    (d/db node) "foo" "bar" "Condition"))))))
+      (is (coll/empty? (d/list-compartment-resource-handles
+                         (d/db node) "foo" "bar" "Condition"))))))
 
 
 (defn- pull-compartment-query [node code id type clauses]
@@ -4460,9 +4462,9 @@
 (deftest compartment-query-test
   (testing "a new node has an empty list of resources in the Patient/0 compartment"
     (with-system [{:blaze.db/keys [node]} config]
-      (is (empty? (d/compartment-query
-                    (d/db node) "Patient" "0" "Observation"
-                    [["code" "foo"]])))))
+      (is (coll/empty? (d/compartment-query
+                         (d/db node) "Patient" "0" "Observation"
+                         [["code" "foo"]])))))
 
   (testing "returns the Observation in the Patient/0 compartment"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -4554,9 +4556,9 @@
                                  :code #fhir/code"code"}]}}]]
        [[:delete "Observation" "0"]]]
 
-      (is (empty? (d/compartment-query
-                    (d/db node) "Patient" "0" "Observation"
-                    [["code" "system|code"]])))))
+      (is (coll/empty? (d/compartment-query
+                         (d/db node) "Patient" "0" "Observation"
+                         [["code" "system|code"]])))))
 
   (testing "finds resources after deleted ones"
     (let [observation
@@ -4629,11 +4631,10 @@
           [0 :id] := "0"))
 
       (testing "returns nothing because of non-matching second criteria"
-        (is (empty?
-              (d/compartment-query
-                (d/db node) "Patient" "0" "Observation"
-                [["code" "system-191514|code-191518"]
-                 ["value-quantity" "23"]]))))))
+        (is (coll/empty? (d/compartment-query
+                           (d/db node) "Patient" "0" "Observation"
+                           [["code" "system-191514|code-191518"]
+                            ["value-quantity" "23"]]))))))
 
   (testing "returns an anomaly on unknown search param code"
     (with-system [{:blaze.db/keys [node]} config]
@@ -4643,9 +4644,9 @@
 
   (testing "Unknown compartment is not a problem"
     (with-system [{:blaze.db/keys [node]} config]
-      (is (empty? (d/compartment-query
-                    (d/db node) "foo" "bar" "Condition"
-                    [["code" "baz"]])))))
+      (is (coll/empty? (d/compartment-query
+                         (d/db node) "foo" "bar" "Condition"
+                         [["code" "baz"]])))))
 
   (testing "Unknown type is not a problem"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -4911,7 +4912,7 @@
 (deftest instance-history-test
   (testing "a new node has an empty instance history"
     (with-system [{:blaze.db/keys [node]} config]
-      (is (empty? (d/instance-history (d/db node) "Patient" "0")))
+      (is (coll/empty? (d/instance-history (d/db node) "Patient" "0")))
       (is (zero? (d/total-num-of-instance-changes (d/db node) "Patient" "0")))))
 
   (testing "a node with one patient"
@@ -4919,17 +4920,17 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "has one history entry"
-        (is (= 1 (count (d/instance-history (d/db node) "Patient" "0"))))
         (is (= 1 (d/total-num-of-instance-changes (d/db node) "Patient" "0"))))
 
       (testing "contains that patient"
         (given @(d/pull-many node (d/instance-history (d/db node) "Patient" "0"))
+          count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [0 :meta :versionId] := #fhir/id"1"))
 
       (testing "has an empty history on another patient"
-        (is (empty? (d/instance-history (d/db node) "Patient" "1")))
+        (is (coll/empty? (d/instance-history (d/db node) "Patient" "1")))
         (is (zero? (d/total-num-of-instance-changes (d/db node) "Patient" "1"))))))
 
   (testing "a node with one deleted patient"
@@ -4938,22 +4939,24 @@
        [[:delete "Patient" "0"]]]
 
       (testing "has two history entries"
-        (is (= 2 (count (d/instance-history (d/db node) "Patient" "0"))))
         (is (= 2 (d/total-num-of-instance-changes (d/db node) "Patient" "0"))))
 
-      (testing "the first history entry is the patient marked as deleted"
-        (given @(d/pull-many node (d/instance-history (d/db node) "Patient" "0"))
-          [0 :fhir/type] := :fhir/Patient
-          [0 :id] := "0"
-          [0 :meta :versionId] := #fhir/id"2"
-          [0 meta :blaze.db/op] := :delete))
+      (let [patients @(d/pull-many node (d/instance-history (d/db node) "Patient" "0"))]
+        (is (= 2 (count patients)))
 
-      (testing "the second history entry is the patient marked as created"
-        (given @(d/pull-many node (d/instance-history (d/db node) "Patient" "0"))
-          [1 :fhir/type] := :fhir/Patient
-          [1 :id] := "0"
-          [1 :meta :versionId] := #fhir/id"1"
-          [1 meta :blaze.db/op] := :put))))
+        (testing "the first history entry is the patient marked as deleted"
+          (given patients
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0"
+            [0 :meta :versionId] := #fhir/id"2"
+            [0 meta :blaze.db/op] := :delete))
+
+        (testing "the second history entry is the patient marked as created"
+          (given patients
+            [1 :fhir/type] := :fhir/Patient
+            [1 :id] := "0"
+            [1 :meta :versionId] := #fhir/id"1"
+            [1 meta :blaze.db/op] := :put)))))
 
   (testing "a node with two versions"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -4961,20 +4964,21 @@
        [[:put {:fhir/type :fhir/Patient :id "0" :active false}]]]
 
       (testing "has two history entries"
-        (is (= 2 (count (d/instance-history (d/db node) "Patient" "0"))))
         (is (= 2 (d/total-num-of-instance-changes (d/db node) "Patient" "0"))))
 
       (testing "contains both versions in reverse transaction order"
         (given @(d/pull-many node (d/instance-history (d/db node) "Patient" "0"))
+          count := 2
           [0 :active] := false
           [1 :active] := true))
 
       (testing "it is possible to start with the older transaction"
         (given @(d/pull-many node (d/instance-history (d/db node) "Patient" "0" 1))
+          count := 1
           [0 :active] := true))
 
       (testing "overshooting the start-t returns an empty collection"
-        (is (empty? (d/instance-history (d/db node) "Patient" "0" 0))))))
+        (is (coll/empty? (d/instance-history (d/db node) "Patient" "0" 0))))))
 
   (testing "the database is immutable"
     (testing "while updating a patient"
@@ -4986,11 +4990,11 @@
 
           (testing "the original database"
             (testing "has still only one history entry"
-              (is (= 1 (count (d/instance-history db "Patient" "0"))))
               (is (= 1 (d/total-num-of-instance-changes db "Patient" "0"))))
 
             (testing "contains still the original patient"
               (given @(d/pull-many node (d/instance-history db "Patient" "0"))
+                count := 1
                 [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
                 [0 :active] := false
@@ -5003,7 +5007,7 @@
 (deftest type-history-test
   (testing "a new node has an empty type history"
     (with-system [{:blaze.db/keys [node]} config]
-      (is (empty? (d/type-history (d/db node) "Patient")))
+      (is (coll/empty? (d/type-history (d/db node) "Patient")))
       (is (zero? (d/total-num-of-type-changes (d/db node) "Patient")))))
 
   (testing "a node with one patient"
@@ -5011,17 +5015,17 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "has one history entry"
-        (is (= 1 (count (d/type-history (d/db node) "Patient"))))
         (is (= 1 (d/total-num-of-type-changes (d/db node) "Patient"))))
 
       (testing "contains that patient"
         (given @(d/pull-many node (d/type-history (d/db node) "Patient"))
+          count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [0 :meta :versionId] := #fhir/id"1"))
 
       (testing "has an empty observation history"
-        (is (empty? (d/type-history (d/db node) "Observation")))
+        (is (coll/empty? (d/type-history (d/db node) "Observation")))
         (is (zero? (d/total-num-of-type-changes (d/db node) "Observation"))))))
 
   (testing "a node with one deleted patient"
@@ -5030,22 +5034,24 @@
        [[:delete "Patient" "0"]]]
 
       (testing "has two history entries"
-        (is (= 2 (count (d/type-history (d/db node) "Patient"))))
         (is (= 2 (d/total-num-of-type-changes (d/db node) "Patient"))))
 
-      (testing "the first history entry is the patient marked as deleted"
-        (given @(d/pull-many node (d/type-history (d/db node) "Patient"))
-          [0 :fhir/type] := :fhir/Patient
-          [0 :id] := "0"
-          [0 :meta :versionId] := #fhir/id"2"
-          [0 meta :blaze.db/op] := :delete))
+      (let [patients @(d/pull-many node (d/type-history (d/db node) "Patient"))]
+        (is (= 2 (count patients)))
 
-      (testing "the second history entry is the patient marked as created"
-        (given @(d/pull-many node (d/type-history (d/db node) "Patient"))
-          [1 :fhir/type] := :fhir/Patient
-          [1 :id] := "0"
-          [1 :meta :versionId] := #fhir/id"1"
-          [1 meta :blaze.db/op] := :put))))
+        (testing "the first history entry is the patient marked as deleted"
+          (given patients
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0"
+            [0 :meta :versionId] := #fhir/id"2"
+            [0 meta :blaze.db/op] := :delete))
+
+        (testing "the second history entry is the patient marked as created"
+          (given patients
+            [1 :fhir/type] := :fhir/Patient
+            [1 :id] := "0"
+            [1 :meta :versionId] := #fhir/id"1"
+            [1 meta :blaze.db/op] := :put)))))
 
   (testing "a node with two patients in two transactions"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -5053,20 +5059,21 @@
        [[:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (testing "has two history entries"
-        (is (= 2 (count (d/type-history (d/db node) "Patient"))))
         (is (= 2 (d/total-num-of-type-changes (d/db node) "Patient"))))
 
       (testing "contains both patients in reverse transaction order"
-        (given (into [] (d/type-history (d/db node) "Patient"))
+        (given (vec (d/type-history (d/db node) "Patient"))
+          count := 2
           [0 :id] := "1"
           [1 :id] := "0"))
 
       (testing "it is possible to start with the older transaction"
-        (given (into [] (d/type-history (d/db node) "Patient" 1))
+        (given (vec (d/type-history (d/db node) "Patient" 1))
+          count := 1
           [0 :id] := "0"))
 
       (testing "overshooting the start-t returns an empty collection"
-        (is (empty? (d/type-history (d/db node) "Patient" 0))))))
+        (is (coll/empty? (d/type-history (d/db node) "Patient" 0))))))
 
   (testing "a node with two patients in one transaction"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -5074,16 +5081,17 @@
         [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (testing "has two history entries"
-        (is (= 2 (count (d/type-history (d/db node) "Patient"))))
         (is (= 2 (d/total-num-of-type-changes (d/db node) "Patient"))))
 
       (testing "contains both patients in the order of their ids"
         (given @(d/pull-many node (d/type-history (d/db node) "Patient"))
+          count := 2
           [0 :id] := "0"
           [1 :id] := "1"))
 
       (testing "it is possible to start with the second patient"
         (given @(d/pull-many node (d/type-history (d/db node) "Patient" 1 "1"))
+          count := 1
           [0 :id] := "1"))))
 
   (testing "the database is immutable"
@@ -5096,11 +5104,11 @@
 
           (testing "the original database"
             (testing "has still only one history entry"
-              (is (= 1 (count (d/type-history db "Patient"))))
               (is (= 1 (d/total-num-of-type-changes db "Patient"))))
 
             (testing "contains still the original patient"
               (given @(d/pull-many node (d/type-history db "Patient"))
+                count := 1
                 [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
                 [0 :active] := false
@@ -5115,11 +5123,11 @@
 
           (testing "the original database"
             (testing "has still only one history entry"
-              (is (= 1 (count (d/type-history db "Patient"))))
               (is (= 1 (d/total-num-of-type-changes db "Patient"))))
 
             (testing "contains still the first patient"
               (given @(d/pull-many node (d/type-history db "Patient"))
+                count := 1
                 [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
                 [0 :meta :versionId] := #fhir/id"1"))))))))
@@ -5131,7 +5139,7 @@
 (deftest system-history-test
   (testing "a new node has an empty system history"
     (with-system [{:blaze.db/keys [node]} config]
-      (is (empty? (d/system-history (d/db node))))
+      (is (coll/empty? (d/system-history (d/db node))))
       (is (zero? (d/total-num-of-system-changes (d/db node))))))
 
   (testing "a node with one patient"
@@ -5139,11 +5147,11 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "has one history entry"
-        (is (= 1 (count (d/system-history (d/db node)))))
         (is (= 1 (d/total-num-of-system-changes (d/db node)))))
 
       (testing "contains that patient"
         (given @(d/pull-many node (d/system-history (d/db node)))
+          count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [0 :meta :versionId] := #fhir/id"1"))))
@@ -5154,22 +5162,24 @@
        [[:delete "Patient" "0"]]]
 
       (testing "has two history entries"
-        (is (= 2 (count (d/system-history (d/db node)))))
         (is (= 2 (d/total-num-of-system-changes (d/db node)))))
 
-      (testing "the first history entry is the patient marked as deleted"
-        (given @(d/pull-many node (d/system-history (d/db node)))
-          [0 :fhir/type] := :fhir/Patient
-          [0 :id] := "0"
-          [0 :meta :versionId] := #fhir/id"2"
-          [0 meta :blaze.db/op] := :delete))
+      (let [patients @(d/pull-many node (d/system-history (d/db node)))]
+        (is (= 2 (count patients)))
 
-      (testing "the second history entry is the patient marked as created"
-        (given @(d/pull-many node (d/system-history (d/db node)))
-          [1 :fhir/type] := :fhir/Patient
-          [1 :id] := "0"
-          [1 :meta :versionId] := #fhir/id"1"
-          [1 meta :blaze.db/op] := :put))))
+        (testing "the first history entry is the patient marked as deleted"
+          (given patients
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0"
+            [0 :meta :versionId] := #fhir/id"2"
+            [0 meta :blaze.db/op] := :delete))
+
+        (testing "the second history entry is the patient marked as created"
+          (given patients
+            [1 :fhir/type] := :fhir/Patient
+            [1 :id] := "0"
+            [1 :meta :versionId] := #fhir/id"1"
+            [1 meta :blaze.db/op] := :put)))))
 
   (testing "a node with one patient and one observation in two transactions"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -5177,11 +5187,11 @@
        [[:put {:fhir/type :fhir/Observation :id "0"}]]]
 
       (testing "has two history entries"
-        (is (= 2 (count (d/system-history (d/db node)))))
         (is (= 2 (d/total-num-of-system-changes (d/db node)))))
 
       (testing "contains both resources in reverse transaction order"
         (given @(d/pull-many node (d/system-history (d/db node)))
+          count := 2
           [0 :fhir/type] := :fhir/Observation
           [1 :fhir/type] := :fhir/Patient))
 
@@ -5195,16 +5205,17 @@
         [:put {:fhir/type :fhir/Observation :id "0"}]]]
 
       (testing "has two history entries"
-        (is (= 2 (count (d/system-history (d/db node)))))
         (is (= 2 (d/total-num-of-system-changes (d/db node)))))
 
       (testing "contains both resources in the order of their type hashes"
         (given @(d/pull-many node (d/system-history (d/db node)))
+          count := 2
           [0 :fhir/type] := :fhir/Observation
           [1 :fhir/type] := :fhir/Patient))
 
       (testing "it is possible to start with the patient"
         (given @(d/pull-many node (d/system-history (d/db node) 1 "Patient"))
+          count := 1
           [0 :fhir/type] := :fhir/Patient))))
 
   (testing "a node with two patients in one transaction"
@@ -5213,11 +5224,17 @@
         [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (testing "has two history entries"
-        (is (= 2 (count (d/system-history (d/db node)))))
         (is (= 2 (d/total-num-of-system-changes (d/db node)))))
+
+      (testing "contains both patients"
+        (given @(d/pull-many node (d/system-history (d/db node)))
+          count := 2
+          [0 :id] := "0"
+          [1 :id] := "1"))
 
       (testing "it is possible to start with the second patient"
         (given @(d/pull-many node (d/system-history (d/db node) 1 "Patient" "1"))
+          count := 1
           [0 :id] := "1"))))
 
   (testing "the database is immutable"
@@ -5230,11 +5247,11 @@
 
           (testing "the original database"
             (testing "has still only one history entry"
-              (is (= 1 (count (d/system-history db))))
               (is (= 1 (d/total-num-of-system-changes db))))
 
             (testing "contains still the original patient"
               (given @(d/pull-many node (d/system-history db))
+                count := 1
                 [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
                 [0 :active] := false
@@ -5249,11 +5266,11 @@
 
           (testing "the original database"
             (testing "has still only one history entry"
-              (is (= 1 (count (d/system-history db))))
               (is (= 1 (d/total-num-of-system-changes db))))
 
             (testing "contains still the first patient"
               (given @(d/pull-many node (d/system-history db))
+                count := 1
                 [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
                 [0 :meta :versionId] := #fhir/id"1"))))))))
@@ -5275,13 +5292,13 @@
                 observation (d/resource-handle db "Observation" "0")]
 
             (testing "without target type"
-              (given (d/include db observation code)
+              (given (vec (d/include db observation code))
                 count := 1
                 [0 fhir-spec/fhir-type] := :fhir/Patient
                 [0 :id] := "0"))
 
             (testing "with target type"
-              (given (d/include db observation code "Patient")
+              (given (vec (d/include db observation code "Patient"))
                 count := 1
                 [0 fhir-spec/fhir-type] := :fhir/Patient
                 [0 :id] := "0"))))))
@@ -5300,7 +5317,7 @@
 
         (let [db (d/db node)
               observation (d/resource-handle db "Observation" "0")]
-          (given (d/include db observation "encounter")
+          (given (vec (d/include db observation "encounter"))
             count := 1
             [0 fhir-spec/fhir-type] := :fhir/Encounter
             [0 :id] := "0"))))
@@ -5318,22 +5335,22 @@
               observation (d/resource-handle db "Observation" "0")]
 
           (testing "returns group with subject param"
-            (given (d/include db observation "subject")
+            (given (vec (d/include db observation "subject"))
               count := 1
               [0 fhir-spec/fhir-type] := :fhir/Group
               [0 :id] := "0"))
 
           (testing "returns nothing with patient param"
-            (is (empty? (d/include db observation "patient"))))
+            (is (coll/empty? (d/include db observation "patient"))))
 
           (testing "returns group with subject param and Group target type"
-            (given (d/include db observation "subject" "Group")
+            (given (vec (d/include db observation "subject" "Group"))
               count := 1
               [0 fhir-spec/fhir-type] := :fhir/Group
               [0 :id] := "0"))
 
           (testing "returns nothing with subject param and Patient target type"
-            (is (empty? (d/include db observation "subject" "Patient")))))))
+            (is (coll/empty? (d/include db observation "subject" "Patient")))))))
 
     (testing "non-reference search parameter code"
       (with-system-data [{:blaze.db/keys [node]} config]
@@ -5347,7 +5364,7 @@
 
         (let [db (d/db node)
               observation (d/resource-handle db "Observation" "0")]
-          (is (empty? (d/include db observation "code")))))))
+          (is (coll/empty? (d/include db observation "code")))))))
 
   (testing "Patient"
     (testing "non-reference search parameter family"
@@ -5357,7 +5374,7 @@
 
         (let [db (d/db node)
               patient (d/resource-handle db "Patient" "0")]
-          (is (empty? (d/include db patient "family"))))))))
+          (is (coll/empty? (d/include db patient "family"))))))))
 
 
 (deftest rev-include-test
@@ -5370,7 +5387,7 @@
           (let [db (d/db node)
                 patient (d/resource-handle db "Patient" "0")]
 
-            (is (empty? (d/rev-include db patient))))))
+            (is (coll/empty? (d/rev-include db patient))))))
 
       (testing "with three resources"
         (with-system-data [{:blaze.db/keys [node]} config]
@@ -5385,7 +5402,7 @@
           (let [db (d/db node)
                 patient (d/resource-handle db "Patient" "0")]
 
-            (given (d/rev-include db patient)
+            (given (vec (d/rev-include db patient))
               count := 3
               [0 fhir-spec/fhir-type] := :fhir/Condition
               [0 :id] := "0"
@@ -5406,7 +5423,7 @@
           (let [db (d/db node)
                 patient (d/resource-handle db "Patient" "0")]
 
-            (given (d/rev-include db patient "Observation" code)
+            (given (vec (d/rev-include db patient "Observation" code))
               count := 2
               [0 fhir-spec/fhir-type] := :fhir/Observation
               [0 :id] := "0"
@@ -5426,7 +5443,7 @@
 
         (let [db (d/db node)
               patients (d/resource-handle db "Patient" "0")]
-          (is (empty? (d/rev-include db patients "Observation" "code"))))))))
+          (is (coll/empty? (d/rev-include db patients "Observation" "code"))))))))
 
 
 (deftest batch-db-test
@@ -5453,7 +5470,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
-        (is (= 1 (count (d/type-list batch-db "Patient"))))
+        (is (= 1 (count (vec (d/type-list batch-db "Patient")))))
         (is (= 1 (d/type-total batch-db "Patient"))))))
 
   (testing "compile-type-query"

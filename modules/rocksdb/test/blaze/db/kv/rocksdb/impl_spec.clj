@@ -1,5 +1,6 @@
 (ns blaze.db.kv.rocksdb.impl-spec
   (:require
+    [blaze.coll.spec :as cs]
     [blaze.db.kv.rocksdb :as-alias rocksdb]
     [blaze.db.kv.rocksdb.impl :as impl]
     [blaze.db.kv.rocksdb.impl.spec]
@@ -24,7 +25,7 @@
 (s/fdef impl/put-wb!
   :args (s/cat :cfhs (s/map-of keyword? ::impl/column-family-handle)
                :wb ::impl/write-batch
-               :entries (s/coll-of :blaze.db.kv/put-entry :kind sequential?)))
+               :entries (cs/coll-of :blaze.db.kv/put-entry)))
 
 
 (s/fdef impl/delete-wb!
@@ -34,4 +35,4 @@
 (s/fdef impl/write-wb!
   :args (s/cat :cfhs (s/map-of keyword? ::impl/column-family-handle)
                :wb ::impl/write-batch
-               :entries (s/coll-of :blaze.db.kv/write-entry :kind sequential?)))
+               :entries (cs/coll-of :blaze.db.kv/write-entry)))

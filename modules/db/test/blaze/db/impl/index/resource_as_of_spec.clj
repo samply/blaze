@@ -1,6 +1,7 @@
 (ns blaze.db.impl.index.resource-as-of-spec
   (:require
     [blaze.byte-string-spec]
+    [blaze.coll.spec :as cs]
     [blaze.db.impl.batch-db.spec]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index.resource-as-of :as rao]
@@ -21,14 +22,14 @@
   :args (s/cat :context :blaze.db.impl.batch-db/context
                :tid :blaze.db/tid
                :start-id (s/? :blaze.db/id-byte-string))
-  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+  :ret (cs/coll-of :blaze.db/resource-handle))
 
 
 (s/fdef rao/system-list
   :args (s/cat :context :blaze.db.impl.batch-db/context
                :start (s/? (s/cat :start-tid :blaze.db/tid
                                   :start-id :blaze.db/id-byte-string)))
-  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+  :ret (cs/coll-of :blaze.db/resource-handle))
 
 
 (s/fdef rao/instance-history
@@ -37,7 +38,7 @@
                :id :blaze.db/id-byte-string
                :start-t :blaze.db/t
                :end-t :blaze.db/t)
-  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+  :ret (cs/coll-of :blaze.db/resource-handle))
 
 
 (s/def ::resource-handle-fn

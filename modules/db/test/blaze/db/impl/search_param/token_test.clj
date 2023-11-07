@@ -48,6 +48,10 @@
       :c-hash := (codec/c-hash "code"))))
 
 
+(defn- index-entries [search-param linked-compartments hash resource]
+  (vec (search-param/index-entries search-param linked-compartments hash resource)))
+
+
 (deftest index-entries-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Observation _id"
@@ -56,7 +60,7 @@
              :id "id-161849"}
             hash (hash/generate observation)
             [[_ k0] [_ k1]]
-            (search-param/index-entries
+            (index-entries
               (sr/get search-param-registry "_id" "Observation")
               [] hash observation)]
 
@@ -88,7 +92,7 @@
                        :code #fhir/code"code-171327"}]}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
-            (search-param/index-entries
+            (index-entries
               (code-param search-param-registry) [] hash observation)]
 
         (testing "first SearchParamValueResource key is about `code`"
@@ -150,7 +154,7 @@
                       {:code #fhir/code"code-134035"}]}}
             hash (hash/generate observation)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
-            (search-param/index-entries
+            (index-entries
               (code-param search-param-registry) [] hash observation)]
 
         (testing "first SearchParamValueResource key is about `code`"
@@ -196,7 +200,7 @@
                       {:system #fhir/uri"system-171339"}]}}
             hash (hash/generate observation)
             [[_ k0] [_ k1]]
-            (search-param/index-entries
+            (index-entries
               (code-param search-param-registry) [] hash observation)]
 
         (testing "first SearchParamValueResource key is about `system|`"
@@ -222,7 +226,7 @@
                :active active}
               hash (hash/generate patient)
               [[_ k0] [_ k1]]
-              (search-param/index-entries
+              (index-entries
                 (sr/get search-param-registry "active" "Patient")
                 [] hash patient)]
 
@@ -247,7 +251,7 @@
               {:fhir/type :fhir/Patient :id "id-122929"
                :active #fhir/boolean{:id "foo"}}
               hash (hash/generate patient)]
-          (is (empty? (search-param/index-entries
+          (is (empty? (index-entries
                         (sr/get search-param-registry "active" "Patient")
                         [] hash patient))))))
 
@@ -260,7 +264,7 @@
                   :value "value-123005"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
-            (search-param/index-entries
+            (index-entries
               (sr/get search-param-registry "identifier" "Patient")
               [] hash patient)]
 
@@ -320,7 +324,7 @@
                  {:value "value-140132"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
-            (search-param/index-entries
+            (index-entries
               (sr/get search-param-registry "identifier" "Patient")
               [] hash patient)]
 
@@ -364,7 +368,7 @@
                  {:system #fhir/uri"system-140316"}]}
             hash (hash/generate patient)
             [[_ k0] [_ k1]]
-            (search-param/index-entries
+            (index-entries
               (sr/get search-param-registry "identifier" "Patient")
               [] hash patient)]
 
@@ -389,7 +393,7 @@
         (let [patient {:fhir/type :fhir/Patient :id "id-142629"}
               hash (hash/generate patient)
               [[_ k0] [_ k1]]
-              (search-param/index-entries
+              (index-entries
                 (sr/get search-param-registry "deceased" "Patient")
                 [] hash patient)]
 
@@ -415,7 +419,7 @@
                        :deceased true}
               hash (hash/generate patient)
               [[_ k0] [_ k1]]
-              (search-param/index-entries
+              (index-entries
                 (sr/get search-param-registry "deceased" "Patient")
                 [] hash patient)]
 
@@ -442,7 +446,7 @@
                :deceased #fhir/dateTime"2019-11-17T00:14:29+01:00"}
               hash (hash/generate patient)
               [[_ k0] [_ k1]]
-              (search-param/index-entries
+              (index-entries
                 (sr/get search-param-registry "deceased" "Patient")
                 [] hash patient)]
 
@@ -475,7 +479,7 @@
                                  :code #fhir/code"code-103812"}]}}}
             hash (hash/generate specimen)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
-            (search-param/index-entries
+            (index-entries
               (sr/get search-param-registry "bodysite" "Specimen")
               [] hash specimen)]
 
@@ -536,7 +540,7 @@
                   :code #fhir/code"AMB"}}
             hash (hash/generate specimen)
             [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
-            (search-param/index-entries
+            (index-entries
               (sr/get search-param-registry "class" "Encounter")
               [] hash specimen)]
 
@@ -596,7 +600,7 @@
                         :uid #fhir/id"1.2.840.99999999.1.59354388.1582528879516"}]}
             hash (hash/generate specimen)
             [[_ k0] [_ k1]]
-            (search-param/index-entries
+            (index-entries
               (sr/get search-param-registry "series" "ImagingStudy")
               [] hash specimen)]
 
@@ -622,7 +626,7 @@
                       :version "version-122621"}
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
-            (search-param/index-entries
+            (index-entries
               (sr/get search-param-registry "version" "CodeSystem")
               [] hash resource)]
 
@@ -665,7 +669,7 @@
 
 
 (defn compartment-ids [search-param resource]
-  (into [] (search-param/compartment-ids search-param resource)))
+  (vec (search-param/compartment-ids search-param resource)))
 
 
 (deftest compartment-ids-test
