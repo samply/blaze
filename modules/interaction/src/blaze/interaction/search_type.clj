@@ -96,10 +96,10 @@
         include-futures)))
 
 
-(defn- pull-matches-fn [{:keys [elements]}]
+(defn- pull-matches-xf [{:keys [elements]} db]
   (if (seq elements)
-    #(d/pull-many %1 %2 elements)
-    d/pull-many))
+    (map #(d/pull-many db % elements))
+    (map (partial d/pull-many db))))
 
 
 (defn- page-data
@@ -116,8 +116,8 @@
   (if-ok [{:keys [handles clauses]} (handles-and-clauses context db)]
     (let [{:keys [matches includes next-match]}
           (build-page db include-defs page-size handles)
-          match-futures (mapv (partial (pull-matches-fn params) db) (partition-all 100 matches))
-          include-futures (mapv (partial d/pull-many db) (partition-all 100 includes))]
+          match-futures (into [] (comp (partition-all 100) (pull-matches-xf params db)) matches)
+          include-futures (into [] (comp (partition-all 100) (map (partial d/pull-many db))) includes)]
       (-> (ac/all-of (into match-futures include-futures))
           (ac/exceptionally
             #(assoc %

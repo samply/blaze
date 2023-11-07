@@ -2,6 +2,7 @@
   (:require
     [blaze.byte-string-spec]
     [blaze.coll.core-spec]
+    [blaze.coll.spec :as cs]
     [blaze.db.impl.codec.spec]
     [blaze.db.impl.index.compartment.resource :as cr]
     [blaze.db.impl.iterators-spec]
@@ -15,7 +16,7 @@
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
                :start-id (s/? :blaze.db/id-byte-string))
-  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+  :ret (cs/coll-of :blaze.db/resource-handle))
 
 
 (s/fdef cr/index-entry

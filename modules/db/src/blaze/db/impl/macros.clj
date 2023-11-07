@@ -1,9 +1,6 @@
 (ns blaze.db.impl.macros
   (:import
-    [clojure.lang Counted IReduceInit Seqable Sequential]))
-
-
-(defn inc-rf [sum _] (inc ^long sum))
+    [clojure.lang IReduceInit Sequential]))
 
 
 (defmacro with-open-coll
@@ -15,10 +12,4 @@
      IReduceInit
      (reduce [_ rf# init#]
        (with-open ~bindings
-         (reduce rf# init# ~coll)))
-     Seqable
-     (seq [this#]
-       (.seq ^Seqable (persistent! (.reduce this# conj! (transient [])))))
-     Counted
-     (count [this#]
-       (.reduce this# inc-rf 0))))
+         (reduce rf# init# ~coll)))))

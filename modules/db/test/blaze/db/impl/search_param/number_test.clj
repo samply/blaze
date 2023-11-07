@@ -83,6 +83,10 @@
         ::anom/message := "Unsupported prefix `ne` in search parameter `probability`."))))
 
 
+(defn- index-entries [search-param linked-compartments hash resource]
+  (vec (search-param/index-entries search-param linked-compartments hash resource)))
+
+
 (deftest index-entries-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "RiskAssessment probability"
@@ -94,7 +98,7 @@
                :probability 0.9M}]}
             hash (hash/generate risk-assessment)
             [[_ k0] [_ k1]]
-            (search-param/index-entries
+            (index-entries
               (sr/get search-param-registry "probability" "RiskAssessment")
               [] hash risk-assessment)]
 
@@ -123,7 +127,7 @@
                :start #fhir/integer 1}]}
             hash (hash/generate risk-assessment)
             [[_ k0] [_ k1]]
-            (search-param/index-entries
+            (index-entries
               (sr/get search-param-registry "variant-start" "MolecularSequence")
               [] hash risk-assessment)]
 

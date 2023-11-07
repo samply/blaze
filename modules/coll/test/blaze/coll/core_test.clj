@@ -69,9 +69,6 @@
   (testing "eductions can be reduced"
     (is (= [2 3] (reduce conj [] (coll/eduction (map inc) [1 2])))))
 
-  (testing "eductions are seqable"
-    (is (= (list 2 3) (seq (coll/eduction (map inc) [1 2])))))
-
   (testing "eductions are counted"
     (is (= 2 (count (coll/eduction identity [1 2]))))))
 

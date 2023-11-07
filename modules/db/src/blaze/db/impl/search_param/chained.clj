@@ -53,7 +53,7 @@
       (count (p/-resource-handles this context tid modifier compiled-value))))
 
   (-matches? [_ context resource-handle modifier compiled-values]
-    (some
+    (coll/some
       #(p/-matches? search-param context % modifier compiled-values)
       (index/targets! context resource-handle
                       (codec/c-hash (:code ref-search-param)) ref-tid))))
