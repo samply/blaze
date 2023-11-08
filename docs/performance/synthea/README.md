@@ -14,7 +14,7 @@ docker run -v "$(pwd)/output:/gen/output" synthea 100
 
 ## Post-Process Bundles
 
-While Synthea is running, it's important to run alrady the post-process loop. Otherwise the amount of data Synthea generates will likely fill your disk with uncompressed FHIR bundles. 
+While Synthea is running, it's important to run already the post-process loop. Otherwise the amount of data Synthea generates will likely fill your disk with uncompressed FHIR bundles. 
 
 ```sh
 ./post-process-bundle-loop.sh output/fhir
