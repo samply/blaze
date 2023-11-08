@@ -228,6 +228,12 @@ jobs:
     needs: build
     runs-on: ubuntu-22.04
 
+    strategy:
+      matrix:
+        variant:
+        - standalone
+        - distributed
+
     steps:
     - name: Check out Git repository
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
@@ -246,12 +252,54 @@ jobs:
 
     - name: Run Blaze
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data blaze:latest
+      if: ${{ matrix.variant == 'standalone' }}
+
+    - name: Run Zookeeper, Kafka, Cassandra and Blaze
+      run: docker-compose -f .github/distributed-test/docker-compose.yml up -d
+      if: ${{ matrix.variant == 'distributed' }}
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      if: ${{ matrix.variant == 'standalone' }}
+
+    - name: Wait for Blaze 1
+      run: .github/scripts/wait-for-url.sh  http://localhost:8081/metrics
+      if: ${{ matrix.variant == 'distributed' }}
+
+    - name: Wait for Blaze 2
+      run: .github/scripts/wait-for-url.sh  http://localhost:8082/metrics
+      if: ${{ matrix.variant == 'distributed' }}
 
     - name: Docker Logs
       run: docker logs blaze
+      if: ${{ matrix.variant == 'standalone' }}
+
+    - name: Docker Logs Zookepper
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs zookeeper
+      if: ${{ matrix.variant == 'distributed' }}
+
+    - name: Docker Logs Kafka
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs kafka
+      if: ${{ matrix.variant == 'distributed' }}
+
+    - name: Docker Logs Cassandra 1
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs cassandra-1
+      if: ${{ matrix.variant == 'distributed' }}
+
+    - name: Docker Logs Cassandra 2
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs cassandra-2
+      if: ${{ matrix.variant == 'distributed' }}
+
+    - name: Docker Logs Blaze 1
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs blaze-1
+      if: ${{ matrix.variant == 'distributed' }}
+
+    - name: Docker Logs Blaze 2
+      run: docker-compose -f .github/distributed-test/docker-compose.yml logs blaze-2
+      if: ${{ matrix.variant == 'distributed' }}
+
+    - name: Docker Stats
+      run: docker stats --no-stream
 
     - name: Check Capability Statement
       run: .github/scripts/check-capability-statement.sh
@@ -295,10 +343,13 @@ jobs:
     - name: Download Observation Resources of male Patients
       run: .github/scripts/download-resources-query.sh Observation "patient.gender=male" 20466
 
-    - name: Download Observation Resources of male Patients Sorted Ascending
+    - name: Download Observation Resources of male Patients Sorted by ID
+      run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "_id" 20466
+
+    - name: Download Observation Resources of male Patients Sorted Ascending by Last Updated
       run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "_lastUpdated" 20466
 
-    - name: Download Observation Resources of male Patients Sorted Descending
+    - name: Download Observation Resources of male Patients Sorted Descending by Last Updated
       run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "-_lastUpdated" 20466
 
     - name: Download Observation Resources of female Patients
@@ -307,8 +358,14 @@ jobs:
     - name: Download Observation Resources of the year 1970
       run: .github/scripts/download-resources-query.sh Observation "date=1970" 59
 
+    - name: Download Observation Resources of the year 1970 Sorted by ID
+      run: .github/scripts/download-resources-query-sort.sh Observation "date=1970" "_id" 59
+
     - name: Download Observation Resources of the year 1980
       run: .github/scripts/download-resources-query.sh Observation "date=1980" 0
+
+    - name: Download Observation Resources of the year 1980 Sorted by ID
+      run: .github/scripts/download-resources-query-sort.sh Observation "date=1980" "_id" 0
 
     - name: Download Observation Resources of the year 1990
       run: .github/scripts/download-resources-query.sh Observation "date=1990" 19
@@ -322,8 +379,14 @@ jobs:
     - name: Download Observation Resources of the year 2020
       run: .github/scripts/download-resources-query.sh Observation "date=2020" 17419
 
+    - name: Download Observation Resources of the year 2020 Sorted by ID
+      run: .github/scripts/download-resources-query-sort.sh Observation "date=2020" "_id" 17419
+
     - name: Download Observation Resources not of the year 2020
       run: .github/scripts/download-resources-query.sh Observation "date=ne2020" 25510
+
+    - name: Download Observation Resources not of the year 2020 Sorted by ID
+      run: .github/scripts/download-resources-query-sort.sh Observation "date=ne2020" "_id" 25510
 
     - name: Download Observation Resources greater than the year 2010
       run: .github/scripts/download-resources-query.sh Observation "date=gt2010" 38486
@@ -559,9 +622,6 @@ jobs:
     - name: Health - HEAD
       run: curl -f --head http://localhost:8080/health
 
-    - name: Prometheus Metrics
-      run: .github/scripts/test-metrics.sh
-
     - name: Not Acceptable
       run: .github/scripts/not-acceptable.sh
 
@@ -593,7 +653,22 @@ jobs:
       run: .github/scripts/patient-everything.sh
 
     - name: Patient Identical Update
-      run:  .github/scripts/patient-identical-update.sh
+      run: .github/scripts/patient-identical-update.sh
+
+    - name: Prometheus Metrics
+      run: .github/scripts/test-metrics.sh
+      if: ${{ matrix.variant == 'standalone' }}
+
+    - name: Prometheus Metrics - Blaze 1
+      run: curl -f http://localhost:8081/metrics
+      if: ${{ matrix.variant == 'distributed' }}
+
+    - name: Prometheus Metrics - Blaze 2
+      run: curl -f http://localhost:8082/metrics
+      if: ${{ matrix.variant == 'distributed' }}
+
+    - name: Docker Stats
+      run: docker stats --no-stream
 
   not-enforcing-referential-integrity-test:
     needs: build
@@ -1108,419 +1183,6 @@ jobs:
     - name: Fetch Patient Expecting an Error
       run: .github/scripts/fetch-resource-0-with-missing-resource-content.sh
 
-  distributed-test:
-    needs: build
-    runs-on: ubuntu-22.04
-
-    steps:
-    - name: Check out Git repository
-      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
-
-    - name: Install Blazectl
-      run: .github/scripts/install-blazectl.sh
-
-    - name: Download Blaze Image
-      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
-      with:
-        name: blaze-image
-        path: /tmp
-
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
-
-    - name: Run Zookeeper, Kafka, Cassandra and Blaze
-      run: docker-compose -f .github/distributed-test/docker-compose.yml up -d
-
-    - name: Wait for Blaze 1
-      run: .github/scripts/wait-for-url.sh  http://localhost:8081/metrics
-
-    - name: Wait for Blaze 2
-      run: .github/scripts/wait-for-url.sh  http://localhost:8082/metrics
-
-    - name: Docker Logs Zookepper
-      run: docker-compose -f .github/distributed-test/docker-compose.yml logs zookeeper
-
-    - name: Docker Logs Kafka
-      run: docker-compose -f .github/distributed-test/docker-compose.yml logs kafka
-
-    - name: Docker Logs Cassandra 1
-      run: docker-compose -f .github/distributed-test/docker-compose.yml logs cassandra-1
-
-    - name: Docker Logs Cassandra 2
-      run: docker-compose -f .github/distributed-test/docker-compose.yml logs cassandra-2
-
-    - name: Docker Logs Blaze 1
-      run: docker-compose -f .github/distributed-test/docker-compose.yml logs blaze-1
-
-    - name: Docker Logs Blaze 2
-      run: docker-compose -f .github/distributed-test/docker-compose.yml logs blaze-2
-
-    - name: Docker Stats
-      run: docker stats --no-stream
-
-    - name: Check Capability Statement
-      run: .github/scripts/check-capability-statement.sh
-
-    - name: Check Referential Integrity Enforced
-      run: .github/scripts/check-referential-integrity-enforced.sh
-
-    - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
-
-    - name: Check Total-Number of Resources are 92114
-      run: .github/scripts/check-total-number-of-resources.sh 92114
-
-    - name: Count Resources
-      run: blazectl count-resources --server http://localhost:8080/fhir
-
-    - name: Download All Resources
-      run: .github/scripts/download-all-resources.sh
-
-    - name: Download Patient Resources
-      run: .github/scripts/download-resources.sh Patient
-
-    - name: Download Male Patient Resources
-      run: .github/scripts/download-resources-query.sh Patient "gender=male" 56
-
-    - name: Download Female Patient Resources
-      run: .github/scripts/download-resources-query.sh Patient "gender=female" 64
-
-    - name: Download Patient Resources - Including Observation, Condition, Encounter and Procedure
-      run: .github/scripts/revinclude.sh
-
-    - name: Download Observation Resources
-      run: .github/scripts/download-resources.sh Observation
-
-    - name: Download Observation Resources with special LOINC Codes
-      run: .github/scripts/download-resources-query.sh Observation "code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9" 2399
-
-    - name: Download Observation Resources with all LOINC Codes
-      run: .github/scripts/download-resources-query.sh Observation "_count=500&code=http://loinc.org|10230-1,http://loinc.org|10480-2,http://loinc.org|10834-0,http://loinc.org|14804-9,http://loinc.org|14959-1,http://loinc.org|1742-6,http://loinc.org|1751-7,http://loinc.org|17861-6,http://loinc.org|18262-6,http://loinc.org|19123-9,http://loinc.org|1920-8,http://loinc.org|1960-4,http://loinc.org|1975-2,http://loinc.org|1988-5,http://loinc.org|19926-5,http://loinc.org|19994-3,http://loinc.org|2019-8,http://loinc.org|2028-9,http://loinc.org|20454-5,http://loinc.org|20505-4,http://loinc.org|20565-8,http://loinc.org|20570-8,http://loinc.org|2069-3,http://loinc.org|2075-0,http://loinc.org|2085-9,http://loinc.org|2093-3,http://loinc.org|21000-5,http://loinc.org|2157-6,http://loinc.org|2160-0,http://loinc.org|21905-5,http://loinc.org|21906-3,http://loinc.org|21907-1,http://loinc.org|21908-9,http://loinc.org|2276-4,http://loinc.org|2339-0,http://loinc.org|2345-7,http://loinc.org|2498-4,http://loinc.org|2500-7,http://loinc.org|2502-3,http://loinc.org|2514-8,http://loinc.org|2532-0,http://loinc.org|25428-4,http://loinc.org|2571-8,http://loinc.org|26881-3,http://loinc.org|2703-7,http://loinc.org|2708-6,http://loinc.org|2713-6,http://loinc.org|2744-1,http://loinc.org|2823-3,http://loinc.org|28245-9,http://loinc.org|2857-1,http://loinc.org|2885-2,http://loinc.org|29463-7,http://loinc.org|2947-0,http://loinc.org|2951-2,http://loinc.org|3094-0,http://loinc.org|32167-9,http://loinc.org|32207-3,http://loinc.org|32465-7,http://loinc.org|32623-1,http://loinc.org|33728-7,http://loinc.org|33756-8,http://loinc.org|33762-6,http://loinc.org|33914-3,http://loinc.org|33959-8,http://loinc.org|38208-5,http://loinc.org|38265-5,http://loinc.org|38483-4,http://loinc.org|39156-5,http://loinc.org|44667-4,http://loinc.org|44963-7,http://loinc.org|4544-3,http://loinc.org|4548-4,http://loinc.org|46240-8,http://loinc.org|46288-7,http://loinc.org|48065-7,http://loinc.org|49765-1,http://loinc.org|55277-8,http://loinc.org|5767-9,http://loinc.org|5770-3,http://loinc.org|5778-6,http://loinc.org|57905-2,http://loinc.org|5792-7,http://loinc.org|5794-3,http://loinc.org|5797-6,http://loinc.org|5799-2,http://loinc.org|5802-4,http://loinc.org|5803-2,http://loinc.org|5804-0,http://loinc.org|5811-5,http://loinc.org|5902-2,http://loinc.org|59032-3,http://loinc.org|5905-5,http://loinc.org|59408-5,http://loinc.org|59557-9,http://loinc.org|59576-9,http://loinc.org|6075-6,http://loinc.org|6082-2,http://loinc.org|6085-5,http://loinc.org|6095-4,http://loinc.org|6106-9,http://loinc.org|6158-0,http://loinc.org|6189-5,http://loinc.org|6206-7,http://loinc.org|6246-3,http://loinc.org|6248-9,http://loinc.org|6273-7,http://loinc.org|6276-0,http://loinc.org|6298-4,http://loinc.org|6299-2,http://loinc.org|6301-6,http://loinc.org|63513-6,http://loinc.org|65750-2,http://loinc.org|66519-0,http://loinc.org|66524-0,http://loinc.org|66529-9,http://loinc.org|66534-9,http://loinc.org|6690-2,http://loinc.org|6768-6,http://loinc.org|6833-8,http://loinc.org|6844-5,http://loinc.org|69453-9,http://loinc.org|704-7,http://loinc.org|706-2,http://loinc.org|711-2,http://loinc.org|713-8,http://loinc.org|718-7,http://loinc.org|71802-3,http://loinc.org|72106-8,http://loinc.org|72166-2,http://loinc.org|72514-3,http://loinc.org|7258-7,http://loinc.org|731-0,http://loinc.org|736-9,http://loinc.org|742-7,http://loinc.org|751-8,http://loinc.org|75325-1,http://loinc.org|76690-7,http://loinc.org|770-8,http://loinc.org|77606-2,http://loinc.org|777-3,http://loinc.org|785-6,http://loinc.org|786-4,http://loinc.org|787-2,http://loinc.org|788-0,http://loinc.org|789-8,http://loinc.org|80382-5,http://loinc.org|80383-3,http://loinc.org|8302-2,http://loinc.org|8310-5,http://loinc.org|8331-1,http://loinc.org|8478-0,http://loinc.org|85318-4,http://loinc.org|85319-2,http://loinc.org|85337-4,http://loinc.org|85339-0,http://loinc.org|85352-3,http://loinc.org|85354-9,http://loinc.org|88020-3,http://loinc.org|88021-1,http://loinc.org|88040-1,http://loinc.org|88262-1,http://loinc.org|8867-4,http://loinc.org|89579-7,http://loinc.org|91148-7,http://loinc.org|92130-4,http://loinc.org|92131-2,http://loinc.org|92134-6,http://loinc.org|92138-7,http://loinc.org|92139-5,http://loinc.org|92140-3,http://loinc.org|92141-1,http://loinc.org|92142-9,http://loinc.org|9279-1,http://loinc.org|94040-3,http://loinc.org|94531-1,http://loinc.org|9843-4,http://loinc.org|99999-0" 42929
-
-    - name: Download Observation Resources of male Patients
-      run: .github/scripts/download-resources-query.sh Observation "patient.gender=male" 20466
-
-    - name: Download Observation Resources of male Patients Sorted by ID
-      run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "_id" 20466
-
-    - name: Download Observation Resources of male Patients Sorted Ascending by Last Updated
-      run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "_lastUpdated" 20466
-
-    - name: Download Observation Resources of male Patients Sorted Descending by Last Updated
-      run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "-_lastUpdated" 20466
-
-    - name: Download Observation Resources of female Patients
-      run: .github/scripts/download-resources-query.sh Observation "_count=500&patient.gender=female" 22463
-
-    - name: Download Observation Resources of the year 1970
-      run: .github/scripts/download-resources-query.sh Observation "date=1970" 59
-
-    - name: Download Observation Resources of the year 1970 Sorted by ID
-      run: .github/scripts/download-resources-query-sort.sh Observation "date=1970" "_id" 59
-
-    - name: Download Observation Resources of the year 1980
-      run: .github/scripts/download-resources-query.sh Observation "date=1980" 0
-
-    - name: Download Observation Resources of the year 1980 Sorted by ID
-      run: .github/scripts/download-resources-query-sort.sh Observation "date=1980" "_id" 0
-
-    - name: Download Observation Resources of the year 1990
-      run: .github/scripts/download-resources-query.sh Observation "date=1990" 19
-
-    - name: Download Observation Resources of the year 2000
-      run: .github/scripts/download-resources-query.sh Observation "date=2000" 101
-
-    - name: Download Observation Resources of the year 2010
-      run: .github/scripts/download-resources-query.sh Observation "date=2010" 995
-
-    - name: Download Observation Resources of the year 2020
-      run: .github/scripts/download-resources-query.sh Observation "date=2020" 17419
-
-    - name: Download Observation Resources of the year 2020 Sorted by ID
-      run: .github/scripts/download-resources-query-sort.sh Observation "date=2020" "_id" 17419
-
-    - name: Download Observation Resources not of the year 2020
-      run: .github/scripts/download-resources-query.sh Observation "date=ne2020" 25510
-
-    - name: Download Observation Resources not of the year 2020 Sorted by ID
-      run: .github/scripts/download-resources-query-sort.sh Observation "date=ne2020" "_id" 25510
-
-    - name: Download Observation Resources greater than the year 2010
-      run: .github/scripts/download-resources-query.sh Observation "date=gt2010" 38486
-
-    - name: Download Observation Resources greater than the year 2020
-      run: .github/scripts/download-resources-query.sh Observation "date=gt2020" 983
-
-    - name: Download Observation Resources less than the year 2010
-      run: .github/scripts/download-resources-query.sh Observation "date=lt2010" 3448
-
-    - name: Download Observation Resources less than the year 2020
-      run: .github/scripts/download-resources-query.sh Observation "date=lt2020" 24527
-
-    - name: Download Observation Resources greater equal the year 2010
-      run: .github/scripts/download-resources-query.sh Observation "date=ge2010" 39481
-
-    - name: Download Observation Resources greater equal the year 2020
-      run: .github/scripts/download-resources-query.sh Observation "date=ge2020" 18402
-
-    - name: Download Observation Resources less equal the year 2010
-      run: .github/scripts/download-resources-query.sh Observation "date=le2010" 4443
-
-    - name: Download Observation Resources less equal the year 2020
-      run: .github/scripts/download-resources-query.sh Observation "date=le2020" 41946
-
-    - name: Download Observation Resources that start after the year 2010
-      run: .github/scripts/download-resources-query.sh Observation "date=sa2010" 38486
-
-    - name: Download Observation Resources that start after the year 2020
-      run: .github/scripts/download-resources-query.sh Observation "date=sa2020" 983
-
-    - name: Download Observation Resources that end before the year 2010
-      run: .github/scripts/download-resources-query.sh Observation "date=eb2010" 3448
-
-    - name: Download Observation Resources that end before the year 2020
-      run: .github/scripts/download-resources-query.sh Observation "date=eb2020" 24527
-
-    - name: Check Observation Date Search
-      run: .github/scripts/check-date-search.sh "Observation"
-
-    - name: Check Encounter Date Search
-      run: .github/scripts/check-date-search.sh "Encounter"
-
-    - name: Check DiagnosticReport Date Search
-      run: .github/scripts/check-date-search.sh "DiagnosticReport"
-
-    - name: Download Observation Resources of female Patients Sorted Ascending
-      run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=female" "_lastUpdated" 22463
-
-    - name: Download Observation Resources of female Patients Sorted Descending
-      run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=female" "-_lastUpdated" 22463
-
-    - name: Download Observation Resources - Including Patients
-      run: blazectl --no-progress --server http://localhost:8080/fhir download Observation -q '_include=Observation:patient' -o Observation-Patient.ndjson
-
-    - name: Download Observation Resources - Including Encounters and Patients
-      run: blazectl --no-progress --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include=Observation:patient' -o Observation-Encounter-Patient.ndjson
-
-    - name: Download Observation Resources - Including Encounters and Encounter Patients
-      run: blazectl --no-progress --server http://localhost:8080/fhir download Observation -q '_include=Observation:encounter&_include:iterate=Encounter:patient' -o Observation-Encounter-Encounter-Patient.ndjson
-
-    - name: Download Condition Resources
-      run: .github/scripts/download-resources.sh Condition
-
-    - name: Download Condition Resources - Including Subjects
-      run: blazectl --no-progress --server http://localhost:8080/fhir download Condition -q '_include=Condition:subject' -o Condition-Subject.ndjson
-
-    - name: Download Condition Resources - Including Encounters
-      run: blazectl --no-progress --server http://localhost:8080/fhir download Condition -q '_include=Condition:encounter' -o Condition-Encounter.ndjson
-
-    - name: Download DiagnosticReport Resources
-      run: .github/scripts/download-resources.sh DiagnosticReport
-
-    - name: Download MedicationRequest Resources of Medications with code 854235
-      run: .github/scripts/download-resources-query.sh MedicationRequest "medication.code=1736854" 112
-
-    - name: Download MedicationRequest Resources of Medications with code 854235 Sorted Ascending
-      run: .github/scripts/download-resources-query-sort.sh MedicationRequest "medication.code=1736854" "_lastUpdated" 112
-
-    - name: Download MedicationRequest Resources of Medications with code 854235 Sorted Descending
-      run: .github/scripts/download-resources-query-sort.sh MedicationRequest "medication.code=1736854" "-_lastUpdated" 112
-
-    - name: Download MedicationRequest Resources - Including Medications
-      run: blazectl --no-progress --server http://localhost:8080/fhir download MedicationRequest -q '_include=MedicationRequest:medication' -o MedicationRequest.ndjson
-
-    - name: Download male Patient Resources having inpatient Encounters in 2010
-      run: .github/scripts/download-resources-query.sh Patient "gender=male&_has:Encounter:patient:class=IMP&_has:Encounter:patient:date=2010" 8
-
-    - name: Download female Patient Resources having inpatient Encounters in 2010
-      run: .github/scripts/download-resources-query.sh Patient "gender=female&_has:Encounter:patient:class=IMP&_has:Encounter:patient:date=2010" 11
-
-    - name: Download Observations using _elements=subject
-      run: .github/scripts/download-observations-elements.sh
-
-    - name: Search Observation _lastUpdated
-      run: .github/scripts/search-patient-last-updated.sh
-
-    - name: Search Observation _profile
-      run: .github/scripts/search-observation-profile.sh
-
-    - name: Search Compartment
-      run: .github/scripts/search-compartment.sh
-
-    - name: Evaluate CQL Query 1
-      run: .github/scripts/evaluate-measure.sh q1 56
-
-    - name: Evaluate CQL Query 1 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q1 56
-
-    - name: Evaluate CQL Query 1 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q1 56
-
-    - name: Evaluate CQL Query 1 on Individual Patients
-      run: .github/scripts/evaluate-patient-q1-measure.sh
-
-    - name: Evaluate CQL Query 2
-      run: .github/scripts/evaluate-measure.sh q2 42
-
-    - name: Evaluate CQL Query 2 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q2 42
-
-    - name: Evaluate CQL Query 2 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q2 42
-
-    - name: Evaluate CQL Query 4
-      run: .github/scripts/evaluate-measure.sh q4 0
-
-    - name: Evaluate CQL Query 4 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q4 0
-
-    - name: Evaluate CQL Query 4 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q4 0
-
-    - name: Evaluate CQL Query 7
-      run: .github/scripts/evaluate-measure.sh q7 81
-
-    - name: Evaluate CQL Query 7 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q7 81
-
-    - name: Evaluate CQL Query 7 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q7 81
-
-    - name: Evaluate CQL Query 14
-      run: .github/scripts/evaluate-measure.sh q14 96
-
-    - name: Evaluate CQL Query 14 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q14 96
-
-    - name: Evaluate CQL Query 14 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q14 96
-
-    - name: Evaluate CQL Query 17
-      run: .github/scripts/evaluate-measure.sh q17 120
-
-    - name: Evaluate CQL Query 17 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q17 120
-
-    - name: Evaluate CQL Query 17 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q17 120
-
-    - name: Evaluate CQL Query 20 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q20-stratifier-city 120
-
-    - name: Evaluate CQL Query 21 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q21-stratifier-city-of-only-women 64
-
-    - name: Evaluate CQL Query 26 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q26-stratifier-bmi 120
-
-    - name: Evaluate CQL Query 27 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q27-stratifier-calculated-bmi 120
-
-    - name: Evaluate CQL Query 32 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q32-stratifier-underweight 120
-
-    - name: Evaluate CQL Query 36
-      run: .github/scripts/evaluate-measure.sh q36-parameter 86
-
-    - name: Evaluate CQL Query 36 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q36-parameter 86
-
-    - name: Evaluate CQL Query 34
-      run: .github/scripts/evaluate-measure.sh q37-overlaps 24
-
-    - name: Evaluate CQL Query 34 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q37-overlaps 24
-
-    - name: Evaluate CQL Query 34 - Subject List
-      run: .github/scripts/evaluate-measure-subject-list.sh q37-overlaps 24
-
-    - name: Evaluate CQL Query 46
-      run: .github/scripts/evaluate-measure.sh q46-between-date 19
-
-    - name: Evaluate CQL Query 46 using Blazectl
-      run: .github/scripts/evaluate-measure-blazectl.sh q46-between-date 19
-
-    - name: Forwarded Header HTTPS
-      run: .github/scripts/forwarded-header.sh https
-
-    - name: Forwarded Header HTTP
-      run: .github/scripts/forwarded-header.sh http
-
-    - name: X-Forwarded Headers HTTPS
-      run: .github/scripts/x-forwarded-headers.sh https
-
-    - name: X-Forwarded Headers HTTP
-      run: .github/scripts/x-forwarded-headers.sh http
-
-    - name: Delete
-      run: .github/scripts/delete.sh
-
-    - name: Batch
-      run: .github/scripts/batch.sh
-
-    - name: Batch Metadata
-      run: .github/scripts/batch-metadata.sh
-
-    - name: Transaction
-      run: .github/scripts/transaction.sh
-
-    - name: Transaction Read/Write
-      run: .github/scripts/transaction-rw.sh
-
-    - name: Transaction with Invalid (Null) Resource
-      run: .github/scripts/transaction-null-resource.sh
-
-    - name: OPTIONS
-      run: curl -f -XOPTIONS http://localhost:8080/fhir/metadata
-
-    - name: Health
-      run: curl -f http://localhost:8080/health
-
-    - name: Health - HEAD
-      run: curl -f --head http://localhost:8080/health
-
-    - name: Prometheus Metrics - Blaze 1
-      run: curl -f http://localhost:8081/metrics
-
-    - name: Prometheus Metrics - Blaze 2
-      run: curl -f http://localhost:8082/metrics
-
-    - name: Not Acceptable
-      run: .github/scripts/not-acceptable.sh
-
-    - name: Conditional Update If-None-Match
-      run: .github/scripts/conditional-update-if-none-match.sh
-
-    - name: GraphQL Patient
-      run: .github/scripts/graphql.sh Patient
-
-    - name: GraphQL Observation
-      run: .github/scripts/graphql.sh Observation
-
-    - name: Link Header Encoding
-      run: .github/scripts/link-header-encoding.sh
-
-    - name: Paging uses a Stable Snapshot of the Database (Patient)
-      run: .github/scripts/follow-patient-next-link-after-write.sh
-
-    - name: Paging uses a Stable Snapshot of the Database (system)
-      run: .github/scripts/follow-system-next-link-after-write.sh
-
-    - name: Create Patient
-      run: .github/scripts/create-patient.sh
-
-    - name: Read Ignores T
-      run: .github/scripts/read-ignores-t.sh
-
-    - name: Patient Everything
-      run: .github/scripts/patient-everything.sh
-
-    - name: Patient Identical Update
-      run:  .github/scripts/patient-identical-update.sh
-
-    - name: Docker Stats
-      run: docker stats --no-stream
-
   jepsen-distributed-test:
     needs: build
     runs-on: ubuntu-22.04
@@ -1614,13 +1276,12 @@ jobs:
     - chaining-without-referential-integrity-test
     - bundle-with-references-test
     - jepsen-test
+    - jepsen-distributed-test
     - openid-auth-test
     - doc-copy-data-test
     - big-binary-test
     - frontend-test
     - missing-resource-content-test
-    - distributed-test
-    - jepsen-distributed-test
     - custom-search-parameters-test
     runs-on: ubuntu-22.04
     permissions:
