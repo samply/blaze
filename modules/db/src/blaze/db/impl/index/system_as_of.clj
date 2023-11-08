@@ -6,7 +6,9 @@
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.iterators :as i])
+    [blaze.db.impl.iterators :as i]
+    [blaze.db.impl.macros :refer [with-open-coll]]
+    [blaze.db.kv :as kv])
   (:import
     [com.google.common.primitives Longs]))
 
@@ -85,7 +87,8 @@
   `end-t` (inclusive) of all resources.
 
   Versions are resource handles."
-  [saoi start-t start-tid start-id end-t]
+  [snapshot start-t start-tid start-id end-t]
   (coll/eduction
     (take-while (key-valid? end-t))
-    (i/kvs! saoi (decoder) (bs/from-byte-array (start-key start-t start-tid start-id)))))
+    (with-open-coll [saoi (kv/new-iterator snapshot :system-as-of-index)]
+      (i/kvs! saoi (decoder) (bs/from-byte-array (start-key start-t start-tid start-id))))))

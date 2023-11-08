@@ -40,16 +40,16 @@
   (testing "non matching op"
     ;; although a non-matching op isn't allowed in the spec, it could happen at
     ;; runtime, and we have to test that case
-    (st/unstrument `spq/resource-keys!)
+    (st/unstrument `spq/resource-keys)
 
     (try
-      (spq/resource-keys! {} (codec/c-hash "value-quantity") 0 0 {:op :foo})
+      (spq/resource-keys {} (codec/c-hash "value-quantity") 0 0 {:op :foo})
       (catch Exception e
         (is (= "No matching clause: :foo" (ex-message e)))))
 
     (testing "with start-id"
       (try
-        (spq/resource-keys! {} (codec/c-hash "value-quantity") 0 0 {:op :foo} 0)
+        (spq/resource-keys {} (codec/c-hash "value-quantity") 0 0 {:op :foo} 0)
         (catch Exception e
           (is (= "No matching clause: :foo" (ex-message e))))))))
 
@@ -73,7 +73,7 @@
     (st/unstrument `spq/matches?)
 
     (try
-      (spq/matches? {} (codec/c-hash "value-quantity") nil 0 {:op :foo})
+      (spq/matches? nil nil (codec/c-hash "value-quantity") nil 0 {:op :foo})
       (catch Exception e
         (is (= "No matching clause: :foo" (ex-message e)))))))
 

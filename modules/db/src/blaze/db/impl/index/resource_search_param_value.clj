@@ -7,7 +7,11 @@
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.iterators :as i]
-    [blaze.fhir.hash :as hash]))
+    [blaze.db.kv :as kv]
+    [blaze.fhir.hash :as hash])
+  (:import
+    [clojure.lang IFn]
+    [java.lang AutoCloseable]))
 
 
 (set! *warn-on-reflection* true)
@@ -72,6 +76,25 @@
      (coll/first (i/prefix-keys! iter prefix-key decode-value start-key)))))
 
 
+(defn next-value-fn
+  "Returns a function similar to `next-value!` that takes a `snapshot` instead
+  of an `iter`.
+
+  The returned function can't be called concurrently and has to be closed in
+  order to close the ResourceSearchParamValue iterator."
+  [snapshot]
+  (let [rsvi (kv/new-iterator snapshot :resource-value-index)]
+    (reify
+      IFn
+      (invoke [_ resource-handle c-hash]
+        (next-value! rsvi resource-handle c-hash))
+      (invoke [_ resource-handle c-hash prefix-value value]
+        (next-value! rsvi resource-handle c-hash prefix-value value))
+      AutoCloseable
+      (close [_]
+        (.close ^AutoCloseable rsvi)))))
+
+
 (defn next-value-prev!
   "Returns the decoded value of the key that is at or before the key encoded
   from `resource-handle`, `c-hash` and `value` and still starts with
@@ -83,6 +106,23 @@
         prefix-key (encode-key tid id hash c-hash prefix-value)
         start-key (encode-key tid id hash c-hash value)]
     (coll/first (i/prefix-keys-prev! iter prefix-key decode-value start-key))))
+
+
+(defn next-value-prev-fn
+  "Returns a function similar to `next-value-prev!` that takes a `snapshot` instead
+  of an `iter`.
+
+  The returned function can't be called concurrently and has to be closed in
+  order to close the ResourceSearchParamValue iterator."
+  [snapshot]
+  (let [rsvi (kv/new-iterator snapshot :resource-value-index)]
+    (reify
+      IFn
+      (invoke [_ resource-handle c-hash prefix-value value]
+        (next-value-prev! rsvi resource-handle c-hash prefix-value value))
+      AutoCloseable
+      (close [_]
+        (.close ^AutoCloseable rsvi)))))
 
 
 (defn prefix-keys!

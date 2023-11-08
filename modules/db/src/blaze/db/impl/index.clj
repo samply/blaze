@@ -4,13 +4,13 @@
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
+    [blaze.db.impl.macros :refer [with-open-coll]]
     [blaze.db.impl.search-param :as search-param]
-    [blaze.db.impl.search-param.util :as u]))
+    [blaze.db.impl.search-param.util :as u]
+    [blaze.db.kv :as kv]))
 
 
-(defn- other-clauses-filter
-  "Changes the state of `context`. Requires exclusive access to `context`."
-  [context clauses]
+(defn- other-clauses-filter [context clauses]
   (filter
     (fn [resource-handle]
       (loop [[[search-param modifier _ values] & clauses] clauses]
@@ -92,22 +92,21 @@
         search-param context compartment tid values))))
 
 
-(defn targets!
+(defn targets
   "Returns a reducible collection of non-deleted resource handles that are
   referenced by `resource-handle` via a search-param with `code` having a type
-  with `target-tid`.
-
-  Changes the state of `context`. Consuming the collection requires exclusive
-  access to `context`. Doesn't close `context`."
+  with `target-tid` (optional)."
   {:arglists
    '([context resource-handle code]
      [context resource-handle code target-tid])}
-  ([{:keys [rsvi] :as context} {:keys [tid id hash]} code]
+  ([{:keys [snapshot] :as context} {:keys [tid id hash]} code]
    (coll/eduction
      (u/reference-resource-handle-mapper context)
-     (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code)))
-  ([{:keys [rsvi] :as context} {:keys [tid id hash]} code target-tid]
+     (with-open-coll [rsvi (kv/new-iterator snapshot :resource-value-index)]
+       (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code))))
+  ([{:keys [snapshot] :as context} {:keys [tid id hash]} code target-tid]
    (coll/eduction
      (u/reference-resource-handle-mapper context)
-     (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code
-                          (codec/tid-byte-string target-tid)))))
+     (with-open-coll [rsvi (kv/new-iterator snapshot :resource-value-index)]
+       (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code
+                            (codec/tid-byte-string target-tid))))))

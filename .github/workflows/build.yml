@@ -670,6 +670,62 @@ jobs:
     - name: Docker Stats
       run: docker stats --no-stream
 
+  integration-test-synthea-1000:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@9bc31d5ccc31df68ecc42ccf4149144866c47d8a # v3
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=2048 -p 8080:8080 -v blaze-data:/app/data blaze:latest
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Check Capability Statement
+      run: .github/scripts/check-capability-statement.sh
+
+    - name: Check Referential Integrity Enforced
+      run: .github/scripts/check-referential-integrity-enforced.sh
+
+    - name: Download Synthea Test Data
+      run: wget https://speicherwolke.uni-leipzig.de/index.php/s/kDsa2ifeMFdqK35/download/synthea-1000.tar
+
+    - name: Create Synthea Test Data Dir
+      run: mkdir test-data-synthea-1000
+
+    - name: Unpack Synthea Test Data
+      run: tar -C test-data-synthea-1000 -xf synthea-1000.tar
+
+    - name: Load Data
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload test-data-synthea-1000
+
+    - name: Check Total-Number of Resources are 1099594
+      run: .github/scripts/check-total-number-of-resources.sh 1099594
+
+    - name: Count the number of Patients with Stress Conditions at Inpatient Encounters using FHIR Search
+      run: .github/scripts/count-patients.sh Condition "code=http://snomed.info/sct|73595000&encounter.class=http://terminology.hl7.org/CodeSystem/v3-ActCode|IMP" 13
+
+    - name: Count the number of Patients with Stress Conditions at Inpatient Encounters using CQL
+      run: .github/scripts/evaluate-measure-blazectl.sh inpatient-stress 13
+
+    - name: Docker Stats
+      run: docker stats --no-stream
+
   not-enforcing-referential-integrity-test:
     needs: build
     runs-on: ubuntu-22.04
@@ -1268,6 +1324,7 @@ jobs:
     - build
     - image-scan
     - integration-test
+    - integration-test-synthea-1000
     - not-enforcing-referential-integrity-test
     - small-transactions-test
     - big-transaction-test

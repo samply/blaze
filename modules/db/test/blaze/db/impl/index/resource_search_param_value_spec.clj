@@ -3,6 +3,7 @@
     [blaze.byte-string :refer [byte-string?]]
     [blaze.byte-string-spec]
     [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
+    [blaze.db.impl.index.resource-search-param-value.spec]
     [blaze.db.kv.spec]
     [blaze.fhir.hash-spec]
     [clojure.spec.alpha :as s]))
@@ -17,6 +18,11 @@
   :ret (s/nilable byte-string?))
 
 
+(s/fdef r-sp-v/next-value-fn
+  :args (s/cat :snapshot :blaze.db/kv-snapshot)
+  :ret ::r-sp-v/next-value)
+
+
 (s/fdef r-sp-v/next-value-prev!
   :args (s/cat :iter :blaze.db/kv-iterator
                :resource-handle :blaze.db/resource-handle
@@ -24,6 +30,11 @@
                :prefix-value byte-string?
                :value byte-string?)
   :ret (s/nilable byte-string?))
+
+
+(s/fdef r-sp-v/next-value-prev-fn
+  :args (s/cat :snapshot :blaze.db/kv-snapshot)
+  :ret ::r-sp-v/next-value-prev)
 
 
 (s/fdef r-sp-v/index-entry

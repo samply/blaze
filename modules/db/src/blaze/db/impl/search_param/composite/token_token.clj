@@ -22,20 +22,20 @@
   (-resource-handles [_ context tid _ value]
     (coll/eduction
       (u/resource-handle-mapper context tid)
-      (spt/resource-keys! context c-hash tid value)))
+      (spt/resource-keys context c-hash tid value)))
 
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction
       (u/resource-handle-mapper context tid)
-      (spt/resource-keys! context c-hash tid value start-id)))
+      (spt/resource-keys context c-hash tid value start-id)))
 
   (-count-resource-handles [_ context tid _ value]
     (u/count-resource-handles
       context tid
-      (spt/resource-keys! context c-hash tid value)))
+      (spt/resource-keys context c-hash tid value)))
 
   (-matches? [_ context resource-handle _ values]
-    (some? (some #(spt/matches? context c-hash resource-handle %) values)))
+    (some? (some (partial spt/matches? (:next-value context) c-hash resource-handle) values)))
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]

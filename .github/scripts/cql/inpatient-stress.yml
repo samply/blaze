@@ -1,0 +1,5 @@
+library: .github/scripts/cql/inpatient-stress.cql
+group:
+- type: Patient
+  population:
+  - expression: InInitialPopulation

@@ -52,7 +52,7 @@
     (ba/not-found (search-param-not-found-msg code type))))
 
 
-(defn- resolve-resource-handles
+(defn- resolve-resource-handles!
   "Resolves a coll of resource handles of resources of type `tid`, referenced in
   the resource with `resource-handle` by `search-param`.
 
@@ -60,9 +60,12 @@
    * `search-param`    - Encounter.subject
    * `tid`             - Patient
    * `resource-handle` - an Encounter
-   * result            - a coll with one Patient"
-  {:arglists '([context search-param tid resource-handle])}
-  [{:keys [rsvi] :as context} {:keys [c-hash]} tid resource-handle]
+   * result            - a coll with one Patient
+
+  Changes the state of `rsvi`. Consuming the collection requires exclusive
+  access to `rsvi`. Doesn't close `iter`."
+  {:arglists '([context rsvi search-param tid resource-handle])}
+  [context rsvi {:keys [c-hash]} tid resource-handle]
   (coll/eduction
     (u/reference-resource-handle-mapper context)
     (let [tid-byte-string (codec/tid-byte-string tid)
@@ -81,21 +84,13 @@
   (drop-while #(neg? (let [^String id (rh/id %)] (.compareTo id start-id)))))
 
 
-(defn- resource-handles**
-  [context tid [search-param chain-search-param join-tid value]]
-  (into
-    (sorted-set-by id-cmp)
-    (mapcat #(resolve-resource-handles context chain-search-param tid %))
-    (p/-resource-handles search-param context join-tid nil value)))
-
-
 (defn- resource-handles*
-  [{:keys [snapshot] :as context} tid data]
-  (with-open [svri (kv/new-iterator snapshot :search-param-value-index)
-              rsvi (kv/new-iterator snapshot :resource-value-index)]
-    (resource-handles**
-      (assoc context :svri svri :rsvi rsvi)
-      tid data)))
+  [{:keys [snapshot] :as context} tid [search-param chain-search-param join-tid value]]
+  (with-open [rsvi (kv/new-iterator snapshot :resource-value-index)]
+    (into
+      (sorted-set-by id-cmp)
+      (mapcat #(resolve-resource-handles! context rsvi chain-search-param tid %))
+      (p/-resource-handles search-param context join-tid nil value))))
 
 
 ;; TODO: make this cache public and configurable?
