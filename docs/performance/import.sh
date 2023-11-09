@@ -12,7 +12,7 @@ import-once() {
     -e DB_RESOURCE_INDEXER_THREADS=16 \
     -p 8080:8080 \
     -p 8081:8081 \
-    -d samply/blaze:0.22
+    -d samply/blaze:0.23
 
   ../../.github/scripts/wait-for-url.sh  http://localhost:8080/health
 
