@@ -15,7 +15,7 @@
     [clojure.java.io :as io]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
+    [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
     [java-time.api :as time]
     [juxt.iota :refer [given]]
@@ -567,43 +567,85 @@
             ::anom/message := "Subject with type `Patient` and id `0` was not found."))))))
 
 
+(defmacro testing-query [name count]
+  `(testing ~name
+     (is (= ~count (:count (first-population (evaluate ~name)))))))
+
+
 (deftest integration-test
-  (are [name count] (= count (:count (first-population (evaluate name))))
-    "q1" 2
-    "q2" 1
-    "q3" 1
-    "q4" 1
-    "q5" 1
-    "q6" 1
-    "q7" 1
-    "q8" 1
-    "q9" 1
-    "q10" 1
-    "q11" 1
-    "q12" 1
-    "q13" 1
-    "q14" 1
-    "q15" 1
-    "q16" 1
-    "q17" 2
-    "q18-specimen-bmi" 1
-    "q24" 1
-    "q28-relationship-procedure-condition" 1
-    "q33-incompatible-quantities" 1
-    "q34-medication" 1
-    "q35-literal-library-ref" 1
-    "q36-parameter" 1
-    "q37-overlaps" 3
-    "q38-di-surv" 2
-    "q39-social-sec-num" 1
-    "q42-medication-2" 2
-    "q43-medication-3" 2
-    "q44-tnm-t" 1
-    "q45-histology" 1
-    "q46-between-date" 1
-    "q47-managing-organization" 1
-    "q48-concept" 2
-    "q49-length" 1)
+  (testing-query "q1" 2)
+
+  (testing-query "q2" 1)
+
+  (testing-query "q3" 1)
+
+  (testing-query "q4" 1)
+
+  (testing-query "q5" 1)
+
+  (testing-query "q6" 1)
+
+  (testing-query "q7" 1)
+
+  (testing-query "q8" 1)
+
+  (testing-query "q9" 1)
+
+  (testing-query "q10" 1)
+
+  (testing-query "q11" 1)
+
+  (testing-query "q12" 1)
+
+  (testing-query "q13" 1)
+
+  (testing-query "q14" 1)
+
+  (testing-query "q15" 1)
+
+  (testing-query "q16" 1)
+
+  (testing-query "q17" 2)
+
+  (testing-query "q18-specimen-bmi" 1)
+
+  (testing-query "q24" 1)
+
+  (testing-query "q28-relationship-procedure-condition" 1)
+
+  (testing-query "q33-incompatible-quantities" 1)
+
+  (testing-query "q34-medication" 1)
+
+  (testing-query "q35-literal-library-ref" 1)
+
+  (testing-query "q36-parameter" 1)
+
+  (testing-query "q37-overlaps" 3)
+
+  (testing-query "q38-di-surv" 2)
+
+  (testing-query "q39-social-sec-num" 1)
+
+  (testing-query "q42-medication-2" 2)
+
+  (testing-query "q43-medication-3" 2)
+
+  (testing-query "q44-tnm-t" 1)
+
+  (testing-query "q45-histology" 1)
+
+  (testing-query "q46-between-date" 1)
+
+  (testing-query "q47-managing-organization" 1)
+
+  (testing-query "q48-concept" 2)
+
+  (testing-query "q49-length" 1)
+
+  (testing-query "q50-specimen-condition-reference" 1)
+
+  (testing-query "q51-specimen-condition-reference-2" 1)
 
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
@@ -740,6 +782,7 @@
     [1 :population 0 :count] := 2)
 
   (given (first-stratifier-strata (evaluate "q29-stratifier-sample-material-type"))
+    count := 2
     [0 :value :text type/value] := "liquid"
     [0 :population 0 :count] := 1
     [1 :value :text type/value] := "tissue"
@@ -787,5 +830,5 @@
 
 (comment
   (log/set-level! :debug)
-  (evaluate "q49-length")
+  (evaluate "q50-specimen-condition-reference")
   )

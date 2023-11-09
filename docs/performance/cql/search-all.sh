@@ -69,3 +69,8 @@ restart "$COMPOSE_FILE"
 cql/search.sh condition-all
 cql/search.sh condition-all
 cql/search.sh condition-all
+
+restart "$COMPOSE_FILE"
+cql/search.sh inpatient-stress
+cql/search.sh inpatient-stress
+cql/search.sh inpatient-stress

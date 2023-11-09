@@ -10,11 +10,18 @@ The most reliable way to build Blaze is to use GitHub CI. If you create a PR, a 
 
 ### Using a Local Build Environment
 
-* install at least Java 11. Java 17 is preferred
+* install Java 17
+* install nodejs v18
 * install Clojure by following this [guide](https://clojure.org/guides/install_clojure)
 * install Make
 * run `make uberjar` to create the uberjar that will be available under the `target` directory
 * run `docker build .` to build the Docker image
+
+## Working with IntelliJ
+
+* install Cursive plugin
+* run `make uberjar` once before importing Blaze into IntelliJ in order to prepare all Deps projects
+* open the Blaze folder
 
 ## Developing Blaze
 
@@ -28,7 +35,7 @@ In addition to the REPL development inside a single module, it's possible to run
 
 ## Release Checklist
 
-* create a release branch called `release-v<version>` like `release-v0.13.1`
+* create a release branch called `release/v<version>` like `release/v0.13.1`
 * rename every occurrence of the old version, say `0.13.0` into the new version, say `0.13.1`
 * rename every occurrence of old Docker images like `samply/blaze:0.13` into the new image, say `samply/blaze:0.14`
 * update the last changed date in `blaze.rest-api.capabilities`

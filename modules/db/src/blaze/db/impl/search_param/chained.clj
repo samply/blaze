@@ -6,9 +6,7 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index :as index]
     [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.macros :refer [with-open-coll]]
     [blaze.db.impl.protocols :as p]
-    [blaze.db.kv :as kv]
     [blaze.db.node.resource-indexer.spec]
     [blaze.db.node.spec]
     [blaze.db.search-param-registry :as sr]
@@ -37,10 +35,7 @@
       (comp (map #(p/-compile-value ref-search-param ref-modifier (rh/reference %)))
             (mapcat #(p/-resource-handles ref-search-param context tid modifier %))
             (distinct))
-      ;; TODO: improve
-      (with-open-coll [svri (kv/new-iterator (:snapshot context) :search-param-value-index)]
-        (p/-resource-handles search-param (assoc context :svri svri) ref-tid
-                             modifier compiled-value))))
+      (p/-resource-handles search-param context ref-tid modifier compiled-value)))
 
   (-resource-handles [this context tid modifier compiled-value start-id]
     (let [start-id (codec/id-string start-id)]
@@ -53,10 +48,10 @@
       (count (p/-resource-handles this context tid modifier compiled-value))))
 
   (-matches? [_ context resource-handle modifier compiled-values]
-    (some
+    (coll/some
       #(p/-matches? search-param context % modifier compiled-values)
-      (index/targets! context resource-handle
-                      (codec/c-hash (:code ref-search-param)) ref-tid))))
+      (index/targets context resource-handle
+                     (codec/c-hash (:code ref-search-param)) ref-tid))))
 
 
 (defn- chained-search-param

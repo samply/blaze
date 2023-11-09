@@ -5,6 +5,7 @@
   (:require
     [blaze.anomaly :as ba :refer [if-ok]]
     [blaze.async.comp :as ac]
+    [blaze.coll.core :as coll]
     [blaze.db.api :as d]
     [blaze.db.spec]
     [blaze.fhir.response.create :as response]
@@ -77,7 +78,7 @@
                 (if-let [handle (d/resource-handle db-after type id)]
                   (response/build-response
                     (response-context request db-after) tx-op nil handle)
-                  (let [handle (first (d/type-query db-after type conditional-clauses))]
+                  (let [handle (coll/first (d/type-query db-after type conditional-clauses))]
                     (response/build-response
                       (response-context request db-after) tx-op handle handle)))))
             (ac/exceptionally

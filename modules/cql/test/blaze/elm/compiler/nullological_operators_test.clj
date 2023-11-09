@@ -7,7 +7,7 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.compiler.test-util :as ctu]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [clojure.spec.test.alpha :as st]
@@ -15,12 +15,12 @@
 
 
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 
@@ -54,7 +54,7 @@
     [#elm/list [{:type "Null"} #elm/string "a"]] "a")
 
   (testing "expression is dynamic"
-    (are [elm] (false? (core/-static (tu/dynamic-compile (elm/coalesce elm))))
+    (are [elm] (false? (core/-static (ctu/dynamic-compile (elm/coalesce elm))))
       []
       [{:type "Null"}]
       [#elm/list []])))
@@ -73,14 +73,14 @@
       {:type "Null"} false))
 
   (testing "Dynamic"
-    (are [x res] (= res (tu/dynamic-compile-eval (elm/is-false x)))
+    (are [x res] (= res (ctu/dynamic-compile-eval (elm/is-false x)))
       #elm/parameter-ref "true" false
       #elm/parameter-ref "false" true
       #elm/parameter-ref "nil" false))
 
-  (tu/testing-unary-dynamic elm/is-false)
+  (ctu/testing-unary-dynamic elm/is-false)
 
-  (tu/testing-unary-form elm/is-false))
+  (ctu/testing-unary-form elm/is-false))
 
 
 ;; 14.4. IsNull
@@ -96,14 +96,14 @@
       {:type "Null"} true))
 
   (testing "Dynamic"
-    (are [x res] (= res (tu/dynamic-compile-eval (elm/is-null x)))
+    (are [x res] (= res (ctu/dynamic-compile-eval (elm/is-null x)))
       #elm/parameter-ref "true" false
       #elm/parameter-ref "false" false
       #elm/parameter-ref "nil" true))
 
-  (tu/testing-unary-dynamic elm/is-null)
+  (ctu/testing-unary-dynamic elm/is-null)
 
-  (tu/testing-unary-form elm/is-null))
+  (ctu/testing-unary-form elm/is-null))
 
 
 ;; 14.5. IsTrue
@@ -119,11 +119,11 @@
       {:type "Null"} false))
 
   (testing "Dynamic"
-    (are [x res] (= res (tu/dynamic-compile-eval (elm/is-true x)))
+    (are [x res] (= res (ctu/dynamic-compile-eval (elm/is-true x)))
       #elm/parameter-ref "true" true
       #elm/parameter-ref "false" false
       #elm/parameter-ref "nil" false))
 
-  (tu/testing-unary-dynamic elm/is-true)
+  (ctu/testing-unary-dynamic elm/is-true)
 
-  (tu/testing-unary-form elm/is-true))
+  (ctu/testing-unary-form elm/is-true))

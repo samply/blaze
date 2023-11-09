@@ -90,10 +90,10 @@
 (deftest get-test
   (testing "default system"
     (with-system [{:blaze.db/keys [search-param-registry]} config]
-      (testing "_id"
-        (given (sr/get search-param-registry "_id")
+      (testing "clinical-code"
+        (given (sr/get search-param-registry "code" "Observation")
           :type := "token"
-          :url := "http://hl7.org/fhir/SearchParameter/Resource-id"))))
+          :url := "http://hl7.org/fhir/SearchParameter/clinical-code"))))
 
   (testing "with extra bundle file"
     (with-system [{:blaze.db/keys [search-param-registry]} config-extra]

@@ -7,9 +7,10 @@
     [blaze.anomaly :as ba]
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.simple-values]
-    [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.compiler.test-util :as ctu]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
+    [blaze.elm.util-spec]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]
     [cognitect.anomalies :as anom]
@@ -17,12 +18,12 @@
 
 
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 

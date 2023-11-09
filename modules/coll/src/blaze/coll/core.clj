@@ -1,7 +1,7 @@
 (ns blaze.coll.core
-  (:refer-clojure :exclude [count eduction empty? first nth])
+  (:refer-clojure :exclude [count eduction empty? first nth some])
   (:import
-    [clojure.lang Counted Indexed IReduceInit Seqable Sequential]))
+    [clojure.lang Counted Indexed IReduceInit Sequential]))
 
 
 (set! *warn-on-reflection* true)
@@ -14,6 +14,12 @@
   (reduce #(reduced %2) nil coll))
 
 
+(defn some
+  "Like `clojure.core/some` but for reducible collections."
+  [pred coll]
+  (reduce #(when (pred %2) (reduced true)) nil coll))
+
+
 (defn empty?
   "Like `clojure.core/empty?` but for reducible collections."
   [coll]
@@ -24,16 +30,13 @@
 
 
 (defn eduction
-  "Like `clojure.core/eduction` but faster."
+  "Like `clojure.core/eduction` but implements Counted instead of Iterable."
   [xform coll]
   (reify
     Sequential
     IReduceInit
     (reduce [_ f init]
       (transduce xform (completing f) init coll))
-    Seqable
-    (seq [coll]
-      (.seq ^Seqable (persistent! (.reduce coll conj! (transient [])))))
     Counted
     (count [coll]
       (.reduce coll inc-rf 0))))
@@ -41,7 +44,7 @@
 
 (defn count
   "Like `clojure.core/count` but works only for non-nil collections
-  implementing `clojure.lang.Countet` like vectors."
+  implementing `clojure.lang.Counted` like vectors."
   {:inline
    (fn [coll]
      `(.count ~(with-meta coll {:tag `Counted})))}

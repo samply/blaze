@@ -36,8 +36,8 @@
 
   (-resource-handle [_ tid id]
     (with-open [snapshot (kv/new-snapshot kv-store)
-                raoi (kv/new-iterator snapshot :resource-as-of-index)]
-      ((rao/resource-handle raoi t) tid id)))
+                resource-handle (rao/resource-handle snapshot t)]
+      (resource-handle tid id)))
 
 
 

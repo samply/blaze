@@ -1,6 +1,7 @@
 (ns blaze.db.kv-spec
   (:require
     [blaze.byte-buffer :as bb]
+    [blaze.coll.spec :as cs]
     [blaze.db.kv :as kv]
     [blaze.db.kv.spec]
     [clojure.spec.alpha :as s]))
@@ -104,7 +105,7 @@
     :entries
     (s/cat
       :kv-store :blaze.db/kv-store
-      :entries (s/coll-of :blaze.db.kv/put-entry :kind sequential?))
+      :entries (cs/coll-of :blaze.db.kv/put-entry))
     :kv
     (s/cat :kv-store :blaze.db/kv-store :key bytes? :value bytes?)))
 
@@ -115,4 +116,4 @@
 
 (s/fdef kv/write!
   :args (s/cat :kv-store :blaze.db/kv-store
-               :entries (s/coll-of ::kv/write-entry :kind sequential?)))
+               :entries (cs/coll-of ::kv/write-entry)))

@@ -8,9 +8,9 @@
     [blaze.page-store.protocols :as p]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
+    [clojure.string :as str]
     [clojure.test :as test :refer [deftest testing]]
     [cognitect.anomalies :as anom]
-    [cuerdas.core :as c-str]
     [juxt.iota :refer [given]]))
 
 
@@ -49,22 +49,22 @@
     (given @(params/decode
               (reify p/PageStore
                 (-get [_ token]
-                  (assert (= (c-str/repeat "A" 32) token))
+                  (assert (= (str/join (repeat 32 "A")) token))
                   (ac/completed-future [["foo" "bar"]])))
               :blaze.preference.handling/strict
-              {"__token" (c-str/repeat "A" 32)})
+              {"__token" (str/join (repeat 32 "A"))})
       :clauses := [["foo" "bar"]]
-      :token := (c-str/repeat "A" 32)))
+      :token := (str/join (repeat 32 "A"))))
 
   (testing "token not found"
     (given-failed-future
       (params/decode
         (reify p/PageStore
           (-get [_ token]
-            (assert (= (c-str/repeat "A" 32) token))
+            (assert (= (str/join (repeat 32 "A")) token))
             (ac/completed-future (ba/not-found "Not Found"))))
         :blaze.preference.handling/strict
-        {"__token" (c-str/repeat "A" 32)})
+        {"__token" (str/join (repeat 32 "A"))})
       ::anom/category := ::anom/not-found
       :http/status := nil))
 

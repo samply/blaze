@@ -9,7 +9,7 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
+    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [clojure.spec.test.alpha :as st]
@@ -17,12 +17,12 @@
 
 
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 
@@ -51,7 +51,7 @@
       {:type "Null"} nil)
 
     (testing "form and static"
-      (let [expr (tu/dynamic-compile {:type "Combine"
+      (let [expr (ctu/dynamic-compile {:type "Combine"
                                       :source #elm/parameter-ref "x"})]
 
         (has-form expr '(combine (param-ref "x")))
@@ -69,7 +69,7 @@
       {:type "Null"} nil)
 
     (testing "form and static"
-      (let [expr (tu/dynamic-compile {:type "Combine"
+      (let [expr (ctu/dynamic-compile {:type "Combine"
                                       :source #elm/parameter-ref "x"
                                       :separator #elm/parameter-ref "y"})]
 
@@ -122,18 +122,18 @@
       #elm/string "ba" #elm/string "b" false))
 
   (testing "Dynamic"
-    (are [s suffix res] (= res (tu/dynamic-compile-eval (elm/ends-with [s suffix])))
+    (are [s suffix res] (= res (ctu/dynamic-compile-eval (elm/ends-with [s suffix])))
       #elm/parameter-ref "a" #elm/string "a" true
       #elm/parameter-ref "ab" #elm/string "b" true
 
       #elm/parameter-ref "a" #elm/string "b" false
       #elm/parameter-ref "ba" #elm/string "b" false))
 
-  (tu/testing-binary-null elm/ends-with #elm/string "a")
+  (ctu/testing-binary-null elm/ends-with #elm/string "a")
 
-  (tu/testing-binary-dynamic elm/ends-with)
+  (ctu/testing-binary-dynamic elm/ends-with)
 
-  (tu/testing-binary-form elm/ends-with))
+  (ctu/testing-binary-form elm/ends-with))
 
 
 ;; 17.4. Equal
@@ -165,7 +165,7 @@
       #elm/string "" #elm/integer "-1" nil
       #elm/string "a" #elm/integer "1" nil)
 
-    (tu/testing-binary-null elm/indexer #elm/string "a" #elm/integer "0"))
+    (ctu/testing-binary-null elm/indexer #elm/string "a" #elm/integer "0"))
 
   (testing "List"
     (are [x i res] (= res (c/compile {} (elm/indexer [x i])))
@@ -175,11 +175,11 @@
       #elm/list [] #elm/integer "-1" nil
       #elm/list [#elm/integer "1"] #elm/integer "1" nil)
 
-    (tu/testing-binary-null elm/indexer #elm/list [] #elm/integer "0"))
+    (ctu/testing-binary-null elm/indexer #elm/list [] #elm/integer "0"))
 
-  (tu/testing-binary-dynamic elm/indexer)
+  (ctu/testing-binary-dynamic elm/indexer)
 
-  (tu/testing-binary-form elm/indexer))
+  (ctu/testing-binary-form elm/indexer))
 
 
 ;; 17.7. LastPositionOf
@@ -197,11 +197,11 @@
 
     #elm/string "a" #elm/string "b" -1)
 
-  (tu/testing-binary-dynamic-null elm/last-position-of #elm/string "a" #elm/string "a")
+  (ctu/testing-binary-dynamic-null elm/last-position-of #elm/string "a" #elm/string "a")
 
-  (tu/testing-binary-dynamic elm/last-position-of)
+  (ctu/testing-binary-dynamic elm/last-position-of)
 
-  (tu/testing-binary-form elm/last-position-of))
+  (ctu/testing-binary-form elm/last-position-of))
 
 
 ;; 17.8. Length
@@ -226,7 +226,7 @@
       {:type "Null"} 0))
 
   (testing "Dynamic"
-    (are [x res] (identical? res (tu/dynamic-compile-eval (elm/length x)))
+    (are [x res] (identical? res (ctu/dynamic-compile-eval (elm/length x)))
       #elm/parameter-ref "empty-string" 0
       #elm/parameter-ref "a" 1
       #elm/parameter-ref "nil" 0))
@@ -251,9 +251,9 @@
           (identical? count (core/-eval expr {:db db} patient nil))))
       0 1 2))
 
-  (tu/testing-unary-dynamic elm/length)
+  (ctu/testing-unary-dynamic elm/length)
 
-  (tu/testing-unary-form elm/length))
+  (ctu/testing-unary-form elm/length))
 
 
 ;; 17.9. Lower
@@ -274,15 +274,15 @@
       #elm/string "A" "a"))
 
   (testing "Dynamic"
-    (are [s res] (= res (tu/dynamic-compile-eval (elm/lower s)))
+    (are [s res] (= res (ctu/dynamic-compile-eval (elm/lower s)))
       #elm/parameter-ref "empty-string" ""
       #elm/parameter-ref "A" "a"))
 
-  (tu/testing-unary-null elm/lower)
+  (ctu/testing-unary-null elm/lower)
 
-  (tu/testing-unary-dynamic elm/lower)
+  (ctu/testing-unary-dynamic elm/lower)
 
-  (tu/testing-unary-form elm/lower))
+  (ctu/testing-unary-form elm/lower))
 
 
 ;; 17.10. Matches
@@ -304,11 +304,11 @@
 
     #elm/string "a" #elm/string "\\d" false)
 
-  (tu/testing-binary-null elm/matches #elm/string "a")
+  (ctu/testing-binary-null elm/matches #elm/string "a")
 
-  (tu/testing-binary-dynamic elm/matches)
+  (ctu/testing-binary-dynamic elm/matches)
 
-  (tu/testing-binary-form elm/matches))
+  (ctu/testing-binary-form elm/matches))
 
 
 ;; 17.11. NotEqual
@@ -331,11 +331,11 @@
 
     #elm/string "a" #elm/string "b" -1)
 
-  (tu/testing-binary-dynamic-null elm/position-of #elm/string "a" #elm/string "a")
+  (ctu/testing-binary-dynamic-null elm/position-of #elm/string "a" #elm/string "a")
 
-  (tu/testing-binary-dynamic elm/position-of)
+  (ctu/testing-binary-dynamic elm/position-of)
 
-  (tu/testing-binary-form elm/position-of))
+  (ctu/testing-binary-form elm/position-of))
 
 
 ;; 17.13. ReplaceMatches
@@ -357,11 +357,11 @@
   (are [s pattern substitution res] (= res (core/-eval (c/compile {} (elm/replace-matches [s pattern substitution])) {} nil nil))
     #elm/string "a" #elm/string "a" #elm/string "b" "b")
 
-  (tu/testing-ternary-dynamic-null elm/replace-matches #elm/string "a" #elm/string "a" #elm/string "a")
+  (ctu/testing-ternary-dynamic-null elm/replace-matches #elm/string "a" #elm/string "a" #elm/string "a")
 
-  (tu/testing-ternary-dynamic elm/replace-matches)
+  (ctu/testing-ternary-dynamic elm/replace-matches)
 
-  (tu/testing-ternary-form elm/replace-matches))
+  (ctu/testing-ternary-form elm/replace-matches))
 
 
 ;; 17.14. Split
@@ -382,7 +382,7 @@
       {:type "Null"} nil)
 
     (testing "form and static"
-      (let [expr (tu/dynamic-compile {:type "Split"
+      (let [expr (ctu/dynamic-compile {:type "Split"
                                       :stringToSplit #elm/parameter-ref "x"})]
 
         (has-form expr '(split (param-ref "x")))
@@ -400,7 +400,7 @@
       {:type "Null"} {:type "Null"} nil)
 
     (testing "form and static"
-      (let [expr (tu/dynamic-compile {:type "Split"
+      (let [expr (ctu/dynamic-compile {:type "Split"
                                       :stringToSplit #elm/parameter-ref "x"
                                       :separator #elm/parameter-ref "y"})]
 
@@ -442,18 +442,18 @@
       #elm/string "ab" #elm/string "b" false))
 
   (testing "Dynamic"
-    (are [s prefix res] (= res (tu/dynamic-compile-eval (elm/starts-with [s prefix])))
+    (are [s prefix res] (= res (ctu/dynamic-compile-eval (elm/starts-with [s prefix])))
       #elm/parameter-ref "a" #elm/string "a" true
       #elm/parameter-ref "ba" #elm/string "b" true
 
       #elm/parameter-ref "a" #elm/string "b" false
       #elm/parameter-ref "ab" #elm/string "b" false))
 
-  (tu/testing-binary-null elm/starts-with #elm/string "a")
+  (ctu/testing-binary-null elm/starts-with #elm/string "a")
 
-  (tu/testing-binary-dynamic elm/starts-with)
+  (ctu/testing-binary-dynamic elm/starts-with)
 
-  (tu/testing-binary-form elm/starts-with))
+  (ctu/testing-binary-form elm/starts-with))
 
 
 ;; 17.17. Substring
@@ -480,7 +480,7 @@
       {:type "Null"} {:type "Null"} nil)
 
     (testing "form and static"
-      (let [expr (tu/dynamic-compile {:type "Substring"
+      (let [expr (ctu/dynamic-compile {:type "Substring"
                                       :stringToSub #elm/parameter-ref "x"
                                       :startIndex #elm/parameter-ref "y"})]
 
@@ -501,7 +501,7 @@
       {:type "Null"} {:type "Null"} #elm/integer "0" nil)
 
     (testing "form and static"
-      (let [expr (tu/dynamic-compile {:type "Substring"
+      (let [expr (ctu/dynamic-compile {:type "Substring"
                                       :stringToSub #elm/parameter-ref "x"
                                       :startIndex #elm/parameter-ref "y"
                                       :length #elm/parameter-ref "z"})]
@@ -529,12 +529,12 @@
       #elm/string "a" "A"))
 
   (testing "Dynamic"
-    (are [s res] (= res (tu/dynamic-compile-eval (elm/upper s)))
+    (are [s res] (= res (ctu/dynamic-compile-eval (elm/upper s)))
       #elm/parameter-ref "empty-string" ""
       #elm/parameter-ref "a" "A"))
 
-  (tu/testing-unary-null elm/upper)
+  (ctu/testing-unary-null elm/upper)
 
-  (tu/testing-unary-dynamic elm/upper)
+  (ctu/testing-unary-dynamic elm/upper)
 
-  (tu/testing-unary-form elm/upper))
+  (ctu/testing-unary-form elm/upper))

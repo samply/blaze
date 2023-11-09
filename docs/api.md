@@ -8,6 +8,13 @@ Blaze exposes a [FHIR RESTful API][1] under the default context path of `/fhir`.
 
 Blaze keeps track over the history of all updates of each resource. However if the content of the resource update is equal to the current version of the resource, no new history entry is created. Usually such identical content updates will only cost a very small amount of transaction handling storage but no additional resource or index storage.
 
+
+### Search Type
+
+#### Sorting
+
+The special search parameter `_sort` supports the values `_id`, `_lastUpdated` and `-_lastUpdated`.
+
 ## Operations
 
 The following Operations are implemented:

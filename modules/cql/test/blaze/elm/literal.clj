@@ -1,10 +1,9 @@
 (ns blaze.elm.literal
   (:refer-clojure
-    :exclude [abs and boolean count distinct first flatten last list long max min not or
-              time])
+    :exclude [abs and boolean count distinct first flatten last list long max
+              min not or time])
   (:require
     [blaze.elm.spec]
-    [clojure.spec.alpha :as s]
     [clojure.string :as str]))
 
 
@@ -63,6 +62,19 @@
   {:type "Instance"
    :classType type
    :element (reduce #(conj %1 {:name (key %2) :value (val %2)}) [] elements)})
+
+
+;; 2.3. Property
+(defn source-property [[source path]]
+  {:type "Property"
+   :source source
+   :path path})
+
+
+(defn scope-property [[scope path]]
+  {:type "Property"
+   :scope scope
+   :path path})
 
 
 
@@ -149,6 +161,16 @@
 (defn operand-ref [name]
   {:type "OperandRef"
    :name name})
+
+
+
+;; 10. Queries
+
+;; 10.2. AliasedQuerySource
+(defn aliased-query-source [[expression alias]]
+  {:type "AliasedQuerySource"
+   :expression expression
+   :alias alias})
 
 
 
@@ -392,6 +414,12 @@
 
 ;; 17. String Operators
 
+;; 17.2. Concatenate
+(defn concatenate [ops]
+  {:type "Concatenate"
+   :operand ops})
+
+
 ;; 17.3. EndsWith
 (defn ends-with [ops]
   {:type "EndsWith"
@@ -568,38 +596,19 @@
 
 
 ;; 19.1. Interval
-(s/def ::interval-arg
-  (s/cat :low-open (s/? #{:<})
-         :low :elm/expression
-         :high :elm/expression
-         :high-open (s/? #{:>})))
-
-
-(defn interval [arg]
-  (let [{:keys [low-open low high high-open]} (s/conform ::interval-arg arg)]
+(defn interval [args]
+  (let [low-open (= :< (clojure.core/first args))
+        [low high high-open] (cond-> args low-open rest)]
     {:type "Interval"
      :low low
      :high high
-     :lowClosed (nil? low-open)
+     :lowClosed (false? low-open)
      :highClosed (nil? high-open)
      :resultTypeSpecifier
      {:type "IntervalTypeSpecifier",
       :pointType
       {:type "NamedTypeSpecifier"
        :name (clojure.core/or (:resultTypeName low) (:resultTypeName high))}}}))
-
-
-(defn closed-interval [[low high]]
-  {:type "Interval"
-   :low low
-   :high high
-   :lowClosed true
-   :highClosed true
-   :resultTypeSpecifier
-   {:type "IntervalTypeSpecifier",
-    :pointType
-    {:type "NamedTypeSpecifier"
-     :name (clojure.core/or (:resultTypeName low) (:resultTypeName high))}}})
 
 
 ;; 19.2. After

@@ -79,7 +79,7 @@
     (-> (d/transact node [tx-op])
         (ac/then-compose
           (fn [db-after]
-            (let [[new-handle old-handle] (take 2 (d/instance-history db-after (name type) id))]
+            (let [[new-handle old-handle] (into [] (take 2) (d/instance-history db-after (name type) id))]
               (response/build-response
                 (response-context request db-after)
                 tx-op

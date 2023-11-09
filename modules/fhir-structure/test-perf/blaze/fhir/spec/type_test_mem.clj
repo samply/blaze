@@ -2,10 +2,10 @@
   (:require
     [blaze.fhir.spec.memory :as mem]
     [blaze.fhir.spec.type :as type]
-    [clojure.test :refer [are deftest is testing]]
-    [cuerdas.core :as c-str]
+    [blaze.test-util]
     [clojure.alpha.spec :as s2]
-    [blaze.test-util])
+    [clojure.string :as str]
+    [clojure.test :refer [are deftest is testing]])
   (:import
     [java.time Instant ZoneOffset]))
 
@@ -19,8 +19,8 @@
     #fhir/string"" 40
     #fhir/string"a" 48
     #fhir/string{:value "a"} 48
-    (type/string (c-str/repeat "a" 8)) 48
-    (type/string (c-str/repeat "a" 9)) 56
+    (type/string (str/join (repeat 8 "a"))) 48
+    (type/string (str/join (repeat 9 "a"))) 56
     #fhir/string{:id "0" :value "foo"} 136
 
     #fhir/decimal 1.1M 40

@@ -43,7 +43,9 @@
           (if (nil? high)
             (ao/max-value type)
             high)
-          (p/predecessor high))))))
+          (p/predecessor high)))))
+  (-form [_]
+    (list 'interval (core/-form low) (core/-form high))))
 
 
 (defmethod core/compile* :elm.compiler.type/interval
@@ -60,7 +62,7 @@
                                        (core/compile* context))
         high-closed-expression (some->> high-closed-expression
                                         (core/compile* context))]
-    (assert (string? type) (prn-str low))
+    (assert (string? type) (format "Can't determine the type of type in `%s`." (pr-str low)))
     (if (and (core/static? low)
              (core/static? high)
              (core/static? low-closed-expression)

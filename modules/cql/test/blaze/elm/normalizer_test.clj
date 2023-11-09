@@ -6,6 +6,7 @@
     [blaze.elm.literal-spec]
     [blaze.elm.normalizer :refer [normalize]]
     [blaze.elm.normalizer-spec]
+    [blaze.elm.util-spec]
     [blaze.test-util :as tu]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [deftest testing]]

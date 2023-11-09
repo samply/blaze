@@ -5,6 +5,7 @@
     [blaze.fhir.spec.type.system :as system]
     [clojure.string :as str])
   (:import
+    [clojure.lang IReduceInit]
     [java.time.temporal ChronoUnit]))
 
 
@@ -23,6 +24,10 @@
   (satisfies? Expression x))
 
 
+(defn static? [x]
+  (-static x))
+
+
 (extend-protocol Expression
   nil
   (-static [_]
@@ -38,11 +43,15 @@
   (-eval [expr _ _ _]
     expr)
   (-form [expr]
-    expr))
+    expr)
 
-
-(defn static? [x]
-  (-static x))
+  IReduceInit
+  (-static [_]
+    true)
+  (-eval [expr _ _ _]
+    expr)
+  (-form [expr]
+    (mapv -form expr)))
 
 
 (defmulti compile*

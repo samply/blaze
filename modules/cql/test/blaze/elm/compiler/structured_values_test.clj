@@ -9,7 +9,7 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as tu :refer [has-form]]
+    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
     [blaze.elm.literal]
     [blaze.elm.literal-spec]
     [blaze.fhir.spec.type]
@@ -21,12 +21,12 @@
 
 
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 
@@ -51,7 +51,7 @@
       {:id 1 :name "john"}))
 
   (testing "Dynamic"
-    (are [elm res] (= res (tu/dynamic-compile-eval elm))
+    (are [elm res] (= res (ctu/dynamic-compile-eval elm))
       #elm/tuple{"id" #elm/parameter-ref "1"}
       {:id 1}
 
@@ -59,11 +59,11 @@
       {:id 1 :name "a"})
 
     (testing "static"
-      (is (false? (core/-static (tu/dynamic-compile #elm/tuple{"id" #elm/parameter-ref "1"})))))
+      (is (false? (core/-static (ctu/dynamic-compile #elm/tuple{"id" #elm/parameter-ref "1"})))))
 
     (testing "form"
       (is (= '{:id (param-ref "x")}
-             (core/-form (tu/dynamic-compile #elm/tuple{"id" #elm/parameter-ref "x"})))))))
+             (core/-form (ctu/dynamic-compile #elm/tuple{"id" #elm/parameter-ref "x"})))))))
 
 
 ;; 2.2. Instance
@@ -75,7 +75,7 @@
 ;; be any expression, including another Instance.
 (deftest compile-instance-test
   (testing "Code"
-    (given (c/compile {} (tu/code "system-134534" "code-134551"))
+    (given (c/compile {} (ctu/code "system-134534" "code-134551"))
       type := Code
       :system := "system-134534"
       :code := "code-134551")))
@@ -108,11 +108,7 @@
     (testing "with entity supplied over query context"
       (testing "Patient.identifier"
         (testing "with source-type"
-          (let [elm
-                {:path "identifier"
-                 :scope "R"
-                 :type "Property"}
-                identifier
+          (let [identifier
                 #fhir/Identifier
                         {:system #fhir/uri"foo"
                          :value "bar"}
@@ -122,7 +118,7 @@
                 expr
                 (c/compile
                   {:eval-context "Patient"}
-                  elm)]
+                  #elm/scope-property ["R" "identifier"])]
 
             (testing "eval"
               (is (= identifier (coll/first (core/-eval expr nil nil {"R" entity})))))
@@ -134,11 +130,7 @@
               (has-form expr '(:identifier R)))))
 
         (testing "without source-type"
-          (let [elm
-                {:path "identifier"
-                 :scope "R"
-                 :type "Property"}
-                identifier
+          (let [identifier
                 #fhir/Identifier
                         {:system #fhir/uri"foo"
                          :value "bar"}
@@ -148,7 +140,7 @@
                 expr
                 (c/compile
                   {:eval-context "Patient"}
-                  elm)]
+                  #elm/scope-property ["R" "identifier"])]
 
             (testing "eval"
               (is (= identifier (coll/first (core/-eval expr nil nil {"R" entity})))))
@@ -161,11 +153,7 @@
 
       (testing "Patient.extension"
         (testing "without source-type"
-          (let [elm
-                {:path "extension"
-                 :scope "R"
-                 :type "Property"}
-                extension
+          (let [extension
                 #fhir/Extension
                         {:url "foo"
                          :valueString "bar"}
@@ -175,7 +163,7 @@
                 expr
                 (c/compile
                   {:eval-context "Patient"}
-                  elm)]
+                  #elm/scope-property ["R" "extension"])]
 
             (testing "eval"
               (is (= extension (coll/first (core/-eval expr nil nil {"R" entity})))))
@@ -188,17 +176,13 @@
 
       (testing "Patient.gender"
         (testing "with source-type"
-          (let [elm
-                {:path "gender"
-                 :scope "R"
-                 :type "Property"}
-                entity
+          (let [entity
                 {:fhir/type :fhir/Patient :id "0"
                  :gender #fhir/code"male"}
                 expr
                 (c/compile
                   {:eval-context "Patient"}
-                  elm)]
+                  #elm/scope-property ["R" "gender"])]
 
             (testing "eval"
               (is (= #fhir/code"male" (core/-eval expr nil nil {"R" entity}))))
@@ -210,17 +194,13 @@
               (has-form expr '(:gender R)))))
 
         (testing "without source-type"
-          (let [elm
-                {:path "gender"
-                 :scope "R"
-                 :type "Property"}
-                entity
+          (let [entity
                 {:fhir/type :fhir/Patient :id "0"
                  :gender #fhir/code"male"}
                 expr
                 (c/compile
                   {:eval-context "Patient"}
-                  elm)]
+                  #elm/scope-property ["R" "gender"])]
 
             (testing "eval"
               (is (= #fhir/code"male" (core/-eval expr nil nil {"R" entity}))))
@@ -232,18 +212,14 @@
               (has-form expr '(:gender R))))))
 
       (testing "Patient.birthDate.value"
-        (let [elm
-              {:path "birthDate.value"
-               :scope "R"
-               :type "Property"}
-              entity
+        (let [entity
               (fn [x]
                 {:fhir/type :fhir/Patient :id "0"
                  :birthDate x})
               expr
               (c/compile
                 {:eval-context "Patient"}
-                elm)]
+                #elm/scope-property ["R" "birthDate.value"])]
 
           (testing "eval"
             (are [birth-date res] (= res (core/-eval expr nil nil {"R" (entity birth-date)}))
@@ -260,17 +236,13 @@
 
       (testing "Observation.value"
         (testing "with source-type"
-          (let [elm
-                {:path "value"
-                 :scope "R"
-                 :type "Property"}
-                entity
+          (let [entity
                 {:fhir/type :fhir/Observation :id "0"
                  :value "value-114318"}
                 expr
                 (c/compile
                   {:eval-context "Patient"}
-                  elm)]
+                  #elm/scope-property ["R" "value"])]
 
             (testing "eval"
               (is (= "value-114318" (core/-eval expr nil nil {"R" entity}))))
@@ -282,17 +254,13 @@
               (has-form expr '(:value R)))))
 
         (testing "without source-type"
-          (let [elm
-                {:path "value"
-                 :scope "R"
-                 :type "Property"}
-                entity
+          (let [entity
                 {:fhir/type :fhir/Observation :id "0"
                  :value "value-114318"}
                 expr
                 (c/compile
                   {:eval-context "Patient"}
-                  elm)]
+                  #elm/scope-property ["R" "value"])]
 
             (testing "eval"
               (is (= "value-114318" (core/-eval expr nil nil {"R" entity}))))
@@ -309,9 +277,7 @@
         (let [library {:statements {:def [{:type "ExpressionDef"
                                            :name "Patient"}]}}
               elm
-              {:path "identifier"
-               :source #elm/expression-ref "Patient"
-               :type "Property"}
+              #elm/source-property [#elm/expression-ref "Patient" "identifier"]
               identifier
               #fhir/Identifier
                       {:system #fhir/uri"foo"
@@ -334,9 +300,7 @@
         (let [library {:statements {:def [{:type "ExpressionDef"
                                            :name "Patient"}]}}
               elm
-              {:path "identifier"
-               :source #elm/expression-ref "Patient"
-               :type "Property"}
+              #elm/source-property [#elm/expression-ref "Patient" "identifier"]
               identifier
               #fhir/Identifier
                       {:system #fhir/uri"foo"
@@ -360,9 +324,7 @@
         (let [library {:statements {:def [{:type "ExpressionDef"
                                            :name "Patient"}]}}
               elm
-              {:path "gender"
-               :source #elm/expression-ref "Patient"
-               :type "Property"}
+              #elm/source-property [#elm/expression-ref "Patient" "gender"]
               source
               {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code"male"}
@@ -381,9 +343,7 @@
         (let [library {:statements {:def [{:type "ExpressionDef"
                                            :name "Patient"}]}}
               elm
-              {:path "gender"
-               :source #elm/expression-ref "Patient"
-               :type "Property"}
+              #elm/source-property [#elm/expression-ref "Patient" "gender"]
               source
               {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code"male"}
@@ -402,9 +362,7 @@
       (let [library {:statements {:def [{:type "ExpressionDef"
                                          :name "Patient"}]}}
             elm
-            {:path "birthDate.value"
-             :source #elm/expression-ref "Patient"
-             :type "Property"}
+            #elm/source-property [#elm/expression-ref "Patient" "birthDate.value"]
             source
             (fn [x]
               {:fhir/type :fhir/Patient :id "0"
@@ -429,9 +387,7 @@
         (let [library {:statements {:def [{:type "ExpressionDef"
                                            :name "Observation"}]}}
               elm
-              {:path "value"
-               :source #elm/expression-ref "Observation"
-               :type "Property"}
+              #elm/source-property [#elm/expression-ref "Observation" "value"]
               source
               {:fhir/type :fhir/Observation :id "0"
                :value "value-114318"}
@@ -450,9 +406,7 @@
         (let [library {:statements {:def [{:type "ExpressionDef"
                                            :name "Observation"}]}}
               elm
-              {:path "value"
-               :source #elm/expression-ref "Observation"
-               :type "Property"}
+              #elm/source-property [#elm/expression-ref "Observation" "value"]
               source
               {:fhir/type :fhir/Observation :id "0"
                :value "value-114318"}
@@ -490,25 +444,17 @@
       (testing "value"
         (are [elm result]
           (= result (core/-eval (c/compile {:eval-context "Unfiltered"} elm) {} nil nil))
-          {:resultTypeName "{urn:hl7-org:elm-types:r1}Decimal"
-           :path "value"
-           :type "Property"
-           :source #elm/quantity [42 "m"]}
+          #elm/source-property [#elm/quantity [42 "m"] "value"]
           42M))
 
       (testing "unit"
         (are [elm result]
           (= result (core/-eval (c/compile {:eval-context "Unfiltered"} elm) {} nil nil))
-          {:resultTypeName "{urn:hl7-org:elm-types:r1}String"
-           :path "unit"
-           :type "Property"
-           :source #elm/quantity [42 "m"]}
+          #elm/source-property [#elm/quantity [42 "m"] "unit"]
           "m")))
 
     (testing "nil"
       (are [elm result]
         (= result (core/-eval (c/compile {:eval-context "Unfiltered"} elm) {} nil nil))
-        {:path "value"
-         :type "Property"
-         :source {:type "Null"}}
+        #elm/source-property [{:type "Null"} "value"]
         nil))))

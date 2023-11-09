@@ -6,7 +6,9 @@
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.iterators :as i]))
+    [blaze.db.impl.iterators :as i]
+    [blaze.db.impl.macros :refer [with-open-coll]]
+    [blaze.db.kv :as kv]))
 
 
 (set! *warn-on-reflection* true)
@@ -73,7 +75,8 @@
   "Returns a reducible collection of all historic resource handles between
   `start-t` (inclusive), `start-id` (optional, inclusive) and `end-t`
   (inclusive) of resources with `tid`."
-  [taoi tid start-t start-id end-t]
+  [snapshot tid start-t start-id end-t]
   (coll/eduction
     (take-while (key-valid? tid end-t))
-    (i/kvs! taoi (decoder) (start-key tid start-t start-id))))
+    (with-open-coll [taoi (kv/new-iterator snapshot :type-as-of-index)]
+      (i/kvs! taoi (decoder) (start-key tid start-t start-id)))))

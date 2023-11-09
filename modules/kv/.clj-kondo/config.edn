@@ -16,6 +16,11 @@
   {:level :warning}
 
   :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}}
+  {:level :warning :warn-only-on-interop true}
+
+  :consistent-alias
+  {:aliases
+   {blaze.coll.spec cs
+    taoensso.timbre log}}}
 
  :skip-comments true}

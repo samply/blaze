@@ -54,21 +54,21 @@
   (-resource-handles [_ context tid _ value]
     (coll/eduction
       (u/resource-handle-mapper context tid)
-      (spq/resource-keys! context c-hash tid prefix-length value)))
+      (spq/resource-keys context c-hash tid prefix-length value)))
 
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction
       (u/resource-handle-mapper context tid)
-      (spq/resource-keys! context c-hash tid prefix-length value start-id)))
+      (spq/resource-keys context c-hash tid prefix-length value start-id)))
 
   (-count-resource-handles [_ context tid _ value]
     (u/count-resource-handles
       context tid
-      (spq/resource-keys! context c-hash tid prefix-length value)))
+      (spq/resource-keys context c-hash tid prefix-length value)))
 
   (-matches? [_ context resource-handle _ values]
-    (some? (some #(spq/matches? context c-hash resource-handle prefix-length %)
-                 values)))
+    (let [{:keys [next-value next-value-prev]} context]
+      (some? (some (partial spq/matches? next-value next-value-prev c-hash resource-handle prefix-length) values))))
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]

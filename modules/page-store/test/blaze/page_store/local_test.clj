@@ -12,10 +12,11 @@
     [blaze.test-util :as tu :refer [given-thrown]]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
+    [clojure.string :as str]
     [clojure.test :as test :refer [deftest is testing]]
     [cognitect.anomalies :as anom]
-    [cuerdas.core :as c-str]
     [integrant.core :as ig]
+    [java-time.api :as time]
     [juxt.iota :refer [given]]
     [taoensso.timbre :as log]))
 
@@ -33,7 +34,7 @@
    :blaze.page-store.local/collector {:page-store (ig/ref :blaze.page-store/local)}})
 
 
-(def token (str (c-str/repeat "A" 31) "B"))
+(def token (str (str/join (repeat 31 "A")) "B"))
 
 
 (deftest init-test
@@ -55,6 +56,24 @@
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :val] := ::invalid))
 
+  (testing "invalid max size"
+    (given-thrown (ig/init {:blaze.page-store/local {:max-size-in-mb ::invalid}})
+      :key := :blaze.page-store/local
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :secure-rng))
+      [:explain ::s/problems 1 :path 0] := :max-size-in-mb
+      [:explain ::s/problems 1 :pred] := `nat-int?
+      [:explain ::s/problems 1 :val] := ::invalid))
+
+  (testing "invalid expire duration"
+    (given-thrown (ig/init {:blaze.page-store/local {:expire-duration ::invalid}})
+      :key := :blaze.page-store/local
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :secure-rng))
+      [:explain ::s/problems 1 :path 0] := :expire-duration
+      [:explain ::s/problems 1 :pred] := `time/duration?
+      [:explain ::s/problems 1 :val] := ::invalid))
+
   (testing "is a page store"
     (with-system [{store :blaze.page-store/local} config]
       (is (s/valid? :blaze/page-store store)))))
@@ -68,9 +87,9 @@
       (is (= [["active" "true"]] @(page-store/get store token))))
 
     (testing "not-found"
-      (given-failed-future (page-store/get store (c-str/repeat "B" 32))
+      (given-failed-future (page-store/get store (str/join (repeat 32 "B")))
         ::anom/category := ::anom/not-found
-        ::anom/message := (format "Clauses of token `%s` not found." (c-str/repeat "B" 32))))))
+        ::anom/message := (format "Clauses of token `%s` not found." (str/join (repeat 32 "B")))))))
 
 
 (deftest put-test

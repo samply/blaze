@@ -26,6 +26,31 @@
     (is (= 1 (coll/first [1 2])))))
 
 
+(deftest some-test
+  (testing "nil"
+    (is (nil? (coll/some any? nil))))
+
+  (testing "empty vector"
+    (is (nil? (coll/some any? []))))
+
+  (testing "vector with one element"
+    (testing "matching pred"
+      (is (= true (coll/some int? [1]))))
+
+    (testing "none matching pred"
+      (is (nil? (coll/some string? [1])))))
+
+  (testing "vector with two elements"
+    (testing "matching pred on first"
+      (is (= true (coll/some int? [1 "1"]))))
+
+    (testing "matching pred on second"
+      (is (= true (coll/some string? [1 "1"]))))
+
+    (testing "none matching pred"
+      (is (nil? (coll/some string? [1 2]))))))
+
+
 (deftest empty-test
   (testing "nil"
     (is (true? (coll/empty? nil))))
@@ -43,9 +68,6 @@
 
   (testing "eductions can be reduced"
     (is (= [2 3] (reduce conj [] (coll/eduction (map inc) [1 2])))))
-
-  (testing "eductions are seqable"
-    (is (= (list 2 3) (seq (coll/eduction (map inc) [1 2])))))
 
   (testing "eductions are counted"
     (is (= 2 (count (coll/eduction identity [1 2]))))))

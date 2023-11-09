@@ -35,7 +35,7 @@
         self-link (partial link context query-params "self")
         next-link (partial link context query-params "next")]
     ;; we need take here again because we take page-size + 1 above
-    (-> (d/pull-many db (take page-size paged-version-handles))
+    (-> (d/pull-many db (into [] (take page-size) paged-version-handles))
         (ac/exceptionally
           #(assoc %
              ::anom/category ::anom/fault

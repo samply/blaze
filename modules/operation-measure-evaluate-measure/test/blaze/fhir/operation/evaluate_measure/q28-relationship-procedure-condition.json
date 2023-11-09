@@ -14,6 +14,16 @@
     },
     {
       "resource": {
+        "resourceType": "Patient",
+        "id": "1"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/1"
+      }
+    },
+    {
+      "resource": {
         "resourceType": "Condition",
         "id": "0",
         "code": {
@@ -98,6 +108,37 @@
       "request": {
         "method": "PUT",
         "url": "Procedure/1"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "2",
+        "code": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/sid/icd-10",
+              "code": "C41.9"
+            }
+          ]
+        },
+        "bodySite": [
+          {
+            "coding": [
+              {
+                "system": "urn:oid:2.16.840.1.113883.6.43.1",
+                "code": "C44.6"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/1"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Condition/2"
       }
     },
     {

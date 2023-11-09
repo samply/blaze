@@ -36,6 +36,10 @@ public final class DateYear implements Date, Comparable<DateYear> {
         return of(year.getValue());
     }
 
+    public int year() {
+        return year;
+    }
+
     @Override
     public void hashInto(PrimitiveSink sink) {
         sink.putByte((byte) 5);

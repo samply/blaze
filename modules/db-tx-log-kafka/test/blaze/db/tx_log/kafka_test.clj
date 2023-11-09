@@ -156,7 +156,7 @@
            Consumer
            (^void seek [_ ^TopicPartition partition ^long offset]
              (assert (= (TopicPartition. "tx" 0) partition))
-             (assert (= 0 offset)))
+             (assert (zero? offset)))
            (^ConsumerRecords poll [_ ^Duration duration]
              (assert (= (time/seconds 1) duration))
              (ConsumerRecords. (Map/of)))

@@ -127,7 +127,7 @@
      history-system-handler]
     :or {context-path ""}
     :as context}]
-  (let [release-date #fhir/dateTime"2023-10-17"
+  (let [release-date #fhir/dateTime"2023-11-09"
         capability-statement
         {:fhir/type :fhir/CapabilityStatement
          :status #fhir/code"active"
@@ -198,7 +198,7 @@
              :type "special"}
             {:name "_sort"
              :type "special"
-             :documentation "Only `_lastUpdated` and `-_lastUpdated` is supported at the moment."}
+             :documentation "Only `_id`, `_lastUpdated` and `-_lastUpdated` are supported at the moment."}
             {:name "_summary"
              :type "token"
              :documentation "Only `count` is supported at the moment."}]}]}]

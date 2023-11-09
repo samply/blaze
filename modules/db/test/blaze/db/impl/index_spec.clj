@@ -2,6 +2,7 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.byte-string-spec]
+    [blaze.coll.spec :as cs]
     [blaze.db.impl.batch-db.spec]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index :as index]
@@ -28,7 +29,7 @@
                :tid :blaze.db/tid
                :clauses :blaze.db.index.query/clauses
                :start-id (s/? :blaze.db/id-byte-string))
-  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+  :ret (cs/coll-of :blaze.db/resource-handle))
 
 
 (s/fdef index/type-query-total
@@ -41,7 +42,7 @@
 (s/fdef index/system-query
   :args (s/cat :context :blaze.db.impl.batch-db/context
                :clauses :blaze.db.index.query/clauses)
-  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+  :ret (cs/coll-of :blaze.db/resource-handle))
 
 
 (s/fdef index/compartment-query
@@ -49,12 +50,12 @@
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
                :clauses :blaze.db.index.query/clauses)
-  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+  :ret (cs/coll-of :blaze.db/resource-handle))
 
 
-(s/fdef index/targets!
+(s/fdef index/targets
   :args (s/cat :context :blaze.db.impl.batch-db/context
                :resource-handle :blaze.db/resource-handle
                :code :blaze.db/c-hash
                :target-tid (s/? :blaze.db/tid))
-  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+  :ret (cs/coll-of :blaze.db/resource-handle))

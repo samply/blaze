@@ -1,14 +1,17 @@
 (ns blaze.db.impl.search-param.token
   (:require
     [blaze.anomaly :as ba :refer [when-ok]]
+    [blaze.async.comp :as ac]
     [blaze.coll.core :as coll]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
-    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
+    [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.index.search-param-value-resource :as sp-vr]
+    [blaze.db.impl.macros :refer [with-open-coll]]
     [blaze.db.impl.protocols :as p]
     [blaze.db.impl.search-param.core :as sc]
     [blaze.db.impl.search-param.util :as u]
+    [blaze.db.kv :as kv]
     [blaze.fhir-path :as fhir-path]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
@@ -142,20 +145,19 @@
     c-hash))
 
 
-(defn resource-keys!
+(defn resource-keys
   "Returns a reducible collection of [id hash-prefix] tuples starting at
-  `start-id` (optional).
+  `start-id` (optional)."
+  ([{:keys [snapshot]} c-hash tid value]
+   (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
+     (sp-vr/prefix-keys! svri c-hash tid value value)))
+  ([{:keys [snapshot]} c-hash tid value start-id]
+   (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
+     (sp-vr/prefix-keys! svri c-hash tid value value start-id))))
 
-  Changes the state of `context`. Consuming the collection requires exclusive
-  access to `context`."
-  ([{:keys [svri]} c-hash tid value]
-   (sp-vr/prefix-keys! svri c-hash tid value value))
-  ([{:keys [svri]} c-hash tid value start-id]
-   (sp-vr/prefix-keys! svri c-hash tid value value start-id)))
 
-
-(defn matches? [{:keys [rsvi]} c-hash resource-handle value]
-  (some? (r-sp-v/next-value! rsvi resource-handle c-hash value value)))
+(defn matches? [next-value c-hash resource-handle value]
+  (some? (next-value resource-handle c-hash value value)))
 
 
 (defrecord SearchParamToken [name url type base code target c-hash expression]
@@ -166,27 +168,27 @@
   (-resource-handles [_ context tid modifier value]
     (coll/eduction
       (u/resource-handle-mapper context tid)
-      (resource-keys! context (c-hash-w-modifier c-hash code modifier) tid
-                      value)))
+      (resource-keys context (c-hash-w-modifier c-hash code modifier) tid
+                     value)))
 
   (-resource-handles [_ context tid modifier value start-id]
     (coll/eduction
       (u/resource-handle-mapper context tid)
-      (resource-keys! context (c-hash-w-modifier c-hash code modifier) tid value
-                      start-id)))
+      (resource-keys context (c-hash-w-modifier c-hash code modifier) tid value
+                     start-id)))
 
   (-count-resource-handles [_ context tid modifier value]
     (u/count-resource-handles
       context tid
-      (resource-keys! context (c-hash-w-modifier c-hash code modifier) tid
-                      value)))
+      (resource-keys context (c-hash-w-modifier c-hash code modifier) tid
+                     value)))
 
   (-compartment-keys [_ context compartment tid value]
-    (c-sp-vr/prefix-keys! (:csvri context) compartment c-hash tid value))
+    (with-open-coll [csvri (kv/new-iterator (:snapshot context) :compartment-search-param-value-index)]
+      (c-sp-vr/prefix-keys! csvri compartment c-hash tid value)))
 
   (-matches? [_ context resource-handle modifier values]
-    (let [c-hash (c-hash-w-modifier c-hash code modifier)]
-      (some? (some #(matches? context c-hash resource-handle %) values))))
+    (some? (some (partial matches? (:next-value context) (c-hash-w-modifier c-hash code modifier) resource-handle) values)))
 
   (-compartment-ids [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
@@ -206,6 +208,30 @@
     (mapcat (partial index-entries url))))
 
 
+(defrecord SearchParamId [name type code]
+  p/SearchParam
+  (-compile-value [_ _ value]
+    (codec/id-byte-string value))
+
+  (-resource-handles [_ context tid _ value]
+    (some-> ((:resource-handle context) tid value) vector))
+
+  (-resource-handles [_ context tid _ value start-id]
+    (when (= value start-id)
+      (some-> ((:resource-handle context) tid value) vector)))
+
+  (-count-resource-handles [_ context tid _ value]
+    (ac/completed-future (if ((:resource-handle context) tid value) 1 0)))
+
+  (-sorted-resource-handles [_ context tid _]
+    (rao/type-list context tid))
+
+  (-sorted-resource-handles [_ context tid _ start-id]
+    (rao/type-list context tid start-id))
+
+  (-index-values [_ _ _]))
+
+
 (defn- fix-expr
   "https://github.com/samply/blaze/issues/366"
   [url expression]
@@ -219,10 +245,12 @@
 
 (defmethod sc/search-param "token"
   [_ {:keys [name url type base code target expression]}]
-  (if expression
-    (when-ok [expression (fhir-path/compile (fix-expr url expression))]
-      (->SearchParamToken name url type base code target (codec/c-hash code) expression))
-    (ba/unsupported (u/missing-expression-msg url))))
+  (if (= "_id" code)
+    (->SearchParamId "_id" "id" "_id")
+    (if expression
+      (when-ok [expression (fhir-path/compile (fix-expr url expression))]
+        (->SearchParamToken name url type base code target (codec/c-hash code) expression))
+      (ba/unsupported (u/missing-expression-msg url)))))
 
 
 (defmethod sc/search-param "reference"

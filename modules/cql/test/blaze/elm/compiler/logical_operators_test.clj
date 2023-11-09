@@ -7,7 +7,7 @@
     [blaze.elm.compiler :as c]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.logical-operators]
-    [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.compiler.test-util :as ctu]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [clojure.spec.test.alpha :as st]
@@ -15,12 +15,12 @@
 
 
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 
@@ -53,7 +53,7 @@
       {:type "Null"} {:type "Null"} nil))
 
   (testing "Dynamic"
-    (are [x y res] (= res (tu/dynamic-compile-eval (elm/and [x y])))
+    (are [x y res] (= res (ctu/dynamic-compile-eval (elm/and [x y])))
       #elm/boolean "true" #elm/parameter-ref "true" true
       #elm/parameter-ref "true" #elm/boolean "true" true
       #elm/parameter-ref "true" #elm/parameter-ref "true" true
@@ -73,7 +73,7 @@
       #elm/parameter-ref "nil" #elm/parameter-ref "nil" nil))
 
   (testing "form"
-    (are [x y form] (= form (c/form (tu/dynamic-compile (elm/and [x y]))))
+    (are [x y form] (= form (c/form (ctu/dynamic-compile (elm/and [x y]))))
       #elm/boolean "true" #elm/boolean "true" true
       #elm/boolean "true" #elm/boolean "false" false
       #elm/boolean "true" {:type "Null"} nil
@@ -95,7 +95,7 @@
       #elm/parameter-ref "a" #elm/parameter-ref "b" '(and (param-ref "a") (param-ref "b"))))
 
   (testing "static"
-    (are [x y static] (identical? static (core/-static (tu/dynamic-compile (elm/and [x y]))))
+    (are [x y static] (identical? static (core/-static (ctu/dynamic-compile (elm/and [x y]))))
       #elm/boolean "true" #elm/boolean "true" true
       #elm/boolean "true" #elm/boolean "false" true
       #elm/boolean "true" {:type "Null"} true
@@ -121,7 +121,7 @@
 ;;
 ;; Normalized to (Or (Not x) y)
 (deftest compile-implies-test
-  (tu/unsupported-binary-operand "Implies"))
+  (ctu/unsupported-binary-operand "Implies"))
 
 
 ;; 13.3. Not
@@ -136,15 +136,15 @@
       #elm/boolean "false" true))
 
   (testing "Dynamic"
-    (are [x res] (= res (tu/dynamic-compile-eval (elm/not x)))
+    (are [x res] (= res (ctu/dynamic-compile-eval (elm/not x)))
       #elm/parameter-ref "true" false
       #elm/parameter-ref "false" true))
 
-  (tu/testing-unary-null elm/not)
+  (ctu/testing-unary-null elm/not)
 
-  (tu/testing-unary-dynamic elm/not)
+  (ctu/testing-unary-dynamic elm/not)
 
-  (tu/testing-unary-form elm/not))
+  (ctu/testing-unary-form elm/not))
 
 
 ;; 13.4. Or
@@ -170,7 +170,7 @@
       {:type "Null"} {:type "Null"} nil))
 
   (testing "Dynamic"
-    (are [x y res] (= res (tu/dynamic-compile-eval (elm/or [x y])))
+    (are [x y res] (= res (ctu/dynamic-compile-eval (elm/or [x y])))
       #elm/boolean "false" #elm/parameter-ref "true" true
       #elm/parameter-ref "true" #elm/boolean "false" true
       #elm/parameter-ref "true" #elm/parameter-ref "true" true
@@ -190,7 +190,7 @@
       #elm/parameter-ref "nil" #elm/parameter-ref "nil" nil))
 
   (testing "form"
-    (are [x y form] (= form (c/form (tu/dynamic-compile (elm/or [x y]))))
+    (are [x y form] (= form (c/form (ctu/dynamic-compile (elm/or [x y]))))
       #elm/boolean "true" #elm/boolean "true" true
       #elm/boolean "true" #elm/boolean "false" true
       #elm/boolean "true" {:type "Null"} true
@@ -212,7 +212,7 @@
       #elm/parameter-ref "a" #elm/parameter-ref "b" '(or (param-ref "a") (param-ref "b"))))
 
   (testing "static"
-    (are [x y static] (identical? static (core/-static (tu/dynamic-compile (elm/or [x y]))))
+    (are [x y static] (identical? static (core/-static (ctu/dynamic-compile (elm/or [x y]))))
       #elm/boolean "true" #elm/boolean "true" true
       #elm/boolean "true" #elm/boolean "false" true
       #elm/boolean "true" {:type "Null"} true
@@ -258,7 +258,7 @@
       {:type "Null"} {:type "Null"} nil))
 
   (testing "Dynamic"
-    (are [x y res] (= res (tu/dynamic-compile-eval (elm/xor [x y])))
+    (are [x y res] (= res (ctu/dynamic-compile-eval (elm/xor [x y])))
       #elm/boolean "true" #elm/parameter-ref "true" false
       #elm/parameter-ref "true" #elm/boolean "true" false
       #elm/boolean "false" #elm/parameter-ref "true" true
@@ -280,7 +280,7 @@
       #elm/parameter-ref "nil" #elm/parameter-ref "nil" nil))
 
   (testing "form"
-    (are [x y form] (= form (c/form (tu/dynamic-compile (elm/xor [x y]))))
+    (are [x y form] (= form (c/form (ctu/dynamic-compile (elm/xor [x y]))))
       #elm/boolean "true" #elm/boolean "true" false
       #elm/boolean "true" #elm/boolean "false" true
       #elm/boolean "true" {:type "Null"} nil
@@ -302,7 +302,7 @@
       #elm/parameter-ref "a" #elm/parameter-ref "b" '(xor (param-ref "a") (param-ref "b"))))
 
   (testing "static"
-    (are [x y static] (identical? static (core/-static (tu/dynamic-compile (elm/xor [x y]))))
+    (are [x y static] (identical? static (core/-static (ctu/dynamic-compile (elm/xor [x y]))))
       #elm/boolean "true" #elm/boolean "true" true
       #elm/boolean "true" #elm/boolean "false" true
       #elm/boolean "true" {:type "Null"} true

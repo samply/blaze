@@ -7,7 +7,7 @@
     [blaze.anomaly :as ba :refer [throw-anom]]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.protocols :as p]
-    [cuerdas.core :as c-str])
+    [clojure.string :as str])
   (:import
     [com.google.common.base CharMatcher]
     [javax.measure Quantity UnconvertibleException Unit]
@@ -43,11 +43,11 @@
 
 
 (defn- replace-exp [s n]
-  (c-str/replace s (str "10*" n) (apply str "1" (repeat n \0))))
+  (str/replace s (str "10*" n) (apply str "1" (repeat n \0))))
 
 
 (defn- hack-replace-unsupported [s]
-  (reduce replace-exp s (range 1 13)))
+  (reduce replace-exp s (reverse (range 1 13))))
 
 
 (let [mem (volatile! {})]

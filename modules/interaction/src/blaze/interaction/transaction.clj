@@ -5,6 +5,7 @@
   (:require
     [blaze.anomaly :as ba :refer [if-ok when-ok]]
     [blaze.async.comp :as ac :refer [do-sync]]
+    [blaze.coll.core :as coll]
     [blaze.db.api :as d]
     [blaze.fhir.spec :as fhir-spec]
     [blaze.fhir.spec.type :as type]
@@ -322,7 +323,7 @@
         (ac/completed-future (created-entry context type handle)))
       (let [if-none-exist (-> entry :request :ifNoneExist)
             clauses (conditional-clauses if-none-exist)
-            handle (first (d/type-query db type clauses))]
+            handle (coll/first (d/type-query db type clauses))]
         (if (identical? :blaze.preference.return/representation return-preference)
           (do-sync [resource (pull db handle)]
             (assoc (noop-entry db handle) :resource resource))
@@ -351,7 +352,7 @@
    _
    {{:fhir/keys [type] :keys [id]} :resource :keys [tx-op]}]
   (let [type (name type)
-        [new-handle old-handle] (take 2 (d/instance-history db type id))]
+        [new-handle old-handle] (into [] (take 2) (d/instance-history db type id))]
     (if (identical? :blaze.preference.return/representation return-preference)
       (do-sync [resource (pull db new-handle)]
         (assoc (update-entry context type tx-op old-handle new-handle) :resource resource))

@@ -3,10 +3,10 @@
     [blaze.fhir.spec.impl.intern :as intern]
     [blaze.fhir.spec.type.json :as json]
     [blaze.fhir.spec.type.protocols :as p]
+    [blaze.fhir.spec.type.string-util :as su]
     [blaze.fhir.spec.type.system :as system]
     [clojure.data.xml.node :as xml-node]
-    [clojure.string :as str]
-    [cuerdas.core :refer [capital kebab]])
+    [clojure.string :as str])
   (:import
     [com.fasterxml.jackson.core JsonGenerator SerializableString]
     [com.fasterxml.jackson.core.io JsonStringEncoder]
@@ -304,7 +304,7 @@
 
 (defn- field-name [field-sym]
   (if (:polymorph (meta field-sym))
-    `(json/field-name (str ~(str field-sym) (capital (name (blaze.fhir.spec.type/type ~field-sym)))))
+    `(json/field-name (str ~(str field-sym) (su/capital (name (blaze.fhir.spec.type/type ~field-sym)))))
     (json/field-name (str field-sym))))
 
 
@@ -372,9 +372,9 @@
                        fields)
                    (persistent!)))))
 
-       (def ~(symbol (kebab name))
+       (def ~(symbol (su/pascal->kebab (str name)))
          (let [intern# (intern/intern-value ~(symbol (str "map->" name)))]
-           (fn ~(symbol (kebab name)) [{:keys [~@fields] :as ~m-sym}]
+           (fn ~(symbol (su/pascal->kebab (str name))) [{:keys [~@fields] :as ~m-sym}]
              (if ~interned
                (intern# ~m-sym)
                (~(symbol (str name ".")) ~@fields)))))

@@ -88,10 +88,7 @@
   (-resource-handles
     [search-param context tid modifier compiled-value]
     [search-param context tid modifier compiled-value start-id]
-    "Returns a reducible collection.
-
-    Changes the state of `context`. Consuming the collection requires exclusive
-    access to `context`.")
+    "Returns a reducible collection.")
   (-sorted-resource-handles
     [search-param context tid direction]
     [search-param context tid direction start-id]
@@ -108,7 +105,7 @@
 
 
 (defprotocol SearchParamRegistry
-  (-get [_ code] [_ code type])
+  (-get [_ code type])
   (-list-by-type [_ type])
   (-list-by-target [_ target])
   (-linked-compartments [_ resource])

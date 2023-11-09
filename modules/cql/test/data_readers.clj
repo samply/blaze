@@ -5,6 +5,8 @@
  elm/string blaze.elm.literal/string
  elm/tuple blaze.elm.literal/tuple
  elm/instance blaze.elm.literal/instance
+ elm/source-property blaze.elm.literal/source-property
+ elm/scope-property blaze.elm.literal/scope-property
  elm/code blaze.elm.literal/code
  elm/code-ref blaze.elm.literal/code-ref
  elm/concept blaze.elm.literal/concept
@@ -15,6 +17,7 @@
  elm/expression-ref blaze.elm.literal/expression-ref
  elm/function-ref blaze.elm.literal/function-ref
  elm/operand-ref blaze.elm.literal/operand-ref
+ elm/aliased-query-source blaze.elm.literal/aliased-query-source
  elm/retrieve blaze.elm.literal/retrieve
  elm/equal blaze.elm.literal/equal
  elm/equivalent blaze.elm.literal/equivalent
@@ -32,6 +35,7 @@
  elm/list blaze.elm.literal/list
  elm/if blaze.elm.literal/if-expr
  elm/abs blaze.elm.literal/abs
+ elm/concatenate blaze.elm.literal/concatenate
  elm/ends-with blaze.elm.literal/ends-with
  elm/indexer blaze.elm.literal/indexer
  elm/length blaze.elm.literal/length

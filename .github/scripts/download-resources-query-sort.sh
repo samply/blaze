@@ -34,16 +34,30 @@ else
   exit 1
 fi
 
-# test sorting, ignoring the milliseconds because Blaze strips them in the index
-LAST_UPDATED=$(cat "$FILE_NAME_PREFIX-get.ndjson" | jq -r '.meta.lastUpdated' | cut -d'.' -f1 | uniq)
-if [[ "$SORT" == -* ]]; then
-  LAST_UPDATED_SORT=$(echo "$LAST_UPDATED" | sort -r)
-else
-  LAST_UPDATED_SORT=$(echo "$LAST_UPDATED" | sort)
-fi
-if [ "$LAST_UPDATED" = "$LAST_UPDATED_SORT" ]; then
-  echo "OK 👍: resources are sorted"
-else
-  echo "Fail 😞: resources are not sorted"
-  exit 1
+if [[ "$SORT" == "_id" ]]; then
+
+  IDS=$(cat "$FILE_NAME_PREFIX-get.ndjson" | jq -r '.id')
+  IDS_SORT=$(echo "$IDS" | sort)
+  if [ "$IDS" = "$IDS_SORT" ]; then
+    echo "OK 👍: resources are sorted by id"
+  else
+    echo "Fail 😞: resources are not sorted by id"
+    exit 1
+  fi
+
+elif [[ "$SORT" == "_lastUpdated" || "$SORT" == "-_lastUpdated" ]]; then
+
+  # test sorting, ignoring the milliseconds because Blaze strips them in the index
+  LAST_UPDATED=$(cat "$FILE_NAME_PREFIX-get.ndjson" | jq -r '.meta.lastUpdated' | cut -d'.' -f1 | uniq)
+  if [[ "$SORT" == -* ]]; then
+    LAST_UPDATED_SORT=$(echo "$LAST_UPDATED" | sort -r)
+  else
+    LAST_UPDATED_SORT=$(echo "$LAST_UPDATED" | sort)
+  fi
+  if [ "$LAST_UPDATED" = "$LAST_UPDATED_SORT" ]; then
+    echo "OK 👍: resources are sorted by lastUpdated"
+  else
+    echo "Fail 😞: resources are not sorted by lastUpdated"
+    exit 1
+  fi
 fi

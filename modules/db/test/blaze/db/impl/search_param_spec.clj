@@ -2,6 +2,7 @@
   (:require
     [blaze.async.comp :as ac]
     [blaze.byte-string-spec]
+    [blaze.coll.spec :as cs]
     [blaze.db.impl.batch-db.spec]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index.compartment.search-param-value-resource-spec]
@@ -42,7 +43,7 @@
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :values (s/coll-of some? :min-count 1)
                :start-id (s/? :blaze.db/id-byte-string))
-  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+  :ret (cs/coll-of :blaze.db/resource-handle))
 
 
 (s/fdef search-param/sorted-resource-handles
@@ -51,7 +52,7 @@
                :tid :blaze.db/tid
                :direction :blaze.db.query/sort-direction
                :start-id (s/? :blaze.db/id-byte-string))
-  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+  :ret (cs/coll-of :blaze.db/resource-handle))
 
 
 (s/fdef search-param/count-resource-handles
@@ -69,7 +70,7 @@
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
                :compiled-values (s/coll-of some? :min-count 1))
-  :ret (s/coll-of :blaze.db/resource-handle :kind sequential?))
+  :ret (cs/coll-of :blaze.db/resource-handle))
 
 
 (s/fdef search-param/matches?
@@ -92,5 +93,5 @@
                :linked-compartments (s/nilable (s/coll-of (s/tuple string? string?)))
                :hash :blaze.resource/hash
                :resource :blaze/resource)
-  :ret (s/or :entries (s/coll-of :blaze.db.kv/put-entry-w-cf :kind sequential?)
+  :ret (s/or :entries (cs/coll-of :blaze.db.kv/put-entry-w-cf)
              :anomaly ::anom/anomaly))

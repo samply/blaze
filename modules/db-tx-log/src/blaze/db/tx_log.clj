@@ -20,8 +20,8 @@
   "Submits `tx-cmds` (transaction commands) to `tx-log`.
 
   Returns a CompletableFuture that will complete with point in time `t` of the
-  potentially valid transaction or complete exceptionally with an anomaly in
-  case of errors.
+  potentially valid transaction or will complete exceptionally with an anomaly
+  in case of errors.
 
   The `local-payload` will be embedded under :local-payload in the transaction
   data returned from `poll!` if the transaction log supports this feature and

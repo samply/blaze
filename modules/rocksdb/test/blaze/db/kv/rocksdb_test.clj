@@ -703,7 +703,7 @@
     (is (= "0" (rocksdb/get-property db "rocksdb.num-files-at-level0")))
     (is (= "0" (rocksdb/get-property db "rocksdb.num-files-at-level1")))
 
-    (is (= 0 (rocksdb/get-long-property db "rocksdb.estimate-table-readers-mem")))
+    (is (zero? (rocksdb/get-long-property db "rocksdb.estimate-table-readers-mem")))
 
     (is (string? (rocksdb/get-property db "rocksdb.stats")))
 
@@ -721,7 +721,7 @@
       (is (= "0" (rocksdb/get-property db :a "rocksdb.num-files-at-level0")))
       (is (= "0" (rocksdb/get-property db :a "rocksdb.num-files-at-level1")))
 
-      (is (= 0 (rocksdb/get-long-property db :a "rocksdb.estimate-table-readers-mem")))
+      (is (zero? (rocksdb/get-long-property db :a "rocksdb.estimate-table-readers-mem")))
 
       (is (string? (rocksdb/get-property db :a "rocksdb.stats")))
 

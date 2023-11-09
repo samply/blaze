@@ -33,6 +33,7 @@
   {:aliases
    {blaze.anomaly ba
     blaze.async.comp ac
+    blaze.coll.spec cs
     blaze.db.api d
     blaze.db.kv kv
     blaze.db.impl.protocols p

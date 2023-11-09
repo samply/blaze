@@ -7,7 +7,6 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.kv :as kv]
     [blaze.fhir.hash :as hash]
     [blaze.fhir.spec :as fhir-spec]
     [clojure.string :as str])
@@ -72,17 +71,16 @@
 
 (defn- id-groups-counter [{:keys [snapshot t]} tid]
   (fn [id-groups]
-    (with-open [raoi (kv/new-iterator snapshot :resource-as-of-index)]
-      (let [resource-handle (rao/resource-handle raoi t)]
-        (reduce
-          (fn [sum [[id] :as tuples]]
-            (if-let [handle (resource-handle tid id)]
-              (cond-> sum
-                (some (contains-hash-prefix-pred handle) tuples)
-                inc)
-              sum))
-          0
-          id-groups)))))
+    (with-open [resource-handle (rao/resource-handle snapshot t)]
+      (reduce
+        (fn [sum [[id] :as tuples]]
+          (if-let [handle (resource-handle tid id)]
+            (cond-> sum
+              (some (contains-hash-prefix-pred handle) tuples)
+              inc)
+            sum))
+        0
+        id-groups))))
 
 
 (defn- resource-handle-counter

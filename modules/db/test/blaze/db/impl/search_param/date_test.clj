@@ -80,6 +80,10 @@
       Instant/ofEpochSecond))
 
 
+(defn- index-entries [search-param linked-compartments hash resource]
+  (vec (search-param/index-entries search-param linked-compartments hash resource)))
+
+
 (deftest index-entries-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Patient"
@@ -89,7 +93,7 @@
                        :birthDate #fhir/date"2020-02-04"}
               hash (hash/generate patient)
               [[_ k0]]
-              (search-param/index-entries
+              (index-entries
                 (birth-date-param search-param-registry) [] hash patient)]
 
           (testing "the entry is about both bounds of `2020-02-04`"
@@ -108,7 +112,7 @@
                :deceased #fhir/dateTime"2019-11-17T00:14:29+01:00"}
               hash (hash/generate patient)
               [[_ k0]]
-              (search-param/index-entries
+              (index-entries
                 (sr/get search-param-registry "death-date" "Patient")
                 [] hash patient)]
 
@@ -131,7 +135,7 @@
                         :end #fhir/dateTime"2019-11-17T00:44:29+01:00"}}
               hash (hash/generate encounter)
               [[_ k0]]
-              (search-param/index-entries
+              (index-entries
                 (sr/get search-param-registry "date" "Encounter")
                 [] hash encounter)]
 
@@ -153,7 +157,7 @@
                          {:end #fhir/dateTime"2019-11-17"}}
                 hash (hash/generate encounter)
                 [[_ k0]]
-                (search-param/index-entries
+                (index-entries
                   (sr/get search-param-registry "date" "Encounter")
                   [] hash encounter)]
 
@@ -175,7 +179,7 @@
                          {:start #fhir/dateTime"2019-11-17T00:14:29+01:00"}}
                 hash (hash/generate encounter)
                 [[_ k0]]
-                (search-param/index-entries
+                (index-entries
                   (sr/get search-param-registry "date" "Encounter")
                   [] hash encounter)]
 
@@ -196,7 +200,7 @@
                        :issued #fhir/instant"2019-11-17T00:14:29.917+01:00"}
               hash (hash/generate patient)
               [[_ k0]]
-              (search-param/index-entries
+              (index-entries
                 (sr/get search-param-registry "issued" "DiagnosticReport")
                 [] hash patient)]
 

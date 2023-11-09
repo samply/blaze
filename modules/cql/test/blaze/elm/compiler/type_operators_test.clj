@@ -9,7 +9,7 @@
     [blaze.elm.compiler.clinical-operators]
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as tu]
+    [blaze.elm.compiler.test-util :as ctu]
     [blaze.elm.compiler.type-operators]
     [blaze.elm.concept :as concept]
     [blaze.elm.decimal :as decimal]
@@ -19,18 +19,19 @@
     [blaze.elm.quantity :as quantity]
     [blaze.elm.quantity-spec]
     [blaze.elm.ratio :as ratio]
+    [blaze.elm.util-spec]
     [blaze.fhir.spec.type.system :as system]
     [clojure.spec.test.alpha :as st]
     [clojure.test :as test :refer [are deftest is testing]]))
 
 
 (st/instrument)
-(tu/instrument-compile)
+(ctu/instrument-compile)
 
 
 (defn- fixture [f]
   (st/instrument)
-  (tu/instrument-compile)
+  (ctu/instrument-compile)
   (f)
   (st/unstrument))
 
@@ -50,58 +51,42 @@
   (testing "FHIR types"
     (are [elm resource res] (= res (core/-eval (c/compile {} elm) {} nil {"R" resource}))
       #elm/as ["{http://hl7.org/fhir}boolean"
-               {:path "deceased"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "deceased"]]
       {:fhir/type :fhir/Patient :id "0" :deceased true}
       true
 
       #elm/as ["{http://hl7.org/fhir}integer"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       {:fhir/type :fhir/Observation :value (int 1)}
       (int 1)
 
       #elm/as ["{http://hl7.org/fhir}string"
-               {:path "name"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "name"]]
       {:fhir/type :fhir/Account :name "a"}
       "a"
 
       #elm/as ["{http://hl7.org/fhir}decimal"
-               {:path "duration"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "duration"]]
       {:fhir/type :fhir/Media :duration 1.1M}
       1.1M
 
       #elm/as ["{http://hl7.org/fhir}uri"
-               {:path "url"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "url"]]
       {:fhir/type :fhir/Measure :url #fhir/uri"a"}
       #fhir/uri"a"
 
       #elm/as ["{http://hl7.org/fhir}url"
-               {:path "address"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "address"]]
       {:fhir/type :fhir/Endpoint :address #fhir/url"a"}
       #fhir/url"a"
 
       #elm/as ["{http://hl7.org/fhir}dateTime"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       {:fhir/type :fhir/Observation :value #fhir/dateTime"2019-09-04"}
       #fhir/dateTime"2019-09-04"
 
       #elm/as ["{http://hl7.org/fhir}Quantity"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       {:fhir/type :fhir/Observation :value #fhir/dateTime"2019-09-04"}
       nil))
 
@@ -120,7 +105,7 @@
       (system/date-time 2019 9 4)))
 
   (testing "expression is dynamic"
-    (is (false? (core/-static (tu/dynamic-compile
+    (is (false? (core/-static (ctu/dynamic-compile
                                 #elm/as["{urn:hl7-org:elm-types:r1}Integer"
                                         #elm/parameter-ref "x"])))))
 
@@ -133,9 +118,7 @@
       '(as elm/integer 1)
 
       #elm/as ["{http://hl7.org/fhir}dateTime"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       '(as fhir/dateTime (:value R))
 
       {:type "As"
@@ -145,9 +128,7 @@
         {:type "NamedTypeSpecifier"
          :name "{http://hl7.org/fhir}Quantity"}}
        :operand
-       {:path "value"
-        :scope "R"
-        :type "Property"}}
+       #elm/scope-property ["R" "value"]}
       '(as (list fhir/Quantity) (:value R)))))
 
 
@@ -187,7 +168,7 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-can-convert-quantity-test
-  (let [compile-op (partial tu/compile-binop elm/can-convert-quantity
+  (let [compile-op (partial ctu/compile-binop elm/can-convert-quantity
                             elm/quantity elm/string)]
     (testing "true"
       (are [argument unit] (true? (compile-op argument unit))
@@ -197,12 +178,12 @@
       (are [argument unit] (false? (compile-op argument unit))
         [5 "mg"] "m")))
 
-  (tu/testing-binary-null elm/can-convert-quantity #elm/quantity [1 "m"]
-                          #elm/string "m")
+  (ctu/testing-binary-null elm/can-convert-quantity #elm/quantity [1 "m"]
+                           #elm/string "m")
 
-  (tu/testing-binary-dynamic elm/can-convert-quantity)
+  (ctu/testing-binary-dynamic elm/can-convert-quantity)
 
-  (tu/testing-binary-form elm/can-convert-quantity))
+  (ctu/testing-binary-form elm/can-convert-quantity))
 
 
 ;; 22.4. Children
@@ -218,17 +199,17 @@
 (deftest compile-children-test
   (testing "Code"
     (are [elm res] (= res (core/-eval (c/compile {} #elm/children elm)
-                                      {:now tu/now} nil nil))
-      (tu/code "system-134534" "code-134551")
+                                      {:now ctu/now} nil nil))
+      (ctu/code "system-134534" "code-134551")
       ["code-134551" nil "system-134534" nil]))
 
   ;; TODO: other types
 
-  (tu/testing-unary-null elm/children)
+  (ctu/testing-unary-null elm/children)
 
-  (tu/testing-unary-dynamic elm/children)
+  (ctu/testing-unary-dynamic elm/children)
 
-  (tu/testing-unary-form elm/children))
+  (ctu/testing-unary-form elm/children))
 
 
 ;; TODO 22.5. Convert
@@ -280,11 +261,11 @@
   (are [argument unit] (nil? (core/-eval (c/compile {} (elm/convert-quantity [argument unit])) {} nil nil))
     #elm/quantity [5 "mg"] #elm/string "m")
 
-  (tu/testing-binary-null elm/convert-quantity #elm/quantity [5 "mg"] #elm/string "m")
+  (ctu/testing-binary-null elm/convert-quantity #elm/quantity [5 "mg"] #elm/string "m")
 
-  (tu/testing-binary-dynamic elm/convert-quantity)
+  (ctu/testing-binary-dynamic elm/convert-quantity)
 
-  (tu/testing-binary-form elm/convert-quantity))
+  (ctu/testing-binary-form elm/convert-quantity))
 
 
 ;; 22.7. ConvertsToBoolean
@@ -307,7 +288,7 @@
 ;; If the argument is null the result is null.
 (deftest compile-converts-to-boolean-test
   (testing "String"
-    (are [x] (true? (tu/compile-unop elm/converts-to-boolean elm/string x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-boolean elm/string x))
       "true"
       "t"
       "yes"
@@ -331,31 +312,31 @@
       "No"
       "N")
 
-    (are [x] (false? (tu/compile-unop elm/converts-to-boolean elm/string x))
+    (are [x] (false? (ctu/compile-unop elm/converts-to-boolean elm/string x))
       "foo"
       "bar"
       ""))
 
   (testing "Integer"
-    (is (true? (tu/compile-unop elm/converts-to-boolean elm/integer "1")))
+    (is (true? (ctu/compile-unop elm/converts-to-boolean elm/integer "1")))
 
-    (is (true? (tu/compile-unop elm/converts-to-boolean elm/integer "0")))
+    (is (true? (ctu/compile-unop elm/converts-to-boolean elm/integer "0")))
 
-    (are [x] (false? (tu/compile-unop elm/converts-to-boolean elm/integer x))
+    (are [x] (false? (ctu/compile-unop elm/converts-to-boolean elm/integer x))
       "2"
       "-1"))
 
   (testing "Long"
-    (is (true? (tu/compile-unop elm/converts-to-boolean elm/long "1")))
+    (is (true? (ctu/compile-unop elm/converts-to-boolean elm/long "1")))
 
-    (is (true? (tu/compile-unop elm/converts-to-boolean elm/long "0")))
+    (is (true? (ctu/compile-unop elm/converts-to-boolean elm/long "0")))
 
-    (are [x] (false? (tu/compile-unop elm/converts-to-boolean elm/long x))
+    (are [x] (false? (ctu/compile-unop elm/converts-to-boolean elm/long x))
       "2"
       "-1"))
 
   (testing "Decimal"
-    (are [x] (true? (tu/compile-unop elm/converts-to-boolean elm/decimal x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-boolean elm/decimal x))
       "1"
       "1.0"
       "1.00"
@@ -365,7 +346,7 @@
       "0.00"
       "0.00000000")
 
-    (are [x] (false? (tu/compile-unop elm/converts-to-boolean elm/decimal x))
+    (are [x] (false? (ctu/compile-unop elm/converts-to-boolean elm/decimal x))
       "0.1"
       "-1.0"
       "2.0"
@@ -373,19 +354,19 @@
       "0.9"))
 
   (testing "Boolean"
-    (is (true? (tu/compile-unop elm/converts-to-boolean elm/boolean "true")))
+    (is (true? (ctu/compile-unop elm/converts-to-boolean elm/boolean "true")))
 
-    (is (true? (tu/compile-unop elm/converts-to-boolean elm/boolean "false"))))
+    (is (true? (ctu/compile-unop elm/converts-to-boolean elm/boolean "false"))))
 
   (testing "Dynamic"
-    (are [x res] (= res (tu/dynamic-compile-eval (elm/converts-to-boolean x)))
+    (are [x res] (= res (ctu/dynamic-compile-eval (elm/converts-to-boolean x)))
       #elm/parameter-ref "A" false))
 
-  (tu/testing-unary-null elm/converts-to-boolean)
+  (ctu/testing-unary-null elm/converts-to-boolean)
 
-  (tu/testing-unary-dynamic elm/converts-to-boolean)
+  (ctu/testing-unary-dynamic elm/converts-to-boolean)
 
-  (tu/testing-unary-form elm/converts-to-boolean))
+  (ctu/testing-unary-form elm/converts-to-boolean))
 
 
 ;; 22.8. ConvertsToDate
@@ -413,36 +394,36 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-converts-to-date-test
-  (let [eval #(core/-eval % {:now tu/now} nil nil)]
+  (let [eval #(core/-eval % {:now ctu/now} nil nil)]
     (testing "String"
-      (are [x] (true? (eval (tu/compile-unop elm/converts-to-date elm/string x)))
+      (are [x] (true? (eval (ctu/compile-unop elm/converts-to-date elm/string x)))
         "2019"
         "2019-01"
         "2019-01-01")
 
-      (are [x] (false? (eval (tu/compile-unop elm/converts-to-date elm/string x)))
+      (are [x] (false? (eval (ctu/compile-unop elm/converts-to-date elm/string x)))
         "aaaa"
         "2019-13"
         "2019-02-29"))
 
     (testing "Date"
-      (are [x] (true? (eval (tu/compile-unop elm/converts-to-date elm/date x)))
+      (are [x] (true? (eval (ctu/compile-unop elm/converts-to-date elm/date x)))
         "2019"
         "2019-01"
         "2019-01-01"))
 
     (testing "DateTime"
-      (are [x] (true? (eval (tu/compile-unop elm/converts-to-date elm/date-time x)))
+      (are [x] (true? (eval (ctu/compile-unop elm/converts-to-date elm/date-time x)))
         "2019"
         "2019-01"
         "2019-01-01"
         "2019-01-01T12:13")))
 
-  (tu/testing-unary-null elm/converts-to-date)
+  (ctu/testing-unary-null elm/converts-to-date)
 
-  (tu/testing-unary-dynamic elm/converts-to-date)
+  (ctu/testing-unary-dynamic elm/converts-to-date)
 
-  (tu/testing-unary-form elm/converts-to-date))
+  (ctu/testing-unary-form elm/converts-to-date))
 
 
 ;; 22.9. ConvertsToDateTime
@@ -469,34 +450,34 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-converts-to-date-time-test
-  (let [eval #(core/-eval % {:now tu/now} nil nil)]
+  (let [eval #(core/-eval % {:now ctu/now} nil nil)]
     (testing "String"
-      (are [x] (true? (eval (tu/compile-unop elm/converts-to-date-time elm/string x)))
+      (are [x] (true? (eval (ctu/compile-unop elm/converts-to-date-time elm/string x)))
         "2020-03-08T12:54:00+01:00")
 
-      (are [x] (false? (eval (tu/compile-unop elm/converts-to-date-time elm/string x)))
+      (are [x] (false? (eval (ctu/compile-unop elm/converts-to-date-time elm/string x)))
         "2019-13"
         "2019-02-29"))
 
     (testing "Date"
       (testing "Static"
-        (are [x] (true? (tu/compile-unop elm/converts-to-date-time elm/date x))
+        (are [x] (true? (ctu/compile-unop elm/converts-to-date-time elm/date x))
           "2020"
           "2020-03"
           "2020-03-08")))
 
     (testing "DateTime"
-      (are [x] (true? (eval (tu/compile-unop elm/converts-to-date-time elm/date-time x)))
+      (are [x] (true? (eval (ctu/compile-unop elm/converts-to-date-time elm/date-time x)))
         "2020"
         "2020-03"
         "2020-03-08"
         "2020-03-08T12:13")))
 
-  (tu/testing-unary-null elm/converts-to-date-time)
+  (ctu/testing-unary-null elm/converts-to-date-time)
 
-  (tu/testing-unary-dynamic elm/converts-to-date-time)
+  (ctu/testing-unary-dynamic elm/converts-to-date-time)
 
-  (tu/testing-unary-form elm/converts-to-date-time))
+  (ctu/testing-unary-form elm/converts-to-date-time))
 
 
 ;; 22.10. ConvertsToDecimal
@@ -527,37 +508,37 @@
 ;; If the argument is null, the result is null.
 (deftest compile-converts-to-decimal-test
   (testing "String"
-    (are [x] (true? (tu/compile-unop elm/converts-to-decimal elm/string x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-decimal elm/string x))
       (str decimal/min)
       "-1"
       "0"
       "1"
       (str decimal/max))
 
-    (are [x] (false? (tu/compile-unop elm/converts-to-decimal elm/string x))
+    (are [x] (false? (ctu/compile-unop elm/converts-to-decimal elm/string x))
       (str (- decimal/min 1e-8M))
       (str (+ decimal/max 1e-8M))
       "a"))
 
   (testing "Boolean"
-    (are [x] (true? (tu/compile-unop elm/converts-to-decimal elm/boolean x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-decimal elm/boolean x))
       "true"))
 
   (testing "Decimal"
-    (are [x] (true? (tu/compile-unop elm/converts-to-decimal elm/decimal x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-decimal elm/decimal x))
       "1.1"))
 
   (testing "Dynamic"
-    (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-decimal x)))
+    (are [x] (false? (ctu/dynamic-compile-eval (elm/converts-to-decimal x)))
       #elm/parameter-ref "A")
-    (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-decimal x)))
+    (are [x] (true? (ctu/dynamic-compile-eval (elm/converts-to-decimal x)))
       #elm/parameter-ref "1"))
 
-  (tu/testing-unary-null elm/converts-to-decimal)
+  (ctu/testing-unary-null elm/converts-to-decimal)
 
-  (tu/testing-unary-dynamic elm/converts-to-decimal)
+  (ctu/testing-unary-dynamic elm/converts-to-decimal)
 
-  (tu/testing-unary-form elm/converts-to-decimal))
+  (ctu/testing-unary-form elm/converts-to-decimal))
 
 
 ;; 22.11. ConvertsToLong
@@ -585,37 +566,37 @@
 ;; If the argument is null, the result is null.
 (deftest compile-converts-to-long-test
   (testing "String"
-    (are [x] (true? (tu/compile-unop elm/converts-to-long elm/string x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-long elm/string x))
       (str Long/MIN_VALUE)
       "-1"
       "0"
       "1"
       (str Long/MAX_VALUE))
 
-    (are [x] (false? (tu/compile-unop elm/converts-to-long elm/string x))
+    (are [x] (false? (ctu/compile-unop elm/converts-to-long elm/string x))
       (str (dec (bigint Long/MIN_VALUE)))
       (str (inc (bigint Long/MAX_VALUE)))
       "a"))
 
   (testing "Boolean"
-    (are [x] (true? (tu/compile-unop elm/converts-to-long elm/boolean x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-long elm/boolean x))
       "true"))
 
   (testing "Long"
-    (are [x] (true? (tu/compile-unop elm/converts-to-long elm/long x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-long elm/long x))
       "1"))
 
   (testing "Dynamic"
-    (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-long x)))
+    (are [x] (false? (ctu/dynamic-compile-eval (elm/converts-to-long x)))
       #elm/parameter-ref "A")
-    (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-long x)))
+    (are [x] (true? (ctu/dynamic-compile-eval (elm/converts-to-long x)))
       #elm/parameter-ref "1"))
 
-  (tu/testing-unary-null elm/converts-to-long)
+  (ctu/testing-unary-null elm/converts-to-long)
 
-  (tu/testing-unary-dynamic elm/converts-to-long)
+  (ctu/testing-unary-dynamic elm/converts-to-long)
 
-  (tu/testing-unary-form elm/converts-to-long))
+  (ctu/testing-unary-form elm/converts-to-long))
 
 
 ;; 22.12. ConvertsToInteger
@@ -643,36 +624,36 @@
 ;; If the argument is null, the result is null.
 (deftest compile-converts-to-integer-test
   (testing "String"
-    (are [x] (true? (tu/compile-unop elm/converts-to-integer elm/string x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-integer elm/string x))
       (str Integer/MIN_VALUE)
       "-1"
       "0"
       "1"
       (str Integer/MAX_VALUE))
-    (are [x] (false? (tu/compile-unop elm/converts-to-integer elm/string x))
+    (are [x] (false? (ctu/compile-unop elm/converts-to-integer elm/string x))
       (str (dec Integer/MIN_VALUE))
       (str (inc Integer/MAX_VALUE))
       "a"))
 
   (testing "Boolean"
-    (are [x] (true? (tu/compile-unop elm/converts-to-integer elm/boolean x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-integer elm/boolean x))
       "true"))
 
   (testing "Integer"
-    (are [x] (true? (tu/compile-unop elm/converts-to-integer elm/integer x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-integer elm/integer x))
       "1"))
 
   (testing "Dynamic"
-    (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-integer x)))
+    (are [x] (false? (ctu/dynamic-compile-eval (elm/converts-to-integer x)))
       #elm/parameter-ref "A")
-    (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-integer x)))
+    (are [x] (true? (ctu/dynamic-compile-eval (elm/converts-to-integer x)))
       #elm/parameter-ref "1"))
 
-  (tu/testing-unary-null elm/converts-to-integer)
+  (ctu/testing-unary-null elm/converts-to-integer)
 
-  (tu/testing-unary-dynamic elm/converts-to-integer)
+  (ctu/testing-unary-dynamic elm/converts-to-integer)
 
-  (tu/testing-unary-form elm/converts-to-integer))
+  (ctu/testing-unary-form elm/converts-to-integer))
 
 
 ;; 22.13. ConvertsToQuantity
@@ -706,14 +687,14 @@
 ;; If the argument is null, the result is null.
 (deftest compile-converts-to-quantity-test
   (testing "String"
-    (are [x] (true? (tu/compile-unop elm/converts-to-quantity elm/string x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-quantity elm/string x))
       (str decimal/min "'m'")
       "-1'm'"
       "0'm'"
       "1'm'"
       (str decimal/max "'m'"))
 
-    (are [x] (false? (tu/compile-unop elm/converts-to-quantity elm/string x))
+    (are [x] (false? (ctu/compile-unop elm/converts-to-quantity elm/string x))
       (str (- decimal/min 1e-8M))
       (str (+ decimal/max 1e-8M))
       (str (- decimal/min 1e-8M) "'m'")
@@ -722,13 +703,13 @@
       "a"))
 
   (testing "Integer"
-    (is (true? (tu/compile-unop elm/converts-to-quantity elm/integer "1"))))
+    (is (true? (ctu/compile-unop elm/converts-to-quantity elm/integer "1"))))
 
   (testing "Decimal"
-    (is (true? (tu/compile-unop elm/converts-to-quantity elm/decimal "1.1"))))
+    (is (true? (ctu/compile-unop elm/converts-to-quantity elm/decimal "1.1"))))
 
   (testing "Ratio"
-    (are [x] (true? (tu/compile-unop elm/converts-to-quantity elm/ratio x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-quantity elm/ratio x))
       [[-1] [-1]]
       [[1] [1]]
       [[1 "s"] [1 "s"]]
@@ -736,16 +717,16 @@
       [[10 "s"] [1 "s"]]))
 
   (testing "Dynamic"
-    (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-quantity x)))
+    (are [x] (false? (ctu/dynamic-compile-eval (elm/converts-to-quantity x)))
       #elm/parameter-ref "A")
-    (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-quantity x)))
+    (are [x] (true? (ctu/dynamic-compile-eval (elm/converts-to-quantity x)))
       #elm/parameter-ref "1"))
 
-  (tu/testing-unary-null elm/converts-to-quantity)
+  (ctu/testing-unary-null elm/converts-to-quantity)
 
-  (tu/testing-unary-dynamic elm/converts-to-quantity)
+  (ctu/testing-unary-dynamic elm/converts-to-quantity)
 
-  (tu/testing-unary-form elm/converts-to-quantity))
+  (ctu/testing-unary-form elm/converts-to-quantity))
 
 
 ;; 22.14. ConvertsToRatio
@@ -766,25 +747,25 @@
 ;; If the argument is null, the result is null.
 (deftest compile-converts-to-ratio-test
   (testing "String"
-    (are [x] (true? (tu/compile-unop elm/converts-to-ratio elm/string x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-ratio elm/string x))
       "-1'm':-1'm'"
       "0'm':0'm'"
       "1'm':1'm'")
 
-    (are [x] (false? (tu/compile-unop elm/converts-to-ratio elm/string x))
+    (are [x] (false? (ctu/compile-unop elm/converts-to-ratio elm/string x))
       ""
       "a"
       "0'm';0'm'"))
 
   (testing "Dynamic"
-    (are [x] (false? (tu/dynamic-compile-eval (elm/converts-to-ratio x)))
+    (are [x] (false? (ctu/dynamic-compile-eval (elm/converts-to-ratio x)))
       #elm/parameter-ref "A"))
 
-  (tu/testing-unary-null elm/converts-to-ratio)
+  (ctu/testing-unary-null elm/converts-to-ratio)
 
-  (tu/testing-unary-dynamic elm/converts-to-ratio)
+  (ctu/testing-unary-dynamic elm/converts-to-ratio)
 
-  (tu/testing-unary-form elm/converts-to-ratio))
+  (ctu/testing-unary-form elm/converts-to-ratio))
 
 
 ;; 22.15. ConvertsToString
@@ -808,43 +789,43 @@
 ;; If the argument is null, the result is null.
 (deftest compile-converts-to-string-test
   (testing "String"
-    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/string x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-string elm/string x))
       "foo"))
 
   (testing "Long"
-    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/long x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-string elm/long x))
       "1"))
 
   (testing "Boolean"
-    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/boolean x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-string elm/boolean x))
       "true"))
 
   (testing "Integer"
-    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/integer x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-string elm/integer x))
       "1"))
 
   (testing "Decimal"
-    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/decimal x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-string elm/decimal x))
       "1.1"))
 
   (testing "Quantity"
-    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/quantity x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-string elm/quantity x))
       [1M "m"]))
 
   (testing "Date"
-    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/date x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-string elm/date x))
       "2019-01-01"))
 
   (testing "DateTime"
-    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/date-time x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-string elm/date-time x))
       "2019-01-01T01:00"))
 
   (testing "Time"
-    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/time x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-string elm/time x))
       "01:00"))
 
   (testing "Ratio"
-    (are [x] (true? (tu/compile-unop elm/converts-to-string elm/ratio x))
+    (are [x] (true? (ctu/compile-unop elm/converts-to-string elm/ratio x))
       [[1M "m"] [1M "m"]]))
 
   (testing "Tuple"
@@ -852,14 +833,14 @@
       {"foo" #elm/integer "1"}))
 
   (testing "Dynamic"
-    (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-string x)))
+    (are [x] (true? (ctu/dynamic-compile-eval (elm/converts-to-string x)))
       #elm/parameter-ref "A"))
 
-  (tu/testing-unary-null elm/converts-to-string)
+  (ctu/testing-unary-null elm/converts-to-string)
 
-  (tu/testing-unary-dynamic elm/converts-to-string)
+  (ctu/testing-unary-dynamic elm/converts-to-string)
 
-  (tu/testing-unary-form elm/converts-to-string))
+  (ctu/testing-unary-form elm/converts-to-string))
 
 
 ;; 22.16. ConvertsToTime
@@ -886,8 +867,8 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-converts-to-time-test
-  (let [compile (partial tu/compile-unop elm/converts-to-time)
-        eval #(core/-eval % {:now tu/now} nil nil)]
+  (let [compile (partial ctu/compile-unop elm/converts-to-time)
+        eval #(core/-eval % {:now ctu/now} nil nil)]
     (testing "String"
       (testing "expression is dynamic"
         (is (not (core/static? (compile elm/string "")))))
@@ -921,15 +902,15 @@
         "2020-03-08T12:54:30.010"))
 
     (testing "Dynamic"
-      (are [x] (true? (tu/dynamic-compile-eval (elm/converts-to-time x)))
+      (are [x] (true? (ctu/dynamic-compile-eval (elm/converts-to-time x)))
         #elm/parameter-ref "12:54:00"
         #elm/parameter-ref "2020-01-02T03:04:05.006Z")))
 
-  (tu/testing-unary-null elm/converts-to-time)
+  (ctu/testing-unary-null elm/converts-to-time)
 
-  (tu/testing-unary-dynamic elm/converts-to-time)
+  (ctu/testing-unary-dynamic elm/converts-to-time)
 
-  (tu/testing-unary-form elm/converts-to-time))
+  (ctu/testing-unary-form elm/converts-to-time))
 
 
 ;; 22.17. Descendents
@@ -945,20 +926,20 @@
 (deftest compile-to-descendents-test
   (testing "Code"
     (testing "expression is dynamic"
-      (is (not (core/static? (c/compile {} (elm/descendents (tu/code "system-134534" "code-134551")))))))
+      (is (not (core/static? (c/compile {} (elm/descendents (ctu/code "system-134534" "code-134551")))))))
 
     (are [x res] (= res (core/-eval (c/compile {} (elm/descendents x))
-                                    {:now tu/now} nil nil))
-      (tu/code "system-134534" "code-134551")
+                                    {:now ctu/now} nil nil))
+      (ctu/code "system-134534" "code-134551")
       ["code-134551" nil "system-134534" nil]))
 
   ;; TODO: other types
 
-  (tu/testing-unary-null elm/descendents)
+  (ctu/testing-unary-null elm/descendents)
 
-  (tu/testing-unary-dynamic elm/descendents)
+  (ctu/testing-unary-dynamic elm/descendents)
 
-  (tu/testing-unary-form elm/descendents))
+  (ctu/testing-unary-form elm/descendents))
 
 
 ;; 22.18. Is
@@ -971,94 +952,64 @@
   (testing "FHIR types"
     (are [elm resource] (true? (core/-eval (c/compile {} elm) {} nil {"R" resource}))
       #elm/is ["{http://hl7.org/fhir}boolean"
-               {:path "deceased"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "deceased"]]
       {:fhir/type :fhir/Patient :id "0" :deceased true}
 
       #elm/is ["{http://hl7.org/fhir}integer"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       {:fhir/type :fhir/Observation :value (int 1)}
 
       #elm/is ["{http://hl7.org/fhir}decimal"
-               {:path "duration"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "duration"]]
       {:fhir/type :fhir/Media :duration 1.1M}
 
       #elm/is ["{http://hl7.org/fhir}string"
-               {:path "name"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "name"]]
       {:fhir/type :fhir/Account :name "a"}
 
       #elm/is ["{http://hl7.org/fhir}uri"
-               {:path "url"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "url"]]
       {:fhir/type :fhir/Measure :url #fhir/uri"a"}
 
       #elm/is ["{http://hl7.org/fhir}url"
-               {:path "address"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "address"]]
       {:fhir/type :fhir/Endpoint :address #fhir/url"a"}
 
       #elm/is ["{http://hl7.org/fhir}dateTime"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       {:fhir/type :fhir/Observation :value #fhir/dateTime"2019-09-04"})
 
     (are [elm resource] (false? (core/-eval (c/compile {} elm) {} nil {"R" resource}))
       #elm/is ["{http://hl7.org/fhir}boolean"
-               {:path "deceased"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "deceased"]]
       {:fhir/type :fhir/Patient :id "0" :deceased "foo"}
 
       #elm/is ["{http://hl7.org/fhir}integer"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       {:fhir/type :fhir/Observation :value true}
 
       #elm/is ["{http://hl7.org/fhir}decimal"
-               {:path "duration"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "duration"]]
       {:fhir/type :fhir/Media :duration #fhir/uri"a"}
 
       #elm/is ["{http://hl7.org/fhir}string"
-               {:path "name"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "name"]]
       {:fhir/type :fhir/Account :name (int 1)}
 
       #elm/is ["{http://hl7.org/fhir}uri"
-               {:path "url"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "url"]]
       {:fhir/type :fhir/Measure :url 1.1M}
 
       #elm/is ["{http://hl7.org/fhir}url"
-               {:path "address"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "address"]]
       {:fhir/type :fhir/Endpoint :address #fhir/dateTime"2019-09-04"}
 
       #elm/is ["{http://hl7.org/fhir}dateTime"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       {:fhir/type :fhir/Observation :value #fhir/url"a"}
 
       #elm/is ["{http://hl7.org/fhir}Quantity"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       {:fhir/type :fhir/Observation :value #fhir/dateTime"2019-09-04"}))
 
   (testing "ELM types"
@@ -1075,7 +1026,7 @@
 
       #elm/is ["{urn:hl7-org:elm-types:r1}String" #elm/string "foo"]
 
-      #elm/is ["{urn:hl7-org:elm-types:r1}Date" #elm/date"2020-03-08"]
+      #elm/is ["{urn:hl7-org:elm-types:r1}Date" #elm/date "2020-03-08"]
 
       #elm/is ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date-time"2019-09-04"])
 
@@ -1105,7 +1056,7 @@
       #elm/is ["{urn:hl7-org:elm-types:r1}DateTime" {:type "Null"}]))
 
   (testing "expression is dynamic"
-    (is (false? (core/-static (tu/dynamic-compile
+    (is (false? (core/-static (ctu/dynamic-compile
                                 #elm/is["{urn:hl7-org:elm-types:r1}Integer"
                                         #elm/parameter-ref "x"])))))
 
@@ -1118,9 +1069,7 @@
       '(is elm/integer 1)
 
       #elm/is ["{http://hl7.org/fhir}dateTime"
-               {:path "value"
-                :scope "R"
-                :type "Property"}]
+               #elm/scope-property ["R" "value"]]
       '(is fhir/dateTime (:value R))
 
       {:type "Is"
@@ -1155,7 +1104,7 @@
 (deftest compile-to-boolean-test
   (testing "Static"
     (testing "String"
-      (are [x] (true? (tu/compile-unop elm/to-boolean elm/string x))
+      (are [x] (true? (ctu/compile-unop elm/to-boolean elm/string x))
         "true"
         "t"
         "yes"
@@ -1168,7 +1117,7 @@
         "Yes"
         "Y")
 
-      (are [x] (false? (tu/compile-unop elm/to-boolean elm/string x))
+      (are [x] (false? (ctu/compile-unop elm/to-boolean elm/string x))
         "false"
         "f"
         "no"
@@ -1181,43 +1130,43 @@
         "No"
         "N")
 
-      (are [x] (nil? (tu/compile-unop elm/to-boolean elm/string x))
+      (are [x] (nil? (ctu/compile-unop elm/to-boolean elm/string x))
         "foo"
         "bar"
         ""))
 
     (testing "Integer"
-      (is (true? (tu/compile-unop elm/to-boolean elm/integer "1")))
+      (is (true? (ctu/compile-unop elm/to-boolean elm/integer "1")))
 
-      (is (false? (tu/compile-unop elm/to-boolean elm/integer "0")))
+      (is (false? (ctu/compile-unop elm/to-boolean elm/integer "0")))
 
-      (are [x] (nil? (tu/compile-unop elm/to-boolean elm/integer x))
+      (are [x] (nil? (ctu/compile-unop elm/to-boolean elm/integer x))
         "2"
         "-1"))
 
     (testing "Long"
-      (is (true? (tu/compile-unop elm/to-boolean elm/long "1")))
+      (is (true? (ctu/compile-unop elm/to-boolean elm/long "1")))
 
-      (is (false? (tu/compile-unop elm/to-boolean elm/long "0")))
+      (is (false? (ctu/compile-unop elm/to-boolean elm/long "0")))
 
-      (are [x] (nil? (tu/compile-unop elm/to-boolean elm/long x))
+      (are [x] (nil? (ctu/compile-unop elm/to-boolean elm/long x))
         "2"
         "-1"))
 
     (testing "Decimal"
-      (are [x] (true? (tu/compile-unop elm/to-boolean elm/decimal x))
+      (are [x] (true? (ctu/compile-unop elm/to-boolean elm/decimal x))
         "1"
         "1.0"
         "1.00"
         "1.00000000")
 
-      (are [x] (false? (tu/compile-unop elm/to-boolean elm/decimal x))
+      (are [x] (false? (ctu/compile-unop elm/to-boolean elm/decimal x))
         "0"
         "0.0"
         "0.00"
         "0.00000000")
 
-      (are [x] (nil? (tu/compile-unop elm/to-boolean elm/decimal x))
+      (are [x] (nil? (ctu/compile-unop elm/to-boolean elm/decimal x))
         "0.1"
         "-1.0"
         "2.0"
@@ -1225,16 +1174,16 @@
         "0.9"))
 
     (testing "Boolean"
-      (is (true? (tu/compile-unop elm/to-boolean elm/boolean "true")))
+      (is (true? (ctu/compile-unop elm/to-boolean elm/boolean "true")))
 
-      (is (false? (tu/compile-unop elm/to-boolean elm/boolean "false")))))
+      (is (false? (ctu/compile-unop elm/to-boolean elm/boolean "false")))))
 
 
-  (tu/testing-unary-null elm/to-boolean)
+  (ctu/testing-unary-null elm/to-boolean)
 
-  (tu/testing-unary-dynamic elm/to-boolean)
+  (ctu/testing-unary-dynamic elm/to-boolean)
 
-  (tu/testing-unary-form elm/to-boolean))
+  (ctu/testing-unary-form elm/to-boolean))
 
 
 ;; 22.20. ToChars
@@ -1246,26 +1195,26 @@
 ;; If the argument is null, the result is null.
 (deftest compile-to-chars-test
   (testing "String"
-    (are [x res] (= res (tu/compile-unop elm/to-chars elm/string x))
+    (are [x res] (= res (ctu/compile-unop elm/to-chars elm/string x))
       "A" '("A")
       "ab" '("a" "b")
       "" '()))
 
   (testing "Integer"
-    (are [x] (nil? (tu/compile-unop elm/to-chars elm/integer x))
+    (are [x] (nil? (ctu/compile-unop elm/to-chars elm/integer x))
       "1"))
 
   (testing "Dynamic"
-    (are [x res] (= res (tu/dynamic-compile-eval (elm/to-chars x)))
+    (are [x res] (= res (ctu/dynamic-compile-eval (elm/to-chars x)))
       #elm/parameter-ref "A" '("A")
       #elm/parameter-ref "ab" '("a" "b")
       #elm/parameter-ref "empty-string" '()))
 
-  (tu/testing-unary-null elm/to-chars)
+  (ctu/testing-unary-null elm/to-chars)
 
-  (tu/testing-unary-dynamic elm/to-chars)
+  (ctu/testing-unary-dynamic elm/to-chars)
 
-  (tu/testing-unary-form elm/to-chars))
+  (ctu/testing-unary-form elm/to-chars))
 
 
 ;; 22.21. ToConcept
@@ -1281,21 +1230,21 @@
 (deftest compile-to-concept-test
   (testing "Code"
     (are [x res] (= res (core/-eval (c/compile {} (elm/to-concept x))
-                                    {:now tu/now} nil nil))
+                                    {:now ctu/now} nil nil))
 
-      (tu/code "system-134534" "code-134551")
+      (ctu/code "system-134534" "code-134551")
       (concept/to-concept [(code/to-code "system-134534" nil "code-134551")])
 
-      (elm/list [(tu/code "system-134534" "code-134551")
-                 (tu/code "system-134535" "code-134552")])
+      (elm/list [(ctu/code "system-134534" "code-134551")
+                 (ctu/code "system-134535" "code-134552")])
       (concept/to-concept [(code/to-code "system-134534" nil "code-134551")
                            (code/to-code "system-134535" nil "code-134552")])))
 
-  (tu/testing-unary-null elm/to-concept)
+  (ctu/testing-unary-null elm/to-concept)
 
-  (tu/testing-unary-dynamic elm/to-concept)
+  (ctu/testing-unary-dynamic elm/to-concept)
 
-  (tu/testing-unary-form elm/to-concept))
+  (ctu/testing-unary-form elm/to-concept))
 
 
 ;; 22.22. ToDate
@@ -1319,8 +1268,8 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-date-test
-  (let [compile (partial tu/compile-unop elm/to-date)
-        eval #(core/-eval % {:now tu/now} nil nil)]
+  (let [compile (partial ctu/compile-unop elm/to-date)
+        eval #(core/-eval % {:now ctu/now} nil nil)]
     (testing "String"
       (testing "expression is dynamic"
         (is (not (core/static? (compile elm/string "")))))
@@ -1360,7 +1309,7 @@
         (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
               elm #elm/to-date #elm/parameter-ref "x"
               expr (c/compile compile-ctx elm)
-              eval-ctx (fn [x] {:now tu/now :parameters {"x" x}})]
+              eval-ctx (fn [x] {:now ctu/now :parameters {"x" x}})]
           (are [date-time date] (= date (core/-eval expr (eval-ctx date-time) nil nil))
             #system/date-time"2023" #system/date"2023"
             #system/date-time"2023-05" #system/date"2023-05"
@@ -1370,11 +1319,11 @@
             #system/date-time"2023-05-07T16:07:00" #system/date"2023-05-07"
             #system/date-time"2023-05-07T16:07:00+02:00" #system/date"2023-05-07")))))
 
-  (tu/testing-unary-null elm/to-date)
+  (ctu/testing-unary-null elm/to-date)
 
-  (tu/testing-unary-dynamic elm/to-date)
+  (ctu/testing-unary-dynamic elm/to-date)
 
-  (tu/testing-unary-form elm/to-date))
+  (ctu/testing-unary-form elm/to-date))
 
 
 ;; 22.23. ToDateTime
@@ -1402,8 +1351,8 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-date-time-test
-  (let [compile (partial tu/compile-unop elm/to-date-time)
-        eval #(core/-eval % {:now tu/now} nil nil)]
+  (let [compile (partial ctu/compile-unop elm/to-date-time)
+        eval #(core/-eval % {:now ctu/now} nil nil)]
     (testing "String"
       (testing "expression is dynamic"
         (is (not (core/static? (compile elm/string "")))))
@@ -1437,11 +1386,11 @@
         "2020-03-08" #system/date-time"2020-03-08"
         "2020-03-08T12:13" #system/date-time"2020-03-08T12:13")))
 
-  (tu/testing-unary-null elm/to-date-time)
+  (ctu/testing-unary-null elm/to-date-time)
 
-  (tu/testing-unary-dynamic elm/to-date-time)
+  (ctu/testing-unary-dynamic elm/to-date-time)
 
-  (tu/testing-unary-form elm/to-date-time))
+  (ctu/testing-unary-form elm/to-date-time))
 
 
 ;; 22.24. ToDecimal
@@ -1471,7 +1420,7 @@
 ;; If the argument is null, the result is null.
 (deftest compile-to-decimal-test
   (testing "String"
-    (are [x res] (= res (tu/compile-unop elm/to-decimal elm/string x))
+    (are [x res] (= res (ctu/compile-unop elm/to-decimal elm/string x))
       (str decimal/min) decimal/min
       "-1.1" -1.1M
       "-1" -1M
@@ -1484,15 +1433,15 @@
       "a" nil))
 
   (testing "Boolean"
-    (are [x res] (= res (tu/compile-unop elm/to-decimal elm/boolean x))
+    (are [x res] (= res (ctu/compile-unop elm/to-decimal elm/boolean x))
       "true" 1.0
       "false" 0.0))
 
-  (tu/testing-unary-null elm/to-decimal)
+  (ctu/testing-unary-null elm/to-decimal)
 
-  (tu/testing-unary-dynamic elm/to-decimal)
+  (ctu/testing-unary-dynamic elm/to-decimal)
 
-  (tu/testing-unary-form elm/to-decimal))
+  (ctu/testing-unary-form elm/to-decimal))
 
 
 ;; 22.25. ToInteger
@@ -1516,7 +1465,7 @@
 ;; If the argument is null, the result is null.
 (deftest compile-to-integer-test
   (testing "String"
-    (are [x res] (= res (tu/compile-unop elm/to-integer elm/string x))
+    (are [x res] (= res (ctu/compile-unop elm/to-integer elm/string x))
       (str Integer/MIN_VALUE) Integer/MIN_VALUE
       "-1" -1
       "0" 0
@@ -1528,15 +1477,15 @@
       "a" nil))
 
   (testing "Boolean"
-    (are [x res] (= res (tu/compile-unop elm/to-integer elm/boolean x))
+    (are [x res] (= res (ctu/compile-unop elm/to-integer elm/boolean x))
       "true" 1
       "false" 0))
 
-  (tu/testing-unary-null elm/to-integer)
+  (ctu/testing-unary-null elm/to-integer)
 
-  (tu/testing-unary-dynamic elm/to-integer)
+  (ctu/testing-unary-dynamic elm/to-integer)
 
-  (tu/testing-unary-form elm/to-integer))
+  (ctu/testing-unary-form elm/to-integer))
 
 
 ;; 22.26. ToList
@@ -1554,24 +1503,24 @@
 (deftest compile-to-list-test
   (testing "Static"
     (testing "Boolean"
-      (are [x res] (= res (tu/compile-unop elm/to-list elm/boolean x))
+      (are [x res] (= res (ctu/compile-unop elm/to-list elm/boolean x))
         "false" [false]))
 
     (testing "Integer"
-      (are [x res] (= res (tu/compile-unop elm/to-list elm/integer x))
+      (are [x res] (= res (ctu/compile-unop elm/to-list elm/integer x))
         "1" [1]))
 
     (testing "Null"
       (is (= [] (c/compile {} #elm/to-list{:type "Null"})))))
 
   (testing "Dynamic"
-    (are [x res] (= res (tu/dynamic-compile-eval (elm/to-list x)))
+    (are [x res] (= res (ctu/dynamic-compile-eval (elm/to-list x)))
       #elm/parameter-ref "nil" []
       #elm/parameter-ref "a" ["a"]))
 
-  (tu/testing-unary-dynamic elm/to-list)
+  (ctu/testing-unary-dynamic elm/to-list)
 
-  (tu/testing-unary-form elm/to-list))
+  (ctu/testing-unary-form elm/to-list))
 
 
 ;; 22.27. ToLong
@@ -1598,7 +1547,7 @@
 ;; If the argument is null, the result is null.
 (deftest compile-to-long-test
   (testing "String"
-    (are [x res] (= res (tu/compile-unop elm/to-long elm/string x))
+    (are [x res] (= res (ctu/compile-unop elm/to-long elm/string x))
       (str Long/MIN_VALUE) Long/MIN_VALUE
       "-1" -1
       "0" 0
@@ -1611,15 +1560,15 @@
       "a" nil))
 
   (testing "Boolean"
-    (are [x res] (= res (tu/compile-unop elm/to-long elm/boolean x))
+    (are [x res] (= res (ctu/compile-unop elm/to-long elm/boolean x))
       "true" 1
       "false" 0))
 
-  (tu/testing-unary-null elm/to-long)
+  (ctu/testing-unary-null elm/to-long)
 
-  (tu/testing-unary-dynamic elm/to-long)
+  (ctu/testing-unary-dynamic elm/to-long)
 
-  (tu/testing-unary-form elm/to-long))
+  (ctu/testing-unary-form elm/to-long))
 
 
 ;; 22.28. ToQuantity
@@ -1654,7 +1603,7 @@
 ;; If the argument is null, the result is null.
 (deftest compile-to-quantity-test
   (testing "String"
-    (are [x res] (p/equal res (tu/compile-unop elm/to-quantity elm/string x))
+    (are [x res] (p/equal res (ctu/compile-unop elm/to-quantity elm/string x))
       "-1" (quantity/quantity -1 "1")
       "1" (quantity/quantity 1 "1")
 
@@ -1666,7 +1615,7 @@
 
       "1.1 'm'" (quantity/quantity 1.1M "m"))
 
-    (are [x] (nil? (tu/compile-unop elm/to-quantity elm/string x))
+    (are [x] (nil? (ctu/compile-unop elm/to-quantity elm/string x))
       (str (- decimal/min 1e-8M))
       (str (+ decimal/max 1e-8M))
       (str (- decimal/min 1e-8M) "'m'")
@@ -1675,16 +1624,16 @@
       "a"))
 
   (testing "Integer"
-    (are [x res] (= res (tu/compile-unop elm/to-quantity elm/integer x))
+    (are [x res] (= res (ctu/compile-unop elm/to-quantity elm/integer x))
       "1" (quantity/quantity 1 "1")))
 
   (testing "Decimal"
-    (are [x res] (p/equal res (tu/compile-unop elm/to-quantity elm/decimal x))
+    (are [x res] (p/equal res (ctu/compile-unop elm/to-quantity elm/decimal x))
       "1" (quantity/quantity 1 "1")
       "1.1" (quantity/quantity 1.1M "1")))
 
   (testing "Ratio"
-    (are [x res] (p/equal res (tu/compile-unop elm/to-quantity elm/ratio x))
+    (are [x res] (p/equal res (ctu/compile-unop elm/to-quantity elm/ratio x))
       [[1] [1]] (quantity/quantity 1 "1")
       [[-1] [1]] (quantity/quantity -1 "1")
 
@@ -1695,11 +1644,11 @@
       [[1 "s"] [1 "m"]] (quantity/quantity 1 "m/s")
       [[100 "cm"] [1 "m"]] (quantity/quantity 1 "1")))
 
-  (tu/testing-unary-null elm/to-quantity)
+  (ctu/testing-unary-null elm/to-quantity)
 
-  (tu/testing-unary-dynamic elm/to-quantity)
+  (ctu/testing-unary-dynamic elm/to-quantity)
 
-  (tu/testing-unary-form elm/to-quantity))
+  (ctu/testing-unary-form elm/to-quantity))
 
 
 ;; 22.29. ToRatio
@@ -1719,7 +1668,7 @@
 ;; If the argument is null, the result is null.
 (deftest compile-to-ratio-test
   (testing "String"
-    (are [x res] (p/equal res (tu/compile-unop elm/to-ratio elm/string x))
+    (are [x res] (p/equal res (ctu/compile-unop elm/to-ratio elm/string x))
       "-1:-1" (ratio/ratio (quantity/quantity -1 "1") (quantity/quantity -1 "1"))
       "1:1" (ratio/ratio (quantity/quantity 1 "1") (quantity/quantity 1 "1"))
       "1:100" (ratio/ratio (quantity/quantity 1 "1") (quantity/quantity 100 "1"))
@@ -1739,7 +1688,7 @@
 
       "1.1 'm':1.1 'm'" (ratio/ratio (quantity/quantity 1.1M "m") (quantity/quantity 1.1M "m"))))
 
-  (are [x] (nil? (tu/compile-unop elm/to-ratio elm/string x))
+  (are [x] (nil? (ctu/compile-unop elm/to-ratio elm/string x))
     ":"
     "a"
     ""
@@ -1747,11 +1696,11 @@
     ":1"
     "1:1:1")
 
-  (tu/testing-unary-null elm/to-ratio)
+  (ctu/testing-unary-null elm/to-ratio)
 
-  (tu/testing-unary-dynamic elm/to-ratio)
+  (ctu/testing-unary-dynamic elm/to-ratio)
 
-  (tu/testing-unary-form elm/to-ratio))
+  (ctu/testing-unary-form elm/to-ratio))
 
 
 ;; 22.30. ToString
@@ -1771,18 +1720,18 @@
 ;; If the argument is null, the result is null.
 (deftest compile-to-string-test
   (testing "Boolean"
-    (are [x res] (= res (tu/compile-unop elm/to-string elm/boolean x))
+    (are [x res] (= res (ctu/compile-unop elm/to-string elm/boolean x))
       "true" "true"
       "false" "false"))
 
   (testing "Integer"
-    (are [x res] (= res (tu/compile-unop elm/to-string elm/integer x))
+    (are [x res] (= res (ctu/compile-unop elm/to-string elm/integer x))
       "-1" "-1"
       "0" "0"
       "1" "1"))
 
   (testing "Decimal"
-    (are [x res] (= res (tu/compile-unop elm/to-string elm/decimal x))
+    (are [x res] (= res (ctu/compile-unop elm/to-string elm/decimal x))
       "-1" "-1"
       "0" "0"
       "1" "1"
@@ -1800,38 +1749,38 @@
       "0.000000005" "0.00000001"))
 
   (testing "Quantity"
-    (are [x res] (= res (tu/compile-unop elm/to-string elm/quantity x))
+    (are [x res] (= res (ctu/compile-unop elm/to-string elm/quantity x))
       [1 "m"] "1 'm'"
       [1M "m"] "1 'm'"
       [1.1M "m"] "1.1 'm'"))
 
   (testing "Date"
-    (are [x res] (= res (tu/compile-unop elm/to-string elm/date x))
+    (are [x res] (= res (ctu/compile-unop elm/to-string elm/date x))
       "2019" "2019"
       "2019-01" "2019-01"
       "2019-01-01" "2019-01-01"))
 
   (testing "DateTime"
-    (are [x res] (= res (tu/compile-unop elm/to-string elm/date-time x))
+    (are [x res] (= res (ctu/compile-unop elm/to-string elm/date-time x))
       "2019-01-01T01:00" "2019-01-01T01:00"))
 
   (testing "Time"
-    (are [x res] (= res (tu/compile-unop elm/to-string elm/time x))
+    (are [x res] (= res (ctu/compile-unop elm/to-string elm/time x))
       "01:00" "01:00"))
 
   (testing "Ratio"
-    (are [x res] (= res (tu/compile-unop elm/to-string elm/ratio x))
+    (are [x res] (= res (ctu/compile-unop elm/to-string elm/ratio x))
       [[1 "m"] [1 "m"]] "1 'm':1 'm'"
       [[1 "m"] [2 "m"]] "1 'm':2 'm'"
       [[1M "m"] [1M "m"]] "1 'm':1 'm'"
       [[100M "m"] [1M "m"]] "100 'm':1 'm'"
       [[1.1M "m"] [1.1M "m"]] "1.1 'm':1.1 'm'"))
 
-  (tu/testing-unary-null elm/to-string)
+  (ctu/testing-unary-null elm/to-string)
 
-  (tu/testing-unary-dynamic elm/to-string)
+  (ctu/testing-unary-dynamic elm/to-string)
 
-  (tu/testing-unary-form elm/to-string))
+  (ctu/testing-unary-form elm/to-string))
 
 
 ;; 22.31. ToTime
@@ -1859,9 +1808,9 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-to-time-test
-  (let [eval #(core/-eval % {:now tu/now} nil nil)]
+  (let [eval #(core/-eval % {:now ctu/now} nil nil)]
     (testing "String"
-      (are [x res] (= res (eval (tu/compile-unop elm/to-time elm/string x)))
+      (are [x res] (= res (eval (ctu/compile-unop elm/to-time elm/string x)))
         "12:54:30" (system/time 12 54 30)
         "12:54:30.010" (system/time 12 54 30 10)
 
@@ -1872,23 +1821,23 @@
         "14-30-00.0" nil))
 
     (testing "Time"
-      (are [x res] (= res (eval (tu/compile-unop elm/to-time elm/time x)))
+      (are [x res] (= res (eval (ctu/compile-unop elm/to-time elm/time x)))
         "12:54" (system/time 12 54)
         "12:54:00" (system/time 12 54 00)
         "12:54:30.010" (system/time 12 54 30 10)))
 
     (testing "DateTime"
-      (are [x res] (= res (eval (tu/compile-unop elm/to-time elm/date-time x)))
+      (are [x res] (= res (eval (ctu/compile-unop elm/to-time elm/date-time x)))
         "2020-03-08T12:54:00" (system/time 12 54 00)
         "2020-03-08T12:54:30.010" (system/time 12 54 30 10)))
 
     (testing "Dynamic"
-      (are [x res] (= res (tu/dynamic-compile-eval (elm/to-time x)))
+      (are [x res] (= res (ctu/dynamic-compile-eval (elm/to-time x)))
         #elm/parameter-ref "12:54:00" (system/time 12 54 00)
         #elm/parameter-ref "2020-01-02T03:04:05.006Z" (system/time 3 4 5 6))))
 
-  (tu/testing-unary-null elm/to-time)
+  (ctu/testing-unary-null elm/to-time)
 
-  (tu/testing-unary-dynamic elm/to-time)
+  (ctu/testing-unary-dynamic elm/to-time)
 
-  (tu/testing-unary-form elm/to-time))
+  (ctu/testing-unary-form elm/to-time))
