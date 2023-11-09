@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.23.0
+
+### Enhancements
+
+* Implement Full Support for Relationship Queries ([#493](https://github.com/samply/blaze/issues/493))
+* Implement FHIR Search Sorting by ID ([#1254](https://github.com/samply/blaze/issues/1254))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/74?closed=1).
+
 ## v0.22.3
 
 ### Bugfixes
