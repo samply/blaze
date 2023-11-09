@@ -1,29 +1,31 @@
 (ns blaze.db.impl.search-param.quantity.spec
   (:require
     [blaze.byte-string :refer [byte-string?]]
+    [blaze.db.impl.search-param.quantity :as-alias spq]
+    [blaze.db.impl.search-param.quantity.value :as-alias value]
     [clojure.spec.alpha :as s]))
 
 
-(s/def :blaze.db.impl.search-param.quantity.value/op
+(s/def ::value/op
   #{:eq :gt :lt :ge :le})
 
 
-(s/def :blaze.db.impl.search-param.quantity.value/lower-bound
+(s/def ::value/lower-bound
   byte-string?)
 
 
-(s/def :blaze.db.impl.search-param.quantity.value/upper-bound
+(s/def ::value/upper-bound
   byte-string?)
 
 
-(s/def :blaze.db.impl.search-param.quantity.value/exact-value
+(s/def ::value/exact-value
   byte-string?)
 
 
-(s/def :blaze.db.impl.search-param.quantity/value
+(s/def ::spq/value
   (s/keys
     :req-un
-    [:blaze.db.impl.search-param.quantity.value/op
-     (or :blaze.db.impl.search-param.quantity.value/lower-bound
-         :blaze.db.impl.search-param.quantity.value/upper-bound
-         :blaze.db.impl.search-param.quantity.value/exact-value)]))
+    [::value/op
+     (or ::value/lower-bound
+         ::value/upper-bound
+         ::value/exact-value)]))

@@ -11,7 +11,7 @@
     [clojure.spec.alpha :as s]))
 
 
-(s/fdef cr/resource-handles!
+(s/fdef cr/resource-handles
   :args (s/cat :context :blaze.db.impl.batch-db/context
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid

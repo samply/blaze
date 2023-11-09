@@ -53,7 +53,7 @@
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 
-(s/fdef index/targets!
+(s/fdef index/targets
   :args (s/cat :context :blaze.db.impl.batch-db/context
                :resource-handle :blaze.db/resource-handle
                :code :blaze.db/c-hash

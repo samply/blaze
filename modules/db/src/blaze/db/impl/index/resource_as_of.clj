@@ -7,9 +7,12 @@
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
     [blaze.db.impl.iterators :as i]
+    [blaze.db.impl.macros :refer [with-open-coll]]
     [blaze.db.kv :as kv])
   (:import
-    [com.google.common.primitives Ints]))
+    [clojure.lang IFn IReduceInit Sequential]
+    [com.google.common.primitives Ints]
+    [java.lang AutoCloseable]))
 
 
 (set! *warn-on-reflection* true)
@@ -102,13 +105,13 @@
   "Returns a function of no argument which creates a new resource handle entry
   if the `t` in `kb` at the time of invocation is less than or equal `base-t`.
 
-  Uses `iter` to read the `hash` and `state` when needed. Supplies `tid` to the
+  Uses `raoi` to read the `hash` and `state` when needed. Supplies `tid` to the
   created entry."
-  [tid iter ib base-t]
+  [tid raoi ib base-t]
   (fn [kb]
     (let [t (codec/descending-long (bb/get-long! kb))]
       (when (<= t ^long base-t)
-        (new-entry! tid ib (bb/wrap (kv/value iter)) t)))))
+        (new-entry! tid ib (bb/wrap (kv/value raoi)) t)))))
 
 
 (defn- system-entry-creator
@@ -176,7 +179,7 @@
   (remove rh/deleted?))
 
 
-(defn- type-list-xf [{:keys [raoi t]} tid]
+(defn- type-list-xf [raoi t tid]
   (let [ib (bb/set-limit! (bb/allocate codec/max-id-size) 0)
         entry-creator (type-entry-creator tid raoi ib t)]
     (comp
@@ -273,17 +276,31 @@
   iteration. The state and t which are both longs are read from the off-heap key
   and value buffer. The hash and state which are read from the value buffer are
   only read once for each resource handle."
-  ([{:keys [raoi] :as context} tid]
-   (coll/eduction
-     (type-list-xf context tid)
-     (i/iter! raoi (start-key tid))))
-  ([{:keys [raoi t] :as context} tid start-id]
-   (coll/eduction
-     (type-list-xf context tid)
-     (i/iter! raoi (start-key tid start-id t)))))
+  ([{:keys [snapshot t]} tid]
+   (reify
+     Sequential
+     IReduceInit
+     (reduce [_ f init]
+       (with-open [raoi (kv/new-iterator snapshot :resource-as-of-index)]
+         (transduce
+           (type-list-xf raoi t tid)
+           (completing f)
+           init
+           (i/iter! raoi (start-key tid)))))))
+  ([{:keys [snapshot t]} tid start-id]
+   (reify
+     Sequential
+     IReduceInit
+     (reduce [_ f init]
+       (with-open [raoi (kv/new-iterator snapshot :resource-as-of-index)]
+         (transduce
+           (type-list-xf raoi t tid)
+           (completing f)
+           init
+           (i/iter! raoi (start-key tid start-id t))))))))
 
 
-(defn- system-list-xf [{:keys [raoi t]} start-tid]
+(defn- system-list-xf [raoi t start-tid]
   (let [tid-box (volatile! start-tid)
         ib (bb/set-limit! (bb/allocate codec/max-id-size) 0)]
     (comp
@@ -298,14 +315,28 @@
   tid and resource id.
 
   The list starts at the optional `start-tid` and `start-id`."
-  ([{:keys [raoi] :as context}]
-   (coll/eduction
-     (system-list-xf context nil)
-     (i/iter! raoi)))
-  ([{:keys [raoi t] :as context} start-tid start-id]
-   (coll/eduction
-     (system-list-xf context start-tid)
-     (i/iter! raoi (start-key start-tid start-id t)))))
+  ([{:keys [snapshot t]}]
+   (reify
+     Sequential
+     IReduceInit
+     (reduce [_ f init]
+       (with-open [raoi (kv/new-iterator snapshot :resource-as-of-index)]
+         (transduce
+           (system-list-xf raoi t nil)
+           (completing f)
+           init
+           (i/iter! raoi))))))
+  ([{:keys [snapshot t]} start-tid start-id]
+   (reify
+     Sequential
+     IReduceInit
+     (reduce [_ f init]
+       (with-open [raoi (kv/new-iterator snapshot :resource-as-of-index)]
+         (transduce
+           (system-list-xf raoi t start-tid)
+           (completing f)
+           init
+           (i/iter! raoi (start-key start-tid start-id t))))))))
 
 
 (defn decoder
@@ -346,10 +377,11 @@
   and `end-t` (exclusive) of the resource with `tid` and `id`.
 
   Versions are resource handles."
-  [raoi tid id start-t end-t]
+  [snapshot tid id start-t end-t]
   (coll/eduction
     (take-while (instance-history-key-valid? tid (codec/id-string id) end-t))
-    (i/kvs! raoi (decoder) (start-key tid id start-t))))
+    (with-open-coll [raoi (kv/new-iterator snapshot :resource-as-of-index)]
+      (i/kvs! raoi (decoder) (start-key tid id start-t)))))
 
 
 (defn- resource-handle** [raoi tid id t]
@@ -380,17 +412,24 @@
 
 (defn resource-handle
   "Returns a function which can be called with a `tid`, an `id` and an optional
-  `t` which will lookup the resource handle in `raoi`.
+  `t` which will lookup the resource handle in `snapshot`.
 
   The `t` is the default if `t` isn't given at the returned function.
 
-  The returned function can't be called concurrently."
-  [raoi t]
-  (fn resource-handle
-    ([tid id]
-     (resource-handle tid id t))
-    ([tid id t]
-     (resource-handle** raoi tid id t))))
+  The returned function can't be called concurrently and has to be closed in
+  order to close the ResourceAsOf iterator."
+  ^AutoCloseable
+  [snapshot t]
+  (let [raoi (kv/new-iterator snapshot :resource-as-of-index)]
+    (reify
+      IFn
+      (invoke [this tid id]
+        (.invoke this tid id t))
+      (invoke [_ tid id t]
+        (resource-handle** raoi tid id t))
+      AutoCloseable
+      (close [_]
+        (.close ^AutoCloseable raoi)))))
 
 
 (defn num-of-instance-changes

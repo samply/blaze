@@ -5,9 +5,10 @@
     [blaze.db.impl.batch-db.spec]
     [blaze.db.impl.codec-spec]
     [blaze.db.impl.index.resource-as-of :as rao]
+    [blaze.db.impl.index.resource-as-of.spec]
     [blaze.db.impl.index.resource-handle-spec]
     [blaze.db.impl.iterators-spec]
-    [blaze.db.kv-spec]
+    [blaze.db.kv.spec]
     [blaze.db.spec]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]))
@@ -33,7 +34,7 @@
 
 
 (s/fdef rao/instance-history
-  :args (s/cat :raoi :blaze.db/kv-iterator
+  :args (s/cat :snapshot :blaze.db/kv-snapshot
                :tid :blaze.db/tid
                :id :blaze.db/id-byte-string
                :start-t :blaze.db/t
@@ -41,24 +42,13 @@
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 
-(s/def ::resource-handle-fn
-  (s/fspec
-    :args
-    (s/cat
-      :tid :blaze.db/tid
-      :id :blaze.db/id-byte-string
-      :t (s/? :blaze.db/t))
-    :ret
-    (s/nilable :blaze.db/resource-handle)))
-
-
 (s/fdef rao/resource-handle
-  :args (s/cat :raoi :blaze.db/kv-iterator :t :blaze.db/t)
-  :ret ::resource-handle-fn)
+  :args (s/cat :snapshot :blaze.db/kv-snapshot :t :blaze.db/t)
+  :ret ::rao/resource-handle)
 
 
 (s/fdef rao/num-of-instance-changes
-  :args (s/cat :resource-handle ::resource-handle-fn
+  :args (s/cat :resource-handle ::rao/resource-handle
                :tid :blaze.db/tid
                :id :blaze.db/id-byte-string
                :start-t :blaze.db/t

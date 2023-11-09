@@ -7,7 +7,9 @@
     [blaze.db.impl.bytes :as bytes]
     [blaze.db.impl.codec :as codec]
     [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.iterators :as i]))
+    [blaze.db.impl.iterators :as i]
+    [blaze.db.impl.macros :refer [with-open-coll]]
+    [blaze.db.kv :as kv]))
 
 
 (set! *unchecked-math* :warn-on-boxed)
@@ -75,30 +77,29 @@
   (-> (encode-key-buf compartment tid id) bb/flip! bs/from-byte-buffer!))
 
 
-(defn resource-handles!
+(defn resource-handles
   "Returns a reducible collection of all resource handles of type with `tid`
   linked to `compartment`.
 
-  An optional `start-id` can be given.
-
-  Changes the state of `cri`. Consuming the collection requires exclusive
-  access to `cri`. Doesn't close `cri`."
+  An optional `start-id` can be given."
   {:arglists
    '([context compartment tid]
      [context compartment tid start-id])}
-  ([{:keys [cri resource-handle]} compartment tid]
+  ([{:keys [snapshot resource-handle]} compartment tid]
    (let [seek-key (encode-seek-key compartment tid)]
      (coll/eduction
        (resource-handles-xf resource-handle tid)
-       (i/prefix-keys! cri seek-key decode-key seek-key))))
-  ([{:keys [cri resource-handle]} compartment tid start-id]
+       (with-open-coll [cri (kv/new-iterator snapshot :compartment-resource-type-index)]
+         (i/prefix-keys! cri seek-key decode-key seek-key)))))
+  ([{:keys [snapshot resource-handle]} compartment tid start-id]
    (coll/eduction
      (resource-handles-xf resource-handle tid)
-     (i/prefix-keys!
-       cri
-       (encode-seek-key compartment tid)
-       decode-key
-       (encode-key compartment tid start-id)))))
+     (with-open-coll [cri (kv/new-iterator snapshot :compartment-resource-type-index)]
+       (i/prefix-keys!
+         cri
+         (encode-seek-key compartment tid)
+         decode-key
+         (encode-key compartment tid start-id))))))
 
 
 (defn index-entry

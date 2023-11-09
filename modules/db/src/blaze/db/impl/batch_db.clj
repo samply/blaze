@@ -11,6 +11,7 @@
     [blaze.db.impl.index.compartment.resource :as cr]
     [blaze.db.impl.index.resource-as-of :as rao]
     [blaze.db.impl.index.resource-handle :as rh]
+    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
     [blaze.db.impl.index.search-param-value-resource :as sp-vr]
     [blaze.db.impl.index.system-as-of :as sao]
     [blaze.db.impl.index.system-stats :as system-stats]
@@ -85,10 +86,10 @@
   ;; ---- Compartment-Level Functions -----------------------------------------
 
   (-compartment-resource-handles [_ compartment tid]
-    (cr/resource-handles! context compartment tid))
+    (cr/resource-handles context compartment tid))
 
   (-compartment-resource-handles [_ compartment tid start-id]
-    (cr/resource-handles! context compartment tid start-id))
+    (cr/resource-handles context compartment tid start-id))
 
 
 
@@ -108,10 +109,10 @@
   ;; ---- Instance-Level History Functions ------------------------------------
 
   (-instance-history [_ tid id start-t since]
-    (let [{:keys [snapshot raoi t]} context
+    (let [{:keys [snapshot t]} context
           start-t (if (some-> start-t (<= t)) start-t t)
           end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
-      (rao/instance-history raoi tid id start-t end-t)))
+      (rao/instance-history snapshot tid id start-t end-t)))
 
   (-total-num-of-instance-changes [_ tid id since]
     (let [{:keys [snapshot resource-handle t]} context
@@ -126,15 +127,13 @@
     (let [{:keys [snapshot t]} context
           start-t (if (some-> start-t (<= t)) start-t t)
           end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
-      (with-open-coll [taoi (kv/new-iterator snapshot :type-as-of-index)]
-        (tao/type-history taoi tid start-t start-id end-t))))
+      (tao/type-history snapshot tid start-t start-id end-t)))
 
   (-total-num-of-type-changes [_ type since]
     (let [{:keys [snapshot t]} context
           tid (codec/tid type)
           end-t (some->> since (t-by-instant/t-by-instant snapshot))]
-      (with-open [snapshot (kv/new-snapshot (:kv-store node))
-                  iter (type-stats/new-iterator snapshot)]
+      (with-open [iter (type-stats/new-iterator snapshot)]
         (- (:num-changes (type-stats/get! iter tid t) 0)
            (:num-changes (some->> end-t (type-stats/get! iter tid)) 0)))))
 
@@ -146,14 +145,12 @@
     (let [{:keys [snapshot t]} context
           start-t (if (some-> start-t (<= t)) start-t t)
           end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
-      (with-open-coll [saoi (kv/new-iterator snapshot :system-as-of-index)]
-        (sao/system-history saoi start-t start-tid start-id end-t))))
+      (sao/system-history snapshot start-t start-tid start-id end-t)))
 
   (-total-num-of-system-changes [_ since]
     (let [{:keys [snapshot t]} context
           end-t (some->> since (t-by-instant/t-by-instant snapshot))]
-      (with-open [snapshot (kv/new-snapshot (:kv-store node))
-                  iter (system-stats/new-iterator snapshot)]
+      (with-open [iter (system-stats/new-iterator snapshot)]
         (- (:num-changes (system-stats/get! iter t) 0)
            (:num-changes (some->> end-t (system-stats/get! iter)) 0)))))
 
@@ -162,11 +159,11 @@
   ;; ---- Include ---------------------------------------------------------------
 
   (-include [_ resource-handle code]
-    (index/targets! context resource-handle (codec/c-hash code)))
+    (index/targets context resource-handle (codec/c-hash code)))
 
   (-include [_ resource-handle code target-type]
-    (index/targets! context resource-handle (codec/c-hash code)
-                    (codec/tid target-type)))
+    (index/targets context resource-handle (codec/c-hash code)
+                   (codec/tid target-type)))
 
   (-rev-include [db resource-handle]
     (coll/eduction
@@ -177,13 +174,14 @@
                                 (name (type/type resource-handle)))))
 
   (-rev-include [_ resource-handle source-type code]
-    (let [{:keys [svri]} context
+    (let [{:keys [snapshot]} context
           reference (codec/v-hash (rh/reference resource-handle))
           source-tid (codec/tid source-type)]
       (coll/eduction
         (u/resource-handle-mapper context source-tid)
-        (sp-vr/prefix-keys! svri (codec/c-hash code) source-tid
-                            reference reference))))
+        (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
+          (sp-vr/prefix-keys! svri (codec/c-hash code) source-tid
+                              reference reference)))))
 
 
 
@@ -232,12 +230,10 @@
 
   AutoCloseable
   (close [_]
-    (let [{:keys [snapshot raoi svri rsvi cri csvri]} context]
-      (.close ^AutoCloseable raoi)
-      (.close ^AutoCloseable svri)
-      (.close ^AutoCloseable rsvi)
-      (.close ^AutoCloseable cri)
-      (.close ^AutoCloseable csvri)
+    (let [{:keys [snapshot resource-handle next-value next-value-prev]} context]
+      (.close ^AutoCloseable next-value-prev)
+      (.close ^AutoCloseable next-value)
+      (.close ^AutoCloseable resource-handle)
       (.close ^AutoCloseable snapshot))))
 
 
@@ -301,7 +297,7 @@
 (defrecord EmptyCompartmentQuery [c-hash tid]
   p/Query
   (-execute [_ context arg1]
-    (cr/resource-handles! context [c-hash (codec/id-byte-string arg1)] tid))
+    (cr/resource-handles context [c-hash (codec/id-byte-string arg1)] tid))
   (-clauses [_]))
 
 
@@ -317,12 +313,8 @@
     (->BatchDb
       node
       basis-t
-      (let [raoi (kv/new-iterator snapshot :resource-as-of-index)]
-        {:snapshot snapshot
-         :raoi raoi
-         :resource-handle (rao/resource-handle raoi t)
-         :svri (kv/new-iterator snapshot :search-param-value-index)
-         :rsvi (kv/new-iterator snapshot :resource-value-index)
-         :cri (kv/new-iterator snapshot :compartment-resource-type-index)
-         :csvri (kv/new-iterator snapshot :compartment-search-param-value-index)
-         :t t}))))
+      {:snapshot snapshot
+       :resource-handle (rao/resource-handle snapshot t)
+       :next-value (r-sp-v/next-value-fn snapshot)
+       :next-value-prev (r-sp-v/next-value-prev-fn snapshot)
+       :t t})))

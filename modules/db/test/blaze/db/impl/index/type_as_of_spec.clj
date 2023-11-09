@@ -7,12 +7,13 @@
     [blaze.db.impl.index.type-as-of :as tao]
     [blaze.db.impl.iterators-spec]
     [blaze.db.kv-spec]
+    [blaze.db.kv.spec]
     [blaze.fhir.spec]
     [clojure.spec.alpha :as s]))
 
 
 (s/fdef tao/type-history
-  :args (s/cat :taoi :blaze.db/kv-iterator
+  :args (s/cat :snapshot :blaze.db/kv-snapshot
                :tid :blaze.db/tid
                :start-t :blaze.db/t
                :start-id (s/nilable :blaze.db/id-byte-string)
