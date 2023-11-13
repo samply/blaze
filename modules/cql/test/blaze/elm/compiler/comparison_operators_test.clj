@@ -79,185 +79,185 @@
 ;; If either argument is null, the result is null.
 (deftest compile-equal-test
   (testing "Integer"
-    (are [x y res] (= res (ctu/compile-binop elm/equal elm/integer x y))
-      "1" "1" true
-      "1" "2" false
-      "2" "1" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/equal elm/integer x y))
+      "1" "1" true?
+      "1" "2" false?
+      "2" "1" false?)
 
     (ctu/testing-binary-null elm/equal #elm/integer "1"))
 
   (testing "Long"
-    (are [x y res] (= res (ctu/compile-binop elm/equal elm/long x y))
-      "1" "1" true
-      "1" "2" false
-      "2" "1" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/equal elm/long x y))
+      "1" "1" true?
+      "1" "2" false?
+      "2" "1" false?)
 
     (ctu/testing-binary-null elm/equal #elm/long "1"))
 
   (testing "Decimal"
-    (are [x y res] (= res (ctu/compile-binop elm/equal elm/decimal x y))
-      "1.1" "1.1" true
-      "1.1" "2.1" false
-      "2.1" "1.1" false
+    (are [x y pred] (pred (ctu/compile-binop elm/equal elm/decimal x y))
+      "1.1" "1.1" true?
+      "1.1" "2.1" false?
+      "2.1" "1.1" false?
 
-      "1.1" "1.10" true
-      "1.10" "1.1" true)
+      "1.1" "1.10" true?
+      "1.10" "1.1" true?)
 
     (ctu/testing-binary-null elm/equal #elm/decimal "1.1"))
 
   (testing "Mixed Integer Long"
-    (are [x y res] (= res (c/compile {} (elm/equal [x y])))
-      #elm/integer "1" #elm/long "1" true
-      #elm/long "1" #elm/integer "1" true))
+    (are [x y pred] (pred (c/compile {} (elm/equal [x y])))
+      #elm/integer "1" #elm/long "1" true?
+      #elm/long "1" #elm/integer "1" true?))
 
   (testing "Mixed Integer Decimal"
-    (are [x y res] (= res (c/compile {} (elm/equal [x y])))
-      #elm/integer "1" #elm/decimal "1" true
-      #elm/decimal "1" #elm/integer "1" true))
+    (are [x y pred] (pred (c/compile {} (elm/equal [x y])))
+      #elm/integer "1" #elm/decimal "1" true?
+      #elm/decimal "1" #elm/integer "1" true?))
 
   (testing "Mixed Integer String"
-    (are [x y res] (= res (c/compile {} (elm/equal [x y])))
-      #elm/integer "1" #elm/string "1" false
-      #elm/string "1" #elm/integer "1" false))
+    (are [x y pred] (pred (c/compile {} (elm/equal [x y])))
+      #elm/integer "1" #elm/string "1" false?
+      #elm/string "1" #elm/integer "1" false?))
 
   (testing "Mixed Decimal String"
-    (are [x y res] (= res (c/compile {} (elm/equal [x y])))
-      #elm/decimal "1" #elm/string "1" false
-      #elm/string "1" #elm/decimal "1" false))
+    (are [x y pred] (pred (c/compile {} (elm/equal [x y])))
+      #elm/decimal "1" #elm/string "1" false?
+      #elm/string "1" #elm/decimal "1" false?))
 
   (testing "String"
-    (are [x y res] (= res (ctu/compile-binop elm/equal elm/string x y))
-      "a" "a" true
-      "a" "b" false
-      "b" "a" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/equal elm/string x y))
+      "a" "a" true?
+      "a" "b" false?
+      "b" "a" false?)
 
     (ctu/testing-binary-null elm/equal #elm/string "a"))
 
   (testing "Quantity"
-    (are [x y res] (= res (ctu/compile-binop elm/equal elm/quantity x y))
-      [1] [1] true
-      [1] [2] false
+    (are [x y pred] (pred (ctu/compile-binop elm/equal elm/quantity x y))
+      [1] [1] true?
+      [1] [2] false?
 
-      [1 "s"] [1 "s"] true
-      [1 "m"] [1 "m"] true
-      [100 "cm"] [1 "m"] true
-      [1 "s"] [2 "s"] false
-      [1 "s"] [1 "m"] false)
+      [1 "s"] [1 "s"] true?
+      [1 "m"] [1 "m"] true?
+      [100 "cm"] [1 "m"] true?
+      [1 "s"] [2 "s"] false?
+      [1 "s"] [1 "m"] false?)
 
     (ctu/testing-binary-null elm/equal #elm/quantity [1]))
 
   (testing "Ratio"
-    (are [x y res] (= res (ctu/compile-binop elm/equal elm/ratio x y))
-      [[1] [1]] [[1] [1]] true
-      [[1] [1]] [[2] [1]] false
-      [[1] [100]] [[10] [1000]] false
+    (are [x y pred] (pred (ctu/compile-binop elm/equal elm/ratio x y))
+      [[1] [1]] [[1] [1]] true?
+      [[1] [1]] [[2] [1]] false?
+      [[1] [100]] [[10] [1000]] false?
 
-      [[1 "s"] [1 "s"]] [[1 "s"] [1 "s"]] true
-      [[1 "m"] [1 "m"]] [[1 "m"] [1 "m"]] true
-      [[100 "cm"] [100 "cm"]] [[1 "m"] [1 "m"]] true
-      [[1 "s"] [1 "s"]] [[1 "s"] [2 "s"]] false
-      [[1 "s"] [1 "s"]] [[2 "s"] [2 "s"]] false
-      [[2 "s"] [1 "s"]] [[1 "s"] [2 "s"]] false
-      [[1 "s"] [1 "s"]] [[1 "m"] [1 "m"]] false
-      [[1 "s"] [1 "m"]] [[1 "m"] [1 "s"]] false)
+      [[1 "s"] [1 "s"]] [[1 "s"] [1 "s"]] true?
+      [[1 "m"] [1 "m"]] [[1 "m"] [1 "m"]] true?
+      [[100 "cm"] [100 "cm"]] [[1 "m"] [1 "m"]] true?
+      [[1 "s"] [1 "s"]] [[1 "s"] [2 "s"]] false?
+      [[1 "s"] [1 "s"]] [[2 "s"] [2 "s"]] false?
+      [[2 "s"] [1 "s"]] [[1 "s"] [2 "s"]] false?
+      [[1 "s"] [1 "s"]] [[1 "m"] [1 "m"]] false?
+      [[1 "s"] [1 "m"]] [[1 "m"] [1 "s"]] false?)
 
     (ctu/testing-binary-null elm/equal #elm/ratio [[1] [1]]))
 
   (testing "Tuple"
-    (are [x y res] (= res (ctu/compile-binop elm/equal elm/tuple x y))
-      {} {} true
-      {"id" #elm/string "1"} {"id" #elm/string "1"} true
-      {"id" #elm/string "1"} {"id" #elm/string "2"} false
-      {"id" #elm/string "1"} {"foo" #elm/string "1"} false))
+    (are [x y pred] (pred (ctu/compile-binop elm/equal elm/tuple x y))
+      {} {} true?
+      {"id" #elm/string "1"} {"id" #elm/string "1"} true?
+      {"id" #elm/string "1"} {"id" #elm/string "2"} false?
+      {"id" #elm/string "1"} {"foo" #elm/string "1"} false?))
 
   (testing "List"
-    (are [x y res] (= res (ctu/compile-binop elm/equal elm/list x y))
-      [#elm/integer "1"] [#elm/integer "1"] true
-      [] [] true
+    (are [x y pred] (pred (ctu/compile-binop elm/equal elm/list x y))
+      [#elm/integer "1"] [#elm/integer "1"] true?
+      [] [] true?
 
-      [#elm/integer "1"] [] false
-      [#elm/integer "1"] [#elm/integer "2"] false
+      [#elm/integer "1"] [] false?
+      [#elm/integer "1"] [#elm/integer "2"] false?
       [#elm/integer "1" #elm/integer "1"]
-      [#elm/integer "1" #elm/integer "2"] false
+      [#elm/integer "1" #elm/integer "2"] false?
 
-      [#elm/integer "1" {:type "Null"}] [#elm/integer "1" {:type "Null"}] nil
-      [{:type "Null"}] [{:type "Null"}] nil
-      [#elm/date "2019"] [#elm/date "2019-01"] nil)
+      [#elm/integer "1" {:type "Null"}] [#elm/integer "1" {:type "Null"}] nil?
+      [{:type "Null"}] [{:type "Null"}] nil?
+      [#elm/date "2019"] [#elm/date "2019-01"] nil?)
 
     (ctu/testing-binary-null elm/equal #elm/list []))
 
   (testing "Interval"
-    (are [x y res] (= res (ctu/compile-binop elm/equal elm/interval x y))
+    (are [x y pred] (pred (ctu/compile-binop elm/equal elm/interval x y))
       [#elm/integer "1" #elm/integer "2"]
-      [#elm/integer "1" #elm/integer "2"] true)
+      [#elm/integer "1" #elm/integer "2"] true?)
 
     (ctu/testing-binary-null elm/equal #elm/interval [#elm/integer "1" #elm/integer "2"]))
 
   (testing "Date with year precision"
-    (are [x y res] (= res (ctu/compile-binop elm/equal elm/date x y))
-      "2013" "2013" true
-      "2012" "2013" false
-      "2013" "2012" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/equal elm/date x y))
+      "2013" "2013" true?
+      "2012" "2013" false?
+      "2013" "2012" false?)
 
     (ctu/testing-binary-null elm/equal #elm/date "2013"))
 
   (testing "Date with year-month precision"
-    (are [x y res] (= res (ctu/compile-binop elm/equal elm/date x y))
-      "2013-01" "2013-01" true
-      "2013-01" "2013-02" false
-      "2013-02" "2013-01" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/equal elm/date x y))
+      "2013-01" "2013-01" true?
+      "2013-01" "2013-02" false?
+      "2013-02" "2013-01" false?)
 
     (ctu/testing-binary-null elm/equal #elm/date "2013-01"))
 
   (testing "Date with full precision"
-    (are [x y res] (= res (ctu/compile-binop elm/equal elm/date x y))
-      "2013-01-01" "2013-01-01" true
-      "2013-01-01" "2013-01-02" false
-      "2013-01-02" "2013-01-01" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/equal elm/date x y))
+      "2013-01-01" "2013-01-01" true?
+      "2013-01-01" "2013-01-02" false?
+      "2013-01-02" "2013-01-01" false?)
 
     (ctu/testing-binary-null elm/equal #elm/date "2013-01-01"))
 
   (testing "Date with differing precisions"
-    (are [x y res] (= res (ctu/compile-binop elm/equal elm/date x y))
-      "2013" "2013-01" nil))
+    (are [x y pred] (pred (ctu/compile-binop elm/equal elm/date x y))
+      "2013" "2013-01" nil?))
 
   (testing "Today() = Today()"
     (are [x y] (true? (core/-eval (c/compile {} (elm/equal [x y])) {:now ctu/now} nil nil))
       {:type "Today"} {:type "Today"}))
 
   (testing "DateTime with full precision (there is only one precision)"
-    (are [x y res] (= res (ctu/compile-binop elm/equal elm/date-time x y))
-      "2013-01-01T00:00:00" "2013-01-01T00:00:00" true
+    (are [x y pred] (pred (ctu/compile-binop elm/equal elm/date-time x y))
+      "2013-01-01T00:00:00" "2013-01-01T00:00:00" true?
 
-      "2013-01-01T00:00" "2013-01-01T00:00:00" true
+      "2013-01-01T00:00" "2013-01-01T00:00:00" true?
 
-      "2013-01-01T00" "2013-01-01T00:00:00" true)
+      "2013-01-01T00" "2013-01-01T00:00:00" true?)
 
     (ctu/testing-binary-null elm/equal #elm/date-time"2013-01-01"))
 
   (testing "Time"
-    (are [x y res] (= res (ctu/compile-binop elm/equal elm/time x y))
-      "12:30:15" "12:30:15" true
-      "12:30:15" "12:30:16" false
-      "12:30:16" "12:30:15" false
+    (are [x y pred] (pred (ctu/compile-binop elm/equal elm/time x y))
+      "12:30:15" "12:30:15" true?
+      "12:30:15" "12:30:16" false?
+      "12:30:16" "12:30:15" false?
 
-      "12:30:00" "12:30" nil
+      "12:30:00" "12:30" nil?
 
-      "12:00" "12" nil)
+      "12:00" "12" nil?)
 
     (ctu/testing-binary-null elm/equal #elm/time "12:30:15"))
 
   (testing "Code"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/equal [x y])) {} nil nil))
-      (ctu/code "a" "0") (ctu/code "a" "0") true
-      (ctu/code "a" "0") (ctu/code "a" "1") false
-      (ctu/code "a" "0") (ctu/code "b" "0") false
+    (are [x y pred] (pred (core/-eval (c/compile {} (elm/equal [x y])) {} nil nil))
+      (ctu/code "a" "0") (ctu/code "a" "0") true?
+      (ctu/code "a" "0") (ctu/code "a" "1") false?
+      (ctu/code "a" "0") (ctu/code "b" "0") false?
 
-      (ctu/code "a" "0") (ctu/code "a" "2010" "0") false
-      (ctu/code "a" "2010" "0") (ctu/code "a" "0") false
+      (ctu/code "a" "0") (ctu/code "a" "2010" "0") false?
+      (ctu/code "a" "2010" "0") (ctu/code "a" "0") false?
 
-      (ctu/code "a" "2010" "0") (ctu/code "a" "2020" "0") false
-      (ctu/code "a" "2020" "0") (ctu/code "a" "2010" "0") false)
+      (ctu/code "a" "2010" "0") (ctu/code "a" "2020" "0") false?
+      (ctu/code "a" "2020" "0") (ctu/code "a" "2010" "0") false?)
 
     (ctu/testing-binary-null elm/equal (ctu/code "a" "0")))
 
@@ -324,123 +324,123 @@
 ;; both of its arguments are null or contain null components.
 (deftest compile-equivalent-test
   (testing "Both null"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
-      {:type "Null"} {:type "Null"} true))
+    (are [x y pred] (pred (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
+      {:type "Null"} {:type "Null"} true?))
 
   (testing "Boolean"
-    (are [x y res] (= res (ctu/compile-binop elm/equivalent elm/boolean x y))
-      "true" "true" true
-      "true" "false" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/equivalent elm/boolean x y))
+      "true" "true" true?
+      "true" "false" false?)
 
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
-      {:type "Null"} #elm/boolean "true" false
-      #elm/boolean "true" {:type "Null"} false))
+    (are [x y pred] (pred (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
+      {:type "Null"} #elm/boolean "true" false?
+      #elm/boolean "true" {:type "Null"} false?))
 
   (testing "Integer"
-    (are [x y res] (= res (ctu/compile-binop elm/equivalent elm/integer x y))
-      "1" "1" true
-      "1" "2" false
-      "2" "1" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/equivalent elm/integer x y))
+      "1" "1" true?
+      "1" "2" false?
+      "2" "1" false?)
 
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
-      {:type "Null"} #elm/integer "1" false
-      #elm/integer "1" {:type "Null"} false))
+    (are [x y pred] (pred (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
+      {:type "Null"} #elm/integer "1" false?
+      #elm/integer "1" {:type "Null"} false?))
 
   (testing "Decimal"
-    (are [x y res] (= res (ctu/compile-binop elm/equivalent elm/decimal x y))
-      "1.1" "1.1" true
-      "1.1" "2.1" false
-      "2.1" "1.1" false
+    (are [x y pred] (pred (ctu/compile-binop elm/equivalent elm/decimal x y))
+      "1.1" "1.1" true?
+      "1.1" "2.1" false?
+      "2.1" "1.1" false?
 
-      "1.1" "1.10" true
-      "1.10" "1.1" true)
+      "1.1" "1.10" true?
+      "1.10" "1.1" true?)
 
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
-      {:type "Null"} #elm/decimal "1.1" false
-      #elm/decimal "1.1" {:type "Null"} false))
+    (are [x y pred] (pred (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
+      {:type "Null"} #elm/decimal "1.1" false?
+      #elm/decimal "1.1" {:type "Null"} false?))
 
   (testing "Mixed Integer Decimal"
-    (are [x y res] (= res (c/compile {} (elm/equivalent [x y])))
-      #elm/integer "1" #elm/decimal "1" true
-      #elm/decimal "1" #elm/integer "1" true))
+    (are [x y pred] (pred (c/compile {} (elm/equivalent [x y])))
+      #elm/integer "1" #elm/decimal "1" true?
+      #elm/decimal "1" #elm/integer "1" true?))
 
   (testing "Quantity"
-    (are [x y res] (= res (ctu/compile-binop elm/equivalent elm/quantity x y))
-      [1] [1] true
-      [1] [2] false
+    (are [x y pred] (pred (ctu/compile-binop elm/equivalent elm/quantity x y))
+      [1] [1] true?
+      [1] [2] false?
 
-      [1 "s"] [1 "s"] true
-      [1 "m"] [1 "m"] true
-      [100 "cm"] [1 "m"] true
-      [1 "s"] [2 "s"] false
-      [1 "s"] [1 "m"] false)
+      [1 "s"] [1 "s"] true?
+      [1 "m"] [1 "m"] true?
+      [100 "cm"] [1 "m"] true?
+      [1 "s"] [2 "s"] false?
+      [1 "s"] [1 "m"] false?)
 
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
-      {:type "Null"} #elm/quantity [1] false
-      #elm/quantity [1] {:type "Null"} false
+    (are [x y pred] (pred (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
+      {:type "Null"} #elm/quantity [1] false?
+      #elm/quantity [1] {:type "Null"} false?
 
-      {:type "Null"} #elm/quantity [1 "s"] false
-      #elm/quantity [1 "s"] {:type "Null"} false))
+      {:type "Null"} #elm/quantity [1 "s"] false?
+      #elm/quantity [1 "s"] {:type "Null"} false?))
 
   (testing "Ratio"
-    (are [x y res] (= res (ctu/compile-binop elm/equivalent elm/ratio x y))
-      [[1] [1]] [[1] [1]] true
-      [[1] [100]] [[10] [1000]] true
-      [[1] [1]] [[2] [1]] false
+    (are [x y pred] (pred (ctu/compile-binop elm/equivalent elm/ratio x y))
+      [[1] [1]] [[1] [1]] true?
+      [[1] [100]] [[10] [1000]] true?
+      [[1] [1]] [[2] [1]] false?
 
-      [[1 "s"] [1 "s"]] [[1 "s"] [1 "s"]] true
-      [[1 "s"] [1 "s"]] [[1 "m"] [1 "m"]] true
-      [[1 "s"] [100 "s"]] [[10 "s"] [1000 "s"]] true
-      [[1 "s"] [1 "s"]] [[2 "s"] [2 "s"]] true
-      [[1 "m"] [1 "m"]] [[1 "m"] [1 "m"]] true
-      [[100 "cm"] [100 "cm"]] [[1 "m"] [1 "m"]] true
-      [[1000 "cm"] [100000 "cm"]] [[10 "m"] [1000 "m"]] true
-      [[100 "cm"] [1 "m"]] [[100 "cm"] [1 "m"]] true
-      [[1 "s"] [1 "s"]] [[1 "s"] [2 "s"]] false
-      [[2 "s"] [1 "s"]] [[1 "s"] [2 "s"]] false
-      [[1 "s"] [1 "m"]] [[1 "m"] [1 "s"]] false
-      [[1 "s"] [1 "s"]] [[1 "m"] [1 "s"]] false)
+      [[1 "s"] [1 "s"]] [[1 "s"] [1 "s"]] true?
+      [[1 "s"] [1 "s"]] [[1 "m"] [1 "m"]] true?
+      [[1 "s"] [100 "s"]] [[10 "s"] [1000 "s"]] true?
+      [[1 "s"] [1 "s"]] [[2 "s"] [2 "s"]] true?
+      [[1 "m"] [1 "m"]] [[1 "m"] [1 "m"]] true?
+      [[100 "cm"] [100 "cm"]] [[1 "m"] [1 "m"]] true?
+      [[1000 "cm"] [100000 "cm"]] [[10 "m"] [1000 "m"]] true?
+      [[100 "cm"] [1 "m"]] [[100 "cm"] [1 "m"]] true?
+      [[1 "s"] [1 "s"]] [[1 "s"] [2 "s"]] false?
+      [[2 "s"] [1 "s"]] [[1 "s"] [2 "s"]] false?
+      [[1 "s"] [1 "m"]] [[1 "m"] [1 "s"]] false?
+      [[1 "s"] [1 "s"]] [[1 "m"] [1 "s"]] false?)
 
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
-      {:type "Null"} #elm/ratio [[1] [1]] false
-      #elm/ratio [[1] [1]] {:type "Null"} false
+    (are [x y pred] (pred (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
+      {:type "Null"} #elm/ratio [[1] [1]] false?
+      #elm/ratio [[1] [1]] {:type "Null"} false?
 
-      {:type "Null"} #elm/ratio [[1 "s"] [1 "s"]] false
-      #elm/ratio [[1 "s"] [1 "s"]] {:type "Null"} false))
+      {:type "Null"} #elm/ratio [[1 "s"] [1 "s"]] false?
+      #elm/ratio [[1 "s"] [1 "s"]] {:type "Null"} false?))
 
   (testing "List"
-    (are [x y res] (= res (ctu/compile-binop elm/equivalent elm/list x y))
-      [#elm/integer "1"] [#elm/integer "1"] true
-      [] [] true
+    (are [x y pred] (pred (ctu/compile-binop elm/equivalent elm/list x y))
+      [#elm/integer "1"] [#elm/integer "1"] true?
+      [] [] true?
 
-      [#elm/integer "1"] [] false
-      [#elm/integer "1"] [#elm/integer "2"] false
+      [#elm/integer "1"] [] false?
+      [#elm/integer "1"] [#elm/integer "2"] false?
       [#elm/integer "1" #elm/integer "1"]
-      [#elm/integer "1" #elm/integer "2"] false)
+      [#elm/integer "1" #elm/integer "2"] false?)
 
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
+    (are [x y pred] (pred (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
       #elm/list [#elm/integer "1" {:type "Null"}]
-      #elm/list [#elm/integer "1" {:type "Null"}] true
-      #elm/list [{:type "Null"}] #elm/list [{:type "Null"}] true
-      #elm/list [#elm/date "2019"] #elm/list [#elm/date "2019-01"] false
+      #elm/list [#elm/integer "1" {:type "Null"}] true?
+      #elm/list [{:type "Null"}] #elm/list [{:type "Null"}] true?
+      #elm/list [#elm/date "2019"] #elm/list [#elm/date "2019-01"] false?
 
-      {:type "Null"} #elm/list [] false
-      #elm/list [] {:type "Null"} false))
+      {:type "Null"} #elm/list [] false?
+      #elm/list [] {:type "Null"} false?))
 
   (testing "Code"
-    (are [x y res] (= res (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
-      (ctu/code "a" "0") (ctu/code "a" "0") true
-      (ctu/code "a" "0") (ctu/code "a" "1") false
-      (ctu/code "a" "0") (ctu/code "b" "0") false
+    (are [x y pred] (pred (core/-eval (c/compile {} (elm/equivalent [x y])) {} nil nil))
+      (ctu/code "a" "0") (ctu/code "a" "0") true?
+      (ctu/code "a" "0") (ctu/code "a" "1") false?
+      (ctu/code "a" "0") (ctu/code "b" "0") false?
 
-      (ctu/code "a" "0") (ctu/code "a" "2010" "0") true
-      (ctu/code "a" "2010" "0") (ctu/code "a" "0") true
+      (ctu/code "a" "0") (ctu/code "a" "2010" "0") true?
+      (ctu/code "a" "2010" "0") (ctu/code "a" "0") true?
 
-      (ctu/code "a" "2010" "0") (ctu/code "a" "2020" "0") true
-      (ctu/code "a" "2020" "0") (ctu/code "a" "2010" "0") true
+      (ctu/code "a" "2010" "0") (ctu/code "a" "2020" "0") true?
+      (ctu/code "a" "2020" "0") (ctu/code "a" "2010" "0") true?
 
-      {:type "Null"} (ctu/code "a" "0") false
-      (ctu/code "a" "0") {:type "Null"} false))
+      {:type "Null"} (ctu/code "a" "0") false?
+      (ctu/code "a" "0") {:type "Null"} false?))
 
   (ctu/testing-binary-dynamic elm/equivalent)
 
@@ -474,89 +474,89 @@
 ;; DateTime, Time, and Quantity types.
 (deftest compile-greater-test
   (testing "Integer"
-    (are [x y res] (= res (ctu/compile-binop elm/greater elm/integer x y))
-      "2" "1" true
-      "1" "1" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater elm/integer x y))
+      "2" "1" true?
+      "1" "1" false?)
 
     (ctu/testing-binary-null elm/greater #elm/integer "1"))
 
   (testing "Long"
-    (are [x y res] (= res (ctu/compile-binop elm/greater elm/long x y))
-      "2" "1" true
-      "1" "1" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater elm/long x y))
+      "2" "1" true?
+      "1" "1" false?)
 
     (ctu/testing-binary-null elm/greater #elm/long "1"))
 
   (testing "Mixed Integer Long"
-    (are [x y res] (= res (c/compile {} (elm/greater [x y])))
-      #elm/integer "2" #elm/long "1" true
-      #elm/long "2" #elm/integer "1" true))
+    (are [x y pred] (pred (c/compile {} (elm/greater [x y])))
+      #elm/integer "2" #elm/long "1" true?
+      #elm/long "2" #elm/integer "1" true?))
 
   (testing "Decimal"
-    (are [x y res] (= res (ctu/compile-binop elm/greater elm/decimal x y))
-      "2.1" "1.1" true
-      "1.1" "1.1" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater elm/decimal x y))
+      "2.1" "1.1" true?
+      "1.1" "1.1" false?)
 
     (ctu/testing-binary-null elm/greater #elm/decimal "1.1"))
 
   (testing "String"
-    (are [x y res] (= res (ctu/compile-binop elm/greater elm/string x y))
-      "b" "a" true
-      "a" "a" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater elm/string x y))
+      "b" "a" true?
+      "a" "a" false?)
 
     (ctu/testing-binary-null elm/greater #elm/string "a"))
 
   (testing "Quantity"
-    (are [x y res] (= res (ctu/compile-binop elm/greater elm/quantity x y))
-      [2] [1] true
-      [1] [1] false
+    (are [x y pred] (pred (ctu/compile-binop elm/greater elm/quantity x y))
+      [2] [1] true?
+      [1] [1] false?
 
-      [2 "s"] [1 "s"] true
-      [2 "m"] [1 "m"] true
-      [101 "cm"] [1 "m"] true
-      [1 "s"] [1 "s"] false
-      [1 "m"] [1 "m"] false
-      [100 "cm"] [1 "m"] false)
+      [2 "s"] [1 "s"] true?
+      [2 "m"] [1 "m"] true?
+      [101 "cm"] [1 "m"] true?
+      [1 "s"] [1 "s"] false?
+      [1 "m"] [1 "m"] false?
+      [100 "cm"] [1 "m"] false?)
 
     (ctu/testing-binary-null elm/greater #elm/quantity [1]))
 
   (testing "Date with year precision"
-    (are [x y res] (= res (ctu/compile-binop elm/greater elm/date x y))
-      "2014" "2013" true
-      "2013" "2013" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater elm/date x y))
+      "2014" "2013" true?
+      "2013" "2013" false?)
 
     (ctu/testing-binary-null elm/greater #elm/date "2013"))
 
   (testing "DateTime with year precision"
-    (are [x y res] (= res (ctu/compile-binop elm/greater elm/date-time x y))
-      "2014" "2013" true
-      "2013" "2013" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater elm/date-time x y))
+      "2014" "2013" true?
+      "2013" "2013" false?)
 
     (ctu/testing-binary-null elm/greater #elm/date-time"2013"))
 
   (testing "DateTime with year-month precision"
-    (are [x y res] (= res (ctu/compile-binop elm/greater elm/date-time x y))
-      "2013-07" "2013-06" true
-      "2013-06" "2013-06" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater elm/date-time x y))
+      "2013-07" "2013-06" true?
+      "2013-06" "2013-06" false?)
 
     (ctu/testing-binary-null elm/greater #elm/date-time"2013-06"))
 
   (testing "DateTime with date precision"
-    (are [x y res] (= res (ctu/compile-binop elm/greater elm/date-time x y))
-      "2013-06-16" "2013-06-15" true
-      "2013-06-15" "2013-06-15" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater elm/date-time x y))
+      "2013-06-16" "2013-06-15" true?
+      "2013-06-15" "2013-06-15" false?)
 
     (ctu/testing-binary-null elm/greater #elm/date-time"2013-06-15"))
 
   (testing "Comparing dates with mixed precisions (year and year-month) results in null."
-    (are [x y res] (= res (ctu/compile-binop elm/greater elm/date x y))
-      "2013" "2013-01" nil
-      "2013-01" "2013" nil))
+    (are [x y pred] (pred (ctu/compile-binop elm/greater elm/date x y))
+      "2013" "2013-01" nil?
+      "2013-01" "2013" nil?))
 
   (testing "Time"
-    (are [x y res] (= res (ctu/compile-binop elm/greater elm/time x y))
-      "00:00:01" "00:00:00" true
-      "00:00:00" "00:00:00" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater elm/time x y))
+      "00:00:01" "00:00:00" true?
+      "00:00:00" "00:00:00" false?)
 
     (ctu/testing-binary-null elm/greater #elm/time "00:00:00"))
 
@@ -592,73 +592,73 @@
 ;; Date, DateTime, Time, and Quantity types.
 (deftest compile-greater-or-equal-test
   (testing "Integer"
-    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/integer x y))
-      "1" "1" true
-      "2" "1" true
-      "1" "2" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater-or-equal elm/integer x y))
+      "1" "1" true?
+      "2" "1" true?
+      "1" "2" false?)
 
     (ctu/testing-binary-null elm/greater-or-equal #elm/integer "1"))
 
   (testing "Long"
-    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/long x y))
-      "1" "1" true
-      "2" "1" true
-      "1" "2" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater-or-equal elm/long x y))
+      "1" "1" true?
+      "2" "1" true?
+      "1" "2" false?)
 
     (ctu/testing-binary-null elm/greater-or-equal #elm/long "1"))
 
   (testing "Mixed Integer Long"
-    (are [x y res] (= res (c/compile {} (elm/greater-or-equal [x y])))
-      #elm/integer "1" #elm/long "1" true
-      #elm/integer "2" #elm/long "1" true
-      #elm/long "1" #elm/integer "1" true
-      #elm/long "2" #elm/integer "1" true))
+    (are [x y pred] (pred (c/compile {} (elm/greater-or-equal [x y])))
+      #elm/integer "1" #elm/long "1" true?
+      #elm/integer "2" #elm/long "1" true?
+      #elm/long "1" #elm/integer "1" true?
+      #elm/long "2" #elm/integer "1" true?))
 
   (testing "Decimal"
-    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/decimal x y))
-      "1.1" "1.1" true
-      "2.1" "1.1" true
-      "1.1" "2.1" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater-or-equal elm/decimal x y))
+      "1.1" "1.1" true?
+      "2.1" "1.1" true?
+      "1.1" "2.1" false?)
 
     (ctu/testing-binary-null elm/greater-or-equal #elm/decimal "1.1"))
 
   (testing "String"
-    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/string x y))
-      "a" "a" true
-      "b" "a" true
-      "a" "b" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater-or-equal elm/string x y))
+      "a" "a" true?
+      "b" "a" true?
+      "a" "b" false?)
 
     (ctu/testing-binary-null elm/greater-or-equal #elm/string "a"))
 
   (testing "Date with full precision"
-    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/date x y))
-      "2013-06-16" "2013-06-15" true
-      "2013-06-15" "2013-06-15" true
-      "2013-06-14" "2013-06-15" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater-or-equal elm/date x y))
+      "2013-06-16" "2013-06-15" true?
+      "2013-06-15" "2013-06-15" true?
+      "2013-06-14" "2013-06-15" false?)
 
     (ctu/testing-binary-null elm/greater-or-equal #elm/date "2013-06-15"))
 
   (testing "DateTime with year precision"
-    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/date-time x y))
-      "2014" "2013" true
-      "2013" "2013" true
-      "2012" "2013" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater-or-equal elm/date-time x y))
+      "2014" "2013" true?
+      "2013" "2013" true?
+      "2012" "2013" false?)
 
     (ctu/testing-binary-null elm/greater-or-equal #elm/date "2013"))
 
   (testing "DateTime with year-month precision"
-    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/date-time x y))
-      "2013-07" "2013-06" true
-      "2013-06" "2013-06" true
-      "2013-05" "2013-06" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater-or-equal elm/date-time x y))
+      "2013-07" "2013-06" true?
+      "2013-06" "2013-06" true?
+      "2013-05" "2013-06" false?)
 
     (ctu/testing-binary-null elm/greater-or-equal #elm/date "2013-06"))
 
   (testing "DateTime with date precision"
-    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/date-time x y))
-      "2013-06-16" "2013-06-15" true
-      "2013-06-15" "2013-06-15" true
-      "2013-06-14" "2013-06-15" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater-or-equal elm/date-time x y))
+      "2013-06-16" "2013-06-15" true?
+      "2013-06-15" "2013-06-15" true?
+      "2013-06-14" "2013-06-15" false?)
 
     (ctu/testing-binary-null elm/greater-or-equal #elm/date "2013-06-15"))
 
@@ -667,26 +667,26 @@
       "2005-06-17" "2005"))
 
   (testing "Time"
-    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/time x y))
-      "00:00:00" "00:00:00" true
-      "00:00:01" "00:00:00" true
-      "00:00:00" "00:00:01" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/greater-or-equal elm/time x y))
+      "00:00:00" "00:00:00" true?
+      "00:00:01" "00:00:00" true?
+      "00:00:00" "00:00:01" false?)
 
     (ctu/testing-binary-null elm/greater-or-equal #elm/time "00:00:00"))
 
   (testing "Quantity"
-    (are [x y res] (= res (ctu/compile-binop elm/greater-or-equal elm/quantity x y))
-      [1] [1] true
-      [2] [1] true
-      [1] [2] false
+    (are [x y pred] (pred (ctu/compile-binop elm/greater-or-equal elm/quantity x y))
+      [1] [1] true?
+      [2] [1] true?
+      [1] [2] false?
 
-      [1 "s"] [1 "s"] true
-      [2 "s"] [1 "s"] true
-      [1 "s"] [2 "s"] false
+      [1 "s"] [1 "s"] true?
+      [2 "s"] [1 "s"] true?
+      [1 "s"] [2 "s"] false?
 
-      [101 "cm"] [1 "m"] true
-      [100 "cm"] [1 "m"] true
-      [1 "m"] [101 "cm"] false)
+      [101 "cm"] [1 "m"] true?
+      [100 "cm"] [1 "m"] true?
+      [1 "m"] [101 "cm"] false?)
 
     (ctu/testing-binary-null elm/greater-or-equal #elm/quantity [1]))
 
@@ -720,107 +720,107 @@
 ;; DateTime, Time, and Quantity types.
 (deftest compile-less-test
   (testing "Integer"
-    (are [x y res] (= res (ctu/compile-binop elm/less elm/integer x y))
-      "1" "2" true
-      "1" "1" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less elm/integer x y))
+      "1" "2" true?
+      "1" "1" false?)
 
     (ctu/testing-binary-null elm/less #elm/integer "1"))
 
   (testing "Long"
-    (are [x y res] (= res (ctu/compile-binop elm/less elm/long x y))
-      "1" "2" true
-      "1" "1" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less elm/long x y))
+      "1" "2" true?
+      "1" "1" false?)
 
     (ctu/testing-binary-null elm/less #elm/long "1"))
 
   (testing "Mixed Integer Long"
-    (are [x y res] (= res (c/compile {} (elm/less [x y])))
-      #elm/integer "1" #elm/long "2" true
-      #elm/long "1" #elm/integer "2" true))
+    (are [x y pred] (pred (c/compile {} (elm/less [x y])))
+      #elm/integer "1" #elm/long "2" true?
+      #elm/long "1" #elm/integer "2" true?))
 
   (testing "Decimal"
-    (are [x y res] (= res (ctu/compile-binop elm/less elm/decimal x y))
-      "1.1" "2.1" true
-      "1.1" "1.1" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less elm/decimal x y))
+      "1.1" "2.1" true?
+      "1.1" "1.1" false?)
 
     (ctu/testing-binary-null elm/less #elm/decimal "1.1"))
 
   (testing "String"
-    (are [x y res] (= res (ctu/compile-binop elm/less elm/string x y))
-      "a" "b" true
-      "a" "a" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less elm/string x y))
+      "a" "b" true?
+      "a" "a" false?)
 
     (ctu/testing-binary-null elm/less #elm/string "a"))
 
   (testing "Date with year precision"
-    (are [x y res] (= res (ctu/compile-binop elm/less elm/date x y))
-      "2012" "2013" true
-      "2013" "2013" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less elm/date x y))
+      "2012" "2013" true?
+      "2013" "2013" false?)
 
     (ctu/testing-binary-null elm/less #elm/date "2013"))
 
   (testing "Comparing dates with mixed precisions (year and year-month) results in null."
-    (are [x y res] (= res (ctu/compile-binop elm/less elm/date x y))
-      "2013" "2013-01" nil
-      "2013-01" "2013" nil))
+    (are [x y pred] (pred (ctu/compile-binop elm/less elm/date x y))
+      "2013" "2013-01" nil?
+      "2013-01" "2013" nil?))
 
   (testing "Date with full precision"
-    (are [x y res] (= res (ctu/compile-binop elm/less elm/date x y))
-      "2013-06-14" "2013-06-15" true
-      "2013-06-15" "2013-06-15" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less elm/date x y))
+      "2013-06-14" "2013-06-15" true?
+      "2013-06-15" "2013-06-15" false?)
 
     (ctu/testing-binary-null elm/less #elm/date "2013-06-15"))
 
   (testing "Comparing dates with mixed precisions (year-month and full) results in null."
-    (are [x y res] (= res (ctu/compile-binop elm/less elm/date x y))
-      "2013-01" "2013-01-01" nil
-      "2013-01-01" "2013-01" nil))
+    (are [x y pred] (pred (ctu/compile-binop elm/less elm/date x y))
+      "2013-01" "2013-01-01" nil?
+      "2013-01-01" "2013-01" nil?))
 
   (testing "DateTime with year precision"
-    (are [x y res] (= res (ctu/compile-binop elm/less elm/date-time x y))
-      "2012" "2013" true
-      "2013" "2013" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less elm/date-time x y))
+      "2012" "2013" true?
+      "2013" "2013" false?)
 
     (ctu/testing-binary-null elm/less #elm/date-time"2013"))
 
   (testing "DateTime with year-month precision"
-    (are [x y res] (= res (ctu/compile-binop elm/less elm/date-time x y))
-      "2013-05" "2013-06" true
-      "2013-06" "2013-06" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less elm/date-time x y))
+      "2013-05" "2013-06" true?
+      "2013-06" "2013-06" false?)
 
     (ctu/testing-binary-null elm/less #elm/date-time"2013-06"))
 
   (testing "DateTime with date precision"
-    (are [x y res] (= res (ctu/compile-binop elm/less elm/date-time x y))
-      "2013-06-14" "2013-06-15" true
-      "2013-06-15" "2013-06-15" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less elm/date-time x y))
+      "2013-06-14" "2013-06-15" true?
+      "2013-06-15" "2013-06-15" false?)
 
     (ctu/testing-binary-null elm/less #elm/date-time"2013-06-15"))
 
   (testing "DateTime with full precision (there is only one precision)"
-    (are [x y res] (= res (ctu/compile-binop elm/less elm/date-time x y))
-      "2013-06-15T11" "2013-06-15T12" true
-      "2013-06-15T12" "2013-06-15T12" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less elm/date-time x y))
+      "2013-06-15T11" "2013-06-15T12" true?
+      "2013-06-15T12" "2013-06-15T12" false?)
 
     (ctu/testing-binary-null elm/less #elm/date-time"2013-06-15T12"))
 
   (testing "Time with full precision (there is only one precision)"
-    (are [x y res] (= res (ctu/compile-binop elm/less elm/time x y))
-      "12:30:14" "12:30:15" true
-      "12:30:15" "12:30:15" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less elm/time x y))
+      "12:30:14" "12:30:15" true?
+      "12:30:15" "12:30:15" false?)
 
     (ctu/testing-binary-null elm/less #elm/time "12:30:15"))
 
   (testing "Quantity"
-    (are [x y res] (= res (ctu/compile-binop elm/less elm/quantity x y))
-      [1] [2] true
-      [1] [1] false
+    (are [x y pred] (pred (ctu/compile-binop elm/less elm/quantity x y))
+      [1] [2] true?
+      [1] [1] false?
 
-      [1 "s"] [2 "s"] true
-      [1 "s"] [1 "s"] false
+      [1 "s"] [2 "s"] true?
+      [1 "s"] [1 "s"] false?
 
-      [1 "m"] [101 "cm"] true
-      [1 "m"] [100 "cm"] false)
+      [1 "m"] [101 "cm"] true?
+      [1 "m"] [100 "cm"] false?)
 
     (ctu/testing-binary-null elm/less #elm/quantity [1]))
 
@@ -856,94 +856,94 @@
 ;; DateTime, Time, and Quantity types.
 (deftest compile-less-or-equal-test
   (testing "Integer"
-    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/integer x y))
-      "1" "1" true
-      "1" "2" true
-      "2" "1" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less-or-equal elm/integer x y))
+      "1" "1" true?
+      "1" "2" true?
+      "2" "1" false?)
 
     (ctu/testing-binary-null elm/less-or-equal #elm/integer "1"))
 
   (testing "Long"
-    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/long x y))
-      "1" "1" true
-      "1" "2" true
-      "2" "1" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less-or-equal elm/long x y))
+      "1" "1" true?
+      "1" "2" true?
+      "2" "1" false?)
 
     (ctu/testing-binary-null elm/less-or-equal #elm/long "1"))
 
   (testing "Mixed Integer Long"
-    (are [x y res] (= res (c/compile {} (elm/less-or-equal [x y])))
-      #elm/integer "1" #elm/long "1" true
-      #elm/integer "1" #elm/long "2" true
-      #elm/long "1" #elm/integer "1" true
-      #elm/long "1" #elm/integer "2" true))
+    (are [x y pred] (pred (c/compile {} (elm/less-or-equal [x y])))
+      #elm/integer "1" #elm/long "1" true?
+      #elm/integer "1" #elm/long "2" true?
+      #elm/long "1" #elm/integer "1" true?
+      #elm/long "1" #elm/integer "2" true?))
 
   (testing "Decimal"
-    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/decimal x y))
-      "1.1" "1.1" true
-      "1.1" "2.1" true
-      "2.1" "1.1" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less-or-equal elm/decimal x y))
+      "1.1" "1.1" true?
+      "1.1" "2.1" true?
+      "2.1" "1.1" false?)
 
     (ctu/testing-binary-null elm/less-or-equal #elm/decimal "1.1"))
 
   (testing "Date with full precision"
-    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/date x y))
-      "2013-06-14" "2013-06-15" true
-      "2013-06-15" "2013-06-15" true
-      "2013-06-16" "2013-06-15" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less-or-equal elm/date x y))
+      "2013-06-14" "2013-06-15" true?
+      "2013-06-15" "2013-06-15" true?
+      "2013-06-16" "2013-06-15" false?)
 
     (ctu/testing-binary-null elm/less-or-equal #elm/date "2013-06-15"))
 
   (testing "Mixed Date and DateTime"
-    (are [x y res] (= res (c/compile {} (elm/less-or-equal [x y])))
-      #elm/date "2013-06-15" #elm/date-time"2013-06-15T00" nil
-      #elm/date-time"2013-06-15T00" #elm/date "2013-06-15" nil))
+    (are [x y pred] (pred (c/compile {} (elm/less-or-equal [x y])))
+      #elm/date "2013-06-15" #elm/date-time"2013-06-15T00" nil?
+      #elm/date-time"2013-06-15T00" #elm/date "2013-06-15" nil?))
 
   (testing "DateTime with year precision"
-    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/date-time x y))
-      "2012" "2013" true
-      "2013" "2013" true
-      "2014" "2013" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less-or-equal elm/date-time x y))
+      "2012" "2013" true?
+      "2013" "2013" true?
+      "2014" "2013" false?)
 
     (ctu/testing-binary-null elm/less-or-equal #elm/date "2013"))
 
   (testing "DateTime with year-month precision"
-    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/date-time x y))
-      "2013-05" "2013-06" true
-      "2013-06" "2013-06" true
-      "2013-07" "2013-06" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less-or-equal elm/date-time x y))
+      "2013-05" "2013-06" true?
+      "2013-06" "2013-06" true?
+      "2013-07" "2013-06" false?)
 
     (ctu/testing-binary-null elm/less-or-equal #elm/date "2013-06"))
 
   (testing "DateTime with date precision"
-    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/date-time x y))
-      "2013-06-14" "2013-06-15" true
-      "2013-06-15" "2013-06-15" true
-      "2013-06-16" "2013-06-15" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less-or-equal elm/date-time x y))
+      "2013-06-14" "2013-06-15" true?
+      "2013-06-15" "2013-06-15" true?
+      "2013-06-16" "2013-06-15" false?)
 
     (ctu/testing-binary-null elm/less-or-equal #elm/date "2013-06-15"))
 
   (testing "Time"
-    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/time x y))
-      "00:00:00" "00:00:00" true
-      "00:00:00" "00:00:01" true
-      "00:00:01" "00:00:00" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/less-or-equal elm/time x y))
+      "00:00:00" "00:00:00" true?
+      "00:00:00" "00:00:01" true?
+      "00:00:01" "00:00:00" false?)
 
     (ctu/testing-binary-null elm/less-or-equal #elm/time "00:00:00"))
 
   (testing "Quantity"
-    (are [x y res] (= res (ctu/compile-binop elm/less-or-equal elm/quantity x y))
-      [1] [2] true
-      [1] [1] true
-      [2] [1] false
+    (are [x y pred] (pred (ctu/compile-binop elm/less-or-equal elm/quantity x y))
+      [1] [2] true?
+      [1] [1] true?
+      [2] [1] false?
 
-      [1 "s"] [2 "s"] true
-      [1 "s"] [1 "s"] true
-      [2 "s"] [1 "s"] false
+      [1 "s"] [2 "s"] true?
+      [1 "s"] [1 "s"] true?
+      [2 "s"] [1 "s"] false?
 
-      [1 "m"] [101 "cm"] true
-      [1 "m"] [100 "cm"] true
-      [101 "cm"] [1 "m"] false)
+      [1 "m"] [101 "cm"] true?
+      [1 "m"] [100 "cm"] true?
+      [101 "cm"] [1 "m"] false?)
 
     (ctu/testing-binary-null elm/less-or-equal #elm/quantity [1]))
 

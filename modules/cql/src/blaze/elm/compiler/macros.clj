@@ -1,7 +1,6 @@
 (ns blaze.elm.compiler.macros
   (:require
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.expression.cache :as-alias expr-cache]))
+    [blaze.elm.compiler.core :as core]))
 
 
 (set! *warn-on-reflection* true)

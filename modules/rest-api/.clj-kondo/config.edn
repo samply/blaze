@@ -1,44 +1,9 @@
-{:lint-as
- {blaze.anomaly/when-ok clojure.core/let
-  blaze.async.comp/do-sync clojure.core/let
-  blaze.rest-api.metadata-handler-test/with-handler clojure.core/fn
-  blaze.module.test-util/with-system clojure.core/with-open
-  prometheus.alpha/defcounter clojure.core/def
-  prometheus.alpha/defhistogram clojure.core/def}
+{:config-paths
+ ["../../../.clj-kondo/root"
+  "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"
+  "../../async/resources/clj-kondo.exports/blaze/async"
+  "../../module-base/resources/clj-kondo.exports/prom-metrics/prom-metrics"
+  "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
 
- :linters
- {:unsorted-required-namespaces
-  {:level :error}
-
-  :single-key-in
-  {:level :warning}
-
-  :keyword-binding
-  {:level :error}
-
-  :reduce-without-init
-  {:level :warning}
-
-  :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}
-
-  :consistent-alias
-  {:aliases
-   {blaze.anomaly ba
-    blaze.async.comp ac
-    blaze.executors ex
-    buddy.auth auth
-    cognitect.anomalies anom
-    clojure.data.xml xml
-    clojure.java.io io
-    clojure.spec.alpha s
-    clojure.string str
-    integrant.core ig
-    jsonista.core j
-    prometheus.alpha prom
-    reitit.core reitit
-    ring.util.request request
-    ring.util.response ring
-    taoensso.timbre log}}}
-
- :skip-comments true}
+ :lint-as
+ {blaze.rest-api.metadata-handler-test/with-handler clojure.core/fn}}

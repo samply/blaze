@@ -1,9 +1,13 @@
-{:lint-as
- {blaze.anomaly/when-ok clojure.core/let
-  blaze.anomaly/if-ok clojure.core/let
-  blaze.async.comp/do-sync clojure.core/let
-  blaze.db.api-stub/with-system-data clojure.core/with-open
-  blaze.interaction.create-test/with-handler clojure.core/fn
+{:config-paths
+ ["../../../.clj-kondo/root"
+  "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"
+  "../../async/resources/clj-kondo.exports/blaze/async"
+  "../../db-stub/resources/clj-kondo.exports/blaze/db-stub"
+  "../../module-base/resources/clj-kondo.exports/prom-metrics/prom-metrics"
+  "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
+
+ :lint-as
+ {blaze.interaction.create-test/with-handler clojure.core/fn
   blaze.interaction.delete-test/with-handler clojure.core/fn
   blaze.interaction.history.instance-test/with-handler clojure.core/fn
   blaze.interaction.history.system-test/with-handler clojure.core/fn
@@ -14,33 +18,4 @@
   blaze.interaction.search-system-test/with-handler clojure.core/fn
   blaze.interaction.search-type-test/with-handler clojure.core/fn
   blaze.interaction.transaction-test/with-handler clojure.core/fn
-  blaze.interaction.update-test/with-handler clojure.core/fn
-  blaze.module.test-util/with-system clojure.core/with-open}
-
- :linters
- {:unsorted-required-namespaces
-  {:level :error}
-
-  :single-key-in
-  {:level :warning}
-
-  :keyword-binding
-  {:level :error}
-
-  :reduce-without-init
-  {:level :warning}
-
-  :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}
-
-  :consistent-alias
-  {:aliases
-   {blaze.db.api d
-    blaze.db.kv kv
-    blaze.test-util tu
-    blaze.util u
-    clojure.string str
-    cognitect.anomalies anom
-    ring.util.response ring}}}
-
- :skip-comments true}
+  blaze.interaction.update-test/with-handler clojure.core/fn}}

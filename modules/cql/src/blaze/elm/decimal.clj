@@ -41,12 +41,12 @@
 
 (def ^:const ^BigDecimal min
   "Minimum decimal (-10^28 + 1) / 10^8"
-  (* (+ (- (.scaleByPowerOfTen 1M max-precision)) 1) min-step-size))
+  (* (inc (- (.scaleByPowerOfTen 1M max-precision))) min-step-size))
 
 
 (def ^:const ^BigDecimal max
   "Maximum decimal (10^28 - 1) / 10^8"
-  (* (- (.scaleByPowerOfTen 1M max-precision) 1) min-step-size))
+  (* (dec (.scaleByPowerOfTen 1M max-precision)) min-step-size))
 
 
 (defn within-bounds?

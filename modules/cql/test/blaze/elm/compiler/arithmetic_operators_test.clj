@@ -642,7 +642,7 @@
   (are [type res] (= res (c/compile {} (elm/max-value type)))
     "{urn:hl7-org:elm-types:r1}Integer" Integer/MAX_VALUE
     "{urn:hl7-org:elm-types:r1}Long" Long/MAX_VALUE
-    "{urn:hl7-org:elm-types:r1}Decimal" (/ (- 1E28M 1) 1E8M)
+    "{urn:hl7-org:elm-types:r1}Decimal" (/ (dec 1E28M) 1E8M)
     "{urn:hl7-org:elm-types:r1}Date" #system/date"9999-12-31"
     "{urn:hl7-org:elm-types:r1}DateTime" (system/date-time 9999 12 31 23 59 59 999)
     "{urn:hl7-org:elm-types:r1}Time" (date-time/local-time 23 59 59 999))
@@ -687,7 +687,7 @@
   (are [type res] (= res (c/compile {} (elm/min-value type)))
     "{urn:hl7-org:elm-types:r1}Integer" Integer/MIN_VALUE
     "{urn:hl7-org:elm-types:r1}Long" Long/MIN_VALUE
-    "{urn:hl7-org:elm-types:r1}Decimal" (/ (+ -1E28M 1) 1E8M)
+    "{urn:hl7-org:elm-types:r1}Decimal" (/ (inc -1E28M) 1E8M)
     "{urn:hl7-org:elm-types:r1}Date" #system/date"0001-01-01"
     "{urn:hl7-org:elm-types:r1}DateTime" (system/date-time 1 1 1 0 0 0 0)
     "{urn:hl7-org:elm-types:r1}Time" (date-time/local-time 0 0 0 0))

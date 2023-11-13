@@ -170,96 +170,96 @@
 (deftest compile-after-test
   (testing "Interval"
     (testing "if both intervals are closed, the start of the first (3) has to be greater then the end of the second (2)"
-      (are [x y res] (= res (ctu/compile-binop elm/after elm/interval x y))
+      (are [x y pred] (pred (ctu/compile-binop elm/after elm/interval x y))
         [#elm/integer "3" #elm/integer "4"]
-        [#elm/integer "1" #elm/integer "2"] true
+        [#elm/integer "1" #elm/integer "2"] true?
         [#elm/integer "2" #elm/integer "3"]
-        [#elm/integer "1" #elm/integer "2"] false))
+        [#elm/integer "1" #elm/integer "2"] false?))
 
     (testing "if one of the intervals is open, start and end can be the same (2)"
-      (are [x y res] (= res (ctu/compile-binop elm/after elm/interval x y))
+      (are [x y pred] (pred (ctu/compile-binop elm/after elm/interval x y))
         [#elm/integer "2" #elm/integer "3"]
-        [#elm/integer "1" #elm/integer "2" :>] true
+        [#elm/integer "1" #elm/integer "2" :>] true?
         [:< #elm/integer "2" #elm/integer "3"]
-        [#elm/integer "1" #elm/integer "2"] true
+        [#elm/integer "1" #elm/integer "2"] true?
         [:< #elm/integer "2" #elm/integer "3"]
-        [#elm/integer "1" #elm/integer "2" :>] true))
+        [#elm/integer "1" #elm/integer "2" :>] true?))
 
     (testing "if both intervals are open, start and end can overlap slightly"
-      (are [x y res] (= res (ctu/compile-binop elm/after elm/interval x y))
+      (are [x y pred] (pred (ctu/compile-binop elm/after elm/interval x y))
         [:< #elm/integer "2" #elm/integer "4"]
-        [#elm/integer "1" #elm/integer "3" :>] true))
+        [#elm/integer "1" #elm/integer "3" :>] true?))
 
     (testing "if one of the relevant bounds is infinity, the result is false"
-      (are [x y res] (= res (ctu/compile-binop elm/after elm/interval x y))
+      (are [x y pred] (pred (ctu/compile-binop elm/after elm/interval x y))
         [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer "3"]
-        [#elm/integer "1" #elm/integer "2"] false
+        [#elm/integer "1" #elm/integer "2"] false?
         [#elm/integer "2" #elm/integer "3"]
-        [#elm/integer "1" {:type "Null"}] false))
+        [#elm/integer "1" {:type "Null"}] false?))
 
     (testing "if the second interval has an unknown high bound, the result is null"
-      (are [x y res] (= res (ctu/compile-binop elm/after elm/interval x y))
+      (are [x y pred] (pred (ctu/compile-binop elm/after elm/interval x y))
         [#elm/integer "2" #elm/integer "3"]
-        [#elm/integer "1" {:type "Null"} :>] nil))
+        [#elm/integer "1" {:type "Null"} :>] nil?))
 
     (ctu/testing-binary-null elm/after interval-zero))
 
   (testing "Date"
-    (are [x y res] (= res (ctu/compile-binop elm/after elm/date x y))
-      "2019" "2018" true
-      "2019" "2019" false
-      "2019" "2020" false
-      "2019-04" "2019-03" true
-      "2019-04" "2019-04" false
-      "2019-04" "2019-05" false
-      "2019-04-17" "2019-04-16" true
-      "2019-04-17" "2019-04-17" false
-      "2019-04-17" "2019-04-18" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/after elm/date x y))
+      "2019" "2018" true?
+      "2019" "2019" false?
+      "2019" "2020" false?
+      "2019-04" "2019-03" true?
+      "2019-04" "2019-04" false?
+      "2019-04" "2019-05" false?
+      "2019-04-17" "2019-04-16" true?
+      "2019-04-17" "2019-04-17" false?
+      "2019-04-17" "2019-04-18" false?)
 
     (ctu/testing-binary-null elm/after #elm/date "2019")
     (ctu/testing-binary-null elm/after #elm/date "2019-04")
     (ctu/testing-binary-null elm/after #elm/date "2019-04-17")
 
     (testing "with year precision"
-      (are [x y res] (= res (ctu/compile-binop-precision elm/after elm/date x y "year"))
-        "2019" "2018" true
-        "2019" "2019" false
-        "2019" "2020" false
-        "2019-04" "2019-03" false
-        "2019-04" "2019-04" false
-        "2019-04" "2019-05" false
-        "2019-04-17" "2019-04-16" false
-        "2019-04-17" "2019-04-17" false
-        "2019-04-17" "2019-04-18" false)))
+      (are [x y pred] (pred (ctu/compile-binop-precision elm/after elm/date x y "year"))
+        "2019" "2018" true?
+        "2019" "2019" false?
+        "2019" "2020" false?
+        "2019-04" "2019-03" false?
+        "2019-04" "2019-04" false?
+        "2019-04" "2019-05" false?
+        "2019-04-17" "2019-04-16" false?
+        "2019-04-17" "2019-04-17" false?
+        "2019-04-17" "2019-04-18" false?)))
 
   (testing "DateTime"
-    (are [x y res] (= res (ctu/compile-binop elm/after elm/date-time x y))
-      "2019" "2018" true
-      "2019" "2019" false
-      "2019" "2020" false
-      "2019-04" "2019-03" true
-      "2019-04" "2019-04" false
-      "2019-04" "2019-05" false
-      "2019-04-17" "2019-04-16" true
-      "2019-04-17" "2019-04-17" false
-      "2019-04-17" "2019-04-18" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/after elm/date-time x y))
+      "2019" "2018" true?
+      "2019" "2019" false?
+      "2019" "2020" false?
+      "2019-04" "2019-03" true?
+      "2019-04" "2019-04" false?
+      "2019-04" "2019-05" false?
+      "2019-04-17" "2019-04-16" true?
+      "2019-04-17" "2019-04-17" false?
+      "2019-04-17" "2019-04-18" false?)
 
     (ctu/testing-binary-null elm/after #elm/date-time"2019")
     (ctu/testing-binary-null elm/after #elm/date-time"2019-04")
     (ctu/testing-binary-null elm/after #elm/date-time"2019-04-17")
 
     (testing "with year precision"
-      (are [x y res] (= res (ctu/compile-binop-precision elm/after elm/date-time
+      (are [x y pred] (pred (ctu/compile-binop-precision elm/after elm/date-time
                                                          x y "year"))
-        "2019" "2018" true
-        "2019" "2019" false
-        "2019" "2020" false
-        "2019-04" "2019-03" false
-        "2019-04" "2019-04" false
-        "2019-04" "2019-05" false
-        "2019-04-17" "2019-04-16" false
-        "2019-04-17" "2019-04-17" false
-        "2019-04-17" "2019-04-18" false)))
+        "2019" "2018" true?
+        "2019" "2019" false?
+        "2019" "2020" false?
+        "2019-04" "2019-03" false?
+        "2019-04" "2019-04" false?
+        "2019-04" "2019-05" false?
+        "2019-04-17" "2019-04-16" false?
+        "2019-04-17" "2019-04-17" false?
+        "2019-04-17" "2019-04-18" false?)))
 
   (ctu/testing-binary-dynamic elm/after)
 
@@ -312,97 +312,97 @@
 (deftest compile-before-test
   (testing "Interval"
     (testing "if both intervals are closed, the end of the first (2) has to be less then the start of the second (3)"
-      (are [x y res] (= res (ctu/compile-binop elm/before elm/interval x y))
+      (are [x y pred] (pred (ctu/compile-binop elm/before elm/interval x y))
         [#elm/integer "1" #elm/integer "2"]
-        [#elm/integer "3" #elm/integer "4"] true
+        [#elm/integer "3" #elm/integer "4"] true?
         [#elm/integer "1" #elm/integer "2"]
-        [#elm/integer "2" #elm/integer "3"] false))
+        [#elm/integer "2" #elm/integer "3"] false?))
 
     (testing "if one of the intervals is open, start and end can be the same (2)"
-      (are [x y res] (= res (ctu/compile-binop elm/before elm/interval x y))
+      (are [x y pred] (pred (ctu/compile-binop elm/before elm/interval x y))
         [#elm/integer "1" #elm/integer "2" :>]
-        [#elm/integer "2" #elm/integer "3"] true
+        [#elm/integer "2" #elm/integer "3"] true?
         [#elm/integer "1" #elm/integer "2"]
-        [:< #elm/integer "2" #elm/integer "3"] true
+        [:< #elm/integer "2" #elm/integer "3"] true?
         [#elm/integer "1" #elm/integer "2" :>]
-        [:< #elm/integer "2" #elm/integer "3"] true))
+        [:< #elm/integer "2" #elm/integer "3"] true?))
 
     (testing "if both intervals are open, start and end can overlap slightly"
-      (are [x y res] (= res (ctu/compile-binop elm/before elm/interval x y))
+      (are [x y pred] (pred (ctu/compile-binop elm/before elm/interval x y))
         [#elm/integer "1" #elm/integer "3" :>]
-        [:< #elm/integer "2" #elm/integer "4"] true))
+        [:< #elm/integer "2" #elm/integer "4"] true?))
 
     (testing "if one of the relevant bounds is infinity, the result is false"
-      (are [x y res] (= res (ctu/compile-binop elm/before elm/interval x y))
+      (are [x y pred] (pred (ctu/compile-binop elm/before elm/interval x y))
         [#elm/integer "1" {:type "Null"}]
-        [#elm/integer "2" #elm/integer "3"] false
+        [#elm/integer "2" #elm/integer "3"] false?
         [#elm/integer "1" #elm/integer "2"]
-        [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer "3"] false))
+        [{:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer "3"] false?))
 
     (testing "if the second interval has an unknown low bound, the result is null"
-      (are [x y res] (= res (ctu/compile-binop elm/before elm/interval x y))
+      (are [x y pred] (pred (ctu/compile-binop elm/before elm/interval x y))
         [#elm/integer "1" #elm/integer "2"]
-        [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer "3"] nil))
+        [:< {:type "Null" :resultTypeName "{urn:hl7-org:elm-types:r1}Integer"} #elm/integer "3"] nil?))
 
     (ctu/testing-binary-null elm/before interval-zero))
 
   (testing "Date"
-    (are [x y res] (= res (ctu/compile-binop elm/before elm/date x y))
-      "2019" "2020" true
-      "2019" "2019" false
-      "2019" "2018" false
-      "2019-04" "2019-05" true
-      "2019-04" "2019-04" false
-      "2019-04" "2019-03" false
-      "2019-04-17" "2019-04-18" true
-      "2019-04-17" "2019-04-17" false
-      "2019-04-17" "2019-04-16" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/before elm/date x y))
+      "2019" "2020" true?
+      "2019" "2019" false?
+      "2019" "2018" false?
+      "2019-04" "2019-05" true?
+      "2019-04" "2019-04" false?
+      "2019-04" "2019-03" false?
+      "2019-04-17" "2019-04-18" true?
+      "2019-04-17" "2019-04-17" false?
+      "2019-04-17" "2019-04-16" false?)
 
     (ctu/testing-binary-null elm/before #elm/date "2019")
     (ctu/testing-binary-null elm/before #elm/date "2019-04")
     (ctu/testing-binary-null elm/before #elm/date "2019-04-17")
 
     (testing "with year precision"
-      (are [x y res] (= res (ctu/compile-binop-precision elm/before elm/date x y
+      (are [x y pred] (pred (ctu/compile-binop-precision elm/before elm/date x y
                                                          "year"))
-        "2019" "2020" true
-        "2019" "2019" false
-        "2019" "2018" false
-        "2019-04" "2019-05" false
-        "2019-04" "2019-04" false
-        "2019-04" "2019-03" false
-        "2019-04-17" "2019-04-18" false
-        "2019-04-17" "2019-04-17" false
-        "2019-04-17" "2019-04-16" false)))
+        "2019" "2020" true?
+        "2019" "2019" false?
+        "2019" "2018" false?
+        "2019-04" "2019-05" false?
+        "2019-04" "2019-04" false?
+        "2019-04" "2019-03" false?
+        "2019-04-17" "2019-04-18" false?
+        "2019-04-17" "2019-04-17" false?
+        "2019-04-17" "2019-04-16" false?)))
 
   (testing "DateTime"
-    (are [x y res] (= res (ctu/compile-binop elm/before elm/date-time x y))
-      "2019" "2020" true
-      "2019" "2019" false
-      "2019" "2018" false
-      "2019-04" "2019-05" true
-      "2019-04" "2019-04" false
-      "2019-04" "2019-03" false
-      "2019-04-17" "2019-04-18" true
-      "2019-04-17" "2019-04-17" false
-      "2019-04-17" "2019-04-16" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/before elm/date-time x y))
+      "2019" "2020" true?
+      "2019" "2019" false?
+      "2019" "2018" false?
+      "2019-04" "2019-05" true?
+      "2019-04" "2019-04" false?
+      "2019-04" "2019-03" false?
+      "2019-04-17" "2019-04-18" true?
+      "2019-04-17" "2019-04-17" false?
+      "2019-04-17" "2019-04-16" false?)
 
     (ctu/testing-binary-null elm/before #elm/date-time"2019")
     (ctu/testing-binary-null elm/before #elm/date-time"2019-04")
     (ctu/testing-binary-null elm/before #elm/date-time"2019-04-17")
 
     (testing "with year precision"
-      (are [x y res] (= res (ctu/compile-binop-precision elm/before elm/date-time
+      (are [x y pred] (pred (ctu/compile-binop-precision elm/before elm/date-time
                                                          x y "year"))
-        "2019" "2020" true
-        "2019" "2019" false
-        "2019" "2018" false
-        "2019-04" "2019-05" false
-        "2019-04" "2019-04" false
-        "2019-04" "2019-03" false
-        "2019-04-17" "2019-04-18" false
-        "2019-04-17" "2019-04-17" false
-        "2019-04-17" "2019-04-16" false)))
+        "2019" "2020" true?
+        "2019" "2019" false?
+        "2019" "2018" false?
+        "2019-04" "2019-05" false?
+        "2019-04" "2019-04" false?
+        "2019-04" "2019-03" false?
+        "2019-04-17" "2019-04-18" false?
+        "2019-04-17" "2019-04-17" false?
+        "2019-04-17" "2019-04-16" false?)))
 
   (ctu/testing-binary-dynamic elm/before)
 
@@ -507,36 +507,36 @@
 
   (testing "Interval"
     (testing "Integer"
-      (are [interval x res] (= res (c/compile {} (elm/contains [interval x])))
-        #elm/interval [#elm/integer "1" #elm/integer "1"] #elm/integer "1" true
-        #elm/interval [#elm/integer "1" #elm/integer "1"] #elm/integer "2" false
-        #elm/interval [#elm/integer "1" #elm/integer "1"] {:type "Null"} nil))
+      (are [interval x pred] (pred (c/compile {} (elm/contains [interval x])))
+        #elm/interval [#elm/integer "1" #elm/integer "1"] #elm/integer "1" true?
+        #elm/interval [#elm/integer "1" #elm/integer "1"] #elm/integer "2" false?
+        #elm/interval [#elm/integer "1" #elm/integer "1"] {:type "Null"} nil?))
 
     (testing "Date with precision"
       (testing "Static"
-        (are [interval x res] (= res (c/compile {} (elm/contains [interval x "year"])))
-          #elm/interval [#elm/date "2019" #elm/date "2021"] #elm/date "2020" true
-          #elm/interval [#elm/date "2019" #elm/date "2021"] #elm/date "2022" false
-          #elm/interval [#elm/date "2019" #elm/date "2021"] {:type "Null"} nil))
+        (are [interval x pred] (pred (c/compile {} (elm/contains [interval x "year"])))
+          #elm/interval [#elm/date "2019" #elm/date "2021"] #elm/date "2020" true?
+          #elm/interval [#elm/date "2019" #elm/date "2021"] #elm/date "2022" false?
+          #elm/interval [#elm/date "2019" #elm/date "2021"] {:type "Null"} nil?))
 
       (testing "Dynamic"
-        (are [interval x res] (= res (ctu/dynamic-compile-eval (elm/contains [interval x "year"])))
-          #elm/interval [#elm/date "2019" #elm/parameter-ref "2021"] #elm/date "2020" true
-          #elm/interval [#elm/date "2019" #elm/parameter-ref "2021"] #elm/date "2022" false
-          #elm/interval [#elm/date "2019" #elm/parameter-ref "2021"] {:type "Null"} nil))))
+        (are [interval x pred] (pred (ctu/dynamic-compile-eval (elm/contains [interval x "year"])))
+          #elm/interval [#elm/date "2019" #elm/parameter-ref "2021"] #elm/date "2020" true?
+          #elm/interval [#elm/date "2019" #elm/parameter-ref "2021"] #elm/date "2022" false?
+          #elm/interval [#elm/date "2019" #elm/parameter-ref "2021"] {:type "Null"} nil?))))
 
   (testing "List"
-    (are [list x res] (= res (core/-eval (c/compile {} (elm/contains [list x])) {} nil nil))
-      #elm/list [] #elm/integer "1" false
+    (are [list x pred] (pred (core/-eval (c/compile {} (elm/contains [list x])) {} nil nil))
+      #elm/list [] #elm/integer "1" false?
 
-      #elm/list [#elm/integer "1"] #elm/integer "1" true
-      #elm/list [#elm/integer "1"] #elm/integer "2" false
+      #elm/list [#elm/integer "1"] #elm/integer "1" true?
+      #elm/list [#elm/integer "1"] #elm/integer "2" false?
 
-      #elm/list [#elm/quantity [1 "m"]] #elm/quantity [100 "cm"] true
+      #elm/list [#elm/quantity [1 "m"]] #elm/quantity [100 "cm"] true?
 
-      #elm/list [#elm/date "2019"] #elm/date "2019-01" false
+      #elm/list [#elm/date "2019"] #elm/date "2019-01" false?
 
-      #elm/list [] {:type "Null"} nil))
+      #elm/list [] {:type "Null"} nil?))
 
   (ctu/testing-binary-dynamic elm/contains)
 
@@ -605,16 +605,16 @@
 (deftest compile-ends-test
   (testing "Integer"
     (testing "Static"
-      (are [x y res] (= res (ctu/compile-binop elm/ends elm/interval x y))
-        [#elm/integer "1" #elm/integer "3"] [#elm/integer "1" #elm/integer "3"] true
-        [#elm/integer "2" #elm/integer "3"] [#elm/integer "1" #elm/integer "3"] true
-        [#elm/integer "1" #elm/integer "3"] [#elm/integer "2" #elm/integer "3"] false))
+      (are [x y pred] (pred (ctu/compile-binop elm/ends elm/interval x y))
+        [#elm/integer "1" #elm/integer "3"] [#elm/integer "1" #elm/integer "3"] true?
+        [#elm/integer "2" #elm/integer "3"] [#elm/integer "1" #elm/integer "3"] true?
+        [#elm/integer "1" #elm/integer "3"] [#elm/integer "2" #elm/integer "3"] false?))
 
     (testing "Dynamic"
-      (are [x y res] (= res (ctu/dynamic-compile-eval (elm/ends [(elm/interval x) (elm/interval y)])))
-        [#elm/integer "1" #elm/parameter-ref "3"] [#elm/integer "1" #elm/parameter-ref "3"] true
-        [#elm/integer "2" #elm/parameter-ref "3"] [#elm/integer "1" #elm/parameter-ref "3"] true
-        [#elm/integer "1" #elm/parameter-ref "3"] [#elm/integer "2" #elm/parameter-ref "3"] false)))
+      (are [x y pred] (pred (ctu/dynamic-compile-eval (elm/ends [(elm/interval x) (elm/interval y)])))
+        [#elm/integer "1" #elm/parameter-ref "3"] [#elm/integer "1" #elm/parameter-ref "3"] true?
+        [#elm/integer "2" #elm/parameter-ref "3"] [#elm/integer "1" #elm/parameter-ref "3"] true?
+        [#elm/integer "1" #elm/parameter-ref "3"] [#elm/integer "2" #elm/parameter-ref "3"] false?)))
 
   (ctu/testing-binary-null elm/ends interval-zero)
 
@@ -754,21 +754,21 @@
 ;; If either argument is null, the result is null.
 (deftest compile-includes-test
   (testing "List"
-    (are [x y res] (= res (ctu/compile-binop elm/includes elm/list x y))
-      [] [] true
-      [#elm/integer "1"] [#elm/integer "1"] true
-      [#elm/integer "1" #elm/integer "2"] [#elm/integer "1"] true
+    (are [x y pred] (pred (ctu/compile-binop elm/includes elm/list x y))
+      [] [] true?
+      [#elm/integer "1"] [#elm/integer "1"] true?
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "1"] true?
 
-      [{:type "Null"}] [{:type "Null"}] false)
+      [{:type "Null"}] [{:type "Null"}] false?)
 
     (ctu/testing-binary-null elm/includes #elm/list []))
 
 
   (testing "Interval"
     (testing "Integer"
-      (are [x y res] (= res (ctu/compile-binop elm/includes elm/interval x y))
-        [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "2"] true
-        [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "3"] false))
+      (are [x y pred] (pred (ctu/compile-binop elm/includes elm/interval x y))
+        [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "2"] true?
+        [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "3"] false?))
 
     (ctu/testing-binary-null elm/includes interval-zero))
 
@@ -872,9 +872,9 @@
 ;; If either argument is null, the result is null.
 (deftest compile-meets-before-test
   (testing "Integer"
-    (are [x y res] (= res (ctu/compile-binop elm/meets-before elm/interval x y))
-      [#elm/integer "1" #elm/integer "2"] [#elm/integer "3" #elm/integer "4"] true
-      [#elm/integer "1" #elm/integer "2"] [#elm/integer "4" #elm/integer "5"] false))
+    (are [x y pred] (pred (ctu/compile-binop elm/meets-before elm/interval x y))
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "3" #elm/integer "4"] true?
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "4" #elm/integer "5"] false?))
 
   (ctu/testing-binary-null elm/meets-before interval-zero)
 
@@ -903,9 +903,9 @@
 ;; If either argument is null, the result is null.
 (deftest compile-meets-after-test
   (testing "Integer"
-    (are [x y res] (= res (ctu/compile-binop elm/meets-after elm/interval x y))
-      [#elm/integer "3" #elm/integer "4"] [#elm/integer "1" #elm/integer "2"] true
-      [#elm/integer "4" #elm/integer "5"] [#elm/integer "1" #elm/integer "2"] false))
+    (are [x y pred] (pred (ctu/compile-binop elm/meets-after elm/interval x y))
+      [#elm/integer "3" #elm/integer "4"] [#elm/integer "1" #elm/integer "2"] true?
+      [#elm/integer "4" #elm/integer "5"] [#elm/integer "1" #elm/integer "2"] false?))
 
   (ctu/testing-binary-null elm/meets-after interval-zero)
 
@@ -937,36 +937,36 @@
 ;; If either argument is null, the result is null.
 (deftest compile-overlaps-test
   (testing "Static"
-    (are [x y res] (= res (ctu/compile-binop elm/overlaps elm/interval x y))
-      [#elm/integer "1" #elm/integer "2"] [#elm/integer "3" #elm/integer "4"] false
-      [#elm/integer "3" #elm/integer "4"] [#elm/integer "1" #elm/integer "2"] false
+    (are [x y pred] (pred (ctu/compile-binop elm/overlaps elm/interval x y))
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "3" #elm/integer "4"] false?
+      [#elm/integer "3" #elm/integer "4"] [#elm/integer "1" #elm/integer "2"] false?
 
-      [#elm/integer "1" #elm/integer "2"] [#elm/integer "2" #elm/integer "4"] true
-      [#elm/integer "2" #elm/integer "4"] [#elm/integer "1" #elm/integer "2"] true
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "2" #elm/integer "4"] true?
+      [#elm/integer "2" #elm/integer "4"] [#elm/integer "1" #elm/integer "2"] true?
 
-      [#elm/integer "1" #elm/integer "3"] [#elm/integer "2" #elm/integer "4"] true
-      [#elm/integer "2" #elm/integer "4"] [#elm/integer "1" #elm/integer "3"] true
+      [#elm/integer "1" #elm/integer "3"] [#elm/integer "2" #elm/integer "4"] true?
+      [#elm/integer "2" #elm/integer "4"] [#elm/integer "1" #elm/integer "3"] true?
 
-      [#elm/integer "2" #elm/integer "3"] [#elm/integer "1" #elm/integer "4"] true
-      [#elm/integer "1" #elm/integer "4"] [#elm/integer "2" #elm/integer "3"] true
+      [#elm/integer "2" #elm/integer "3"] [#elm/integer "1" #elm/integer "4"] true?
+      [#elm/integer "1" #elm/integer "4"] [#elm/integer "2" #elm/integer "3"] true?
 
-      [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "2"] true))
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "2"] true?))
 
   (testing "Dynamic"
-    (are [x y res] (= res (ctu/dynamic-compile-eval (elm/overlaps [(elm/interval x) (elm/interval y)])))
-      [#elm/integer "1" #elm/parameter-ref "2"] [#elm/integer "3" #elm/parameter-ref "4"] false
-      [#elm/integer "3" #elm/parameter-ref "4"] [#elm/integer "1" #elm/parameter-ref "2"] false
+    (are [x y pred] (pred (ctu/dynamic-compile-eval (elm/overlaps [(elm/interval x) (elm/interval y)])))
+      [#elm/integer "1" #elm/parameter-ref "2"] [#elm/integer "3" #elm/parameter-ref "4"] false?
+      [#elm/integer "3" #elm/parameter-ref "4"] [#elm/integer "1" #elm/parameter-ref "2"] false?
 
-      [#elm/integer "1" #elm/parameter-ref "2"] [#elm/integer "2" #elm/parameter-ref "4"] true
-      [#elm/integer "2" #elm/parameter-ref "4"] [#elm/integer "1" #elm/parameter-ref "2"] true
+      [#elm/integer "1" #elm/parameter-ref "2"] [#elm/integer "2" #elm/parameter-ref "4"] true?
+      [#elm/integer "2" #elm/parameter-ref "4"] [#elm/integer "1" #elm/parameter-ref "2"] true?
 
-      [#elm/integer "1" #elm/parameter-ref "3"] [#elm/integer "2" #elm/parameter-ref "4"] true
-      [#elm/integer "2" #elm/parameter-ref "4"] [#elm/integer "1" #elm/parameter-ref "3"] true
+      [#elm/integer "1" #elm/parameter-ref "3"] [#elm/integer "2" #elm/parameter-ref "4"] true?
+      [#elm/integer "2" #elm/parameter-ref "4"] [#elm/integer "1" #elm/parameter-ref "3"] true?
 
-      [#elm/integer "2" #elm/parameter-ref "3"] [#elm/integer "1" #elm/parameter-ref "4"] true
-      [#elm/integer "1" #elm/parameter-ref "4"] [#elm/integer "2" #elm/parameter-ref "3"] true
+      [#elm/integer "2" #elm/parameter-ref "3"] [#elm/integer "1" #elm/parameter-ref "4"] true?
+      [#elm/integer "1" #elm/parameter-ref "4"] [#elm/integer "2" #elm/parameter-ref "3"] true?
 
-      [#elm/integer "1" #elm/parameter-ref "2"] [#elm/integer "1" #elm/parameter-ref "2"] true))
+      [#elm/integer "1" #elm/parameter-ref "2"] [#elm/integer "1" #elm/parameter-ref "2"] true?))
 
   (ctu/testing-binary-null elm/overlaps interval-zero)
 
@@ -1058,12 +1058,23 @@
 (deftest compile-proper-contains-test
   (testing "Interval"
     (testing "Integer"
-      (are [interval x res] (= res (c/compile {} (elm/proper-contains [interval x])))
-        #elm/interval [#elm/integer "1" #elm/integer "3"] #elm/integer "2" true
-        #elm/interval [#elm/integer "1" #elm/integer "1"] #elm/integer "1" false
-        #elm/interval [#elm/integer "1" #elm/integer "1"] #elm/integer "2" false))
+      (are [interval x pred] (pred (c/compile {} (elm/proper-contains [interval x])))
+        #elm/interval [#elm/integer "1" #elm/integer "3"] #elm/integer "2" true?
+        #elm/interval [#elm/integer "1" #elm/integer "1"] #elm/integer "1" false?
+        #elm/interval [#elm/integer "1" #elm/integer "1"] #elm/integer "2" false?))
 
     (ctu/testing-binary-null elm/proper-contains interval-zero))
+
+  (testing "List"
+    (testing "Integer"
+      (are [list x pred] (pred (core/-eval (c/compile {} (elm/proper-contains [list x])) {} nil nil))
+        #elm/list [] #elm/integer "1" false?
+
+        #elm/list [#elm/integer "1"] #elm/integer "1" false?
+        #elm/list [#elm/integer "1"] #elm/integer "2" false?
+
+        #elm/list [#elm/integer "1" #elm/integer "2"] #elm/integer "1" true?
+        #elm/list [#elm/integer "1" #elm/integer "2"] #elm/integer "2" true?)))
 
   (ctu/testing-binary-dynamic elm/proper-contains)
 
@@ -1106,9 +1117,9 @@
 (deftest compile-proper-includes-test
   (testing "Interval"
     (testing "Integer"
-      (are [x y res] (= res (ctu/compile-binop elm/proper-includes elm/interval x y))
-        [#elm/integer "1" #elm/integer "3"] [#elm/integer "1" #elm/integer "2"] true
-        [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "2"] false))
+      (are [x y pred] (pred (ctu/compile-binop elm/proper-includes elm/interval x y))
+        [#elm/integer "1" #elm/integer "3"] [#elm/integer "1" #elm/integer "2"] true?
+        [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "2"] false?))
 
     (ctu/testing-binary-null elm/proper-includes interval-zero))
 
@@ -1194,10 +1205,10 @@
 ;; If either argument is null, the result is null.
 (deftest compile-starts-test
   (testing "Integer"
-    (are [x y res] (= res (ctu/compile-binop elm/starts elm/interval x y))
-      [#elm/integer "1" #elm/integer "3"] [#elm/integer "1" #elm/integer "3"] true
-      [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "3"] true
-      [#elm/integer "2" #elm/integer "3"] [#elm/integer "1" #elm/integer "3"] false))
+    (are [x y pred] (pred (ctu/compile-binop elm/starts elm/interval x y))
+      [#elm/integer "1" #elm/integer "3"] [#elm/integer "1" #elm/integer "3"] true?
+      [#elm/integer "1" #elm/integer "2"] [#elm/integer "1" #elm/integer "3"] true?
+      [#elm/integer "2" #elm/integer "3"] [#elm/integer "1" #elm/integer "3"] false?))
 
   (ctu/testing-binary-null elm/starts interval-zero)
 

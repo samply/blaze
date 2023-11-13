@@ -56,16 +56,16 @@
       false "30f4c306"))
 
   (testing "system equals"
-    (are [a b res] (= res (system/equals a b))
-      true true true
-      true false false
-      true nil nil
-      false true false
-      false false true
-      false nil nil
-      nil true nil
-      nil false nil
-      nil nil nil)))
+    (are [a b pred] (pred (system/equals a b))
+      true true true?
+      true false false?
+      true nil nil?
+      false true false?
+      false false true?
+      false nil nil?
+      nil true nil?
+      nil false nil?
+      nil nil nil?)))
 
 
 (deftest integer-test
@@ -82,16 +82,16 @@
       (int 1) "bec48b04"))
 
   (testing "system equals"
-    (are [a b res] (= res (system/equals a b))
-      (int 0) (int 0) true
-      (int 0) (int 1) false
-      (int 0) nil nil
-      (int 1) (int 0) false
-      (int 1) (int 1) true
-      (int 1) nil nil
-      nil (int 0) nil
-      nil (int 1) nil
-      nil nil nil)))
+    (are [a b pred] (pred (system/equals a b))
+      (int 0) (int 0) true?
+      (int 0) (int 1) false?
+      (int 0) nil nil?
+      (int 1) (int 0) false?
+      (int 1) (int 1) true?
+      (int 1) nil nil?
+      nil (int 0) nil?
+      nil (int 1) nil?
+      nil nil nil?)))
 
 
 (deftest long-test
@@ -105,16 +105,16 @@
       1 "aec1a7fd"))
 
   (testing "system equals"
-    (are [a b res] (= res (system/equals a b))
-      0 0 true
-      0 1 false
-      0 nil nil
-      1 0 false
-      1 1 true
-      1 nil nil
-      nil 0 nil
-      nil 1 nil
-      nil nil nil)))
+    (are [a b pred] (pred (system/equals a b))
+      0 0 true?
+      0 1 false?
+      0 nil nil?
+      1 0 false?
+      1 1 true?
+      1 nil nil?
+      nil 0 nil?
+      nil 1 nil?
+      nil nil nil?)))
 
 
 (deftest string-test
@@ -129,16 +129,16 @@
       "b" "5edf6843"))
 
   (testing "system equals"
-    (are [a b res] (= res (system/equals a b))
-      "a" "a" true
-      "a" "b" false
-      "a" nil nil
-      "b" "a" false
-      "b" "b" true
-      "b" nil nil
-      nil "a" nil
-      nil "b" nil
-      nil nil nil)))
+    (are [a b pred] (pred (system/equals a b))
+      "a" "a" true?
+      "a" "b" false?
+      "a" nil nil?
+      "b" "a" false?
+      "b" "b" true?
+      "b" nil nil?
+      nil "a" nil?
+      nil "b" nil?
+      nil nil nil?)))
 
 
 (deftest decimal-test
@@ -152,16 +152,16 @@
       1M "8979c5c4"))
 
   (testing "system equals"
-    (are [a b res] (= res (system/equals a b))
-      0M 0M true
-      0M 1M false
-      0M nil nil
-      1M 0M false
-      1M 1M true
-      1M nil nil
-      nil 0M nil
-      nil 1M nil
-      nil nil nil)))
+    (are [a b pred] (pred (system/equals a b))
+      0M 0M true?
+      0M 1M false?
+      0M nil nil?
+      1M 0M false?
+      1M 1M true?
+      1M nil nil?
+      nil 0M nil?
+      nil 1M nil?
+      nil nil nil?)))
 
 
 (deftest parse-decimal-test
@@ -190,60 +190,60 @@
   (testing "system equals"
     (testing "same precision"
       (testing "within date"
-        (are [a b res] (= res (system/equals a b))
-          #system/date"2020" #system/date"2020" true
-          #system/date"2020" #system/date"2021" false
-          #system/date"2020" nil nil
-          #system/date"2021" #system/date"2020" false
-          #system/date"2021" #system/date"2021" true
-          #system/date"2021" nil nil
-          nil #system/date"2020" nil
-          nil #system/date"2021" nil
-          nil nil nil
+        (are [a b pred] (pred (system/equals a b))
+          #system/date"2020" #system/date"2020" true?
+          #system/date"2020" #system/date"2021" false?
+          #system/date"2020" nil nil?
+          #system/date"2021" #system/date"2020" false?
+          #system/date"2021" #system/date"2021" true?
+          #system/date"2021" nil nil?
+          nil #system/date"2020" nil?
+          nil #system/date"2021" nil?
+          nil nil nil?
 
-          #system/date"2020-01" #system/date"2020-01" true
-          #system/date"2020-01" #system/date"2020-02" false
-          #system/date"2020-01" nil nil
-          #system/date"2020-02" #system/date"2020-01" false
-          #system/date"2020-02" #system/date"2020-02" true
-          #system/date"2020-02" nil nil
-          nil #system/date"2020-01" nil
-          nil #system/date"2020-02" nil
-          nil nil nil
+          #system/date"2020-01" #system/date"2020-01" true?
+          #system/date"2020-01" #system/date"2020-02" false?
+          #system/date"2020-01" nil nil?
+          #system/date"2020-02" #system/date"2020-01" false?
+          #system/date"2020-02" #system/date"2020-02" true?
+          #system/date"2020-02" nil nil?
+          nil #system/date"2020-01" nil?
+          nil #system/date"2020-02" nil?
+          nil nil nil?
 
-          #system/date"2020-01-01" #system/date"2020-01-01" true
-          #system/date"2020-01-01" #system/date"2020-01-02" false
-          #system/date"2020-01-01" nil nil
-          #system/date"2020-01-02" #system/date"2020-01-01" false
-          #system/date"2020-01-02" #system/date"2020-01-02" true
-          #system/date"2020-01-02" nil nil
-          nil #system/date"2020-01-01" nil
-          nil #system/date"2020-01-02" nil
-          nil nil nil))
+          #system/date"2020-01-01" #system/date"2020-01-01" true?
+          #system/date"2020-01-01" #system/date"2020-01-02" false?
+          #system/date"2020-01-01" nil nil?
+          #system/date"2020-01-02" #system/date"2020-01-01" false?
+          #system/date"2020-01-02" #system/date"2020-01-02" true?
+          #system/date"2020-01-02" nil nil?
+          nil #system/date"2020-01-01" nil?
+          nil #system/date"2020-01-02" nil?
+          nil nil nil?))
 
       (testing "with date-time"
-        (are [a b res] (= res (system/equals a b))
-          #system/date"2020" #system/date-time"2020" true
-          #system/date"2020" #system/date-time"2021" false
-          #system/date"2020-01" #system/date-time"2020-01" true
-          #system/date"2020-01" #system/date-time"2020-02" false
-          #system/date"2020-01-01" #system/date-time"2020-01-01" true
-          #system/date"2020-01-01" #system/date-time"2020-01-02" false)))
+        (are [a b pred] (pred (system/equals a b))
+          #system/date"2020" #system/date-time"2020" true?
+          #system/date"2020" #system/date-time"2021" false?
+          #system/date"2020-01" #system/date-time"2020-01" true?
+          #system/date"2020-01" #system/date-time"2020-02" false?
+          #system/date"2020-01-01" #system/date-time"2020-01-01" true?
+          #system/date"2020-01-01" #system/date-time"2020-01-02" false?)))
 
     (testing "different precision"
       (testing "within date"
-        (are [a b res] (= res (system/equals a b))
-          #system/date"2020" #system/date"2020-01" nil
-          #system/date"2020-01" #system/date"2020" nil
-          #system/date"2020-01" #system/date"2020-01-01" nil
-          #system/date"2020-01-01" #system/date"2020-01" nil))
+        (are [a b pred] (pred (system/equals a b))
+          #system/date"2020" #system/date"2020-01" nil?
+          #system/date"2020-01" #system/date"2020" nil?
+          #system/date"2020-01" #system/date"2020-01-01" nil?
+          #system/date"2020-01-01" #system/date"2020-01" nil?))
 
       (testing "with date-time"
-        (are [a b res] (= res (system/equals a b))
-          #system/date"2020" #system/date-time"2020-01" nil
-          #system/date"2020-01" #system/date-time"2020" nil
-          #system/date"2020-01" #system/date-time"2020-01-01" nil
-          #system/date"2020-01-01" #system/date-time"2020-01" nil))))
+        (are [a b pred] (pred (system/equals a b))
+          #system/date"2020" #system/date-time"2020-01" nil?
+          #system/date"2020-01" #system/date-time"2020" nil?
+          #system/date"2020-01" #system/date-time"2020-01-01" nil?
+          #system/date"2020-01-01" #system/date-time"2020-01" nil?))))
 
   (testing "print"
     (are [date s] (= (pr-str date) s)
@@ -355,82 +355,82 @@
   (testing "system equals"
     (testing "same precision"
       (testing "within date-time"
-        (are [a b res] (= res (system/equals a b))
-          #system/date-time"2020" #system/date-time"2020" true
-          #system/date-time"2020" #system/date-time"2021" false
-          #system/date-time"2020" nil nil
-          #system/date-time"2021" #system/date-time"2020" false
-          #system/date-time"2021" #system/date-time"2021" true
-          #system/date-time"2021" nil nil
-          nil #system/date-time"2020" nil
-          nil #system/date-time"2021" nil
-          nil nil nil
+        (are [a b pred] (pred (system/equals a b))
+          #system/date-time"2020" #system/date-time"2020" true?
+          #system/date-time"2020" #system/date-time"2021" false?
+          #system/date-time"2020" nil nil?
+          #system/date-time"2021" #system/date-time"2020" false?
+          #system/date-time"2021" #system/date-time"2021" true?
+          #system/date-time"2021" nil nil?
+          nil #system/date-time"2020" nil?
+          nil #system/date-time"2021" nil?
+          nil nil nil?
 
-          #system/date-time"2020-01" #system/date-time"2020-01" true
-          #system/date-time"2020-01" #system/date-time"2020-02" false
-          #system/date-time"2020-01" nil nil
-          #system/date-time"2020-02" #system/date-time"2020-01" false
-          #system/date-time"2020-02" #system/date-time"2020-02" true
-          #system/date-time"2020-02" nil nil
-          nil #system/date-time"2020-01" nil
-          nil #system/date-time"2020-02" nil
-          nil nil nil
+          #system/date-time"2020-01" #system/date-time"2020-01" true?
+          #system/date-time"2020-01" #system/date-time"2020-02" false?
+          #system/date-time"2020-01" nil nil?
+          #system/date-time"2020-02" #system/date-time"2020-01" false?
+          #system/date-time"2020-02" #system/date-time"2020-02" true?
+          #system/date-time"2020-02" nil nil?
+          nil #system/date-time"2020-01" nil?
+          nil #system/date-time"2020-02" nil?
+          nil nil nil?
 
-          #system/date-time"2020-01-01" #system/date-time"2020-01-01" true
-          #system/date-time"2020-01-01" #system/date-time"2020-01-02" false
-          #system/date-time"2020-01-01" nil nil
-          #system/date-time"2020-01-02" #system/date-time"2020-01-01" false
-          #system/date-time"2020-01-02" #system/date-time"2020-01-02" true
-          #system/date-time"2020-01-02" nil nil
-          nil #system/date-time"2020-01-01" nil
-          nil #system/date-time"2020-01-02" nil
-          nil nil nil
+          #system/date-time"2020-01-01" #system/date-time"2020-01-01" true?
+          #system/date-time"2020-01-01" #system/date-time"2020-01-02" false?
+          #system/date-time"2020-01-01" nil nil?
+          #system/date-time"2020-01-02" #system/date-time"2020-01-01" false?
+          #system/date-time"2020-01-02" #system/date-time"2020-01-02" true?
+          #system/date-time"2020-01-02" nil nil?
+          nil #system/date-time"2020-01-01" nil?
+          nil #system/date-time"2020-01-02" nil?
+          nil nil nil?
 
-          (system/date-time 2020 1 1 0 0 0 0) (system/date-time 2020 1 1 0 0 0 0) true
-          (system/date-time 2020 1 1 0 0 0 0) (system/date-time 2020 1 1 0 0 1 0) false
-          (system/date-time 2020 1 1 0 0 0 0) nil nil
-          (system/date-time 2020 1 1 0 0 1 0) (system/date-time 2020 1 1 0 0 0 0) false
-          (system/date-time 2020 1 1 0 0 1 0) (system/date-time 2020 1 1 0 0 1 0) true
-          (system/date-time 2020 1 1 0 0 1 0) nil nil
-          nil (system/date-time 2020 1 1 0 0 0 0) nil
-          nil (system/date-time 2020 1 1 0 0 1 0) nil
-          nil nil nil
+          (system/date-time 2020 1 1 0 0 0 0) (system/date-time 2020 1 1 0 0 0 0) true?
+          (system/date-time 2020 1 1 0 0 0 0) (system/date-time 2020 1 1 0 0 1 0) false?
+          (system/date-time 2020 1 1 0 0 0 0) nil nil?
+          (system/date-time 2020 1 1 0 0 1 0) (system/date-time 2020 1 1 0 0 0 0) false?
+          (system/date-time 2020 1 1 0 0 1 0) (system/date-time 2020 1 1 0 0 1 0) true?
+          (system/date-time 2020 1 1 0 0 1 0) nil nil?
+          nil (system/date-time 2020 1 1 0 0 0 0) nil?
+          nil (system/date-time 2020 1 1 0 0 1 0) nil?
+          nil nil nil?
 
-          (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) true
-          (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) false
-          (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) nil nil
-          (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) false
-          (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) true
-          (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) nil nil
-          nil (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) nil
-          nil (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) nil
-          nil nil nil))
+          (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) true?
+          (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) false?
+          (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) nil nil?
+          (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) false?
+          (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) true?
+          (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) nil nil?
+          nil (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) nil?
+          nil (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) nil?
+          nil nil nil?))
 
       (testing "with date"
-        (are [a b res] (= res (system/equals a b))
-          #system/date-time"2020" #system/date"2020" true
-          #system/date-time"2020" #system/date"2021" false
-          #system/date-time"2020-01" #system/date"2020-01" true
-          #system/date-time"2020-02" #system/date"2020-01" false
-          #system/date-time"2020-01-01" #system/date"2020-01-01" true
-          #system/date-time"2020-01-02" #system/date"2020-01-01" false)))
+        (are [a b pred] (pred (system/equals a b))
+          #system/date-time"2020" #system/date"2020" true?
+          #system/date-time"2020" #system/date"2021" false?
+          #system/date-time"2020-01" #system/date"2020-01" true?
+          #system/date-time"2020-02" #system/date"2020-01" false?
+          #system/date-time"2020-01-01" #system/date"2020-01-01" true?
+          #system/date-time"2020-01-02" #system/date"2020-01-01" false?)))
 
     (testing "different precision"
       (testing "within date-time"
-        (are [a b res] (= res (system/equals a b))
-          #system/date-time"2020" #system/date-time"2020-01" nil
-          #system/date-time"2020-01" #system/date-time"2020" nil
-          #system/date-time"2020-01" #system/date-time"2020-01-01" nil
-          #system/date-time"2020-01-01" #system/date-time"2020-01" nil
-          (system/date-time 2020 1 1 0 0 0 0) (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) nil
-          (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 0 0) nil))
+        (are [a b pred] (pred (system/equals a b))
+          #system/date-time"2020" #system/date-time"2020-01" nil?
+          #system/date-time"2020-01" #system/date-time"2020" nil?
+          #system/date-time"2020-01" #system/date-time"2020-01-01" nil?
+          #system/date-time"2020-01-01" #system/date-time"2020-01" nil?
+          (system/date-time 2020 1 1 0 0 0 0) (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) nil?
+          (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 0 0) nil?))
 
       (testing "with date"
-        (are [a b res] (= res (system/equals a b))
-          #system/date-time"2020-01" #system/date"2020" nil
-          #system/date-time"2020" #system/date"2020-01" nil
-          #system/date-time"2020-01-01" #system/date"2020-01" nil
-          #system/date-time"2020-01" #system/date"2020-01-01" nil))))
+        (are [a b pred] (pred (system/equals a b))
+          #system/date-time"2020-01" #system/date"2020" nil?
+          #system/date-time"2020" #system/date"2020-01" nil?
+          #system/date-time"2020-01-01" #system/date"2020-01" nil?
+          #system/date-time"2020-01" #system/date"2020-01-01" nil?))))
 
   (testing "hash-code"
     (testing "DateTimeYear hash-code equals that of DateYear"
@@ -653,19 +653,19 @@
     (is (= (system/time 3 4) (LocalTime/of 3 4))))
 
   (testing "system equals"
-    (are [a b res] (= res (system/equals a b))
-      (LocalTime/of 0 0 0) (LocalTime/of 0 0 0) true
-      (LocalTime/of 0 0 0) (LocalTime/of 0 0 1) false
-      (LocalTime/of 0 0 0) nil nil
-      (LocalTime/of 0 0 1) (LocalTime/of 0 0 0) false
-      (LocalTime/of 0 0 1) (LocalTime/of 0 0 1) true
-      (LocalTime/of 0 0 1) nil nil
-      nil (LocalTime/of 0 0 0) nil
-      nil (LocalTime/of 0 0 1) nil
-      nil nil nil
+    (are [a b pred] (pred (system/equals a b))
+      (LocalTime/of 0 0 0) (LocalTime/of 0 0 0) true?
+      (LocalTime/of 0 0 0) (LocalTime/of 0 0 1) false?
+      (LocalTime/of 0 0 0) nil nil?
+      (LocalTime/of 0 0 1) (LocalTime/of 0 0 0) false?
+      (LocalTime/of 0 0 1) (LocalTime/of 0 0 1) true?
+      (LocalTime/of 0 0 1) nil nil?
+      nil (LocalTime/of 0 0 0) nil?
+      nil (LocalTime/of 0 0 1) nil?
+      nil nil nil?
 
-      (LocalTime/of 0 0 0) (Object.) false
-      (Object.) (LocalTime/of 0 0 0) false)))
+      (LocalTime/of 0 0 0) (Object.) false?
+      (Object.) (LocalTime/of 0 0 0) false?)))
 
 
 (deftest parse-time-test

@@ -35,17 +35,17 @@
 
   (testing "vector with one element"
     (testing "matching pred"
-      (is (= true (coll/some int? [1]))))
+      (is (true? (coll/some int? [1]))))
 
     (testing "none matching pred"
       (is (nil? (coll/some string? [1])))))
 
   (testing "vector with two elements"
     (testing "matching pred on first"
-      (is (= true (coll/some int? [1 "1"]))))
+      (is (true? (coll/some int? [1 "1"]))))
 
     (testing "matching pred on second"
-      (is (= true (coll/some string? [1 "1"]))))
+      (is (true? (coll/some string? [1 "1"]))))
 
     (testing "none matching pred"
       (is (nil? (coll/some string? [1 2]))))))

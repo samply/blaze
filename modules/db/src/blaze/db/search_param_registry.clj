@@ -126,7 +126,6 @@
 
 
 (defn- index-compartment-def
-  "Returns a map from linked resource type to "
   {:arglists '([search-param-index compartment-def])}
   [search-param-index {def-code :code resource-defs :resource}]
   (into

@@ -45,7 +45,7 @@
     (given-thrown (ig/init {:blaze.db/tx-cache {:kv-store nil}})
       :key := :blaze.db/tx-cache
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `blaze.db.kv/store?))
+      [:explain ::s/problems 0 :pred] := `kv/store?))
 
   (testing "invalid max-size"
     (given-thrown (ig/init {:blaze.db/tx-cache

@@ -1,24 +1,3 @@
-{:lint-as
- {blaze.module.test-util/with-system clojure.core/with-open}
-
- :linters
- {:unsorted-required-namespaces
-  {:level :error}
-
-  :single-key-in
-  {:level :warning}
-
-  :keyword-binding
-  {:level :error}
-
-  :reduce-without-init
-  {:level :warning}
-
-  :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}
-
-  :consistent-alias
-  {:aliases
-   {blaze.scheduler sched}}}
-
- :skip-comments true}
+{:config-paths
+ ["../../../.clj-kondo/root"
+  "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]}

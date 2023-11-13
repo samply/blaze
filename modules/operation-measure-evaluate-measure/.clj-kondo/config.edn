@@ -1,34 +1,10 @@
-{:lint-as
- {blaze.anomaly/if-ok clojure.core/let
-  blaze.anomaly/when-ok clojure.core/let
-  blaze.db.api-stub/with-system-data clojure.core/with-open
-  blaze.fhir.operation.evaluate-measure-test/with-handler clojure.core/fn
-  blaze.module.test-util/with-system clojure.core/with-open
-  prometheus.alpha/defcounter clojure.core/def
-  prometheus.alpha/defhistogram clojure.core/def}
+{:config-paths
+ ["../../../.clj-kondo/root"
+  "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"
+  "../../async/resources/clj-kondo.exports/blaze/async"
+  "../../db-stub/resources/clj-kondo.exports/blaze/db-stub"
+  "../../module-base/resources/clj-kondo.exports/prom-metrics/prom-metrics"
+  "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
 
- :linters
- {:unsorted-required-namespaces
-  {:level :error}
-
-  :single-key-in
-  {:level :warning}
-
-  :keyword-binding
-  {:level :error}
-
-  :reduce-without-init
-  {:level :warning}
-
-  :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}
-
-  :consistent-alias
-  {:aliases
-   {blaze.db.api d
-    blaze.elm.compiler.external-data ed
-    blaze.elm.expression expr
-    cognitect.anomalies anom
-    ring.util.response ring}}}
-
- :skip-comments true}
+ :lint-as
+ {blaze.fhir.operation.evaluate-measure-test/with-handler clojure.core/fn}}

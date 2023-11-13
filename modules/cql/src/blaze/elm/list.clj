@@ -129,8 +129,8 @@
 ;; 19.24. ProperContains
 (extend-protocol p/ProperContains
   PersistentVector
-  (proper-contains [list x _]
-    (and (p/contains list x _) (> (.count list) 1)))
+  (proper-contains [list x precision]
+    (and (p/contains list x precision) (> (.count list) 1)))
 
   IReduceInit
   (proper-contains [list x precision]
@@ -140,8 +140,8 @@
 ;; 19.26. ProperIncludes
 (extend-protocol p/ProperIncludes
   PersistentVector
-  (proper-includes [x y _]
-    (and (p/includes x y _) (> (.count x) (count y))))
+  (proper-includes [x y precision]
+    (and (p/includes x y precision) (> (.count x) (count y))))
 
   IReduceInit
   (proper-includes [x y precision]

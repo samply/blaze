@@ -1,26 +1,6 @@
-{:lint-as
- {blaze.db.kv.mem-test/with-system-data clojure.core/with-open
-  blaze.module.test-util/with-system clojure.core/with-open}
+{:config-paths
+ ["../../../.clj-kondo/root"
+  "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
 
- :linters
- {:unsorted-required-namespaces
-  {:level :error}
-
-  :single-key-in
-  {:level :warning}
-
-  :keyword-binding
-  {:level :error}
-
-  :reduce-without-init
-  {:level :warning}
-
-  :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}
-
-  :consistent-alias
-  {:aliases
-   {blaze.coll.spec cs
-    taoensso.timbre log}}}
-
- :skip-comments true}
+ :lint-as
+ {blaze.db.kv.mem-test/with-system-data clojure.core/with-open}}
