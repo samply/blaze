@@ -1,6 +1,5 @@
 (ns blaze.db.kv.rocksdb.metrics-spec
   (:require
-    [blaze.db.kv :as-alias kv]
     [blaze.db.kv.rocksdb :as-alias rocksdb]
     [blaze.db.kv.rocksdb.metrics :as metrics]
     [blaze.db.kv.rocksdb.metrics.spec]

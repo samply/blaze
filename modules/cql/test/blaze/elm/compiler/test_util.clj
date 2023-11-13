@@ -5,7 +5,6 @@
     [blaze.elm.compiler.core :as core]
     [blaze.elm.compiler.core-spec]
     [blaze.elm.compiler.external-data :as ed]
-    [blaze.elm.expression :as-alias expr]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [blaze.elm.spec]

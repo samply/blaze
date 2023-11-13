@@ -3,11 +3,11 @@
     [blaze.fhir.spec.type.protocols :as p]
     [clojure.string :as str])
   (:import
-    [java.util Arrays]
     [clojure.lang PersistentVector]
     [com.fasterxml.jackson.core JsonGenerator SerializableString]
+    [java.io Writer]
     [java.nio.charset StandardCharsets]
-    [java.io Writer]))
+    [java.util Arrays]))
 
 
 (set! *warn-on-reflection* true)

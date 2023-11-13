@@ -18,12 +18,12 @@
     [clojure.test.check.properties :as prop]
     [jsonista.core :as j])
   (:import
+    [com.fasterxml.jackson.core SerializableString]
     [com.fasterxml.jackson.core.io JsonStringEncoder]
     [com.fasterxml.jackson.databind ObjectMapper]
     [com.google.common.hash Hashing]
     [java.nio.charset StandardCharsets]
-    [java.time Instant LocalTime OffsetDateTime ZoneOffset]
-    [com.fasterxml.jackson.core SerializableString]))
+    [java.time Instant LocalTime OffsetDateTime ZoneOffset]))
 
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")

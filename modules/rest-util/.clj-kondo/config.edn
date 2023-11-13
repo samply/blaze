@@ -1,27 +1,4 @@
-{:lint-as
- {blaze.async.comp/do-sync clojure.core/let
-  blaze.db.api-stub/with-system-data clojure.core/with-open
-  blaze.module.test-util/with-system clojure.core/with-open}
-
- :linters
- {:unsorted-required-namespaces
-  {:level :error}
-
-  :single-key-in
-  {:level :warning}
-
-  :keyword-binding
-  {:level :error}
-
-  :reduce-without-init
-  {:level :warning}
-
-  :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}
-
-  :consistent-alias
-  {:aliases
-   {blaze.db.api d
-    cognitect.anomalies anom}}}
-
- :skip-comments true}
+{:config-paths
+ ["../../../.clj-kondo/root"
+  "../../async/resources/clj-kondo.exports/blaze/async"
+  "../../db-stub/resources/clj-kondo.exports/blaze/db-stub"]}

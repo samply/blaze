@@ -1,51 +1,20 @@
-{:lint-as
- {blaze.anomaly/when-ok clojure.core/let
-  blaze.anomaly/if-ok clojure.core/let
-  blaze.async.comp/do-sync clojure.core/let
-  blaze.db.api-test-perf/with-system-data clojure.core/with-open
+{:config-paths
+ ["../../../.clj-kondo/root"
+  "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"
+  "../../async/resources/clj-kondo.exports/blaze/async"
+  "../../module-base/resources/clj-kondo.exports/prom-metrics/prom-metrics"
+  "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
+
+ :lint-as
+ {blaze.db.api-test-perf/with-system-data clojure.core/with-open
   blaze.db.impl.macros/with-open-coll clojure.core/with-open
-  blaze.db.test-util/with-system-data clojure.core/with-open
-  blaze.module.test-util/with-system clojure.core/with-open
-  prometheus.alpha/defcounter clojure.core/def
-  prometheus.alpha/defhistogram clojure.core/def}
+  blaze.db.test-util/with-system-data clojure.core/with-open}
 
  :linters
  {:unresolved-var
   {:exclude
    [clojure.spec.gen.alpha/int]}
 
-  :unsorted-required-namespaces
-  {:level :error}
-
-  :single-key-in
-  {:level :warning}
-
-  :keyword-binding
-  {:level :error}
-
-  :reduce-without-init
-  {:level :warning}
-
-  :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}
-
   :consistent-alias
   {:aliases
-   {blaze.anomaly ba
-    blaze.async.comp ac
-    blaze.coll.spec cs
-    blaze.db.api d
-    blaze.db.kv kv
-    blaze.db.impl.protocols p
-    blaze.db.search-param-registry sr
-    blaze.executors ex
-    buddy.auth auth
-    cognitect.anomalies anom
-    clojure.java.io io
-    clojure.spec.alpha s
-    clojure.string str
-    integrant.core ig
-    prometheus.alpha prom
-    taoensso.timbre log}}}
-
- :skip-comments true}
+   {blaze.db.impl.protocols p}}}}

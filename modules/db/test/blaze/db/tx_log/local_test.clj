@@ -293,12 +293,12 @@
 
     (testing "with failing kv-store"
       (with-system [{tx-log ::tx-log/local} failing-kv-store-system]
-        (-> (given-failed-future
-              (tx-log/submit
-                tx-log
-                [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
-                nil)
-              ::anom/message := "put-error"))
+        (given-failed-future
+          (tx-log/submit
+            tx-log
+            [{:op "create" :type "Patient" :id "0" :hash patient-hash-0}]
+            nil)
+          ::anom/message := "put-error")
 
         (with-open [queue (tx-log/new-queue tx-log 1)]
           (is (empty? (tx-log/poll! queue (time/millis 10)))))))))

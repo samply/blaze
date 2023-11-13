@@ -45,8 +45,8 @@
          [:sort param :asc])])))
 
 
-(defn clauses [{:strs [_sort] :as query-params}]
-  (into (if (str/blank? _sort) [] (sort-clauses _sort))
+(defn clauses [{sort "_sort" :as query-params}]
+  (into (if (str/blank? sort) [] (sort-clauses sort))
         query-params->clauses-xf query-params))
 
 

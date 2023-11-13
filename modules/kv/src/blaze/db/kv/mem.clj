@@ -11,8 +11,8 @@
     [integrant.core :as ig]
     [taoensso.timbre :as log])
   (:import
-    [java.util Arrays Comparator]
-    [java.lang AutoCloseable]))
+    [java.lang AutoCloseable]
+    [java.util Arrays Comparator]))
 
 
 (set! *warn-on-reflection* true)

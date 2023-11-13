@@ -67,16 +67,16 @@
 ;; argument evaluates to true or null, the result is false.
 (deftest compile-is-false-test
   (testing "Static"
-    (are [x res] (= res (c/compile {} (elm/is-false x)))
-      #elm/boolean "true" false
-      #elm/boolean "false" true
-      {:type "Null"} false))
+    (are [x pred] (pred (c/compile {} (elm/is-false x)))
+      #elm/boolean "true" false?
+      #elm/boolean "false" true?
+      {:type "Null"} false?))
 
   (testing "Dynamic"
-    (are [x res] (= res (ctu/dynamic-compile-eval (elm/is-false x)))
-      #elm/parameter-ref "true" false
-      #elm/parameter-ref "false" true
-      #elm/parameter-ref "nil" false))
+    (are [x pred] (pred (ctu/dynamic-compile-eval (elm/is-false x)))
+      #elm/parameter-ref "true" false?
+      #elm/parameter-ref "false" true?
+      #elm/parameter-ref "nil" false?))
 
   (ctu/testing-unary-dynamic elm/is-false)
 
@@ -90,16 +90,16 @@
 ;; is false.
 (deftest compile-is-null-test
   (testing "Static"
-    (are [x res] (= res (c/compile {} (elm/is-null x)))
-      #elm/boolean "true" false
-      #elm/boolean "false" false
-      {:type "Null"} true))
+    (are [x pred] (pred (c/compile {} (elm/is-null x)))
+      #elm/boolean "true" false?
+      #elm/boolean "false" false?
+      {:type "Null"} true?))
 
   (testing "Dynamic"
-    (are [x res] (= res (ctu/dynamic-compile-eval (elm/is-null x)))
-      #elm/parameter-ref "true" false
-      #elm/parameter-ref "false" false
-      #elm/parameter-ref "nil" true))
+    (are [x pred] (pred (ctu/dynamic-compile-eval (elm/is-null x)))
+      #elm/parameter-ref "true" false?
+      #elm/parameter-ref "false" false?
+      #elm/parameter-ref "nil" true?))
 
   (ctu/testing-unary-dynamic elm/is-null)
 
@@ -113,16 +113,16 @@
 ;; evaluates to false or null, the result is false.
 (deftest compile-is-true-test
   (testing "Static"
-    (are [x res] (= res (c/compile {} (elm/is-true x)))
-      #elm/boolean "true" true
-      #elm/boolean "false" false
-      {:type "Null"} false))
+    (are [x pred] (pred (c/compile {} (elm/is-true x)))
+      #elm/boolean "true" true?
+      #elm/boolean "false" false?
+      {:type "Null"} false?))
 
   (testing "Dynamic"
-    (are [x res] (= res (ctu/dynamic-compile-eval (elm/is-true x)))
-      #elm/parameter-ref "true" true
-      #elm/parameter-ref "false" false
-      #elm/parameter-ref "nil" false))
+    (are [x pred] (pred (ctu/dynamic-compile-eval (elm/is-true x)))
+      #elm/parameter-ref "true" true?
+      #elm/parameter-ref "false" false?
+      #elm/parameter-ref "nil" false?))
 
   (ctu/testing-unary-dynamic elm/is-true)
 

@@ -80,7 +80,7 @@
 
 
 (defn compartment-query
-  "Iterates over the CSV index "
+  "Iterates over the CSV index."
   [context compartment tid clauses]
   (let [[[search-param _ _ values] & other-clauses] clauses]
     (if (seq other-clauses)

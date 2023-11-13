@@ -114,20 +114,20 @@
 ;; If either argument is null, the result is null.
 (deftest compile-ends-with-test
   (testing "static"
-    (are [s suffix res] (= res (c/compile {} (elm/ends-with [s suffix])))
-      #elm/string "a" #elm/string "a" true
-      #elm/string "ab" #elm/string "b" true
+    (are [s suffix pred] (pred (c/compile {} (elm/ends-with [s suffix])))
+      #elm/string "a" #elm/string "a" true?
+      #elm/string "ab" #elm/string "b" true?
 
-      #elm/string "a" #elm/string "b" false
-      #elm/string "ba" #elm/string "b" false))
+      #elm/string "a" #elm/string "b" false?
+      #elm/string "ba" #elm/string "b" false?))
 
   (testing "Dynamic"
-    (are [s suffix res] (= res (ctu/dynamic-compile-eval (elm/ends-with [s suffix])))
-      #elm/parameter-ref "a" #elm/string "a" true
-      #elm/parameter-ref "ab" #elm/string "b" true
+    (are [s suffix pred] (pred (ctu/dynamic-compile-eval (elm/ends-with [s suffix])))
+      #elm/parameter-ref "a" #elm/string "a" true?
+      #elm/parameter-ref "ab" #elm/string "b" true?
 
-      #elm/parameter-ref "a" #elm/string "b" false
-      #elm/parameter-ref "ba" #elm/string "b" false))
+      #elm/parameter-ref "a" #elm/string "b" false?
+      #elm/parameter-ref "ba" #elm/string "b" false?))
 
   (ctu/testing-binary-null elm/ends-with #elm/string "a")
 
@@ -299,10 +299,10 @@
 ;; such, CQL does not prescribe a particular dialect, but recommends the use of
 ;; the PCRE dialect.
 (deftest compile-matches-test
-  (are [s pattern res] (= res (c/compile {} (elm/matches [s pattern])))
-    #elm/string "a" #elm/string "a" true
+  (are [s pattern pred] (pred (c/compile {} (elm/matches [s pattern])))
+    #elm/string "a" #elm/string "a" true?
 
-    #elm/string "a" #elm/string "\\d" false)
+    #elm/string "a" #elm/string "\\d" false?)
 
   (ctu/testing-binary-null elm/matches #elm/string "a")
 
@@ -434,20 +434,20 @@
 ;; If either argument is null, the result is null.
 (deftest compile-starts-with-test
   (testing "static"
-    (are [s prefix res] (= res (c/compile {} (elm/starts-with [s prefix])))
-      #elm/string "a" #elm/string "a" true
-      #elm/string "ba" #elm/string "b" true
+    (are [s prefix pred] (pred (c/compile {} (elm/starts-with [s prefix])))
+      #elm/string "a" #elm/string "a" true?
+      #elm/string "ba" #elm/string "b" true?
 
-      #elm/string "a" #elm/string "b" false
-      #elm/string "ab" #elm/string "b" false))
+      #elm/string "a" #elm/string "b" false?
+      #elm/string "ab" #elm/string "b" false?))
 
   (testing "Dynamic"
-    (are [s prefix res] (= res (ctu/dynamic-compile-eval (elm/starts-with [s prefix])))
-      #elm/parameter-ref "a" #elm/string "a" true
-      #elm/parameter-ref "ba" #elm/string "b" true
+    (are [s prefix pred] (pred (ctu/dynamic-compile-eval (elm/starts-with [s prefix])))
+      #elm/parameter-ref "a" #elm/string "a" true?
+      #elm/parameter-ref "ba" #elm/string "b" true?
 
-      #elm/parameter-ref "a" #elm/string "b" false
-      #elm/parameter-ref "ab" #elm/string "b" false))
+      #elm/parameter-ref "a" #elm/string "b" false?
+      #elm/parameter-ref "ab" #elm/string "b" false?))
 
   (ctu/testing-binary-null elm/starts-with #elm/string "a")
 
@@ -461,7 +461,7 @@
 ;; The Substring operator returns the string within stringToSub, starting at the
 ;; 0-based index startIndex, and consisting of length characters.
 ;;
-;; If length is ommitted, the substring returned starts at startIndex and
+;; If length is omitted, the substring returned starts at startIndex and
 ;; continues to the end of stringToSub.
 ;;
 ;; If stringToSub or startIndex is null, or startIndex is out of range, the

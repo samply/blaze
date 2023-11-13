@@ -56,13 +56,13 @@
 
   (testing "Patient.active"
     (testing "value"
-      (are [x]
-        (= x (first (eval "Patient.active"
-                          {:fhir/type :fhir/Patient
-                           :id "foo"
-                           :active x})))
-        true
-        false))
+      (are [x pred]
+        (pred (first (eval "Patient.active"
+                           {:fhir/type :fhir/Patient
+                            :id "foo"
+                            :active x})))
+        true true?
+        false false?))
     (testing "type"
       (are [x]
         (= :fhir/boolean
@@ -74,13 +74,13 @@
         false)))
 
   (testing "(Observation.value as boolean)"
-    (are [x]
-      (= x (first (eval "(Observation.value as boolean)"
-                        {:fhir/type :fhir/Observation
-                         :id "foo"
-                         :value x})))
-      true
-      false)))
+    (are [x pred]
+      (pred (first (eval "(Observation.value as boolean)"
+                         {:fhir/type :fhir/Observation
+                          :id "foo"
+                          :value x})))
+      true true?
+      false false?)))
 
 
 

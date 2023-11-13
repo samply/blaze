@@ -811,48 +811,48 @@
 ;; If either argument is null, the result is null.
 (deftest compile-same-as-test
   (testing "Date"
-    (are [x y res] (= res (ctu/compile-binop elm/same-as elm/date x y))
-      "2019" "2019" true
-      "2019" "2020" false
-      "2019-04" "2019-04" true
-      "2019-04" "2019-05" false
-      "2019-04-17" "2019-04-17" true
-      "2019-04-17" "2019-04-18" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/same-as elm/date x y))
+      "2019" "2019" true?
+      "2019" "2020" false?
+      "2019-04" "2019-04" true?
+      "2019-04" "2019-05" false?
+      "2019-04-17" "2019-04-17" true?
+      "2019-04-17" "2019-04-18" false?)
 
     (ctu/testing-binary-null elm/same-as #elm/date "2019")
     (ctu/testing-binary-null elm/same-as #elm/date "2019-04")
     (ctu/testing-binary-null elm/same-as #elm/date "2019-04-17")
 
     (testing "with year precision"
-      (are [x y res] (= res (ctu/compile-binop-precision elm/same-as elm/date x y "year"))
-        "2019" "2019" true
-        "2019" "2020" false
-        "2019-04" "2019-04" true
-        "2019-04" "2019-05" true
-        "2019-04-17" "2019-04-17" true
-        "2019-04-17" "2019-04-18" true)))
+      (are [x y pred] (pred (ctu/compile-binop-precision elm/same-as elm/date x y "year"))
+        "2019" "2019" true?
+        "2019" "2020" false?
+        "2019-04" "2019-04" true?
+        "2019-04" "2019-05" true?
+        "2019-04-17" "2019-04-17" true?
+        "2019-04-17" "2019-04-18" true?)))
 
   (testing "DateTime"
-    (are [x y res] (= res (ctu/compile-binop elm/same-as elm/date-time x y))
-      "2019" "2019" true
-      "2019" "2020" false
-      "2019-04" "2019-04" true
-      "2019-04" "2019-05" false
-      "2019-04-17" "2019-04-17" true
-      "2019-04-17" "2019-04-18" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/same-as elm/date-time x y))
+      "2019" "2019" true?
+      "2019" "2020" false?
+      "2019-04" "2019-04" true?
+      "2019-04" "2019-05" false?
+      "2019-04-17" "2019-04-17" true?
+      "2019-04-17" "2019-04-18" false?)
 
     (ctu/testing-binary-null elm/same-as #elm/date-time"2019")
     (ctu/testing-binary-null elm/same-as #elm/date-time"2019-04")
     (ctu/testing-binary-null elm/same-as #elm/date-time"2019-04-17")
 
     (testing "with year precision"
-      (are [x y res] (= res (ctu/compile-binop-precision elm/same-as elm/date-time x y "year"))
-        "2019" "2019" true
-        "2019" "2020" false
-        "2019-04" "2019-04" true
-        "2019-04" "2019-05" true
-        "2019-04-17" "2019-04-17" true
-        "2019-04-17" "2019-04-18" true)))
+      (are [x y pred] (pred (ctu/compile-binop-precision elm/same-as elm/date-time x y "year"))
+        "2019" "2019" true?
+        "2019" "2020" false?
+        "2019-04" "2019-04" true?
+        "2019-04" "2019-05" true?
+        "2019-04-17" "2019-04-17" true?
+        "2019-04-17" "2019-04-18" true?)))
 
   (ctu/testing-binary-dynamic elm/same-as)
 
@@ -908,59 +908,59 @@
 ;; If either argument is null, the result is null.
 (deftest compile-same-or-before-test
   (testing "Interval"
-    (are [x y res] (= res (ctu/compile-binop elm/same-or-before elm/interval x y))
+    (are [x y pred] (pred (ctu/compile-binop elm/same-or-before elm/interval x y))
       [#elm/integer "1" #elm/integer "2"]
-      [#elm/integer "2" #elm/integer "3"] true))
+      [#elm/integer "2" #elm/integer "3"] true?))
 
   (testing "Date"
-    (are [x y res] (= res (ctu/compile-binop elm/same-or-before elm/date x y))
-      "2019" "2020" true
-      "2019" "2019" true
-      "2019" "2018" false
-      "2019-04" "2019-05" true
-      "2019-04" "2019-04" true
-      "2019-04" "2019-03" false
-      "2019-04-17" "2019-04-18" true
-      "2019-04-17" "2019-04-17" true
-      "2019-04-17" "2019-04-16" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/same-or-before elm/date x y))
+      "2019" "2020" true?
+      "2019" "2019" true?
+      "2019" "2018" false?
+      "2019-04" "2019-05" true?
+      "2019-04" "2019-04" true?
+      "2019-04" "2019-03" false?
+      "2019-04-17" "2019-04-18" true?
+      "2019-04-17" "2019-04-17" true?
+      "2019-04-17" "2019-04-16" false?)
 
     (ctu/testing-binary-null elm/same-or-before #elm/date "2019")
     (ctu/testing-binary-null elm/same-or-before #elm/date "2019-04")
     (ctu/testing-binary-null elm/same-or-before #elm/date "2019-04-17")
 
     (testing "with year precision"
-      (are [x y res] (= res (ctu/compile-binop-precision elm/same-or-before elm/date x y "year"))
-        "2019" "2020" true
-        "2019" "2019" true
-        "2019" "2018" false
-        "2019-04" "2019-05" true
-        "2019-04" "2019-04" true
-        "2019-04" "2019-03" true)))
+      (are [x y pred] (pred (ctu/compile-binop-precision elm/same-or-before elm/date x y "year"))
+        "2019" "2020" true?
+        "2019" "2019" true?
+        "2019" "2018" false?
+        "2019-04" "2019-05" true?
+        "2019-04" "2019-04" true?
+        "2019-04" "2019-03" true?)))
 
   (testing "DateTime"
-    (are [x y res] (= res (ctu/compile-binop elm/same-or-before elm/date-time x y))
-      "2019" "2020" true
-      "2019" "2019" true
-      "2019" "2018" false
-      "2019-04" "2019-05" true
-      "2019-04" "2019-04" true
-      "2019-04" "2019-03" false
-      "2019-04-17" "2019-04-18" true
-      "2019-04-17" "2019-04-17" true
-      "2019-04-17" "2019-04-16" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/same-or-before elm/date-time x y))
+      "2019" "2020" true?
+      "2019" "2019" true?
+      "2019" "2018" false?
+      "2019-04" "2019-05" true?
+      "2019-04" "2019-04" true?
+      "2019-04" "2019-03" false?
+      "2019-04-17" "2019-04-18" true?
+      "2019-04-17" "2019-04-17" true?
+      "2019-04-17" "2019-04-16" false?)
 
     (ctu/testing-binary-null elm/same-or-before #elm/date-time"2019")
     (ctu/testing-binary-null elm/same-or-before #elm/date-time"2019-04")
     (ctu/testing-binary-null elm/same-or-before #elm/date-time"2019-04-17")
 
     (testing "with year precision"
-      (are [x y res] (= res (ctu/compile-binop-precision elm/same-or-before elm/date-time x y "year"))
-        "2019" "2020" true
-        "2019" "2019" true
-        "2019" "2018" false
-        "2019-04" "2019-05" true
-        "2019-04" "2019-04" true
-        "2019-04" "2019-03" true)))
+      (are [x y pred] (pred (ctu/compile-binop-precision elm/same-or-before elm/date-time x y "year"))
+        "2019" "2020" true?
+        "2019" "2019" true?
+        "2019" "2018" false?
+        "2019-04" "2019-05" true?
+        "2019-04" "2019-04" true?
+        "2019-04" "2019-03" true?)))
 
   (ctu/testing-binary-dynamic elm/same-or-before)
 
@@ -1016,59 +1016,59 @@
 ;; If either argument is null, the result is null.
 (deftest compile-same-or-after-test
   (testing "Interval"
-    (are [x y res] (= res (ctu/compile-binop elm/same-or-after elm/interval x y))
+    (are [x y pred] (pred (ctu/compile-binop elm/same-or-after elm/interval x y))
       [#elm/integer "2" #elm/integer "3"]
-      [#elm/integer "1" #elm/integer "2"] true))
+      [#elm/integer "1" #elm/integer "2"] true?))
 
   (testing "Date"
-    (are [x y res] (= res (ctu/compile-binop elm/same-or-after elm/date x y))
-      "2019" "2018" true
-      "2019" "2019" true
-      "2019" "2020" false
-      "2019-04" "2019-03" true
-      "2019-04" "2019-04" true
-      "2019-04" "2019-05" false
-      "2019-04-17" "2019-04-16" true
-      "2019-04-17" "2019-04-17" true
-      "2019-04-17" "2019-04-18" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/same-or-after elm/date x y))
+      "2019" "2018" true?
+      "2019" "2019" true?
+      "2019" "2020" false?
+      "2019-04" "2019-03" true?
+      "2019-04" "2019-04" true?
+      "2019-04" "2019-05" false?
+      "2019-04-17" "2019-04-16" true?
+      "2019-04-17" "2019-04-17" true?
+      "2019-04-17" "2019-04-18" false?)
 
     (ctu/testing-binary-null elm/same-or-after #elm/date "2019")
     (ctu/testing-binary-null elm/same-or-after #elm/date "2019-04")
     (ctu/testing-binary-null elm/same-or-after #elm/date "2019-04-17")
 
     (testing "with year precision"
-      (are [x y res] (= res (ctu/compile-binop-precision elm/same-or-after elm/date x y "year"))
-        "2019" "2018" true
-        "2019" "2019" true
-        "2019" "2020" false
-        "2019-04" "2019-03" true
-        "2019-04" "2019-04" true
-        "2019-04" "2019-05" true)))
+      (are [x y pred] (pred (ctu/compile-binop-precision elm/same-or-after elm/date x y "year"))
+        "2019" "2018" true?
+        "2019" "2019" true?
+        "2019" "2020" false?
+        "2019-04" "2019-03" true?
+        "2019-04" "2019-04" true?
+        "2019-04" "2019-05" true?)))
 
   (testing "DateTime"
-    (are [x y res] (= res (ctu/compile-binop elm/same-or-after elm/date-time x y))
-      "2019" "2018" true
-      "2019" "2019" true
-      "2019" "2020" false
-      "2019-04" "2019-03" true
-      "2019-04" "2019-04" true
-      "2019-04" "2019-05" false
-      "2019-04-17" "2019-04-16" true
-      "2019-04-17" "2019-04-17" true
-      "2019-04-17" "2019-04-18" false)
+    (are [x y pred] (pred (ctu/compile-binop elm/same-or-after elm/date-time x y))
+      "2019" "2018" true?
+      "2019" "2019" true?
+      "2019" "2020" false?
+      "2019-04" "2019-03" true?
+      "2019-04" "2019-04" true?
+      "2019-04" "2019-05" false?
+      "2019-04-17" "2019-04-16" true?
+      "2019-04-17" "2019-04-17" true?
+      "2019-04-17" "2019-04-18" false?)
 
     (ctu/testing-binary-null elm/same-or-after #elm/date-time"2019")
     (ctu/testing-binary-null elm/same-or-after #elm/date-time"2019-04")
     (ctu/testing-binary-null elm/same-or-after #elm/date-time"2019-04-17")
 
     (testing "with year precision"
-      (are [x y res] (= res (ctu/compile-binop-precision elm/same-or-after elm/date-time x y "year"))
-        "2019" "2018" true
-        "2019" "2019" true
-        "2019" "2020" false
-        "2019-04" "2019-03" true
-        "2019-04" "2019-04" true
-        "2019-04" "2019-05" true)))
+      (are [x y pred] (pred (ctu/compile-binop-precision elm/same-or-after elm/date-time x y "year"))
+        "2019" "2018" true?
+        "2019" "2019" true?
+        "2019" "2020" false?
+        "2019-04" "2019-03" true?
+        "2019-04" "2019-04" true?
+        "2019-04" "2019-05" true?)))
 
   (ctu/testing-binary-dynamic elm/same-or-after)
 

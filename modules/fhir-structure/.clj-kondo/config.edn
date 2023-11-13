@@ -1,45 +1,21 @@
-{:lint-as
+{:config-paths
+ ["../../../.clj-kondo/root"
+  "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
+
+ :lint-as
  {blaze.fhir.spec.type.macros/def-primitive-type clojure.core/deftype
-  blaze.fhir.spec.type.macros/defextended clojure.core/defrecord
-  blaze.module.test-util/with-system clojure.core/with-open}
+  blaze.fhir.spec.type.macros/defextended clojure.core/defrecord}
 
  :hooks
  {:macroexpand
   {blaze.fhir.spec.type.macros/def-complex-type macros/def-complex-type}}
 
  :linters
- {:unsorted-required-namespaces
-  {:level :error}
-
-  :single-key-in
-  {:level :warning}
-
-  :keyword-binding
-  {:level :error}
-
-  :unresolved-namespace
+ {:unresolved-namespace
   {:exclude [f xhtml]}
 
   :redefined-var
   {:level :off}
 
-  :reduce-without-init
-  {:level :warning}
-
-  :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}
-
-  :consistent-alias
-  {:aliases
-   {blaze.anomaly ba
-    blaze.executors ex
-    cognitect.anomalies anom
-    clojure.spec.alpha s
-    clojure.string str
-    integrant.core ig
-    taoensso.timbre log}}
-
   :unused-private-var
-  {:exclude [blaze.fhir.spec.type/at-utc]}}
-
- :skip-comments true}
+  {:exclude [blaze.fhir.spec.type/at-utc]}}}

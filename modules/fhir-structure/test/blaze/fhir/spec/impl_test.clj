@@ -377,12 +377,12 @@
       [:fhir.xml.Bundle/entry 0 :spec-form]
       := `(s2/and
             (s2/conformer
-              blaze.fhir.spec.impl/conform-xml
+              impl/conform-xml
               (fn [~'m]
                 (when ~'m
                   (xml-node/element*
                     nil
-                    (blaze.fhir.spec.impl/select-non-nil-keys ~'m [:id])
+                    (impl/select-non-nil-keys ~'m [:id])
                     (-> []
                         (impl/conj-all ::f/extension (:extension ~'m))
                         (impl/conj-all ::f/modifierExtension (:modifierExtension ~'m))
@@ -435,7 +435,7 @@
       [:fhir.xml/Coding 0 :spec-form 1 2 2 2]
       := `(xml-node/element*
             nil
-            (blaze.fhir.spec.impl/select-non-nil-keys ~'m [:id])
+            (impl/select-non-nil-keys ~'m [:id])
             (->
               []
               (impl/conj-all ::f/extension (:extension ~'m))
@@ -448,7 +448,7 @@
   (testing "XML representation of Measure unformer XML attributes"
     (given (group-by :key (impl/struct-def->spec-def (resource structure-definition-repo "Measure")))
       [:fhir.xml/Measure 0 :spec-form 1 2 2 2 2] :=
-      `(assoc (blaze.fhir.spec.impl/select-non-nil-keys ~'m []) :xmlns "http://hl7.org/fhir")))
+      `(assoc (impl/select-non-nil-keys ~'m []) :xmlns "http://hl7.org/fhir")))
 
   (testing "XML representation of Measure.url"
     (given (group-by :key (impl/struct-def->spec-def (resource structure-definition-repo "Measure")))

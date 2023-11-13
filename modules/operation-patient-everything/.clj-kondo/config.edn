@@ -1,29 +1,9 @@
-{:lint-as
- {blaze.anomaly/when-ok clojure.core/let
-  blaze.async.comp/do-sync clojure.core/let
-  blaze.db.api-stub/with-system-data clojure.core/with-open
-  blaze.operation.patient.everything-test/with-handler clojure.core/fn}
+{:config-paths
+ ["../../../.clj-kondo/root"
+  "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"
+  "../../async/resources/clj-kondo.exports/blaze/async"
+  "../../db-stub/resources/clj-kondo.exports/blaze/db-stub"
+  "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
 
- :linters
- {:unsorted-required-namespaces
-  {:level :error}
-
-  :single-key-in
-  {:level :warning}
-
-  :keyword-binding
-  {:level :error}
-
-  :reduce-without-init
-  {:level :warning}
-
-  :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}
-
-  :consistent-alias
-  {:aliases
-   {blaze.db.api d
-    blaze.test-util tu
-    ring.util.response ring}}}
-
- :skip-comments true}
+ :lint-as
+ {blaze.operation.patient.everything-test/with-handler clojure.core/fn}}

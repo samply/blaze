@@ -1,9 +1,12 @@
-{:lint-as
- {blaze.anomaly/if-ok clojure.core/let
-  blaze.anomaly/when-ok clojure.core/let
-  blaze.db.api-stub/with-system-data clojure.core/with-open
-  blaze.module.test-util/with-system clojure.core/with-open
-  blaze.elm.compiler.macros/defunop clojure.core/defn
+{:config-paths
+ ["../../../.clj-kondo/root"
+  "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"
+  "../../async/resources/clj-kondo.exports/blaze/async"
+  "../../db-stub/resources/clj-kondo.exports/blaze/db-stub"
+  "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
+
+ :lint-as
+ {blaze.elm.compiler.macros/defunop clojure.core/defn
   blaze.elm.compiler.macros/defbinop clojure.core/defn
   blaze.elm.compiler.macros/defternop clojure.core/defn
   blaze.elm.compiler.macros/defnaryop clojure.core/defn
@@ -21,39 +24,11 @@
    [clojure.spec.gen.alpha/int
     clojure.spec.gen.alpha/large-integer]}
 
-  :unsorted-required-namespaces
-  {:level :error}
+  :equals-true
+  {:level :off}
 
-  :single-key-in
-  {:level :warning}
-
-  :keyword-binding
-  {:level :error}
-
-  :reduce-without-init
-  {:level :warning}
-
-  :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}
-
-  :consistent-alias
-  {:aliases
-   {blaze.anomaly ba
-    blaze.coll.core coll
-    blaze.cql-translator t
-    blaze.db.api d
-    blaze.elm.compiler c
-    blaze.elm.compiler.external-data ed
-    blaze.elm.compiler.test-util ctu
-    blaze.elm.expression expr
-    blaze.elm.util elm-util
-    cognitect.anomalies anom
-    clojure.java.io io
-    clojure.spec.alpha s
-    clojure.string str
-    jsonista.core j}}}
+  :equals-false
+  {:level :off}}
 
  :output
- {:exclude-files ["^test/data_readers.clj"]}
-
- :skip-comments true}
+ {:exclude-files ["^test/data_readers.clj"]}}

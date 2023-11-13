@@ -1,30 +1,5 @@
-{:lint-as
- {blaze.admin-api-test/with-handler clojure.core/fn}
+{:config-paths
+ ["../../../.clj-kondo/root"]
 
- :linters
- {:unsorted-required-namespaces
-  {:level :error}
-
-  :single-key-in
-  {:level :warning}
-
-  :keyword-binding
-  {:level :error}
-
-  :reduce-without-init
-  {:level :warning}
-
-  :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}
-
-  :consistent-alias
-  {:aliases
-   {blaze.async.comp ac
-    blaze.db.kv.rocksdb rocksdb
-    clojure.spec.alpha s
-    cognitect.anomalies anom
-    integrant.core ig
-    ring.util.response ring
-    taoensso.timbre log}}}
-
- :skip-comments true}
+ :lint-as
+ {blaze.admin-api-test/with-handler clojure.core/fn}}

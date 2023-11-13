@@ -12,7 +12,6 @@
     [blaze.elm.compiler.list-operators]
     [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
     [blaze.elm.expression-spec]
-    [blaze.elm.expression.cache :as-alias expr-cache]
     [blaze.elm.literal :as elm]
     [blaze.elm.literal-spec]
     [blaze.elm.quantity :as quantity]
