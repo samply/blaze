@@ -208,4 +208,12 @@
                  distinct)
                (retrieve
                  "Observation")))
-          [:function-defs "hasDiagnosis" :function] := nil)))))
+          [:function-defs "hasDiagnosis" :function] := nil))))
+
+  (testing "with large query"
+    (st/unstrument)
+    (let [library (t/translate (slurp "test-resources/blaze/large-query.cql"))]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (given (library/compile-library node library default-opts)
+          [:expression-defs count] := 700
+          [:function-defs count] := 0)))))

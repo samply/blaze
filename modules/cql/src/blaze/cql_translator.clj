@@ -4,6 +4,7 @@
     [blaze.elm.spec]
     [jsonista.core :as j])
   (:import
+    [com.fasterxml.jackson.core JsonFactory StreamReadConstraints]
     [org.cqframework.cql.cql2elm
      CqlTranslator CqlTranslatorOptions$Options LibraryManager ModelManager]
     [org.cqframework.cql.cql2elm.quick FhirLibrarySourceProvider]))
@@ -16,9 +17,20 @@
   (into-array [CqlTranslatorOptions$Options/EnableResultTypes]))
 
 
+(def ^:private stream-read-constraints
+  "Stream read constants allowing a larger nesting depth of 5000 instead of 1000.
+
+  This is needed for large queries."
+  (-> (StreamReadConstraints/builder)
+      (.maxNestingDepth 5000)
+      (.build)))
+
+
 (def ^:private json-object-mapper
   (j/object-mapper
-    {:decode-key-fn true
+    {:factory (-> (JsonFactory.)
+                  (.setStreamReadConstraints stream-read-constraints))
+     :decode-key-fn true
      :bigdecimals true}))
 
 
