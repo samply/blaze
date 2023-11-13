@@ -18,6 +18,7 @@ The following datasets were used:
 | Dataset | # Pat. ¹ | # Res. ² | # Obs. ³ |
 |---------|---------:|---------:|---------:|
 | 100k    |    100 k |    104 M |     59 M |
+| 100k-fh |    100 k |    317 M |    191 M |
 | 1M      |      1 M |   1044 M |    593 M |
 
 ¹ Number of Patients, ² Total Number of Resources, ³ Number of Observations
@@ -47,17 +48,23 @@ cql/search.sh observation-8310-5
 cql/search.sh observation-72514-3
 ```
 
-| System | Dataset | Code    | # Hits | Time (s) | StdDev |  Pat./s |
-|--------|---------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 100k    | 17861-6 |    2 k |     0.26 |  0.158 | 384.5 k | 
-| LEA47  | 100k    | 8310-5  |   60 k |     0.28 |  0.142 | 351.4 k | 
-| LEA47  | 100k    | 72514-3 |  100 k |     0.27 |  0.128 | 367.0 k |
-| LEA47  | 1M      | 17861-6 |   25 k |     0.93 |  0.003 |   1.1 M | 
-| LEA47  | 1M      | 8310-5  |  603 k |     1.24 |  0.009 | 808.6 k | 
-| LEA47  | 1M      | 72514-3 |  998 k |     1.43 |  0.007 | 698.1 k |
-| LEA58  | 1M      | 17861-6 |   25 k |     0.86 |  0.005 |   1.1 M |
-| LEA58  | 1M      | 8310-5  |  603 k |     1.08 |  0.008 | 925.0 k | 
-| LEA58  | 1M      | 72514-3 |  998 k |     1.18 |  0.004 | 845.0 k |
+| Dataset | System | Code    | # Hits | Time (s) | StdDev |  Pat./s |
+|---------|--------|---------|-------:|---------:|-------:|--------:|
+| 100k    | LEA47  | 17861-6 |    2 k |     0.26 |  0.158 | 384.5 k | 
+| 100k    | LEA47  | 8310-5  |   60 k |     0.28 |  0.142 | 351.4 k | 
+| 100k    | LEA47  | 72514-3 |  100 k |     0.27 |  0.128 | 367.0 k |
+| 100k    | LEA58  | 17861-6 |    2 k |     0.09 |  0.001 |   1.1 M | 
+| 100k    | LEA58  | 8310-5  |   60 k |     0.10 |  0.002 | 982.1 k | 
+| 100k    | LEA58  | 72514-3 |  100 k |     0.11 |  0.001 | 872.7 k |
+| 100k-fh | LEA58  | 17861-6 |    3 k |     0.20 |  0.003 | 495.0 k |
+| 100k-fh | LEA58  | 8310-5  |   98 k |     0.21 |  0.002 | 474.6 k |
+| 100k-fh | LEA58  | 72514-3 |  100 k |     0.21 |  0.003 | 479.4 k |
+| 1M      | LEA47  | 17861-6 |   25 k |     0.93 |  0.003 |   1.1 M | 
+| 1M      | LEA47  | 8310-5  |  603 k |     1.24 |  0.009 | 808.6 k | 
+| 1M      | LEA47  | 72514-3 |  998 k |     1.43 |  0.007 | 698.1 k |
+| 1M      | LEA58  | 17861-6 |   25 k |     0.87 |  0.006 |   1.1 M |
+| 1M      | LEA58  | 8310-5  |  603 k |     1.03 |  0.003 | 972.6 k | 
+| 1M      | LEA58  | 72514-3 |  998 k |     1.14 |  0.005 | 873.6 k |
 
 The evaluation of patient based measures doesn't depend on the number of hits (patients). The time needed to evaluate a CQL expression over all patients only depends on the total number of patients. The measurements show that Blaze can evaluate about 350 k Patients per second.
 
@@ -87,17 +94,23 @@ cql/search.sh observation-body-weight-50
 cql/search.sh observation-body-weight-100
 ```
 
-| System | Dataset | Code    |   Value | # Hits | Time (s) | StdDev |  Pat./s |
-|--------|---------|---------|--------:|-------:|---------:|-------:|--------:|
-| LEA47  | 100k    | 29463-7 | 13.6 kg |   10 k |     0.68 |  0.031 | 146.9 k | 
-| LEA47  | 100k    | 29463-7 | 75.3 kg |   50 k |     0.51 |  0.033 | 197.1 k | 
-| LEA47  | 100k    | 29463-7 |  185 kg |  100 k |     0.30 |  0.106 | 331.6 k |
-| LEA47  | 1M      | 29463-7 | 13.6 kg |   99 k |    91.49 |  1.195 |  10.9 k | 
-| LEA47  | 1M      | 29463-7 | 75.3 kg |  500 k |    10.66 |  0.851 |  93.8 k | 
-| LEA47  | 1M      | 29463-7 |  185 kg |  998 k |     1.50 |  0.010 | 665.1 k |
-| LEA58  | 1M      | 29463-7 | 13.6 kg |   99 k |     5.08 |  0.006 | 196.7 k |  
-| LEA58  | 1M      | 29463-7 | 75.3 kg |  500 k |     3.66 |  0.016 | 273.5 k | 
-| LEA58  | 1M      | 29463-7 |  185 kg |  998 k |     1.36 |  0.004 | 737.2 k |
+| Dataset | System | Code    |   Value | # Hits | Time (s) | StdDev |  Pat./s |
+|---------|--------|---------|--------:|-------:|---------:|-------:|--------:|
+| 100k    | LEA47  | 29463-7 | 13.6 kg |   10 k |     0.68 |  0.031 | 146.9 k | 
+| 100k    | LEA47  | 29463-7 | 75.3 kg |   50 k |     0.51 |  0.033 | 197.1 k | 
+| 100k    | LEA47  | 29463-7 |  185 kg |  100 k |     0.30 |  0.106 | 331.6 k |
+| 100k    | LEA58  | 29463-7 | 13.6 kg |   10 k |     0.42 |  0.007 | 239.6 k |  
+| 100k    | LEA58  | 29463-7 | 75.3 kg |   50 k |     0.31 |  0.005 | 323.1 k | 
+| 100k    | LEA58  | 29463-7 |  185 kg |  100 k |     0.13 |  0.003 | 774.2 k |
+| 100k-fh | LEA58  | 29463-7 | 13.6 kg |  100 k |     0.38 |  0.005 | 260.3 k |  
+| 100k-fh | LEA58  | 29463-7 | 75.3 kg |  100 k |     0.30 |  0.004 | 336.2 k | 
+| 100k-fh | LEA58  | 29463-7 |  185 kg |  100 k |     0.24 |  0.003 | 417.0 k |
+| 1M      | LEA47  | 29463-7 | 13.6 kg |   99 k |    91.49 |  1.195 |  10.9 k | 
+| 1M      | LEA47  | 29463-7 | 75.3 kg |  500 k |    10.66 |  0.851 |  93.8 k | 
+| 1M      | LEA47  | 29463-7 |  185 kg |  998 k |     1.50 |  0.010 | 665.1 k |
+| 1M      | LEA58  | 29463-7 | 13.6 kg |   99 k |     4.60 |  0.016 | 217.4 k |  
+| 1M      | LEA58  | 29463-7 | 75.3 kg |  500 k |     3.16 |  0.014 | 316.0 k | 
+| 1M      | LEA58  | 29463-7 |  185 kg |  998 k |     1.28 |  0.007 | 781.0 k |
 
 ## Code, Date and Age Search
 
@@ -125,14 +138,18 @@ cql/search.sh hemoglobin-date-age
 cql/search.sh calcium-date-age
 ```
 
-| System | Dataset | Code       | # Hits | Time (s) | StdDev |  Pat./s |
-|--------|---------|------------|-------:|---------:|-------:|--------:|
-| LEA47  | 100k    | hemoglobin |   20 k |     0.35 |  0.034 | 286.5 k |
-| LEA47  | 100k    | calcium    |   20 k |     1.50 |  0.035 |  66.6 k |
-| LEA47  | 1M      | hemoglobin |  200 k |     2.99 |  0.026 | 334.6 k |
-| LEA47  | 1M      | calcium    |  199 k |   120.68 |  1.678 |   8.3 k |
-| LEA58  | 1M      | hemoglobin |  200 k |     1.82 |  0.012 | 550.4 k |
-| LEA58  | 1M      | calcium    |  199 k |     6.78 |  0.028 | 147.6 k |
+| Dataset | System | Code       | # Hits | Time (s) | StdDev |  Pat./s |
+|---------|--------|------------|-------:|---------:|-------:|--------:|
+| 100k    | LEA47  | hemoglobin |   20 k |     0.35 |  0.034 | 286.5 k |
+| 100k    | LEA47  | calcium    |   20 k |     1.50 |  0.035 |  66.6 k |
+| 100k    | LEA58  | hemoglobin |   20 k |     0.18 |  0.004 | 568.9 k |
+| 100k    | LEA58  | calcium    |   20 k |     0.58 |  0.008 | 171.9 k |
+| 100k-fh | LEA58  | hemoglobin |   20 k |     0.49 |  0.003 | 204.1 k |
+| 100k-fh | LEA58  | calcium    |   20 k |     1.55 |  0.015 |  64.6 k |
+| 1M      | LEA47  | hemoglobin |  200 k |     2.99 |  0.026 | 334.6 k |
+| 1M      | LEA47  | calcium    |  199 k |   120.68 |  1.678 |   8.3 k |
+| 1M      | LEA58  | hemoglobin |  200 k |     1.74 |  0.001 | 574.5 k |
+| 1M      | LEA58  | calcium    |  199 k |     6.29 |  0.033 | 159.0 k |
 
 ## Double Code Search
 
@@ -158,10 +175,12 @@ define InInitialPopulation:
 cql/search.sh condition-two
 ```
 
-| System | Dataset | # Hits | Time (s) | StdDev |  Pat./s |
-|--------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      |   87 k |     1.09 |  0.005 | 918.4 k |
-| LEA58  | 1M      |   87 k |     1.13 |  0.006 | 885.9 k |
+| Dataset | System | # Hits | Time (s) | StdDev |  Pat./s |
+|---------|--------|-------:|---------:|-------:|--------:|
+| 100k    | LEA58  |    9 k |     0.11 |  0.002 | 888.4 k |
+| 100k-fh | LEA58  |    9 k |     0.40 |  0.002 | 248.5 k |
+| 1M      | LEA47  |   87 k |     1.09 |  0.005 | 918.4 k |
+| 1M      | LEA58  |   87 k |     1.14 |  0.007 | 880.0 k |
 
 ## Ten Frequent Code Search
 
@@ -191,10 +210,12 @@ define InInitialPopulation:
 cql/search.sh condition-ten-frequent
 ```
 
-| System | Dataset | # Hits | Time (s) | StdDev |  Pat./s |
-|--------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      |  954 k |     1.80 |  0.008 | 554.5 k |
-| LEA58  | 1M      |  954 k |     1.81 |  0.012 | 551.7 k |
+| Dataset | System | # Hits | Time (s) | StdDev |  Pat./s |
+|---------|--------|-------:|---------:|-------:|--------:|
+| 100k    | LEA58  |   95 k |     0.18 |  0.004 | 540.6 k |
+| 100k-fh | LEA58  |   98 k |     0.35 |  0.001 | 284.9 k |
+| 1M      | LEA47  |  954 k |     1.80 |  0.008 | 554.5 k |
+| 1M      | LEA58  |  954 k |     1.81 |  0.012 | 552.2 k |
 
 ## Ten Rare Code Search
 
@@ -224,10 +245,12 @@ define InInitialPopulation:
 cql/search.sh condition-ten-rare
 ```
 
-| System | Dataset | # Hits | Time (s) | StdDev |  Pat./s |
-|--------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      |    4 k |     2.65 |  0.014 | 377.9 k |
-| LEA58  | 1M      |    4 k |     3.36 |  0.015 | 297.8 k |
+| Dataset | System | # Hits | Time (s) | StdDev |  Pat./s |
+|---------|--------|-------:|---------:|-------:|--------:|
+| 100k    | LEA58  |    395 |     0.32 |  0.002 | 310.5 k |
+| 100k-fh | LEA58  |    2 k |     1.63 |  0.006 |  61.2 k |
+| 1M      | LEA47  |    4 k |     2.65 |  0.014 | 377.9 k |
+| 1M      | LEA58  |    4 k |     3.38 |  0.013 | 295.5 k |
 
 ## 50 Rare Code Search
 
@@ -235,10 +258,12 @@ cql/search.sh condition-ten-rare
 cql/search.sh condition-50-rare
 ```
 
-| System | Dataset | # Hits | Time (s) | StdDev |  Pat./s |
-|--------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      |  155 k |     9.35 |  0.047 | 106.9 k |
-| LEA58  | 1M      |  155 k |    13.31 |  0.061 |  75.1 k |
+| Dataset | System | # Hits | Time (s) | StdDev |  Pat./s |
+|---------|--------|-------:|---------:|-------:|--------:|
+| 100k    | LEA58  |   15 k |     1.24 |  0.003 |  80.7 k |
+| 100k-fh | LEA58  |   16 k |     6.84 |  0.018 |  14.6 k |
+| 1M      | LEA47  |  155 k |     9.35 |  0.047 | 106.9 k |
+| 1M      | LEA58  |  155 k |    13.44 |  0.068 |  74.4 k |
 
 ## All Code Search
 
@@ -246,10 +271,12 @@ cql/search.sh condition-50-rare
 cql/search.sh condition-all
 ```
 
-| System | Dataset | # Hits | Time (s) | StdDev |  Pat./s |
-|--------|---------|-------:|---------:|-------:|--------:|
-| LEA47  | 1M      |  995 k |     4.75 |  0.014 | 210.5 k |
-| LEA58  | 1M      |  995 k |     6.00 |  0.017 | 166.7 k |
+| Dataset | System | # Hits | Time (s) | StdDev |  Pat./s |
+|---------|--------|-------:|---------:|-------:|--------:|
+| 100k    | LEA58  |   99 k |     0.59 |  0.006 | 168.5 k |
+| 100k-fh | LEA58  |  100 k |     1.55 |  0.006 |  64.7 k |
+| 1M      | LEA47  |  995 k |     4.75 |  0.014 | 210.5 k |
+| 1M      | LEA58  |  995 k |     6.10 |  0.027 | 164.0 k |
 
 ## Inpatient Stress Search
 
@@ -257,6 +284,8 @@ cql/search.sh condition-all
 cql/search.sh inpatient-stress
 ```
 
-| System | Dataset | # Hits | Time (s) | StdDev |  Pat./s |
-|--------|---------|-------:|---------:|-------:|--------:|
-| LEA58  | 1M      |   16 k |    11.77 |  0.037 |  84.9 k |
+| Dataset | System | # Hits | Time (s) | StdDev |  Pat./s |
+|---------|--------|-------:|---------:|-------:|--------:|
+| 100k    | LEA58  |    2 k |     1.16 |  0.011 |  86.2 k |
+| 100k-fh | LEA58  |    2 k |     4.41 |  0.041 |  22.7 k |
+| 1M      | LEA58  |   16 k |    11.10 |  0.046 |  90.0 k |
