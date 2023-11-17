@@ -1,24 +1,20 @@
 (ns blaze.rest-api.middleware.forwarded-test
   (:require
-    [blaze.module.test-util.ring :refer [call]]
-    [blaze.rest-api.middleware.forwarded :refer [wrap-forwarded]]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log]))
-
+   [blaze.module.test-util.ring :refer [call]]
+   [blaze.rest-api.middleware.forwarded :refer [wrap-forwarded]]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defn- handler [request respond _]
   (respond request))
-
 
 (deftest wrap-forwarded-test
   (testing "no header"

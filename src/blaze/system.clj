@@ -5,26 +5,23 @@
   The specs at the beginning of the namespace describe the config which has to
   be given to `init!``. The server port has a default of `8080`."
   (:require
-    [blaze.log]
-    [clojure.java.io :as io]
-    [clojure.string :as str]
-    [clojure.tools.reader.edn :as edn]
-    [clojure.walk :as walk]
-    [integrant.core :as ig]
-    [spec-coerce.alpha :refer [coerce]]
-    [taoensso.timbre :as log])
+   [blaze.log]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.tools.reader.edn :as edn]
+   [clojure.walk :as walk]
+   [integrant.core :as ig]
+   [spec-coerce.alpha :refer [coerce]]
+   [taoensso.timbre :as log])
   (:import
-    [java.io PushbackReader]
-    [java.security SecureRandom]
-    [java.time Clock]
-    [java.util.concurrent ThreadLocalRandom]))
-
-
+   [java.io PushbackReader]
+   [java.security SecureRandom]
+   [java.time Clock]
+   [java.util.concurrent ThreadLocalRandom]))
 
 ;; ---- Functions -------------------------------------------------------------
 
 (defrecord Cfg [env-var spec default])
-
 
 (defn- cfg
   "Creates a config entry which consists of the name of an environment variable,
@@ -38,17 +35,15 @@
           spec-form)]
     (->Cfg env-var spec default)))
 
-
 (defn- read-blaze-edn []
   (log/info "Try to read blaze.edn ...")
   (try
     (with-open [rdr (PushbackReader. (io/reader (io/resource "blaze.edn")))]
       (edn/read
-        {:readers {'blaze/ref ig/ref 'blaze/cfg cfg}}
-        rdr))
+       {:readers {'blaze/ref ig/ref 'blaze/cfg cfg}}
+       rdr))
     (catch Exception e
       (log/warn "Problem while reading blaze.edn. Skipping it." e))))
-
 
 (defn- get-blank [m k default]
   (let [v (get m k)]
@@ -56,32 +51,28 @@
       default
       v)))
 
-
 (defn resolve-config
   "Resolves config entries to their actual values with the help of an
   environment."
   [config env]
   (walk/postwalk
-    (fn [x]
-      (if (instance? Cfg x)
-        (when-let [value (get-blank env (:env-var x) (:default x))]
-          (coerce (:spec x) value))
-        x))
-    config))
-
+   (fn [x]
+     (if (instance? Cfg x)
+       (when-let [value (get-blank env (:env-var x) (:default x))]
+         (coerce (:spec x) value))
+       x))
+   config))
 
 (defn- load-namespaces [config]
   (log/info "Loading namespaces (can take up to 20 seconds) ...")
   (let [loaded-ns (ig/load-namespaces config)]
     (log/info "Loaded the following namespaces:" (str/join ", " loaded-ns))))
 
-
 (defrecord RefMap [key]
   ig/RefLike
   (ref-key [_] key)
   (ref-resolve [_ config resolvef]
     (into {} (map (fn [[k v]] [k (resolvef k v)])) (ig/find-derived config key))))
-
 
 (def ^:private root-config
   {:blaze/version "0.23.0"
@@ -138,7 +129,6 @@
     :version (ig/ref :blaze/version)
     :min-threads 2}})
 
-
 (defn- feature-enabled?
   "Determines whether a feature is enabled or not.
 
@@ -151,7 +141,6 @@
         res (and (not (str/blank? value)) (not= "false" (some-> value str/trim)))]
     (if inverse? (not res) res)))
 
-
 (defn- merge-storage
   [{:keys [storage] :as config} env]
   (let [key (get env "STORAGE" "in-memory")]
@@ -159,21 +148,19 @@
     (-> (assoc-in config [:base-config :blaze.db/storage] (keyword key))
         (update :base-config merge (get storage (keyword key))))))
 
-
 (defn- merge-features
   "Merges feature config portions of enabled features into `base-config`."
   {:arglists '([blaze-edn env])}
   [{:keys [base-config features]} env]
   (reduce
-    (fn [res {:keys [name config] :as feature}]
-      (let [enabled? (feature-enabled? env feature)]
-        (log/info "Feature" name (if enabled? "enabled" "disabled"))
-        (if enabled?
-          (merge-with merge res config)
-          res)))
-    base-config
-    features))
-
+   (fn [res {:keys [name config] :as feature}]
+     (let [enabled? (feature-enabled? env feature)]
+       (log/info "Feature" name (if enabled? "enabled" "disabled"))
+       (if enabled?
+         (merge-with merge res config)
+         res)))
+   base-config
+   features))
 
 (defn init!
   [{level "LOG_LEVEL" :or {level "info"} :as env}]
@@ -187,11 +174,8 @@
     (load-namespaces config)
     (-> config ig/prep ig/init)))
 
-
 (defn shutdown! [system]
   (ig/halt! system))
-
-
 
 ;; ---- Integrant Hooks -------------------------------------------------------
 
@@ -199,21 +183,17 @@
   [_ version]
   version)
 
-
 (defmethod ig/init-key :blaze.db/storage
   [_ storage]
   storage)
-
 
 (defmethod ig/init-key :blaze/clock
   [_ _]
   (Clock/systemDefaultZone))
 
-
 (defmethod ig/init-key :blaze/rng-fn
   [_ _]
   #(ThreadLocalRandom/current))
-
 
 (defmethod ig/init-key :blaze/secure-rng
   [_ _]

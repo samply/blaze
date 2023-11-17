@@ -1,27 +1,25 @@
 (ns blaze.db.impl.search-param.has
   "https://www.hl7.org/fhir/search.html#has"
   (:require
-    [blaze.anomaly :as ba :refer [when-ok]]
-    [blaze.async.comp :as ac]
-    [blaze.coll.core :as coll]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
-    [blaze.db.impl.protocols :as p]
-    [blaze.db.impl.search-param.special :as special]
-    [blaze.db.impl.search-param.util :as u]
-    [blaze.db.kv :as kv]
-    [blaze.fhir.spec]
-    [clojure.string :as str])
+   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.async.comp :as ac]
+   [blaze.coll.core :as coll]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.resource-handle :as rh]
+   [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
+   [blaze.db.impl.protocols :as p]
+   [blaze.db.impl.search-param.special :as special]
+   [blaze.db.impl.search-param.util :as u]
+   [blaze.db.kv :as kv]
+   [blaze.fhir.spec]
+   [clojure.string :as str])
   (:import
-    [com.github.benmanes.caffeine.cache Cache Caffeine]
-    [java.util Comparator]
-    [java.util.concurrent TimeUnit]
-    [java.util.function Function]))
-
+   [com.github.benmanes.caffeine.cache Cache Caffeine]
+   [java.util Comparator]
+   [java.util.concurrent TimeUnit]
+   [java.util.function Function]))
 
 (set! *warn-on-reflection* true)
-
 
 (defn- split-modifier [modifier]
   (if modifier
@@ -40,17 +38,14 @@
         [type chain-code code]))
     (ba/incorrect "Missing modifier of _has search param.")))
 
-
 (defn- search-param-not-found-msg [code type]
   (format "The search-param with code `%s` and type `%s` was not found."
           code type))
-
 
 (defn- resolve-search-param [index type code]
   (if-let [search-param (get-in index [type code])]
     search-param
     (ba/not-found (search-param-not-found-msg code type))))
-
 
 (defn- resolve-resource-handles!
   "Resolves a coll of resource handles of resources of type `tid`, referenced in
@@ -67,31 +62,27 @@
   {:arglists '([context rsvi search-param tid resource-handle])}
   [context rsvi {:keys [c-hash]} tid resource-handle]
   (coll/eduction
-    (u/reference-resource-handle-mapper context)
-    (let [tid-byte-string (codec/tid-byte-string tid)
-          {:keys [tid id hash]} resource-handle]
-      (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash c-hash
-                           tid-byte-string))))
-
+   (u/reference-resource-handle-mapper context)
+   (let [tid-byte-string (codec/tid-byte-string tid)
+         {:keys [tid id hash]} resource-handle]
+     (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash c-hash
+                          tid-byte-string))))
 
 (def ^:private id-cmp
   (reify Comparator
     (compare [_ a b]
       (.compareTo ^String (rh/id a) (rh/id b)))))
 
-
 (defn- drop-lesser-ids [start-id]
   (drop-while #(neg? (let [^String id (rh/id %)] (.compareTo id start-id)))))
-
 
 (defn- resource-handles*
   [{:keys [snapshot] :as context} tid [search-param chain-search-param join-tid value]]
   (with-open [rsvi (kv/new-iterator snapshot :resource-value-index)]
     (into
-      (sorted-set-by id-cmp)
-      (mapcat #(resolve-resource-handles! context rsvi chain-search-param tid %))
-      (p/-resource-handles search-param context join-tid nil value))))
-
+     (sorted-set-by id-cmp)
+     (mapcat #(resolve-resource-handles! context rsvi chain-search-param tid %))
+     (p/-resource-handles search-param context join-tid nil value))))
 
 ;; TODO: make this cache public and configurable?
 (def ^:private ^Cache resource-handles-cache
@@ -99,7 +90,6 @@
       (.maximumSize 100)
       (.expireAfterAccess 1 TimeUnit/MINUTES)
       (.build)))
-
 
 (defn- resource-handles
   "Returns a sorted set of resource handles of resources of type `tid`,
@@ -114,11 +104,9 @@
             (apply [_ _]
               (resource-handles* context tid data))))))
 
-
 (defn- matches?
   [context {:keys [tid] :as resource-handle} value]
   (contains? (resource-handles context tid value) resource-handle))
-
 
 (defrecord SearchParamHas [index name type code]
   p/SearchParam
@@ -136,19 +124,18 @@
 
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction
-      (drop-lesser-ids (codec/id-string start-id))
-      (resource-handles context tid value)))
+     (drop-lesser-ids (codec/id-string start-id))
+     (resource-handles context tid value)))
 
   (-count-resource-handles [search-param context tid modifier value]
     (ac/completed-future
-      (count (p/-resource-handles search-param context tid modifier value))))
+     (count (p/-resource-handles search-param context tid modifier value))))
 
   (-matches? [_ context resource-handle _ values]
     (some? (some #(matches? context resource-handle %) values)))
 
   (-index-values [_ _ _]
     []))
-
 
 (defmethod special/special-search-param "_has"
   [index _]

@@ -15,6 +15,21 @@ on:
     - develop
 
 jobs:
+  fmt:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@master
+      with:
+        cljfmt: 0.11.2
+
+    - name: Check out Git repository
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+    - name: Check Formatting
+      run: make fmt
+
   lint:
     runs-on: ubuntu-22.04
 
@@ -22,7 +37,6 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1403'
         clj-kondo: '2023.01.20'
 
     - name: Check out Git repository

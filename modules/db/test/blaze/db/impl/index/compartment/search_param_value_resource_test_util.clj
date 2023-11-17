@@ -1,17 +1,15 @@
 (ns blaze.db.impl.index.compartment.search-param-value-resource-test-util
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.byte-string :as bs]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.compartment.test-util :as tu]
-    [blaze.db.impl.iterators :as i]
-    [blaze.db.kv :as kv]
-    [blaze.fhir.hash :as hash]))
-
+   [blaze.byte-buffer :as bb]
+   [blaze.byte-string :as bs]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.compartment.test-util :as tu]
+   [blaze.db.impl.iterators :as i]
+   [blaze.db.kv :as kv]
+   [blaze.fhir.hash :as hash]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
-
 
 (defn decode-key-human [buf]
   (let [id-size (bb/get-byte! buf (- (bb/limit buf) hash/prefix-size 1))]
@@ -29,7 +27,6 @@
              (codec/id-string (bs/from-byte-buffer! buf id-size)))
      :hash-prefix (do (bb/get-byte! buf)
                       (hash/prefix-from-byte-buffer! buf))}))
-
 
 (defn decode-index-entries [kv-store & keys]
   (with-open [snapshot (kv/new-snapshot kv-store)

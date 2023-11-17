@@ -1,33 +1,28 @@
 (ns blaze.db.cache-collector-test
   (:require
-    [blaze.db.cache-collector]
-    [blaze.metrics.core :as metrics]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
-    [integrant.core :as ig]
-    [juxt.iota :refer [given]])
+   [blaze.db.cache-collector]
+   [blaze.metrics.core :as metrics]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [integrant.core :as ig]
+   [juxt.iota :refer [given]])
   (:import
-    [com.github.benmanes.caffeine.cache Cache Caffeine]
-    [java.util.function Function]))
-
+   [com.github.benmanes.caffeine.cache Cache Caffeine]
+   [java.util.function Function]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
 
-
 (def ^Cache cache (-> (Caffeine/newBuilder) (.recordStats) (.build)))
-
 
 (def config
   {:blaze.db/cache-collector
    {:caches {"name-135224" cache "name-093214" nil}}})
-
 
 (deftest init-test
   (testing "nil config"
@@ -48,7 +43,6 @@
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `map?
       [:explain ::s/problems 0 :val] := ::invalid)))
-
 
 (deftest cache-collector-test
   (with-system [{collector :blaze.db/cache-collector} config]

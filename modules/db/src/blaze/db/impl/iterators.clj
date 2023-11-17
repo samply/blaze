@@ -17,17 +17,15 @@
   free of side effects by creating an exclusive key-value store iterator before
   calling one of the functions and closing it after the collection is consumed."
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.byte-string :as bs]
-    [blaze.coll.core :as coll]
-    [blaze.db.kv :as kv])
+   [blaze.byte-buffer :as bb]
+   [blaze.byte-string :as bs]
+   [blaze.coll.core :as coll]
+   [blaze.db.kv :as kv])
   (:import
-    [clojure.lang IReduceInit]))
-
+   [clojure.lang IReduceInit]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
-
 
 (defn- reduce-iter! [iter advance-fn rf init]
   (loop [ret init]
@@ -37,7 +35,6 @@
           @ret
           (do (advance-fn iter) (recur ret))))
       ret)))
-
 
 (defn iter!
   "Returns a reducible collection of `iter` itself optionally starting at
@@ -56,7 +53,6 @@
        (kv/seek! iter (bs/to-byte-array start-key))
        (reduce-iter! iter kv/next! rf init)))))
 
-
 (defn iter-prev!
   "Returns a reducible collection of `iter` itself, iterating in reverse.
 
@@ -68,17 +64,14 @@
       (kv/seek-for-prev! iter (bs/to-byte-array start-key))
       (reduce-iter! iter kv/prev! rf init))))
 
-
 (def key-reader
   "Returns a transducer that will read the key from a downstream iterator."
   (map (comp bb/wrap kv/key)))
 
-
 (defn- key-decoder [decode]
   (comp
-    key-reader
-    (map decode)))
-
+   key-reader
+   (map decode)))
 
 (defn keys!
   "Returns a reducible collection of decoded keys of `iter` starting with
@@ -96,9 +89,8 @@
   access to `iter`. Doesn't close `iter`."
   [iter decode start-key]
   (coll/eduction
-    (key-decoder decode)
-    (iter! iter start-key)))
-
+   (key-decoder decode)
+   (iter! iter start-key)))
 
 (defn- take-while-prefix-matches
   "Returns a transducer that takes key buffers as long as their contents start
@@ -109,18 +101,16 @@
     (bb/put-byte-string! prefix-buf prefix)
     (bb/flip! prefix-buf)
     (take-while
-      (fn [buf]
-        (let [mismatch (bb/mismatch buf prefix-buf)]
-          (or (<= prefix-size mismatch) (neg? mismatch)))))))
-
+     (fn [buf]
+       (let [mismatch (bb/mismatch buf prefix-buf)]
+         (or (<= prefix-size mismatch) (neg? mismatch)))))))
 
 (defn- prefix-xf [prefix decode]
   (comp
-    key-reader
-    (comp
-      (take-while-prefix-matches prefix)
-      (map decode))))
-
+   key-reader
+   (comp
+    (take-while-prefix-matches prefix)
+    (map decode))))
 
 (defn prefix-keys!
   "Returns a reducible collection of decoded keys of `iter` starting with
@@ -139,7 +129,6 @@
   [iter prefix decode start-key]
   (coll/eduction (prefix-xf prefix decode) (iter! iter start-key)))
 
-
 (defn prefix-keys-prev!
   "Returns a reducible collection of decoded keys of `iter` starting with
   `start-key` and ending when `prefix` no longer matches, iterating in reverse.
@@ -157,10 +146,8 @@
   [iter prefix decode start-key]
   (coll/eduction (prefix-xf prefix decode) (iter-prev! iter start-key)))
 
-
 (defn- kv-decoder [decode]
   (map #(decode (bb/wrap (kv/key %)) (bb/wrap (kv/value %)))))
-
 
 (defn kvs!
   "Returns a reducible collection of decoded keys and values of `iter`.
@@ -178,5 +165,5 @@
   access to `iter`. Doesn't close `iter`."
   [iter decode start-key]
   (coll/eduction
-    (kv-decoder decode)
-    (iter! iter start-key)))
+   (kv-decoder decode)
+   (iter! iter start-key)))

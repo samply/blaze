@@ -1,14 +1,11 @@
 (ns blaze.elm.compiler.macros
   (:require
-    [blaze.elm.compiler.core :as core]))
-
+   [blaze.elm.compiler.core :as core]))
 
 (set! *warn-on-reflection* true)
 
-
 (defn- compile-kw [name]
   (keyword "elm.compiler.type" (clojure.core/name name)))
-
 
 (defn generate-binding-vector
   "Creates a binding vector of at least `[operand-binding operand]` and
@@ -16,7 +13,6 @@
   is given."
   [operand-binding operand expr-binding expr-sym]
   (cond-> [operand-binding operand] expr-binding (conj expr-binding expr-sym)))
-
 
 (defn generate-unop [name operand-sym operand-binding expr-binding expr-sym body]
   (let [context-sym (gensym "context")
@@ -27,12 +23,11 @@
          false)
        (~'-eval [~'_ ~context-sym ~resource-sym ~scope-sym]
          (let ~(generate-binding-vector
-                 operand-binding `(core/-eval ~operand-sym ~context-sym ~resource-sym ~scope-sym)
-                 expr-binding expr-sym)
+                operand-binding `(core/-eval ~operand-sym ~context-sym ~resource-sym ~scope-sym)
+                expr-binding expr-sym)
            ~@body))
        (~'-form [~'_]
          (list (quote ~name) (core/-form ~operand-sym))))))
-
 
 (defmacro defunop
   {:arglists '([name attr-map? bindings & body])}
@@ -51,7 +46,6 @@
                  ~(or expr-binding '_) ~expr-sym]
              ~@body)
            ~(generate-unop name operand-sym operand-binding expr-binding expr-sym body))))))
-
 
 (defmacro defbinop
   {:arglists '([name attr-map? bindings & body])}
@@ -78,7 +72,6 @@
              (~'-form [~'_]
                (list (quote ~name) (core/-form operand-1#) (core/-form operand-2#)))))))))
 
-
 (defmacro defternop
   {:arglists '([name bindings & body])}
   [name [op-1-binding op-2-binding op-3-binding] & body]
@@ -99,7 +92,6 @@
            (list (quote ~name) (core/-form operand-1#) (core/-form operand-2#)
                  (core/-form operand-3#)))))))
 
-
 (defmacro defnaryop
   {:arglists '([name bindings & body])}
   [name [operands-binding] & body]
@@ -115,7 +107,6 @@
          (~'-form [~'_]
            (cons (quote ~name) (map core/-form operands#)))))))
 
-
 (defmacro defaggop
   {:arglists '([name bindings & body])}
   [name [source-binding] & body]
@@ -130,7 +121,6 @@
              ~@body))
          (~'-form [~'_]
            (list (quote ~name) (core/-form source#)))))))
-
 
 (defmacro defunopp
   {:arglists '([name bindings & body])}
@@ -148,7 +138,6 @@
              ~@body))
          (~'-form [~'_]
            (list (quote ~name) (core/-form operand#) precision#))))))
-
 
 (defmacro defbinopp
   {:arglists '([name attr-map? bindings & body])}
@@ -200,7 +189,7 @@
                        ~op-2-binding ~op-2]
                    ~@body)
                  (~(symbol (str name "-precision-op")) ~op-1 ~op-2
-                   ~precision-binding ~precision))))
+                                                       ~precision-binding ~precision))))
 
           `(defmethod core/compile* ~(compile-kw name)
              [~context {[~op-1 ~op-2] :operand ~precision :precision}]
@@ -214,5 +203,5 @@
                    ~@body)
                  (if ~precision
                    (~(symbol (str name "-precision-op")) ~op-1 ~op-2
-                     ~precision-binding ~precision)
+                                                         ~precision-binding ~precision)
                    (~(symbol (str name "-op")) ~op-1 ~op-2)))))))))

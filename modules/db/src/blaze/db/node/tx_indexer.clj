@@ -1,9 +1,8 @@
 (ns blaze.db.node.tx-indexer
   (:require
-    [blaze.db.api :as d]
-    [blaze.db.node.tx-indexer.verify :as verify]
-    [taoensso.timbre :as log]))
-
+   [blaze.db.api :as d]
+   [blaze.db.node.tx-indexer.verify :as verify]
+   [taoensso.timbre :as log]))
 
 (defn index-tx
   [db-before {:keys [t tx-cmds]}]

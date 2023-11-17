@@ -1,9 +1,8 @@
 (ns blaze.elm.interval
   "Implementation of the interval type."
   (:require
-    [blaze.elm.date-time :refer [temporal?]]
-    [blaze.elm.protocols :as p]))
-
+   [blaze.elm.date-time :refer [temporal?]]
+   [blaze.elm.protocols :as p]))
 
 (defrecord Interval [start end]
   p/Equal
@@ -101,7 +100,6 @@
     (let [[left right] (if (p/less (:start a) (:start b)) [a b] [b a])]
       (when (p/greater-or-equal (:end left) (p/predecessor (:start right)))
         (->Interval (:start left) (:end right))))))
-
 
 (defn interval
   "Returns an interval with the given `start` and `end` bounds."

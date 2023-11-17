@@ -1,18 +1,15 @@
 (ns blaze.http.util-test
   (:require
-    [blaze.http.util :as hu]
-    [blaze.http.util-spec]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
-    [juxt.iota :refer [given]]))
-
+   [blaze.http.util :as hu]
+   [blaze.http.util-spec]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest parse-header-value-test
   (testing "one element without value"

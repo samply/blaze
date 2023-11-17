@@ -1,28 +1,25 @@
 (ns blaze.fhir-client-test
   (:require
-    [blaze.fhir-client :as fhir-client]
-    [blaze.fhir-client-spec]
-    [blaze.fhir.spec.type]
-    [blaze.fhir.test-util :refer [given-failed-future]]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [jsonista.core :as j]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log])
+   [blaze.fhir-client :as fhir-client]
+   [blaze.fhir-client-spec]
+   [blaze.fhir.spec.type]
+   [blaze.fhir.test-util :refer [given-failed-future]]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [jsonista.core :as j]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log])
   (:import
-    [com.pgssoft.httpclient Condition HttpClientMock]
-    [java.nio.file Files Path]
-    [java.nio.file.attribute FileAttribute]))
-
+   [com.pgssoft.httpclient Condition HttpClientMock]
+   [java.nio.file Files Path]
+   [java.nio.file.attribute FileAttribute]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest metadata-test
   (let [http-client (HttpClientMock.)]
@@ -34,7 +31,6 @@
     (given @(fhir-client/metadata "http://localhost:8080/fhir"
                                   {:http-client http-client})
       :fhir/type := :fhir/CapabilityStatement)))
-
 
 (deftest read-test
   (testing "success"
@@ -66,12 +62,12 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
           (.doReturn
-            404
-            (j/write-value-as-string
-              {:resourceType "OperationOutcome"
-               :issue
-               [{:severity "error"
-                 :code "not-found"}]}))
+           404
+           (j/write-value-as-string
+            {:resourceType "OperationOutcome"
+             :issue
+             [{:severity "error"
+               :code "not-found"}]}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
@@ -127,12 +123,10 @@
                                              {:http-client http-client})
         ::anom/category := ::anom/busy))))
 
-
 (defn- empty-header-condition [name]
   (reify Condition
     (matches [_ request]
       (.isEmpty (.firstValue (.headers request) name)))))
-
 
 (deftest update-test
   (testing "without meta versionId"
@@ -172,11 +166,11 @@
       (-> (.onPut http-client "http://localhost:8080/fhir/Patient/0")
           (.withHeader "If-Match" "W/\"180040\"")
           (.doReturn
-            412
-            (j/write-value-as-string
-              {:resourceType "OperationOutcome"
-               :issue
-               [{:severity "error"}]}))
+           412
+           (j/write-value-as-string
+            {:resourceType "OperationOutcome"
+             :issue
+             [{:severity "error"}]}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (given-failed-future (fhir-client/update "http://localhost:8080/fhir"
@@ -184,7 +178,6 @@
                                                {:http-client http-client})
         ::anom/category := ::anom/conflict
         [:fhir/issues 0 :severity] := #fhir/code"error"))))
-
 
 (deftest transact-test
   (let [http-client (HttpClientMock.)
@@ -207,7 +200,6 @@
                                   {:http-client http-client})
       :fhir/type := :fhir/Bundle)))
 
-
 (deftest execute-type-get-test
   (testing "success"
     (let [http-client (HttpClientMock.)]
@@ -217,13 +209,12 @@
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/execute-type-get
-                "http://localhost:8080/fhir" "ValueSet" "expand"
-                {:http-client http-client
-                 :query-params
-                 {:url "http://hl7.org/fhir/ValueSet/administrative-gender"}})
+               "http://localhost:8080/fhir" "ValueSet" "expand"
+               {:http-client http-client
+                :query-params
+                {:url "http://hl7.org/fhir/ValueSet/administrative-gender"}})
         :fhir/type := :fhir/ValueSet
         :id := "0"))))
-
 
 (deftest search-type-test
   (testing "one bundle with one patient"
@@ -231,10 +222,10 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturn
-            (j/write-value-as-string
-              {:resourceType "Bundle"
-               :entry
-               [{:resource {:resourceType "Patient" :id "0"}}]}))
+           (j/write-value-as-string
+            {:resourceType "Bundle"
+             :entry
+             [{:resource {:resourceType "Patient" :id "0"}}]}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/search-type "http://localhost:8080/fhir" "Patient"
@@ -248,11 +239,11 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturn
-            (j/write-value-as-string
-              {:resourceType "Bundle"
-               :entry
-               [{:resource {:resourceType "Patient" :id "0"}}
-                {:resource {:resourceType "Patient" :id "1"}}]}))
+           (j/write-value-as-string
+            {:resourceType "Bundle"
+             :entry
+             [{:resource {:resourceType "Patient" :id "0"}}
+              {:resource {:resourceType "Patient" :id "1"}}]}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/search-type "http://localhost:8080/fhir" "Patient"
@@ -268,21 +259,21 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturn
-            (j/write-value-as-string
-              {:resourceType "Bundle"
-               :link
-               [{:relation "next"
-                 :url "http://localhost:8080/fhir/Patient?page=2"}]
-               :entry
-               [{:resource {:resourceType "Patient" :id "0"}}]}))
+           (j/write-value-as-string
+            {:resourceType "Bundle"
+             :link
+             [{:relation "next"
+               :url "http://localhost:8080/fhir/Patient?page=2"}]
+             :entry
+             [{:resource {:resourceType "Patient" :id "0"}}]}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient?page=2")
           (.doReturn
-            (j/write-value-as-string
-              {:resourceType "Bundle"
-               :entry
-               [{:resource {:resourceType "Patient" :id "1"}}]}))
+           (j/write-value-as-string
+            {:resourceType "Bundle"
+             :entry
+             [{:resource {:resourceType "Patient" :id "1"}}]}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/search-type "http://localhost:8080/fhir" "Patient"
@@ -298,10 +289,10 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient?birthdate=2020")
           (.doReturn
-            (j/write-value-as-string
-              {:resourceType "Bundle"
-               :entry
-               [{:resource {:resourceType "Patient" :id "0"}}]}))
+           (j/write-value-as-string
+            {:resourceType "Bundle"
+             :entry
+             [{:resource {:resourceType "Patient" :id "0"}}]}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/search-type "http://localhost:8080/fhir" "Patient"
@@ -322,17 +313,16 @@
                                                     {:http-client http-client})
         ::anom/category := ::anom/fault))))
 
-
 (deftest search-system-test
   (testing "one bundle with one patient"
     (let [http-client (HttpClientMock.)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir")
           (.doReturn
-            (j/write-value-as-string
-              {:resourceType "Bundle"
-               :entry
-               [{:resource {:resourceType "Patient" :id "0"}}]}))
+           (j/write-value-as-string
+            {:resourceType "Bundle"
+             :entry
+             [{:resource {:resourceType "Patient" :id "0"}}]}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/search-system "http://localhost:8080/fhir"
@@ -346,11 +336,11 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir")
           (.doReturn
-            (j/write-value-as-string
-              {:resourceType "Bundle"
-               :entry
-               [{:resource {:resourceType "Patient" :id "0"}}
-                {:resource {:resourceType "Patient" :id "1"}}]}))
+           (j/write-value-as-string
+            {:resourceType "Bundle"
+             :entry
+             [{:resource {:resourceType "Patient" :id "0"}}
+              {:resource {:resourceType "Patient" :id "1"}}]}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/search-system "http://localhost:8080/fhir"
@@ -366,21 +356,21 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir")
           (.doReturn
-            (j/write-value-as-string
-              {:resourceType "Bundle"
-               :link
-               [{:relation "next"
-                 :url "http://localhost:8080/fhir?page=2"}]
-               :entry
-               [{:resource {:resourceType "Patient" :id "0"}}]}))
+           (j/write-value-as-string
+            {:resourceType "Bundle"
+             :link
+             [{:relation "next"
+               :url "http://localhost:8080/fhir?page=2"}]
+             :entry
+             [{:resource {:resourceType "Patient" :id "0"}}]}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (-> (.onGet http-client "http://localhost:8080/fhir?page=2")
           (.doReturn
-            (j/write-value-as-string
-              {:resourceType "Bundle"
-               :entry
-               [{:resource {:resourceType "Patient" :id "1"}}]}))
+           (j/write-value-as-string
+            {:resourceType "Bundle"
+             :entry
+             [{:resource {:resourceType "Patient" :id "1"}}]}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/search-system "http://localhost:8080/fhir"
@@ -396,10 +386,10 @@
 
       (-> (.onGet http-client "http://localhost:8080/fhir?_id=0")
           (.doReturn
-            (j/write-value-as-string
-              {:resourceType "Bundle"
-               :entry
-               [{:resource {:resourceType "Patient" :id "0"}}]}))
+           (j/write-value-as-string
+            {:resourceType "Bundle"
+             :entry
+             [{:resource {:resourceType "Patient" :id "0"}}]}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (given @(fhir-client/search-system "http://localhost:8080/fhir"
@@ -419,25 +409,23 @@
                                                       {:http-client http-client})
         ::anom/category := ::anom/fault))))
 
-
 (def temp-dir (Files/createTempDirectory "blaze" (make-array FileAttribute 0)))
-
 
 (deftest spit-test
   (testing "success"
     (let [http-client (HttpClientMock.)
           publisher (fhir-client/search-type-publisher
-                      "http://localhost:8080/fhir" "Patient"
-                      {:http-client http-client})
+                     "http://localhost:8080/fhir" "Patient"
+                     {:http-client http-client})
           processor (fhir-client/resource-processor)
           future (fhir-client/spit temp-dir processor)]
 
       (-> (.onGet http-client "http://localhost:8080/fhir/Patient")
           (.doReturn
-            (j/write-value-as-string
-              {:resourceType "Bundle"
-               :entry
-               [{:resource {:resourceType "Patient" :id "0"}}]}))
+           (j/write-value-as-string
+            {:resourceType "Bundle"
+             :entry
+             [{:resource {:resourceType "Patient" :id "0"}}]}))
           (.withHeader "content-type" "application/fhir+json"))
 
       (.subscribe publisher processor)
@@ -447,8 +435,8 @@
   (testing "Server Error without JSON response"
     (let [http-client (HttpClientMock.)
           publisher (fhir-client/search-type-publisher
-                      "http://localhost:8080/fhir" "Patient"
-                      {:http-client http-client})
+                     "http://localhost:8080/fhir" "Patient"
+                     {:http-client http-client})
           processor (fhir-client/resource-processor)
           future (fhir-client/spit temp-dir processor)]
 

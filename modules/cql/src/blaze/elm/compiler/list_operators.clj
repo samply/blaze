@@ -4,19 +4,17 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.coll.core :as coll]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.macros :refer [defbinop defunop]]
-    [blaze.elm.compiler.queries :as queries]
-    [blaze.elm.protocols :as p]
-    [cognitect.anomalies :as anom])
+   [blaze.anomaly :as ba]
+   [blaze.coll.core :as coll]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.macros :refer [defbinop defunop]]
+   [blaze.elm.compiler.queries :as queries]
+   [blaze.elm.protocols :as p]
+   [cognitect.anomalies :as anom])
   (:import
-    [clojure.lang ExceptionInfo]))
-
+   [clojure.lang ExceptionInfo]))
 
 (set! *warn-on-reflection* true)
-
 
 ;; 20.1. List
 (defn list-op [elements]
@@ -28,12 +26,10 @@
     (-form [_]
       `(~'list ~@(map core/-form elements)))))
 
-
 (defmethod core/compile* :elm.compiler.type/list
   [context {elements :element}]
   (let [elements (mapv #(core/compile* context %) elements)]
     (cond-> elements (some (comp not core/static?) elements) list-op)))
-
 
 ;; 20.3. Current
 (defmethod core/compile* :elm.compiler.type/current
@@ -54,27 +50,24 @@
       (-form [_]
         'current))))
 
-
 ;; 20.4. Distinct
 ;;
 ;; TODO: implementation is O(n^2)
 (defunop distinct [list]
   (when list
     (reduce
-      (fn [result x]
-        (if (p/contains result x nil)
-          result
-          (conj result x)))
-      []
-      list)))
-
+     (fn [result x]
+       (if (p/contains result x nil)
+         result
+         (conj result x)))
+     []
+     list)))
 
 ;; 20.8. Exists
 (defunop exists
   {:optimizations #{:first :non-distinct}}
   [list]
   (not (coll/empty? list)))
-
 
 ;; 20.9. Filter
 (defmethod core/compile* :elm.compiler.type/filter
@@ -88,9 +81,9 @@
         (-eval [_ context resource scopes]
           (when-let [source (core/-eval source context resource scopes)]
             (filterv
-              (fn [x]
-                (core/-eval condition context resource (assoc scopes scope x)))
-              source)))
+             (fn [x]
+               (core/-eval condition context resource (assoc scopes scope x)))
+             source)))
         (-form [_]
           (list 'filter (core/-form source) (core/-form condition) scope)))
       (reify core/Expression
@@ -101,7 +94,6 @@
             (filterv (partial core/-eval condition context resource) source)))
         (-form [_]
           (list 'filter (core/-form source) (core/-form condition)))))))
-
 
 ;; 20.10. First
 ;;
@@ -119,20 +111,18 @@
         (-form [_]
           (list 'first (core/-form source)))))))
 
-
 ;; 20.11. Flatten
 (defunop flatten [list]
   (when list
     (letfn [(flatten [to from]
               (reduce
-                (fn [result x]
-                  (if (sequential? x)
-                    (flatten result x)
-                    (conj result x)))
-                to
-                from))]
+               (fn [result x]
+                 (if (sequential? x)
+                   (flatten result x)
+                   (conj result x)))
+               to
+               from))]
       (flatten [] list))))
-
 
 ;; 20.12. ForEach
 (defmethod core/compile* :elm.compiler.type/for-each
@@ -146,9 +136,9 @@
         (-eval [_ context resource scopes]
           (when-let [source (core/-eval source context resource scopes)]
             (mapv
-              (fn [x]
-                (core/-eval element context resource (assoc scopes scope x)))
-              source)))
+             (fn [x]
+               (core/-eval element context resource (assoc scopes scope x)))
+             source)))
         (-form [_]
           (list 'for-each (core/-form source) (core/-form element) scope)))
       (reify core/Expression
@@ -159,7 +149,6 @@
             (mapv (partial core/-eval element context resource) source)))
         (-form [_]
           (list 'for-each (core/-form source) (core/-form element)))))))
-
 
 ;; 20.16. IndexOf
 (defmethod core/compile* :elm.compiler.type/index-of
@@ -173,17 +162,16 @@
         (when-let [source (core/-eval source context resource scopes)]
           (when-let [element (core/-eval element context resource scopes)]
             (or
-              (first
-                (keep-indexed
-                  (fn [idx x]
-                    (when
-                      (p/equal element x)
-                      idx))
-                  source))
-              -1))))
+             (first
+              (keep-indexed
+               (fn [idx x]
+                 (when
+                  (p/equal element x)
+                   idx))
+               source))
+             -1))))
       (-form [_]
         (list 'index-of (core/-form source) (core/-form element))))))
-
 
 ;; 20.18. Last
 ;;
@@ -201,11 +189,9 @@
         (-form [_]
           (list 'last (core/-form source)))))))
 
-
 ;; 20.24. Repeat
 ;;
 ;; TODO: not implemented
-
 
 ;; 20.25. SingletonFrom
 (defunop singleton-from [list expression]
@@ -215,7 +201,6 @@
       (if (::anom/category (ex-data e))
         (throw (ba/ex-anom (assoc (ex-data e) :expression expression)))
         (throw e)))))
-
 
 ;; 20.26. Slice
 (defmethod core/compile* :elm.compiler.type/slice
@@ -236,7 +221,6 @@
       (-form [_]
         (list 'slice (core/-form source) (core/-form start-index) (core/-form end-index))))))
 
-
 ;; 20.27. Sort
 (defmethod core/compile* :elm.compiler.type/sort
   [context {:keys [source] sort-by-items :by}]
@@ -244,26 +228,25 @@
         xform #(queries/compile-sort-by-item context %)
         sort-by-items (mapv xform sort-by-items)]
     (reduce
-      (fn [source {:keys [type direction]}]
-        (case type
-          "ByDirection"
-          (let [comp (queries/comparator direction)]
-            (reify core/Expression
-              (-static [_]
-                false)
-              (-eval [_ context resource scopes]
-                (when-let [source (core/-eval source context resource scopes)]
-                  (sort-by identity comp source)))
-              (-form [_]
-                (list 'sort (core/-form source) (keyword direction)))))))
-      source
-      sort-by-items)))
-
+     (fn [source {:keys [type direction]}]
+       (case type
+         "ByDirection"
+         (let [comp (queries/comparator direction)]
+           (reify core/Expression
+             (-static [_]
+               false)
+             (-eval [_ context resource scopes]
+               (when-let [source (core/-eval source context resource scopes)]
+                 (sort-by identity comp source)))
+             (-form [_]
+               (list 'sort (core/-form source) (keyword direction)))))))
+     source
+     sort-by-items)))
 
 ;; 20.28. Times
 (defbinop times [list1 list2]
   (transduce
-    (mapcat #(eduction (map (partial merge %)) list1))
-    (completing (fnil conj []))
-    nil
-    list2))
+   (mapcat #(eduction (map (partial merge %)) list1))
+   (completing (fnil conj []))
+   nil
+   list2))

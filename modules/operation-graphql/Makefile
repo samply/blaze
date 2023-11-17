@@ -1,3 +1,6 @@
+fmt:
+	cljfmt check
+
 lint:
 	clj-kondo --lint src test deps.edn
 
@@ -16,4 +19,4 @@ clean:
 deps-tree:
 	clojure -X:deps tree
 
-.PHONY: lint prep test test-coverage clean deps-tree
+.PHONY: fmt lint prep test test-coverage clean deps-tree

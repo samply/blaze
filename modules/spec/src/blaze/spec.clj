@@ -1,72 +1,57 @@
 (ns blaze.spec
   (:require
-    [clojure.spec.alpha :as s]
-    [clojure.string :as str]
-    [java-time.api :as time])
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]
+   [java-time.api :as time])
   (:import
-    [java.util Random]))
-
+   [java.util Random]))
 
 ;; The base URL of Blaze without :blaze/context-path
 (s/def :blaze/base-url
   (s/and string? (complement #(str/ends-with? % "/"))))
 
-
 (s/def :blaze/version
   string?)
-
 
 ;; The context path of Blaze that is appended to the :blaze/base-url
 (s/def :blaze/context-path
   (s/and
-    string?
-    (s/or
-      :empty str/blank?
-      :non-empty (s/and
-                   #(str/starts-with? % "/")
-                   (complement #(str/ends-with? % "/"))))))
-
+   string?
+   (s/or
+    :empty str/blank?
+    :non-empty (s/and
+                #(str/starts-with? % "/")
+                (complement #(str/ends-with? % "/"))))))
 
 (s/def :blaze/clock
   time/clock?)
 
-
 (s/def :blaze/rng
   #(instance? Random %))
 
-
 (s/def :blaze/rng-fn
   fn?)
-
-
 
 ;; ---- DB ------------------------------------------------------------------
 
 (s/def :blaze.db.query/search-clause
   (s/coll-of string? :kind vector? :min-count 2))
 
-
 (s/def :blaze.db.query/search-clauses
   (s/coll-of :blaze.db.query/search-clause :kind vector?))
-
 
 (s/def :blaze.db.query/sort-direction
   #{:asc :desc})
 
-
 (s/def :blaze.db.query/sort-clause
   (s/tuple #{:sort} string? :blaze.db.query/sort-direction))
-
 
 (s/def :blaze.db.query/clause
   (s/or :search-clause :blaze.db.query/search-clause
         :sort-clause :blaze.db.query/sort-clause))
 
-
 (s/def :blaze.db.query/clauses
   (s/coll-of :blaze.db.query/clause :kind vector?))
-
-
 
 ;; ---- FHIR ------------------------------------------------------------------
 
@@ -102,7 +87,6 @@
     "incomplete"
     "throttled"
     "informational"})
-
 
 (s/def :fhir/operation-outcome
   #{"DELETE_MULTIPLE_MATCHES"
@@ -156,12 +140,9 @@
     "SEARCH_NONE"
     "UPDATE_MULTIPLE_MATCHES"})
 
-
 (s/def :fhir.issue/expression
   (s/or :coll (s/coll-of string?)
         :string string?))
-
-
 
 ;; ---- Clojure ---------------------------------------------------------------
 
@@ -169,8 +150,6 @@
                                    :map-destructuring map?
                                    :list-destructuring vector?))
 
-
 (s/def :clojure/binding (s/cat :binding :clojure/binding-form :expr any?))
-
 
 (s/def :clojure/bindings (s/and vector? (s/* :clojure/binding)))

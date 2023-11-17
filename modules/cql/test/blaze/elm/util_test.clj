@@ -1,17 +1,14 @@
 (ns blaze.elm.util-test
   (:require
-    [blaze.elm.util :as elm-util]
-    [blaze.elm.util-spec]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]))
-
+   [blaze.elm.util :as elm-util]
+   [blaze.elm.util-spec]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest parse-qualified-name-test
   (testing "nil"
@@ -28,7 +25,6 @@
   (testing "valid string"
     (are [s ns name] (= [ns name] (elm-util/parse-qualified-name s))
       "{a}b" "a" "b")))
-
 
 (deftest parse-type-test
   (testing "ELM type"

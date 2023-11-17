@@ -1,11 +1,9 @@
 (ns blaze.db.impl.index.search-param-value-resource.impl
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.fhir.hash :as hash]))
-
+   [blaze.byte-buffer :as bb]
+   [blaze.fhir.hash :as hash]))
 
 (set! *unchecked-math* :warn-on-boxed)
-
 
 (defn id-size
   {:inline

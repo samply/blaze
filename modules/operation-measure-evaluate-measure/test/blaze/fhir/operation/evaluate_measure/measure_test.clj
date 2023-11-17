@@ -1,65 +1,56 @@
 (ns blaze.fhir.operation.evaluate-measure.measure-test
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
-    [blaze.fhir.operation.evaluate-measure.measure :as measure]
-    [blaze.fhir.operation.evaluate-measure.measure-spec]
-    [blaze.fhir.operation.evaluate-measure.measure.population-spec]
-    [blaze.fhir.operation.evaluate-measure.measure.stratifier-spec]
-    [blaze.fhir.operation.evaluate-measure.measure.util-spec]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.spec.type :as type]
-    [blaze.log]
-    [blaze.test-util :as tu]
-    [clojure.java.io :as io]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [java-time.api :as time]
-    [juxt.iota :refer [given]]
-    [reitit.core :as reitit]
-    [taoensso.timbre :as log])
+   [blaze.anomaly :as ba]
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.fhir.operation.evaluate-measure.measure :as measure]
+   [blaze.fhir.operation.evaluate-measure.measure-spec]
+   [blaze.fhir.operation.evaluate-measure.measure.population-spec]
+   [blaze.fhir.operation.evaluate-measure.measure.stratifier-spec]
+   [blaze.fhir.operation.evaluate-measure.measure.util-spec]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type :as type]
+   [blaze.log]
+   [blaze.test-util :as tu]
+   [clojure.java.io :as io]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [java-time.api :as time]
+   [juxt.iota :refer [given]]
+   [reitit.core :as reitit]
+   [taoensso.timbre :as log])
   (:import
-    [java.nio.charset StandardCharsets]
-    [java.util Base64]))
-
+   [java.nio.charset StandardCharsets]
+   [java.util Base64]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def router
   (reitit/router
-    [["/Patient/{id}" {:name :Patient/instance}]
-     ["/MeasureReport/{id}/_history/{vid}" {:name :MeasureReport/versioned-instance}]]
-    {:syntax :bracket}))
-
+   [["/Patient/{id}" {:name :Patient/instance}]
+    ["/MeasureReport/{id}/_history/{vid}" {:name :MeasureReport/versioned-instance}]]
+   {:syntax :bracket}))
 
 (defmulti entry-tx-op (fn [{{:keys [method]} :request}] (type/value method)))
-
 
 (defmethod entry-tx-op "PUT"
   [{:keys [resource]}]
   [:put resource])
 
-
 (defn- tx-ops [entries]
   (mapv entry-tx-op entries))
-
 
 (defn- slurp-resource [name]
   (slurp (io/resource (str "blaze/fhir/operation/evaluate_measure/" name))))
 
-
 (defn- b64-encode [s]
   (.encodeToString (Base64/getEncoder) (.getBytes ^String s)))
-
 
 (defn- library-entry [query]
   {:resource
@@ -68,12 +59,11 @@
     :url #fhir/uri"0"
     :content
     [(type/map->Attachment
-       {:contentType #fhir/code"text/cql"
-        :data (type/->Base64Binary (b64-encode query))})]}
+      {:contentType #fhir/code"text/cql"
+       :data (type/->Base64Binary (b64-encode query))})]}
    :request
    {:method #fhir/code"PUT"
     :url #fhir/uri"Library/1"}})
-
 
 (defn- read-data [name]
   (let [raw (slurp-resource (str name ".json"))
@@ -81,11 +71,9 @@
         library (library-entry (slurp-resource (str name ".cql")))]
     (update bundle :entry conj library)))
 
-
 (def config
   (assoc mem-node-config
-    :blaze.test/fixed-rng-fn {}))
-
+         :blaze.test/fixed-rng-fn {}))
 
 (defn- evaluate
   ([name]
@@ -103,7 +91,6 @@
                                  @(d/pull node (d/resource-handle db "Measure" "0"))
                                  {:period period :report-type report-type})))))
 
-
 (defn- first-population [result]
   (if (::anom/category result)
     (prn result)
@@ -111,7 +98,6 @@
         :resource
         :group first
         :population first)))
-
 
 (defn- first-stratifier-strata [result]
   (if (::anom/category result)
@@ -122,31 +108,26 @@
         :stratifier first
         :stratum)))
 
-
 (defn- population-concept [code]
   (type/codeable-concept
-    {:coding
-     [(type/coding
-        {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
-         :code (type/code code)})]}))
-
+   {:coding
+    [(type/coding
+      {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
+       :code (type/code code)})]}))
 
 (defn- cql-expression [expr]
   {:fhir/type :fhir/Expression
    :language #fhir/code"text/cql-identifier"
    :expression expr})
 
-
 (defn encode-base64 [^String s]
   (-> (Base64/getEncoder)
       (.encode (.getBytes s StandardCharsets/UTF_8))
       (String. StandardCharsets/UTF_8)))
 
-
 (defn library-content [content]
   (type/attachment {:contentType #fhir/code"text/cql"
                     :data (type/base64Binary (encode-base64 content))}))
-
 
 (defn library [in-initial-population]
   (format "library Retrieve
@@ -157,7 +138,6 @@
 
   define InInitialPopulation:
     %s" in-initial-population))
-
 
 (defn library-gender [in-initial-population]
   (format "library Retrieve
@@ -172,7 +152,6 @@
   define Gender:
     Patient.gender" in-initial-population))
 
-
 (def library-encounter
   "library Retrieve
   using FHIR version '4.0.0'
@@ -182,7 +161,6 @@
 
   define InInitialPopulation:
     [Encounter]")
-
 
 (def library-patient-encounter
   "library Retrieve
@@ -199,7 +177,6 @@
 
   define Gender:
     Patient.gender")
-
 
 (deftest evaluate-measure-test
   (testing "Encounter population basis"
@@ -223,8 +200,8 @@
                      [{:fhir/type :fhir.Measure/group
                        :extension
                        [#fhir/Extension
-                               {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
-                                :value #fhir/code"Encounter"}]
+                         {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
+                          :value #fhir/code"Encounter"}]
                        :population
                        [{:fhir/type :fhir.Measure.group/population
                          :code (population-concept "initial-population")
@@ -290,8 +267,8 @@
                       {:fhir/type :fhir.Measure/group
                        :extension
                        [#fhir/Extension
-                               {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
-                                :value #fhir/code"Encounter"}]
+                         {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
+                          :value #fhir/code"Encounter"}]
                        :population
                        [{:fhir/type :fhir.Measure.group/population
                          :code (population-concept "initial-population")
@@ -593,11 +570,9 @@
             ::anom/category := ::anom/incorrect
             ::anom/message := "Subject with type `Patient` and id `0` was not found."))))))
 
-
 (defmacro testing-query [name count]
   `(testing ~name
      (is (= ~count (:count (first-population (evaluate ~name)))))))
-
 
 (deftest integration-test
   (testing-query "q1" 2)
@@ -857,5 +832,4 @@
 
 (comment
   (log/set-level! :debug)
-  (evaluate "q50-specimen-condition-reference")
-  )
+  (evaluate "q50-specimen-condition-reference"))

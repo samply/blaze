@@ -1,6 +1,5 @@
 (ns blaze.fhir.spec.type.protocols)
 
-
 (defprotocol FhirType
   (-type [_])
   (-interned [_])

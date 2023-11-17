@@ -1,30 +1,27 @@
 (ns blaze.fhir.operation.graphql-test
   (:require
-    [blaze.async.comp :as ac]
-    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-    [blaze.db.resource-store :as rs]
-    [blaze.executors :as ex]
-    [blaze.fhir.operation.graphql :as graphql]
-    [blaze.fhir.operation.graphql.test-util :refer [wrap-error]]
-    [blaze.log]
-    [blaze.middleware.fhir.db :refer [wrap-db]]
-    [blaze.middleware.fhir.db-spec]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [integrant.core :as ig]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log]))
-
+   [blaze.async.comp :as ac]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.resource-store :as rs]
+   [blaze.executors :as ex]
+   [blaze.fhir.operation.graphql :as graphql]
+   [blaze.fhir.operation.graphql.test-util :refer [wrap-error]]
+   [blaze.log]
+   [blaze.middleware.fhir.db :refer [wrap-db]]
+   [blaze.middleware.fhir.db-spec]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [integrant.core :as ig]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest init-test
   (testing "nil config"
@@ -48,7 +45,6 @@
       [:explain ::s/problems 1 :pred] := `ex/executor?
       [:explain ::s/problems 1 :val] := ::invalid)))
 
-
 (deftest executor-init-test
   (testing "nil config"
     (given-thrown (ig/init {::graphql/executor nil})
@@ -68,14 +64,12 @@
                   {::graphql/executor {}}]
       (is (ex/executor? executor)))))
 
-
 (def config
   (assoc api-stub/mem-node-config
-    ::graphql/handler
-    {:node (ig/ref :blaze.db/node)
-     :executor (ig/ref :blaze.test/executor)}
-    :blaze.test/executor {}))
-
+         ::graphql/handler
+         {:node (ig/ref :blaze.db/node)
+          :executor (ig/ref :blaze.test/executor)}
+         :blaze.test/executor {}))
 
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
@@ -85,7 +79,6 @@
        (let [~handler-binding (-> handler# (wrap-db node# 100) wrap-error)]
          ~@body))))
 
-
 (deftest execute-query-test
   (testing "query param"
     (testing "invalid query"
@@ -93,8 +86,8 @@
         (with-handler [handler]
           (let [{:keys [status body]}
                 @(handler
-                   {:request-method :get
-                    :params {"query" "{"}})]
+                  {:request-method :get
+                   :params {"query" "{"}})]
 
             (is (= 200 status))
 
@@ -105,8 +98,8 @@
         (with-handler [handler]
           (let [{:keys [status body]}
                 @(handler
-                   {:request-method :post
-                    :body {:query "{"}})]
+                  {:request-method :post
+                   :body {:query "{"}})]
 
             (is (= 200 status))
 
@@ -120,8 +113,8 @@
             (with-handler [handler]
               (let [{:keys [status body]}
                     @(handler
-                       {:request-method :get
-                        :params {"query" "{ PatientList { gender } }"}})]
+                      {:request-method :get
+                       :params {"query" "{ PatientList { gender } }"}})]
 
                 (is (= 200 status))
 
@@ -133,8 +126,8 @@
             (with-handler [handler]
               (let [{:keys [status body]}
                     @(handler
-                       {:request-method :post
-                        :body {:query "{ PatientList { gender } }"}})]
+                      {:request-method :post
+                       :body {:query "{ PatientList { gender } }"}})]
 
                 (is (= 200 status))
 
@@ -149,8 +142,8 @@
 
             (let [{:keys [status body]}
                   @(handler
-                     {:request-method :get
-                      :params {"query" "{ PatientList { id gender } }"}})]
+                    {:request-method :get
+                     :params {"query" "{ PatientList { id gender } }"}})]
 
               (is (= 200 status))
 
@@ -164,8 +157,8 @@
           (with-handler [handler]
             (let [{:keys [status body]}
                   @(handler
-                     {:request-method :get
-                      :params {"query" "{ ObservationList { subject { reference } } }"}})]
+                    {:request-method :get
+                     :params {"query" "{ ObservationList { subject { reference } } }"}})]
 
               (is (= 200 status))
 
@@ -181,8 +174,8 @@
 
             (let [{:keys [status body]}
                   @(handler
-                     {:request-method :get
-                      :params {"query" "{ ObservationList { subject { reference } } }"}})]
+                    {:request-method :get
+                     :params {"query" "{ ObservationList { subject { reference } } }"}})]
 
               (is (= 200 status))
 
@@ -196,24 +189,24 @@
               [:put {:fhir/type :fhir/Observation :id "0"
                      :code
                      #fhir/CodeableConcept
-                             {:coding
-                              [#fhir/Coding
-                                      {:system #fhir/uri"http://loinc.org"
-                                       :code #fhir/code"39156-5"}]}
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri"http://loinc.org"
+                          :code #fhir/code"39156-5"}]}
                      :subject #fhir/Reference{:reference "Patient/0"}}]
               [:put {:fhir/type :fhir/Observation :id "1"
                      :code
                      #fhir/CodeableConcept
-                             {:coding
-                              [#fhir/Coding
-                                      {:system #fhir/uri"http://loinc.org"
-                                       :code #fhir/code"29463-7"}]}
+                      {:coding
+                       [#fhir/Coding
+                         {:system #fhir/uri"http://loinc.org"
+                          :code #fhir/code"29463-7"}]}
                      :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
             (let [{:keys [status body]}
                   @(handler
-                     {:request-method :get
-                      :params {"query" "{ ObservationList(code: \"39156-5\") { subject { reference } } }"}})]
+                    {:request-method :get
+                     :params {"query" "{ ObservationList(code: \"39156-5\") { subject { reference } } }"}})]
 
               (is (= 200 status))
 
@@ -229,8 +222,8 @@
 
         (let [{:keys [status body]}
               @(handler
-                 {:request-method :get
-                  :params {"query" "{ PatientList { gender } }"}})]
+                {:request-method :get
+                 :params {"query" "{ PatientList { gender } }"}})]
 
           (is (= 200 status))
 

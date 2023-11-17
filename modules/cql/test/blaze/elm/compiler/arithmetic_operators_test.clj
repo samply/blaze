@@ -4,36 +4,34 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.arithmetic-operators-spec]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as ctu]
-    [blaze.elm.date-time :as date-time]
-    [blaze.elm.date-time-spec]
-    [blaze.elm.decimal :as decimal]
-    [blaze.elm.literal :as elm]
-    [blaze.elm.literal-spec]
-    [blaze.elm.protocols :as p]
-    [blaze.elm.quantity :as quantity]
-    [blaze.elm.util-spec]
-    [blaze.fhir.spec.type.system :as system]
-    [blaze.test-util :refer [satisfies-prop]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [clojure.test.check.generators :as gen]
-    [clojure.test.check.properties :as prop]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]])
+   [blaze.anomaly :as ba]
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.arithmetic-operators-spec]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.test-util :as ctu]
+   [blaze.elm.date-time :as date-time]
+   [blaze.elm.date-time-spec]
+   [blaze.elm.decimal :as decimal]
+   [blaze.elm.literal :as elm]
+   [blaze.elm.literal-spec]
+   [blaze.elm.protocols :as p]
+   [blaze.elm.quantity :as quantity]
+   [blaze.elm.util-spec]
+   [blaze.fhir.spec.type.system :as system]
+   [blaze.test-util :refer [satisfies-prop]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]])
   (:import
-    [javax.measure UnconvertibleException]))
-
+   [javax.measure UnconvertibleException]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -41,9 +39,7 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; 16. Arithmetic Operators
 
@@ -98,7 +94,6 @@
   (ctu/testing-unary-dynamic elm/abs)
 
   (ctu/testing-unary-form elm/abs))
-
 
 ;; 16.2. Add
 ;;
@@ -245,16 +240,14 @@
       [1 "m"] [1 "s"]))
 
   (testing "Adding identical quantities equals multiplying the same quantity with two"
-    (satisfies-prop
-      100
+    (satisfies-prop 100
       (prop/for-all [quantity (gen/such-that :value (s/gen :elm/quantity) 100)]
         (let [elm (elm/equal [(elm/add [quantity quantity])
                               (elm/multiply [quantity #elm/integer "2"])])]
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
   (testing "Adding identical quantities and dividing by two results in the same quantity"
-    (satisfies-prop
-      100
+    (satisfies-prop 100
       (prop/for-all [quantity (gen/such-that :value (s/gen :elm/quantity) 100)]
         (let [elm (elm/equal [(elm/divide [(elm/add [quantity quantity])
                                            #elm/integer "2"])
@@ -375,7 +368,6 @@
 
   (ctu/testing-binary-form elm/add))
 
-
 ;; 16.3. Ceiling
 ;;
 ;; The Ceiling operator returns the first integer greater than or equal to the
@@ -392,7 +384,6 @@
   (ctu/testing-unary-dynamic elm/ceiling)
 
   (ctu/testing-unary-form elm/ceiling))
-
 
 ;; 16.4. Divide
 ;;
@@ -485,7 +476,6 @@
 
   (ctu/testing-binary-form elm/divide))
 
-
 ;; 16.5. Exp
 ;;
 ;; The Exp operator returns e raised to the given power.
@@ -501,7 +491,6 @@
   (ctu/testing-unary-dynamic elm/exp)
 
   (ctu/testing-unary-form elm/exp))
-
 
 ;; 16.6. Floor
 ;;
@@ -520,7 +509,6 @@
 
   (ctu/testing-unary-form elm/floor))
 
-
 ;; 16.7. HighBoundary
 ;;
 ;; The HighBoundary operator returns the greatest possible value of the input to
@@ -536,7 +524,6 @@
 ;; The operator can be used with Decimal, Date, DateTime, and Time values.
 ;;
 ;; TODO: Test HighBoundary
-
 
 ;; 16.8. Log
 ;;
@@ -566,7 +553,6 @@
 
   (ctu/testing-binary-form elm/log))
 
-
 ;; 16.9. LowBoundary
 ;;
 ;; The LowBoundary operator returns the least possible value of the input to the
@@ -582,7 +568,6 @@
 ;; The operator can be used with Decimal, Date, DateTime, and Time values.
 ;;
 ;; TODO: Test LowBoundary
-
 
 ;; 16.10. Ln
 ;;
@@ -611,7 +596,6 @@
   (ctu/testing-unary-dynamic elm/ln)
 
   (ctu/testing-unary-form elm/ln))
-
 
 ;; 16.11. MaxValue
 ;;
@@ -657,7 +641,6 @@
       ::anom/category := ::anom/incorrect
       ::anom/message := "Incorrect type namespace `foo`.")))
 
-
 ;; 16.12. MinValue
 ;;
 ;; The MinValue operator returns the minimum representable value for the given
@@ -702,7 +685,6 @@
       ::anom/category := ::anom/incorrect
       ::anom/message := "Incorrect type namespace `foo`.")))
 
-
 ;; 16.13. Modulo
 ;;
 ;; The Modulo operator computes the remainder of the division of its arguments.
@@ -740,7 +722,6 @@
   (ctu/testing-binary-dynamic elm/modulo)
 
   (ctu/testing-binary-form elm/modulo))
-
 
 ;; 16.14. Multiply
 ;;
@@ -786,7 +767,6 @@
 
   (ctu/testing-binary-form elm/multiply))
 
-
 ;; 16.15. Negate
 ;;
 ;; The Negate operator returns the negative of its argument.
@@ -817,7 +797,6 @@
   (ctu/testing-unary-dynamic elm/negate)
 
   (ctu/testing-unary-form elm/negate))
-
 
 ;; 16.16. Power
 ;;
@@ -854,7 +833,6 @@
 
   (ctu/testing-binary-form elm/power))
 
-
 ;; 16.17. Precision
 ;;
 ;; The Precision operator returns the number of digits of precision in the input
@@ -866,7 +844,6 @@
 ;; after the decimal place in the input value.
 ;;
 ;; TODO: Test Precision
-
 
 ;; 16.18. Predecessor
 ;;
@@ -940,7 +917,6 @@
 
   (ctu/testing-unary-form elm/predecessor))
 
-
 ;; 16.19. Round
 ;;
 ;; The Round operator returns the nearest integer to its argument. The semantics
@@ -987,7 +963,6 @@
             eval-ctx {:parameters {"x" nil}}]
         (is (nil? (core/-eval expr eval-ctx nil nil))))))
 
-
   (ctu/testing-unary-null elm/round)
 
   (ctu/testing-unary-dynamic elm/round)
@@ -997,7 +972,6 @@
   (ctu/testing-binary-dynamic elm/round)
 
   (ctu/testing-binary-form elm/round))
-
 
 ;; 16.20. Subtract
 ;;
@@ -1114,8 +1088,7 @@
       #elm/quantity [1 "m"] #elm/quantity [1 "s"]))
 
   (testing "Subtracting identical quantities results in zero"
-    (satisfies-prop
-      100
+    (satisfies-prop 100
       (prop/for-all [quantity (gen/such-that :value (s/gen :elm/quantity) 100)]
         ;; Can't test for zero because can't extract value from quantity
         ;; so use negate trick
@@ -1220,7 +1193,6 @@
 
   (ctu/testing-binary-form elm/subtract))
 
-
 ;; 16.21. Successor
 ;;
 ;; The Successor operator returns the successor of the argument. For example,
@@ -1293,7 +1265,6 @@
 
   (ctu/testing-unary-form elm/successor))
 
-
 ;; 16.22. Truncate
 ;;
 ;; The Truncate operator returns the integer component of its argument.
@@ -1310,7 +1281,6 @@
   (ctu/testing-unary-dynamic elm/truncate)
 
   (ctu/testing-unary-form elm/truncate))
-
 
 ;; 16.23. TruncatedDivide
 ;;

@@ -1,24 +1,23 @@
 (ns blaze.interaction.search-compartment
   (:require
-    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.async.comp :as ac :refer [do-sync]]
-    [blaze.db.api :as d]
-    [blaze.db.spec]
-    [blaze.fhir.spec.type :as type]
-    [blaze.handler.util :as handler-util]
-    [blaze.interaction.search.nav :as nav]
-    [blaze.interaction.search.params :as params]
-    [blaze.interaction.search.util :as search-util]
-    [blaze.interaction.util :as iu]
-    [blaze.page-store.spec]
-    [blaze.spec]
-    [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]
-    [integrant.core :as ig]
-    [reitit.core :as reitit]
-    [ring.util.response :as ring]
-    [taoensso.timbre :as log]))
-
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.db.api :as d]
+   [blaze.db.spec]
+   [blaze.fhir.spec.type :as type]
+   [blaze.handler.util :as handler-util]
+   [blaze.interaction.search.nav :as nav]
+   [blaze.interaction.search.params :as params]
+   [blaze.interaction.search.util :as search-util]
+   [blaze.interaction.util :as iu]
+   [blaze.page-store.spec]
+   [blaze.spec]
+   [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
+   [reitit.core :as reitit]
+   [ring.util.response :as ring]
+   [taoensso.timbre :as log]))
 
 (defn- handles-and-clauses
   [{:keys [code id type] :blaze/keys [db] :blaze.preference/keys [handling]
@@ -37,17 +36,14 @@
       {:handles (vec (d/execute-query db query id))
        :clauses (d/query-clauses query)})))
 
-
 (defn- entries-xf [{{:keys [page-offset page-size]} :params :as context}]
   (comp
-    (drop page-offset)
-    (take (inc page-size))
-    (map (partial search-util/entry context))))
-
+   (drop page-offset)
+   (take (inc page-size))
+   (map (partial search-util/entry context))))
 
 (defn- entries [context resources]
   (into [] (entries-xf context) resources))
-
 
 (defn- self-link
   [{:keys [match] :blaze/keys [base-url db]
@@ -57,10 +53,8 @@
    :url (nav/url base-url match params clauses (d/t db)
                  {"__page-offset" page-offset})})
 
-
 (defn- next-link-offset [{:keys [page-offset]} entries]
   {"__page-offset" (+ page-offset (dec (count entries)))})
-
 
 (defn- next-link
   [{:keys [page-store match params] :blaze/keys [base-url db]} clauses entries]
@@ -70,7 +64,6 @@
      :relation "next"
      :url url}))
 
-
 (defn- bundle* [context handles clauses]
   {:fhir/type :fhir/Bundle
    :id (iu/luid context)
@@ -78,41 +71,36 @@
    :total (type/->UnsignedInt (count handles))
    :link [(self-link context clauses)]})
 
-
 (defn- bundle [{{:keys [page-size]} :params :as context} handles clauses entries]
   (do-sync [next-link (next-link context clauses entries)]
     (cond->
-      (assoc (bundle* context handles clauses)
-        :entry (if (< page-size (count entries))
-                 (pop entries)
-                 entries))
+     (assoc (bundle* context handles clauses)
+            :entry (if (< page-size (count entries))
+                     (pop entries)
+                     entries))
 
       (< page-size (count entries))
       (update :link conj next-link))))
-
 
 (defn- search-normal [{:blaze/keys [db] :as context}]
   (if-ok [{:keys [handles clauses]} (handles-and-clauses context)]
     (-> (d/pull-many db handles)
         (ac/exceptionally
-          #(assoc %
-             ::anom/category ::anom/fault
-             :fhir/issue "incomplete"))
+         #(assoc %
+                 ::anom/category ::anom/fault
+                 :fhir/issue "incomplete"))
         (ac/then-apply (partial entries context))
         (ac/then-compose (partial bundle context handles clauses)))
     ac/completed-future))
-
 
 (defn- search-summary [context]
   (when-ok [{:keys [handles clauses]} (handles-and-clauses context)]
     (bundle* context handles clauses)))
 
-
 (defn- search [{:keys [params] :as context}]
   (if (:summary? params)
     (ac/completed-future (search-summary context))
     (search-normal context)))
-
 
 (defn- search-context
   [{:keys [page-store] :as context}
@@ -124,36 +112,34 @@
   (cond
     (not (s/valid? :blaze.resource/id id))
     (ac/completed-future
-      (ba/incorrect
-        (format "The identifier `%s` is invalid." id)
-        :fhir/issue "value"))
+     (ba/incorrect
+      (format "The identifier `%s` is invalid." id)
+      :fhir/issue "value"))
 
     (not (s/valid? :fhir.resource/type type))
     (ac/completed-future
-      (ba/incorrect
-        (format "The type `%s` is invalid." type)
-        :fhir/issue "value"))
+     (ba/incorrect
+      (format "The type `%s` is invalid." type)
+      :fhir/issue "value"))
 
     :else
     (let [handling (handler-util/preference headers "handling")]
       (do-sync [params (params/decode page-store handling params)]
         (cond->
-          (assoc context
-            :blaze/base-url base-url
-            :blaze/db db
-            ::reitit/router router
-            :match match
-            :code code
-            :id id
-            :type type
-            :params params)
+         (assoc context
+                :blaze/base-url base-url
+                :blaze/db db
+                ::reitit/router router
+                :match match
+                :code code
+                :id id
+                :type type
+                :params params)
           handling
           (assoc :blaze.preference/handling handling))))))
 
-
 (defmethod ig/pre-init-spec :blaze.interaction/search-compartment [_]
   (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store]))
-
 
 (defmethod ig/init-key :blaze.interaction/search-compartment [_ context]
   (log/info "Init FHIR search-compartment interaction handler")

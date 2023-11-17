@@ -1,24 +1,21 @@
 (ns blaze.handler.app-test
   (:require
-    [blaze.handler.app]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.module.test-util.ring :refer [call]]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
-    [integrant.core :as ig]
-    [juxt.iota :refer [given]]
-    [ring.util.response :as ring]
-    [taoensso.timbre :as log]))
-
+   [blaze.handler.app]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util.ring :refer [call]]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [integrant.core :as ig]
+   [juxt.iota :refer [given]]
+   [ring.util.response :as ring]
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest init-test
   (testing "nil config"
@@ -50,25 +47,20 @@
       [:explain ::s/problems 1 :pred] := `fn?
       [:explain ::s/problems 1 :val] := ::invalid)))
 
-
 (defn- rest-api [_ respond _]
   (respond (ring/response ::rest-api)))
-
 
 (defn- frontend [_ respond _]
   (respond (ring/response ::frontend)))
 
-
 (defn- health-handler [_ respond _]
   (respond (ring/response ::health-handler)))
-
 
 (def config
   {:blaze.handler/app
    {:rest-api rest-api
     :health-handler health-handler
     :context-path "/fhir"}})
-
 
 (deftest handler-test
   (testing "with frontend"

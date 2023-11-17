@@ -4,15 +4,13 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.macros :refer [defbinop defnaryop defternop defunop]]
-    [blaze.elm.protocols :as p]
-    [blaze.elm.string :as string]
-    [clojure.string :as str]))
-
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.macros :refer [defbinop defnaryop defternop defunop]]
+   [blaze.elm.protocols :as p]
+   [blaze.elm.string :as string]
+   [clojure.string :as str]))
 
 (set! *warn-on-reflection* true)
-
 
 ;; 17.1. Combine
 (defmethod core/compile* :elm.compiler.type/combine
@@ -38,22 +36,18 @@
         (-form [_]
           (list 'combine (core/-form source)))))))
 
-
 ;; 17.2. Concatenate
 (defnaryop concatenate [strings]
   (string/combine strings))
-
 
 ;; 17.3. EndsWith
 (defbinop ends-with [s suffix]
   (when (and s suffix)
     (str/ends-with? s suffix)))
 
-
 ;; 17.6. Indexer
 (defbinop indexer [x index]
   (p/indexer x index))
-
 
 ;; 17.7. LastPositionOf
 (defmethod core/compile* :elm.compiler.type/last-position-of
@@ -70,22 +64,18 @@
       (-form [_]
         (list 'last-position-of (core/-form pattern) (core/-form string))))))
 
-
 ;; 17.8. Length
 (defunop length [x]
   (long (count x)))
-
 
 ;; 17.9. Lower
 (defunop lower [s]
   (some-> s str/lower-case))
 
-
 ;; 17.10. Matches
 (defbinop matches [s pattern]
   (when (and s pattern)
     (some? (re-matches (re-pattern pattern) s))))
-
 
 ;; 17.12. PositionOf
 (defmethod core/compile* :elm.compiler.type/position-of
@@ -102,12 +92,10 @@
       (-form [_]
         (list 'position-of (core/-form pattern) (core/-form string))))))
 
-
 ;; 17.13. ReplaceMatches
 (defternop replace-matches [s pattern substitution]
   (when (and s pattern substitution)
     (str/replace s (re-pattern pattern) substitution)))
-
 
 ;; 17.14. Split
 (defmethod core/compile* :elm.compiler.type/split
@@ -151,12 +139,10 @@
         (-form [_]
           (list 'split (core/-form string)))))))
 
-
 ;; 17.16. StartsWith
 (defbinop starts-with [s prefix]
   (when (and s prefix)
     (str/starts-with? s prefix)))
-
 
 ;; 17.17. Substring
 (defmethod core/compile* :elm.compiler.type/substring
@@ -187,7 +173,6 @@
                 (subs string start-index)))))
         (-form [_]
           (list 'substring (core/-form string) (core/-form start-index)))))))
-
 
 ;; 17.18. Upper
 (defunop upper [s]

@@ -1,30 +1,26 @@
 (ns blaze.db.impl.index.system-as-of
   "Functions for accessing the SystemAsOf index."
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.byte-string :as bs]
-    [blaze.coll.core :as coll]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.iterators :as i]
-    [blaze.db.impl.macros :refer [with-open-coll]]
-    [blaze.db.kv :as kv])
+   [blaze.byte-buffer :as bb]
+   [blaze.byte-string :as bs]
+   [blaze.coll.core :as coll]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.resource-handle :as rh]
+   [blaze.db.impl.iterators :as i]
+   [blaze.db.impl.macros :refer [with-open-coll]]
+   [blaze.db.kv :as kv])
   (:import
-    [com.google.common.primitives Longs]))
-
+   [com.google.common.primitives Longs]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
-
 (def ^:private ^:const ^long t-tid-size
   (+ codec/t-size codec/tid-size))
-
 
 (defn- key-valid? [^long end-t]
   (fn [handle]
     (< end-t (rh/t handle))))
-
 
 (defn- decoder
   "Returns a function which decodes an resource handle out of a key and a value
@@ -45,12 +41,11 @@
     (fn [kb vb]
       (let [t (codec/descending-long (bb/get-long! kb))]
         (rh/resource-handle
-          (bb/get-int! kb)
-          (let [id-size (bb/remaining kb)]
-            (bb/copy-into-byte-array! kb ib 0 id-size)
-            (codec/id ib 0 id-size))
-          t vb)))))
-
+         (bb/get-int! kb)
+         (let [id-size (bb/remaining kb)]
+           (bb/copy-into-byte-array! kb ib 0 id-size)
+           (codec/id ib 0 id-size))
+         t vb)))))
 
 (defn encode-key
   "Encodes the key of the SystemAsOf index from `t`, `tid` and `id`."
@@ -61,13 +56,11 @@
       (bb/put-byte-string! id)
       bb/array))
 
-
 (defn- encode-t-tid [start-t start-tid]
   (-> (bb/allocate t-tid-size)
       (bb/put-long! (codec/descending-long ^long start-t))
       (bb/put-int! start-tid)
       bb/array))
-
 
 (defn- start-key [start-t start-tid start-id]
   (cond
@@ -80,7 +73,6 @@
     :else
     (Longs/toByteArray (codec/descending-long ^long start-t))))
 
-
 (defn system-history
   "Returns a reducible collection of all versions between `start-t` (inclusive),
   `start-tid` (optional, inclusive), `start-id` (optional, inclusive) and
@@ -89,6 +81,6 @@
   Versions are resource handles."
   [snapshot start-t start-tid start-id end-t]
   (coll/eduction
-    (take-while (key-valid? end-t))
-    (with-open-coll [saoi (kv/new-iterator snapshot :system-as-of-index)]
-      (i/kvs! saoi (decoder) (bs/from-byte-array (start-key start-t start-tid start-id))))))
+   (take-while (key-valid? end-t))
+   (with-open-coll [saoi (kv/new-iterator snapshot :system-as-of-index)]
+     (i/kvs! saoi (decoder) (bs/from-byte-array (start-key start-t start-tid start-id))))))

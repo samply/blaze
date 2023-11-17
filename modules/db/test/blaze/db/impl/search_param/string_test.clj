@@ -1,44 +1,39 @@
 (ns blaze.db.impl.search-param.string-test
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.byte-string-spec]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
-    [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
-    [blaze.db.impl.search-param :as search-param]
-    [blaze.db.impl.search-param-spec]
-    [blaze.db.impl.search-param.string :as sps]
-    [blaze.db.impl.search-param.string-spec]
-    [blaze.db.impl.search-param.util :as u]
-    [blaze.db.search-param-registry :as sr]
-    [blaze.fhir-path :as fhir-path]
-    [blaze.fhir.hash :as hash]
-    [blaze.fhir.hash-spec]
-    [blaze.fhir.test-util :refer [structure-definition-repo]]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log]))
-
+   [blaze.byte-buffer :as bb]
+   [blaze.byte-string-spec]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
+   [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
+   [blaze.db.impl.search-param :as search-param]
+   [blaze.db.impl.search-param-spec]
+   [blaze.db.impl.search-param.string :as sps]
+   [blaze.db.impl.search-param.string-spec]
+   [blaze.db.impl.search-param.util :as u]
+   [blaze.db.search-param-registry :as sr]
+   [blaze.fhir-path :as fhir-path]
+   [blaze.fhir.hash :as hash]
+   [blaze.fhir.hash-spec]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defn phonetic-param [search-param-registry]
   (sr/get search-param-registry "phonetic" "Patient"))
 
-
 (def config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
-
 
 (deftest phonetic-param-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
@@ -47,10 +42,8 @@
       :code := "phonetic"
       :c-hash := (codec/c-hash "phonetic"))))
 
-
 (defn- index-entries [search-param linked-compartments hash resource]
   (vec (search-param/index-entries search-param linked-compartments hash resource)))
-
 
 (deftest index-entries-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
@@ -62,8 +55,8 @@
               hash (hash/generate patient)]
 
           (is (empty? (index-entries
-                        (phonetic-param search-param-registry) [] hash
-                        patient)))))
+                       (phonetic-param search-param-registry) [] hash
+                       patient)))))
 
       (testing "unmappable char in family is not a problem"
         (let [patient {:fhir/type :fhir/Patient
@@ -72,8 +65,8 @@
               hash (hash/generate patient)]
 
           (is (empty? (index-entries
-                        (phonetic-param search-param-registry) [] hash
-                        patient)))))
+                       (phonetic-param search-param-registry) [] hash
+                       patient)))))
 
       (let [patient {:fhir/type :fhir/Patient
                      :id "id-122929"
@@ -81,7 +74,7 @@
             hash (hash/generate patient)
             [[_ k0] [_ k1]]
             (index-entries
-              (phonetic-param search-param-registry) [] hash patient)]
+             (phonetic-param search-param-registry) [] hash patient)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -108,8 +101,8 @@
             hash (hash/generate patient)
             [[_ k0] [_ k1] [_ k2] [_ k3]]
             (index-entries
-              (sr/get search-param-registry "address" "Patient")
-              [] hash patient)]
+             (sr/get search-param-registry "address" "Patient")
+             [] hash patient)]
 
         (testing "first entry is about `line`"
           (testing "SearchParamValueResource key"
@@ -152,8 +145,8 @@
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
             (index-entries
-              (sr/get search-param-registry "description" "ActivityDefinition")
-              [] hash resource)]
+             (sr/get search-param-registry "description" "ActivityDefinition")
+             [] hash resource)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -177,8 +170,8 @@
 
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
           (given (search-param/index-entries
-                   (sr/get search-param-registry "description" "ActivityDefinition")
-                   [] hash resource)
+                  (sr/get search-param-registry "description" "ActivityDefinition")
+                  [] hash resource)
             ::anom/category := ::anom/fault))))
 
     (testing "skip warning"

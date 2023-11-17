@@ -1,3 +1,6 @@
+fmt:
+	cljfmt check
+
 lint:
 	clj-kondo --lint src test deps.edn
 
@@ -19,4 +22,4 @@ register-test-slow: prep
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target store
 
-.PHONY: lint prep test test-coverage clean
+.PHONY: fmt lint prep test test-coverage clean

@@ -4,24 +4,22 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.interval-operators]
-    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
-    [blaze.elm.decimal :as decimal]
-    [blaze.elm.interval :refer [interval]]
-    [blaze.elm.literal :as elm]
-    [blaze.elm.literal-spec]
-    [blaze.elm.util-spec]
-    [blaze.test-util :refer [given-thrown]]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]))
-
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.interval-operators]
+   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.decimal :as decimal]
+   [blaze.elm.interval :refer [interval]]
+   [blaze.elm.literal :as elm]
+   [blaze.elm.literal-spec]
+   [blaze.elm.util-spec]
+   [blaze.test-util :refer [given-thrown]]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -29,9 +27,7 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 (def interval-zero #elm/interval [#elm/integer "0" #elm/integer "0"])
 
@@ -125,7 +121,6 @@
         (list 'interval
               (list 'as 'elm/integer (list 'param-ref "x"))
               (list 'as 'elm/integer (list 'param-ref "y")))))))
-
 
 ;; 19.2. After
 ;;
@@ -269,7 +264,6 @@
 
   (ctu/testing-binary-precision-form elm/after))
 
-
 ;; 19.3. Before
 ;;
 ;; The Before operator is defined for Intervals, as well as Date, DateTime, and
@@ -412,7 +406,6 @@
 
   (ctu/testing-binary-precision-form elm/before))
 
-
 ;; 19.4. Collapse
 ;;
 ;; The Collapse operator returns the unique set of intervals that completely
@@ -472,7 +465,6 @@
 
   (ctu/testing-binary-form elm/collapse))
 
-
 ;; 19.5. Contains
 ;;
 ;; The Contains operator returns true if the first operand contains the second.
@@ -503,7 +495,7 @@
 
     (testing "Dynamic"
       (is (false? (ctu/dynamic-compile-eval
-                    (elm/contains [#elm/parameter-ref "nil" #elm/integer "1"]))))))
+                   (elm/contains [#elm/parameter-ref "nil" #elm/integer "1"]))))))
 
   (testing "Interval"
     (testing "Integer"
@@ -546,7 +538,6 @@
 
   (ctu/testing-binary-precision-form elm/contains))
 
-
 ;; 19.6. End
 ;;
 ;; The End operator returns the ending point of an interval.
@@ -585,7 +576,6 @@
   (ctu/testing-unary-dynamic elm/end)
 
   (ctu/testing-unary-form elm/end))
-
 
 ;; 19.7. Ends
 ;;
@@ -626,16 +616,13 @@
 
   (ctu/testing-binary-precision-form elm/ends))
 
-
 ;; 19.8. Equal
 ;;
 ;; See 12.1. Equal
 
-
 ;; 19.9. Equivalent
 ;;
 ;; See 12.2. Equivalent
-
 
 ;; 19.10. Except
 ;;
@@ -680,7 +667,6 @@
 
   (ctu/testing-binary-form elm/except))
 
-
 ;; 19.11. Expand
 ;;
 ;; The Expand operator returns the set of intervals of size per for all the
@@ -721,13 +707,11 @@
 ;;
 ;; TODO: Test Expand
 
-
 ;; 19.12. In
 ;;
 ;; Normalized to Contains
 (deftest compile-in-test
   (ctu/unsupported-binary-operand "In"))
-
 
 ;; 19.13. Includes
 ;;
@@ -763,7 +747,6 @@
 
     (ctu/testing-binary-null elm/includes #elm/list []))
 
-
   (testing "Interval"
     (testing "Integer"
       (are [x y pred] (pred (ctu/compile-binop elm/includes elm/interval x y))
@@ -780,13 +763,11 @@
 
   (ctu/testing-binary-precision-form elm/includes))
 
-
 ;; 19.14. IncludedIn
 ;;
 ;; Normalized to Includes
 (deftest compile-included-in-test
   (ctu/unsupported-binary-operand "IncludedIn"))
-
 
 ;; 19.15. Intersect
 ;;
@@ -847,13 +828,11 @@
 
   (ctu/testing-binary-form elm/intersect))
 
-
 ;; 19.16. Meets
 ;;
 ;; Normalized to MeetsBefore or MeetsAfter
 (deftest compile-meets-test
   (ctu/unsupported-binary-operand "Meets"))
-
 
 ;; 19.17. MeetsBefore
 ;;
@@ -886,7 +865,6 @@
 
   (ctu/testing-binary-precision-form elm/meets-before))
 
-
 ;; 19.18. MeetsAfter
 ;;
 ;; The MeetsAfter operator returns true if the first interval starts immediately
@@ -916,7 +894,6 @@
   (ctu/testing-binary-form elm/meets-after)
 
   (ctu/testing-binary-precision-form elm/meets-after))
-
 
 ;; 19.20. Overlaps
 ;;
@@ -978,20 +955,17 @@
 
   (ctu/testing-binary-precision-form elm/overlaps))
 
-
 ;; 19.21. OverlapsBefore
 ;;
 ;; Normalized to ProperContains Start
 (deftest compile-overlaps-before-test
   (ctu/unsupported-binary-operand "OverlapsBefore"))
 
-
 ;; 19.22. OverlapsAfter
 ;;
 ;; Normalized to ProperContains End
 (deftest compile-overlaps-after-test
   (ctu/unsupported-binary-operand "OverlapsAfter"))
-
 
 ;; 19.23. PointFrom
 ;;
@@ -1033,7 +1007,6 @@
   (ctu/testing-unary-dynamic elm/point-from)
 
   (ctu/testing-unary-form elm/point-from))
-
 
 ;; 19.24. ProperContains
 ;;
@@ -1084,13 +1057,11 @@
 
   (ctu/testing-binary-precision-form elm/proper-contains))
 
-
 ;; 19.25. ProperIn
 ;;
 ;; Normalized to ProperContains
 (deftest compile-proper-in-test
   (ctu/unsupported-binary-operand "ProperIn"))
-
 
 ;; 19.26. ProperIncludes
 ;;
@@ -1131,13 +1102,11 @@
 
   (ctu/testing-binary-precision-form elm/proper-includes))
 
-
 ;; 19.27. ProperIncludedIn
 ;;
 ;; Normalized to ProperIncludes
 (deftest compile-proper-included-in-test
   (ctu/unsupported-binary-operand "ProperIncludedIn"))
-
 
 ;; 19.28. Size
 ;;
@@ -1153,7 +1122,6 @@
 ;; If the argument is null, the result is null.
 ;;
 ;; TODO: I don't get it
-
 
 ;; 19.29. Start
 ;;
@@ -1187,7 +1155,6 @@
 
   (ctu/testing-unary-form elm/start))
 
-
 ;; 19.30. Starts
 ;;
 ;; The Starts operator returns true if the first interval starts the second. In
@@ -1219,7 +1186,6 @@
   (ctu/testing-binary-form elm/starts)
 
   (ctu/testing-binary-precision-form elm/starts))
-
 
 ;; 19.31. Union
 ;;
@@ -1257,7 +1223,6 @@
   (ctu/testing-binary-dynamic elm/union)
 
   (ctu/testing-binary-form elm/union))
-
 
 ;; 19.32. Width
 ;;

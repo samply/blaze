@@ -4,35 +4,33 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.cql-translator :as t]
-    [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.external-data :as ed]
-    [blaze.elm.compiler.external-data-spec]
-    [blaze.elm.compiler.library :as library]
-    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
-    [blaze.elm.expression :as expr]
-    [blaze.elm.expression-spec]
-    [blaze.elm.expression.cache :as-alias expr-cache]
-    [blaze.elm.util-spec]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.spec.type]
-    [blaze.module.test-util :refer [with-system]]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]])
+   [blaze.anomaly :as ba]
+   [blaze.cql-translator :as t]
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.external-data :as ed]
+   [blaze.elm.compiler.external-data-spec]
+   [blaze.elm.compiler.library :as library]
+   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.expression :as expr]
+   [blaze.elm.expression-spec]
+   [blaze.elm.expression.cache :as-alias expr-cache]
+   [blaze.elm.util-spec]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type]
+   [blaze.module.test-util :refer [with-system]]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]])
   (:import
-    [java.time OffsetDateTime]))
-
+   [java.time OffsetDateTime]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -40,17 +38,13 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 (defn- eval-context [db]
   {:db db :now (OffsetDateTime/now)})
 
-
 (defn- resource [db type id]
   (ed/mk-resource db (d/resource-handle db type id)))
-
 
 (deftest resource-test
   (testing "toString"
@@ -58,7 +52,6 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (is (= "Patient[id = 0, t = 1]" (str (ctu/resource (d/db node) "Patient" "0")))))))
-
 
 ;; 11.1. Retrieve
 ;;
@@ -142,10 +135,10 @@
             [:put {:fhir/type :fhir/Observation :id "1"
                    :code
                    #fhir/CodeableConcept
-                           {:coding
-                            [#fhir/Coding
-                                    {:system #fhir/uri"system-192253"
-                                     :code #fhir/code"code-192300"}]}
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri"system-192253"
+                        :code #fhir/code"code-192300"}]}
                    :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
           (let [context
@@ -157,9 +150,9 @@
                    [{:name "sys-def-131750"
                      :id "system-192253"}]}}}
                 elm #elm/retrieve
-                            {:type "Observation"
-                             :codes #elm/list [#elm/code ["sys-def-131750"
-                                                          "code-192300"]]}
+                     {:type "Observation"
+                      :codes #elm/list [#elm/code ["sys-def-131750"
+                                                   "code-192300"]]}
                 expr (c/compile context elm)
                 db (d/db node)
                 patient (ctu/resource db "Patient" "0")]
@@ -185,18 +178,18 @@
             [:put {:fhir/type :fhir/Observation :id "1"
                    :code
                    #fhir/CodeableConcept
-                           {:coding
-                            [#fhir/Coding
-                                    {:system #fhir/uri"system-192253"
-                                     :code #fhir/code"code-192300"}]}
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri"system-192253"
+                        :code #fhir/code"code-192300"}]}
                    :subject #fhir/Reference{:reference "Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "2"
                    :code
                    #fhir/CodeableConcept
-                           {:coding
-                            [#fhir/Coding
-                                    {:system #fhir/uri"system-192253"
-                                     :code #fhir/code"code-140541"}]}
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri"system-192253"
+                        :code #fhir/code"code-140541"}]}
                    :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
           (let [context
@@ -208,10 +201,10 @@
                    [{:name "sys-def-131750"
                      :id "system-192253"}]}}}
                 elm #elm/retrieve
-                            {:type "Observation"
-                             :codes
-                             #elm/list [#elm/code ["sys-def-131750" "code-192300"]
-                                        #elm/code ["sys-def-131750" "code-140541"]]}
+                     {:type "Observation"
+                      :codes
+                      #elm/list [#elm/code ["sys-def-131750" "code-192300"]
+                                 #elm/code ["sys-def-131750" "code-140541"]]}
                 expr (c/compile context elm)
                 db (d/db node)
                 patient (ctu/resource db "Patient" "0")]
@@ -230,10 +223,10 @@
             (testing "form"
               (has-form expr
                 '(retrieve
-                   "Observation"
-                   [["code"
-                     "system-192253|code-192300"
-                     "system-192253|code-140541"]]))))))
+                  "Observation"
+                  [["code"
+                    "system-192253|code-192300"
+                    "system-192253|code-140541"]]))))))
 
       (testing "with one concept"
         (with-system-data [{:blaze.db/keys [node]} mem-node-config]
@@ -243,18 +236,18 @@
             [:put {:fhir/type :fhir/Observation :id "1"
                    :code
                    #fhir/CodeableConcept
-                           {:coding
-                            [#fhir/Coding
-                                    {:system #fhir/uri"system-192253"
-                                     :code #fhir/code"code-192300"}]}
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri"system-192253"
+                        :code #fhir/code"code-192300"}]}
                    :subject #fhir/Reference{:reference "Patient/0"}}]
             [:put {:fhir/type :fhir/Observation :id "2"
                    :code
                    #fhir/CodeableConcept
-                           {:coding
-                            [#fhir/Coding
-                                    {:system #fhir/uri"system-192253"
-                                     :code #fhir/code"code-140541"}]}
+                    {:coding
+                     [#fhir/Coding
+                       {:system #fhir/uri"system-192253"
+                        :code #fhir/code"code-140541"}]}
                    :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
           (let [context
@@ -266,13 +259,13 @@
                    [{:name "sys-def-131750"
                      :id "system-192253"}]}}}
                 elm #elm/retrieve
-                            {:type "Observation"
-                             :codes
-                             #elm/source-property
-                                     [#elm/concept
-                                             [[#elm/code ["sys-def-131750" "code-192300"]
-                                               #elm/code ["sys-def-131750" "code-140541"]]]
-                                      "codes"]}
+                     {:type "Observation"
+                      :codes
+                      #elm/source-property
+                       [#elm/concept
+                         [[#elm/code ["sys-def-131750" "code-192300"]
+                           #elm/code ["sys-def-131750" "code-140541"]]]
+                        "codes"]}
                 expr (c/compile context elm)
                 db (d/db node)
                 patient (ctu/resource db "Patient" "0")]
@@ -291,10 +284,10 @@
             (testing "form"
               (has-form expr
                 '(retrieve
-                   "Observation"
-                   [["code"
-                     "system-192253|code-192300"
-                     "system-192253|code-140541"]]))))))))
+                  "Observation"
+                  [["code"
+                    "system-192253|code-192300"
+                    "system-192253|code-140541"]]))))))))
 
   (testing "Specimen context"
     (testing "Patient"
@@ -330,10 +323,10 @@
         [[[:put {:fhir/type :fhir/Medication :id "0"
                  :code
                  #fhir/CodeableConcept
-                         {:coding
-                          [#fhir/Coding
-                                  {:system #fhir/uri"system-225806"
-                                   :code #fhir/code"code-225809"}]}}]]]
+                  {:coding
+                   [#fhir/Coding
+                     {:system #fhir/uri"system-225806"
+                      :code #fhir/code"code-225809"}]}}]]]
 
         (let [context
               {:node node
@@ -344,9 +337,9 @@
                  [{:name "sys-def-225944"
                    :id "system-225806"}]}}}
               elm #elm/retrieve
-                          {:type "Medication"
-                           :codes #elm/list [#elm/code ["sys-def-225944"
-                                                        "code-225809"]]}
+                   {:type "Medication"
+                    :codes #elm/list [#elm/code ["sys-def-225944"
+                                                 "code-225809"]]}
               expr (c/compile context elm)
               db (d/db node)]
 
@@ -374,10 +367,10 @@
                  [{:name "sys-def-225944"
                    :id "system-225806"}]}}}
               elm #elm/retrieve
-                          {:type "Medication"
-                           :codes #elm/list [#elm/code ["sys-def-225944"
-                                                        "code-225809"]]
-                           :code-property "foo"}]
+                   {:type "Medication"
+                    :codes #elm/list [#elm/code ["sys-def-225944"
+                                                 "code-225809"]]
+                    :code-property "foo"}]
 
           (given (ba/try-anomaly (c/compile context elm))
             ::anom/category := ::anom/not-found
@@ -391,21 +384,21 @@
                  :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
         (let [library (t/translate
-                        "library test
-                         using FHIR version '4.0.0'
-                         include FHIRHelpers version '4.0.0'
+                       "library test
+                        using FHIR version '4.0.0'
+                        include FHIRHelpers version '4.0.0'
 
-                         context Patient
+                        context Patient
 
-                         define \"name-133756\":
-                           singleton from ([Patient])
+                        define \"name-133756\":
+                          singleton from ([Patient])
 
-                         define InInitialPopulation:
-                           [\"name-133756\" -> Observation]
-                         ")
+                        define InInitialPopulation:
+                          [\"name-133756\" -> Observation]
+                        ")
               compile-context {::expr-cache/enabled? false}
               {:keys [expression-defs]} (library/compile-library
-                                          node library compile-context)
+                                         node library compile-context)
               db (d/db node)
               patient (ctu/resource db "Patient" "0")
               eval-context (assoc (eval-context db) :expression-defs expression-defs)
@@ -429,30 +422,30 @@
           [:put {:fhir/type :fhir/Observation :id "0"
                  :code
                  #fhir/CodeableConcept
-                         {:coding
-                          [#fhir/Coding
-                                  {:system #fhir/uri"system-133620"
-                                   :code #fhir/code"code-133657"}]}
+                  {:coding
+                   [#fhir/Coding
+                     {:system #fhir/uri"system-133620"
+                      :code #fhir/code"code-133657"}]}
                  :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
         (let [library (t/translate
-                        "library test
-                         using FHIR version '4.0.0'
-                         include FHIRHelpers version '4.0.0'
+                       "library test
+                        using FHIR version '4.0.0'
+                        include FHIRHelpers version '4.0.0'
 
-                         codesystem sys: 'system-133620'
+                        codesystem sys: 'system-133620'
 
-                         context Patient
+                        context Patient
 
-                         define \"name-133730\":
-                           singleton from ([Patient])
+                        define \"name-133730\":
+                          singleton from ([Patient])
 
-                         define InInitialPopulation:
-                           [\"name-133730\" -> Observation: Code 'code-133657' from sys]
-                         ")
+                        define InInitialPopulation:
+                          [\"name-133730\" -> Observation: Code 'code-133657' from sys]
+                        ")
               compile-context {::expr-cache/enabled? false}
               {:keys [expression-defs]} (library/compile-library
-                                          node library compile-context)
+                                         node library compile-context)
               db (d/db node)
               patient (ctu/resource db "Patient" "0")
               eval-context (assoc (eval-context db) :expression-defs expression-defs)
@@ -482,11 +475,11 @@
                           :name "name-174207"
                           :resultTypeName "{http://hl7.org/fhir}Patient"}]}}
               elm #elm/retrieve
-                          {:type "Observation"
-                           :context #elm/expression-ref "name-174207"
-                           :codes #elm/list [#elm/code ["sys-def-174848"
-                                                        "code-174911"]]
-                           :code-property "foo"}]
+                   {:type "Observation"
+                    :context #elm/expression-ref "name-174207"
+                    :codes #elm/list [#elm/code ["sys-def-174848"
+                                                 "code-174911"]]
+                    :code-property "foo"}]
 
           (given (ba/try-anomaly (c/compile {:node node :library library} elm))
             ::anom/category := ::anom/not-found

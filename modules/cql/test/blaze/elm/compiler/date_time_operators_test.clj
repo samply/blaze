@@ -4,30 +4,28 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as ctu]
-    [blaze.elm.date-time :as date-time]
-    [blaze.elm.literal :as elm]
-    [blaze.elm.literal-spec]
-    [blaze.fhir.spec.type.system :as system]
-    [blaze.test-util :refer [given-thrown satisfies-prop]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [clojure.test.check.properties :as prop]
-    [java-time.api :as time])
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.test-util :as ctu]
+   [blaze.elm.date-time :as date-time]
+   [blaze.elm.literal :as elm]
+   [blaze.elm.literal-spec]
+   [blaze.fhir.spec.type.system :as system]
+   [blaze.test-util :refer [given-thrown satisfies-prop]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [clojure.test.check.properties :as prop]
+   [java-time.api :as time])
   (:import
-    [blaze.fhir.spec.type.system DateDate]
-    [java.time OffsetDateTime]
-    [java.time.temporal Temporal]))
-
+   [blaze.fhir.spec.type.system DateDate]
+   [java.time OffsetDateTime]
+   [java.time.temporal Temporal]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -35,34 +33,27 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; 18.1 Add
 ;;
 ;; See 16.2. Add
 
-
 ;; 18.2 After
 ;;
 ;; See 19.2. After
-
 
 ;; 18.3 Before
 ;;
 ;; See 19.3. Before
 
-
 ;; 18.4. Equal
 ;;
 ;; See 12.1. Equal
 
-
 ;; 18.5. Equivalent
 ;;
 ;; See 12.2. Equivalent
-
 
 ;; 18.6. Date
 ;;
@@ -217,7 +208,6 @@
 
           (is (false? (core/-static expr))))))))
 
-
 ;; 18.7. DateFrom
 ;;
 ;; The DateFrom operator returns the date (with no time components specified) of
@@ -239,7 +229,6 @@
   (ctu/testing-unary-dynamic elm/date-from)
 
   (ctu/testing-unary-form elm/date-from))
-
 
 ;; 18.8. DateTime
 ;;
@@ -572,7 +561,6 @@
 
             (is (false? (core/-static expr)))))))))
 
-
 ;; 18.9. DateTimeComponentFrom
 ;;
 ;; The DateTimeComponentFrom operator returns the specified component of the
@@ -607,7 +595,6 @@
 
   (ctu/testing-unary-precision-form elm/date-time-component-from "Year" "Month"
                                     "Day" "Hour" "Minute" "Second" "Millisecond"))
-
 
 ;; 18.10. DifferenceBetween
 ;;
@@ -679,7 +666,6 @@
 
   (ctu/testing-binary-precision-form elm/difference-between "Year" "Month" "Day"))
 
-
 ;; 18.11. DurationBetween
 ;;
 ;; The DurationBetween operator returns the number of whole calendar periods for
@@ -749,11 +735,9 @@
 
   (ctu/testing-binary-precision-form elm/duration-between "Year" "Month" "Day"))
 
-
 ;; 18.12. Not Equal
 ;;
 ;; See 12.7. NotEqual
-
 
 ;; 18.13. Now
 ;;
@@ -771,7 +755,6 @@
   (are [elm res] (= res (core/-eval (c/compile {} elm) {:now ctu/now} nil nil))
     {:type "Now"}
     ctu/now))
-
 
 ;; 18.14. SameAs
 ;;
@@ -861,7 +844,6 @@
   (ctu/testing-binary-form elm/same-as)
 
   (ctu/testing-binary-precision-form elm/same-as))
-
 
 ;; 18.15. SameOrBefore
 ;;
@@ -970,7 +952,6 @@
 
   (ctu/testing-binary-precision-form elm/same-or-before))
 
-
 ;; 18.15. SameOrAfter
 ;;
 ;; The SameOrAfter operator is defined for Date, DateTime, and Time values, as
@@ -1077,7 +1058,6 @@
   (ctu/testing-binary-form elm/same-or-after)
 
   (ctu/testing-binary-precision-form elm/same-or-after))
-
 
 ;; 18.18. Time
 ;;
@@ -1203,7 +1183,6 @@
 
           (is (false? (core/-static expr))))))))
 
-
 ;; 18.21. TimeOfDay
 ;;
 ;; The TimeOfDay operator returns the time-of-day of the start timestamp
@@ -1216,7 +1195,6 @@
   (ctu/testing-constant-dynamic elm/time-of-day)
 
   (ctu/testing-constant-form elm/time-of-day))
-
 
 ;; 18.22. Today
 ;;

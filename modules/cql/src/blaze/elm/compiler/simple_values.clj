@@ -5,14 +5,12 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:refer-clojure :exclude [parse-long])
   (:require
-    [blaze.anomaly :as ba :refer [throw-anom]]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.decimal :as decimal]
-    [blaze.elm.util :as elm-util]))
-
+   [blaze.anomaly :as ba :refer [throw-anom]]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.decimal :as decimal]
+   [blaze.elm.util :as elm-util]))
 
 (set! *warn-on-reflection* true)
-
 
 ;; 1.1 Literal
 ;;
@@ -21,20 +19,17 @@
 (defn- unsupported-literals-anom [value-type]
   (ba/unsupported (str value-type " literals are not supported")))
 
-
 (defn- parse-int [s]
   (try
     (.longValue (Integer/valueOf ^String s))
     (catch NumberFormatException _
       (throw-anom (ba/incorrect (format "Incorrect integer literal `%s`." s))))))
 
-
 (defn- parse-long [s]
   (try
     (Long/parseLong s)
     (catch NumberFormatException _
       (throw-anom (ba/incorrect (format "Incorrect long literal `%s`." s))))))
-
 
 (defmethod core/compile* :elm.compiler.type/literal
   [_ {:keys [value] value-type :valueType}]

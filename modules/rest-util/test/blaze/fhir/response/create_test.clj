@@ -1,32 +1,27 @@
 (ns blaze.fhir.response.create-test
   (:require
-    [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
-    [blaze.fhir.response.create :refer [build-response]]
-    [blaze.fhir.response.create-spec]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [reitit.core :as reitit]
-    [taoensso.timbre :as log]))
-
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.fhir.response.create :refer [build-response]]
+   [blaze.fhir.response.create-spec]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [reitit.core :as reitit]
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def router
   (reitit/router
-    [["/Patient" {:name :Patient/type}]]
-    {:syntax :bracket}))
-
+   [["/Patient" {:name :Patient/type}]]
+   {:syntax :bracket}))
 
 (def context
   {:blaze/base-url "http://localhost:8080" ::reitit/router router})
-
 
 (deftest build-response-test
   (with-system-data [{:blaze.db/keys [node]} mem-node-config]
@@ -63,7 +58,7 @@
         (testing "with return=minimal Prefer header"
           (let [context
                 (assoc context
-                  :blaze.preference/return :blaze.preference.return/minimal)
+                       :blaze.preference/return :blaze.preference.return/minimal)
                 {:keys [body]}
                 @(build-response context nil nil resource-handle)]
 
@@ -73,7 +68,7 @@
         (testing "with return=representation Prefer header"
           (let [context
                 (assoc context
-                  :blaze.preference/return :blaze.preference.return/representation)
+                       :blaze.preference/return :blaze.preference.return/representation)
                 {:keys [body]}
                 @(build-response context nil nil resource-handle)]
 
@@ -83,7 +78,7 @@
         (testing "with return=OperationOutcome Prefer header"
           (let [context
                 (assoc context
-                  :blaze.preference/return :blaze.preference.return/OperationOutcome)
+                       :blaze.preference/return :blaze.preference.return/OperationOutcome)
                 {:keys [body]}
                 @(build-response context nil nil resource-handle)]
 
@@ -112,7 +107,7 @@
         (testing "with return=minimal Prefer header"
           (let [context
                 (assoc context
-                  :blaze.preference/return :blaze.preference.return/minimal)
+                       :blaze.preference/return :blaze.preference.return/minimal)
                 {:keys [body]}
                 @(build-response context nil resource-handle resource-handle)]
 
@@ -122,7 +117,7 @@
         (testing "with return=representation Prefer header"
           (let [context
                 (assoc context
-                  :blaze.preference/return :blaze.preference.return/representation)
+                       :blaze.preference/return :blaze.preference.return/representation)
                 {:keys [body]}
                 @(build-response context nil resource-handle resource-handle)]
 

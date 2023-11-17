@@ -4,24 +4,22 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.elm.code-spec]
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.parameters :refer [->ParameterRef]]
-    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
-    [blaze.elm.literal]
-    [blaze.elm.literal-spec]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]]))
-
+   [blaze.anomaly :as ba]
+   [blaze.elm.code-spec]
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.parameters :refer [->ParameterRef]]
+   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.literal]
+   [blaze.elm.literal-spec]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -29,9 +27,7 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; 7.2. ParameterRef
 ;;

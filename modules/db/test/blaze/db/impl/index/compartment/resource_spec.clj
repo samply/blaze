@@ -1,15 +1,14 @@
 (ns blaze.db.impl.index.compartment.resource-spec
   (:require
-    [blaze.byte-string-spec]
-    [blaze.coll.core-spec]
-    [blaze.coll.spec :as cs]
-    [blaze.db.impl.codec.spec]
-    [blaze.db.impl.index.compartment.resource :as cr]
-    [blaze.db.impl.iterators-spec]
-    [blaze.db.impl.search-param.spec]
-    [blaze.db.kv.spec]
-    [clojure.spec.alpha :as s]))
-
+   [blaze.byte-string-spec]
+   [blaze.coll.core-spec]
+   [blaze.coll.spec :as cs]
+   [blaze.db.impl.codec.spec]
+   [blaze.db.impl.index.compartment.resource :as cr]
+   [blaze.db.impl.iterators-spec]
+   [blaze.db.impl.search-param.spec]
+   [blaze.db.kv.spec]
+   [clojure.spec.alpha :as s]))
 
 (s/fdef cr/resource-handles
   :args (s/cat :context :blaze.db.impl.batch-db/context
@@ -17,7 +16,6 @@
                :tid :blaze.db/tid
                :start-id (s/? :blaze.db/id-byte-string))
   :ret (cs/coll-of :blaze.db/resource-handle))
-
 
 (s/fdef cr/index-entry
   :args (s/cat :compartment :blaze.db/compartment

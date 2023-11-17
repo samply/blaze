@@ -5,50 +5,45 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.anomaly-spec]
-    [blaze.async.comp :as ac]
-    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-    [blaze.db.resource-store :as rs]
-    [blaze.db.spec :refer [node?]]
-    [blaze.fhir.response.create-spec]
-    [blaze.fhir.spec.type]
-    [blaze.interaction.create]
-    [blaze.interaction.test-util :refer [wrap-error]]
-    [blaze.interaction.util-spec]
-    [blaze.log]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [integrant.core :as ig]
-    [juxt.iota :refer [given]]
-    [reitit.core :as reitit]
-    [taoensso.timbre :as log])
+   [blaze.anomaly :as ba]
+   [blaze.anomaly-spec]
+   [blaze.async.comp :as ac]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.resource-store :as rs]
+   [blaze.db.spec :refer [node?]]
+   [blaze.fhir.response.create-spec]
+   [blaze.fhir.spec.type]
+   [blaze.interaction.create]
+   [blaze.interaction.test-util :refer [wrap-error]]
+   [blaze.interaction.util-spec]
+   [blaze.log]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [integrant.core :as ig]
+   [juxt.iota :refer [given]]
+   [reitit.core :as reitit]
+   [taoensso.timbre :as log])
   (:import
-    [java.time Instant]))
-
+   [java.time Instant]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def base-url "base-url-134418")
 (def context-path "/context-path-141016")
 
-
 (def router
   (reitit/router
-    [["/Patient" {:name :Patient/type}]
-     ["/Observation" {:name :Observation/type}]
-     ["/Bundle" {:name :Bundle/type}]]
-    {:syntax :bracket
-     :path context-path}))
-
+   [["/Patient" {:name :Patient/type}]
+    ["/Observation" {:name :Observation/type}]
+    ["/Bundle" {:name :Bundle/type}]]
+   {:syntax :bracket
+    :path context-path}))
 
 (deftest init-test
   (testing "nil config"
@@ -74,29 +69,25 @@
       [:explain ::s/problems 2 :pred] := `node?
       [:explain ::s/problems 2 :val] := ::invalid)))
 
-
 (defn create-config [node-config]
   (assoc (api-stub/create-mem-node-config node-config)
-    :blaze.interaction/create
-    {:node (ig/ref :blaze.db/node)
-     :executor (ig/ref :blaze.test/executor)
-     :clock (ig/ref :blaze.test/fixed-clock)
-     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-    :blaze.test/executor {}
-    :blaze.test/fixed-rng-fn {}))
-
+         :blaze.interaction/create
+         {:node (ig/ref :blaze.db/node)
+          :executor (ig/ref :blaze.test/executor)
+          :clock (ig/ref :blaze.test/fixed-clock)
+          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+         :blaze.test/executor {}
+         :blaze.test/fixed-rng-fn {}))
 
 (def config
   (create-config {}))
 
-
 (defn wrap-defaults [handler]
   (fn [request]
     (handler
-      (assoc request
-        :blaze/base-url base-url
-        ::reitit/router router))))
-
+     (assoc request
+            :blaze/base-url base-url
+            ::reitit/router router))))
 
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
@@ -105,18 +96,14 @@
        (let [~handler-binding (-> handler# wrap-defaults wrap-error)]
          ~@body))))
 
-
 (def patient-match
   (reitit/map->Match {:data {:fhir.resource/type "Patient"}}))
-
 
 (def observation-match
   (reitit/map->Match {:data {:fhir.resource/type "Observation"}}))
 
-
 (def bundle-match
   (reitit/map->Match {:data {:fhir.resource/type "Bundle"}}))
-
 
 (deftest handler-test
   (testing "errors on"
@@ -124,7 +111,7 @@
       (with-handler [handler]
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-match})]
+                {::reitit/match patient-match})]
 
           (is (= 400 status))
 
@@ -138,8 +125,8 @@
       (with-handler [handler]
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-match
-                  :body {:fhir/type :fhir/Observation}})]
+                {::reitit/match patient-match
+                 :body {:fhir/type :fhir/Observation}})]
 
           (is (= 400 status))
 
@@ -155,9 +142,9 @@
       (with-handler [handler]
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match observation-match
-                  :body {:fhir/type :fhir/Observation :id "0"
-                         :subject #fhir/Reference{:reference "Patient/0"}}})]
+                {::reitit/match observation-match
+                 :body {:fhir/type :fhir/Observation :id "0"
+                        :subject #fhir/Reference{:reference "Patient/0"}}})]
 
           (is (= 409 status))
 
@@ -172,8 +159,8 @@
         (with-handler [handler]
           (let [{:keys [status body]}
                 @(handler
-                   {::reitit/match patient-match
-                    :body {:fhir/type :fhir/Patient}})]
+                  {::reitit/match patient-match
+                   :body {:fhir/type :fhir/Patient}})]
 
             (is (= 500 status))
 
@@ -188,8 +175,8 @@
       (with-handler [handler]
         (let [{:keys [status headers body]}
               @(handler
-                 {::reitit/match patient-match
-                  :body {:fhir/type :fhir/Patient}})]
+                {::reitit/match patient-match
+                 :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
@@ -214,9 +201,9 @@
         (with-handler [handler]
           (let [{:keys [status body]}
                 @(handler
-                   {::reitit/match patient-match
-                    :body {:fhir/type :fhir/Patient
-                           :meta #fhir/Meta{:source #fhir/uri"source-110438"}}})]
+                  {::reitit/match patient-match
+                   :body {:fhir/type :fhir/Patient
+                          :meta #fhir/Meta{:source #fhir/uri"source-110438"}}})]
 
             (is (= 201 status))
 
@@ -232,9 +219,9 @@
           (with-handler [handler]
             (let [{:keys [status]}
                   @(handler
-                     {::reitit/match patient-match
-                      :body {:fhir/type :fhir/Patient
-                             :meta #fhir/Meta{:versionId #fhir/id"1"}}})]
+                    {::reitit/match patient-match
+                     :body {:fhir/type :fhir/Patient
+                            :meta #fhir/Meta{:versionId #fhir/id"1"}}})]
 
               (is (= 201 status)))))))
 
@@ -242,9 +229,9 @@
       (with-handler [handler]
         (let [{:keys [status headers body]}
               @(handler
-                 {::reitit/match patient-match
-                  :headers {"prefer" "return=minimal"}
-                  :body {:fhir/type :fhir/Patient}})]
+                {::reitit/match patient-match
+                 :headers {"prefer" "return=minimal"}
+                 :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
@@ -265,9 +252,9 @@
       (with-handler [handler]
         (let [{:keys [status headers body]}
               @(handler
-                 {::reitit/match patient-match
-                  :headers {"prefer" "return=representation"}
-                  :body {:fhir/type :fhir/Patient}})]
+                {::reitit/match patient-match
+                 :headers {"prefer" "return=representation"}
+                 :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
@@ -292,9 +279,9 @@
       (with-handler [handler]
         (let [{:keys [status headers body]}
               @(handler
-                 {::reitit/match patient-match
-                  :headers {"prefer" "return=OperationOutcome"}
-                  :body {:fhir/type :fhir/Patient}})]
+                {::reitit/match patient-match
+                 :headers {"prefer" "return=OperationOutcome"}
+                 :body {:fhir/type :fhir/Patient}})]
 
           (is (= 201 status))
 
@@ -316,9 +303,9 @@
       (with-handler [handler]
         (let [{:keys [status]}
               @(handler
-                 {::reitit/match patient-match
-                  :headers {"if-none-exist" ""}
-                  :body {:fhir/type :fhir/Patient}})]
+                {::reitit/match patient-match
+                 :headers {"if-none-exist" ""}
+                 :body {:fhir/type :fhir/Patient}})]
 
           (testing "a unconditional create is executed"
             (is (= 201 status))))))
@@ -327,9 +314,9 @@
       (with-handler [handler]
         (let [{:keys [status]}
               @(handler
-                 {::reitit/match patient-match
-                  :headers {"if-none-exist" "_sort=a"}
-                  :body {:fhir/type :fhir/Patient}})]
+                {::reitit/match patient-match
+                 :headers {"if-none-exist" "_sort=a"}
+                 :body {:fhir/type :fhir/Patient}})]
 
           (testing "a unconditional create is executed"
             (is (= 201 status))))))
@@ -339,9 +326,9 @@
         (with-handler [handler]
           (let [{:keys [status]}
                 @(handler
-                   {::reitit/match patient-match
-                    :headers {"if-none-exist" "identifier=212154"}
-                    :body {:fhir/type :fhir/Patient}})]
+                  {::reitit/match patient-match
+                   :headers {"if-none-exist" "identifier=212154"}
+                   :body {:fhir/type :fhir/Patient}})]
 
             (testing "the patient is created"
               (is (= 201 status))))))
@@ -354,9 +341,9 @@
 
           (let [{:keys [status]}
                 @(handler
-                   {::reitit/match patient-match
-                    :headers {"if-none-exist" "identifier=212154"}
-                    :body {:fhir/type :fhir/Patient}})]
+                  {::reitit/match patient-match
+                   :headers {"if-none-exist" "identifier=212154"}
+                   :body {:fhir/type :fhir/Patient}})]
 
             (testing "the patient is created"
               (is (= 201 status)))))))
@@ -369,9 +356,9 @@
 
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-match
-                  :headers {"if-none-exist" "identifier=095156"}
-                  :body {:fhir/type :fhir/Patient}})]
+                {::reitit/match patient-match
+                 :headers {"if-none-exist" "identifier=095156"}
+                 :body {:fhir/type :fhir/Patient}})]
 
           (testing "the existing patient is returned"
             (is (= 200 status))
@@ -389,9 +376,9 @@
 
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-match
-                  :headers {"if-none-exist" "birthdate=2020"}
-                  :body {:fhir/type :fhir/Patient}})]
+                {::reitit/match patient-match
+                 :headers {"if-none-exist" "birthdate=2020"}
+                 :body {:fhir/type :fhir/Patient}})]
 
           (testing "a precondition failure is returned"
             (is (= 412 status))
@@ -434,18 +421,18 @@
     (with-handler [handler]
       (let [{:keys [status headers body]}
             @(handler
-               {::reitit/match bundle-match
-                :body {:fhir/type :fhir/Bundle
-                       :type #fhir/code"collection"
-                       :entry
-                       [{:fhir/type :fhir.Bundle/entry
-                         :resource
-                         {:fhir/type :fhir/Observation
-                          :subject #fhir/Reference{:reference "Patient/0"}}
-                         :request
-                         {:fhir/type :fhir.Bundle.entry/request
-                          :method #fhir/code"POST"
-                          :url #fhir/uri"Observation"}}]}})]
+              {::reitit/match bundle-match
+               :body {:fhir/type :fhir/Bundle
+                      :type #fhir/code"collection"
+                      :entry
+                      [{:fhir/type :fhir.Bundle/entry
+                        :resource
+                        {:fhir/type :fhir/Observation
+                         :subject #fhir/Reference{:reference "Patient/0"}}
+                        :request
+                        {:fhir/type :fhir.Bundle.entry/request
+                         :method #fhir/code"POST"
+                         :url #fhir/uri"Observation"}}]}})]
 
         (is (= 201 status))
 

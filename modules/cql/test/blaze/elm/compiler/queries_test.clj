@@ -4,27 +4,25 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
-    [blaze.elm.code :as code]
-    [blaze.elm.code-spec]
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
-    [blaze.elm.literal]
-    [blaze.elm.literal-spec]
-    [blaze.elm.quantity :as quantity]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.spec.type]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [juxt.iota :refer [given]]))
-
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.elm.code :as code]
+   [blaze.elm.code-spec]
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.literal]
+   [blaze.elm.literal-spec]
+   [blaze.elm.quantity :as quantity]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -32,9 +30,7 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; 10.1. Query
 ;;
@@ -183,12 +179,12 @@
             (testing "form"
               (has-form expr
                 '(vector-query
-                   (comp
-                     (filter
-                       (fn [P]
-                         (equal (call "ToString" (:gender P)) "female")))
-                     distinct)
-                   (retrieve "Patient"))))))
+                  (comp
+                   (filter
+                    (fn [P]
+                      (equal (call "ToString" (:gender P)) "female")))
+                   distinct)
+                  (retrieve "Patient"))))))
 
         (testing "with return clause"
           (let [elm {:type "Query"
@@ -207,10 +203,10 @@
             (testing "form"
               (has-form expr
                 '(vector-query
-                   (comp
-                     (map (fn [P] (:gender P)))
-                     distinct)
-                   (retrieve "Patient"))))))
+                  (comp
+                   (map (fn [P] (:gender P)))
+                   distinct)
+                  (retrieve "Patient"))))))
 
         (testing "with where and return clauses"
           (let [elm {:type "Query"
@@ -229,15 +225,15 @@
             (testing "form"
               (has-form expr
                 '(vector-query
+                  (comp
+                   (filter
+                    (fn [P]
+                      (equal (call "ToString" (:gender P)) "female")))
                    (comp
-                     (filter
-                       (fn [P]
-                         (equal (call "ToString" (:gender P)) "female")))
-                     (comp
-                       (map
-                         (fn [P] (:gender P)))
-                       distinct))
-                   (retrieve "Patient")))))))))
+                    (map
+                     (fn [P] (:gender P)))
+                    distinct))
+                  (retrieve "Patient")))))))))
 
   (testing "With clause"
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
@@ -272,17 +268,17 @@
           (testing "form"
             (has-form expr
               '(vector-query
-                 (comp
-                   (filter
-                     (fn [O]
-                       (exists
-                         (fn [E]
-                           (equal
-                             (:reference (:encounter O))
-                             (concatenate "Encounter/" (:id E))))
-                         (retrieve "Encounter"))))
-                   distinct)
-                 (retrieve "Observation")))))
+                (comp
+                 (filter
+                  (fn [O]
+                    (exists
+                     (fn [E]
+                       (equal
+                        (:reference (:encounter O))
+                        (concatenate "Encounter/" (:id E))))
+                     (retrieve "Encounter"))))
+                 distinct)
+                (retrieve "Observation")))))
 
         (testing "including return clause"
           (let [elm {:type "Query"
@@ -304,20 +300,20 @@
             (testing "form"
               (has-form expr
                 '(vector-query
+                  (comp
+                   (filter
+                    (fn [O]
+                      (exists
+                       (fn [E]
+                         (equal
+                          (:reference (:encounter O))
+                          (concatenate "Encounter/" (:id E))))
+                       (retrieve "Encounter"))))
                    (comp
-                     (filter
-                       (fn [O]
-                         (exists
-                           (fn [E]
-                             (equal
-                               (:reference (:encounter O))
-                               (concatenate "Encounter/" (:id E))))
-                           (retrieve "Encounter"))))
-                     (comp
-                       (map
-                         (fn [O] (:id O)))
-                       distinct))
-                   (retrieve "Observation"))))))
+                    (map
+                     (fn [O] (:id O)))
+                    distinct))
+                  (retrieve "Observation"))))))
 
         (testing "including non-distinct return clause"
           (let [elm {:type "Query"
@@ -339,18 +335,18 @@
             (testing "form"
               (has-form expr
                 '(vector-query
-                   (comp
-                     (filter
-                       (fn [O]
-                         (exists
-                           (fn [E]
-                             (equal
-                               (:reference (:encounter O))
-                               (concatenate "Encounter/" (:id E))))
-                           (retrieve "Encounter"))))
-                     (map
-                       (fn [O] (:id O))))
-                   (retrieve "Observation"))))))
+                  (comp
+                   (filter
+                    (fn [O]
+                      (exists
+                       (fn [E]
+                         (equal
+                          (:reference (:encounter O))
+                          (concatenate "Encounter/" (:id E))))
+                       (retrieve "Encounter"))))
+                   (map
+                    (fn [O] (:id O))))
+                  (retrieve "Observation"))))))
 
         (testing "including where clause"
           (let [elm {:type "Query"
@@ -370,19 +366,19 @@
             (testing "form"
               (has-form expr
                 '(vector-query
-                   (comp
-                     (filter
-                       (fn [O] (equal "1" (:id O))))
-                     (filter
-                       (fn [O]
-                         (exists
-                           (fn [E]
-                             (equal
-                               (:reference (:encounter O))
-                               (concatenate "Encounter/" (:id E))))
-                           (retrieve "Encounter"))))
-                     distinct)
-                   (retrieve "Observation")))))))))
+                  (comp
+                   (filter
+                    (fn [O] (equal "1" (:id O))))
+                   (filter
+                    (fn [O]
+                      (exists
+                       (fn [E]
+                         (equal
+                          (:reference (:encounter O))
+                          (concatenate "Encounter/" (:id E))))
+                       (retrieve "Encounter"))))
+                   distinct)
+                  (retrieve "Observation")))))))))
 
   (testing "Without clause"
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
@@ -416,18 +412,17 @@
         (testing "form"
           (has-form expr
             '(vector-query
-               (comp
-                 (filter
-                   (fn [O]
-                     (not-exists
-                       (fn [E]
-                         (equal
-                           (:reference (:encounter O))
-                           (concatenate "Encounter/" (:id E))))
-                       (retrieve "Encounter"))))
-                 distinct)
-               (retrieve "Observation"))))))))
-
+              (comp
+               (filter
+                (fn [O]
+                  (not-exists
+                   (fn [E]
+                     (equal
+                      (:reference (:encounter O))
+                      (concatenate "Encounter/" (:id E))))
+                   (retrieve "Encounter"))))
+               distinct)
+              (retrieve "Observation"))))))))
 
 ;; 10.3. AliasRef
 ;;
@@ -441,7 +436,6 @@
     (testing "form"
       (has-form expr '(alias-ref foo)))))
 
-
 ;; 10.7. IdentifierRef
 ;;
 ;; The IdentifierRef type defines an expression that references an identifier
@@ -454,7 +448,6 @@
 
     (testing "form"
       (has-form expr '(:foo default)))))
-
 
 ;; TODO 10.9. QueryLetRef
 ;;

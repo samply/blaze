@@ -1,23 +1,19 @@
 (ns blaze.rest-api.middleware.auth-guard-test
   (:require
-    [blaze.async.comp :as ac]
-    [blaze.rest-api.middleware.auth-guard :refer [wrap-auth-guard]]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
-    [juxt.iota :refer [given]]
-    [ring.util.response :as ring]))
-
+   [blaze.async.comp :as ac]
+   [blaze.rest-api.middleware.auth-guard :refer [wrap-auth-guard]]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [juxt.iota :refer [given]]
+   [ring.util.response :as ring]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defn handler [_]
   (ac/completed-future (ring/response ::foo)))
-
 
 (deftest wrap-auth-guard-test
   (testing "with identity"

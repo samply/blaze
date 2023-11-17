@@ -77,7 +77,10 @@
     clojure.data.xml xml
     clojure.java.io io
     clojure.spec.alpha s
+    clojure.spec.gen.alpha sg
     clojure.string str
+    clojure.test.check.generators gen
+    clojure.test.check.properties prop
     integrant.core ig
     jsonista.core j
     prometheus.alpha prom

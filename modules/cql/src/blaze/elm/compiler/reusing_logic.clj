@@ -4,21 +4,19 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :as ba :refer [throw-anom]]
-    [blaze.db.api :as d]
-    [blaze.elm.code :as code]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.interval :as interval]
-    [blaze.elm.protocols :as p]
-    [blaze.elm.quantity :as quantity]
-    [blaze.fhir.spec.type :as type])
+   [blaze.anomaly :as ba :refer [throw-anom]]
+   [blaze.db.api :as d]
+   [blaze.elm.code :as code]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.interval :as interval]
+   [blaze.elm.protocols :as p]
+   [blaze.elm.quantity :as quantity]
+   [blaze.fhir.spec.type :as type])
   (:import
-    [blaze.fhir.spec.type Period]
-    [java.util Map]))
-
+   [blaze.fhir.spec.type Period]
+   [java.util Map]))
 
 (set! *warn-on-reflection* true)
-
 
 ;; 9.2. ExpressionRef
 ;;
@@ -27,7 +25,6 @@
 ;; the result of evaluating the referenced NamedExpression.
 (defn- expression-not-found-anom [context name]
   (ba/incorrect (format "Expression `%s` not found." name) :context context))
-
 
 (defrecord ExpressionRef [name]
   core/Expression
@@ -40,25 +37,21 @@
   (-form [_]
     `(~'expr-ref ~name)))
 
-
 (defn- find-def
   "Returns the def with `name` from `library` or nil if not found."
   {:arglists '([library name])}
   [{{defs :def} :statements} name]
   (some #(when (= name (:name %)) %) defs))
 
-
 (defn- find-expression-def [library name]
   (when-let [def (find-def library name)]
     (when (= "ExpressionDef" (:type def))
       def)))
 
-
 (defn- expression-def-not-found-anom [context name]
   (ba/incorrect
-    (format "Expression definition `%s` not found." name)
-    :context context))
-
+   (format "Expression definition `%s` not found." name)
+   :context context))
 
 (defmethod core/compile* :elm.compiler.type/expression-ref
   [{:keys [library eval-context] :as context}
@@ -77,8 +70,8 @@
           (-eval [_ {:keys [db expression-defs] :as context} _ _]
             (if-some [{:keys [expression]} (get expression-defs name)]
               (mapv
-                #(core/-eval expression context % nil)
-                (d/type-list db def-eval-context))
+               #(core/-eval expression context % nil)
+               (d/type-list db def-eval-context))
               (throw-anom (expression-def-not-found-anom context name)))))
 
         :else
@@ -87,10 +80,8 @@
           (->ExpressionRef name)))
       (throw-anom (expression-def-not-found-anom context name)))))
 
-
 (defprotocol ToQuantity
   (-to-quantity [x]))
-
 
 (extend-protocol ToQuantity
   Map
@@ -105,7 +96,6 @@
   nil
   (-to-quantity [_]))
 
-
 (defrecord ToQuantityFunctionExpression [operand]
   core/Expression
   (-static [_]
@@ -114,7 +104,6 @@
     (-to-quantity (core/-eval operand context resource scope)))
   (-form [_]
     `(~'call "ToQuantity" ~(core/-form operand))))
-
 
 (defrecord ToCodeFunctionExpression [operand]
   core/Expression
@@ -126,7 +115,6 @@
   (-form [_]
     `(~'call "ToCode" ~(core/-form operand))))
 
-
 (defrecord ToDateFunctionExpression [operand]
   core/Expression
   (-static [_]
@@ -135,7 +123,6 @@
     (type/value (core/-eval operand context resource scope)))
   (-form [_]
     `(~'call "ToDate" ~(core/-form operand))))
-
 
 (defrecord ToDateTimeFunctionExpression [operand]
   core/Expression
@@ -146,7 +133,6 @@
   (-form [_]
     `(~'call "ToDateTime" ~(core/-form operand))))
 
-
 (defrecord ToStringFunctionExpression [operand]
   core/Expression
   (-static [_]
@@ -156,21 +142,18 @@
   (-form [_]
     `(~'call "ToString" ~(core/-form operand))))
 
-
 (defprotocol ToInterval
   (-to-interval [x context]))
-
 
 (extend-protocol ToInterval
   Period
   (-to-interval [{:keys [start end]} {:keys [now]}]
     (interval/interval
-      (p/to-date-time (type/value start) now)
-      (p/to-date-time (type/value end) now)))
+     (p/to-date-time (type/value start) now)
+     (p/to-date-time (type/value end) now)))
 
   nil
   (-to-interval [_ _]))
-
 
 (defrecord ToIntervalFunctionExpression [operand]
   core/Expression
@@ -181,18 +164,15 @@
   (-form [_]
     `(~'call "ToInterval" ~(core/-form operand))))
 
-
 (defn- function-def-not-found-anom [context name]
   (ba/incorrect
-    (format "Function definition `%s` not found." name)
-    :context context))
-
+   (format "Function definition `%s` not found." name)
+   :context context))
 
 (defn compile-function [{:keys [function-defs] :as context} name operands]
   (if-let [{:keys [function]} (get function-defs name)]
     (function operands)
     (throw-anom (function-def-not-found-anom context name))))
-
 
 ;; 9.4. FunctionRef
 (defmethod core/compile* :elm.compiler.type/function-ref
@@ -222,7 +202,6 @@
       (->ToIntervalFunctionExpression (first operands))
 
       (compile-function context name operands))))
-
 
 ;; 9.5 OperandRef
 (defmethod core/compile* :elm.compiler.type/operand-ref

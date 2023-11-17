@@ -1,60 +1,47 @@
 (ns blaze.fhir.spec.generators
   (:refer-clojure :exclude [boolean meta time])
   (:require
-    [blaze.fhir.spec.type :as type]
-    [blaze.fhir.spec.type.system :as system]
-    [clojure.string :as str]
-    [clojure.test.check.generators :as gen])
+   [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type.system :as system]
+   [clojure.string :as str]
+   [clojure.test.check.generators :as gen])
   (:import
-    [com.google.common.base CaseFormat]))
-
+   [com.google.common.base CaseFormat]))
 
 (set! *warn-on-reflection* true)
-
 
 (defn nilable [gen]
   (gen/one-of [gen (gen/return nil)]))
 
-
 (defn rare-nil [gen]
   (gen/frequency [[9 gen] [1 (gen/return nil)]]))
-
 
 (defn often-nil [gen]
   (gen/frequency [[9 (gen/return nil)] [1 gen]]))
 
-
 (def boolean-value
   gen/boolean)
-
 
 (def integer-value
   gen/small-integer)
 
-
 (def long-value
   gen/large-integer)
-
 
 (def string-value
   (gen/such-that (partial re-matches #"[ \r\n\t\S]+") gen/string 100))
 
-
 (def decimal-value
   (gen/fmap #(BigDecimal/valueOf ^double %) (gen/double* {:infinite? false :NaN? false})))
-
 
 (def uri-value
   (gen/such-that (partial re-matches #"\S*") gen/string 100))
 
-
 (def url-value
   (gen/such-that (partial re-matches #"\S*") gen/string 100))
 
-
 (def canonical-value
   (gen/such-that (partial re-matches #"\S*") gen/string 100))
-
 
 (def base64Binary-value
   (->> (gen/vector gen/char-alphanumeric 4)
@@ -63,125 +50,100 @@
        (gen/fmap str/join)
        (gen/such-that (partial re-matches #"([0-9a-zA-Z\\+/=]{4})+"))))
 
-
 (def year
   (gen/choose 1900 2100))
-
 
 (def month
   (gen/choose 1 12))
 
-
 (def day
   (gen/choose 1 28))
-
 
 (def hour
   (gen/choose 0 23))
 
-
 (def minute
   (gen/choose 0 59))
 
-
 (def time-second
   (gen/choose 0 59))
-
 
 (def zone-offset
   (gen/fmap (partial apply format "%s%02d:00")
             (gen/tuple (gen/elements ["+" "-"]) (gen/choose 1 14))))
 
-
 (def zone
   (gen/one-of [(gen/return "Z") zone-offset]))
-
 
 (def instant-value
   (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
             (gen/tuple year month day hour minute time-second zone)))
 
-
 (def date-value
   (gen/one-of
-    [(gen/fmap (partial format "%04d") year)
-     (gen/fmap (partial apply format "%04d-%02d")
-               (gen/tuple year month))
-     (gen/fmap (partial apply format "%04d-%02d-%02d")
-               (gen/tuple year month day))]))
-
+   [(gen/fmap (partial format "%04d") year)
+    (gen/fmap (partial apply format "%04d-%02d")
+              (gen/tuple year month))
+    (gen/fmap (partial apply format "%04d-%02d-%02d")
+              (gen/tuple year month day))]))
 
 (defn dateTime-value [& {:keys [year] :or {year year}}]
   (gen/one-of
-    [(gen/fmap (partial format "%04d") year)
-     (gen/fmap (partial apply format "%04d-%02d")
-               (gen/tuple year month))
-     (gen/fmap (partial apply format "%04d-%02d-%02d")
-               (gen/tuple year month day))
-     (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
-               (gen/tuple year month day hour minute time-second zone))]))
-
+   [(gen/fmap (partial format "%04d") year)
+    (gen/fmap (partial apply format "%04d-%02d")
+              (gen/tuple year month))
+    (gen/fmap (partial apply format "%04d-%02d-%02d")
+              (gen/tuple year month day))
+    (gen/fmap (partial apply format "%04d-%02d-%02dT%02d:%02d:%02d%s")
+              (gen/tuple year month day hour minute time-second zone))]))
 
 (def time-value
   (gen/fmap (partial apply format "%02d:%02d:%02d")
             (gen/tuple hour minute time-second)))
 
-
 (def code-value
   (gen/such-that (partial re-matches #"[^\s]+(\s[^\s]+)*") gen/string 100))
 
-
 (def char-digit
   (gen/fmap char (gen/choose 48 57)))
-
 
 (def oid-value
   (gen/such-that (partial re-matches #"urn:oid:[0-2](\.(0|[1-9][0-9]*))+")
                  (gen/fmap (partial str "urn:oid:0.")
                            (gen/fmap str/join (gen/vector char-digit)))))
 
-
 (def id-value
   (gen/such-that (partial re-matches #"[A-Za-z0-9\-\.]{1,64}")
                  (gen/fmap str/join (gen/vector gen/char-alphanumeric 1 64))))
 
-
 (def markdown-value
   (gen/such-that (partial re-matches #"[ \r\n\t\S]+") gen/string 100))
-
 
 (def unsignedInt-value
   gen/nat)
 
-
 (def positiveInt-value
   (gen/fmap inc gen/nat))
-
 
 (def uuid-value
   (gen/fmap (partial str "urn:uuid:") gen/uuid))
 
-
 (defn- keep-vals [m]
   (reduce-kv
-    (fn [ret k v]
-      (if (or (nil? v) (and (vector? v) (empty? v)))
-        (dissoc ret k)
-        ret))
-    m
-    m))
-
+   (fn [ret k v]
+     (if (or (nil? v) (and (vector? v) (empty? v)))
+       (dissoc ret k)
+       ret))
+   m
+   m))
 
 (defn- to-map [keys vals]
   (gen/such-that seq (gen/fmap #(keep-vals (zipmap keys %)) vals) 100))
 
-
 (declare extension)
-
 
 (defn extensions [& {:as gens}]
   (gen/scale #(/ % 10) (gen/vector (extension gens))))
-
 
 (defn- primitive-gen [constructor value-gen]
   (fn
@@ -193,66 +155,50 @@
          (to-map [:id :extension :value])
          (gen/fmap constructor))))
 
-
 (def boolean
   (primitive-gen type/boolean boolean-value))
-
 
 (def integer
   (primitive-gen type/integer integer-value))
 
-
 (def string
   (primitive-gen type/string string-value))
-
 
 (def decimal
   (primitive-gen type/decimal decimal-value))
 
-
 (def uri
   (primitive-gen type/uri uri-value))
-
 
 (def url
   (primitive-gen type/url url-value))
 
-
 (def canonical
   (primitive-gen type/canonical canonical-value))
-
 
 (def base64Binary
   (primitive-gen type/base64Binary base64Binary-value))
 
-
 (def instant
   (primitive-gen type/instant instant-value))
-
 
 (def date
   (primitive-gen type/date date-value))
 
-
 (def dateTime
   (primitive-gen type/dateTime (dateTime-value)))
-
 
 (def time
   (primitive-gen type/time time-value))
 
-
 (def code
   (primitive-gen type/code code-value))
-
 
 (def id
   (primitive-gen type/id id-value))
 
-
 (def unsignedInt
   (primitive-gen type/unsignedInt unsignedInt-value))
-
 
 (defn attachment
   [& {:keys [id extension contentType language data url size hash title creation]
@@ -272,7 +218,6 @@
                 :title :creation])
        (gen/fmap type/attachment)))
 
-
 (defn extension
   [& {:keys [id extension value]
       :or {id (gen/return nil)
@@ -281,7 +226,6 @@
   (->> (gen/tuple id extension uri-value value)
        (to-map [:id :extension :url :value])
        (gen/fmap type/extension)))
-
 
 (defn coding
   [& {:keys [id extension system version code display user-selected]
@@ -296,7 +240,6 @@
        (to-map [:id :extension :system :version :code :display :userSelected])
        (gen/fmap type/coding)))
 
-
 (defn codeable-concept
   [& {:keys [id extension coding text]
       :or {id (gen/return nil)
@@ -306,7 +249,6 @@
   (->> (gen/tuple id extension coding text)
        (to-map [:id :extension :coding :text])
        (gen/fmap type/codeable-concept)))
-
 
 (defn quantity
   [& {:keys [id extension value comparator unit system code]
@@ -321,15 +263,11 @@
        (to-map [:id :extension :value :comparator :unit :system :code])
        (gen/fmap type/quantity)))
 
-
 ;; TODO: Range
-
 
 ;; TODO: Ratio
 
-
 ;; TODO: RatioRange
-
 
 (defn period
   [& {:keys [id extension start end]
@@ -338,19 +276,16 @@
            start (nilable (dateTime))
            end (nilable (dateTime))}}]
   (as-> (gen/tuple id extension start end) x
-        (to-map [:id :extension :start :end] x)
-        (gen/such-that #(<= (system/date-time-lower-bound (type/value (:start %)))
-                            (system/date-time-upper-bound (type/value (:end %))))
-                       x
-                       100)
-        (gen/fmap type/period x)))
-
+    (to-map [:id :extension :start :end] x)
+    (gen/such-that #(<= (system/date-time-lower-bound (type/value (:start %)))
+                        (system/date-time-upper-bound (type/value (:end %))))
+                   x
+                   100)
+    (gen/fmap type/period x)))
 
 ;; TODO: SampledData
 
-
 (declare reference)
-
 
 (defn identifier
   [& {:keys [id extension use type system value period assigner]
@@ -366,7 +301,6 @@
        (to-map [:id :extension :use :type :system :value :period :assigner])
        (gen/fmap type/identifier)))
 
-
 (defn human-name
   [& {:keys [id extension use text family given prefix suffix period]
       :or {id (gen/return nil)
@@ -381,7 +315,6 @@
   (->> (gen/tuple id extension use text family given prefix suffix period)
        (to-map [:id :extension :use :text :family :given :prefix :suffix :period])
        (gen/fmap type/human-name)))
-
 
 (defn address
   [& {:keys [id extension use type text line city district state postalCode
@@ -404,18 +337,13 @@
                 :postalCode :country :period])
        (gen/fmap type/address)))
 
-
 ;; TODO: ContactPoint
-
 
 ;; TODO: Timing
 
-
 ;; TODO: Signature
 
-
 ;; TODO: Annotation
-
 
 (defn reference
   [& {:keys [id extension reference type identifier display]
@@ -428,7 +356,6 @@
   (->> (gen/tuple id extension reference type identifier display)
        (to-map [:id :extension :reference :type :identifier :display])
        (gen/fmap type/reference)))
-
 
 (defn meta
   [& {:keys [id extension versionId lastUpdated source profile security tag]
@@ -445,7 +372,6 @@
                 :security :tag])
        (gen/fmap type/meta)))
 
-
 (defn bundle-entry-search
   [& {:keys [id extension mode score]
       :or {id (gen/return nil)
@@ -456,10 +382,8 @@
        (to-map [:id :extension :mode :score])
        (gen/fmap type/bundle-entry-search)))
 
-
 (defn- fhir-type [fhir-type gen]
   (gen/fmap #(assoc % :fhir/type fhir-type) gen))
-
 
 (defn bundle-entry
   [& {:keys [id extension resource]
@@ -469,10 +393,8 @@
        (to-map [:id :extension :resource])
        (fhir-type :fhir.Bundle/entry)))
 
-
 (defn- kebab->pascal [s]
   (.to CaseFormat/LOWER_HYPHEN CaseFormat/UPPER_CAMEL s))
-
 
 (defmacro def-resource-gen [type [& fields]]
   (let [fields (partition 2 fields)
@@ -483,18 +405,15 @@
             (to-map [~@(map keyword field-syms)])
             (fhir-type ~(keyword "fhir" (kebab->pascal (str type))))))))
 
-
 (def-resource-gen patient
   [id id-value
    gender (rare-nil (code))
    birthDate (rare-nil (date))
    multipleBirth (rare-nil (gen/one-of [(boolean) (integer)]))])
 
-
 (defn- observation-value []
   (gen/one-of [(quantity) (codeable-concept) (string) (boolean) (integer)
                #_(range) #_(ratio) #_(sampled-data) (time) (dateTime) (period)]))
-
 
 (def-resource-gen observation
   [id id-value
@@ -508,7 +427,6 @@
    effective (rare-nil (gen/one-of [(dateTime) (period)]))
    value (rare-nil (observation-value))])
 
-
 (def-resource-gen encounter
   [id id-value
    meta (meta)
@@ -518,7 +436,6 @@
    priority (rare-nil (codeable-concept))
    subject (rare-nil (reference :reference (gen/return nil)))
    period (rare-nil (period))])
-
 
 (def-resource-gen procedure
   [id id-value
@@ -532,12 +449,10 @@
    subject (rare-nil (reference :reference (gen/return nil)))
    encounter (rare-nil (reference :reference (gen/return nil)))])
 
-
 (def-resource-gen allergy-intolerance
   [id id-value
    meta (meta)
    category (gen/vector (code))])
-
 
 (def-resource-gen diagnostic-report
   [id id-value
@@ -551,7 +466,6 @@
    effective (rare-nil (gen/one-of [(dateTime) (period)]))
    issued (nilable (instant))
    performer (gen/vector (reference :reference (gen/return nil)))])
-
 
 (def-resource-gen library
   [id id-value

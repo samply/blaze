@@ -4,30 +4,28 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.code :as code]
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.clinical-operators]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as ctu]
-    [blaze.elm.compiler.type-operators]
-    [blaze.elm.concept :as concept]
-    [blaze.elm.decimal :as decimal]
-    [blaze.elm.literal :as elm]
-    [blaze.elm.literal-spec]
-    [blaze.elm.protocols :as p]
-    [blaze.elm.quantity :as quantity]
-    [blaze.elm.quantity-spec]
-    [blaze.elm.ratio :as ratio]
-    [blaze.elm.util-spec]
-    [blaze.fhir.spec.type.system :as system]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]))
-
+   [blaze.elm.code :as code]
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.clinical-operators]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.test-util :as ctu]
+   [blaze.elm.compiler.type-operators]
+   [blaze.elm.concept :as concept]
+   [blaze.elm.decimal :as decimal]
+   [blaze.elm.literal :as elm]
+   [blaze.elm.literal-spec]
+   [blaze.elm.protocols :as p]
+   [blaze.elm.quantity :as quantity]
+   [blaze.elm.quantity-spec]
+   [blaze.elm.ratio :as ratio]
+   [blaze.elm.util-spec]
+   [blaze.fhir.spec.type.system :as system]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -35,9 +33,7 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; 22.1. As
 ;;
@@ -106,8 +102,8 @@
 
   (testing "expression is dynamic"
     (is (false? (core/-static (ctu/dynamic-compile
-                                #elm/as["{urn:hl7-org:elm-types:r1}Integer"
-                                        #elm/parameter-ref "x"])))))
+                               #elm/as["{urn:hl7-org:elm-types:r1}Integer"
+                                       #elm/parameter-ref "x"])))))
 
   (testing "form"
     (are [elm form] (= form (c/form (c/compile {} elm)))
@@ -130,7 +126,6 @@
        :operand
        #elm/scope-property ["R" "value"]}
       '(as (list fhir/Quantity) (:value R)))))
-
 
 ;; TODO 22.2. CanConvert
 ;;
@@ -185,7 +180,6 @@
 
   (ctu/testing-binary-form elm/can-convert-quantity))
 
-
 ;; 22.4. Children
 ;;
 ;; For structured types, the Children operator returns a list of all the values
@@ -210,7 +204,6 @@
   (ctu/testing-unary-dynamic elm/children)
 
   (ctu/testing-unary-form elm/children))
-
 
 ;; TODO 22.5. Convert
 ;;
@@ -266,7 +259,6 @@
   (ctu/testing-binary-dynamic elm/convert-quantity)
 
   (ctu/testing-binary-form elm/convert-quantity))
-
 
 ;; 22.7. ConvertsToBoolean
 ;;
@@ -368,7 +360,6 @@
 
   (ctu/testing-unary-form elm/converts-to-boolean))
 
-
 ;; 22.8. ConvertsToDate
 ;;
 ;; The ConvertsToDate operator returns true if the value of its argument is or
@@ -425,7 +416,6 @@
 
   (ctu/testing-unary-form elm/converts-to-date))
 
-
 ;; 22.9. ConvertsToDateTime
 ;;
 ;; The ConvertsToDateTime operator returns true if the value of its argument is
@@ -478,7 +468,6 @@
   (ctu/testing-unary-dynamic elm/converts-to-date-time)
 
   (ctu/testing-unary-form elm/converts-to-date-time))
-
 
 ;; 22.10. ConvertsToDecimal
 ;;
@@ -540,7 +529,6 @@
 
   (ctu/testing-unary-form elm/converts-to-decimal))
 
-
 ;; 22.11. ConvertsToLong
 ;;
 ;; The ConvertsToLong operator returns true if the value of its argument is or
@@ -598,7 +586,6 @@
 
   (ctu/testing-unary-form elm/converts-to-long))
 
-
 ;; 22.12. ConvertsToInteger
 ;;
 ;; The ConvertsToInteger operator returns true if the value of its argument is
@@ -654,7 +641,6 @@
   (ctu/testing-unary-dynamic elm/converts-to-integer)
 
   (ctu/testing-unary-form elm/converts-to-integer))
-
 
 ;; 22.13. ConvertsToQuantity
 ;;
@@ -728,7 +714,6 @@
 
   (ctu/testing-unary-form elm/converts-to-quantity))
 
-
 ;; 22.14. ConvertsToRatio
 ;;
 ;; The ConvertsToRatio operator returns true if the value of its argument is or
@@ -766,7 +751,6 @@
   (ctu/testing-unary-dynamic elm/converts-to-ratio)
 
   (ctu/testing-unary-form elm/converts-to-ratio))
-
 
 ;; 22.15. ConvertsToString
 ;;
@@ -842,7 +826,6 @@
 
   (ctu/testing-unary-form elm/converts-to-string))
 
-
 ;; 22.16. ConvertsToTime
 ;;
 ;; The ConvertsToTime operator returns true if the value of its argument is or
@@ -912,7 +895,6 @@
 
   (ctu/testing-unary-form elm/converts-to-time))
 
-
 ;; 22.17. Descendents
 ;;
 ;; For structured types, the Descendents operator returns a list of all the
@@ -940,7 +922,6 @@
   (ctu/testing-unary-dynamic elm/descendents)
 
   (ctu/testing-unary-form elm/descendents))
-
 
 ;; 22.18. Is
 ;;
@@ -1057,8 +1038,8 @@
 
   (testing "expression is dynamic"
     (is (false? (core/-static (ctu/dynamic-compile
-                                #elm/is["{urn:hl7-org:elm-types:r1}Integer"
-                                        #elm/parameter-ref "x"])))))
+                               #elm/is["{urn:hl7-org:elm-types:r1}Integer"
+                                       #elm/parameter-ref "x"])))))
 
   (testing "form"
     (are [elm form] (= form (c/form (c/compile {} elm)))
@@ -1080,7 +1061,6 @@
          :name "{http://hl7.org/fhir}Quantity"}}
        :operand #elm/integer "1"}
       '(is (list fhir/Quantity) 1))))
-
 
 ;; 22.19. ToBoolean
 ;;
@@ -1178,13 +1158,11 @@
 
       (is (false? (ctu/compile-unop elm/to-boolean elm/boolean "false")))))
 
-
   (ctu/testing-unary-null elm/to-boolean)
 
   (ctu/testing-unary-dynamic elm/to-boolean)
 
   (ctu/testing-unary-form elm/to-boolean))
-
 
 ;; 22.20. ToChars
 ;;
@@ -1216,7 +1194,6 @@
 
   (ctu/testing-unary-form elm/to-chars))
 
-
 ;; 22.21. ToConcept
 ;;
 ;; The ToConcept operator converts a value of type Code to a Concept value with
@@ -1245,7 +1222,6 @@
   (ctu/testing-unary-dynamic elm/to-concept)
 
   (ctu/testing-unary-form elm/to-concept))
-
 
 ;; 22.22. ToDate
 ;;
@@ -1325,7 +1301,6 @@
 
   (ctu/testing-unary-form elm/to-date))
 
-
 ;; 22.23. ToDateTime
 ;;
 ;; The ToDateTime operator converts the value of its argument to a DateTime
@@ -1392,7 +1367,6 @@
 
   (ctu/testing-unary-form elm/to-date-time))
 
-
 ;; 22.24. ToDecimal
 ;;
 ;; The ToDecimal operator converts the value of its argument to a Decimal
@@ -1443,7 +1417,6 @@
 
   (ctu/testing-unary-form elm/to-decimal))
 
-
 ;; 22.25. ToInteger
 ;;
 ;; The ToInteger operator converts the value of its argument to an Integer
@@ -1487,7 +1460,6 @@
 
   (ctu/testing-unary-form elm/to-integer))
 
-
 ;; 22.26. ToList
 ;;
 ;; The ToList operator returns its argument as a List value. The operator
@@ -1521,7 +1493,6 @@
   (ctu/testing-unary-dynamic elm/to-list)
 
   (ctu/testing-unary-form elm/to-list))
-
 
 ;; 22.27. ToLong
 ;;
@@ -1569,7 +1540,6 @@
   (ctu/testing-unary-dynamic elm/to-long)
 
   (ctu/testing-unary-form elm/to-long))
-
 
 ;; 22.28. ToQuantity
 ;;
@@ -1650,7 +1620,6 @@
 
   (ctu/testing-unary-form elm/to-quantity))
 
-
 ;; 22.29. ToRatio
 ;;
 ;; The ToRatio operator converts the value of its argument to a Ratio value.
@@ -1701,7 +1670,6 @@
   (ctu/testing-unary-dynamic elm/to-ratio)
 
   (ctu/testing-unary-form elm/to-ratio))
-
 
 ;; 22.30. ToString
 ;;
@@ -1781,7 +1749,6 @@
   (ctu/testing-unary-dynamic elm/to-string)
 
   (ctu/testing-unary-form elm/to-string))
-
 
 ;; 22.31. ToTime
 ;;

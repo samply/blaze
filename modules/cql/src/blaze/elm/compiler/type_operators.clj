@@ -4,19 +4,17 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :as ba :refer [throw-anom]]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.macros :refer [defbinop defunop]]
-    [blaze.elm.date-time :as date-time]
-    [blaze.elm.protocols :as p]
-    [blaze.elm.quantity :as quantity]
-    [blaze.elm.util :as elm-util]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.spec.type.system :as system]))
-
+   [blaze.anomaly :as ba :refer [throw-anom]]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.macros :refer [defbinop defunop]]
+   [blaze.elm.date-time :as date-time]
+   [blaze.elm.protocols :as p]
+   [blaze.elm.quantity :as quantity]
+   [blaze.elm.util :as elm-util]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type.system :as system]))
 
 (set! *warn-on-reflection* true)
-
 
 ;; 22.1. As
 (defn- matches-elm-named-type-fn [type-name]
@@ -26,10 +24,9 @@
     "DateTime" ['elm/date-time date-time/temporal?]
     "Quantity" ['elm/quantity quantity/quantity?]
     (throw-anom
-      (ba/unsupported
-        (format "Unsupported ELM type `%s` in As expression." type-name)
-        :type-name type-name))))
-
+     (ba/unsupported
+      (format "Unsupported ELM type `%s` in As expression." type-name)
+      :type-name type-name))))
 
 (defn- matches-named-type-fn [type-name]
   (let [[type-ns type-name] (elm-util/parse-qualified-name type-name)]
@@ -39,10 +36,9 @@
       "urn:hl7-org:elm-types:r1"
       (matches-elm-named-type-fn type-name)
       (throw-anom
-        (ba/unsupported
-          (format "Unsupported type namespace `%s` in As expression." type-ns)
-          :type-ns type-ns)))))
-
+       (ba/unsupported
+        (format "Unsupported type namespace `%s` in As expression." type-ns)
+        :type-ns type-ns)))))
 
 (defn- matches-type-specifier-fn [as-type-specifier]
   (case (:type as-type-specifier)
@@ -56,11 +52,10 @@
          (every? pred x))])
 
     (throw-anom
-      (ba/unsupported
-        (format "Unsupported type specifier type `%s` in As expression."
-                (:type as-type-specifier))
-        :type-specifier-type (:type as-type-specifier)))))
-
+     (ba/unsupported
+      (format "Unsupported type specifier type `%s` in As expression."
+              (:type as-type-specifier))
+      :type-specifier-type (:type as-type-specifier)))))
 
 (defn- matches-type-fn
   [{as-type :asType as-type-specifier :asTypeSpecifier :as expression}]
@@ -73,10 +68,9 @@
 
     :else
     (throw-anom
-      (ba/fault
-        "Invalid As expression without `as-type` and `as-type-specifier`."
-        :expression expression))))
-
+     (ba/fault
+      "Invalid As expression without `as-type` and `as-type-specifier`."
+      :expression expression))))
 
 (defmethod core/compile* :elm.compiler.type/as
   [context {:keys [operand] :as expression}]
@@ -92,14 +86,11 @@
         (-form [_]
           `(~'as ~type ~(core/-form operand)))))))
 
-
 ;; TODO 22.2. CanConvert
-
 
 ;; 22.3. CanConvertQuantity
 (defbinop can-convert-quantity [x unit]
   (p/can-convert-quantity x unit))
-
 
 ;; 22.4. Children
 (defmethod core/compile* :elm.compiler.type/children
@@ -113,20 +104,16 @@
       (-form [_]
         (list 'children (core/-form source))))))
 
-
 ;; TODO 22.5. Convert
-
 
 ;; 22.6. ConvertQuantity
 (defbinop convert-quantity [x unit]
   (p/convert-quantity x unit))
 
-
 ;; 22.7. ConvertsToBoolean
 (defunop converts-to-boolean [operand]
   (when (some? operand)
     (some? (p/to-boolean operand))))
-
 
 ;; 22.8. ConvertsToDate
 (defmethod core/compile* :elm.compiler.type/converts-to-date
@@ -141,7 +128,6 @@
             (some? (p/to-date operand now)))))
       (-form [_]
         (list 'converts-to-date (core/-form operand))))))
-
 
 ;; 22.9. ConvertsToDateTime
 (defmethod core/compile* :elm.compiler.type/converts-to-date-time
@@ -159,42 +145,35 @@
         (-form [_]
           (list 'converts-to-date-time (core/-form operand)))))))
 
-
 ;; 22.10. ConvertsToDecimal
 (defunop converts-to-decimal [operand]
   (when (some? operand)
     (some? (p/to-decimal operand))))
-
 
 ;; 22.11. ConvertsToLong
 (defunop converts-to-long [operand]
   (when (some? operand)
     (some? (p/to-long operand))))
 
-
 ;; 22.12. ConvertsToInteger
 (defunop converts-to-integer [operand]
   (when (some? operand)
     (some? (p/to-integer operand))))
-
 
 ;; 22.13. ConvertsToQuantity
 (defunop converts-to-quantity [operand]
   (when (some? operand)
     (some? (p/to-quantity operand))))
 
-
 ;; 22.14. ConvertsToRatio
 (defunop converts-to-ratio [operand]
   (when (some? operand)
     (some? (p/to-ratio operand))))
 
-
 ;; 22.15. ConvertsToString
 (defunop converts-to-string [operand]
   (when (some? operand)
     (some? (p/to-string operand))))
-
 
 ;; 22.16. ConvertsToTime
 (defmethod core/compile* :elm.compiler.type/converts-to-time
@@ -209,7 +188,6 @@
       (-form [_]
         (list 'converts-to-time (core/-form operand))))))
 
-
 ;; 22.17. Descendents
 (defmethod core/compile* :elm.compiler.type/descendents
   [context {:keys [source]}]
@@ -221,7 +199,6 @@
         (p/descendents (core/-eval source context resource scope)))
       (-form [_]
         (list 'descendents (core/-form source))))))
-
 
 ;; 22.18. Is
 (defn- matches-elm-named-type-is [type-name]
@@ -235,7 +212,6 @@
     "Quantity" ['elm/quantity quantity/quantity?]
     "String" ['elm/string string?]))
 
-
 (defn- matches-named-type-is [type-name]
   (let [[type-ns type-name] (elm-util/parse-qualified-name type-name)]
     (case type-ns
@@ -245,7 +221,6 @@
          #(identical? fhir-type (fhir-spec/fhir-type %)))]
       "urn:hl7-org:elm-types:r1"
       (matches-elm-named-type-is type-name))))
-
 
 (defn- matches-type-specifier-is [is-type-specifier]
   (case (:type is-type-specifier)
@@ -258,7 +233,6 @@
        (fn matches-type? [x]
          (every? pred x))])))
 
-
 (defn- matches-type-is
   [{is-type :isType is-type-specifier :isTypeSpecifier}]
   (cond
@@ -267,7 +241,6 @@
 
     is-type-specifier
     (matches-type-specifier-is is-type-specifier)))
-
 
 (defmethod core/compile* :elm.compiler.type/is
   [context {:keys [operand] :as expression}]
@@ -281,22 +254,18 @@
       (-form [_]
         `(~'is ~type ~(core/-form operand))))))
 
-
 ;; 22.19. ToBoolean
 (defunop to-boolean [x]
   (p/to-boolean x))
-
 
 ;; 22.20. ToChars
 (defunop to-chars [operand]
   (when (string? operand)
     (map str operand)))
 
-
 ;; 22.21. ToConcept
 (defunop to-concept [x]
   (p/to-concept x))
-
 
 ;; 22.22. ToDate
 (defmethod core/compile* :elm.compiler.type/to-date
@@ -312,7 +281,6 @@
         (-form [_]
           (list 'to-date (core/-form operand)))))))
 
-
 ;; 22.23. ToDateTime
 (defmethod core/compile* :elm.compiler.type/to-date-time
   [context {:keys [operand]}]
@@ -327,41 +295,33 @@
         (-form [_]
           (list 'to-date-time (core/-form operand)))))))
 
-
 ;; 22.24. ToDecimal
 (defunop to-decimal [x]
   (p/to-decimal x))
-
 
 ;; 22.25. ToInteger
 (defunop to-integer [x]
   (p/to-integer x))
 
-
 ;; 22.26. ToList
 (defunop to-list [x]
   (if (nil? x) [] [x]))
-
 
 ;; 22.27. ToLong
 (defunop to-long [x]
   (p/to-long x))
 
-
 ;; 22.28. ToQuantity
 (defunop to-quantity [x]
   (p/to-quantity x))
-
 
 ;; 22.29. ToRatio
 (defunop to-ratio [x]
   (p/to-ratio x))
 
-
 ;; 22.30. ToString
 (defunop to-string [x]
   (p/to-string x))
-
 
 ;; 22.31. ToTime
 (defmethod core/compile* :elm.compiler.type/to-time

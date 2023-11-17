@@ -1,32 +1,28 @@
 (ns blaze.db.kv.rocksdb.metrics-test
   (:require
-    [blaze.db.kv :as-alias kv]
-    [blaze.db.kv.rocksdb :as rocksdb]
-    [blaze.db.kv.rocksdb.metrics :as metrics]
-    [blaze.db.kv.rocksdb.metrics-spec]
-    [blaze.metrics.core :as metrics-core]
-    [blaze.metrics.core-spec]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [integrant.core :as ig]
-    [juxt.iota :refer [given]])
+   [blaze.db.kv :as-alias kv]
+   [blaze.db.kv.rocksdb :as rocksdb]
+   [blaze.db.kv.rocksdb.metrics :as metrics]
+   [blaze.db.kv.rocksdb.metrics-spec]
+   [blaze.metrics.core :as metrics-core]
+   [blaze.metrics.core-spec]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [integrant.core :as ig]
+   [juxt.iota :refer [given]])
   (:import
-    [java.nio.file Files]
-    [java.nio.file.attribute FileAttribute]
-    [org.rocksdb LRUCache RocksDB Statistics]))
-
+   [java.nio.file Files]
+   [java.nio.file.attribute FileAttribute]
+   [org.rocksdb LRUCache RocksDB Statistics]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
 
-
 (RocksDB/loadLibrary)
-
 
 (deftest stats-collector-test
   (let [collector (metrics/stats-collector {"foo" (Statistics.)})
@@ -84,7 +80,6 @@
     (testing "every metric has the value 0.0"
       (is (every? (comp #{0.0} :value first :samples) metrics)))))
 
-
 (deftest block-cache-collector-test
   (let [collector (metrics/block-cache-collector (LRUCache. 100))
         metrics (metrics-core/collect collector)]
@@ -100,10 +95,8 @@
     (testing "every metric has the value 0.0"
       (is (every? (comp #{0.0} :value first :samples) metrics)))))
 
-
 (defn- new-temp-dir! []
   (str (Files/createTempDirectory "blaze" (make-array FileAttribute 0))))
-
 
 (defn- system [dir]
   {::kv/rocksdb
@@ -112,7 +105,6 @@
     :stats (ig/ref ::rocksdb/stats)}
    ::rocksdb/block-cache {}
    ::rocksdb/stats {}})
-
 
 (deftest table-reader-collector-test
   (testing "no stores"

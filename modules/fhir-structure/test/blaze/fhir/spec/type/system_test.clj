@@ -1,30 +1,26 @@
 (ns blaze.fhir.spec.type.system-test
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.fhir.spec.type.system :as system]
-    [blaze.fhir.spec.type.system-spec]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [java-time.api :as time])
+   [blaze.anomaly :as ba]
+   [blaze.fhir.spec.type.system :as system]
+   [blaze.fhir.spec.type.system-spec]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [java-time.api :as time])
   (:import
-    [blaze.fhir.spec.type.system DateDate DateTimeDate DateTimeYear DateTimeYearMonth DateYear DateYearMonth]
-    [com.google.common.hash Hashing]
-    [java.time LocalTime ZoneOffset]))
-
+   [blaze.fhir.spec.type.system DateDate DateTimeDate DateTimeYear DateTimeYearMonth DateYear DateYearMonth]
+   [com.google.common.hash Hashing]
+   [java.time LocalTime ZoneOffset]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defn murmur3 [x]
   (let [hasher (.newHasher (Hashing/murmur3_32_fixed))]
     (system/-hash-into x hasher)
     (Integer/toHexString (.asInt (.hash hasher)))))
-
 
 (deftest value-test
   (are [x] (system/value? x)
@@ -38,12 +34,10 @@
     nil
     (Object.)))
 
-
 (deftest type-test
   (are [x type] (= type (system/type x))
     nil nil
     (Object.) nil))
-
 
 (deftest boolean-test
   (testing "boolean?"
@@ -66,7 +60,6 @@
       nil true nil?
       nil false nil?
       nil nil nil?)))
-
 
 (deftest integer-test
   (testing "long?"
@@ -93,7 +86,6 @@
       nil (int 1) nil?
       nil nil nil?)))
 
-
 (deftest long-test
   (testing "long?"
     (is (true? (system/long? 0)))
@@ -115,7 +107,6 @@
       nil 0 nil?
       nil 1 nil?
       nil nil nil?)))
-
 
 (deftest string-test
   (testing "string?"
@@ -140,7 +131,6 @@
       nil "b" nil?
       nil nil nil?)))
 
-
 (deftest decimal-test
   (testing "decimal?"
     (is (true? (system/decimal? 1M)))
@@ -163,7 +153,6 @@
       nil 1M nil?
       nil nil nil?)))
 
-
 (deftest parse-decimal-test
   (testing "valid"
     (are [s d] (= d (system/parse-decimal s))
@@ -174,7 +163,6 @@
     (are [s] (ba/incorrect? (system/parse-decimal s))
       "a"
       "")))
-
 
 (deftest date-test
   (testing "date?"
@@ -251,7 +239,6 @@
       #system/date"2020-01" "#system/date\"2020-01\""
       #system/date"2020-01-02" "#system/date\"2020-01-02\"")))
 
-
 (deftest parse-date-test
   (testing "valid"
     (are [s d] (= d (system/parse-date s))
@@ -271,7 +258,6 @@
       "2019-13"
       "2019-02-29")))
 
-
 (deftest date-year-test
   (testing "plus years"
     (are [date amount res] (= res (.plusYears date amount))
@@ -283,7 +269,6 @@
 
     (given-thrown (.plusYears (DateYear/of 9999) 1)
       :message := "Invalid value for Year (valid values 1 - 9999): 10000")))
-
 
 (deftest date-year-month-test
   (testing "plus months"
@@ -299,7 +284,6 @@
     (given-thrown (.plusMonths (DateYearMonth/of 9999 12) 1)
       :message := "Invalid value for Year (valid values 1 - 9999): 10000")))
 
-
 (deftest date-date-test
   (testing "plus days"
     (are [date amount res] (= res (.plusDays date amount))
@@ -313,7 +297,6 @@
 
     (given-thrown (.plusDays (DateDate/of 9999 12 31) 1)
       :message := "Invalid value for Year (valid values 1 - 9999): 10000")))
-
 
 (deftest date-time-test
   (testing "date-time?"
@@ -523,7 +506,6 @@
       #system/date-time"2020-12-31T23:59:59.001" "#system/date-time\"2020-12-31T23:59:59.001\""
       #system/date-time"2020-12-31T23:59:59.001Z" "#system/date-time\"2020-12-31T23:59:59.001Z\"")))
 
-
 (deftest parse-date-time-test
   (testing "valid"
     (are [s d] (= d (system/parse-date-time s))
@@ -563,7 +545,6 @@
       "2019-02-28T23:59:60"
       "2019-02-28T23:59:59+99")))
 
-
 (deftest date-time-lower-bound-test
   (testing "date-times with increasing precision have the same lower bound"
     (are [dt] (= 1577836800 (system/date-time-lower-bound dt))
@@ -581,7 +562,6 @@
     (testing "nil has the same lower bound as year 1"
       (is (= (system/date-time-lower-bound #system/date"0001")
              (system/date-time-lower-bound nil))))))
-
 
 (deftest date-time-upper-bound-test
   (testing "date-times with increasing precision have the same upper bound"
@@ -601,7 +581,6 @@
     (is (= (system/date-time-upper-bound #system/date"9999")
            (system/date-time-upper-bound nil)))))
 
-
 (deftest date-time-year-test
   (testing "plus years"
     (are [date amount res] (= res (.plusYears date amount))
@@ -613,7 +592,6 @@
 
     (given-thrown (.plusYears (DateTimeYear/of 9999) 1)
       :message := "Invalid value for Year (valid values 1 - 9999): 10000")))
-
 
 (deftest date-time-year-month-test
   (testing "plus months"
@@ -629,7 +607,6 @@
     (given-thrown (.plusMonths (DateTimeYearMonth/of 9999 12) 1)
       :message := "Invalid value for Year (valid values 1 - 9999): 10000")))
 
-
 (deftest date-time-date-test
   (testing "plus days"
     (are [date amount res] (= res (.plusDays date amount))
@@ -643,7 +620,6 @@
 
     (given-thrown (.plusDays (DateTimeDate/of 9999 12 31) 1)
       :message := "Invalid value for Year (valid values 1 - 9999): 10000")))
-
 
 (deftest time-test
   (testing "type"
@@ -666,7 +642,6 @@
 
       (LocalTime/of 0 0 0) (Object.) false?
       (Object.) (LocalTime/of 0 0 0) false?)))
-
 
 (deftest parse-time-test
   (testing "valid"

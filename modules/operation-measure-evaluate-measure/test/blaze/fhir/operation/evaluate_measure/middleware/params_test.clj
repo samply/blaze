@@ -1,28 +1,23 @@
 (ns blaze.fhir.operation.evaluate-measure.middleware.params-test
   (:require
-    [blaze.async.comp :as ac]
-    [blaze.fhir.operation.evaluate-measure.middleware.params :as params]
-    [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log]))
-
+   [blaze.async.comp :as ac]
+   [blaze.fhir.operation.evaluate-measure.middleware.params :as params]
+   [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def operation-outcome-uri
   #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome")
 
-
 (def handler (-> (params/wrap-coerce-params ac/completed-future) wrap-error))
-
 
 (deftest wrap-coerce-params-test
   (testing "period start"
@@ -104,15 +99,15 @@
     (testing "with resource"
       (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
             @(handler
-               {:body
-                {:fhir/type :fhir/Parameters
-                 :parameter
-                 [{:fhir/type :fhir.Parameters/parameter
-                   :name "periodStart"
-                   :value #fhir/date"2020"}
-                  {:fhir/type :fhir.Parameters/parameter
-                   :name "periodEnd"
-                   :value #fhir/date"2021"}]}})]
+              {:body
+               {:fhir/type :fhir/Parameters
+                :parameter
+                [{:fhir/type :fhir.Parameters/parameter
+                  :name "periodStart"
+                  :value #fhir/date"2020"}
+                 {:fhir/type :fhir.Parameters/parameter
+                  :name "periodEnd"
+                  :value #fhir/date"2021"}]}})]
 
         (given params
           [:period 0] := #fhir/date"2020"
@@ -146,11 +141,11 @@
     (testing "invalid"
       (let [{:keys [status body]}
             @(handler
-               {:request-method :get
-                :params
-                {"periodStart" "2014"
-                 "periodEnd" "2015"
-                 "reportType" "<invalid>"}})]
+              {:request-method :get
+               :params
+               {"periodStart" "2014"
+                "periodEnd" "2015"
+                "reportType" "<invalid>"}})]
 
         (is (= 400 status))
 
@@ -164,11 +159,11 @@
     (testing "subject-list is not possible with a GET request"
       (let [{:keys [status body]}
             @(handler
-               {:request-method :get
-                :params
-                {"reportType" "subject-list"
-                 "periodStart" "2014"
-                 "periodEnd" "2015"}})]
+              {:request-method :get
+               :params
+               {"reportType" "subject-list"
+                "periodStart" "2014"
+                "periodEnd" "2015"}})]
 
         (is (= 422 status))
 
@@ -182,19 +177,19 @@
     (testing "subject-list on POST request"
       (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
             @(handler
-               {:request-method :post
-                :body
-                {:fhir/type :fhir/Parameters
-                 :parameter
-                 [{:fhir/type :fhir.Parameters/parameter
-                   :name "periodStart"
-                   :value #fhir/date"2014"}
-                  {:fhir/type :fhir.Parameters/parameter
-                   :name "periodEnd"
-                   :value #fhir/date"2015"}
-                  {:fhir/type :fhir.Parameters/parameter
-                   :name "reportType"
-                   :value #fhir/code"subject-list"}]}})]
+              {:request-method :post
+               :body
+               {:fhir/type :fhir/Parameters
+                :parameter
+                [{:fhir/type :fhir.Parameters/parameter
+                  :name "periodStart"
+                  :value #fhir/date"2014"}
+                 {:fhir/type :fhir.Parameters/parameter
+                  :name "periodEnd"
+                  :value #fhir/date"2015"}
+                 {:fhir/type :fhir.Parameters/parameter
+                  :name "reportType"
+                  :value #fhir/code"subject-list"}]}})]
 
         (given params
           :report-type := "subject-list")))
@@ -203,10 +198,10 @@
       (testing "is population for normal requests"
         (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
               @(handler
-                 {:request-method :get
-                  :params
-                  {"periodStart" "2014"
-                   "periodEnd" "2015"}})]
+                {:request-method :get
+                 :params
+                 {"periodStart" "2014"
+                  "periodEnd" "2015"}})]
 
           (given params
             :report-type := "population")))
@@ -214,11 +209,11 @@
       (testing "is subject for subject requests"
         (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
               @(handler
-                 {:request-method :get
-                  :params
-                  {"periodStart" "2014"
-                   "periodEnd" "2015"
-                   "subject" "foo"}})]
+                {:request-method :get
+                 :params
+                 {"periodStart" "2014"
+                  "periodEnd" "2015"
+                  "subject" "foo"}})]
 
           (given params
             :report-type := "subject")))))
@@ -227,11 +222,11 @@
     (testing "local ref"
       (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
             @(handler
-               {:request-method :get
-                :params
-                {"periodStart" "2014"
-                 "periodEnd" "2015"
-                 "subject" "Foo/173216"}})]
+              {:request-method :get
+               :params
+               {"periodStart" "2014"
+                "periodEnd" "2015"
+                "subject" "Foo/173216"}})]
 
         (given params
           :subject-ref := ["Foo" "173216"])))
@@ -239,11 +234,11 @@
     (testing "id only"
       (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
             @(handler
-               {:request-method :get
-                :params
-                {"periodStart" "2014"
-                 "periodEnd" "2015"
-                 "subject" "173216"}})]
+              {:request-method :get
+               :params
+               {"periodStart" "2014"
+                "periodEnd" "2015"
+                "subject" "173216"}})]
 
         (given params
           :subject-ref := "173216")))
@@ -251,10 +246,10 @@
     (testing "invalid"
       (let [{:keys [status body]}
             @(handler
-               {:params
-                {"periodStart" "2014"
-                 "periodEnd" "2015"
-                 "subject" "a/1"}})]
+              {:params
+               {"periodStart" "2014"
+                "periodEnd" "2015"
+                "subject" "a/1"}})]
 
         (is (= 400 status))
 

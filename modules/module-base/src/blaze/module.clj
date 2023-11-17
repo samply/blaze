@@ -1,7 +1,6 @@
 (ns blaze.module
   (:require
-    [integrant.core :as ig]))
-
+   [integrant.core :as ig]))
 
 (defmacro reg-collector
   "Registers a metrics collector to the central registry."

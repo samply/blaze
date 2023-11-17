@@ -1,10 +1,9 @@
 (ns blaze.elm.compiler.library
   (:require
-    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.function :as function]
-    [blaze.elm.normalizer :as normalizer]))
-
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.function :as function]
+   [blaze.elm.normalizer :as normalizer]))
 
 (defn- compile-expression-def
   "Compiles the expression of `def` in `context`.
@@ -16,7 +15,6 @@
     (-> (ba/try-anomaly (update def :expression (partial c/compile context)))
         (ba/exceptionally #(assoc % :context context :elm/expression (:expression def))))))
 
-
 (defn- compile-function-def
   "Compiles the function of `def` in `context`.
 
@@ -27,30 +25,27 @@
     (-> (dissoc def :expression)
         (assoc :function (partial function/arity-n name expression (mapv :name operand))))))
 
-
 (defn- compile-function-defs [context library]
   (transduce
-    (filter (comp #{"FunctionDef"} :type))
-    (completing
-      (fn [context {:keys [name] :as def}]
-        (if-ok [def (compile-function-def context def)]
-          (assoc-in context [:function-defs name] def)
-          reduced)))
-    context
-    (-> library :statements :def)))
-
+   (filter (comp #{"FunctionDef"} :type))
+   (completing
+    (fn [context {:keys [name] :as def}]
+      (if-ok [def (compile-function-def context def)]
+        (assoc-in context [:function-defs name] def)
+        reduced)))
+   context
+   (-> library :statements :def)))
 
 (defn- expression-defs [context library]
   (transduce
-    (comp (filter (comp #{"ExpressionDef"} :type))
-          (map (partial compile-expression-def context))
-          (halt-when ba/anomaly?))
-    (completing
-      (fn [r {:keys [name] :as def}]
-        (assoc r name def)))
-    {}
-    (-> library :statements :def)))
-
+   (comp (filter (comp #{"ExpressionDef"} :type))
+         (map (partial compile-expression-def context))
+         (halt-when ba/anomaly?))
+   (completing
+    (fn [r {:keys [name] :as def}]
+      (assoc r name def)))
+   {}
+   (-> library :statements :def)))
 
 (defn- compile-parameter-def
   "Compiles the default value of `parameter-def` in `context` and associates the
@@ -62,22 +57,20 @@
   [context {:keys [default] :as parameter-def}]
   (if (some? default)
     (-> (ba/try-anomaly
-          (assoc parameter-def :default (c/compile context default)))
+         (assoc parameter-def :default (c/compile context default)))
         (ba/exceptionally
-          #(assoc % :context context :elm/expression default)))
+         #(assoc % :context context :elm/expression default)))
     parameter-def))
-
 
 (defn- parameter-default-values [context library]
   (transduce
-    (comp (map (partial compile-parameter-def context))
-          (halt-when ba/anomaly?))
-    (completing
-      (fn [r {:keys [name default]}]
-        (assoc r name default)))
-    {}
-    (-> library :parameters :def)))
-
+   (comp (map (partial compile-parameter-def context))
+         (halt-when ba/anomaly?))
+   (completing
+    (fn [r {:keys [name default]}]
+      (assoc r name default)))
+   {}
+   (-> library :parameters :def)))
 
 (defn compile-library
   "Compiles `library` using `node`.

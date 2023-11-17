@@ -1,25 +1,23 @@
 (ns blaze.db.impl.index
   (:require
-    [blaze.async.comp :as ac]
-    [blaze.coll.core :as coll]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
-    [blaze.db.impl.macros :refer [with-open-coll]]
-    [blaze.db.impl.search-param :as search-param]
-    [blaze.db.impl.search-param.util :as u]
-    [blaze.db.kv :as kv]))
-
+   [blaze.async.comp :as ac]
+   [blaze.coll.core :as coll]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
+   [blaze.db.impl.macros :refer [with-open-coll]]
+   [blaze.db.impl.search-param :as search-param]
+   [blaze.db.impl.search-param.util :as u]
+   [blaze.db.kv :as kv]))
 
 (defn- other-clauses-filter [context clauses]
   (filter
-    (fn [resource-handle]
-      (loop [[[search-param modifier _ values] & clauses] clauses]
-        (if search-param
-          (when (search-param/matches? search-param context resource-handle
-                                       modifier values)
-            (recur clauses))
-          true)))))
-
+   (fn [resource-handle]
+     (loop [[[search-param modifier _ values] & clauses] clauses]
+       (if search-param
+         (when (search-param/matches? search-param context resource-handle
+                                      modifier values)
+           (recur clauses))
+         true)))))
 
 (defn- resource-handles
   ([search-param context tid modifier values]
@@ -36,27 +34,25 @@
      (search-param/resource-handles search-param context tid modifier values
                                     start-id))))
 
-
 (defn type-query
   ([context tid clauses]
    (let [[[search-param modifier _ values] & other-clauses] clauses]
      (if (seq other-clauses)
        (coll/eduction
-         (other-clauses-filter context other-clauses)
-         (resource-handles
-           search-param context tid modifier values))
+        (other-clauses-filter context other-clauses)
+        (resource-handles
+         search-param context tid modifier values))
        (resource-handles
-         search-param context tid modifier values))))
+        search-param context tid modifier values))))
   ([context tid clauses start-id]
    (let [[[search-param modifier _ values] & other-clauses] clauses]
      (if (seq other-clauses)
        (coll/eduction
-         (other-clauses-filter context other-clauses)
-         (resource-handles
-           search-param context tid modifier values start-id))
+        (other-clauses-filter context other-clauses)
+        (resource-handles
+         search-param context tid modifier values start-id))
        (resource-handles
-         search-param context tid modifier values start-id)))))
-
+        search-param context tid modifier values start-id)))))
 
 (defn type-query-total
   "Returns a CompletableFuture that will complete with the count of the
@@ -65,19 +61,17 @@
   (let [[[search-param modifier _ values] & other-clauses] clauses]
     (if (seq other-clauses)
       (ac/completed-future
-        (count
-          (coll/eduction
-            (other-clauses-filter context other-clauses)
-            (search-param/resource-handles
-              search-param context tid modifier values))))
+       (count
+        (coll/eduction
+         (other-clauses-filter context other-clauses)
+         (search-param/resource-handles
+          search-param context tid modifier values))))
       (search-param/count-resource-handles
-        search-param context tid modifier values))))
-
+       search-param context tid modifier values))))
 
 (defn system-query [_ _]
   ;; TODO: implement
   [])
-
 
 (defn compartment-query
   "Iterates over the CSV index."
@@ -85,12 +79,11 @@
   (let [[[search-param _ _ values] & other-clauses] clauses]
     (if (seq other-clauses)
       (coll/eduction
-        (other-clauses-filter context other-clauses)
-        (search-param/compartment-resource-handles
-          search-param context compartment tid values))
+       (other-clauses-filter context other-clauses)
+       (search-param/compartment-resource-handles
+        search-param context compartment tid values))
       (search-param/compartment-resource-handles
-        search-param context compartment tid values))))
-
+       search-param context compartment tid values))))
 
 (defn targets
   "Returns a reducible collection of non-deleted resource handles that are
@@ -101,12 +94,12 @@
      [context resource-handle code target-tid])}
   ([{:keys [snapshot] :as context} {:keys [tid id hash]} code]
    (coll/eduction
-     (u/reference-resource-handle-mapper context)
-     (with-open-coll [rsvi (kv/new-iterator snapshot :resource-value-index)]
-       (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code))))
+    (u/reference-resource-handle-mapper context)
+    (with-open-coll [rsvi (kv/new-iterator snapshot :resource-value-index)]
+      (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code))))
   ([{:keys [snapshot] :as context} {:keys [tid id hash]} code target-tid]
    (coll/eduction
-     (u/reference-resource-handle-mapper context)
-     (with-open-coll [rsvi (kv/new-iterator snapshot :resource-value-index)]
-       (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code
-                            (codec/tid-byte-string target-tid))))))
+    (u/reference-resource-handle-mapper context)
+    (with-open-coll [rsvi (kv/new-iterator snapshot :resource-value-index)]
+      (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code
+                           (codec/tid-byte-string target-tid))))))

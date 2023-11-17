@@ -1,24 +1,20 @@
 (ns blaze.async.flow-test
   (:require
-    [blaze.async.flow :as flow]
-    [blaze.async.flow-spec]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]])
+   [blaze.async.flow :as flow]
+   [blaze.async.flow-spec]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]])
   (:import
-    [java.util.concurrent SubmissionPublisher]))
-
+   [java.util.concurrent SubmissionPublisher]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest processor-test
   (is (flow/processor? (flow/mapcat #(repeat % %)))))
-
 
 (deftest collect-test
   (testing "with publisher generating two numbers"
@@ -38,7 +34,6 @@
         @future
         (catch Exception e
           (is (= "e" (ex-message (ex-cause e)))))))))
-
 
 (deftest mapcat-test
   (testing "with publisher generating one number"

@@ -1,18 +1,15 @@
 (ns blaze.db.tx-log.kafka.config-test
   (:require
-    [blaze.db.tx-log.kafka.config :as c]
-    [blaze.fhir.hash-spec]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
-    [juxt.iota :refer [given]]))
-
+   [blaze.db.tx-log.kafka.config :as c]
+   [blaze.fhir.hash-spec]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest producer-config-test
   (testing "bootstrap servers"
@@ -30,7 +27,6 @@
   (testing "SSL truststore location"
     (given (c/producer-config {:ssl-truststore-location "file-195850"})
       "ssl.truststore.location" := "file-195850")))
-
 
 (deftest consumer-config-test
   (testing "bootstrap servers"

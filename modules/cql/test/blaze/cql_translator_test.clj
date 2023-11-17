@@ -1,25 +1,21 @@
 (ns blaze.cql-translator-test
   (:require
-    [blaze.cql-translator :refer [translate]]
-    [blaze.cql-translator-spec]
-    [blaze.test-util :as tu]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.string :as str]
-    [clojure.test :as test :refer [are deftest testing]]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]]))
-
+   [blaze.cql-translator :refer [translate]]
+   [blaze.cql-translator-spec]
+   [blaze.test-util :as tu]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
+   [clojure.test :as test :refer [are deftest testing]]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defmacro given-translation [cql & body]
   `(given (-> (translate ~cql) :statements :def) ~@body))
-
 
 (deftest translate-test
   (testing "Simple Retrieve"
@@ -100,10 +96,9 @@
        define Specimens: [Specimen]"))
 
   (testing "With Parameters"
-    (given
-      (translate
-        "library Test
-         parameter MeasurementPeriod Interval<DateTime>")
+    (given (translate
+            "library Test
+             parameter MeasurementPeriod Interval<DateTime>")
       [:parameters :def 0 :name] := "MeasurementPeriod"
       [:parameters :def 0 :resultTypeSpecifier :type] := "IntervalTypeSpecifier"
       [:parameters :def 0 :resultTypeSpecifier :pointType :type] := "NamedTypeSpecifier"
@@ -111,15 +106,15 @@
 
   (testing "Syntax Error"
     (given (translate
-             "library Test
-              define Error: (")
+            "library Test
+             define Error: (")
       ::anom/category := ::anom/incorrect
       ::anom/message := "Syntax error at <EOF>"))
 
   (testing "Large Query"
     (given (translate
-             (str "library Test
+            (str "library Test
                    define Error: "
-                  (str/join " or " (repeat 500 "true"))))
+                 (str/join " or " (repeat 500 "true"))))
       ::anom/category := ::anom/fault
       ::anom/message := "Error while parsing the ELM representation of a CQL library: Depth (1001) exceeds the maximum allowed nesting depth (1000)")))

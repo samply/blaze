@@ -1,14 +1,12 @@
 (ns blaze.cassandra.config
   (:require
-    [clojure.string :as str]
-    [java-time.api :as time])
+   [clojure.string :as str]
+   [java-time.api :as time])
   (:import
-    [com.datastax.oss.driver.api.core.config OptionsMap TypedDriverOption]
-    [java.net InetSocketAddress]))
-
+   [com.datastax.oss.driver.api.core.config OptionsMap TypedDriverOption]
+   [java.net InetSocketAddress]))
 
 (set! *warn-on-reflection* true)
-
 
 (defn options
   [{:keys [max-concurrent-requests max-request-queue-size
@@ -22,9 +20,8 @@
     (.put TypedDriverOption/REQUEST_THROTTLER_MAX_QUEUE_SIZE (int max-request-queue-size))
     (.put TypedDriverOption/REQUEST_TIMEOUT (time/millis request-timeout))))
 
-
 (defn build-contact-points [contact-points]
   (map
-    #(let [[hostname port] (str/split % #":" 2)]
-       (InetSocketAddress. ^String hostname (Integer/parseInt port)))
-    (str/split contact-points #",")))
+   #(let [[hostname port] (str/split % #":" 2)]
+      (InetSocketAddress. ^String hostname (Integer/parseInt port)))
+   (str/split contact-points #",")))

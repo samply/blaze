@@ -1,12 +1,11 @@
 (ns blaze.interaction.search.params-spec
   (:require
-    [blaze.async.comp :as ac]
-    [blaze.handler.fhir.util-spec]
-    [blaze.interaction.search.params :as params]
-    [blaze.interaction.util-spec]
-    [blaze.page-store.spec]
-    [clojure.spec.alpha :as s]))
-
+   [blaze.async.comp :as ac]
+   [blaze.handler.fhir.util-spec]
+   [blaze.interaction.search.params :as params]
+   [blaze.interaction.util-spec]
+   [blaze.page-store.spec]
+   [clojure.spec.alpha :as s]))
 
 (s/fdef params/decode
   :args (s/cat :page-store :blaze/page-store

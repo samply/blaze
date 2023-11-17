@@ -15,17 +15,15 @@
   Each transaction which touches resources of a particular type, puts an entry
   with the new totals for this type at its t."
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.kv :as kv])
+   [blaze.byte-buffer :as bb]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.kv :as kv])
   (:import
-    [com.google.common.primitives Ints]
-    [java.lang AutoCloseable]))
-
+   [com.google.common.primitives Ints]
+   [java.lang AutoCloseable]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
-
 
 (defn new-iterator
   "Returns the iterator of the type stats index.
@@ -34,10 +32,8 @@
   ^AutoCloseable [snapshot]
   (kv/new-iterator snapshot :type-stats-index))
 
-
 (def ^:private ^:const ^long key-size (+ codec/tid-size codec/t-size))
 (def ^:private ^:const ^long value-size (+ Long/BYTES Long/BYTES))
-
 
 (defn- encode-key [tid t]
   (-> (bb/allocate key-size)
@@ -45,11 +41,9 @@
       (bb/put-long! (codec/descending-long ^long t))
       bb/array))
 
-
 (defn- decode-value! [buf]
   {:total (bb/get-long! buf)
    :num-changes (bb/get-long! buf)})
-
 
 (defn get!
   "Returns the value of `tid` which is most recent according to `t` if there is
@@ -63,13 +57,11 @@
     (when (= ^long tid (Ints/fromByteArray (kv/key iter)))
       (decode-value! (bb/wrap (kv/value iter))))))
 
-
 (defn- encode-value [{:keys [total num-changes]}]
   (-> (bb/allocate value-size)
       (bb/put-long! total)
       (bb/put-long! num-changes)
       bb/array))
-
 
 (defn index-entry
   "Returns an entry of the TypeStats index build from `tid`, `t` and `value`.

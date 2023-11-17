@@ -1,7 +1,6 @@
 (ns blaze.module.test-util.ring
   (:require
-    [blaze.async.comp :as ac]))
-
+   [blaze.async.comp :as ac]))
 
 (defn call
   "Calls async Ring `handler` with `request`, blocking on the response."

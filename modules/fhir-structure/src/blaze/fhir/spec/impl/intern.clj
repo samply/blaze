@@ -1,12 +1,10 @@
 (ns blaze.fhir.spec.impl.intern
   (:import
-    [clojure.lang Util]
-    [java.lang.ref ReferenceQueue WeakReference]
-    [java.util.concurrent ConcurrentHashMap]))
-
+   [clojure.lang Util]
+   [java.lang.ref ReferenceQueue WeakReference]
+   [java.util.concurrent ConcurrentHashMap]))
 
 (set! *warn-on-reflection* true)
-
 
 (defn intern-value
   "Returns a function of arity 1 that creates a value using `create-fn` only if

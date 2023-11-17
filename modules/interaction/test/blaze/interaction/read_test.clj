@@ -5,48 +5,41 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.anomaly-spec]
-    [blaze.async.comp :as ac]
-    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-    [blaze.db.resource-store :as rs]
-    [blaze.db.spec]
-    [blaze.interaction.read]
-    [blaze.interaction.test-util :refer [wrap-error]]
-    [blaze.middleware.fhir.db :refer [wrap-db wrap-versioned-instance-db]]
-    [blaze.middleware.fhir.db-spec]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [juxt.iota :refer [given]]
-    [reitit.core :as reitit]
-    [taoensso.timbre :as log])
+   [blaze.anomaly-spec]
+   [blaze.async.comp :as ac]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.resource-store :as rs]
+   [blaze.db.spec]
+   [blaze.interaction.read]
+   [blaze.interaction.test-util :refer [wrap-error]]
+   [blaze.middleware.fhir.db :refer [wrap-db wrap-versioned-instance-db]]
+   [blaze.middleware.fhir.db-spec]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [juxt.iota :refer [given]]
+   [reitit.core :as reitit]
+   [taoensso.timbre :as log])
   (:import
-    [java.time Instant]))
-
+   [java.time Instant]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def config
   (assoc api-stub/mem-node-config :blaze.interaction/read {}))
 
-
 (def match
   (reitit/map->Match {:data {:fhir.resource/type "Patient"}}))
-
 
 (def operation-outcome
   #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome")
 
-
 (defn wrap-defaults [handler]
   (fn [request]
     (handler (assoc request ::reitit/match match))))
-
 
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
@@ -57,7 +50,6 @@
                                   wrap-error)]
          ~@body))))
 
-
 (defmacro with-vread-handler [[handler-binding] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
@@ -67,7 +59,6 @@
                                   (wrap-versioned-instance-db node# 100)
                                   wrap-error)]
          ~@body))))
-
 
 (deftest handler-test
   (testing "returns Not-Found on non-existing resource"

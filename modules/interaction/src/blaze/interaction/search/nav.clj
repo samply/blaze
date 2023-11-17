@@ -1,28 +1,23 @@
 (ns blaze.interaction.search.nav
   (:require
-    [blaze.async.comp :as ac :refer [do-sync]]
-    [blaze.page-store :as page-store]
-    [blaze.util :refer [conj-vec]]
-    [clojure.string :as str]
-    [reitit.core :as reitit]))
-
+   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.page-store :as page-store]
+   [blaze.util :refer [conj-vec]]
+   [clojure.string :as str]
+   [reitit.core :as reitit]))
 
 (defmulti clause->query-param (fn [_ret [key]] key))
-
 
 (defmethod clause->query-param :sort
   [ret [_sort param direction]]
   (assoc ret "_sort" (if (= :desc direction) (str "-" param) param)))
 
-
 (defmethod clause->query-param :default
   [ret [param & values]]
   (update ret param conj-vec (str/join "," values)))
 
-
 (defn- clauses->query-params [clauses]
   (reduce clause->query-param {} clauses))
-
 
 (defn- clauses->token-query-params! [page-store token clauses]
   (cond
@@ -32,34 +27,31 @@
     (do-sync [token (page-store/put! page-store clauses)]
       {"__token" token})))
 
-
 (defn- forward-include-defs->query-param-values [include-defs]
   (into
-    []
-    (mapcat
-      (fn [[source-type include-defs]]
-        (mapv
-          (fn [{:keys [code target-type]}]
-            (cond-> (str source-type ":" code)
-              target-type
-              (str ":" target-type)))
-          include-defs)))
-    include-defs))
-
+   []
+   (mapcat
+    (fn [[source-type include-defs]]
+      (mapv
+       (fn [{:keys [code target-type]}]
+         (cond-> (str source-type ":" code)
+           target-type
+           (str ":" target-type)))
+       include-defs)))
+   include-defs))
 
 (defn- reverse-include-defs->query-param-values [include-defs]
   (into
-    []
-    (mapcat
-      (fn [[target-type include-defs]]
-        (mapv
-          (fn [{:keys [source-type code]}]
-            (cond-> (str source-type ":" code)
-              (not= :any target-type)
-              (str ":" target-type)))
-          include-defs)))
-    include-defs))
-
+   []
+   (mapcat
+    (fn [[target-type include-defs]]
+      (mapv
+       (fn [{:keys [source-type code]}]
+         (cond-> (str source-type ":" code)
+           (not= :any target-type)
+           (str ":" target-type)))
+       include-defs)))
+   include-defs))
 
 (defn- include-defs->query-params
   [{{fwd-dir :forward rev-dir :reverse} :direct
@@ -78,7 +70,6 @@
       (seq rev-itr)
       (assoc "_revinclude:iterate" rev-itr))))
 
-
 (defn- merge-params [clauses-params {:keys [include-defs summary elements page-size]}]
   (cond-> clauses-params
     (seq include-defs)
@@ -90,10 +81,8 @@
     page-size
     (assoc "_count" page-size)))
 
-
 (defn- query-params [params clauses]
   (merge-params (clauses->query-params clauses) params))
-
 
 (defn url [base-url match params clauses t offset]
   (let [query-params (query-params params clauses)]
@@ -101,12 +90,10 @@
                                                 (assoc "__t" t)
                                                 (merge offset))))))
 
-
 (defn- token-query-params!
   [page-store {:keys [token] :as params} clauses]
   (do-sync [clauses-params (clauses->token-query-params! page-store token clauses)]
     (merge-params clauses-params params)))
-
 
 (defn token-url!
   "Returns a CompletableFuture that will complete with a URL that will encode
@@ -117,14 +104,11 @@
                                                 (assoc "__t" t)
                                                 (merge offset))))))
 
-
 (defn- clauses->token-query-params [token clauses]
   (if token {"__token" token} (clauses->query-params clauses)))
 
-
 (defn- token-query-params [params token clauses]
   (merge-params (clauses->token-query-params token clauses) params))
-
 
 (defn token-url
   [base-url match params token clauses t offset]

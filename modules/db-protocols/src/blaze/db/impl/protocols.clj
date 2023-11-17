@@ -1,6 +1,5 @@
 (ns blaze.db.impl.protocols)
 
-
 (defprotocol Db
   (-node [db])
 
@@ -48,10 +47,8 @@
 
   (-new-batch-db [db]))
 
-
 (defprotocol Tx
   (-tx [tx t]))
-
 
 (defprotocol QueryCompiler
   (-compile-type-query [compiler type clauses])
@@ -64,7 +61,6 @@
 
   (-compile-compartment-query-lenient [compiler code type clauses]))
 
-
 (defprotocol Query
   (-count [query context]
     "Returns a CompletableFuture that will complete with the count of the
@@ -74,14 +70,12 @@
 
   (-clauses [query]))
 
-
 (defprotocol Pull
   (-pull [pull resource-handle])
 
   (-pull-content [pull resource-handle])
 
   (-pull-many [pull resource-handles] [pull resource-handles elements]))
-
 
 (defprotocol SearchParam
   (-compile-value [search-param modifier value] "Can return an anomaly.")
@@ -102,7 +96,6 @@
   (-compartment-ids [_ resolver resource])
   (-index-values [_ resolver resource])
   (-index-value-compiler [_]))
-
 
 (defprotocol SearchParamRegistry
   (-get [_ code type])

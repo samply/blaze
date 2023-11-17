@@ -4,27 +4,25 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly-spec]
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler-spec]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.list-operators]
-    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
-    [blaze.elm.expression-spec]
-    [blaze.elm.literal :as elm]
-    [blaze.elm.literal-spec]
-    [blaze.elm.quantity :as quantity]
-    [blaze.test-util :refer [satisfies-prop]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [clojure.test.check.properties :as prop]))
-
+   [blaze.anomaly-spec]
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler-spec]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.list-operators]
+   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.expression-spec]
+   [blaze.elm.literal :as elm]
+   [blaze.elm.literal-spec]
+   [blaze.elm.quantity :as quantity]
+   [blaze.test-util :refer [satisfies-prop]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [clojure.test.check.properties :as prop]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -32,9 +30,7 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; 20.1. List
 ;;
@@ -72,11 +68,9 @@
       (let [expr (ctu/dynamic-compile #elm/list [#elm/parameter-ref "x"])]
         (has-form expr '(list (param-ref "x")))))))
 
-
 ;; 20.2. Contains
 ;;
 ;; See 19.5. Contains
-
 
 ;; 20.3. Current
 ;;
@@ -107,7 +101,6 @@
       (let [expr (c/compile {} #elm/current "x")]
         (has-form expr '(current "x"))))))
 
-
 ;; 20.4. Distinct
 ;;
 ;; The Distinct operator takes a list of elements and returns a list containing
@@ -137,21 +130,17 @@
 
   (ctu/testing-unary-form elm/distinct))
 
-
 ;; 20.5. Equal
 ;;
 ;; See 12.1. Equal
-
 
 ;; 20.6. Equivalent
 ;;
 ;; 12.2. Equivalent
 
-
 ;; 20.7. Except
 ;;
 ;; 19.10. Except
-
 
 ;; 20.8. Exists
 ;;
@@ -178,7 +167,6 @@
       {:type "Null"} false)
 
     (ctu/testing-unary-form elm/exists)))
-
 
 ;; 20.9. Filter
 ;;
@@ -211,9 +199,9 @@
   (testing "form and static"
     (testing "with scope"
       (let [expr (ctu/dynamic-compile {:type "Filter"
-                                      :source #elm/parameter-ref "x"
-                                      :condition #elm/parameter-ref "y"
-                                      :scope "A"})]
+                                       :source #elm/parameter-ref "x"
+                                       :condition #elm/parameter-ref "y"
+                                       :scope "A"})]
 
         (has-form expr '(filter (param-ref "x") (param-ref "y") "A"))
 
@@ -221,13 +209,12 @@
 
     (testing "without scope"
       (let [expr (ctu/dynamic-compile {:type "Filter"
-                                      :source #elm/parameter-ref "x"
-                                      :condition #elm/parameter-ref "y"})]
+                                       :source #elm/parameter-ref "x"
+                                       :condition #elm/parameter-ref "y"})]
 
         (has-form expr '(filter (param-ref "x") (param-ref "y")))
 
         (is (false? (core/-static expr)))))))
-
 
 ;; 20.10. First
 ;;
@@ -253,7 +240,6 @@
 
   (ctu/testing-unary-form elm/first))
 
-
 ;; 20.11. Flatten
 ;;
 ;; The Flatten operator flattens a list of lists into a single list.
@@ -273,7 +259,6 @@
   (ctu/testing-unary-dynamic elm/flatten)
 
   (ctu/testing-unary-form elm/flatten))
-
 
 ;; 20.12. ForEach
 ;;
@@ -311,9 +296,9 @@
   (testing "form and static"
     (testing "with scope"
       (let [expr (ctu/dynamic-compile {:type "ForEach"
-                                      :source #elm/parameter-ref "x"
-                                      :element #elm/parameter-ref "y"
-                                      :scope "A"})]
+                                       :source #elm/parameter-ref "x"
+                                       :element #elm/parameter-ref "y"
+                                       :scope "A"})]
 
         (has-form expr '(for-each (param-ref "x") (param-ref "y") "A"))
 
@@ -321,28 +306,24 @@
 
     (testing "without scope"
       (let [expr (ctu/dynamic-compile {:type "ForEach"
-                                      :source #elm/parameter-ref "x"
-                                      :element #elm/parameter-ref "y"})]
+                                       :source #elm/parameter-ref "x"
+                                       :element #elm/parameter-ref "y"})]
 
         (has-form expr '(for-each (param-ref "x") (param-ref "y")))
 
         (is (false? (core/-static expr)))))))
 
-
 ;; 20.13. In
 ;;
 ;; See 19.12. In
-
 
 ;; 20.14. Includes
 ;;
 ;; See 19.13. Includes
 
-
 ;; 20.15. IncludedIn
 ;;
 ;; See 19.14. IncludedIn
-
 
 ;; 20.16. IndexOf
 ;;
@@ -373,11 +354,9 @@
 
   (ctu/testing-binary-form elm/index-of))
 
-
 ;; 20.17. Intersect
 ;;
 ;; See 19.15. Intersect
-
 
 ;; 20.18. Last
 ;;
@@ -403,31 +382,25 @@
 
   (ctu/testing-unary-form elm/last))
 
-
 ;; 20.19. Not Equal
 ;;
 ;; See 12.7. NotEqual
-
 
 ;; 20.20. ProperContains
 ;;
 ;; See 19.24. ProperContains
 
-
 ;; 20.21. ProperIn
 ;;
 ;; See 19.25. ProperIn
-
 
 ;; 20.22. ProperIncludes
 ;;
 ;; See 19.26. ProperIncludes
 
-
 ;; 20.23. ProperIncludedIn
 ;;
 ;; See 19.27. ProperIncludedIn
-
 
 ;; 20.24. Repeat
 ;;
@@ -443,7 +416,6 @@
 ;; the resulting list will contain a null for that element.
 ;;
 ;; TODO: not implemented
-
 
 ;; 20.25. SingletonFrom
 ;;
@@ -466,7 +438,6 @@
   (ctu/testing-unary-dynamic elm/singleton-from)
 
   (ctu/testing-unary-form elm/singleton-from))
-
 
 ;; 20.26. Slice
 ;;
@@ -492,14 +463,13 @@
     #elm/list [#elm/integer "1"] #elm/integer "-1" #elm/integer "0" []
     #elm/list [#elm/integer "1"] #elm/integer "1" #elm/integer "0" []
 
-
     {:type "Null"} #elm/integer "0" #elm/integer "0" nil
     {:type "Null"} {:type "Null"} {:type "Null"} nil)
 
   (let [expr (ctu/dynamic-compile {:type "Slice"
-                                  :source #elm/parameter-ref "x"
-                                  :startIndex #elm/parameter-ref "y"
-                                  :endIndex #elm/parameter-ref "z"})]
+                                   :source #elm/parameter-ref "x"
+                                   :startIndex #elm/parameter-ref "y"
+                                   :endIndex #elm/parameter-ref "z"})]
 
     (testing "expression is dynamic"
       (is (false? (core/-static expr))))
@@ -507,7 +477,6 @@
     (testing "form"
       (is (= '(slice (param-ref "x") (param-ref "y") (param-ref "z"))
              (core/-form expr))))))
-
 
 ;; 20.27. Sort
 ;;
@@ -530,15 +499,14 @@
     {:type "Null"} {:type "ByDirection" :direction "asc"} nil)
 
   (let [expr (ctu/dynamic-compile {:type "Sort"
-                                  :source #elm/parameter-ref "x"
-                                  :by [{:type "ByDirection" :direction "asc"}]})]
+                                   :source #elm/parameter-ref "x"
+                                   :by [{:type "ByDirection" :direction "asc"}]})]
 
     (testing "expression is dynamic"
       (is (false? (core/-static expr))))
 
     (testing "form"
       (is (= '(sort (param-ref "x") :asc) (core/-form expr))))))
-
 
 ;; 20.28. Times
 ;;
@@ -600,7 +568,6 @@
   (ctu/testing-binary-dynamic elm/times)
 
   (ctu/testing-binary-form elm/times))
-
 
 ;; 20.29. Union
 ;;

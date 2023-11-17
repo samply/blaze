@@ -1,53 +1,50 @@
 (ns blaze.db.node-test
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.async.comp :as ac]
-    [blaze.async.comp-spec]
-    [blaze.db.api :as d]
-    [blaze.db.api-spec]
-    [blaze.db.impl.db-spec]
-    [blaze.db.impl.index.tx-success :as tx-success]
-    [blaze.db.kv :as kv]
-    [blaze.db.kv.mem-spec]
-    [blaze.db.node :as node]
-    [blaze.db.node-spec]
-    [blaze.db.node.resource-indexer :as resource-indexer]
-    [blaze.db.node.tx-indexer :as-alias tx-indexer]
-    [blaze.db.node.version :as version]
-    [blaze.db.resource-store :as rs]
-    [blaze.db.resource-store.spec :refer [resource-store?]]
-    [blaze.db.search-param-registry]
-    [blaze.db.search-param-registry.spec :refer [search-param-registry?]]
-    [blaze.db.spec :refer [loading-cache?]]
-    [blaze.db.test-util :refer [config]]
-    [blaze.db.tx-log-spec]
-    [blaze.db.tx-log.local-spec]
-    [blaze.db.tx-log.spec :refer [tx-log?]]
-    [blaze.executors :as ex]
-    [blaze.fhir.test-util :refer [given-failed-future]]
-    [blaze.log]
-    [blaze.metrics.spec]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [integrant.core :as ig]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log])
+   [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
+   [blaze.async.comp-spec]
+   [blaze.db.api :as d]
+   [blaze.db.api-spec]
+   [blaze.db.impl.db-spec]
+   [blaze.db.impl.index.tx-success :as tx-success]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv.mem-spec]
+   [blaze.db.node :as node]
+   [blaze.db.node-spec]
+   [blaze.db.node.resource-indexer :as resource-indexer]
+   [blaze.db.node.tx-indexer :as-alias tx-indexer]
+   [blaze.db.node.version :as version]
+   [blaze.db.resource-store :as rs]
+   [blaze.db.resource-store.spec :refer [resource-store?]]
+   [blaze.db.search-param-registry]
+   [blaze.db.search-param-registry.spec :refer [search-param-registry?]]
+   [blaze.db.spec :refer [loading-cache?]]
+   [blaze.db.test-util :refer [config]]
+   [blaze.db.tx-log-spec]
+   [blaze.db.tx-log.local-spec]
+   [blaze.db.tx-log.spec :refer [tx-log?]]
+   [blaze.executors :as ex]
+   [blaze.fhir.test-util :refer [given-failed-future]]
+   [blaze.log]
+   [blaze.metrics.spec]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log])
   (:import
-    [java.time Instant]
-    [java.util.concurrent TimeUnit]))
-
+   [java.time Instant]
+   [java.util.concurrent TimeUnit]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defmethod ig/init-key ::resource-store-failing-on-get [_ _]
   (reify
@@ -59,21 +56,18 @@
     (-put [_ _]
       (ac/completed-future nil))))
 
-
 (def ^:private resource-store-failing-on-get-config
   (merge-with
-    merge
-    config
-    {:blaze.db/node
-     {:resource-store (ig/ref ::resource-store-failing-on-get)}
-     :blaze.db.node/resource-indexer
-     {:resource-store (ig/ref ::resource-store-failing-on-get)}
-     ::resource-store-failing-on-get {}}))
-
+   merge
+   config
+   {:blaze.db/node
+    {:resource-store (ig/ref ::resource-store-failing-on-get)}
+    :blaze.db.node/resource-indexer
+    {:resource-store (ig/ref ::resource-store-failing-on-get)}
+    ::resource-store-failing-on-get {}}))
 
 (def ^:private delayed-executor
   (ac/delayed-executor 100 TimeUnit/MILLISECONDS))
-
 
 (defmethod ig/init-key ::resource-store-slow-on-put [_ {:keys [resource-store]}]
   (reify
@@ -86,24 +80,21 @@
       (-> (rs/put! resource-store entries)
           (ac/then-apply-async identity delayed-executor)))))
 
-
 (def ^:private resource-store-slow-on-put-config
   (merge-with
-    merge
-    config
-    {:blaze.db/node
-     {:resource-store (ig/ref ::resource-store-slow-on-put)}
-     :blaze.db.node/resource-indexer
-     {:resource-store (ig/ref ::resource-store-slow-on-put)}
-     ::resource-store-slow-on-put
-     {:resource-store (ig/ref ::rs/kv)}}))
-
+   merge
+   config
+   {:blaze.db/node
+    {:resource-store (ig/ref ::resource-store-slow-on-put)}
+    :blaze.db.node/resource-indexer
+    {:resource-store (ig/ref ::resource-store-slow-on-put)}
+    ::resource-store-slow-on-put
+    {:resource-store (ig/ref ::rs/kv)}}))
 
 (defn- with-index-store-version [config version]
   (assoc-in config [[::kv/mem :blaze.db/index-kv-store] :init-data]
             [[version/key (version/encode-value version)]
              (tx-success/index-entry 1 Instant/EPOCH)]))
-
 
 (deftest init-test
   (testing "nil config"
@@ -187,21 +178,17 @@
       [:cause-data :expected-version] := 0
       [:cause-data :actual-version] := -1)))
 
-
 (deftest duration-seconds-collector-init-test
   (with-system [{collector ::node/duration-seconds} {::node/duration-seconds {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
-
 
 (deftest transaction-sizes-collector-init-test
   (with-system [{collector ::node/transaction-sizes} {::node/transaction-sizes {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
 
-
 (deftest tx-indexer-duration-seconds-collector-init-test
   (with-system [{collector ::tx-indexer/duration-seconds} {::tx-indexer/duration-seconds {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
-
 
 (deftest transact-test
   (testing "with slow transaction result fetching"
@@ -210,9 +197,9 @@
         (with-system [{:blaze.db/keys [node]} config]
           @(-> (node/submit-tx node [[:create {:fhir/type :fhir/Patient :id "0"}]])
                (ac/then-compose
-                 (fn [t]
-                   (Thread/sleep 100)
-                   (node/tx-result node t))))
+                (fn [t]
+                  (Thread/sleep 100)
+                  (node/tx-result node t))))
 
           (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
             :fhir/type := :fhir/Patient
@@ -226,38 +213,37 @@
           (try
             @(-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
                  (ac/then-compose
-                   (fn [t]
-                     (Thread/sleep 100)
-                     (node/tx-result node t))))
+                  (fn [t]
+                    (Thread/sleep 100)
+                    (node/tx-result node t))))
             (catch Exception e
               (given (ex-data (ex-cause e))
                 ::anom/category := ::anom/fault))))))
 
     (testing "with failing resource indexer"
       (with-redefs
-        [resource-indexer/index-resources
-         (fn [_ _]
-           (ac/failed-future (ex-info "" (ba/fault "" ::x ::y))))]
+       [resource-indexer/index-resources
+        (fn [_ _]
+          (ac/failed-future (ex-info "" (ba/fault "" ::x ::y))))]
 
         (testing "fetching the result immediately"
           (with-system [{:blaze.db/keys [node]} resource-store-slow-on-put-config]
             (given-failed-future
-              (-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-                  (ac/then-compose (partial node/tx-result node)))
+             (-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+                 (ac/then-compose (partial node/tx-result node)))
               ::anom/category := ::anom/fault
               ::x ::y)))
 
         (testing "wait before fetching the result"
           (with-system [{:blaze.db/keys [node]} config]
             (given-failed-future
-              (-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
-                  (ac/then-compose
-                    (fn [t]
-                      (Thread/sleep 100)
-                      (node/tx-result node t))))
+             (-> (node/submit-tx node [[:put {:fhir/type :fhir/Patient :id "0"}]])
+                 (ac/then-compose
+                  (fn [t]
+                    (Thread/sleep 100)
+                    (node/tx-result node t))))
               ::anom/category := ::anom/fault
               ::x ::y)))))))
-
 
 (deftest indexer-executor-shutdown-timeout-test
   (let [{::node/keys [indexer-executor] :as system}
@@ -276,7 +262,6 @@
 
     ;; but it isn't terminated yet
     (is (not (ex/terminated? indexer-executor)))))
-
 
 (deftest existing-data-with-compatible-version
   (with-system [{:blaze.db/keys [node]} (with-index-store-version config 0)]

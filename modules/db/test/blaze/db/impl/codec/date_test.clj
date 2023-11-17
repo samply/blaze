@@ -1,24 +1,21 @@
 (ns blaze.db.impl.codec.date-test
   (:require
-    [blaze.byte-string :as bs]
-    [blaze.db.impl.codec-spec]
-    [blaze.db.impl.codec.date :as codec-date]
-    [blaze.db.impl.index.search-param-value-resource-spec]
-    [blaze.test-util :as tu :refer [satisfies-prop]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [clojure.test.check.properties :as prop])
+   [blaze.byte-string :as bs]
+   [blaze.db.impl.codec-spec]
+   [blaze.db.impl.codec.date :as codec-date]
+   [blaze.db.impl.index.search-param-value-resource-spec]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [clojure.test.check.properties :as prop])
   (:import
-    [java.time OffsetDateTime ZoneOffset]))
-
+   [java.time OffsetDateTime ZoneOffset]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest encode-lower-bound-test
   (testing "year"
@@ -52,7 +49,6 @@
     (is (= (codec-date/encode-lower-bound #system/date"0001")
            (codec-date/encode-lower-bound nil)))))
 
-
 (deftest encode-upper-bound-test
   (testing "year"
     (are [date hex] (= hex (bs/hex (codec-date/encode-upper-bound date)))
@@ -84,7 +80,6 @@
   (testing "nil"
     (is (= (codec-date/encode-upper-bound #system/date"9999")
            (codec-date/encode-upper-bound nil)))))
-
 
 (deftest encode-range-test
   (testing "extract lower bound"

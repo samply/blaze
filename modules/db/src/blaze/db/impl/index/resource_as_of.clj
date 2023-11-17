@@ -1,33 +1,29 @@
 (ns blaze.db.impl.index.resource-as-of
   "Functions for accessing the ResourceAsOf index."
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.byte-string :as bs]
-    [blaze.coll.core :as coll]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.iterators :as i]
-    [blaze.db.impl.macros :refer [with-open-coll]]
-    [blaze.db.kv :as kv])
+   [blaze.byte-buffer :as bb]
+   [blaze.byte-string :as bs]
+   [blaze.coll.core :as coll]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.resource-handle :as rh]
+   [blaze.db.impl.iterators :as i]
+   [blaze.db.impl.macros :refer [with-open-coll]]
+   [blaze.db.kv :as kv])
   (:import
-    [clojure.lang IFn IReduceInit Sequential]
-    [com.google.common.primitives Ints]
-    [java.lang AutoCloseable]))
-
+   [clojure.lang IFn IReduceInit Sequential]
+   [com.google.common.primitives Ints]
+   [java.lang AutoCloseable]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
-
 (def ^:private ^:const ^long except-id-key-size
   (+ codec/tid-size codec/t-size))
-
 
 (defn- focus-id!
   "Reduces the limit of `kb` in order to hide the t and focus on id solely."
   [kb]
   (bb/set-limit! kb (- (bb/limit kb) codec/t-size)))
-
 
 (defn- copy-id!
   "Copies the id bytes from the key buffer into the id buffer."
@@ -39,14 +35,12 @@
     (bb/rewind! ib))
   (bb/set-limit! kb (unchecked-add-int (bb/limit kb) codec/t-size)))
 
-
 (defn- skip-id!
   "Does the same to `position` and `limit` of `kb` as `copy-id!` but doesn't
   copy anything."
   [kb ib]
   (bb/set-position! kb (unchecked-add-int (bb/position kb) (bb/remaining ib)))
   (bb/set-limit! kb (unchecked-add-int (bb/limit kb) codec/t-size)))
-
 
 (defn- id-marker
   "Compares the id part of the current key buffer with the id buffer that may
@@ -73,7 +67,6 @@
         (copy-id! kb ib)
         true))))
 
-
 (defn- tid-marker [tid-box ib id-marker]
   (fn [kb]
     (let [tid (bb/get-int! kb)
@@ -94,12 +87,10 @@
           (id-marker kb)
           true)))))
 
-
 (defn- new-entry!
   "Creates a new resource handle entry."
   [tid ib vb t]
   (rh/resource-handle tid (codec/id (bb/array ib) 0 (bb/remaining ib)) t vb))
-
 
 (defn- type-entry-creator
   "Returns a function of no argument which creates a new resource handle entry
@@ -113,14 +104,12 @@
       (when (<= t ^long base-t)
         (new-entry! tid ib (bb/wrap (kv/value raoi)) t)))))
 
-
 (defn- system-entry-creator
   [tid-box iter ib base-t]
   (fn [kb]
     (let [t (codec/descending-long (bb/get-long! kb))]
       (when (<= t ^long base-t)
         (new-entry! @tid-box ib (bb/wrap (kv/value iter)) t)))))
-
 
 (defn- group-by-id
   "Returns a stateful transducer which takes flags from `id-marker` and supplies
@@ -157,37 +146,31 @@
                (search-entry! kb)
                result))))))))
 
-
 (defn- encode-key-buf [tid id t]
   (-> (bb/allocate (unchecked-add-int except-id-key-size (bs/size id)))
       (bb/put-int! tid)
       (bb/put-byte-string! id)
       (bb/put-long! (codec/descending-long t))))
 
-
 (defn encode-key
   "Encodes the key of the ResourceAsOf index from `tid`, `id` and `t`."
   [tid id t]
   (bb/array (encode-key-buf tid id t)))
 
-
 (defn- starts-with-tid? [^long tid]
   (fn [kb] (= tid (bb/get-int! kb))))
 
-
 (def ^:private remove-deleted-xf
   (remove rh/deleted?))
-
 
 (defn- type-list-xf [raoi t tid]
   (let [ib (bb/set-limit! (bb/allocate codec/max-id-size) 0)
         entry-creator (type-entry-creator tid raoi ib t)]
     (comp
-      i/key-reader
-      (take-while (starts-with-tid? tid))
-      (group-by-id (id-marker ib) entry-creator)
-      remove-deleted-xf)))
-
+     i/key-reader
+     (take-while (starts-with-tid? tid))
+     (group-by-id (id-marker ib) entry-creator)
+     remove-deleted-xf)))
 
 (defn- start-key
   ([tid]
@@ -196,7 +179,6 @@
    (-> (encode-key-buf tid start-id t)
        bb/flip!
        bs/from-byte-buffer!)))
-
 
 (defn type-list
   "Returns a reducible collection of all resource handles of type with `tid`
@@ -283,10 +265,10 @@
      (reduce [_ f init]
        (with-open [raoi (kv/new-iterator snapshot :resource-as-of-index)]
          (transduce
-           (type-list-xf raoi t tid)
-           (completing f)
-           init
-           (i/iter! raoi (start-key tid)))))))
+          (type-list-xf raoi t tid)
+          (completing f)
+          init
+          (i/iter! raoi (start-key tid)))))))
   ([{:keys [snapshot t]} tid start-id]
    (reify
      Sequential
@@ -294,21 +276,19 @@
      (reduce [_ f init]
        (with-open [raoi (kv/new-iterator snapshot :resource-as-of-index)]
          (transduce
-           (type-list-xf raoi t tid)
-           (completing f)
-           init
-           (i/iter! raoi (start-key tid start-id t))))))))
-
+          (type-list-xf raoi t tid)
+          (completing f)
+          init
+          (i/iter! raoi (start-key tid start-id t))))))))
 
 (defn- system-list-xf [raoi t start-tid]
   (let [tid-box (volatile! start-tid)
         ib (bb/set-limit! (bb/allocate codec/max-id-size) 0)]
     (comp
-      i/key-reader
-      (group-by-id (tid-marker tid-box ib (id-marker ib))
-                   (system-entry-creator tid-box raoi ib t))
-      remove-deleted-xf)))
-
+     i/key-reader
+     (group-by-id (tid-marker tid-box ib (id-marker ib))
+                  (system-entry-creator tid-box raoi ib t))
+     remove-deleted-xf)))
 
 (defn system-list
   "Returns a reducible collection of all resource handles ordered by resource
@@ -322,10 +302,10 @@
      (reduce [_ f init]
        (with-open [raoi (kv/new-iterator snapshot :resource-as-of-index)]
          (transduce
-           (system-list-xf raoi t nil)
-           (completing f)
-           init
-           (i/iter! raoi))))))
+          (system-list-xf raoi t nil)
+          (completing f)
+          init
+          (i/iter! raoi))))))
   ([{:keys [snapshot t]} start-tid start-id]
    (reify
      Sequential
@@ -333,11 +313,10 @@
      (reduce [_ f init]
        (with-open [raoi (kv/new-iterator snapshot :resource-as-of-index)]
          (transduce
-           (system-list-xf raoi t start-tid)
-           (completing f)
-           init
-           (i/iter! raoi (start-key start-tid start-id t))))))))
-
+          (system-list-xf raoi t start-tid)
+          (completing f)
+          init
+          (i/iter! raoi (start-key start-tid start-id t))))))))
 
 (defn decoder
   "Returns a function which decodes an resource handle out of a key and a value
@@ -357,20 +336,18 @@
   (let [ib (byte-array codec/max-id-size)]
     (fn [kb vb]
       (rh/resource-handle
-        (bb/get-int! kb)
-        (let [id-size (- (bb/remaining kb) codec/t-size)]
-          (bb/copy-into-byte-array! kb ib 0 id-size)
-          (codec/id ib 0 id-size))
-        (codec/descending-long (bb/get-long! kb))
-        vb))))
-
+       (bb/get-int! kb)
+       (let [id-size (- (bb/remaining kb) codec/t-size)]
+         (bb/copy-into-byte-array! kb ib 0 id-size)
+         (codec/id ib 0 id-size))
+       (codec/descending-long (bb/get-long! kb))
+       vb))))
 
 (defn- instance-history-key-valid? [^long tid id ^long end-t]
   (fn [resource-handle]
     (and (= (rh/tid resource-handle) tid)
          (= (rh/id resource-handle) id)
          (< end-t (rh/t resource-handle)))))
-
 
 (defn instance-history
   "Returns a reducible collection of all versions between `start-t` (inclusive)
@@ -379,10 +356,9 @@
   Versions are resource handles."
   [snapshot tid id start-t end-t]
   (coll/eduction
-    (take-while (instance-history-key-valid? tid (codec/id-string id) end-t))
-    (with-open-coll [raoi (kv/new-iterator snapshot :resource-as-of-index)]
-      (i/kvs! raoi (decoder) (start-key tid id start-t)))))
-
+   (take-while (instance-history-key-valid? tid (codec/id-string id) end-t))
+   (with-open-coll [raoi (kv/new-iterator snapshot :resource-as-of-index)]
+     (i/kvs! raoi (decoder) (start-key tid id start-t)))))
 
 (defn- resource-handle** [raoi tid id t]
   (let [tb (encode-key-buf tid id t)]
@@ -404,11 +380,10 @@
             (bb/set-limit! kb (unchecked-add-int limit codec/t-size)))
           ;; create resource handle
           (rh/resource-handle
-            tid
-            (codec/id-string id)
-            (codec/descending-long (bb/get-long! kb))
-            (bb/wrap (kv/value raoi))))))))
-
+           tid
+           (codec/id-string id)
+           (codec/descending-long (bb/get-long! kb))
+           (bb/wrap (kv/value raoi))))))))
 
 (defn resource-handle
   "Returns a function which can be called with a `tid`, an `id` and an optional
@@ -430,7 +405,6 @@
       AutoCloseable
       (close [_]
         (.close ^AutoCloseable raoi)))))
-
 
 (defn num-of-instance-changes
   "Returns the number of changes between `start-t` (inclusive) and `end-t`

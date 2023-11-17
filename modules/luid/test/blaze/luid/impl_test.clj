@@ -1,17 +1,14 @@
 (ns blaze.luid.impl-test
   (:require
-    [blaze.luid.impl :as impl]
-    [clojure.test :refer [deftest is testing]])
-  (:import 
-    [java.time Instant]))
-
+   [blaze.luid.impl :as impl]
+   [clojure.test :refer [deftest is testing]])
+  (:import
+   [java.time Instant]))
 
 (set! *warn-on-reflection* true)
 
-
 (def millis-2020
   (.toEpochMilli (Instant/parse "2020-01-01T00:00:00Z")))
-
 
 (deftest internal-luid-test
   (testing "maximum time"

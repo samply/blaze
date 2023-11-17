@@ -1,38 +1,33 @@
 (ns blaze.db.tx-log.kafka.util-test
   (:require
-    [blaze.db.tx-log.kafka.util :as u]
-    [blaze.fhir.hash :as hash]
-    [blaze.fhir.hash-spec]
-    [blaze.fhir.test-util]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log])
+   [blaze.db.tx-log.kafka.util :as u]
+   [blaze.fhir.hash :as hash]
+   [blaze.fhir.hash-spec]
+   [blaze.fhir.test-util]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log])
   (:import
-    [java.time Instant]
-    [java.util Optional]
-    [org.apache.kafka.clients.consumer ConsumerRecord]
-    [org.apache.kafka.common.header.internals RecordHeaders]
-    [org.apache.kafka.common.record TimestampType]))
-
+   [java.time Instant]
+   [java.util Optional]
+   [org.apache.kafka.clients.consumer ConsumerRecord]
+   [org.apache.kafka.common.header.internals RecordHeaders]
+   [org.apache.kafka.common.record TimestampType]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
 
-
 (def hash-patient-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
-
 
 (defn consumer-record [offset timestamp timestamp-type value]
   (ConsumerRecord. "tx" 0 ^long offset ^long timestamp
                    ^TimestampType timestamp-type 0 0 nil value (RecordHeaders.)
                    (Optional/empty)))
-
 
 (deftest record-transformer-test
   (testing "skips record with wrong timestamp type"

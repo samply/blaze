@@ -4,25 +4,23 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.coll.core :as coll]
-    [blaze.elm.code-spec]
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
-    [blaze.elm.literal]
-    [blaze.elm.literal-spec]
-    [blaze.fhir.spec.type]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [juxt.iota :refer [given]])
+   [blaze.coll.core :as coll]
+   [blaze.elm.code-spec]
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.literal]
+   [blaze.elm.literal-spec]
+   [blaze.fhir.spec.type]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [juxt.iota :refer [given]])
   (:import
-    [blaze.elm.code Code]))
-
+   [blaze.elm.code Code]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -30,9 +28,7 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; 2.1. Tuple
 ;;
@@ -65,7 +61,6 @@
       (is (= '{:id (param-ref "x")}
              (core/-form (ctu/dynamic-compile #elm/tuple{"id" #elm/parameter-ref "x"})))))))
 
-
 ;; 2.2. Instance
 ;;
 ;; The Instance expression allows class instances of any type to be built up as
@@ -79,7 +74,6 @@
       type := Code
       :system := "system-134534"
       :code := "code-134551")))
-
 
 ;; 2.3. Property
 ;;
@@ -110,15 +104,15 @@
         (testing "with source-type"
           (let [identifier
                 #fhir/Identifier
-                        {:system #fhir/uri"foo"
-                         :value "bar"}
+                 {:system #fhir/uri"foo"
+                  :value "bar"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :identifier [identifier]}
                 expr
                 (c/compile
-                  {:eval-context "Patient"}
-                  #elm/scope-property ["R" "identifier"])]
+                 {:eval-context "Patient"}
+                 #elm/scope-property ["R" "identifier"])]
 
             (testing "eval"
               (is (= identifier (coll/first (core/-eval expr nil nil {"R" entity})))))
@@ -132,15 +126,15 @@
         (testing "without source-type"
           (let [identifier
                 #fhir/Identifier
-                        {:system #fhir/uri"foo"
-                         :value "bar"}
+                 {:system #fhir/uri"foo"
+                  :value "bar"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :identifier [identifier]}
                 expr
                 (c/compile
-                  {:eval-context "Patient"}
-                  #elm/scope-property ["R" "identifier"])]
+                 {:eval-context "Patient"}
+                 #elm/scope-property ["R" "identifier"])]
 
             (testing "eval"
               (is (= identifier (coll/first (core/-eval expr nil nil {"R" entity})))))
@@ -155,15 +149,15 @@
         (testing "without source-type"
           (let [extension
                 #fhir/Extension
-                        {:url "foo"
-                         :valueString "bar"}
+                 {:url "foo"
+                  :valueString "bar"}
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :extension [extension]}
                 expr
                 (c/compile
-                  {:eval-context "Patient"}
-                  #elm/scope-property ["R" "extension"])]
+                 {:eval-context "Patient"}
+                 #elm/scope-property ["R" "extension"])]
 
             (testing "eval"
               (is (= extension (coll/first (core/-eval expr nil nil {"R" entity})))))
@@ -181,8 +175,8 @@
                  :gender #fhir/code"male"}
                 expr
                 (c/compile
-                  {:eval-context "Patient"}
-                  #elm/scope-property ["R" "gender"])]
+                 {:eval-context "Patient"}
+                 #elm/scope-property ["R" "gender"])]
 
             (testing "eval"
               (is (= #fhir/code"male" (core/-eval expr nil nil {"R" entity}))))
@@ -199,8 +193,8 @@
                  :gender #fhir/code"male"}
                 expr
                 (c/compile
-                  {:eval-context "Patient"}
-                  #elm/scope-property ["R" "gender"])]
+                 {:eval-context "Patient"}
+                 #elm/scope-property ["R" "gender"])]
 
             (testing "eval"
               (is (= #fhir/code"male" (core/-eval expr nil nil {"R" entity}))))
@@ -218,8 +212,8 @@
                  :birthDate x})
               expr
               (c/compile
-                {:eval-context "Patient"}
-                #elm/scope-property ["R" "birthDate.value"])]
+               {:eval-context "Patient"}
+               #elm/scope-property ["R" "birthDate.value"])]
 
           (testing "eval"
             (are [birth-date res] (= res (core/-eval expr nil nil {"R" (entity birth-date)}))
@@ -241,8 +235,8 @@
                  :value "value-114318"}
                 expr
                 (c/compile
-                  {:eval-context "Patient"}
-                  #elm/scope-property ["R" "value"])]
+                 {:eval-context "Patient"}
+                 #elm/scope-property ["R" "value"])]
 
             (testing "eval"
               (is (= "value-114318" (core/-eval expr nil nil {"R" entity}))))
@@ -259,8 +253,8 @@
                  :value "value-114318"}
                 expr
                 (c/compile
-                  {:eval-context "Patient"}
-                  #elm/scope-property ["R" "value"])]
+                 {:eval-context "Patient"}
+                 #elm/scope-property ["R" "value"])]
 
             (testing "eval"
               (is (= "value-114318" (core/-eval expr nil nil {"R" entity}))))
@@ -280,8 +274,8 @@
               #elm/source-property [#elm/expression-ref "Patient" "identifier"]
               identifier
               #fhir/Identifier
-                      {:system #fhir/uri"foo"
-                       :value "bar"}
+               {:system #fhir/uri"foo"
+                :value "bar"}
               source
               {:fhir/type :fhir/Patient :id "0"
                :identifier [identifier]}
@@ -303,8 +297,8 @@
               #elm/source-property [#elm/expression-ref "Patient" "identifier"]
               identifier
               #fhir/Identifier
-                      {:system #fhir/uri"foo"
-                       :value "bar"}
+               {:system #fhir/uri"foo"
+                :value "bar"}
               source
               {:fhir/type :fhir/Patient :id "0"
                :identifier [identifier]}
@@ -422,8 +416,7 @@
             (has-form expr '(:value (expr-ref "Observation")))))))
 
     (testing "Tuple"
-      (are [elm result]
-        (= result (core/-eval (c/compile {:eval-context "Unfiltered"} elm) {} nil nil))
+      (are [elm result] (= result (ctu/eval-unfiltered elm))
         {:resultTypeName "{urn:hl7-org:elm-types:r1}Integer"
          :path "id"
          :type "Property"
@@ -442,19 +435,16 @@
 
     (testing "Quantity"
       (testing "value"
-        (are [elm result]
-          (= result (core/-eval (c/compile {:eval-context "Unfiltered"} elm) {} nil nil))
+        (are [elm result] (= result (ctu/eval-unfiltered elm))
           #elm/source-property [#elm/quantity [42 "m"] "value"]
           42M))
 
       (testing "unit"
-        (are [elm result]
-          (= result (core/-eval (c/compile {:eval-context "Unfiltered"} elm) {} nil nil))
+        (are [elm result] (= result (ctu/eval-unfiltered elm))
           #elm/source-property [#elm/quantity [42 "m"] "unit"]
           "m")))
 
     (testing "nil"
-      (are [elm result]
-        (= result (core/-eval (c/compile {:eval-context "Unfiltered"} elm) {} nil nil))
+      (are [elm result] (= result (ctu/eval-unfiltered elm))
         #elm/source-property [{:type "Null"} "value"]
         nil))))

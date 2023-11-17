@@ -1,17 +1,14 @@
 (ns blaze.interaction.transaction.bundle.url-test
   (:require
-    [blaze.interaction.transaction.bundle.url :as url]
-    [blaze.interaction.transaction.bundle.url-spec]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]))
-
+   [blaze.interaction.transaction.bundle.url :as url]
+   [blaze.interaction.transaction.bundle.url-spec]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest match-url-test
   (testing "type-level"

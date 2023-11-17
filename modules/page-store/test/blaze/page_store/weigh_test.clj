@@ -1,9 +1,8 @@
 (ns blaze.page-store.weigh-test
   (:require
-    [blaze.page-store.weigh :as w]
-    [clojure.string :as str]
-    [clojure.test :refer [are deftest testing]]))
-
+   [blaze.page-store.weigh :as w]
+   [clojure.string :as str]
+   [clojure.test :refer [are deftest testing]]))
 
 (deftest weigh-test
   (testing "String"

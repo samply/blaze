@@ -1,41 +1,38 @@
 (ns blaze.db.resource-store.kv-test
   (:refer-clojure :exclude [hash])
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.db.kv :as kv]
-    [blaze.db.kv.mem]
-    [blaze.db.kv.mem-spec]
-    [blaze.db.resource-store :as rs]
-    [blaze.db.resource-store-spec]
-    [blaze.db.resource-store.kv :as rs-kv]
-    [blaze.db.resource-store.kv-spec]
-    [blaze.executors :as ex]
-    [blaze.fhir.hash :as hash]
-    [blaze.fhir.hash-spec]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.test-util :refer [given-failed-future]]
-    [blaze.metrics.spec]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.string :as str]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [integrant.core :as ig]
-    [jsonista.core :as j]
-    [taoensso.timbre :as log])
+   [blaze.byte-buffer :as bb]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv.mem]
+   [blaze.db.kv.mem-spec]
+   [blaze.db.resource-store :as rs]
+   [blaze.db.resource-store-spec]
+   [blaze.db.resource-store.kv :as rs-kv]
+   [blaze.db.resource-store.kv-spec]
+   [blaze.executors :as ex]
+   [blaze.fhir.hash :as hash]
+   [blaze.fhir.hash-spec]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.test-util :refer [given-failed-future]]
+   [blaze.metrics.spec]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
+   [jsonista.core :as j]
+   [taoensso.timbre :as log])
   (:import
-    [com.fasterxml.jackson.dataformat.cbor CBORFactory]))
-
+   [com.fasterxml.jackson.dataformat.cbor CBORFactory]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defn- hash
   ([]
@@ -44,12 +41,10 @@
    (assert (= 1 (count s)))
    (hash/from-hex (str/join (repeat 64 s)))))
 
-
 (defn- invalid-content
   "`0xA1` is the start of a map with one entry."
   []
   (byte-array [0xA1]))
-
 
 (deftest init-test
   (testing "nil config"
@@ -81,7 +76,6 @@
       [:explain ::s/problems 1 :pred] := `ex/executor?
       [:explain ::s/problems 1 :val] := ::invalid)))
 
-
 (deftest executor-init-test
   (testing "nil config"
     (given-thrown (ig/init {::rs-kv/executor nil})
@@ -96,16 +90,13 @@
       [:explain ::s/problems 0 :pred] := `nat-int?
       [:explain ::s/problems 0 :val] := ::invalid)))
 
-
 (deftest resource-bytes-collector-init-test
   (with-system [{collector ::rs-kv/resource-bytes} {::rs-kv/resource-bytes {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
 
-
 (deftest duration-seconds-collector-init-test
   (with-system [{collector ::rs-kv/duration-seconds} {::rs-kv/duration-seconds {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
-
 
 (def ^:private system
   {::rs/kv
@@ -114,14 +105,12 @@
    ::kv/mem {:column-families {}}
    ::rs-kv/executor {}})
 
-
 (defmethod ig/init-key ::failing-kv-store [_ {:keys [msg] :as config}]
   (reify kv/KvStore
     (-get [_ hash]
       (when (or (nil? (:hash config))
                 (= (hash/from-byte-buffer! (bb/wrap hash)) (:hash config)))
         (throw (Exception. ^String msg))))))
-
 
 (defn- failing-kv-store-system
   ([msg]
@@ -133,19 +122,15 @@
     {:kv-store (ig/ref ::failing-kv-store)
      :executor (ig/ref ::rs-kv/executor)}}))
 
-
 (def ^:private cbor-object-mapper
   (j/object-mapper
-    {:factory (CBORFactory.)
-     :decode-key-fn true}))
-
+   {:factory (CBORFactory.)
+    :decode-key-fn true}))
 
 (def ^:private error-msg "msg-154312")
 
-
 (defn- put! [kv-store hash content]
   (kv/put! kv-store (hash/to-byte-array hash) (fhir-spec/unform-cbor content)))
-
 
 (deftest get-test
   (testing "success"
@@ -180,7 +165,6 @@
       (given-failed-future (rs/get store (hash))
         ::anom/category := ::anom/fault
         ::anom/message := error-msg))))
-
 
 (deftest multi-get-test
   (testing "success"
@@ -240,14 +224,12 @@
             ::anom/category := ::anom/fault
             ::anom/message := error-msg))))))
 
-
 (deftest put-test
   (let [content {:fhir/type :fhir/Patient :id "0"}]
     (with-system [{store ::rs/kv} system]
       @(rs/put! store {(hash) content})
 
       (is (= content @(rs/get store (hash)))))))
-
 
 (deftest executor-shutdown-timeout-test
   (let [{::rs-kv/keys [executor] :as system} (ig/init {::rs-kv/executor {}})]

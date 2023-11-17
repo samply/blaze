@@ -1,20 +1,17 @@
 (ns blaze.elm.quantity-test
   (:require
-    [blaze.elm.protocols :as p]
-    [blaze.elm.quantity :as quantity]
-    [blaze.test-util :as tu]
-    [clojure.java.io :as io]
-    [clojure.spec.test.alpha :as st]
-    [clojure.string :as str]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [cognitect.anomalies :as anom]))
-
+   [blaze.elm.protocols :as p]
+   [blaze.elm.quantity :as quantity]
+   [blaze.test-util :as tu]
+   [clojure.java.io :as io]
+   [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [cognitect.anomalies :as anom]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest quantity-test
   (testing "Commonly Used UCUM Codes for Healthcare Units"
@@ -35,7 +32,6 @@
            (count)
            (= 20)
            (is)))))
-
 
 ;; 2.3. Property
 (deftest property-test

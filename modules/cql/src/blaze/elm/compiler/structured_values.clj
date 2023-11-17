@@ -4,31 +4,27 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :as ba :refer [throw-anom]]
-    [blaze.coll.core :as coll]
-    [blaze.elm.code :as code]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.protocols :as p]
-    [blaze.fhir.spec.type :as type]
-    [clojure.string :as str])
+   [blaze.anomaly :as ba :refer [throw-anom]]
+   [blaze.coll.core :as coll]
+   [blaze.elm.code :as code]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.protocols :as p]
+   [blaze.fhir.spec.type :as type]
+   [clojure.string :as str])
   (:import
-    [clojure.lang ILookup IReduceInit]))
-
+   [clojure.lang ILookup IReduceInit]))
 
 (set! *warn-on-reflection* true)
-
 
 ;; 2.1. Tuple
 (defn- invalid-structured-type-access-msg [key]
   (format "Invalid structured type access with key `%s` on a collection." key))
 
-
 (defn- invalid-structured-type-access-anom [coll key]
   (ba/fault
-    (invalid-structured-type-access-msg key)
-    :key key
-    :first-elem (coll/first coll)))
-
+   (invalid-structured-type-access-msg key)
+   :key key
+   :first-elem (coll/first coll)))
 
 (extend-protocol p/StructuredType
   IReduceInit
@@ -38,14 +34,12 @@
   (get [m key]
     (.valAt m key)))
 
-
 (defn- compile-elements [context elements]
   (reduce
-    (fn [r {:keys [name value]}]
-      (assoc r (keyword name) (core/compile* context value)))
-    {}
-    elements))
-
+   (fn [r {:keys [name value]}]
+     (assoc r (keyword name) (core/compile* context value)))
+   {}
+   elements))
 
 (defmethod core/compile* :elm.compiler.type/tuple
   [context {elements :element}]
@@ -57,17 +51,16 @@
           false)
         (-eval [_ context resource scope]
           (reduce-kv
-            (fn [r key value]
-              (assoc r key (core/-eval value context resource scope)))
-            {}
-            elements))
+           (fn [r key value]
+             (assoc r key (core/-eval value context resource scope)))
+           {}
+           elements))
         (-form [_]
           (reduce-kv
-            (fn [r key value]
-              (assoc r key (core/-form value)))
-            {}
-            elements))))))
-
+           (fn [r key value]
+             (assoc r key (core/-form value)))
+           {}
+           elements))))))
 
 ;; 2.2. Instance
 (defmethod core/compile* :elm.compiler.type/instance
@@ -79,7 +72,6 @@
         (let [{:keys [system version code]} elements]
           (code/to-code system version code))))))
 
-
 ;; 2.3. Property
 (defrecord SourcePropertyExpression [source key]
   core/Expression
@@ -90,7 +82,6 @@
   (-form [_]
     `(~key ~(core/-form source))))
 
-
 (defrecord SourcePropertyValueExpression [source key]
   core/Expression
   (-static [_]
@@ -99,7 +90,6 @@
     (type/value (p/get (core/-eval source context resource scope) key)))
   (-form [_]
     `(:value (~key ~(core/-form source)))))
-
 
 (defrecord SingleScopePropertyExpression [key]
   core/Expression
@@ -110,7 +100,6 @@
   (-form [_]
     `(~key ~'default)))
 
-
 (defrecord ScopePropertyExpression [scope-key key]
   core/Expression
   (-static [_]
@@ -119,7 +108,6 @@
     (p/get (get scope scope-key) key))
   (-form [_]
     `(~key ~(symbol (name scope-key)))))
-
 
 (defrecord ScopePropertyValueExpression [scope-key key]
   core/Expression
@@ -130,7 +118,6 @@
   (-form [_]
     `(:value (~key ~(symbol (name scope-key))))))
 
-
 (defn- path->key [path]
   (let [[first-part more] (str/split path #"\." 2)]
     (if more
@@ -138,7 +125,6 @@
         [(keyword first-part) true]
         (throw-anom (ba/unsupported (format "Unsupported path `%s`with more than one part." path))))
       [(keyword first-part)])))
-
 
 (defmethod core/compile* :elm.compiler.type/property
   [context {:keys [source scope path]}]

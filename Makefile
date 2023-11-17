@@ -3,6 +3,11 @@ MODULES := $(wildcard modules/*)
 $(MODULES):
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
+fmt-root:
+	cljfmt check
+
+fmt: $(MODULES) fmt-root
+
 lint-root:
 	clj-kondo --lint src test deps.edn
 

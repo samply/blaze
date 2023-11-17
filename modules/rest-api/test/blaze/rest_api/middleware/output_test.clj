@@ -1,36 +1,31 @@
 (ns blaze.rest-api.middleware.output-test
   (:require
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.spec-spec]
-    [blaze.module.test-util.ring :refer [call]]
-    [blaze.rest-api.middleware.output :refer [wrap-output]]
-    [blaze.test-util :as tu]
-    [clojure.data.xml :as xml]
-    [clojure.java.io :as io]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [juxt.iota :refer [given]]
-    [ring.util.response :as ring]
-    [taoensso.timbre :as log]))
-
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec-spec]
+   [blaze.module.test-util.ring :refer [call]]
+   [blaze.rest-api.middleware.output :refer [wrap-output]]
+   [blaze.test-util :as tu]
+   [clojure.data.xml :as xml]
+   [clojure.java.io :as io]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [juxt.iota :refer [given]]
+   [ring.util.response :as ring]
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def resource-handler
   "A handler which just returns a patient."
   (wrap-output
-    (fn [_ respond _]
-      (respond (ring/response {:fhir/type :fhir/Patient :id "0"})))))
-
+   (fn [_ respond _]
+     (respond (ring/response {:fhir/type :fhir/Patient :id "0"})))))
 
 (defn- parse-json [body]
   (fhir-spec/conform-json (fhir-spec/parse-json body)))
-
 
 (deftest json-test
   (testing "JSON is the default"
@@ -41,18 +36,18 @@
 
     (testing "with accept header"
       (are [accept content-type]
-        (given (call resource-handler {:headers {"accept" accept}})
-          [:headers "Content-Type"] := content-type
-          [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
+           (given (call resource-handler {:headers {"accept" accept}})
+             [:headers "Content-Type"] := content-type
+             [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
         "*/*" "application/fhir+json;charset=utf-8"
         "application/*" "application/fhir+json;charset=utf-8"
         "text/*" "text/json;charset=utf-8")))
 
   (testing "possible accept headers"
     (are [accept content-type]
-      (given (call resource-handler {:headers {"accept" accept}})
-        [:headers "Content-Type"] := content-type
-        [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
+         (given (call resource-handler {:headers {"accept" accept}})
+           [:headers "Content-Type"] := content-type
+           [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
       "application/fhir+json" "application/fhir+json;charset=utf-8"
       "application/json" "application/json;charset=utf-8"
       "text/json" "text/json;charset=utf-8"
@@ -60,11 +55,11 @@
 
   (testing "_format overrides"
     (are [accept format content-type]
-      (given (call resource-handler
-                   {:headers {"accept" accept}
-                    :query-params {"_format" format}})
-        [:headers "Content-Type"] := content-type
-        [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
+         (given (call resource-handler
+                      {:headers {"accept" accept}
+                       :query-params {"_format" format}})
+           [:headers "Content-Type"] := content-type
+           [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
       "application/fhir+xml"
       "application/fhir+json"
       "application/fhir+json;charset=utf-8"
@@ -97,18 +92,16 @@
       "json"
       "application/fhir+json;charset=utf-8")))
 
-
 (defn- parse-xml [body]
   (with-open [reader (io/reader body)]
     (fhir-spec/conform-xml (xml/parse reader))))
 
-
 (deftest xml-test
   (testing "possible accept headers"
     (are [accept content-type]
-      (given (call resource-handler {:headers {"accept" accept}})
-        [:headers "Content-Type"] := content-type
-        [:body parse-xml] := {:fhir/type :fhir/Patient :id "0"})
+         (given (call resource-handler {:headers {"accept" accept}})
+           [:headers "Content-Type"] := content-type
+           [:body parse-xml] := {:fhir/type :fhir/Patient :id "0"})
       "application/fhir+xml"
       "application/fhir+xml;charset=utf-8"
 
@@ -139,11 +132,11 @@
 
   (testing "_format overrides"
     (are [accept format content-type]
-      (given (call resource-handler
-                   {:headers {"accept" accept}
-                    :query-params {"_format" format}})
-        [:headers "Content-Type"] := content-type
-        [:body parse-xml] := {:fhir/type :fhir/Patient :id "0"})
+         (given (call resource-handler
+                      {:headers {"accept" accept}
+                       :query-params {"_format" format}})
+           [:headers "Content-Type"] := content-type
+           [:body parse-xml] := {:fhir/type :fhir/Patient :id "0"})
       "application/fhir+json"
       "application/fhir+xml"
       "application/fhir+xml;charset=utf-8"
@@ -175,7 +168,6 @@
       "*/*"
       "xml"
       "application/fhir+xml;charset=utf-8")))
-
 
 (deftest not-acceptable-test
   (is (nil? (call resource-handler {:headers {"accept" "text/plain"}}))))

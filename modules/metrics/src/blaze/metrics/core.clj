@@ -1,27 +1,23 @@
 (ns blaze.metrics.core
   (:require
-    [clojure.core.protocols :as p]
-    [clojure.datafy :as datafy])
+   [clojure.core.protocols :as p]
+   [clojure.datafy :as datafy])
   (:import
-    [io.prometheus.client
-     Collector Collector$MetricFamilySamples Collector$MetricFamilySamples$Sample
-     Collector$Type CollectorRegistry CounterMetricFamily
-     GaugeMetricFamily]
-    [java.util List]))
-
+   [io.prometheus.client
+    Collector Collector$MetricFamilySamples Collector$MetricFamilySamples$Sample
+    Collector$Type CollectorRegistry CounterMetricFamily
+    GaugeMetricFamily]
+   [java.util List]))
 
 (set! *warn-on-reflection* true)
 
-
 (defmacro collector [& body]
   `(blaze.metrics.collector. (fn [] ~@body)))
-
 
 (defn collect
   "Returns all the metrics of `collector`."
   [collector]
   (mapv datafy/datafy (.collect ^Collector collector)))
-
 
 (defn counter-metric
   "Creates a counter metric from `samples`.
@@ -34,10 +30,9 @@
   [name help label-names samples]
   (let [m (CounterMetricFamily. ^String name ^String help ^List label-names)]
     (run!
-      (fn [{:keys [label-values value]}] (.addMetric m label-values value))
-      samples)
+     (fn [{:keys [label-values value]}] (.addMetric m label-values value))
+     samples)
     m))
-
 
 (defn gauge-metric
   "Creates a gauge metric from `samples`.
@@ -50,10 +45,9 @@
   [name help label-names samples]
   (let [m (GaugeMetricFamily. ^String name ^String help ^List label-names)]
     (run!
-      (fn [{:keys [label-values value]}] (.addMetric m label-values value))
-      samples)
+     (fn [{:keys [label-values value]}] (.addMetric m label-values value))
+     samples)
     m))
-
 
 (extend-protocol p/Datafiable
   Collector$Type
@@ -75,7 +69,6 @@
      :label-names (vec (.-labelNames sample))
      :label-values (vec (.-labelValues sample))
      :value (.-value sample)}))
-
 
 (defn register!
   "Registers `collector` to `registry`."

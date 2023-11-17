@@ -4,24 +4,21 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.protocols :as p]
-    [blaze.fhir.spec.type]
-    [blaze.fhir.spec.type.system :as system]
-    [java-time.api :as time])
+   [blaze.elm.protocols :as p]
+   [blaze.fhir.spec.type]
+   [blaze.fhir.spec.type.system :as system]
+   [java-time.api :as time])
   (:import
-    [blaze.fhir.spec.type.system Date DateDate DateTime DateTimeDate DateTimeYear DateTimeYearMonth DateYear DateYearMonth]
-    [java.time DateTimeException LocalDateTime LocalTime OffsetDateTime]
-    [java.time.temporal ChronoField ChronoUnit Temporal TemporalAccessor]))
-
+   [blaze.fhir.spec.type.system Date DateDate DateTime DateTimeDate DateTimeYear DateTimeYearMonth DateYear DateYearMonth]
+   [java.time DateTimeException LocalDateTime LocalTime OffsetDateTime]
+   [java.time.temporal ChronoField ChronoUnit Temporal TemporalAccessor]))
 
 (set! *warn-on-reflection* true)
-
 
 (def min-date (system/date 1 1 1))
 (def min-date-time (system/date-time 1 1 1 0 0 0 0))
 (def max-date (system/date 9999 12 31))
 (def max-date-time (system/date-time 9999 12 31 23 59 59 999))
-
 
 (defrecord Period [months millis]
   p/Equal
@@ -32,8 +29,8 @@
   (add [this other]
     (if (instance? Period other)
       (->Period
-        (+ months (:months other))
-        (+ millis (:millis other)))
+       (+ months (:months other))
+       (+ millis (:millis other)))
       (throw (ex-info (str "Invalid RHS adding to Period. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other}))))
 
@@ -53,8 +50,8 @@
   (subtract [this other]
     (if (instance? Period other)
       (->Period
-        (- months (:months other))
-        (- millis (:millis other)))
+       (- months (:months other))
+       (- millis (:millis other)))
       (throw (ex-info (str "Invalid RHS subtracting from Period. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
 
@@ -62,15 +59,12 @@
   (toString [_]
     (format "Period[month = %d, millis = %d]" months millis)))
 
-
 (defn period [years months millis]
   (->Period (+ (* years 12) months) millis))
-
 
 (defprotocol PrecisionNum
   "Returns the precision of a date-time instance."
   (precision-num [this]))
-
 
 (defn- get-chrono-field [^TemporalAccessor ta ^long precision]
   (.getLong ta (case precision
@@ -81,7 +75,6 @@
                  4 ChronoField/MINUTE_OF_HOUR
                  5 ChronoField/SECOND_OF_MINUTE
                  6 ChronoField/MILLI_OF_SECOND)))
-
 
 (defn- compare-to-precision
   "Compares two date time values up to the minimum of the specified precisions.
@@ -101,7 +94,6 @@
              (when (= p-1 p-2) 0))
            cmp))))))
 
-
 (defrecord PrecisionLocalTime [local-time p-num]
   Comparable
   (compareTo [this other]
@@ -111,7 +103,6 @@
         cmp
         (throw (ClassCastException. "Precisions differ.")))
       (throw (ClassCastException. "Not a PrecisionLocalTime.")))))
-
 
 (defn local-time
   ([hour]
@@ -123,18 +114,14 @@
   ([hour minute second milli]
    (->PrecisionLocalTime (LocalTime/of hour minute second (* milli 1000000)) 6)))
 
-
 (defn local-time? [x]
   (instance? PrecisionLocalTime x))
-
 
 (defn temporal? [x]
   (or (instance? Temporal x) (local-time? x)))
 
-
 (def min-time (local-time 0 0 0 0))
 (def max-time (local-time 23 59 59 999))
-
 
 (def ^:private precision->p-num
   {ChronoUnit/YEARS 0
@@ -146,7 +133,6 @@
    ChronoUnit/SECONDS 5
    ChronoUnit/MILLIS 6})
 
-
 (def ^:private p-num->precision
   [ChronoUnit/YEARS
    ChronoUnit/MONTHS
@@ -155,7 +141,6 @@
    ChronoUnit/MINUTES
    ChronoUnit/SECONDS
    ChronoUnit/MILLIS])
-
 
 (extend-protocol PrecisionNum
   DateYear
@@ -173,8 +158,6 @@
   LocalDateTime
   (precision-num [_] 6))
 
-
-
 ;; 12. Comparison Operators
 
 ;; 12.1. Equal
@@ -185,7 +168,6 @@
       (when-let [cmp (compare-to-precision (:local-time x) (:local-time y)
                                            (:p-num x) (:p-num y) 3)]
         (zero? cmp)))))
-
 
 ;; 12.3. Greater
 (extend-protocol p/Greater
@@ -238,7 +220,6 @@
                                            (:p-num this) (:p-num other) 3)]
         (> cmp 0)))))
 
-
 ;; 12.4. GreaterOrEqual
 (extend-protocol p/GreaterOrEqual
   DateYear
@@ -289,7 +270,6 @@
       (when-let [cmp (compare-to-precision (:local-time this) (:local-time other)
                                            (:p-num this) (:p-num other) 3)]
         (>= cmp 0)))))
-
 
 ;; 12.5. Less
 (extend-protocol p/Less
@@ -342,7 +322,6 @@
                                            (:p-num this) (:p-num other) 3)]
         (< cmp 0)))))
 
-
 ;; 12.6. LessOrEqual
 (extend-protocol p/LessOrEqual
   DateYear
@@ -394,15 +373,12 @@
                                            (:p-num this) (:p-num other) 3)]
         (<= cmp 0)))))
 
-
-
 ;; 16. Arithmetic Operators
 
 (defmacro catch-date-time-error [& body]
   `(try
      ~@body
      (catch DateTimeException ~'_)))
-
 
 ;; 16.2. Add
 (extend-protocol p/Add
@@ -462,7 +438,6 @@
       (throw (ex-info (str "Invalid RHS adding to LocalTime. Expected Period but was `" (type other) "`.")
                       {:op :add :this this :other other})))))
 
-
 ;; 16.18. Predecessor
 (extend-protocol p/Predecessor
   DateYear
@@ -499,7 +474,6 @@
     (when (p/greater x min-time)
       (->PrecisionLocalTime (.minus ^LocalTime local-time 1 ^ChronoUnit (p-num->precision p-num)) p-num))))
 
-
 ;; 16.20. Subtract
 (extend-protocol p/Subtract
   DateYear
@@ -534,10 +508,10 @@
   (subtract [this other]
     (if (instance? Period other)
       (catch-date-time-error
-        (time/minus
-          this
-          (time/months (:months other))
-          (time/days (quot (:millis other) 86400000))))
+       (time/minus
+        this
+        (time/months (:months other))
+        (time/days (quot (:millis other) 86400000))))
       (throw (ex-info (str "Invalid RHS adding to DateDate. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
 
@@ -545,10 +519,10 @@
   (subtract [this other]
     (if (instance? Period other)
       (catch-date-time-error
-        (time/minus
-          this
-          (time/months (:months other))
-          (time/days (quot (:millis other) 86400000))))
+       (time/minus
+        this
+        (time/months (:months other))
+        (time/days (quot (:millis other) 86400000))))
       (throw (ex-info (str "Invalid RHS adding to DateDate. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other}))))
 
@@ -570,7 +544,6 @@
       (->PrecisionLocalTime (.minusNanos ^LocalTime (:local-time this) (* (:millis other) 1000000)) (:p-num this))
       (throw (ex-info (str "Invalid RHS adding to LocalTime. Expected Period but was `" (type other) "`.")
                       {:op :subtract :this this :other other})))))
-
 
 ;; 16.15. Successor
 (extend-protocol p/Successor
@@ -608,8 +581,6 @@
     (when (p/less x max-time)
       (->PrecisionLocalTime (.plus ^LocalTime local-time 1 ^ChronoUnit (p-num->precision p-num)) p-num))))
 
-
-
 ;; 18. Date and Time Operators
 
 ;; 18.7. DateFrom
@@ -625,7 +596,6 @@
   LocalDateTime
   (date-from [x]
     (DateDate/fromLocalDate (.toLocalDate x))))
-
 
 ;; 18.9. DateTimeComponentFrom
 (extend-protocol p/DateTimeComponentFrom
@@ -676,7 +646,6 @@
     (let [req-p-num (precision->p-num precision)]
       (when (<= req-p-num p-num)
         (get-chrono-field local-time req-p-num)))))
-
 
 ;; 18.10. DifferenceBetween
 (extend-protocol p/DifferenceBetween
@@ -735,7 +704,6 @@
       (when (<= (precision->p-num precision) (min (:p-num this) (:p-num other)))
         (.until ^LocalTime (:local-time this) (:local-time other) precision)))))
 
-
 ;; 18.11. DurationBetween
 (extend-protocol p/DurationBetween
   DateYear
@@ -785,7 +753,6 @@
     (when (instance? PrecisionLocalTime other)
       (when (<= (precision->p-num precision) (min (:p-num this) (:p-num other)))
         (.until ^LocalTime (:local-time this) (:local-time other) precision)))))
-
 
 ;; 18.14. SameAs
 (extend-protocol p/SameAs
@@ -862,7 +829,6 @@
             (= cmp 0)))
         (p/equal this other)))))
 
-
 ;; 18.15. SameOrBefore
 (extend-protocol p/SameOrBefore
   DateYear
@@ -937,7 +903,6 @@
                                                p-num p-num 3)]
             (<= cmp 0)))
         (p/less-or-equal this other)))))
-
 
 ;; 18.16. SameOrAfter
 (extend-protocol p/SameOrAfter
@@ -1014,7 +979,6 @@
             (>= cmp 0)))
         (p/greater-or-equal this other)))))
 
-
 ;; 19.2. After
 (extend-protocol p/After
   DateYear
@@ -1089,7 +1053,6 @@
                                                p-num p-num 3)]
             (> cmp 0))
           (p/greater this other))))))
-
 
 ;; 19.3. Before
 (extend-protocol p/Before
@@ -1166,8 +1129,6 @@
             (< cmp 0))
           (p/less this other))))))
 
-
-
 ;; 22. Type Operators
 
 ;; 22.22. ToDate
@@ -1190,7 +1151,6 @@
         (.toLocalDate)
         (DateDate/fromLocalDate))))
 
-
 ;; 22.23. ToDateTime
 (extend-protocol p/ToDateTime
   Date
@@ -1209,7 +1169,6 @@
   (to-date-time [this now]
     (-> (.withOffsetSameInstant this (.getOffset ^OffsetDateTime now))
         (.toLocalDateTime))))
-
 
 ;; 22.30. ToString
 (extend-protocol p/ToString
@@ -1244,7 +1203,6 @@
   LocalDateTime
   (to-string [x]
     (str x)))
-
 
 ;; 22.31. ToTime
 (extend-protocol p/ToTime

@@ -1,22 +1,20 @@
 (ns blaze.db.impl.index.resource-search-param-value
   "Functions for accessing the ResourceSearchParamValue index."
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.byte-string :as bs]
-    [blaze.coll.core :as coll]
-    [blaze.db.impl.bytes :as bytes]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.iterators :as i]
-    [blaze.db.kv :as kv]
-    [blaze.fhir.hash :as hash])
+   [blaze.byte-buffer :as bb]
+   [blaze.byte-string :as bs]
+   [blaze.coll.core :as coll]
+   [blaze.db.impl.bytes :as bytes]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.iterators :as i]
+   [blaze.db.kv :as kv]
+   [blaze.fhir.hash :as hash])
   (:import
-    [clojure.lang IFn]
-    [java.lang AutoCloseable]))
-
+   [clojure.lang IFn]
+   [java.lang AutoCloseable]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
-
 
 (defn- decode-value
   "Decodes the value from the key."
@@ -27,10 +25,8 @@
                              codec/c-hash-size))
     (bs/from-byte-buffer! buf)))
 
-
 (defn- key-size ^long [id]
   (+ codec/tid-size 1 (bs/size id) hash/prefix-size codec/c-hash-size))
-
 
 (defn- encode-key-buf-1 [size tid id hash c-hash]
   (-> (bb/allocate size)
@@ -40,7 +36,6 @@
       (hash/prefix-into-byte-buffer! (hash/prefix hash))
       (bb/put-int! c-hash)))
 
-
 (defn- encode-key-buf
   ([tid id hash c-hash]
    (encode-key-buf-1 (key-size id) tid id hash c-hash))
@@ -48,13 +43,11 @@
    (-> (encode-key-buf-1 (+ (key-size id) (bs/size value)) tid id hash c-hash)
        (bb/put-byte-string! value))))
 
-
 (defn- encode-key
   ([tid id hash c-hash]
    (-> (encode-key-buf tid id hash c-hash) bb/flip! bs/from-byte-buffer!))
   ([tid id hash c-hash value]
    (-> (encode-key-buf tid id hash c-hash value) bb/flip! bs/from-byte-buffer!)))
-
 
 (defn next-value!
   "Returns the decoded value of the key that is at or past the key encoded from
@@ -75,7 +68,6 @@
          start-key (encode-key tid id hash c-hash value)]
      (coll/first (i/prefix-keys! iter prefix-key decode-value start-key)))))
 
-
 (defn next-value-fn
   "Returns a function similar to `next-value!` that takes a `snapshot` instead
   of an `iter`.
@@ -94,7 +86,6 @@
       (close [_]
         (.close ^AutoCloseable rsvi)))))
 
-
 (defn next-value-prev!
   "Returns the decoded value of the key that is at or before the key encoded
   from `resource-handle`, `c-hash` and `value` and still starts with
@@ -106,7 +97,6 @@
         prefix-key (encode-key tid id hash c-hash prefix-value)
         start-key (encode-key tid id hash c-hash value)]
     (coll/first (i/prefix-keys-prev! iter prefix-key decode-value start-key))))
-
 
 (defn next-value-prev-fn
   "Returns a function similar to `next-value-prev!` that takes a `snapshot` instead
@@ -123,7 +113,6 @@
       AutoCloseable
       (close [_]
         (.close ^AutoCloseable rsvi)))))
-
 
 (defn prefix-keys!
   "Returns a reducible collection of decoded values from keys starting at
@@ -143,7 +132,6 @@
    (let [prefix-key (encode-key tid id hash c-hash prefix-value)
          start-key (encode-key tid id hash c-hash start-value)]
      (i/prefix-keys! iter prefix-key decode-value start-key))))
-
 
 (defn index-entry [tid id hash c-hash value]
   [:resource-value-index

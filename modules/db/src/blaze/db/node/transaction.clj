@@ -1,17 +1,15 @@
 (ns blaze.db.node.transaction
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.db.impl.db :as db]
-    [blaze.db.impl.index.tx-error :as tx-error]
-    [blaze.db.impl.index.tx-success :as tx-success]
-    [blaze.fhir.hash :as hash]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.spec.type :as type]
-    [taoensso.timbre :as log]))
-
+   [blaze.anomaly :as ba]
+   [blaze.db.impl.db :as db]
+   [blaze.db.impl.index.tx-error :as tx-error]
+   [blaze.db.impl.index.tx-success :as tx-success]
+   [blaze.fhir.hash :as hash]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type :as type]
+   [taoensso.timbre :as log]))
 
 (defmulti prepare-op (fn [_ [op]] op))
-
 
 (defmethod prepare-op :create
   [{:keys [references-fn]} [op resource clauses]]
@@ -21,21 +19,19 @@
      [hash resource]
      :blaze.db/tx-cmd
      (cond->
-       {:op (name op)
-        :type (name (fhir-spec/fhir-type resource))
-        :id (:id resource)
-        :hash hash}
+      {:op (name op)
+       :type (name (fhir-spec/fhir-type resource))
+       :id (:id resource)
+       :hash hash}
        (seq refs)
        (assoc :refs refs)
        (seq clauses)
        (assoc :if-none-exist clauses))}))
 
-
 (defn- prepare-if-none-match [if-none-match]
   (if (= :any if-none-match)
     "*"
     if-none-match))
-
 
 (defmethod prepare-op :put
   [{:keys [references-fn]} [op resource [precond-op & precond-vals]]]
@@ -45,10 +41,10 @@
      [hash resource]
      :blaze.db/tx-cmd
      (cond->
-       {:op (name op)
-        :type (name (fhir-spec/fhir-type resource))
-        :id (:id resource)
-        :hash hash}
+      {:op (name op)
+       :type (name (fhir-spec/fhir-type resource))
+       :id (:id resource)
+       :hash hash}
        (seq refs)
        (assoc :refs refs)
        (identical? :if-match precond-op)
@@ -56,18 +52,16 @@
        (identical? :if-none-match precond-op)
        (assoc :if-none-match (prepare-if-none-match (first precond-vals))))}))
 
-
 (defmethod prepare-op :keep
   [_ [_ type id hash if-match]]
   {:blaze.db/tx-cmd
    (cond->
-     {:op "keep"
-      :type type
-      :id id
-      :hash hash}
+    {:op "keep"
+     :type type
+     :id id
+     :hash hash}
      if-match
      (assoc :if-match if-match))})
-
 
 (defmethod prepare-op :delete
   [_ [_ type id]]
@@ -76,10 +70,8 @@
     :type type
     :id id}})
 
-
 (def ^:private split
   (juxt #(mapv :blaze.db/tx-cmd %) #(into {} (map :hash-resource) %)))
-
 
 (defn- ctx
   [{:blaze.db/keys [enforce-referential-integrity]
@@ -88,7 +80,6 @@
    (if enforce-referential-integrity
      type/references
      (constantly nil))})
-
 
 (defn prepare-ops
   "Splits `tx-ops` into a tuple of :blaze.db/tx-cmds and a map of resource
@@ -100,10 +91,8 @@
   [context tx-ops]
   (split (mapv (partial prepare-op (ctx context)) tx-ops)))
 
-
 (defn- missing-tx-msg [t]
   (format "Can't find transaction result with point in time of %d." t))
-
 
 (defn load-tx-result [{:keys [tx-cache kv-store] :as node} t]
   (log/trace "load transaction result with t =" t)
