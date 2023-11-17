@@ -361,6 +361,33 @@
               [3 1 :entry 4 :item :reference] := "Encounter/3-1"
               [3 1 :entry 5 :item :reference] := "Encounter/3-2"))))))
 
+  (testing "library with syntax error"
+    (with-system-data
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
+      [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+               :content [(library-content "library Test
+                                           define Error: (")]}]]]
+
+      (let [db (d/db node)
+            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                     :blaze/base-url "" ::reitit/router router}
+            measure-id "measure-id-133021"
+            measure {:fhir/type :fhir/Measure :id measure-id
+                     :library [#fhir/canonical"0"]
+                     :group
+                     [{:fhir/type :fhir.Measure/group
+                       :population
+                       [{:fhir/type :fhir.Measure.group/population
+                         :code (population-concept "initial-population")}]}]}
+            params {:period [#system/date"2000" #system/date"2020"]
+                    :report-type "population"}]
+        (given (measure/evaluate-measure context measure params)
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Syntax error at <EOF>"
+          :measure-id := measure-id
+          :fhir/issue := "value"
+          :fhir.issue/expression := "Measure.library"))))
+
   (testing "missing criteria"
     (with-system-data
       [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]

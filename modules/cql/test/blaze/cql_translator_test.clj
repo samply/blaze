@@ -5,6 +5,7 @@
     [blaze.test-util :as tu]
     [clojure.spec.alpha :as s]
     [clojure.spec.test.alpha :as st]
+    [clojure.string :as str]
     [clojure.test :as test :refer [are deftest testing]]
     [cognitect.anomalies :as anom]
     [juxt.iota :refer [given]]))
@@ -113,4 +114,12 @@
              "library Test
               define Error: (")
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Syntax error at <EOF>")))
+      ::anom/message := "Syntax error at <EOF>"))
+
+  (testing "Large Query"
+    (given (translate
+             (str "library Test
+                   define Error: "
+                  (str/join " or " (repeat 500 "true"))))
+      ::anom/category := ::anom/fault
+      ::anom/message := "Error while parsing the ELM representation of a CQL library: Depth (1001) exceeds the maximum allowed nesting depth (1000)")))
