@@ -4,6 +4,11 @@ install:
 update:
 	npm update
 
+fmt-clj:
+	cljfmt check clj/src clj/test
+
+fmt: fmt-clj
+
 lint-js: install
 	npm run lint
 
@@ -39,4 +44,4 @@ deps-list:
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target build node_modules .svelte-kit
 
-.PHONY: install update lint-js lint-clj lint check test-js build prep test test-coverage deps-tree deps-list clean
+.PHONY: install update fmt-clj fmt lint-js lint-clj lint check test-js build prep test test-coverage deps-tree deps-list clean

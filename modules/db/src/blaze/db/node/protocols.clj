@@ -1,6 +1,5 @@
 (ns blaze.db.node.protocols)
 
-
 (defprotocol Node
   (-db [node])
   (-sync [node] [node t])

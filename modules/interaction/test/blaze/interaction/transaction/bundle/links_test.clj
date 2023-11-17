@@ -1,30 +1,24 @@
 (ns blaze.interaction.transaction.bundle.links-test
   (:require
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.interaction.transaction.bundle.links :as links]
-    [blaze.interaction.transaction.bundle.links-spec]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
-    [juxt.iota :refer [given]]))
-
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.interaction.transaction.bundle.links :as links]
+   [blaze.interaction.transaction.bundle.links-spec]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest resolve-entry-links-test
   (testing "Observation.subject reference"
     (let [entries
           [{:fullUrl #fhir/uri"urn:uuid:9ef14708-5695-4aad-8623-8c8ebd4f48ee"
             :resource
-            {:fhir/type :fhir/Observation
-             :id "0"
-             :subject
-             #fhir/Reference
-                     {:reference #fhir/string"urn:uuid:d7bd0ece-fe3c-4755-b7c9-5b86f42e304a"}}
+            {:fhir/type :fhir/Observation :id "0"
+             :subject #fhir/Reference{:reference #fhir/string"urn:uuid:d7bd0ece-fe3c-4755-b7c9-5b86f42e304a"}}
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Observation"}}
@@ -42,12 +36,11 @@
       (let [entries
             [{:fullUrl #fhir/uri"urn:uuid:9ef14708-5695-4aad-8623-8c8ebd4f48ee"
               :resource
-              {:fhir/type :fhir/Observation
-               :id "0"
+              {:fhir/type :fhir/Observation :id "0"
                :subject
                #fhir/Reference
-                       {:reference #fhir/string{:id "id-211320"
-                                                :value "urn:uuid:d7bd0ece-fe3c-4755-b7c9-5b86f42e304a"}}}
+                {:reference #fhir/string{:id "id-211320"
+                                         :value "urn:uuid:d7bd0ece-fe3c-4755-b7c9-5b86f42e304a"}}}
               :request
               {:method #fhir/code"POST"
                :url #fhir/uri"Observation"}}
@@ -70,7 +63,7 @@
              :id "0"
              :generalPractitioner
              [#fhir/Reference
-                     {:reference #fhir/string"urn:uuid:44dded80-aaf1-4988-ace4-5f3a2c9935a7"}]}
+               {:reference #fhir/string"urn:uuid:44dded80-aaf1-4988-ace4-5f3a2c9935a7"}]}
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Patient"}}
@@ -93,7 +86,7 @@
              :diagnosis
              [{:diagnosisReference
                #fhir/Reference
-                       {:reference #fhir/string"urn:uuid:69857788-8691-45b9-bc97-654fb93ba615"}}]}
+                {:reference #fhir/string"urn:uuid:69857788-8691-45b9-bc97-654fb93ba615"}}]}
             :request
             {:method #fhir/code"POST"
              :url #fhir/uri"Claim"}}
@@ -141,9 +134,9 @@
                  [{:fhir/type :fhir.DocumentReference/content
                    :attachment
                    #fhir/Attachment
-                           {:url #fhir/url
-                                   {:id "id-204917"
-                                    :value "urn:uuid:5b016a4d-d393-48df-8d92-7ac4d1b8e56d"}}}]}
+                    {:url #fhir/url
+                           {:id "id-204917"
+                            :value "urn:uuid:5b016a4d-d393-48df-8d92-7ac4d1b8e56d"}}}]}
                 :request
                 {:method #fhir/code"POST"
                  :url #fhir/uri"DocumentReference"}}
@@ -168,9 +161,9 @@
                  [{:fhir/type :fhir.DocumentReference/content
                    :attachment
                    #fhir/Attachment
-                           {:url #fhir/url
-                                   {:extension #fhir/Extension{:url "foo"}
-                                    :value "urn:uuid:5b016a4d-d393-48df-8d92-7ac4d1b8e56d"}}}]}
+                    {:url #fhir/url
+                           {:extension #fhir/Extension{:url "foo"}
+                            :value "urn:uuid:5b016a4d-d393-48df-8d92-7ac4d1b8e56d"}}}]}
                 :request
                 {:method #fhir/code"POST"
                  :url #fhir/uri"DocumentReference"}}
@@ -324,7 +317,6 @@
       (given (links/resolve-entry-links entries)
         [0 :resource :subject] := #fhir/Reference{:display "foo"}))))
 
-
 (deftest resolve-entry-links-in-contained-resources-test
   (let [entries
         [{:fullUrl #fhir/uri"urn:uuid:48aacf48-ba32-4aa8-ac0d-b095ac54201b"
@@ -340,7 +332,7 @@
            [{:fhir/type :fhir/ServiceRequest :id "0"
              :subject
              #fhir/Reference
-                     {:reference "urn:uuid:48aacf48-ba32-4aa8-ac0d-b095ac54201b"}}]}
+              {:reference "urn:uuid:48aacf48-ba32-4aa8-ac0d-b095ac54201b"}}]}
           :request
           {:method #fhir/code"POST"
            :url #fhir/uri"ExplanationOfBenefit"}}]]

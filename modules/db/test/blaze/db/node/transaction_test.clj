@@ -1,37 +1,33 @@
 (ns blaze.db.node.transaction-test
   (:require
-    [blaze.db.impl.index.tx-error :as tx-error]
-    [blaze.db.impl.index.tx-success :as tx-success]
-    [blaze.db.node.transaction :as tx]
-    [blaze.db.node.transaction-spec]
-    [blaze.fhir.spec.type]
-    [blaze.test-util :as tu :refer [satisfies-prop]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
-    [clojure.test.check.generators :as gen]
-    [clojure.test.check.properties :as prop]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]]))
-
+   [blaze.db.impl.index.tx-error :as tx-error]
+   [blaze.db.impl.index.tx-success :as tx-success]
+   [blaze.db.node.transaction :as tx]
+   [blaze.db.node.transaction-spec]
+   [blaze.fhir.spec.type]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def context
   {})
-
 
 (deftest prepare-ops-test
   (testing "create"
     (testing "with references"
       (given (tx/prepare-ops
-               context
-               [[:create {:fhir/type :fhir/Observation :id "0"
-                          :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]])
+              context
+              [[:create {:fhir/type :fhir/Observation :id "0"
+                         :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]])
         [0 0 :op] := "create"
         [0 0 :type] := "Observation"
         [0 0 :id] := "0"
@@ -43,37 +39,37 @@
 
       (testing "with extended reference.reference"
         (given (tx/prepare-ops
-                 context
-                 [[:create
-                   {:fhir/type :fhir/Observation :id "0"
-                    :subject #fhir/Reference
-                           {:reference #fhir/string
-                                   {:extension [#fhir/Extension{:url "foo"}]
-                                    :value "Patient/190740"}}}]])
+                context
+                [[:create
+                  {:fhir/type :fhir/Observation :id "0"
+                   :subject #fhir/Reference
+                             {:reference #fhir/string
+                                          {:extension [#fhir/Extension{:url "foo"}]
+                                           :value "Patient/190740"}}}]])
           [0 0 :refs] := [["Patient" "190740"]])
 
         (testing "without value"
           (given (tx/prepare-ops
-                   context
-                   [[:create
-                     {:fhir/type :fhir/Observation :id "0"
-                      :subject #fhir/Reference
-                             {:reference #fhir/string
-                                     {:extension [#fhir/Extension{:url "foo"}]}}}]])
+                  context
+                  [[:create
+                    {:fhir/type :fhir/Observation :id "0"
+                     :subject #fhir/Reference
+                               {:reference #fhir/string
+                                            {:extension [#fhir/Extension{:url "foo"}]}}}]])
             [0 0 :refs] :? empty?)))
 
       (testing "with disabled referential integrity check"
         (given (tx/prepare-ops
-                 {:blaze.db/enforce-referential-integrity false}
-                 [[:create {:fhir/type :fhir/Observation :id "0"
-                            :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]])
+                {:blaze.db/enforce-referential-integrity false}
+                [[:create {:fhir/type :fhir/Observation :id "0"
+                           :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]])
           [0 0 :refs] :? empty?)))
 
     (testing "conditional"
       (given (tx/prepare-ops
-               context
-               [[:create {:fhir/type :fhir/Patient :id "id-220036"}
-                 [["identifier" "115508"]]]])
+              context
+              [[:create {:fhir/type :fhir/Patient :id "id-220036"}
+                [["identifier" "115508"]]]])
         [0 0 :op] := "create"
         [0 0 :type] := "Patient"
         [0 0 :id] := "id-220036"
@@ -90,9 +86,9 @@
 
     (testing "with references"
       (given (tx/prepare-ops
-               context
-               [[:put {:fhir/type :fhir/Observation :id "0"
-                       :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]])
+              context
+              [[:put {:fhir/type :fhir/Observation :id "0"
+                      :subject #fhir/Reference{:reference #fhir/string"Patient/0"}}]])
         [0 0 :op] := "put"
         [0 0 :type] := "Observation"
         [0 0 :id] := "0"
@@ -136,7 +132,6 @@
       [0 0 :type] := "Patient"
       [0 0 :id] := "0"
       [1] := {})))
-
 
 (deftest load-tx-result-test
   (with-redefs [tx-success/tx (fn [_ _])

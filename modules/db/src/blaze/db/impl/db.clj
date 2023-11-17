@@ -1,19 +1,17 @@
 (ns blaze.db.impl.db
   "Primary Database Implementation"
   (:require
-    [blaze.async.comp :as ac]
-    [blaze.db.impl.batch-db :as batch-db]
-    [blaze.db.impl.index.resource-as-of :as rao]
-    [blaze.db.impl.macros :refer [with-open-coll]]
-    [blaze.db.impl.protocols :as p]
-    [blaze.db.kv :as kv])
+   [blaze.async.comp :as ac]
+   [blaze.db.impl.batch-db :as batch-db]
+   [blaze.db.impl.index.resource-as-of :as rao]
+   [blaze.db.impl.macros :refer [with-open-coll]]
+   [blaze.db.impl.protocols :as p]
+   [blaze.db.kv :as kv])
   (:import
-    [java.io Writer]))
-
+   [java.io Writer]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
-
 
 (deftype Db [node kv-store basis-t t]
   p/Db
@@ -30,16 +28,12 @@
   (-as-of-t [_]
     (when (not= basis-t t) t))
 
-
-
   ;; ---- Instance-Level Functions --------------------------------------------
 
   (-resource-handle [_ tid id]
     (with-open [snapshot (kv/new-snapshot kv-store)
                 resource-handle (rao/resource-handle snapshot t)]
       (resource-handle tid id)))
-
-
 
   ;; ---- Type-Level Functions ------------------------------------------------
 
@@ -55,8 +49,6 @@
     (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-type-total batch-db tid)))
 
-
-
   ;; ---- System-Level Functions ----------------------------------------------
 
   (-system-list [_]
@@ -71,8 +63,6 @@
     (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-system-total batch-db)))
 
-
-
   ;; ---- Compartment-Level Functions -----------------------------------------
 
   (-compartment-resource-handles [_ compartment tid]
@@ -82,8 +72,6 @@
   (-compartment-resource-handles [_ compartment tid start-id]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-compartment-resource-handles batch-db compartment tid start-id)))
-
-
 
   ;; ---- Common Query Functions ----------------------------------------------
 
@@ -100,8 +88,6 @@
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-execute-query batch-db query arg1)))
 
-
-
   ;; ---- Instance-Level History Functions ------------------------------------
 
   (-instance-history [_ tid id start-t since]
@@ -111,8 +97,6 @@
   (-total-num-of-instance-changes [_ tid id since]
     (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-total-num-of-instance-changes batch-db tid id since)))
-
-
 
   ;; ---- Type-Level History Functions ----------------------------------------
 
@@ -124,8 +108,6 @@
     (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-total-num-of-type-changes batch-db type since)))
 
-
-
   ;; ---- System-Level History Functions --------------------------------------
 
   (-system-history [_ start-t start-tid start-id since]
@@ -135,8 +117,6 @@
   (-total-num-of-system-changes [_ since]
     (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-total-num-of-system-changes batch-db since)))
-
-
 
   ;; ---- Include ---------------------------------------------------------------
 
@@ -156,21 +136,16 @@
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-rev-include batch-db resource-handle source-type code)))
 
-
-
   ;; ---- Batch DB ------------------------------------------------------------
 
   (-new-batch-db [_]
     (batch-db/new-batch-db node basis-t t))
-
-
 
   ;; ---- Transaction ---------------------------------------------------------
 
   p/Tx
   (-tx [_ t]
     (p/-tx node t))
-
 
   ;; ---- QueryCompiler -------------------------------------------------------
 
@@ -190,8 +165,6 @@
   (-compile-compartment-query-lenient [_ code type clauses]
     (p/-compile-compartment-query-lenient node code type clauses))
 
-
-
   ;; ---- Pull ----------------------------------------------------------------
 
   p/Pull
@@ -207,10 +180,8 @@
   (-pull-many [_ resource-handles elements]
     (p/-pull-many node resource-handles elements)))
 
-
 (defmethod print-method Db [^Db db ^Writer w]
   (.write w (format "Db[t=%d]" (.t db))))
-
 
 (defn db
   "Creates a database on `node` based on `t`."

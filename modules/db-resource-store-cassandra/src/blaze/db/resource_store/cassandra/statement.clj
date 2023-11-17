@@ -1,11 +1,9 @@
 (ns blaze.db.resource-store.cassandra.statement
   (:import
-    [com.datastax.oss.driver.api.core ConsistencyLevel DefaultConsistencyLevel]
-    [com.datastax.oss.driver.api.core.cql SimpleStatement]))
-
+   [com.datastax.oss.driver.api.core ConsistencyLevel DefaultConsistencyLevel]
+   [com.datastax.oss.driver.api.core.cql SimpleStatement]))
 
 (set! *warn-on-reflection* true)
-
 
 (def get-statement
   "The get statement retrieves the content according to the `hash`.
@@ -15,7 +13,6 @@
   (-> (SimpleStatement/builder "select content from resources where hash = ?")
       (.setConsistencyLevel ConsistencyLevel/ONE)
       (.build)))
-
 
 (defn put-statement
   "The put statement upserts the `hash` and `content` of a resource into the

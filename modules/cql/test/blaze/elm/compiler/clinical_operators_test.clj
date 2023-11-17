@@ -4,20 +4,18 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.clinical-operators]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as ctu]
-    [blaze.elm.literal :as elm]
-    [blaze.elm.literal-spec]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest testing]]))
-
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.clinical-operators]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.test-util :as ctu]
+   [blaze.elm.literal :as elm]
+   [blaze.elm.literal-spec]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest testing]]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -25,22 +23,17 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; TODO 23.1. AnyInCodeSystem
 
-
 ;; TODO 23.2. AnyInValueSet
-
 
 ;; 23.3. CalculateAge
 ;;
 ;; Normalized to CalculateAgeAt
 (deftest compile-calculate-age-test
   (ctu/unsupported-unary-operand "CalculateAge"))
-
 
 ;; 23.4. CalculateAgeAt
 ;;
@@ -82,23 +75,16 @@
 
   (ctu/testing-binary-precision-form elm/calculate-age-at "year" "month" "day"))
 
-
 ;; 23.5. Equal
-
 
 ;; 23.6. Equivalent
 
-
 ;; TODO 23.7. InCodeSystem
-
 
 ;; TODO 23.8. InValueSet
 
-
 ;; 23.9. Not Equal
 
-
 ;; TODO 23.10. SubsumedBy
-
 
 ;; TODO 23.11. Subsumes

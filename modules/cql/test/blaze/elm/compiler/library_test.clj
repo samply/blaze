@@ -1,27 +1,23 @@
 (ns blaze.elm.compiler.library-test
   (:require
-    [blaze.cql-translator :as t]
-    [blaze.db.api-stub :refer [mem-node-config]]
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.library :as library]
-    [blaze.elm.compiler.library-spec]
-    [blaze.fhir.spec.type.system]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]]))
-
+   [blaze.cql-translator :as t]
+   [blaze.db.api-stub :refer [mem-node-config]]
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.library :as library]
+   [blaze.elm.compiler.library-spec]
+   [blaze.fhir.spec.type.system]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
 
-
 (def default-opts {})
-
 
 ;; 5.1. Library
 ;;
@@ -183,29 +179,29 @@
           [:expression-defs "InInitialPopulation" :context] := "Patient"
           [:expression-defs "InInitialPopulation" :expression c/form] :=
           '(exists
-             (eduction-query
-               (comp
-                 (filter
-                   (fn
-                     [O]
-                     (exists
-                       (fn
-                         [E]
-                         (equal
-                           (call
-                             "ToString"
-                             (:reference
-                               (:encounter
-                                 O)))
-                           (concatenate
-                             "Encounter/"
-                             (call
-                               "ToString"
-                               (:id
-                                 E)))))
-                       (retrieve
-                         "Encounter"))))
-                 distinct)
-               (retrieve
-                 "Observation")))
+            (eduction-query
+             (comp
+              (filter
+               (fn
+                 [O]
+                 (exists
+                  (fn
+                    [E]
+                    (equal
+                     (call
+                      "ToString"
+                      (:reference
+                       (:encounter
+                        O)))
+                     (concatenate
+                      "Encounter/"
+                      (call
+                       "ToString"
+                       (:id
+                        E)))))
+                  (retrieve
+                   "Encounter"))))
+              distinct)
+             (retrieve
+              "Observation")))
           [:function-defs "hasDiagnosis" :function] := nil)))))

@@ -1,28 +1,25 @@
 (ns blaze.thread-pool-executor-collector-test
   (:require
-    [blaze.executors :as ex]
-    [blaze.metrics.core :as metrics]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [blaze.thread-pool-executor-collector]
-    [blaze.thread-pool-executor-collector.spec :as spec]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
-    [integrant.core :as ig]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log])
+   [blaze.executors :as ex]
+   [blaze.metrics.core :as metrics]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [blaze.thread-pool-executor-collector]
+   [blaze.thread-pool-executor-collector.spec :as spec]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [integrant.core :as ig]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log])
   (:import
-    [java.util.concurrent Executors]))
-
+   [java.util.concurrent Executors]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest init-test
   (testing "nil config"
@@ -51,16 +48,13 @@
       [:explain ::s/problems 0 :pred] := `spec/thread-pool-executor?
       [:explain ::s/problems 0 :val] := nil)))
 
-
 (def config
   {:blaze/thread-pool-executor-collector
    {:executors {:a (ig/ref ::pool)}}
    ::pool {}})
 
-
 (defmethod ig/init-key ::pool [_ _]
   (Executors/newFixedThreadPool 1))
-
 
 (deftest collector-test
   (with-system [{collector :blaze/thread-pool-executor-collector ::keys [pool]}

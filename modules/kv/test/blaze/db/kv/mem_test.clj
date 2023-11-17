@@ -1,45 +1,38 @@
 (ns blaze.db.kv.mem-test
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.byte-buffer :as bb]
-    [blaze.db.kv :as kv]
-    [blaze.db.kv-spec]
-    [blaze.db.kv.mem]
-    [blaze.db.kv.mem-spec]
-    [blaze.log]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu :refer [bytes= given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [integrant.core :as ig]
-    [taoensso.timbre :as log]))
-
+   [blaze.anomaly :as ba]
+   [blaze.byte-buffer :as bb]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv-spec]
+   [blaze.db.kv.mem]
+   [blaze.db.kv.mem-spec]
+   [blaze.log]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu :refer [bytes= given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def config
   {::kv/mem {:column-families {}}})
 
-
 (def reverse-comparator-config
   {::kv/mem {:column-families {:a {:reverse-comparator? true}}}})
-
 
 (def a-config
   {::kv/mem {:column-families {:a nil}}})
 
-
 (def a-b-config
   {::kv/mem {:column-families {:a nil :b nil}}})
-
 
 (defmacro with-system-data
   "Runs `body` inside a system that is initialized from `config`, bound to
@@ -50,16 +43,13 @@
   `(with-system [~binding-form (assoc-in ~config [::kv/mem :init-data] ~entries)]
      ~@body))
 
-
 (defn- ba [& bytes]
   (byte-array bytes))
-
 
 (defn- bb [& bytes]
   (-> (bb/allocate-direct (count bytes))
       (bb/put-byte-array! (byte-array bytes))
       bb/flip!))
-
 
 (deftest init-test
   (testing "nil config"
@@ -74,14 +64,11 @@
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :column-families)))))
 
-
 (defn- iterator-invalid-anom? [anom]
   (and (ba/fault? anom) (= "The iterator is invalid." (::anom/message anom))))
 
-
 (defn- iterator-closed-anom? [anom]
   (and (ba/fault? anom) (= "The iterator is closed." (::anom/message anom))))
-
 
 (deftest valid-test
   (with-system [{kv-store ::kv/mem} config]
@@ -93,7 +80,6 @@
       (testing "errors on closed iterator"
         (.close iter)
         (is (iterator-closed-anom? (ba/try-anomaly (kv/valid? iter))))))))
-
 
 (deftest seek-to-first-test
   (with-system-data [{kv-store ::kv/mem} config]
@@ -112,7 +98,6 @@
         (.close iter)
         (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-to-first! iter))))))))
 
-
 (deftest seek-to-last-test
   (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x01) (ba 0x10)]
@@ -129,7 +114,6 @@
       (testing "errors on closed iterator"
         (.close iter)
         (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-to-last! iter))))))))
-
 
 (deftest seek-test
   (with-system-data [{kv-store ::kv/mem} config]
@@ -211,7 +195,6 @@
           (.close iter)
           (is (iterator-closed-anom? (ba/try-anomaly (kv/seek! iter (ba 0x04))))))))))
 
-
 (deftest seek-buffer-test
   (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x01) (ba 0x10)]
@@ -292,7 +275,6 @@
           (.close iter)
           (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-buffer! iter (bb 0x04))))))))))
 
-
 (deftest seek-for-prev-test
   (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x01) (ba 0x10)]
@@ -333,7 +315,6 @@
         (.close iter)
         (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-for-prev! iter (ba 0x00)))))))))
 
-
 (deftest next-test
   (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x01) (ba 0x10)]
@@ -361,7 +342,6 @@
       (testing "iterator is invalid"
         (is (iterator-invalid-anom? (ba/try-anomaly (kv/next! iter))))))))
 
-
 (deftest prev-test
   (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x01) (ba 0x10)]
@@ -388,7 +368,6 @@
 
       (testing "iterator is invalid"
         (is (iterator-invalid-anom? (ba/try-anomaly (kv/prev! iter))))))))
-
 
 (deftest key-test
   (with-system-data [{kv-store ::kv/mem} config]
@@ -424,7 +403,6 @@
           (is (= 0x01 (bb/get-byte! buf)))
           (is (= 0x02 (bb/get-byte! buf))))))))
 
-
 (deftest value-test
   (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x00) (ba 0x01 0x02)]]
@@ -459,7 +437,6 @@
           (is (= 0x01 (bb/get-byte! buf)))
           (is (= 0x02 (bb/get-byte! buf))))))))
 
-
 (deftest different-column-families-test
   (with-system-data [{kv-store ::kv/mem} a-b-config]
     [[:a (ba 0x00) (ba 0x01)]
@@ -480,7 +457,6 @@
       (testing "column-family :c doesn't exist"
         (is (ba/not-found? (ba/try-anomaly (kv/new-iterator snapshot :c))))))))
 
-
 (deftest snapshot-get-test
   (with-system-data [{kv-store ::kv/mem} a-config]
     [[(ba 0x00) (ba 0x01)]
@@ -500,7 +476,6 @@
       (testing "returns nil on not found value of column-family :a"
         (is (nil? (kv/snapshot-get snapshot :a (ba 0x01))))))))
 
-
 (deftest get-test
   (with-system-data [{kv-store ::kv/mem} a-config]
     [[(ba 0x00) (ba 0x01)]
@@ -518,7 +493,6 @@
     (testing "returns nil on not found value of column-family :a"
       (is (nil? (kv/get kv-store :a (ba 0x01)))))))
 
-
 (deftest multi-get-test
   (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x00) (ba 0x10)]
@@ -526,12 +500,11 @@
 
     (testing "returns all found entries"
       (let [m (into
-                {}
-                (map (fn [[k v]] [(vec k) (vec v)]))
-                (kv/multi-get kv-store [(ba 0x00) (ba 0x01) (ba 0x02)]))]
+               {}
+               (map (fn [[k v]] [(vec k) (vec v)]))
+               (kv/multi-get kv-store [(ba 0x00) (ba 0x01) (ba 0x02)]))]
         (is (= [0x10] (get m [0x00])))
         (is (= [0x11] (get m [0x01])))))))
-
 
 (deftest put-test
   (with-system [{kv-store ::kv/mem} config]
@@ -543,7 +516,6 @@
     (testing "errors on unknown column-family"
       (is (ba/not-found? (ba/try-anomaly (kv/put! kv-store [[:a (ba 0x00) (ba 0x01)]])))))))
 
-
 (deftest delete-test
   (with-system-data [{kv-store ::kv/mem} config]
     [[(ba 0x00) (ba 0x10)]]
@@ -551,7 +523,6 @@
     (kv/delete! kv-store [(ba 0x00)])
 
     (is (nil? (kv/get kv-store (ba 0x00))))))
-
 
 (deftest write-test
   (testing "default column-family"
@@ -583,7 +554,6 @@
       (testing "delete"
         (kv/write! kv-store [[:delete :a (ba 0x00)]])
         (is (nil? (kv/get kv-store :a (ba 0x00))))))))
-
 
 (deftest init-component-test
   (is (kv/store? (ig/init-key ::kv/mem {}))))

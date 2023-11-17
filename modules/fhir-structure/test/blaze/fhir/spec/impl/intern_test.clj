@@ -1,27 +1,22 @@
 (ns blaze.fhir.spec.impl.intern-test
   (:require
-    [blaze.executors :as ex]
-    [blaze.fhir.spec.impl.intern :as intern]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]])
+   [blaze.executors :as ex]
+   [blaze.fhir.spec.impl.intern :as intern]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]])
   (:import
-    [java.util.concurrent CountDownLatch TimeUnit]))
-
+   [java.util.concurrent CountDownLatch TimeUnit]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defrecord TestType [x])
 
-
 (def identity-intern
   (intern/intern-value ->TestType))
-
 
 (deftest intern-test
   (testing "both constructions lead to the same instance"
@@ -36,10 +31,10 @@
             ready (CountDownLatch. n)]
         (doseq [atom atoms]
           (ex/execute!
-            pool
-            #(do (.countDown ready)
-                 (.await latch)
-                 (reset! atom (identity-intern x)))))
+           pool
+           #(do (.countDown ready)
+                (.await latch)
+                (reset! atom (identity-intern x)))))
         ;; wait for threads to be created
         (.await ready)
         (.countDown latch)

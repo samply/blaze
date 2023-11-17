@@ -1,22 +1,19 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.util-test
   (:require
-    [blaze.anomaly-spec]
-    [blaze.fhir.operation.evaluate-measure.measure.util :as u]
-    [blaze.fhir.operation.evaluate-measure.measure.util-spec]
-    [blaze.test-util :as tu :refer [satisfies-prop]]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
-    [clojure.test.check.generators :as gen]
-    [clojure.test.check.properties :as prop]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]]))
-
+   [blaze.anomaly-spec]
+   [blaze.fhir.operation.evaluate-measure.measure.util :as u]
+   [blaze.fhir.operation.evaluate-measure.measure.util-spec]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest expression-test
   (testing "missing criteria"

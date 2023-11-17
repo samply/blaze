@@ -4,24 +4,22 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :as ba :refer [if-ok]]
-    [blaze.coll.core :as coll]
-    [blaze.db.api :as d]
-    [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.structured-values]
-    [blaze.elm.spec]
-    [blaze.elm.util :as elm-util]
-    [blaze.fhir.spec.type.protocols :as p]
-    [clojure.string :as str])
+   [blaze.anomaly :as ba :refer [if-ok]]
+   [blaze.coll.core :as coll]
+   [blaze.db.api :as d]
+   [blaze.db.impl.index.resource-handle :as rh]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.structured-values]
+   [blaze.elm.spec]
+   [blaze.elm.util :as elm-util]
+   [blaze.fhir.spec.type.protocols :as p]
+   [clojure.string :as str])
   (:import
-    [blaze.elm.compiler.structured_values SourcePropertyExpression]
-    [clojure.lang ILookup]
-    [java.util List]))
-
+   [blaze.elm.compiler.structured_values SourcePropertyExpression]
+   [clojure.lang ILookup]
+   [java.util List]))
 
 (set! *warn-on-reflection* true)
-
 
 ;; A resource that is a wrapper of a resource-handle that will lazily pull the
 ;; resource content if some property other than :id is accessed.
@@ -43,26 +41,20 @@
   (toString [_]
     (.toString handle)))
 
-
 (defn resource? [x]
   (instance? Resource x))
-
 
 (defn mk-resource [db handle]
   (Resource. db handle (volatile! nil)))
 
-
 (defn resource-mapper [db]
   (map (partial mk-resource db)))
-
 
 (defn- code->clause-value [{:keys [system code]}]
   (str system "|" code))
 
-
 (defprotocol ToClauses
   (-to-clauses [x property]))
-
 
 (extend-protocol ToClauses
   List
@@ -72,7 +64,6 @@
   SourcePropertyExpression
   (-to-clauses [codes property]
     (-to-clauses (core/-eval codes nil nil nil) property)))
-
 
 (defn- code-expr
   "Returns an expression which, when evaluated, returns all resources of type
@@ -96,11 +87,9 @@
       (-form [_]
         `(~'retrieve ~data-type ~(d/query-clauses query))))))
 
-
 (defn- split-reference [s]
   (when-let [idx (str/index-of s \/)]
     [(subs s 0 idx) (subs s (inc idx))]))
-
 
 ;; TODO: find a better solution than hard coding this case
 (defrecord SpecimenPatientExpression []
@@ -118,10 +107,8 @@
   (-form [_]
     '(retrieve (Specimen) "Patient")))
 
-
 (def ^:private specimen-patient-expr
   (->SpecimenPatientExpression))
-
 
 (defn- context-expr
   "Returns an expression which, when evaluated, returns all resources of type
@@ -137,11 +124,10 @@
         false)
       (-eval [_ {:keys [db]} {:keys [id]} _]
         (coll/eduction
-          (resource-mapper db)
-          (d/list-compartment-resource-handles db context id data-type)))
+         (resource-mapper db)
+         (d/list-compartment-resource-handles db context id data-type)))
       (-form [_]
         `(~'retrieve ~data-type)))))
-
 
 (def ^:private resource-expr
   (reify core/Expression
@@ -152,14 +138,11 @@
     (-form [_]
       '(retrieve-resource))))
 
-
 (defn- unsupported-type-ns-anom [value-type-ns]
   (ba/unsupported (format "Unsupported related context retrieve expression with result type namespace of `%s`." value-type-ns)))
 
-
 (def ^:private unsupported-related-context-expr-without-type-anom
   (ba/unsupported "Unsupported related context retrieve expression without result type."))
-
 
 (defn- related-context-expr-without-codes [related-context-expr data-type]
   (reify core/Expression
@@ -168,13 +151,12 @@
     (-eval [_ context resource scope]
       (when-let [context-resource (core/-eval related-context-expr context resource scope)]
         (core/-eval
-          (context-expr (-> context-resource :fhir/type name) data-type)
-          context
-          context-resource
-          scope)))
+         (context-expr (-> context-resource :fhir/type name) data-type)
+         context
+         context-resource
+         scope)))
     (-form [_]
       (list 'retrieve (core/-form related-context-expr) data-type))))
-
 
 (defn- related-context-expr
   [node context-expr data-type code-property codes]
@@ -191,15 +173,14 @@
                   (when-let [{:keys [id]} (core/-eval context-expr context resource scope)]
                     (when (string? id)
                       (coll/eduction
-                        (resource-mapper db)
-                        (d/execute-query db query id)))))
+                       (resource-mapper db)
+                       (d/execute-query db query id)))))
                 (-form [_]
                   (list 'retrieve (core/-form context-expr) data-type (d/query-clauses query))))
               ba/throw-anom))
           (ba/throw-anom (unsupported-type-ns-anom value-type-ns))))
       (ba/throw-anom unsupported-related-context-expr-without-type-anom))
     (related-context-expr-without-codes context-expr data-type)))
-
 
 (defn- unfiltered-context-expr [node data-type code-property codes]
   (if (empty? codes)
@@ -221,14 +202,12 @@
             `(~'retrieve ~data-type ~(d/query-clauses query))))
         ba/throw-anom))))
 
-
 (defn- expr* [node eval-context data-type code-property codes]
   (if (empty? codes)
     (if (= data-type eval-context)
       resource-expr
       (context-expr eval-context data-type))
     (code-expr node eval-context data-type code-property codes)))
-
 
 ;; 11.1. Retrieve
 (defn- expr
@@ -243,12 +222,10 @@
     :else
     (expr* node eval-context data-type code-property codes)))
 
-
 (defn- unsupported-type-namespace-anom [type-ns]
   (ba/unsupported
-    (format "Unsupported type namespace `%s` in Retrieve expression." type-ns)
-    :type-ns type-ns))
-
+   (format "Unsupported type namespace `%s` in Retrieve expression." type-ns)
+   :type-ns type-ns))
 
 (defmethod core/compile* :elm.compiler.type/retrieve
   [context
@@ -260,9 +237,9 @@
   (let [[type-ns data-type] (elm-util/parse-qualified-name data-type)]
     (if (= "http://hl7.org/fhir" type-ns)
       (expr
-        context
-        (some->> context-expr (core/compile* context))
-        data-type
-        code-property
-        (some->> codes-expr (core/compile* context)))
+       context
+       (some->> context-expr (core/compile* context))
+       data-type
+       code-property
+       (some->> codes-expr (core/compile* context)))
       (ba/throw-anom (unsupported-type-namespace-anom type-ns)))))

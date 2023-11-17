@@ -1,19 +1,16 @@
 (ns blaze.db.impl.codec
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.byte-string :as bs]
-    [blaze.fhir.spec.type.system])
+   [blaze.byte-buffer :as bb]
+   [blaze.byte-string :as bs]
+   [blaze.fhir.spec.type.system])
   (:import
-    [com.github.benmanes.caffeine.cache CacheLoader Caffeine]
-    [com.google.common.hash Hashing]
-    [java.nio.charset StandardCharsets]
-    [java.util Arrays]))
-
+   [com.github.benmanes.caffeine.cache CacheLoader Caffeine]
+   [com.google.common.hash Hashing]
+   [java.nio.charset StandardCharsets]
+   [java.util Arrays]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
-
-
 
 ;; ---- Sizes of Byte Arrays --------------------------------------------------
 
@@ -24,31 +21,27 @@
 (def ^:const ^long state-size Long/BYTES)
 (def ^:const ^long max-id-size 64)
 
-
-
 ;; ---- Type Identifier -------------------------------------------------------
 
 (defn- memoize-1 [f]
   (let [mem
         (-> (Caffeine/newBuilder)
             (.build
-              (reify CacheLoader
-                (load [_ x]
-                  (f x)))))]
+             (reify CacheLoader
+               (load [_ x]
+                 (f x)))))]
     (fn [x]
       (.get mem x))))
-
 
 (def ^{:arglists '([type])} tid
   "Internal type identifier.
 
   Returns an integer."
   (memoize-1
-    (fn [type]
-      (-> (Hashing/murmur3_32_fixed)
-          (.hashBytes (.getBytes ^String type StandardCharsets/ISO_8859_1))
-          (.asInt)))))
-
+   (fn [type]
+     (-> (Hashing/murmur3_32_fixed)
+         (.hashBytes (.getBytes ^String type StandardCharsets/ISO_8859_1))
+         (.asInt)))))
 
 (let [kvs [[-2146857976 "ClinicalImpression"]
            [-2144887593 "ImmunizationEvaluation"]
@@ -203,8 +196,6 @@
       (when (nat-int? idx)
         (aget idx->type idx)))))
 
-
-
 ;; ---- Identifier Functions --------------------------------------------------
 
 (defn id-byte-string
@@ -213,7 +204,6 @@
      `(bs/from-string ~id StandardCharsets/ISO_8859_1))}
   [id]
   (bs/from-string id StandardCharsets/ISO_8859_1))
-
 
 (defn id-string
   "Converts the byte-string representation of a resource id into it's string
@@ -224,7 +214,6 @@
   [id-byte-string]
   (bs/to-string id-byte-string StandardCharsets/ISO_8859_1))
 
-
 (defn id
   "Creates an resource id as String from the byte array `id-bytes`."
   {:inline
@@ -232,8 +221,6 @@
      `(String. ~id-bytes ~offset ~length StandardCharsets/ISO_8859_1))}
   [^bytes id-bytes ^long offset ^long length]
   (String. id-bytes offset length StandardCharsets/ISO_8859_1))
-
-
 
 ;; ---- Key Functions ---------------------------------------------------------
 
@@ -253,61 +240,57 @@
   [l]
   (bit-and (bit-not (unchecked-long l)) 0xFFFFFFFFFFFFFF))
 
-
 (defn c-hash [code]
   (-> (Hashing/murmur3_32_fixed)
       (.hashString code StandardCharsets/UTF_8)
       (.asInt)))
 
-
 (def c-hash->code
   (into
-    {}
-    (map (fn [code] [(c-hash code) code]))
-    ["_id"
-     "_lastUpdated"
-     "_profile"
-     "active"
-     "address"
-     "birthdate"
-     "bodysite"
-     "category"
-     "class"
-     "code"
-     "code-value-quantity"
-     "combo-code"
-     "combo-code-value-quantity"
-     "combo-value-quantity"
-     "context-quantity"
-     "date"
-     "death-date"
-     "deceased"
-     "description"
-     "identifier"
-     "issued"
-     "item"
-     "item:identifier"
-     "onset-date"
-     "patient"
-     "phonetic"
-     "priority"
-     "probability"
-     "rank"
-     "series"
-     "status"
-     "subject"
-     "url"
-     "value-quantity"
-     "variant-start"
-     "version"]))
-
+   {}
+   (map (fn [code] [(c-hash code) code]))
+   ["_id"
+    "_lastUpdated"
+    "_profile"
+    "active"
+    "address"
+    "birthdate"
+    "bodysite"
+    "category"
+    "class"
+    "code"
+    "code-value-quantity"
+    "combo-code"
+    "combo-code-value-quantity"
+    "combo-value-quantity"
+    "context-quantity"
+    "date"
+    "death-date"
+    "deceased"
+    "description"
+    "identifier"
+    "issued"
+    "item"
+    "item:identifier"
+    "onset-date"
+    "patient"
+    "phonetic"
+    "priority"
+    "probability"
+    "rank"
+    "series"
+    "status"
+    "subject"
+    "url"
+    "value-quantity"
+    "variant-start"
+    "version"]))
 
 (defn v-hash [value]
   (-> (Hashing/murmur3_32_fixed)
       (.hashString value StandardCharsets/UTF_8)
       (.asBytes)
       bs/from-byte-array))
-
 
 (defn tid-id
   "Returns a byte string with `tid` followed by `id`."
@@ -318,7 +301,6 @@
       bb/flip!
       bs/from-byte-buffer!))
 
-
 (defn tid-byte-string
   "Returns a byte string with `tid`."
   [tid]
@@ -326,7 +308,6 @@
       (bb/put-int! tid)
       bb/flip!
       bs/from-byte-buffer!))
-
 
 (defn string
   "Returns a lexicographically sortable byte string of the `string` value."
@@ -336,10 +317,8 @@
   [string]
   (bs/from-utf8-string string))
 
-
 (defprotocol NumberBytes
   (-number [number]))
-
 
 (defn number
   "Converts the number in a lexicographically sortable byte string.
@@ -348,13 +327,12 @@
   [number]
   (-number number))
 
-
 ;; See https://github.com/danburkert/bytekey/blob/6980b9e33281d875f03f4c9a953b93a384eac085/src/encoder.rs#L258
 ;; And https://cornerwings.github.io/2019/10/lexical-sorting/
 (extend-protocol NumberBytes
   BigDecimal
   (-number [val]
-    ;; Truncate at two digits after the decimal point
+   ;; Truncate at two digits after the decimal point
     (-number (.longValue (.scaleByPowerOfTen val 2))))
 
   Integer
@@ -429,7 +407,6 @@
             bb/flip!
             bs/from-byte-buffer!)))))
 
-
 (defn decode-number [byte-string]
   (let [bb (bs/as-read-only-byte-buffer byte-string)
         header (bit-and (long (bb/get-byte! bb)) 0xFF)
@@ -440,11 +417,10 @@
       (if (<= i n)
         (let [byte (bit-and (long (bb/get-byte! bb)) 0xFF)]
           (recur
-            (+ val (bit-shift-left (bit-xor byte mask) (* 8 (- n i))))
-            (inc i)))
-        (let [final-mask (bit-shift-right (bit-shift-left mask 63) 63)] 
+           (+ val (bit-shift-left (bit-xor byte mask) (* 8 (- n i))))
+           (inc i)))
+        (let [final-mask (bit-shift-right (bit-shift-left mask 63) 63)]
           (bit-xor val final-mask))))))
-
 
 (defn quantity [unit value]
   (bs/concat (v-hash (or unit "")) (number value)))

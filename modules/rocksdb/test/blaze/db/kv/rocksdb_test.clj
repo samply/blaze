@@ -1,44 +1,39 @@
 (ns blaze.db.kv.rocksdb-test
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.byte-buffer :as bb]
-    [blaze.byte-string :as bs]
-    [blaze.db.kv :as kv]
-    [blaze.db.kv-spec]
-    [blaze.db.kv.rocksdb :as rocksdb]
-    [blaze.db.kv.rocksdb-spec]
-    [blaze.db.kv.rocksdb.impl-spec]
-    [blaze.db.kv.rocksdb.metrics :as-alias metrics]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu :refer [bytes= given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.string :as str]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [integrant.core :as ig]
-    [juxt.iota :refer [given]])
+   [blaze.anomaly :as ba]
+   [blaze.byte-buffer :as bb]
+   [blaze.byte-string :as bs]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv-spec]
+   [blaze.db.kv.rocksdb :as rocksdb]
+   [blaze.db.kv.rocksdb-spec]
+   [blaze.db.kv.rocksdb.impl-spec]
+   [blaze.db.kv.rocksdb.metrics :as-alias metrics]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu :refer [bytes= given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
+   [juxt.iota :refer [given]])
   (:import
-    [java.nio.file Files]
-    [java.nio.file.attribute FileAttribute]))
-
+   [java.nio.file Files]
+   [java.nio.file.attribute FileAttribute]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defn- ba [& bytes]
   (byte-array bytes))
-
 
 (defn- bb [& bytes]
   (-> (bb/allocate-direct (count bytes))
       (bb/put-byte-array! (byte-array bytes))
       bb/flip!))
-
 
 (deftest init-test
   (testing "nil config"
@@ -79,7 +74,6 @@
       [:explain ::s/problems 1 :via] := [::rocksdb/stats]
       [:explain ::s/problems 1 :val] := ::invalid)))
 
-
 (deftest stats-collector-init-test
   (testing "nil config"
     (given-thrown (ig/init {::rocksdb/stats-collector nil})
@@ -99,7 +93,6 @@
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :via] := [::metrics/stats]
       [:explain ::s/problems 0 :val] := ::invalid)))
-
 
 (deftest block-cache-collector-init-test
   (testing "nil config"
@@ -121,7 +114,6 @@
       [:explain ::s/problems 0 :via] := [::rocksdb/block-cache]
       [:explain ::s/problems 0 :val] := ::invalid)))
 
-
 (deftest table-reader-collector-init-test
   (testing "nil config"
     (given-thrown (ig/init {::rocksdb/table-reader-collector nil})
@@ -142,10 +134,8 @@
       [:explain ::s/problems 0 :via] := [::metrics/stores]
       [:explain ::s/problems 0 :val] := ::invalid)))
 
-
 (defn- new-temp-dir! []
   (str (Files/createTempDirectory "blaze" (make-array FileAttribute 0))))
-
 
 (defn- config [dir]
   {::kv/rocksdb
@@ -161,14 +151,12 @@
    ::rocksdb/table-reader-collector
    {:stores {"default" (ig/ref ::kv/rocksdb)}}})
 
-
 (deftest valid-test
   (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
     (with-open [snapshot (kv/new-snapshot db)
                 iter (kv/new-iterator snapshot)]
       (testing "iterator is initially invalid"
         (is (not (kv/valid? iter)))))))
-
 
 (defmacro with-system-data
   "Runs `body` inside a system that is initialized from `config`, bound to
@@ -179,7 +167,6 @@
   `(with-system [{db# ::kv/rocksdb :as system#} ~config]
      (kv/put! db# ~entries)
      (let [~binding-form system#] ~@body)))
-
 
 (deftest seek-to-first-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
@@ -194,7 +181,6 @@
       (is (bytes= (ba 0x01) (kv/key iter)))
       (is (bytes= (ba 0x10) (kv/value iter))))))
 
-
 (deftest seek-to-last-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x01) (ba 0x10)]
@@ -208,7 +194,6 @@
       (is (bytes= (ba 0x02) (kv/key iter)))
       (is (bytes= (ba 0x20) (kv/value iter))))))
 
-
 (defn- reverse-comparator-config [dir]
   {::kv/rocksdb
    {:dir dir
@@ -217,7 +202,6 @@
     :column-families {:a {:reverse-comparator? true}}}
    ::rocksdb/block-cache {}
    ::rocksdb/stats {}})
-
 
 (deftest seek-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
@@ -291,7 +275,6 @@
           (kv/seek! iter (ba 0x00))
           (is (not (kv/valid? iter))))))))
 
-
 (deftest seek-buffer-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x01) (ba 0x10)]
@@ -364,7 +347,6 @@
           (kv/seek-buffer! iter (bb 0x00))
           (is (not (kv/valid? iter))))))))
 
-
 (deftest seek-for-prev-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x01) (ba 0x10)]
@@ -401,7 +383,6 @@
         (kv/seek-for-prev! iter (ba 0x00))
         (is (not (kv/valid? iter)))))))
 
-
 (deftest next-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x01) (ba 0x10)]
@@ -426,7 +407,6 @@
         (kv/next! iter)
         (is (not (kv/valid? iter)))))))
 
-
 (deftest prev-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x01) (ba 0x10)]
@@ -450,7 +430,6 @@
       (testing "end"
         (kv/prev! iter)
         (is (not (kv/valid? iter)))))))
-
 
 (deftest key-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
@@ -482,7 +461,6 @@
           (is (= 0x01 (bb/get-byte! buf)))
           (is (= 0x02 (bb/get-byte! buf))))))))
 
-
 (deftest value-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x00) (ba 0x01 0x02)]]
@@ -513,7 +491,6 @@
           (is (= 0x01 (bb/get-byte! buf)))
           (is (= 0x02 (bb/get-byte! buf))))))))
 
-
 (defn- a-b-config [dir]
   {::kv/rocksdb
    {:dir dir
@@ -522,7 +499,6 @@
     :column-families {:a nil :b nil}}
    ::rocksdb/block-cache {}
    ::rocksdb/stats {}})
-
 
 (deftest different-column-families-test
   (with-system-data [{db ::kv/rocksdb} (a-b-config (new-temp-dir!))]
@@ -544,7 +520,6 @@
       (testing "column-family :c doesn't exist"
         (is (ba/not-found? (ba/try-anomaly (kv/new-iterator snapshot :c))))))))
 
-
 (defn- a-config [dir]
   {::kv/rocksdb
    {:dir dir
@@ -553,7 +528,6 @@
     :column-families {:a nil}}
    ::rocksdb/block-cache {}
    ::rocksdb/stats {}})
-
 
 (deftest snapshot-get-test
   (with-system-data [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
@@ -574,7 +548,6 @@
       (testing "returns nil on not found value of column-family :a"
         (is (nil? (kv/snapshot-get snapshot :a (ba 0x01))))))))
 
-
 (deftest get-test
   (with-system-data [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
     [[(ba 0x00) (ba 0x01)]
@@ -592,7 +565,6 @@
     (testing "returns nil on not found value of column-family :a"
       (is (nil? (kv/get db :a (ba 0x01)))))))
 
-
 (deftest multi-get-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x00) (ba 0x10)]
@@ -600,12 +572,11 @@
 
     (testing "returns all found entries"
       (let [m (into
-                {}
-                (map (fn [[k v]] [(vec k) (vec v)]))
-                (kv/multi-get db [(ba 0x00) (ba 0x01) (ba 0x02)]))]
+               {}
+               (map (fn [[k v]] [(vec k) (vec v)]))
+               (kv/multi-get db [(ba 0x00) (ba 0x01) (ba 0x02)]))]
         (is (= [0x10] (get m [0x00])))
         (is (= [0x11] (get m [0x01])))))))
-
 
 (deftest put-test
   (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
@@ -621,7 +592,6 @@
     (testing "errors on unknown column-family"
       (is (ba/not-found? (ba/try-anomaly (kv/put! db [[:a (ba 0x00) (ba 0x01)]])))))))
 
-
 (deftest delete-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
     [[(ba 0x00) (ba 0x10)]]
@@ -629,7 +599,6 @@
     (kv/delete! db [(ba 0x00)])
 
     (is (nil? (kv/get db (ba 0x00))))))
-
 
 (defn- merge-config [dir]
   {::kv/rocksdb
@@ -640,7 +609,6 @@
    ::rocksdb/block-cache {}
    ::rocksdb/stats {}})
 
-
 (defn- merge-a-config [dir]
   {::kv/rocksdb
    {:dir dir
@@ -649,7 +617,6 @@
     :column-families {:a {:merge-operator :stringappend}}}
    ::rocksdb/block-cache {}
    ::rocksdb/stats {}})
-
 
 (deftest write-test
   (testing "default column-family"
@@ -686,7 +653,6 @@
         (kv/write! db [[:delete :a (ba 0x00)]])
         (is (nil? (kv/get db :a (ba 0x00))))))))
 
-
 (deftest column-families-test
   (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
 
@@ -695,7 +661,6 @@
   (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
 
     (is (= [:default :a] (rocksdb/column-families db)))))
-
 
 (deftest get-property-test
   (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
@@ -733,17 +698,16 @@
             ::anom/category := ::anom/not-found
             ::anom/message := "Property with name `name-143127` was not found on column-family with name `a`."))))))
 
-
 (deftest table-properties-test
   (testing "default column-family"
     (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
       (run!
-        (fn [i]
-          (kv/put!
-            db
-            (bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i))))
-            (apply ba (range 10000))))
-        (range 10000 20000))
+       (fn [i]
+         (kv/put!
+          db
+          (bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i))))
+          (apply ba (range 10000))))
+       (range 10000 20000))
 
       (given (rocksdb/table-properties db)
         count := 1
@@ -760,13 +724,13 @@
   (testing "with column-family"
     (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
       (run!
-        (fn [i]
-          (kv/put!
-            db
-            [[:a
-              (bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i))))
-              (apply ba (range 10000))]]))
-        (range 10000 20000))
+       (fn [i]
+         (kv/put!
+          db
+          [[:a
+            (bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i))))
+            (apply ba (range 10000))]]))
+       (range 10000 20000))
 
       (given (rocksdb/table-properties db :a)
         count := 1
@@ -785,7 +749,6 @@
       (given (rocksdb/table-properties db :column-family-143119)
         ::anom/category := ::anom/not-found
         ::anom/message := "column family `column-family-143119` not found"))))
-
 
 (deftest compact-range-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]

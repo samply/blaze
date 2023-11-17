@@ -1,8 +1,7 @@
 (ns blaze.db.impl.search-param.core
   (:require
-    [cognitect.anomalies :as anom]
-    [taoensso.timbre :as log]))
-
+   [cognitect.anomalies :as anom]
+   [taoensso.timbre :as log]))
 
 (defmulti search-param
   "Converts a FHIR search parameter definition into a search-param.
@@ -13,7 +12,6 @@
   The conversion can return an anomaly."
   {:arglists '([index definition])}
   (fn [_ {:keys [type]}] type))
-
 
 (defmethod search-param :default
   [_ {:keys [url type]}]

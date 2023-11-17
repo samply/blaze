@@ -1,7 +1,6 @@
 (ns blaze.module.test-util
   (:require
-    [integrant.core :as ig]))
-
+   [integrant.core :as ig]))
 
 (defmacro with-system
   "Runs `body` inside a system that is initialized from `config`, bound to

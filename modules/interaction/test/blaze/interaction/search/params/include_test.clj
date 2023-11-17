@@ -1,19 +1,16 @@
 (ns blaze.interaction.search.params.include-test
   (:require
-    [blaze.interaction.search.params.include :as include]
-    [blaze.interaction.search.params.include-spec]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]]))
-
+   [blaze.interaction.search.params.include :as include]
+   [blaze.interaction.search.params.include-spec]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest include-defs-test
   (testing "one direct forward param"
@@ -28,20 +25,20 @@
   (testing "two direct forward params"
     (testing "of the same type"
       (given (include/include-defs
-               nil {"_include" ["Observation:subject" "Observation:encounter"]})
+              nil {"_include" ["Observation:subject" "Observation:encounter"]})
         [:direct :forward "Observation" 0 :code] := "subject"
         [:direct :forward "Observation" 1 :code] := "encounter"))
 
     (testing "of different types"
       (given (include/include-defs
-               nil {"_include" ["Observation:subject" "Patient:organization"]})
+              nil {"_include" ["Observation:subject" "Patient:organization"]})
         [:direct :forward "Observation" 0 :code] := "subject"
         [:direct :forward "Patient" 0 :code] := "organization")))
 
   (testing "one direct and one iterate forward param"
     (given (include/include-defs
-             nil {"_include" "Observation:subject"
-                  "_include:iterate" "Patient:organization"})
+            nil {"_include" "Observation:subject"
+                 "_include:iterate" "Patient:organization"})
       [:direct :forward "Observation" 0 :code] := "subject"
       [:iterate :forward "Patient" 0 :code] := "organization"))
 
@@ -57,7 +54,7 @@
 
   (testing "two direct reverse params"
     (given (include/include-defs
-             nil {"_revinclude" ["Observation:subject" "Condition:subject"]})
+            nil {"_revinclude" ["Observation:subject" "Condition:subject"]})
       [:direct :reverse :any 0 :source-type] := "Observation"
       [:direct :reverse :any 0 :code] := "subject"
       [:direct :reverse :any 1 :source-type] := "Condition"
@@ -65,8 +62,8 @@
 
   (testing "one direct and one iterate reverse param"
     (given (include/include-defs
-             nil {"_revinclude" "Observation:subject"
-                  "_revinclude:iterate" "Provenance:target"})
+            nil {"_revinclude" "Observation:subject"
+                 "_revinclude:iterate" "Provenance:target"})
       [:direct :reverse :any 0 :source-type] := "Observation"
       [:direct :reverse :any 0 :code] := "subject"
       [:iterate :reverse :any 0 :source-type] := "Provenance"
@@ -79,7 +76,7 @@
 
         (testing "with one valid parameter"
           (given (include/include-defs
-                   nil {"_include" ["Observation" "Observation:encounter"]})
+                  nil {"_include" ["Observation" "Observation:encounter"]})
             [:direct :forward "Observation" count] := 1
             [:direct :forward "Observation" 0 :code] := "encounter"))
 
@@ -104,7 +101,7 @@
 
         (testing "with one valid parameter"
           (given (include/include-defs
-                   nil {"_revinclude" ["Observation" "Observation:encounter"]})
+                  nil {"_revinclude" ["Observation" "Observation:encounter"]})
             [:direct :reverse :any count] := 1
             [:direct :reverse :any 0 :source-type] := "Observation"
             [:direct :reverse :any 0 :code] := "encounter"))

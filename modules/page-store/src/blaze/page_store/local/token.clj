@@ -1,11 +1,9 @@
 (ns blaze.page-store.local.token
   (:import
-    [com.google.common.io BaseEncoding]
-    [java.util Random]))
-
+   [com.google.common.io BaseEncoding]
+   [java.util Random]))
 
 (set! *warn-on-reflection* true)
-
 
 (defn generate [secure-rng]
   (let [bs (byte-array 20)]

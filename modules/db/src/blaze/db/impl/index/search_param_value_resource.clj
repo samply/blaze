@@ -1,17 +1,15 @@
 (ns blaze.db.impl.index.search-param-value-resource
   "Functions for accessing the SearchParamValueResource index."
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.byte-string :as bs]
-    [blaze.db.impl.bytes :as bytes]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.search-param-value-resource.impl :as impl]
-    [blaze.db.impl.iterators :as i]
-    [blaze.fhir.hash :as hash]))
-
+   [blaze.byte-buffer :as bb]
+   [blaze.byte-string :as bs]
+   [blaze.db.impl.bytes :as bytes]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.search-param-value-resource.impl :as impl]
+   [blaze.db.impl.iterators :as i]
+   [blaze.fhir.hash :as hash]))
 
 (set! *unchecked-math* :warn-on-boxed)
-
 
 (defn decode-key
   "Returns a triple of `[prefix id hash-prefix]`.
@@ -27,7 +25,6 @@
     (bb/get-byte! buf)
     [prefix id (hash/prefix-from-byte-buffer! buf)]))
 
-
 (defn keys!
   "Returns a reducible collection of `[prefix id hash-prefix]` triples starting
   at `start-key`.
@@ -39,17 +36,14 @@
   [iter start-key]
   (i/keys! iter decode-key start-key))
 
-
 (def ^:const ^long base-key-size
   (+ codec/c-hash-size codec/tid-size))
-
 
 (defn- key-size
   (^long [value]
    (+ base-key-size (bs/size value)))
   (^long [value id]
    (+ (key-size value) (bs/size id) 2)))
-
 
 (defn encode-seek-key
   ([c-hash tid]
@@ -76,10 +70,8 @@
        bb/flip!
        bs/from-byte-buffer!)))
 
-
 (def ^:private max-hash-prefix
   (bs/from-hex "FFFFFFFF"))
-
 
 (defn- encode-seek-key-for-prev
   "It is important to cover at least the hash prefix because it could be all
@@ -90,7 +82,6 @@
    (bs/concat (encode-seek-key c-hash tid value) max-hash-prefix))
   ([c-hash tid value id]
    (bs/concat (encode-seek-key c-hash tid value id) max-hash-prefix)))
-
 
 (defn decode-value-id-hash-prefix
   "Returns a triple of `[value id hash-prefix]`."
@@ -104,7 +95,6 @@
         id (bs/from-byte-buffer! buf id-size)]
     (bb/get-byte! buf)
     [value id (hash/prefix-from-byte-buffer! buf)]))
-
 
 (defn all-keys!
   "Returns a reducible collection of `[value id hash-prefix]` triples of the
@@ -120,7 +110,6 @@
    (let [prefix (encode-seek-key c-hash tid)
          start-key (encode-seek-key c-hash tid start-value start-id)]
      (i/prefix-keys! iter prefix decode-value-id-hash-prefix start-key))))
-
 
 (defn all-keys-prev!
   "Returns a reducible collection of `[value id hash-prefix]` triples of the
@@ -138,18 +127,15 @@
          start-key (encode-seek-key-for-prev c-hash tid start-value start-id)]
      (i/prefix-keys-prev! iter prefix decode-value-id-hash-prefix start-key))))
 
-
 (defn prefix-keys-value! [iter c-hash tid value-prefix]
   (let [prefix (encode-seek-key c-hash tid)
         start-key (encode-seek-key c-hash tid value-prefix)]
     (i/prefix-keys! iter prefix decode-value-id-hash-prefix start-key)))
 
-
 (defn prefix-keys-value-prev! [iter c-hash tid value-prefix]
   (let [prefix (encode-seek-key c-hash tid)
         start-key (encode-seek-key c-hash tid value-prefix)]
     (i/prefix-keys-prev! iter prefix decode-value-id-hash-prefix start-key)))
-
 
 (defn decode-id-hash-prefix
   "Returns a tuple of `[id hash-prefix]`."
@@ -161,7 +147,6 @@
     (bb/get-byte! buf)
     [id (hash/prefix-from-byte-buffer! buf)]))
 
-
 (defn prefix-keys!
   "Returns a reducible collection of decoded `[id hash-prefix]` tuples from keys
   starting at `start-value` and optional `start-id` and ending when
@@ -171,13 +156,12 @@
   access to `iter`. Doesn't close `iter`."
   ([iter c-hash tid prefix-value start-value]
    (i/prefix-keys!
-     iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
-     (encode-seek-key c-hash tid start-value)))
+    iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
+    (encode-seek-key c-hash tid start-value)))
   ([iter c-hash tid prefix-value start-value start-id]
    (i/prefix-keys!
-     iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
-     (encode-seek-key c-hash tid start-value start-id))))
-
+    iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
+    (encode-seek-key c-hash tid start-value start-id))))
 
 (defn prefix-keys'!
   "Returns a reducible collection of decoded `[id hash-prefix]` tuples from keys
@@ -188,9 +172,8 @@
   access to `iter`. Doesn't close `iter`."
   [iter c-hash tid prefix-value start-value]
   (i/prefix-keys!
-    iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
-    (encode-seek-key-for-prev c-hash tid start-value)))
-
+   iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
+   (encode-seek-key-for-prev c-hash tid start-value)))
 
 (defn prefix-keys-prev!
   "Returns a reducible collection of decoded `[id hash-prefix]` tuples from keys
@@ -202,13 +185,12 @@
   access to `iter`. Doesn't close `iter`."
   ([iter c-hash tid prefix-value start-value]
    (i/prefix-keys-prev!
-     iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
-     (encode-seek-key-for-prev c-hash tid start-value)))
+    iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
+    (encode-seek-key-for-prev c-hash tid start-value)))
   ([iter c-hash tid prefix-value start-value start-id]
    (i/prefix-keys-prev!
-     iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
-     (encode-seek-key-for-prev c-hash tid start-value start-id))))
-
+    iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
+    (encode-seek-key-for-prev c-hash tid start-value start-id))))
 
 (defn prefix-keys-prev'!
   "Returns a reducible collection of decoded `[id hash-prefix]` tuples from keys
@@ -219,9 +201,8 @@
   access to `iter`. Doesn't close `iter`."
   [iter c-hash tid prefix-value start-value]
   (i/prefix-keys-prev!
-    iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
-    (encode-seek-key c-hash tid start-value)))
-
+   iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
+   (encode-seek-key c-hash tid start-value)))
 
 (defn encode-key [c-hash tid value id hash]
   (-> (bb/allocate (unchecked-add-int (key-size value id) hash/prefix-size))
@@ -233,7 +214,6 @@
       (bb/put-byte! (bs/size id))
       (hash/prefix-into-byte-buffer! (hash/prefix hash))
       bb/array))
-
 
 (defn index-entry
   "Returns an entry of the SearchParamValueResource index build from `c-hash`,

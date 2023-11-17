@@ -1,9 +1,8 @@
 (ns blaze.interaction.transaction.bundle.url-spec
   (:require
-    [blaze.fhir.spec.spec]
-    [blaze.interaction.transaction.bundle.url :as url]
-    [clojure.spec.alpha :as s]))
-
+   [blaze.fhir.spec.spec]
+   [blaze.interaction.transaction.bundle.url :as url]
+   [clojure.spec.alpha :as s]))
 
 (s/fdef url/match-url
   :args (s/cat :url string?)

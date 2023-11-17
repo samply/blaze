@@ -1,39 +1,34 @@
 (ns blaze.terminology-service.extern-test
   (:require
-    [blaze.fhir.test-util]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.terminology-service :as ts]
-    [blaze.terminology-service.extern]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
-    [integrant.core :as ig]
-    [jsonista.core :as j]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log])
+   [blaze.fhir.test-util]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.terminology-service :as ts]
+   [blaze.terminology-service.extern]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [integrant.core :as ig]
+   [jsonista.core :as j]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log])
   (:import
-    [com.pgssoft.httpclient HttpClientMock]))
-
+   [com.pgssoft.httpclient HttpClientMock]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defmethod ig/init-key ::http-client [_ _]
   (HttpClientMock.))
-
 
 (def config
   {::ts/extern
    {:base-uri "http://localhost:8080/fhir"
     :http-client (ig/ref ::http-client)}
    ::http-client {}})
-
 
 (deftest init-test
   (testing "nil config"
@@ -56,7 +51,6 @@
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
       [:explain ::s/problems 1 :pred] := `string?
       [:explain ::s/problems 1 :val] := ::invalid)))
-
 
 (deftest terminology-service-test
   (with-system [{ts ::ts/extern ::keys [http-client]} config]

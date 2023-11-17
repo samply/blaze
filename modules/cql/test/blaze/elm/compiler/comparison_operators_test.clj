@@ -4,20 +4,18 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.comparison-operators]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as ctu]
-    [blaze.elm.literal :as elm]
-    [blaze.elm.literal-spec]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest testing]]))
-
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.comparison-operators]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.test-util :as ctu]
+   [blaze.elm.literal :as elm]
+   [blaze.elm.literal-spec]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest testing]]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -25,9 +23,7 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; 12.1. Equal
 ;;
@@ -265,7 +261,6 @@
 
   (ctu/testing-binary-form elm/equal))
 
-
 ;; 12.2. Equivalent
 ;;
 ;; The Equivalent operator returns true if the arguments are the same value, or
@@ -446,7 +441,6 @@
 
   (ctu/testing-binary-form elm/equivalent))
 
-
 ;; 12.3. Greater
 ;;
 ;; The Greater operator returns true if the first argument is greater than the
@@ -563,7 +557,6 @@
   (ctu/testing-binary-dynamic elm/greater)
 
   (ctu/testing-binary-form elm/greater))
-
 
 ;; 12.4. GreaterOrEqual
 ;;
@@ -693,7 +686,6 @@
   (ctu/testing-binary-dynamic elm/greater-or-equal)
 
   (ctu/testing-binary-form elm/greater-or-equal))
-
 
 ;; 12.5. Less
 ;;
@@ -828,7 +820,6 @@
 
   (ctu/testing-binary-form elm/less))
 
-
 ;; 12.6. LessOrEqual
 ;;
 ;; The LessOrEqual operator returns true if the first argument is less than or
@@ -950,7 +941,6 @@
   (ctu/testing-binary-dynamic elm/less-or-equal)
 
   (ctu/testing-binary-form elm/less-or-equal))
-
 
 ;; 12.7. NotEqual
 ;;

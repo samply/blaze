@@ -6,8 +6,7 @@
 
 
 (def observation
-  {:fhir/type :fhir/Observation
-   :id "DACG22233TWT7CK4"
+  {:fhir/type :fhir/Observation :id "DACG22233TWT7CK4"
    :meta #fhir/Meta
           {:versionId #fhir/id"481283"
            :lastUpdated #fhir/instant"2022-04-20T11:58:38.070Z"

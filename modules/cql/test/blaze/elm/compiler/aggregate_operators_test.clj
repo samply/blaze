@@ -4,20 +4,18 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.aggregate-operators]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as ctu]
-    [blaze.elm.literal :as elm]
-    [blaze.elm.literal-spec]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest testing]]))
-
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.aggregate-operators]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.test-util :as ctu]
+   [blaze.elm.literal :as elm]
+   [blaze.elm.literal-spec]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest testing]]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -25,9 +23,7 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; 21.1. AllTrue
 ;;
@@ -55,7 +51,6 @@
 
   (ctu/testing-unary-form elm/all-true))
 
-
 ;; 21.2. AnyTrue
 ;;
 ;; The AnyTrue operator returns true if any non-null element in source is true.
@@ -81,7 +76,6 @@
 
   (ctu/testing-unary-form elm/any-true))
 
-
 ;; 21.3. Avg
 ;;
 ;; The Avg operator returns the average of the non-null elements in source.
@@ -106,7 +100,6 @@
   (ctu/testing-unary-dynamic elm/avg)
 
   (ctu/testing-unary-form elm/avg))
-
 
 ;; 21.4. Count
 ;;
@@ -135,7 +128,6 @@
 
   (ctu/testing-unary-form elm/count))
 
-
 ;; 21.5. GeometricMean
 ;;
 ;; The GeometricMean operator returns the geometric mean of the non-null
@@ -162,7 +154,6 @@
 
   (ctu/testing-unary-form elm/geometric-mean))
 
-
 ;; 21.6. Product
 ;;
 ;; The Product operator returns the geometric product of non-null elements in
@@ -188,7 +179,6 @@
   (ctu/testing-unary-dynamic elm/product)
 
   (ctu/testing-unary-form elm/product))
-
 
 ;; 21.7. Max
 ;;
@@ -217,7 +207,6 @@
 
   (ctu/testing-unary-form elm/max))
 
-
 ;; 21.8. Median
 ;;
 ;; The Median operator returns the median of the elements in source.
@@ -243,7 +232,6 @@
   (ctu/testing-unary-dynamic elm/median)
 
   (ctu/testing-unary-form elm/median))
-
 
 ;; 21.9. Min
 ;;
@@ -272,7 +260,6 @@
 
   (ctu/testing-unary-form elm/min))
 
-
 ;; 21.10. Mode
 ;;
 ;; The Mode operator returns the statistical mode of the elements in source.
@@ -299,7 +286,6 @@
 
   (ctu/testing-unary-form elm/mode))
 
-
 ;; 21.11. PopulationVariance
 ;;
 ;; The PopulationVariance operator returns the statistical population variance
@@ -324,7 +310,6 @@
 
   (ctu/testing-unary-form elm/population-variance))
 
-
 ;; 21.12. PopulationStdDev
 ;;
 ;; The PopulationStdDev operator returns the statistical standard deviation of
@@ -348,7 +333,6 @@
   (ctu/testing-unary-dynamic elm/population-std-dev)
 
   (ctu/testing-unary-form elm/population-std-dev))
-
 
 ;; 21.13. Sum
 ;;
@@ -375,7 +359,6 @@
 
   (ctu/testing-unary-form elm/sum))
 
-
 ;; 21.14. StdDev
 ;;
 ;; The StdDev operator returns the statistical standard deviation of the
@@ -399,7 +382,6 @@
   (ctu/testing-unary-dynamic elm/std-dev)
 
   (ctu/testing-unary-form elm/std-dev))
-
 
 ;; 21.15. Variance
 ;;

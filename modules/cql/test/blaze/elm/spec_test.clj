@@ -1,21 +1,18 @@
 (ns blaze.elm.spec-test
   (:require
-    [blaze.elm.literal]
-    [blaze.elm.literal-spec]
-    [blaze.elm.spec]
-    [blaze.elm.util-spec]
-    [blaze.test-util :as tu]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest testing]]
-    [juxt.iota :refer [given]]))
-
+   [blaze.elm.literal]
+   [blaze.elm.literal-spec]
+   [blaze.elm.spec]
+   [blaze.elm.util-spec]
+   [blaze.test-util :as tu]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest testing]]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest literal-test
   (testing "valid"
@@ -25,7 +22,6 @@
   (testing "invalid"
     (given (s/explain-data :elm/expression {:type "Literal"})
       [::s/problems 0 :path 0] := :elm.spec.type/literal)))
-
 
 (deftest literal-integer-test
   (testing "valid"
@@ -42,7 +38,6 @@
     (given (s/explain-data :elm/integer #elm/boolean "true")
       [::s/problems 0 :path 0] := :valueType)))
 
-
 (deftest literal-decimal-test
   (testing "valid"
     (are [x] (s/valid? :elm/decimal x)
@@ -57,7 +52,6 @@
 
     (given (s/explain-data :elm/decimal #elm/boolean "true")
       [::s/problems 0 :path 0] := :valueType)))
-
 
 (deftest tuple-test
   (testing "valid"
@@ -77,7 +71,6 @@
 
     (given (s/explain-data :elm/expression {:type "Tuple" :element [{:name "foo"}]})
       [::s/problems 0 :pred] := `(fn [~'%] (contains? ~'% :value)))))
-
 
 (deftest instance-test
   (testing "valid"
@@ -104,7 +97,6 @@
     (given (s/explain-data :elm/expression {:type "Instance" :classType "foo"
                                             :element [{:name "foo"}]})
       [::s/problems 0 :pred] := `(fn [~'%] (contains? ~'% :value)))))
-
 
 (deftest query-test
   (testing "valid"

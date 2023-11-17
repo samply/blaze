@@ -1,48 +1,42 @@
 (ns blaze.fhir.spec
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.fhir.hash.spec]
-    [blaze.fhir.spec.impl :as impl]
-    [blaze.fhir.spec.spec]
-    [blaze.fhir.spec.type :as type]
-    [clojure.alpha.spec :as s2]
-    [clojure.spec.alpha :as s]
-    [clojure.string :as str]
-    [clojure.walk :as walk]
-    [cognitect.anomalies :as anom]
-    [jsonista.core :as j])
+   [blaze.anomaly :as ba]
+   [blaze.fhir.hash.spec]
+   [blaze.fhir.spec.impl :as impl]
+   [blaze.fhir.spec.spec]
+   [blaze.fhir.spec.type :as type]
+   [clojure.alpha.spec :as s2]
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [cognitect.anomalies :as anom]
+   [jsonista.core :as j])
   (:import
-    [com.fasterxml.jackson.core JsonFactory StreamReadConstraints]
-    [com.fasterxml.jackson.databind DeserializationFeature ObjectMapper]
-    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
-    [java.util.regex Pattern]))
-
+   [com.fasterxml.jackson.core JsonFactory StreamReadConstraints]
+   [com.fasterxml.jackson.databind DeserializationFeature ObjectMapper]
+   [com.fasterxml.jackson.dataformat.cbor CBORFactory]
+   [java.util.regex Pattern]))
 
 (set! *warn-on-reflection* true)
 
-
 (defn type-exists? [type]
   (some? (s2/get-spec (keyword "fhir" type))))
-
 
 (def ^:private stream-read-constraints
   (-> (StreamReadConstraints/builder)
       (.maxStringLength 5e7)
       (.build)))
 
-
 (def ^:private json-factory
   (-> (JsonFactory/builder)
       (.streamReadConstraints stream-read-constraints)
       (.build)))
-
 
 (def ^:private json-object-mapper
   (doto (ObjectMapper. json-factory)
     (.registerModule type/fhir-module)
     (.enable DeserializationFeature/USE_BIG_DECIMAL_FOR_FLOATS)
     (.enable DeserializationFeature/FAIL_ON_TRAILING_TOKENS)))
-
 
 (defn parse-json
   "Parses a JSON representation of a resource in `source` into an intermediate
@@ -57,17 +51,14 @@
   [source]
   (ba/try-all ::anom/incorrect (j/read-value source json-object-mapper)))
 
-
 (def ^:private cbor-factory
   (-> (CBORFactory/builder)
       (.streamReadConstraints stream-read-constraints)
       (.build)))
 
-
 (def ^:private cbor-object-mapper
   (doto (ObjectMapper. cbor-factory)
     (.registerModule type/fhir-module)))
-
 
 (defn parse-cbor
   "Parses a CBOR representation of a resource in `source` into an intermediate
@@ -80,7 +71,6 @@
   [source]
   (ba/try-all ::anom/incorrect (j/read-value source cbor-object-mapper)))
 
-
 (defn conform-cbor
   "Returns the internal representation of `x` parsed from CBOR.
 
@@ -89,19 +79,17 @@
   {:arglists '([x])}
   [{type :resourceType :as x}]
   (or
-    (when type
-      (when-let [spec (s2/get-spec (keyword "fhir.cbor" type))]
-        (let [resource (s2/conform spec x)]
-          (when-not (s2/invalid? resource)
-            resource))))
-    (ba/incorrect "Invalid intermediate representation of a resource." :x x)))
-
+   (when type
+     (when-let [spec (s2/get-spec (keyword "fhir.cbor" type))]
+       (let [resource (s2/conform spec x)]
+         (when-not (s2/invalid? resource)
+           resource))))
+   (ba/incorrect "Invalid intermediate representation of a resource." :x x)))
 
 (defn- transform-type-key [type-key modifier]
   (let [ns (namespace type-key)
         ns-parts (cons (str "fhir." modifier) (rest (str/split ns #"\.")))]
     (keyword (str/join "." ns-parts) (name type-key))))
-
 
 (defn unform-json
   "Returns the JSON representation of `x` as byte array."
@@ -111,7 +99,6 @@
       (j/write-value-as-bytes (s2/unform spec x) json-object-mapper)
       (throw (ex-info (format "Missing spec: %s" key) {:key key :x x})))))
 
-
 (defn unform-cbor
   "Returns the CBOR representation of `resource`."
   [resource]
@@ -119,7 +106,6 @@
     (if-let [spec (s2/get-spec key)]
       (j/write-value-as-bytes (s2/unform spec resource) cbor-object-mapper)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
-
 
 (defn unform-xml
   "Returns the XML representation of `resource`."
@@ -129,17 +115,14 @@
       (s2/unform spec resource)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
 
-
 (defn fhir-type
   "Returns the FHIR type of `x` as keyword with the namespace `fhir` or nil if
   `x` has no FHIR type."
   [x]
   (type/type x))
 
-
 (defn to-date-time [x]
   (type/-to-date-time x))
-
 
 (defn- fhir-path-data
   "Given a vector `path` and some `data` structure containing maps and vectors,
@@ -153,33 +136,30 @@
     (cons (first (keep-indexed #(when (= %2 elem) %1) (impl/ensure-coll data)))
           (when elems (fhir-path-data elems elem)))))
 
-
 (defn fhir-path
   "Given a vector `path` and a `resource`, returns the fhir-path as string for
   the given path."
   [path resource]
   (->> (fhir-path-data path resource)
        (reduce
-         (fn [list elem]
-           (if (keyword? elem)
-             (conj list (name elem))
-             (update list
-                     (dec (count list))
-                     str
-                     (format "[%d]" elem))))
-         [])
+        (fn [list elem]
+          (if (keyword? elem)
+            (conj list (name elem))
+            (update list
+                    (dec (count list))
+                    str
+                    (format "[%d]" elem))))
+        [])
        (str/join ".")))
-
 
 (defn- get-regex
   "Returns the first regex pattern in `form`."
   [form]
   (walk/postwalk
-    #(if (sequential? %)
-       (some identity %)
-       (when (= (type %) Pattern) %))
-    form))
-
+   #(if (sequential? %)
+      (some identity %)
+      (when (= (type %) Pattern) %))
+   form))
 
 (defn- fhir-data-type
   "Returns a dot-separated string of all namespace and name parts of `key`,
@@ -187,7 +167,6 @@
   [key]
   (->> (drop 2 (conj (str/split (namespace key) #"\.") (name key)))
        (str/join ".")))
-
 
 (defn- diagnostics-from-problem
   "Returns a diagnostics message from the given arguments `pred`, `val` and `via`.
@@ -209,12 +188,10 @@
            (format "Error on value `%s`. Expected type is `%s`."
                    val)))))
 
-
 (defn- issue [pred val via]
   {:fhir.issues/severity "error"
    :fhir.issues/code "invariant"
    :fhir.issues/diagnostics (diagnostics-from-problem pred val via)})
-
 
 (defn- generate-issue
   "Returns an issue of type map for the given arguments."
@@ -223,7 +200,6 @@
   (cond-> (issue pred val via)
     (:resourceType resource)
     (assoc :fhir.issues/expression (fhir-path in resource))))
-
 
 (defn explain-data-json
   "Given a resource, which includes :resourceType key, returns nil
@@ -238,9 +214,9 @@
      (if-let [spec (s2/get-spec (keyword "fhir.json" type))]
        (when-let [error (s2/explain-data spec resource)]
          (assoc
-           error
-           :fhir/issues
-           (mapv #(generate-issue resource %) (::s/problems error))))
+          error
+          :fhir/issues
+          (mapv #(generate-issue resource %) (::s/problems error))))
        {:fhir/issues
         [{:fhir.issues/severity "error"
           :fhir.issues/code "value"
@@ -250,7 +226,6 @@
         :fhir.issues/code "value"
         :fhir.issues/diagnostics
         "Given resource does not contain a `resourceType` property."}]})))
-
 
 (defn explain-data-xml
   "Given a resource as XML element, returns nil
@@ -265,9 +240,9 @@
      (if-let [spec (s2/get-spec (keyword "fhir.xml" (name tag)))]
        (when-let [error (s2/explain-data spec resource)]
          (assoc
-           error
-           :fhir/issues
-           (mapv #(generate-issue resource %) (::s/problems error))))
+          error
+          :fhir/issues
+          (mapv #(generate-issue resource %) (::s/problems error))))
        {:fhir/issues
         [{:fhir.issues/severity "error"
           :fhir.issues/code "value"
@@ -277,7 +252,6 @@
         :fhir.issues/code "value"
         :fhir.issues/diagnostics (format "Invalid resource element `%s`." resource)}]})))
 
-
 (defn primitive?
   "Primitive FHIR type like `id`."
   [spec]
@@ -285,14 +259,12 @@
        (= "fhir" (namespace spec))
        (Character/isLowerCase ^char (first (name spec)))))
 
-
 (defn primitive-val?
   "Returns true if `x` is a primitive FHIR value."
   [x]
   (when-let [fhir-type (fhir-type x)]
     (and (= "fhir" (namespace fhir-type))
          (Character/isLowerCase ^char (first (name fhir-type))))))
-
 
 (defn conform-json
   "Returns the internal representation of `x` parsed from JSON.
@@ -302,16 +274,15 @@
   {:arglists '([x])}
   [{type :resourceType :as x}]
   (or
-    (when type
-      (when-let [spec (s2/get-spec (keyword "fhir.json" type))]
-        (let [resource (s2/conform spec x)]
-          (when-not (s2/invalid? resource)
-            resource))))
-    (ba/incorrect
-      "Invalid JSON representation of a resource."
-      :x x
-      :fhir/issues (:fhir/issues (explain-data-json x)))))
-
+   (when type
+     (when-let [spec (s2/get-spec (keyword "fhir.json" type))]
+       (let [resource (s2/conform spec x)]
+         (when-not (s2/invalid? resource)
+           resource))))
+   (ba/incorrect
+    "Invalid JSON representation of a resource."
+    :x x
+    :fhir/issues (:fhir/issues (explain-data-json x)))))
 
 (defn conform-xml
   "Returns the internal representation of `x` parsed from XML.
@@ -321,12 +292,12 @@
   {:arglists '([x])}
   [{:keys [tag] :as x}]
   (or
-    (when tag
-      (when-let [spec (s2/get-spec (keyword "fhir.xml" (name tag)))]
-        (let [resource (s2/conform spec x)]
-          (when-not (s2/invalid? resource)
-            resource))))
-    (ba/incorrect
-      "Invalid XML representation of a resource."
-      :x x
-      :fhir/issues (:fhir/issues (explain-data-xml x)))))
+   (when tag
+     (when-let [spec (s2/get-spec (keyword "fhir.xml" (name tag)))]
+       (let [resource (s2/conform spec x)]
+         (when-not (s2/invalid? resource)
+           resource))))
+   (ba/incorrect
+    "Invalid XML representation of a resource."
+    :x x
+    :fhir/issues (:fhir/issues (explain-data-xml x)))))

@@ -1,25 +1,22 @@
 (ns blaze.cassandra.session-test
   (:require
-    [blaze.cassandra.session :as session]
-    [blaze.cassandra.session-spec]
-    [blaze.test-util :as tu]
-    [clojure.core.protocols :as p]
-    [clojure.datafy :as datafy]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest]]
-    [juxt.iota :refer [given]])
+   [blaze.cassandra.session :as session]
+   [blaze.cassandra.session-spec]
+   [blaze.test-util :as tu]
+   [clojure.core.protocols :as p]
+   [clojure.datafy :as datafy]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest]]
+   [juxt.iota :refer [given]])
   (:import
-    [com.datastax.oss.driver.api.core CqlIdentifier CqlSessionBuilder]
-    [com.datastax.oss.driver.api.core.metadata EndPoint]
-    [com.datastax.oss.driver.api.core.session SessionBuilder]))
-
+   [com.datastax.oss.driver.api.core CqlIdentifier CqlSessionBuilder]
+   [com.datastax.oss.driver.api.core.metadata EndPoint]
+   [com.datastax.oss.driver.api.core.session SessionBuilder]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defn- get-field
   "Access to private or protected field where `field-name` is a symbol or
@@ -28,7 +25,6 @@
   (-> (.getDeclaredField ^Class class (name field-name))
       (doto (.setAccessible true))
       (.get obj)))
-
 
 (extend-protocol p/Datafiable
   CqlSessionBuilder
@@ -45,7 +41,6 @@
   EndPoint
   (datafy [end-point]
     (str end-point)))
-
 
 (deftest session-test
   (given (datafy/datafy (session/session-builder {}))

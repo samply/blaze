@@ -1,22 +1,19 @@
 (ns blaze.db.impl.index.search-param-value-resource.impl-test
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.byte-string :as bs]
-    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
-    [blaze.db.impl.index.search-param-value-resource-spec]
-    [blaze.db.impl.index.search-param-value-resource.impl :as impl]
-    [blaze.test-util :as tu :refer [satisfies-prop]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest]]
-    [clojure.test.check.properties :as prop]))
-
+   [blaze.byte-buffer :as bb]
+   [blaze.byte-string :as bs]
+   [blaze.db.impl.index.search-param-value-resource :as sp-vr]
+   [blaze.db.impl.index.search-param-value-resource-spec]
+   [blaze.db.impl.index.search-param-value-resource.impl :as impl]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest]]
+   [clojure.test.check.properties :as prop]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest id-size-test
   (satisfies-prop 1000

@@ -4,19 +4,17 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as ctu]
-    [blaze.elm.literal :as elm]
-    [blaze.elm.literal-spec]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]))
-
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.test-util :as ctu]
+   [blaze.elm.literal :as elm]
+   [blaze.elm.literal-spec]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -24,9 +22,7 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; 14.1. Null
 ;;
@@ -34,7 +30,6 @@
 ;; need to cast this result, the operator is allowed to return a typed null.
 (deftest compile-null-test
   (is (nil? (c/compile {} {:type "Null"}))))
-
 
 ;; 14.2. Coalesce
 ;;
@@ -59,7 +54,6 @@
       [{:type "Null"}]
       [#elm/list []])))
 
-
 ;; 14.3. IsFalse
 ;;
 ;; The IsFalse operator determines whether or not its argument evaluates to
@@ -82,7 +76,6 @@
 
   (ctu/testing-unary-form elm/is-false))
 
-
 ;; 14.4. IsNull
 ;;
 ;; The IsNull operator determines whether or not its argument evaluates to null.
@@ -104,7 +97,6 @@
   (ctu/testing-unary-dynamic elm/is-null)
 
   (ctu/testing-unary-form elm/is-null))
-
 
 ;; 14.5. IsTrue
 ;;

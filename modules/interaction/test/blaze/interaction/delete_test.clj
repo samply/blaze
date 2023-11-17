@@ -3,25 +3,22 @@
 
   https://www.hl7.org/fhir/http.html#delete"
   (:require
-    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-    [blaze.db.spec :refer [node?]]
-    [blaze.interaction.delete]
-    [blaze.log]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [integrant.core :as ig]
-    [reitit.core :as reitit]
-    [taoensso.timbre :as log]))
-
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.spec :refer [node?]]
+   [blaze.interaction.delete]
+   [blaze.log]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [integrant.core :as ig]
+   [reitit.core :as reitit]
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest init-test
   (testing "nil config"
@@ -43,14 +40,12 @@
       [:explain ::s/problems 0 :pred] := `node?
       [:explain ::s/problems 0 :val] := ::invalid)))
 
-
 (def config
   (assoc api-stub/mem-node-config
-    :blaze.interaction/delete
-    {:node (ig/ref :blaze.db/node)
-     :executor (ig/ref :blaze.test/executor)}
-    :blaze.test/executor {}))
-
+         :blaze.interaction/delete
+         {:node (ig/ref :blaze.db/node)
+          :executor (ig/ref :blaze.test/executor)}
+         :blaze.test/executor {}))
 
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
@@ -59,14 +54,13 @@
        (let [~handler-binding handler#]
          ~@body))))
 
-
 (deftest handler-test
   (testing "Returns No Content on non-existing resource"
     (with-handler [handler]
       (let [{:keys [status headers body]}
             @(handler
-               {:path-params {:id "0"}
-                ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+              {:path-params {:id "0"}
+               ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
 
         (is (= 204 status))
 
@@ -79,15 +73,14 @@
 
         (is (nil? body)))))
 
-
   (testing "Returns No Content on successful deletion"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [{:keys [status headers body]}
             @(handler
-               {:path-params {:id "0"}
-                ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+              {:path-params {:id "0"}
+               ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
 
         (is (= 204 status))
 
@@ -100,7 +93,6 @@
 
         (is (nil? body)))))
 
-
   (testing "Returns No Content on already deleted resource"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
@@ -108,8 +100,8 @@
 
       (let [{:keys [status headers body]}
             @(handler
-               {:path-params {:id "0"}
-                ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
+              {:path-params {:id "0"}
+               ::reitit/match {:data {:fhir.resource/type "Patient"}}})]
 
         (is (= 204 status))
 

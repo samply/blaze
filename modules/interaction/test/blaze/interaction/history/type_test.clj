@@ -5,56 +5,49 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.async.comp :as ac]
-    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-    [blaze.db.resource-store :as rs]
-    [blaze.interaction.history.type]
-    [blaze.interaction.history.util-spec]
-    [blaze.interaction.test-util :refer [wrap-error]]
-    [blaze.middleware.fhir.db :refer [wrap-db]]
-    [blaze.middleware.fhir.db-spec]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [integrant.core :as ig]
-    [java-time.api :as time]
-    [juxt.iota :refer [given]]
-    [reitit.core :as reitit]
-    [taoensso.timbre :as log])
+   [blaze.async.comp :as ac]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.resource-store :as rs]
+   [blaze.interaction.history.type]
+   [blaze.interaction.history.util-spec]
+   [blaze.interaction.test-util :refer [wrap-error]]
+   [blaze.middleware.fhir.db :refer [wrap-db]]
+   [blaze.middleware.fhir.db-spec]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [integrant.core :as ig]
+   [java-time.api :as time]
+   [juxt.iota :refer [given]]
+   [reitit.core :as reitit]
+   [taoensso.timbre :as log])
   (:import
-    [java.time Instant]))
-
+   [java.time Instant]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def base-url "base-url-144600")
 (def context-path "/context-path-182518")
 
-
 (def router
   (reitit/router
-    [["/Patient" {:name :Patient/type}]]
-    {:syntax :bracket
-     :path context-path}))
-
+   [["/Patient" {:name :Patient/type}]]
+   {:syntax :bracket
+    :path context-path}))
 
 (def match
   (reitit/map->Match
-    {:data
-     {:blaze/base-url ""
-      :fhir.resource/type "Patient"}
-     :path (str context-path "/Patient/_history")}))
-
+   {:data
+    {:blaze/base-url ""
+     :fhir.resource/type "Patient"}
+    :path (str context-path "/Patient/_history")}))
 
 (defn- link-url [body link-relation]
   (->> body :link (filter (comp #{link-relation} :relation)) first :url))
-
 
 (deftest init-test
   (testing "nil config"
@@ -78,24 +71,21 @@
       [:explain ::s/problems 1 :pred] := `time/clock?
       [:explain ::s/problems 1 :val] := ::invalid)))
 
-
 (def config
   (assoc api-stub/mem-node-config
-    :blaze.interaction.history/type
-    {:node (ig/ref :blaze.db/node)
-     :clock (ig/ref :blaze.test/fixed-clock)
-     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-    :blaze.test/fixed-rng-fn {}))
-
+         :blaze.interaction.history/type
+         {:node (ig/ref :blaze.db/node)
+          :clock (ig/ref :blaze.test/fixed-clock)
+          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+         :blaze.test/fixed-rng-fn {}))
 
 (defn wrap-defaults [handler]
   (fn [request]
     (handler
-      (assoc request
-        :blaze/base-url base-url
-        ::reitit/router router
-        ::reitit/match match))))
-
+     (assoc request
+            :blaze/base-url base-url
+            ::reitit/router router
+            ::reitit/match match))))
 
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
@@ -105,7 +95,6 @@
        (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# 100)
                                   wrap-error)]
          ~@body))))
-
 
 (deftest handler-test
   (testing "with empty node"

@@ -1,32 +1,31 @@
 (ns blaze.db.impl.search-param-spec
   (:require
-    [blaze.async.comp :as ac]
-    [blaze.byte-string-spec]
-    [blaze.coll.spec :as cs]
-    [blaze.db.impl.batch-db.spec]
-    [blaze.db.impl.codec-spec]
-    [blaze.db.impl.index.compartment.search-param-value-resource-spec]
-    [blaze.db.impl.index.resource-search-param-value-spec]
-    [blaze.db.impl.index.search-param-value-resource-spec]
-    [blaze.db.impl.iterators-spec]
-    [blaze.db.impl.search-param :as search-param]
-    [blaze.db.impl.search-param.composite-spec]
-    [blaze.db.impl.search-param.date-spec]
-    [blaze.db.impl.search-param.has-spec]
-    [blaze.db.impl.search-param.list-spec]
-    [blaze.db.impl.search-param.quantity-spec]
-    [blaze.db.impl.search-param.spec]
-    [blaze.db.impl.search-param.string-spec]
-    [blaze.db.impl.search-param.token-spec]
-    [blaze.db.impl.search-param.util-spec]
-    [blaze.db.kv-spec]
-    [blaze.db.search-param-registry-spec]
-    [blaze.fhir-path-spec]
-    [blaze.fhir.spec]
-    [blaze.spec]
-    [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]))
-
+   [blaze.async.comp :as ac]
+   [blaze.byte-string-spec]
+   [blaze.coll.spec :as cs]
+   [blaze.db.impl.batch-db.spec]
+   [blaze.db.impl.codec-spec]
+   [blaze.db.impl.index.compartment.search-param-value-resource-spec]
+   [blaze.db.impl.index.resource-search-param-value-spec]
+   [blaze.db.impl.index.search-param-value-resource-spec]
+   [blaze.db.impl.iterators-spec]
+   [blaze.db.impl.search-param :as search-param]
+   [blaze.db.impl.search-param.composite-spec]
+   [blaze.db.impl.search-param.date-spec]
+   [blaze.db.impl.search-param.has-spec]
+   [blaze.db.impl.search-param.list-spec]
+   [blaze.db.impl.search-param.quantity-spec]
+   [blaze.db.impl.search-param.spec]
+   [blaze.db.impl.search-param.string-spec]
+   [blaze.db.impl.search-param.token-spec]
+   [blaze.db.impl.search-param.util-spec]
+   [blaze.db.kv-spec]
+   [blaze.db.search-param-registry-spec]
+   [blaze.fhir-path-spec]
+   [blaze.fhir.spec]
+   [blaze.spec]
+   [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]))
 
 (s/fdef search-param/compile-values
   :args (s/cat :search-param :blaze.db/search-param
@@ -34,7 +33,6 @@
                :values (s/coll-of some? :min-count 1))
   :ret (s/or :compiled-values (s/coll-of some? :min-count 1)
              :anomaly ::anom/anomaly))
-
 
 (s/fdef search-param/resource-handles
   :args (s/cat :search-param :blaze.db/search-param
@@ -45,7 +43,6 @@
                :start-id (s/? :blaze.db/id-byte-string))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
-
 (s/fdef search-param/sorted-resource-handles
   :args (s/cat :search-param :blaze.db/search-param
                :context :blaze.db.impl.batch-db/context
@@ -53,7 +50,6 @@
                :direction :blaze.db.query/sort-direction
                :start-id (s/? :blaze.db/id-byte-string))
   :ret (cs/coll-of :blaze.db/resource-handle))
-
 
 (s/fdef search-param/count-resource-handles
   :args (s/cat :search-param :blaze.db/search-param
@@ -63,7 +59,6 @@
                :values (s/coll-of some? :min-count 1))
   :ret ac/completable-future?)
 
-
 (s/fdef search-param/compartment-resource-handles
   :args (s/cat :search-param :blaze.db/search-param
                :context :blaze.db.impl.batch-db/context
@@ -71,7 +66,6 @@
                :tid :blaze.db/tid
                :compiled-values (s/coll-of some? :min-count 1))
   :ret (cs/coll-of :blaze.db/resource-handle))
-
 
 (s/fdef search-param/matches?
   :args (s/cat :search-param :blaze.db/search-param
@@ -81,12 +75,10 @@
                :compiled-values (s/coll-of some? :min-count 1))
   :ret boolean?)
 
-
 (s/fdef search-param/compartment-ids
   :args (s/cat :search-param :blaze.db/search-param
                :resource :blaze/resource)
   :ret (s/or :ids (s/coll-of :blaze.resource/id) :anomaly ::anom/anomaly))
-
 
 (s/fdef search-param/index-entries
   :args (s/cat :search-param :blaze.db/search-param

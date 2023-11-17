@@ -3,25 +3,22 @@
 
   It uses sorted maps with byte array keys and values."
   (:require
-    [blaze.anomaly :as ba :refer [throw-anom]]
-    [blaze.byte-buffer :as bb]
-    [blaze.db.kv :as kv]
-    [blaze.db.kv.spec]
-    [clojure.spec.alpha :as s]
-    [integrant.core :as ig]
-    [taoensso.timbre :as log])
+   [blaze.anomaly :as ba :refer [throw-anom]]
+   [blaze.byte-buffer :as bb]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv.spec]
+   [clojure.spec.alpha :as s]
+   [integrant.core :as ig]
+   [taoensso.timbre :as log])
   (:import
-    [java.lang AutoCloseable]
-    [java.util Arrays Comparator]))
-
+   [java.lang AutoCloseable]
+   [java.util Arrays Comparator]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
-
 (defn- copy [^bytes bs]
   (Arrays/copyOf bs (alength bs)))
-
 
 (defn- put
   "Does the same as RockDB does when filling a byte buffer."
@@ -34,24 +31,19 @@
     (bb/set-limit! buf (unchecked-add-int pos length))
     (alength ^bytes bs)))
 
-
 (defn- prev [db {x :first}]
   (let [[x & xs] (rsubseq db < (key x))]
     {:first x :rest xs}))
 
-
 (def ^:private iterator-invalid-anom
   (ba/fault "The iterator is invalid."))
-
 
 (def ^:private iterator-closed-anom
   (ba/fault "The iterator is closed."))
 
-
 (defn- check-valid [iter]
   (when-not (kv/-valid iter)
     (throw-anom iterator-invalid-anom)))
-
 
 (deftype MemKvIterator [db cursor ^:volatile-mutable closed?]
   kv/KvIterator
@@ -114,10 +106,8 @@
   (close [_]
     (set! closed? true)))
 
-
 (defn- column-family-not-found-msg [column-family]
   (format "column family `%s` not found" (name column-family)))
-
 
 (deftype MemKvSnapshot [db]
   kv/KvSnapshot
@@ -139,42 +129,37 @@
   AutoCloseable
   (close [_]))
 
-
 (defn- assoc-copy-cf [m column-family k v]
   (when (nil? m)
     (throw-anom (ba/not-found (column-family-not-found-msg column-family))))
   (assoc m (copy k) (copy v)))
 
-
 (defn- assoc-copy [m k v]
   (assoc m (copy k) (copy v)))
 
-
 (defn- put-entries [db entries]
   (reduce
-    (fn [db [column-family k v]]
-      (if (keyword? column-family)
-        (update db column-family assoc-copy-cf column-family k v)
-        (update db :default assoc-copy column-family k)))
-    db
-    entries))
-
+   (fn [db [column-family k v]]
+     (if (keyword? column-family)
+       (update db column-family assoc-copy-cf column-family k v)
+       (update db :default assoc-copy column-family k)))
+   db
+   entries))
 
 (defn- write-entries [db entries]
   (reduce
-    (fn [db [op column-family k v]]
-      (if (keyword? column-family)
-        (case op
-          :put (update db column-family assoc-copy-cf column-family k v)
-          :delete (update db column-family dissoc k)
-          (throw-anom (ba/unsupported (str (name op) " is not supported"))))
-        (case op
-          :put (update db :default assoc-copy column-family k)
-          :delete (update db :default dissoc column-family)
-          (throw-anom (ba/unsupported (str (name op) " is not supported"))))))
-    db
-    entries))
-
+   (fn [db [op column-family k v]]
+     (if (keyword? column-family)
+       (case op
+         :put (update db column-family assoc-copy-cf column-family k v)
+         :delete (update db column-family dissoc k)
+         (throw-anom (ba/unsupported (str (name op) " is not supported"))))
+       (case op
+         :put (update db :default assoc-copy column-family k)
+         :delete (update db :default dissoc column-family)
+         (throw-anom (ba/unsupported (str (name op) " is not supported"))))))
+   db
+   entries))
 
 (deftype MemKvStore [db]
   kv/KvStore
@@ -190,12 +175,12 @@
   (-multi-get [_ ks]
     (with-open [snapshot ^AutoCloseable (->MemKvSnapshot @db)]
       (reduce
-        (fn [r k]
-          (if-let [v (kv/snapshot-get snapshot k)]
-            (assoc r k v)
-            r))
-        {}
-        ks)))
+       (fn [r k]
+         (if-let [v (kv/snapshot-get snapshot k)]
+           (assoc r k v)
+           r))
+       {}
+       ks)))
 
   (-put [_ entries]
     (log/trace "put" (count entries) "entries")
@@ -214,30 +199,24 @@
     (swap! db write-entries entries)
     nil))
 
-
 (def ^:private bytes-cmp
   (reify Comparator
     (compare [_ a b]
       (Arrays/compareUnsigned ^bytes a ^bytes b))))
-
 
 (def ^:private reverse-bytes-cmp
   (reify Comparator
     (compare [_ a b]
       (Arrays/compareUnsigned ^bytes b ^bytes a))))
 
-
 (defn- init-column-family [[name {:keys [reverse-comparator?]}]]
   [name (sorted-map-by (if reverse-comparator? reverse-bytes-cmp bytes-cmp))])
-
 
 (defn- init-db [column-families]
   (into {} (map init-column-family) column-families))
 
-
 (defmethod ig/pre-init-spec ::kv/mem [_]
   (s/keys :req-un [::kv/column-families]))
-
 
 (defmethod ig/init-key ::kv/mem
   [_ {:keys [column-families init-data]}]

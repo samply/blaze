@@ -1,24 +1,21 @@
 (ns blaze.db.impl.search-param.list
   "https://www.hl7.org/fhir/search.html#list"
   (:require
-    [blaze.async.comp :as ac]
-    [blaze.coll.core :as coll]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
-    [blaze.db.impl.macros :refer [with-open-coll]]
-    [blaze.db.impl.protocols :as p]
-    [blaze.db.impl.search-param.special :as special]
-    [blaze.db.impl.search-param.util :as u]
-    [blaze.db.kv :as kv]
-    [blaze.fhir.spec]))
-
+   [blaze.async.comp :as ac]
+   [blaze.coll.core :as coll]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
+   [blaze.db.impl.macros :refer [with-open-coll]]
+   [blaze.db.impl.protocols :as p]
+   [blaze.db.impl.search-param.special :as special]
+   [blaze.db.impl.search-param.util :as u]
+   [blaze.db.kv :as kv]
+   [blaze.fhir.spec]))
 
 (set! *warn-on-reflection* true)
 
-
 (def ^:private list-tid (codec/tid "List"))
 (def ^:private item-c-hash (codec/c-hash "item"))
-
 
 (defn- referenced-resource-handles
   "Returns a reducible collection of resource handles of type `tid` that are
@@ -29,18 +26,17 @@
      [context list-id list-hash tid start-id])}
   ([{:keys [snapshot] :as context} list-id list-hash tid]
    (coll/eduction
-     (u/reference-resource-handle-mapper context)
-     (with-open-coll [rsvi (kv/new-iterator snapshot :resource-value-index)]
-       (r-sp-v/prefix-keys! rsvi list-tid list-id list-hash item-c-hash
-                            (codec/tid-byte-string tid)))))
+    (u/reference-resource-handle-mapper context)
+    (with-open-coll [rsvi (kv/new-iterator snapshot :resource-value-index)]
+      (r-sp-v/prefix-keys! rsvi list-tid list-id list-hash item-c-hash
+                           (codec/tid-byte-string tid)))))
   ([{:keys [snapshot] :as context} list-id list-hash tid start-id]
    (coll/eduction
-     (u/reference-resource-handle-mapper context)
-     (with-open-coll [rsvi (kv/new-iterator snapshot :resource-value-index)]
-       (r-sp-v/prefix-keys! rsvi list-tid list-id list-hash item-c-hash
-                            (codec/tid-byte-string tid)
-                            (codec/tid-id tid start-id))))))
-
+    (u/reference-resource-handle-mapper context)
+    (with-open-coll [rsvi (kv/new-iterator snapshot :resource-value-index)]
+      (r-sp-v/prefix-keys! rsvi list-tid list-id list-hash item-c-hash
+                           (codec/tid-byte-string tid)
+                           (codec/tid-id tid start-id))))))
 
 (defrecord SearchParamList [name type code]
   p/SearchParam
@@ -50,22 +46,21 @@
   (-resource-handles [_ context tid _ list-id]
     (let [{:keys [resource-handle]} context]
       (when-let [{:keys [hash]} (u/non-deleted-resource-handle
-                                  resource-handle list-tid list-id)]
+                                 resource-handle list-tid list-id)]
         (referenced-resource-handles context list-id hash tid))))
 
   (-resource-handles [_ context tid _ list-id start-id]
     (let [{:keys [resource-handle]} context]
       (when-let [{:keys [hash]} (u/non-deleted-resource-handle
-                                  resource-handle list-tid list-id)]
+                                 resource-handle list-tid list-id)]
         (referenced-resource-handles context list-id hash tid start-id))))
 
   (-count-resource-handles [search-param context tid modifier list-id]
     (ac/completed-future
-      (count (p/-resource-handles search-param context tid modifier list-id))))
+     (count (p/-resource-handles search-param context tid modifier list-id))))
 
   (-index-values [_ _ _]
     []))
-
 
 (defmethod special/special-search-param "_list"
   [_ _]

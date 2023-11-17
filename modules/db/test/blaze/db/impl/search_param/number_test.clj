@@ -1,91 +1,92 @@
 (ns blaze.db.impl.search-param.number-test
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.byte-string-spec]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
-    [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
-    [blaze.db.impl.search-param :as search-param]
-    [blaze.db.impl.search-param-spec]
-    [blaze.db.impl.search-param.number :as spn]
-    [blaze.db.impl.search-param.util-spec]
-    [blaze.db.search-param-registry :as sr]
-    [blaze.fhir-path :as fhir-path]
-    [blaze.fhir.hash :as hash]
-    [blaze.fhir.hash-spec]
-    [blaze.fhir.spec.type]
-    [blaze.fhir.test-util :refer [structure-definition-repo]]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log]))
-
+   [blaze.byte-buffer :as bb]
+   [blaze.byte-string-spec]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
+   [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
+   [blaze.db.impl.search-param :as search-param]
+   [blaze.db.impl.search-param-spec]
+   [blaze.db.impl.search-param.number :as spn]
+   [blaze.db.impl.search-param.util-spec]
+   [blaze.db.search-param-registry :as sr]
+   [blaze.fhir-path :as fhir-path]
+   [blaze.fhir.hash :as hash]
+   [blaze.fhir.hash-spec]
+   [blaze.fhir.spec.type]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defn probability-param [search-param-registry]
   (sr/get search-param-registry "probability" "RiskAssessment"))
-
 
 (defn compile-number-value [search-param-registry value]
   (-> (probability-param search-param-registry)
       (search-param/compile-values nil [value])
       (first)))
 
-
 (def config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
-
 (deftest compile-value-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "eq"
-      (are [value lower-bound upper-bound]
-        (given (compile-number-value search-param-registry value)
-          :op := :eq
-          :lower-bound := lower-bound
-          :upper-bound := upper-bound)
+      (given (compile-number-value search-param-registry "23.4")
+        :op := :eq
+        :lower-bound := (codec/number 23.35M)
+        :upper-bound := (codec/number 23.45M))
 
-        "23.4" (codec/number 23.35M) (codec/number 23.45M)
-        "0.1" (codec/number 0.05M) (codec/number 0.15M)
-        "0" (codec/number -0.5M) (codec/number 0.5M)
-        "0.0" (codec/number -0.05M) (codec/number 0.05M)))
+      (given (compile-number-value search-param-registry "0.1")
+        :op := :eq
+        :lower-bound := (codec/number 0.05M)
+        :upper-bound := (codec/number 0.15M))
+
+      (given (compile-number-value search-param-registry "0")
+        :op := :eq
+        :lower-bound := (codec/number -0.5M)
+        :upper-bound := (codec/number 0.5M))
+
+      (given (compile-number-value search-param-registry "0.0")
+        :op := :eq
+        :lower-bound := (codec/number -0.05M)
+        :upper-bound := (codec/number 0.05M)))
 
     (testing "gt lt ge le"
       (doseq [op [:gt :lt :ge :le]]
-        (are [value exact-value]
-          (given (compile-number-value search-param-registry value)
-            :op := op
-            :exact-value := exact-value)
+        (given (compile-number-value search-param-registry (str (name op) "23"))
+          :op := op
+          :exact-value := (codec/number 23M))
 
-          (str (name op) "23") (codec/number 23M)
-          (str (name op) "0.1") (codec/number 0.1M))))
+        (given (compile-number-value search-param-registry (str (name op) "0.1"))
+          :op := op
+          :exact-value := (codec/number 0.1M))))
 
     (testing "invalid decimal value"
       (given (search-param/compile-values
-               (probability-param search-param-registry) nil ["a"])
+              (probability-param search-param-registry) nil ["a"])
         ::anom/category := ::anom/incorrect
         ::anom/message := "Invalid decimal value `a` in search parameter `probability`."))
 
     (testing "unsupported prefix"
       (given (search-param/compile-values
-               (probability-param search-param-registry) nil ["ne23"])
+              (probability-param search-param-registry) nil ["ne23"])
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported prefix `ne` in search parameter `probability`."))))
 
-
 (defn- index-entries [search-param linked-compartments hash resource]
   (vec (search-param/index-entries search-param linked-compartments hash resource)))
-
 
 (deftest index-entries-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
@@ -99,8 +100,8 @@
             hash (hash/generate risk-assessment)
             [[_ k0] [_ k1]]
             (index-entries
-              (sr/get search-param-registry "probability" "RiskAssessment")
-              [] hash risk-assessment)]
+             (sr/get search-param-registry "probability" "RiskAssessment")
+             [] hash risk-assessment)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -128,8 +129,8 @@
             hash (hash/generate risk-assessment)
             [[_ k0] [_ k1]]
             (index-entries
-              (sr/get search-param-registry "variant-start" "MolecularSequence")
-              [] hash risk-assessment)]
+             (sr/get search-param-registry "variant-start" "MolecularSequence")
+             [] hash risk-assessment)]
 
         (testing "first SearchParamValueResource key is about `value`"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -153,8 +154,8 @@
 
         (with-redefs [fhir-path/eval (fn [_ _ _] {::anom/category ::anom/fault})]
           (given (search-param/index-entries
-                   (sr/get search-param-registry "probability" "RiskAssessment")
-                   [] hash resource)
+                  (sr/get search-param-registry "probability" "RiskAssessment")
+                  [] hash resource)
             ::anom/category := ::anom/fault)))))
 
   (testing "skip warning"

@@ -4,9 +4,8 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.protocols :as p]))
-
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.protocols :as p]))
 
 ;; 15.1. Case
 (defn- comparand-case-op [comparand items else]
@@ -43,15 +42,14 @@
   (let [comparand (some->> comparand (core/compile* context))
         items
         (map
-          (fn [{:keys [when then]}]
-            [(core/compile* context when)
-             (core/compile* context then)])
-          items)
+         (fn [{:keys [when then]}]
+           [(core/compile* context when)
+            (core/compile* context then)])
+         items)
         else (core/compile* context else)]
     (if comparand
       (comparand-case-op comparand items else)
       (multi-conditional-case-op items else))))
-
 
 ;; 15.2. If
 (defn- if-op [condition then else]
@@ -66,7 +64,6 @@
     (-form [_]
       (list 'if (core/-form condition) (core/-form then)
             (core/-form else)))))
-
 
 (defmethod core/compile* :elm.compiler.type/if
   [context {:keys [condition then else]}]

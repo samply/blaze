@@ -1,13 +1,11 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.population
   (:require
-    [blaze.anomaly :refer [when-ok]]
-    [blaze.fhir.operation.evaluate-measure.cql :as cql]
-    [blaze.fhir.operation.evaluate-measure.measure.util :as u]))
-
+   [blaze.anomaly :refer [when-ok]]
+   [blaze.fhir.operation.evaluate-measure.cql :as cql]
+   [blaze.fhir.operation.evaluate-measure.measure.util :as u]))
 
 (defn- population-path [group-idx population-idx]
   (format "Measure.group[%d].population[%d]" group-idx population-idx))
-
 
 (defn- evaluate-expression
   [{:keys [subject-handle subject-type return-handles? population-basis]
@@ -23,7 +21,6 @@
       (if return-handles? [] 0))
     (cql/evaluate-expression context expression-name subject-type
                              (or population-basis :boolean))))
-
 
 (defn evaluate
   "Returns a map of :result, :handles, :luids and :tx-ops."

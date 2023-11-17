@@ -1,57 +1,52 @@
 (ns blaze.db.resource-store.cassandra-test
   (:refer-clojure :exclude [hash])
   (:require
-    [blaze.async.comp :as ac]
-    [blaze.byte-buffer :as bb]
-    [blaze.cassandra :as cass]
-    [blaze.cassandra-spec]
-    [blaze.db.resource-store :as rs]
-    [blaze.db.resource-store.cassandra]
-    [blaze.db.resource-store.cassandra.statement :as statement]
-    [blaze.fhir.hash :as hash]
-    [blaze.fhir.hash-spec]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.test-util :refer [given-failed-future]]
-    [blaze.log]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.string :as str]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [integrant.core :as ig]
-    [jsonista.core :as j]
-    [taoensso.timbre :as log])
+   [blaze.async.comp :as ac]
+   [blaze.byte-buffer :as bb]
+   [blaze.cassandra :as cass]
+   [blaze.cassandra-spec]
+   [blaze.db.resource-store :as rs]
+   [blaze.db.resource-store.cassandra]
+   [blaze.db.resource-store.cassandra.statement :as statement]
+   [blaze.fhir.hash :as hash]
+   [blaze.fhir.hash-spec]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.test-util :refer [given-failed-future]]
+   [blaze.log]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
+   [jsonista.core :as j]
+   [taoensso.timbre :as log])
   (:import
-    [com.datastax.oss.driver.api.core
-     ConsistencyLevel CqlSession DriverTimeoutException]
-    [com.datastax.oss.driver.api.core.cql
-     AsyncResultSet BoundStatement PreparedStatement Row SimpleStatement Statement]
-    [com.datastax.oss.driver.api.core.metadata EndPoint Node]
-    [com.datastax.oss.driver.api.core.servererrors WriteTimeoutException WriteType]
-    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
-    [java.net InetSocketAddress]
-    [java.nio ByteBuffer]
-    #_{:clj-kondo/ignore [:unused-import]}
-    [java.util.concurrent CompletionStage]))
-
+   [com.datastax.oss.driver.api.core
+    ConsistencyLevel CqlSession DriverTimeoutException]
+   [com.datastax.oss.driver.api.core.cql
+    AsyncResultSet BoundStatement PreparedStatement Row SimpleStatement Statement]
+   [com.datastax.oss.driver.api.core.metadata EndPoint Node]
+   [com.datastax.oss.driver.api.core.servererrors WriteTimeoutException WriteType]
+   [com.fasterxml.jackson.dataformat.cbor CBORFactory]
+   [java.net InetSocketAddress]
+   [java.nio ByteBuffer]
+   #_{:clj-kondo/ignore [:unused-import]}
+   [java.util.concurrent CompletionStage]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defn hash [s]
   (assert (= 1 (count s)))
   (hash/from-hex (str/join (repeat 64 s))))
 
-
 (def bound-get-statement (reify BoundStatement))
-
 
 (defn row-with [idx bytes]
   (reify Row
@@ -59,12 +54,10 @@
       (assert (= idx i))
       (bb/wrap bytes))))
 
-
 (defn resultset-with [row]
   (reify AsyncResultSet
     (one [_]
       row)))
-
 
 (defn prepared-statement-with [bind-values bound-statement]
   (reify PreparedStatement
@@ -72,12 +65,10 @@
       (assert (= bind-values (vec values)))
       bound-statement)))
 
-
 (defn invalid-content
   "`0xA1` is the start of a map with one entry."
   []
   (byte-array [0xA1]))
-
 
 (deftest init-test
   (testing "nil config"
@@ -94,12 +85,10 @@
       [:explain ::s/problems 0 :path] := [:contact-points]
       [:explain ::s/problems 0 :val] := ::invalid)))
 
-
 (def cbor-object-mapper
   (j/object-mapper
-    {:factory (CBORFactory.)
-     :decode-key-fn true}))
-
+   {:factory (CBORFactory.)
+    :decode-key-fn true}))
 
 (deftest get-test
   (testing "parsing error"
@@ -266,7 +255,6 @@
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (is (= content @(rs/get store hash))))))))
 
-
 (deftest multi-get-test
   (testing "not found"
     (let [hash (hash "0")
@@ -312,21 +300,17 @@
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
           (is (= {hash content} @(rs/multi-get store [hash]))))))))
 
-
 (def bound-put-statement (reify BoundStatement))
-
 
 (defn endpoint [host port]
   (reify EndPoint
     (resolve [_]
       (InetSocketAddress. ^String host (int port)))))
 
-
 (defn node [endpoint]
   (reify Node
     (getEndPoint [_]
       endpoint)))
-
 
 (deftest put-test
   (testing "execute error"
@@ -341,8 +325,8 @@
                 (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 (prepared-statement-with
-                  [(str hash) encoded-resource]
-                  bound-put-statement)
+                 [(str hash) encoded-resource]
+                 bound-put-statement)
                 :else
                 (throw (Error.))))
             (^CompletionStage executeAsync [_ ^Statement _]
@@ -366,8 +350,8 @@
                 (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 (prepared-statement-with
-                  [(str hash) encoded-resource]
-                  bound-put-statement)
+                 [(str hash) encoded-resource]
+                 bound-put-statement)
                 :else
                 (throw (Error.))))
             (^CompletionStage executeAsync [_ ^Statement _]
@@ -395,8 +379,8 @@
                 (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 (prepared-statement-with
-                  [(str hash) encoded-resource]
-                  bound-put-statement)
+                 [(str hash) encoded-resource]
+                 bound-put-statement)
                 :else
                 (throw (Error.))))
             (^CompletionStage executeAsync [_ ^Statement _]
@@ -424,8 +408,8 @@
                 (prepared-statement-with [(str hash)] bound-get-statement)
                 (= (statement/put-statement "TWO") statement)
                 (prepared-statement-with
-                  [(str hash) encoded-resource]
-                  bound-put-statement)
+                 [(str hash) encoded-resource]
+                 bound-put-statement)
                 :else
                 (throw (Error.))))
             (^CompletionStage executeAsync [_ ^Statement _]

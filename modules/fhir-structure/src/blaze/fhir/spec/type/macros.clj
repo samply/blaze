@@ -1,39 +1,33 @@
 (ns blaze.fhir.spec.type.macros
   (:require
-    [blaze.fhir.spec.impl.intern :as intern]
-    [blaze.fhir.spec.type.json :as json]
-    [blaze.fhir.spec.type.protocols :as p]
-    [blaze.fhir.spec.type.string-util :as su]
-    [blaze.fhir.spec.type.system :as system]
-    [clojure.data.xml.node :as xml-node]
-    [clojure.string :as str])
+   [blaze.fhir.spec.impl.intern :as intern]
+   [blaze.fhir.spec.type.json :as json]
+   [blaze.fhir.spec.type.protocols :as p]
+   [blaze.fhir.spec.type.string-util :as su]
+   [blaze.fhir.spec.type.system :as system]
+   [clojure.data.xml.node :as xml-node]
+   [clojure.string :as str])
   (:import
-    [com.fasterxml.jackson.core JsonGenerator SerializableString]
-    [com.fasterxml.jackson.core.io JsonStringEncoder]
-    [com.google.common.hash PrimitiveSink]
-    [java.io Writer]
-    [java.nio.charset StandardCharsets]
-    [java.util Arrays]))
-
+   [com.fasterxml.jackson.core JsonGenerator SerializableString]
+   [com.fasterxml.jackson.core.io JsonStringEncoder]
+   [com.google.common.hash PrimitiveSink]
+   [java.io Writer]
+   [java.nio.charset StandardCharsets]
+   [java.util Arrays]))
 
 (set! *warn-on-reflection* true)
-
 
 (defn into! [to from]
   (reduce conj! to from))
 
-
 (defn- write-start-object [gen]
   `(.writeStartObject ~(with-meta gen {:tag `JsonGenerator})))
-
 
 (defn- write-end-object [gen]
   `(.writeEndObject ~(with-meta gen {:tag `JsonGenerator})))
 
-
 (defn- write-string [gen s]
   `(.writeString ~(with-meta gen {:tag `JsonGenerator}) ~(with-meta s {:tag `String})))
-
 
 (defn- write-value [gen value]
   (cond
@@ -49,93 +43,79 @@
     :else
     (write-string gen `(system/-to-string ~value))))
 
-
 (defn- write-null [gen]
   `(.writeNull ~(with-meta gen {:tag `JsonGenerator})))
-
 
 (defn- xml-value [value]
   (if (= 'UUID (:tag (meta value)))
     `(str "urn:uuid:" ~value)
     `(system/-to-string ~value)))
 
-
 (defn- lower-case-first [name]
   (str (str/lower-case (subs (str name) 0 1)) (subs (str name) 1)))
-
 
 (defn- fhir-type-kw [name]
   (keyword "fhir" (lower-case-first name)))
 
-
 (def ^:private tagged-sink
   (with-meta 'sink {:tag `PrimitiveSink}))
-
 
 (def ^:private tagged-writer
   (with-meta 'w {:tag `Writer}))
 
-
 (defn- tagged-x [name]
   (with-meta 'x {:tag name}))
-
 
 (def ^:private id-tag 0)
 (def ^:private extension-tag 1)
 (def ^:private value-tag 2)
-
 
 (defn- parse-value [value form]
   (if (#{'Integer 'int} (:tag (meta value)))
     `(Integer/parseInt ~form)
     form))
 
-
 (defn- primitive-tag [value]
   (if (= 'Integer (:tag (meta value)))
     (with-meta value {:tag 'int})
     value))
-
 
 (defn- gen-equals-sym [value-sym]
   (if (= 'int (:tag (meta value-sym)))
     '=
     '.equals))
 
-
 (defn- gen-hash-code [value-sym]
   (if (= 'int (:tag (meta value-sym)))
     value-sym
     `(.hashCode ~value-sym)))
-
 
 (defn- gen-serializable-string [value]
   (let [unquoted-utf-8-bytes (with-meta 'unquoted-utf-8-bytes {:tag 'bytes})
         quoted-utf-8-bytes (with-meta 'quoted-utf-8-bytes {:tag 'bytes})]
     `[SerializableString
       (~'getValue [~'_]
-        ~value)
+                  ~value)
       (~'appendQuotedUTF8 [~'_ ~'buffer ~'offset]
-        (let [num-bytes# (alength ~quoted-utf-8-bytes)]
-          (if (> (unchecked-add-int ~'offset num-bytes#) (alength ~'buffer))
-            (int -1)
-            (do (System/arraycopy ~quoted-utf-8-bytes 0 ~'buffer ~'offset num-bytes#)
-                num-bytes#))))
+                          (let [num-bytes# (alength ~quoted-utf-8-bytes)]
+                            (if (> (unchecked-add-int ~'offset num-bytes#) (alength ~'buffer))
+                              (int -1)
+                              (do (System/arraycopy ~quoted-utf-8-bytes 0 ~'buffer ~'offset num-bytes#)
+                                  num-bytes#))))
       (~'asUnquotedUTF8 [~'_]
-        (Arrays/copyOf ~unquoted-utf-8-bytes (alength ~unquoted-utf-8-bytes)))
+                        (Arrays/copyOf ~unquoted-utf-8-bytes (alength ~unquoted-utf-8-bytes)))
       (~'asQuotedUTF8 [~'_]
-        (Arrays/copyOf ~quoted-utf-8-bytes (alength ~quoted-utf-8-bytes)))]))
-
+                      (Arrays/copyOf ~quoted-utf-8-bytes (alength ~quoted-utf-8-bytes)))]))
 
 (defn- gen-type
   [name value {:keys [fhir-type hash-num interned]
                :or {fhir-type (fhir-type-kw name) interned false}}]
   `(do
      (deftype
-       ~name
-       ~(cond-> [value]
-          (and interned (#{'String} (:tag (meta value))))
-          (conj 'unquoted-utf-8-bytes 'quoted-utf-8-bytes))
+      ~name
+      ~(cond-> [value]
+         (and interned (#{'String} (:tag (meta value))))
+         (conj 'unquoted-utf-8-bytes 'quoted-utf-8-bytes))
        p/FhirType
        (~'-type [~'_] ~fhir-type)
        (~'-interned [~'_] ~interned)
@@ -143,9 +123,9 @@
        (~'-has-primary-content [~'_] true)
        ~(if (and interned (#{'String} (:tag (meta value))))
           `(~'-serialize-json [~'this ~'generator]
-             (.writeString ~(with-meta 'generator {:tag `JsonGenerator}) ~'this))
+                              (.writeString ~(with-meta 'generator {:tag `JsonGenerator}) ~'this))
           `(~'-serialize-json [~'_ ~'generator]
-             ~(write-value 'generator value)))
+                              ~(write-value 'generator value)))
        (~'-has-secondary-content [~'_] false)
        (~'-serialize-json-secondary [~'_ ~'generator]
          ~(write-null 'generator))
@@ -171,7 +151,6 @@
        ~(when (= 'int (:tag (meta value))) `(.write ~'w " "))
        (print-method (.-value ~'x) ~'w))))
 
-
 (defn write-extended-attributes [^JsonGenerator generator id extension]
   (.writeStartObject generator)
   (when id
@@ -181,7 +160,6 @@
     (.writeFieldName generator "extension")
     (p/-serialize-json extension generator))
   (.writeEndObject generator))
-
 
 (defn- gen-extended-record
   [name value-sym {:keys [fhir-type hash-num interned value-form]
@@ -206,11 +184,11 @@
          (write-extended-attributes ~'generator ~'id ~'extension))
        (~'-to-xml [~'_]
          (xml-node/element*
-           nil
-           (cond-> {}
-             ~'id (assoc :id ~'id)
-             (some? ~value-sym) (assoc :value ~(xml-value value-sym)))
-           ~'extension))
+          nil
+          (cond-> {}
+            ~'id (assoc :id ~'id)
+            (some? ~value-sym) (assoc :value ~(xml-value value-sym)))
+          ~'extension))
        (~'-hash-into [~'_ ~'sink]
          (.putByte ~tagged-sink (byte ~hash-num))
          (when ~'id
@@ -229,7 +207,6 @@
        (.write ~'w ~(str "#" (namespace fhir-type) "/" (clojure.core/name fhir-type)))
        (print-method (into {} (remove (comp nil? val)) x#) ~'w))))
 
-
 (defmacro def-primitive-type
   [name [value] & {:keys [interned] :or {interned false} :as opts}]
   `(do
@@ -238,9 +215,9 @@
      ~(when (and interned (#{'String} (:tag (meta value))))
         `(defn ~(symbol (str "create-" (lower-case-first name))) [~value]
            (~(symbol (str name "."))
-             ~value
-             (.getBytes ~value StandardCharsets/UTF_8)
-             (.quoteAsUTF8 (JsonStringEncoder/getInstance) ~value))))
+            ~value
+            (.getBytes ~value StandardCharsets/UTF_8)
+            (.quoteAsUTF8 (JsonStringEncoder/getInstance) ~value))))
 
      ~(gen-extended-record (symbol (str "Extended" name)) value
                            (cond-> opts
@@ -293,20 +270,17 @@
              (let [extension# (seq content#)]
                (if (or id# extension#)
                  (~(symbol (lower-case-first name))
-                   (cond-> {:id id# :extension extension#}
-                     ~value-sym (assoc :value ~(parse-value value value-sym))))
+                  (cond-> {:id id# :extension extension#}
+                    ~value-sym (assoc :value ~(parse-value value value-sym))))
                  (~(symbol (lower-case-first name)) ~(parse-value value value-sym)))))))))
-
 
 (defmacro defextended [name [_id _extension value] & {:as opts}]
   (gen-extended-record name value opts))
-
 
 (defn- field-name [field-sym]
   (if (:polymorph (meta field-sym))
     `(json/field-name (str ~(str field-sym) (su/capital (name (blaze.fhir.spec.type/type ~field-sym)))))
     (json/field-name (str field-sym))))
-
 
 (defn write-field [generator field-sym]
   `(when-not (nil? ~field-sym)
@@ -327,7 +301,6 @@
          :else
          `[(json/write-non-primitive-field ~generator ~(field-name field-sym) ~field-sym)])))
 
-
 (defmacro def-complex-type
   [name [& fields] & {:keys [fhir-type hash-num interned references]}]
   (let [m-sym (gensym "m")
@@ -344,9 +317,9 @@
          (~'-serialize-json [~'_ ~'gen]
            ~(write-start-object 'gen)
            ~@(map
-               (fn [field]
-                 (write-field 'gen field))
-               fields)
+              (fn [field]
+                (write-field 'gen field))
+              fields)
            ~(write-end-object 'gen))
          (~'-has-secondary-content [~'_] false)
          (~'-serialize-json-secondary [~'this ~'gen]
@@ -354,23 +327,23 @@
          (~'-hash-into [~'_ ~sink-sym]
            (.putByte ~sink-sym-tag (byte ~hash-num))
            ~@(map-indexed
-               (fn [idx field]
-                 `(when-not (nil? ~field)
-                    (.putByte ~sink-sym-tag (byte ~idx))
-                    (~(if (= 'id field) `system/-hash-into `p/-hash-into)
-                      ~field ~sink-sym)))
-               fields))
+              (fn [idx field]
+                `(when-not (nil? ~field)
+                   (.putByte ~sink-sym-tag (byte ~idx))
+                   (~(if (= 'id field) `system/-hash-into `p/-hash-into)
+                    ~field ~sink-sym)))
+              fields))
          ~(if references
             `(~'-references [~'_]
-               ~references)
+                            ~references)
             `(~'-references [~'_]
-               (-> (transient [])
-                   ~@(keep
-                       (fn [field]
-                         (when-not (= 'id field)
-                           `(into! (p/-references ~field))))
-                       fields)
-                   (persistent!)))))
+                            (-> (transient [])
+                                ~@(keep
+                                   (fn [field]
+                                     (when-not (= 'id field)
+                                       `(into! (p/-references ~field))))
+                                   fields)
+                                (persistent!)))))
 
        (def ~(symbol (su/pascal->kebab (str name)))
          (let [intern# (intern/intern-value ~(symbol (str "map->" name)))]

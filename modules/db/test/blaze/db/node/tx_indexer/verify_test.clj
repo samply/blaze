@@ -1,41 +1,38 @@
 (ns blaze.db.node.tx-indexer.verify-test
   (:require
-    [blaze.db.api :as d]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-as-of-test-util :as rao-tu]
-    [blaze.db.impl.index.rts-as-of-test-util :as rts-tu]
-    [blaze.db.impl.index.system-as-of-test-util :as sao-tu]
-    [blaze.db.impl.index.system-stats-test-util :as ss-tu]
-    [blaze.db.impl.index.type-as-of-test-util :as tao-tu]
-    [blaze.db.impl.index.type-stats-test-util :as ts-tu]
-    [blaze.db.kv.mem]
-    [blaze.db.kv.mem-spec]
-    [blaze.db.node]
-    [blaze.db.node.tx-indexer.verify :as verify]
-    [blaze.db.node.tx-indexer.verify-spec]
-    [blaze.db.search-param-registry]
-    [blaze.db.test-util :refer [config with-system-data]]
-    [blaze.db.tx-cache]
-    [blaze.db.tx-log.local]
-    [blaze.fhir.hash :as hash]
-    [blaze.fhir.hash-spec]
-    [blaze.fhir.spec.type]
-    [blaze.log]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log]))
-
+   [blaze.db.api :as d]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.resource-as-of-test-util :as rao-tu]
+   [blaze.db.impl.index.rts-as-of-test-util :as rts-tu]
+   [blaze.db.impl.index.system-as-of-test-util :as sao-tu]
+   [blaze.db.impl.index.system-stats-test-util :as ss-tu]
+   [blaze.db.impl.index.type-as-of-test-util :as tao-tu]
+   [blaze.db.impl.index.type-stats-test-util :as ts-tu]
+   [blaze.db.kv.mem]
+   [blaze.db.kv.mem-spec]
+   [blaze.db.node]
+   [blaze.db.node.tx-indexer.verify :as verify]
+   [blaze.db.node.tx-indexer.verify-spec]
+   [blaze.db.search-param-registry]
+   [blaze.db.test-util :refer [config with-system-data]]
+   [blaze.db.tx-cache]
+   [blaze.db.tx-log.local]
+   [blaze.fhir.hash :as hash]
+   [blaze.fhir.hash-spec]
+   [blaze.fhir.spec.type]
+   [blaze.log]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def tid-patient (codec/tid "Patient"))
 
@@ -45,7 +42,6 @@
 (def patient-2 {:fhir/type :fhir/Patient :id "2"
                 :identifier [#fhir/Identifier{:value "120426"}]})
 
-
 (deftest verify-tx-cmds-test
   (testing "adding one Patient to an empty store"
     (let [hash (hash/generate patient-0)]
@@ -53,10 +49,10 @@
               if-none-match [nil "*"]]
         (with-system [{:blaze.db/keys [node]} config]
           (given (verify/verify-tx-cmds
-                   (d/db node) 1
-                   [(cond-> {:op (name op) :type "Patient" :id "0" :hash hash}
-                      if-none-match
-                      (assoc :if-none-match if-none-match))])
+                  (d/db node) 1
+                  [(cond-> {:op (name op) :type "Patient" :id "0" :hash hash}
+                     if-none-match
+                     (assoc :if-none-match if-none-match))])
 
             count := 5
 
@@ -87,10 +83,10 @@
           [[[:put patient-0]]]
 
           (given (verify/verify-tx-cmds
-                   (d/db node) 2
-                   [(cond-> {:op "put" :type "Patient" :id "0" :hash hash}
-                      if-match
-                      (assoc :if-match if-match))])
+                  (d/db node) 2
+                  [(cond-> {:op "put" :type "Patient" :id "0" :hash hash}
+                     if-match
+                     (assoc :if-match if-match))])
 
             count := 5
 
@@ -122,10 +118,10 @@
            [[:delete "Patient" "0"]]]
 
           (given (verify/verify-tx-cmds
-                   (d/db node) 3
-                   [(cond-> {:op "put" :type "Patient" :id "0" :hash hash}
-                      if-match
-                      (assoc :if-match if-match))])
+                  (d/db node) 3
+                  [(cond-> {:op "put" :type "Patient" :id "0" :hash hash}
+                     if-match
+                     (assoc :if-match if-match))])
 
             count := 5
 
@@ -154,9 +150,9 @@
       [[[:put patient-0]]]
 
       (is (empty? (verify/verify-tx-cmds
-                    (d/db node) 2
-                    [{:op "put" :type "Patient" :id "0"
-                      :hash (hash/generate patient-0)}])))))
+                   (d/db node) 2
+                   [{:op "put" :type "Patient" :id "0"
+                     :hash (hash/generate patient-0)}])))))
 
   (testing "keeping a non-existing Patient fails"
     (with-system [{:blaze.db/keys [node]} config]
@@ -189,8 +185,8 @@
                         :hash (hash/generate patient-0-v2)
                         :if-match if-match}]
             (given (verify/verify-tx-cmds
-                     (d/db node) 1
-                     [tx-cmd])
+                    (d/db node) 1
+                    [tx-cmd])
               ::anom/category := ::anom/conflict
               ::anom/message := "Precondition `W/\"3\"` failed on `Patient/0`."
               :http/status := 412
@@ -219,18 +215,18 @@
       (testing "with different if-matches"
         (doseq [if-match [nil 1 [1] [1 2]]]
           (is (empty? (verify/verify-tx-cmds
-                        (d/db node) 1
-                        [(cond->
-                           {:op "keep" :type "Patient" :id "0"
-                            :hash (hash/generate patient-0)}
-                           if-match
-                           (assoc :if-match if-match))])))))))
+                       (d/db node) 1
+                       [(cond->
+                         {:op "keep" :type "Patient" :id "0"
+                          :hash (hash/generate patient-0)}
+                          if-match
+                          (assoc :if-match if-match))])))))))
 
   (testing "deleting a Patient from an empty store"
     (with-system [{:blaze.db/keys [node]} config]
       (given (verify/verify-tx-cmds
-               (d/db node) 1
-               [{:op "delete" :type "Patient" :id "0"}])
+              (d/db node) 1
+              [{:op "delete" :type "Patient" :id "0"}])
 
         count := 5
 
@@ -259,8 +255,8 @@
       [[[:delete "Patient" "0"]]]
 
       (given (verify/verify-tx-cmds
-               (d/db node) 2
-               [{:op "delete" :type "Patient" :id "0"}])
+              (d/db node) 2
+              [{:op "delete" :type "Patient" :id "0"}])
 
         count := 5
 
@@ -289,8 +285,8 @@
       [[[:put patient-0]]]
 
       (given (verify/verify-tx-cmds
-               (d/db node) 2
-               [{:op "delete" :type "Patient" :id "0"}])
+              (d/db node) 2
+              [{:op "delete" :type "Patient" :id "0"}])
 
         count := 5
 
@@ -320,8 +316,8 @@
         [[[:put patient-0]]]
 
         (given (verify/verify-tx-cmds
-                 (d/db node) 2
-                 [{:op "put" :type "Patient" :id "1" :hash hash}])
+                (d/db node) 2
+                [{:op "put" :type "Patient" :id "1" :hash hash}])
 
           count := 5
 
@@ -351,10 +347,10 @@
         [[[:put patient-0]]]
 
         (given (verify/verify-tx-cmds
-                 (d/db node) 2
-                 [{:op "put" :type "Patient" :id "0"
-                   :hash (hash/generate patient-0)
-                   :if-match 0}])
+                (d/db node) 2
+                [{:op "put" :type "Patient" :id "0"
+                  :hash (hash/generate patient-0)
+                  :if-match 0}])
           ::anom/category := ::anom/conflict
           ::anom/message := "Precondition `W/\"0\"` failed on `Patient/0`."
           :http/status := 412)))
@@ -364,10 +360,10 @@
         [[[:put patient-0]]]
 
         (given (verify/verify-tx-cmds
-                 (d/db node) 2
-                 [{:op "put" :type "Patient" :id "0"
-                   :hash (hash/generate patient-0)
-                   :if-none-match "*"}])
+                (d/db node) 2
+                [{:op "put" :type "Patient" :id "0"
+                  :hash (hash/generate patient-0)
+                  :if-none-match "*"}])
           ::anom/category := ::anom/conflict
           ::anom/message := "Resource `Patient/0` already exists."
           :http/status := 412)))
@@ -377,10 +373,10 @@
         [[[:put patient-0]]]
 
         (given (verify/verify-tx-cmds
-                 (d/db node) 2
-                 [{:op "put" :type "Patient" :id "0"
-                   :hash (hash/generate patient-0)
-                   :if-none-match 1}])
+                (d/db node) 2
+                [{:op "put" :type "Patient" :id "0"
+                  :hash (hash/generate patient-0)
+                  :if-none-match 1}])
           ::anom/category := ::anom/conflict
           ::anom/message := "Resource `Patient/0` with version 1 already exists."
           :http/status := 412))))
@@ -394,10 +390,10 @@
                  :birthDate #fhir/date"2020"}]]]
 
         (given (verify/verify-tx-cmds
-                 (d/db node) 2
-                 [{:op "create" :type "Patient" :id "foo"
-                   :hash (hash/generate patient-0)
-                   :if-none-exist [["birthdate" "2020"]]}])
+                (d/db node) 2
+                [{:op "create" :type "Patient" :id "foo"
+                  :hash (hash/generate patient-0)
+                  :if-none-exist [["birthdate" "2020"]]}])
           ::anom/category := ::anom/conflict
           ::anom/message := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."
           :http/status := 412)))
@@ -407,24 +403,23 @@
         [[[:put patient-2]]]
 
         (is
-          (empty?
-            (verify/verify-tx-cmds
-              (d/db node) 2
-              [{:op "create" :type "Patient" :id "0"
-                :hash (hash/generate patient-0)
-                :if-none-exist [["identifier" "120426"]]}])))))
+         (empty?
+          (verify/verify-tx-cmds
+           (d/db node) 2
+           [{:op "create" :type "Patient" :id "0"
+             :hash (hash/generate patient-0)
+             :if-none-exist [["identifier" "120426"]]}])))))
 
     (testing "conflict because matching resource is deleted"
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put patient-2]]]
 
-        (given
-          (verify/verify-tx-cmds
-            (d/db node) 2
-            [{:op "delete" :type "Patient" :id "2"}
-             {:op "create" :type "Patient" :id "0"
-              :hash (hash/generate patient-0)
-              :if-none-exist [["identifier" "120426"]]}])
+        (given (verify/verify-tx-cmds
+                (d/db node) 2
+                [{:op "delete" :type "Patient" :id "2"}
+                 {:op "create" :type "Patient" :id "0"
+                  :hash (hash/generate patient-0)
+                  :if-none-exist [["identifier" "120426"]]}])
           ::anom/category := ::anom/conflict
           ::anom/message := "Duplicate transaction commands `create Patient?identifier=120426 (resolved to id 2)` and `delete Patient/2`.")))
 
@@ -435,8 +430,8 @@
            [[:delete "Patient" "0"]]]
 
           (given (verify/verify-tx-cmds
-                   (d/db node) 3
-                   [{:op "put" :type "Patient" :id "0" :hash hash}])
+                  (d/db node) 3
+                  [{:op "put" :type "Patient" :id "0" :hash hash}])
 
             count := 5
 

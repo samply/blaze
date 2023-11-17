@@ -1,30 +1,27 @@
 (ns blaze.http-client-test
   (:require
-    [blaze.http-client]
-    [blaze.http-client.spec]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.core.protocols :refer [Datafiable]]
-    [clojure.datafy :refer [datafy]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [integrant.core :as ig]
-    [java-time.api :as time]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log])
+   [blaze.http-client]
+   [blaze.http-client.spec]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.core.protocols :refer [Datafiable]]
+   [clojure.datafy :refer [datafy]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [integrant.core :as ig]
+   [java-time.api :as time]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log])
   (:import
-    [java.net.http HttpClient]
-    [java.util Optional]))
-
+   [java.net.http HttpClient]
+   [java.util Optional]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (extend-protocol Datafiable
   Optional
@@ -34,7 +31,6 @@
   HttpClient
   (datafy [client]
     {:connect-timeout (datafy (.connectTimeout client))}))
-
 
 (deftest init-test
   (testing "nil config"
@@ -50,7 +46,6 @@
       [:explain ::s/problems 0 :pred] := `pos-int?
       [:explain ::s/problems 0 :val] := ::invalid)))
 
-
 (deftest http-client-test
   (testing "without options"
     (with-system [{:blaze/keys [http-client]} {:blaze/http-client {}}]
@@ -61,7 +56,6 @@
     (with-system [{:blaze/keys [http-client]} {:blaze/http-client {:connect-timeout 2000}}]
       (given (datafy http-client)
         :connect-timeout := (time/millis 2000)))))
-
 
 (deftest spec-test
   (with-system [{:blaze/keys [http-client]} {:blaze/http-client {}}]

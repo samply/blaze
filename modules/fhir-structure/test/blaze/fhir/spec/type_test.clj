@@ -1,71 +1,60 @@
 (ns blaze.fhir.spec.type-test
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.fhir.spec.generators :as fg]
-    [blaze.fhir.spec.type :as type]
-    [blaze.fhir.spec.type-spec]
-    [blaze.fhir.spec.type.protocols :as p]
-    [blaze.fhir.spec.type.system.spec]
-    [blaze.test-util :as tu :refer [satisfies-prop]]
-    [clojure.data.xml :as xml]
-    [clojure.data.xml.name :as xml-name]
-    [clojure.data.xml.node :as xml-node]
-    [clojure.data.xml.prxml :as prxml]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [clojure.test.check.generators :as gen]
-    [clojure.test.check.properties :as prop]
-    [jsonista.core :as j])
+   [blaze.byte-buffer :as bb]
+   [blaze.fhir.spec.generators :as fg]
+   [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type-spec]
+   [blaze.fhir.spec.type.protocols :as p]
+   [blaze.fhir.spec.type.system.spec]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
+   [clojure.data.xml :as xml]
+   [clojure.data.xml.name :as xml-name]
+   [clojure.data.xml.node :as xml-node]
+   [clojure.data.xml.prxml :as prxml]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
+   [jsonista.core :as j])
   (:import
-    [com.fasterxml.jackson.core SerializableString]
-    [com.fasterxml.jackson.core.io JsonStringEncoder]
-    [com.fasterxml.jackson.databind ObjectMapper]
-    [com.google.common.hash Hashing]
-    [java.nio.charset StandardCharsets]
-    [java.time Instant LocalTime OffsetDateTime ZoneOffset]))
-
+   [com.fasterxml.jackson.core SerializableString]
+   [com.fasterxml.jackson.core.io JsonStringEncoder]
+   [com.fasterxml.jackson.databind ObjectMapper]
+   [com.google.common.hash Hashing]
+   [java.nio.charset StandardCharsets]
+   [java.time Instant LocalTime OffsetDateTime ZoneOffset]))
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 (xml-name/alias-uri 'xhtml "http://www.w3.org/1999/xhtml")
 
-
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defn murmur3 [x]
   (let [hasher (.newHasher (Hashing/murmur3_32_fixed))]
     (type/hash-into x hasher)
     (Integer/toHexString (.asInt (.hash hasher)))))
 
-
 (def ^:private object-mapper
   (doto (ObjectMapper.)
     (.registerModule type/fhir-module)))
 
-
 (defn- gen-json-string [x]
   (String. ^bytes (j/write-value-as-bytes x object-mapper) StandardCharsets/UTF_8))
 
-
 (def ^:private sexp prxml/sexp-as-element)
-
 
 (defn- sexp-value [value]
   (sexp [nil {:value value}]))
 
-
 (def ^:private string-extension
   #fhir/Extension{:url #fhir/uri"foo" :valueString "bar"})
 
-
 (defn interned? [x y]
   (and (identical? x y) (p/-interned x) (p/-interned y)))
-
 
 (defn not-interned? [x y]
   (and (= x y)
@@ -73,14 +62,11 @@
        (not (p/-interned x))
        (not (p/-interned y))))
 
-
 (def ^:private internable-extension
   #fhir/Extension{:url "url-130945" :value #fhir/code"value-130953"})
 
-
 (def ^:private not-internable-extension
   #fhir/Extension{:url "url-205325" :value "value-205336"})
-
 
 (deftest nil-test
   (testing "all FhirType methods can be called on nil"
@@ -105,11 +91,9 @@
     (testing "references"
       (is (nil? (type/references nil))))))
 
-
 (deftest Object-test
   (testing "arbitrary instances have no fhir type"
     (is (nil? (type/type (Object.))))))
-
 
 (deftest boolean-test
   (testing "boolean?"
@@ -185,7 +169,6 @@
     (are [boolean s] (= (pr-str boolean) s)
       #fhir/boolean{:id "0"} "#fhir/boolean{:id \"0\"}")))
 
-
 (deftest integer-test
   (testing "integer?"
     (are [x] (type/integer? x)
@@ -241,7 +224,6 @@
       #fhir/integer 0
       nil)))
 
-
 (deftest long-test
   (testing "long?"
     (are [x] (type/long? x)
@@ -296,7 +278,6 @@
     (are [x refs] (= refs (type/references x))
       #fhir/long 0
       nil)))
-
 
 (deftest string-test
   (testing "string?"
@@ -360,7 +341,6 @@
       (prop/for-all [value fg/string-value]
         (= value (str (type/string value)))))))
 
-
 (deftest decimal-test
   (testing "decimal?"
     (are [x] (type/decimal? x)
@@ -404,7 +384,6 @@
     (are [x refs] (= refs (type/references x))
       #fhir/decimal 0M
       nil)))
-
 
 (deftest uri-test
   (testing "uri?"
@@ -504,7 +483,6 @@
           (= (bb/wrap (.quoteAsUTF8 (JsonStringEncoder/getInstance) value))
              (bb/wrap (.asQuotedUTF8 ^SerializableString (type/uri value)))))))))
 
-
 (deftest url-test
   (testing "url?"
     (are [x] (type/url? x)
@@ -576,7 +554,6 @@
     (satisfies-prop 10
       (prop/for-all [value fg/url-value]
         (= value (str (type/url value)))))))
-
 
 (deftest canonical-test
   (testing "canonical?"
@@ -681,7 +658,6 @@
           (= (bb/wrap (.quoteAsUTF8 (JsonStringEncoder/getInstance) value))
              (bb/wrap (.asQuotedUTF8 ^SerializableString (type/canonical value)))))))))
 
-
 (deftest base64Binary-test
   (testing "base64Binary?"
     (are [x] (type/base64Binary x)
@@ -746,7 +722,6 @@
     (satisfies-prop 10
       (prop/for-all [value fg/base64Binary-value]
         (= value (str (type/base64Binary value)))))))
-
 
 (deftest instant-test
   (testing "instant?"
@@ -857,7 +832,6 @@
 
   (testing "toString"
     (is (= "2020-01-01T00:00:00Z" (str #fhir/instant"2020-01-01T00:00:00Z")))))
-
 
 (deftest date-test
   (testing "with year precision"
@@ -1016,7 +990,6 @@
 
     (testing "references"
       (is (nil? (type/references #fhir/date"2020-01-01"))))))
-
 
 (deftest dateTime-test
   (testing "with year precision"
@@ -1433,7 +1406,6 @@
           extended-date-time
           [])))))
 
-
 (deftest time-test
   (testing "time?"
     (are [x] (type/time? x)
@@ -1481,24 +1453,20 @@
       #fhir/time"13:53:21"
       nil)))
 
-
 (def gender-extension
   #fhir/Extension
-          {:url #fhir/uri"http://fhir.de/StructureDefinition/gender-amtlich-de"
-           :value
-           #fhir/Coding
-                   {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
-                    :code #fhir/code"D"
-                    :display "divers"}})
-
+   {:url #fhir/uri"http://fhir.de/StructureDefinition/gender-amtlich-de"
+    :value
+    #fhir/Coding
+     {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
+      :code #fhir/code"D"
+      :display "divers"}})
 
 (def extended-gender-code
   (type/code {:extension [gender-extension] :value "other"}))
 
-
 (def extended-gender-code-element
   (xml-node/element nil {:value "other"} gender-extension))
-
 
 (deftest code-test
   (testing "code?"
@@ -1561,9 +1529,9 @@
       nil
 
       #fhir/code
-              {:extension
-               [#fhir/Extension
-                       {:value #fhir/Reference{:reference "Patient/1"}}]}
+       {:extension
+        [#fhir/Extension
+          {:value #fhir/Reference{:reference "Patient/1"}}]}
       [["Patient" "1"]]))
 
   (testing "print"
@@ -1599,7 +1567,6 @@
         (prop/for-all [value fg/code-value]
           (= (bb/wrap (.quoteAsUTF8 (JsonStringEncoder/getInstance) value))
              (bb/wrap (.asQuotedUTF8 ^SerializableString (type/code value)))))))))
-
 
 (deftest oid-test
   (testing "oid?"
@@ -1652,7 +1619,6 @@
   (testing "print"
     (is (= "#fhir/oid\"175718\"" (pr-str #fhir/oid"175718")))))
 
-
 (deftest id-test
   (testing "id?"
     (are [x] (type/id? x)
@@ -1703,7 +1669,6 @@
 
   (testing "print"
     (is (= "#fhir/id\"175718\"" (pr-str #fhir/id"175718")))))
-
 
 (deftest markdown-test
   (testing "markdown?"
@@ -1757,7 +1722,6 @@
 
   (testing "print"
     (is (= "#fhir/markdown\"175718\"" (pr-str #fhir/markdown"175718")))))
-
 
 (deftest unsignedInt-test
   (testing "unsignedInt?"
@@ -1822,7 +1786,6 @@
         #fhir/unsignedInt{:extension [#fhir/Extension{:url "url-192724"}]}
         "#fhir/unsignedInt{:extension [#fhir/Extension{:url \"url-192724\"}]}"))))
 
-
 (deftest positiveInt-test
   (testing "positiveInt?"
     (are [x] (type/positiveInt? x)
@@ -1873,7 +1836,6 @@
 
   (testing "print"
     (is (= "#fhir/positiveInt 160845" (pr-str #fhir/positiveInt 160845)))))
-
 
 (deftest uuid-test
   (testing "uuid?"
@@ -1942,12 +1904,10 @@
       #fhir/uuid"urn:uuid:89ddf6ab-8813-4c75-9500-dd07560fe817"
       nil)))
 
-
 (def xhtml-element
   (sexp
-    [::xhtml/div {:xmlns "http://www.w3.org/1999/xhtml"}
-     [::xhtml/p "FHIR is cool."]]))
-
+   [::xhtml/div {:xmlns "http://www.w3.org/1999/xhtml"}
+    [::xhtml/p "FHIR is cool."]]))
 
 (deftest xhtml-test
   (testing "xhtml?"
@@ -2013,7 +1973,6 @@
   (testing "toString"
     (is (= "175718" (str #fhir/xhtml"175718")))))
 
-
 (deftest attachment-test
   (testing "type"
     (is (= :fhir/Attachment (type/type #fhir/Attachment{}))))
@@ -2072,7 +2031,6 @@
       #fhir/Attachment{} "#fhir/Attachment{}"
       #fhir/Attachment{:id "212329"} "#fhir/Attachment{:id \"212329\"}")))
 
-
 (deftest extension-test
   (testing "type"
     (is (= :fhir/Extension (type/type #fhir/Extension{}))))
@@ -2086,13 +2044,13 @@
     (testing "instances with code values and interned extensions are interned"
       (are [x y] (interned? x y)
         #fhir/Extension
-                {:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]
-                 :url "foo"
-                 :value #fhir/code"bar"}
+         {:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]
+          :url "foo"
+          :value #fhir/code"bar"}
         #fhir/Extension
-                {:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]
-                 :url "foo"
-                 :value #fhir/code"bar"}))
+         {:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]
+          :url "foo"
+          :value #fhir/code"bar"}))
 
     (testing "instances with code values but id's are not interned"
       (are [x y] (not-interned? x y)
@@ -2139,17 +2097,14 @@
       #fhir/Extension{} "#fhir/Extension{}"
       #fhir/Extension{:id "212329"} "#fhir/Extension{:id \"212329\"}")))
 
-
 (defn- recreate
   "Takes `x`, a complex type and recreates it from its components using
   `constructor`."
   [constructor x]
   (constructor (into {} (remove (comp nil? val)) x)))
 
-
 (def ^:private string-extension-gen
   (fg/extension :value (fg/string :value fg/string-value)))
-
 
 (deftest coding-test
   (testing "type"
@@ -2203,7 +2158,6 @@
       #fhir/Coding{} "#fhir/Coding{}"
       #fhir/Coding{:id "212329"} "#fhir/Coding{:id \"212329\"}")))
 
-
 (deftest codeable-concept-test
   (testing "type"
     (is (= :fhir/CodeableConcept (type/type #fhir/CodeableConcept{}))))
@@ -2249,7 +2203,6 @@
     (are [v s] (= s (pr-str v))
       #fhir/CodeableConcept{} "#fhir/CodeableConcept{}"
       #fhir/CodeableConcept{:id "212329"} "#fhir/CodeableConcept{:id \"212329\"}")))
-
 
 (deftest quantity-test
   (testing "type"
@@ -2318,7 +2271,6 @@
       #fhir/Quantity{} "#fhir/Quantity{}"
       #fhir/Quantity{:id "212329"} "#fhir/Quantity{:id \"212329\"}")))
 
-
 (deftest period-test
   (testing "type"
     (is (= :fhir/Period (type/type #fhir/Period{}))))
@@ -2349,7 +2301,6 @@
     (are [v s] (= s (pr-str v))
       #fhir/Period{} "#fhir/Period{}"
       #fhir/Period{:id "212329"} "#fhir/Period{:id \"212329\"}")))
-
 
 (deftest identifier-test
   (testing "type"
@@ -2411,7 +2362,6 @@
     (are [v s] (= s (pr-str v))
       #fhir/Identifier{} "#fhir/Identifier{}"
       #fhir/Identifier{:id "212329"} "#fhir/Identifier{:id \"212329\"}")))
-
 
 (deftest human-name-test
   (testing "type"
@@ -2488,7 +2438,6 @@
     (are [v s] (= s (pr-str v))
       #fhir/HumanName{} "#fhir/HumanName{}"
       #fhir/HumanName{:id "212625"} "#fhir/HumanName{:id \"212625\"}")))
-
 
 (deftest address-test
   (testing "type"
@@ -2569,7 +2518,6 @@
       #fhir/Address{} "#fhir/Address{}"
       #fhir/Address{:id "084856"} "#fhir/Address{:id \"084856\"}")))
 
-
 (deftest reference-test
   (testing "type"
     (is (= :fhir/Reference (type/type #fhir/Reference{}))))
@@ -2630,10 +2578,10 @@
       []
 
       #fhir/Reference
-              {:extension
-               [#fhir/Extension
-                       {:value #fhir/Reference
-                               {:reference #fhir/string"Patient/1"}}]}
+       {:extension
+        [#fhir/Extension
+          {:value #fhir/Reference
+                   {:reference #fhir/string"Patient/1"}}]}
       [["Patient" "1"]]
 
       #fhir/Reference{:reference #fhir/string"Patient/0"}
@@ -2646,27 +2594,26 @@
       []
 
       #fhir/Reference
-              {:extension
-               [#fhir/Extension
-                       {:value #fhir/Reference
-                               {:reference #fhir/string"Patient/1"}}]
-               :reference #fhir/string"Patient/0"}
+       {:extension
+        [#fhir/Extension
+          {:value #fhir/Reference
+                   {:reference #fhir/string"Patient/1"}}]
+        :reference #fhir/string"Patient/0"}
       [["Patient" "0"] ["Patient" "1"]]
 
       #fhir/Reference
-              {:reference #fhir/string{:extension [#fhir/Extension{:url "foo"}]}}
+       {:reference #fhir/string{:extension [#fhir/Extension{:url "foo"}]}}
       []
 
       #fhir/Reference
-              {:reference #fhir/string{:extension [#fhir/Extension{:url "foo"}]
-                                       :value "Patient/0"}}
+       {:reference #fhir/string{:extension [#fhir/Extension{:url "foo"}]
+                                :value "Patient/0"}}
       [["Patient" "0"]]))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Reference{} "#fhir/Reference{}"
       #fhir/Reference{:id "212329"} "#fhir/Reference{:id \"212329\"}")))
-
 
 (deftest meta-test
   (testing "type"
@@ -2740,15 +2687,14 @@
       []
 
       #fhir/Meta
-              {:extension
-               [#fhir/Extension{:value #fhir/Reference{:reference "Patient/2"}}]}
+       {:extension
+        [#fhir/Extension{:value #fhir/Reference{:reference "Patient/2"}}]}
       [["Patient" "2"]]))
 
   (testing "print"
     (are [v s] (= s (pr-str v))
       #fhir/Meta{} "#fhir/Meta{}"
       #fhir/Meta{:id "212329"} "#fhir/Meta{:id \"212329\"}")))
-
 
 (deftest bundle-entry-search-test
   (testing "type"

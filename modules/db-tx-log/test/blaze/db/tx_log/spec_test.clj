@@ -1,22 +1,19 @@
 (ns blaze.db.tx-log.spec-test
   (:require
-    [blaze.db.tx-log.spec]
-    [blaze.fhir.hash :as hash]
-    [blaze.fhir.hash-spec]
-    [blaze.fhir.test-util]
-    [blaze.test-util :as tu]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest]]
-    [taoensso.timbre :as log]))
-
+   [blaze.db.tx-log.spec]
+   [blaze.fhir.hash :as hash]
+   [blaze.fhir.hash-spec]
+   [blaze.fhir.test-util]
+   [blaze.test-util :as tu]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest]]
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest t-test
   (are [x] (s/valid? :blaze.db/t x)
@@ -24,10 +21,8 @@
     1
     0xFFFFFFFFFFFFFF))
 
-
 (def patient-hash-0 (hash/generate {:fhir/type :fhir/Patient :id "0"}))
 (def observation-hash-0 (hash/generate {:fhir/type :fhir/Observation :id "0"}))
-
 
 (deftest tx-cmd-test
   (are [tx-cmd] (s/valid? :blaze.db/tx-cmd tx-cmd)

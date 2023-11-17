@@ -1,21 +1,19 @@
 (ns blaze.db.kv.rocksdb.impl
   (:require
-    [blaze.anomaly :as ba :refer [throw-anom]]
-    [blaze.coll.core :as coll]
-    [clojure.core.protocols :as p]
-    [clojure.datafy :as datafy])
+   [blaze.anomaly :as ba :refer [throw-anom]]
+   [blaze.coll.core :as coll]
+   [clojure.core.protocols :as p]
+   [clojure.datafy :as datafy])
   (:import
-    [clojure.lang ILookup]
-    [java.time Instant]
-    [org.rocksdb
-     BlockBasedTableConfig BloomFilter BuiltinComparator ColumnFamilyDescriptor
-     ColumnFamilyHandle ColumnFamilyOptions CompressionType DBOptions
-     RocksDBException Statistics Status$Code TableProperties WriteBatchInterface
-     WriteOptions]))
-
+   [clojure.lang ILookup]
+   [java.time Instant]
+   [org.rocksdb
+    BlockBasedTableConfig BloomFilter BuiltinComparator ColumnFamilyDescriptor
+    ColumnFamilyHandle ColumnFamilyOptions CompressionType DBOptions
+    RocksDBException Statistics Status$Code TableProperties WriteBatchInterface
+    WriteOptions]))
 
 (set! *warn-on-reflection* true)
-
 
 (defn column-family-descriptor
   {:arglists '([block-cache [key opts]])}
@@ -45,42 +43,41 @@
           optimize-filters-for-hits? false
           reverse-comparator? false}}]]
   (ColumnFamilyDescriptor.
-    (.getBytes (name key))
-    (cond->
-      (doto (ColumnFamilyOptions.)
-        (.setLevelCompactionDynamicLevelBytes true)
-        (.setCompressionType CompressionType/LZ4_COMPRESSION)
-        (.setBottommostCompressionType CompressionType/ZSTD_COMPRESSION)
-        (.setWriteBufferSize (bit-shift-left write-buffer-size-in-mb 20))
-        (.setMaxWriteBufferNumber (long max-write-buffer-number))
-        (.setMaxBytesForLevelBase (bit-shift-left max-bytes-for-level-base-in-mb 20))
-        (.setLevel0FileNumCompactionTrigger (long level0-file-num-compaction-trigger))
-        (.setMinWriteBufferNumberToMerge (long min-write-buffer-number-to-merge))
-        (.setTargetFileSizeBase (bit-shift-left target-file-size-base-in-mb 20))
-        (.setTableFormatConfig
-          (cond->
-            (doto (BlockBasedTableConfig.)
-              (.setVerifyCompression false)
-              (.setBlockSize block-size))
-            (nil? block-cache)
-            (.setNoBlockCache true)
-            (some? block-cache)
-            (-> (.setBlockCache block-cache)
-                (.setCacheIndexAndFilterBlocks true)
-                (.setPinL0FilterAndIndexBlocksInCache true))
-            bloom-filter?
-            (.setFilterPolicy (BloomFilter. 10 false))
-            bloom-filter?
-            (.setWholeKeyFiltering true))))
-      memtable-whole-key-filtering?
-      (.setMemtableWholeKeyFiltering true)
-      optimize-filters-for-hits?
-      (.setOptimizeFiltersForHits true)
-      reverse-comparator?
-      (.setComparator BuiltinComparator/REVERSE_BYTEWISE_COMPARATOR)
-      merge-operator
-      (.setMergeOperatorName (name merge-operator)))))
-
+   (.getBytes (name key))
+   (cond->
+    (doto (ColumnFamilyOptions.)
+      (.setLevelCompactionDynamicLevelBytes true)
+      (.setCompressionType CompressionType/LZ4_COMPRESSION)
+      (.setBottommostCompressionType CompressionType/ZSTD_COMPRESSION)
+      (.setWriteBufferSize (bit-shift-left write-buffer-size-in-mb 20))
+      (.setMaxWriteBufferNumber (long max-write-buffer-number))
+      (.setMaxBytesForLevelBase (bit-shift-left max-bytes-for-level-base-in-mb 20))
+      (.setLevel0FileNumCompactionTrigger (long level0-file-num-compaction-trigger))
+      (.setMinWriteBufferNumberToMerge (long min-write-buffer-number-to-merge))
+      (.setTargetFileSizeBase (bit-shift-left target-file-size-base-in-mb 20))
+      (.setTableFormatConfig
+       (cond->
+        (doto (BlockBasedTableConfig.)
+          (.setVerifyCompression false)
+          (.setBlockSize block-size))
+         (nil? block-cache)
+         (.setNoBlockCache true)
+         (some? block-cache)
+         (-> (.setBlockCache block-cache)
+             (.setCacheIndexAndFilterBlocks true)
+             (.setPinL0FilterAndIndexBlocksInCache true))
+         bloom-filter?
+         (.setFilterPolicy (BloomFilter. 10 false))
+         bloom-filter?
+         (.setWholeKeyFiltering true))))
+     memtable-whole-key-filtering?
+     (.setMemtableWholeKeyFiltering true)
+     optimize-filters-for-hits?
+     (.setOptimizeFiltersForHits true)
+     reverse-comparator?
+     (.setComparator BuiltinComparator/REVERSE_BYTEWISE_COMPARATOR)
+     merge-operator
+     (.setMergeOperatorName (name merge-operator)))))
 
 (defn db-options
   ^DBOptions
@@ -100,7 +97,6 @@
     (.setCreateIfMissing true)
     (.setCreateMissingColumnFamilies true)))
 
-
 (defn write-options [{:keys [sync? disable-wal?]}]
   (cond-> (WriteOptions.)
     sync?
@@ -108,10 +104,8 @@
     disable-wal?
     (.setDisableWAL true)))
 
-
 (defn- column-family-not-found-msg [column-family]
   (format "column family `%s` not found" (name column-family)))
-
 
 (defn get-cfh ^ColumnFamilyHandle [cfhs column-family]
   (let [handle (.valAt ^ILookup cfhs column-family)]
@@ -119,39 +113,35 @@
       (throw-anom (ba/not-found (column-family-not-found-msg column-family)))
       handle)))
 
-
 (defn put-wb! [cfhs ^WriteBatchInterface wb entries]
   (run!
-    (fn [entry]
-      (if (= 3 (coll/count entry))
-        (let [column-family (coll/nth entry 0)
-              key (coll/nth entry 1)
-              value (coll/nth entry 2)]
-          (.put wb (get-cfh cfhs column-family) ^bytes key ^bytes value))
-        (let [key (coll/nth entry 0)
-              value (coll/nth entry 1)]
-          (.put wb ^bytes key ^bytes value))))
-    entries))
-
+   (fn [entry]
+     (if (= 3 (coll/count entry))
+       (let [column-family (coll/nth entry 0)
+             key (coll/nth entry 1)
+             value (coll/nth entry 2)]
+         (.put wb (get-cfh cfhs column-family) ^bytes key ^bytes value))
+       (let [key (coll/nth entry 0)
+             value (coll/nth entry 1)]
+         (.put wb ^bytes key ^bytes value))))
+   entries))
 
 (defn delete-wb! [^WriteBatchInterface wb ks]
   (run! #(.delete wb ^bytes %) ks))
 
-
 (defn write-wb! [cfhs ^WriteBatchInterface wb entries]
   (run!
-    (fn [[op column-family k v]]
-      (if (keyword? column-family)
-        (case op
-          :put (.put wb (get-cfh cfhs column-family) ^bytes k ^bytes v)
-          :merge (.merge wb (get-cfh cfhs column-family) ^bytes k ^bytes v)
-          :delete (.delete wb (get-cfh cfhs column-family) ^bytes k))
-        (case op
-          :put (.put wb ^bytes column-family ^bytes k)
-          :merge (.merge wb ^bytes column-family ^bytes k)
-          :delete (.delete wb ^bytes column-family))))
-    entries))
-
+   (fn [[op column-family k v]]
+     (if (keyword? column-family)
+       (case op
+         :put (.put wb (get-cfh cfhs column-family) ^bytes k ^bytes v)
+         :merge (.merge wb (get-cfh cfhs column-family) ^bytes k ^bytes v)
+         :delete (.delete wb (get-cfh cfhs column-family) ^bytes k))
+       (case op
+         :put (.put wb ^bytes column-family ^bytes k)
+         :merge (.merge wb ^bytes column-family ^bytes k)
+         :delete (.delete wb ^bytes column-family))))
+   entries))
 
 (defn property-error [^RocksDBException e name]
   (condp identical? (some-> (.getStatus e) (.getCode))
@@ -159,42 +149,38 @@
     (ba/not-found (format "Property with name `%s` was not found." name))
     (ba/fault (ex-message e))))
 
-
 (defn column-family-property-error [^RocksDBException e column-family name]
   (condp identical? (some-> (.getStatus e) (.getCode))
     Status$Code/NotFound
     (ba/not-found (format "Property with name `%s` was not found on column-family with name `%s`." name (clojure.core/name column-family)))
     (ba/fault (ex-message e))))
 
-
 (extend-protocol p/Datafiable
   TableProperties
   (datafy [props]
     (cond->
-      {:data-size (.getDataSize props)
-       :index-size (.getIndexSize props)
-       :index-partitions (.getIndexPartitions props)
-       :top-level-index-size (.getTopLevelIndexSize props)
-       :filter-size (.getFilterSize props)
-       :total-raw-key-size (.getRawKeySize props)
-       :total-raw-value-size (.getRawValueSize props)
-       :num-data-blocks (.getNumDataBlocks props)
-       :num-entries (.getNumEntries props)
-       :format-version (.getFormatVersion props)
-       :fixed-key-len (.getFixedKeyLen props)
-       :column-family-id (.getColumnFamilyId props)
-       :creation-time (Instant/ofEpochSecond (.getCreationTime props))
-       :comparator-name (.getComparatorName props)
-       :compression-name (.getCompressionName props)
-       :user-collected-properties (.getUserCollectedProperties props)
-       :readable-properties (.getReadableProperties props)}
+     {:data-size (.getDataSize props)
+      :index-size (.getIndexSize props)
+      :index-partitions (.getIndexPartitions props)
+      :top-level-index-size (.getTopLevelIndexSize props)
+      :filter-size (.getFilterSize props)
+      :total-raw-key-size (.getRawKeySize props)
+      :total-raw-value-size (.getRawValueSize props)
+      :num-data-blocks (.getNumDataBlocks props)
+      :num-entries (.getNumEntries props)
+      :format-version (.getFormatVersion props)
+      :fixed-key-len (.getFixedKeyLen props)
+      :column-family-id (.getColumnFamilyId props)
+      :creation-time (Instant/ofEpochSecond (.getCreationTime props))
+      :comparator-name (.getComparatorName props)
+      :compression-name (.getCompressionName props)
+      :user-collected-properties (.getUserCollectedProperties props)
+      :readable-properties (.getReadableProperties props)}
       (pos? (.getOldestKeyTime props))
       (assoc :oldest-key-time (Instant/ofEpochSecond (.getOldestKeyTime props))))))
 
-
 (defn- datafy-table [[name props]]
   (assoc (datafy/datafy props) :name name))
-
 
 (defn datafy-tables [props]
   (into [] (map datafy-table) props))

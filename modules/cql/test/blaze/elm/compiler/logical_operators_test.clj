@@ -4,19 +4,17 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.logical-operators]
-    [blaze.elm.compiler.test-util :as ctu]
-    [blaze.elm.literal :as elm]
-    [blaze.elm.literal-spec]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest testing]]))
-
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.logical-operators]
+   [blaze.elm.compiler.test-util :as ctu]
+   [blaze.elm.literal :as elm]
+   [blaze.elm.literal-spec]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest testing]]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -24,9 +22,7 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; 13. Logical Operators
 
@@ -116,13 +112,11 @@
       #elm/parameter-ref "a" {:type "Null"} false?
       #elm/parameter-ref "a" #elm/parameter-ref "b" false?)))
 
-
 ;; 13.2. Implies
 ;;
 ;; Normalized to (Or (Not x) y)
 (deftest compile-implies-test
   (ctu/unsupported-binary-operand "Implies"))
-
 
 ;; 13.3. Not
 ;;
@@ -145,7 +139,6 @@
   (ctu/testing-unary-dynamic elm/not)
 
   (ctu/testing-unary-form elm/not))
-
 
 ;; 13.4. Or
 ;;
@@ -232,7 +225,6 @@
       #elm/parameter-ref "a" #elm/boolean "false" false?
       #elm/parameter-ref "a" {:type "Null"} false?
       #elm/parameter-ref "a" #elm/parameter-ref "b" false?)))
-
 
 ;; 13.5. Xor
 ;;

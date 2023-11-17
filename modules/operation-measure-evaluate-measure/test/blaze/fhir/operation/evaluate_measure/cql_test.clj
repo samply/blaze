@@ -1,46 +1,41 @@
 (ns blaze.fhir.operation.evaluate-measure.cql-test
   (:require
-    [blaze.anomaly :refer [when-ok]]
-    [blaze.anomaly-spec]
-    [blaze.cql-translator :as cql-translator]
-    [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
-    [blaze.elm.compiler.library :as library]
-    [blaze.elm.expression :as expr]
-    [blaze.fhir.operation.evaluate-measure.cql :as cql]
-    [blaze.fhir.operation.evaluate-measure.cql-spec]
-    [blaze.fhir.operation.evaluate-measure.test-util :as em-tu]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.spec.type]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [java-time.api :as time]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log])
+   [blaze.anomaly :refer [when-ok]]
+   [blaze.anomaly-spec]
+   [blaze.cql-translator :as cql-translator]
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.elm.compiler.library :as library]
+   [blaze.elm.expression :as expr]
+   [blaze.fhir.operation.evaluate-measure.cql :as cql]
+   [blaze.fhir.operation.evaluate-measure.cql-spec]
+   [blaze.fhir.operation.evaluate-measure.test-util :as em-tu]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [java-time.api :as time]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log])
   (:import
-    [java.time Clock OffsetDateTime]))
-
+   [java.time Clock OffsetDateTime]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defn- now [clock]
   (OffsetDateTime/now ^Clock clock))
-
 
 (def library-empty
   "library Retrieve
   using FHIR version '4.0.0'
   include FHIRHelpers version '4.0.0'")
-
 
 (def library-gender
   "library Retrieve
@@ -55,7 +50,6 @@
   define Gender:
     Patient.gender")
 
-
 (def library-error
   "library Retrieve
   using FHIR version '4.0.0'
@@ -68,7 +62,6 @@
   define InInitialPopulation:
     singleton from Numbers")
 
-
 (def library-encounter
   "library Retrieve
   using FHIR version '4.0.0'
@@ -78,7 +71,6 @@
 
   define InInitialPopulation:
     [Encounter]")
-
 
 (def library-encounter-status
   "library Retrieve
@@ -90,15 +82,12 @@
   define function Status(encounter Encounter):
     encounter.status")
 
-
 (defn- compile-library [node cql]
   (when-ok [library (cql-translator/translate cql)]
     (library/compile-library node library {})))
 
-
 (defn- failing-eval [msg]
   (fn [_ _ _] (throw (Exception. ^String msg))))
-
 
 (defn- context [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock]} library]
   (let [{:keys [expression-defs function-defs]} (compile-library node library)]
@@ -108,7 +97,6 @@
      :timeout (time/seconds 42)
      :expression-defs expression-defs
      :function-defs function-defs}))
-
 
 (deftest evaluate-expression-test
   (testing "finds the male patient"
@@ -232,7 +220,6 @@
             ::anom/category := ::anom/interrupted
             ::anom/message := "Timeout of 42000 millis eclipsed while evaluating."))))))
 
-
 (deftest evaluate-individual-expression-test
   (testing "match"
     (with-system-data [system mem-node-config]
@@ -262,7 +249,7 @@
     (with-system-data [system mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
       (let [{:keys [db] :as context} (assoc (context system library-error)
-                                       :parameters {"Numbers" [1 2]})
+                                            :parameters {"Numbers" [1 2]})
             patient (em-tu/resource db "Patient" "0")]
         (given (cql/evaluate-individual-expression context patient "InInitialPopulation")
           ::anom/category := ::anom/conflict
@@ -271,10 +258,8 @@
           :expression-name := "InInitialPopulation"
           :list := [1 2])))))
 
-
 (def two-value-eval
   (fn [_ _ _] ["1" "2"]))
-
 
 (deftest calc-strata-test
   (testing "missing expression"
@@ -348,7 +333,6 @@
             [0 :subject-handle :id] := "2"
             [0 :population-handle :id] := "2"))))))
 
-
 (deftest calc-function-strata-test
   (testing "Encounter status"
     (with-system-data [system mem-node-config]
@@ -416,7 +400,6 @@
           (given (cql/calc-function-strata context "Status" handles)
             ::anom/category := ::anom/fault
             ::anom/message := "Error while evaluating the expression `Status`: msg-111807"))))))
-
 
 (deftest calc-multi-component-strata-test
   (testing "failing eval"

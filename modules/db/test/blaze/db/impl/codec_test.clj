@@ -1,25 +1,22 @@
 (ns blaze.db.impl.codec-test
   (:require
-    [blaze.byte-string :as bs]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.codec-spec]
-    [blaze.db.impl.index.search-param-value-resource-spec]
-    [blaze.test-util :as tu :refer [satisfies-prop]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [clojure.test.check.generators :as gen]
-    [clojure.test.check.properties :as prop])
+   [blaze.byte-string :as bs]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.codec-spec]
+   [blaze.db.impl.index.search-param-value-resource-spec]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop])
   (:import
-    [java.nio.charset StandardCharsets]))
-
+   [java.nio.charset StandardCharsets]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defmacro check
   ([sym]
@@ -27,14 +24,12 @@
   ([sym opts]
    `(is (not-every? :failure (st/check ~sym ~opts)))))
 
-
 (deftest id-string-id-byte-string-test
   (satisfies-prop 1000
     (prop/for-all [s (s/gen :blaze.resource/id)]
       (= s
          (codec/id-string (codec/id-byte-string s))
          (apply codec/id-string [(apply codec/id-byte-string [s])])))))
-
 
 (deftest descending-long-test
   (are [t dt] (= dt (codec/descending-long t))
@@ -47,10 +42,8 @@
          (codec/descending-long (codec/descending-long t))
          (apply codec/descending-long [(apply codec/descending-long [t])])))))
 
-
 (deftest tid-test
   (check `codec/tid))
-
 
 (deftest string-test
   (satisfies-prop 100
@@ -58,7 +51,6 @@
       (= s
          (bs/to-string (codec/string s) StandardCharsets/UTF_8)
          (bs/to-string (apply codec/string [s]) StandardCharsets/UTF_8)))))
-
 
 (deftest number-test
   (testing "encode/decode"

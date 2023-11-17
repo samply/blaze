@@ -1,9 +1,9 @@
 (ns blaze.elm.tuple
   "A CQL Tuple is implemented by a Clojure map."
   (:require
-    [blaze.elm.protocols :as p])
+   [blaze.elm.protocols :as p])
   (:import
-    [java.util Map]))
+   [java.util Map]))
 
 ;; 12.1. Equal
 (extend-protocol p/Equal

@@ -7,16 +7,15 @@
   in time `t`."
   (:refer-clojure :exclude [sync])
   (:require
-    [blaze.anomaly :refer [when-ok]]
-    [blaze.async.comp :as ac]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.protocols :as p]
-    [blaze.db.node.protocols :as np]
-    [taoensso.timbre :as log])
+   [blaze.anomaly :refer [when-ok]]
+   [blaze.async.comp :as ac]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.resource-handle :as rh]
+   [blaze.db.impl.protocols :as p]
+   [blaze.db.node.protocols :as np]
+   [taoensso.timbre :as log])
   (:import
-    [java.lang AutoCloseable]))
-
+   [java.lang AutoCloseable]))
 
 (defn db
   "Retrieves the most recent available value of the database for reading.
@@ -24,7 +23,6 @@
   Does not communicate with the transaction log, nor block."
   [node]
   (np/-db node))
-
 
 (defn sync
   "Used to coordinate with other nodes.
@@ -41,7 +39,6 @@
    (np/-sync node))
   ([node t]
    (np/-sync node t)))
-
 
 (defn transact
   "Submits `tx-ops` (transaction operators) to the central transaction log and
@@ -62,43 +59,35 @@
   (-> (np/-submit-tx node tx-ops)
       (ac/then-compose #(np/-tx-result node %))))
 
-
 (defn node
   "Returns the node of `db`."
   [db]
   (p/-node db))
-
 
 (defn as-of
   "Returns the value of `db` as of some point `t`, inclusive."
   [db t]
   (p/-as-of db t))
 
-
 (defn t
   "Returns the effective `t` of `db`."
   [db]
   (or (p/-as-of-t db) (p/-basis-t db)))
-
 
 (defn basis-t
   "Returns the `t` of the most recent transaction reachable via `db`."
   [db]
   (p/-basis-t db))
 
-
 (defn as-of-t
   "Returns the as-of point, or nil if none."
   [db]
   (p/-as-of-t db))
 
-
 (defn tx
   "Returns the transaction of `t`."
   [node-or-db t]
   (p/-tx node-or-db t))
-
-
 
 ;; ---- Instance-Level Functions ----------------------------------------------
 
@@ -113,11 +102,8 @@
   (log/trace "fetch resource handle of" (str type "/" id))
   (p/-resource-handle db (codec/tid type) (codec/id-byte-string id)))
 
-
 (defn resource-handle? [x]
   (rh/resource-handle? x))
-
-
 
 ;; ---- Type-Level Functions --------------------------------------------------
 
@@ -132,7 +118,6 @@
   ([db type start-id]
    (p/-type-list db (codec/tid type) (codec/id-byte-string start-id))))
 
-
 (defn type-total
   "Returns the number of all resources of `type` in `db`.
 
@@ -140,7 +125,6 @@
   `type-list`."
   [db type]
   (p/-type-total db (codec/tid type)))
-
 
 (defn type-query
   "Returns a reducible collection of all resource handles of `type` in `db`
@@ -162,7 +146,6 @@
    (when-ok [query (p/-compile-type-query db type clauses)]
      (p/-execute-query db query start-id))))
 
-
 (defn compile-type-query
   "Same as `type-query` but in a two-step process of pre-compilation and later
   execution by `execute-query`.
@@ -171,7 +154,6 @@
   [node-or-db type clauses]
   (p/-compile-type-query node-or-db type clauses))
 
-
 (defn compile-type-query-lenient
   "Like `compile-type-query` but ignores clauses which refer to unknown search
   parameters.
@@ -179,8 +161,6 @@
   Returns an anomaly if search values are invalid."
   [node-or-db type clauses]
   (p/-compile-type-query-lenient node-or-db type clauses))
-
-
 
 ;; ---- System-Level Functions ------------------------------------------------
 
@@ -196,12 +176,10 @@
   ([db start-type start-id]
    (p/-system-list db (codec/tid start-type) (codec/id-byte-string start-id))))
 
-
 (defn system-total
   "Returns the number of all resources in `db`."
   [db]
   (p/-system-total db))
-
 
 (defn system-query
   "Returns a reducible collection of all resource handles in `db` matching `clauses`.
@@ -216,7 +194,6 @@
   (when-ok [query (p/-compile-system-query db clauses)]
     (p/-execute-query db query)))
 
-
 (defn compile-system-query
   "Same as `system-query` but in a two-step process of pre-compilation and later
   execution by `execute-query`.
@@ -225,13 +202,10 @@
   [node-or-db clauses]
   (p/-compile-system-query node-or-db clauses))
 
-
-
 ;; ---- Compartment-Level Functions -------------------------------------------
 
 (defn- compartment [code id]
   [(codec/c-hash code) (codec/id-byte-string id)])
-
 
 (defn list-compartment-resource-handles
   "Returns a reducible collection of all resource handles of `type` in `db`
@@ -253,7 +227,6 @@
    (p/-compartment-resource-handles db (compartment code id) (codec/tid type)
                                     (codec/id-byte-string start-id))))
 
-
 (defn compartment-query
   "Returns a reducible collection of all resource handles of `type` in `db`
   matching `clauses` linked to the compartment with `code` and `id`.
@@ -271,7 +244,6 @@
   (when-ok [query (p/-compile-compartment-query db code type clauses)]
     (p/-execute-query db query id)))
 
-
 (defn compile-compartment-query
   "Same as `compartment-query` but in a two-step process of pre-compilation and
   later execution by `execute-query`. The `id` of the compartments' resource
@@ -281,14 +253,11 @@
   [node-or-db code type clauses]
   (p/-compile-compartment-query node-or-db code type clauses))
 
-
 (defn compile-compartment-query-lenient
   "Like `compile-compartment-query` but ignores clauses which refer to unknown
   search parameters."
   [node-or-db code type clauses]
   (p/-compile-compartment-query-lenient node-or-db code type clauses))
-
-
 
 ;; ---- Common Query Functions ------------------------------------------------
 
@@ -297,7 +266,6 @@
   matching resource handles."
   [db query]
   (p/-count-query db query))
-
 
 (defn execute-query
   "Executes a pre-compiled `query` with `args`.
@@ -315,13 +283,10 @@
   ([db query arg1]
    (p/-execute-query db query arg1)))
 
-
 (defn query-clauses
   "Returns the clauses used in `query`."
   [query]
   (p/-clauses query))
-
-
 
 ;; ---- Instance-Level History Functions --------------------------------------
 
@@ -344,7 +309,6 @@
    (p/-instance-history db (codec/tid type) (codec/id-byte-string id) start-t
                         since)))
 
-
 (defn total-num-of-instance-changes
   "Returns the total number of changes (versions) of the resource with the given
   `type` and `id` starting as-of `db`.
@@ -357,8 +321,6 @@
   ([db type id since]
    (p/-total-num-of-instance-changes db (codec/tid type)
                                      (codec/id-byte-string id) since)))
-
-
 
 ;; ---- Type-Level History Functions ------------------------------------------
 
@@ -383,7 +345,6 @@
    (p/-type-history db (codec/tid type) start-t
                     (some-> start-id codec/id-byte-string) since)))
 
-
 (defn total-num-of-type-changes
   "Returns the total number of changes (versions) of resources with the given
   `type` starting as-of `db`.
@@ -394,8 +355,6 @@
    (p/-total-num-of-type-changes db type nil))
   ([db type since]
    (p/-total-num-of-type-changes db type since)))
-
-
 
 ;; ---- System-Level History Functions ----------------------------------------
 
@@ -422,7 +381,6 @@
    (p/-system-history db start-t (some-> start-type codec/tid)
                       (some-> start-id codec/id-byte-string) since)))
 
-
 (defn total-num-of-system-changes
   "Returns the total number of changes (versions) of resources starting as-of
   `db`.
@@ -433,8 +391,6 @@
    (p/-total-num-of-system-changes db nil))
   ([db since]
    (p/-total-num-of-system-changes db since)))
-
-
 
 ;; ---- Include ---------------------------------------------------------------
 
@@ -452,7 +408,6 @@
   ([db resource-handle code target-type]
    (p/-include db resource-handle code target-type)))
 
-
 (defn rev-include
   "Returns a reducible collection of resource handles that point to
   `resource-handle` by the search parameter with `code` (optional) and have a
@@ -467,8 +422,6 @@
   ([db resource-handle source-type code]
    (p/-rev-include db resource-handle source-type code)))
 
-
-
 ;; ---- Batch DB --------------------------------------------------------------
 
 (defn new-batch-db
@@ -480,8 +433,6 @@
   [db]
   (p/-new-batch-db db))
 
-
-
 ;; ---- Pull ------------------------------------------------------------------
 
 (defn pull
@@ -489,7 +440,6 @@
   `resource-handle` or an anomaly in case of errors."
   [node-or-db resource-handle]
   (p/-pull node-or-db resource-handle))
-
 
 (defn pull-content
   "Returns a CompletableFuture that will complete with the resource content of
@@ -500,7 +450,6 @@
   :blaze.db/op and :blaze.db/tx in metadata."
   [node-or-db resource-handle]
   (p/-pull-content node-or-db resource-handle))
-
 
 (defn pull-many
   "Returns a CompletableFuture that will complete with a vector of all resources

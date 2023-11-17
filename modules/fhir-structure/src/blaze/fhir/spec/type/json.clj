@@ -1,18 +1,16 @@
 (ns blaze.fhir.spec.type.json
   (:require
-    [blaze.fhir.spec.type.protocols :as p]
-    [clojure.string :as str])
+   [blaze.fhir.spec.type.protocols :as p]
+   [clojure.string :as str])
   (:import
-    [clojure.lang PersistentVector]
-    [com.fasterxml.jackson.core JsonGenerator SerializableString]
-    [java.io Writer]
-    [java.nio.charset StandardCharsets]
-    [java.util Arrays]))
-
+   [clojure.lang PersistentVector]
+   [com.fasterxml.jackson.core JsonGenerator SerializableString]
+   [java.io Writer]
+   [java.nio.charset StandardCharsets]
+   [java.util Arrays]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
-
 
 (deftype FieldName [^String s ^bytes utf-8-bytes]
   SerializableString
@@ -31,21 +29,17 @@
   (asQuotedUTF8 [this]
     (.asUnquotedUTF8 this)))
 
-
 (defmethod print-dup (Class/forName "[B") [^bytes year ^Writer w]
   (.write w "#=(byte-array [")
   (.write w ^String (str/join " " (map int (vec year))))
   (.write w "])"))
 
-
 (defmethod print-method FieldName [^FieldName fieldName ^Writer w]
   (.write w "#blaze/field-name")
   (print-dup (.-s fieldName) w))
 
-
 (defn field-name ^SerializableString [s]
   (->FieldName s (.getBytes ^String s StandardCharsets/UTF_8)))
-
 
 (defn write-field [^JsonGenerator generator ^SerializableString field-name value]
   (when (p/-has-primary-content value)
@@ -55,14 +49,11 @@
     (.writeFieldName generator (str "_" (.getValue field-name)))
     (p/-serialize-json-secondary value generator)))
 
-
 (defn- has-primary-content-rf [_ x]
   (when (p/-has-primary-content x) (reduced true)))
 
-
 (defn- has-secondary-content-rf [_ x]
   (when (p/-has-secondary-content x) (reduced true)))
-
 
 (defn write-primitive-list-field [^JsonGenerator generator ^SerializableString field-name ^PersistentVector list]
   (when (.reduce list has-primary-content-rf nil)
@@ -76,13 +67,11 @@
     (.reduce list #(p/-serialize-json-secondary %2 generator) nil)
     (.writeEndArray generator)))
 
-
 (defn write-primitive-string-field [^JsonGenerator generator ^SerializableString field-name value]
   (if (string? value)
     (do (.writeFieldName generator field-name)
         (.writeString generator ^String value))
     (write-field generator field-name value)))
-
 
 (defn write-non-primitive-field [^JsonGenerator generator ^SerializableString field-name value]
   (.writeFieldName generator field-name)
