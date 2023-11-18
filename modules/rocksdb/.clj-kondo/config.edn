@@ -4,4 +4,8 @@
   "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
 
  :lint-as
- {blaze.db.kv.rocksdb-test/with-system-data clojure.core/with-open}}
+ {blaze.db.kv.rocksdb-test/with-system-data clojure.core/with-open}
+
+ :linters
+ {:unused-alias
+  {:level :off}}}

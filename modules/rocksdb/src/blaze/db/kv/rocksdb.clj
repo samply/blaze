@@ -7,6 +7,7 @@
    [blaze.db.kv.rocksdb.metrics.spec]
    [blaze.db.kv.rocksdb.protocols :as p]
    [blaze.db.kv.rocksdb.spec]
+   [clojure.datafy :as datafy]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [taoensso.timbre :as log])
@@ -15,9 +16,9 @@
    [java.nio ByteBuffer]
    [java.util ArrayList]
    [org.rocksdb
-    ColumnFamilyHandle CompactRangeOptions Env LRUCache Priority
-    ReadOptions RocksDB RocksDBException RocksIterator Snapshot Statistics
-    StatsLevel WriteBatch WriteOptions]))
+    ColumnFamilyHandle Env LRUCache Priority ReadOptions RocksDB
+    RocksDBException RocksIterator Snapshot Statistics StatsLevel WriteBatch
+    WriteOptions]))
 
 (set! *warn-on-reflection* true)
 (RocksDB/loadLibrary)
@@ -83,28 +84,104 @@
     (.close read-opts)
     (.releaseSnapshot db snapshot)))
 
-(defn column-families [store]
+(defn path
+  "Returns the file system path `store` uses."
+  [store]
+  (p/-path store))
+
+(defn column-families
+  "Returns a sorted seq of column family names available in `store` as keywords."
+  [store]
   (p/-column-families store))
 
-(defn get-property
-  ([store name]
-   (p/-get-property store name))
-  ([store column-family name]
-   (p/-get-property store column-family name)))
+(defn property
+  "Returns the string value of the property with `name` from `store`.
 
-(defn get-long-property
-  ([store name]
-   (p/-get-long-property store name))
-  ([store column-family name]
-   (p/-get-long-property store column-family name)))
+  Additionally an optional `column-family` key can be supplied in order to
+  obtain the value of a column family specific property.
 
-(defn table-properties
+  Returns an anomaly if the optional column family doesn't exist."
+  ([store name]
+   (p/-property store name))
+  ([store column-family name]
+   (p/-property store column-family name)))
+
+(defn long-property
+  "Returns the long value of the property with `name` from `store`.
+
+  Additionally an optional `column-family` key can be supplied in order to
+  obtain the value of a column family specific property.
+
+  Returns an anomaly if the optional column family doesn't exist."
+  ([store name]
+   (p/-long-property store name))
+  ([store column-family name]
+   (p/-long-property store column-family name)))
+
+(defn agg-long-property
+  "Returns the aggregated long value of the property with `name` from `store`."
+  [store name]
+  (p/-agg-long-property store name))
+
+(defn map-property
+  "Returns the map value of the property with `name` from `store`.
+
+  Additionally an optional `column-family` key can be supplied in order to
+  obtain the value of a column family specific property.
+
+  Returns an anomaly if the optional column family doesn't exist."
+  ([store name]
+   (p/-map-property store name))
+  ([store column-family name]
+   (p/-map-property store column-family name)))
+
+(defn tables
+  "Returns a coll of tables used by `store`.
+
+  Additionally an optional `column-family` key can be supplied in order to
+  obtain the table of a column family.
+
+  Returns an anomaly if the optional column family doesn't exist."
   ([store]
-   (p/-table-properties store))
+   (p/-tables store))
   ([store column-family]
-   (p/-table-properties store column-family)))
+   (p/-tables store column-family)))
 
-(deftype RocksKvStore [^RocksDB db ^WriteOptions write-opts cfhs]
+(defn column-family-meta-data
+  "Returns the metadata of `column-family` of `store`.
+
+  Returns an anomaly if the column family doesn't exist."
+  [store column-family]
+  (p/-column-family-meta-data store column-family))
+
+(defn compact-range!
+  "Runs compaction in `store`.
+
+  Additionally an optional `column-family` key can be supplied in order to
+  run compaction only of that column family.
+
+  Returns an anomaly if the optional column family doesn't exist.
+
+  After the database has been compacted, all data will have been pushed down to
+  the last level containing any data."
+  ([store]
+   (p/-compact-range store))
+  ([store column-family]
+   (p/-compact-range store column-family)))
+
+(defn drop-column-family!
+  "Drops `column-family` in `store`.
+
+  This call only records a drop record in the manifest and prevents the column
+  family from flushing and compacting.
+
+  The column family data will be removed from disk after `store` is closed.
+
+  Returns an anomaly if the column family doesn't exist."
+  [store column-family]
+  (p/-drop-column-family store column-family))
+
+(deftype RocksKvStore [^RocksDB db path ^WriteOptions write-opts cfhs]
   kv/KvStore
   (-new-snapshot [_]
     (let [snapshot (.getSnapshot db)]
@@ -145,61 +222,83 @@
       (.write db write-opts wb)))
 
   p/Rocks
-  (-column-families [_]
-    (keys cfhs))
+  (-path [_]
+    path)
 
-  (-get-property [_ name]
+  (-column-families [_]
+    (sort (keys cfhs)))
+
+  (-property [_ name]
     (try
       (.getProperty db name)
       (catch RocksDBException e
         (impl/property-error e name))))
 
-  (-get-property [_ column-family name]
-    (try
-      (.getProperty db (impl/get-cfh cfhs column-family) name)
-      (catch RocksDBException e
-        (impl/column-family-property-error e column-family name))))
+  (-property [_ column-family name]
+    (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
+      (try
+        (.getProperty db cfh name)
+        (catch RocksDBException e
+          (impl/column-family-property-error e column-family name)))))
 
-  (-get-long-property [_ name]
+  (-long-property [_ name]
     (try
       (.getLongProperty db name)
       (catch RocksDBException e
         (impl/property-error e name))))
 
-  (-get-long-property [_ column-family name]
-    (try
-      (.getLongProperty db (impl/get-cfh cfhs column-family) name)
-      (catch RocksDBException e
-        (impl/column-family-property-error e column-family name))))
+  (-long-property [_ column-family name]
+    (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
+      (try
+        (.getLongProperty db cfh name)
+        (catch RocksDBException e
+          (impl/column-family-property-error e column-family name)))))
 
-  (-table-properties [_]
+  (-agg-long-property [_ name]
+    (try
+      (.getAggregatedLongProperty db name)
+      (catch RocksDBException e
+        (impl/property-error e name))))
+
+  (-map-property [_ name]
+    (try
+      (impl/map-property (.getMapProperty db name))
+      (catch RocksDBException e
+        (impl/property-error e name))))
+
+  (-map-property [_ column-family name]
+    (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
+      (try
+        (impl/map-property (.getMapProperty db cfh name))
+        (catch RocksDBException e
+          (impl/column-family-property-error e column-family name)))))
+
+  (-tables [_]
     (impl/datafy-tables (.getPropertiesOfAllTables db)))
 
-  (-table-properties [_ column-family]
+  (-tables [_ column-family]
     (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
       (impl/datafy-tables (.getPropertiesOfAllTables db cfh))))
+
+  (-column-family-meta-data [_ column-family]
+    (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
+      (datafy/datafy (.getColumnFamilyMetaData db cfh))))
+
+  (-drop-column-family [_ column-family]
+    (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
+      (.dropColumnFamily db cfh)))
+
+  (-compact-range [_]
+    (.compactRange db))
+
+  (-compact-range [_ column-family]
+    (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
+      (.compactRange db cfh)))
 
   AutoCloseable
   (close [_]
     (.close db)
     (.close write-opts)))
-
-(defn compact-range!
-  "Range compaction of database.
-
-  Note: After the database has been compacted, all data will have been pushed
-  down to the last level containing any data."
-  ([store]
-   (.compactRange ^RocksDB (.db ^RocksKvStore store)))
-  ([store column-family change-level target-level]
-   (.compactRange
-    ^RocksDB (.db ^RocksKvStore store)
-    (impl/get-cfh (.cfhs ^RocksKvStore store) column-family)
-    nil
-    nil
-    (doto (CompactRangeOptions.)
-      (.setChangeLevel change-level)
-      (.setTargetLevel target-level)))))
 
 (defn- index-column-family-handles [column-family-handles]
   (into
@@ -225,11 +324,19 @@
     (.setBackgroundThreads 6 Priority/LOW)))
 
 (defmethod ig/pre-init-spec ::kv/rocksdb [_]
-  (s/keys :req-un [::dir ::stats] :opt-un [::block-cache ::opts]))
+  (s/keys :req-un [::dir ::stats]
+          :opt-un [::block-cache ::opts ::column-families]))
 
 (defn- init-log-msg [dir opts]
   (format "Open RocksDB key-value store in directory `%s` with options: %s. This can take up to several minutes due to forced compaction."
           dir (pr-str opts)))
+
+(defn listener []
+  (impl/listener
+   :on-compaction-begin #(log/debug (impl/compaction-begin-msg %))
+   :on-compaction-completed #(log/debug (impl/compaction-completed-msg %))
+   :on-table-file-created #(log/debug (impl/table-file-created-msg %))
+   :on-table-file-deleted #(log/debug (impl/table-file-deleted-msg %))))
 
 (defmethod ig/init-key ::kv/rocksdb
   [_ {:keys [dir block-cache stats opts column-families]}]
@@ -238,8 +345,8 @@
               (partial impl/column-family-descriptor block-cache)
               (merge {:default nil} column-families))
         cfhs (ArrayList.)
-        db (RocksDB/open (impl/db-options stats opts) dir cfds cfhs)]
-    (->RocksKvStore db (impl/write-options opts)
+        db (RocksDB/open (impl/db-options stats (listener) opts) dir cfds cfhs)]
+    (->RocksKvStore db dir (impl/write-options opts)
                     (index-column-family-handles cfhs))))
 
 (defmethod ig/halt-key! ::kv/rocksdb

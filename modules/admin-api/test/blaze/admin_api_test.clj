@@ -42,7 +42,7 @@
     (-column-families [_]
       (keys column-families))
 
-    (-table-properties [_ column-family]
+    (-tables [_ column-family]
       (when (column-families column-family)
         [{:name (str (name column-family) "/table-1")
           :data-size 193338}]))))
