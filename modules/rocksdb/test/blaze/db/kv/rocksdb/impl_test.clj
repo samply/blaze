@@ -16,9 +16,10 @@
    [java.nio.file Files]
    [java.nio.file.attribute FileAttribute]
    [org.rocksdb
-    BlockBasedTableConfig ColumnFamilyDescriptor ColumnFamilyHandle
-    ColumnFamilyOptions CompressionType DBOptions LRUCache RocksDB RocksDBException
-    Statistics WriteBatchInterface WriteOptions]))
+    AbstractEventListener BlockBasedTableConfig ColumnFamilyDescriptor
+    ColumnFamilyHandle ColumnFamilyOptions CompactionJobInfo CompressionType
+    DBOptions LRUCache RocksDB RocksDBException Statistics WriteBatchInterface
+    WriteOptions]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -50,7 +51,9 @@
      :target-file-size-base-in-mb (bit-shift-right (.targetFileSizeBase options) 20)
      :table-format-config (datafy/datafy (.tableFormatConfig options))
      :memtable-whole-key-filtering? (.memtableWholeKeyFiltering options)
-     :optimize-filters-for-hits? (.optimizeFiltersForHits options)})
+     :optimize-filters-for-hits? (.optimizeFiltersForHits options)
+     :enable-blob-files? (.enableBlobFiles options)
+     :min-blob-size (.minBlobSize options)})
 
   BlockBasedTableConfig
   (datafy [config]
@@ -99,7 +102,9 @@
         [:options :table-format-config :block-cache?] := true
         [:options :table-format-config :bloom-filter?] := false
         [:options :memtable-whole-key-filtering?] := false
-        [:options :optimize-filters-for-hits?] := false)))
+        [:options :optimize-filters-for-hits?] := false
+        [:options :enable-blob-files?] := false
+        [:options :min-blob-size] := 0)))
 
   (testing "without block cache"
     (given (column-family-descriptor nil :default nil)
@@ -133,9 +138,12 @@
       (given (column-family-descriptor block-cache :default {key value})
         [:options :table-format-config key] := value))))
 
+(defn- event-listener []
+  (proxy [AbstractEventListener] []))
+
 (deftest db-options-test
   (testing "with defaults"
-    (given (datafy/datafy (impl/db-options (Statistics.) nil))
+    (given (datafy/datafy (impl/db-options (Statistics.) (event-listener) nil))
       :wal-dir := ""
       :max-background-jobs := 2
       :compaction-readahead-size := 0
@@ -146,7 +154,7 @@
     (doseq [[key value] [[:wal-dir "wal"]
                          [:max-background-jobs 4]
                          [:compaction-readahead-size 10]]]
-      (given (datafy/datafy (impl/db-options (Statistics.) {key value}))
+      (given (datafy/datafy (impl/db-options (Statistics.) (event-listener) {key value}))
         key := value))))
 
 (deftest write-options-test
@@ -219,7 +227,7 @@
     (let [entries [[:cf-1 (byte-array 0) (byte-array 0)]]]
       (given (ba/try-anomaly (impl/put-wb! {} (cf-put-wb nil) entries))
         ::anom/category := ::anom/not-found
-        ::anom/message := "column family `cf-1` not found"))))
+        ::anom/message := "Column family `cf-1` not found."))))
 
 (defn- kv-delete-wb [state]
   (reify WriteBatchInterface
@@ -367,7 +375,7 @@
     (let [entries [[:put :cf-1 (byte-array 0) (byte-array 0)]]]
       (given (ba/try-anomaly (impl/write-wb! {} (cf-put-wb nil) entries))
         ::anom/category := ::anom/not-found
-        ::anom/message := "column family `cf-1` not found")))
+        ::anom/message := "Column family `cf-1` not found.")))
 
   (testing "non matching op"
     ;; although a non-matching op isn't allowed in the spec, it could happen at
@@ -389,3 +397,53 @@
     (given (impl/column-family-property-error (RocksDBException. "msg-151628") :foo "bar")
       ::anom/category := ::anom/fault
       ::anom/message := "msg-151628")))
+
+(deftest listener-test
+  (with-open [db (RocksDB/open (str (new-temp-dir!)))]
+    (testing "compaction begin"
+      (let [res (volatile! nil)]
+        (.onCompactionBegin
+         (impl/listener {:on-compaction-begin (partial vreset! res)})
+         db
+         (CompactionJobInfo.))
+        (given @res
+          :column-family-name := ""
+          :status := "Ok"
+          :thread-id := 0
+          :job-id := 0
+          :base-input-level := 0
+          :output-level := 0
+          :reason := "kUnknown"
+          :compression := "NO_COMPRESSION")))
+
+    (testing "compaction completed"
+      (let [res (volatile! nil)]
+        (.onCompactionCompleted
+         (impl/listener {:on-compaction-completed (partial vreset! res)})
+         db
+         (CompactionJobInfo.))
+        (given @res
+          :column-family-name := ""
+          :status := "Ok"
+          :thread-id := 0
+          :job-id := 0
+          :base-input-level := 0
+          :output-level := 0
+          :reason := "kUnknown"
+          :compression := "NO_COMPRESSION")))))
+
+(deftest compaction-begin-msg-test
+  (is (= (impl/compaction-begin-msg
+          {:column-family-name "cf-181817"
+           :job-id 181926
+           :base-input-level 3
+           :output-level 5
+           :reason "kUnknown"
+           :compression "NO_COMPRESSION"})
+         "Start compaction job 181926 of column family cf-181817 in db null from level 3 to level 5 because of kUnknown.")))
+
+(deftest table-file-deleted-msg-test
+  (is (= (impl/table-file-deleted-msg
+          {:file-name "file-175300"
+           :job-id 175248})
+         "Deleted SST file file-175300 in job 175248.")))

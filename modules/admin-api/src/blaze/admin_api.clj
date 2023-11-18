@@ -18,7 +18,7 @@
 
 (defn- rocksdb-table-handler [index-kv-store]
   (fn [{{:keys [column-family]} :path-params}]
-    (-> (ring/response {:tables (rocksdb/table-properties index-kv-store (keyword column-family))})
+    (-> (ring/response {:tables (rocksdb/tables index-kv-store (keyword column-family))})
         (ac/completed-future))))
 
 (defn- router [{:keys [context-path index-kv-store] :or {context-path ""}}]

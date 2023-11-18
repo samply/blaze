@@ -19,15 +19,11 @@
 (comment
   (rocksdb/compact-range!
     (index-kv-store)
-    :resource-as-of-index
-    true
-    1)
+    :resource-as-of-index)
 
   (rocksdb/compact-range!
     (index-kv-store)
-    :search-param-value-index
-    true
-    1)
+    :search-param-value-index)
 
   (mapv
     (fn [^ThreadStatus status]
@@ -39,6 +35,6 @@
        :cf (.getCfName status)})
     (.getThreadList (Env/getDefault)))
 
-  (rocksdb/table-properties (index-kv-store) :resource-as-of-index)
+  (rocksdb/tables (index-kv-store) :resource-as-of-index)
 
   )
