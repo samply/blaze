@@ -220,7 +220,11 @@
   (with-open [_ (prom/timer duration-seconds "poll-tx-queue")]
     (tx-log/poll! queue poll-timeout)))
 
-(defn- poll-and-index! [node queue poll-timeout]
+(defn- poll-and-index!
+  "Polls `queue` once and indexes the resulting transaction data.
+
+  Waits up to `poll-timeout` for the transaction data to become available."
+  [node queue poll-timeout]
   (log/trace "poll transaction queue")
   (run! (partial index-tx-data! node) (poll-tx-queue! queue poll-timeout)))
 

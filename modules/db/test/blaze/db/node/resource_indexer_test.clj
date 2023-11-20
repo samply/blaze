@@ -229,7 +229,7 @@
                 ["deceased" (codec/v-hash "false")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
-      (testing "CompartmentResource index"
+      (testing "CompartmentResourceType index"
         (is (empty? (cr-tu/decode-index-entries kv-store))))
 
       (testing "CompartmentSearchParamValueResource index"
@@ -309,7 +309,7 @@
                 ["_profile" (codec/v-hash "url-164445")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
-      (testing "CompartmentResource index"
+      (testing "CompartmentResourceType index"
         (is (= (cr-tu/decode-index-entries kv-store :compartment :type :id)
                [[["Patient" "id-145552"] "Condition" "id-204446"]])))
 
@@ -437,7 +437,7 @@
                 ["status" (codec/v-hash "status-193613")]
                 ["_lastUpdated" #blaze/byte-string"80008001"]])))
 
-      (testing "CompartmentResource index"
+      (testing "CompartmentResourceType index"
         (is (= (cr-tu/decode-index-entries kv-store :compartment :type :id)
                [[["Patient" "id-180857"] "Observation" "id-192702"]])))
 

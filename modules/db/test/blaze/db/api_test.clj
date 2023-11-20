@@ -590,8 +590,11 @@
       (testing "the newest t is 2"
         (is (= 2 (d/basis-t db))))
 
-      (testing "the effective t of a DB as of 1 if 1"
-        (is (= 1 (d/t (d/as-of db 1))))))))
+      (testing "the effective t of a DB as of 1 is 1"
+        (is (= 1 (d/t (d/as-of db 1)))))
+
+      (testing "the as-of-t of a DB as of 1 is 1"
+        (is (= 1 (d/as-of-t (d/as-of db 1))))))))
 
 (deftest t-test
   (with-system-data [{:blaze.db/keys [node]} config]

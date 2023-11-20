@@ -1,5 +1,9 @@
 (ns blaze.db.impl.index.t-by-instant
-  "Functions for accessing the TByInstant index."
+  "Functions for accessing the TByInstant index.
+
+  The TByInstant index is used to determine the `t` of a real point in time.
+  This functionality is needed to support the `since` parameter in history
+  queries."
   (:require
    [blaze.db.kv :as kv])
   (:import

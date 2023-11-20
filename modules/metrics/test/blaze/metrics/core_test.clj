@@ -18,13 +18,13 @@
 
   (testing "with one metric"
     (given (metrics/collect (metrics/collector
-                             [(metrics/counter-metric "foo_total" "" [] [])]))
+                              [(metrics/counter-metric "foo_total" "" [] [])]))
       [0 :name] := "foo"))
 
   (testing "with two metrics"
     (given (metrics/collect (metrics/collector
-                             [(metrics/counter-metric "foo_total" "" [] [])
-                              (metrics/counter-metric "bar_total" "" [] [])]))
+                              [(metrics/counter-metric "foo_total" "" [] [])
+                               (metrics/counter-metric "bar_total" "" [] [])]))
       [0 :name] := "foo"
       [1 :name] := "bar")))
 

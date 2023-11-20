@@ -1,5 +1,5 @@
 (ns blaze.db.impl.index.compartment.resource
-  "Functions for accessing the CompartmentResource index."
+  "Functions for accessing the CompartmentResourceType index."
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
@@ -92,7 +92,7 @@
        (encode-key compartment tid start-id))))))
 
 (defn index-entry
-  "Returns an entry of the CompartmentResource index build from `compartment`,
+  "Returns an entry of the CompartmentResourceType index build from `compartment`,
   `tid` and `id`."
   [compartment tid id]
   [:compartment-resource-type-index
