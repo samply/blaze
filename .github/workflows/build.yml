@@ -318,6 +318,9 @@ jobs:
     - name: Check Capability Statement
       run: .github/scripts/check-capability-statement.sh
 
+    - name: Check Capability Statement Filtered by _elements
+      run: .github/scripts/check-capability-statement-filtered.sh
+
     - name: Check Referential Integrity Enforced
       run: .github/scripts/check-referential-integrity-enforced.sh
 

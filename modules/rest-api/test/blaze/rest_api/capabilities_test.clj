@@ -7,7 +7,10 @@
    [blaze.rest-api.capabilities-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
    [clojure.test :as test :refer [deftest testing]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
    [juxt.iota :refer [given]]
    [reitit.ring]))
 
@@ -256,4 +259,17 @@
           [:rest 0 :resource 0 :operation 0 :name] := "evaluate-measure"
           [:rest 0 :resource 0 :operation 0 :definition] :=
           #fhir/canonical"http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
-          [:rest 0 :resource 0 :operation 0 :documentation] := #fhir/markdown"documentation-161800")))))
+          [:rest 0 :resource 0 :operation 0 :documentation] := #fhir/markdown"documentation-161800")))
+
+    (testing "filtering by _elements"
+      (tu/satisfies-prop 100
+        (prop/for-all [ks (gen/vector (gen/elements [:status :software]) 0 50)]
+          (let [body (@((capabilities/capabilities-handler
+                         {:version "version-131640"
+                          :structure-definitions
+                          [{:kind "resource" :name "Patient"}]
+                          :search-param-registry search-param-registry})
+                        {:query-params {"_elements" (str/join "," (map name ks))}
+                         :blaze/base-url "base-url-131713"})
+                      :body)]
+            (= (set (conj ks :fhir/type)) (set (keys body)))))))))
