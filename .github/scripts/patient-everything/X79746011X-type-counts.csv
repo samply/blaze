@@ -1,5 +1,5 @@
 "CarePlan",5
-"CareTeam",10
+"CareTeam",5
 "Claim",176
 "Condition",15
 "DiagnosticReport",231
@@ -8,7 +8,7 @@
 "ExplanationOfBenefit",78
 "ImagingStudy",45
 "Immunization",13
-"MedicationAdministration",180
+"MedicationAdministration",90
 "MedicationRequest",98
 "Observation",2265
 "Patient",1

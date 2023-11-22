@@ -30,4 +30,4 @@
 (s/fdef sr/compartment-resources
   :args (s/cat :search-param-registry :blaze.db/search-param-registry
                :type :fhir.resource/type)
-  :ret (s/coll-of (s/tuple :fhir.resource/type string?)))
+  :ret (s/coll-of (s/tuple :fhir.resource/type (s/coll-of string?))))

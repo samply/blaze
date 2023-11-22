@@ -51,7 +51,7 @@
 (def router
   (reitit/router
    (mapv (fn [type] [(str "/" type) {:name (keyword type "type")}])
-         ["Patient" "Condition" "Observation" "Specimen"])
+         ["Patient" "Condition" "Observation" "Specimen" "MedicationAdministration"])
    {:syntax :bracket
     :path context-path}))
 
@@ -337,6 +337,46 @@
         (testing "the forth entry has the right fullUrl"
           (is (= (str base-url context-path "/Specimen/0")
                  (:fullUrl forth-entry)))))))
+
+  (testing "Patient with MedicationAdministration because it is reachable twice
+            via the search param `patient` and `subject`.
+
+            This test should assure that MedicationAdministration resources are
+            returned only once."
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/MedicationAdministration :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+      (let [{:keys [status]
+             {[first-entry second-entry] :entry
+              :as body} :body}
+            @(handler {:path-params {:id "0"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle id is an LUID"
+          (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+        (testing "the bundle type is searchset"
+          (is (= #fhir/code"searchset" (:type body))))
+
+        (testing "the total count is 2"
+          (is (= #fhir/unsignedInt 2 (:total body))))
+
+        (testing "the bundle contains four entries"
+          (is (= 2 (count (:entry body)))))
+
+        (testing "the first entry has the right fullUrl"
+          (is (= (str base-url context-path "/Patient/0")
+                 (:fullUrl first-entry))))
+
+        (testing "the second entry has the right fullUrl"
+          (is (= (str base-url context-path "/MedicationAdministration/0")
+                 (:fullUrl second-entry)))))))
 
   (testing "to many resources"
     (with-handler [handler]

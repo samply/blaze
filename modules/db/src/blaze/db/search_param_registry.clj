@@ -40,10 +40,10 @@
   (p/-linked-compartments search-param-registry resource))
 
 (defn compartment-resources
-  "Returns a seq of [type code] tuples of resources in compartment of `type`.
+  "Returns a seq of `[type codes]` tuples of resources in compartment of `type`.
 
   Example:
-  * [\"Observation\" \"subject\"] and others for \"Patient\""
+  * `[\"Observation\" [\"subject\" \"performer\"]]` and others for \"Patient\""
   [search-param-registry type]
   (p/-compartment-resources search-param-registry type))
 
@@ -135,9 +135,10 @@
   {def-code
    (into
     []
-    (mapcat
+    (keep
      (fn [{res-type :code param-codes :param}]
-       (coll/eduction (map (partial vector res-type)) param-codes)))
+       (when param-codes
+         [res-type param-codes])))
     resource-defs)})
 
 (def ^:private list-search-param

@@ -138,8 +138,11 @@
   (-rev-include [db resource-handle]
     (coll/eduction
      (mapcat
-      (fn [[source-type code]]
-        (p/-rev-include db resource-handle source-type code)))
+      (fn [[source-type codes]]
+        (coll/eduction
+         (comp (mapcat (partial p/-rev-include db resource-handle source-type))
+               (distinct))
+         codes)))
      (sr/compartment-resources (:search-param-registry node)
                                (name (type/type resource-handle)))))
 
