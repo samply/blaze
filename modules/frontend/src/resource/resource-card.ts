@@ -126,8 +126,8 @@ async function processElement(
 				fetchStructureDefinition
 		  )
 		: type?.code == 'Resource'
-		? processResourceElement(element, resource, fetchStructureDefinition)
-		: processTypedElement(element, resource, fetchStructureDefinition);
+		  ? processResourceElement(element, resource, fetchStructureDefinition)
+		  : processTypedElement(element, resource, fetchStructureDefinition);
 }
 
 function mapType(type: ElementDefinitionType): Type {
