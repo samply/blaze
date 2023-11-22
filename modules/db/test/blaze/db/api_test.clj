@@ -5317,7 +5317,25 @@
               [1 fhir-spec/fhir-type] := :fhir/Observation
               [1 :id] := "0"
               [2 fhir-spec/fhir-type] := :fhir/Specimen
-              [2 :id] := "0")))))
+              [2 :id] := "0"))))
+
+      (testing "With MedicationAdministration because it is reachable twice via
+                the search param `patient` and `subject`.
+
+                This test should assure that MedicationAdministration resources
+                are returned only once."
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/MedicationAdministration :id "0"
+                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+          (let [db (d/db node)
+                patient (d/resource-handle db "Patient" "0")]
+
+            (given (vec (d/rev-include db patient))
+              count := 1
+              [0 fhir-spec/fhir-type] := :fhir/MedicationAdministration
+              [0 :id] := "0")))))
 
     (doseq [code ["subject" "patient"]]
       (testing (str "Observation with search parameter " code)
