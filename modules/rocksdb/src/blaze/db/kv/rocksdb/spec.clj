@@ -39,7 +39,7 @@
   nat-int?)
 
 (s/def ::db-options/compaction-readahead-size
-  nat-int?)
+  (s/nilable nat-int?))
 
 (s/def ::rocksdb/db-options
   (s/keys :opt-un [::db-options/wal-dir

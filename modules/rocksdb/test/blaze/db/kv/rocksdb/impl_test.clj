@@ -146,13 +146,18 @@
     (given (datafy/datafy (impl/db-options (Statistics.) (event-listener) nil))
       :wal-dir := ""
       :max-background-jobs := 2
-      :compaction-readahead-size := 0
+      :compaction-readahead-size := 2097152
       :enable-pipelined-write := true
       :create-if-missing := true
       :create-missing-column-families := true)
 
+    (given (datafy/datafy (impl/db-options (Statistics.) (event-listener) {:compaction-readahead-size nil}))
+      :compaction-readahead-size := 2097152))
+
+  (testing "with non-defaults"
     (doseq [[key value] [[:wal-dir "wal"]
                          [:max-background-jobs 4]
+                         [:compaction-readahead-size 0]
                          [:compaction-readahead-size 10]]]
       (given (datafy/datafy (impl/db-options (Statistics.) (event-listener) {key value}))
         key := value))))
