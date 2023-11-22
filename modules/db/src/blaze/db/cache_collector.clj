@@ -41,41 +41,41 @@
 (defmethod ig/init-key :blaze.db/cache-collector
   [_ {:keys [caches]}]
   (metrics/collector
-   (let [stats (into [] mapper caches)]
-     [(counter-metric
-       "blaze_db_cache_hits_total"
-       "Returns the number of times Cache lookup methods have returned a cached value."
-       (fn [stats _] (.hitCount ^CacheStats stats))
-       stats)
-      (counter-metric
-       "blaze_db_cache_misses_total"
-       "Returns the number of times Cache lookup methods have returned an uncached (newly loaded) value, or null."
-       (fn [stats _] (.missCount ^CacheStats stats))
-       stats)
-      (counter-metric
-       "blaze_db_cache_load_successes_total"
-       "Returns the number of times Cache lookup methods have successfully loaded a new value."
-       (fn [stats _] (.loadSuccessCount ^CacheStats stats))
-       stats)
-      (counter-metric
-       "blaze_db_cache_load_failures_total"
-       "Returns the number of times Cache lookup methods failed to load a new value, either because no value was found or an exception was thrown while loading."
-       (fn [stats _] (.loadFailureCount ^CacheStats stats))
-       stats)
-      (counter-metric
-       "blaze_db_cache_load_seconds_total"
-       "Returns the total number of seconds the cache has spent loading new values."
-       (fn [stats _] (/ (double (.totalLoadTime ^CacheStats stats)) 1e9))
-       stats)
-      (counter-metric
-       "blaze_db_cache_evictions_total"
-       "Returns the number of times an entry has been evicted."
-       (fn [stats _] (.evictionCount ^CacheStats stats))
-       stats)
-      (gauge-metric
-       "blaze_db_cache_estimated_size"
-       "Returns the approximate number of entries in this cache."
-       (fn [_ estimated-size] estimated-size)
-       stats)])))
+    (let [stats (into [] mapper caches)]
+      [(counter-metric
+        "blaze_db_cache_hits_total"
+        "Returns the number of times Cache lookup methods have returned a cached value."
+        (fn [stats _] (.hitCount ^CacheStats stats))
+        stats)
+       (counter-metric
+        "blaze_db_cache_misses_total"
+        "Returns the number of times Cache lookup methods have returned an uncached (newly loaded) value, or null."
+        (fn [stats _] (.missCount ^CacheStats stats))
+        stats)
+       (counter-metric
+        "blaze_db_cache_load_successes_total"
+        "Returns the number of times Cache lookup methods have successfully loaded a new value."
+        (fn [stats _] (.loadSuccessCount ^CacheStats stats))
+        stats)
+       (counter-metric
+        "blaze_db_cache_load_failures_total"
+        "Returns the number of times Cache lookup methods failed to load a new value, either because no value was found or an exception was thrown while loading."
+        (fn [stats _] (.loadFailureCount ^CacheStats stats))
+        stats)
+       (counter-metric
+        "blaze_db_cache_load_seconds_total"
+        "Returns the total number of seconds the cache has spent loading new values."
+        (fn [stats _] (/ (double (.totalLoadTime ^CacheStats stats)) 1e9))
+        stats)
+       (counter-metric
+        "blaze_db_cache_evictions_total"
+        "Returns the number of times an entry has been evicted."
+        (fn [stats _] (.evictionCount ^CacheStats stats))
+        stats)
+       (gauge-metric
+        "blaze_db_cache_estimated_size"
+        "Returns the approximate number of entries in this cache."
+        (fn [_ estimated-size] estimated-size)
+        stats)])))
 
 (derive :blaze.db/cache-collector :blaze.metrics/collector)

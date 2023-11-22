@@ -284,69 +284,69 @@
 
 (defn stats-collector [stats]
   (metrics/collector
-   [(block-cache-data-miss-total stats)
-    (block-cache-data-hit-total stats)
-    (block-cache-data-add-total stats)
-    (block-cache-data-insert-bytes-total stats)
-    (block-cache-index-miss-total stats)
-    (block-cache-index-hit-total stats)
-    (block-cache-index-add-total stats)
-    (block-cache-index-insert-bytes-total stats)
-    (block-cache-filter-miss-total stats)
-    (block-cache-filter-hit-total stats)
-    (block-cache-filter-add-total stats)
-    (block-cache-filter-insert-bytes-total stats)
-    (memtable-hit-total stats)
-    (memtable-miss-total stats)
-    (get-hit-l0-total stats)
-    (get-hit-l1-total stats)
-    (get-hit-l2-and-up-total stats)
-    (keys-read-total stats)
-    (keys-written-total stats)
-    (keys-updated-total stats)
-    (seek-total stats)
-    (next-total stats)
-    (prev-total stats)
-    (file-opens-total stats)
-    (file-errors-total stats)
-    (stall-seconds-total stats)
-    (bloom-filter-useful-total stats)
-    (bloom-filter-full-positive-total stats)
-    (bloom-filter-full-true-positive-total stats)
-    (blocks-compressed-total stats)
-    (blocks-decompressed-total stats)
-    (blocks-not-compressed-total stats)
-    (iterators-created-total stats)
-    (iterators-deleted-total stats)
-    (wal-syncs-total stats)
-    (wal-bytes-total stats)
-    (flush-seconds-total stats)
-    (compaction-seconds-total stats)
-    (compression-seconds-total stats)
-    (decompression-seconds-total stats)]))
+    [(block-cache-data-miss-total stats)
+     (block-cache-data-hit-total stats)
+     (block-cache-data-add-total stats)
+     (block-cache-data-insert-bytes-total stats)
+     (block-cache-index-miss-total stats)
+     (block-cache-index-hit-total stats)
+     (block-cache-index-add-total stats)
+     (block-cache-index-insert-bytes-total stats)
+     (block-cache-filter-miss-total stats)
+     (block-cache-filter-hit-total stats)
+     (block-cache-filter-add-total stats)
+     (block-cache-filter-insert-bytes-total stats)
+     (memtable-hit-total stats)
+     (memtable-miss-total stats)
+     (get-hit-l0-total stats)
+     (get-hit-l1-total stats)
+     (get-hit-l2-and-up-total stats)
+     (keys-read-total stats)
+     (keys-written-total stats)
+     (keys-updated-total stats)
+     (seek-total stats)
+     (next-total stats)
+     (prev-total stats)
+     (file-opens-total stats)
+     (file-errors-total stats)
+     (stall-seconds-total stats)
+     (bloom-filter-useful-total stats)
+     (bloom-filter-full-positive-total stats)
+     (bloom-filter-full-true-positive-total stats)
+     (blocks-compressed-total stats)
+     (blocks-decompressed-total stats)
+     (blocks-not-compressed-total stats)
+     (iterators-created-total stats)
+     (iterators-deleted-total stats)
+     (wal-syncs-total stats)
+     (wal-bytes-total stats)
+     (flush-seconds-total stats)
+     (compaction-seconds-total stats)
+     (compression-seconds-total stats)
+     (decompression-seconds-total stats)]))
 
 (defn block-cache-collector [block-cache]
   (metrics/collector
-   [(metrics/gauge-metric
-     "blaze_rocksdb_block_cache_usage_bytes"
-     "Returns the memory size for the entries in the RocksDB block cache."
-     []
-     [{:label-values []
-       :value (.getUsage ^Cache block-cache)}])
-    (metrics/gauge-metric
-     "blaze_rocksdb_block_cache_pinned_usage_bytes"
-     "Returns the memory size for the entries pinned in the RocksDB block cache."
-     []
-     [{:label-values []
-       :value (.getPinnedUsage ^Cache block-cache)}])]))
+    [(metrics/gauge-metric
+      "blaze_rocksdb_block_cache_usage_bytes"
+      "Returns the memory size for the entries in the RocksDB block cache."
+      []
+      [{:label-values []
+        :value (.getUsage ^Cache block-cache)}])
+     (metrics/gauge-metric
+      "blaze_rocksdb_block_cache_pinned_usage_bytes"
+      "Returns the memory size for the entries pinned in the RocksDB block cache."
+      []
+      [{:label-values []
+        :value (.getPinnedUsage ^Cache block-cache)}])]))
 
 (defn table-reader-collector [stores]
   (metrics/collector
-   [(metrics/gauge-metric
-     "blaze_rocksdb_table_reader_usage_bytes"
-     "Returns the memory usage of the table reader."
-     ["name" "column_family"]
-     (for [[name store] stores
-           column-family (p/-column-families store)]
-       {:label-values [name (clojure.core/name column-family)]
-        :value (p/-long-property store column-family "rocksdb.estimate-table-readers-mem")}))]))
+    [(metrics/gauge-metric
+      "blaze_rocksdb_table_reader_usage_bytes"
+      "Returns the memory usage of the table reader."
+      ["name" "column_family"]
+      (for [[name store] stores
+            column-family (p/-column-families store)]
+        {:label-values [name (clojure.core/name column-family)]
+         :value (p/-long-property store column-family "rocksdb.estimate-table-readers-mem")}))]))

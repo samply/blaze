@@ -76,7 +76,7 @@
             [4 1 ss-tu/decode-key] := {:t 1}
             [4 2 ss-tu/decode-val] := {:total 1 :num-changes 1})))))
 
-  (testing "adding a second version of a patient to a store containing it already"
+  (testing "adding a second version of a Patient to a store containing it already"
     (let [hash (hash/generate patient-0-v2)]
       (doseq [if-match [nil 1 [1] [1 2]]]
         (with-system-data [{:blaze.db/keys [node]} config]
@@ -310,7 +310,7 @@
         [4 1 ss-tu/decode-key] := {:t 2}
         [4 2 ss-tu/decode-val] := {:total 0 :num-changes 2})))
 
-  (testing "adding a second patient to a store containing already one"
+  (testing "adding a second Patient to a store containing already one"
     (let [hash (hash/generate patient-1)]
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put patient-0]]]

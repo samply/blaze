@@ -244,12 +244,12 @@
   (let [current-stats (or (type-stats/get! iter tid t) empty-stats)]
     (type-stats/index-entry tid new-t (merge-with + current-stats increments))))
 
-(defn- conj-type-stats [entries {{:keys [snapshot t]} :context} new-t stats]
+(defn- conj-type-stats [entries {:keys [snapshot t]} new-t stats]
   (with-open [_ (prom/timer duration-seconds "type-stats")
               iter (type-stats/new-iterator snapshot)]
     (into entries (map #(type-stat-entry! iter t new-t %)) stats)))
 
-(defn- system-stats [{{:keys [snapshot t]} :context} new-t stats]
+(defn- system-stats [{:keys [snapshot t]} new-t stats]
   (with-open [_ (prom/timer duration-seconds "system-stats")
               iter (system-stats/new-iterator snapshot)]
     (let [current-stats (or (system-stats/get! iter t) empty-stats)]

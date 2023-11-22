@@ -18,18 +18,16 @@
    [integrant.core :as ig]
    [java-time.api :as time]))
 
-(defn create-mem-node-config [node-config]
+(def mem-node-config
   {:blaze.db/node
-   (merge
-    {:tx-log (ig/ref :blaze.db/tx-log)
-     :tx-cache (ig/ref :blaze.db/tx-cache)
-     :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
-     :resource-store (ig/ref ::rs/kv)
-     :kv-store (ig/ref :blaze.db/index-kv-store)
-     :resource-indexer (ig/ref :blaze.db.node/resource-indexer)
-     :search-param-registry (ig/ref :blaze.db/search-param-registry)
-     :poll-timeout (time/millis 10)}
-    node-config)
+   {:tx-log (ig/ref :blaze.db/tx-log)
+    :tx-cache (ig/ref :blaze.db/tx-cache)
+    :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
+    :resource-store (ig/ref ::rs/kv)
+    :kv-store (ig/ref :blaze.db/index-kv-store)
+    :resource-indexer (ig/ref :blaze.db.node/resource-indexer)
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :poll-timeout (time/millis 10)}
 
    ::tx-log/local
    {:kv-store (ig/ref :blaze.db/transaction-kv-store)
@@ -76,9 +74,6 @@
 
    :blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
-
-(def mem-node-config
-  (create-mem-node-config {}))
 
 (defmacro with-system-data
   "Runs `body` inside a system that is initialized from `config`, bound to

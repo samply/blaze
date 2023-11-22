@@ -97,11 +97,11 @@ The `TxSuccess` index contains the real point in time, as `java.time.Instant`, s
 
 #### TxError
 
-The `TxError` index will keep track of all failed transactions. TODO: explain why
+The `TxError` index will keep track of all failed transactions, storing the anomaly about the failure reason. It is used to be able to return this anomaly as result of failing transactions.
 
 #### TByInstant
 
-The `TByInstant` index is used to determine the `t` be a real point in time. This functionality is needed to support the `since` parameter in history queries.
+The `TByInstant` index is used to determine the `t` of a real point in time. This functionality is needed to support the `since` parameter in history queries.
 
 #### TypeStats
 
@@ -116,22 +116,23 @@ The `SystemStats` index keeps track of the total number of resources, and the nu
 The indices not depending on `t` directly point to the resource versions by their content hash. 
 
 | Name                                | Key Parts                                                        | Value |
-|-------------------------------------|------------------------------------------------------------------|-------|
-| SearchParamValueResource            | search-param, type, value, id, content-hash                      | -     |
-| ResourceSearchParamValue            | type, id, content-hash, search-param, value                      | -     |
-| CompartmentSearchParamValueResource | co-c-hash, co-res-id, search-param, type, value, id, hash-prefix | -     |
-| CompartmentResource                 | co-c-hash, co-res-id, tid, id                                    | -     |
-| SearchParam                         | code, tid                                                        | id    |
+|-------------------------------------|----------------------------------------------------------------|-------|
+| SearchParamValueResource            | search-param, type, value, id, hash-prefix                     | -     |
+| ResourceSearchParamValue            | type, id, hash-prefix, search-param, value                     | -     |
+| CompartmentSearchParamValueResource | comp-code, comp-id, search-param, type, value, id, hash-prefix | -     |
+| CompartmentResourceType             | comp-code, comp-id, type, id                                   | -     |
+| SearchParam                         | code, type                                                     | id    |
 | ActiveSearchParams                  | id                                                               | -     |
 
 #### SearchParamValueResource
 
-The `SearchParamValueResource` index contains all values from resources that are reachable from search parameters. The components of its key are:
+The `SearchParamValueResource` index is used to find resources based on search parameter values. It contains all values from resources defined in search parameters with the value followed by the resource id and hash. The components of its key are:
+
 * `search-param` - a 4-byte hash of the search parameters code used to identify the search parameter
 * `type` - a 4-byte hash of the resource type
 * `value` - the encoded value of the resource reachable by the search parameters FHIRPath expression. The encoding depends on the search parameters type.
 * `id` - the logical id of the resource
-* `content-hash` - a 4-byte prefix of the content-hash of the resource version
+ * `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
 
 The way the `SearchParamValueResource` index is used, depends on the type of the search parameter. The following sections will explain this in detail for each type:
 
@@ -206,6 +207,33 @@ That tuples are further processed against the `ResourceAsOf` index in order to c
 ##### Special
 
 **TODO: continue...**
+
+#### ResourceSearchParamValue
+
+The `ResourceSearchParamValue` index is used to decide whether a resource contains a search parameter based value. It contains all values from resources defined in search parameters with the resource id and hash followed by the value. The components of its key are:
+
+* `type` - a 4-byte hash of the resource type
+* `id` - the logical id of the resource
+* `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
+* `search-param` - a 4-byte hash of the search parameters code used to identify the search parameter
+* `value` - the encoded value of the resource reachable by the search parameters FHIRPath expression. The encoding depends on the search parameters type.
+
+#### CompartmentSearchParamValueResource
+
+The `CompartmentSearchParamValueResource` index is used to find resources of a particular compartment based on search parameter values.
+
+#### CompartmentResourceType
+
+The `CompartmentResourceType` index is used to find all resources that belong to a certain compartment. The components of its key are:
+
+ * `comp-code` - a 4-byte hash of the compartment code, ex. `Patient`
+ * `comp-id` - the logical id of the compartment, ex. the logical id of the Patient
+ * `type` - a 4-byte hash of the resource type of the resource that belongs to the compartment, ex. `Observation`
+ * `id` - the logical id of the resource that belongs to the compartment, ex. the logical id of the Observation
+
+#### ActiveSearchParams
+
+Currently not used.
 
 ## Transaction Handling
 

@@ -1,4 +1,9 @@
 (ns blaze.db.impl.index.tx-error
+  "Functions for accessing the TxError index.
+
+  The TxError index will keep track of all failed transactions, storing the
+  anomaly about the failure reason. It is used to be able to return this anomaly
+  as result of failing transactions."
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.db.impl.index.cbor :as cbor]

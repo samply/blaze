@@ -66,11 +66,11 @@
 (defmethod ig/init-key :blaze.page-store.local/collector
   [_ {:keys [page-store]}]
   (metrics/collector
-   [(metrics/gauge-metric
-     "blaze_page_store_estimated_size"
-     "Returns the approximate number of tokens in the page store."
-     []
-     [{:label-values []
-       :value (.estimatedSize ^Cache (:cache page-store))}])]))
+    [(metrics/gauge-metric
+      "blaze_page_store_estimated_size"
+      "Returns the approximate number of tokens in the page store."
+      []
+      [{:label-values []
+        :value (.estimatedSize ^Cache (:cache page-store))}])]))
 
 (derive :blaze.page-store.local/collector :blaze.metrics/collector)
