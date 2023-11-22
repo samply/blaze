@@ -24,8 +24,7 @@
 
   ;; 3,264 µs <> 3,269 µs
   (bench-unform-json
-    {:fhir/type :fhir/Observation
-     :id "DACG22233TWT7CK4"
+    {:fhir/type :fhir/Observation :id "DACG22233TWT7CK4"
      :meta #fhir/Meta
             {:versionId #fhir/id"481283"
              :lastUpdated #fhir/instant"2022-04-20T11:58:38.070Z"
@@ -58,8 +57,7 @@
     {:fhir/type :fhir.Bundle/entry
      :fullUrl "http://localhost:8080/fhir/Observation/DACG22233TWT7CK4"
      :resource
-     {:fhir/type :fhir/Observation
-      :id "DACG22233TWT7CK4"
+     {:fhir/type :fhir/Observation :id "DACG22233TWT7CK4"
       :meta #fhir/Meta
              {:versionId #fhir/id"481283"
               :lastUpdated #fhir/instant"2022-04-20T11:58:38.070Z"

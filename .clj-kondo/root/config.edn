@@ -1,0 +1,92 @@
+{:linters
+ {:unsorted-required-namespaces
+  {:level :error}
+
+  :unsorted-imports
+  {:level :error}
+
+  :aliased-namespace-symbol
+  {:level :warning}
+
+  :unused-alias
+  {:level :warning}
+
+  :single-key-in
+  {:level :warning}
+
+  :case-symbol-test
+  {:level :error}
+
+  :condition-always-true
+  {:level :warning}
+
+  :keyword-binding
+  {:level :error}
+
+  :used-underscored-binding
+  {:level :error}
+
+  :equals-true
+  {:level :warning}
+
+  :equals-false
+  {:level :warning}
+
+  :reduce-without-init
+  {:level :warning}
+
+  :unused-value
+  {:level :warning}
+
+  :plus-one
+  {:level :warning}
+
+  :minus-one
+  {:level :warning}
+
+  :redundant-fn-wrapper
+  {:level :warning}
+
+  :redundant-call
+  {:level :warning}
+
+  :warn-on-reflection
+  {:level :warning :warn-only-on-interop true}
+
+  :docstring-leading-trailing-whitespace
+  {:level :warning}
+
+  :consistent-alias
+  {:aliases
+   {blaze.anomaly ba
+    blaze.async.comp ac
+    blaze.coll.spec cs
+    blaze.db.api d
+    blaze.db.kv kv
+    blaze.db.kv.rocksdb rocksdb
+    blaze.db.kv.rocksdb.protocols p
+    blaze.db.search-param-registry sr
+    blaze.elm.compiler.external-data ed
+    blaze.elm.expression expr
+    blaze.executors ex
+    blaze.scheduler sched
+    blaze.test-util tu
+    blaze.util u
+    buddy.auth auth
+    cognitect.anomalies anom
+    clojure.data.xml xml
+    clojure.java.io io
+    clojure.spec.alpha s
+    clojure.spec.gen.alpha sg
+    clojure.string str
+    clojure.test.check.generators gen
+    clojure.test.check.properties prop
+    integrant.core ig
+    jsonista.core j
+    prometheus.alpha prom
+    reitit.core reitit
+    ring.util.request request
+    ring.util.response ring
+    taoensso.timbre log}}}
+
+ :skip-comments true}

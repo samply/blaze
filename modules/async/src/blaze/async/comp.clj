@@ -4,27 +4,23 @@
   https://www.baeldung.com/java-completablefuture"
   (:refer-clojure :exclude [future])
   (:require
-    [blaze.anomaly :as ba]
-    [clojure.math :as math]
-    [cognitect.anomalies :as anom]
-    [taoensso.timbre :as log])
+   [blaze.anomaly :as ba]
+   [clojure.math :as math]
+   [cognitect.anomalies :as anom]
+   [taoensso.timbre :as log])
   (:import
-    [java.util.concurrent CompletionStage CompletableFuture TimeUnit CompletionException]
-    [java.util.function BiConsumer Function BiFunction Supplier]))
-
+   [java.util.concurrent CompletionStage CompletableFuture TimeUnit CompletionException]
+   [java.util.function BiConsumer Function BiFunction Supplier]))
 
 (set! *warn-on-reflection* true)
 
-
 (defn completable-future? [x]
   (instance? CompletableFuture x))
-
 
 (defn future
   "Returns a new incomplete CompletableFuture"
   []
   (CompletableFuture.))
-
 
 (defn completed-future
   "Returns a CompletableFuture that is already completed with `x` or completed
@@ -34,13 +30,11 @@
     (CompletableFuture/failedFuture (ba/ex-anom x))
     (CompletableFuture/completedFuture x)))
 
-
 (defn failed-future
   "Returns a CompletableFuture that is already completed exceptionally with the
   exception `e`"
   [e]
   (CompletableFuture/failedFuture e))
-
 
 (defn all-of
   "Returns a CompletableFuture that is completed when all of `futures` complete.
@@ -56,7 +50,6 @@
   [futures]
   (CompletableFuture/allOf (into-array CompletableFuture futures)))
 
-
 (defn complete!
   "If not already completed, sets the value of `future` to `x`.
 
@@ -65,19 +58,16 @@
   [future x]
   (.complete ^CompletableFuture future x))
 
-
 (defn- ->Supplier [f]
   (reify Supplier
     (get [_]
       (ba/throw-when (f)))))
-
 
 (defn complete-async!
   "Completes `future` with the result of `f` invoked with no arguments from an
   asynchronous task using the default executor."
   [future f]
   (.completeAsync ^CompletableFuture future (->Supplier f)))
-
 
 (defn or-timeout!
   "Exceptionally completes `future` with a TimeoutException if not otherwise
@@ -87,7 +77,6 @@
   [future timeout unit]
   (.orTimeout ^CompletableFuture future timeout unit))
 
-
 (defn complete-on-timeout!
   "Completes `future` with `x` if not otherwise completed before `timeout` in
   `unit`.
@@ -95,7 +84,6 @@
   Returns `future` itself."
   [future x timeout unit]
   (.completeOnTimeout ^CompletableFuture future x timeout unit))
-
 
 (defn complete-exceptionally!
   "If not already completed, causes invocations of `get` and related methods to
@@ -106,7 +94,6 @@
   [future e]
   (.completeExceptionally ^CompletableFuture future e))
 
-
 (defn delayed-executor
   "Returns a new Executor that submits a task to the default executor after
   `delay` in `unit`.
@@ -116,12 +103,10 @@
   [delay unit]
   (CompletableFuture/delayedExecutor delay unit))
 
-
 (defn join
   "Like `clojure.core/deref` but faster."
   [future]
   (.join ^CompletableFuture future))
-
 
 (defn done?
   "Returns true if `future` completed either: normally, exceptionally, or via
@@ -129,12 +114,10 @@
   [future]
   (.isDone ^CompletableFuture future))
 
-
 (defn canceled?
   "Returns true if `future` was cancelled before it completed normally."
   [future]
   (.isCancelled ^CompletableFuture future))
-
 
 (defn cancel!
   "If not already completed, completes `future` with a CancellationException.
@@ -147,7 +130,6 @@
   [future]
   (.cancel ^CompletableFuture future false))
 
-
 (defn supply-async
   "Returns a CompletableFuture that is asynchronously completed by a task
   running in `executor` with the value obtained by calling the function `f`
@@ -157,25 +139,21 @@
   ([f executor]
    (CompletableFuture/supplyAsync (->Supplier f) executor)))
 
-
 (defn completion-stage? [x]
   (instance? CompletionStage x))
-
 
 (defn- ->Function [f]
   (reify Function
     (apply [_ x]
       (ba/throw-when (f x)))))
 
-
 (defn then-apply
   "Returns a CompletionStage that, when `stage` completes normally, is executed
   with `stage`'s result as the argument to the function `f`."
   [stage f]
   (.thenApply
-    ^CompletionStage stage
-    (->Function f)))
-
+   ^CompletionStage stage
+   (->Function f)))
 
 (defn then-apply-async
   "Returns a CompletionStage that, when `stage` completes normally, is executed
@@ -183,14 +161,13 @@
   function `f`."
   ([stage f]
    (.thenApplyAsync
-     ^CompletionStage stage
-     (->Function f)))
+    ^CompletionStage stage
+    (->Function f)))
   ([stage f executor]
    (.thenApplyAsync
-     ^CompletionStage stage
-     (->Function f)
-     executor)))
-
+    ^CompletionStage stage
+    (->Function f)
+    executor)))
 
 (defn then-compose
   "Returns a CompletionStage that is completed with the same value as the
@@ -205,9 +182,8 @@
   result."
   [stage f]
   (.thenCompose
-    ^CompletionStage stage
-    (->Function f)))
-
+   ^CompletionStage stage
+   (->Function f)))
 
 (defn then-compose-async
   "Returns a CompletionStage that is completed with the same value as the
@@ -223,18 +199,16 @@
   result."
   ([stage f]
    (.thenComposeAsync
-     ^CompletionStage stage
-     (->Function f)))
+    ^CompletionStage stage
+    (->Function f)))
   ([stage f executor]
    (.thenComposeAsync
-     ^CompletionStage stage
-     (->Function f)
-     executor)))
-
+    ^CompletionStage stage
+    (->Function f)
+    executor)))
 
 (defprotocol CompletionCause
   (-completion-cause [e]))
-
 
 (extend-protocol CompletionCause
   CompletionException
@@ -242,12 +216,10 @@
   Throwable
   (-completion-cause [e] e))
 
-
 (defn- ->BiFunction [f]
   (reify BiFunction
     (apply [_ x e]
       (ba/throw-when (f x (some-> e -completion-cause ba/anomaly))))))
-
 
 (defn handle
   "Returns a CompletionStage that, when `stage` completes either normally or
@@ -259,9 +231,8 @@
   `f`'s result is used to complete the returned stage."
   [stage f]
   (.handle
-    ^CompletionStage stage
-    (->BiFunction f)))
-
+   ^CompletionStage stage
+   (->BiFunction f)))
 
 (defn handle-async
   "Returns a CompletionStage that, when `stage` completes either normally or
@@ -274,9 +245,8 @@
   `f`'s result is used to complete the returned stage."
   [stage f]
   (.handleAsync
-    ^CompletionStage stage
-    (->BiFunction f)))
-
+   ^CompletionStage stage
+   (->BiFunction f)))
 
 (defn exceptionally
   "Returns a CompletionStage that, when `stage` completes exceptionally, is
@@ -285,21 +255,19 @@
   completes normally with the same value."
   [stage f]
   (.exceptionally
-    ^CompletionStage stage
-    (reify Function
-      (apply [_ e]
-        (ba/throw-when (f (ba/anomaly (-completion-cause e))))))))
-
+   ^CompletionStage stage
+   (reify Function
+     (apply [_ e]
+       (ba/throw-when (f (ba/anomaly (-completion-cause e))))))))
 
 (defn exceptionally-compose [stage f]
   (-> stage
       (handle
-        (fn [_ e]
-          (if (nil? e)
-            stage
-            (f e))))
+       (fn [_ e]
+         (if (nil? e)
+           stage
+           (f e))))
       (then-compose identity)))
-
 
 (defn exceptionally-compose-async
   "Returns a CompletionStage that, when `stage` completes exceptionally, is
@@ -308,16 +276,15 @@
   [stage f]
   (-> stage
       (handle
-        (fn [_ e]
-          (if (nil? e)
-            stage
-            (-> stage
-                (handle-async
-                  (fn [_ e]
-                    (f e)))
-                (then-compose identity)))))
+       (fn [_ e]
+         (if (nil? e)
+           stage
+           (-> stage
+               (handle-async
+                (fn [_ e]
+                  (f e)))
+               (then-compose identity)))))
       (then-compose identity)))
-
 
 (defn when-complete
   "Returns a CompletionStage with the same result or exception as `stage`, that
@@ -328,11 +295,10 @@
   returned stage is completed when the action returns."
   [stage f]
   (.whenComplete
-    ^CompletionStage stage
-    (reify BiConsumer
-      (accept [_ x e]
-        (f x e)))))
-
+   ^CompletionStage stage
+   (reify BiConsumer
+     (accept [_ x e]
+       (f x e)))))
 
 (defn when-complete-async
   "Returns a CompletionStage with the same result or exception as `stage`, that
@@ -343,45 +309,40 @@
   returned stage is completed when the action returns."
   [stage f executor]
   (.whenCompleteAsync
-    ^CompletionStage stage
-    (reify BiConsumer
-      (accept [_ x e]
-        (f x e)))
-    executor))
-
+   ^CompletionStage stage
+   (reify BiConsumer
+     (accept [_ x e]
+       (f x e)))
+   executor))
 
 (defn ->completable-future [stage]
   (.toCompletableFuture ^CompletionStage stage))
-
 
 (defmacro do-sync
   "Returns a CompletionStage that, when `stage-form` completes normally,
   executes `body` with `stage-forms`'s result bound to `binding-form`."
   [[binding-form stage-form] & body]
   `(then-apply
-     ~stage-form
-     (fn [~binding-form]
-       ~@body)))
-
+    ~stage-form
+    (fn [~binding-form]
+      ~@body)))
 
 (defn- retryable? [{::anom/keys [category]}]
   (#{::anom/not-found ::anom/busy} category))
 
-
 (defn- retry* [future-fn max-retries num-retry]
   (-> (future-fn)
       (exceptionally-compose
-        (fn [e]
-          (if (and (retryable? e) (< num-retry max-retries))
-            (let [delay (* (long (math/pow 2.0 num-retry)) 100)]
-              (log/warn (format "Wait %d ms before retrying an action." delay))
-              (-> (future)
-                  (complete-on-timeout!
-                    nil delay TimeUnit/MILLISECONDS)
-                  (then-compose
-                    (fn [_] (retry* future-fn max-retries (inc num-retry))))))
-            e)))))
-
+       (fn [e]
+         (if (and (retryable? e) (< num-retry max-retries))
+           (let [delay (* (long (math/pow 2.0 num-retry)) 100)]
+             (log/warn (format "Wait %d ms before retrying an action." delay))
+             (-> (future)
+                 (complete-on-timeout!
+                  nil delay TimeUnit/MILLISECONDS)
+                 (then-compose
+                  (fn [_] (retry* future-fn max-retries (inc num-retry))))))
+           e)))))
 
 (defn retry
   "Returns a CompletionStage that, when the CompletionStage as result of calling
@@ -396,7 +357,6 @@
   [f num-retries]
   (retry* f num-retries 0))
 
-
 (defn retry2
   "Returns a CompletionStage that, when the CompletionStage as result of calling
   the function`f` with no arguments completes normally will complete with its
@@ -408,7 +368,7 @@
   [f retry?]
   (-> (f)
       (exceptionally-compose-async
-        (fn [e]
-          (if (retry? e)
-            (retry2 f retry?)
-            (completed-future e))))))
+       (fn [e]
+         (if (retry? e)
+           (retry2 f retry?)
+           (completed-future e))))))

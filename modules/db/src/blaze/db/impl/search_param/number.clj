@@ -1,58 +1,49 @@
 (ns blaze.db.impl.search-param.number
   (:require
-    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.coll.core :as coll]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.protocols :as p]
-    [blaze.db.impl.search-param.core :as sc]
-    [blaze.db.impl.search-param.quantity :as spq]
-    [blaze.db.impl.search-param.util :as u]
-    [blaze.fhir-path :as fhir-path]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.spec.type :as type]
-    [blaze.fhir.spec.type.system :as system]
-    [cognitect.anomalies :as anom]
-    [taoensso.timbre :as log]))
-
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.coll.core :as coll]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.protocols :as p]
+   [blaze.db.impl.search-param.core :as sc]
+   [blaze.db.impl.search-param.quantity :as spq]
+   [blaze.db.impl.search-param.util :as u]
+   [blaze.fhir-path :as fhir-path]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type.system :as system]
+   [cognitect.anomalies :as anom]
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
-
 
 (defmulti index-entries
   "Returns index entries for `value` from a resource."
   {:arglists '([url value])}
   (fn [_ value] (fhir-spec/fhir-type value)))
 
-
 (defmethod index-entries :fhir/decimal
   [_ value]
   [[nil (codec/number (type/value value))]])
-
 
 (defn- encode-int [value]
   ;; TODO: we should not store the decimal form
   (codec/number (BigDecimal/valueOf ^long (type/value value))))
 
-
 (defmethod index-entries :fhir/integer
   [_ value]
   [[nil (encode-int value)]])
-
 
 (defmethod index-entries :fhir/unsignedInt
   [_ value]
   [[nil (encode-int value)]])
 
-
 (defmethod index-entries :fhir/positiveInt
   [_ value]
   [[nil (encode-int value)]])
 
-
 (defmethod index-entries :default
   [url value]
   (log/warn (u/format-skip-indexing-msg value url "number")))
-
 
 (defrecord SearchParamNumber [name url type base code c-hash expression]
   p/SearchParam
@@ -65,27 +56,27 @@
           (:gt :lt :ge :le)
           {:op op :exact-value (codec/number decimal-value)}
           (ba/unsupported
-            (u/unsupported-prefix-msg code op)
-            ::category ::unsupported-prefix
-            ::unsupported-prefix op))
+           (u/unsupported-prefix-msg code op)
+           ::category ::unsupported-prefix
+           ::unsupported-prefix op))
         #(assoc %
-           ::category ::invalid-decimal-value
-           ::anom/message (u/invalid-decimal-value-msg code value)))))
+                ::category ::invalid-decimal-value
+                ::anom/message (u/invalid-decimal-value-msg code value)))))
 
   (-resource-handles [_ context tid _ value]
     (coll/eduction
-      (u/resource-handle-mapper context tid)
-      (spq/resource-keys context c-hash tid 0 value)))
+     (u/resource-handle-mapper context tid)
+     (spq/resource-keys context c-hash tid 0 value)))
 
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction
-      (u/resource-handle-mapper context tid)
-      (spq/resource-keys context c-hash tid 0 value start-id)))
+     (u/resource-handle-mapper context tid)
+     (spq/resource-keys context c-hash tid 0 value start-id)))
 
   (-count-resource-handles [_ context tid _ value]
     (u/count-resource-handles
-      context tid
-      (spq/resource-keys context c-hash tid 0 value)))
+     context tid
+     (spq/resource-keys context c-hash tid 0 value)))
 
   (-matches? [_ context resource-handle _ values]
     (let [{:keys [next-value next-value-prev]} context]
@@ -97,7 +88,6 @@
 
   (-index-value-compiler [_]
     (mapcat (partial index-entries url))))
-
 
 (defmethod sc/search-param "number"
   [_ {:keys [name url type base code expression]}]

@@ -1,7 +1,6 @@
 (ns blaze.jepsen.util
   (:require
-    [jepsen.control.core :as control]))
-
+   [jepsen.control.core :as control]))
 
 (defrecord Remote []
   control/Remote
@@ -11,7 +10,5 @@
     this)
   (execute! [_ _ _]
     {})
-  (upload! [_ _ _ _ _]
-    )
-  (download! [_ _ _ _ _]
-    ))
+  (upload! [_ _ _ _ _])
+  (download! [_ _ _ _ _]))

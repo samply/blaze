@@ -1,17 +1,14 @@
 (ns blaze.byte-buffer
   (:refer-clojure :exclude [reset!])
   (:import
-    [com.google.protobuf ByteString]
-    [java.nio ByteBuffer]))
-
+   [com.google.protobuf ByteString]
+   [java.nio ByteBuffer]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
-
 (defn byte-buffer? [x]
   #(instance? ByteBuffer x))
-
 
 (defn direct?
   {:inline
@@ -19,7 +16,6 @@
      `(.isDirect ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
   [byte-buffer]
   (.isDirect ^ByteBuffer byte-buffer))
-
 
 (defn allocate
   "Allocates a new byte buffer.
@@ -33,18 +29,15 @@
   [capacity]
   (ByteBuffer/allocate capacity))
 
-
 (defn allocate-direct
   {:inline (fn [capacity] `(ByteBuffer/allocateDirect ~capacity))}
   [capacity]
   (ByteBuffer/allocateDirect capacity))
 
-
 (defn wrap
   {:inline (fn [byte-array] `(ByteBuffer/wrap ~byte-array))}
   [byte-array]
   (ByteBuffer/wrap byte-array))
-
 
 (defn capacity
   {:inline
@@ -53,14 +46,12 @@
   [byte-buffer]
   (.capacity ^ByteBuffer byte-buffer))
 
-
 (defn put-byte!
   {:inline
    (fn [byte-buffer x]
      `(.put ~(vary-meta byte-buffer assoc :tag `ByteBuffer) (byte ~x)))}
   [byte-buffer x]
   (.put ^ByteBuffer byte-buffer (byte x)))
-
 
 (defn put-short!
   {:inline
@@ -69,7 +60,6 @@
   [byte-buffer x]
   (.putShort ^ByteBuffer byte-buffer x))
 
-
 (defn put-int!
   {:inline
    (fn [byte-buffer x]
@@ -77,14 +67,12 @@
   [byte-buffer x]
   (.putInt ^ByteBuffer byte-buffer x))
 
-
 (defn put-long!
   {:inline
    (fn [byte-buffer x]
      `(.putLong ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~x))}
   [byte-buffer x]
   (.putLong ^ByteBuffer byte-buffer x))
-
 
 (defn put-byte-array!
   {:inline
@@ -99,7 +87,6 @@
   ([byte-buffer byte-array offset length]
    (.put ^ByteBuffer byte-buffer ^bytes byte-array offset length)))
 
-
 (defn put-byte-buffer!
   "Copies all bytes of `src` byte buffer into `dst` byte buffer."
   {:inline
@@ -109,13 +96,11 @@
   [dst src]
   (.put ^ByteBuffer dst ^ByteBuffer src))
 
-
 (defn put-byte-string!
   "Copies all bytes of `byte-string` into `byte-buffer`."
   [byte-buffer byte-string]
   (.copyTo ^ByteString byte-string byte-buffer)
   byte-buffer)
-
 
 (defn limit
   "Returns the limit of `byte-buffer`."
@@ -125,14 +110,12 @@
   [byte-buffer]
   (.limit ^ByteBuffer byte-buffer))
 
-
 (defn set-limit!
   {:inline
    (fn [byte-buffer limit]
      `(.limit ~(vary-meta byte-buffer assoc :tag `ByteBuffer) (int ~limit)))}
   [byte-buffer limit]
   (.limit ^ByteBuffer byte-buffer (int limit)))
-
 
 (defn position
   {:inline
@@ -141,14 +124,12 @@
   [byte-buffer]
   (.position ^ByteBuffer byte-buffer))
 
-
 (defn set-position!
   {:inline
    (fn [byte-buffer position]
      `(.position ~(vary-meta byte-buffer assoc :tag `ByteBuffer) (int ~position)))}
   [byte-buffer position]
   (.position ^ByteBuffer byte-buffer (int position)))
-
 
 (defn remaining
   "Returns the number of elements between the current position and the limit."
@@ -158,14 +139,12 @@
   [byte-buffer]
   (.remaining ^ByteBuffer byte-buffer))
 
-
 (defn flip!
   {:inline
    (fn [byte-buffer]
      `(.flip ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
   [byte-buffer]
   (.flip ^ByteBuffer byte-buffer))
-
 
 (defn rewind!
   {:inline
@@ -174,14 +153,12 @@
   [byte-buffer]
   (.rewind ^ByteBuffer byte-buffer))
 
-
 (defn clear!
   {:inline
    (fn [byte-buffer]
      `(.clear ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
   [byte-buffer]
   (.clear ^ByteBuffer byte-buffer))
-
 
 (defn mark!
   {:inline
@@ -190,14 +167,12 @@
   [byte-buffer]
   (.mark ^ByteBuffer byte-buffer))
 
-
 (defn reset!
   {:inline
    (fn [byte-buffer]
      `(.reset ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
   [byte-buffer]
   (.reset ^ByteBuffer byte-buffer))
-
 
 (defn get-byte!
   "The 1-arity variant reads the byte at the current position of `byte-buffer`
@@ -214,7 +189,6 @@
   ([byte-buffer index]
    (.get ^ByteBuffer byte-buffer (int index))))
 
-
 (defn get-int!
   {:inline
    (fn [byte-buffer]
@@ -222,14 +196,12 @@
   [byte-buffer]
   (.getInt ^ByteBuffer byte-buffer))
 
-
 (defn get-long!
   {:inline
    (fn [byte-buffer]
      `(.getLong ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
   [byte-buffer]
   (.getLong ^ByteBuffer byte-buffer))
-
 
 (defn copy-into-byte-array!
   "Copies all bytes of `byte-buffer` into `byte-array`."
@@ -244,7 +216,6 @@
    (.get ^ByteBuffer byte-buffer ^bytes byte-array))
   ([byte-buffer byte-array offset length]
    (.get ^ByteBuffer byte-buffer ^bytes byte-array offset length)))
-
 
 (defn size-up-to-null [byte-buffer]
   (when (pos? (remaining byte-buffer))
@@ -262,7 +233,6 @@
         :else
         (do (reset! byte-buffer)
             nil)))))
-
 
 (defn mismatch
   "Finds and returns the relative index of the first mismatch between `a` and
@@ -285,7 +255,6 @@
      `(.mismatch ~(vary-meta a assoc :tag `ByteBuffer) ~b))}
   [a b]
   (.mismatch ^ByteBuffer a b))
-
 
 (defn array
   {:inline

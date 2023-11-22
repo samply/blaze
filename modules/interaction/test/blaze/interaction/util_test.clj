@@ -1,26 +1,23 @@
 (ns blaze.interaction.util-test
   (:require
-    [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
-    [blaze.db.tx-log.spec]
-    [blaze.interaction.util :as iu]
-    [blaze.interaction.util-spec]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu :refer [satisfies-prop]]
-    [clojure.spec.test.alpha :as st]
-    [clojure.string :as str]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [clojure.test.check.generators :as gen]
-    [clojure.test.check.properties :as prop]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]]))
-
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.db.tx-log.spec]
+   [blaze.interaction.util :as iu]
+   [blaze.interaction.util-spec]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
+   [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest etag->t-test
   (testing "valid ETag"
@@ -31,7 +28,6 @@
       "foo"
       "W/1"
       "W/\"a\"")))
-
 
 (deftest clauses-test
   (testing "nil"
@@ -122,7 +118,6 @@
       "__token"
       "__t")))
 
-
 (deftest put-tx-op-test
   (testing "with empty database"
     (with-system [{:blaze.db/keys [node]} mem-node-config]
@@ -194,7 +189,6 @@
           (testing "generates a put op because the newer t could still match inside the transaction and removes the older t that can't match anymore"
             (is (= (iu/update-tx-op (d/db node) male-patient "W/\"1\",W/\"3\"" nil)
                    [:put male-patient [:if-match 3]]))))))))
-
 
 (deftest subsetted-test
   (are [coding] (not (iu/subsetted? coding))

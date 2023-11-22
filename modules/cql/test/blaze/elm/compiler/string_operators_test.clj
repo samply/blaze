@@ -4,21 +4,19 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
-    [blaze.elm.literal :as elm]
-    [blaze.elm.literal-spec]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]))
-
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.literal :as elm]
+   [blaze.elm.literal-spec]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -26,9 +24,7 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; 17.1. Combine
 ;;
@@ -52,7 +48,7 @@
 
     (testing "form and static"
       (let [expr (ctu/dynamic-compile {:type "Combine"
-                                      :source #elm/parameter-ref "x"})]
+                                       :source #elm/parameter-ref "x"})]
 
         (has-form expr '(combine (param-ref "x")))
 
@@ -70,13 +66,12 @@
 
     (testing "form and static"
       (let [expr (ctu/dynamic-compile {:type "Combine"
-                                      :source #elm/parameter-ref "x"
-                                      :separator #elm/parameter-ref "y"})]
+                                       :source #elm/parameter-ref "x"
+                                       :separator #elm/parameter-ref "y"})]
 
         (has-form expr '(combine (param-ref "x") (param-ref "y")))
 
         (is (false? (core/-static expr)))))))
-
 
 ;; 17.2. Concatenate
 ;;
@@ -103,7 +98,6 @@
       [#elm/string "a" #elm/string "b"]
       [#elm/string "a" {:type "Null"}])))
 
-
 ;; 17.3. EndsWith
 ;;
 ;; The EndsWith operator returns true if the given string ends with the given
@@ -114,20 +108,20 @@
 ;; If either argument is null, the result is null.
 (deftest compile-ends-with-test
   (testing "static"
-    (are [s suffix res] (= res (c/compile {} (elm/ends-with [s suffix])))
-      #elm/string "a" #elm/string "a" true
-      #elm/string "ab" #elm/string "b" true
+    (are [s suffix pred] (pred (c/compile {} (elm/ends-with [s suffix])))
+      #elm/string "a" #elm/string "a" true?
+      #elm/string "ab" #elm/string "b" true?
 
-      #elm/string "a" #elm/string "b" false
-      #elm/string "ba" #elm/string "b" false))
+      #elm/string "a" #elm/string "b" false?
+      #elm/string "ba" #elm/string "b" false?))
 
   (testing "Dynamic"
-    (are [s suffix res] (= res (ctu/dynamic-compile-eval (elm/ends-with [s suffix])))
-      #elm/parameter-ref "a" #elm/string "a" true
-      #elm/parameter-ref "ab" #elm/string "b" true
+    (are [s suffix pred] (pred (ctu/dynamic-compile-eval (elm/ends-with [s suffix])))
+      #elm/parameter-ref "a" #elm/string "a" true?
+      #elm/parameter-ref "ab" #elm/string "b" true?
 
-      #elm/parameter-ref "a" #elm/string "b" false
-      #elm/parameter-ref "ba" #elm/string "b" false))
+      #elm/parameter-ref "a" #elm/string "b" false?
+      #elm/parameter-ref "ba" #elm/string "b" false?))
 
   (ctu/testing-binary-null elm/ends-with #elm/string "a")
 
@@ -135,16 +129,13 @@
 
   (ctu/testing-binary-form elm/ends-with))
 
-
 ;; 17.4. Equal
 ;;
 ;; See 12.1. Equal
 
-
 ;; 17.5. Equivalent
 ;;
 ;; See 12.2. Equivalent
-
 
 ;; 17.6. Indexer
 ;;
@@ -181,7 +172,6 @@
 
   (ctu/testing-binary-form elm/indexer))
 
-
 ;; 17.7. LastPositionOf
 ;;
 ;; The LastPositionOf operator returns the 0-based index of the beginning of the
@@ -202,7 +192,6 @@
   (ctu/testing-binary-dynamic elm/last-position-of)
 
   (ctu/testing-binary-form elm/last-position-of))
-
 
 ;; 17.8. Length
 ;;
@@ -232,7 +221,7 @@
       #elm/parameter-ref "nil" 0))
 
   (testing "retrieve"
-    (are [count]
+    (doseq [count [0 1 2]]
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [(into [[:put {:fhir/type :fhir/Patient :id "0"}]]
                (map (fn [id]
@@ -248,13 +237,11 @@
               db (d/db node)
               patient (d/resource-handle db "Patient" "0")]
 
-          (identical? count (core/-eval expr {:db db} patient nil))))
-      0 1 2))
+          (is (identical? count (core/-eval expr {:db db} patient nil)))))))
 
   (ctu/testing-unary-dynamic elm/length)
 
   (ctu/testing-unary-form elm/length))
-
 
 ;; 17.9. Lower
 ;;
@@ -284,7 +271,6 @@
 
   (ctu/testing-unary-form elm/lower))
 
-
 ;; 17.10. Matches
 ;;
 ;; The Matches operator returns true if the given string matches the given
@@ -299,10 +285,10 @@
 ;; such, CQL does not prescribe a particular dialect, but recommends the use of
 ;; the PCRE dialect.
 (deftest compile-matches-test
-  (are [s pattern res] (= res (c/compile {} (elm/matches [s pattern])))
-    #elm/string "a" #elm/string "a" true
+  (are [s pattern pred] (pred (c/compile {} (elm/matches [s pattern])))
+    #elm/string "a" #elm/string "a" true?
 
-    #elm/string "a" #elm/string "\\d" false)
+    #elm/string "a" #elm/string "\\d" false?)
 
   (ctu/testing-binary-null elm/matches #elm/string "a")
 
@@ -310,11 +296,9 @@
 
   (ctu/testing-binary-form elm/matches))
 
-
 ;; 17.11. NotEqual
 ;;
 ;; See 12.7. NotEqual
-
 
 ;; 17.12. PositionOf
 ;;
@@ -336,7 +320,6 @@
   (ctu/testing-binary-dynamic elm/position-of)
 
   (ctu/testing-binary-form elm/position-of))
-
 
 ;; 17.13. ReplaceMatches
 ;;
@@ -363,7 +346,6 @@
 
   (ctu/testing-ternary-form elm/replace-matches))
 
-
 ;; 17.14. Split
 ;;
 ;; The Split operator splits a string into a list of strings using a separator.
@@ -383,7 +365,7 @@
 
     (testing "form and static"
       (let [expr (ctu/dynamic-compile {:type "Split"
-                                      :stringToSplit #elm/parameter-ref "x"})]
+                                       :stringToSplit #elm/parameter-ref "x"})]
 
         (has-form expr '(split (param-ref "x")))
 
@@ -401,13 +383,12 @@
 
     (testing "form and static"
       (let [expr (ctu/dynamic-compile {:type "Split"
-                                      :stringToSplit #elm/parameter-ref "x"
-                                      :separator #elm/parameter-ref "y"})]
+                                       :stringToSplit #elm/parameter-ref "x"
+                                       :separator #elm/parameter-ref "y"})]
 
         (has-form expr '(split (param-ref "x") (param-ref "y")))
 
         (is (false? (core/-static expr)))))))
-
 
 ;; 17.15. SplitOnMatches
 ;;
@@ -423,7 +404,6 @@
 ;; separator pattern, the result is a list of strings containing one element
 ;; that is the input value of the stringToSplit argument.
 
-
 ;; 17.16. StartsWith
 ;;
 ;; The StartsWith operator returns true if the given string starts with the
@@ -434,20 +414,20 @@
 ;; If either argument is null, the result is null.
 (deftest compile-starts-with-test
   (testing "static"
-    (are [s prefix res] (= res (c/compile {} (elm/starts-with [s prefix])))
-      #elm/string "a" #elm/string "a" true
-      #elm/string "ba" #elm/string "b" true
+    (are [s prefix pred] (pred (c/compile {} (elm/starts-with [s prefix])))
+      #elm/string "a" #elm/string "a" true?
+      #elm/string "ba" #elm/string "b" true?
 
-      #elm/string "a" #elm/string "b" false
-      #elm/string "ab" #elm/string "b" false))
+      #elm/string "a" #elm/string "b" false?
+      #elm/string "ab" #elm/string "b" false?))
 
   (testing "Dynamic"
-    (are [s prefix res] (= res (ctu/dynamic-compile-eval (elm/starts-with [s prefix])))
-      #elm/parameter-ref "a" #elm/string "a" true
-      #elm/parameter-ref "ba" #elm/string "b" true
+    (are [s prefix pred] (pred (ctu/dynamic-compile-eval (elm/starts-with [s prefix])))
+      #elm/parameter-ref "a" #elm/string "a" true?
+      #elm/parameter-ref "ba" #elm/string "b" true?
 
-      #elm/parameter-ref "a" #elm/string "b" false
-      #elm/parameter-ref "ab" #elm/string "b" false))
+      #elm/parameter-ref "a" #elm/string "b" false?
+      #elm/parameter-ref "ab" #elm/string "b" false?))
 
   (ctu/testing-binary-null elm/starts-with #elm/string "a")
 
@@ -455,13 +435,12 @@
 
   (ctu/testing-binary-form elm/starts-with))
 
-
 ;; 17.17. Substring
 ;;
 ;; The Substring operator returns the string within stringToSub, starting at the
 ;; 0-based index startIndex, and consisting of length characters.
 ;;
-;; If length is ommitted, the substring returned starts at startIndex and
+;; If length is omitted, the substring returned starts at startIndex and
 ;; continues to the end of stringToSub.
 ;;
 ;; If stringToSub or startIndex is null, or startIndex is out of range, the
@@ -481,8 +460,8 @@
 
     (testing "form and static"
       (let [expr (ctu/dynamic-compile {:type "Substring"
-                                      :stringToSub #elm/parameter-ref "x"
-                                      :startIndex #elm/parameter-ref "y"})]
+                                       :stringToSub #elm/parameter-ref "x"
+                                       :startIndex #elm/parameter-ref "y"})]
 
         (has-form expr '(substring (param-ref "x") (param-ref "y")))
 
@@ -502,14 +481,13 @@
 
     (testing "form and static"
       (let [expr (ctu/dynamic-compile {:type "Substring"
-                                      :stringToSub #elm/parameter-ref "x"
-                                      :startIndex #elm/parameter-ref "y"
-                                      :length #elm/parameter-ref "z"})]
+                                       :stringToSub #elm/parameter-ref "x"
+                                       :startIndex #elm/parameter-ref "y"
+                                       :length #elm/parameter-ref "z"})]
 
         (has-form expr '(substring (param-ref "x") (param-ref "y") (param-ref "z")))
 
         (is (false? (core/-static expr)))))))
-
 
 ;; 17.18. Upper
 ;;

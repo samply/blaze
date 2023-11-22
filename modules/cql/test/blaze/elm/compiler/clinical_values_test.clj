@@ -4,35 +4,33 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.elm.code-spec]
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.clinical-values]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
-    [blaze.elm.concept-spec]
-    [blaze.elm.date-time :as date-time]
-    [blaze.elm.literal]
-    [blaze.elm.literal-spec]
-    [blaze.elm.quantity :as quantity]
-    [blaze.elm.ratio :as ratio]
-    [blaze.test-util :refer [satisfies-prop]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest testing]]
-    [clojure.test.check.properties :as prop]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]])
+   [blaze.anomaly :as ba]
+   [blaze.elm.code-spec]
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.clinical-values]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.concept-spec]
+   [blaze.elm.date-time :as date-time]
+   [blaze.elm.literal]
+   [blaze.elm.literal-spec]
+   [blaze.elm.quantity :as quantity]
+   [blaze.elm.ratio :as ratio]
+   [blaze.test-util :refer [satisfies-prop]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest testing]]
+   [clojure.test.check.properties :as prop]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]])
   (:import
-    [blaze.elm.code Code]
-    [blaze.elm.concept Concept]
-    [blaze.elm.date_time Period]))
-
+   [blaze.elm.code Code]
+   [blaze.elm.concept Concept]
+   [blaze.elm.date_time Period]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -40,9 +38,7 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; 3.1. Code
 ;;
@@ -88,11 +84,9 @@
         ::anom/category := ::anom/not-found
         ::anom/message := "Can't find the code system `sys-def-112249`."))))
 
-
 ;; 3.2. CodeDef
 ;;
 ;; Only use indirectly through CodeRef.
-
 
 ;; 3.3. CodeRef
 ;;
@@ -135,16 +129,13 @@
         :version := "version-125222"
         :code := "code-125354"))))
 
-
 ;; 3.4. CodeSystemDef
 ;;
 ;; Only used indirectly through Code and CodeDef.
 
-
 ;; 3.5. CodeSystemRef
 ;;
 ;; Only used indirectly through Code and CodeDef.
-
 
 ;; 3.6. Concept
 ;;
@@ -154,9 +145,9 @@
     (let [context
           {:library
            {:codeSystems
-            {:def [{:name "sys-def-115852" :id "system-115910"}]}}}]
-      (given
-        (c/compile context #elm/concept [[#elm/code ["sys-def-115852" "code-115927"]]])
+            {:def [{:name "sys-def-115852" :id "system-115910"}]}}}
+          elm #elm/concept [[#elm/code ["sys-def-115852" "code-115927"]]]]
+      (given (c/compile context elm)
         type := Concept
         [:codes 0 type] := Code
         [:codes 0 :system] := "system-115910"
@@ -167,10 +158,10 @@
           {:library
            {:codeSystems
             {:def [{:name "sys-def-115852" :id "system-115910"}
-                   {:name "sys-def-115853" :id "system-115911"}]}}}]
-      (given
-        (c/compile context #elm/concept [[#elm/code ["sys-def-115852" "code-115927"]
-                                          #elm/code ["sys-def-115853" "code-115928"]]])
+                   {:name "sys-def-115853" :id "system-115911"}]}}}
+          elm #elm/concept [[#elm/code ["sys-def-115852" "code-115927"]
+                             #elm/code ["sys-def-115853" "code-115928"]]]]
+      (given (c/compile context elm)
         type := Concept
         [:codes 0 type] := Code
         [:codes 0 :system] := "system-115910"
@@ -186,9 +177,9 @@
             {:def
              [{:name "sys-def-120434"
                :id "system-120411"
-               :version "version-120408"}]}}}]
-      (given
-        (c/compile context #elm/concept [[#elm/code ["sys-def-120434" "code-115927"]]])
+               :version "version-120408"}]}}}
+          elm #elm/concept [[#elm/code ["sys-def-120434" "code-115927"]]]]
+      (given (c/compile context elm)
         type := Concept
         [:codes 0 type] := Code
         [:codes 0 :system] := "system-120411"
@@ -197,18 +188,18 @@
 
   (testing "with version and two codes"
     (let [context
-        {:library
-         {:codeSystems
-          {:def
-           [{:name "sys-def-120434"
-             :id "system-120411"
-             :version "version-120408"}
-            {:name "sys-def-115853"
-             :id "system-115911"
-             :version "version-115909"}]}}}]
-      (given
-        (c/compile context #elm/concept [[#elm/code ["sys-def-120434" "code-115927"]
-                                          #elm/code ["sys-def-115853" "code-115928"]]])
+          {:library
+           {:codeSystems
+            {:def
+             [{:name "sys-def-120434"
+               :id "system-120411"
+               :version "version-120408"}
+              {:name "sys-def-115853"
+               :id "system-115911"
+               :version "version-115909"}]}}}
+          elm #elm/concept [[#elm/code ["sys-def-120434" "code-115927"]
+                             #elm/code ["sys-def-115853" "code-115928"]]]]
+      (given (c/compile context elm)
         type := Concept
         [:codes 0 type] := Code
         [:codes 0 :system] := "system-120411"
@@ -218,7 +209,6 @@
         [:codes 1 :system] := "system-115911"
         [:codes 1 :version] := "version-115909"
         [:codes 1 :code] := "code-115928"))))
-
 
 ;; 3.8. ConceptRef
 ;;
@@ -280,7 +270,6 @@
         [:codes 1 :system] := "system-name-125214"
         [:codes 1 :code] := "code-125355"))))
 
-
 ;; 3.9. Quantity
 ;;
 ;; The Quantity type defines a clinical quantity. For example, the quantity 10
@@ -320,7 +309,6 @@
     (satisfies-prop 100
       (prop/for-all [period (s/gen :elm/period)]
         (#{BigDecimal Period} (type (core/-eval (c/compile {} period) {} nil nil)))))))
-
 
 ;; 3.10. Ratio
 ;;

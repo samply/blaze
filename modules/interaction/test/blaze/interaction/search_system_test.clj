@@ -3,67 +3,59 @@
 
   https://www.hl7.org/fhir/http.html#search"
   (:require
-    [blaze.async.comp :as ac]
-    [blaze.db.api :as d]
-    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-    [blaze.db.resource-store :as rs]
-    [blaze.interaction.search-system]
-    [blaze.interaction.search.nav-spec]
-    [blaze.interaction.search.params-spec]
-    [blaze.interaction.search.util-spec]
-    [blaze.interaction.test-util :refer [wrap-error]]
-    [blaze.middleware.fhir.db :as db]
-    [blaze.middleware.fhir.db-spec]
-    [blaze.page-store-spec]
-    [blaze.page-store.local]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [integrant.core :as ig]
-    [java-time.api :as time]
-    [juxt.iota :refer [given]]
-    [reitit.core :as reitit]
-    [taoensso.timbre :as log])
+   [blaze.async.comp :as ac]
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.resource-store :as rs]
+   [blaze.interaction.search-system]
+   [blaze.interaction.search.nav-spec]
+   [blaze.interaction.search.params-spec]
+   [blaze.interaction.search.util-spec]
+   [blaze.interaction.test-util :refer [wrap-error]]
+   [blaze.middleware.fhir.db :as db]
+   [blaze.middleware.fhir.db-spec]
+   [blaze.page-store-spec]
+   [blaze.page-store.local]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [integrant.core :as ig]
+   [java-time.api :as time]
+   [juxt.iota :refer [given]]
+   [reitit.core :as reitit]
+   [taoensso.timbre :as log])
   (:import
-    [java.time Instant]))
-
+   [java.time Instant]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def base-url "base-url-114650")
 
-
 (def router
   (reitit/router
-    [["/__page" {:name :page}]
-     ["/Patient" {:name :Patient/type}]]
-    {:syntax :bracket}))
-
+   [["/__page" {:name :page}]
+    ["/Patient" {:name :Patient/type}]]
+   {:syntax :bracket}))
 
 (def match
   (reitit/map->Match
-    {:data
-     {:blaze/base-url ""}
-     :path ""}))
-
+   {:data
+    {:blaze/base-url ""}
+    :path ""}))
 
 (def page-match
   (reitit/map->Match
-    {:data
-     {:name :page
-      :blaze/base-url ""}
-     :path ""}))
-
+   {:data
+    {:name :page
+     :blaze/base-url ""}
+    :path ""}))
 
 (defn- link-url [body link-relation]
   (->> body :link (filter (comp #{link-relation} :relation)) first :url))
-
 
 (deftest init-test
   (testing "nil config"
@@ -89,34 +81,30 @@
       [:explain ::s/problems 2 :pred] := `time/clock?
       [:explain ::s/problems 2 :val] := ::invalid)))
 
-
 (def config
   (assoc api-stub/mem-node-config
-    :blaze.interaction/search-system
-    {:node (ig/ref :blaze.db/node)
-     :clock (ig/ref :blaze.test/fixed-clock)
-     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-     :page-store (ig/ref :blaze.page-store/local)}
-    :blaze.test/fixed-rng-fn {}
-    :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
-    :blaze.test/fixed-rng {}))
-
+         :blaze.interaction/search-system
+         {:node (ig/ref :blaze.db/node)
+          :clock (ig/ref :blaze.test/fixed-clock)
+          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+          :page-store (ig/ref :blaze.page-store/local)}
+         :blaze.test/fixed-rng-fn {}
+         :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
+         :blaze.test/fixed-rng {}))
 
 (defn wrap-defaults [handler]
   (fn [request]
     (handler
-      (assoc request
-        :blaze/base-url base-url
-        ::reitit/router router
-        ::reitit/match match))))
-
+     (assoc request
+            :blaze/base-url base-url
+            ::reitit/router router
+            ::reitit/match match))))
 
 (defn wrap-db [handler node]
   (fn [{::reitit/keys [match] :as request}]
     (if (= page-match match)
       ((db/wrap-snapshot-db handler node 100) request)
       ((db/wrap-search-db handler node 100) request))))
-
 
 (defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
@@ -127,7 +115,6 @@
                                   wrap-error)
              ~(or node-binding '_) node#]
          ~@body))))
-
 
 (deftest handler-test
   (testing "on empty database"
@@ -272,9 +259,9 @@
       (testing "following the self link"
         (let [{:keys [body]}
               @(handler
-                 {::reitit/match match
-                  :params {"_count" "1" "__t" "1" "__page-type" "Patient"
-                           "__page-id" "0"}})]
+                {::reitit/match match
+                 :params {"_count" "1" "__t" "1" "__page-type" "Patient"
+                          "__page-id" "0"}})]
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
@@ -293,9 +280,9 @@
       (testing "following the next link"
         (let [{:keys [body]}
               @(handler
-                 {::reitit/match page-match
-                  :params {"_count" "1" "__t" "1" "__page-type" "Patient"
-                           "__page-id" "1"}})]
+                {::reitit/match page-match
+                 :params {"_count" "1" "__t" "1" "__page-type" "Patient"
+                          "__page-id" "1"}})]
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
@@ -316,9 +303,9 @@
         (testing "following the self link"
           (let [{:keys [body]}
                 @(handler
-                   {::reitit/match match
-                    :params {"_count" "1" "__t" "1" "__page-type" "Patient"
-                             "__page-id" "0"}})]
+                  {::reitit/match match
+                   :params {"_count" "1" "__t" "1" "__page-type" "Patient"
+                            "__page-id" "0"}})]
 
             (testing "the total count is 2"
               (is (= #fhir/unsignedInt 2 (:total body))))
@@ -337,9 +324,9 @@
         (testing "following the next link"
           (let [{:keys [body]}
                 @(handler
-                   {::reitit/match page-match
-                    :params {"_count" "1" "__t" "1" "__page-type" "Patient"
-                             "__page-id" "1"}})]
+                  {::reitit/match page-match
+                   :params {"_count" "1" "__t" "1" "__page-type" "Patient"
+                            "__page-id" "1"}})]
 
             (testing "the total count is 2"
               (is (= #fhir/unsignedInt 2 (:total body))))
@@ -359,9 +346,9 @@
       (with-handler [handler]
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match match
-                  :headers {"prefer" "handling=strict"}
-                  :params {"_include" "Observation"}})]
+                {::reitit/match match
+                 :headers {"prefer" "handling=strict"}
+                 :params {"_include" "Observation"}})]
 
           (is (= 400 status))
 

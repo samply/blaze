@@ -4,8 +4,7 @@
   All functions block the current thread while doing I/O."
   (:refer-clojure :exclude [get key])
   (:import
-    [java.lang AutoCloseable]))
-
+   [java.lang AutoCloseable]))
 
 (defprotocol KvIterator
   "A mutable iterator over a KvSnapshot."
@@ -30,12 +29,10 @@
 
   (-value [iter] [iter buf]))
 
-
 (defn valid?
   "Returns true if `iter` is positioned at an entry."
   [iter]
   (-valid iter))
-
 
 (defn seek-to-first!
   "Positions `iter` at the first entry of its source.
@@ -44,14 +41,12 @@
   [iter]
   (-seek-to-first iter))
 
-
 (defn seek-to-last!
   "Positions `iter` at the last entry of its source.
 
   The iterator will be valid if its source is not empty."
   [iter]
   (-seek-to-last iter))
-
 
 (defn seek!
   "Positions `iter` at the first entry of its source whose key is at or past
@@ -63,7 +58,6 @@
   [iter target]
   (-seek iter target))
 
-
 (defn seek-buffer!
   "Positions `iter` at the first entry of its source whose key is at or past
   `target`.
@@ -73,7 +67,6 @@
   The iterator will be valid if its source contains a key at or past `target`."
   [iter target]
   (-seek-buffer iter target))
-
 
 (defn seek-for-prev!
   "Positions `iter` at the first entry of its source whose key is at or before
@@ -85,14 +78,12 @@
   [iter target]
   (-seek-for-prev iter target))
 
-
 (defn next!
   "Moves `iter` to the next entry of its source.
 
   Requires `iter` to be valid."
   [iter]
   (-next iter))
-
 
 (defn prev!
   "Moves this iterator to the previous entry.
@@ -101,14 +92,12 @@
   [iter]
   (-prev iter))
 
-
 (defn key
   "Returns the key of the current entry of `iter`.
 
   Requires `iter` to be valid."
   [iter]
   (-key iter))
-
 
 (defn key!
   "Puts the key of current entry of `iter` in `buf`.
@@ -122,14 +111,12 @@
   [iter buf]
   (-key iter buf))
 
-
 (defn value
   "Returns the value of the current entry of `iter`.
 
   Requires `iter` to be valid."
   [iter]
   (-value iter))
-
 
 (defn value!
   "Puts the value of current entry of `iter` in `buf`.
@@ -143,14 +130,12 @@
   [iter buf]
   (-value iter buf))
 
-
 (defprotocol KvSnapshot
   "A snapshot of the contents of a KvStore."
 
   (-new-iterator [snapshot] [snapshot column-family])
 
   (-snapshot-get [snapshot key] [snapshot column-family key]))
-
 
 (defn new-iterator
   "Return an iterator over the contents of the database.
@@ -168,14 +153,12 @@
    [snapshot column-family]
    (-new-iterator snapshot column-family)))
 
-
 (defn snapshot-get
   "Returns a new byte array storing the value associated with the `key` if any."
   ([snapshot key]
    (-snapshot-get snapshot key))
   ([snapshot column-family key]
    (-snapshot-get snapshot column-family key)))
-
 
 (defprotocol KvStore
   "A key-value store."
@@ -192,10 +175,8 @@
 
   (-write [store entries]))
 
-
 (defn store? [x]
   (satisfies? KvStore x))
-
 
 (defn new-snapshot
   "Opens a new snapshot of `store`.
@@ -204,7 +185,6 @@
   ^AutoCloseable
   [store]
   (-new-snapshot store))
-
 
 (defn get
   "Returns the value of `key` in `column-family` (optional) or nil if not found.
@@ -215,14 +195,12 @@
   ([store column-family key]
    (-get store column-family key)))
 
-
 (defn multi-get
   "Returns a map of key to value of all found entries of `keys`.
 
   Blocks the current thread."
   ([store keys]
    (-multi-get store keys)))
-
 
 (defn put!
   "Stores either `entries` or the pair of `key` and `value`.
@@ -238,12 +216,10 @@
   ([store key value]
    (-put store key value)))
 
-
 (defn delete!
   "Deletes entries with `keys`."
   [store keys]
   (-delete store keys))
-
 
 (defn write!
   "Entries are either triples of operator, key and value or quadruples of

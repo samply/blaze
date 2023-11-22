@@ -1,27 +1,23 @@
 (ns blaze.db.impl.index.tx-error-test
   (:require
-    [blaze.db.impl.index.tx-error :as tx-error]
-    [blaze.db.impl.index.tx-error-spec]
-    [blaze.db.kv :as kv]
-    [blaze.db.kv.mem]
-    [blaze.db.kv.mem-spec]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]]))
-
+   [blaze.db.impl.index.tx-error :as tx-error]
+   [blaze.db.impl.index.tx-error-spec]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv.mem]
+   [blaze.db.kv.mem-spec]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def config
   {::kv/mem {:column-families {:tx-error-index nil}}})
-
 
 (deftest tx-test
   (testing "finds the transaction error"
@@ -45,8 +41,8 @@
     (with-system [{kv-store ::kv/mem} config]
       (kv/put! kv-store
                [(tx-error/index-entry
-                  1 {::anom/category ::anom/conflict
-                     :http/status 412})])
+                 1 {::anom/category ::anom/conflict
+                    :http/status 412})])
 
       (given (tx-error/tx-error kv-store 1)
         ::anom/category := ::anom/conflict
@@ -58,8 +54,8 @@
       (with-system [{kv-store ::kv/mem} config]
         (kv/put! kv-store
                  [(tx-error/index-entry
-                    1 {::anom/category ::anom/fault
-                       :blaze.db/tx-cmd tx-cmd})])
+                   1 {::anom/category ::anom/fault
+                      :blaze.db/tx-cmd tx-cmd})])
 
         (given (tx-error/tx-error kv-store 1)
           ::anom/category := ::anom/fault

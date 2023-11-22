@@ -4,14 +4,12 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.macros :refer [defunop]]))
-
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.macros :refer [defunop]]))
 
 ;; 14.1. Null
 (defmethod core/compile* :elm.compiler.type/null
   [_ _])
-
 
 ;; 14.2. Coalesce
 ;;
@@ -32,12 +30,12 @@
               false)
             (-eval [_ context resource scope]
               (reduce
-                (fn [_ elem]
-                  (let [elem (core/-eval elem context resource scope)]
-                    (when (some? elem)
-                      (reduced elem))))
-                nil
-                (core/-eval operand context resource scope)))))
+               (fn [_ elem]
+                 (let [elem (core/-eval elem context resource scope)]
+                   (when (some? elem)
+                     (reduced elem))))
+               nil
+               (core/-eval operand context resource scope)))))
         (let [operand (core/compile* context operand)]
           (reify core/Expression
             (-static [_]
@@ -50,23 +48,20 @@
           false)
         (-eval [_ context resource scope]
           (reduce
-            (fn [_ operand]
-              (let [operand (core/-eval operand context resource scope)]
-                (when (some? operand)
-                  (reduced operand))))
-            nil
-            operands))))))
-
+           (fn [_ operand]
+             (let [operand (core/-eval operand context resource scope)]
+               (when (some? operand)
+                 (reduced operand))))
+           nil
+           operands))))))
 
 ;; 14.3. IsFalse
 (defunop is-false [operand]
   (false? operand))
 
-
 ;; 14.4. IsNull
 (defunop is-null [operand]
   (nil? operand))
-
 
 ;; 14.5. IsTrue
 (defunop is-true [operand]

@@ -1,29 +1,25 @@
 (ns blaze.async.comp-test
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.async.comp :as ac :refer [do-sync]]
-    [blaze.async.comp-spec]
-    [blaze.executors :as ex]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]])
+   [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.async.comp-spec]
+   [blaze.executors :as ex]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]])
   (:import
-    [java.util.concurrent TimeUnit]))
-
+   [java.util.concurrent TimeUnit]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defmacro given-failed-future [future & body]
   `(given (try (deref ~future) (is false) (catch Exception e# (ba/anomaly e#)))
      ~@body))
-
 
 (deftest completed-future-test
   (testing "on completed future"
@@ -33,14 +29,12 @@
     (given-failed-future (ac/completed-future (ba/fault))
       ::anom/category := ::anom/fault)))
 
-
 (deftest failed-future-test
   (try
     @(ac/failed-future (ex-info "e" {::a ::b}))
     (catch Exception e
       (is (= "e" (ex-message (ex-cause e))))
       (is (= ::b (::a (ex-data (ex-cause e))))))))
-
 
 (deftest all-of-test
   (testing "with two successful futures"
@@ -64,18 +58,15 @@
         (catch Exception e
           (is (= "e" (ex-message (ex-cause e)))))))))
 
-
 (deftest complete-test
   (let [future (ac/future)]
     (ac/complete! future 1)
     (is (= 1 @future))))
 
-
 (deftest complete-async-test
   (let [future (ac/future)]
     (ac/complete-async! future (constantly 1))
     (is (= 1 @future))))
-
 
 (deftest or-timeout!-test
   (testing "with timeout happen"
@@ -89,7 +80,6 @@
       (ac/or-timeout! f 10 TimeUnit/MILLISECONDS)
       (ac/complete! f ::b)
       (is (= ::b @f)))))
-
 
 (deftest complete-on-timeout!-test
   (testing "with timeout happen"
@@ -105,19 +95,16 @@
       (ac/complete! f ::b)
       (is (= ::b @f)))))
 
-
 (deftest complete-exceptionally-test
   (let [f (ac/future)
         f' (ac/exceptionally f ::anom/message)]
     (ac/complete-exceptionally! f (ex-info "e" {}))
     (is (= "e" @f'))))
 
-
 (deftest delayed-executor-test
   (let [f (ac/supply-async (constantly ::a) (ac/delayed-executor 100 TimeUnit/MILLISECONDS))]
     (is (not (ac/done? f)))
     (is (= ::a @f))))
-
 
 (deftest join-test
   (testing "on completed future"
@@ -129,7 +116,6 @@
       (catch Exception e
         (is (= "e" (ex-message (ex-cause e))))
         (is (= ::b (::a (ex-data (ex-cause e)))))))))
-
 
 (deftest supply-async-test
   (testing "successful"
@@ -154,13 +140,11 @@
           (catch Exception e
             (is (= "e" (ex-message (ex-cause e))))))))))
 
-
 (deftest then-apply-test
   (let [f (ac/future)
         f' (ac/then-apply f inc)]
     (ac/complete! f 1)
     (is (= 2 @f'))))
-
 
 (deftest then-apply-async-test
   (testing "with default executor"
@@ -175,13 +159,11 @@
       (ac/complete! f 1)
       (is (= 2 @f')))))
 
-
 (deftest then-compose-test
   (let [f (ac/future)
         f' (ac/then-compose f ac/completed-future)]
     (ac/complete! f 1)
     (is (= 1 @f'))))
-
 
 (deftest then-compose-async-test
   (testing "with default executor"
@@ -197,7 +179,6 @@
       (ac/complete! f 1)
       (is (= 1 @f')))))
 
-
 (deftest handle-test
   (testing "with success"
     (let [f (ac/future)
@@ -210,7 +191,6 @@
           f' (ac/handle f (fn [_ e] (::anom/message e)))]
       (ac/complete-exceptionally! f (ex-info "e" {}))
       (is (= "e" @f')))))
-
 
 (deftest handle-async-test
   (testing "with success"
@@ -225,7 +205,6 @@
       (ac/complete-exceptionally! f (ex-info "e" {}))
       (is (= "e" @f')))))
 
-
 (deftest exceptionally-test
   (testing "the exception of a failed future will be converted to an anomaly"
     (is (= @(-> (ac/failed-future (Exception. "msg-125548"))
@@ -238,36 +217,33 @@
                 (ac/exceptionally ::anom/message))
            "msg-131026"))))
 
-
 (deftest exceptionally-compose-test
   (testing "the exception of a failed future will be converted to an anomaly"
     (is (= @(-> (ac/failed-future (Exception. "msg-125548"))
                 (ac/exceptionally-compose
-                  (comp ac/completed-future ::anom/message)))
+                 (comp ac/completed-future ::anom/message)))
            "msg-125548")))
 
   (testing "the anomaly returned in a in-between stage shows up"
     (is (= @(-> (ac/completed-future "foo")
                 (ac/then-apply (constantly (ba/fault "msg-131026")))
                 (ac/exceptionally-compose
-                  (comp ac/completed-future ::anom/message)))
+                 (comp ac/completed-future ::anom/message)))
            "msg-131026"))))
-
 
 (deftest exceptionally-compose-async-test
   (testing "the exception of a failed future will be converted to an anomaly"
     (is (= @(-> (ac/failed-future (Exception. "msg-125548"))
                 (ac/exceptionally-compose-async
-                  (comp ac/completed-future ::anom/message)))
+                 (comp ac/completed-future ::anom/message)))
            "msg-125548")))
 
   (testing "the anomaly returned in a in-between stage shows up"
     (is (= @(-> (ac/completed-future "foo")
                 (ac/then-apply (constantly (ba/fault "msg-131026")))
                 (ac/exceptionally-compose-async
-                  (comp ac/completed-future ::anom/message)))
+                 (comp ac/completed-future ::anom/message)))
            "msg-131026"))))
-
 
 (deftest cancel-test
   (let [f (ac/supply-async (constantly ::a) (ac/delayed-executor 100 TimeUnit/MILLISECONDS))]
@@ -275,7 +251,6 @@
     (ac/cancel! f)
     (is (ac/canceled? f))
     (is (ac/done? f))))
-
 
 (deftest when-complete-test
   (testing "with success"
@@ -296,7 +271,6 @@
         @f''
         (catch Exception e
           (is (= "e" (ex-message (ex-cause e)))))))))
-
 
 (deftest when-complete-async-test
   (testing "with success"
@@ -320,10 +294,8 @@
         (catch Exception e
           (is (= "e" (ex-message (ex-cause e)))))))))
 
-
 (deftest ->completable-future-test
   (is (ac/completable-future? (ac/->completable-future (ac/future)))))
-
 
 (deftest do-sync-test
   (testing "on normally completed future"
@@ -336,7 +308,6 @@
     (given-failed-future (do-sync [x (ac/completed-future (ba/fault))] (inc x))
       ::anom/category := ::anom/fault)))
 
-
 (deftest retry-test
   (testing "with first call successful"
     (let [future-fn #(ac/completed-future ::x)]
@@ -346,15 +317,15 @@
     (testing "first call retryable"
       (let [counter (atom 0)
             future-fn #(ac/completed-future
-                         (let [n (swap! counter inc)]
-                           (if (= 2 n) ::x (ba/busy))))]
+                        (let [n (swap! counter inc)]
+                          (if (= 2 n) ::x (ba/busy))))]
         (is (= ::x @(ac/retry future-fn 1)))))
 
     (testing "first call not retryable"
       (let [counter (atom 0)
             future-fn #(ac/completed-future
-                         (let [n (swap! counter inc)]
-                           (if (= 2 n) ::x (ba/fault))))]
+                        (let [n (swap! counter inc)]
+                          (if (= 2 n) ::x (ba/fault))))]
         (given-failed-future (ac/retry future-fn 1)
           ::anom/category := ::anom/fault))))
 
@@ -362,15 +333,15 @@
     (testing "two retires"
       (let [counter (atom 0)
             future-fn #(ac/completed-future
-                         (let [n (swap! counter inc)]
-                           (if (= 3 n) ::x (ba/busy))))]
+                        (let [n (swap! counter inc)]
+                          (if (= 3 n) ::x (ba/busy))))]
         (is (= ::x @(ac/retry future-fn 2)))))
 
     (testing "one retry"
       (let [counter (atom 0)
             future-fn #(ac/completed-future
-                         (let [n (swap! counter inc)]
-                           (if (= 3 n) ::x (ba/busy))))]
+                        (let [n (swap! counter inc)]
+                          (if (= 3 n) ::x (ba/busy))))]
         (given-failed-future (ac/retry future-fn 1)
           ::anom/category := ::anom/busy))))
 
@@ -378,8 +349,8 @@
     (testing "with second call successful"
       (let [counter (atom 0)
             future-fn #(ac/completed-future
-                         (let [n (swap! counter inc)]
-                           (if (= 2 n) ::x (ba/busy))))
+                        (let [n (swap! counter inc)]
+                          (if (= 2 n) ::x (ba/busy))))
             start (System/nanoTime)]
         @(ac/retry future-fn 1)
         (is (< 1e8 (- (System/nanoTime) start)))))
@@ -387,8 +358,8 @@
     (testing "with third call successful"
       (let [counter (atom 0)
             future-fn #(ac/completed-future
-                         (let [n (swap! counter inc)]
-                           (if (= 3 n) ::x (ba/busy))))
+                        (let [n (swap! counter inc)]
+                          (if (= 3 n) ::x (ba/busy))))
             start (System/nanoTime)]
         @(ac/retry future-fn 2)
         (is (< 3e8 (- (System/nanoTime) start)))))
@@ -396,12 +367,11 @@
     (testing "with forth call successful"
       (let [counter (atom 0)
             future-fn #(ac/completed-future
-                         (let [n (swap! counter inc)]
-                           (if (= 4 n) ::x (ba/busy))))
+                        (let [n (swap! counter inc)]
+                          (if (= 4 n) ::x (ba/busy))))
             start (System/nanoTime)]
         @(ac/retry future-fn 3)
         (is (< 7e8 (- (System/nanoTime) start)))))))
-
 
 (deftest retry2-test
   (testing "with first call successful"
@@ -411,9 +381,9 @@
   (testing "with second call successful"
     (let [counter (atom 2)
           f #(ac/completed-future
-               (if (zero? (swap! counter dec))
-                 ::result
-                 (ba/fault)))]
+              (if (zero? (swap! counter dec))
+                ::result
+                (ba/fault)))]
       (testing "first call retryable"
         (is (= ::result @(ac/retry2 f (constantly true)))))
 

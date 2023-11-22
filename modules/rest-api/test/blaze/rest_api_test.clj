@@ -1,111 +1,105 @@
 (ns blaze.rest-api-test
   (:require
-    [blaze.async.comp :as ac]
-    [blaze.db.api-stub :refer [mem-node-config]]
-    [blaze.db.impl.search-param]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.structure-definition-repo.protocols :as sdrp]
-    [blaze.fhir.test-util :refer [structure-definition-repo]]
-    [blaze.handler.util :as handler-util]
-    [blaze.metrics.spec]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.module.test-util.ring :refer [call]]
-    [blaze.rest-api :as rest-api]
-    [blaze.rest-api.middleware.metrics :as metrics]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [integrant.core :as ig]
-    [juxt.iota :refer [given]]
-    [reitit.core :as reitit]
-    [reitit.ring]
-    [ring.util.response :as ring]
-    [taoensso.timbre :as log])
+   [blaze.async.comp :as ac]
+   [blaze.db.api-stub :refer [mem-node-config]]
+   [blaze.db.impl.search-param]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.structure-definition-repo.protocols :as sdrp]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.handler.util :as handler-util]
+   [blaze.metrics.spec]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util.ring :refer [call]]
+   [blaze.rest-api :as rest-api]
+   [blaze.rest-api.middleware.metrics :as metrics]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [integrant.core :as ig]
+   [juxt.iota :refer [given]]
+   [reitit.core :as reitit]
+   [reitit.ring]
+   [ring.util.response :as ring]
+   [taoensso.timbre :as log])
   (:import
-    [java.io ByteArrayInputStream]))
-
+   [java.io ByteArrayInputStream]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defn- handler [key]
   (fn [_] key))
 
-
 (defn router [auth-backends]
   (rest-api/router
-    {:base-url "base-url-111523"
-     :structure-definitions
-     [{:kind "resource" :name "Patient"}
-      {:kind "resource" :name "Measure"}]
-     :auth-backends auth-backends
-     :search-system-handler (handler ::search-system)
-     :transaction-handler (handler ::transaction)
-     :history-system-handler (handler ::history-system)
-     :resource-patterns
-     [#:blaze.rest-api.resource-pattern
-             {:type :default
-              :interactions
-              {:read
-               #:blaze.rest-api.interaction
-                       {:handler (handler ::read)}
-               :vread
-               #:blaze.rest-api.interaction
-                       {:handler (handler ::vread)}
-               :update
-               #:blaze.rest-api.interaction
-                       {:handler (handler ::update)}
-               :delete
-               #:blaze.rest-api.interaction
-                       {:handler (handler ::delete)}
-               :history-instance
-               #:blaze.rest-api.interaction
-                       {:handler (handler ::history-instance)}
-               :history-type
-               #:blaze.rest-api.interaction
-                       {:handler (handler ::history-type)}
-               :create
-               #:blaze.rest-api.interaction
-                       {:handler (handler ::create)}
-               :search-type
-               #:blaze.rest-api.interaction
-                       {:handler (handler ::search-type)}}}]
-     :compartments
-     [#:blaze.rest-api.compartment
-             {:code "Patient"
-              :search-handler (handler ::search-patient-compartment)}]
-     :operations
-     [#:blaze.rest-api.operation
-             {:code "compact-db"
-              :system-handler (handler ::compact-db)}
-      #:blaze.rest-api.operation
-              {:code "evaluate-measure"
-               :resource-types ["Measure"]
-               :type-handler (handler ::evaluate-measure-type)
-               :instance-handler (handler ::evaluate-measure-instance)}]
-     :metadata-handler (handler ::metadata)
-     :admin-handler (handler ::admin)}
-    (fn [_])))
-
+   {:base-url "base-url-111523"
+    :structure-definitions
+    [{:kind "resource" :name "Patient"}
+     {:kind "resource" :name "Measure"}]
+    :auth-backends auth-backends
+    :search-system-handler (handler ::search-system)
+    :transaction-handler (handler ::transaction)
+    :history-system-handler (handler ::history-system)
+    :resource-patterns
+    [#:blaze.rest-api.resource-pattern
+      {:type :default
+       :interactions
+       {:read
+        #:blaze.rest-api.interaction
+         {:handler (handler ::read)}
+        :vread
+        #:blaze.rest-api.interaction
+         {:handler (handler ::vread)}
+        :update
+        #:blaze.rest-api.interaction
+         {:handler (handler ::update)}
+        :delete
+        #:blaze.rest-api.interaction
+         {:handler (handler ::delete)}
+        :history-instance
+        #:blaze.rest-api.interaction
+         {:handler (handler ::history-instance)}
+        :history-type
+        #:blaze.rest-api.interaction
+         {:handler (handler ::history-type)}
+        :create
+        #:blaze.rest-api.interaction
+         {:handler (handler ::create)}
+        :search-type
+        #:blaze.rest-api.interaction
+         {:handler (handler ::search-type)}}}]
+    :compartments
+    [#:blaze.rest-api.compartment
+      {:code "Patient"
+       :search-handler (handler ::search-patient-compartment)}]
+    :operations
+    [#:blaze.rest-api.operation
+      {:code "compact-db"
+       :system-handler (handler ::compact-db)}
+     #:blaze.rest-api.operation
+      {:code "evaluate-measure"
+       :resource-types ["Measure"]
+       :type-handler (handler ::evaluate-measure-type)
+       :instance-handler (handler ::evaluate-measure-instance)}]
+    :metadata-handler (handler ::metadata)
+    :admin-handler (handler ::admin)}
+   (fn [_])))
 
 (def minimal-router
   (rest-api/router
-    {:base-url "base-url-111523"
-     :structure-definitions [{:kind "resource" :name "Patient"}]
-     :resource-patterns
-     [#:blaze.rest-api.resource-pattern
-             {:type :default
-              :interactions
-              {:read
-               #:blaze.rest-api.interaction
-                       {:handler (handler ::read)}}}]}
-    (fn [_])))
-
+   {:base-url "base-url-111523"
+    :structure-definitions [{:kind "resource" :name "Patient"}]
+    :resource-patterns
+    [#:blaze.rest-api.resource-pattern
+      {:type :default
+       :interactions
+       {:read
+        #:blaze.rest-api.interaction
+         {:handler (handler ::read)}}}]}
+   (fn [_])))
 
 (deftest router-test
   (testing "compile observe-request-duration middleware"
@@ -114,9 +108,9 @@
                     (fn [_handler]
                       interaction))]
       (are [path request-method interaction]
-        (let [middlewares (get-in (reitit/match-by-path (router []) path) [:result request-method :middleware])
-              observe-request-duration (:wrap (some #(when (= :observe-request-duration (:name %)) %) middlewares))]
-          (= interaction (observe-request-duration ::handler)))
+           (let [middlewares (get-in (reitit/match-by-path (router []) path) [:result request-method :middleware])
+                 observe-request-duration (:wrap (some #(when (= :observe-request-duration (:name %)) %) middlewares))]
+             (= interaction (observe-request-duration ::handler)))
 
         "" :get "search-system"
         "" :post "transaction"
@@ -145,11 +139,11 @@
 
   (testing "handlers"
     (are [path request-method handler]
-      (= handler
-         ((get-in
-            (reitit/match-by-path (router []) path)
-            [:result request-method :data :handler])
-          {}))
+         (= handler
+            ((get-in
+              (reitit/match-by-path (router []) path)
+              [:result request-method :data :handler])
+             {}))
       "" :get ::search-system
       "" :post ::transaction
       "/_history" :get ::history-system
@@ -177,20 +171,20 @@
 
     (testing "of minimal router"
       (are [path request-method handler]
-        (= handler
-           ((get-in
-              (reitit/match-by-path minimal-router path)
-              [:result request-method :data :handler])
-            {}))
+           (= handler
+              ((get-in
+                (reitit/match-by-path minimal-router path)
+                [:result request-method :data :handler])
+               {}))
         "/Patient/0" :get ::read)))
 
   (testing "middleware"
     (are [path request-method middleware]
-      (= middleware
-         (->> (get-in
-                (reitit/match-by-path (router []) path)
-                [:result request-method :data :middleware])
-              (mapv (comp :name #(if (sequential? %) (first %) %)))))
+         (= middleware
+            (->> (get-in
+                  (reitit/match-by-path (router []) path)
+                  [:result request-method :data :middleware])
+                 (mapv (comp :name #(if (sequential? %) (first %) %)))))
       "" :get [:observe-request-duration :params :output :error :forwarded :sync :search-db :link-headers]
       "" :post [:observe-request-duration :params :output :error :forwarded :sync :resource :wrap-batch-handler]
       "/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
@@ -219,11 +213,11 @@
 
     (testing "with auth backends"
       (are [path request-method middleware]
-        (= middleware
-           (->> (get-in
-                  (reitit/match-by-path (router [:auth-backend]) path)
-                  [:result request-method :data :middleware])
-                (mapv (comp :name #(if (sequential? %) (first %) %)))))
+           (= middleware
+              (->> (get-in
+                    (reitit/match-by-path (router [:auth-backend]) path)
+                    [:result request-method :data :middleware])
+                   (mapv (comp :name #(if (sequential? %) (first %) %)))))
         "" :get [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :search-db :link-headers]
         "" :post [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :resource :wrap-batch-handler]
         "/$compact-db" :get [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db]
@@ -259,10 +253,9 @@
       [:body :issue 0 :severity] := #fhir/code"error"
       [:body :issue 0 :code] := #fhir/code"not-found")))
 
-
 (deftest router-match-by-name-test
   (are [name params path]
-    (= (reitit/match->path (reitit/match-by-name (router []) name params)) path)
+       (= (reitit/match->path (reitit/match-by-name (router []) name params)) path)
 
     :Patient/type
     {}
@@ -275,7 +268,6 @@
     :Patient/versioned-instance
     {:id "23" :vid "42"}
     "/Patient/23/_history/42"))
-
 
 (deftest default-options-handler-test
   (testing "without match"
@@ -292,7 +284,6 @@
     (given @(rest-api/default-options-handler {::reitit/match {:result {:get {} :post {}}}})
       :status := 204
       [:headers "Access-Control-Allow-Methods"] := "GET,POST")))
-
 
 (deftest init-test
   (testing "nil config"
@@ -325,59 +316,52 @@
       [:explain ::s/problems 6 :pred] := `boolean?
       [:explain ::s/problems 6 :val] := ::invalid)))
 
-
 (deftest requests-total-collector-init-test
   (with-system [{collector :blaze.rest-api/requests-total} {:blaze.rest-api/requests-total {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
-
 
 (deftest request-duration-seconds-collector-init-test
   (with-system [{collector :blaze.rest-api/request-duration-seconds} {:blaze.rest-api/request-duration-seconds {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
 
-
 (deftest parse-duration-seconds-collector-init-test
   (with-system [{collector :blaze.rest-api/parse-duration-seconds} {:blaze.rest-api/parse-duration-seconds {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
-
 
 (deftest generate-duration-seconds-collector-init-test
   (with-system [{collector :blaze.rest-api/generate-duration-seconds} {:blaze.rest-api/generate-duration-seconds {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
 
-
 (def ^:private success-handler
   (constantly (ac/completed-future (ring/status 200))))
 
-
 (def ^:private system
   (assoc mem-node-config
-    :blaze/rest-api
-    {:base-url "http://localhost:8080"
-     :version "0.1.0"
-     :structure-definition-repo structure-definition-repo
-     :node (ig/ref :blaze.db/node)
-     :search-param-registry (ig/ref :blaze.db/search-param-registry)
-     :db-sync-timeout 10000
-     :auth-backends []
-     :search-system-handler success-handler
-     :transaction-handler success-handler
-     :resource-patterns
-     [#:blaze.rest-api.resource-pattern
-             {:type :default
-              :interactions
-              {:read
-               #:blaze.rest-api.interaction
-                       {:handler success-handler}
-               :delete
-               #:blaze.rest-api.interaction
-                       {:handler success-handler}
-               :search-type
-               #:blaze.rest-api.interaction
-                       {:handler success-handler}}}]}
-    :blaze.db/search-param-registry
-    {:structure-definition-repo structure-definition-repo}))
-
+         :blaze/rest-api
+         {:base-url "http://localhost:8080"
+          :version "0.1.0"
+          :structure-definition-repo structure-definition-repo
+          :node (ig/ref :blaze.db/node)
+          :search-param-registry (ig/ref :blaze.db/search-param-registry)
+          :db-sync-timeout 10000
+          :auth-backends []
+          :search-system-handler success-handler
+          :transaction-handler success-handler
+          :resource-patterns
+          [#:blaze.rest-api.resource-pattern
+            {:type :default
+             :interactions
+             {:read
+              #:blaze.rest-api.interaction
+               {:handler success-handler}
+              :delete
+              #:blaze.rest-api.interaction
+               {:handler success-handler}
+              :search-type
+              #:blaze.rest-api.interaction
+               {:handler success-handler}}}]}
+         :blaze.db/search-param-registry
+         {:structure-definition-repo structure-definition-repo}))
 
 (defmethod ig/init-key ::empty-structure-definition-repo
   [_ _]
@@ -386,14 +370,12 @@
     (-complex-types [_] [])
     (-resources [_] [])))
 
-
 (deftest format-override-test
   (testing "XML"
     (with-system [{:blaze/keys [rest-api]} system]
       (given (call rest-api {:request-method :get :uri "/metadata" :query-string "_format=xml"})
         :status := 200
         [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"))))
-
 
 (deftest base-url-test
   (testing "metadata"
@@ -411,14 +393,12 @@
           :status := 200
           [:body fhir-spec/parse-json :implementation :url] := "http://blaze.de")))))
 
-
 (deftest options-cors-test
   (with-system [{:blaze/keys [rest-api]} system]
     (given (call rest-api {:request-method :options :uri "/metadata"})
       :status := 204
       [:headers "Access-Control-Allow-Headers"] := "content-type"
       [:headers "Access-Control-Allow-Methods"] := "GET,OPTIONS")))
-
 
 (deftest not-found-test
   (with-system [{:blaze/keys [rest-api]} system]
@@ -433,7 +413,6 @@
         :status := 404
         :body := nil))))
 
-
 (deftest method-not-allowed-test
   (with-system [{:blaze/keys [rest-api]} system]
     (given (call rest-api {:request-method :put :uri "/metadata"})
@@ -447,7 +426,6 @@
         :status := 405
         :body := nil))))
 
-
 (deftest not-acceptable-test
   (with-system [{:blaze/keys [rest-api]} system]
     (given (call rest-api {:request-method :get :uri "/metadata"
@@ -455,10 +433,8 @@
       :status := 406
       :body := nil)))
 
-
 (defn empty-input-stream []
   (ByteArrayInputStream. (byte-array 0)))
-
 
 (deftest search-type-test
   (testing "using POST"

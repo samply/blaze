@@ -14,17 +14,15 @@
   Each transaction which touches any resources, puts an entry with the new
   totals at its t."
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.kv :as kv])
+   [blaze.byte-buffer :as bb]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.kv :as kv])
   (:import
-    [com.google.common.primitives Longs]
-    [java.lang AutoCloseable]))
-
+   [com.google.common.primitives Longs]
+   [java.lang AutoCloseable]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
-
 
 (defn new-iterator
   "Returns the iterator of the system stats index.
@@ -33,18 +31,14 @@
   ^AutoCloseable [snapshot]
   (kv/new-iterator snapshot :system-stats-index))
 
-
 (def ^:private ^:const ^long value-size (+ Long/BYTES Long/BYTES))
-
 
 (defn- encode-key [t]
   (Longs/toByteArray (codec/descending-long ^long t)))
 
-
 (defn- decode-value! [buf]
   {:total (bb/get-long! buf)
    :num-changes (bb/get-long! buf)})
-
 
 (defn get!
   "Returns the value which is most recent according to `t` if there is any.
@@ -56,13 +50,11 @@
   (when (kv/valid? iter)
     (decode-value! (bb/wrap (kv/value iter)))))
 
-
 (defn- encode-value [{:keys [total num-changes]}]
   (-> (bb/allocate value-size)
       (bb/put-long! total)
       (bb/put-long! num-changes)
       bb/array))
-
 
 (defn index-entry
   "Returns an entry of the SystemStats index build from `t` and `value`.

@@ -1,32 +1,28 @@
 (ns blaze.db.kv.rocksdb.metrics-test
   (:require
-    [blaze.db.kv :as-alias kv]
-    [blaze.db.kv.rocksdb :as rocksdb]
-    [blaze.db.kv.rocksdb.metrics :as metrics]
-    [blaze.db.kv.rocksdb.metrics-spec]
-    [blaze.metrics.core :as metrics-core]
-    [blaze.metrics.core-spec]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [integrant.core :as ig]
-    [juxt.iota :refer [given]])
+   [blaze.db.kv :as-alias kv]
+   [blaze.db.kv.rocksdb :as rocksdb]
+   [blaze.db.kv.rocksdb.metrics :as metrics]
+   [blaze.db.kv.rocksdb.metrics-spec]
+   [blaze.metrics.core :as metrics-core]
+   [blaze.metrics.core-spec]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [integrant.core :as ig]
+   [juxt.iota :refer [given]])
   (:import
-    [java.nio.file Files]
-    [java.nio.file.attribute FileAttribute]
-    [org.rocksdb LRUCache RocksDB Statistics]))
-
+   [java.nio.file Files]
+   [java.nio.file.attribute FileAttribute]
+   [org.rocksdb LRUCache RocksDB Statistics]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
 
-
 (RocksDB/loadLibrary)
-
 
 (deftest stats-collector-test
   (let [collector (metrics/stats-collector {"foo" (Statistics.)})
@@ -84,7 +80,6 @@
     (testing "every metric has the value 0.0"
       (is (every? (comp #{0.0} :value first :samples) metrics)))))
 
-
 (deftest block-cache-collector-test
   (let [collector (metrics/block-cache-collector (LRUCache. 100))
         metrics (metrics-core/collect collector)]
@@ -100,19 +95,15 @@
     (testing "every metric has the value 0.0"
       (is (every? (comp #{0.0} :value first :samples) metrics)))))
 
-
 (defn- new-temp-dir! []
   (str (Files/createTempDirectory "blaze" (make-array FileAttribute 0))))
 
-
-(defn- system [dir]
+(def ^:private config
   {::kv/rocksdb
-   {:dir dir
-    :block-cache (ig/ref ::rocksdb/block-cache)
+   {:block-cache (ig/ref ::rocksdb/block-cache)
     :stats (ig/ref ::rocksdb/stats)}
    ::rocksdb/block-cache {}
    ::rocksdb/stats {}})
-
 
 (deftest table-reader-collector-test
   (testing "no stores"
@@ -127,7 +118,8 @@
 
   (testing "one store"
     (testing "default column family"
-      (with-system [{store ::kv/rocksdb} (system (new-temp-dir!))]
+      (with-system [{store ::kv/rocksdb} (update config ::kv/rocksdb assoc
+                                                 :dir (new-temp-dir!))]
         (let [collector (metrics/table-reader-collector {"foo" store})
               metrics (metrics-core/collect collector)]
 
@@ -141,7 +133,9 @@
             [0 :samples 0 :value] := 0.0))))
 
     (testing "two custom column families"
-      (with-system [{store ::kv/rocksdb} (assoc-in (system (new-temp-dir!)) [::kv/rocksdb :column-families] {:a nil :b nil})]
+      (with-system [{store ::kv/rocksdb} (update config ::kv/rocksdb assoc
+                                                 :dir (new-temp-dir!)
+                                                 :column-families {:a nil :b nil})]
         (let [collector (metrics/table-reader-collector {"foo" store})
               metrics (metrics-core/collect collector)]
 
@@ -151,11 +145,11 @@
             [0 :name] := "blaze_rocksdb_table_reader_usage_bytes"
             [0 :samples count] := 3
             [0 :samples 0 :label-names] := ["name" "column_family"]
-            [0 :samples 0 :label-values] := ["foo" "default"]
+            [0 :samples 0 :label-values] := ["foo" "a"]
             [0 :samples 0 :value] := 0.0
             [0 :samples 1 :label-names] := ["name" "column_family"]
-            [0 :samples 1 :label-values] := ["foo" "a"]
+            [0 :samples 1 :label-values] := ["foo" "b"]
             [0 :samples 1 :value] := 0.0
             [0 :samples 2 :label-names] := ["name" "column_family"]
-            [0 :samples 2 :label-values] := ["foo" "b"]
+            [0 :samples 2 :label-values] := ["foo" "default"]
             [0 :samples 2 :value] := 0.0))))))

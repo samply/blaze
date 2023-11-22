@@ -3,22 +3,20 @@
   between the database value acquisition methods if one only sees the database
   value as result."
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.async.comp :as ac]
-    [blaze.db.api :as d]
-    [blaze.db.api-spec]
-    [blaze.fhir.test-util :refer [given-failed-future]]
-    [blaze.middleware.fhir.db :as db]
-    [blaze.middleware.fhir.db-spec]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom])
+   [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
+   [blaze.db.api :as d]
+   [blaze.db.api-spec]
+   [blaze.fhir.test-util :refer [given-failed-future]]
+   [blaze.middleware.fhir.db :as db]
+   [blaze.middleware.fhir.db-spec]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom])
   (:import
-    [java.util.concurrent TimeUnit]))
-
+   [java.util.concurrent TimeUnit]))
 
 (st/instrument)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -31,13 +29,10 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 (def timeout 100)
 (def handler (comp ac/completed-future :blaze/db))
-
 
 (deftest wrap-db-test
   (testing "uses existing database value"
@@ -45,19 +40,19 @@
 
   (testing "uses sync for database value acquisition"
     (with-redefs
-      [d/sync
-       (fn [node]
-         (assert (= ::node node))
-         (ac/completed-future ::db))]
+     [d/sync
+      (fn [node]
+        (assert (= ::node node))
+        (ac/completed-future ::db))]
 
       (is (= ::db @((db/wrap-db handler ::node timeout) {})))))
 
   (testing "fails on timeout"
     (with-redefs
-      [d/sync
-       (fn [node]
-         (assert (= ::node node))
-         (ac/supply-async (constantly ::db) (ac/delayed-executor 1 TimeUnit/SECONDS)))]
+     [d/sync
+      (fn [node]
+        (assert (= ::node node))
+        (ac/supply-async (constantly ::db) (ac/delayed-executor 1 TimeUnit/SECONDS)))]
 
       (given-failed-future ((db/wrap-db handler ::node timeout) {})
         ::anom/category := ::anom/busy
@@ -65,15 +60,14 @@
 
   (testing "fails on other sync error"
     (with-redefs
-      [d/sync
-       (fn [node]
-         (assert (= ::node node))
-         (ac/completed-future (ba/fault "msg-115845")))]
+     [d/sync
+      (fn [node]
+        (assert (= ::node node))
+        (ac/completed-future (ba/fault "msg-115845")))]
 
       (given-failed-future ((db/wrap-db handler ::node timeout) {})
         ::anom/category := ::anom/fault
         ::anom/message := "msg-115845"))))
-
 
 (deftest wrap-search-db-test
   (testing "uses existing database value"
@@ -83,36 +77,36 @@
     (doseq [t [nil "a" "-1"]]
       (testing "uses sync for database value acquisition"
         (with-redefs
-          [d/sync
-           (fn [node]
-             (assert (= ::node node))
-             (ac/completed-future ::db))]
+         [d/sync
+          (fn [node]
+            (assert (= ::node node))
+            (ac/completed-future ::db))]
 
           (is (= ::db @((db/wrap-search-db handler ::node timeout) {:params {"__t" t}})))))))
 
   (testing "uses __t for database value acquisition"
     (with-redefs
-      [d/sync
-       (fn [node t]
-         (assert (= ::node node))
-         (assert (= 114429 t))
-         (ac/completed-future ::db))
-       d/as-of
-       (fn [db t]
-         (assert (= ::db db))
-         (assert (= 114429 t))
-         ::as-of-db)]
+     [d/sync
+      (fn [node t]
+        (assert (= ::node node))
+        (assert (= 114429 t))
+        (ac/completed-future ::db))
+      d/as-of
+      (fn [db t]
+        (assert (= ::db db))
+        (assert (= 114429 t))
+        ::as-of-db)]
 
       (is (= ::as-of-db @((db/wrap-search-db handler ::node timeout) {:params {"__t" "114429"}})))))
 
   (testing "fails on timeout"
     (testing "with t"
       (with-redefs
-        [d/sync
-         (fn [node t]
-           (assert (= ::node node))
-           (assert (= 213937 t))
-           (ac/supply-async (constantly ::db) (ac/delayed-executor 1 TimeUnit/SECONDS)))]
+       [d/sync
+        (fn [node t]
+          (assert (= ::node node))
+          (assert (= 213937 t))
+          (ac/supply-async (constantly ::db) (ac/delayed-executor 1 TimeUnit/SECONDS)))]
 
         (given-failed-future ((db/wrap-search-db handler ::node timeout) {:params {"__t" "213937"}})
           ::anom/category := ::anom/busy
@@ -120,10 +114,10 @@
 
     (testing "without t"
       (with-redefs
-        [d/sync
-         (fn [node]
-           (assert (= ::node node))
-           (ac/supply-async (constantly ::db) (ac/delayed-executor 1 TimeUnit/SECONDS)))]
+       [d/sync
+        (fn [node]
+          (assert (= ::node node))
+          (ac/supply-async (constantly ::db) (ac/delayed-executor 1 TimeUnit/SECONDS)))]
 
         (given-failed-future ((db/wrap-search-db handler ::node timeout) {})
           ::anom/category := ::anom/busy
@@ -132,11 +126,11 @@
   (testing "fails on other sync error"
     (testing "with t"
       (with-redefs
-        [d/sync
-         (fn [node t]
-           (assert (= ::node node))
-           (assert (= 114148 t))
-           (ac/completed-future (ba/fault "msg-120127")))]
+       [d/sync
+        (fn [node t]
+          (assert (= ::node node))
+          (assert (= 114148 t))
+          (ac/completed-future (ba/fault "msg-120127")))]
 
         (given-failed-future ((db/wrap-search-db handler ::node timeout) {:params {"__t" "114148"}})
           ::anom/category := ::anom/fault
@@ -144,15 +138,14 @@
 
     (testing "without t"
       (with-redefs
-        [d/sync
-         (fn [node]
-           (assert (= ::node node))
-           (ac/completed-future (ba/fault "msg-115918")))]
+       [d/sync
+        (fn [node]
+          (assert (= ::node node))
+          (ac/completed-future (ba/fault "msg-115918")))]
 
         (given-failed-future ((db/wrap-search-db handler ::node timeout) {})
           ::anom/category := ::anom/fault
           ::anom/message := "msg-115918")))))
-
 
 (deftest wrap-snapshot-db-test
   (testing "uses existing database value"
@@ -166,26 +159,26 @@
 
   (testing "uses __t for database value acquisition"
     (with-redefs
-      [d/sync
-       (fn [node t]
-         (assert (= ::node node))
-         (assert (= 114429 t))
-         (ac/completed-future ::db))
-       d/as-of
-       (fn [db t]
-         (assert (= ::db db))
-         (assert (= 114429 t))
-         ::as-of-db)]
+     [d/sync
+      (fn [node t]
+        (assert (= ::node node))
+        (assert (= 114429 t))
+        (ac/completed-future ::db))
+      d/as-of
+      (fn [db t]
+        (assert (= ::db db))
+        (assert (= 114429 t))
+        ::as-of-db)]
 
       (is (= ::as-of-db @((db/wrap-snapshot-db handler ::node timeout) {:params {"__t" "114429"}})))))
 
   (testing "fails on timeout"
     (with-redefs
-      [d/sync
-       (fn [node t]
-         (assert (= ::node node))
-         (assert (= 114148 t))
-         (ac/supply-async (constantly ::db) (ac/delayed-executor 1 TimeUnit/SECONDS)))]
+     [d/sync
+      (fn [node t]
+        (assert (= ::node node))
+        (assert (= 114148 t))
+        (ac/supply-async (constantly ::db) (ac/delayed-executor 1 TimeUnit/SECONDS)))]
 
       (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) {:params {"__t" "114148"}})
         ::anom/category := ::anom/busy
@@ -193,16 +186,15 @@
 
   (testing "fails on other sync error"
     (with-redefs
-      [d/sync
-       (fn [node t]
-         (assert (= ::node node))
-         (assert (= 114148 t))
-         (ac/completed-future (ba/fault "msg-115945")))]
+     [d/sync
+      (fn [node t]
+        (assert (= ::node node))
+        (assert (= 114148 t))
+        (ac/completed-future (ba/fault "msg-115945")))]
 
       (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) {:params {"__t" "114148"}})
         ::anom/category := ::anom/fault
         ::anom/message := "msg-115945"))))
-
 
 (deftest wrap-versioned-instance-db-test
   (testing "uses existing database value"
@@ -218,26 +210,26 @@
 
   (testing "uses the vid for database value acquisition"
     (with-redefs
-      [d/sync
-       (fn [node t]
-         (assert (= ::node node))
-         (assert (= 114418 t))
-         (ac/completed-future ::db))
-       d/as-of
-       (fn [db t]
-         (assert (= ::db db))
-         (assert (= 114418 t))
-         ::as-of-db)]
+     [d/sync
+      (fn [node t]
+        (assert (= ::node node))
+        (assert (= 114418 t))
+        (ac/completed-future ::db))
+      d/as-of
+      (fn [db t]
+        (assert (= ::db db))
+        (assert (= 114418 t))
+        ::as-of-db)]
 
       (is (= ::as-of-db @((db/wrap-versioned-instance-db handler ::node timeout) {:path-params {:vid "114418"}})))))
 
   (testing "fails on timeout"
     (with-redefs
-      [d/sync
-       (fn [node t]
-         (assert (= ::node node))
-         (assert (= 213957 t))
-         (ac/supply-async (constantly ::db) (ac/delayed-executor 1 TimeUnit/SECONDS)))]
+     [d/sync
+      (fn [node t]
+        (assert (= ::node node))
+        (assert (= 213957 t))
+        (ac/supply-async (constantly ::db) (ac/delayed-executor 1 TimeUnit/SECONDS)))]
 
       (given-failed-future ((db/wrap-versioned-instance-db handler ::node timeout) {:path-params {:vid "213957"}})
         ::anom/category := ::anom/busy
@@ -245,11 +237,11 @@
 
   (testing "fails on other sync error"
     (with-redefs
-      [d/sync
-       (fn [node t]
-         (assert (= ::node node))
-         (assert (= 120213 t))
-         (ac/completed-future (ba/fault "msg-120219")))]
+     [d/sync
+      (fn [node t]
+        (assert (= ::node node))
+        (assert (= 120213 t))
+        (ac/completed-future (ba/fault "msg-120219")))]
 
       (given-failed-future ((db/wrap-versioned-instance-db handler ::node timeout) {:path-params {:vid "120213"}})
         ::anom/category := ::anom/fault

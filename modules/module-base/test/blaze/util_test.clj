@@ -1,21 +1,17 @@
 (ns blaze.util-test
   (:require
-    [blaze.test-util :as tu]
-    [blaze.util :as u]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]))
-
+   [blaze.test-util :as tu]
+   [blaze.util :as u]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest duration-s-test
   (is (pos? (u/duration-s (System/nanoTime)))))
-
 
 (deftest to-seq-test
   (testing "nil"

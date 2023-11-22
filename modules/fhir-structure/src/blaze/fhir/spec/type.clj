@@ -1,49 +1,45 @@
 (ns blaze.fhir.spec.type
   (:refer-clojure
-    :exclude
-    [boolean boolean? decimal? integer? long meta string? time type uri? uuid?])
+   :exclude
+   [boolean boolean? decimal? integer? long meta string? time type uri? uuid?])
   (:require
-    [blaze.fhir.spec.impl.intern :as intern]
-    [blaze.fhir.spec.type.json :as json]
-    [blaze.fhir.spec.type.macros :as macros
-     :refer [def-complex-type def-primitive-type defextended]]
-    [blaze.fhir.spec.type.protocols :as p]
-    [blaze.fhir.spec.type.system :as system]
-    [clojure.alpha.spec :as s2]
-    [clojure.data.xml :as xml]
-    [clojure.data.xml.name :as xml-name]
-    [clojure.data.xml.node :as xml-node]
-    [clojure.string :as str])
+   [blaze.fhir.spec.impl.intern :as intern]
+   [blaze.fhir.spec.type.json :as json]
+   [blaze.fhir.spec.type.macros :as macros
+    :refer [def-complex-type def-primitive-type defextended]]
+   [blaze.fhir.spec.type.protocols :as p]
+   [blaze.fhir.spec.type.system :as system]
+   [clojure.alpha.spec :as s2]
+   [clojure.data.xml :as xml]
+   [clojure.data.xml.name :as xml-name]
+   [clojure.data.xml.node :as xml-node]
+   [clojure.string :as str])
   (:import
-    [blaze.fhir.spec.type.system
-     Date DateDate DateTimeDate DateTimeYear DateTimeYearMonth DateYear DateYearMonth]
-    [clojure.lang IPersistentMap Keyword]
-    [com.fasterxml.jackson.core JsonGenerator]
-    [com.fasterxml.jackson.databind.module SimpleModule]
-    [com.fasterxml.jackson.databind.ser.std StdSerializer]
-    [com.google.common.hash PrimitiveSink]
-    [java.io Writer]
-    [java.time
-     DateTimeException Instant LocalDate LocalDateTime LocalTime OffsetDateTime ZoneOffset]
-    [java.time.format DateTimeFormatter]
-    [java.util Comparator List Map Map$Entry UUID]
-    [jsonista.jackson
-     KeywordKeyDeserializer PersistentHashMapDeserializer
-     PersistentVectorDeserializer]))
-
+   [blaze.fhir.spec.type.system
+    Date DateDate DateTimeDate DateTimeYear DateTimeYearMonth DateYear DateYearMonth]
+   [clojure.lang IPersistentMap Keyword]
+   [com.fasterxml.jackson.core JsonGenerator]
+   [com.fasterxml.jackson.databind.module SimpleModule]
+   [com.fasterxml.jackson.databind.ser.std StdSerializer]
+   [com.google.common.hash PrimitiveSink]
+   [java.io Writer]
+   [java.time
+    DateTimeException Instant LocalDate LocalDateTime LocalTime OffsetDateTime ZoneOffset]
+   [java.time.format DateTimeFormatter]
+   [java.util Comparator List Map Map$Entry UUID]
+   [jsonista.jackson
+    KeywordKeyDeserializer PersistentHashMapDeserializer
+    PersistentVectorDeserializer]))
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 
-
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
-
 
 (defn type
   "Returns the FHIR type if `x` if it has some."
   [x]
   (p/-type x))
-
 
 (defn value
   "Returns the possible value of the primitive value `x` as FHIRPath system
@@ -51,21 +47,17 @@
   [x]
   (p/-value x))
 
-
 (defn to-xml [x]
   (p/-to-xml x))
 
-
 (defn hash-into [x sink]
   (p/-hash-into x sink))
-
 
 (defn references
   "Returns a collection of local references which are tuples of FHIR resource
   type name and FHIR resource id."
   [x]
   (p/-references x))
-
 
 (defn- create-fn [intern create parse-fn]
   (fn [x]
@@ -82,11 +74,8 @@
           (create id extension (some-> value parse-fn))))
       (parse-fn x))))
 
-
 (defn- system-to-xml [x]
   (xml-node/element nil {:value (system/-to-string x)}))
-
-
 
 ;; ---- nil -------------------------------------------------------------------
 
@@ -104,8 +93,6 @@
   (-hash-into [_ _])
   (-references [_]))
 
-
-
 ;; ---- Object -------------------------------------------------------------------
 
 ;; Other instances have no type.
@@ -114,8 +101,6 @@
   (-type [_])
   (-interned [_] false)
   (-references [_]))
-
-
 
 ;; ---- boolean ---------------------------------------------------------------
 
@@ -139,10 +124,8 @@
     (system/-hash-into b sink))
   (-references [_]))
 
-
 (defextended ExtendedBoolean [id extension ^Boolean value]
   :fhir-type :fhir/boolean :hash-num 0 :interned true)
-
 
 (def ^{:arglists '([x])} boolean
   (let [intern (intern/intern-value map->ExtendedBoolean)]
@@ -160,7 +143,6 @@
             (->ExtendedBoolean id extension value)))
         x))))
 
-
 (defn xml->Boolean
   {:arglists '([element])}
   [{{:keys [id value]} :attrs content :content}]
@@ -170,11 +152,8 @@
       (boolean {:id id :extension extension :value value})
       (boolean value))))
 
-
 (defn boolean? [x]
   (identical? :fhir/boolean (type x)))
-
-
 
 ;; ---- integer ---------------------------------------------------------------
 
@@ -198,15 +177,12 @@
     (system/-hash-into i sink))
   (-references [_]))
 
-
 (defextended ExtendedInteger [id extension ^Integer value]
   :fhir-type :fhir/integer :hash-num 1)
-
 
 (def ^{:arglists '([x])} integer
   (create-fn (intern/intern-value map->ExtendedInteger) ->ExtendedInteger
              int))
-
 
 (defn xml->Integer
   {:arglists '([element])}
@@ -217,11 +193,8 @@
       (integer {:id id :extension extension :value value})
       (integer value))))
 
-
 (defn integer? [x]
   (identical? :fhir/integer (type x)))
-
-
 
 ;; ---- long ---------------------------------------------------------------
 
@@ -245,15 +218,12 @@
     (system/-hash-into l sink))
   (-references [_]))
 
-
 (defextended ExtendedLong [id extension ^Long value]
   :fhir-type :fhir/long :hash-num 2)
-
 
 (def ^{:arglists '([x])} long
   (create-fn (intern/intern-value map->ExtendedLong) ->ExtendedLong
              identity))
-
 
 (defn xml->Long
   {:arglists '([element])}
@@ -264,11 +234,8 @@
       (long {:id id :extension extension :value value})
       (long value))))
 
-
 (defn long? [x]
   (identical? :fhir/long (type x)))
-
-
 
 ;; ---- string ----------------------------------------------------------------
 
@@ -292,15 +259,12 @@
     (system/-hash-into s sink))
   (-references [_]))
 
-
 (defextended ExtendedString [id extension value]
   :fhir-type :fhir/string :hash-num 3)
-
 
 (def ^{:arglists '([x])} string
   (create-fn (intern/intern-value map->ExtendedString) ->ExtendedString
              identity))
-
 
 (defn xml->String
   {:arglists '([element])}
@@ -309,7 +273,6 @@
     (if (or id extension)
       (string {:id id :extension extension :value value})
       (string value))))
-
 
 (def ^{:arglists '([x])} intern-string
   (let [intern (intern/intern-value identity)
@@ -322,7 +285,6 @@
             (->ExtendedString id extension value)))
         (intern x)))))
 
-
 (defn xml->InternedString
   {:arglists '([element])}
   [{{:keys [id value]} :attrs content :content}]
@@ -331,11 +293,8 @@
       (intern-string {:id id :extension extension :value value})
       (intern-string value))))
 
-
 (defn string? [x]
   (identical? :fhir/string (type x)))
-
-
 
 ;; ---- decimal ---------------------------------------------------------------
 
@@ -359,15 +318,12 @@
     (system/-hash-into d sink))
   (-references [_]))
 
-
 (defextended ExtendedDecimal [id extension ^BigDecimal value]
   :fhir-type :fhir/decimal :hash-num 4)
-
 
 (def ^{:arglists '([x])} decimal
   (create-fn (intern/intern-value map->ExtendedDecimal) ->ExtendedDecimal
              #(if (int? %) (BigDecimal/valueOf (clojure.core/long %)) %)))
-
 
 (defn xml->Decimal
   {:arglists '([element])}
@@ -378,11 +334,8 @@
       (decimal {:id id :extension extension :value value})
       (decimal value))))
 
-
 (defn decimal? [x]
   (identical? :fhir/decimal (type x)))
-
-
 
 ;; ---- uri -------------------------------------------------------------------
 
@@ -390,46 +343,31 @@
 (declare uri)
 (declare xml->Uri)
 
-
 (def-primitive-type Uri [^String value] :hash-num 5 :interned true)
 
-
-
 ;; ---- url -------------------------------------------------------------------
-
 
 (declare url?)
 (declare url)
 (declare xml->Url)
 
-
 (def-primitive-type Url [value] :hash-num 6)
 
-
-
 ;; ---- canonical -------------------------------------------------------------
-
 
 (declare canonical?)
 (declare canonical)
 (declare xml->Canonical)
 
-
 (def-primitive-type Canonical [^String value] :hash-num 7 :interned true)
 
-
-
 ;; ---- base64Binary ----------------------------------------------------------
-
 
 (declare base64Binary?)
 (declare base64Binary)
 (declare xml->Base64Binary)
 
-
 (def-primitive-type Base64Binary [value] :hash-num 8)
-
-
 
 ;; ---- instant ---------------------------------------------------------------
 
@@ -438,7 +376,6 @@
     (.write "#java/instant\"")
     (.write (.toString instant))
     (.write "\"")))
-
 
 ;; Implementation of a FHIR instant with a variable ZoneOffset.
 (deftype OffsetInstant [value]
@@ -471,17 +408,14 @@
   (toString [_]
     (str value)))
 
-
 (defmethod print-method OffsetInstant [^OffsetInstant instant ^Writer w]
   (doto w
     (.write "#fhir/instant\"")
     (.write ^String (system/-to-string (.-value instant)))
     (.write "\"")))
 
-
 (defextended ExtendedOffsetInstant [id extension value]
   :fhir-type :fhir/instant :hash-num 9)
-
 
 (extend-protocol p/FhirType
   Instant
@@ -503,21 +437,17 @@
     (system/-hash-into (value instant) sink))
   (-references [_]))
 
-
 (defn- at-utc [instant]
   (.atOffset ^Instant instant ZoneOffset/UTC))
 
-
 (defextended ExtendedInstant [id extension ^Instant value]
   :fhir-type :fhir/instant :hash-num 9 :value-form (some-> value at-utc))
-
 
 (defn- parse-instant-value [value]
   (cond
     (str/ends-with? value "Z") (Instant/parse value)
     (str/ends-with? value "+00:00") (Instant/parse (str (subs value 0 (- (count value) 6)) "Z"))
     :else (OffsetDateTime/parse value)))
-
 
 (def ^{:arglists '([x])} instant
   (let [intern (intern/intern-value map->ExtendedInstant)]
@@ -543,7 +473,6 @@
             (OffsetInstant. value)
             value))))))
 
-
 (defn xml->Instant
   {:arglists '([element])}
   [{{:keys [id value]} :attrs content :content}]
@@ -552,11 +481,8 @@
       (instant {:id id :extension extension :value value})
       (instant value))))
 
-
 (defn instant? [x]
   (identical? :fhir/instant (type x)))
-
-
 
 ;; -- date --------------------------------------------------------------------
 
@@ -618,10 +544,8 @@
     (.hashInto date sink))
   (-references [_]))
 
-
 (defextended ExtendedDate [id extension value]
   :fhir-type :fhir/date :hash-num 10)
-
 
 (defn- parse-date-value [value]
   (try
@@ -629,7 +553,6 @@
     (catch DateTimeException _
       ;; in case of leap year errors not covered by regex
       ::s2/invalid)))
-
 
 (def ^{:arglists '([x])} date
   (let [intern (intern/intern-value map->ExtendedDate)]
@@ -651,7 +574,6 @@
             (ExtendedDate. id extension value)))
         (parse-date-value x)))))
 
-
 (defn xml->Date
   "Creates a primitive date value from XML `element`."
   {:arglists '([element])}
@@ -661,21 +583,16 @@
       (date {:id id :extension extension :value value})
       (date value))))
 
-
 (defn date? [x]
   (identical? :fhir/date (type x)))
 
-
 (defprotocol ConvertToDateTime
   (-to-date-time [x]))
-
 
 (extend-protocol ConvertToDateTime
   LocalDate
   (-to-date-time [date]
     (LocalDateTime/of date LocalTime/MIDNIGHT)))
-
-
 
 ;; -- dateTime ----------------------------------------------------------------
 
@@ -737,7 +654,6 @@
     (.hashInto date sink))
   (-references [_]))
 
-
 (extend-protocol p/FhirType
   OffsetDateTime
   (-type [_] :fhir/dateTime)
@@ -777,10 +693,8 @@
     (system/-hash-into date-time sink))
   (-references [_]))
 
-
 (defextended ExtendedDateTime [id extension value]
   :fhir-type :fhir/dateTime :hash-num 11)
-
 
 (defn- parse-date-time-value [value]
   (try
@@ -788,7 +702,6 @@
     (catch DateTimeException _
       ;; in case of leap year errors not covered by regex
       ::s2/invalid)))
-
 
 (def ^{:arglists '([x])} dateTime
   (let [intern (intern/intern-value map->ExtendedDateTime)]
@@ -810,7 +723,6 @@
             (ExtendedDateTime. id extension value)))
         (parse-date-time-value x)))))
 
-
 (defn xml->DateTime
   "Creates a primitive dateTime value from XML `element`."
   {:arglists '([element])}
@@ -820,11 +732,8 @@
       (dateTime {:id id :extension extension :value value})
       (dateTime value))))
 
-
 (defn dateTime? [x]
   (identical? :fhir/dateTime (type x)))
-
-
 
 ;; ---- time ------------------------------------------------------------------
 
@@ -848,10 +757,8 @@
     (system/-hash-into time sink))
   (-references [_]))
 
-
 (defextended ExtendedTime [id extension value]
   :fhir-type :fhir/time :hash-num 12)
-
 
 (def ^{:arglists '([x])} time
   (let [intern (intern/intern-value map->ExtendedTime)]
@@ -873,7 +780,6 @@
             (ExtendedTime. id extension value)))
         (LocalTime/parse x)))))
 
-
 (defn xml->Time
   "Creates a primitive time value from XML `element`."
   {:arglists '([element])}
@@ -883,11 +789,8 @@
       (time {:id id :extension extension :value value})
       (time value))))
 
-
 (defn time? [x]
   (identical? :fhir/time (type x)))
-
-
 
 ;; ---- code ------------------------------------------------------------------
 
@@ -895,42 +798,28 @@
 (declare code)
 (declare xml->Code)
 
-
 (def-primitive-type Code [^String value] :hash-num 13 :interned true)
-
-
 
 ;; ---- oid -------------------------------------------------------------------
 
 (declare oid?)
 (declare oid)
 
-
 (def-primitive-type Oid [value] :hash-num 14)
 
-
-
 ;; ---- id --------------------------------------------------------------------
-
 
 (declare id?)
 (declare id)
 
-
 (def-primitive-type Id [value] :hash-num 15)
 
-
-
 ;; ---- markdown --------------------------------------------------------------
-
 
 (declare markdown?)
 (declare markdown)
 
-
 (def-primitive-type Markdown [value] :hash-num 16)
-
-
 
 ;; ---- unsignedInt -----------------------------------------------------------
 
@@ -938,10 +827,7 @@
 (declare unsignedInt)
 (declare xml->UnsignedInt)
 
-
 (def-primitive-type UnsignedInt [^Integer value] :hash-num 17)
-
-
 
 ;; ---- positiveInt -----------------------------------------------------------
 
@@ -949,10 +835,7 @@
 (declare positiveInt)
 (declare xml->PositiveInt)
 
-
 (def-primitive-type PositiveInt [^Integer value] :hash-num 18)
-
-
 
 ;; ---- uuid ------------------------------------------------------------------
 
@@ -977,15 +860,12 @@
       (.putLong (.getLeastSignificantBits uuid))))
   (-references [_]))
 
-
 (defextended ExtendedUuid [id extension ^UUID value]
   :fhir-type :fhir/uuid :hash-num 19 :value-form (str "urn:uuid:" value))
-
 
 (def ^{:arglists '([x])} uuid
   (create-fn (intern/intern-value map->ExtendedUuid) ->ExtendedUuid
              #(parse-uuid (subs % 9))))
-
 
 (defn xml->Uuid
   {:arglists '([element])}
@@ -995,25 +875,19 @@
       (uuid {:id id :extension extension :value value})
       (uuid value))))
 
-
 (defn uuid? [x]
   (identical? :fhir/uuid (type x)))
 
-
-
 ;; ---- xhtml -----------------------------------------------------------------
-
 
 (defn- wrap-div [s]
   (str "<div xmlns=\"http://www.w3.org/1999/xhtml\">" s "</div>"))
-
 
 (defn- parse-xhtml* [s]
   (let [xml (xml/parse-str s)]
     ;; simply emit the xml in order to parse eager and see all exceptions
     (xml/emit-str xml)
     xml))
-
 
 (defn- parse-xhtml [s]
   (try
@@ -1024,7 +898,6 @@
           (str/replace ">" "&gt;")
           (wrap-div)
           (parse-xhtml*)))))
-
 
 (deftype Xhtml [value]
   p/FhirType
@@ -1052,27 +925,21 @@
   (toString [_]
     (str value)))
 
-
 (defmethod print-method Xhtml [xhtml ^Writer w]
   (.write w "#fhir/xhtml\"")
   (.write w ^String (value xhtml))
   (.write w "\""))
 
-
 (def ^:const xml-preamble-length
   (count "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"))
-
 
 (defn xml->Xhtml
   "Creates a xhtml from XML `element`."
   [element]
   (->Xhtml (subs (xml/emit-str element) xml-preamble-length)))
 
-
 (defn xhtml? [x]
   (instance? Xhtml x))
-
-
 
 ;; ---- Complex Types --------------------------------------------------------
 
@@ -1114,12 +981,12 @@
   (-serialize-json [m generator]
     (.writeStartObject ^JsonGenerator generator)
     (run!
-      (fn [^Map$Entry e]
-        (let [^Keyword key (.getKey e)]
-          (when-not (identical? :fhir/type key)
-            (when-some [v (.getValue e)]
-              (json/write-field generator (json/field-name (.getName key)) v)))))
-      m)
+     (fn [^Map$Entry e]
+       (let [^Keyword key (.getKey e)]
+         (when-not (identical? :fhir/type key)
+           (when-some [v (.getValue e)]
+             (json/write-field generator (json/field-name (.getName key)) v)))))
+     m)
     (.writeEndObject ^JsonGenerator generator))
   (-has-secondary-content [_] false)
   (-serialize-json-secondary [m _]
@@ -1127,22 +994,20 @@
   (-hash-into [m sink]
     (.putByte ^PrimitiveSink sink (byte 37))
     (run!
-      (fn [^Map$Entry e]
-        (p/-hash-into (.getKey e) sink)
-        (p/-hash-into (.getValue e) sink))
-      (sort
-        (reify Comparator
-          (compare [_ e1 e2]
-            (.compareTo ^Keyword (.getKey ^Map$Entry e1) (.getKey ^Map$Entry e2))))
-        m)))
+     (fn [^Map$Entry e]
+       (p/-hash-into (.getKey e) sink)
+       (p/-hash-into (.getValue e) sink))
+     (sort
+      (reify Comparator
+        (compare [_ e1 e2]
+          (.compareTo ^Keyword (.getKey ^Map$Entry e1) (.getKey ^Map$Entry e2))))
+      m)))
   (-references [m]
     ;; Bundle entries have no references, because Bundles itself are stored "as-is"
     (when-not (identical? :fhir.Bundle/entry (p/-type m))
       (transduce (mapcat p/-references) conj [] (vals m)))))
 
-
 (declare attachment)
-
 
 (def-complex-type Attachment
   [^String id extension ^:primitive contentType ^:primitive language
@@ -1150,17 +1015,13 @@
    ^:primitive hash ^:primitive title ^:primitive creation]
   :hash-num 46)
 
-
 (declare extension)
-
 
 (def-complex-type Extension [^String id extension ^String url ^:polymorph ^:primitive value]
   :hash-num 39
   :interned (and (nil? id) (p/-interned extension) (p/-interned value)))
 
-
 (declare coding)
-
 
 (def-complex-type Coding
   [^String id extension ^:primitive system ^:primitive-string version
@@ -1168,18 +1029,14 @@
   :hash-num 38
   :interned (and (nil? id) (p/-interned extension)))
 
-
 (declare codeable-concept)
-
 
 (def-complex-type CodeableConcept
   [^String id extension coding ^:primitive-string text]
   :hash-num 39
   :interned (and (nil? id) (p/-interned extension)))
 
-
 (declare quantity)
-
 
 (def-complex-type Quantity
   [^String id extension ^:primitive value ^:primitive comparator
@@ -1187,25 +1044,19 @@
   :hash-num 40
   :interned (and (nil? id) (p/-interned extension) (nil? value)))
 
-
 (declare period)
-
 
 (def-complex-type Period [^String id extension ^:primitive start ^:primitive end]
   :hash-num 41)
 
-
 (declare identifier)
-
 
 (def-complex-type Identifier
   [^String id extension ^:primitive use type ^:primitive system
    ^:primitive-string value period assigner]
   :hash-num 42)
 
-
 (declare human-name)
-
 
 (def-complex-type HumanName
   [^String id extension ^:primitive use ^:primitive-string text
@@ -1213,9 +1064,7 @@
    ^:primitive-list suffix period]
   :hash-num 46)
 
-
 (declare address)
-
 
 (def-complex-type Address
   [^String id extension ^:primitive use ^:primitive type ^:primitive-string text
@@ -1224,20 +1073,16 @@
    ^:primitive-string country period]
   :hash-num 47)
 
-
 (defn- valid-ref? [[type id]]
   (and (.matches (re-matcher #"[A-Z]([A-Za-z0-9_]){0,254}" type))
        (some->> id (re-matcher #"[A-Za-z0-9\-\.]{1,64}") .matches)))
-
 
 (defn- reference-reference [ref]
   (let [ref (str/split ref #"/" 2)]
     (when (valid-ref? ref)
       [ref])))
 
-
 (declare reference)
-
 
 (def-complex-type Reference
   [^String id extension ^:primitive-string reference ^:primitive type identifier
@@ -1245,32 +1090,26 @@
   :hash-num 43
   :references
   (-> (transient (or (some-> reference value reference-reference) []))
-    (macros/into! (p/-references extension))
-    (macros/into! (p/-references type))
-    (macros/into! (p/-references identifier))
-    (macros/into! (p/-references display))
-    (persistent!)))
-
+      (macros/into! (p/-references extension))
+      (macros/into! (p/-references type))
+      (macros/into! (p/-references identifier))
+      (macros/into! (p/-references display))
+      (persistent!)))
 
 (declare meta)
-
 
 (def-complex-type Meta
   [^String id extension ^:primitive versionId ^:primitive lastUpdated
    ^:primitive source ^:primitive-list profile security tag]
   :hash-num 44)
 
-
 (declare bundle-entry-search)
-
 
 (def-complex-type BundleEntrySearch
   [^String id extension ^:primitive mode ^:primitive score]
   :fhir-type :fhir.Bundle.entry/search
   :hash-num 45
   :interned (and (nil? id) (p/-interned extension) (nil? score)))
-
-
 
 ;; ---- Jackson Databind Module -----------------------------------------------
 
@@ -1279,15 +1118,12 @@
     (serialize [obj generator _]
       (p/-serialize-json obj generator))))
 
-
 (def fhir-module
   (doto (SimpleModule. "FHIR")
     (.addDeserializer List (PersistentVectorDeserializer.))
     (.addDeserializer Map (PersistentHashMapDeserializer.))
     (.addKeyDeserializer Object (KeywordKeyDeserializer.))
     (.addSerializer Object object-serializer)))
-
-
 
 ;; ---- print -----------------------------------------------------------------
 

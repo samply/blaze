@@ -1,31 +1,26 @@
 (ns blaze.rest-api.middleware.link-headers-test
   (:require
-    [blaze.async.comp :as ac]
-    [blaze.rest-api.middleware.link-headers :refer [wrap-link-headers]]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
-    [juxt.iota :refer [given]]
-    [ring.util.response :as ring]
-    [taoensso.timbre :as log]))
-
+   [blaze.async.comp :as ac]
+   [blaze.rest-api.middleware.link-headers :refer [wrap-link-headers]]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [juxt.iota :refer [given]]
+   [ring.util.response :as ring]
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defn- handler [bundle]
   (ac/completed-future (ring/response bundle)))
-
 
 (defn- bundle [& links]
   (cond-> {:fhir/type :fhir/Bundle}
     (seq links)
     (assoc :link (vec links))))
-
 
 (deftest wrap-link-headers-test
   (testing "no links"

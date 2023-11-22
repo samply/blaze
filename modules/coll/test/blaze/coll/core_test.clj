@@ -1,16 +1,13 @@
 (ns blaze.coll.core-test
   (:require
-    [blaze.coll.core :as coll]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]))
-
+   [blaze.coll.core :as coll]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest first-test
   (testing "nil"
@@ -25,7 +22,6 @@
   (testing "vector with two elements"
     (is (= 1 (coll/first [1 2])))))
 
-
 (deftest some-test
   (testing "nil"
     (is (nil? (coll/some any? nil))))
@@ -35,21 +31,20 @@
 
   (testing "vector with one element"
     (testing "matching pred"
-      (is (= true (coll/some int? [1]))))
+      (is (true? (coll/some int? [1]))))
 
     (testing "none matching pred"
       (is (nil? (coll/some string? [1])))))
 
   (testing "vector with two elements"
     (testing "matching pred on first"
-      (is (= true (coll/some int? [1 "1"]))))
+      (is (true? (coll/some int? [1 "1"]))))
 
     (testing "matching pred on second"
-      (is (= true (coll/some string? [1 "1"]))))
+      (is (true? (coll/some string? [1 "1"]))))
 
     (testing "none matching pred"
       (is (nil? (coll/some string? [1 2]))))))
-
 
 (deftest empty-test
   (testing "nil"
@@ -61,7 +56,6 @@
   (testing "vector with one element"
     (is (false? (coll/empty? [1])))))
 
-
 (deftest eduction-test
   (testing "eductions are sequential"
     (is (sequential? (coll/eduction identity [1]))))
@@ -72,14 +66,12 @@
   (testing "eductions are counted"
     (is (= 2 (count (coll/eduction identity [1 2]))))))
 
-
 (deftest count-test
   (are [coll n] (and (= n (coll/count coll))
                      (= n (apply coll/count [coll])))
     [] 0
     [::x] 1
     [::x ::y] 2))
-
 
 (deftest nth-test
   (are [coll n x] (and (= x (coll/nth coll n))

@@ -4,19 +4,17 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.test-util :as ctu]
-    [blaze.elm.literal :as elm]
-    [blaze.elm.literal-spec]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]))
-
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.test-util :as ctu]
+   [blaze.elm.literal :as elm]
+   [blaze.elm.literal-spec]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -24,9 +22,7 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; 14.1. Null
 ;;
@@ -34,7 +30,6 @@
 ;; need to cast this result, the operator is allowed to return a typed null.
 (deftest compile-null-test
   (is (nil? (c/compile {} {:type "Null"}))))
-
 
 ;; 14.2. Coalesce
 ;;
@@ -59,7 +54,6 @@
       [{:type "Null"}]
       [#elm/list []])))
 
-
 ;; 14.3. IsFalse
 ;;
 ;; The IsFalse operator determines whether or not its argument evaluates to
@@ -67,21 +61,20 @@
 ;; argument evaluates to true or null, the result is false.
 (deftest compile-is-false-test
   (testing "Static"
-    (are [x res] (= res (c/compile {} (elm/is-false x)))
-      #elm/boolean "true" false
-      #elm/boolean "false" true
-      {:type "Null"} false))
+    (are [x pred] (pred (c/compile {} (elm/is-false x)))
+      #elm/boolean "true" false?
+      #elm/boolean "false" true?
+      {:type "Null"} false?))
 
   (testing "Dynamic"
-    (are [x res] (= res (ctu/dynamic-compile-eval (elm/is-false x)))
-      #elm/parameter-ref "true" false
-      #elm/parameter-ref "false" true
-      #elm/parameter-ref "nil" false))
+    (are [x pred] (pred (ctu/dynamic-compile-eval (elm/is-false x)))
+      #elm/parameter-ref "true" false?
+      #elm/parameter-ref "false" true?
+      #elm/parameter-ref "nil" false?))
 
   (ctu/testing-unary-dynamic elm/is-false)
 
   (ctu/testing-unary-form elm/is-false))
-
 
 ;; 14.4. IsNull
 ;;
@@ -90,21 +83,20 @@
 ;; is false.
 (deftest compile-is-null-test
   (testing "Static"
-    (are [x res] (= res (c/compile {} (elm/is-null x)))
-      #elm/boolean "true" false
-      #elm/boolean "false" false
-      {:type "Null"} true))
+    (are [x pred] (pred (c/compile {} (elm/is-null x)))
+      #elm/boolean "true" false?
+      #elm/boolean "false" false?
+      {:type "Null"} true?))
 
   (testing "Dynamic"
-    (are [x res] (= res (ctu/dynamic-compile-eval (elm/is-null x)))
-      #elm/parameter-ref "true" false
-      #elm/parameter-ref "false" false
-      #elm/parameter-ref "nil" true))
+    (are [x pred] (pred (ctu/dynamic-compile-eval (elm/is-null x)))
+      #elm/parameter-ref "true" false?
+      #elm/parameter-ref "false" false?
+      #elm/parameter-ref "nil" true?))
 
   (ctu/testing-unary-dynamic elm/is-null)
 
   (ctu/testing-unary-form elm/is-null))
-
 
 ;; 14.5. IsTrue
 ;;
@@ -113,16 +105,16 @@
 ;; evaluates to false or null, the result is false.
 (deftest compile-is-true-test
   (testing "Static"
-    (are [x res] (= res (c/compile {} (elm/is-true x)))
-      #elm/boolean "true" true
-      #elm/boolean "false" false
-      {:type "Null"} false))
+    (are [x pred] (pred (c/compile {} (elm/is-true x)))
+      #elm/boolean "true" true?
+      #elm/boolean "false" false?
+      {:type "Null"} false?))
 
   (testing "Dynamic"
-    (are [x res] (= res (ctu/dynamic-compile-eval (elm/is-true x)))
-      #elm/parameter-ref "true" true
-      #elm/parameter-ref "false" false
-      #elm/parameter-ref "nil" false))
+    (are [x pred] (pred (ctu/dynamic-compile-eval (elm/is-true x)))
+      #elm/parameter-ref "true" true?
+      #elm/parameter-ref "false" false?
+      #elm/parameter-ref "nil" false?))
 
   (ctu/testing-unary-dynamic elm/is-true)
 

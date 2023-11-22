@@ -1,25 +1,21 @@
 (ns blaze.interaction.search.include-test
   (:require
-    [blaze.db.api :as d]
-    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.interaction.search.include :as include]
-    [blaze.interaction.search.include-spec]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [juxt.iota :refer [given]]))
-
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.interaction.search.include :as include]
+   [blaze.interaction.search.include-spec]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def non-ref-int-config
   (assoc-in mem-node-config [:blaze.db/node :enforce-referential-integrity] false))
-
 
 (deftest add-includes-test
   (testing "one direct forward include"
@@ -27,9 +23,7 @@
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject
-                 #fhir/Reference
-                         {:reference "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
         (let [db (d/db node)
               include-defs {:direct {:forward {"Observation" [{:code "subject"}]}}}
@@ -41,9 +35,7 @@
     (testing "not enforcing referential integrity"
       (with-system-data [{:blaze.db/keys [node]} non-ref-int-config]
         [[[:put {:fhir/type :fhir/Observation :id "0"
-                 :subject
-                 #fhir/Reference
-                         {:reference "Patient/0"}}]]
+                 :subject #fhir/Reference{:reference "Patient/0"}}]]
          [[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [db (d/db node)
@@ -57,9 +49,7 @@
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject
-                 #fhir/Reference
-                         {:reference "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
         (let [db (d/db node)
               include-defs {:direct
@@ -73,16 +63,10 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "1"
-               :subject
-               #fhir/Reference
-                       {:reference "Patient/0"}}]
+               :subject #fhir/Reference{:reference "Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "2"
-               :subject
-               #fhir/Reference
-                       {:reference "Patient/0"}
-               :encounter
-               #fhir/Reference
-                       {:reference "Encounter/1"}}]]]
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :encounter #fhir/Reference{:reference "Encounter/1"}}]]]
 
       (let [db (d/db node)
             include-defs {:direct
@@ -99,9 +83,7 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject
-               #fhir/Reference
-                       {:reference "Patient/0"}}]]]
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
       (let [db (d/db node)
             include-defs {:direct

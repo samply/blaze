@@ -1,7 +1,6 @@
 (ns blaze.elm.compiler.function
   (:require
-    [blaze.elm.compiler.core :as core]))
-
+   [blaze.elm.compiler.core :as core]))
 
 (defn arity-n [name fn-expr operand-names operands]
   (reify core/Expression

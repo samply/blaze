@@ -1,76 +1,69 @@
 (ns blaze.jepsen.register
   (:refer-clojure :exclude [read])
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.async.comp :as ac]
-    [blaze.fhir-client :as fhir-client]
-    [blaze.fhir.spec.type :as type]
-    [blaze.fhir.structure-definition-repo]
-    [blaze.jepsen.util :as u]
-    [clojure.tools.logging :refer [info]]
-    [hato.client :as hc]
-    [integrant.core :as ig]
-    [jepsen.checker :as checker]
-    [jepsen.cli :as cli]
-    [jepsen.client :as client]
-    [jepsen.generator :as gen]
-    [jepsen.nemesis :as nemesis]
-    [jepsen.tests :as tests]
-    [knossos.model :as model]))
-
+   [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
+   [blaze.fhir-client :as fhir-client]
+   [blaze.fhir.spec.type :as type]
+   [blaze.fhir.structure-definition-repo]
+   [blaze.jepsen.util :as u]
+   [clojure.tools.logging :refer [info]]
+   [hato.client :as hc]
+   [integrant.core :as ig]
+   [jepsen.checker :as checker]
+   [jepsen.cli :as cli]
+   [jepsen.client :as client]
+   [jepsen.generator :as gen]
+   [jepsen.nemesis :as nemesis]
+   [jepsen.tests :as tests]
+   [knossos.model :as model]))
 
 (ig/init {:blaze.fhir/structure-definition-repo {}})
-
 
 (defn r [_ _]
   {:type :invoke :f :read :value nil})
 
-
 (defn w [_ _]
   {:type :invoke :f :write :value (int (rand-int 100))})
-
 
 (defn read [{:keys [base-uri] :as context} id]
   @(-> (fhir-client/read base-uri "Patient" id context)
        (ac/then-apply
-         (fn [resource]
-           {:type :ok :value (:multipleBirth resource)}))
+        (fn [resource]
+          {:type :ok :value (:multipleBirth resource)}))
        (ac/exceptionally
-         (fn [e]
-           {:type (if (ba/not-found? e) :ok :fail) :value nil}))))
-
+        (fn [e]
+          {:type (if (ba/not-found? e) :ok :fail) :value nil}))))
 
 (defn write! [{:keys [base-uri] :as context} id value]
   @(-> (if (even? value)
          (fhir-client/update
-           base-uri
-           {:fhir/type :fhir/Patient :id id :multipleBirth value}
-           context)
+          base-uri
+          {:fhir/type :fhir/Patient :id id :multipleBirth value}
+          context)
          (fhir-client/transact
-           base-uri
-           {:fhir/type :fhir/Bundle
-            :type #fhir/code"transaction"
-            :entry
-            [{:fhir/type :fhir.Bundle/entry
-              :resource
-              {:fhir/type :fhir/Patient :id id :multipleBirth value}
-              :request
-              {:fhir/type :fhir.Bundle.entry/request
-               :method #fhir/code"PUT"
-               :url (type/uri (str "Patient/" id))}}]}
-           context))
+          base-uri
+          {:fhir/type :fhir/Bundle
+           :type #fhir/code"transaction"
+           :entry
+           [{:fhir/type :fhir.Bundle/entry
+             :resource
+             {:fhir/type :fhir/Patient :id id :multipleBirth value}
+             :request
+             {:fhir/type :fhir.Bundle.entry/request
+              :method #fhir/code"PUT"
+              :url (type/uri (str "Patient/" id))}}]}
+          context))
        (ac/then-apply (constantly {:type :ok}))
        (ac/exceptionally (constantly {:type :fail}))))
 
-
 (defn failing-write! [{:keys [base-uri] :as context}]
   @(-> (fhir-client/update
-         base-uri
-         {:fhir/type :fhir/Observation :id "0"
-          :subject (type/map->Reference {:reference (str "Patient/" (random-uuid))})}
-         context)
+        base-uri
+        {:fhir/type :fhir/Observation :id "0"
+         :subject (type/map->Reference {:reference (str "Patient/" (random-uuid))})}
+        context)
        (ac/exceptionally (constantly nil))))
-
 
 (defrecord Client [context]
   client/Client
@@ -93,7 +86,6 @@
 
   (close! [_ _test]))
 
-
 (defn trash-sender
   "Sends trash requests."
   [node]
@@ -108,30 +100,28 @@
 
       (teardown! [_ _]))))
 
-
 (defn blaze-test
   "Given an options map from the command line runner (e.g. :nodes, :ssh,
   :concurrency, ...), constructs a test map."
   [opts]
   (merge
-    tests/noop-test
-    {:pure-generators true
-     :name "register"
-     :remote (u/->Remote)
-     :client (->Client {})
-     :nemesis (trash-sender (first (:nodes opts)))
-     :checker (checker/linearizable
-                {:model (model/register)
-                 :algorithm :linear})
-     :generator (->> (gen/mix [r w])
-                     (gen/stagger (:delta-time opts))
-                     (gen/nemesis
-                       (cycle
-                         [{:type :info, :f :failing-write}
-                          (gen/sleep 1)]))
-                     (gen/time-limit (:time-limit opts)))}
-    opts))
-
+   tests/noop-test
+   {:pure-generators true
+    :name "register"
+    :remote (u/->Remote)
+    :client (->Client {})
+    :nemesis (trash-sender (first (:nodes opts)))
+    :checker (checker/linearizable
+              {:model (model/register)
+               :algorithm :linear})
+    :generator (->> (gen/mix [r w])
+                    (gen/stagger (:delta-time opts))
+                    (gen/nemesis
+                     (cycle
+                      [{:type :info, :f :failing-write}
+                       (gen/sleep 1)]))
+                    (gen/time-limit (:time-limit opts)))}
+   opts))
 
 (def cli-opts
   "Additional command line options."
@@ -139,7 +129,6 @@
    [nil "--delta-time s" "The duration between requests."
     :default 0.1
     :parse-fn parse-double]])
-
 
 (defn -main
   "Handles command line arguments. Can either run a test, or a web server for

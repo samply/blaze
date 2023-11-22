@@ -1,15 +1,12 @@
 (ns blaze.interaction.search.util
   (:require
-    [blaze.handler.fhir.util :as fhir-util]))
-
+   [blaze.handler.fhir.util :as fhir-util]))
 
 (def ^:const match
   #fhir/BundleEntrySearch{:mode #fhir/code"match"})
 
-
 (def ^:const include
   #fhir/BundleEntrySearch{:mode #fhir/code"include"})
-
 
 (defn entry
   ([context resource]

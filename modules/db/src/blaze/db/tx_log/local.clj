@@ -9,29 +9,27 @@
   Uses a single thread named `local-tx-log` to increment the point in time `t`,
   store the transaction and transfers it to listening queues."
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.async.comp :as ac]
-    [blaze.byte-string :as bs]
-    [blaze.db.impl.iterators :as i]
-    [blaze.db.kv :as kv]
-    [blaze.db.tx-log :as tx-log]
-    [blaze.db.tx-log.local.codec :as codec]
-    [blaze.module :refer [reg-collector]]
-    [clojure.spec.alpha :as s]
-    [integrant.core :as ig]
-    [java-time.api :as time]
-    [prometheus.alpha :as prom :refer [defhistogram]]
-    [taoensso.timbre :as log])
+   [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
+   [blaze.byte-string :as bs]
+   [blaze.db.impl.iterators :as i]
+   [blaze.db.kv :as kv]
+   [blaze.db.tx-log :as tx-log]
+   [blaze.db.tx-log.local.codec :as codec]
+   [blaze.module :refer [reg-collector]]
+   [clojure.spec.alpha :as s]
+   [integrant.core :as ig]
+   [java-time.api :as time]
+   [prometheus.alpha :as prom :refer [defhistogram]]
+   [taoensso.timbre :as log])
   (:import
-    [com.google.common.primitives Longs]
-    [java.lang AutoCloseable]
-    [java.time Instant]
-    [java.util.concurrent ArrayBlockingQueue BlockingQueue TimeUnit]
-    [java.util.concurrent.locks Lock ReentrantLock]))
-
+   [com.google.common.primitives Longs]
+   [java.lang AutoCloseable]
+   [java.time Instant]
+   [java.util.concurrent ArrayBlockingQueue BlockingQueue TimeUnit]
+   [java.util.concurrent.locks Lock ReentrantLock]))
 
 (set! *warn-on-reflection* true)
-
 
 (defhistogram duration-seconds
   "Durations in local transaction log."
@@ -41,9 +39,7 @@
   (take 16 (iterate #(* 2 %) 0.00001))
   "op")
 
-
 (def ^:private ^:const max-poll-size 50)
-
 
 (defn- tx-data [kv-store offset]
   (log/trace "fetch tx-data from storage offset =" offset)
@@ -52,11 +48,9 @@
     (let [key (bs/from-byte-array (codec/encode-key offset))]
       (into [] (take max-poll-size) (i/kvs! iter codec/decode-tx-data key)))))
 
-
 (defn- poll! [^BlockingQueue queue timeout]
   (log/trace "poll in-memory queue with timeout =" timeout)
   (.poll queue (time/as timeout :millis) TimeUnit/MILLISECONDS))
-
 
 (deftype LocalQueue [kv-store offset queue queue-start unsubscribe!]
   tx-log/Queue
@@ -74,20 +68,16 @@
     (log/trace "close queue")
     (unsubscribe!)))
 
-
 (defn- store-tx-data! [kv-store {:keys [t instant tx-cmds]}]
   (log/trace "store transaction data with t =" t)
   (kv/put! kv-store (codec/encode-key t) (codec/encode-tx-data instant tx-cmds)))
-
 
 (defn- transfer-tx-data! [queues tx-data]
   (log/trace "transfer transaction data to" (count queues) "queue(s)")
   (run! #(.put ^BlockingQueue % tx-data) queues))
 
-
 (defn- assoc-local-payload [tx-data local-payload]
   (cond-> tx-data local-payload (assoc :local-payload local-payload)))
-
 
 (defn- submit!
   "Stores `tx-cmds` and transfers them to pollers on queues.
@@ -102,7 +92,6 @@
     (store-tx-data! kv-store tx-data)
     (transfer-tx-data! (vals queues) [(assoc-local-payload tx-data local-payload)])
     t))
-
 
 ;; The state contains the following keys:
 ;;  * :t - the current point in time
@@ -131,7 +120,6 @@
       (->LocalQueue kv-store (volatile! offset) queue queue-start
                     #(swap! state update :queues dissoc key)))))
 
-
 (defn- last-t
   "Returns the last (newest) point in time, the transaction log has persisted
   in `kv-store` or nil if the log is empty."
@@ -142,10 +130,8 @@
     (when (kv/valid? iter)
       (Longs/fromByteArray (kv/key iter)))))
 
-
 (defmethod ig/pre-init-spec :blaze.db.tx-log/local [_]
   (s/keys :req-un [:blaze.db/kv-store :blaze/clock]))
-
 
 (defmethod ig/init-key :blaze.db.tx-log/local
   [_ {:keys [kv-store clock]}]
@@ -153,9 +139,7 @@
   (->LocalTxLog kv-store clock (ReentrantLock.)
                 (atom {:t (or (last-t kv-store) 0)})))
 
-
 (derive :blaze.db.tx-log/local :blaze.db/tx-log)
-
 
 (reg-collector ::duration-seconds
   duration-seconds)

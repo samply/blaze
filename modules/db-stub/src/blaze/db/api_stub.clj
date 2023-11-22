@@ -1,36 +1,33 @@
 (ns blaze.db.api-stub
   (:require
-    [blaze.db.api :as d]
-    [blaze.db.api-spec]
-    [blaze.db.kv :as kv]
-    [blaze.db.kv.mem]
-    [blaze.db.kv.mem-spec]
-    [blaze.db.node]
-    [blaze.db.resource-store :as rs]
-    [blaze.db.resource-store.kv :as rs-kv]
-    [blaze.db.search-param-registry]
-    [blaze.db.tx-cache]
-    [blaze.db.tx-log :as tx-log]
-    [blaze.db.tx-log-spec]
-    [blaze.db.tx-log.local]
-    [blaze.fhir.test-util :refer [structure-definition-repo]]
-    [blaze.module.test-util :refer [with-system]]
-    [integrant.core :as ig]
-    [java-time.api :as time]))
+   [blaze.db.api :as d]
+   [blaze.db.api-spec]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv.mem]
+   [blaze.db.kv.mem-spec]
+   [blaze.db.node]
+   [blaze.db.resource-store :as rs]
+   [blaze.db.resource-store.kv :as rs-kv]
+   [blaze.db.search-param-registry]
+   [blaze.db.tx-cache]
+   [blaze.db.tx-log :as tx-log]
+   [blaze.db.tx-log-spec]
+   [blaze.db.tx-log.local]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.module.test-util :refer [with-system]]
+   [integrant.core :as ig]
+   [java-time.api :as time]))
 
-
-(defn create-mem-node-config [node-config]
+(def mem-node-config
   {:blaze.db/node
-   (merge
-     {:tx-log (ig/ref :blaze.db/tx-log)
-      :tx-cache (ig/ref :blaze.db/tx-cache)
-      :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
-      :resource-store (ig/ref ::rs/kv)
-      :kv-store (ig/ref :blaze.db/index-kv-store)
-      :resource-indexer (ig/ref :blaze.db.node/resource-indexer)
-      :search-param-registry (ig/ref :blaze.db/search-param-registry)
-      :poll-timeout (time/millis 10)}
-     node-config)
+   {:tx-log (ig/ref :blaze.db/tx-log)
+    :tx-cache (ig/ref :blaze.db/tx-cache)
+    :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
+    :resource-store (ig/ref ::rs/kv)
+    :kv-store (ig/ref :blaze.db/index-kv-store)
+    :resource-indexer (ig/ref :blaze.db.node/resource-indexer)
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :poll-timeout (time/millis 10)}
 
    ::tx-log/local
    {:kv-store (ig/ref :blaze.db/transaction-kv-store)
@@ -78,11 +75,6 @@
    :blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
-
-(def mem-node-config
-  (create-mem-node-config {}))
-
-
 (defmacro with-system-data
   "Runs `body` inside a system that is initialized from `config`, bound to
   `binding-form` and finally halted.
@@ -92,7 +84,6 @@
   `(with-system [system# ~config]
      (run! #(deref (d/transact (:blaze.db/node system#) %)) ~txs)
      (let [~binding-form system#] ~@body)))
-
 
 (defn extract-txs-body [more]
   (if (vector? (first more))

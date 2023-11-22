@@ -5,53 +5,47 @@
   https://www.hl7.org/fhir/operationoutcome.html
   https://www.hl7.org/fhir/http.html#ops"
   (:require
-    [blaze.anomaly-spec]
-    [blaze.async.comp :as ac]
-    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-    [blaze.db.resource-store :as rs]
-    [blaze.interaction.history.instance]
-    [blaze.interaction.history.util-spec]
-    [blaze.interaction.test-util :refer [wrap-error]]
-    [blaze.middleware.fhir.db :refer [wrap-db]]
-    [blaze.middleware.fhir.db-spec]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [integrant.core :as ig]
-    [java-time.api :as time]
-    [juxt.iota :refer [given]]
-    [reitit.core :as reitit]
-    [taoensso.timbre :as log])
+   [blaze.anomaly-spec]
+   [blaze.async.comp :as ac]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.resource-store :as rs]
+   [blaze.interaction.history.instance]
+   [blaze.interaction.history.util-spec]
+   [blaze.interaction.test-util :refer [wrap-error]]
+   [blaze.middleware.fhir.db :refer [wrap-db]]
+   [blaze.middleware.fhir.db-spec]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [integrant.core :as ig]
+   [java-time.api :as time]
+   [juxt.iota :refer [given]]
+   [reitit.core :as reitit]
+   [taoensso.timbre :as log])
   (:import
-    [java.time Instant]))
-
+   [java.time Instant]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def base-url "base-url-135814")
 (def context-path "/context-path-181842")
 
-
 (def router
   (reitit/router
-    [["/Patient" {:name :Patient/type}]]
-    {:syntax :bracket
-     :path context-path}))
-
+   [["/Patient" {:name :Patient/type}]]
+   {:syntax :bracket
+    :path context-path}))
 
 (def match
   (reitit/map->Match
-    {:data
-     {:blaze/base-url ""
-      :fhir.resource/type "Patient"}
-     :path (str context-path "/Patient/0/_history")}))
-
+   {:data
+    {:blaze/base-url ""
+     :fhir.resource/type "Patient"}
+    :path (str context-path "/Patient/0/_history")}))
 
 (deftest init-test
   (testing "nil config"
@@ -75,24 +69,21 @@
       [:explain ::s/problems 1 :pred] := `time/clock?
       [:explain ::s/problems 1 :val] := ::invalid)))
 
-
 (def config
   (assoc api-stub/mem-node-config
-    :blaze.interaction.history/instance
-    {:node (ig/ref :blaze.db/node)
-     :clock (ig/ref :blaze.test/fixed-clock)
-     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-    :blaze.test/fixed-rng-fn {}))
-
+         :blaze.interaction.history/instance
+         {:node (ig/ref :blaze.db/node)
+          :clock (ig/ref :blaze.test/fixed-clock)
+          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+         :blaze.test/fixed-rng-fn {}))
 
 (defn wrap-defaults [handler]
   (fn [request]
     (handler
-      (assoc request
-        :blaze/base-url base-url
-        ::reitit/router router
-        ::reitit/match match))))
-
+     (assoc request
+            :blaze/base-url base-url
+            ::reitit/router router
+            ::reitit/match match))))
 
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
@@ -102,7 +93,6 @@
        (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# 100)
                                   wrap-error)]
          ~@body))))
-
 
 (deftest handler-test
   (testing "returns not found on empty node"
@@ -163,7 +153,7 @@
 
       (let [{:keys [status body]}
             @(handler
-               {:path-params {:id "0"}})]
+              {:path-params {:id "0"}})]
 
         (is (= 200 status))
 
@@ -216,8 +206,8 @@
 
       (let [{:keys [body]}
             @(handler
-               {:path-params {:id "0"}
-                :query-params {"_count" "1"}})]
+              {:path-params {:id "0"}
+               :query-params {"_count" "1"}})]
 
         (is (= "next" (-> body :link second :relation)))
 
@@ -231,8 +221,8 @@
 
       (let [{:keys [body]}
             @(handler
-               {:path-params {:id "0"}
-                :query-params {"_count" "1" "t" "2" "__page-t" "1"}})]
+              {:path-params {:id "0"}
+               :query-params {"_count" "1" "t" "2" "__page-t" "1"}})]
 
         (testing "the total count is still two"
           (is (= #fhir/unsignedInt 2 (:total body))))

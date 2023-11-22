@@ -1,36 +1,33 @@
 (ns blaze.cassandra-test
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.async.comp :as ac]
-    [blaze.byte-buffer :as bb]
-    [blaze.cassandra :as cass]
-    [blaze.cassandra-spec]
-    [blaze.test-util :as tu :refer [satisfies-prop]]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [clojure.test.check.generators :as gen]
-    [clojure.test.check.properties :as prop]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]])
+   [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
+   [blaze.byte-buffer :as bb]
+   [blaze.cassandra :as cass]
+   [blaze.cassandra-spec]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]])
   (:import
-    [com.datastax.oss.driver.api.core
-     ConsistencyLevel CqlSession DriverTimeoutException
-     RequestThrottlingException]
-    [com.datastax.oss.driver.api.core.cql
-     AsyncResultSet BoundStatement PreparedStatement Row SimpleStatement
-     Statement]
-    [com.datastax.oss.driver.api.core.servererrors
-     WriteTimeoutException WriteType]
-    [java.nio ByteBuffer]
-    [java.util.concurrent CompletionStage]))
-
+   [com.datastax.oss.driver.api.core
+    ConsistencyLevel CqlSession DriverTimeoutException
+    RequestThrottlingException]
+   [com.datastax.oss.driver.api.core.cql
+    AsyncResultSet BoundStatement PreparedStatement Row SimpleStatement
+    Statement]
+   [com.datastax.oss.driver.api.core.servererrors
+    WriteTimeoutException WriteType]
+   [java.nio ByteBuffer]
+   [java.util.concurrent CompletionStage]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest prepare-test
   (let [given-statement (reify SimpleStatement)
@@ -41,7 +38,6 @@
             (assert (= given-statement statement))
             prepared-statement))]
     (is (= prepared-statement (cass/prepare session given-statement)))))
-
 
 (deftest bind-test
   (testing "bind nothing"
@@ -71,7 +67,6 @@
               bound-statement))]
       (is (= bound-statement (cass/bind statement ::v1 ::v2))))))
 
-
 (deftest execute-test
   (let [given-statement (reify Statement)
         result-set (reify AsyncResultSet)
@@ -82,19 +77,16 @@
             (ac/completed-future result-set)))]
     (is (= result-set @(cass/execute session given-statement)))))
 
-
 (defn row-with [idx bytes]
   (reify Row
     (^ByteBuffer getByteBuffer [_ ^int i]
       (assert (= idx i))
       (bb/wrap (byte-array bytes)))))
 
-
 (defn resultset-with [row]
   (reify AsyncResultSet
     (one [_]
       row)))
-
 
 (deftest first-row-test
   (testing "with one row"
@@ -105,7 +97,6 @@
   (testing "with no row"
     (given (cass/first-row (resultset-with nil))
       ::anom/category := ::anom/not-found)))
-
 
 (deftest format-config-test
   (testing "empty config"
@@ -120,7 +111,6 @@
   (testing "passwords are hidden"
     (is (= "password = [hidden]" (cass/format-config {:password "secret"})))))
 
-
 (deftest close-test
   (let [state (atom ::open)
         session
@@ -129,7 +119,6 @@
             (reset! state ::closed)))]
     (cass/close session)
     (is (= ::closed @state))))
-
 
 (deftest anomaly-test
   (testing "DriverTimeoutException"

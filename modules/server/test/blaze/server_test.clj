@@ -1,30 +1,27 @@
 (ns blaze.server-test
   (:refer-clojure :exclude [error-handler])
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.server]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
-    [cognitect.anomalies :as anom]
-    [hato.client :as hc]
-    [integrant.core :as ig]
-    [juxt.iota :refer [given]]
-    [ring.util.response :as ring]
-    [taoensso.timbre :as log])
+   [blaze.anomaly :as ba]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.server]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [cognitect.anomalies :as anom]
+   [hato.client :as hc]
+   [integrant.core :as ig]
+   [juxt.iota :refer [given]]
+   [ring.util.response :as ring]
+   [taoensso.timbre :as log])
   (:import
-    [java.net ServerSocket]))
-
+   [java.net ServerSocket]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest init-test
   (testing "nil config"
@@ -68,22 +65,17 @@
       [:explain ::s/problems 2 :pred] := `string?
       [:explain ::s/problems 2 :val] := ::invalid)))
 
-
 (defn ok-handler [_]
   (ring/response "OK"))
-
 
 (defn async-ok-handler [_ respond _]
   (respond (ring/response "OK")))
 
-
 (defn error-handler [_]
   (throw (Exception. "msg-163147")))
 
-
 (defn async-error-handler [_ _ raise]
   (raise (Exception. "msg-163147")))
-
 
 (defn system
   ([port]
@@ -91,18 +83,15 @@
   ([port handler]
    {:blaze/server {:port port :handler handler :version "1.0"}}))
 
-
 (defn async-system
   ([port]
    (async-system port async-ok-handler))
   ([port handler]
    {:blaze/server {:port port :handler handler :version "1.0" :async? true}}))
 
-
 (defn- find-free-port []
   (with-open [s (ServerSocket. 0)]
     (.getLocalPort s)))
-
 
 (deftest server-test
   (let [port (find-free-port)]

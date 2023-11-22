@@ -1,8 +1,7 @@
 (ns blaze.interaction.test-util
   (:require
-    [blaze.async.comp :as ac]
-    [blaze.handler.util :as handler-util]))
-
+   [blaze.async.comp :as ac]
+   [blaze.handler.util :as handler-util]))
 
 (defn wrap-error [handler]
   (fn [request]

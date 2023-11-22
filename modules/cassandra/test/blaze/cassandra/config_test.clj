@@ -1,21 +1,18 @@
 (ns blaze.cassandra.config-test
   (:require
-    [blaze.cassandra.config :as config]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest testing]]
-    [java-time.api :as time])
+   [blaze.cassandra.config :as config]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest testing]]
+   [java-time.api :as time])
   (:import
-    [com.datastax.oss.driver.api.core.config OptionsMap TypedDriverOption]
-    [java.net InetSocketAddress]))
-
+   [com.datastax.oss.driver.api.core.config OptionsMap TypedDriverOption]
+   [java.net InetSocketAddress]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest options-test
   (testing "defaults"
@@ -49,7 +46,6 @@
 
         TypedDriverOption/REQUEST_TIMEOUT
         (time/millis 5000)))))
-
 
 (deftest build-contact-points-test
   (are [s res] (= res (config/build-contact-points s))

@@ -1,24 +1,20 @@
 (ns blaze.byte-buffer-test
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.test-util :as tu :refer [satisfies-prop]]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [clojure.test.check.generators :as gen]
-    [clojure.test.check.properties :as prop]))
-
+   [blaze.byte-buffer :as bb]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest limit-test
   (satisfies-prop 100
     (prop/for-all [capacity gen/nat]
       (= capacity (bb/limit (bb/allocate capacity))))))
-
 
 (deftest size-up-to-null-test
   (testing "empty buffer"

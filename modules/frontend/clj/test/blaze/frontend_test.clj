@@ -1,27 +1,24 @@
 (ns blaze.frontend-test
   (:require
-    [blaze.frontend]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.module.test-util.ring :refer [call]]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.string :as str]
-    [clojure.test :as test :refer [deftest testing]]
-    [integrant.core :as ig]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log])
+   [blaze.frontend]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util.ring :refer [call]]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
+   [clojure.test :as test :refer [deftest testing]]
+   [integrant.core :as ig]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log])
   (:import
-    [java.io File]))
-
+   [java.io File]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest init-test
   (testing "nil config"
@@ -37,21 +34,16 @@
       [:explain ::s/problems 0 :pred] := `string?
       [:explain ::s/problems 0 :val] := ::invalid)))
 
-
 (def config
   {:blaze/frontend
    {:context-path "/fhir"}})
 
-
 (def ^String assets-path "/__frontend/immutable/assets")
-
 
 (defn- file-name [file]
   (.getName ^File file))
 
-
 (def css-file? #(and (.isFile ^File %) (str/ends-with? (file-name %) "css")))
-
 
 (deftest handler-test
   (with-system [{handler :blaze/frontend} config]

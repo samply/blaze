@@ -1,63 +1,50 @@
 (ns blaze.db.impl.search-param-test
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.codec.date :as codec-date]
-    [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
-    [blaze.db.impl.index.search-param-value-resource-spec]
-    [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
-    [blaze.db.impl.search-param :as search-param]
-    [blaze.db.impl.search-param-spec]
-    [blaze.db.impl.search-param.core :as sc]
-    [blaze.db.search-param-registry :as sr]
-    [blaze.fhir.hash :as hash]
-    [blaze.fhir.hash-spec]
-    [blaze.fhir.spec.type]
-    [blaze.fhir.test-util :refer [structure-definition-repo]]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [juxt.iota :refer [given]]))
-
+   [blaze.byte-buffer :as bb]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.codec.date :as codec-date]
+   [blaze.db.impl.index.resource-search-param-value-test-util :as r-sp-v-tu]
+   [blaze.db.impl.index.search-param-value-resource-spec]
+   [blaze.db.impl.index.search-param-value-resource-test-util :as sp-vr-tu]
+   [blaze.db.impl.search-param :as search-param]
+   [blaze.db.impl.search-param-spec]
+   [blaze.db.impl.search-param.core :as sc]
+   [blaze.db.search-param-registry :as sr]
+   [blaze.fhir.hash :as hash]
+   [blaze.fhir.hash-spec]
+   [blaze.fhir.spec.type]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [juxt.iota :refer [given]]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defn birthdate [search-param-registry]
   (sr/get search-param-registry "birthdate" "Patient"))
 
-
 (defn compile-birthdate [search-param-registry value]
   (first (search-param/compile-values (birthdate search-param-registry) nil [value])))
-
 
 (def config
   {:blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
-
 (deftest compile-value-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Date"
-      (are [value op lower-bound upper-bound]
-        (given (compile-birthdate search-param-registry value)
-          :op := op
-          :lower-bound := lower-bound
-          :upper-bound := upper-bound)
-        "2020-10-30"
-        :eq
-        (codec-date/encode-lower-bound #system/date-time"2020-10-30")
-        (codec-date/encode-upper-bound #system/date-time"2020-10-30")))))
-
+      (given (compile-birthdate search-param-registry "2020-10-30")
+        :op := :eq
+        :lower-bound := (codec-date/encode-lower-bound #system/date-time"2020-10-30")
+        :upper-bound := (codec-date/encode-upper-bound #system/date-time"2020-10-30")))))
 
 (defn- index-entries [search-param linked-compartments hash resource]
   (vec (search-param/index-entries search-param linked-compartments hash resource)))
-
 
 (deftest index-entries-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
@@ -68,8 +55,8 @@
             hash (hash/generate patient)
             [[_ k0] [_ k1]]
             (index-entries
-              (sr/get search-param-registry "_profile" "Patient")
-              [] hash patient)]
+             (sr/get search-param-registry "_profile" "Patient")
+             [] hash patient)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -92,10 +79,10 @@
                       :subject #fhir/Reference{:reference "reference-150829"}}
             hash (hash/generate specimen)]
         (is
-          (empty?
-            (index-entries
-              (sr/get search-param-registry "patient" "Specimen")
-              [] hash specimen)))))
+         (empty?
+          (index-entries
+           (sr/get search-param-registry "patient" "Specimen")
+           [] hash specimen)))))
 
     (testing "ActivityDefinition url"
       (let [resource {:fhir/type :fhir/ActivityDefinition
@@ -104,8 +91,8 @@
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
             (index-entries
-              (sr/get search-param-registry "url" "ActivityDefinition")
-              [] hash resource)]
+             (sr/get search-param-registry "url" "ActivityDefinition")
+             [] hash resource)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -132,8 +119,8 @@
               hash (hash/generate resource)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (index-entries
-                (sr/get search-param-registry "item" "List")
-                [] hash resource)]
+               (sr/get search-param-registry "item" "List")
+               [] hash resource)]
 
           (testing "first SearchParamValueResource key is about `id`"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -191,15 +178,15 @@
                         [{:fhir/type :fhir.List/entry
                           :item
                           #fhir/Reference
-                                  {:identifier
-                                   #fhir/Identifier
-                                           {:system #fhir/uri"system-122917"
-                                            :value "value-122931"}}}]}
+                           {:identifier
+                            #fhir/Identifier
+                             {:system #fhir/uri"system-122917"
+                              :value "value-122931"}}}]}
               hash (hash/generate resource)
               [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5]]
               (index-entries
-                (sr/get search-param-registry "item" "List")
-                [] hash resource)]
+               (sr/get search-param-registry "item" "List")
+               [] hash resource)]
 
           (testing "first SearchParamValueResource key is about `value`"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -255,12 +242,12 @@
                         [{:fhir/type :fhir.List/entry
                           :item
                           #fhir/Reference
-                                  {:reference "http://foo.com/bar-141221"}}]}
+                           {:reference "http://foo.com/bar-141221"}}]}
               hash (hash/generate resource)
               [[_ k0] [_ k1]]
               (index-entries
-                (sr/get search-param-registry "item" "List")
-                [] hash resource)]
+               (sr/get search-param-registry "item" "List")
+               [] hash resource)]
 
           (testing "first SearchParamValueResource key is about `id`"
             (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -285,15 +272,15 @@
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
             (index-entries
-              (sc/search-param
-                {}
-                {:type "number"
-                 :name "rank"
-                 :code "rank"
-                 :base ["Encounter"]
-                 :url "Encounter-rank",
-                 :expression "Encounter.diagnosis.rank"})
-              [] hash resource)]
+             (sc/search-param
+              {}
+              {:type "number"
+               :name "rank"
+               :code "rank"
+               :base ["Encounter"]
+               :url "Encounter-rank",
+               :expression "Encounter.diagnosis.rank"})
+             [] hash resource)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))
@@ -317,15 +304,15 @@
             hash (hash/generate resource)
             [[_ k0] [_ k1]]
             (index-entries
-              (sc/search-param
-                {}
-                {:type "number"
-                 :name "priority"
-                 :code "priority"
-                 :base ["Appointment"]
-                 :url "Appointment-priority",
-                 :expression "Appointment.priority"})
-              [] hash resource)]
+             (sc/search-param
+              {}
+              {:type "number"
+               :name "priority"
+               :code "priority"
+               :base ["Appointment"]
+               :url "Appointment-priority",
+               :expression "Appointment.priority"})
+             [] hash resource)]
 
         (testing "SearchParamValueResource key"
           (given (sp-vr-tu/decode-key-human (bb/wrap k0))

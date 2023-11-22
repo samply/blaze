@@ -1,13 +1,11 @@
 (ns blaze.interaction.search.params.include
   (:require
-    [blaze.anomaly :as ba :refer [when-ok]]
-    [blaze.util :as u]
-    [clojure.string :as str]))
-
+   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.util :as u]
+   [clojure.string :as str]))
 
 (defn- missing-code-msg [source-type]
   (format "Missing search parameter code in _include search parameter with source type `%s`." source-type))
-
 
 (defn- forward-value [handling v]
   (let [[source-type code target-type] (str/split v #":")]
@@ -19,22 +17,20 @@
       (when (identical? :blaze.preference.handling/strict handling)
         (ba/incorrect (missing-code-msg source-type))))))
 
-
 (defn- forward-defs [handling name query-params]
   (transduce
-    (comp
-      (filter (fn [[k]] (= name k)))
-      (mapcat
-        (fn [[_k v]] (keep #(forward-value handling %) (u/to-seq v)))))
-    (completing
-      (fn [res x]
-        (if (ba/anomaly? x)
-          (reduced x)
-          (let [[source-type include-def] x]
-            (update res source-type u/conj-vec include-def)))))
-    {}
-    query-params))
-
+   (comp
+    (filter (fn [[k]] (= name k)))
+    (mapcat
+     (fn [[_k v]] (keep #(forward-value handling %) (u/to-seq v)))))
+   (completing
+    (fn [res x]
+      (if (ba/anomaly? x)
+        (reduced x)
+        (let [[source-type include-def] x]
+          (update res source-type u/conj-vec include-def)))))
+   {}
+   query-params))
 
 (defn- reverse-value [handling v]
   (let [[source-type code target-type] (str/split v #":")]
@@ -43,22 +39,20 @@
       (when (identical? :blaze.preference.handling/strict handling)
         (ba/incorrect (missing-code-msg source-type))))))
 
-
 (defn- reverse-defs [handling name query-params]
   (transduce
-    (comp
-      (filter (fn [[k]] (= name k)))
-      (mapcat
-        (fn [[_k v]] (keep #(reverse-value handling %) (u/to-seq v)))))
-    (completing
-      (fn [res x]
-        (if (ba/anomaly? x)
-          (reduced x)
-          (let [[target-type include-def] x]
-            (update res target-type u/conj-vec include-def)))))
-    {}
-    query-params))
-
+   (comp
+    (filter (fn [[k]] (= name k)))
+    (mapcat
+     (fn [[_k v]] (keep #(reverse-value handling %) (u/to-seq v)))))
+   (completing
+    (fn [res x]
+      (if (ba/anomaly? x)
+        (reduced x)
+        (let [[target-type include-def] x]
+          (update res target-type u/conj-vec include-def)))))
+   {}
+   query-params))
 
 (defn include-defs [handling query-params]
   (when-ok [fwd-direct (forward-defs handling "_include" query-params)]
@@ -70,17 +64,17 @@
           (cond-> nil
             (or (seq fwd-direct) (seq rev-direct))
             (assoc
-              :direct
-              (cond-> {}
-                (seq fwd-direct)
-                (assoc :forward fwd-direct)
-                (seq rev-direct)
-                (assoc :reverse rev-direct)))
+             :direct
+             (cond-> {}
+               (seq fwd-direct)
+               (assoc :forward fwd-direct)
+               (seq rev-direct)
+               (assoc :reverse rev-direct)))
             (or (seq fwd-iterate) (seq rev-iterate))
             (assoc
-              :iterate
-              (cond-> {}
-                (seq fwd-iterate)
-                (assoc :forward fwd-iterate)
-                (seq rev-iterate)
-                (assoc :reverse rev-iterate)))))))))
+             :iterate
+             (cond-> {}
+               (seq fwd-iterate)
+               (assoc :forward fwd-iterate)
+               (seq rev-iterate)
+               (assoc :reverse rev-iterate)))))))))

@@ -1,33 +1,30 @@
 (ns blaze.db.impl.search-param.quantity
   (:require
-    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.byte-string :as bs]
-    [blaze.coll.core :as coll]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
-    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
-    [blaze.db.impl.macros :refer [with-open-coll]]
-    [blaze.db.impl.protocols :as p]
-    [blaze.db.impl.search-param.core :as sc]
-    [blaze.db.impl.search-param.util :as u]
-    [blaze.db.kv :as kv]
-    [blaze.fhir-path :as fhir-path]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.spec.type :as type]
-    [blaze.fhir.spec.type.system :as system]
-    [clojure.string :as str]
-    [cognitect.anomalies :as anom]
-    [taoensso.timbre :as log]))
-
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.byte-string :as bs]
+   [blaze.coll.core :as coll]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
+   [blaze.db.impl.index.search-param-value-resource :as sp-vr]
+   [blaze.db.impl.macros :refer [with-open-coll]]
+   [blaze.db.impl.protocols :as p]
+   [blaze.db.impl.search-param.core :as sc]
+   [blaze.db.impl.search-param.util :as u]
+   [blaze.db.kv :as kv]
+   [blaze.fhir-path :as fhir-path]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type.system :as system]
+   [clojure.string :as str]
+   [cognitect.anomalies :as anom]
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
-
 
 (defmulti index-entries
   "Returns index entries for `value` from a resource."
   {:arglists '([url value])}
   (fn [_ value] (fhir-spec/fhir-type value)))
-
 
 (defn- index-quantity-entries
   [{:keys [value system code unit]}]
@@ -43,21 +40,17 @@
         (and system code)
         (conj [nil (codec/quantity (str system "|" code) value)])))))
 
-
 (defmethod index-entries :fhir/Quantity
   [_ quantity]
   (index-quantity-entries quantity))
-
 
 (defmethod index-entries :fhir/Age
   [_ quantity]
   (index-quantity-entries quantity))
 
-
 (defmethod index-entries :default
   [url value]
   (log/warn (u/format-skip-indexing-msg value url "quantity")))
-
 
 (defn- resource-value
   "Returns the value of the resource with `tid` and `id` according to the
@@ -71,21 +64,17 @@
   [{:keys [resource-handle next-value]} c-hash tid id prefix]
   (next-value (resource-handle tid id) c-hash prefix prefix))
 
-
 (defn- id-start-key! [context c-hash tid prefix start-id]
   (let [start-value (resource-value context c-hash tid start-id prefix)]
     (assert start-value)
     (sp-vr/encode-seek-key c-hash tid start-value start-id)))
 
-
 (defn- take-while-less-equal [c-hash tid value]
   (let [prefix-key (sp-vr/encode-seek-key c-hash tid value)]
     (take-while (fn [[prefix]] (bs/<= prefix prefix-key)))))
 
-
 (def ^:private drop-value
   (map #(subvec % 1)))
-
 
 (defn- eq-keys
   "Returns a reducible collection of `[id hash-prefix]` tuples of values between
@@ -94,21 +83,20 @@
   The `prefix` is a fix prefix of `value` which all found values have to have."
   ([{:keys [snapshot]} c-hash tid lower-bound upper-bound]
    (coll/eduction
-     (comp
-       (take-while-less-equal c-hash tid upper-bound)
-       drop-value)
-     (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
-       (sp-vr/keys! svri (sp-vr/encode-seek-key c-hash tid lower-bound)))))
+    (comp
+     (take-while-less-equal c-hash tid upper-bound)
+     drop-value)
+    (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
+      (sp-vr/keys! svri (sp-vr/encode-seek-key c-hash tid lower-bound)))))
   ([{:keys [snapshot] :as context} c-hash tid lower-bound-prefix upper-bound
     start-id]
    (coll/eduction
-     (comp
-       (take-while-less-equal c-hash tid upper-bound)
-       drop-value)
-     (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
-       (sp-vr/keys! svri (id-start-key! context c-hash tid lower-bound-prefix
-                                        start-id))))))
-
+    (comp
+     (take-while-less-equal c-hash tid upper-bound)
+     drop-value)
+    (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
+      (sp-vr/keys! svri (id-start-key! context c-hash tid lower-bound-prefix
+                                       start-id))))))
 
 (defn- gt-keys
   "Returns a reducible collection of `[id hash-prefix]` tuples of values greater
@@ -124,7 +112,6 @@
      (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
        (sp-vr/prefix-keys! svri c-hash tid prefix start-value start-id)))))
 
-
 (defn- lt-keys
   "Returns a reducible collection of `[id hash-prefix]` tuples of values less
   than `value` starting at `start-id` (optional).
@@ -138,7 +125,6 @@
      (assert start-value)
      (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
        (sp-vr/prefix-keys-prev! svri c-hash tid prefix start-value start-id)))))
-
 
 (defn- ge-keys
   "Returns a reducible collection of `[id hash-prefix]` tuples of values greater
@@ -154,7 +140,6 @@
      (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
        (sp-vr/prefix-keys! svri c-hash tid prefix start-value start-id)))))
 
-
 (defn- le-keys
   "Returns a reducible collection of `[id hash-prefix]` tuples of values less
   or equal `value` starting at `start-id` (optional).
@@ -168,7 +153,6 @@
      (assert start-value)
      (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
        (sp-vr/prefix-keys-prev! svri c-hash tid prefix start-value start-id)))))
-
 
 (defn resource-keys
   "Returns a reducible collection of `[id hash-prefix]` tuples of values
@@ -206,21 +190,19 @@
      :le (le-keys context c-hash tid (bs/subs exact-value 0 prefix-length)
                   exact-value start-id))))
 
-
 (defn- take-while-compartment-less-equal [compartment c-hash tid value]
   (let [prefix-key (c-sp-vr/encode-seek-key compartment c-hash tid value)]
     (take-while (fn [[prefix]] (bs/<= prefix prefix-key)))))
 
-
 (defn- eq-compartment-keys
   [{:keys [snapshot]} compartment c-hash tid lower-bound upper-bound]
   (coll/eduction
-    (comp
-      (take-while-compartment-less-equal compartment c-hash tid upper-bound)
-      drop-value)
-    (with-open-coll [csvri (kv/new-iterator snapshot :compartment-search-param-value-index)]
-      (c-sp-vr/keys! csvri (c-sp-vr/encode-seek-key compartment c-hash tid
-                                                    lower-bound)))))
+   (comp
+    (take-while-compartment-less-equal compartment c-hash tid upper-bound)
+    drop-value)
+   (with-open-coll [csvri (kv/new-iterator snapshot :compartment-search-param-value-index)]
+     (c-sp-vr/keys! csvri (c-sp-vr/encode-seek-key compartment c-hash tid
+                                                   lower-bound)))))
 
 (defn- compartment-keys
   [context compartment c-hash tid {:keys [op lower-bound upper-bound]}]
@@ -228,29 +210,23 @@
     :eq (eq-compartment-keys context compartment c-hash tid lower-bound
                              upper-bound)))
 
-
 (defn eq-matches? [next-value c-hash resource-handle prefix lower-bound upper-bound]
   (when-let [value (next-value resource-handle c-hash prefix lower-bound)]
     (bs/<= value upper-bound)))
-
 
 (defn gt-matches? [next-value c-hash resource-handle prefix value]
   (when-let [found-value (next-value resource-handle c-hash prefix value)]
     (bs/> found-value value)))
 
-
 (defn lt-matches? [next-value-prev c-hash resource-handle prefix value]
   (when-let [found-value (next-value-prev resource-handle c-hash prefix value)]
     (bs/< found-value value)))
 
-
 (defn ge-matches? [next-value c-hash resource-handle prefix value]
   (some? (next-value resource-handle c-hash prefix value)))
 
-
 (defn le-matches? [next-value-prev c-hash resource-handle prefix value]
   (some? (next-value-prev resource-handle c-hash prefix value)))
-
 
 (defn matches?
   {:arglists
@@ -270,7 +246,6 @@
     :le (le-matches? next-value-prev c-hash resource-handle
                      (bs/subs exact-value 0 prefix-length) exact-value)))
 
-
 (defrecord SearchParamQuantity [name url type base code c-hash expression]
   p/SearchParam
   (-compile-value [_ _ value]
@@ -283,27 +258,27 @@
           (:gt :lt :ge :le)
           {:op op :exact-value (codec/quantity unit decimal-value)}
           (ba/unsupported
-            (u/unsupported-prefix-msg code op)
-            ::category ::unsupported-prefix
-            ::unsupported-prefix op))
+           (u/unsupported-prefix-msg code op)
+           ::category ::unsupported-prefix
+           ::unsupported-prefix op))
         #(assoc %
-           ::category ::invalid-decimal-value
-           ::anom/message (u/invalid-decimal-value-msg code value)))))
+                ::category ::invalid-decimal-value
+                ::anom/message (u/invalid-decimal-value-msg code value)))))
 
   (-resource-handles [_ context tid _ value]
     (coll/eduction
-      (u/resource-handle-mapper context tid)
-      (resource-keys context c-hash tid codec/v-hash-size value)))
+     (u/resource-handle-mapper context tid)
+     (resource-keys context c-hash tid codec/v-hash-size value)))
 
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction
-      (u/resource-handle-mapper context tid)
-      (resource-keys context c-hash tid codec/v-hash-size value start-id)))
+     (u/resource-handle-mapper context tid)
+     (resource-keys context c-hash tid codec/v-hash-size value start-id)))
 
   (-count-resource-handles [_ context tid _ value]
     (u/count-resource-handles
-      context tid
-      (resource-keys context c-hash tid codec/v-hash-size value)))
+     context tid
+     (resource-keys context c-hash tid codec/v-hash-size value)))
 
   (-compartment-keys [_ context compartment tid value]
     (compartment-keys context compartment c-hash tid value))
@@ -319,7 +294,6 @@
   (-index-value-compiler [_]
     (mapcat (partial index-entries url))))
 
-
 (defn- fix-expr
   "https://github.com/samply/blaze/issues/366"
   [url expression]
@@ -329,7 +303,6 @@
     "http://hl7.org/fhir/SearchParameter/Observation-combo-value-quantity"
     "(Observation.value as Quantity) | (Observation.value as SampledData) | Observation.component.value.ofType(Quantity) | Observation.component.value.ofType(SampledData)"
     expression))
-
 
 (defmethod sc/search-param "quantity"
   [_ {:keys [name url type base code expression]}]

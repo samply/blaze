@@ -1,15 +1,12 @@
 (ns blaze.page-store.weigh
   (:import
-    [clojure.lang Keyword PersistentVector]))
-
+   [clojure.lang Keyword PersistentVector]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
-
 (defprotocol Weigher
   (-weigh [x]))
-
 
 (extend-protocol Weigher
   String
@@ -26,7 +23,6 @@
   (-weigh [_]
     ;; a keyword is interned, so it doesn't weight anything
     0))
-
 
 (defn weigh
   "Returns an estimation of the number of bytes `x` needs in memory.

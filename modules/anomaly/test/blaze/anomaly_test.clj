@@ -1,21 +1,18 @@
 (ns blaze.anomaly-test
   (:require
-    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.anomaly-spec]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]])
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.anomaly-spec]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]])
   (:import
-    [java.util.concurrent ExecutionException TimeoutException]))
-
+   [java.util.concurrent ExecutionException TimeoutException]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest anomaly?-test
   (testing "a map with the right category key is an anomaly"
@@ -28,7 +25,6 @@
   (testing "nil is no anomaly"
     (is (not (ba/anomaly? nil)))))
 
-
 (deftest incorrect?-test
   (testing "a incorrect anomaly has to have the right category"
     (is (ba/incorrect? {::anom/category ::anom/incorrect})))
@@ -38,7 +34,6 @@
 
   (testing "nil is no incorrect anomaly"
     (is (not (ba/anomaly? nil)))))
-
 
 (deftest unsupported?-test
   (testing "a unsupported anomaly has to have the right category"
@@ -50,7 +45,6 @@
   (testing "nil is no unsupported anomaly"
     (is (not (ba/anomaly? nil)))))
 
-
 (deftest not-found?-test
   (testing "a not-found anomaly has to have the right category"
     (is (ba/not-found? {::anom/category ::anom/not-found})))
@@ -60,7 +54,6 @@
 
   (testing "nil is no not-found anomaly"
     (is (not (ba/anomaly? nil)))))
-
 
 (deftest conflict?-test
   (testing "a conflict anomaly has to have the right category"
@@ -72,7 +65,6 @@
   (testing "nil is no conflict anomaly"
     (is (not (ba/anomaly? nil)))))
 
-
 (deftest fault?-test
   (testing "a fault anomaly has to have the right category"
     (is (ba/fault? {::anom/category ::anom/fault})))
@@ -82,7 +74,6 @@
 
   (testing "nil is no fault anomaly"
     (is (not (ba/anomaly? nil)))))
-
 
 (deftest busy?-test
   (testing "a busy anomaly has to have the right category"
@@ -94,6 +85,20 @@
   (testing "nil is no busy anomaly"
     (is (not (ba/anomaly? nil)))))
 
+(deftest interrupted-test
+  (testing "with nil message"
+    (is (= (ba/interrupted nil) {::anom/category ::anom/interrupted})))
+
+  (testing "with message only"
+    (given (ba/interrupted "msg-183005")
+      ::anom/category := ::anom/interrupted
+      ::anom/message := "msg-183005"))
+
+  (testing "with additional kvs"
+    (given (ba/interrupted "msg-183005" ::foo ::bar)
+      ::anom/category := ::anom/interrupted
+      ::anom/message := "msg-183005"
+      ::foo := ::bar)))
 
 (deftest incorrect-test
   (testing "with nil message"
@@ -110,7 +115,6 @@
       ::anom/message := "msg-183005"
       ::foo := ::bar)))
 
-
 (deftest forbidden-test
   (testing "with nil message"
     (is (= (ba/forbidden nil) {::anom/category ::anom/forbidden})))
@@ -125,7 +129,6 @@
       ::anom/category := ::anom/forbidden
       ::anom/message := "msg-183005"
       ::foo := ::bar)))
-
 
 (deftest unsupported-test
   (testing "with nil message"
@@ -142,7 +145,6 @@
       ::anom/message := "msg-183005"
       ::foo := ::bar)))
 
-
 (deftest not-found-test
   (testing "with nil message"
     (is (= (ba/not-found nil) {::anom/category ::anom/not-found})))
@@ -157,7 +159,6 @@
       ::anom/category := ::anom/not-found
       ::anom/message := "msg-183005"
       ::foo := ::bar)))
-
 
 (deftest fault-test
   (testing "without message"
@@ -177,7 +178,6 @@
       ::anom/message := "msg-183005"
       ::foo := ::bar)))
 
-
 (deftest busy-test
   (testing "without message"
     (is (= (ba/busy) {::anom/category ::anom/busy})))
@@ -195,7 +195,6 @@
       ::anom/category := ::anom/busy
       ::anom/message := "msg-183005"
       ::foo := ::bar)))
-
 
 (deftest anomaly-test
   (testing "ExecutionException"
@@ -243,7 +242,6 @@
       ::anom/category := ::anom/busy
       ::anom/message := "msg-121702")))
 
-
 (deftest try-one-test
   (testing "without message"
     (is (= (ba/try-one Exception ::anom/fault (throw (Exception.)))
@@ -254,12 +252,10 @@
       ::anom/category := ::anom/fault
       ::anom/message := "msg-134156")))
 
-
 (deftest try-all-test
   (given (ba/try-all ::anom/fault (throw (Exception. "msg-134347")))
     ::anom/category := ::anom/fault
     ::anom/message := "msg-134347"))
-
 
 (deftest try-anomaly-test
   (testing "an exception leads to a fault"
@@ -273,7 +269,6 @@
       ::anom/message := "msg-134737"
       ::foo := ::bar)))
 
-
 (deftest ex-anom-test
   (testing "the message will be put in the exception"
     (is (= (ex-message (ba/ex-anom (ba/incorrect "msg-135018"))) "msg-135018")))
@@ -284,12 +279,10 @@
       ::anom/message := "msg-135018"
       ::foo := ::bar)))
 
-
 (deftest throw-anom-test
   (given (ba/try-anomaly (ba/throw-anom (ba/conflict "msg-174935")))
     ::anom/category := ::anom/conflict
     ::anom/message := "msg-174935"))
-
 
 (deftest throw-when-test
   (testing "anomalies are thrown"
@@ -299,7 +292,6 @@
 
   (testing "other values are returned"
     (is (= (ba/throw-when {::foo ::bar}) {::foo ::bar}))))
-
 
 (deftest when-ok-test
   (testing "no anomaly"
@@ -327,7 +319,6 @@
   (testing "bodies can also fail"
     (given (when-ok [] (ba/fault))
       ::anom/category := ::anom/fault)))
-
 
 (deftest if-ok-test
   (testing "no anomaly"
@@ -359,7 +350,6 @@
     (given (if-ok [] (ba/fault) #(assoc % ::anom/category ::anom/busy))
       ::anom/category := ::anom/fault)))
 
-
 (deftest map-test
   (testing "no anomaly"
     (is (= 2 (ba/map 1 inc))))
@@ -367,7 +357,6 @@
   (testing "with anomaly"
     (given (ba/map (ba/fault) inc)
       ::anom/category := ::anom/fault)))
-
 
 (deftest exceptionally-test
   (testing "no anomaly"
@@ -377,7 +366,6 @@
     (given (ba/exceptionally (ba/fault) #(assoc % ::foo ::bar))
       ::anom/category := ::anom/fault
       ::foo := ::bar)))
-
 
 (deftest ignore-test
   (testing "no anomaly"

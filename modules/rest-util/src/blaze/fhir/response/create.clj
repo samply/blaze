@@ -1,31 +1,26 @@
 (ns blaze.fhir.response.create
   (:require
-    [blaze.async.comp :as ac :refer [do-sync]]
-    [blaze.db.api :as d]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.handler.fhir.util :as fhir-util]
-    [ring.util.response :as ring]
-    [taoensso.timbre :as log])
+   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.db.api :as d]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.handler.fhir.util :as fhir-util]
+   [ring.util.response :as ring]
+   [taoensso.timbre :as log])
   (:import
-    [java.time ZoneId ZonedDateTime]
-    [java.time.format DateTimeFormatter]))
-
+   [java.time ZoneId ZonedDateTime]
+   [java.time.format DateTimeFormatter]))
 
 (set! *warn-on-reflection* true)
 
-
 (def ^:private gmt (ZoneId/of "GMT"))
-
 
 (defn- last-modified [{:blaze.db.tx/keys [instant]}]
   (->> (ZonedDateTime/ofInstant instant gmt)
        (.format DateTimeFormatter/RFC_1123_DATE_TIME)))
 
-
 (defn- location-header [response context type id vid]
   (let [url (fhir-util/versioned-instance-url context type id vid)]
     (ring/header response "Location" url)))
-
 
 (defn- body
   [{:blaze/keys [db] return-preference :blaze.preference/return} new-handle]
@@ -37,10 +32,8 @@
     :else
     (d/pull db new-handle)))
 
-
 (defn- keep? [[op]]
   (identical? :keep op))
-
 
 (defn build-response
   [{:blaze/keys [db] :as context} tx-op old-handle {:keys [id] :as new-handle}]
@@ -52,9 +45,9 @@
     (log/trace (format "build-response of %s/%s with vid = %s" type id vid))
     (do-sync [body (body context new-handle)]
       (cond->
-        (-> (ring/response body)
-            (ring/status (if created 201 200))
-            (ring/header "Last-Modified" (last-modified tx))
-            (ring/header "ETag" (str "W/\"" vid "\"")))
+       (-> (ring/response body)
+           (ring/status (if created 201 200))
+           (ring/header "Last-Modified" (last-modified tx))
+           (ring/header "ETag" (str "W/\"" vid "\"")))
         created
         (location-header context type id vid)))))

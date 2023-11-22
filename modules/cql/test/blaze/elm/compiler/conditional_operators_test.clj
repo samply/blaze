@@ -4,17 +4,15 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
-    [blaze.elm.literal-spec]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]))
-
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.literal-spec]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -22,9 +20,7 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; 15.1. Case
 ;;
@@ -47,11 +43,11 @@
   (testing "Dynamic"
     (testing "multi-conditional"
       (are [when res] (= res (ctu/dynamic-compile-eval
-                               {:type "Case"
-                                :caseItem
-                                [{:when when
-                                  :then #elm/integer "1"}]
-                                :else #elm/integer "2"}))
+                              {:type "Case"
+                               :caseItem
+                               [{:when when
+                                 :then #elm/integer "1"}]
+                               :else #elm/integer "2"}))
 
         #elm/parameter-ref "true" 1
         #elm/parameter-ref "false" 2
@@ -59,12 +55,12 @@
 
     (testing "comparand-based"
       (are [comparand res] (= res (ctu/dynamic-compile-eval
-                                    {:type "Case"
-                                     :comparand comparand
-                                     :caseItem
-                                     [{:when #elm/string "a"
-                                       :then #elm/integer "1"}]
-                                     :else #elm/integer "2"}))
+                                   {:type "Case"
+                                    :comparand comparand
+                                    :caseItem
+                                    [{:when #elm/string "a"
+                                      :then #elm/integer "1"}]
+                                    :else #elm/integer "2"}))
 
         #elm/parameter-ref "a" 1
         #elm/parameter-ref "b" 2
@@ -92,39 +88,38 @@
     (testing "Dynamic"
       (testing "multi-conditional"
         (let [expr (ctu/dynamic-compile
-                     {:type "Case"
-                      :caseItem
-                      [{:when #elm/parameter-ref "x"
-                        :then #elm/parameter-ref "y"}]
-                      :else #elm/parameter-ref "z"})]
+                    {:type "Case"
+                     :caseItem
+                     [{:when #elm/parameter-ref "x"
+                       :then #elm/parameter-ref "y"}]
+                     :else #elm/parameter-ref "z"})]
           (has-form expr '(case (param-ref "x") (param-ref "y") (param-ref "z")))))
 
       (testing "comparand-based"
         (let [expr (ctu/dynamic-compile
-                     {:type "Case"
-                      :comparand #elm/parameter-ref "a"
-                      :caseItem
-                      [{:when #elm/parameter-ref "x"
-                        :then #elm/parameter-ref "y"}]
-                      :else #elm/parameter-ref "z"})]
+                    {:type "Case"
+                     :comparand #elm/parameter-ref "a"
+                     :caseItem
+                     [{:when #elm/parameter-ref "x"
+                       :then #elm/parameter-ref "y"}]
+                     :else #elm/parameter-ref "z"})]
           (has-form expr '(case (param-ref "a") (param-ref "x") (param-ref "y") (param-ref "z")))))))
 
   (testing "expression is dynamic"
     (testing "multi-conditional"
       (is (false? (core/-static (ctu/dynamic-compile {:type "Case"
-                                                     :caseItem
-                                                     [{:when #elm/parameter-ref "true"
-                                                       :then #elm/parameter-ref "1"}]
-                                                     :else #elm/parameter-ref "2"})))))
+                                                      :caseItem
+                                                      [{:when #elm/parameter-ref "true"
+                                                        :then #elm/parameter-ref "1"}]
+                                                      :else #elm/parameter-ref "2"})))))
 
     (testing "comparand-based"
       (is (false? (core/-static (ctu/dynamic-compile {:type "Case"
-                                                     :comparand #elm/parameter-ref "a"
-                                                     :caseItem
-                                                     [{:when #elm/parameter-ref "b"
-                                                       :then #elm/parameter-ref "1"}]
-                                                     :else #elm/parameter-ref "2"})))))))
-
+                                                      :comparand #elm/parameter-ref "a"
+                                                      :caseItem
+                                                      [{:when #elm/parameter-ref "b"
+                                                        :then #elm/parameter-ref "1"}]
+                                                      :else #elm/parameter-ref "2"})))))))
 
 ;; 15.2. If
 ;;
@@ -148,8 +143,8 @@
 
   (testing "expression is dynamic"
     (is (false? (core/-static (ctu/dynamic-compile #elm/if [#elm/parameter-ref "x"
-                                                           #elm/parameter-ref "y"
-                                                           #elm/parameter-ref "z"])))))
+                                                            #elm/parameter-ref "y"
+                                                            #elm/parameter-ref "z"])))))
 
   (testing "form"
     (let [expr (c/compile {} #elm/if [#elm/boolean "true" #elm/integer "1" #elm/integer "2"])]
@@ -159,6 +154,6 @@
       (has-form expr 2))
 
     (let [expr (ctu/dynamic-compile #elm/if [#elm/parameter-ref "x"
-                                            #elm/parameter-ref "y"
-                                            #elm/parameter-ref "z"])]
+                                             #elm/parameter-ref "y"
+                                             #elm/parameter-ref "z"])]
       (has-form expr '(if (param-ref "x") (param-ref "y") (param-ref "z"))))))

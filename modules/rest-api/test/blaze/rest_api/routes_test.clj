@@ -1,33 +1,29 @@
 (ns blaze.rest-api.routes-test
   (:require
-    [blaze.db.impl.search-param]
-    [blaze.rest-api.routes :as routes]
-    [blaze.rest-api.routes-spec]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
-    [juxt.iota :refer [given]]
-    [reitit.ring]))
-
+   [blaze.db.impl.search-param]
+   [blaze.rest-api.routes :as routes]
+   [blaze.rest-api.routes-spec]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [juxt.iota :refer [given]]
+   [reitit.ring]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest resource-route-test
   (testing "read interaction"
-    (given
-      (routes/resource-route
-        {:node ::node}
-        [#:blaze.rest-api.resource-pattern
-                {:type :default
-                 :interactions
-                 {:read
-                  #:blaze.rest-api.interaction
-                          {:handler (fn [_] ::read)}}}]
-        {:kind "resource" :name "Patient"})
+    (given (routes/resource-route
+            {:node ::node}
+            [#:blaze.rest-api.resource-pattern
+              {:type :default
+               :interactions
+               {:read
+                #:blaze.rest-api.interaction
+                 {:handler (fn [_] ::read)}}}]
+            {:kind "resource" :name "Patient"})
       [0] := "/Patient"
       [1 :fhir.resource/type] := "Patient"
       [2] := ["" {:name :Patient/type}]

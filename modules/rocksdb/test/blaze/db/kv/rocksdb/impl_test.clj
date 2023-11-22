@@ -1,40 +1,36 @@
 (ns blaze.db.kv.rocksdb.impl-test
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.db.kv.rocksdb.impl :as impl]
-    [blaze.db.kv.rocksdb.impl-spec]
-    [blaze.metrics.core-spec]
-    [blaze.test-util :as tu]
-    [clojure.core.protocols :as p]
-    [clojure.datafy :as datafy]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]])
+   [blaze.anomaly :as ba]
+   [blaze.db.kv.rocksdb.impl :as impl]
+   [blaze.db.kv.rocksdb.impl-spec]
+   [blaze.metrics.core-spec]
+   [blaze.test-util :as tu]
+   [clojure.core.protocols :as p]
+   [clojure.datafy :as datafy]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]])
   (:import
-    [com.google.common.io BaseEncoding]
-    [java.nio.file Files]
-    [java.nio.file.attribute FileAttribute]
-    [org.rocksdb
-     BlockBasedTableConfig ColumnFamilyDescriptor ColumnFamilyHandle
-     ColumnFamilyOptions CompressionType DBOptions LRUCache RocksDB RocksDBException
-     Statistics WriteBatchInterface WriteOptions]))
-
+   [com.google.common.io BaseEncoding]
+   [java.nio.file Files]
+   [java.nio.file.attribute FileAttribute]
+   [org.rocksdb
+    AbstractEventListener BlockBasedTableConfig ColumnFamilyDescriptor
+    ColumnFamilyHandle ColumnFamilyOptions CompactionJobInfo CompressionType
+    DBOptions LRUCache RocksDB RocksDBException Statistics WriteBatchInterface
+    WriteOptions]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (defn- from-hex [s]
   (.decode (BaseEncoding/base16) s))
 
-
 (defn- to-hex [bytes]
   (.encode (BaseEncoding/base16) bytes))
-
 
 (extend-protocol p/Datafiable
   ColumnFamilyDescriptor
@@ -55,7 +51,9 @@
      :target-file-size-base-in-mb (bit-shift-right (.targetFileSizeBase options) 20)
      :table-format-config (datafy/datafy (.tableFormatConfig options))
      :memtable-whole-key-filtering? (.memtableWholeKeyFiltering options)
-     :optimize-filters-for-hits? (.optimizeFiltersForHits options)})
+     :optimize-filters-for-hits? (.optimizeFiltersForHits options)
+     :enable-blob-files? (.enableBlobFiles options)
+     :min-blob-size (.minBlobSize options)})
 
   BlockBasedTableConfig
   (datafy [config]
@@ -80,10 +78,8 @@
     {:sync? (.sync options)
      :disable-wal? (.disableWAL options)}))
 
-
 (defn- column-family-descriptor [block-cache key opts]
   (datafy/datafy (impl/column-family-descriptor block-cache [key opts])))
-
 
 (deftest column-family-descriptor-test
   (testing "with defaults and block cache"
@@ -106,7 +102,9 @@
         [:options :table-format-config :block-cache?] := true
         [:options :table-format-config :bloom-filter?] := false
         [:options :memtable-whole-key-filtering?] := false
-        [:options :optimize-filters-for-hits?] := false)))
+        [:options :optimize-filters-for-hits?] := false
+        [:options :enable-blob-files?] := false
+        [:options :min-blob-size] := 0)))
 
   (testing "without block cache"
     (given (column-family-descriptor nil :default nil)
@@ -115,18 +113,16 @@
       [:options :table-format-config :pin-l0-filter-and-index-blocks-in-cache] := false))
 
   (with-open [block-cache (LRUCache. 0)]
-    (are [key value]
+    (doseq [[key value] [[:write-buffer-size-in-mb 128]
+                         [:max-write-buffer-number 4]
+                         [:level0-file-num-compaction-trigger 8]
+                         [:min-write-buffer-number-to-merge 2]
+                         [:max-bytes-for-level-base-in-mb 512]
+                         [:target-file-size-base-in-mb 64]
+                         [:memtable-whole-key-filtering? true]
+                         [:optimize-filters-for-hits? true]]]
       (given (column-family-descriptor block-cache :default {key value})
-        [:options key] := value)
-
-      :write-buffer-size-in-mb 128
-      :max-write-buffer-number 4
-      :level0-file-num-compaction-trigger 8
-      :min-write-buffer-number-to-merge 2
-      :max-bytes-for-level-base-in-mb 512
-      :target-file-size-base-in-mb 64
-      :memtable-whole-key-filtering? true
-      :optimize-filters-for-hits? true))
+        [:options key] := value)))
 
   (testing "can't verify that reverse-comparator? is set; so only running the code"
     (with-open [block-cache (LRUCache. 0)]
@@ -137,17 +133,17 @@
       (column-family-descriptor block-cache :default {:merge-operator :stringappend})))
 
   (with-open [block-cache (LRUCache. 0)]
-    (are [key value]
+    (doseq [[key value] [[:block-size 16384]
+                         [:bloom-filter? true]]]
       (given (column-family-descriptor block-cache :default {key value})
-        [:options :table-format-config key] := value)
+        [:options :table-format-config key] := value))))
 
-      :block-size 16384
-      :bloom-filter? true)))
-
+(defn- event-listener []
+  (proxy [AbstractEventListener] []))
 
 (deftest db-options-test
   (testing "with defaults"
-    (given (datafy/datafy (impl/db-options (Statistics.) nil))
+    (given (datafy/datafy (impl/db-options (Statistics.) (event-listener) nil))
       :wal-dir := ""
       :max-background-jobs := 2
       :compaction-readahead-size := 0
@@ -155,14 +151,11 @@
       :create-if-missing := true
       :create-missing-column-families := true)
 
-    (are [key value]
-      (given (datafy/datafy (impl/db-options (Statistics.) {key value}))
-        key := value)
-
-      :wal-dir "wal"
-      :max-background-jobs 4
-      :compaction-readahead-size 10)))
-
+    (doseq [[key value] [[:wal-dir "wal"]
+                         [:max-background-jobs 4]
+                         [:compaction-readahead-size 10]]]
+      (given (datafy/datafy (impl/db-options (Statistics.) (event-listener) {key value}))
+        key := value))))
 
 (deftest write-options-test
   (testing "with defaults"
@@ -170,40 +163,32 @@
       :sync? := false
       :disable-wal? := false)
 
-    (are [key value]
+    (doseq [[key value] [[:sync? true]
+                         [:disable-wal? true]]]
       (given (datafy/datafy (impl/write-options {key value}))
-        key := value)
-
-      :sync? true
-      :disable-wal? true)))
-
+        key := value))))
 
 (defn- new-temp-dir! []
   (str (Files/createTempDirectory "blaze" (make-array FileAttribute 0))))
-
 
 (defn- kv-put-wb [state]
   (reify WriteBatchInterface
     (^void put [_ ^bytes key ^bytes val]
       (swap! state conj [(to-hex key) (to-hex val)]))))
 
-
 (defn- cf-put-wb [state]
   (reify WriteBatchInterface
     (^void put [_ ^ColumnFamilyHandle cfh ^bytes key ^bytes val]
       (swap! state conj [cfh (to-hex key) (to-hex val)]))))
 
-
 (defn- cfh [db name]
   (.createColumnFamily ^RocksDB db (ColumnFamilyDescriptor. (from-hex name))))
 
-
 (deftest put-wb-test
   (testing "without column family"
-    (are [entries state-val]
-      (let [state (atom [])]
-        (impl/put-wb! {} (kv-put-wb state) entries)
-        (is (= state-val @state)))
+    (are [entries state-val] (let [state (atom [])]
+                               (impl/put-wb! {} (kv-put-wb state) entries)
+                               (= state-val @state))
 
       [[(from-hex "01") (from-hex "02")]]
       [["01" "02"]]
@@ -217,14 +202,13 @@
     (with-open [db (RocksDB/open (str (new-temp-dir!)))]
       (let [cfh-1 (cfh db "01")
             cfh-2 (cfh db "02")]
-        (are [entries state-val]
-          (let [state (atom [])]
-            (impl/put-wb!
-              {:cf-1 cfh-1
-               :cf-2 cfh-2}
-              (cf-put-wb state)
-              entries)
-            (is (= state-val @state)))
+        (are [entries state-val] (let [state (atom [])]
+                                   (impl/put-wb!
+                                    {:cf-1 cfh-1
+                                     :cf-2 cfh-2}
+                                    (cf-put-wb state)
+                                    entries)
+                                   (= state-val @state))
 
           [[:cf-1 (from-hex "01") (from-hex "02")]]
           [[cfh-1 "01" "02"]]
@@ -243,21 +227,18 @@
     (let [entries [[:cf-1 (byte-array 0) (byte-array 0)]]]
       (given (ba/try-anomaly (impl/put-wb! {} (cf-put-wb nil) entries))
         ::anom/category := ::anom/not-found
-        ::anom/message := "column family `cf-1` not found"))))
-
+        ::anom/message := "Column family `cf-1` not found."))))
 
 (defn- kv-delete-wb [state]
   (reify WriteBatchInterface
     (^void delete [_ ^bytes key]
       (swap! state conj (to-hex key)))))
 
-
 (deftest delete-wb-test
   (testing "without column family"
-    (are [keys state-val]
-      (let [state (atom [])]
-        (impl/delete-wb! (kv-delete-wb state) keys)
-        (is (= state-val @state)))
+    (are [keys state-val] (let [state (atom [])]
+                            (impl/delete-wb! (kv-delete-wb state) keys)
+                            (= state-val @state))
 
       [(from-hex "01")]
       ["01"]
@@ -265,32 +246,27 @@
       [(from-hex "01") (from-hex "02")]
       ["01" "02"])))
 
-
 (defn- kv-merge-wb [state]
   (reify WriteBatchInterface
     (^void merge [_ ^bytes key ^bytes val]
       (swap! state conj [(to-hex key) (to-hex val)]))))
-
 
 (defn- cf-merge-wb [state]
   (reify WriteBatchInterface
     (^void merge [_ ^ColumnFamilyHandle cfh ^bytes key ^bytes val]
       (swap! state conj [cfh (to-hex key) (to-hex val)]))))
 
-
 (defn- cf-delete-wb [state]
   (reify WriteBatchInterface
     (^void delete [_ ^ColumnFamilyHandle cfh ^bytes key]
       (swap! state conj [cfh (to-hex key)]))))
 
-
 (deftest write-wb-test
   (testing "without column family"
     (testing "put"
-      (are [entries state-val]
-        (let [state (atom [])]
-          (impl/write-wb! {} (kv-put-wb state) entries)
-          (is (= state-val @state)))
+      (are [entries state-val] (let [state (atom [])]
+                                 (impl/write-wb! {} (kv-put-wb state) entries)
+                                 (= state-val @state))
 
         [[:put (from-hex "01") (from-hex "02")]]
         [["01" "02"]]
@@ -301,10 +277,9 @@
          ["03" "04"]]))
 
     (testing "merge"
-      (are [entries state-val]
-        (let [state (atom [])]
-          (impl/write-wb! {} (kv-merge-wb state) entries)
-          (is (= state-val @state)))
+      (are [entries state-val] (let [state (atom [])]
+                                 (impl/write-wb! {} (kv-merge-wb state) entries)
+                                 (= state-val @state))
 
         [[:merge (from-hex "01") (from-hex "02")]]
         [["01" "02"]]
@@ -315,10 +290,9 @@
          ["03" "04"]]))
 
     (testing "delete"
-      (are [entries state-val]
-        (let [state (atom [])]
-          (impl/write-wb! {} (kv-delete-wb state) entries)
-          (is (= state-val @state)))
+      (are [entries state-val] (let [state (atom [])]
+                                 (impl/write-wb! {} (kv-delete-wb state) entries)
+                                 (= state-val @state))
 
         [[:delete (from-hex "01")]]
         ["01"]
@@ -332,14 +306,13 @@
       (let [cfh-1 (cfh db "01")
             cfh-2 (cfh db "02")]
         (testing "put"
-          (are [entries state-val]
-            (let [state (atom [])]
-              (impl/write-wb!
-                {:cf-1 cfh-1
-                 :cf-2 cfh-2}
-                (cf-put-wb state)
-                entries)
-              (is (= state-val @state)))
+          (are [entries state-val] (let [state (atom [])]
+                                     (impl/write-wb!
+                                      {:cf-1 cfh-1
+                                       :cf-2 cfh-2}
+                                      (cf-put-wb state)
+                                      entries)
+                                     (= state-val @state))
 
             [[:put :cf-1 (from-hex "01") (from-hex "02")]]
             [[cfh-1 "01" "02"]]
@@ -355,14 +328,13 @@
              [cfh-2 "03" "04"]]))
 
         (testing "merge"
-          (are [entries state-val]
-            (let [state (atom [])]
-              (impl/write-wb!
-                {:cf-1 cfh-1
-                 :cf-2 cfh-2}
-                (cf-merge-wb state)
-                entries)
-              (is (= state-val @state)))
+          (are [entries state-val] (let [state (atom [])]
+                                     (impl/write-wb!
+                                      {:cf-1 cfh-1
+                                       :cf-2 cfh-2}
+                                      (cf-merge-wb state)
+                                      entries)
+                                     (= state-val @state))
 
             [[:merge :cf-1 (from-hex "01") (from-hex "02")]]
             [[cfh-1 "01" "02"]]
@@ -378,14 +350,13 @@
              [cfh-2 "03" "04"]]))
 
         (testing "delete"
-          (are [entries state-val]
-            (let [state (atom [])]
-              (impl/write-wb!
-                {:cf-1 cfh-1
-                 :cf-2 cfh-2}
-                (cf-delete-wb state)
-                entries)
-              (is (= state-val @state)))
+          (are [entries state-val] (let [state (atom [])]
+                                     (impl/write-wb!
+                                      {:cf-1 cfh-1
+                                       :cf-2 cfh-2}
+                                      (cf-delete-wb state)
+                                      entries)
+                                     (= state-val @state))
 
             [[:delete :cf-1 (from-hex "01")]]
             [[cfh-1 "01"]]
@@ -404,7 +375,7 @@
     (let [entries [[:put :cf-1 (byte-array 0) (byte-array 0)]]]
       (given (ba/try-anomaly (impl/write-wb! {} (cf-put-wb nil) entries))
         ::anom/category := ::anom/not-found
-        ::anom/message := "column family `cf-1` not found")))
+        ::anom/message := "Column family `cf-1` not found.")))
 
   (testing "non matching op"
     ;; although a non-matching op isn't allowed in the spec, it could happen at
@@ -415,16 +386,64 @@
       (catch Exception e
         (is (= "No matching clause: :foo" (ex-message e)))))))
 
-
 (deftest property-error-test
   (testing "other error"
     (given (impl/property-error (RocksDBException. "msg-151223") "foo")
       ::anom/category := ::anom/fault
       ::anom/message := "msg-151223")))
 
-
 (deftest column-family-property-error-test
   (testing "other error"
     (given (impl/column-family-property-error (RocksDBException. "msg-151628") :foo "bar")
       ::anom/category := ::anom/fault
       ::anom/message := "msg-151628")))
+
+(deftest listener-test
+  (with-open [db (RocksDB/open (str (new-temp-dir!)))]
+    (testing "compaction begin"
+      (let [res (volatile! nil)]
+        (.onCompactionBegin
+         (impl/listener {:on-compaction-begin (partial vreset! res)})
+         db
+         (CompactionJobInfo.))
+        (given @res
+          :column-family-name := ""
+          :status := "Ok"
+          :thread-id := 0
+          :job-id := 0
+          :base-input-level := 0
+          :output-level := 0
+          :reason := "kUnknown"
+          :compression := "NO_COMPRESSION")))
+
+    (testing "compaction completed"
+      (let [res (volatile! nil)]
+        (.onCompactionCompleted
+         (impl/listener {:on-compaction-completed (partial vreset! res)})
+         db
+         (CompactionJobInfo.))
+        (given @res
+          :column-family-name := ""
+          :status := "Ok"
+          :thread-id := 0
+          :job-id := 0
+          :base-input-level := 0
+          :output-level := 0
+          :reason := "kUnknown"
+          :compression := "NO_COMPRESSION")))))
+
+(deftest compaction-begin-msg-test
+  (is (= (impl/compaction-begin-msg
+          {:column-family-name "cf-181817"
+           :job-id 181926
+           :base-input-level 3
+           :output-level 5
+           :reason "kUnknown"
+           :compression "NO_COMPRESSION"})
+         "Start compaction job 181926 of column family cf-181817 in db null from level 3 to level 5 because of kUnknown.")))
+
+(deftest table-file-deleted-msg-test
+  (is (= (impl/table-file-deleted-msg
+          {:file-name "file-175300"
+           :job-id 175248})
+         "Deleted SST file file-175300 in job 175248.")))

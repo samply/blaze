@@ -3,45 +3,41 @@
 
   https://www.hl7.org/fhir/http.html#search"
   (:require
-    [blaze.anomaly :refer [if-ok when-ok]]
-    [blaze.async.comp :as ac :refer [do-sync]]
-    [blaze.db.api :as d]
-    [blaze.db.spec]
-    [blaze.fhir.spec.type :as type]
-    [blaze.handler.util :as handler-util]
-    [blaze.interaction.search.include :as include]
-    [blaze.interaction.search.nav :as nav]
-    [blaze.interaction.search.params :as params]
-    [blaze.interaction.search.util :as search-util]
-    [blaze.interaction.util :as iu]
-    [blaze.page-store :as page-store]
-    [blaze.page-store.spec]
-    [blaze.spec]
-    [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]
-    [integrant.core :as ig]
-    [reitit.core :as reitit]
-    [ring.util.response :as ring]
-    [taoensso.timbre :as log]))
-
+   [blaze.anomaly :refer [if-ok when-ok]]
+   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.db.api :as d]
+   [blaze.db.spec]
+   [blaze.fhir.spec.type :as type]
+   [blaze.handler.util :as handler-util]
+   [blaze.interaction.search.include :as include]
+   [blaze.interaction.search.nav :as nav]
+   [blaze.interaction.search.params :as params]
+   [blaze.interaction.search.util :as search-util]
+   [blaze.interaction.util :as iu]
+   [blaze.page-store :as page-store]
+   [blaze.page-store.spec]
+   [blaze.spec]
+   [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
+   [reitit.core :as reitit]
+   [ring.util.response :as ring]
+   [taoensso.timbre :as log]))
 
 (defn- type-list [db type page-id]
   (if page-id
     (d/type-list db type page-id)
     (d/type-list db type)))
 
-
 (defn- type-query [db type clauses page-id]
   (if page-id
     (d/type-query db type clauses page-id)
     (d/type-query db type clauses)))
 
-
 (defn- execute-query [db query page-id]
   (if page-id
     (d/execute-query db query page-id)
     (d/execute-query db query)))
-
 
 (defn- handles-and-clauses
   [{:keys [type] :blaze.preference/keys [handling]
@@ -61,14 +57,12 @@
       {:handles (execute-query db query page-id)
        :clauses (d/query-clauses query)})))
 
-
 (defn- build-matches-only-page [page-size handles]
   (let [handles (into [] (take (inc page-size)) handles)]
     (if (< page-size (count handles))
       {:matches (pop handles)
        :next-match (peek handles)}
       {:matches handles})))
-
 
 (defn- build-page [db include-defs page-size handles]
   (if (:direct include-defs)
@@ -82,25 +76,22 @@
          :includes (include/add-includes db include-defs handles)}))
     (build-matches-only-page page-size handles)))
 
-
 (defn- entries [context match-futures include-futures]
   (log/trace "build entries")
   (-> (into
-        []
-        (comp (mapcat ac/join)
-              (map (partial search-util/entry context)))
-        match-futures)
+       []
+       (comp (mapcat ac/join)
+             (map (partial search-util/entry context)))
+       match-futures)
       (into
-        (comp (mapcat ac/join)
-              (map #(search-util/entry context % search-util/include)))
-        include-futures)))
-
+       (comp (mapcat ac/join)
+             (map #(search-util/entry context % search-util/include)))
+       include-futures)))
 
 (defn- pull-matches-xf [{:keys [elements]} db]
   (if (seq elements)
     (map #(d/pull-many db % elements))
     (map (partial d/pull-many db))))
-
 
 (defn- page-data
   "Returns a CompletableFuture that will complete with a map of:
@@ -120,46 +111,39 @@
           include-futures (into [] (comp (partition-all 100) (map (partial d/pull-many db))) includes)]
       (-> (ac/all-of (into match-futures include-futures))
           (ac/exceptionally
-            #(assoc %
-               ::anom/category ::anom/fault
-               :fhir/issue "incomplete"))
+           #(assoc %
+                   ::anom/category ::anom/fault
+                   :fhir/issue "incomplete"))
           (ac/then-apply
-            (fn [_]
-              {:entries (entries context match-futures include-futures)
-               :num-matches (count matches)
-               :next-handle next-match
-               :clauses clauses}))))
+           (fn [_]
+             {:entries (entries context match-futures include-futures)
+              :num-matches (count matches)
+              :next-handle next-match
+              :clauses clauses}))))
     ac/completed-future))
-
 
 (defn- self-link-offset [first-entry]
   (when-let [id (-> first-entry :resource :id)]
     {"__page-id" id}))
-
 
 (defn- link [relation url]
   {:fhir/type :fhir.Bundle/link
    :relation relation
    :url url})
 
-
 (defn- self-link [{:keys [self-link-url-fn]} clauses first-entry]
   (link "self" (self-link-url-fn clauses (self-link-offset first-entry))))
-
 
 (defn- first-link [{:keys [first-link-url-fn]} token clauses]
   (link "first" (first-link-url-fn token clauses)))
 
-
 (defn- next-link-offset [next-handle]
   {"__page-id" (:id next-handle)})
-
 
 (defn- next-link
   [{:keys [next-link-url-fn]} token clauses next-handle]
   (let [url (next-link-url-fn token clauses (next-link-offset next-handle))]
     (link "next" url)))
-
 
 (defn- total
   "Calculates the total number of resources returned.
@@ -179,7 +163,6 @@
     (empty? clauses)
     (d/type-total db type)))
 
-
 (defn- zero-bundle
   "Generate a special bundle if the search results in zero matches to avoid
   generating a token for the first link, we don't need in this case."
@@ -190,39 +173,35 @@
    :total #fhir/unsignedInt 0
    :link [(self-link context clauses (first entries))]})
 
-
 (defn- normal-bundle [context token clauses entries total]
   (cond->
-    {:fhir/type :fhir/Bundle
-     :id (iu/luid context)
-     :type #fhir/code"searchset"
-     :entry entries
-     :link [(self-link context clauses (first entries))
-            (first-link context token clauses)]}
+   {:fhir/type :fhir/Bundle
+    :id (iu/luid context)
+    :type #fhir/code"searchset"
+    :entry entries
+    :link [(self-link context clauses (first entries))
+           (first-link context token clauses)]}
 
     total
     (assoc :total (type/->UnsignedInt total))))
-
 
 (defn- gen-token! [{{:keys [token]} :params :keys [gen-token-fn]} clauses]
   (if token
     (ac/completed-future token)
     (gen-token-fn clauses)))
 
-
 (defn- search-normal [context]
   (-> (page-data context)
       (ac/then-compose
-        (fn [{:keys [entries num-matches next-handle clauses]}]
-          (let [total (total context num-matches next-handle)]
-            (if (some-> total zero?)
-              (ac/completed-future (zero-bundle context clauses entries))
-              (do-sync [token (gen-token! context clauses)]
-                (if next-handle
-                  (-> (normal-bundle context token clauses entries total)
-                      (update :link conj (next-link context token clauses next-handle)))
-                  (normal-bundle context token clauses entries total)))))))))
-
+       (fn [{:keys [entries num-matches next-handle clauses]}]
+         (let [total (total context num-matches next-handle)]
+           (if (some-> total zero?)
+             (ac/completed-future (zero-bundle context clauses entries))
+             (do-sync [token (gen-token! context clauses)]
+               (if next-handle
+                 (-> (normal-bundle context token clauses entries total)
+                     (update :link conj (next-link context token clauses next-handle)))
+                 (normal-bundle context token clauses entries total)))))))))
 
 (defn- compile-type-query
   [{:keys [type] :blaze/keys [db] :blaze.preference/keys [handling]
@@ -230,7 +209,6 @@
   (if (identical? :blaze.preference.handling/strict handling)
     (d/compile-type-query db type clauses)
     (d/compile-type-query-lenient db type clauses)))
-
 
 (defn- summary-total
   [{:keys [type] :blaze/keys [db] {:keys [clauses]} :params :as context}]
@@ -242,7 +220,6 @@
          :clauses (d/query-clauses query)})
       ac/completed-future)))
 
-
 (defn- search-summary [context]
   (do-sync [{:keys [total clauses]} (summary-total context)]
     {:fhir/type :fhir/Bundle
@@ -251,12 +228,10 @@
      :total (type/->UnsignedInt total)
      :link [(self-link context clauses [])]}))
 
-
 (defn- search [{:keys [params] :as context}]
   (if (:summary? params)
     (search-summary context)
     (search-normal context)))
-
 
 (defn- match
   [{{{:fhir.resource/keys [type]} :data} ::reitit/match
@@ -264,11 +239,9 @@
    name]
   (reitit/match-by-name router (keyword type name)))
 
-
 (defn- self-link-url-fn [{:blaze/keys [base-url db] :as request} params]
   (fn [clauses offset]
     (nav/url base-url (match request "type") params clauses (d/t db) offset)))
-
 
 (defn- gen-token-fn
   [{:keys [page-store]} {{{route-name :name} :data} ::reitit/match}]
@@ -280,7 +253,6 @@
     (fn [_clauses]
       (ac/completed-future nil))))
 
-
 (defn- first-link-url-fn
   "Returns a function of `token` and `clauses` that returns the URL of the first
   link."
@@ -289,7 +261,6 @@
     (nav/token-url base-url (match request "page") params token clauses
                    (d/t db) nil)))
 
-
 (defn- next-link-url-fn
   "Returns a function of `token`, `clauses` and `offset` that returns the URL
   of the next link."
@@ -297,7 +268,6 @@
   (fn [token clauses offset]
     (nav/token-url base-url (match request "page") params token clauses
                    (d/t db) offset)))
-
 
 (defn- search-context
   [{:keys [page-store] :as context}
@@ -309,23 +279,21 @@
   (let [handling (handler-util/preference headers "handling")]
     (do-sync [params (params/decode page-store handling params)]
       (cond->
-        (assoc context
-          :blaze/base-url base-url
-          :blaze/db db
-          ::reitit/router router
-          :type type
-          :params params
-          :self-link-url-fn (self-link-url-fn request params)
-          :gen-token-fn (gen-token-fn context request)
-          :first-link-url-fn (first-link-url-fn request params)
-          :next-link-url-fn (next-link-url-fn request params))
+       (assoc context
+              :blaze/base-url base-url
+              :blaze/db db
+              ::reitit/router router
+              :type type
+              :params params
+              :self-link-url-fn (self-link-url-fn request params)
+              :gen-token-fn (gen-token-fn context request)
+              :first-link-url-fn (first-link-url-fn request params)
+              :next-link-url-fn (next-link-url-fn request params))
         handling
         (assoc :blaze.preference/handling handling)))))
 
-
 (defmethod ig/pre-init-spec :blaze.interaction/search-type [_]
   (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store]))
-
 
 (defmethod ig/init-key :blaze.interaction/search-type [_ context]
   (log/info "Init FHIR search-type interaction handler")

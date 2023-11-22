@@ -1,42 +1,37 @@
 (ns blaze.db.resource-cache-test
   (:require
-    [blaze.db.cache-collector.protocols :as ccp]
-    [blaze.db.kv :as kv]
-    [blaze.db.kv.mem]
-    [blaze.db.resource-cache :as resource-cache]
-    [blaze.db.resource-cache-spec]
-    [blaze.db.resource-store :as rs]
-    [blaze.db.resource-store-spec]
-    [blaze.db.resource-store.kv :as rs-kv]
-    [blaze.db.resource-store.spec :refer [resource-store?]]
-    [blaze.fhir.hash :as hash]
-    [blaze.fhir.hash-spec]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [integrant.core :as ig]
-    [taoensso.timbre :as log])
+   [blaze.db.cache-collector.protocols :as ccp]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv.mem]
+   [blaze.db.resource-cache :as resource-cache]
+   [blaze.db.resource-cache-spec]
+   [blaze.db.resource-store :as rs]
+   [blaze.db.resource-store-spec]
+   [blaze.db.resource-store.kv :as rs-kv]
+   [blaze.db.resource-store.spec :refer [resource-store?]]
+   [blaze.fhir.hash :as hash]
+   [blaze.fhir.hash-spec]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [integrant.core :as ig]
+   [taoensso.timbre :as log])
   (:import
-    [com.github.benmanes.caffeine.cache.stats CacheStats]))
-
+   [com.github.benmanes.caffeine.cache.stats CacheStats]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def patient-0 {:fhir/type :fhir/Patient :id "0"})
 (def patient-1 {:fhir/type :fhir/Patient :id "1"})
 
-
 (def patient-0-hash (hash/generate patient-0))
 (def patient-1-hash (hash/generate patient-1))
-
 
 (def config
   {:blaze.db/resource-cache
@@ -47,7 +42,6 @@
     :executor (ig/ref ::rs-kv/executor)}
    ::rs-kv/executor {}
    ::kv/mem {:column-families {}}})
-
 
 (deftest init-test
   (testing "nil config"
@@ -76,7 +70,6 @@
       [:explain ::s/problems 0 :pred] := `nat-int?
       [:explain ::s/problems 0 :val] := ::invalid)))
 
-
 (deftest get-test
   (testing "success"
     (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
@@ -91,7 +84,6 @@
     (with-system [{cache :blaze.db/resource-cache} config]
 
       (is (nil? @(rs/get cache patient-0-hash))))))
-
 
 (deftest multi-get-test
   (testing "found both"
@@ -110,7 +102,6 @@
       (is (= {patient-0-hash patient-0}
              @(rs/multi-get cache [patient-0-hash patient-1-hash]))))))
 
-
 (deftest put-test
   (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
     (is (nil? @(rs/put! cache {patient-0-hash patient-0
@@ -118,7 +109,6 @@
     (is (= {patient-0-hash patient-0
             patient-1-hash patient-1}
            @(rs/multi-get store [patient-0-hash patient-1-hash])))))
-
 
 (deftest stats-test
   (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]
@@ -137,7 +127,6 @@
     (is (= 1 (.missCount ^CacheStats (ccp/-stats cache))))
     (is (= 1 (.hitCount ^CacheStats (ccp/-stats cache))))
     (is (= 1 (ccp/-estimated-size cache)))))
-
 
 (deftest invalidate-all-test
   (with-system [{cache :blaze.db/resource-cache store ::rs/kv} config]

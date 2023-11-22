@@ -2,25 +2,21 @@
   "Tests to understand CBOR in order to implement a more efficient CBOR based
   encoding for the Resource Store."
   (:require
-    [blaze.fhir.spec]
-    [blaze.test-util :as tu]
-    [clj-cbor.core :as cbor]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest testing]]
-    [jsonista.core :as j])
+   [blaze.fhir.spec]
+   [blaze.test-util :as tu]
+   [clj-cbor.core :as cbor]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest testing]]
+   [jsonista.core :as j])
   (:import
-    [com.fasterxml.jackson.dataformat.cbor CBORFactory]))
-
+   [com.fasterxml.jackson.dataformat.cbor CBORFactory]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def ^:private cbor-object-mapper
   (j/object-mapper {:factory (CBORFactory.)}))
-
 
 (deftest encode-cbor-jsonista-test
   (testing "primitive types"
@@ -60,7 +56,6 @@
             2r10000010                                      ; Array of length 2
             2r00100000                                      ; Scaling factor of -1
             2r00000001]                                     ; mantissa of 1
-
 
       ;; Major type 7: floating-point numbers and simple data types
       false [2r11110100]
@@ -107,14 +102,10 @@
             2r00100000                                      ; Scaling factor of -1
             2r00000001]                                     ; mantissa of 1
 
-
       ;; Major type 7: floating-point numbers and simple data types
       false [2r11110100]
       true [2r11110101]
-      nil [2r11110110]))
-
-  (testing "Observation"
-    ))
+      nil [2r11110110])))
 
 (comment
   (require '[criterium.core :refer [bench quick-bench]]
@@ -124,31 +115,29 @@
   (def observation
     {:category
      [#fhir/CodeableConcept
-         {:coding
-          [#fhir/Coding
-              {:code #fhir/code"vital-signs"
-               :system #fhir/uri"http://terminology.hl7.org/CodeSystem/observation-category"}]}]
+       {:coding
+        [#fhir/Coding
+          {:code #fhir/code"vital-signs"
+           :system #fhir/uri"http://terminology.hl7.org/CodeSystem/observation-category"}]}]
      :meta
      #fhir/Meta
-         {:profile [#fhir/canonical"https://fhir.bbmri.de/StructureDefinition/Bmi"]}
+      {:profile [#fhir/canonical"https://fhir.bbmri.de/StructureDefinition/Bmi"]}
      :fhir/type :fhir/Observation
      :value
      #fhir/Quantity
-         {:code #fhir/code"kg/m2"
-          :system #fhir/uri"http://unitsofmeasure.org"
-          :unit #fhir/string"kg/m2"
-          :value 36.6M}
+      {:code #fhir/code"kg/m2"
+       :system #fhir/uri"http://unitsofmeasure.org"
+       :unit #fhir/string"kg/m2"
+       :value 36.6M}
      :status #fhir/code"final"
      :effective #fhir/dateTime"2005-06-17"
      :id "0-bmi"
      :code
      #fhir/CodeableConcept
-         {:coding
-          [#fhir/Coding
-              {:code #fhir/code"39156-5" :system #fhir/uri"http://loinc.org"}]}
+      {:coding
+       [#fhir/Coding
+         {:code #fhir/code"39156-5" :system #fhir/uri"http://loinc.org"}]}
      :subject #fhir/Reference{:reference "Patient/0"}})
 
   ;; 418
-  (count (fhir-spec/unform-cbor observation))
-
-  )
+  (count (fhir-spec/unform-cbor observation)))

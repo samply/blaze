@@ -1,23 +1,20 @@
 (ns blaze.db.impl.index.compartment.resource
-  "Functions for accessing the CompartmentResource index."
+  "Functions for accessing the CompartmentResourceType index."
   (:require
-    [blaze.byte-buffer :as bb]
-    [blaze.byte-string :as bs]
-    [blaze.coll.core :as coll]
-    [blaze.db.impl.bytes :as bytes]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.iterators :as i]
-    [blaze.db.impl.macros :refer [with-open-coll]]
-    [blaze.db.kv :as kv]))
-
+   [blaze.byte-buffer :as bb]
+   [blaze.byte-string :as bs]
+   [blaze.coll.core :as coll]
+   [blaze.db.impl.bytes :as bytes]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.resource-handle :as rh]
+   [blaze.db.impl.iterators :as i]
+   [blaze.db.impl.macros :refer [with-open-coll]]
+   [blaze.db.kv :as kv]))
 
 (set! *unchecked-math* :warn-on-boxed)
 
-
 (def ^:private ^:const ^long except-co-res-id-prefix-size
   (+ codec/c-hash-size 1 codec/tid-size))
-
 
 (defn- key-prefix-size
   {:inline
@@ -26,23 +23,19 @@
   [co-res-id]
   (unchecked-add-int except-co-res-id-prefix-size (bs/size co-res-id)))
 
-
 (defn- decode-key [buf]
   (bb/set-position! buf (unchecked-add-int (bb/position buf) codec/c-hash-size))
   (let [id-size (long (bb/size-up-to-null buf))]
     (bb/set-position! buf (+ (bb/position buf) id-size 1 codec/tid-size))
     (bs/from-byte-buffer! buf)))
 
-
 (def ^:private remove-deleted-xf
   (remove rh/deleted?))
 
-
 (defn- resource-handles-xf [resource-handle tid]
   (comp
-    (keep #(resource-handle tid %))
-    remove-deleted-xf))
-
+   (keep #(resource-handle tid %))
+   remove-deleted-xf))
 
 (defn- encode-seek-key
   "Encodes the key without the id used for seeking to the start of scans."
@@ -57,7 +50,6 @@
         bb/flip!
         bs/from-byte-buffer!)))
 
-
 (defn- encode-key-buf
   "Encodes the full key."
   [compartment tid id]
@@ -70,12 +62,10 @@
         (bb/put-int! tid)
         (bb/put-byte-string! id))))
 
-
 (defn- encode-key
   "Encodes the full key."
   [compartment tid id]
   (-> (encode-key-buf compartment tid id) bb/flip! bs/from-byte-buffer!))
-
 
 (defn resource-handles
   "Returns a reducible collection of all resource handles of type with `tid`
@@ -88,22 +78,21 @@
   ([{:keys [snapshot resource-handle]} compartment tid]
    (let [seek-key (encode-seek-key compartment tid)]
      (coll/eduction
-       (resource-handles-xf resource-handle tid)
-       (with-open-coll [cri (kv/new-iterator snapshot :compartment-resource-type-index)]
-         (i/prefix-keys! cri seek-key decode-key seek-key)))))
+      (resource-handles-xf resource-handle tid)
+      (with-open-coll [cri (kv/new-iterator snapshot :compartment-resource-type-index)]
+        (i/prefix-keys! cri seek-key decode-key seek-key)))))
   ([{:keys [snapshot resource-handle]} compartment tid start-id]
    (coll/eduction
-     (resource-handles-xf resource-handle tid)
-     (with-open-coll [cri (kv/new-iterator snapshot :compartment-resource-type-index)]
-       (i/prefix-keys!
-         cri
-         (encode-seek-key compartment tid)
-         decode-key
-         (encode-key compartment tid start-id))))))
-
+    (resource-handles-xf resource-handle tid)
+    (with-open-coll [cri (kv/new-iterator snapshot :compartment-resource-type-index)]
+      (i/prefix-keys!
+       cri
+       (encode-seek-key compartment tid)
+       decode-key
+       (encode-key compartment tid start-id))))))
 
 (defn index-entry
-  "Returns an entry of the CompartmentResource index build from `compartment`,
+  "Returns an entry of the CompartmentResourceType index build from `compartment`,
   `tid` and `id`."
   [compartment tid id]
   [:compartment-resource-type-index

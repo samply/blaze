@@ -11,21 +11,19 @@
    * Quantity"
   (:refer-clojure :exclude [boolean? decimal? integer? string? time type])
   (:require
-    [blaze.anomaly :as ba]
-    [cognitect.anomalies :as anom])
+   [blaze.anomaly :as ba]
+   [cognitect.anomalies :as anom])
   (:import
-    [blaze.fhir.spec.type.system Date DateDate DateTime DateTimeDate DateTimeYear DateTimeYearMonth DateYear DateYearMonth]
-    [com.google.common.hash PrimitiveSink]
-    [java.io Writer]
-    [java.nio.charset StandardCharsets]
-    [java.time DateTimeException LocalDateTime LocalTime OffsetDateTime ZoneOffset]
-    [java.time.format DateTimeFormatter DateTimeParseException]
-    [java.time.temporal ChronoField]))
-
+   [blaze.fhir.spec.type.system Date DateDate DateTime DateTimeDate DateTimeYear DateTimeYearMonth DateYear DateYearMonth]
+   [com.google.common.hash PrimitiveSink]
+   [java.io Writer]
+   [java.nio.charset StandardCharsets]
+   [java.time DateTimeException LocalDateTime LocalTime OffsetDateTime ZoneOffset]
+   [java.time.format DateTimeFormatter DateTimeParseException]
+   [java.time.temporal ChronoField]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
-
 
 (defprotocol SystemType
   (-type [_])
@@ -33,12 +31,10 @@
   (-hash-into [_ sink])
   (-equals [_ x]))
 
-
 (defn value?
   "Returns true if `x` is a value of one of the system types."
   [x]
   (= "system" (some-> (-type x) namespace)))
-
 
 (defn type
   "Returns the type of `x` as keyword with the namespace `system` or nil if `x`
@@ -46,14 +42,11 @@
   [x]
   (-type x))
 
-
 (defn equals
   "Implements equals between two system types according to
   http://hl7.org/fhirpath/#equals."
   [a b]
   (-equals a b))
-
-
 
 ;; ---- System.Boolean --------------------------------------------------------
 
@@ -70,11 +63,8 @@
   (-equals [b x]
     (some->> x (.equals b))))
 
-
 (defn boolean? [x]
   (identical? :system/boolean (-type x)))
-
-
 
 ;; ---- System.Integer --------------------------------------------------------
 
@@ -91,11 +81,8 @@
   (-equals [i x]
     (some->> x (.equals i))))
 
-
 (defn integer? [x]
   (identical? :system/integer (-type x)))
-
-
 
 ;; ---- System.Long -----------------------------------------------------------
 
@@ -112,11 +99,8 @@
   (-equals [l x]
     (some->> x (.equals l))))
 
-
 (defn long? [x]
   (identical? :system/long (-type x)))
-
-
 
 ;; ---- System.String ---------------------------------------------------------
 
@@ -133,11 +117,8 @@
   (-equals [s x]
     (some->> x (.equals s))))
 
-
 (defn string? [x]
   (identical? :system/string (-type x)))
-
-
 
 ;; ---- System.Decimal --------------------------------------------------------
 
@@ -154,23 +135,18 @@
   (-equals [d x]
     (some->> x (.equals d))))
 
-
 (defn decimal? [x]
   (identical? :system/decimal (-type x)))
-
 
 (defn- decimal-string?
   "Returns true if `s` is a valid string representation of a decimal value."
   [s]
   (.matches (re-matcher #"-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?" s)))
 
-
 (defn parse-decimal [s]
   (if (decimal-string? s)
     (BigDecimal. ^String s)
     (ba/incorrect (format "Invalid decimal value `%s`." s))))
-
-
 
 ;; ---- System.Date -----------------------------------------------------------
 
@@ -178,7 +154,6 @@
   "Returns true if `x` is a System.Date."
   [x]
   (identical? :system/date (-type x)))
-
 
 (defn date
   "Returns a System.Date"
@@ -189,14 +164,12 @@
   ([year month day]
    (DateDate/of year month day)))
 
-
 (defn parse-date
   "Parses `s` into a System.Date.
 
   Returns an anomaly if `s` isn't a valid System.Date."
   [s]
   (ba/try-one DateTimeException ::anom/incorrect (Date/parse s)))
-
 
 (extend-protocol SystemType
   DateYear
@@ -235,24 +208,20 @@
       (instance? DateDate x) (.equals date x)
       (instance? DateTimeDate x) (.equals date (.toDate ^DateTimeDate x)))))
 
-
 (defmethod print-method DateYear [^DateYear date ^Writer w]
   (.write w "#system/date\"")
   (.write w (str date))
   (.write w "\""))
-
 
 (defmethod print-dup DateYear [^DateYear date ^Writer w]
   (.write w "#=(blaze.fhir.spec.type.system.DateYear/of ")
   (.write w (str date))
   (.write w ")"))
 
-
 (defmethod print-method DateYearMonth [^DateYearMonth date ^Writer w]
   (.write w "#system/date\"")
   (.write w (str date))
   (.write w "\""))
-
 
 (defmethod print-dup DateYearMonth [^DateYearMonth date ^Writer w]
   (.write w "#=(blaze.fhir.spec.type.system.DateYearMonth/of ")
@@ -261,12 +230,10 @@
   (.write w (str (.month date)))
   (.write w ")"))
 
-
 (defmethod print-method DateDate [^DateDate date ^Writer w]
   (.write w "#system/date\"")
   (.write w (str date))
   (.write w "\""))
-
 
 (defmethod print-dup DateDate [^DateDate date ^Writer w]
   (.write w "#=(blaze.fhir.spec.type.system.DateDate/of ")
@@ -277,15 +244,12 @@
   (.write w (str (.day date)))
   (.write w ")"))
 
-
-
 ;; ---- System.DateTime -------------------------------------------------------
 
 (defn date-time?
   "Returns true if `x` is a System.DateTime."
   [x]
   (identical? :system/date-time (-type x)))
-
 
 (defn date-time
   ([year]
@@ -311,7 +275,6 @@
                       (int second) (unchecked-multiply-int (int millis) 1000000)
                       zone-offset)))
 
-
 (defn parse-date-time* [s]
   (condp < (count s)
     13 (try
@@ -321,7 +284,6 @@
     10 (LocalDateTime/parse (str s ":00"))
     (DateTime/parse s)))
 
-
 (defn parse-date-time
   "Parses `s` into a System.DateTime.
 
@@ -329,24 +291,20 @@
   [s]
   (ba/try-one DateTimeException ::anom/incorrect (parse-date-time* s)))
 
-
 (defmethod print-method DateTimeYear [^DateTimeYear date-time ^Writer w]
   (.write w "#system/date-time\"")
   (.write w (str date-time))
   (.write w "\""))
-
 
 (defmethod print-dup DateTimeYear [^DateTimeYear date-time ^Writer w]
   (.write w "#=(blaze.fhir.spec.type.system.DateTimeYear/of ")
   (.write w (str date-time))
   (.write w ")"))
 
-
 (defmethod print-method DateTimeYearMonth [^DateTimeYearMonth date-time ^Writer w]
   (.write w "#system/date-time\"")
   (.write w (str date-time))
   (.write w "\""))
-
 
 (defmethod print-dup DateTimeYearMonth [^DateTimeYearMonth date-time ^Writer w]
   (.write w "#=(blaze.fhir.spec.type.system.DateTimeYearMonth/of ")
@@ -355,12 +313,10 @@
   (.write w (str (.month date-time)))
   (.write w ")"))
 
-
 (defmethod print-method DateTimeDate [^DateTimeDate date-time ^Writer w]
   (.write w "#system/date-time\"")
   (.write w (str date-time))
   (.write w "\""))
-
 
 (defmethod print-dup DateTimeDate [^DateTimeDate date-time ^Writer w]
   (.write w "#=(blaze.fhir.spec.type.system.DateTimeDate/of ")
@@ -371,12 +327,10 @@
   (.write w (str (.day date-time)))
   (.write w ")"))
 
-
 (defmethod print-method LocalDateTime [^LocalDateTime dateTime ^Writer w]
   (.write w "#system/date-time\"")
   (.write w (str dateTime))
   (.write w "\""))
-
 
 (defmethod print-dup LocalDateTime [^LocalDateTime dateTime ^Writer w]
   (.write w "#=(java.time.LocalDateTime/of ")
@@ -395,12 +349,10 @@
   (.write w (str (.getNano dateTime)))
   (.write w ")"))
 
-
 (defmethod print-method OffsetDateTime [^OffsetDateTime dateTime ^Writer w]
   (.write w "#system/date-time\"")
   (.write w (str dateTime))
   (.write w "\""))
-
 
 (defmethod print-dup OffsetDateTime [^OffsetDateTime dateTime ^Writer w]
   (.write w "#=(java.time.OffsetDateTime/of ")
@@ -421,7 +373,6 @@
   (.write w (.getId (.getOffset dateTime)))
   (.write w "\"))"))
 
-
 (defmethod print-dup LocalTime [^LocalTime time ^Writer w]
   (.write w "#=(java.time.LocalTime/of ")
   (.write w (str (.getHour time)))
@@ -432,7 +383,6 @@
   (.write w " ")
   (.write w (str (.getNano time)))
   (.write w ")"))
-
 
 (extend-protocol SystemType
   DateTimeYear
@@ -510,14 +460,11 @@
     (cond
       (instance? OffsetDateTime x) (.equals date-time x))))
 
-
 (defprotocol LowerBound
   (-lower-bound [date-time]))
 
-
 (defn date-time-lower-bound [date-time]
   (-lower-bound date-time))
-
 
 (extend-protocol LowerBound
   DateYear
@@ -545,24 +492,19 @@
   (-lower-bound [date-time]
     (.toEpochSecond date-time)))
 
-
 (def ^:private lower-bound-seconds
   (-lower-bound (DateYear/of 1)))
-
 
 (extend-protocol LowerBound
   nil
   (-lower-bound [_]
     lower-bound-seconds))
 
-
 (defprotocol UpperBound
   (-upper-bound [date-time]))
 
-
 (defn date-time-upper-bound [date-time]
   (-upper-bound date-time))
-
 
 (extend-protocol UpperBound
   DateYear
@@ -590,17 +532,13 @@
   (-upper-bound [date-time]
     (.toEpochSecond date-time)))
 
-
 (def ^:private upper-bound-seconds
   (-upper-bound (DateYear/of 9999)))
-
 
 (extend-protocol UpperBound
   nil
   (-upper-bound [_]
     upper-bound-seconds))
-
-
 
 ;; ---- System.Time -----------------------------------------------------------
 
@@ -620,7 +558,6 @@
   (-equals [time x]
     (some->> x (.equals time))))
 
-
 (defn time
   "Returns a System.Time"
   ([hour minute]
@@ -631,14 +568,11 @@
    (LocalTime/of (int hour) (int minute) (int second)
                  (unchecked-multiply-int (int millis) 1000000))))
 
-
 (defn parse-time* [s]
   (LocalTime/parse s))
 
-
 (defn- time-string? [s]
   (.matches (re-matcher #"([01][0-9]|2[0-3]):[0-5][0-9]:([0-5][0-9]|60)(\.[0-9]+)?" s)))
-
 
 (defn parse-time
   "Parses `s` into a System.Time.
@@ -648,7 +582,6 @@
   (if (time-string? s)
     (ba/try-one DateTimeParseException ::anom/incorrect (parse-time* s))
     (ba/incorrect (format "Invalid date-time value `%s`." s))))
-
 
 ;; ---- Other -----------------------------------------------------------------
 

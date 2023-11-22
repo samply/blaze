@@ -3,138 +3,123 @@
 
   https://www.hl7.org/fhir/http.html#search"
   (:require
-    [blaze.async.comp :as ac]
-    [blaze.db.api :as d]
-    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-    [blaze.db.resource-store :as rs]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.spec.type :as type]
-    [blaze.interaction.search-type]
-    [blaze.interaction.search.nav-spec]
-    [blaze.interaction.search.params-spec]
-    [blaze.interaction.search.util-spec]
-    [blaze.interaction.test-util :refer [wrap-error]]
-    [blaze.middleware.fhir.db :as db]
-    [blaze.middleware.fhir.db-spec]
-    [blaze.page-store-spec]
-    [blaze.page-store.local]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.string :as str]
-    [clojure.test :as test :refer [deftest is testing]]
-    [integrant.core :as ig]
-    [java-time.api :as time]
-    [juxt.iota :refer [given]]
-    [reitit.core :as reitit]
-    [taoensso.timbre :as log])
+   [blaze.async.comp :as ac]
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.resource-store :as rs]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type :as type]
+   [blaze.interaction.search-type]
+   [blaze.interaction.search.nav-spec]
+   [blaze.interaction.search.params-spec]
+   [blaze.interaction.search.util-spec]
+   [blaze.interaction.test-util :refer [wrap-error]]
+   [blaze.middleware.fhir.db :as db]
+   [blaze.middleware.fhir.db-spec]
+   [blaze.page-store-spec]
+   [blaze.page-store.local]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
+   [clojure.test :as test :refer [deftest is testing]]
+   [integrant.core :as ig]
+   [java-time.api :as time]
+   [juxt.iota :refer [given]]
+   [reitit.core :as reitit]
+   [taoensso.timbre :as log])
   (:import
-    [java.time Instant]))
-
+   [java.time Instant]))
 
 (st/instrument)
 (log/set-level! :info)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def base-url "base-url-113047")
 (def context-path "/context-path-173858")
 
-
 (def router
   (reitit/router
-    [["/Patient" {:name :Patient/type}]
-     ["/Patient/__page" {:name :Patient/page}]
-     ["/MeasureReport" {:name :MeasureReport/type}]
-     ["/MeasureReport/__page" {:name :MeasureReport/page}]
-     ["/Library" {:name :Library/type}]
-     ["/Library/__page" {:name :Library/page}]
-     ["/List" {:name :List/type}]
-     ["/List/__page" {:name :List/page}]
-     ["/Condition" {:name :Condition/type}]
-     ["/Condition/__page" {:name :Condition/page}]
-     ["/Observation" {:name :Observation/type}]
-     ["/Observation/__page" {:name :Observation/page}]
-     ["/MedicationStatement" {:name :MedicationStatement/type}]
-     ["/MedicationStatement/__page" {:name :MedicationStatement/page}]
-     ["/Medication" {:name :Medication/type}]
-     ["/Organization" {:name :Organization/type}]
-     ["/Encounter" {:name :Encounter/type}]
-     ["/Encounter/__page" {:name :Encounter/page}]]
-    {:syntax :bracket
-     :path context-path}))
-
+   [["/Patient" {:name :Patient/type}]
+    ["/Patient/__page" {:name :Patient/page}]
+    ["/MeasureReport" {:name :MeasureReport/type}]
+    ["/MeasureReport/__page" {:name :MeasureReport/page}]
+    ["/Library" {:name :Library/type}]
+    ["/Library/__page" {:name :Library/page}]
+    ["/List" {:name :List/type}]
+    ["/List/__page" {:name :List/page}]
+    ["/Condition" {:name :Condition/type}]
+    ["/Condition/__page" {:name :Condition/page}]
+    ["/Observation" {:name :Observation/type}]
+    ["/Observation/__page" {:name :Observation/page}]
+    ["/MedicationStatement" {:name :MedicationStatement/type}]
+    ["/MedicationStatement/__page" {:name :MedicationStatement/page}]
+    ["/Medication" {:name :Medication/type}]
+    ["/Organization" {:name :Organization/type}]
+    ["/Encounter" {:name :Encounter/type}]
+    ["/Encounter/__page" {:name :Encounter/page}]]
+   {:syntax :bracket
+    :path context-path}))
 
 (def patient-match
   (reitit/map->Match
-    {:data
-     {:fhir.resource/type "Patient"}
-     :path (str context-path "/Patient")}))
-
+   {:data
+    {:fhir.resource/type "Patient"}
+    :path (str context-path "/Patient")}))
 
 (def patient-search-match
   (reitit/map->Match
-    {:data
-     {:name :Patient/search
-      :fhir.resource/type "Patient"}
-     :path (str context-path "/Patient")}))
-
+   {:data
+    {:name :Patient/search
+     :fhir.resource/type "Patient"}
+    :path (str context-path "/Patient")}))
 
 (def patient-page-match
   (reitit/map->Match
-    {:data
-     {:name :Patient/page
-      :fhir.resource/type "Patient"}
-     :path (str context-path "/Patient")}))
-
+   {:data
+    {:name :Patient/page
+     :fhir.resource/type "Patient"}
+    :path (str context-path "/Patient")}))
 
 (def measure-report-match
   (reitit/map->Match
-    {:data
-     {:fhir.resource/type "MeasureReport"}
-     :path (str context-path "/MeasureReport")}))
-
+   {:data
+    {:fhir.resource/type "MeasureReport"}
+    :path (str context-path "/MeasureReport")}))
 
 (def list-match
   (reitit/map->Match
-    {:data
-     {:fhir.resource/type "List"}
-     :path (str context-path "/List")}))
-
+   {:data
+    {:fhir.resource/type "List"}
+    :path (str context-path "/List")}))
 
 (def observation-match
   (reitit/map->Match
-    {:data
-     {:fhir.resource/type "Observation"}
-     :path (str context-path "/Observation")}))
-
+   {:data
+    {:fhir.resource/type "Observation"}
+    :path (str context-path "/Observation")}))
 
 (def condition-match
   (reitit/map->Match
-    {:data
-     {:fhir.resource/type "Condition"}
-     :path (str context-path "/Condition")}))
-
+   {:data
+    {:fhir.resource/type "Condition"}
+    :path (str context-path "/Condition")}))
 
 (def encounter-match
   (reitit/map->Match
-    {:data
-     {:fhir.resource/type "Encounter"}
-     :path (str context-path "/Encounter")}))
-
+   {:data
+    {:fhir.resource/type "Encounter"}
+    :path (str context-path "/Encounter")}))
 
 (def medication-statement-match
   (reitit/map->Match
-    {:data
-     {:fhir.resource/type "MedicationStatement"}
-     :path (str context-path "/MedicationStatement")}))
-
+   {:data
+    {:fhir.resource/type "MedicationStatement"}
+    :path (str context-path "/MedicationStatement")}))
 
 (defn- link-url [body link-relation]
   (->> body :link (filter (comp #{link-relation} :relation)) first :url))
-
 
 (deftest init-test
   (testing "nil config"
@@ -160,32 +145,28 @@
       [:explain ::s/problems 2 :pred] := `time/clock?
       [:explain ::s/problems 2 :val] := ::invalid)))
 
-
 (def config
   (assoc api-stub/mem-node-config
-    :blaze.interaction/search-type
-    {:clock (ig/ref :blaze.test/fixed-clock)
-     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-     :page-store (ig/ref :blaze.page-store/local)}
-    :blaze.test/fixed-rng-fn {}
-    :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
-    :blaze.test/fixed-rng {}))
-
+         :blaze.interaction/search-type
+         {:clock (ig/ref :blaze.test/fixed-clock)
+          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+          :page-store (ig/ref :blaze.page-store/local)}
+         :blaze.test/fixed-rng-fn {}
+         :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
+         :blaze.test/fixed-rng {}))
 
 (defn wrap-defaults [handler]
   (fn [request]
     (handler
-      (assoc request
-        :blaze/base-url base-url
-        ::reitit/router router))))
-
+     (assoc request
+            :blaze/base-url base-url
+            ::reitit/router router))))
 
 (defn wrap-db [handler node]
   (fn [{::reitit/keys [match] :as request}]
     (if (= patient-page-match match)
       ((db/wrap-snapshot-db handler node 100) request)
       ((db/wrap-search-db handler node 100) request))))
-
 
 (defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
@@ -197,7 +178,6 @@
              ~(or node-binding '_) node#]
          ~@body))))
 
-
 (deftest handler-test
   (testing "on unknown search parameter"
     (testing "with strict handling"
@@ -206,9 +186,9 @@
           (testing "normal result"
             (let [{:keys [status body]}
                   @(handler
-                     {::reitit/match patient-match
-                      :headers {"prefer" "handling=strict"}
-                      :params {"foo" "bar"}})]
+                    {::reitit/match patient-match
+                     :headers {"prefer" "handling=strict"}
+                     :params {"foo" "bar"}})]
 
               (is (= 400 status))
 
@@ -221,9 +201,9 @@
           (testing "summary result"
             (let [{:keys [status body]}
                   @(handler
-                     {::reitit/match patient-match
-                      :headers {"prefer" "handling=strict"}
-                      :params {"foo" "bar" "_summary" "count"}})]
+                    {::reitit/match patient-match
+                     :headers {"prefer" "handling=strict"}
+                     :params {"foo" "bar" "_summary" "count"}})]
 
               (is (= 400 status))
 
@@ -242,9 +222,9 @@
             (testing "normal result"
               (let [{:keys [status body]}
                     @(handler
-                       {::reitit/match patient-match
-                        :headers {"prefer" "handling=lenient"}
-                        :params {"foo" "bar"}})]
+                      {::reitit/match patient-match
+                       :headers {"prefer" "handling=lenient"}
+                       :params {"foo" "bar"}})]
 
                 (is (= 200 status))
 
@@ -270,9 +250,9 @@
             (testing "summary result"
               (let [{:keys [status body]}
                     @(handler
-                       {::reitit/match patient-match
-                        :headers {"prefer" "handling=lenient"}
-                        :params {"foo" "bar" "_summary" "count"}})]
+                      {::reitit/match patient-match
+                       :headers {"prefer" "handling=lenient"}
+                       :params {"foo" "bar" "_summary" "count"}})]
 
                 (is (= 200 status))
 
@@ -304,9 +284,9 @@
             (testing "normal result"
               (let [{:keys [status body]}
                     @(handler
-                       {::reitit/match patient-match
-                        :headers {"prefer" "handling=lenient"}
-                        :params {"foo" "bar" "active" "true"}})]
+                      {::reitit/match patient-match
+                       :headers {"prefer" "handling=lenient"}
+                       :params {"foo" "bar" "active" "true"}})]
 
                 (is (= 200 status))
 
@@ -332,9 +312,9 @@
             (testing "summary result"
               (let [{:keys [status body]}
                     @(handler
-                       {::reitit/match patient-match
-                        :headers {"prefer" "handling=lenient"}
-                        :params {"foo" "bar" "active" "true" "_summary" "count"}})]
+                      {::reitit/match patient-match
+                       :headers {"prefer" "handling=lenient"}
+                       :params {"foo" "bar" "active" "true" "_summary" "count"}})]
 
                 (is (= 200 status))
 
@@ -366,8 +346,8 @@
             (testing "normal result"
               (let [{:keys [status body]}
                     @(handler
-                       {::reitit/match patient-match
-                        :params {"foo" "bar"}})]
+                      {::reitit/match patient-match
+                       :params {"foo" "bar"}})]
 
                 (is (= 200 status))
 
@@ -393,8 +373,8 @@
             (testing "summary result"
               (let [{:keys [status body]}
                     @(handler
-                       {::reitit/match patient-match
-                        :params {"foo" "bar" "_summary" "count"}})]
+                      {::reitit/match patient-match
+                       :params {"foo" "bar" "_summary" "count"}})]
 
                 (is (= 200 status))
 
@@ -426,8 +406,8 @@
             (testing "normal result"
               (let [{:keys [status body]}
                     @(handler
-                       {::reitit/match patient-match
-                        :params {"foo" "bar" "active" "true"}})]
+                      {::reitit/match patient-match
+                       :params {"foo" "bar" "active" "true"}})]
 
                 (is (= 200 status))
 
@@ -453,8 +433,8 @@
             (testing "summary result"
               (let [{:keys [status body]}
                     @(handler
-                       {::reitit/match patient-match
-                        :params {"foo" "bar" "active" "true" "_summary" "count"}})]
+                      {::reitit/match patient-match
+                       :params {"foo" "bar" "active" "true" "_summary" "count"}})]
 
                 (is (= 200 status))
 
@@ -483,8 +463,8 @@
         (testing "normal result"
           (let [{:keys [status body]}
                 @(handler
-                   {::reitit/match patient-match
-                    :params {"_sort" "a,b"}})]
+                  {::reitit/match patient-match
+                   :params {"_sort" "a,b"}})]
 
             (is (= 422 status))
 
@@ -497,8 +477,8 @@
         (testing "summary result"
           (let [{:keys [status body]}
                 @(handler
-                   {::reitit/match patient-match
-                    :params {"_sort" "a,b" "_summary" "count"}})]
+                  {::reitit/match patient-match
+                   :params {"_sort" "a,b" "_summary" "count"}})]
 
             (is (= 422 status))
 
@@ -514,9 +494,9 @@
         (testing "normal result"
           (let [{:keys [status body]}
                 @(handler
-                   {::reitit/match observation-match
-                    ;; the date is already URl decoded and so contains a space instead of a plus
-                    :params {"date" "2021-12-09T00:00:00 01:00"}})]
+                  {::reitit/match observation-match
+                   ;; the date is already URl decoded and so contains a space instead of a plus
+                   :params {"date" "2021-12-09T00:00:00 01:00"}})]
 
             (is (= 400 status))
 
@@ -529,9 +509,9 @@
         (testing "summary result"
           (let [{:keys [status body]}
                 @(handler
-                   {::reitit/match observation-match
-                    ;; the date is already URl decoded and so contains a space instead of a plus
-                    :params {"date" "2021-12-09T00:00:00 01:00" "_summary" "count"}})]
+                  {::reitit/match observation-match
+                   ;; the date is already URl decoded and so contains a space instead of a plus
+                   :params {"date" "2021-12-09T00:00:00 01:00" "_summary" "count"}})]
 
             (is (= 400 status))
 
@@ -546,8 +526,8 @@
       (with-handler [handler]
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-page-match
-                  :params {"__t" "0" "__token" "invalid-token-175424"}})]
+                {::reitit/match patient-page-match
+                 :params {"__t" "0" "__token" "invalid-token-175424"}})]
 
           (is (= 422 status))
 
@@ -562,8 +542,8 @@
       (with-handler [handler]
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-page-match
-                  :params {"__t" "0" "__token" (str/join (repeat 32 "A"))}})]
+                {::reitit/match patient-page-match
+                 :params {"__t" "0" "__token" (str/join (repeat 32 "A"))}})]
 
           (is (= 404 status))
 
@@ -619,8 +599,8 @@
       (testing "with param _summary equal to count"
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-match
-                  :params {"_summary" "count"}})]
+                {::reitit/match patient-match
+                 :params {"_summary" "count"}})]
 
           (is (= 200 status))
 
@@ -643,8 +623,8 @@
       (testing "with param _count equal to zero"
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-match
-                  :params {"_count" "0"}})]
+                {::reitit/match patient-match
+                 :params {"_count" "0"}})]
 
           (is (= 200 status))
 
@@ -672,8 +652,8 @@
       (testing "search for all patients with _count=1"
         (let [{:keys [body]}
               @(handler
-                 {::reitit/match patient-match
-                  :params {"_count" "1"}})]
+                {::reitit/match patient-match
+                 :params {"_count" "1"}})]
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
@@ -696,8 +676,8 @@
       (testing "following the self link"
         (let [{:keys [body]}
               @(handler
-                 {::reitit/match patient-match
-                  :params {"_count" "1" "__t" "1" "__page-id" "0"}})]
+                {::reitit/match patient-match
+                 :params {"_count" "1" "__t" "1" "__page-id" "0"}})]
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
@@ -720,8 +700,8 @@
       (testing "following the next link"
         (let [{:keys [body]}
               @(handler
-                 {::reitit/match patient-match
-                  :params {"_count" "1" "__t" "1" "__page-id" "1"}})]
+                {::reitit/match patient-match
+                 :params {"_count" "1" "__t" "1" "__page-id" "1"}})]
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
@@ -744,8 +724,8 @@
         (testing "search for all patients with _count=1"
           (let [{:keys [body]}
                 @(handler
-                   {::reitit/match patient-search-match
-                    :params {"_count" "1"}})]
+                  {::reitit/match patient-search-match
+                   :params {"_count" "1"}})]
 
             (testing "the total count is 2"
               (is (= #fhir/unsignedInt 2 (:total body))))
@@ -771,8 +751,8 @@
         (testing "following the self link"
           (let [{:keys [body]}
                 @(handler
-                   {::reitit/match patient-match
-                    :params {"_count" "1" "__t" "1" "__page-id" "0"}})]
+                  {::reitit/match patient-match
+                   :params {"_count" "1" "__t" "1" "__page-id" "0"}})]
 
             (testing "the total count is 2"
               (is (= #fhir/unsignedInt 2 (:total body))))
@@ -795,8 +775,8 @@
         (testing "following the next link"
           (let [{:keys [body]}
                 @(handler
-                   {::reitit/match patient-page-match
-                    :params {"_count" "1" "__t" "1" "__page-id" "1"}})]
+                  {::reitit/match patient-page-match
+                   :params {"_count" "1" "__t" "1" "__page-id" "1"}})]
 
             (testing "the total count is 2"
               (is (= #fhir/unsignedInt 2 (:total body))))
@@ -825,9 +805,9 @@
         (testing "with strict handling"
           (let [{:keys [body]}
                 @(handler
-                   {::reitit/match patient-match
-                    :headers {"prefer" "handling=strict"}
-                    :params {"active" "true" "_summary" "count"}})]
+                  {::reitit/match patient-match
+                   :headers {"prefer" "handling=strict"}
+                   :params {"active" "true" "_summary" "count"}})]
 
             (testing "their is a total count because we used _summary=count"
               (is (= #fhir/unsignedInt 2 (:total body))))))
@@ -835,8 +815,8 @@
         (testing "with default handling"
           (let [{:keys [body]}
                 @(handler
-                   {::reitit/match patient-match
-                    :params {"active" "true" "_summary" "count"}})]
+                  {::reitit/match patient-match
+                   :params {"active" "true" "_summary" "count"}})]
 
             (testing "their is a total count because we used _summary=count"
               (is (= #fhir/unsignedInt 2 (:total body)))))))
@@ -845,8 +825,8 @@
         (testing "search for active patients with _count=1"
           (let [{:keys [body]}
                 @(handler
-                   {::reitit/match patient-match
-                    :params {"active" "true" "_count" "1"}})]
+                  {::reitit/match patient-match
+                   :params {"active" "true" "_count" "1"}})]
 
             (testing "their is no total count because we have clauses and we have
                     more hits than page-size"
@@ -870,8 +850,8 @@
         (testing "search for inactive patients"
           (let [{:keys [body]}
                 @(handler
-                   {::reitit/match patient-match
-                    :params {"active" "false"}})]
+                  {::reitit/match patient-match
+                   :params {"active" "false"}})]
 
             (testing "the total is zero"
               (is (zero? (type/value (:total body)))))
@@ -893,8 +873,8 @@
         (testing "search for active patients with _count=1"
           (let [{:keys [body]}
                 @(handler
-                   {::reitit/match patient-search-match
-                    :params {"active" "true" "_count" "1"}})]
+                  {::reitit/match patient-search-match
+                   :params {"active" "true" "_count" "1"}})]
 
             (testing "their is no total count because we have clauses and we have
                     more hits than page-size"
@@ -918,8 +898,8 @@
         (testing "search for inactive patients"
           (let [{:keys [body]}
                 @(handler
-                   {::reitit/match patient-search-match
-                    :params {"active" "false"}})]
+                  {::reitit/match patient-search-match
+                   :params {"active" "false"}})]
 
             (testing "the total is zero"
               (is (zero? (type/value (:total body)))))
@@ -940,8 +920,8 @@
       (testing "following the self link"
         (let [{:keys [body]}
               @(handler
-                 {::reitit/match patient-match
-                  :params {"active" "true" "_count" "1" "__t" "1" "__page-id" "1"}})]
+                {::reitit/match patient-match
+                 :params {"active" "true" "_count" "1" "__t" "1" "__page-id" "1"}})]
 
           (testing "their is no total count because we have clauses and we have
                     more hits than page-size"
@@ -965,8 +945,8 @@
       (testing "following the next link"
         (let [{:keys [body]}
               @(handler
-                 {::reitit/match patient-page-match
-                  :params {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"}})]
+                {::reitit/match patient-page-match
+                 :params {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"}})]
 
           (testing "their is no total count because we have clauses and we have
                     more hits than page-size"
@@ -997,8 +977,8 @@
         (testing "search for active patients with _count=1"
           (let [{:keys [body]}
                 @(handler
-                   {::reitit/match patient-match
-                    :params {"active" "true" "_count" "1"}})]
+                  {::reitit/match patient-match
+                   :params {"active" "true" "_count" "1"}})]
 
             (testing "has a next link with search params"
               (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1&__page-id=2")
@@ -1010,8 +990,8 @@
         (testing "following the next link"
           (let [{:keys [body]}
                 @(handler
-                   {::reitit/match patient-page-match
-                    :params {"active" "true" "_count" "1" "__t" "1" "__page-id" "2"}})]
+                  {::reitit/match patient-page-match
+                   :params {"active" "true" "_count" "1" "__t" "1" "__page-id" "2"}})]
 
             (testing "has a next link with search params"
               (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1&__page-id=3")
@@ -1024,8 +1004,8 @@
         (testing "search for active patients with _count=1"
           (let [{:keys [body]}
                 @(handler
-                   {::reitit/match patient-search-match
-                    :params {"active" "true" "_count" "1"}})]
+                  {::reitit/match patient-search-match
+                   :params {"active" "true" "_count" "1"}})]
 
             (testing "has a first link with token"
               (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1")
@@ -1038,13 +1018,12 @@
         (testing "following the next link"
           (let [{:keys [body]}
                 @(handler
-                   {::reitit/match patient-page-match
-                    :params {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"}})]
+                  {::reitit/match patient-page-match
+                   :params {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"}})]
 
             (testing "has a next link with token"
               (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1&__page-id=3")
                      (link-url body "next")))))))))
-
 
   (testing "_id search"
     (with-handler [handler]
@@ -1053,8 +1032,8 @@
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
-               {::reitit/match patient-match
-                :params {"_id" "0"}})]
+              {::reitit/match patient-match
+               :params {"_id" "0"}})]
 
         (is (= 200 status))
 
@@ -1087,8 +1066,8 @@
 
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                 {::reitit/match patient-match
-                  :params {"_id" "0,2"}})]
+                {::reitit/match patient-match
+                 :params {"_id" "0,2"}})]
 
           (is (= 200 status))
 
@@ -1128,8 +1107,8 @@
       (testing "the resource is created at EPOCH"
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-match
-                  :params {"_lastUpdated" "1970-01-01"}})]
+                {::reitit/match patient-match
+                 :params {"_lastUpdated" "1970-01-01"}})]
 
           (is (= 200 status))
 
@@ -1148,8 +1127,8 @@
       (testing "no resource is created after EPOCH"
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-match
-                  :params {"_lastUpdated" "gt1970-01-02"}})]
+                {::reitit/match patient-match
+                 :params {"_lastUpdated" "gt1970-01-02"}})]
 
           (is (= 200 status))
 
@@ -1172,8 +1151,8 @@
 
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-match
-                  :params {"_lastUpdated" "1970-01-01"}})]
+                {::reitit/match patient-match
+                 :params {"_lastUpdated" "1970-01-01"}})]
 
           (is (= 200 status))
 
@@ -1192,8 +1171,8 @@
       (testing "ascending"
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-match
-                  :params {"_sort" "_id"}})]
+                {::reitit/match patient-match
+                 :params {"_sort" "_id"}})]
 
           (is (= 200 status))
 
@@ -1226,8 +1205,8 @@
       (testing "descending"
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-match
-                  :params {"_sort" "-_id"}})]
+                {::reitit/match patient-match
+                 :params {"_sort" "-_id"}})]
 
           (is (= 422 status))
 
@@ -1246,8 +1225,8 @@
       (testing "ascending"
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-match
-                  :params {"_sort" "_lastUpdated"}})]
+                {::reitit/match patient-match
+                 :params {"_sort" "_lastUpdated"}})]
 
           (is (= 200 status))
 
@@ -1280,8 +1259,8 @@
       (testing "descending"
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-match
-                  :params {"_sort" "-_lastUpdated"}})]
+                {::reitit/match patient-match
+                 :params {"_sort" "-_lastUpdated"}})]
 
           (is (= 200 status))
 
@@ -1318,12 +1297,12 @@
          {:fhir/type :fhir/Patient :id "1"
           :meta
           #fhir/Meta
-                  {:profile [#fhir/canonical"profile-uri-151511"]}}]]]
+           {:profile [#fhir/canonical"profile-uri-151511"]}}]]]
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
-               {::reitit/match patient-match
-                :params {"_profile" "profile-uri-151511"}})]
+              {::reitit/match patient-match
+               :params {"_profile" "profile-uri-151511"}})]
 
         (is (= 200 status))
 
@@ -1358,12 +1337,12 @@
                [{:fhir/type :fhir.List/entry
                  :item
                  #fhir/Reference
-                         {:reference "Patient/0"}}]}]]]
+                  {:reference "Patient/0"}}]}]]]
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
-               {::reitit/match patient-match
-                :params {"_list" "0"}})]
+              {::reitit/match patient-match
+               :params {"_list" "0"}})]
 
         (is (= 200 status))
 
@@ -1393,27 +1372,27 @@
       [[[:put {:fhir/type :fhir/Observation :id "0"
                :value
                #fhir/Quantity
-                       {:value 65M
-                        :code #fhir/code "kg"
-                        :system #fhir/uri"http://unitsofmeasure.org"}}]
+                {:value 65M
+                 :code #fhir/code "kg"
+                 :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :value
                #fhir/Quantity
-                       {:value 75M
-                        :code #fhir/code "kg"
-                        :system #fhir/uri"http://unitsofmeasure.org"}}]
+                {:value 75M
+                 :code #fhir/code "kg"
+                 :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation :id "2"
                :value
                #fhir/Quantity
-                       {:value 100M
-                        :code #fhir/code "kg"
-                        :system #fhir/uri"http://unitsofmeasure.org"}}]]]
+                {:value 100M
+                 :code #fhir/code "kg"
+                 :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
       (doseq [value ["ge70" " ge70" "ge70 " "ge 70" " ge 70 "]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                 {::reitit/match observation-match
-                  :params {"value-quantity" value}})]
+                {::reitit/match observation-match
+                 :params {"value-quantity" value}})]
 
           (is (= 200 status))
 
@@ -1446,55 +1425,49 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1"}]
         [:put {:fhir/type :fhir/Observation :id "0"
-               :subject
-               #fhir/Reference
-                       {:reference "Patient/0"}
+               :subject #fhir/Reference{:reference "Patient/0"}
                :code
                #fhir/CodeableConcept
-                       {:coding
-                        [#fhir/Coding
-                                {:system #fhir/uri"http://loinc.org"
-                                 :code #fhir/code"8480-6"}]}
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri"http://loinc.org"
+                    :code #fhir/code"8480-6"}]}
                :value
                #fhir/Quantity
-                       {:value 130M
-                        :code #fhir/code"mm[Hg]"
-                        :system #fhir/uri"http://unitsofmeasure.org"}}]
+                {:value 130M
+                 :code #fhir/code"mm[Hg]"
+                 :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
-               :subject
-               #fhir/Reference
-                       {:reference "Patient/0"}
+               :subject #fhir/Reference{:reference "Patient/0"}
                :code
                #fhir/CodeableConcept
-                       {:coding
-                        [#fhir/Coding
-                                {:system #fhir/uri"http://loinc.org"
-                                 :code #fhir/code"8480-6"}]}
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri"http://loinc.org"
+                    :code #fhir/code"8480-6"}]}
                :value
                #fhir/Quantity
-                       {:value 150M
-                        :code #fhir/code"mm[Hg]"
-                        :system #fhir/uri"http://unitsofmeasure.org"}}]
+                {:value 150M
+                 :code #fhir/code"mm[Hg]"
+                 :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation :id "2"
-               :subject
-               #fhir/Reference
-                       {:reference "Patient/1"}
+               :subject #fhir/Reference{:reference "Patient/1"}
                :code
                #fhir/CodeableConcept
-                       {:coding
-                        [#fhir/Coding
-                                {:system #fhir/uri"http://loinc.org"
-                                 :code #fhir/code"8480-6"}]}
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri"http://loinc.org"
+                    :code #fhir/code"8480-6"}]}
                :value
                #fhir/Quantity
-                       {:value 100M
-                        :code #fhir/code"mm[Hg]"
-                        :system #fhir/uri"http://unitsofmeasure.org"}}]]]
+                {:value 100M
+                 :code #fhir/code"mm[Hg]"
+                 :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
-               {::reitit/match patient-match
-                :params {"_has:Observation:patient:code-value-quantity" "8480-6$ge130"}})]
+              {::reitit/match patient-match
+               :params {"_has:Observation:patient:code-value-quantity" "8480-6$ge130"}})]
 
         (is (= 200 status))
 
@@ -1528,8 +1501,8 @@
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
-               {::reitit/match patient-match
-                :params {"identifier" "0"}})]
+              {::reitit/match patient-match
+               :params {"identifier" "0"}})]
 
         (is (= 200 status))
 
@@ -1560,31 +1533,31 @@
                [{:fhir/type :fhir.Patient/communication
                  :language
                  #fhir/CodeableConcept
-                         {:coding
-                          [#fhir/Coding
-                                  {:system #fhir/uri"urn:ietf:bcp:47"
-                                   :code #fhir/code"de"}]}}
+                  {:coding
+                   [#fhir/Coding
+                     {:system #fhir/uri"urn:ietf:bcp:47"
+                      :code #fhir/code"de"}]}}
                 {:fhir/type :fhir.Patient/communication
                  :language
                  #fhir/CodeableConcept
-                         {:coding
-                          [#fhir/Coding
-                                  {:system #fhir/uri"urn:ietf:bcp:47"
-                                   :code #fhir/code"en"}]}}]}]
+                  {:coding
+                   [#fhir/Coding
+                     {:system #fhir/uri"urn:ietf:bcp:47"
+                      :code #fhir/code"en"}]}}]}]
         [:put {:fhir/type :fhir/Patient :id "1"
                :communication
                [{:fhir/type :fhir.Patient/communication
                  :language
                  #fhir/CodeableConcept
-                         {:coding
-                          [#fhir/Coding
-                                  {:system #fhir/uri"urn:ietf:bcp:47"
-                                   :code #fhir/code"de"}]}}]}]]]
+                  {:coding
+                   [#fhir/Coding
+                     {:system #fhir/uri"urn:ietf:bcp:47"
+                      :code #fhir/code"de"}]}}]}]]]
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
-               {::reitit/match patient-match
-                :params {"language" ["de" "en"]}})]
+              {::reitit/match patient-match
+               :params {"language" ["de" "en"]}})]
 
         (is (= 200 status))
 
@@ -1614,8 +1587,8 @@
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
-               {::reitit/match {:data {:fhir.resource/type "Library"}}
-                :params {"title" "A"}})]
+              {::reitit/match {:data {:fhir.resource/type "Library"}}
+               :params {"title" "A"}})]
 
         (is (= 200 status))
 
@@ -1646,8 +1619,8 @@
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
-               {::reitit/match measure-report-match
-                :params {"measure" "http://server.com/Measure/0"}})]
+              {::reitit/match measure-report-match
+               :params {"measure" "http://server.com/Measure/0"}})]
 
         (is (= 200 status))
 
@@ -1678,24 +1651,24 @@
                [{:fhir/type :fhir.List/entry
                  :item
                  #fhir/Reference
-                         {:identifier
-                          #fhir/Identifier
-                                  {:system #fhir/uri"system-122917"
-                                   :value "value-122931"}}}]}]
+                  {:identifier
+                   #fhir/Identifier
+                    {:system #fhir/uri"system-122917"
+                     :value "value-122931"}}}]}]
         [:put {:fhir/type :fhir/List :id "id-143814"
                :entry
                [{:fhir/type :fhir.List/entry
                  :item
                  #fhir/Reference
-                         {:identifier
-                          #fhir/Identifier
-                                  {:system #fhir/uri"system-122917"
-                                   :value "value-143818"}}}]}]]]
+                  {:identifier
+                   #fhir/Identifier
+                    {:system #fhir/uri"system-122917"
+                     :value "value-143818"}}}]}]]]
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
-               {::reitit/match list-match
-                :params {"item:identifier" "system-122917|value-143818"}})]
+              {::reitit/match list-match
+               :params {"item:identifier" "system-122917|value-143818"}})]
 
         (is (= 200 status))
 
@@ -1726,62 +1699,62 @@
                [{:fhir/type :fhir.Observation/component
                  :code
                  #fhir/CodeableConcept
-                         {:coding
-                          [#fhir/Coding
-                                  {:system #fhir/uri"http://loinc.org"
-                                   :code #fhir/code"8480-6"}]}
+                  {:coding
+                   [#fhir/Coding
+                     {:system #fhir/uri"http://loinc.org"
+                      :code #fhir/code"8480-6"}]}
                  :value
                  #fhir/Quantity
-                         {:value 140M
-                          :system #fhir/uri"http://unitsofmeasure.org"
-                          :code #fhir/code"mm[Hg]"}}
+                  {:value 140M
+                   :system #fhir/uri"http://unitsofmeasure.org"
+                   :code #fhir/code"mm[Hg]"}}
                 {:fhir/type :fhir.Observation/component
                  :code
                  #fhir/CodeableConcept
-                         {:coding
-                          [#fhir/Coding
-                                  {:system #fhir/uri"http://loinc.org"
-                                   :code #fhir/code"8462-4"}]}
+                  {:coding
+                   [#fhir/Coding
+                     {:system #fhir/uri"http://loinc.org"
+                      :code #fhir/code"8462-4"}]}
                  :value
                  #fhir/Quantity
-                         {:value 90M
-                          :system #fhir/uri"http://unitsofmeasure.org"
-                          :code #fhir/code"mm[Hg]"}}]}]]
+                  {:value 90M
+                   :system #fhir/uri"http://unitsofmeasure.org"
+                   :code #fhir/code"mm[Hg]"}}]}]]
        [[:put {:fhir/type :fhir/Observation :id "id-123130"
                :component
                [{:fhir/type :fhir.Observation/component
                  :code
                  #fhir/CodeableConcept
-                         {:coding
-                          [#fhir/Coding
-                                  {:system #fhir/uri"http://loinc.org"
-                                   :code #fhir/code"8480-6"}]}
+                  {:coding
+                   [#fhir/Coding
+                     {:system #fhir/uri"http://loinc.org"
+                      :code #fhir/code"8480-6"}]}
                  :value
                  #fhir/Quantity
-                         {:value 150M
-                          :system #fhir/uri"http://unitsofmeasure.org"
-                          :code #fhir/code"mm[Hg]"}}
+                  {:value 150M
+                   :system #fhir/uri"http://unitsofmeasure.org"
+                   :code #fhir/code"mm[Hg]"}}
                 {:fhir/type :fhir.Observation/component
                  :code
                  #fhir/CodeableConcept
-                         {:coding
-                          [#fhir/Coding
-                                  {:system #fhir/uri"http://loinc.org"
-                                   :code #fhir/code"8462-4"}]}
+                  {:coding
+                   [#fhir/Coding
+                     {:system #fhir/uri"http://loinc.org"
+                      :code #fhir/code"8462-4"}]}
                  :value
                  #fhir/Quantity
-                         {:value 100M
-                          :system #fhir/uri"http://unitsofmeasure.org"
-                          :code #fhir/code"mm[Hg]"}}]}]]]
+                  {:value 100M
+                   :system #fhir/uri"http://unitsofmeasure.org"
+                   :code #fhir/code"mm[Hg]"}}]}]]]
 
       (let [{:keys [status body]}
             @(handler
-               {::reitit/match observation-match
-                :params
-                {"combo-code-value-quantity"
-                 ["http://loinc.org|8480-6$ge140|mm[Hg]"
-                  "http://loinc.org|8462-4$ge90|mm[Hg]"]
-                 "_count" "1"}})]
+              {::reitit/match observation-match
+               :params
+               {"combo-code-value-quantity"
+                ["http://loinc.org|8480-6$ge140|mm[Hg]"
+                 "http://loinc.org|8462-4$ge90|mm[Hg]"]
+                "_count" "1"}})]
 
         (is (= 200 status))
 
@@ -1803,15 +1776,15 @@
       [[[:put {:fhir/type :fhir/Condition :id "0"
                :code
                #fhir/CodeableConcept
-                       {:coding
-                        [#fhir/Coding
-                                {:system #fhir/uri"http://fhir.de/CodeSystem/dimdi/icd-10-gm"
-                                 :code #fhir/code"C71.4"}]}}]]]
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri"http://fhir.de/CodeSystem/dimdi/icd-10-gm"
+                    :code #fhir/code"C71.4"}]}}]]]
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
-               {::reitit/match condition-match
-                :params {"code" "C71.4,C71.4"}})]
+              {::reitit/match condition-match
+               :params {"code" "C71.4,C71.4"}})]
 
         (is (= 200 status))
 
@@ -1840,27 +1813,27 @@
       [[[:put {:fhir/type :fhir/Condition :id "0"
                :code
                #fhir/CodeableConcept
-                       {:coding
-                        [#fhir/Coding
-                                {:code #fhir/code"0"}]}}]
+                {:coding
+                 [#fhir/Coding
+                   {:code #fhir/code"0"}]}}]
         [:put {:fhir/type :fhir/Condition :id "2"
                :code
                #fhir/CodeableConcept
-                       {:coding
-                        [#fhir/Coding
-                                {:code #fhir/code"0"}]}}]
+                {:coding
+                 [#fhir/Coding
+                   {:code #fhir/code"0"}]}}]
         [:put {:fhir/type :fhir/Condition :id "1"
                :code
                #fhir/CodeableConcept
-                       {:coding
-                        [#fhir/Coding
-                                {:code #fhir/code"1"}]}}]]]
+                {:coding
+                 [#fhir/Coding
+                   {:code #fhir/code"1"}]}}]]]
 
       (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler
-               {::reitit/match condition-match
-                :params {"code" "0,1" "_count" "2"
-                         "__t" "1" "__page-id" "1"}})]
+              {::reitit/match condition-match
+               :params {"code" "0,1" "_count" "2"
+                        "__t" "1" "__page-id" "1"}})]
 
         (is (= 200 status))
 
@@ -1898,26 +1871,26 @@
                :id "0"
                :code
                #fhir/CodeableConcept
-                       {:coding
-                        [#fhir/Coding{:code #fhir/code"foo"}]}}]
+                {:coding
+                 [#fhir/Coding{:code #fhir/code"foo"}]}}]
         [:put {:fhir/type :fhir/Condition
                :id "1"
                :code
                #fhir/CodeableConcept
-                       {:coding
-                        [#fhir/Coding{:code #fhir/code"bar"}]}}]
+                {:coding
+                 [#fhir/Coding{:code #fhir/code"bar"}]}}]
         [:put {:fhir/type :fhir/Condition
                :id "2"
                :code
                #fhir/CodeableConcept
-                       {:coding
-                        [#fhir/Coding{:code #fhir/code"foo"}]}}]]]
+                {:coding
+                 [#fhir/Coding{:code #fhir/code"foo"}]}}]]]
 
       (testing "success"
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                 {::reitit/match encounter-match
-                  :params {"diagnosis:Condition.code" "foo"}})]
+                {::reitit/match encounter-match
+                 :params {"diagnosis:Condition.code" "foo"}})]
 
           (is (= 200 status))
 
@@ -1937,9 +1910,9 @@
       (testing "ambiguous type"
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match encounter-match
-                  :headers {"prefer" "handling=strict"}
-                  :params {"diagnosis.code" "foo"}})]
+                {::reitit/match encounter-match
+                 :headers {"prefer" "handling=strict"}
+                 :params {"diagnosis.code" "foo"}})]
 
           (is (= 400 status))
 
@@ -1958,8 +1931,8 @@
 
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match observation-match
-                  :params {"_include" "Observation:subject"}})]
+                {::reitit/match observation-match
+                 :params {"_include" "Observation:subject"}})]
 
           (is (= 200 status))
 
@@ -2003,8 +1976,8 @@
 
           (let [{:keys [status body]}
                 @(handler
-                   {::reitit/match observation-match
-                    :params {"_include" "Observation:subject:Group"}})]
+                  {::reitit/match observation-match
+                   :params {"_include" "Observation:subject:Group"}})]
 
             (is (= 200 status))
 
@@ -2036,8 +2009,8 @@
 
           (let [{:keys [status body]}
                 @(handler
-                   {::reitit/match observation-match
-                    :params {"_include" "Observation:subject"}})]
+                  {::reitit/match observation-match
+                   :params {"_include" "Observation:subject"}})]
 
             (is (= 200 status))
 
@@ -2082,9 +2055,9 @@
 
           (let [{:keys [status body]}
                 @(handler
-                   {::reitit/match observation-match
-                    :params
-                    {"_include" ["Observation:subject" "Observation:encounter"]}})]
+                  {::reitit/match observation-match
+                   :params
+                   {"_include" ["Observation:subject" "Observation:encounter"]}})]
 
             (is (= 200 status))
 
@@ -2122,19 +2095,15 @@
         (with-handler [handler]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "1"
-                   :subject
-                   #fhir/Reference
-                           {:reference "Patient/0"}}]
+                   :subject #fhir/Reference{:reference "Patient/0"}}]
             [:put {:fhir/type :fhir/Patient :id "2"}]
             [:put {:fhir/type :fhir/Observation :id "3"
-                   :subject
-                   #fhir/Reference
-                           {:reference "Patient/2"}}]]]
+                   :subject #fhir/Reference{:reference "Patient/2"}}]]]
 
           (let [{:keys [status body]}
                 @(handler
-                   {::reitit/match observation-match
-                    :params {"_include" "Observation:subject" "_count" "1"}})]
+                  {::reitit/match observation-match
+                   :params {"_include" "Observation:subject" "_count" "1"}})]
 
             (is (= 200 status))
 
@@ -2169,9 +2138,9 @@
             (testing "second page"
               (let [{:keys [status body]}
                     @(handler
-                       {::reitit/match observation-match
-                        :params {"_include" "Observation:subject" "_count" "2"
-                                 "__t" "1" "__page-id" "3"}})]
+                      {::reitit/match observation-match
+                       :params {"_include" "Observation:subject" "_count" "2"
+                                "__t" "1" "__page-id" "3"}})]
 
                 (is (= 200 status))
 
@@ -2212,19 +2181,19 @@
         [[[:put {:fhir/type :fhir/MedicationStatement :id "0"
                  :medication
                  #fhir/Reference
-                         {:reference "Medication/0"}}]
+                  {:reference "Medication/0"}}]
           [:put {:fhir/type :fhir/Medication :id "0"
                  :manufacturer
                  #fhir/Reference
-                         {:reference "Organization/0"}}]
+                  {:reference "Organization/0"}}]
           [:put {:fhir/type :fhir/Organization :id "0"}]]]
 
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match medication-statement-match
-                  :params
-                  {"_include" "MedicationStatement:medication"
-                   "_include:iterate" "Medication:manufacturer"}})]
+                {::reitit/match medication-statement-match
+                 :params
+                 {"_include" "MedicationStatement:medication"
+                  "_include:iterate" "Medication:manufacturer"}})]
 
           (is (= 200 status))
 
@@ -2263,20 +2232,19 @@
         [[[:put {:fhir/type :fhir/MedicationStatement :id "0"
                  :medication
                  #fhir/Reference
-                         {:reference "Medication/0"}}]
+                  {:reference "Medication/0"}}]
           [:put {:fhir/type :fhir/Medication :id "0"
                  :manufacturer
                  #fhir/Reference
-                         {:reference "Organization/0"}}]
+                  {:reference "Organization/0"}}]
           [:put {:fhir/type :fhir/Organization :id "0"}]]]
-
 
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match medication-statement-match
-                  :params
-                  {"_include"
-                   ["MedicationStatement:medication" "Medication:manufacturer"]}})]
+                {::reitit/match medication-statement-match
+                 :params
+                 {"_include"
+                  ["MedicationStatement:medication" "Medication:manufacturer"]}})]
 
           (is (= 200 status))
 
@@ -2308,14 +2276,12 @@
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject
-                 #fhir/Reference
-                         {:reference "Patient/0"}}]]]
+                 :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-match
-                  :params {"_revinclude" "Observation:subject"}})]
+                {::reitit/match patient-match
+                 :params {"_revinclude" "Observation:subject"}})]
 
           (is (= 200 status))
 
@@ -2355,19 +2321,15 @@
         (with-handler [handler]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "1"
-                   :subject
-                   #fhir/Reference
-                           {:reference "Patient/0"}}]
+                   :subject #fhir/Reference{:reference "Patient/0"}}]
             [:put {:fhir/type :fhir/Condition :id "2"
-                   :subject
-                   #fhir/Reference
-                           {:reference "Patient/0"}}]]]
+                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
           (let [{:keys [status body]}
                 @(handler
-                   {::reitit/match patient-match
-                    :params
-                    {"_revinclude" ["Observation:subject" "Condition:subject"]}})]
+                  {::reitit/match patient-match
+                   :params
+                   {"_revinclude" ["Observation:subject" "Condition:subject"]}})]
 
             (is (= 200 status))
 
@@ -2413,9 +2375,9 @@
       (with-handler [handler]
         (let [{:keys [status body]}
               @(handler
-                 {::reitit/match patient-match
-                  :headers {"prefer" "handling=strict"}
-                  :params {"_include" "Observation"}})]
+                {::reitit/match patient-match
+                 :headers {"prefer" "handling=strict"}
+                 :params {"_include" "Observation"}})]
 
           (is (= 400 status))
 
@@ -2437,9 +2399,9 @@
 
       (let [{:keys [status body] {[{:keys [resource] :as entry}] :entry} :body}
             @(handler
-               {::reitit/match observation-match
-                :params {"_elements" "subject"
-                         "_count" "1"}})]
+              {::reitit/match observation-match
+               :params {"_elements" "subject"
+                        "_count" "1"}})]
 
         (is (= 200 status))
 

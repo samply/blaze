@@ -1,21 +1,18 @@
 (ns blaze.fhir.spec.type.json-test
   (:require
-    [blaze.fhir.spec.type.json :as json]
-    [blaze.test-util :as tu :refer [satisfies-prop]]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest testing]]
-    [clojure.test.check.generators :as gen]
-    [clojure.test.check.properties :as prop])
+   [blaze.fhir.spec.type.json :as json]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop])
   (:import
-    [java.nio.charset StandardCharsets]))
-
+   [java.nio.charset StandardCharsets]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest field-name-test
   (testing "getValue"

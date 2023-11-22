@@ -1,3 +1,6 @@
+fmt:
+	cljfmt check
+
 lint:
 	clj-kondo --lint src test deps.edn
 
@@ -13,4 +16,4 @@ test-coverage: build
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: lint build test test-coverage clean
+.PHONY: fmt lint build test test-coverage clean

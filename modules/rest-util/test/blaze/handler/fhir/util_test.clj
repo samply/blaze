@@ -1,17 +1,14 @@
 (ns blaze.handler.fhir.util-test
   (:require
-    [blaze.handler.fhir.util :as fhir-util]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [reitit.core :as reitit]))
-
+   [blaze.handler.fhir.util :as fhir-util]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [reitit.core :as reitit]))
 
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest t-test
   (testing "no query param"
@@ -28,7 +25,6 @@
       "1" 1
       ["<invalid>" "2"] 2
       ["3" "4"] 3)))
-
 
 (deftest page-size-test
   (testing "no query param"
@@ -55,7 +51,6 @@
   (testing "10000 is the maximum"
     (is (= 10000 (fhir-util/page-size {"_count" "10001"})))))
 
-
 (deftest page-offset-test
   (testing "no query param"
     (is (zero? (fhir-util/page-offset {}))))
@@ -77,7 +72,6 @@
       ["0" "1"] 0
       ["3" "4"] 3)))
 
-
 (deftest page-type-test
   (testing "no query param"
     (is (nil? (fhir-util/page-type {}))))
@@ -92,7 +86,6 @@
       "A" "A"
       ["<invalid>" "A"] "A"
       ["A" "B"] "A")))
-
 
 (deftest page-id-test
   (testing "no query param"
@@ -109,32 +102,27 @@
       ["<invalid>" "a"] "a"
       ["A" "b"] "A")))
 
-
 (def router
   (reitit/router
-    [[""
-      {}
-      ["/Patient" {:name :Patient/type}]
-      ["/Patient/{id}" {:name :Patient/instance}]
-      ["/Patient/{id}/_history/{vid}" {:name :Patient/versioned-instance}]]]
-    {:syntax :bracket
-     :path "/fhir"}))
-
+   [[""
+     {}
+     ["/Patient" {:name :Patient/type}]
+     ["/Patient/{id}" {:name :Patient/instance}]
+     ["/Patient/{id}/_history/{vid}" {:name :Patient/versioned-instance}]]]
+   {:syntax :bracket
+    :path "/fhir"}))
 
 (def context
   {:blaze/base-url "http://localhost:8080"
    ::reitit/router router})
 
-
 (deftest type-url-test
   (is (= "http://localhost:8080/fhir/Patient"
          (fhir-util/type-url context "Patient"))))
 
-
 (deftest instance-url-test
   (is (= "http://localhost:8080/fhir/Patient/0"
          (fhir-util/instance-url context "Patient" "0"))))
-
 
 (deftest versioned-instance-url-test
   (is (= "http://localhost:8080/fhir/Patient/0/_history/1"

@@ -1,17 +1,16 @@
 (ns blaze.db.impl.search-param.composite.token-token
   (:require
-    [blaze.anomaly :refer [when-ok]]
-    [blaze.byte-string :as bs]
-    [blaze.coll.core :as coll]
-    [blaze.db.impl.protocols :as p]
-    [blaze.db.impl.search-param.composite.common :as cc]
-    [blaze.db.impl.search-param.token :as spt]
-    [blaze.db.impl.search-param.util :as u]
-    [blaze.fhir-path :as fhir-path]))
-
+   [blaze.anomaly :refer [when-ok]]
+   [blaze.byte-string :as bs]
+   [blaze.coll.core :as coll]
+   [blaze.db.impl.protocols :as p]
+   [blaze.db.impl.search-param.composite.common :as cc]
+   [blaze.db.impl.search-param.token :as spt]
+   [blaze.db.impl.search-param.util :as u]
+   [blaze.fhir-path :as fhir-path]))
 
 (defrecord SearchParamCompositeTokenToken
-  [name url type base code c-hash main-expression c1 c2]
+           [name url type base code c-hash main-expression c1 c2]
   p/SearchParam
   (-compile-value [_ _ value]
     (when-ok [[v1 v2] (cc/split-value value)]
@@ -21,18 +20,18 @@
 
   (-resource-handles [_ context tid _ value]
     (coll/eduction
-      (u/resource-handle-mapper context tid)
-      (spt/resource-keys context c-hash tid value)))
+     (u/resource-handle-mapper context tid)
+     (spt/resource-keys context c-hash tid value)))
 
   (-resource-handles [_ context tid _ value start-id]
     (coll/eduction
-      (u/resource-handle-mapper context tid)
-      (spt/resource-keys context c-hash tid value start-id)))
+     (u/resource-handle-mapper context tid)
+     (spt/resource-keys context c-hash tid value start-id)))
 
   (-count-resource-handles [_ context tid _ value]
     (u/count-resource-handles
-      context tid
-      (spt/resource-keys context c-hash tid value)))
+     context tid
+     (spt/resource-keys context c-hash tid value)))
 
   (-matches? [_ context resource-handle _ values]
     (some? (some (partial spt/matches? (:next-value context) c-hash resource-handle) values)))

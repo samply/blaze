@@ -1,14 +1,12 @@
 (ns blaze.cassandra.session
   (:require
-    [blaze.cassandra.config :as config])
+   [blaze.cassandra.config :as config])
   (:import
-    [com.datastax.oss.driver.api.core CqlSession  ]
-    [com.datastax.oss.driver.api.core.config DriverConfigLoader]
-    [com.datastax.oss.driver.api.core.session SessionBuilder]))
-
+   [com.datastax.oss.driver.api.core CqlSession]
+   [com.datastax.oss.driver.api.core.config DriverConfigLoader]
+   [com.datastax.oss.driver.api.core.session SessionBuilder]))
 
 (set! *warn-on-reflection* true)
-
 
 (defn session-builder
   {:arglists '([config])}
@@ -22,7 +20,6 @@
       (.withAuthCredentials username password)
       (.withLocalDatacenter "datacenter1")
       (.withKeyspace ^String key-space)))
-
 
 (defn build-session [session-builder]
   (.build ^SessionBuilder session-builder))

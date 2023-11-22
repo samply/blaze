@@ -2,47 +2,43 @@
   "https://cql.hl7.org/2019May/tests.html"
   (:refer-clojure :exclude [compile eval])
   (:require
-    [blaze.anomaly :refer [if-ok]]
-    [blaze.cql-translator :refer [translate]]
-    [blaze.cql-translator-spec]
-    [blaze.elm.compiler :refer [compile]]
-    [blaze.elm.expression :as expr]
-    [blaze.elm.expression-spec]
-    [blaze.elm.normalizer :as normalizer]
-    [blaze.elm.protocols :as p]
-    [clojure.data.xml :as xml]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.string :as str]
-    [clojure.test :as test :refer [deftest is testing]])
+   [blaze.anomaly :refer [if-ok]]
+   [blaze.cql-translator :refer [translate]]
+   [blaze.cql-translator-spec]
+   [blaze.elm.compiler :refer [compile]]
+   [blaze.elm.expression :as expr]
+   [blaze.elm.expression-spec]
+   [blaze.elm.normalizer :as normalizer]
+   [blaze.elm.protocols :as p]
+   [clojure.data.xml :as xml]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
+   [clojure.test :as test :refer [deftest is testing]])
   (:import
-    [java.time OffsetDateTime]))
-
+   [java.time OffsetDateTime]))
 
 (st/instrument)
-
 
 (defn- fixture [f]
   (st/instrument)
   (st/instrument
-    `compile
-    {:spec
-     {`compile
-      (s/fspec
-        :args (s/cat :context any? :expression :elm/expression))}})
+   `compile
+   {:spec
+    {`compile
+     (s/fspec
+      :args (s/cat :context any? :expression :elm/expression))}})
   (st/instrument
-    `expr/eval
-    {:spec
-     {`expr/eval
-      (s/fspec
-        :args (s/cat :context map? :expression :blaze.elm.compiler/expression
-                     :resource nil?))}})
+   `expr/eval
+   {:spec
+    {`expr/eval
+     (s/fspec
+      :args (s/cat :context map? :expression :blaze.elm.compiler/expression
+                   :resource nil?))}})
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 (defn tests [xml exclusions]
   (for [group (filter map? (:content xml))]
@@ -61,11 +57,9 @@
         :invalid? invalid?
         :output output})}))
 
-
 (defn to-source-elm [cql]
   (assert (not (str/blank? cql)))
   (translate (str "define x: " cql)))
-
 
 (defn to-elm [cql]
   (if-ok [elm (to-source-elm cql)]
@@ -74,22 +68,17 @@
         :statements :def first :expression)
     #(throw (ex-info "CQL-to-ELM translation error" %))))
 
-
 (defn eval-elm [now elm]
   (expr/eval {:now now} (compile {} elm) nil))
-
 
 (defn eval [now cql]
   (eval-elm now (to-elm cql)))
 
-
 (defn parse [s]
   (xml/parse-str s :namespace-aware false :coalescing true))
 
-
 (defn- equal "Special equality handling for Quantities" [a b]
   (or (= a b) (p/equal a b)))
-
 
 (defn gen-tests [name file exclusions]
   `(deftest ~(symbol name)
@@ -101,15 +90,13 @@
                      ~(if invalid?
                         `(is (~'thrown? Exception (eval ~'now ~expression)))
                         `(is
-                           (try
-                             (equal (eval ~'now ~output) (eval ~'now ~expression))
-                             (catch Throwable e#
-                               (throw (ex-info (ex-message e#) (merge (ex-data e#) {:name ~name}))))))))))))))
-
+                          (try
+                            (equal (eval ~'now ~output) (eval ~'now ~expression))
+                            (catch Throwable e#
+                              (throw (ex-info (ex-message e#) (merge (ex-data e#) {:name ~name}))))))))))))))
 
 (defmacro deftests [name file exclusions]
   (gen-tests name file exclusions))
-
 
 ;; 1. Types
 (deftests "types" "cql-test/CqlTypesTest.xml"
@@ -117,8 +104,6 @@
             "QuantityTest2"                                 ; unit `eskimo kisses` unknown
             "DateTimeUncertain"                             ; TODO: implement
             })
-
-
 ;; 2. Logical Operators
 (deftests "logical-operators" "cql-test/CqlLogicalOperatorsTest.xml"
           #{"TrueImpliesTrue"                               ; TODO: CQL-To-ELM error
@@ -131,8 +116,6 @@
             "NullImpliesFalse"                              ; TODO: CQL-To-ELM error
             "NullImpliesNull"                               ; TODO: CQL-To-ELM error
             })
-
-
 ;; 3. Type Operators
 (deftests "type-operators" "cql-test/CqlTypeOperatorsTest.xml"
           #{"IntegerToString"                               ; TODO: implement
@@ -157,11 +140,8 @@
             "StringToDateTimeMalformed"                     ; should return null
             "ToDateTimeMalformed"                           ; should return null
             })
-
-
 ;; 4. Nullological Operators
 (deftests "nullological-operators" "cql-test/CqlNullologicalOperatorsTest.xml" #{})
-
 
 ;; 5. Comparison Operators
 (deftests "comparison-operators" "cql-test/CqlComparisonOperatorsTest.xml"
@@ -169,8 +149,6 @@
             "EquivNullNull"                                 ; TODO: CQL-To-ELM error
             "SimpleEqNullNull"                              ; TODO: CQL-To-ELM error
             })
-
-
 ;; 6. Arithmetic Operators
 (deftests "arithmetic-operators" "cql-test/CqlArithmeticFunctionsTest.xml"
           #{"DecimalMinValue"                               ; decimal value has 28 integral digits instead of 20
@@ -204,16 +182,12 @@
             "SuccessorOverflowDt"                           ; is nil
             "SuccessorOverflowT"                            ; is nil
             })
-
-
 ;; 7. String Operators
 (deftests "string-operators" "cql-test/CqlStringOperatorsTest.xml"
           #{"CombineEmptyList"                              ; If either argument is null, or the source list is empty, the result is null.
             "QuantityToString"                              ; the spec says 125 'cm'
             "DateTimeToString3"                             ; TODO: should contain a timezone offset
             })
-
-
 ;; 8. Date and Time Operators
 (deftests "date-time-operators" "cql-test/CqlDateTimeOperatorsTest.xml"
           #{"DateTimeComponentFromTimezone"                 ; was renamed to TimezoneOffsetFrom
@@ -261,8 +235,6 @@
             "TimeDurationBetweenHourDiffPrecision"          ; new in v1.4.6
             "DateTimeSubtractInvalidYears"                  ; is nil
             })
-
-
 ;; 9. Interval Operators
 (deftests "interval-operators" "cql-test/CqlIntervalOperatorsTest.xml"
           #{"TestAfterNull"                                 ; TODO: CQL-To-ELM error
@@ -297,8 +269,6 @@
             "ExpandInterval"                                ; TODO: implement
             "ExpandIntervalPer2"                            ; TODO: implement
             })
-
-
 ;; 10. List Operators
 (deftests "list-operators" "cql-test/CqlListOperatorsTest.xml"
           #{"quantityList"                                  ; no unit `lbs`
@@ -345,14 +315,10 @@
 
             "ExistsListNull"                                ; the list contains one null element
             })
-
-
 ;; 11. Aggregate Functions
 (deftests "aggregate-functions" "cql-test/CqlAggregateFunctionsTest.xml" #{})
 
-
 (deftests "conditional-operators" "cql-test/CqlConditionalOperatorsTest.xml" #{})
-
 
 (deftests "value-literals-and-selectors" "cql-test/ValueLiteralsAndSelectors.xml"
           #{"IntegerNeg2Pow31IntegerMinValue"               ; CQL-To-ELM negates the pos integer which is over Integer/MAX_Value than

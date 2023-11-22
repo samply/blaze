@@ -1,11 +1,9 @@
 (ns blaze.luid.impl
   (:import
-    [com.google.common.io BaseEncoding]))
-
+   [com.google.common.io BaseEncoding]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
-
 
 (defn luid [^long timestamp ^long entropy]
   (let [high (BigInteger/valueOf (bit-and timestamp 0xFFFFFFFFFFF))

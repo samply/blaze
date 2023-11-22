@@ -1,29 +1,26 @@
 (ns blaze.fhir-client.impl
   (:refer-clojure :exclude [update])
   (:require
-    [blaze.anomaly :as ba :refer [when-ok]]
-    [blaze.async.comp :as ac]
-    [blaze.async.flow :as flow]
-    [blaze.byte-buffer :as bb]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.spec.type :as type]
-    [clojure.java.io :as io]
-    [cognitect.anomalies :as anom]
-    [hato.client :as hc]
-    [hato.middleware :as hm]
-    [taoensso.timbre :as log])
+   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.async.comp :as ac]
+   [blaze.async.flow :as flow]
+   [blaze.byte-buffer :as bb]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type :as type]
+   [clojure.java.io :as io]
+   [cognitect.anomalies :as anom]
+   [hato.client :as hc]
+   [hato.middleware :as hm]
+   [taoensso.timbre :as log])
   (:import
-    [java.nio.channels SeekableByteChannel]
-    [java.nio.file Path Files StandardOpenOption]
-    [java.util.concurrent Flow$Subscriber Flow$Subscription]))
-
+   [java.nio.channels SeekableByteChannel]
+   [java.nio.file Path Files StandardOpenOption]
+   [java.util.concurrent Flow$Subscriber Flow$Subscription]))
 
 (set! *warn-on-reflection* true)
 
-
 (defn- json? [content-type]
   (some-> content-type name #{"fhir+json" "json"}))
-
 
 (defn- category [status]
   (cond
@@ -36,11 +33,9 @@
     (= 504 status) ::anom/busy
     :else ::anom/fault))
 
-
 (defn- anomaly* [response]
   {::anom/category (category (:status response))
    ::anom/message (format "Unexpected response status %d." (:status response))})
-
 
 (defn- anomaly [e]
   (let [data (ex-data e)]
@@ -50,22 +45,19 @@
         (identical? :fhir/OperationOutcome (-> data :body fhir-spec/fhir-type))
         (assoc :fhir/issues (-> data :body :issue))))))
 
-
 (defn- handle-error [e]
   (ba/throw-when (anomaly e)))
-
 
 (defmethod hm/coerce-response-body :fhir
   [_ {:keys [body content-type] :as resp}]
   (let [charset (or (-> resp :content-type-params :charset) "UTF-8")]
     (if (json? content-type)
       (ba/throw-when
-        (with-open [r (io/reader body :encoding charset)]
-          (when-ok [x (fhir-spec/parse-json r)
-                    resource (fhir-spec/conform-json x)]
-            (assoc resp :body resource))))
+       (with-open [r (io/reader body :encoding charset)]
+         (when-ok [x (fhir-spec/parse-json r)
+                   resource (fhir-spec/conform-json x)]
+           (assoc resp :body resource))))
       resp)))
-
 
 (def ^:private cache-control
   "Especially important to HAPI
@@ -73,106 +65,94 @@
   See: https://hapifhir.io/hapi-fhir/docs/server_jpa/configuration.html#search-result-caching"
   {"cache-control" "no-cache"})
 
-
 (defn fetch
   "Returns a CompletableFuture that completes with the resource at `uri` in case
   of success or completes exceptionally with an anomaly in case of an error."
   [uri opts]
   (log/trace "Fetch" uri)
   (hc/get
-    uri
-    (merge
-      {:accept :fhir+json
-       :headers cache-control
-       :as :fhir
-       :async? true}
-      opts)
-    :body
-    handle-error))
-
+   uri
+   (merge
+    {:accept :fhir+json
+     :headers cache-control
+     :as :fhir
+     :async? true}
+    opts)
+   :body
+   handle-error))
 
 (defn- etag [resource]
   (when-let [version-id (-> resource :meta :versionId)]
     (str "W/\"" version-id "\"")))
 
-
 (defn- generate-body [resource]
   (fhir-spec/unform-json resource))
-
 
 (defn- if-match [etag]
   {"if-match" etag})
 
-
 (defn update [uri resource opts]
   (log/trace "Update" uri)
   (hc/put
-    uri
-    (merge
-      {:accept :fhir+json
-       :content-type :fhir+json
-       :headers (some-> (etag resource) if-match)
-       :body (generate-body resource)
-       :as :fhir
-       :async? true}
-      opts)
-    :body
-    handle-error))
-
+   uri
+   (merge
+    {:accept :fhir+json
+     :content-type :fhir+json
+     :headers (some-> (etag resource) if-match)
+     :body (generate-body resource)
+     :as :fhir
+     :async? true}
+    opts)
+   :body
+   handle-error))
 
 (defn transact [uri bundle opts]
   (log/trace "Transact")
   (hc/post
-    uri
-    (merge
-      {:accept :fhir+json
-       :content-type :fhir+json
-       :body (generate-body bundle)
-       :as :fhir
-       :async? true}
-      opts)
-    :body
-    handle-error))
-
+   uri
+   (merge
+    {:accept :fhir+json
+     :content-type :fhir+json
+     :body (generate-body bundle)
+     :as :fhir
+     :async? true}
+    opts)
+   :body
+   handle-error))
 
 (defn- next-url [page]
   (type/value (:url (first (filter (comp #{"next"} :relation) (:link page))))))
 
-
 (deftype PagingSubscription
-  [^Flow$Subscriber subscriber volatile-uri opts]
+         [^Flow$Subscriber subscriber volatile-uri opts]
   Flow$Subscription
   (request [_ _]
     (when-let [uri @volatile-uri]
       (-> (fetch uri opts)
           (ac/when-complete
-            (fn [page e]
-              (if e
-                (.onError subscriber e)
-                (if-let [next (next-url page)]
-                  (do (log/trace "next uri" next)
-                      (vreset! volatile-uri next)
-                      (.onNext subscriber page))
-                  (do (vreset! volatile-uri nil)
-                      (.onNext subscriber page)
-                      (.onComplete subscriber)))))))))
+           (fn [page e]
+             (if e
+               (.onError subscriber e)
+               (if-let [next (next-url page)]
+                 (do (log/trace "next uri" next)
+                     (vreset! volatile-uri next)
+                     (.onNext subscriber page))
+                 (do (vreset! volatile-uri nil)
+                     (.onNext subscriber page)
+                     (.onComplete subscriber)))))))))
   (cancel [_]))
-
 
 (defn paging-subscription [subscriber uri opts]
   (->PagingSubscription subscriber (volatile! uri) opts))
 
-
 (defn- byte-channel ^SeekableByteChannel [file & open-options]
   (Files/newByteChannel file (into-array open-options)))
-
 
 (defn- new-file-byte-channel ^SeekableByteChannel [file]
   (byte-channel file StandardOpenOption/CREATE_NEW StandardOpenOption/WRITE))
 
-
 (deftype Spitter
-  [dir filename-fn filenames future ^:volatile-mutable subscription]
+         [dir filename-fn filenames future ^:volatile-mutable subscription]
   Flow$Subscriber
   (onSubscribe [_ s]
     (set! subscription s)
@@ -189,10 +169,8 @@
   (onComplete [_]
     (ac/complete! future @filenames)))
 
-
 (defn- type-id-filename-fn [{:fhir/keys [type] :keys [id]}]
   (str (name type) "-" id ".json"))
-
 
 (defn spitter
   ([dir future]

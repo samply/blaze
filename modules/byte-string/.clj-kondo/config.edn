@@ -1,17 +1,6 @@
-{:linters
- {:unsorted-required-namespaces
-  {:level :error}
+{:config-paths
+ ["../../../.clj-kondo/root"]
 
-  :single-key-in
-  {:level :warning}
-
-  :keyword-binding
-  {:level :error}
-
-  :reduce-without-init
-  {:level :warning}
-
-  :warn-on-reflection
-  {:level :warning :warn-only-on-interop true}}
-
- :skip-comments true}
+ :linters
+ {:unsorted-imports
+  {:level :off}}}

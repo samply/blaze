@@ -1,30 +1,27 @@
 (ns blaze.operation.patient.everything-test
   (:require
-    [blaze.async.comp :as ac]
-    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.handler.util :as handler-util]
-    [blaze.middleware.fhir.db :as db]
-    [blaze.operation.patient.everything]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [integrant.core :as ig]
-    [java-time.api :as time]
-    [juxt.iota :refer [given]]
-    [reitit.core :as reitit]
-    [taoensso.timbre :as log])
+   [blaze.async.comp :as ac]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.handler.util :as handler-util]
+   [blaze.middleware.fhir.db :as db]
+   [blaze.operation.patient.everything]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [integrant.core :as ig]
+   [java-time.api :as time]
+   [juxt.iota :refer [given]]
+   [reitit.core :as reitit]
+   [taoensso.timbre :as log])
   (:import
-    [java.time Instant]))
-
+   [java.time Instant]))
 
 (st/instrument)
 (log/set-level! :info)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest init-test
   (testing "nil config"
@@ -48,40 +45,34 @@
       [:explain ::s/problems 1 :pred] := `time/clock?
       [:explain ::s/problems 1 :val] := ::invalid)))
 
-
 (def base-url "base-url-113047")
 (def context-path "/context-path-173858")
 
-
 (def router
   (reitit/router
-    (mapv (fn [type] [(str "/" type) {:name (keyword type "type")}])
-          ["Patient" "Condition" "Observation" "Specimen"])
-    {:syntax :bracket
-     :path context-path}))
-
+   (mapv (fn [type] [(str "/" type) {:name (keyword type "type")}])
+         ["Patient" "Condition" "Observation" "Specimen" "MedicationAdministration"])
+   {:syntax :bracket
+    :path context-path}))
 
 (def config
   (assoc api-stub/mem-node-config
-    :blaze.operation.patient/everything
-    {:clock (ig/ref :blaze.test/fixed-clock)
-     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-    :blaze.test/fixed-rng-fn {}))
-
+         :blaze.operation.patient/everything
+         {:clock (ig/ref :blaze.test/fixed-clock)
+          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+         :blaze.test/fixed-rng-fn {}))
 
 (defn wrap-defaults [handler]
   (fn [request]
     (handler
-      (assoc request
-        :blaze/base-url base-url
-        ::reitit/router router))))
-
+     (assoc request
+            :blaze/base-url base-url
+            ::reitit/router router))))
 
 (defn wrap-error [handler]
   (fn [request]
     (-> (handler request)
         (ac/exceptionally handler-util/error-response))))
-
 
 (defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
@@ -92,7 +83,6 @@
                                   wrap-error)
              ~(or node-binding '_) node#]
          ~@body))))
-
 
 (deftest handler-test
   (testing "Patient not found"
@@ -348,14 +338,54 @@
           (is (= (str base-url context-path "/Specimen/0")
                  (:fullUrl forth-entry)))))))
 
+  (testing "Patient with MedicationAdministration because it is reachable twice
+            via the search param `patient` and `subject`.
+
+            This test should assure that MedicationAdministration resources are
+            returned only once."
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/MedicationAdministration :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+      (let [{:keys [status]
+             {[first-entry second-entry] :entry
+              :as body} :body}
+            @(handler {:path-params {:id "0"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle id is an LUID"
+          (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+        (testing "the bundle type is searchset"
+          (is (= #fhir/code"searchset" (:type body))))
+
+        (testing "the total count is 2"
+          (is (= #fhir/unsignedInt 2 (:total body))))
+
+        (testing "the bundle contains four entries"
+          (is (= 2 (count (:entry body)))))
+
+        (testing "the first entry has the right fullUrl"
+          (is (= (str base-url context-path "/Patient/0")
+                 (:fullUrl first-entry))))
+
+        (testing "the second entry has the right fullUrl"
+          (is (= (str base-url context-path "/MedicationAdministration/0")
+                 (:fullUrl second-entry)))))))
+
   (testing "to many resources"
     (with-handler [handler]
       [(into
-         [[:put {:fhir/type :fhir/Patient :id "0"}]]
-         (map (fn [i]
-                [:put {:fhir/type :fhir/Observation :id (str i)
-                       :subject #fhir/Reference{:reference "Patient/0"}}]))
-         (range 10000))]
+        [[:put {:fhir/type :fhir/Patient :id "0"}]]
+        (map (fn [i]
+               [:put {:fhir/type :fhir/Observation :id (str i)
+                      :subject #fhir/Reference{:reference "Patient/0"}}]))
+        (range 10000))]
 
       (let [{:keys [status body]}
             @(handler {:path-params {:id "0"}})]

@@ -1,27 +1,23 @@
 (ns blaze.db.impl.index.t-by-instant-test
   (:require
-    [blaze.db.impl.index.t-by-instant :as t-by-instant]
-    [blaze.db.kv :as kv]
-    [blaze.db.kv.mem]
-    [blaze.db.kv.mem-spec]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]])
+   [blaze.db.impl.index.t-by-instant :as t-by-instant]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv.mem]
+   [blaze.db.kv.mem-spec]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]])
   (:import
-    [java.time Instant]))
-
+   [java.time Instant]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def config
   {::kv/mem {:column-families {:t-by-instant-index {:reverse-comparator? true}}}})
-
 
 (deftest t-by-instant-test
   (testing "finds t directly at instant"

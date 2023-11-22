@@ -1,36 +1,31 @@
 (ns blaze.fhir.operation.graphql.middleware.query
   (:require
-    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.async.comp :as ac]
-    [clojure.string :as str]
-    [cognitect.anomalies :as anom]
-    [jsonista.core :as j]
-    [ring.util.request :as request]))
-
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.async.comp :as ac]
+   [clojure.string :as str]
+   [cognitect.anomalies :as anom]
+   [jsonista.core :as j]
+   [ring.util.request :as request]))
 
 (defn- query-request-graphql [{:keys [body] :as request}]
   (if body
     (assoc request :body {:query (slurp body)})
     (ba/incorrect "Missing HTTP body.")))
 
-
 (def ^:private object-mapper
   (j/object-mapper
-    {:decode-key-fn true}))
-
+   {:decode-key-fn true}))
 
 (defn- parse-json [body]
   (ba/try-all ::anom/incorrect (j/read-value body object-mapper)))
-
 
 (defn- conform-json [json]
   (if (map? json)
     (select-keys json [:query])
     (ba/incorrect
-      "Expect a JSON object."
-      :fhir/issue "structure"
-      :fhir/operation-outcome "MSG_JSON_OBJECT")))
-
+     "Expect a JSON object."
+     :fhir/issue "structure"
+     :fhir/operation-outcome "MSG_JSON_OBJECT")))
 
 (defn- query-request-json [{:keys [body] :as request}]
   (if body
@@ -39,11 +34,9 @@
       (assoc request :body query))
     (ba/incorrect "Missing HTTP body.")))
 
-
 (defn- unsupported-media-type-msg [media-type]
   (format "Unsupported media type `%s` expect one of `application/graphql` or `application/json`."
           media-type))
-
 
 (defn- query-request [request]
   (if-let [content-type (request/content-type request)]
@@ -58,7 +51,6 @@
       (ba/incorrect (unsupported-media-type-msg content-type)
                     :http/status 415))
     (ba/incorrect "Content-Type header expected, but is missing.")))
-
 
 (defn wrap-query
   "Middleware to slurp a GraphQL query from the body according the content-type

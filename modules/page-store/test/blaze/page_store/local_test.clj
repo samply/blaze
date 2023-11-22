@@ -1,41 +1,36 @@
 (ns blaze.page-store.local-test
   (:require
-    [blaze.anomaly-spec]
-    [blaze.fhir.test-util :refer [given-failed-future]]
-    [blaze.metrics.core :as metrics]
-    [blaze.metrics.spec]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.page-store :as page-store]
-    [blaze.page-store-spec]
-    [blaze.page-store.local]
-    [blaze.page-store.spec :refer [page-store?]]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.string :as str]
-    [clojure.test :as test :refer [deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [integrant.core :as ig]
-    [java-time.api :as time]
-    [juxt.iota :refer [given]]
-    [taoensso.timbre :as log]))
-
+   [blaze.anomaly-spec]
+   [blaze.fhir.test-util :refer [given-failed-future]]
+   [blaze.metrics.core :as metrics]
+   [blaze.metrics.spec]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.page-store :as page-store]
+   [blaze.page-store-spec]
+   [blaze.page-store.local]
+   [blaze.page-store.spec :refer [page-store?]]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
+   [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
+   [java-time.api :as time]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log]))
 
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (def config
   {:blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
    :blaze.test/fixed-rng {}
    :blaze.page-store.local/collector {:page-store (ig/ref :blaze.page-store/local)}})
 
-
 (def token (str (str/join (repeat 31 "A")) "B"))
-
 
 (deftest init-test
   (testing "nil config"
@@ -78,7 +73,6 @@
     (with-system [{store :blaze.page-store/local} config]
       (is (s/valid? :blaze/page-store store)))))
 
-
 (deftest get-test
   (with-system [{store :blaze.page-store/local} config]
     @(page-store/put! store [["active" "true"]])
@@ -91,7 +85,6 @@
         ::anom/category := ::anom/not-found
         ::anom/message := (format "Clauses of token `%s` not found." (str/join (repeat 32 "B")))))))
 
-
 (deftest put-test
   (with-system [{store :blaze.page-store/local} config]
     (testing "shall not be called with an empty list of clauses"
@@ -101,7 +94,6 @@
 
     (testing "returns a token"
       (is (= token @(page-store/put! store [["active" "true"]]))))))
-
 
 (deftest collector-init-test
   (testing "nil config"
@@ -126,7 +118,6 @@
   (testing "is a collector"
     (with-system [{collector :blaze.page-store.local/collector} config]
       (is (s/valid? :blaze.metrics/collector collector)))))
-
 
 (deftest collector-test
   (with-system [{collector :blaze.page-store.local/collector} config]

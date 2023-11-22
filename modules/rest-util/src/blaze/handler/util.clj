@@ -1,19 +1,18 @@
 (ns blaze.handler.util
   "HTTP/REST Handler Utils"
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.async.comp :as ac]
-    [blaze.fhir.spec.type :as type]
-    [blaze.http.util :as hu]
-    [clojure.string :as str]
-    [cognitect.anomalies :as anom]
-    [io.aviso.exception :as aviso]
-    [reitit.ring]
-    [ring.util.response :as ring]
-    [taoensso.timbre :as log])
+   [blaze.anomaly :as ba]
+   [blaze.async.comp :as ac]
+   [blaze.fhir.spec.type :as type]
+   [blaze.http.util :as hu]
+   [clojure.string :as str]
+   [cognitect.anomalies :as anom]
+   [io.aviso.exception :as aviso]
+   [reitit.ring]
+   [ring.util.response :as ring]
+   [taoensso.timbre :as log])
   (:import
-    [java.util.concurrent CompletionException]))
-
+   [java.util.concurrent CompletionException]))
 
 (defn preference
   "Returns the value of the preference with `name` as keyword from `headers` or
@@ -21,7 +20,6 @@
   [headers name]
   (->> (hu/parse-header-value (get headers "prefer"))
        (some #(when (= name (:name %)) (keyword (str "blaze.preference." name) (:value %))))))
-
 
 (defn- issue-code [category]
   (case category
@@ -32,13 +30,12 @@
     ::anom/conflict #fhir/code"conflict"
     #fhir/code"exception"))
 
-
 (defn- operation-outcome-issues [issues category]
   (mapv (fn [{:fhir.issues/keys [severity code diagnostics expression]}]
           (cond->
-            {:fhir/type :fhir.OperationOutcome/issue
-             :severity #fhir/code"error"
-             :code (or (some-> code type/code) (issue-code category))}
+           {:fhir/type :fhir.OperationOutcome/issue
+            :severity #fhir/code"error"
+            :code (or (some-> code type/code) (issue-code category))}
             severity
             (assoc :severity (type/code severity))
             diagnostics
@@ -50,22 +47,21 @@
             (assoc :expression [expression])))
         issues))
 
-
 (defn- operation-outcome-issue
   [{:fhir/keys [issue operation-outcome]
     :fhir.issue/keys [expression]
     :blaze/keys [stacktrace]
     ::anom/keys [category message]}]
   (cond->
-    {:fhir/type :fhir.OperationOutcome/issue
-     :severity #fhir/code"error"
-     :code (or (some-> issue type/code) (issue-code category))}
+   {:fhir/type :fhir.OperationOutcome/issue
+    :severity #fhir/code"error"
+    :code (or (some-> issue type/code) (issue-code category))}
     operation-outcome
     (assoc
-      :details
-      {:coding
-       [{:system #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
-         :code (type/code operation-outcome)}]})
+     :details
+     {:coding
+      [{:system #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome"
+        :code (type/code operation-outcome)}]})
     message
     (assoc :diagnostics message)
     stacktrace
@@ -75,7 +71,6 @@
     (and (not (coll? expression))
          (some? expression))
     (assoc :expression [expression])))
-
 
 (defn operation-outcome
   "Creates an FHIR OperationOutcome from an anomaly."
@@ -88,7 +83,6 @@
     {:fhir/type :fhir/OperationOutcome
      :issue [(operation-outcome-issue anomaly)]}))
 
-
 (defn- category->status [category]
   (case category
     ::anom/incorrect 400
@@ -99,7 +93,6 @@
     ::anom/busy 503
     500))
 
-
 (defn- format-exception
   "Formats `e` without any ANSI formatting.
 
@@ -108,10 +101,8 @@
   (binding [aviso/*fonts* nil]
     (aviso/format-exception e)))
 
-
 (defn- headers [response {:http/keys [headers]}]
   (reduce #(apply ring/header %1 %2) response headers))
-
 
 (defn- error-response* [{::anom/keys [category] :as error} f]
   (cond
@@ -130,21 +121,20 @@
     (instance? Throwable error)
     (if (ba/anomaly? (ex-data error))
       (error-response*
-        (merge
-          {::anom/message (ex-message error)}
-          (ex-data error))
-        f)
+       (merge
+        {::anom/message (ex-message error)}
+        (ex-data error))
+       f)
       (do
         (log/error error)
         (error-response*
-          (ba/fault
-            (ex-message error)
-            :blaze/stacktrace (format-exception error))
-          f)))
+         (ba/fault
+          (ex-message error)
+          :blaze/stacktrace (format-exception error))
+         f)))
 
     :else
     (error-response* {::anom/category ::anom/fault} f)))
-
 
 (defn error-response
   "Converts `error` into a OperationOutcome response.
@@ -161,12 +151,11 @@
   * :fhir.issue/expression - will go into `OperationOutcome.issue.expression`"
   [error]
   (error-response*
-    error
-    (fn [{::anom/keys [category] :http/keys [status] :as error}]
-      (-> (ring/response (operation-outcome error))
-          (headers error)
-          (ring/status (or status (category->status category)))))))
-
+   error
+   (fn [{::anom/keys [category] :http/keys [status] :as error}]
+     (-> (ring/response (operation-outcome error))
+         (headers error)
+         (ring/status (or status (category->status category)))))))
 
 (defn bundle-error-response
   "Returns an error response suitable for bundles.
@@ -174,63 +163,53 @@
   Accepts anomalies and exceptions."
   [error]
   (error-response*
-    error
-    (fn [{::anom/keys [category] :http/keys [status] :as error}]
-      {:fhir/type :fhir.Bundle.entry/response
-       :status (str (or status (category->status category)))
-       :outcome (operation-outcome error)})))
-
+   error
+   (fn [{::anom/keys [category] :http/keys [status] :as error}]
+     {:fhir/type :fhir.Bundle.entry/response
+      :status (str (or status (category->status category)))
+      :outcome (operation-outcome error)})))
 
 (def ^:private not-found-issue
   {:severity #fhir/code"error"
    :code #fhir/code"not-found"})
 
-
 (def ^:private not-found-outcome
   {:fhir/type :fhir/OperationOutcome
    :issue [not-found-issue]})
 
-
 (defn not-found-handler [_]
   (ring/not-found not-found-outcome))
-
 
 (defn- method-not-allowed-msg [{:keys [uri request-method]}]
   (format "Method %s not allowed on `%s` endpoint."
           (str/upper-case (name request-method)) uri))
-
 
 (defn- method-not-allowed-issue [request]
   {:severity #fhir/code"error"
    :code #fhir/code"processing"
    :diagnostics (method-not-allowed-msg request)})
 
-
 (defn- method-not-allowed-outcome [request]
   {:fhir/type :fhir/OperationOutcome
    :issue [(method-not-allowed-issue request)]})
-
 
 (defn method-not-allowed-handler [request]
   (-> (ring/response (method-not-allowed-outcome request))
       (ring/status 405)))
 
-
 (def default-handler
   (reitit.ring/create-default-handler
-    {:not-found not-found-handler
-     :method-not-allowed method-not-allowed-handler}))
-
+   {:not-found not-found-handler
+    :method-not-allowed method-not-allowed-handler}))
 
 (defn method-not-allowed-batch-handler [request]
   (ac/completed-future
-    (ba/forbidden
-      (method-not-allowed-msg request)
-      :http/status 405
-      :fhir/issue "processing")))
-
+   (ba/forbidden
+    (method-not-allowed-msg request)
+    :http/status 405
+    :fhir/issue "processing")))
 
 (def default-batch-handler
   "A handler returning failed futures."
   (reitit.ring/create-default-handler
-    {:method-not-allowed method-not-allowed-batch-handler}))
+   {:method-not-allowed method-not-allowed-batch-handler}))

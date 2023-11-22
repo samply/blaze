@@ -1,24 +1,21 @@
 (ns blaze.scheduler-test
   (:require
-    [blaze.executors :as ex]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.scheduler :as sched]
-    [blaze.scheduler-spec]
-    [blaze.test-util :as tu]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [integrant.core :as ig]
-    [java-time.api :as time]
-    [taoensso.timbre :as log]))
-
+   [blaze.executors :as ex]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.scheduler :as sched]
+   [blaze.scheduler-spec]
+   [blaze.test-util :as tu]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [integrant.core :as ig]
+   [java-time.api :as time]
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
-
 
 (deftest schedule-at-fixed-rate-test
   (with-system [{:blaze/keys [scheduler]} {:blaze/scheduler {}}]
@@ -39,7 +36,6 @@
       (testing "the function was called twice"
         (is (= 2 @state))))))
 
-
 (deftest cancel-test
   (with-system [{:blaze/keys [scheduler]} {:blaze/scheduler {}}]
     (let [future (sched/schedule-at-fixed-rate scheduler identity
@@ -47,7 +43,6 @@
                                                (time/millis 100))]
 
       (is (sched/cancel future false)))))
-
 
 (deftest shutdown-timeout-test
   (let [{:blaze/keys [scheduler] :as system} (ig/init {:blaze/scheduler {}})]

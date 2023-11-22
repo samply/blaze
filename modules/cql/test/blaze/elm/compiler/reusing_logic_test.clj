@@ -4,27 +4,25 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.anomaly :as ba]
-    [blaze.elm.code :as code]
-    [blaze.elm.compiler :as c]
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.core-spec]
-    [blaze.elm.compiler.function :as function]
-    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
-    [blaze.elm.interval :as interval]
-    [blaze.elm.literal :as elm]
-    [blaze.elm.literal-spec]
-    [blaze.elm.quantity :as quantity]
-    [blaze.fhir.spec.type.system :as system]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [are deftest is testing]]
-    [cognitect.anomalies :as anom]
-    [juxt.iota :refer [given]]))
-
+   [blaze.anomaly :as ba]
+   [blaze.elm.code :as code]
+   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.function :as function]
+   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.interval :as interval]
+   [blaze.elm.literal :as elm]
+   [blaze.elm.literal-spec]
+   [blaze.elm.quantity :as quantity]
+   [blaze.fhir.spec.type.system :as system]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [are deftest is testing]]
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 (ctu/instrument-compile)
-
 
 (defn- fixture [f]
   (st/instrument)
@@ -32,9 +30,7 @@
   (f)
   (st/unstrument))
 
-
 (test/use-fixtures :each fixture)
-
 
 ;; 9.2. ExpressionRef
 ;;
@@ -69,7 +65,6 @@
       (has-form expr '(expr-ref "name-170312"))
 
       (is (false? (core/-static expr))))))
-
 
 ;; 9.4. FunctionRef
 ;;
@@ -159,8 +154,8 @@
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
           elm #elm/function-ref ["ToDate" #elm/parameter-ref "x"]
           expr (c/compile compile-ctx elm)
-          eval-ctx (fn [x] {:now ctu/now :parameters {"x" x}})
-          ]
+          eval-ctx (fn [x] {:now ctu/now :parameters {"x" x}})]
+
       (testing "eval"
         (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
           #fhir/date{:id "foo"} nil
@@ -246,30 +241,29 @@
       (testing "eval"
         (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
           #fhir/Period
-                  {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
-                   :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
+           {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+            :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
           (interval/interval
-            (system/date-time 2021 2 23 14 12 45)
-            (system/date-time 2021 2 23 15 0 0))
+           (system/date-time 2021 2 23 14 12 45)
+           (system/date-time 2021 2 23 15 0 0))
           #fhir/Period
-                  {:start nil
-                   :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
+           {:start nil
+            :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
           (interval/interval
-            nil
-            (system/date-time 2021 2 23 15 0 0))
+           nil
+           (system/date-time 2021 2 23 15 0 0))
           #fhir/Period
-                  {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
-                   :end nil}
+           {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+            :end nil}
           (interval/interval
-            (system/date-time 2021 2 23 14 12 45)
-            nil)))
+           (system/date-time 2021 2 23 14 12 45)
+           nil)))
 
       (testing "static"
         (is (false? (core/-static expr))))
 
       (testing "form"
         (has-form expr '(call "ToInterval" (param-ref "x")))))))
-
 
 ;; 9.5 OperandRef
 ;;

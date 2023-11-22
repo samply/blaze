@@ -8,9 +8,8 @@
   will return resources more than once if multiple updates with the same hash
   are index with different lastUpdate times."
   (:require
-    [blaze.db.impl.index.resource-as-of :as rao]
-    [blaze.db.impl.protocols :as p]))
-
+   [blaze.db.impl.index.resource-as-of :as rao]
+   [blaze.db.impl.protocols :as p]))
 
 (def search-param
   (reify p/SearchParam

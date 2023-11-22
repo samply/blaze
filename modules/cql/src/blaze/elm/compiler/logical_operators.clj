@@ -4,9 +4,8 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.macros :refer [defunop]]))
-
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.macros :refer [defunop]]))
 
 ;; 13.1. And
 (defn- nil-and-expr [x]
@@ -19,7 +18,6 @@
     (-form [_]
       (list 'and nil (core/-form x)))))
 
-
 (defn- nil-and
   "Creates an and-expression where one operand is known to be nil."
   [x]
@@ -28,7 +26,6 @@
     false false
     nil nil
     (nil-and-expr x)))
-
 
 (defn- dynamic-and
   "Creates an and-expression where `a` is known to be dynamic and `b` could be
@@ -52,7 +49,6 @@
       (-form [_]
         (list 'and (core/-form a) (core/-form b))))))
 
-
 (defmethod core/compile* :elm.compiler.type/and
   [context {[a b] :operand}]
   (let [a (core/compile* context a)]
@@ -62,18 +58,15 @@
       nil (nil-and (core/compile* context b))
       (dynamic-and a (core/compile* context b)))))
 
-
 ;; 13.2 Implies
 (defmethod core/compile* :elm.compiler.type/implies
   [_ _]
   (throw (Exception. "Unsupported Implies expression. Please normalize the ELM tree before compiling.")))
 
-
 ;; 13.3 Not
 (defunop not [operand]
   (when (some? operand)
     (not operand)))
-
 
 ;; 13.4. Or
 (defn- nil-or-expr [x]
@@ -86,7 +79,6 @@
     (-form [_]
       (list 'or nil (core/-form x)))))
 
-
 (defn- nil-or
   "Creates an or-expression where one operand is known to be nil."
   [x]
@@ -95,7 +87,6 @@
     false nil
     nil nil
     (nil-or-expr x)))
-
 
 (defn- dynamic-or
   "Creates an or-expression where `a` is known to be dynamic and `b` could be
@@ -119,7 +110,6 @@
       (-form [_]
         (list 'or (core/-form a) (core/-form b))))))
 
-
 (defmethod core/compile* :elm.compiler.type/or
   [context {[a b] :operand}]
   (let [a (core/compile* context a)]
@@ -128,7 +118,6 @@
       false (core/compile* context b)
       nil (nil-or (core/compile* context b))
       (dynamic-or a (core/compile* context b)))))
-
 
 ;; 13.5 Xor
 (defn- dynamic-xor
@@ -157,7 +146,6 @@
             (if a (not b) b))))
       (-form [_]
         (list 'xor (core/-form a) (core/-form b))))))
-
 
 (defmethod core/compile* :elm.compiler.type/xor
   [context {[a b] :operand}]

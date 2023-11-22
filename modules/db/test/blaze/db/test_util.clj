@@ -1,25 +1,23 @@
 (ns blaze.db.test-util
   (:require
-    [blaze.db.api :as d]
-    [blaze.db.kv :as kv]
-    [blaze.db.kv.mem]
-    [blaze.db.node]
-    [blaze.db.resource-store :as rs]
-    [blaze.db.resource-store.kv :as rs-kv]
-    [blaze.db.tx-cache]
-    [blaze.db.tx-log :as tx-log]
-    [blaze.db.tx-log.local]
-    [blaze.fhir.test-util :refer [structure-definition-repo]]
-    [blaze.module.test-util :refer [with-system]]
-    [integrant.core :as ig]
-    [java-time.api :as time]))
-
+   [blaze.db.api :as d]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv.mem]
+   [blaze.db.node]
+   [blaze.db.resource-store :as rs]
+   [blaze.db.resource-store.kv :as rs-kv]
+   [blaze.db.tx-cache]
+   [blaze.db.tx-log :as tx-log]
+   [blaze.db.tx-log.local]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.module.test-util :refer [with-system]]
+   [integrant.core :as ig]
+   [java-time.api :as time]))
 
 (defonce search-param-registry
-         (-> (ig/init {:blaze.db/search-param-registry
-                       {:structure-definition-repo structure-definition-repo}})
-             :blaze.db/search-param-registry))
-
+  (-> (ig/init {:blaze.db/search-param-registry
+                {:structure-definition-repo structure-definition-repo}})
+      :blaze.db/search-param-registry))
 
 (def config
   {:blaze.db/node
@@ -79,7 +77,6 @@
     :executor (ig/ref :blaze.db.node.resource-indexer/executor)}
 
    :blaze.db.node.resource-indexer/executor {}})
-
 
 (defmacro with-system-data
   "Runs `body` inside a system that is initialized from `config`, bound to

@@ -4,29 +4,26 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
-    [blaze.elm.compiler.core :as core]
-    [blaze.elm.compiler.macros :refer [defbinopp defunop defunopp]]
-    [blaze.elm.date-time :as date-time]
-    [blaze.elm.protocols :as p]
-    [blaze.fhir.spec.type.system :as system])
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.macros :refer [defbinopp defunop defunopp]]
+   [blaze.elm.date-time :as date-time]
+   [blaze.elm.protocols :as p]
+   [blaze.fhir.spec.type.system :as system])
   (:import
-    [blaze.fhir.spec.type.system DateDate]
-    [java.time OffsetDateTime ZoneOffset]))
-
+   [blaze.fhir.spec.type.system DateDate]
+   [java.time OffsetDateTime ZoneOffset]))
 
 (set! *warn-on-reflection* true)
-
 
 (defn- to-local-date-time-with-offset
   "Creates a DateTime with a local date time adjusted for the offset of the
   evaluation request."
   [now year month day hour minute second millis timezone-offset]
   (-> ^OffsetDateTime
-      (system/date-time year month day hour minute second millis
-                        (ZoneOffset/ofTotalSeconds (* timezone-offset 3600)))
+   (system/date-time year month day hour minute second millis
+                     (ZoneOffset/ofTotalSeconds (* timezone-offset 3600)))
       (.withOffsetSameInstant (.getOffset ^OffsetDateTime now))
       (.toLocalDateTime)))
-
 
 ;; 18.6. Date
 (defmethod core/compile* :elm.compiler.type/date
@@ -89,11 +86,9 @@
           (-form [_]
             (list 'date (core/-form year))))))))
 
-
 ;; 18.7. DateFrom
 (defunop date-from [x]
   (p/date-from x))
-
 
 ;; 18.8. DateTime
 (defmethod core/compile* :elm.compiler.type/date-time
@@ -118,7 +113,7 @@
             false)
           (-eval [_ {:keys [now]} _ _]
             (to-local-date-time-with-offset
-              now year month day hour minute second millisecond timezone-offset))
+             now year month day hour minute second millisecond timezone-offset))
           (-form [_]
             (list 'date-time (core/-form year) (core/-form month)
                   (core/-form day) (core/-form hour) (core/-form minute)
@@ -131,15 +126,15 @@
             false)
           (-eval [_ {:keys [now] :as context} resource scope]
             (to-local-date-time-with-offset
-              now
-              (core/-eval year context resource scope)
-              (core/-eval month context resource scope)
-              (core/-eval day context resource scope)
-              (core/-eval hour context resource scope)
-              (or (core/-eval minute context resource scope) 0)
-              (or (core/-eval second context resource scope) 0)
-              (or (core/-eval millisecond context resource scope) 0)
-              timezone-offset))
+             now
+             (core/-eval year context resource scope)
+             (core/-eval month context resource scope)
+             (core/-eval day context resource scope)
+             (core/-eval hour context resource scope)
+             (or (core/-eval minute context resource scope) 0)
+             (or (core/-eval second context resource scope) 0)
+             (or (core/-eval millisecond context resource scope) 0)
+             timezone-offset))
           (-form [_]
             (list 'date-time (core/-form year) (core/-form month)
                   (core/-form day) (core/-form hour) (core/-form minute)
@@ -157,15 +152,15 @@
             false)
           (-eval [_ {:keys [now] :as context} resource scope]
             (to-local-date-time-with-offset
-              now
-              (core/-eval year context resource scope)
-              (core/-eval month context resource scope)
-              (core/-eval day context resource scope)
-              (core/-eval hour context resource scope)
-              (or (core/-eval minute context resource scope) 0)
-              (or (core/-eval second context resource scope) 0)
-              (or (core/-eval millisecond context resource scope) 0)
-              (core/-eval timezone-offset context resource scope)))
+             now
+             (core/-eval year context resource scope)
+             (core/-eval month context resource scope)
+             (core/-eval day context resource scope)
+             (core/-eval hour context resource scope)
+             (or (core/-eval minute context resource scope) 0)
+             (or (core/-eval second context resource scope) 0)
+             (or (core/-eval millisecond context resource scope) 0)
+             (core/-eval timezone-offset context resource scope)))
           (-form [_]
             (list 'date-time (core/-form year) (core/-form month)
                   (core/-form day) (core/-form hour) (core/-form minute)
@@ -186,13 +181,13 @@
             false)
           (-eval [_ context resource scope]
             (system/date-time
-              (core/-eval year context resource scope)
-              (core/-eval month context resource scope)
-              (core/-eval day context resource scope)
-              (core/-eval hour context resource scope)
-              (or (core/-eval minute context resource scope) 0)
-              (or (core/-eval second context resource scope) 0)
-              (or (core/-eval millisecond context resource scope) 0)))
+             (core/-eval year context resource scope)
+             (core/-eval month context resource scope)
+             (core/-eval day context resource scope)
+             (core/-eval hour context resource scope)
+             (or (core/-eval minute context resource scope) 0)
+             (or (core/-eval second context resource scope) 0)
+             (or (core/-eval millisecond context resource scope) 0)))
           (-form [_]
             (list 'date-time (core/-form year) (core/-form month)
                   (core/-form day) (core/-form hour) (core/-form minute)
@@ -244,21 +239,17 @@
             (-form [_]
               (list 'date-time (core/-form year)))))))))
 
-
 ;; 18.9. DateTimeComponentFrom
 (defunopp date-time-component-from [x precision]
   (p/date-time-component-from x precision))
-
 
 ;; 18.10. DifferenceBetween
 (defbinopp difference-between [operand-1 operand-2 ^:required precision]
   (p/difference-between operand-1 operand-2 precision))
 
-
 ;; 18.11. DurationBetween
 (defbinopp duration-between [operand-1 operand-2 ^:required precision]
   (p/duration-between operand-1 operand-2 precision))
-
 
 ;; 18.13. Now
 (defrecord NowExpression []
@@ -268,28 +259,22 @@
   (-eval [_ {:keys [now]} _ _]
     now))
 
-
 (def now-expression (->NowExpression))
-
 
 (defmethod core/compile* :elm.compiler.type/now [_ _]
   now-expression)
-
 
 ;; 18.14. SameAs
 (defbinopp same-as [x y precision]
   (p/same-as x y precision))
 
-
 ;; 18.15. SameOrBefore
 (defbinopp same-or-before [x y precision]
   (p/same-or-before x y precision))
 
-
 ;; 18.16. SameOrAfter
 (defbinopp same-or-after [x y precision]
   (p/same-or-after x y precision))
-
 
 ;; 18.18. Time
 (defmethod core/compile* :elm.compiler.type/time
@@ -354,7 +339,6 @@
         (-form [_]
           (list 'time (core/-form hour)))))))
 
-
 (def ^:private time-of-day-expr
   (reify
     core/Expression
@@ -365,12 +349,10 @@
     (-form [_]
       'time-of-day)))
 
-
 ;; 18.21. TimeOfDay
 (defmethod core/compile* :elm.compiler.type/time-of-day
   [_ _]
   time-of-day-expr)
-
 
 (def ^:private today-expr
   (reify core/Expression
@@ -380,7 +362,6 @@
       (DateDate/fromLocalDate (.toLocalDate ^OffsetDateTime now)))
     (-form [_]
       'today)))
-
 
 ;; 18.22. Today
 (defmethod core/compile* :elm.compiler.type/today

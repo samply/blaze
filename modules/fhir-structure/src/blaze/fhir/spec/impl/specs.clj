@@ -2,19 +2,15 @@
   "Custom Specs for primitive and complex types."
   (:refer-clojure :exclude [meta])
   (:require
-    [blaze.fhir.spec.impl.util :as u]
-    [clojure.alpha.spec :as s]
-    [clojure.alpha.spec.protocols :as sp]))
-
+   [blaze.fhir.spec.impl.util :as u]
+   [clojure.alpha.spec :as s]
+   [clojure.alpha.spec.protocols :as sp]))
 
 (set! *warn-on-reflection* true)
-
-
 
 ;; ---- Regex Spec ------------------------------------------------------------
 
 (declare regex)
-
 
 (defn- regex-impl
   [pattern f-form]
@@ -33,34 +29,29 @@
       (with-gen* [_ _])
       (describe* [_] `(regex ~pattern ~f-form)))))
 
-
 (defmethod s/expand-spec `regex
   [[_ pattern f-form]]
   {:clojure.spec/op `regex
    :pattern pattern
    :f-form f-form})
 
-
 (defmethod s/create-spec `regex
   [{:keys [pattern f-form]}]
   (regex-impl pattern f-form))
 
-
-
 ;; ---- JSON Regex Primitive Spec ---------------------------------------------
 
 (declare json-regex-primitive)
-
 
 (defn- json-regex-primitive-impl
   [pattern f-form]
   (let [extended-spec
         (delay
           (s/resolve-spec
-            `(s/schema
-               {:id (s/nilable string?)
-                :extension (s/coll-of :fhir.json/Extension)
-                :value (s/nilable (regex ~pattern identity))})))
+           `(s/schema
+             {:id (s/nilable string?)
+              :extension (s/coll-of :fhir.json/Extension)
+              :value (s/nilable (regex ~pattern identity))})))
         f (s/resolve-fn f-form)]
     (reify
       sp/Spec
@@ -83,24 +74,19 @@
       (with-gen* [_ _])
       (describe* [_] `(json-regex-primitive ~pattern ~f-form)))))
 
-
 (defmethod s/expand-spec `json-regex-primitive
   [[_ pattern f-form]]
   {:clojure.spec/op `json-regex-primitive
    :pattern pattern
    :f-form f-form})
 
-
 (defmethod s/create-spec `json-regex-primitive
   [{:keys [pattern f-form]}]
   (json-regex-primitive-impl pattern f-form))
 
-
-
 ;; ---- JSON Pred Primitive Spec ----------------------------------------------
 
 (declare json-pred-primitive)
-
 
 (defn- json-pred-primitive-impl
   [pred-sym f-form]
@@ -108,10 +94,10 @@
         extended-spec
         (delay
           (s/resolve-spec
-            `(s/schema
-               {:id (s/nilable string?)
-                :extension (s/coll-of :fhir.json/Extension)
-                :value (s/nilable ~pred-sym)})))
+           `(s/schema
+             {:id (s/nilable string?)
+              :extension (s/coll-of :fhir.json/Extension)
+              :value (s/nilable ~pred-sym)})))
         f (s/resolve-fn f-form)]
     (reify
       sp/Spec
@@ -134,34 +120,29 @@
       (with-gen* [_ _])
       (describe* [_] `(json-pred-primitive ~pred-sym ~f-form)))))
 
-
 (defmethod s/expand-spec `json-pred-primitive
   [[_ pred-sym f-form]]
   {:clojure.spec/op `json-pred-primitive
    :pred-sym pred-sym
    :f-form f-form})
 
-
 (defmethod s/create-spec `json-pred-primitive
   [{:keys [pred-sym f-form]}]
   (json-pred-primitive-impl pred-sym f-form))
 
-
-
 ;; ---- CBOR Pred Primitive Spec ----------------------------------------------
 
 (declare cbor-primitive)
-
 
 (defn- cbor-primitive-impl
   [f-form]
   (let [extended-spec
         (delay
           (s/resolve-spec
-            `(s/schema
-               {:id (s/nilable string?)
-                :extension (s/coll-of :fhir.cbor/Extension)
-                :value any?})))
+           `(s/schema
+             {:id (s/nilable string?)
+              :extension (s/coll-of :fhir.cbor/Extension)
+              :value any?})))
         f (s/resolve-fn f-form)]
     (reify
       sp/Spec
@@ -175,23 +156,18 @@
       (with-gen* [_ _])
       (describe* [_] `(cbor-primitive ~f-form)))))
 
-
 (defmethod s/expand-spec `cbor-primitive
   [[_ f-form]]
   {:clojure.spec/op `cbor-primitive
    :f-form f-form})
 
-
 (defmethod s/create-spec `cbor-primitive
   [{:keys [f-form]}]
   (cbor-primitive-impl f-form))
 
-
-
 ;; ---- Record Spec -----------------------------------------------------------
 
 (declare record)
-
 
 (defn- record-impl [class-sym spec-forms]
   (let [class (resolve class-sym)
@@ -216,18 +192,15 @@
       (with-gen* [_ _])
       (describe* [_] `(record ~class-sym ~spec-forms)))))
 
-
 (defmethod s/expand-spec `record
   [[_ class-sym spec-forms]]
   {:clojure.spec/op `record
    :class-sym class-sym
    :spec-forms spec-forms})
 
-
 (defmethod s/create-spec `record
   [{:keys [class-sym spec-forms]}]
   (record-impl class-sym spec-forms))
-
 
 (defn- maybe-spec
   "spec-or-k must be a spec, regex or resolvable kw/sym, else returns nil."
@@ -240,16 +213,13 @@
       (#'s/with-name s (#'s/spec-name s))
       s)))
 
-
 (defn- explain-1 [form pred path via in v settings-key settings]
   (let [pred (maybe-spec pred)]
     (if (s/spec? pred)
       (sp/explain* pred path (if-let [name (#'s/spec-name pred)] (conj via name) via) in v settings-key settings)
       [{:path path :pred form :val v :via via :in in}])))
 
-
 (declare json-object)
-
 
 (defn- json-object-impl [constructor-sym spec-forms key-map]
   (let [constructor (resolve constructor-sym)
@@ -260,14 +230,14 @@
       (conform* [_ x _ settings]
         (if (map? x)
           (let [res (reduce-kv
-                      (fn [ret k v]
-                        (if-some [conformed (when-let [sp (@specs k)] (sp/conform* sp v k settings))]
-                          (if (s/invalid? conformed)
-                            (reduced ::s/invalid)
-                            (assoc ret (internal-key k) conformed))
-                          ret))
-                      {}
-                      (u/update-extended-primitives x))]
+                     (fn [ret k v]
+                       (if-some [conformed (when-let [sp (@specs k)] (sp/conform* sp v k settings))]
+                         (if (s/invalid? conformed)
+                           (reduced ::s/invalid)
+                           (assoc ret (internal-key k) conformed))
+                         ret))
+                     {}
+                     (u/update-extended-primitives x))]
             (if (s/invalid? res)
               ::s/invalid
               (constructor res)))
@@ -277,15 +247,14 @@
         (if (not (map? x))
           [{:path path :pred `map? :val x :via via :in in}]
           (reduce-kv
-            (fn [p k v]
-              (if-let [sp (@specs k)]
-                (into p (explain-1 (s/form sp) sp (conj path k) via (conj in k) v k settings))
-                p))
-            [] x)))
+           (fn [p k v]
+             (if-let [sp (@specs k)]
+               (into p (explain-1 (s/form sp) sp (conj path k) via (conj in k) v k settings))
+               p))
+           [] x)))
       (gen* [_ _ _ _])
       (with-gen* [_ _])
       (describe* [_] `(json-object ~constructor-sym ~spec-forms ~key-map)))))
-
 
 (defmethod s/expand-spec `json-object
   [[_ constructor-sym spec-forms key-map]]
@@ -293,7 +262,6 @@
    :constructor-sym constructor-sym
    :spec-forms spec-forms
    :key-map key-map})
-
 
 (defmethod s/create-spec `json-object
   [{:keys [constructor-sym spec-forms key-map]}]

@@ -1,55 +1,52 @@
 (ns blaze.db.node
   "Local Database Node"
   (:require
-    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-    [blaze.async.comp :as ac :refer [do-sync]]
-    [blaze.db.impl.batch-db :as batch-db]
-    [blaze.db.impl.codec :as codec]
-    [blaze.db.impl.db :as db]
-    [blaze.db.impl.index.resource-handle :as rh]
-    [blaze.db.impl.index.t-by-instant :as t-by-instant]
-    [blaze.db.impl.index.tx-error :as tx-error]
-    [blaze.db.impl.index.tx-success :as tx-success]
-    [blaze.db.impl.protocols :as p]
-    [blaze.db.impl.search-param :as search-param]
-    [blaze.db.impl.search-param.all :as search-param-all]
-    [blaze.db.impl.search-param.chained :as spc]
-    [blaze.db.kv :as kv]
-    [blaze.db.node.protocols :as np]
-    [blaze.db.node.resource-indexer :as resource-indexer]
-    [blaze.db.node.resource-indexer.spec]
-    [blaze.db.node.spec]
-    [blaze.db.node.transaction :as tx]
-    [blaze.db.node.tx-indexer :as tx-indexer]
-    [blaze.db.node.tx-indexer.verify :as tx-indexer-verify]
-    [blaze.db.node.validation :as validation]
-    [blaze.db.node.version :as version]
-    [blaze.db.resource-store :as rs]
-    [blaze.db.search-param-registry.spec]
-    [blaze.db.tx-log :as tx-log]
-    [blaze.executors :as ex]
-    [blaze.fhir.spec :as fhir-spec]
-    [blaze.fhir.spec.type :as type]
-    [blaze.module :refer [reg-collector]]
-    [blaze.spec]
-    [blaze.util :refer [conj-vec]]
-    [clojure.spec.alpha :as s]
-    [cognitect.anomalies :as anom]
-    [integrant.core :as ig]
-    [java-time.api :as time]
-    [prometheus.alpha :as prom :refer [defhistogram]]
-    [taoensso.timbre :as log])
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.db.impl.batch-db :as batch-db]
+   [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.db :as db]
+   [blaze.db.impl.index.resource-handle :as rh]
+   [blaze.db.impl.index.t-by-instant :as t-by-instant]
+   [blaze.db.impl.index.tx-error :as tx-error]
+   [blaze.db.impl.index.tx-success :as tx-success]
+   [blaze.db.impl.protocols :as p]
+   [blaze.db.impl.search-param :as search-param]
+   [blaze.db.impl.search-param.all :as search-param-all]
+   [blaze.db.impl.search-param.chained :as spc]
+   [blaze.db.kv :as kv]
+   [blaze.db.node.protocols :as np]
+   [blaze.db.node.resource-indexer :as resource-indexer]
+   [blaze.db.node.resource-indexer.spec]
+   [blaze.db.node.spec]
+   [blaze.db.node.transaction :as tx]
+   [blaze.db.node.tx-indexer :as tx-indexer]
+   [blaze.db.node.tx-indexer.verify :as tx-indexer-verify]
+   [blaze.db.node.validation :as validation]
+   [blaze.db.node.version :as version]
+   [blaze.db.resource-store :as rs]
+   [blaze.db.search-param-registry.spec]
+   [blaze.db.tx-log :as tx-log]
+   [blaze.executors :as ex]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type :as type]
+   [blaze.module :refer [reg-collector]]
+   [blaze.spec]
+   [blaze.util :refer [conj-vec]]
+   [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
+   [java-time.api :as time]
+   [prometheus.alpha :as prom :refer [defhistogram]]
+   [taoensso.timbre :as log])
   (:import
-    [java.lang AutoCloseable]
-    [java.util.concurrent CompletableFuture TimeUnit]))
-
+   [java.lang AutoCloseable]
+   [java.util.concurrent CompletableFuture TimeUnit]))
 
 (set! *warn-on-reflection* true)
 
-
 (defn submit-tx [node tx-ops]
   (np/-submit-tx node tx-ops))
-
 
 (defn tx-result
   "Waits for the transaction with `t` to happen on `node`.
@@ -60,7 +57,6 @@
   [node t]
   (np/-tx-result node t))
 
-
 (defhistogram duration-seconds
   "Node durations."
   {:namespace "blaze"
@@ -69,7 +65,6 @@
   (take 16 (iterate #(* 2 %) 0.0001))
   "op")
 
-
 (defhistogram transaction-sizes
   "Number of transaction commands per transaction."
   {:namespace "blaze"
@@ -77,9 +72,7 @@
    :name "transaction_sizes"}
   (take 16 (iterate #(* 2 %) 1)))
 
-
 (defmulti resolve-search-param (fn [_registry _type _ret [type] _lenient?] type))
-
 
 (defmethod resolve-search-param :search-clause
   [registry type ret [_ [param & values]] lenient?]
@@ -89,7 +82,6 @@
         (conj ret [search-param modifier values compiled-values])
         reduced)
       #(if lenient? ret (reduced %)))))
-
 
 (defmethod resolve-search-param :sort-clause
   [registry type ret [_ [_ param direction]] _lenient?]
@@ -107,17 +99,14 @@
     (let [[search-param] (spc/parse-search-param registry type param)]
       (conj ret [search-param (name direction) [] []]))))
 
-
 (defn- conform-clause [clause]
   (s/conform :blaze.db.query/clause clause))
 
-
 (defn- resolve-search-params* [registry type clauses lenient?]
   (reduce
-    #(resolve-search-param registry type %1 (conform-clause %2) lenient?)
-    []
-    clauses))
-
+   #(resolve-search-param registry type %1 (conform-clause %2) lenient?)
+   []
+   clauses))
 
 (defn- type-priority [type]
   (case type
@@ -125,13 +114,11 @@
     "token" 1
     2))
 
-
 (defn- order-clauses
   "Orders clauses by specificity so that the clause constraining the resources
   the most will come first."
   [clauses]
   (sort-by (comp type-priority :type first) clauses))
-
 
 (defn- fix-last-updated [[[first-search-param first-modifier] :as clauses]]
   (if (and (= "_lastUpdated" (:code first-search-param))
@@ -139,11 +126,9 @@
     (into [[search-param-all/search-param nil [""] [""]]] clauses)
     clauses))
 
-
 (defn- resolve-search-params [registry type clauses lenient?]
   (when-ok [clauses (resolve-search-params* registry type clauses lenient?)]
     (-> clauses order-clauses fix-last-updated)))
-
 
 (defn- db-future
   "Adds a watcher to `node` and returns a CompletableFuture that will complete
@@ -152,51 +137,45 @@
   [{:keys [state] :as node} t]
   (let [future (ac/future)]
     (add-watch
-      state future
-      (fn [future state _ {:keys [e] new-t :t new-error-t :error-t}]
-        (cond
-          (<= t (max new-t new-error-t))
-          (do (log/trace "complete database future with new db with t =" new-t)
-              ;; it's important to complete async here, because otherwise all
-              ;; the later work will happen on the indexer thread
-              (ac/complete-async! future #(db/db node new-t))
-              (remove-watch state future))
+     state future
+     (fn [future state _ {:keys [e] new-t :t new-error-t :error-t}]
+       (cond
+         (<= t (max new-t new-error-t))
+         (do (log/trace "complete database future with new db with t =" new-t)
+             ;; it's important to complete async here, because otherwise all
+             ;; the later work will happen on the indexer thread
+             (ac/complete-async! future #(db/db node new-t))
+             (remove-watch state future))
 
-          e
-          (do (ac/complete-exceptionally! future e)
-              (remove-watch state future))
+         e
+         (do (ac/complete-exceptionally! future e)
+             (remove-watch state future))
 
-          (ac/canceled? future)
-          (remove-watch state future))))
+         (ac/canceled? future)
+         (remove-watch state future))))
     future))
-
 
 (defn- index-tx [db-before tx-data]
   (with-open [_ (prom/timer duration-seconds "index-transactions")]
     (tx-indexer/index-tx db-before tx-data)))
 
-
 (defn- advance-t! [state t]
   (log/trace "advance state to t =" t)
   (swap! state assoc :t t))
 
-
 (defn- advance-error-t! [state t]
   (log/trace "advance state to error-t =" t)
   (swap! state assoc :error-t t))
-
 
 (defn- commit-error! [{:keys [kv-store state]} t anomaly]
   (log/trace "commit transaction error with t =" t)
   (kv/put! kv-store [(tx-error/index-entry t anomaly)])
   (advance-error-t! state t))
 
-
 (defn- store-tx-entries! [kv-store entries]
   (log/trace "store" (count entries) "transaction index entries")
   (with-open [_ (prom/timer duration-seconds "store-tx-entries")]
     (kv/put! kv-store entries)))
-
 
 (defn- wait-for-resources [future timer]
   (try
@@ -210,17 +189,14 @@
     (finally
       (prom/observe-duration! timer))))
 
-
 (defn- tx-success-entries [t instant]
   [(tx-success/index-entry t instant)
    (t-by-instant/index-entry instant t)])
-
 
 (defn- commit-success! [{:keys [kv-store state]} t instant]
   (log/trace "commit transaction success with t =" t)
   (kv/put! kv-store (tx-success-entries t instant))
   (advance-t! state t))
-
 
 (defn- index-tx-data!
   "This is the main transaction handling function.
@@ -240,28 +216,27 @@
         (wait-for-resources future timer)
         (commit-success! node t instant)))))
 
-
 (defn- poll-tx-queue! [queue poll-timeout]
   (with-open [_ (prom/timer duration-seconds "poll-tx-queue")]
     (tx-log/poll! queue poll-timeout)))
 
+(defn- poll-and-index!
+  "Polls `queue` once and indexes the resulting transaction data.
 
-(defn- poll-and-index! [node queue poll-timeout]
+  Waits up to `poll-timeout` for the transaction data to become available."
+  [node queue poll-timeout]
   (log/trace "poll transaction queue")
   (run! (partial index-tx-data! node) (poll-tx-queue! queue poll-timeout)))
-
 
 (defn- enhance-resource-meta [meta t {:blaze.db.tx/keys [instant]}]
   (-> (or meta #fhir/Meta{})
       (assoc :versionId (type/->Id (str t)))
       (assoc :lastUpdated instant)))
 
-
 (defn- mk-meta [handle tx]
   {:blaze.db/num-changes (rh/num-changes handle)
    :blaze.db/op (rh/op handle)
    :blaze.db/tx tx})
-
 
 (defn- enhance-resource [tx-cache handle resource]
   (let [t (rh/t handle)
@@ -269,25 +244,20 @@
     (-> (update resource :meta enhance-resource-meta t tx)
         (with-meta (mk-meta handle tx)))))
 
-
 (defn- hashes-of-non-deleted [resource-handles]
   (into [] (comp (remove rh/deleted?) (map rh/hash)) resource-handles))
 
-
 (defn- deleted-resource [{:keys [id] :as resource-handle}]
   {:fhir/type (fhir-spec/fhir-type resource-handle) :id id})
-
 
 (defn- resource-content-not-found-msg [resource-handle]
   (format "The resource content of `%s/%s` with hash `%s` was not found."
           (name (type/type resource-handle)) (:id resource-handle)
           (:hash resource-handle)))
 
-
 (defn- resource-content-not-found-anom [resource-handle]
   (ba/not-found (resource-content-not-found-msg resource-handle)
                 :blaze.db/resource-handle resource-handle))
-
 
 (defn- to-resource [tx-cache resources resource-handle]
   (if-let [resource (if (rh/deleted? resource-handle)
@@ -296,12 +266,10 @@
     (enhance-resource tx-cache resource-handle resource)
     (resource-content-not-found-anom resource-handle)))
 
-
 (defn- get-resource [resource-store resource-handle]
   (if (rh/deleted? resource-handle)
     (ac/completed-future (deleted-resource resource-handle))
     (rs/get resource-store (rh/hash resource-handle))))
-
 
 (defn- compile-type-query [search-param-registry type clauses lenient?]
   (when-ok [clauses (resolve-search-params search-param-registry type clauses
@@ -309,7 +277,6 @@
     (if (empty? clauses)
       (batch-db/->EmptyTypeQuery (codec/tid type))
       (batch-db/->TypeQuery (codec/tid type) clauses))))
-
 
 (defn- compile-compartment-query
   [search-param-registry code type clauses lenient?]
@@ -320,22 +287,18 @@
       (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
                                    clauses))))
 
-
 (def ^:private subsetted
   #fhir/Coding
-          {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-           :code #fhir/code"SUBSETTED"})
-
+   {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+    :code #fhir/code"SUBSETTED"})
 
 (def ^:private add-subsetted-xf
   (map #(update % :meta update :tag conj-vec subsetted)))
-
 
 (defn- subset-xf [elements]
   (let [keys (conj (seq elements) :fhir/type :id :meta)]
     (comp (map #(select-keys % keys))
           add-subsetted-xf)))
-
 
 (defrecord Node [context tx-log tx-cache kv-store resource-store sync-fn
                  search-param-registry resource-indexer state run? poll-timeout
@@ -418,10 +381,10 @@
           hashes (hashes-of-non-deleted resource-handles)]
       (do-sync [resources (rs/multi-get resource-store hashes)]
         (into
-          []
-          (comp (map (partial to-resource tx-cache resources))
-                (halt-when ba/anomaly?))
-          resource-handles))))
+         []
+         (comp (map (partial to-resource tx-cache resources))
+               (halt-when ba/anomaly?))
+         resource-handles))))
 
   (-pull-many [node resource-handles elements]
     (do-sync [resources (p/-pull-many node resource-handles)]
@@ -450,18 +413,15 @@
     @finished
     (log/trace "done closing")))
 
-
 (defn- execute [node executor]
   (-> (CompletableFuture/runAsync node executor)
       (ac/exceptionally
-        (fn [{::anom/keys [message]}]
-          (log/error "Error while indexing:" message)))))
-
+       (fn [{::anom/keys [message]}]
+         (log/error "Error while indexing:" message)))))
 
 (defn- initial-state [kv-store]
   {:t (or (tx-success/last-t kv-store) 0)
    :error-t 0})
-
 
 (defn- init-msg
   [{:keys [enforce-referential-integrity]
@@ -470,33 +430,28 @@
             (if enforce-referential-integrity "enabled" "disabled")
             "referential integrity checks"))
 
-
 (defn- ctx
   [{:keys [enforce-referential-integrity]
     :or {enforce-referential-integrity true}}]
   {:blaze.db/enforce-referential-integrity enforce-referential-integrity})
 
-
 (defmethod ig/pre-init-spec :blaze.db/node [_]
   (s/keys
-    :req-un
-    [:blaze.db/tx-log
-     :blaze.db/tx-cache
-     ::indexer-executor
-     :blaze.db/kv-store
-     ::resource-indexer
-     :blaze.db/resource-store
-     :blaze.db/search-param-registry]
-    :opt-un
-    [:blaze.db/enforce-referential-integrity]))
-
+   :req-un
+   [:blaze.db/tx-log
+    :blaze.db/tx-cache
+    ::indexer-executor
+    :blaze.db/kv-store
+    ::resource-indexer
+    :blaze.db/resource-store
+    :blaze.db/search-param-registry]
+   :opt-un
+   [:blaze.db/enforce-referential-integrity]))
 
 (def ^:private expected-kv-store-version 0)
 
-
 (defn- kv-store-version [kv-store]
   (or (some-> (kv/get kv-store version/key) version/decode-value) 0))
-
 
 (def ^:private incompatible-kv-store-version-msg
   "Incompatible index store version %1$d found. This version of Blaze needs
@@ -509,11 +464,9 @@
 
   ")
 
-
 (defn- incompatible-kv-store-version-ex [actual-version expected-version]
   (ex-info (format incompatible-kv-store-version-msg actual-version expected-version)
            {:actual-version actual-version :expected-version expected-version}))
-
 
 (defn- check-version! [kv-store]
   (when (tx-success/last-t kv-store)
@@ -523,7 +476,6 @@
         (throw (incompatible-kv-store-version-ex actual-kv-store-version
                                                  expected-kv-store-version))))))
 
-
 (defn- sync-fn [storage]
   (condp identical? storage
     :distributed
@@ -532,7 +484,6 @@
           (ac/then-compose #(np/-sync node %))))
     (fn sync-standalone [^Node node]
       (ac/completed-future (db/db node (:t @(.-state node)))))))
-
 
 (defmethod ig/init-key :blaze.db/node
   [_ {:keys [storage tx-log tx-cache indexer-executor kv-store resource-indexer
@@ -550,18 +501,15 @@
     (execute node indexer-executor)
     node))
 
-
 (defmethod ig/halt-key! :blaze.db/node
   [_ node]
   (log/info "Close local database node")
   (.close ^AutoCloseable node))
 
-
 (defmethod ig/init-key ::indexer-executor
   [_ _]
   (log/info "Init indexer executor")
   (ex/single-thread-executor "indexer"))
-
 
 (defmethod ig/halt-key! ::indexer-executor
   [_ executor]
@@ -571,14 +519,11 @@
     (log/info "Indexer executor was stopped successfully")
     (log/warn "Got timeout while stopping the indexer executor")))
 
-
 (reg-collector ::duration-seconds
   duration-seconds)
 
-
 (reg-collector ::transaction-sizes
   transaction-sizes)
-
 
 (reg-collector ::tx-indexer/duration-seconds
   tx-indexer-verify/duration-seconds)

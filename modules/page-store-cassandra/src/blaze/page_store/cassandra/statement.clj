@@ -1,11 +1,9 @@
 (ns blaze.page-store.cassandra.statement
   (:import
-    [com.datastax.oss.driver.api.core ConsistencyLevel DefaultConsistencyLevel]
-    [com.datastax.oss.driver.api.core.cql SimpleStatement]))
-
+   [com.datastax.oss.driver.api.core ConsistencyLevel DefaultConsistencyLevel]
+   [com.datastax.oss.driver.api.core.cql SimpleStatement]))
 
 (set! *warn-on-reflection* true)
-
 
 (def get-statement
   "The get statement retrieves the content according to the `token`.
@@ -15,7 +13,6 @@
   (-> (SimpleStatement/builder "select content from clauses where \"token\" = ?")
       (.setConsistencyLevel ConsistencyLevel/ONE)
       (.build)))
-
 
 (defn put-statement
   "The put statement upserts the `token` and `content` of clauses into the

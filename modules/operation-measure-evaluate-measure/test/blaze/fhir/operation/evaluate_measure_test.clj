@@ -1,76 +1,66 @@
 (ns blaze.fhir.operation.evaluate-measure-test
   (:require
-    [blaze.anomaly-spec]
-    [blaze.async.comp :as ac]
-    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-    [blaze.db.resource-store :as rs]
-    [blaze.executors :as ex]
-    [blaze.fhir.operation.evaluate-measure :as evaluate-measure]
-    [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
-    [blaze.fhir.spec.type :as type]
-    [blaze.metrics.spec]
-    [blaze.middleware.fhir.db :refer [wrap-db]]
-    [blaze.middleware.fhir.db-spec]
-    [blaze.module.test-util :refer [with-system]]
-    [blaze.test-util :as tu :refer [given-thrown]]
-    [clojure.spec.alpha :as s]
-    [clojure.spec.test.alpha :as st]
-    [clojure.test :as test :refer [deftest is testing]]
-    [integrant.core :as ig]
-    [java-time.api :as time]
-    [juxt.iota :refer [given]]
-    [reitit.core :as reitit]
-    [taoensso.timbre :as log]))
-
+   [blaze.anomaly-spec]
+   [blaze.async.comp :as ac]
+   [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.resource-store :as rs]
+   [blaze.executors :as ex]
+   [blaze.fhir.operation.evaluate-measure :as evaluate-measure]
+   [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
+   [blaze.fhir.spec.type :as type]
+   [blaze.metrics.spec]
+   [blaze.middleware.fhir.db :refer [wrap-db]]
+   [blaze.middleware.fhir.db-spec]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest is testing]]
+   [integrant.core :as ig]
+   [java-time.api :as time]
+   [juxt.iota :refer [given]]
+   [reitit.core :as reitit]
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
-
 (test/use-fixtures :each tu/fixture)
 
-
 (def ^:private base-url "base-url-144638")
-
 
 (def ^:private measure-population-uri
   #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population")
 
-
 (def router
   (reitit/router
-    [["/MeasureReport" {:name :MeasureReport/type}]]
-    {:syntax :bracket}))
-
+   [["/MeasureReport" {:name :MeasureReport/type}]]
+   {:syntax :bracket}))
 
 (defn- scoring-concept [code]
   (type/codeable-concept
-    {:coding
-     [(type/coding
-        {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-scoring"
-         :code (type/code code)})]}))
-
+   {:coding
+    [(type/coding
+      {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-scoring"
+       :code (type/code code)})]}))
 
 (defn- population-concept [code]
   (type/codeable-concept
-    {:coding
-     [(type/coding
-        {:system measure-population-uri
-         :code (type/code code)})]}))
-
+   {:coding
+    [(type/coding
+      {:system measure-population-uri
+       :code (type/code code)})]}))
 
 (defn- cql-expression [expr]
   {:fhir/type :fhir/Expression
    :language #fhir/code"text/cql-identifier"
    :expression expr})
 
-
 (def library-content
   #fhir/Attachment
-          {:contentType #fhir/code"text/cql"
-           :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICB0cnVlCgpkZWZpbmUgR2VuZGVyOgogIFBhdGllbnQuZ2VuZGVyCg=="})
-
+   {:contentType #fhir/code"text/cql"
+    :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICB0cnVlCgpkZWZpbmUgR2VuZGVyOgogIFBhdGllbnQuZ2VuZGVyCg=="})
 
 (deftest init-test
   (testing "nil config"
@@ -98,7 +88,6 @@
       [:explain ::s/problems 3 :pred] := `ex/executor?
       [:explain ::s/problems 3 :val] := ::invalid)))
 
-
 (deftest timeout-init-test
   (testing "nil config"
     (given-thrown (ig/init {::evaluate-measure/timeout nil})
@@ -124,7 +113,6 @@
                   {::evaluate-measure/timeout {:millis 154912}}]
       (is (= (time/millis 154912) timeout)))))
 
-
 (deftest executor-init-test
   (testing "nil config"
     (given-thrown (ig/init {::evaluate-measure/executor nil})
@@ -144,37 +132,32 @@
                   {::evaluate-measure/executor {}}]
       (is (ex/executor? executor)))))
 
-
 (deftest compile-duration-seconds-collector-init-test
   (with-system [{collector ::evaluate-measure/compile-duration-seconds}
                 {::evaluate-measure/compile-duration-seconds nil}]
     (is (s/valid? :blaze.metrics/collector collector))))
-
 
 (deftest evaluate-duration-seconds-collector-init-test
   (with-system [{collector ::evaluate-measure/evaluate-duration-seconds}
                 {::evaluate-measure/evaluate-duration-seconds nil}]
     (is (s/valid? :blaze.metrics/collector collector))))
 
-
 (def config
   (assoc api-stub/mem-node-config
-    ::evaluate-measure/handler
-    {:node (ig/ref :blaze.db/node)
-     :executor (ig/ref :blaze.test/executor)
-     :clock (ig/ref :blaze.test/fixed-clock)
-     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-    :blaze.test/executor {}
-    :blaze.test/fixed-rng-fn {}))
-
+         ::evaluate-measure/handler
+         {:node (ig/ref :blaze.db/node)
+          :executor (ig/ref :blaze.test/executor)
+          :clock (ig/ref :blaze.test/fixed-clock)
+          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+         :blaze.test/executor {}
+         :blaze.test/fixed-rng-fn {}))
 
 (defn wrap-defaults [handler]
   (fn [request]
     (handler
-      (assoc request
-        :blaze/base-url base-url
-        ::reitit/router router))))
-
+     (assoc request
+            :blaze/base-url base-url
+            ::reitit/router router))))
 
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
@@ -185,15 +168,14 @@
                                   wrap-error)]
          ~@body))))
 
-
 (deftest handler-test
   (testing "Returns Not Found on Non-Existing Measure"
     (testing "on instance endpoint"
       (with-handler [handler]
         (let [{:keys [status body]}
               @(handler
-                 {:path-params {:id "0"}
-                  :params {"periodStart" "2014" "periodEnd" "2015"}})]
+                {:path-params {:id "0"}
+                 :params {"periodStart" "2014" "periodEnd" "2015"}})]
 
           (is (= 404 status))
 
@@ -207,10 +189,10 @@
       (with-handler [handler]
         (let [{:keys [status body]}
               @(handler
-                 {:params
-                  {"measure" "url-181501"
-                   "periodStart" "2014"
-                   "periodEnd" "2015"}})]
+                {:params
+                 {"measure" "url-181501"
+                  "periodStart" "2014"
+                  "periodEnd" "2015"}})]
 
           (is (= 400 status))
 
@@ -224,9 +206,9 @@
         (with-handler [handler]
           (let [{:keys [status body]}
                 @(handler
-                   {:params
-                    {"periodStart" "2014"
-                     "periodEnd" "2015"}})]
+                  {:params
+                   {"periodStart" "2014"
+                    "periodEnd" "2015"}})]
 
             (is (= 400 status))
 
@@ -243,8 +225,8 @@
 
       (let [{:keys [status body]}
             @(handler
-               {:path-params {:id "0"}
-                :params {"periodStart" "2014" "periodEnd" "2015"}})]
+              {:path-params {:id "0"}
+               :params {"periodStart" "2014" "periodEnd" "2015"}})]
 
         (is (= 410 status))
 
@@ -261,10 +243,10 @@
 
         (let [{:keys [status body]}
               @(handler
-                 {:path-params {:id "0"}
-                  :params
-                  {"periodStart" "2014"
-                   "periodEnd" "2015"}})]
+                {:path-params {:id "0"}
+                 :params
+                 {"periodStart" "2014"
+                  "periodEnd" "2015"}})]
 
           (is (= 500 status))
 
@@ -281,10 +263,10 @@
 
       (let [{:keys [status body]}
             @(handler
-               {:params
-                {"measure" "url-182126"
-                 "periodStart" "2014"
-                 "periodEnd" "2015"}})]
+              {:params
+               {"measure" "url-182126"
+                "periodStart" "2014"
+                "periodEnd" "2015"}})]
 
         (is (= 422 status))
 
@@ -303,10 +285,10 @@
 
       (let [{:keys [status body]}
             @(handler
-               {:params
-                {"measure" "url-181501"
-                 "periodStart" "2014"
-                 "periodEnd" "2015"}})]
+              {:params
+               {"measure" "url-181501"
+                "periodStart" "2014"
+                "periodEnd" "2015"}})]
 
         (is (= 400 status))
 
@@ -327,10 +309,10 @@
 
       (let [{:keys [status body]}
             @(handler
-               {:params
-                {"measure" "url-182104"
-                 "periodStart" "2014"
-                 "periodEnd" "2015"}})]
+              {:params
+               {"measure" "url-182104"
+                "periodStart" "2014"
+                "periodEnd" "2015"}})]
 
         (is (= 400 status))
 
@@ -353,10 +335,10 @@
 
       (let [{:keys [status body]}
             @(handler
-               {:params
-                {"measure" "url-182051"
-                 "periodStart" "2014"
-                 "periodEnd" "2015"}})]
+              {:params
+               {"measure" "url-182051"
+                "periodStart" "2014"
+                "periodEnd" "2015"}})]
 
         (is (= 400 status))
 
@@ -379,10 +361,10 @@
 
       (let [{:keys [status body]}
             @(handler
-               {:params
-                {"measure" "url-182039"
-                 "periodStart" "2014"
-                 "periodEnd" "2015"}})]
+              {:params
+               {"measure" "url-182039"
+                "periodStart" "2014"
+                "periodEnd" "2015"}})]
 
         (is (= 400 status))
 
@@ -414,8 +396,8 @@
                 :url #fhir/uri"library-url-094115"
                 :content
                 [#fhir/Attachment
-                        {:contentType #fhir/code"text/cql"
-                         :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICBQYXRpZW50LmdlbmRlciA9ICdtYWxlJwo="}]}]
+                  {:contentType #fhir/code"text/cql"
+                   :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICBQYXRpZW50LmdlbmRlciA9ICdtYWxlJwo="}]}]
               [:put
                {:fhir/type :fhir/Patient
                 :id "0"
@@ -423,11 +405,11 @@
 
             (let [{:keys [status body]}
                   @(handler
-                     {:request-method :get
-                      :params
-                      {"measure" "url-181501"
-                       "periodStart" "2014"
-                       "periodEnd" "2015"}})]
+                    {:request-method :get
+                     :params
+                     {"measure" "url-181501"
+                      "periodStart" "2014"
+                      "periodEnd" "2015"}})]
 
               (is (= 200 status))
 
@@ -484,11 +466,11 @@
 
             (let [{:keys [status body]}
                   @(handler
-                     {:request-method :get
-                      :params
-                      {"measure" "url-181501"
-                       "periodStart" "2014"
-                       "periodEnd" "2015"}})]
+                    {:request-method :get
+                     :params
+                     {"measure" "url-181501"
+                      "periodStart" "2014"
+                      "periodEnd" "2015"}})]
 
               (is (= 200 status))
 
@@ -525,19 +507,19 @@
 
             (let [{:keys [status headers body]}
                   @(handler
-                     {:request-method :post
-                      :body
-                      {:fhir/type :fhir/Parameters
-                       :parameter
-                       [{:fhir/type :fhir.Parameters/parameter
-                         :name "measure"
-                         :value #fhir/string"url-181501"}
-                        {:fhir/type :fhir.Parameters/parameter
-                         :name "periodStart"
-                         :value #fhir/date"2014"}
-                        {:fhir/type :fhir.Parameters/parameter
-                         :name "periodEnd"
-                         :value #fhir/date"2015"}]}})]
+                    {:request-method :post
+                     :body
+                     {:fhir/type :fhir/Parameters
+                      :parameter
+                      [{:fhir/type :fhir.Parameters/parameter
+                        :name "measure"
+                        :value #fhir/string"url-181501"}
+                       {:fhir/type :fhir.Parameters/parameter
+                        :name "periodStart"
+                        :value #fhir/date"2014"}
+                       {:fhir/type :fhir.Parameters/parameter
+                        :name "periodEnd"
+                        :value #fhir/date"2015"}]}})]
 
               (is (= 201 status))
 
@@ -565,20 +547,20 @@
 
             (let [{:keys [status headers body]}
                   @(handler
-                     {:request-method :post
-                      :headers {"prefer" "return=minimal"}
-                      :body
-                      {:fhir/type :fhir/Parameters
-                       :parameter
-                       [{:fhir/type :fhir.Parameters/parameter
-                         :name "measure"
-                         :value #fhir/string"url-181501"}
-                        {:fhir/type :fhir.Parameters/parameter
-                         :name "periodStart"
-                         :value #fhir/date"2014"}
-                        {:fhir/type :fhir.Parameters/parameter
-                         :name "periodEnd"
-                         :value #fhir/date"2015"}]}})]
+                    {:request-method :post
+                     :headers {"prefer" "return=minimal"}
+                     :body
+                     {:fhir/type :fhir/Parameters
+                      :parameter
+                      [{:fhir/type :fhir.Parameters/parameter
+                        :name "measure"
+                        :value #fhir/string"url-181501"}
+                       {:fhir/type :fhir.Parameters/parameter
+                        :name "periodStart"
+                        :value #fhir/date"2014"}
+                       {:fhir/type :fhir.Parameters/parameter
+                        :name "periodEnd"
+                        :value #fhir/date"2015"}]}})]
 
               (is (= 201 status))
 
@@ -600,11 +582,11 @@
 
           (let [{:keys [status body]}
                 @(handler
-                   {:request-method :get
-                    :path-params {:id "0"}
-                    :params
-                    {"periodStart" "2014"
-                     "periodEnd" "2015"}})]
+                  {:request-method :get
+                   :path-params {:id "0"}
+                   :params
+                   {"periodStart" "2014"
+                    "periodEnd" "2015"}})]
 
             (is (= 200 status))
 
@@ -628,17 +610,17 @@
 
           (let [{:keys [status headers body]}
                 @(handler
-                   {:request-method :post
-                    :path-params {:id "0"}
-                    :body
-                    {:fhir/type :fhir/Parameters
-                     :parameter
-                     [{:fhir/type :fhir.Parameters/parameter
-                       :name "periodStart"
-                       :value #fhir/date"2014"}
-                      {:fhir/type :fhir.Parameters/parameter
-                       :name "periodEnd"
-                       :value #fhir/date"2015"}]}})]
+                  {:request-method :post
+                   :path-params {:id "0"}
+                   :body
+                   {:fhir/type :fhir/Parameters
+                    :parameter
+                    [{:fhir/type :fhir.Parameters/parameter
+                      :name "periodStart"
+                      :value #fhir/date"2014"}
+                     {:fhir/type :fhir.Parameters/parameter
+                      :name "periodEnd"
+                      :value #fhir/date"2015"}]}})]
 
             (is (= 201 status))
 
@@ -654,7 +636,6 @@
               :date := #fhir/dateTime"1970-01-01T00:00:00Z"
               [:period :start] := #fhir/dateTime"2014"
               [:period :end] := #fhir/dateTime"2015")))))))
-
 
 (deftest indexer-executor-shutdown-timeout-test
   (let [{::evaluate-measure/keys [executor] :as system}
