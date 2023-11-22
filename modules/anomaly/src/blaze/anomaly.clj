@@ -37,6 +37,9 @@
   ([category msg kvs]
    (merge (anomaly* category msg) kvs)))
 
+(defn interrupted [msg & {:as kvs}]
+  (anomaly* ::anom/interrupted msg kvs))
+
 (defn incorrect [msg & {:as kvs}]
   (anomaly* ::anom/incorrect msg kvs))
 
@@ -171,7 +174,16 @@
              (when-ok ~(vec next) ~@body)))))
     `(do ~@body)))
 
-(defmacro if-ok [bindings then else]
+(defmacro if-ok
+  "Like `if-let` or `if-some` but tests for anomalies.
+
+  Each binding consists of a binding-form and an expression. The expression is
+  evaluated with all upper binding forms in scope and tested for anomalies. If
+  an anomaly is detected, the result of calling the `else` function with it is
+  returned and subsequent expressions are not evaluated. If all expressions
+  evaluate to non-anomalies, the body is evaluated with all binding forms in
+  scope."
+  [bindings then else]
   (if (seq bindings)
     (let [[binding-form expr-form & next] bindings]
       `(let [val# ~expr-form]

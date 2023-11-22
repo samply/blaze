@@ -85,6 +85,21 @@
   (testing "nil is no busy anomaly"
     (is (not (ba/anomaly? nil)))))
 
+(deftest interrupted-test
+  (testing "with nil message"
+    (is (= (ba/interrupted nil) {::anom/category ::anom/interrupted})))
+
+  (testing "with message only"
+    (given (ba/interrupted "msg-183005")
+      ::anom/category := ::anom/interrupted
+      ::anom/message := "msg-183005"))
+
+  (testing "with additional kvs"
+    (given (ba/interrupted "msg-183005" ::foo ::bar)
+      ::anom/category := ::anom/interrupted
+      ::anom/message := "msg-183005"
+      ::foo := ::bar)))
+
 (deftest incorrect-test
   (testing "with nil message"
     (is (= (ba/incorrect nil) {::anom/category ::anom/incorrect})))

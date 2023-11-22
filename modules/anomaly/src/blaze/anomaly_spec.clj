@@ -33,6 +33,10 @@
   :args (s/cat :x any?)
   :ret boolean?)
 
+(s/fdef ba/interrupted
+  :args (s/cat :msg (s/nilable string?) :kvs (s/* (s/cat :k keyword? :v any?)))
+  :ret ::anom/anomaly)
+
 (s/fdef ba/incorrect
   :args (s/cat :msg (s/nilable string?) :kvs (s/* (s/cat :k keyword? :v any?)))
   :ret ::anom/anomaly)
