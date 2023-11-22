@@ -458,8 +458,8 @@
   the response entries.
 
   In case of a transaction bundle, returns a CompletableFuture that will
-  complete with the response entries or complete exceptionally with an anomaly
-  in case of errors."
+  complete with the response entries or will complete exceptionally with an
+  anomaly in case of errors."
   {:arglists '([context request entries])}
   (fn [_ {{:keys [type]} :body} _] (type/value type)))
 
