@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.23.1
+
+### Bugfixes
+
+* Fix Operation Patient $everything returns Duplicate Entries ([#1287](https://github.com/samply/blaze/issues/1287))
+
+### Minor Enhancements
+
+* Improve Error Reporting on CQL Parsing Problems ([#1275](https://github.com/samply/blaze/issues/1275))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/79?closed=1).
+
 ## v0.23.0
 
 ### Enhancements
