@@ -4,7 +4,6 @@
    [blaze.elm.spec]
    [jsonista.core :as j])
   (:import
-   [com.fasterxml.jackson.core JsonProcessingException]
    [org.cqframework.cql.cql2elm
     CqlTranslator CqlTranslatorOptions$Options LibraryManager ModelManager]
    [org.cqframework.cql.cql2elm.quick FhirLibrarySourceProvider]))
@@ -19,10 +18,10 @@
    {:decode-key-fn true
     :bigdecimals true}))
 
-(defn- parse-library [library]
+(defn- parse-library [^CqlTranslator translator]
   (try
-    (:library (j/read-value library json-object-mapper))
-    (catch JsonProcessingException e
+    (:library (j/read-value (.toJson translator) json-object-mapper))
+    (catch Exception e
       (ba/fault (str "Error while parsing the ELM representation of a CQL library: " (ex-message e))))))
 
 (defn translate
@@ -39,4 +38,4 @@
        (apply str (map ex-message errors))
        :cql cql
        :errors errors)
-      (parse-library (.toJson translator)))))
+      (parse-library translator))))
