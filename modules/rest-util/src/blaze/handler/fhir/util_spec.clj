@@ -28,6 +28,10 @@
   :args (s/cat :query-params (s/nilable :ring.request/query-params))
   :ret (s/nilable :blaze.resource/id))
 
+(s/fdef util/elements
+  :args (s/cat :query-params (s/nilable :ring.request/query-params))
+  :ret (s/nilable (s/coll-of simple-keyword?)))
+
 (s/fdef util/type-url
   :args (s/cat :context (s/keys :req [:blaze/base-url ::reitit/router])
                :type :fhir.resource/type)

@@ -5,6 +5,7 @@
    [blaze.fhir.spec]
    [blaze.util :as u]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [reitit.core :as reitit]))
 
 (defn parse-nat-long [s]
@@ -60,6 +61,13 @@
   {:arglists '([query-params])}
   [{v "__page-id"}]
   (some #(when (s/valid? :blaze.resource/id %) %) (u/to-seq v)))
+
+(defn elements
+  "Returns a vector of keywords created from the comma separated values of 
+   the first valid `_elements` query param or `[]` otherwise."
+  {:arglists '([query-params])}
+  [{v "_elements"}]
+  (mapv keyword (some-> v (str/split #"\s*,\s*"))))
 
 (defn type-url
   "Returns the URL of a resource type like `[base]/[type]`."

@@ -7,8 +7,7 @@
    [blaze.interaction.util :as iu]
    [blaze.page-store :as page-store]
    [blaze.page-store.spec]
-   [clojure.spec.alpha :as s]
-   [clojure.string :as str]))
+   [clojure.spec.alpha :as s]))
 
 (defn- clauses [page-store {token "__token" :as query-params}]
   (cond
@@ -48,7 +47,7 @@
         :include-defs include-defs
         :summary? (summary? query-params)
         :summary (get query-params "_summary")
-        :elements (mapv keyword (some-> (get query-params "_elements") (str/split #"\s*,\s*")))
+        :elements (fhir-util/elements query-params)
         :page-size (fhir-util/page-size query-params)
         :page-type (fhir-util/page-type query-params)
         :page-id (fhir-util/page-id query-params)

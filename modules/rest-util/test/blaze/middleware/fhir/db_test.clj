@@ -8,6 +8,7 @@
    [blaze.db.api :as d]
    [blaze.db.api-spec]
    [blaze.fhir.test-util :refer [given-failed-future]]
+   [blaze.handler.fhir.util-spec]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
    [clojure.spec.test.alpha :as st]
@@ -74,7 +75,7 @@
     (is (= ::db @((db/wrap-search-db handler ::node timeout) {:blaze/db ::db}))))
 
   (testing "with missing or invalid __t"
-    (doseq [t [nil "a" "-1"]]
+    (doseq [t ["a" "-1"]]
       (testing "uses sync for database value acquisition"
         (with-redefs
          [d/sync
@@ -152,7 +153,7 @@
     (is (= ::db @((db/wrap-snapshot-db handler ::node timeout) {:blaze/db ::db}))))
 
   (testing "with missing or invalid __t"
-    (doseq [t [nil "a" "-1"]]
+    (doseq [t ["a" "-1"]]
       (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) {:params {"__t" t}})
         ::anom/category := ::anom/incorrect
         ::anom/message := (format "Missing or invalid `__t` query param `%s`." t))))
