@@ -39,7 +39,7 @@
   (testing "fails on trailing token"
     (given (fhir-spec/parse-json "{}{")
       ::anom/category := ::anom/incorrect
-      ::anom/message := "Trailing token (of type START_OBJECT) found after value (bound as `java.lang.Object`): not allowed as per `DeserializationFeature.FAIL_ON_TRAILING_TOKENS`\n at [Source: (String)\"{}{\"; line: 1, column: 3]")))
+      ::anom/message := "Trailing token (of type START_OBJECT) found after value (bound as `java.lang.Object`): not allowed as per `DeserializationFeature.FAIL_ON_TRAILING_TOKENS`\n at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 3]")))
 
 (deftest parse-cbor-test
   (given (fhir-spec/parse-cbor (byte-array 0))
