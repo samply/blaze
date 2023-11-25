@@ -33,15 +33,5 @@ blazectl --server http://localhost:8080/fhir upload -c8 data/synthea/data-100k-f
 
 | System | Dataset | Time (s) | Bytes In (GiB) | Resources/s |
 |--------|---------|---------:|---------------:|------------:|
+| LEA47  | 100k-fh |    39076 |          53.94 |        8102 |
 | LEA58  | 100k-fh |    28366 |          53.94 |       11161 |
-
-```
-Uploads          [total, concurrency]     100000, 8
-Success          [ratio]                  100.00 %
-Duration         [total]                  7h52m46s
-Requ. Latencies  [mean, 50, 95, 99, max]  2.267s, 1.518s, 6.796s, 11.772s 40.552s
-Proc. Latencies  [mean, 50, 95, 99, max]  2.267s, 1.518s, 6.796s, 11.772s 40.552s
-Bytes In         [total, mean]            53.94 GiB, 565.57 KiB
-Bytes Out        [total, mean]            592.38 GiB, 6.07 MiB
-Status Codes     [code:count]             200:100000
-```
