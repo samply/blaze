@@ -20,6 +20,11 @@
   [search-param-registry code type]
   (p/-get search-param-registry code type))
 
+(defn all-types
+  "Returns a set of all types with search parameters."
+  [search-param-registry]
+  (p/-all-types search-param-registry))
+
 (defn list-by-type
   "Returns a seq of search params of `type`."
   [search-param-registry type]
@@ -53,6 +58,9 @@
   (-get [_ code type]
     (or (get-in index [type code])
         (get-in index ["Resource" code])))
+
+  (-all-types [_]
+    (disj (set (keys index)) "Resource"))
 
   (-list-by-type [_ type]
     (-> (into [] (map val) (index "Resource"))

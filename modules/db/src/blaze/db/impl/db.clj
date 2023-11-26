@@ -128,13 +128,13 @@
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-include batch-db resource-handle code target-type)))
 
-  (-rev-include [_ resource-handle]
-    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
-      (p/-rev-include batch-db resource-handle)))
-
   (-rev-include [_ resource-handle source-type code]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-rev-include batch-db resource-handle source-type code)))
+
+  (-patient-everything [_ patient-handle]
+    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
+      (p/-patient-everything batch-db patient-handle)))
 
   ;; ---- Batch DB ------------------------------------------------------------
 

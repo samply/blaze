@@ -5287,56 +5287,6 @@
 
 (deftest rev-include-test
   (testing "Patient"
-    (testing "all resources"
-      (testing "with patient only"
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
-
-          (let [db (d/db node)
-                patient (d/resource-handle db "Patient" "0")]
-
-            (is (coll/empty? (d/rev-include db patient))))))
-
-      (testing "with three resources"
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"}]
-            [:put {:fhir/type :fhir/Observation :id "0"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
-            [:put {:fhir/type :fhir/Condition :id "0"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]
-            [:put {:fhir/type :fhir/Specimen :id "0"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
-
-          (let [db (d/db node)
-                patient (d/resource-handle db "Patient" "0")]
-
-            (given (vec (d/rev-include db patient))
-              count := 3
-              [0 fhir-spec/fhir-type] := :fhir/Condition
-              [0 :id] := "0"
-              [1 fhir-spec/fhir-type] := :fhir/Observation
-              [1 :id] := "0"
-              [2 fhir-spec/fhir-type] := :fhir/Specimen
-              [2 :id] := "0"))))
-
-      (testing "With MedicationAdministration because it is reachable twice via
-                the search param `patient` and `subject`.
-
-                This test should assure that MedicationAdministration resources
-                are returned only once."
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"}]
-            [:put {:fhir/type :fhir/MedicationAdministration :id "0"
-                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
-
-          (let [db (d/db node)
-                patient (d/resource-handle db "Patient" "0")]
-
-            (given (vec (d/rev-include db patient))
-              count := 1
-              [0 fhir-spec/fhir-type] := :fhir/MedicationAdministration
-              [0 :id] := "0")))))
-
     (doseq [code ["subject" "patient"]]
       (testing (str "Observation with search parameter " code)
         (with-system-data [{:blaze.db/keys [node]} config]
@@ -5370,6 +5320,178 @@
         (let [db (d/db node)
               patients (d/resource-handle db "Patient" "0")]
           (is (coll/empty? (d/rev-include db patients "Observation" "code"))))))))
+
+(deftest patient-everything-test
+  (testing "with patient only"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (let [db (d/db node)
+            patient (d/resource-handle db "Patient" "0")]
+
+        (is (coll/empty? (d/patient-everything db patient))))))
+
+  (testing "with three resources"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Condition :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Specimen :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+      (let [db (d/db node)
+            patient (d/resource-handle db "Patient" "0")]
+
+        (given (vec (d/patient-everything db patient))
+          count := 3
+          [0 fhir-spec/fhir-type] := :fhir/Condition
+          [0 :id] := "0"
+          [1 fhir-spec/fhir-type] := :fhir/Observation
+          [1 :id] := "0"
+          [2 fhir-spec/fhir-type] := :fhir/Specimen
+          [2 :id] := "0"))))
+
+  (testing "With MedicationAdministration because it is reachable twice via
+                the search param `patient` and `subject`.
+
+                This test should assure that MedicationAdministration resources
+                are returned only once."
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/MedicationAdministration :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+      (let [db (d/db node)
+            patient (d/resource-handle db "Patient" "0")]
+
+        (given (vec (d/patient-everything db patient))
+          count := 1
+          [0 fhir-spec/fhir-type] := :fhir/MedicationAdministration
+          [0 :id] := "0"))))
+
+  (testing "one MedicationAdministration with referenced Medication"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Medication :id "0"}]
+        [:put {:fhir/type :fhir/MedicationAdministration :id "0"
+               :medication #fhir/Reference{:reference "Medication/0"}
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+      (let [db (d/db node)
+            patient (d/resource-handle db "Patient" "0")]
+
+        (testing "contains also the Medication"
+          (given (vec (d/patient-everything db patient))
+            count := 2
+            [0 fhir-spec/fhir-type] := :fhir/MedicationAdministration
+            [0 :id] := "0"
+            [1 fhir-spec/fhir-type] := :fhir/Medication
+            [1 :id] := "0")))))
+
+  (testing "two MedicationAdministrations with two referenced Medications"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Medication :id "0"}]
+        [:put {:fhir/type :fhir/Medication :id "1"}]
+        [:put {:fhir/type :fhir/MedicationAdministration :id "0"
+               :medication #fhir/Reference{:reference "Medication/0"}
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/MedicationAdministration :id "1"
+               :medication #fhir/Reference{:reference "Medication/1"}
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+      (let [db (d/db node)
+            patient (d/resource-handle db "Patient" "0")]
+
+        (testing "contains both Medications"
+          (given (vec (d/patient-everything db patient))
+            count := 4
+            [0 fhir-spec/fhir-type] := :fhir/MedicationAdministration
+            [0 :id] := "0"
+            [1 fhir-spec/fhir-type] := :fhir/Medication
+            [1 :id] := "0"
+            [2 fhir-spec/fhir-type] := :fhir/MedicationAdministration
+            [2 :id] := "1"
+            [3 fhir-spec/fhir-type] := :fhir/Medication
+            [3 :id] := "1")))))
+
+  (testing "two MedicationAdministrations with one referenced Medication"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Medication :id "0"}]
+        [:put {:fhir/type :fhir/MedicationAdministration :id "0"
+               :medication #fhir/Reference{:reference "Medication/0"}
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/MedicationAdministration :id "1"
+               :medication #fhir/Reference{:reference "Medication/0"}
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+      (let [db (d/db node)
+            patient (d/resource-handle db "Patient" "0")]
+
+        (testing "contains the Medication only once"
+          (given (vec (d/patient-everything db patient))
+            count := 3
+            [0 fhir-spec/fhir-type] := :fhir/MedicationAdministration
+            [0 :id] := "0"
+            [1 fhir-spec/fhir-type] := :fhir/Medication
+            [1 :id] := "0"
+            [2 fhir-spec/fhir-type] := :fhir/MedicationAdministration
+            [2 :id] := "1")))))
+
+  (testing "no duplicates are returned"
+    (let [observation-gen
+          (gen/vector
+           (create-tx-op
+            (fg/observation
+             :id (gen/fmap str gen/uuid)
+             :subject (fg/reference :reference (gen/return "Patient/0"))
+             :performer (gen/fmap vector (fg/reference :reference (gen/return "Practitioner/0")))))
+           0 10)
+          encounter-gen
+          (gen/vector
+           (create-tx-op
+            (fg/encounter
+             :id (gen/fmap str gen/uuid)
+             :subject (fg/reference :reference (gen/return "Patient/0"))))
+           0 10)
+          procedure-gen
+          (gen/vector
+           (create-tx-op
+            (fg/procedure
+             :id (gen/fmap str gen/uuid)
+             :subject (fg/reference :reference (gen/return "Patient/0"))))
+           0 10)
+          medication-administration-gen
+          (gen/vector
+           (create-tx-op
+            (fg/medication-administration
+             :id (gen/fmap str gen/uuid)
+             :medication (fg/reference :reference (gen/return "Medication/0"))
+             :subject (fg/reference :reference (gen/return "Patient/0"))))
+           0 10)
+          tx-ops-gen (gen/let [observations observation-gen
+                               encounters encounter-gen
+                               procedures procedure-gen
+                               medication-administrations medication-administration-gen]
+                       (-> [[:put {:fhir/type :fhir/Patient :id "0"}]
+                            [:put {:fhir/type :fhir/Medication :id "0"}]
+                            [:put {:fhir/type :fhir/Practitioner :id "0"}]]
+                           (into observations)
+                           (into encounters)
+                           (into procedures)
+                           (into medication-administrations)))]
+      (satisfies-prop 10
+        (prop/for-all [tx-ops tx-ops-gen]
+          (with-system-data [{:blaze.db/keys [node]} config]
+            [tx-ops]
+
+            (let [db (d/db node)
+                  patient (d/resource-handle db "Patient" "0")
+                  res (vec (d/patient-everything db patient))]
+              (= (count (set res)) (count res)))))))))
 
 (deftest batch-db-test
   (testing "resource-handle"

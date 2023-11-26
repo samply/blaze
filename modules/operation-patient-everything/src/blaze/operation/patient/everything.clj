@@ -25,7 +25,7 @@
 
 (defn- handles [db patient-id]
   (if-let [patient (patient-handle db patient-id)]
-    (let [handles (into [] (take max-size) (d/rev-include db patient))]
+    (let [handles (into [] (take max-size) (d/patient-everything db patient))]
       (if (= max-size (count handles))
         (ba/conflict (too-costly-msg patient-id) :fhir/issue "too-costly")
         (into [patient] handles)))
