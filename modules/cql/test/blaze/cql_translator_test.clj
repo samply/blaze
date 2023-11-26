@@ -117,4 +117,4 @@
                    define Error: "
                  (str/join " or " (repeat 500 "true"))))
       ::anom/category := ::anom/fault
-      ::anom/message := "Error while parsing the ELM representation of a CQL library: Depth (1001) exceeds the maximum allowed nesting depth (1000)")))
+      ::anom/message := "Error while parsing the ELM representation of a CQL library: Could not convert library to JSON using JAXB serializer.")))

@@ -101,17 +101,17 @@
            max-background-jobs
            compaction-readahead-size]
     :or {wal-dir ""
-         max-background-jobs 2
-         compaction-readahead-size 0}}]
-  (doto (DBOptions.)
-    (.setStatistics ^Statistics stats)
-    (.setWalDir (str wal-dir))
-    (.setMaxBackgroundJobs (long max-background-jobs))
-    (.setCompactionReadaheadSize (long compaction-readahead-size))
-    (.setEnablePipelinedWrite true)
-    (.setCreateIfMissing true)
-    (.setCreateMissingColumnFamilies true)
-    (.setListeners ^List (list listener))))
+         max-background-jobs 2}}]
+  (cond-> (doto (DBOptions.)
+            (.setStatistics ^Statistics stats)
+            (.setWalDir (str wal-dir))
+            (.setMaxBackgroundJobs (long max-background-jobs))
+            (.setEnablePipelinedWrite true)
+            (.setCreateIfMissing true)
+            (.setCreateMissingColumnFamilies true)
+            (.setListeners ^List (list listener)))
+    (int? compaction-readahead-size)
+    (.setCompactionReadaheadSize (long compaction-readahead-size))))
 
 (defn write-options [{:keys [sync? disable-wal?]}]
   (cond-> (WriteOptions.)

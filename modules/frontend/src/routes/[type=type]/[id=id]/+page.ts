@@ -14,8 +14,8 @@ export async function load({ fetch, params }) {
 				res.status == 404
 					? `The ${params.type} with ID ${params.id} was not found.`
 					: res.status == 410
-					? `The ${params.type} with ID ${params.id} was deleted. Please look into the history.`
-					: `An error happend while loading the ${params.type} with ID ${params.id}. Please try again later.`
+					  ? `The ${params.type} with ID ${params.id} was deleted. Please look into the history.`
+					  : `An error happend while loading the ${params.type} with ID ${params.id}. Please try again later.`
 		});
 	}
 

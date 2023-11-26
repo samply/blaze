@@ -17,31 +17,22 @@ The following systems were used for performance evaluation:
 
 The following datasets were used:
 
-| Dataset | # Pat. ¹ | # Res. ² | # Obs. ³ |
-|---------|---------:|---------:|---------:|
-| 100k    |    100 k |    104 M |     59 M |
-| 100k-fh |    100 k |    317 M |    191 M |
-| 1M      |      1 M |   1044 M |    593 M |
+| Dataset | # Pat. ¹ | # Res. ² | # Obs. ³ | Disc Size |
+|---------|---------:|---------:|---------:|----------:|
+| 100k    |    100 k |    104 M |     59 M |   205 GiB |
+| 100k-fh |    100 k |    317 M |    191 M |   323 GiB |
+| 1M      |      1 M |   1044 M |    593 M |  1045 GiB |
 
 ¹ Number of Patients, ² Total Number of Resources, ³ Number of Observations
 
 ## Import
 
 ```sh
-blazectl --server http://localhost:8080/fhir upload -c8 data/synthea/data-100k-full-history/
+blazectl --server http://localhost:8080/fhir upload -c8 <dataset>
 ```
 
-| System | Dataset | Time (s) | Bytes In (GiB) | Resources/s |
-|--------|---------|---------:|---------------:|------------:|
-| LEA58  | 100k-fh |    28366 |          53.94 |       11161 |
-
-```
-Uploads          [total, concurrency]     100000, 8
-Success          [ratio]                  100.00 %
-Duration         [total]                  7h52m46s
-Requ. Latencies  [mean, 50, 95, 99, max]  2.267s, 1.518s, 6.796s, 11.772s 40.552s
-Proc. Latencies  [mean, 50, 95, 99, max]  2.267s, 1.518s, 6.796s, 11.772s 40.552s
-Bytes In         [total, mean]            53.94 GiB, 565.57 KiB
-Bytes Out        [total, mean]            592.38 GiB, 6.07 MiB
-Status Codes     [code:count]             200:100000
-```
+| System | Dataset | Time (h) | Resources/s |
+|--------|---------|---------:|------------:|
+| LEA47  | 100k    |    3,048 |        9469 |
+| LEA47  | 100k-fh |    9,797 |        8977 |
+| LEA58  | 100k-fh |    7,426 |       11843 |

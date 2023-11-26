@@ -234,7 +234,7 @@ jobs:
 
     - name: Upload Trivy Scan Results to GitHub Security Tab
       if: ${{ (github.repository_owner == 'samply') || (vars.IMAGE_SCAN_UPLOAD == 'true') }}
-      uses: github/codeql-action/upload-sarif@66b90a5db151a8042fa97405c6cf843bbe433f7b # v2
+      uses: github/codeql-action/upload-sarif@407ffafae6a767df3e0230c3df91b6443ae8df75 # v2
       with:
         sarif_file: trivy-results.sarif
 
@@ -317,6 +317,9 @@ jobs:
 
     - name: Check Capability Statement
       run: .github/scripts/check-capability-statement.sh
+
+    - name: Check Capability Statement Filtered by _elements
+      run: .github/scripts/check-capability-statement-filtered.sh
 
     - name: Check Referential Integrity Enforced
       run: .github/scripts/check-referential-integrity-enforced.sh

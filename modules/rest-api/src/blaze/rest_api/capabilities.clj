@@ -4,6 +4,7 @@
    [blaze.db.search-param-registry :as sr]
    [blaze.db.search-param-registry.spec]
    [blaze.fhir.spec.type :as type]
+   [blaze.handler.fhir.util :as fhir-util]
    [blaze.rest-api.spec]
    [blaze.rest-api.util :as u]
    [blaze.spec]
@@ -27,75 +28,70 @@
           (filter
            #(some #{name} (:blaze.rest-api.operation/resource-types %))
            operations)]
-      (cond->
-       {:type (type/code name)
-        :profile (type/canonical url)
-        :interaction
-        (reduce
-         (fn [res code]
-           (if-let
-            [{:blaze.rest-api.interaction/keys [doc]} (get interactions code)]
-             (conj
-              res
-              (cond->
-               {:code (type/code (clojure.core/name code))}
-                doc
-                (assoc :documentation (type/->Markdown doc))))
-             res))
-         []
-         [:read
-          :vread
-          :update
-          :delete
-          :history-instance
-          :history-type
-          :create
-          :search-type])
-        :versioning #fhir/code"versioned-update"
-        :readHistory true
-        :updateCreate true
-        :conditionalCreate true
-        :conditionalRead #fhir/code"not-supported"
-        :conditionalUpdate false
-        :conditionalDelete #fhir/code"not-supported"
-        :referencePolicy
-        (cond->
-         [#fhir/code"literal"
-          #fhir/code"local"]
-          enforce-referential-integrity
-          (conj #fhir/code"enforced"))
-        :searchInclude
-        (into
-         []
-         (comp
-          (filter (comp #{"reference"} :type))
-          (mapcat
-           (fn [{:keys [code target]}]
-             (cons
-              (str name ":" code)
-              (for [target target]
-                (str name ":" code ":" target))))))
-         (sr/list-by-type search-param-registry name))
-        :searchRevInclude
-        (into
-         []
-         (mapcat
-          (fn [{:keys [base code]}]
-            (map #(str % ":" code) base)))
-         (sr/list-by-target search-param-registry name))
-        :searchParam
-        (into
-         []
-         (comp
-          (remove (comp #{"_id" "_lastUpdated" "_profile" "_security" "_source" "_tag" "_list" "_has"} :name))
-          (map
-           (fn [{:keys [name url type]}]
-             (cond-> {:name name :type (type/code type)}
-               url
-               (assoc :definition (type/canonical url))
-               (= "quantity" type)
-               (assoc :documentation quantity-documentation)))))
-         (sr/list-by-type search-param-registry name))}
+      (cond-> {:type (type/code name)
+               :profile (type/canonical url)
+               :interaction
+               (reduce
+                (fn [res code]
+                  (if-let
+                   [{:blaze.rest-api.interaction/keys [doc]} (get interactions code)]
+                    (conj
+                     res
+                     (cond-> {:code (type/code (clojure.core/name code))}
+                       doc (assoc :documentation (type/->Markdown doc))))
+                    res))
+                []
+                [:read
+                 :vread
+                 :update
+                 :delete
+                 :history-instance
+                 :history-type
+                 :create
+                 :search-type])
+               :versioning #fhir/code"versioned-update"
+               :readHistory true
+               :updateCreate true
+               :conditionalCreate true
+               :conditionalRead #fhir/code"not-supported"
+               :conditionalUpdate false
+               :conditionalDelete #fhir/code"not-supported"
+               :referencePolicy
+               (cond-> [#fhir/code"literal"
+                        #fhir/code"local"]
+                 enforce-referential-integrity (conj #fhir/code"enforced"))
+               :searchInclude
+               (into
+                []
+                (comp
+                 (filter (comp #{"reference"} :type))
+                 (mapcat
+                  (fn [{:keys [code target]}]
+                    (cons
+                     (str name ":" code)
+                     (for [target target]
+                       (str name ":" code ":" target))))))
+                (sr/list-by-type search-param-registry name))
+               :searchRevInclude
+               (into
+                []
+                (mapcat
+                 (fn [{:keys [base code]}]
+                   (map #(str % ":" code) base)))
+                (sr/list-by-target search-param-registry name))
+               :searchParam
+               (into
+                []
+                (comp
+                 (remove (comp #{"_id" "_lastUpdated" "_profile" "_security" "_source" "_tag" "_list" "_has"} :name))
+                 (map
+                  (fn [{:keys [name url type]}]
+                    (cond-> {:name name :type (type/code type)}
+                      url
+                      (assoc :definition (type/canonical url))
+                      (= "quantity" type)
+                      (assoc :documentation quantity-documentation)))))
+                (sr/list-by-type search-param-registry name))}
 
         (seq operations)
         (assoc
@@ -106,9 +102,8 @@
            (fn [{:blaze.rest-api.operation/keys
                  [code def-uri type-handler instance-handler documentation]}]
              (when (or type-handler instance-handler)
-               (cond->
-                {:name code
-                 :definition (type/canonical def-uri)}
+               (cond-> {:name code
+                        :definition (type/canonical def-uri)}
                  documentation
                  (assoc :documentation (type/->Markdown documentation))))))
           operations))))))
@@ -124,7 +119,7 @@
      history-system-handler]
     :or {context-path ""}
     :as context}]
-  (let [release-date #fhir/dateTime"2023-11-22"
+  (let [release-date #fhir/dateTime"2023-11-26"
         capability-statement
         {:fhir/type :fhir/CapabilityStatement
          :status #fhir/code"active"
@@ -199,10 +194,12 @@
             {:name "_summary"
              :type "token"
              :documentation "Only `count` is supported at the moment."}]}]}]
-    (fn [{:blaze/keys [base-url]}]
-      (ac/completed-future
-       (ring/response
-        (assoc-in
-         capability-statement
-         [:implementation :url]
-         (type/->Url (str base-url context-path))))))))
+    (fn [{:keys [query-params] :blaze/keys [base-url]}]
+      (let [elements (fhir-util/elements query-params)]
+        (ac/completed-future
+         (ring/response
+          (cond-> (assoc-in
+                   capability-statement
+                   [:implementation :url]
+                   (type/->Url (str base-url context-path)))
+            (seq elements) (select-keys (conj elements :fhir/type)))))))))

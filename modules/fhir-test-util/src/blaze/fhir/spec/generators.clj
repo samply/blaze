@@ -425,6 +425,7 @@
    subject (rare-nil (reference :reference (gen/return nil)))
    encounter (rare-nil (reference :reference (gen/return nil)))
    effective (rare-nil (gen/one-of [(dateTime) (period)]))
+   performer (gen/vector (reference :reference (gen/return nil)))
    value (rare-nil (observation-value))])
 
 (def-resource-gen encounter
@@ -453,6 +454,12 @@
   [id id-value
    meta (meta)
    category (gen/vector (code))])
+
+(def-resource-gen medication-administration
+  [id id-value
+   meta (meta)
+   medication (rare-nil (reference :reference (gen/return nil)))
+   subject (rare-nil (reference :reference (gen/return nil)))])
 
 (def-resource-gen diagnostic-report
   [id id-value

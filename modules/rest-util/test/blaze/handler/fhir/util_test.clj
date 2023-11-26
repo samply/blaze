@@ -1,9 +1,13 @@
 (ns blaze.handler.fhir.util-test
   (:require
    [blaze.handler.fhir.util :as fhir-util]
+   [blaze.handler.fhir.util-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
    [clojure.test :as test :refer [are deftest is testing]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
    [reitit.core :as reitit]))
 
 (st/instrument)
@@ -101,6 +105,31 @@
       "0" "0"
       ["<invalid>" "a"] "a"
       ["A" "b"] "A")))
+
+(def comma-with-spaces-gen
+  (let [spaces #(apply str (repeat % " "))]
+    (gen/let [pre (gen/choose 0 5)
+              post (gen/choose 0 5)]
+      (str (spaces pre) "," (spaces post)))))
+
+(def fields-gen
+  (gen/let [fields (gen/vector (gen/such-that (comp not empty?) gen/string-alphanumeric) 1 10)
+            separators (gen/vector comma-with-spaces-gen (dec (count fields)))]
+    {:vector (mapv keyword fields)
+     :string (str/join (cons (first fields) (interleave separators (rest fields))))}))
+
+(deftest elements-test
+  (testing "_elements is not present"
+    (are [x] (empty? (fhir-util/elements x))
+      nil
+      {}))
+
+  (testing "_elements is present"
+    (tu/satisfies-prop 1000
+      (prop/for-all [fields fields-gen]
+        (let [query-params {"_elements" (fields :string)}]
+          (= (set (fhir-util/elements query-params))
+             (set (fields :vector))))))))
 
 (def router
   (reitit/router

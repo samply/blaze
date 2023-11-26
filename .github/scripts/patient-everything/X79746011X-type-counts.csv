@@ -8,6 +8,7 @@
 "ExplanationOfBenefit",78
 "ImagingStudy",45
 "Immunization",13
+"Medication",90
 "MedicationAdministration",90
 "MedicationRequest",98
 "Observation",2265
