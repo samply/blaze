@@ -43,7 +43,9 @@
 
   (-include [db resource-handle code] [db resource-handle code target-type])
 
-  (-rev-include [db resource-handle] [db resource-handle source-type code])
+  (-rev-include [db resource-handle source-type code])
+
+  (-patient-everything [db patient-handle])
 
   (-new-batch-db [db]))
 
@@ -99,6 +101,7 @@
 
 (defprotocol SearchParamRegistry
   (-get [_ code type])
+  (-all-types [_])
   (-list-by-type [_ type])
   (-list-by-target [_ target])
   (-linked-compartments [_ resource])

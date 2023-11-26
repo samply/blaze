@@ -31,6 +31,33 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- non-compartment-types [search-param-registry]
+  (apply disj (sr/all-types search-param-registry)
+         "Bundle"
+         "CapabilityStatement"
+         "CompartmentDefinition"
+         "ConceptMap"
+         "GraphDefinition"
+         "ImplementationGuide"
+         "MessageDefinition"
+         "MessageHeader"
+         "OperationDefinition"
+         "SearchParameter"
+         "Subscription"
+         "TerminologyCapabilities"
+         "TestReport"
+         "TestScript"
+         (map first (sr/compartment-resources search-param-registry "Patient"))))
+
+(defn- supporting-codes [search-param-registry non-compartment-types type]
+  (into
+   []
+   (comp
+    (filter (comp #{"reference"} :type))
+    (filter (comp (partial some non-compartment-types) :target))
+    (map :code))
+   (sr/list-by-type search-param-registry type)))
+
 (defrecord BatchDb [node snapshot resource-handle next-value next-value-prev
                     basis-t t]
   p/Db
@@ -135,17 +162,6 @@
     (index/targets context resource-handle (codec/c-hash code)
                    (codec/tid target-type)))
 
-  (-rev-include [db resource-handle]
-    (coll/eduction
-     (mapcat
-      (fn [[source-type codes]]
-        (coll/eduction
-         (comp (mapcat (partial p/-rev-include db resource-handle source-type))
-               (distinct))
-         codes)))
-     (sr/compartment-resources (:search-param-registry node)
-                               (name (type/type resource-handle)))))
-
   (-rev-include [context resource-handle source-type code]
     (let [reference (codec/v-hash (rh/reference resource-handle))
           source-tid (codec/tid source-type)]
@@ -154,6 +170,31 @@
        (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
          (sp-vr/prefix-keys! svri (codec/c-hash code) source-tid
                              reference reference)))))
+
+  (-patient-everything [db patient-handle]
+    (let [search-param-registry (:search-param-registry node)
+          non-compartment-types (non-compartment-types search-param-registry)
+          supporting-codes (partial supporting-codes search-param-registry
+                                    non-compartment-types)]
+      (coll/eduction
+       (comp
+        (mapcat
+         (fn [[type codes]]
+           (let [supporting-codes (supporting-codes type)]
+             (coll/eduction
+              (comp
+               (mapcat (partial p/-rev-include db patient-handle type))
+               (mapcat
+                (fn [resource-handle]
+                  (into
+                   [resource-handle]
+                   (comp
+                    (mapcat (partial p/-include db resource-handle))
+                    (filter (comp non-compartment-types name type/type)))
+                   supporting-codes))))
+              codes))))
+        (distinct))
+       (sr/compartment-resources search-param-registry "Patient"))))
 
   ;; ---- Transaction ---------------------------------------------------------
 

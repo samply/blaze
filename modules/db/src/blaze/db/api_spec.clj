@@ -199,7 +199,11 @@
 
 (s/fdef d/rev-include
   :args (s/cat :db :blaze.db/db :resource-handle :blaze.db/resource-handle
-               :source-type (s/? :fhir.resource/type) :code (s/? string?))
+               :source-type :fhir.resource/type :code string?)
+  :ret (cs/coll-of :blaze.db/resource-handle))
+
+(s/fdef d/patient-everything
+  :args (s/cat :db :blaze.db/db :patient-handle :blaze.db/resource-handle)
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 ;; ---- Batch DB --------------------------------------------------------------
