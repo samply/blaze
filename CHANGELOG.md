@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.23.2
+
+### Bugfixes
+
+* Include Supporting Resources in Patient $everything ([#1306](https://github.com/samply/blaze/issues/1306))
+
+### Minor Enhancements
+
+* Support filtering for elements in CapabilityStatement ([#1250](https://github.com/samply/blaze/issues/1250))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/80?closed=1).
+
 ## v0.23.1
 
 ### Bugfixes
