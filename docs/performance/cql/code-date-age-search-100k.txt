@@ -1,0 +1,8 @@
+LEA25  | hemoglobin |   20 k |     0.78 |  0.012 | 127.8
+LEA25  | calcium    |   20 k |     3.10 |  0.037 |  32.3
+LEA36  | hemoglobin |   20 k |     0.47 |  0.017 | 214.3
+LEA36  | calcium    |   20 k |     1.62 |  0.010 |  61.8
+LEA47  | hemoglobin |   20 k |     0.28 |  0.004 | 357.3
+LEA47  | calcium    |   20 k |     0.95 |  0.009 | 105.7
+LEA58  | hemoglobin |   20 k |     0.20 |  0.003 | 507.9
+LEA58  | calcium    |   20 k |     0.63 |  0.008 | 158.6
