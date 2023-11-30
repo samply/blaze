@@ -1398,7 +1398,7 @@ jobs:
 
     - name: GHCR meta
       id: ghcr-meta
-      uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5
+      uses: docker/metadata-action@e6428a5c4e294a61438ed7f43155db912025b6b3 # v5
       with:
         images: |
           ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
@@ -1428,7 +1428,7 @@ jobs:
     - name: DockerHub meta
       if: ${{ env.dockerhub_username != '' }}
       id: dockerhub-meta
-      uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5
+      uses: docker/metadata-action@e6428a5c4e294a61438ed7f43155db912025b6b3 # v5
       with:
         images: |
           ${{ github.repository_owner }}/${{ github.event.repository.name }}
