@@ -1,5 +1,9 @@
 # CQL Performance
 
+## TL;DR
+
+For the CQL queries analyzed here, the relative performance of query evaluation in patients/s stays the same for datasets with 1 million patients compared to datasets with 100 thousand patients if the system resources are sufficient and Blaze performs equally or better for datasets with more patient history. In all cases the performance increases with rising system resources.  
+
 ## Systems
 
 The following systems were used for performance evaluation:
@@ -43,7 +47,7 @@ The first chart shows the results for the 100k dataset. It shows that the perfor
 
 ![](cql/simple-code-search-100k-fh.png) 
 
-The second bar chart shows the results for the 100k-fh dataset which differs by the 100 k dataset in that it contains a full history of patient data instead of a history capped at 10 years. Especially the number of observations is 191 M compared to only 59 M in the 100k dataset. Comparing the two bar charts, the performance is nearly identical. So for simple code search, the performance doesn't depend of the amount of patient history. 
+The second bar chart shows the results for the 100k-fh dataset which differs by the 100 k dataset in that it contains a full history of patient data instead of a history capped at 10 years. Especially the number of observations is 191 M compared to only 59 M in the 100k dataset. Comparing the two bar charts, the performance is nearly identical. So for simple code search, the performance doesn't depend on the amount of patient history. 
 
 ![](cql/simple-code-search-1M.png)
 
