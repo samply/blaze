@@ -11,10 +11,11 @@ set boxwidth 0.8
 set key left top reverse
 
 # Define x-axis and y-axis labels
-set title "Simple Code Search 100k"
+set title "Simple Code Search - Dataset 100k"
 set xlabel 'System'
 set ylabel 'Patients/s'
 set format y "%.0f k"
+set yrange [0:1200]
 
 # Define grid
 set grid ytics
@@ -25,6 +26,6 @@ set style line 2 lc rgb '#2E75B6'
 set style line 3 lc rgb '#1F4C7A'
 
 # Plot the data
-plot 'simple-code-search-100k.txt' using 6:xtic(1) every 3 ls 1 title '2 k hits', \
-     'simple-code-search-100k.txt' using 6:xtic(1) every 3::1 ls 2 title '60 k hits', \
-     'simple-code-search-100k.txt' using 6:xtic(1) every 3::2 ls 3 title '100 k hits'
+plot 'simple-code-search-100k.txt' using 8:xtic(3) every 3 ls 1 title '2 k hits', \
+     'simple-code-search-100k.txt' using 8:xtic(3) every 3::1 ls 2 title '60 k hits', \
+     'simple-code-search-100k.txt' using 8:xtic(3) every 3::2 ls 3 title '100 k hits'

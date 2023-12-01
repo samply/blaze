@@ -1,6 +1,6 @@
 # Set the terminal to PNG and specify the output file
 set terminal pngcairo enhanced font 'Helvetica Neue,12'
-set output 'code-date-age-search-100k.png'
+set output 'code-value-search-1M.png'
 
 # Set the data separator and skip the header
 set datafile separator "|"
@@ -11,7 +11,7 @@ set boxwidth 0.8
 set key left top reverse
 
 # Define x-axis and y-axis labels
-set title "Code, Date and Age Search - Dataset 100k"
+set title "Code Value Search - Dataset 1M"
 set xlabel 'System'
 set ylabel 'Patients/s'
 set format y "%.0f k"
@@ -22,7 +22,9 @@ set grid ytics
 # Define line styles and colors for each code
 set style line 1 lc rgb '#4DA8DA'
 set style line 2 lc rgb '#2E75B6'
+set style line 3 lc rgb '#1F4C7A'
 
 # Plot the data
-plot 'code-date-age-search-100k.txt' using 8:xtic(3) every 2 ls 1 title 'hemoglobin', \
-     'code-date-age-search-100k.txt' using 8:xtic(3) every 2::1 ls 2 title 'calcium', \
+plot 'code-value-search-1M.txt' using 9:xtic(3) every 3 ls 1 title '99 k hits', \
+     'code-value-search-1M.txt' using 9:xtic(3) every 3::1 ls 2 title '500 k hits', \
+     'code-value-search-1M.txt' using 9:xtic(3) every 3::2 ls 3 title '998 k hits'
