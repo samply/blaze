@@ -2,7 +2,7 @@
 
 In this section, CQL Queries for selecting patients which have Condition resources with one of two codes used.
 
-![](cql/double-code-search-100k.png)
+![](double-code-search-100k.png)
 
 ### Data
 
