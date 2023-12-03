@@ -797,24 +797,28 @@
     :measure-id := "0")
 
   (given (first-stratifier-strata (evaluate "q31-stratifier-storage-temperature"))
+    count := 2
     [0 :value :text type/value] := "temperature2to10"
     [0 :population 0 :count] := 1
     [1 :value :text type/value] := "temperatureGN"
     [1 :population 0 :count] := 1)
 
   (given (first-stratifier-strata (evaluate "q32-stratifier-underweight"))
+    count := 2
     [0 :value :text type/value] := "false"
     [0 :population 0 :count] := 2
     [1 :value :text type/value] := "true"
     [1 :population 0 :count] := 1)
 
   (given (first-stratifier-strata (evaluate "q40-specimen-stratifier"))
+    count := 2
     [0 :value :text type/value] := "blood-plasma"
     [0 :population 0 :count] := 4
     [1 :value :text type/value] := "peripheral-blood-cells-vital"
     [1 :population 0 :count] := 3)
 
   (given (first-stratifier-strata (evaluate "q41-specimen-multi-stratifier"))
+    count := 4
     [0 :component 0 :code :coding 0 :code type/value] := "sample-diagnosis"
     [0 :component 0 :value :text type/value] := "C34.9"
     [0 :component 1 :code :coding 0 :code type/value] := "sample-type"
@@ -828,8 +832,13 @@
     [2 :population 0 :count] := 2
     [3 :component 0 :value :text type/value] := "C50.9"
     [3 :component 1 :value :text type/value] := "peripheral-blood-cells-vital"
-    [3 :population 0 :count] := 2))
+    [3 :population 0 :count] := 2)
+
+  (given (first-stratifier-strata (evaluate "q52-sort-with-missing-values"))
+    count := 1
+    [0 :value :text type/value] := "Condition[id = 0, t = 1]"
+    [0 :population 0 :count] := 1))
 
 (comment
   (log/set-level! :debug)
-  (evaluate "q50-specimen-condition-reference"))
+  (evaluate "q52-sort-with-missing-values"))

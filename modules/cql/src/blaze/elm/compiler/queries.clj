@@ -133,36 +133,19 @@
     [(symbol (:direction sort-by-item)) (core/-form expr)]
     (symbol (:direction sort-by-item))))
 
-(defn- sort-expr [source sort-by-item]
-  (reify core/Expression
-    (-static [_]
-      false)
-    (-eval [_ context resource scope]
-     ;; TODO: build a comparator of all sort by items
-      (->> (vec (core/-eval source context resource scope))
-           (sort-by
-            (if-let [expr (:expression sort-by-item)]
-              #(core/-eval expr context resource %)
-              identity)
-            (comparator (:direction sort-by-item)))
-           (vec)))
-    (-form [_]
-      `(~'sorted-vector-query ~(core/-form source)
-                              ~(sort-by-item-form sort-by-item)))))
-
 (defn- xform-sort-expr [xform-factory source sort-by-item]
   (reify core/Expression
     (-static [_]
       false)
     (-eval [_ context resource scope]
-     ;; TODO: build a comparator of all sort by items
+      ;; TODO: build a comparator of all sort by items
       (->> (into
             []
             (-create xform-factory context resource scope)
             (core/-eval source context resource scope))
            (sort-by
             (if-let [expr (:expression sort-by-item)]
-              #(core/-eval expr context resource %)
+              (partial core/-eval expr context resource)
               identity)
             (comparator (:direction sort-by-item)))
            (vec)))
@@ -202,14 +185,10 @@
           xform-factory (xform-factory relationship-xform-factories where-xform-factory return-xform-factory)
           sort-by-items (mapv #(compile-sort-by-item context %) sort-by-items)]
       (if (empty? sort-by-items)
-        (if xform-factory
-          (if (contains? optimizations :first)
-            (eduction-expr xform-factory source)
-            (into-vector-expr xform-factory source))
-          source)
-        (if xform-factory
-          (xform-sort-expr xform-factory source (first sort-by-items))
-          (sort-expr source (first sort-by-items)))))
+        (if (contains? optimizations :first)
+          (eduction-expr xform-factory source)
+          (into-vector-expr xform-factory source))
+        (xform-sort-expr xform-factory source (first sort-by-items))))
     (throw (Exception. (str "Unsupported number of " (count sources) " sources in query.")))))
 
 ;; 10.3. AliasRef
