@@ -177,24 +177,27 @@
           supporting-codes (partial supporting-codes search-param-registry
                                     non-compartment-types)]
       (coll/eduction
-       (comp
-        (mapcat
-         (fn [[type codes]]
-           (let [supporting-codes (supporting-codes type)]
-             (coll/eduction
-              (comp
-               (mapcat (partial p/-rev-include db patient-handle type))
-               (mapcat
-                (fn [resource-handle]
-                  (into
-                   [resource-handle]
-                   (comp
-                    (mapcat (partial p/-include db resource-handle))
-                    (filter (comp non-compartment-types name type/type)))
-                   supporting-codes))))
-              codes))))
-        (distinct))
-       (sr/compartment-resources search-param-registry "Patient"))))
+       cat
+       [[patient-handle]
+        (coll/eduction
+         (comp
+          (mapcat
+           (fn [[type codes]]
+             (let [supporting-codes (supporting-codes type)]
+               (coll/eduction
+                (comp
+                 (mapcat (partial p/-rev-include db patient-handle type))
+                 (mapcat
+                  (fn [resource-handle]
+                    (into
+                     [resource-handle]
+                     (comp
+                      (mapcat (partial p/-include db resource-handle))
+                      (filter (comp non-compartment-types name type/type)))
+                     supporting-codes))))
+                codes))))
+          (distinct))
+         (sr/compartment-resources search-param-registry "Patient"))])))
 
   ;; ---- Transaction ---------------------------------------------------------
 

@@ -385,7 +385,7 @@
         (map (fn [i]
                [:put {:fhir/type :fhir/Observation :id (str i)
                       :subject #fhir/Reference{:reference "Patient/0"}}]))
-        (range 10000))]
+        (range 9999))]
 
       (let [{:keys [status body]}
             @(handler {:path-params {:id "0"}})]
