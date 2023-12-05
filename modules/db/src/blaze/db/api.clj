@@ -425,7 +425,7 @@
   `patient-handle` including supporting resources like Practitioners,
   Medications, Locations, Organizations etc.
 
-  The `patient-handle` itself isn't returned."
+  The `patient-handle` itself is returned first."
   [db patient-handle]
   (p/-patient-everything db patient-handle))
 

@@ -28,7 +28,7 @@
     (let [handles (into [] (take max-size) (d/patient-everything db patient))]
       (if (= max-size (count handles))
         (ba/conflict (too-costly-msg patient-id) :fhir/issue "too-costly")
-        (into [patient] handles)))
+        handles))
     (ba/not-found (format "The Patient with id `%s` was not found." patient-id))))
 
 (defn- luid [{:keys [clock rng-fn]}]
