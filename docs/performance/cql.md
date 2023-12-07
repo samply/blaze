@@ -6,16 +6,20 @@ For the CQL queries analyzed here, the relative performance of query evaluation 
 
 ## Systems
 
-The following systems were used for performance evaluation:
+The following systems with rising resources were used for performance evaluation:
 
-| System | Provider | CPU        | Cores |     RAM |    SSD | Heap Mem | Block Cache | Resource Cache ¹ |
-|--------|----------|------------|------:|--------:|-------:|---------:|------------:|-----------------:|
-| LEA25  | on-prem  | EPYC 7543P |     4 |  32 GiB |   2 TB |    8 GiB |       8 GiB |            2.5 M | 
-| LEA36  | on-prem  | EPYC 7543P |     8 |  64 GiB |   2 TB |   16 GiB |      16 GiB |              5 M | 
-| LEA47  | on-prem  | EPYC 7543P |    16 | 128 GiB |   2 TB |   32 GiB |      32 GiB |             10 M | 
-| LEA58  | on-prem  | EPYC 7543P |    32 | 256 GiB |   2 TB |   64 GiB |      64 GiB |             20 M | 
+| System | Provider | CPU        | Cores |     RAM |  SSD | Heap Mem ¹ | Block Cache ² | Resource Cache ³ |
+|--------|----------|------------|------:|--------:|-----:|-----------:|--------------:|-----------------:|
+| LEA25  | on-prem  | EPYC 7543P |     4 |  32 GiB | 2 TB |      8 GiB |         8 GiB |            2.5 M | 
+| LEA36  | on-prem  | EPYC 7543P |     8 |  64 GiB | 2 TB |     16 GiB |        16 GiB |              5 M | 
+| LEA47  | on-prem  | EPYC 7543P |    16 | 128 GiB | 2 TB |     32 GiB |        32 GiB |             10 M | 
+| LEA58  | on-prem  | EPYC 7543P |    32 | 256 GiB | 2 TB |     64 GiB |        64 GiB |             20 M | 
 
-¹ Size of the resource cache (DB_RESOURCE_CACHE_SIZE)
+¹ Size of the Java Heap (`JAVA_TOOL_OPTIONS`)
+² Size of the block cache (`DB_BLOCK_CACHE_SIZE`)
+³ Size of the resource cache (`DB_RESOURCE_CACHE_SIZE`)
+
+All systems have in common that the heap mem and the block cache both use 1/4 of the total available memory each. So the Blaze process itself will only use about half the system memory available. The rest of the system memory will be used as file system cache. 
 
 ## Datasets
 
@@ -29,11 +33,11 @@ The following datasets were used:
 
 ¹ Number of Patients, ² Total Number of Resources, ³ Number of Observations
 
-The creation of the datasets is described in the [Synthea section](./synthea/README.md). The disc size is measured after full manual compaction of the database.
+The creation of the datasets is described in the [Synthea section](./synthea/README.md). The disc size is measured after full manual compaction of the database. The actual disc size will be up to 50% higher, depending on the state of compaction which happens regularly in the background.
 
 ## Metric
 
-The metric analyzed here are the number of patients a system can process per second. It was chosen because the CQl evaluation performance depends heavily on the number of patients available in Blaze. The datasets contain either 100 k or 1 million patients in order to represent two relevant sizes from where an interpolation or extrapolation towards the target size should be possible. The metric patients per second itself is idenpendend from the actual number of patients and so can be used to compare the two sizes analysed here.
+The metric analyzed here are the number of patients a system can process per second. It was chosen because the CQL evaluation performance depends heavily on the number of patients available in Blaze. The datasets contain either 100 k or 1 million patients in order to represent two relevant sizes from where an interpolation or extrapolation towards the target size should be possible. The metric patients per second itself is independent from the actual number of patients and can therefore be used to compare the two population sizes analysed here.
 
 With a given patients per second value, its always possible to calculate the to be expected CQL evaluation duration by dividing the target systems number of patients by that number. So for example, if the metric is 100 k patients/s Blaze will need 1 second if it contains 100 k patients and 5 seconds if it contains 500 k patients.
 
@@ -43,7 +47,7 @@ In this section, CQL queries for selecting patients which have observations with
 
 ![](cql/simple-code-search-100k.png)
 
-The first chart shows the results for the 100k dataset. It shows that the performance raises with the system size and declines a bit with the number of patients found. This decline can be explained because it is more costly to find the observations that are responsible for the patient match as to find no observations.
+The first chart shows the results for the 100k dataset. It shows that the performance raises with the system size and declines a bit with the number of patients found. This decline can be explained because finding a hit is a two stage process. First hits are found in the [CompartmentSearchParamValueResource Index](../implementation/database.md#CompartmentSearchParamValueResource) which will also contain historic matches that have to be further checked using the [ResourceAsOf Index](../implementation/database.md#ResourceAsOf).
 
 ![](cql/simple-code-search-100k-fh.png) 
 
