@@ -11,7 +11,7 @@ set boxwidth 0.8
 
 # Define x-axis and y-axis labels
 set title "Simple Code Search - All Datasets - " . system
-set xlabel 'System'
+set xlabel 'Dataset'
 set ylabel 'Patients/s'
 set format y "%.0f k"
 set yrange [0:]

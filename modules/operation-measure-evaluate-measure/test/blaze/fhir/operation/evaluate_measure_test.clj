@@ -8,6 +8,7 @@
    [blaze.fhir.operation.evaluate-measure :as evaluate-measure]
    [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.test-util]
    [blaze.metrics.spec]
    [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.middleware.fhir.db-spec]
@@ -112,25 +113,6 @@
     (with-system [{::evaluate-measure/keys [timeout]}
                   {::evaluate-measure/timeout {:millis 154912}}]
       (is (= (time/millis 154912) timeout)))))
-
-(deftest executor-init-test
-  (testing "nil config"
-    (given-thrown (ig/init {::evaluate-measure/executor nil})
-      :key := ::evaluate-measure/executor
-      :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
-
-  (testing "invalid num-threads"
-    (given-thrown (ig/init {::evaluate-measure/executor {:num-threads ::invalid}})
-      :key := ::evaluate-measure/executor
-      :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `pos-int?
-      [:explain ::s/problems 0 :val] := ::invalid))
-
-  (testing "with default num-threads"
-    (with-system [{::evaluate-measure/keys [executor]}
-                  {::evaluate-measure/executor {}}]
-      (is (ex/executor? executor)))))
 
 (deftest compile-duration-seconds-collector-init-test
   (with-system [{collector ::evaluate-measure/compile-duration-seconds}

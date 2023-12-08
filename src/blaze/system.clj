@@ -19,8 +19,6 @@
    [java.time Clock]
    [java.util.concurrent ThreadLocalRandom]))
 
-;; ---- Functions -------------------------------------------------------------
-
 (defrecord Cfg [env-var spec default])
 
 (defn- cfg
@@ -176,8 +174,6 @@
 
 (defn shutdown! [system]
   (ig/halt! system))
-
-;; ---- Integrant Hooks -------------------------------------------------------
 
 (defmethod ig/init-key :blaze/version
   [_ version]
