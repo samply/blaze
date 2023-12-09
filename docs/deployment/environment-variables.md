@@ -118,7 +118,7 @@ All reading FHIR interactions have to acquire the last database state known at t
 | -Dhttp.proxyHost | -       | v0.11 | The hostname of the proxy server for outbound HTTP requests. |
 | -Dhttp.proxyPort | 80      | v0.11 | The port of the proxy server.                                |
 
-[1]: <https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/net/doc-files/net-properties.html#Proxies>
+[1]: <https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/net/doc-files/net-properties.html#Proxies>
 [2]: <https://github.com/facebook/rocksdb/wiki/Setup-Options-and-Basic-Tuning#block-cache-size>
 [3]: <https://github.com/facebook/rocksdb/wiki/Thread-Pool>
 [4]: <https://openid.net/connect/>
