@@ -11,8 +11,8 @@ set boxwidth 0.8
 set key left top reverse
 
 # Define x-axis and y-axis labels
-set title "Simple Code Search - All Datasets - " . system
-set xlabel 'System'
+set title "Code Value Search - All Datasets - " . system
+set xlabel 'Dataset'
 set ylabel 'Patients/s'
 set format y "%.0f k"
 set yrange [0:]

@@ -142,9 +142,7 @@
   ;; FHIR Operation Evaluate Measure
   ;;
   ;; Special operation which enables Blaze to evaluate Measure resources,
-  ;; producing MeasureReports. The operation gets it's own executor with
-  ;; FHIR_OPERATION_EVALUATE_MEASURE_THREADS many threads on order to not occupy
-  ;; regular server threads. The metrics compile-duration-seconds and
+  ;; producing MeasureReports. The metrics compile-duration-seconds and
   ;; evaluate-duration-seconds are exported.
   ;;
   :blaze.fhir.operation.evaluate-measure/handler
@@ -157,8 +155,7 @@
   :blaze.fhir.operation.evaluate-measure/timeout
   {:millis #blaze/cfg ["FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT" nat-int? 3600000]}
 
-  :blaze.fhir.operation.evaluate-measure/executor
-  {:num-threads #blaze/cfg ["FHIR_OPERATION_EVALUATE_MEASURE_THREADS" pos-int? 4]}
+  :blaze.fhir.operation.evaluate-measure/executor {}
 
   :blaze.fhir.operation.evaluate-measure/compile-duration-seconds {}
   :blaze.fhir.operation.evaluate-measure/evaluate-duration-seconds {}
