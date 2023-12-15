@@ -183,7 +183,7 @@ jobs:
       run: make uberjar
 
     - name: Upload Blaze Uberjar
-      uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3
+      uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392 # v4
       with:
         name: blaze-uberjar
         path: target/blaze-*-standalone.jar
@@ -199,7 +199,7 @@ jobs:
         outputs: type=docker,dest=/tmp/blaze.tar
 
     - name: Upload Blaze Image
-      uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3
+      uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392 # v4
       with:
         name: blaze-image
         path: /tmp/blaze.tar
