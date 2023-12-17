@@ -1,5 +1,5 @@
 # Update the SHA by calling crane digest eclipse-temurin:17-jre-jammy
-FROM eclipse-temurin:17-jre-jammy@sha256:2cf874b22bf5b9a1bb363cec9d935c10c436880133456fa6c2f1ff44e14c28fe
+FROM eclipse-temurin:17-jre-jammy@sha256:aa1f60eb5c86df76fa2189f36eb062592748a733a9eaf577dcb20f9958509628
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install libjemalloc2 -y && \
