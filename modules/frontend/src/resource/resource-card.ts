@@ -98,7 +98,7 @@ export async function calcPropertiesDeep(
 							value: { type: { code: 'string' }, value: structureDefinition.name as string }
 						},
 						...properties
-				  ]
+					]
 				: properties,
 		object: resource
 	};
@@ -124,10 +124,10 @@ async function processElement(
 				type,
 				resource,
 				fetchStructureDefinition
-		  )
+			)
 		: type?.code == 'Resource'
-		  ? processResourceElement(element, resource, fetchStructureDefinition)
-		  : processTypedElement(element, resource, fetchStructureDefinition);
+			? processResourceElement(element, resource, fetchStructureDefinition)
+			: processTypedElement(element, resource, fetchStructureDefinition);
 }
 
 function mapType(type: ElementDefinitionType): Type {
@@ -155,7 +155,7 @@ async function processResourceElement(
 		value: await (Array.isArray(value)
 			? Promise.all(
 					(value as Resource[]).map((v) => processResourceValue(v, fetchStructureDefinition))
-			  )
+				)
 			: processResourceValue(value, fetchStructureDefinition))
 	};
 }
@@ -192,7 +192,7 @@ async function processAbstractElement(
 					(value as Element[]).map((v) =>
 						processAbstractElementValue(elements, type, v, fetchStructureDefinition)
 					)
-			  )
+				)
 			: processAbstractElementValue(elements, type, value, fetchStructureDefinition))
 	};
 }
@@ -279,11 +279,11 @@ function processPrimitiveValue(
 		? value.map((v) => ({
 				type: type,
 				value: v
-		  }))
+			}))
 		: {
 				type: type,
 				value: value
-		  };
+			};
 }
 
 async function processNonPrimitiveValue(
