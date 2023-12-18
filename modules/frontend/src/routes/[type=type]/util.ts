@@ -18,7 +18,7 @@ export async function transformBundle(
 						resource: await fhirObject(e.resource, fetch)
 					}))
 				)
-		  }
+			}
 		: (bundle as SearchSetBundle<unknown> as SearchSetBundle<FhirObject>);
 }
 

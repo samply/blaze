@@ -15,6 +15,6 @@ export async function transformBundle(
 							: (e as HistoryBundleEntry<unknown> as HistoryBundleEntry<FhirObject>)
 					)
 				)
-		  }
+			}
 		: (bundle as HistoryBundle<unknown> as HistoryBundle<FhirObject>);
 }
