@@ -88,7 +88,6 @@ jobs:
         - thread-pool-executor-collector
 
         java-version:
-        - '11'
         - '17'
         - '21'
 
@@ -124,7 +123,6 @@ jobs:
     strategy:
       matrix:
         java-version:
-        - '11'
         - '17'
         - '21'
 

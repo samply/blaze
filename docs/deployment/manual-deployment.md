@@ -1,6 +1,6 @@
 # Manual Deployment
 
-The installation works under Windows, Linux and macOS. The only dependency is an installed OpenJDK 11 or 17 with 17 recommended. Blaze is tested with [Eclipse Temurin][1].
+The installation works under Windows, Linux and macOS. The only dependency is an installed OpenJDK 17 or 21 with 17 recommended. Blaze is tested with [Eclipse Temurin][1].
 
 Blaze runs on the JVM and comes as single JAR file. Download the most recent version [here](https://github.com/samply/blaze/releases/tag/v0.23.2). Look for `blaze-0.23.2-standalone.jar`.
 
