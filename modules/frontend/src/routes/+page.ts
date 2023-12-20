@@ -2,7 +2,7 @@ import type { CapabilityStatement, Bundle, BundleEntry, Resource } from '../fhir
 import { bundleLink } from '../fhir';
 import type { ResourceInfo } from './+layout';
 import { base } from '$app/paths';
-import { error } from '@sveltejs/kit';
+import { error, type NumericRange } from '@sveltejs/kit';
 
 type Fetch = typeof fetch;
 
@@ -31,7 +31,7 @@ async function fetchResourceCountBundle(
 	});
 
 	if (!res.ok) {
-		throw error(res.status, 'error while loading the resource counts');
+		error(res.status as NumericRange<400, 599>, 'error while loading the resource counts');
 	}
 
 	return await res.json();

@@ -1,7 +1,7 @@
 import type { SearchSetBundle, SearchSetBundleEntry, Resource, OperationOutcome } from '../../fhir';
 import type { RouteParams } from './$types';
 import { base } from '$app/paths';
-import { error } from '@sveltejs/kit';
+import { error, type NumericRange } from '@sveltejs/kit';
 import { processParams } from '../../util';
 import { fhirObject, type FhirObject } from '../../resource/resource-card';
 
@@ -59,7 +59,7 @@ export async function fetchBundle(fetch: typeof window.fetch, params: RouteParam
 	});
 
 	if (!res.ok) {
-		throw error(res.status, await appError(params, res));
+		error(res.status as NumericRange<400, 599>, await appError(params, res));
 	}
 
 	const bundle = (await res.json()) as SearchSetBundle<Resource>;
