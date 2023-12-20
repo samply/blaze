@@ -109,7 +109,7 @@
 	>
 		<div class="flex-grow flex flex-col gap-2">
 			{#each queryParams as queryParam, index (queryParam.id)}
-				<div in:fade={{ duration: 300, easing: quintIn }} class="flex gap-2">
+				<div in:fade|global={{ duration: 300, easing: quintIn }} class="flex gap-2">
 					<CheckboxActive
 						{index}
 						active={queryParam.active}
