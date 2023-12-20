@@ -1,5 +1,5 @@
 import { base } from '$app/paths';
-import { error } from '@sveltejs/kit';
+import { error, type NumericRange } from '@sveltejs/kit';
 import { fhirObject } from '../../../../../resource/resource-card';
 
 export async function load({ fetch, params }) {
@@ -8,7 +8,7 @@ export async function load({ fetch, params }) {
 	});
 
 	if (!res.ok) {
-		throw error(res.status, {
+		error(res.status as NumericRange<400, 599>, {
 			short: res.status == 404 ? 'Not Found' : undefined,
 			message:
 				res.status == 404

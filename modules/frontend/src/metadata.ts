@@ -1,6 +1,6 @@
 import type { StructureDefinition } from './fhir';
 import { base } from '$app/paths';
-import { error } from '@sveltejs/kit';
+import { error, type NumericRange } from '@sveltejs/kit';
 
 const structureDefinitionStore = new Map<string, Promise<StructureDefinition>>();
 
@@ -14,7 +14,10 @@ async function loadStructureDefinition(fetch: typeof window.fetch, type: string)
 	});
 
 	if (!res.ok) {
-		throw error(res.status, `error while loading the ${type} StructureDefinition`);
+		error(
+			res.status as NumericRange<400, 599>,
+			`error while loading the ${type} StructureDefinition`
+		);
 	}
 
 	return (await res.json()) as StructureDefinition;

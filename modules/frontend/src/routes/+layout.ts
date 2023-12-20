@@ -1,6 +1,6 @@
 import type { CapabilityStatement } from '../fhir';
 import { base } from '$app/paths';
-import { error } from '@sveltejs/kit';
+import { error, type NumericRange } from '@sveltejs/kit';
 
 export const ssr = false;
 
@@ -13,7 +13,7 @@ export async function load({ fetch }) {
 	const res = await fetch(`${base}/metadata`, { headers: { Accept: 'application/fhir+json' } });
 
 	if (!res.ok) {
-		throw error(res.status, 'error while loading the CapabilityStatement');
+		error(res.status as NumericRange<400, 599>, 'error while loading the CapabilityStatement');
 	}
 
 	return { capabilityStatement: (await res.json()) as CapabilityStatement };

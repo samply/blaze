@@ -1,6 +1,6 @@
 import type { HistoryBundle, Resource } from '../../fhir';
 import { base } from '$app/paths';
-import { error } from '@sveltejs/kit';
+import { error, type NumericRange } from '@sveltejs/kit';
 import { processParams } from '../../util';
 import { transformBundle } from '../../history/util';
 
@@ -10,7 +10,7 @@ export async function load({ fetch, url }) {
 	});
 
 	if (!res.ok) {
-		throw error(res.status, {
+		error(res.status as NumericRange<400, 599>, {
 			message: 'An error happend while loading the history. Please try again later.'
 		});
 	}
