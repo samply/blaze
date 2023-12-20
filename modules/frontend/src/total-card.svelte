@@ -13,7 +13,7 @@
 </script>
 
 <div
-	in:fade={{ duration: 300, easing: quintIn }}
+	in:fade|global={{ duration: 300, easing: quintIn }}
 	class="flex gap-2 bg-white shadow sm:rounded-lg px-4 py-5 sm:px-6"
 >
 	<slot />

@@ -27,7 +27,7 @@
 	const fadeParams = { duration: 300, easing: quintIn };
 </script>
 
-<div in:fade={fadeParams} class="overflow-hidden bg-white shadow sm:rounded-lg">
+<div in:fade|global={fadeParams} class="overflow-hidden bg-white shadow sm:rounded-lg">
 	<div class="border-b border-gray-200 px-8">
 		<nav class="-mb-px flex space-x-8" aria-label="Tabs">
 			<TabItem name="default" label="Interactions" />
@@ -35,7 +35,7 @@
 		</nav>
 	</div>
 	{#if isTabActive($page.url, 'default')}
-		<div in:fade={fadeParams} class="px-4 py-5 sm:px-6">
+		<div in:fade|global={fadeParams} class="px-4 py-5 sm:px-6">
 			<div class="flex">
 				<h3 class="flex-grow text-base font-semibold leading-6 text-gray-900">
 					{capabilityStatement.software?.name}
@@ -45,7 +45,7 @@
 				Last Updated&nbsp;<DateTime value={capabilityStatement.date} />
 			</p>
 		</div>
-		<div in:fade={fadeParams} class="border-t border-gray-200 px-4 py-5 sm:px-6">
+		<div in:fade|global={fadeParams} class="border-t border-gray-200 px-4 py-5 sm:px-6">
 			<table class="w-full divide-y divide-gray-300">
 				<thead>
 					<tr>
@@ -150,7 +150,7 @@
 			</table>
 		</div>
 	{:else}
-		<pre in:fade={fadeParams} class="flex overflow-auto text-sm"><code class="p-4"
+		<pre in:fade|global={fadeParams} class="flex overflow-auto text-sm"><code class="p-4"
 				><Object object={resource} /></code
 			></pre>
 	{/if}

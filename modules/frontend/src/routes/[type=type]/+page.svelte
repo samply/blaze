@@ -47,8 +47,8 @@
 		{#await data.streamed.bundle}
 			{#if duration > 300}
 				<div
-					in:fade={{ duration: 200 }}
-					out:slide={{ duration: 200 }}
+					in:fade|global={{ duration: 200 }}
+					out:slide|global={{ duration: 200 }}
 					class="bg-white shadow sm:rounded-lg text-center px-4 py-5 sm:px-6 text-gray-700"
 				>
 					<code>
