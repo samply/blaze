@@ -17,7 +17,11 @@
    [blaze.spec]
    [reitit.ring]
    [reitit.ring.spec]
-   [ring.middleware.params :as ring-params]))
+   [ring.middleware.params :as ring-params])
+  (:import
+   [com.google.common.base CaseFormat]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private wrap-params
   {:name :params
@@ -77,9 +81,9 @@
 
 (def ^:private wrap-output
   {:name :output
-   :compile (fn [{:keys [response-type]} _]
+   :compile (fn [{:keys [response-type] :response-type.json/keys [opts]} _]
               (if (= :json response-type)
-                output/wrap-json-output
+                (output/wrap-json-output opts)
                 output/wrap-output))})
 
 (def ^:private wrap-error
@@ -246,6 +250,9 @@
                 :handler instance-handler}}])
      resource-types)))
 
+(defn- camel [s]
+  (.to CaseFormat/LOWER_HYPHEN CaseFormat/LOWER_CAMEL s))
+
 (defn routes
   {:arglists '([context capabilities-handler batch-handler-promise])}
   [{:keys
@@ -334,4 +341,5 @@
     (conj
      ["/__admin{*more}"
       {:get {:handler admin-handler}
-       :response-type :json}])))
+       :response-type :json
+       :response-type.json/opts {:encode-key-fn (comp camel name)}}])))

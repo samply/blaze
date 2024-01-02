@@ -1,17 +1,22 @@
-import type { HistoryBundle, Resource } from '../../fhir';
+import type { HistoryBundle, Resource } from '../../fhir.js';
+import type { FhirObject } from '../../resource/resource-card';
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
-import { processParams } from '../../util';
-import { transformBundle } from '../../history/util';
+import { processParams } from '../../util.js';
+import { transformBundle } from '../../history/util.js';
 
-export async function load({ fetch, url }) {
+export interface Data {
+	bundle: HistoryBundle<FhirObject>;
+}
+
+export async function load({ fetch, url }): Promise<Data> {
 	const res = await fetch(`${base}/_history?${processParams(url.searchParams)}`, {
 		headers: { Accept: 'application/fhir+json' }
 	});
 
 	if (!res.ok) {
 		error(res.status as NumericRange<400, 599>, {
-			message: 'An error happend while loading the history. Please try again later.'
+			message: 'An error happened while loading the history. Please try again later.'
 		});
 	}
 

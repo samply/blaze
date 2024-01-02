@@ -86,12 +86,14 @@
    (fn [request respond raise]
      (handler request #(respond (handle-response opts request %)) raise))))
 
-(defn- handle-json-response [response]
-  (-> (update response :body j/write-value-as-bytes)
+(defn- handle-json-response [object-mapper response]
+  (-> (update response :body #(j/write-value-as-bytes % object-mapper))
       (ring/content-type "application/json;charset=utf-8")))
 
 (defn wrap-json-output
-  "Middleware to output data (not resources) in JSON"
-  [handler]
-  (fn [request respond raise]
-    (handler request #(respond (handle-json-response %)) raise)))
+  "Middleware to output data (not resources) in JSON."
+  [opts]
+  (let [object-mapper (j/object-mapper opts)]
+    (fn [handler]
+      (fn [request respond raise]
+        (handler request #(respond (handle-json-response object-mapper %)) raise)))))

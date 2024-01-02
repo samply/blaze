@@ -1,6 +1,6 @@
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
-import { fhirObject } from '../../../resource/resource-card';
+import { fhirObject } from '../../../resource/resource-card.js';
 
 export async function load({ fetch, params }) {
 	const res = await fetch(`${base}/${params.type}/${params.id}`, {
@@ -15,7 +15,7 @@ export async function load({ fetch, params }) {
 					? `The ${params.type} with ID ${params.id} was not found.`
 					: res.status == 410
 						? `The ${params.type} with ID ${params.id} was deleted. Please look into the history.`
-						: `An error happend while loading the ${params.type} with ID ${params.id}. Please try again later.`
+						: `An error happened while loading the ${params.type} with ID ${params.id}. Please try again later.`
 		});
 	}
 

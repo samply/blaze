@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { FhirObject } from '../resource/resource-card';
-	import type { ContactPoint } from '../fhir';
-	import { joinStrings } from '../util';
+	import type { FhirObject } from '../resource/resource-card.js';
+	import type { ContactPoint } from '../fhir.js';
+	import { joinStrings } from '../util.js';
 	import GrayBadge from './util/gray-badge.svelte';
 
 	export let values: FhirObject[];

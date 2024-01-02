@@ -1,4 +1,4 @@
-import type { StructureDefinition } from './fhir';
+import type { StructureDefinition } from './fhir.js';
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 

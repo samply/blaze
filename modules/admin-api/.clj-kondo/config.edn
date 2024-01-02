@@ -1,5 +1,6 @@
 {:config-paths
- ["../../../.clj-kondo/root"]
+ ["../../../.clj-kondo/root"
+  "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"]
 
  :lint-as
  {blaze.admin-api-test/with-handler clojure.core/fn}}

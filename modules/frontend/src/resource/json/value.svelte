@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { isPrimitive } from '../resource-card';
+	import { isPrimitive } from '../resource-card.js';
 	import PrimitiveValue from './primitive-value.svelte';
 	import Object from './object.svelte';
 

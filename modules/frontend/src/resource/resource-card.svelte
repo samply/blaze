@@ -1,13 +1,13 @@
 <script lang="ts">
-	import type { FhirObject } from './resource-card';
+	import type { FhirObject } from './resource-card.js';
 
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 	import { fade } from 'svelte/transition';
 	import { quintIn } from 'svelte/easing';
 
-	import { isTabActive } from './../util';
-	import { willBeRendered as willMetaBeRendered } from '../values/meta';
+	import { isTabActive } from '../util.js';
+	import { willBeRendered as willMetaBeRendered } from '../values/meta.js';
 
 	import TabItem from '../tab-item.svelte';
 	import TabItemEmbedded from '../tab-item-embedded.svelte';
@@ -37,7 +37,7 @@
 	const fadeParams = { duration: 300, easing: quintIn };
 </script>
 
-<div in:fade|global={fadeParams} class="overflow-hidden bg-white shadow sm:rounded-lg">
+<div in:fade|global={fadeParams} class="overflow-hidden">
 	<div class="border-b border-gray-200 px-8">
 		<nav class="-mb-px flex space-x-8" aria-label="Tabs">
 			{#if embedded}
@@ -49,7 +49,7 @@
 			{/if}
 		</nav>
 	</div>
-	{#if embedded ? selectedTab == 'default' : isTabActive($page.url, 'default')}
+	{#if embedded ? selectedTab === 'default' : isTabActive($page.url, 'default')}
 		<div in:fade|global={fadeParams} class="px-4 py-5 sm:px-6">
 			<div class="flex">
 				<h3 class="flex-grow text-base font-semibold leading-6 text-gray-900">

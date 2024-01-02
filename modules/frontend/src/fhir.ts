@@ -200,6 +200,15 @@ export enum SearchParamType {
 	special = 'special'
 }
 
+export interface Parameter extends BackboneElement {
+	name: string;
+	valueUnsignedInt?: number;
+}
+
+export interface Parameters extends Resource {
+	parameter: Parameter[];
+}
+
 export interface CapabilityStatement extends Resource {
 	software?: {
 		name: string;

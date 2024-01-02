@@ -2,8 +2,9 @@
   (:require
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec-spec]
+   [blaze.fhir.test-util]
    [blaze.module.test-util.ring :refer [call]]
-   [blaze.rest-api.middleware.output :refer [wrap-output]]
+   [blaze.rest-api.middleware.output :refer [wrap-json-output wrap-output]]
    [blaze.test-util :as tu]
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
@@ -11,7 +12,11 @@
    [clojure.test :as test :refer [are deftest is testing]]
    [juxt.iota :refer [given]]
    [ring.util.response :as ring]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   [com.google.common.base CaseFormat]))
+
+(set! *warn-on-reflection* true)
 
 (st/instrument)
 (log/set-level! :trace)
@@ -37,17 +42,20 @@
   (testing "JSON is the default"
     (testing "without accept header"
       (given (call resource-handler-200 {})
+        :status := 200
         [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
         [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
 
       (testing "not modified"
         (given (call resource-handler-304 {})
+          :status := 304
           [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
           :body := nil)))
 
     (testing "with accept header"
       (are [accept content-type]
            (given (call resource-handler-200 {:headers {"accept" accept}})
+             :status := 200
              [:headers "Content-Type"] := content-type
              [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
         "*/*" "application/fhir+json;charset=utf-8"
@@ -57,6 +65,7 @@
   (testing "possible accept headers"
     (are [accept content-type]
          (given (call resource-handler-200 {:headers {"accept" accept}})
+           :status := 200
            [:headers "Content-Type"] := content-type
            [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
       "application/fhir+json" "application/fhir+json;charset=utf-8"
@@ -69,6 +78,7 @@
          (given (call resource-handler-200
                       {:headers {"accept" accept}
                        :query-params {"_format" format}})
+           :status := 200
            [:headers "Content-Type"] := content-type
            [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
       "application/fhir+xml"
@@ -111,6 +121,7 @@
   (testing "possible accept headers"
     (are [accept content-type]
          (given (call resource-handler-200 {:headers {"accept" accept}})
+           :status := 200
            [:headers "Content-Type"] := content-type
            [:body parse-xml] := {:fhir/type :fhir/Patient :id "0"})
       "application/fhir+xml"
@@ -146,6 +157,7 @@
          (given (call resource-handler-200
                       {:headers {"accept" accept}
                        :query-params {"_format" format}})
+           :status := 200
            [:headers "Content-Type"] := content-type
            [:body parse-xml] := {:fhir/type :fhir/Patient :id "0"})
       "application/fhir+json"
@@ -187,3 +199,24 @@
 
 (deftest not-acceptable-test
   (is (nil? (call resource-handler-200 {:headers {"accept" "text/plain"}}))))
+
+(defn- json-handler [opts]
+  ((wrap-json-output opts)
+   (fn [_ respond _]
+     (respond (ring/response {:foo-bar 42})))))
+
+(defn- camel [s]
+  (.to CaseFormat/LOWER_HYPHEN CaseFormat/LOWER_CAMEL s))
+
+(deftest wrap-json-output-test
+  (testing "without options"
+    (given (call (json-handler nil) {})
+      :status := 200
+      [:headers "Content-Type"] := "application/json;charset=utf-8"
+      [:body #(String. ^bytes %)] := "{\"foo-bar\":42}"))
+
+  (testing "with options"
+    (given (call (json-handler {:encode-key-fn (comp camel name)}) {})
+      :status := 200
+      [:headers "Content-Type"] := "application/json;charset=utf-8"
+      [:body #(String. ^bytes %)] := "{\"fooBar\":42}")))
