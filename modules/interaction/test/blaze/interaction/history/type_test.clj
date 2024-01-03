@@ -8,6 +8,7 @@
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.resource-store :as rs]
+   [blaze.fhir.test-util :refer [link-url]]
    [blaze.interaction.history.type]
    [blaze.interaction.history.util-spec]
    [blaze.interaction.test-util :refer [wrap-error]]
@@ -45,9 +46,6 @@
     {:blaze/base-url ""
      :fhir.resource/type "Patient"}
     :path (str context-path "/Patient/_history")}))
-
-(defn- link-url [body link-relation]
-  (->> body :link (filter (comp #{link-relation} :relation)) first :url))
 
 (deftest init-test
   (testing "nil config"

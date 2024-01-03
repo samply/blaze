@@ -24,7 +24,7 @@ The following Operations are implemented:
 
 * [$graphql](http://hl7.org/fhir/resource-operation-graphql.html)
 * [Measure $evaluate-measure](https://www.hl7.org/fhir/operation-measure-evaluate-measure.html)
-* [Patient $everything](https://www.hl7.org/fhir/operation-patient-everything.html)
+* [Patient $everything](api/operation-patient-everything.md)
 
 ## Absolute URLs
 

@@ -669,6 +669,9 @@ jobs:
     - name: Patient Everything
       run: .github/scripts/patient-everything.sh
 
+    - name: Patient Everything Paged
+      run: .github/scripts/patient-everything-paged.sh
+
     - name: Patient Identical Update
       run: .github/scripts/patient-identical-update.sh
 
@@ -739,6 +742,12 @@ jobs:
 
     - name: Count the number of Patients with Stress Conditions at Inpatient Encounters using CQL
       run: .github/scripts/evaluate-measure-blazectl.sh inpatient-stress 13
+
+    - name: Patient Everything Too Costly
+      run: .github/scripts/patient-everything-too-costly.sh
+
+    - name: Patient Everything Paged
+      run: .github/scripts/patient-everything-paged-1000.sh
 
     - name: Docker Stats
       run: docker stats --no-stream

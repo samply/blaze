@@ -13,7 +13,8 @@
   :ret (s/nilable :blaze.db/t))
 
 (s/fdef util/page-size
-  :args (s/cat :query-params (s/nilable :ring.request/query-params))
+  :args (s/cat :query-params (s/nilable :ring.request/query-params)
+               :max (s/? pos-int?) :default (s/? (s/nilable pos-int?)))
   :ret nat-int?)
 
 (s/fdef util/page-offset

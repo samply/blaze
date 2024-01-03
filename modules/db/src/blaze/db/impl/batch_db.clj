@@ -49,7 +49,10 @@
          "TestScript"
          (map first (sr/compartment-resources search-param-registry "Patient"))))
 
-(defn- supporting-codes [search-param-registry non-compartment-types type]
+(defn- supporting-codes
+  "Returns all codes of search params of resources with `type` that point to one
+  of the `non-compartment-types`."
+  [search-param-registry non-compartment-types type]
   (into
    []
    (comp

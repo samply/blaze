@@ -36,10 +36,6 @@
   [executor-service timeout unit]
   (.awaitTermination ^ExecutorService executor-service timeout unit))
 
-(defn- thread-name!
-  [thread-counter name-template]
-  (format name-template (swap! thread-counter inc)))
-
 (defn cpu-bound-pool
   "Returns a thread pool with a fixed number of threads which is the number of
   available processors."
@@ -49,8 +45,8 @@
      (.availableProcessors (Runtime/getRuntime))
      (reify ThreadFactory
        (newThread [_ r]
-         (Thread. ^Runnable r ^String (thread-name! thread-counter
-                                                    name-template)))))))
+         (Thread. ^Runnable r ^String
+                  (format name-template (swap! thread-counter inc))))))))
 
 (defn io-pool
   "Returns a thread pool with a fixed number of threads which is suitable for
@@ -61,8 +57,8 @@
      n
      (reify ThreadFactory
        (newThread [_ r]
-         (Thread. ^Runnable r ^String (thread-name! thread-counter
-                                                    name-template)))))))
+         (Thread. ^Runnable r ^String
+                  (format name-template (swap! thread-counter inc))))))))
 
 (defn single-thread-executor
   ([]

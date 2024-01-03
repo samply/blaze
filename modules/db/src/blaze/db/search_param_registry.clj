@@ -26,7 +26,7 @@
   (p/-all-types search-param-registry))
 
 (defn list-by-type
-  "Returns a seq of search params of `type`."
+  "Returns a seq of search params of `type` in no particular order."
   [search-param-registry type]
   (p/-list-by-type search-param-registry type))
 
@@ -108,10 +108,9 @@
   (read-json-resource name))
 
 (defn- read-bundle-entries [extra-bundle-file]
-  (let [{entries :entry} (read-classpath-json-resource "blaze/db/search-parameters.json")]
-    (cond-> entries
-      extra-bundle-file
-      (into (:entry (read-file-json-resource extra-bundle-file))))))
+  (cond-> (:entry (read-classpath-json-resource "blaze/db/search-parameters.json"))
+    extra-bundle-file
+    (into (:entry (read-file-json-resource extra-bundle-file)))))
 
 (defn- index-search-param [index {:keys [url] :as sp}]
   (if-ok [search-param (sc/search-param index sp)]

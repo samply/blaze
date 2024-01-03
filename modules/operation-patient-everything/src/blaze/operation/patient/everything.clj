@@ -5,11 +5,13 @@
    [blaze.async.comp :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
+   [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.search.util :as search-util]
    [blaze.luid :as luid]
    [blaze.spec]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
+   [reitit.core :as reitit]
    [ring.util.response :as ring]
    [taoensso.timbre :as log]))
 
@@ -21,33 +23,59 @@
       handle)))
 
 (defn- too-costly-msg [patient-id]
-  (format "The compartment of the Patient with the id `%s` has more than %d resources which is too costly to output. Please use type search with rev-include or compartment search instead." patient-id max-size))
+  (format "The compartment of the Patient with the id `%s` has more than %d resources which is too costly to output. Please use paging by specifying the _count query param." patient-id max-size))
 
-(defn- handles [db patient-id]
+(defn- handles-xf [page-offset page-size]
+  (comp (drop page-offset) (take (inc (or page-size max-size)))))
+
+(defn- handles [db patient-id page-offset page-size]
   (if-let [patient (patient-handle db patient-id)]
-    (let [handles (into [] (take max-size) (d/patient-everything db patient))]
-      (if (= max-size (count handles))
-        (ba/conflict (too-costly-msg patient-id) :fhir/issue "too-costly")
-        handles))
+    (let [handles (into [] (handles-xf page-offset page-size) (d/patient-everything db patient))]
+      (if page-size
+        (if (< page-size (count handles))
+          {:handles (pop handles)
+           :next-offset (+ page-offset (dec (count handles)))}
+          {:handles handles})
+        (if (< max-size (count handles))
+          (ba/conflict (too-costly-msg patient-id) :fhir/issue "too-costly")
+          {:handles handles})))
     (ba/not-found (format "The Patient with id `%s` was not found." patient-id))))
 
 (defn- luid [{:keys [clock rng-fn]}]
   (luid/luid clock (rng-fn)))
 
-(defn- bundle [context resources]
-  (let [entries (mapv (partial search-util/entry context) resources)]
-    {:fhir/type :fhir/Bundle
-     :id (luid context)
-     :type #fhir/code"searchset"
-     :total (type/->UnsignedInt (count entries))
-     :entry entries}))
+(defn- next-link
+  [{:blaze/keys [base-url db] ::reitit/keys [match]} page-size offset]
+  {:fhir/type :fhir.Bundle/link
+   :relation "next"
+   :url (str base-url (reitit/match->path match {"_count" page-size
+                                                 "__t" (d/t db)
+                                                 "__page-offset" offset}))})
+
+(defn- bundle [context request resources page-size next-offset]
+  (let [entries (mapv (partial search-util/entry request) resources)]
+    (cond->
+     {:fhir/type :fhir/Bundle
+      :id (luid context)
+      :type #fhir/code"searchset"
+      :entry entries}
+
+      (some? next-offset)
+      (assoc :link [(next-link request page-size next-offset)])
+
+      (nil? page-size)
+      (assoc :total (type/->UnsignedInt (count entries))))))
 
 (defmethod ig/pre-init-spec :blaze.operation.patient/everything [_]
   (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
 
 (defmethod ig/init-key :blaze.operation.patient/everything [_ context]
   (log/info "Init FHIR Patient $everything operation handler")
-  (fn [{{:keys [id]} :path-params :blaze/keys [db] :as request}]
-    (when-ok [handles (handles db id)]
-      (do-sync [resources (d/pull-many db handles)]
-        (ring/response (bundle (merge context request) resources))))))
+  (fn [{:blaze/keys [db]
+        {:keys [id]} :path-params
+        :keys [query-params] :as request}]
+    (let [page-offset (fhir-util/page-offset query-params)
+          page-size (fhir-util/page-size query-params max-size nil)]
+      (when-ok [{:keys [handles next-offset]} (handles db id page-offset page-size)]
+        (do-sync [resources (d/pull-many db handles)]
+          (ring/response (bundle context request resources page-size next-offset)))))))

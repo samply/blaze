@@ -82,7 +82,7 @@
         :def-uri "http://hl7.org/fhir/OperationDefinition/Patient-everything"
         :resource-types ["Patient"]
         :instance-handler #blaze/ref :blaze.operation.patient/everything
-        :documentation "Returns all resources from the patient compartment of one concrete patient including the patient. Has a fix limit of 10,000 resources. Paging ist not supported. No params are supported."}]
+        :documentation "Returns all resources from the patient compartment of one concrete patient including the patient. Has a fix limit of 10,000 resources if paging isn't used. Paging is supported when the _count parameter is used. No other params are supported."}]
    :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]}
 
   ;;
