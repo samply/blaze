@@ -634,6 +634,9 @@ jobs:
     - name: Delete
       run: .github/scripts/delete.sh
 
+    - name: Delete Violating Referential Integrity 
+      run: .github/scripts/check-referential-integrity-for-delete.sh 409
+
     - name: Batch
       run: .github/scripts/batch.sh
 
@@ -645,6 +648,9 @@ jobs:
 
     - name: Transaction Read/Write
       run: .github/scripts/transaction-rw.sh
+
+    - name: Transactional Delete Preserving Referential Integrity 
+      run: .github/scripts/transactional-delete.sh
 
     - name: Transaction with Invalid (Null) Resource
       run: .github/scripts/transaction-null-resource.sh
@@ -811,6 +817,9 @@ jobs:
 
     - name: Check Total-Number of Resources are 5
       run: .github/scripts/check-total-number-of-resources.sh 5
+
+    - name: Check Referential Integrity Not Enforced For Delete
+      run: .github/scripts/check-referential-integrity-for-delete.sh 204
 
   # This test uploads many small transactions in order to show that Blaze can handle many small requests containing
   # chunked payload blazectl uses. Versions of Blaze from 0.13.2 to 0.15.3, starting with the migration to Jetty, had

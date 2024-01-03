@@ -8,6 +8,10 @@ Blaze exposes a [FHIR RESTful API][1] under the default context path of `/fhir`.
 
 Blaze keeps track over the history of all updates of each resource. However if the content of the resource update is equal to the current version of the resource, no new history entry is created. Usually such identical content updates will only cost a very small amount of transaction handling storage but no additional resource or index storage.
 
+### Delete
+
+By default Blaze enforces referential integrity while deleting resources. So resources that are referred by other resources can't be deleted without deleting the other resources first. That behaviour can be changed by setting the [environment variable](deployment/environment-variables.md) `ENFORCE_REFERENTIAL_INTEGRITY` to `false`.
+
 ### Search Type
 
 #### _profile

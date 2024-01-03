@@ -155,6 +155,39 @@
 (defn- kebab->pascal [s]
   (.to CaseFormat/LOWER_HYPHEN CaseFormat/UPPER_CAMEL s))
 
+(def mixed-resource-gen
+  (let [observation-gen
+        (gen/vector
+         (fg/observation
+          :id (gen/fmap str gen/uuid)
+          :subject (fg/reference :reference (gen/return "Patient/0"))
+          :performer (gen/fmap vector (fg/reference :reference (gen/return "Practitioner/0"))))
+         0 10)
+        encounter-gen
+        (gen/vector
+         (fg/encounter
+          :id (gen/fmap str gen/uuid)
+          :subject (fg/reference :reference (gen/return "Patient/0")))
+         0 10)
+        procedure-gen
+        (gen/vector
+         (fg/procedure
+          :id (gen/fmap str gen/uuid)
+          :subject (fg/reference :reference (gen/return "Patient/0")))
+         0 10)
+        medication-administration-gen
+        (gen/vector
+         (fg/medication-administration
+          :id (gen/fmap str gen/uuid)
+          :medication (fg/reference :reference (gen/return "Medication/0"))
+          :subject (fg/reference :reference (gen/return "Patient/0")))
+         0 10)]
+    (gen/let [observations observation-gen
+              encounters encounter-gen
+              procedures procedure-gen
+              medication-administrations medication-administration-gen]
+      (concat observations encounters procedures medication-administrations))))
+
 (deftest transact-test
   (testing "create"
     (testing "one Patient"
@@ -439,7 +472,79 @@
             (testing "the patient is still deleted and has two changes"
               (given (d/resource-handle db "Patient" "0")
                 :op := :delete
-                :num-changes := 2)))))))
+                :num-changes := 2))))))
+
+    (testing "patient with an observation referencing it"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]
+          [:create {:fhir/type :fhir/Observation :id "0"
+                    :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+        (testing "deleting only the patient fails"
+          (given-failed-future
+           (d/transact node [[:delete "Patient" "0"]])
+            ::anom/category := ::anom/conflict
+            ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`."))
+
+        (testing "deleting the patient and the observation in one transaction succeeds"
+          (let [db @(d/transact node [[:delete "Patient" "0"] [:delete "Observation" "0"]])]
+            (given (d/resource-handle db "Patient" "0")
+              :op := :delete
+              :num-changes := 2)
+            (given (d/resource-handle db "Observation" "0")
+              :op := :delete
+              :num-changes := 2)))))
+
+    (testing "encounter with a condition referencing it"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:create {:fhir/type :fhir/Encounter :id "0"}]
+          [:create {:fhir/type :fhir/Condition :id "0"
+                    :encounter #fhir/Reference{:reference "Encounter/0"}}]]]
+
+        (testing "deleting only the encounter fails"
+          (given-failed-future
+           (d/transact node [[:delete "Encounter" "0"]])
+            ::anom/category := ::anom/conflict
+            ::anom/message := "Referential integrity violated. Resource `Encounter/0` should be deleted but is referenced from `Condition/0`."))
+
+        (testing "deleting the encounter and the condition in the same transaction succeeds"
+          (let [db @(d/transact node [[:delete "Encounter" "0"] [:delete "Condition" "0"]])]
+            (given (d/resource-handle db "Encounter" "0")
+              :op := :delete
+              :num-changes := 2)
+            (given (d/resource-handle db "Condition" "0")
+              :op := :delete
+              :num-changes := 2)))))
+
+    (testing "a patient with several resources referencing it"
+      (satisfies-prop 10
+        (prop/for-all [resources mixed-resource-gen]
+          (with-system-data [{:blaze.db/keys [node]} config]
+            [(into [[:put {:fhir/type :fhir/Patient :id "0"}]
+                    [:put {:fhir/type :fhir/Medication :id "0"}]
+                    [:put {:fhir/type :fhir/Practitioner :id "0"}]]
+                   (map (partial vector :create))
+                   resources)]
+            (let [make-delete-command (fn [{id :id type :fhir/type}] [:delete (name type) id])
+                  delete-list (into [[:delete "Patient" "0"]] (map make-delete-command) resources)
+                  db @(d/transact node delete-list)]
+              (for [[_ type id] delete-list]
+                (given (d/resource-handle db type id)
+                  :op := :delete
+                  :num-changes := 2)))))))
+
+    (testing "patient with an observation referencing it without enforcing referential integrity"
+      (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :enforce-referential-integrity] false)]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]
+          [:create {:fhir/type :fhir/Observation :id "0"
+                    :subject #fhir/Reference{:reference "Patient/0"}}]]]
+        (let [db @(d/transact node [[:delete "Patient" "0"]])]
+          (given (d/resource-handle db "Patient" "0")
+            :op := :delete
+            :num-changes := 2)
+          (given (d/resource-handle db "Observation" "0")
+            :op := :create
+            :num-changes := 1)))))
 
   (testing "a transaction with duplicate resources fails"
     (testing "two puts"
@@ -517,7 +622,7 @@
             ::anom/category := ::anom/conflict
             ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))
 
-    (testing "creating a List were the entry item will be deleted in the same transaction"
+    (testing "creating a List where the entry item will be deleted in the same transaction"
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:create {:fhir/type :fhir/Observation :id "0"}]
           [:create {:fhir/type :fhir/Observation :id "1"}]]]
@@ -537,7 +642,7 @@
           ::anom/message := "Referential integrity violated. Resource `Observation/1` should be deleted but is referenced from `List/0`."))))
 
   (testing "not enforcing referential integrity"
-    (testing "creating an Observation were the subject doesn't exist"
+    (testing "creating an Observation where the subject doesn't exist"
       (testing "create"
         (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :enforce-referential-integrity] false)]
           [[[:create
@@ -1215,7 +1320,7 @@
             [1 :id] := "3"))))
 
     (testing "doesn't return the deleted patient"
-      (with-system-data [{:blaze.db/keys [node]} config]
+      (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :enforce-referential-integrity] false)]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Patient :id "1"}]
           [:put {:fhir/type :fhir/Patient :id "2"}]
@@ -5584,6 +5689,57 @@
 
 (deftest rev-include-test
   (testing "Patient"
+    (testing "all resources"
+      (testing "with patient only"
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+          (let [db (d/db node)
+                patient (d/resource-handle db "Patient" "0")]
+
+            (is (coll/empty? (vec (d/rev-include db patient)))))))
+
+      (testing "with three resources"
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Observation :id "0"
+                   :subject #fhir/Reference{:reference "Patient/0"}}]
+            [:put {:fhir/type :fhir/Condition :id "0"
+                   :subject #fhir/Reference{:reference "Patient/0"}}]
+            [:put {:fhir/type :fhir/Specimen :id "0"
+                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+          (let [db (d/db node)
+                patient (d/resource-handle db "Patient" "0")]
+
+            (given (vec (d/rev-include db patient))
+              count := 3
+              [0 fhir-spec/fhir-type] := :fhir/Condition
+              [0 :id] := "0"
+              [1 fhir-spec/fhir-type] := :fhir/Observation
+              [1 :id] := "0"
+              [2 fhir-spec/fhir-type] := :fhir/Specimen
+              [2 :id] := "0"))))
+
+      (testing "With MedicationAdministration because it is reachable twice via
+                the search param `patient` and `subject`.
+              
+                This test should assure that MedicationAdministration resources
+                are returned only once."
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Medication :id "0"}]
+            [:put {:fhir/type :fhir/MedicationAdministration :id "0"
+                   :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+          (let [db (d/db node)
+                patient (d/resource-handle db "Patient" "0")]
+
+            (given (vec (d/rev-include db patient))
+              count := 1
+              [0 fhir-spec/fhir-type] := :fhir/MedicationAdministration
+              [0 :id] := "0")))))
+
     (doseq [code ["subject" "patient"]]
       (testing (str "Observation with search parameter " code)
         (with-system-data [{:blaze.db/keys [node]} config]
@@ -5752,56 +5908,19 @@
             [3 :id] := "1")))))
 
   (testing "no duplicates are returned"
-    (let [observation-gen
-          (gen/vector
-           (create-tx-op
-            (fg/observation
-             :id (gen/fmap str gen/uuid)
-             :subject (fg/reference :reference (gen/return "Patient/0"))
-             :performer (gen/fmap vector (fg/reference :reference (gen/return "Practitioner/0")))))
-           0 10)
-          encounter-gen
-          (gen/vector
-           (create-tx-op
-            (fg/encounter
-             :id (gen/fmap str gen/uuid)
-             :subject (fg/reference :reference (gen/return "Patient/0"))))
-           0 10)
-          procedure-gen
-          (gen/vector
-           (create-tx-op
-            (fg/procedure
-             :id (gen/fmap str gen/uuid)
-             :subject (fg/reference :reference (gen/return "Patient/0"))))
-           0 10)
-          medication-administration-gen
-          (gen/vector
-           (create-tx-op
-            (fg/medication-administration
-             :id (gen/fmap str gen/uuid)
-             :medication (fg/reference :reference (gen/return "Medication/0"))
-             :subject (fg/reference :reference (gen/return "Patient/0"))))
-           0 10)
-          tx-ops-gen (gen/let [observations observation-gen
-                               encounters encounter-gen
-                               procedures procedure-gen
-                               medication-administrations medication-administration-gen]
-                       (-> [[:put {:fhir/type :fhir/Patient :id "0"}]
-                            [:put {:fhir/type :fhir/Medication :id "0"}]
-                            [:put {:fhir/type :fhir/Practitioner :id "0"}]]
-                           (into observations)
-                           (into encounters)
-                           (into procedures)
-                           (into medication-administrations)))]
-      (satisfies-prop 10
-        (prop/for-all [tx-ops tx-ops-gen]
-          (with-system-data [{:blaze.db/keys [node]} config]
-            [tx-ops]
+    (satisfies-prop 10
+      (prop/for-all [resources mixed-resource-gen]
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [(into [[:put {:fhir/type :fhir/Patient :id "0"}]
+                  [:put {:fhir/type :fhir/Medication :id "0"}]
+                  [:put {:fhir/type :fhir/Practitioner :id "0"}]]
+                 (map (partial vector :create))
+                 resources)]
 
-            (let [db (d/db node)
-                  patient (d/resource-handle db "Patient" "0")
-                  res (vec (d/patient-everything db patient))]
-              (= (count (set res)) (count res)))))))))
+          (let [db (d/db node)
+                patient (d/resource-handle db "Patient" "0")
+                res (vec (d/patient-everything db patient))]
+            (= (count (set res)) (count res))))))))
 
 (deftest batch-db-test
   (testing "resource-handle"

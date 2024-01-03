@@ -81,7 +81,7 @@
                 (mapcat
                  (fn [{:keys [base code]}]
                    (map #(str % ":" code) base)))
-                (sr/list-by-target search-param-registry name))
+                (sr/list-by-target-type search-param-registry name))
                :searchParam
                (into
                 []

@@ -405,14 +405,20 @@
 (defn rev-include
   "Returns a reducible collection of resource handles that point to
   `resource-handle` by the search parameter with `code` and have a type of
-  `source-type`.
+  `source-type`. 
+   
+  You can also omit `source-type` and `code` to get the resource handles of all
+  resources regardless of type and search parameter pointing to
+  `resource-handle`.
 
   The search parameter has to be of type reference.
 
   One example are Observations that point to resource handle of type Patient by
   the search parameter with code subject."
-  [db resource-handle source-type code]
-  (p/-rev-include db resource-handle source-type code))
+  ([db resource-handle]
+   (p/-rev-include db resource-handle))
+  ([db resource-handle source-type code]
+   (p/-rev-include db resource-handle source-type code)))
 
 (defn patient-everything
   "Returns a reducible collection of resource handles in the compartment of

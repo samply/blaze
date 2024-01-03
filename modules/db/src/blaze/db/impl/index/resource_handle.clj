@@ -20,8 +20,9 @@
   ILookup
   (valAt [rh key]
     (.valAt rh key nil))
-  (valAt [_ key not-found]
+  (valAt [rh key not-found]
     (case key
+      :fhir/type (p/-type rh)
       :tid tid
       :id id
       :t t
@@ -117,3 +118,6 @@
 
 (defn reference [rh]
   (str (codec/tid->type (tid rh)) "/" (id rh)))
+
+(defn local-ref-tuple [{type :fhir/type id :id}]
+  [(name type) id])
