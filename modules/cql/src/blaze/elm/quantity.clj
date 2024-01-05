@@ -95,7 +95,7 @@
     (when b
       (try
         (.isEquivalentTo a b)
-        (catch UnconvertibleException _ false)))))
+        (catch UnconvertibleException _)))))
 
 ;; 12.2. Equivalent
 (extend-protocol p/Equivalent
@@ -106,6 +106,42 @@
         (.isEquivalentTo a b)
         (catch UnconvertibleException _ false))
       false)))
+
+;; 12.3. Greater
+(extend-protocol p/Greater
+  ComparableQuantity
+  (greater [x y]
+    (when y
+      (try
+        (.isGreaterThan x y)
+        (catch UnconvertibleException _)))))
+
+;; 12.4. GreaterOrEqual
+(extend-protocol p/GreaterOrEqual
+  ComparableQuantity
+  (greater-or-equal [x y]
+    (when y
+      (try
+        (.isGreaterThanOrEqualTo x y)
+        (catch UnconvertibleException _)))))
+
+;; 12.5. Less
+(extend-protocol p/Less
+  ComparableQuantity
+  (less [x y]
+    (when y
+      (try
+        (.isLessThan x y)
+        (catch UnconvertibleException _)))))
+
+;; 12.6. LessOrEqual
+(extend-protocol p/LessOrEqual
+  ComparableQuantity
+  (less-or-equal [x y]
+    (when y
+      (try
+        (.isLessThanOrEqualTo x y)
+        (catch UnconvertibleException _)))))
 
 ;; 16.1. Abs
 (extend-protocol p/Abs

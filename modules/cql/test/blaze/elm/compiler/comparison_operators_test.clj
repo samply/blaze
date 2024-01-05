@@ -42,7 +42,8 @@
 ;; For quantities, this means that the dimensions of each quantity must be the
 ;; same, but not necessarily the unit. For example, units of 'cm' and 'm' are
 ;; comparable, but units of 'cm2' and 'cm' are not. Attempting to operate on
-;; quantities with invalid units will result in a run-time error.
+;; quantities with invalid units will result in null. When a quantity has no
+;; units specified, it is treated as a quantity with the default unit ('1').
 ;;
 ;; For ratios, this means that the numerator and denominator must be the same,
 ;; using quantity equality semantics.
@@ -138,7 +139,9 @@
       [1 "m"] [1 "m"] true?
       [100 "cm"] [1 "m"] true?
       [1 "s"] [2 "s"] false?
-      [1 "s"] [1 "m"] false?)
+
+      [1 "kg"] [1 "m"] nil?
+      [1 "m"] [1 "kg"] nil?)
 
     (ctu/testing-binary-null elm/equal #elm/quantity [1]))
 
@@ -154,8 +157,9 @@
       [[1 "s"] [1 "s"]] [[1 "s"] [2 "s"]] false?
       [[1 "s"] [1 "s"]] [[2 "s"] [2 "s"]] false?
       [[2 "s"] [1 "s"]] [[1 "s"] [2 "s"]] false?
-      [[1 "s"] [1 "s"]] [[1 "m"] [1 "m"]] false?
-      [[1 "s"] [1 "m"]] [[1 "m"] [1 "s"]] false?)
+
+      [[1 "s"] [1 "s"]] [[1 "m"] [1 "m"]] nil?
+      [[1 "s"] [1 "m"]] [[1 "m"] [1 "s"]] nil?)
 
     (ctu/testing-binary-null elm/equal #elm/ratio [[1] [1]]))
 
@@ -449,7 +453,8 @@
 ;; For comparisons involving quantities, the dimensions of each quantity must be
 ;; the same, but not necessarily the unit. For example, units of 'cm' and 'm'
 ;; are comparable, but units of 'cm2' and 'cm' are not. Attempting to operate on
-;; quantities with invalid units will result in a run-time error.
+;; quantities with invalid units will result in a null. When a quantity has no
+;; units specified, it is treated as a quantity with the default unit ('1').
 ;;
 ;; For Date, DateTime, and Time values, the comparison is performed by
 ;; considering each precision in order, beginning with years (or hours for time
@@ -500,20 +505,6 @@
 
     (ctu/testing-binary-null elm/greater #elm/string "a"))
 
-  (testing "Quantity"
-    (are [x y pred] (pred (ctu/compile-binop elm/greater elm/quantity x y))
-      [2] [1] true?
-      [1] [1] false?
-
-      [2 "s"] [1 "s"] true?
-      [2 "m"] [1 "m"] true?
-      [101 "cm"] [1 "m"] true?
-      [1 "s"] [1 "s"] false?
-      [1 "m"] [1 "m"] false?
-      [100 "cm"] [1 "m"] false?)
-
-    (ctu/testing-binary-null elm/greater #elm/quantity [1]))
-
   (testing "Date with year precision"
     (are [x y pred] (pred (ctu/compile-binop elm/greater elm/date x y))
       "2014" "2013" true?
@@ -554,6 +545,23 @@
 
     (ctu/testing-binary-null elm/greater #elm/time "00:00:00"))
 
+  (testing "Quantity"
+    (are [x y pred] (pred (ctu/compile-binop elm/greater elm/quantity x y))
+      [2] [1] true?
+      [1] [1] false?
+
+      [2 "s"] [1 "s"] true?
+      [2 "m"] [1 "m"] true?
+      [101 "cm"] [1 "m"] true?
+      [1 "s"] [1 "s"] false?
+      [1 "m"] [1 "m"] false?
+      [100 "cm"] [1 "m"] false?
+
+      [1 "kg"] [1 "m"] nil?
+      [1 "m"] [1 "kg"] nil?)
+
+    (ctu/testing-binary-null elm/greater #elm/quantity [1]))
+
   (ctu/testing-binary-dynamic elm/greater)
 
   (ctu/testing-binary-form elm/greater))
@@ -566,7 +574,8 @@
 ;; For comparisons involving quantities, the dimensions of each quantity must be
 ;; the same, but not necessarily the unit. For example, units of 'cm' and 'm'
 ;; are comparable, but units of 'cm2' and 'cm' are not. Attempting to operate on
-;; quantities with invalid units will result in a run-time error.
+;; quantities with invalid units will result in a null. When a quantity has no
+;; units specified, it is treated as a quantity with the default unit ('1').
 ;;
 ;; For Date, DateTime, and Time values, the comparison is performed by
 ;; considering each precision in order, beginning with years (or hours for time
@@ -679,7 +688,10 @@
 
       [101 "cm"] [1 "m"] true?
       [100 "cm"] [1 "m"] true?
-      [1 "m"] [101 "cm"] false?)
+      [1 "m"] [101 "cm"] false?
+
+      [1 "kg"] [1 "m"] nil?
+      [1 "m"] [1 "kg"] nil?)
 
     (ctu/testing-binary-null elm/greater-or-equal #elm/quantity [1]))
 
@@ -695,7 +707,8 @@
 ;; For comparisons involving quantities, the dimensions of each quantity must be
 ;; the same, but not necessarily the unit. For example, units of 'cm' and 'm'
 ;; are comparable, but units of 'cm2' and 'cm' are not. Attempting to operate on
-;; quantities with invalid units will result in a run-time error.
+;; quantities with invalid units will result in a null. When a quantity has no
+;; units specified, it is treated as a quantity with the default unit ('1').
 ;;
 ;; For date/time values, the comparison is performed by considering each
 ;; precision in order, beginning with years (or hours for time values). If the
@@ -812,7 +825,10 @@
       [1 "s"] [1 "s"] false?
 
       [1 "m"] [101 "cm"] true?
-      [1 "m"] [100 "cm"] false?)
+      [1 "m"] [100 "cm"] false?
+
+      [1 "kg"] [1 "m"] nil?
+      [1 "m"] [1 "kg"] nil?)
 
     (ctu/testing-binary-null elm/less #elm/quantity [1]))
 
@@ -828,7 +844,8 @@
 ;; For comparisons involving quantities, the dimensions of each quantity must be
 ;; the same, but not necessarily the unit. For example, units of 'cm' and 'm'
 ;; are comparable, but units of 'cm2' and 'cm' are not. Attempting to operate on
-;; quantities with invalid units will result in a run-time error.
+;; quantities with invalid units will result in a null. When a quantity has no
+;; units specified, it is treated as a quantity with the default unit ('1').
 ;;
 ;; For Date, DateTime, and Time values, the comparison is performed by
 ;; considering each precision in order, beginning with years (or hours for time
@@ -934,7 +951,10 @@
 
       [1 "m"] [101 "cm"] true?
       [1 "m"] [100 "cm"] true?
-      [101 "cm"] [1 "m"] false?)
+      [101 "cm"] [1 "m"] false?
+
+      [1 "kg"] [1 "m"] nil?
+      [1 "m"] [1 "kg"] nil?)
 
     (ctu/testing-binary-null elm/less-or-equal #elm/quantity [1]))
 

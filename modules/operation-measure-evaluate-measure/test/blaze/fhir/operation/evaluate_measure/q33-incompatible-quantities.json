@@ -5,8 +5,7 @@
     {
       "resource": {
         "resourceType": "Patient",
-        "id": "0",
-        "gender": "male"
+        "id": "0"
       },
       "request": {
         "method": "PUT",
@@ -16,8 +15,7 @@
     {
       "resource": {
         "resourceType": "Patient",
-        "id": "1",
-        "gender": "female"
+        "id": "1"
       },
       "request": {
         "method": "PUT",
