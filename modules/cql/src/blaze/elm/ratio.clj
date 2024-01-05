@@ -17,8 +17,8 @@
   p/Equivalent
   (equivalent [_ other]
     (if other
-      (p/equal (p/divide numerator denominator)
-               (p/divide (:numerator other) (:denominator other)))
+      (p/equivalent (p/divide numerator denominator)
+                    (p/divide (:numerator other) (:denominator other)))
       false)))
 
 (defn ratio
