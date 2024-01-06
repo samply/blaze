@@ -9,6 +9,7 @@
    [blaze.db.resource-store :as rs]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.test-util :refer [link-url]]
    [blaze.interaction.search-type]
    [blaze.interaction.search.nav-spec]
    [blaze.interaction.search.params-spec]
@@ -117,9 +118,6 @@
    {:data
     {:fhir.resource/type "MedicationStatement"}
     :path (str context-path "/MedicationStatement")}))
-
-(defn- link-url [body link-relation]
-  (->> body :link (filter (comp #{link-relation} :relation)) first :url))
 
 (deftest init-test
   (testing "nil config"

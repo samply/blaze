@@ -5359,10 +5359,10 @@
           [3 :id] := "0"))))
 
   (testing "With MedicationAdministration because it is reachable twice via
-                the search param `patient` and `subject`.
+            the search param `patient` and `subject`.
 
-                This test should assure that MedicationAdministration resources
-                are returned only once."
+            This test should assure that MedicationAdministration resources
+            are returned only once."
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/MedicationAdministration :id "0"
