@@ -21,13 +21,13 @@ export default defineConfig({
 
         footer: {
             message: 'Released under the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a>',
-            copyright: 'Copyright 2019 - 2023 The Samply Community • Circuit icons created by <a href="https://www.flaticon.com/free-icons/circuit" title="circuit icons">Eucalyp - Flaticon</a>',
+            copyright: 'Copyright 2019 - 2024 The Samply Community • Circuit icons created by <a href="https://www.flaticon.com/free-icons/circuit" title="circuit icons">Eucalyp - Flaticon</a>',
         },
 
         nav: [
             {text: 'Home', link: '/'},
             {
-                text: "v0.23.2",
+                text: "v0.23.3",
                 items: [
                     {
                         text: 'Changelog',
