@@ -9,15 +9,15 @@
   {:local/root "../fhir-structure"}
 
   org.apache.httpcomponents.core5/httpcore5
-  {:mvn/version "5.2.3"}
+  {:mvn/version "5.2.4"}
 
   metosin/reitit-ring
   {:mvn/version "0.6.0"}
 
   ring/ring-core
-  {:mvn/version "1.10.0"
+  {:mvn/version "1.11.0"
    :exclusions
-   [commons-fileupload/commons-fileupload
+   [org.apache.commons/commons-fileupload2-core
     crypto-equality/crypto-equality
     crypto-random/crypto-random]}}
 

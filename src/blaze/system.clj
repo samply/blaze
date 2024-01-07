@@ -19,8 +19,6 @@
    [java.time Clock]
    [java.util.concurrent ThreadLocalRandom]))
 
-;; ---- Functions -------------------------------------------------------------
-
 (defrecord Cfg [env-var spec default])
 
 (defn- cfg
@@ -75,7 +73,7 @@
     (into {} (map (fn [[k v]] [k (resolvef k v)])) (ig/find-derived config key))))
 
 (def ^:private root-config
-  {:blaze/version "0.23.2"
+  {:blaze/version "0.23.3"
 
    :blaze/clock {}
 
@@ -176,8 +174,6 @@
 
 (defn shutdown! [system]
   (ig/halt! system))
-
-;; ---- Integrant Hooks -------------------------------------------------------
 
 (defmethod ig/init-key :blaze/version
   [_ version]

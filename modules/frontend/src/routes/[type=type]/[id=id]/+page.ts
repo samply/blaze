@@ -1,5 +1,5 @@
 import { base } from '$app/paths';
-import { error } from '@sveltejs/kit';
+import { error, type NumericRange } from '@sveltejs/kit';
 import { fhirObject } from '../../../resource/resource-card';
 
 export async function load({ fetch, params }) {
@@ -8,14 +8,14 @@ export async function load({ fetch, params }) {
 	});
 
 	if (!res.ok) {
-		throw error(res.status, {
+		error(res.status as NumericRange<400, 599>, {
 			short: res.status == 404 ? 'Not Found' : res.status == 410 ? 'Gone' : undefined,
 			message:
 				res.status == 404
 					? `The ${params.type} with ID ${params.id} was not found.`
 					: res.status == 410
-					  ? `The ${params.type} with ID ${params.id} was deleted. Please look into the history.`
-					  : `An error happend while loading the ${params.type} with ID ${params.id}. Please try again later.`
+						? `The ${params.type} with ID ${params.id} was deleted. Please look into the history.`
+						: `An error happend while loading the ${params.type} with ID ${params.id}. Please try again later.`
 		});
 	}
 

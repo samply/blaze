@@ -8,9 +8,9 @@
   {:mvn/version "0.6.0"}
 
   ring/ring-core
-  {:mvn/version "1.10.0"
+  {:mvn/version "1.11.0"
    :exclusions
-   [commons-fileupload/commons-fileupload
+   [org.apache.commons/commons-fileupload2-core
     crypto-equality/crypto-equality
     crypto-random/crypto-random]}}
 

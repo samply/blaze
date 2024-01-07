@@ -3,6 +3,8 @@
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.test-util :refer [link-url]]
+   [blaze.handler.fhir.util-spec]
    [blaze.handler.util :as handler-util]
    [blaze.middleware.fhir.db :as db]
    [blaze.operation.patient.everything]
@@ -54,6 +56,10 @@
          ["Patient" "Condition" "Observation" "Specimen" "MedicationAdministration"])
    {:syntax :bracket
     :path context-path}))
+
+(def match
+  (reitit/map->Match
+   {:path (str context-path "/Patient/0/$everything")}))
 
 (def config
   (assoc api-stub/mem-node-config
@@ -348,9 +354,7 @@
         [:put {:fhir/type :fhir/MedicationAdministration :id "0"
                :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
-      (let [{:keys [status]
-             {[first-entry second-entry] :entry
-              :as body} :body}
+      (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
             @(handler {:path-params {:id "0"}})]
 
         (is (= 200 status))
@@ -396,4 +400,147 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"too-costly"
-          [:issue 0 :diagnostics] := "The compartment of the Patient with the id `0` has more than 10000 resources which is too costly to output. Please use type search with rev-include or compartment search instead.")))))
+          [:issue 0 :diagnostics] := "The compartment of the Patient with the id `0` has more than 10000 resources which is too costly to output. Please use paging by specifying the _count query param."))))
+
+  (testing "paging"
+    (with-handler [handler]
+      [(into
+        [[:put {:fhir/type :fhir/Patient :id "0"}]]
+        (map (fn [idx]
+               [:put {:fhir/type :fhir/Observation :id (str idx)
+                      :subject #fhir/Reference{:reference "Patient/0"}}]))
+        (range 4))]
+
+      (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
+            @(handler {::reitit/match match
+                       :path-params {:id "0"}
+                       :query-params {"_count" "2"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle id is an LUID"
+          (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+        (testing "the bundle type is searchset"
+          (is (= #fhir/code"searchset" (:type body))))
+
+        (testing "the total count is not given"
+          (is (nil? (:total body))))
+
+        (testing "has a next link"
+          (is (= (str base-url context-path "/Patient/0/$everything?_count=2&__t=1&__page-offset=2")
+                 (link-url body "next"))))
+
+        (testing "the bundle contains 2 entries"
+          (is (= 2 (count (:entry body)))))
+
+        (testing "the first entry has the right fullUrl"
+          (is (= (str base-url context-path "/Patient/0")
+                 (:fullUrl first-entry))))
+
+        (testing "the second entry has the right fullUrl"
+          (is (= (str base-url context-path "/Observation/0")
+                 (:fullUrl second-entry)))))
+
+      (testing "following the first next link"
+        (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
+              @(handler {::reitit/match match
+                         :path-params {:id "0"}
+                         :query-params {"_count" "2" "__t" "1" "__page-offset" "2"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle id is an LUID"
+            (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the total count is not given"
+            (is (nil? (:total body))))
+
+          (testing "has a next link"
+            (is (= (str base-url context-path "/Patient/0/$everything?_count=2&__t=1&__page-offset=4")
+                   (link-url body "next"))))
+
+          (testing "the bundle contains 2 entries"
+            (is (= 2 (count (:entry body)))))
+
+          (testing "the first entry has the right fullUrl"
+            (is (= (str base-url context-path "/Observation/1")
+                   (:fullUrl first-entry))))
+
+          (testing "the second entry has the right fullUrl"
+            (is (= (str base-url context-path "/Observation/2")
+                   (:fullUrl second-entry))))))
+
+      (testing "following the second next link"
+        (let [{:keys [status] {[entry] :entry :as body} :body}
+              @(handler {::reitit/match match
+                         :path-params {:id "0"}
+                         :query-params {"_count" "2" "__t" "1" "__page-offset" "4"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle id is an LUID"
+            (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the total count is not given"
+            (is (nil? (:total body))))
+
+          (testing "has no next link"
+            (is (nil? (link-url body "next"))))
+
+          (testing "the bundle contains 1 entry"
+            (is (= 1 (count (:entry body)))))
+
+          (testing "the entry has the right fullUrl"
+            (is (= (str base-url context-path "/Observation/3")
+                   (:fullUrl entry))))))))
+
+  (testing "page size of 10.000"
+    (with-handler [handler]
+      [(into
+        [[:put {:fhir/type :fhir/Patient :id "0"}]]
+        (map (fn [i]
+               [:put {:fhir/type :fhir/Observation :id (str i)
+                      :subject #fhir/Reference{:reference "Patient/0"}}]))
+        (range 20000))]
+
+      (let [{:keys [status body]}
+            @(handler {::reitit/match match
+                       :path-params {:id "0"}
+                       :query-params {"_count" "10000"}})]
+
+        (is (= 200 status))
+
+        (testing "the body contains a bundle"
+          (is (= :fhir/Bundle (:fhir/type body))))
+
+        (testing "the bundle id is an LUID"
+          (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+
+        (testing "the bundle type is searchset"
+          (is (= #fhir/code"searchset" (:type body))))
+
+        (testing "the total count is not given"
+          (is (nil? (:total body))))
+
+        (testing "has a next link"
+          (is (= (str base-url context-path "/Patient/0/$everything?_count=10000&__t=1&__page-offset=10000")
+                 (link-url body "next"))))
+
+        (testing "the bundle contains 10.000 entries"
+          (is (= 10000 (count (:entry body)))))))))

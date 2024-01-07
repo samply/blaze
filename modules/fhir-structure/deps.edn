@@ -17,10 +17,10 @@
   {:mvn/version "3.1.8"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
-  {:mvn/version "2.16.0"}
+  {:mvn/version "2.16.1"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-xml
-  {:mvn/version "2.16.0"}
+  {:mvn/version "2.16.1"}
 
   com.taoensso/timbre
   {:mvn/version "5.2.1"}

@@ -8,7 +8,7 @@
   "packageRules": [
     {
       "matchDatasources": ["npm"],
-      "minimumReleaseAge": "5 days"
+      "schedule": ["before 4am on monday"]
     },
     {
       "matchPackagePatterns": ["com.fasterxml.jackson"],

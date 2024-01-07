@@ -53,3 +53,6 @@
 (defonce structure-definition-repo
   (:blaze.fhir/structure-definition-repo
    (ig/init {:blaze.fhir/structure-definition-repo {}})))
+
+(defn link-url [body link-relation]
+  (->> body :link (filter (comp #{link-relation} :relation)) first :url))

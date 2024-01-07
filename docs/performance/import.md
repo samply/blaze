@@ -17,13 +17,15 @@ The following systems were used for performance evaluation:
 
 The following datasets were used:
 
-| Dataset | # Pat. ¹ | # Res. ² | # Obs. ³ | Disc Size |
-|---------|---------:|---------:|---------:|----------:|
-| 100k    |    100 k |    104 M |     59 M |   205 GiB |
-| 100k-fh |    100 k |    317 M |    191 M |   323 GiB |
-| 1M      |      1 M |   1044 M |    593 M |  1045 GiB |
+| Dataset | History  | # Pat. ¹ | # Res. ² | # Obs. ³ | Disc Size |
+|---------|----------|---------:|---------:|---------:|----------:|
+| 100k    | 10 years |    100 k |    104 M |     59 M |   202 GiB |
+| 100k-fh | full     |    100 k |    317 M |    191 M |   323 GiB |
+| 1M      | 10 years |      1 M |   1044 M |    593 M |  1045 GiB |
 
 ¹ Number of Patients, ² Total Number of Resources, ³ Number of Observations
+
+The creation of the datasets is described in the [Synthea section](./synthea/README.md). The disc size is measured after full manual compaction of the database and can be higher during the import.
 
 ## Import
 
@@ -35,4 +37,5 @@ blazectl --server http://localhost:8080/fhir upload -c8 <dataset>
 |--------|---------|---------:|------------:|
 | LEA47  | 100k    |    3,048 |        9469 |
 | LEA47  | 100k-fh |    9,797 |        8977 |
+| LEA58  | 100k    |    2,169 |       13305 |
 | LEA58  | 100k-fh |    7,426 |       11843 |

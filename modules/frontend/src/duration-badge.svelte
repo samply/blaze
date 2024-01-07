@@ -9,5 +9,5 @@
 		: (duration / 1000).toLocaleString(undefined, {
 				minimumFractionDigits: 1,
 				maximumFractionDigits: 1
-		  }) + ' s'}</span
+			}) + ' s'}</span
 >

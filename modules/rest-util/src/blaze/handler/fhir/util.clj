@@ -28,12 +28,15 @@
 (defn page-size
   "Returns the page size taken from a possible `_count` query param.
 
-  Returns the value from the first valid `_count` query param or the default
-  value of 50. Limits value to 10000."
-  {:arglists '([query-params])}
-  [{v "_count"}]
-  (or (some #(some-> (parse-nat-long %) (min max-page-size)) (u/to-seq v))
-      default-page-size))
+  Returns the value from the first valid `_count` query param or `default`
+  (defaults to 50). Limits value at `max` (defaults to 10000)."
+  {:arglists
+   '([query-params]
+     [query-params max default])}
+  ([query-params]
+   (page-size query-params max-page-size default-page-size))
+  ([{v "_count"} max default]
+   (or (some #(some-> (parse-nat-long %) (min max)) (u/to-seq v)) default)))
 
 (defn page-offset
   "Returns the page offset taken from a possible `__page-offset` query param.

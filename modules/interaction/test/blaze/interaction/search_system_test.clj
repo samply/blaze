@@ -7,6 +7,7 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.resource-store :as rs]
+   [blaze.fhir.test-util :refer [link-url]]
    [blaze.interaction.search-system]
    [blaze.interaction.search.nav-spec]
    [blaze.interaction.search.params-spec]
@@ -53,9 +54,6 @@
     {:name :page
      :blaze/base-url ""}
     :path ""}))
-
-(defn- link-url [body link-relation]
-  (->> body :link (filter (comp #{link-relation} :relation)) first :url))
 
 (deftest init-test
   (testing "nil config"

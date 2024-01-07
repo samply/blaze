@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.23.3
+
+### Bugfixes
+
+* Fix Quantity Comparison with Incompatible Units Fails ([#1385](https://github.com/samply/blaze/issues/1385))
+
+### Minor Enhancements
+
+* Implement Paging for the $everything Operation ([#1348](https://github.com/samply/blaze/issues/1348))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/81?closed=1).
+
 ## v0.23.2
 
 ### Bugfixes

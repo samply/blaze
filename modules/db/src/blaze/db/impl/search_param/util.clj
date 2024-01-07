@@ -48,7 +48,7 @@
   (keep
    (fn [[[id] :as tuples]]
      (when-let [handle (resource-handle tid id)]
-       (when (some (contains-hash-prefix-pred handle) tuples)
+       (when (coll/some (contains-hash-prefix-pred handle) tuples)
          handle)))))
 
 (defn resource-handle-mapper

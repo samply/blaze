@@ -70,37 +70,33 @@ More information about distributed deployment are available [here](distributed.m
 
 ### Other Environment Variables
 
-| Name                                    | Default                    | Since  | Depr ¹ | Description                                                                                    |
-|:----------------------------------------|:---------------------------|:-------|--------|:-----------------------------------------------------------------------------------------------|
-| PROXY_HOST                              | —                          | v0.6   | —      | REMOVED: use -Dhttp.proxyHost                                                                  |
-| PROXY_PORT                              | —                          | v0.6   | —      | REMOVED: use -Dhttp.proxyPort                                                                  |
-| PROXY_USER                              | —                          | v0.6.1 | —      | REMOVED: try [SOCKS Options][1]                                                                |
-| PROXY_PASSWORD                          | —                          | v0.6.1 | —      | REMOVED: try [SOCKS Options][1]                                                                |
-| CONNECTION_TIMEOUT                      | 5 s                        | v0.6.3 | —      | connection timeout for outbound HTTP requests                                                  |
-| REQUEST_TIMEOUT                         | 30 s                       | v0.6.3 | —      | REMOVED                                                                                        |
-| TERM_SERVICE_URI                        | [http://tx.fhir.org/r4][6] | v0.6   | v0.11  | Base URI of the terminology service                                                            |
-| BASE_URL                                | `http://localhost:8080`    | —      | —      | The URL under which Blaze is accessible by clients.                                            |
-| CONTEXT_PATH                            | /fhir                      | v0.11  | —      | Context path under which the FHIR RESTful API will be accessible.                              |
-| SERVER_PORT                             | 8080                       | —      | —      | The port of the main HTTP server                                                               |
-| METRICS_SERVER_PORT                     | 8081                       | v0.6   | —      | The port of the Prometheus metrics server                                                      |
-| LOG_LEVEL                               | info                       | v0.6   | —      | one of trace, debug, info, warn or error                                                       |
-| JAVA_TOOL_OPTIONS                       | —                          | —      | —      | JVM options \(Docker only\)                                                                    |
-| FHIR_OPERATION_EVALUATE_MEASURE_THREADS | 4                          | v0.8   | —      | The maximum number of parallel $evaluate-measure executions.                                   |
-| FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT | 3600000 (1h)               | v0.19  | —      | Timeout in milliseconds for $evaluate-measure executions.                                      |
-| OPENID_PROVIDER_URL                     | —                          | v0.11  | —      | [OpenID Connect][4] provider URL to enable [authentication][5]                                 |
-| ENFORCE_REFERENTIAL_INTEGRITY           | true                       | v0.14  | —      | Enforce referential integrity on resource create, update and delete.                           |
-| DB_SYNC_TIMEOUT                         | 10000                      | v0.15  | —      | Timeout in milliseconds for all reading FHIR interactions acquiring the newest database state. |
-| DB_SEARCH_PARAM_BUNDLE                  | —                          | v0.21  | —      | Name of a custom search parameter bundle file.                                                 |
+| Name                                    | Default                    | Since  | Depr ¹  | Description                                                                                    |
+|:----------------------------------------|:---------------------------|:-------|---------|:-----------------------------------------------------------------------------------------------|
+| PROXY_HOST                              | —                          | v0.6   | —       | REMOVED: use -Dhttp.proxyHost                                                                  |
+| PROXY_PORT                              | —                          | v0.6   | —       | REMOVED: use -Dhttp.proxyPort                                                                  |
+| PROXY_USER                              | —                          | v0.6.1 | —       | REMOVED: try [SOCKS Options][1]                                                                |
+| PROXY_PASSWORD                          | —                          | v0.6.1 | —       | REMOVED: try [SOCKS Options][1]                                                                |
+| CONNECTION_TIMEOUT                      | 5 s                        | v0.6.3 | —       | connection timeout for outbound HTTP requests                                                  |
+| REQUEST_TIMEOUT                         | 30 s                       | v0.6.3 | —       | REMOVED                                                                                        |
+| TERM_SERVICE_URI                        | [http://tx.fhir.org/r4][6] | v0.6   | v0.11   | Base URI of the terminology service                                                            |
+| BASE_URL                                | `http://localhost:8080`    | —      | —       | The URL under which Blaze is accessible by clients.                                            |
+| CONTEXT_PATH                            | /fhir                      | v0.11  | —       | Context path under which the FHIR RESTful API will be accessible.                              |
+| SERVER_PORT                             | 8080                       | —      | —       | The port of the main HTTP server                                                               |
+| METRICS_SERVER_PORT                     | 8081                       | v0.6   | —       | The port of the Prometheus metrics server                                                      |
+| LOG_LEVEL                               | info                       | v0.6   | —       | one of trace, debug, info, warn or error                                                       |
+| JAVA_TOOL_OPTIONS                       | —                          | —      | —       | JVM options \(Docker only\)                                                                    |
+| FHIR_OPERATION_EVALUATE_MEASURE_THREADS | —                          | v0.8   | v0.23.3 | The number threads used for $evaluate-measure executions.                                      |
+| FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT | 3600000 (1h)               | v0.19  | —       | Timeout in milliseconds for $evaluate-measure executions.                                      |
+| OPENID_PROVIDER_URL                     | —                          | v0.11  | —       | [OpenID Connect][4] provider URL to enable [authentication][5]                                 |
+| ENFORCE_REFERENTIAL_INTEGRITY           | true                       | v0.14  | —       | Enforce referential integrity on resource create, update and delete.                           |
+| DB_SYNC_TIMEOUT                         | 10000                      | v0.15  | —       | Timeout in milliseconds for all reading FHIR interactions acquiring the newest database state. |
+| DB_SEARCH_PARAM_BUNDLE                  | —                          | v0.21  | —       | Name of a custom search parameter bundle file.                                                 |
 
 ¹ Deprecated
 
 #### BASE_URL
 
 The [FHIR RESTful API](https://www.hl7.org/fhir/http.html) will be accessible under `BASE_URL/CONTEXT_PATH`. Possible X-Forwarded-Host, X-Forwarded-Proto and Forwarded request headers will override this URL.
-
-#### FHIR_OPERATION_EVALUATE_MEASURE_THREADS
-
-Not the same as the number of threads used for measure evaluation which equal to the number of available processors.
 
 #### ENFORCE_REFERENTIAL_INTEGRITY
 

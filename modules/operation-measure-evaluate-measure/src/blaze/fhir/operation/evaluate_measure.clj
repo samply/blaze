@@ -41,19 +41,15 @@
       (assoc :blaze.preference/return return-preference))))
 
 (defn- handle
-  [{:keys [node executor] :as context}
+  [{:keys [node] :as context}
    {:blaze/keys [base-url]
     ::reitit/keys [router]
     :keys [request-method]
     ::keys [params]
     :as request}
    measure]
-  (let [context (assoc context
-                       :blaze/base-url base-url
-                       ::reitit/router router)]
-    (-> (ac/supply-async
-         #(measure/evaluate-measure context measure params)
-         executor)
+  (let [context (assoc context :blaze/base-url base-url ::reitit/router router)]
+    (-> (measure/evaluate-measure context measure params)
         (ac/then-compose
          (fn process-result [result]
            (cond
@@ -130,17 +126,14 @@
 (defmethod ig/init-key ::timeout [_ {:keys [millis]}]
   (time/millis millis))
 
-(defmethod ig/pre-init-spec ::executor [_]
-  (s/keys :opt-un [::num-threads]))
-
-(defn- executor-init-msg [num-threads]
+(defn- executor-init-msg []
   (format "Init $evaluate-measure operation executor with %d threads"
-          num-threads))
+          (.availableProcessors (Runtime/getRuntime))))
 
 (defmethod ig/init-key ::executor
-  [_ {:keys [num-threads] :or {num-threads 4}}]
-  (log/info (executor-init-msg num-threads))
-  (ex/io-pool num-threads "operation-evaluate-measure-%d"))
+  [_ _]
+  (log/info (executor-init-msg))
+  (ex/cpu-bound-pool "operation-evaluate-measure-%d"))
 
 (defmethod ig/halt-key! ::executor
   [_ executor]

@@ -82,7 +82,7 @@
         :def-uri "http://hl7.org/fhir/OperationDefinition/Patient-everything"
         :resource-types ["Patient"]
         :instance-handler #blaze/ref :blaze.operation.patient/everything
-        :documentation "Returns all resources from the patient compartment of one concrete patient including the patient. Has a fix limit of 10,000 resources. Paging ist not supported. No params are supported."}]
+        :documentation "Returns all resources from the patient compartment of one concrete patient including the patient. Has a fix limit of 10,000 resources if paging isn't used. Paging is supported when the _count parameter is used. No other params are supported."}]
    :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]}
 
   ;;
@@ -142,9 +142,7 @@
   ;; FHIR Operation Evaluate Measure
   ;;
   ;; Special operation which enables Blaze to evaluate Measure resources,
-  ;; producing MeasureReports. The operation gets it's own executor with
-  ;; FHIR_OPERATION_EVALUATE_MEASURE_THREADS many threads on order to not occupy
-  ;; regular server threads. The metrics compile-duration-seconds and
+  ;; producing MeasureReports. The metrics compile-duration-seconds and
   ;; evaluate-duration-seconds are exported.
   ;;
   :blaze.fhir.operation.evaluate-measure/handler
@@ -157,8 +155,7 @@
   :blaze.fhir.operation.evaluate-measure/timeout
   {:millis #blaze/cfg ["FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT" nat-int? 3600000]}
 
-  :blaze.fhir.operation.evaluate-measure/executor
-  {:num-threads #blaze/cfg ["FHIR_OPERATION_EVALUATE_MEASURE_THREADS" pos-int? 4]}
+  :blaze.fhir.operation.evaluate-measure/executor {}
 
   :blaze.fhir.operation.evaluate-measure/compile-duration-seconds {}
   :blaze.fhir.operation.evaluate-measure/evaluate-duration-seconds {}

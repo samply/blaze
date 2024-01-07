@@ -505,7 +505,7 @@ describe('calcPropertiesDeep test', () => {
 		await expect(() =>
 			calcPropertiesDeep(
 				() => {
-					throw error(404);
+					error(404);
 				},
 				structureDefinitionPatient,
 				{
