@@ -13,7 +13,7 @@
     crypto-random/crypto-random]}
 
   info.sunng/ring-jetty9-adapter
-  {:mvn/version "0.22.3"}}
+  {:mvn/version "0.31.0"}}
 
  :aliases
  {:test
