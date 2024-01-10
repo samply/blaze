@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.23.4
+
+### Bugfixes
+
+* Fix Error while Evaluating Measure with Population Basis Boolean ([#1397](https://github.com/samply/blaze/issues/1397))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/83?closed=1).
+
 ## v0.23.3
 
 ### Bugfixes
