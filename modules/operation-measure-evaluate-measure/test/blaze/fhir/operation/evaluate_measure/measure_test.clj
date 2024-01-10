@@ -263,6 +263,10 @@
                      :library [#fhir/canonical"0"]
                      :group
                      [{:fhir/type :fhir.Measure/group
+                       :extension
+                       [#fhir/Extension
+                         {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
+                          :value #fhir/code"boolean"}]
                        :population
                        [{:fhir/type :fhir.Measure.group/population
                          :code (population-concept "initial-population")
@@ -659,6 +663,8 @@
 
   (testing-query "q51-specimen-condition-reference-2" 1)
 
+  (testing-query "q53-population-basis-boolean" 2)
+
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
       (is (s/valid? :blaze/resource (:resource result))))
@@ -851,4 +857,4 @@
 
 (comment
   (log/set-level! :debug)
-  (evaluate "q52-sort-with-missing-values"))
+  (evaluate "q53-population-basis-boolean"))

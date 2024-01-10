@@ -170,7 +170,8 @@
    (fn [{:keys [url value]}]
      (when (= "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis" url)
        (let [basis (type/value value)]
-         (cond-> basis (= "boolean" basis) keyword))))
+         (when-not (= "boolean" basis)
+           basis))))
    extension))
 
 (defn- evaluate-group

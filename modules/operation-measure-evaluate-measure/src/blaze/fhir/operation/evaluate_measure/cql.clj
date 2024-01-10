@@ -207,8 +207,8 @@
    * context :parameters        - an optional map of parameters
    * context :return-handles?   - whether subject-handles or a simple count
                                   should be returned
-   * context :population-basis  - the population basis of either :boolean or a
-                                  type like `Encounter`
+   * context :population-basis  - an optional population basis of a type like
+                                  `Encounter`
    * name                       - the name of the expression
    * subject-type               - the type of subjects like `Patient`
 
