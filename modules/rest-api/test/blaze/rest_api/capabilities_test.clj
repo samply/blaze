@@ -5,10 +5,11 @@
    [blaze.module.test-util :refer [with-system]]
    [blaze.rest-api.capabilities :as capabilities]
    [blaze.rest-api.capabilities-spec]
+   [blaze.rest-api.header-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
-   [clojure.test :as test :refer [deftest testing]]
+   [clojure.test :as test :refer [deftest is testing]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [juxt.iota :refer [given]]
@@ -31,78 +32,115 @@
 (deftest capabilities-handler-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "minimal config"
-      (given (-> @((capabilities/capabilities-handler
-                    {:version "version-131640"
-                     :structure-definitions
-                     [{:kind "resource" :name "Patient"}]
-                     :search-param-registry search-param-registry})
-                   {:blaze/base-url "base-url-131713"})
-                 :body)
-        :fhir/type := :fhir/CapabilityStatement
-        :status := #fhir/code"active"
-        :experimental := false
-        :publisher := "The Samply Community"
-        :copyright := copyright
-        :kind := #fhir/code"instance"
-        [:software :name] := "Blaze"
-        [:software :version] := "version-131640"
-        [:implementation :url] := #fhir/url"base-url-131713"
-        :fhirVersion := #fhir/code"4.0.1"
-        :format := [#fhir/code"application/fhir+json"
-                    #fhir/code"application/xml+json"]
-        [:rest 0 :searchParam 0 :name] := "_id"
-        [:rest 0 :searchParam 0 :type] := "token"
-        [:rest 0 :searchParam 0 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-id"
-        [:rest 0 :searchParam 1 :name] := "_lastUpdated"
-        [:rest 0 :searchParam 1 :type] := "date"
-        [:rest 0 :searchParam 1 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-lastUpdated"
-        [:rest 0 :searchParam 2 :name] := "_profile"
-        [:rest 0 :searchParam 2 :type] := "uri"
-        [:rest 0 :searchParam 2 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-profile"
-        [:rest 0 :searchParam 3 :name] := "_security"
-        [:rest 0 :searchParam 3 :type] := "token"
-        [:rest 0 :searchParam 3 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-security"
-        [:rest 0 :searchParam 4 :name] := "_source"
-        [:rest 0 :searchParam 4 :type] := "uri"
-        [:rest 0 :searchParam 4 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-source"
-        [:rest 0 :searchParam 5 :name] := "_tag"
-        [:rest 0 :searchParam 5 :type] := "token"
-        [:rest 0 :searchParam 5 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-tag"
-        [:rest 0 :searchParam 6 :name] := "_list"
-        [:rest 0 :searchParam 6 :type] := "special"
-        [:rest 0 :searchParam 7 :name] := "_has"
-        [:rest 0 :searchParam 7 :type] := "special"
-        [:rest 0 :searchParam 8 :name] := "_include"
-        [:rest 0 :searchParam 8 :type] := "special"
-        [:rest 0 :searchParam 9 :name] := "_revinclude"
-        [:rest 0 :searchParam 9 :type] := "special"
-        [:rest 0 :searchParam 10 :name] := "_count"
-        [:rest 0 :searchParam 10 :type] := "number"
-        [:rest 0 :searchParam 10 :documentation] := "The number of resources returned per page"
-        [:rest 0 :searchParam 11 :name] := "_elements"
-        [:rest 0 :searchParam 11 :type] := "special"
-        [:rest 0 :searchParam 12 :name] := "_sort"
-        [:rest 0 :searchParam 12 :type] := "special"
-        [:rest 0 :searchParam 12 :documentation] := "Only `_id`, `_lastUpdated` and `-_lastUpdated` are supported at the moment."
-        [:rest 0 :searchParam 13 :name] := "_summary"
-        [:rest 0 :searchParam 13 :type] := "token"
-        [:rest 0 :searchParam 13 :documentation] := "Only `count` is supported at the moment."))
+      (let [handler (capabilities/capabilities-handler
+                     {:version "version-131640"
+                      :release-date "2024-01-07"
+                      :structure-definitions
+                      [{:kind "resource" :name "Patient"}]
+                      :search-param-registry search-param-registry})]
+
+        (let [{:keys [status headers body]}
+              @(handler {:blaze/base-url "base-url-131713"})]
+
+          (is (= 200 status))
+
+          (testing "ETag header"
+            (is (= "W/\"fb1de2e1\"" (get headers "ETag"))))
+
+          (given body
+            :fhir/type := :fhir/CapabilityStatement
+            :status := #fhir/code"active"
+            :experimental := false
+            :publisher := "The Samply Community"
+            :copyright := copyright
+            :kind := #fhir/code"instance"
+            [:software :name] := "Blaze"
+            [:software :version] := "version-131640"
+            [:implementation :url] := #fhir/url"base-url-131713"
+            :fhirVersion := #fhir/code"4.0.1"
+            :format := [#fhir/code"application/fhir+json"
+                        #fhir/code"application/xml+json"]
+            [:rest 0 :searchParam 0 :name] := "_id"
+            [:rest 0 :searchParam 0 :type] := "token"
+            [:rest 0 :searchParam 0 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-id"
+            [:rest 0 :searchParam 1 :name] := "_lastUpdated"
+            [:rest 0 :searchParam 1 :type] := "date"
+            [:rest 0 :searchParam 1 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-lastUpdated"
+            [:rest 0 :searchParam 2 :name] := "_profile"
+            [:rest 0 :searchParam 2 :type] := "uri"
+            [:rest 0 :searchParam 2 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-profile"
+            [:rest 0 :searchParam 3 :name] := "_security"
+            [:rest 0 :searchParam 3 :type] := "token"
+            [:rest 0 :searchParam 3 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-security"
+            [:rest 0 :searchParam 4 :name] := "_source"
+            [:rest 0 :searchParam 4 :type] := "uri"
+            [:rest 0 :searchParam 4 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-source"
+            [:rest 0 :searchParam 5 :name] := "_tag"
+            [:rest 0 :searchParam 5 :type] := "token"
+            [:rest 0 :searchParam 5 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-tag"
+            [:rest 0 :searchParam 6 :name] := "_list"
+            [:rest 0 :searchParam 6 :type] := "special"
+            [:rest 0 :searchParam 7 :name] := "_has"
+            [:rest 0 :searchParam 7 :type] := "special"
+            [:rest 0 :searchParam 8 :name] := "_include"
+            [:rest 0 :searchParam 8 :type] := "special"
+            [:rest 0 :searchParam 9 :name] := "_revinclude"
+            [:rest 0 :searchParam 9 :type] := "special"
+            [:rest 0 :searchParam 10 :name] := "_count"
+            [:rest 0 :searchParam 10 :type] := "number"
+            [:rest 0 :searchParam 10 :documentation] := "The number of resources returned per page"
+            [:rest 0 :searchParam 11 :name] := "_elements"
+            [:rest 0 :searchParam 11 :type] := "special"
+            [:rest 0 :searchParam 12 :name] := "_sort"
+            [:rest 0 :searchParam 12 :type] := "special"
+            [:rest 0 :searchParam 12 :documentation] := "Only `_id`, `_lastUpdated` and `-_lastUpdated` are supported at the moment."
+            [:rest 0 :searchParam 13 :name] := "_summary"
+            [:rest 0 :searchParam 13 :type] := "token"
+            [:rest 0 :searchParam 13 :documentation] := "Only `count` is supported at the moment."))
+
+        (testing "filtering by _elements"
+          (tu/satisfies-prop 100
+            (prop/for-all [ks (gen/vector (gen/elements [:status :software]) 0 50)]
+              (let [{:keys [body]}
+                    @(handler
+                      {:query-params {"_elements" (str/join "," (map name ks))}
+                       :blaze/base-url "base-url-131713"})]
+                (= (set (conj ks :fhir/type)) (set (keys body)))))))
+
+        (testing "cache validation"
+          (doseq [if-none-match ["W/\"fb1de2e1\"" "W/\"fb1de2e1\", \"foo\""]]
+            (let [{:keys [status headers]}
+                  @(handler
+                    {:headers {"if-none-match" if-none-match}
+                     :blaze/base-url "base-url-131713"})]
+
+              (is (= 304 status))
+
+              (testing "ETag header"
+                (is (= "W/\"fb1de2e1\"" (get headers "ETag")))))))))
 
     (testing "minimal config + search-system"
-      (given (-> @((capabilities/capabilities-handler
-                    {:version "version-131640"
-                     :structure-definitions
-                     [{:kind "resource" :name "Patient"}]
-                     :search-param-registry search-param-registry
-                     :search-system-handler ::search-system})
-                   {})
-                 :body)
-        :fhir/type := :fhir/CapabilityStatement
-        [:rest 0 :interaction 0 :code] := #fhir/code"search-system"))
+      (let [{:keys [headers body]}
+            @((capabilities/capabilities-handler
+               {:version "version-131640"
+                :release-date "2024-01-07"
+                :structure-definitions
+                [{:kind "resource" :name "Patient"}]
+                :search-param-registry search-param-registry
+                :search-system-handler ::search-system})
+              {})]
+
+        (testing "ETag header"
+          (is (= "W/\"86c99a0a\"" (get headers "ETag"))))
+
+        (given body
+          :fhir/type := :fhir/CapabilityStatement
+          [:rest 0 :interaction 0 :code] := #fhir/code"search-system")))
 
     (testing "minimal config + history-system"
       (given (-> @((capabilities/capabilities-handler
                     {:version "version-131640"
+                     :release-date "2024-01-07"
                      :structure-definitions
                      [{:kind "resource" :name "Patient"}]
                      :search-param-registry search-param-registry
@@ -115,6 +153,7 @@
     (testing "Patient read interaction"
       (given (-> @((capabilities/capabilities-handler
                     {:version "version-131640"
+                     :release-date "2024-01-07"
                      :structure-definitions
                      [{:url "http://hl7.org/fhir/StructureDefinition/Patient"
                        :name "Patient"
@@ -152,6 +191,7 @@
       (testing "with disabled referential integrity check"
         (given (-> @((capabilities/capabilities-handler
                       {:version "version-131640"
+                       :release-date "2024-01-07"
                        :structure-definitions
                        [{:url "http://hl7.org/fhir/StructureDefinition/Patient"
                          :name "Patient"
@@ -175,6 +215,7 @@
     (testing "Observation interaction"
       (given (-> @((capabilities/capabilities-handler
                     {:version "version-131640"
+                     :release-date "2024-01-07"
                      :structure-definitions
                      [{:url "http://hl7.org/fhir/StructureDefinition/Observation"
                        :name "Observation"
@@ -200,6 +241,7 @@
     (testing "one operation"
       (given (-> @((capabilities/capabilities-handler
                     {:version "version-131640"
+                     :release-date "2024-01-07"
                      :structure-definitions
                      [{:url "http://hl7.org/fhir/StructureDefinition/Measure"
                        :name "Measure"
@@ -231,6 +273,7 @@
       (testing "with documentation"
         (given (-> @((capabilities/capabilities-handler
                       {:version "version-131640"
+                       :release-date "2024-01-07"
                        :structure-definitions
                        [{:url "http://hl7.org/fhir/StructureDefinition/Measure"
                          :name "Measure"
@@ -259,17 +302,4 @@
           [:rest 0 :resource 0 :operation 0 :name] := "evaluate-measure"
           [:rest 0 :resource 0 :operation 0 :definition] :=
           #fhir/canonical"http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
-          [:rest 0 :resource 0 :operation 0 :documentation] := #fhir/markdown"documentation-161800")))
-
-    (testing "filtering by _elements"
-      (tu/satisfies-prop 100
-        (prop/for-all [ks (gen/vector (gen/elements [:status :software]) 0 50)]
-          (let [body (@((capabilities/capabilities-handler
-                         {:version "version-131640"
-                          :structure-definitions
-                          [{:kind "resource" :name "Patient"}]
-                          :search-param-registry search-param-registry})
-                        {:query-params {"_elements" (str/join "," (map name ks))}
-                         :blaze/base-url "base-url-131713"})
-                      :body)]
-            (= (set (conj ks :fhir/type)) (set (keys body)))))))))
+          [:rest 0 :resource 0 :operation 0 :documentation] := #fhir/markdown"documentation-161800")))))
