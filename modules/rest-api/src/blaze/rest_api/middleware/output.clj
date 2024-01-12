@@ -38,12 +38,12 @@
   (with-open [_ (prom/timer generate-duration-seconds "xml")]
     (generate-xml* body)))
 
-(defn- encode-response-json [response content-type]
-  (-> (update response :body generate-json)
+(defn- encode-response-json [{:keys [body] :as response} content-type]
+  (-> (cond-> response body (update :body generate-json))
       (ring/content-type content-type)))
 
-(defn- encode-response-xml [response content-type]
-  (-> (update response :body generate-xml)
+(defn- encode-response-xml [{:keys [body] :as response} content-type]
+  (-> (cond-> response body (update :body generate-xml))
       (ring/content-type content-type)))
 
 (defn- format-key [format]
@@ -68,7 +68,7 @@
         (some format-key accept)
         :fhir+json)))
 
-(defn- encode-response [opts request response]
+(defn- handle-response [opts request response]
   (case (request-format request)
     :fhir+json (encode-response-json response "application/fhir+json;charset=utf-8")
     :fhir+xml (encode-response-xml response "application/fhir+xml;charset=utf-8")
@@ -77,9 +77,6 @@
     :text-json (encode-response-json response "text/json;charset=utf-8")
     :text-xml (encode-response-xml response "text/xml;charset=utf-8")
     (when (:accept-all? opts) (dissoc response :body))))
-
-(defn- handle-response [opts request {:keys [body] :as response}]
-  (cond->> response body (encode-response opts request)))
 
 (defn wrap-output
   "Middleware to output resources in JSON or XML."

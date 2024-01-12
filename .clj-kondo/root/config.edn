@@ -69,6 +69,7 @@
     blaze.elm.compiler.external-data ed
     blaze.elm.expression expr
     blaze.executors ex
+    blaze.rest-api.header header
     blaze.scheduler sched
     blaze.test-util tu
     blaze.util u

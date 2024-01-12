@@ -68,6 +68,7 @@
          :blaze/rest-api
          {:base-url "http://localhost:8080"
           :version "0.1.0"
+          :release-date "2024-01-07"
           :structure-definition-repo structure-definition-repo
           :node (ig/ref :blaze.db/node)
           :search-param-registry (ig/ref :blaze.db/search-param-registry)

@@ -298,10 +298,11 @@
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :release-date))
+      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
 
   (testing "invalid enforce-referential-integrity"
     (given-thrown (ig/init {:blaze/rest-api {:enforce-referential-integrity ::invalid}})
@@ -309,12 +310,13 @@
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
-      [:explain ::s/problems 6 :pred] := `boolean?
-      [:explain ::s/problems 6 :val] := ::invalid)))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :release-date))
+      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
+      [:explain ::s/problems 7 :pred] := `boolean?
+      [:explain ::s/problems 7 :val] := ::invalid)))
 
 (deftest requests-total-collector-init-test
   (with-system [{collector :blaze.rest-api/requests-total} {:blaze.rest-api/requests-total {}}]
@@ -340,6 +342,7 @@
          :blaze/rest-api
          {:base-url "http://localhost:8080"
           :version "0.1.0"
+          :release-date "2024-01-07"
           :structure-definition-repo structure-definition-repo
           :node (ig/ref :blaze.db/node)
           :search-param-registry (ig/ref :blaze.db/search-param-registry)

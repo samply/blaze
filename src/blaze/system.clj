@@ -75,6 +75,8 @@
 (def ^:private root-config
   {:blaze/version "0.23.4"
 
+   :blaze/release-date "2024-01-10"
+
    :blaze/clock {}
 
    :blaze/rng-fn {}
@@ -88,6 +90,7 @@
    :blaze/rest-api
    {:base-url (->Cfg "BASE_URL" string? "http://localhost:8080")
     :version (ig/ref :blaze/version)
+    :release-date (ig/ref :blaze/release-date)
     :structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)
     :node (ig/ref :blaze.db/node)
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
@@ -178,6 +181,10 @@
 (defmethod ig/init-key :blaze/version
   [_ version]
   version)
+
+(defmethod ig/init-key :blaze/release-date
+  [_ release-date]
+  release-date)
 
 (defmethod ig/init-key :blaze.db/storage
   [_ storage]

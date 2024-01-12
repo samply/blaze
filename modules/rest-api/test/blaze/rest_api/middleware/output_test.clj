@@ -18,11 +18,17 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def resource-handler
+(def resource-handler-200
   "A handler which just returns a patient."
   (wrap-output
    (fn [_ respond _]
      (respond (ring/response {:fhir/type :fhir/Patient :id "0"})))))
+
+(def resource-handler-304
+  "A handler which returns a 304 Not Modified response."
+  (wrap-output
+   (fn [_ respond _]
+     (respond (ring/status 304)))))
 
 (defn- parse-json [body]
   (fhir-spec/conform-json (fhir-spec/parse-json body)))
@@ -30,13 +36,18 @@
 (deftest json-test
   (testing "JSON is the default"
     (testing "without accept header"
-      (given (call resource-handler {})
+      (given (call resource-handler-200 {})
         [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
-        [:body parse-json] := {:fhir/type :fhir/Patient :id "0"}))
+        [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
+
+      (testing "not modified"
+        (given (call resource-handler-304 {})
+          [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
+          :body := nil)))
 
     (testing "with accept header"
       (are [accept content-type]
-           (given (call resource-handler {:headers {"accept" accept}})
+           (given (call resource-handler-200 {:headers {"accept" accept}})
              [:headers "Content-Type"] := content-type
              [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
         "*/*" "application/fhir+json;charset=utf-8"
@@ -45,7 +56,7 @@
 
   (testing "possible accept headers"
     (are [accept content-type]
-         (given (call resource-handler {:headers {"accept" accept}})
+         (given (call resource-handler-200 {:headers {"accept" accept}})
            [:headers "Content-Type"] := content-type
            [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
       "application/fhir+json" "application/fhir+json;charset=utf-8"
@@ -55,7 +66,7 @@
 
   (testing "_format overrides"
     (are [accept format content-type]
-         (given (call resource-handler
+         (given (call resource-handler-200
                       {:headers {"accept" accept}
                        :query-params {"_format" format}})
            [:headers "Content-Type"] := content-type
@@ -99,7 +110,7 @@
 (deftest xml-test
   (testing "possible accept headers"
     (are [accept content-type]
-         (given (call resource-handler {:headers {"accept" accept}})
+         (given (call resource-handler-200 {:headers {"accept" accept}})
            [:headers "Content-Type"] := content-type
            [:body parse-xml] := {:fhir/type :fhir/Patient :id "0"})
       "application/fhir+xml"
@@ -132,7 +143,7 @@
 
   (testing "_format overrides"
     (are [accept format content-type]
-         (given (call resource-handler
+         (given (call resource-handler-200
                       {:headers {"accept" accept}
                        :query-params {"_format" format}})
            [:headers "Content-Type"] := content-type
@@ -167,7 +178,12 @@
 
       "*/*"
       "xml"
-      "application/fhir+xml;charset=utf-8")))
+      "application/fhir+xml;charset=utf-8"))
+
+  (testing "not modified"
+    (given (call resource-handler-304 {:headers {"accept" "application/fhir+xml"}})
+      [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
+      :body := nil)))
 
 (deftest not-acceptable-test
-  (is (nil? (call resource-handler {:headers {"accept" "text/plain"}}))))
+  (is (nil? (call resource-handler-200 {:headers {"accept" "text/plain"}}))))
