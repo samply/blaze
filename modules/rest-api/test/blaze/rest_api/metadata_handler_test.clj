@@ -1,5 +1,6 @@
 (ns blaze.rest-api.metadata-handler-test
   (:require
+   [blaze.fhir.structure-definition-repo-spec]
    [blaze.fhir.structure-definition-repo.spec :refer [structure-definition-repo?]]
    [blaze.module.test-util :refer [with-system]]
    [blaze.rest-api.metadata-handler]
