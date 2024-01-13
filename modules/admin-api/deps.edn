@@ -15,7 +15,7 @@
   {:local/root "../spec"}
 
   fi.metosin/reitit-openapi
-  {:mvn/version "0.7.0-alpha5"}}
+  {:mvn/version "0.7.0-alpha7"}}
 
  :aliases
  {:test
