@@ -82,7 +82,13 @@
         :def-uri "http://hl7.org/fhir/OperationDefinition/Patient-everything"
         :resource-types ["Patient"]
         :instance-handler #blaze/ref :blaze.operation.patient/everything
-        :documentation "Returns all resources from the patient compartment of one concrete patient including the patient. Has a fix limit of 10,000 resources if paging isn't used. Paging is supported when the _count parameter is used. No other params are supported."}]
+        :documentation "Returns all resources from the patient compartment of one concrete patient including the patient. Has a fix limit of 10,000 resources if paging isn't used. Paging is supported when the _count parameter is used. No other params are supported."}
+    #:blaze.rest-api.operation
+       {:code "totals"
+        :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/totals"
+        :resource-types ["Resource"]
+        :system-handler #blaze/ref :blaze.fhir.operation/totals
+        :documentation "Retrieves the total counts of resources available by resource type."}]
    :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]}
 
   ;;
@@ -178,6 +184,15 @@
   :blaze.operation.patient/everything
   {:clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
+
+  ;;
+  ;; FHIR Operation Totals
+  ;;
+  :blaze.fhir.operation/totals
+  {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}
+
+  :blaze/admin-api
+  {:context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]}
 
   ;;
   ;; Database Node
@@ -547,6 +562,12 @@
      "transaction" #blaze/ref :blaze.db/transaction-kv-store
      "resource" #blaze/ref :blaze.db/resource-kv-store}}
 
+   :blaze/admin-api
+   {:dbs
+    {"index" #blaze/ref :blaze.db/index-kv-store
+     "transaction" #blaze/ref :blaze.db/transaction-kv-store
+     "resource" #blaze/ref :blaze.db/resource-kv-store}}
+
    ;;
    ;; Local Page Store
    ;;
@@ -671,6 +692,10 @@
    {:stores
     {"index" #blaze/ref :blaze.db/index-kv-store}}
 
+   :blaze/admin-api
+   {:dbs
+    {"index" #blaze/ref :blaze.db/index-kv-store}}
+
    ;;
    ;; Kafka Transaction Log
    ;;
@@ -733,7 +758,8 @@
   ;;
   ;; Frontend
   ;;
-  {:name "Frontend"
+  {:key :frontend
+   :name "Frontend"
    :toggle "ENABLE_FRONTEND"
    :config
    {:blaze.handler/app
@@ -747,11 +773,7 @@
      :admin-handler #blaze/ref :blaze/admin-api}
 
     :blaze.rest-api/metadata-handler
-    {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}
-
-    :blaze/admin-api
-    {:context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]
-     :index-kv-store #blaze/ref :blaze.db/index-kv-store}}}
+    {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}}}
 
   ;;
   ;; OpenID Authentication
@@ -759,7 +781,8 @@
   ;; Can be referred by the super key :blaze.auth/backend. Will be enabled if an
   ;; OPENID_PROVIDER_URL is set.
   ;;
-  {:name "OpenID Authentication"
+  {:key :open-id-authentication
+   :name "OpenID Authentication"
    :toggle "OPENID_PROVIDER_URL"
    :config
    {:blaze.openid-auth/backend

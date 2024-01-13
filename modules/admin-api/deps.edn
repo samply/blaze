@@ -12,15 +12,18 @@
   {:local/root "../rocksdb"}
 
   blaze/spec
-  {:local/root "../spec"}}
+  {:local/root "../spec"}
+
+  fi.metosin/reitit-openapi
+  {:mvn/version "0.7.0-alpha5"}}
 
  :aliases
  {:test
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/module-test-util
-    {:local/root "../module-test-util"}}}
+   {blaze/db-stub
+    {:local/root "../db-stub"}}}
 
   :kaocha
   {:extra-deps
@@ -34,4 +37,5 @@
    {cloverage/cloverage
     {:mvn/version "1.2.4"}}
 
-   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"
+               "-e" ".+spec"]}}}

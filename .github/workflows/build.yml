@@ -333,6 +333,9 @@ jobs:
     - name: Check Total-Number of Resources are 92114
       run: .github/scripts/check-total-number-of-resources.sh 92114
 
+    - name: Check Resource Totals
+      run: .github/scripts/check-resource-totals.sh
+
     - name: Count Resources
       run: blazectl count-resources --server http://localhost:8080/fhir
 

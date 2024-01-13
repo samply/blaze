@@ -100,7 +100,8 @@
   Additionally an optional `column-family` key can be supplied in order to
   obtain the value of a column family specific property.
 
-  Returns an anomaly if the optional column family doesn't exist."
+  Returns an anomaly if the property was not found or the optional column family
+  doesn't exist."
   ([store name]
    (p/-property store name))
   ([store column-family name]
@@ -112,14 +113,17 @@
   Additionally an optional `column-family` key can be supplied in order to
   obtain the value of a column family specific property.
 
-  Returns an anomaly if the optional column family doesn't exist."
+  Returns an anomaly if the property was not found or the optional column family
+  doesn't exist."
   ([store name]
    (p/-long-property store name))
   ([store column-family name]
    (p/-long-property store column-family name)))
 
 (defn agg-long-property
-  "Returns the aggregated long value of the property with `name` from `store`."
+  "Returns the aggregated long value of the property with `name` from `store`.
+
+  Returns an anomaly if the property was not found."
   [store name]
   (p/-agg-long-property store name))
 
@@ -129,7 +133,8 @@
   Additionally an optional `column-family` key can be supplied in order to
   obtain the value of a column family specific property.
 
-  Returns an anomaly if the optional column family doesn't exist."
+  Returns an anomaly if the property was not found or the optional column family
+  doesn't exist."
   ([store name]
    (p/-map-property store name))
   ([store column-family name]

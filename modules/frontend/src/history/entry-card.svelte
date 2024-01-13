@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { HistoryBundleEntry } from '../fhir';
-	import type { FhirObject } from '../resource/resource-card';
-	import { HttpVerb } from '../fhir';
+	import type { HistoryBundleEntry } from '../fhir.js';
+	import type { FhirObject } from '../resource/resource-card.js';
+	import { HttpVerb } from '../fhir.js';
 	import ResourceCard from '../resource/resource-card.svelte';
 	import DeletedCard from './deleted-card.svelte';
 	import MethodBadge from './method-badge.svelte';

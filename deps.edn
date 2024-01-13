@@ -25,6 +25,9 @@
   blaze.operation/patient-everything
   {:local/root "modules/operation-patient-everything"}
 
+  blaze.operation/totals
+  {:local/root "modules/operation-totals"}
+
   blaze/openid-auth
   {:local/root "modules/openid-auth"}
 

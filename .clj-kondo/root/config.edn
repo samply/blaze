@@ -69,6 +69,8 @@
     blaze.elm.compiler.external-data ed
     blaze.elm.expression expr
     blaze.executors ex
+    blaze.fhir.structure-definition-repo sdr
+    blaze.middleware.fhir.db db
     blaze.rest-api.header header
     blaze.scheduler sched
     blaze.test-util tu

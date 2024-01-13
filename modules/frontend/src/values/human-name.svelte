@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { FhirObject } from '../resource/resource-card';
-	import type { HumanName } from '../fhir';
+	import type { FhirObject } from '../resource/resource-card.js';
+	import type { HumanName } from '../fhir.js';
 	import GrayBadge from './util/gray-badge.svelte';
 
 	export let values: FhirObject[];

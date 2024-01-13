@@ -1,0 +1,5 @@
+#kaocha/v1
+    #merge
+        [{}
+         #profile {:ci {:reporter kaocha.report/documentation
+                        :color? false}}]
