@@ -5,6 +5,7 @@
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
    [blaze.db.kv.mem-spec]
+   [blaze.db.kv.protocols :as p]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
    [blaze.db.tx-log.local-spec]
@@ -51,13 +52,13 @@
   (byte-array [0xA1]))
 
 (defmethod ig/init-key ::failing-kv-store [_ _]
-  (reify kv/KvStore
+  (reify p/KvStore
     (-new-snapshot [_]
       (reify
-        kv/KvSnapshot
+        p/KvSnapshot
         (-new-iterator [_ _]
           (reify
-            kv/KvIterator
+            p/KvIterator
             (-seek-to-last [_])
             (-seek [_ _])
             (-valid [_] false)

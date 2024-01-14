@@ -9,9 +9,9 @@
    [blaze.fhir.spec]
    [clojure.spec.alpha :as s]))
 
-(s/fdef rh/resource-handle
+(s/fdef rh/resource-handle!
   :args (s/cat :tid :blaze.db/tid :id :blaze.resource/id
-               :t :blaze.db/t :value-buffer byte-buffer?)
+               :t :blaze.db/t :vb byte-buffer?)
   :ret :blaze.db/resource-handle)
 
 (s/fdef rh/resource-handle?

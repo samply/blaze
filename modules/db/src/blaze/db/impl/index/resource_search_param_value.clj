@@ -3,15 +3,10 @@
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
-   [blaze.coll.core :as coll]
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.iterators :as i]
-   [blaze.db.kv :as kv]
-   [blaze.fhir.hash :as hash])
-  (:import
-   [clojure.lang IFn]
-   [java.lang AutoCloseable]))
+   [blaze.fhir.hash :as hash]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -49,89 +44,52 @@
   ([tid id hash c-hash value]
    (-> (encode-key-buf tid id hash c-hash value) bb/flip! bs/from-byte-buffer!)))
 
-(defn next-value!
+(defn next-value
   "Returns the decoded value of the key that is at or past the key encoded from
-  `resource-handle`, `c-hash` and `value` and still starts with `prefix-value`.
-
-  Changes the state of `iter`. Calling this function requires exclusive access
-  to `iter`. Doesn't close `iter`."
+  `resource-handle`, `c-hash` and optional `value` with `value-prefix-length`
+  bytes of value matching."
   {:arglists
-   '([iter resource-handle c-hash]
-     [iter resource-handle c-hash prefix-value value])}
-  ([iter {:keys [tid id hash]} c-hash]
+   '([snapshot resource-handle c-hash]
+     [snapshot resource-handle c-hash value-prefix-length value])}
+  ([snapshot {:keys [tid id hash]} c-hash]
    (let [id (codec/id-byte-string id)
-         key (encode-key tid id hash c-hash)]
-     (coll/first (i/prefix-keys! iter key decode-value key))))
-  ([iter {:keys [tid id hash]} c-hash prefix-value value]
+         target (encode-key tid id hash c-hash)]
+     (i/seek-key snapshot :resource-value-index decode-value
+                 (bs/size target) target)))
+  ([snapshot {:keys [tid id hash]} c-hash value-prefix-length value]
    (let [id (codec/id-byte-string id)
-         prefix-key (encode-key tid id hash c-hash prefix-value)
-         start-key (encode-key tid id hash c-hash value)]
-     (coll/first (i/prefix-keys! iter prefix-key decode-value start-key)))))
+         target (encode-key tid id hash c-hash value)]
+     (i/seek-key snapshot :resource-value-index decode-value
+                 (+ (- (bs/size target) (bs/size value)) (long value-prefix-length))
+                 target))))
 
-(defn next-value-fn
-  "Returns a function similar to `next-value!` that takes a `snapshot` instead
-  of an `iter`.
-
-  The returned function can't be called concurrently and has to be closed in
-  order to close the ResourceSearchParamValue iterator."
-  [snapshot]
-  (let [rsvi (kv/new-iterator snapshot :resource-value-index)]
-    (reify
-      IFn
-      (invoke [_ resource-handle c-hash]
-        (next-value! rsvi resource-handle c-hash))
-      (invoke [_ resource-handle c-hash prefix-value value]
-        (next-value! rsvi resource-handle c-hash prefix-value value))
-      AutoCloseable
-      (close [_]
-        (.close ^AutoCloseable rsvi)))))
-
-(defn next-value-prev!
+(defn next-value-prev
   "Returns the decoded value of the key that is at or before the key encoded
-  from `resource-handle`, `c-hash` and `value` and still starts with
-  `prefix-value`."
-  {:arglists
-   '([iter resource-handle c-hash prefix-value value])}
-  [iter {:keys [tid id hash]} c-hash prefix-value value]
+  from `resource-handle`, `c-hash`, `value` and with `value-prefix-length` bytes
+  of value matching."
+  {:arglists '([snapshot resource-handle c-hash value-prefix-length value])}
+  [snapshot {:keys [tid id hash]} c-hash value-prefix-length value]
   (let [id (codec/id-byte-string id)
-        prefix-key (encode-key tid id hash c-hash prefix-value)
-        start-key (encode-key tid id hash c-hash value)]
-    (coll/first (i/prefix-keys-prev! iter prefix-key decode-value start-key))))
+        target (encode-key tid id hash c-hash value)]
+    (i/seek-key-prev snapshot :resource-value-index
+                     decode-value
+                     (+ (- (bs/size target) (bs/size value)) (long value-prefix-length))
+                     target)))
 
-(defn next-value-prev-fn
-  "Returns a function similar to `next-value-prev!` that takes a `snapshot` instead
-  of an `iter`.
-
-  The returned function can't be called concurrently and has to be closed in
-  order to close the ResourceSearchParamValue iterator."
-  [snapshot]
-  (let [rsvi (kv/new-iterator snapshot :resource-value-index)]
-    (reify
-      IFn
-      (invoke [_ resource-handle c-hash prefix-value value]
-        (next-value-prev! rsvi resource-handle c-hash prefix-value value))
-      AutoCloseable
-      (close [_]
-        (.close ^AutoCloseable rsvi)))))
-
-(defn prefix-keys!
+(defn prefix-keys
   "Returns a reducible collection of decoded values from keys starting at
-  `start-value` (optional) and ending when the prefix of `tid`, `id`, `hash`,
-  `c-hash` and `prefix-value` (optional) is no longer a prefix of the keys
-  processed.
-
-  Changes the state of `iter`. Consuming the collection requires exclusive
-  access to `iter`. Doesn't close `iter`."
-  ([iter tid id hash c-hash]
+  `tid`, `id`, `hash`, `c-hash` and `start-value` (optional) and ending when the
+  prefix of `tid`, `id`, `hash`, `c-hash` and `prefix-length` bytes of
+  `start-value` (optional) is no longer a prefix of the keys processed."
+  ([snapshot tid id hash c-hash]
    (let [key (encode-key tid id hash c-hash)]
-     (i/prefix-keys! iter key decode-value key)))
-  ([iter tid id hash c-hash prefix-value]
-   (let [prefix-key (encode-key tid id hash c-hash prefix-value)]
-     (i/prefix-keys! iter prefix-key decode-value prefix-key)))
-  ([iter tid id hash c-hash prefix-value start-value]
-   (let [prefix-key (encode-key tid id hash c-hash prefix-value)
-         start-key (encode-key tid id hash c-hash start-value)]
-     (i/prefix-keys! iter prefix-key decode-value start-key))))
+     (i/prefix-keys snapshot :resource-value-index decode-value (bs/size key)
+                    key)))
+  ([snapshot tid id hash c-hash prefix-length start-value]
+   (let [start-key (encode-key tid id hash c-hash start-value)]
+     (i/prefix-keys snapshot :resource-value-index decode-value
+                    (+ (key-size id) (long prefix-length))
+                    start-key))))
 
 (defn index-entry [tid id hash c-hash value]
   [:resource-value-index

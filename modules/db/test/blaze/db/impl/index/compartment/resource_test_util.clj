@@ -20,6 +20,6 @@
    :id (codec/id-string (bs/from-byte-buffer! buf))})
 
 (defn decode-index-entries [kv-store & keys]
-  (with-open [snapshot (kv/new-snapshot kv-store)
-              iter (kv/new-iterator snapshot :compartment-resource-type-index)]
-    (into [] (map #(mapv % keys)) (i/keys! iter decode-key-human bs/empty))))
+  (with-open [snapshot (kv/new-snapshot kv-store)]
+    (->> (i/keys snapshot :compartment-resource-type-index decode-key-human bs/empty)
+         (into [] (map #(mapv % keys))))))

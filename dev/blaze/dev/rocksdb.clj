@@ -17,13 +17,8 @@
 
 
 (comment
-  (rocksdb/compact-range!
-    (index-kv-store)
-    :resource-as-of-index)
-
-  (rocksdb/compact-range!
-    (index-kv-store)
-    :search-param-value-index)
+  (rocksdb/compact-range! (index-kv-store) :resource-as-of-index)
+  (rocksdb/compact-range! (index-kv-store) :search-param-value-index)
 
   (mapv
     (fn [^ThreadStatus status]

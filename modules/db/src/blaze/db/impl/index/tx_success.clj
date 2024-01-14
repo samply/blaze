@@ -5,7 +5,9 @@
   successful transactions happened. In other words, this index maps each t which
   is just a monotonically increasing number to a real point in time."
   (:require
+   [blaze.byte-buffer :as bb]
    [blaze.db.impl.index.cbor :as cbor]
+   [blaze.db.impl.iterators :as i]
    [blaze.db.kv :as kv])
   (:import
    [com.github.benmanes.caffeine.cache CacheLoader LoadingCache]
@@ -38,11 +40,8 @@
 (defn last-t
   "Returns the last known `t` or nil if the store is empty."
   [kv-store]
-  (with-open [snapshot (kv/new-snapshot kv-store)
-              iter (kv/new-iterator snapshot :tx-success-index)]
-    (kv/seek-to-first! iter)
-    (when (kv/valid? iter)
-      (Longs/fromByteArray (kv/key iter)))))
+  (with-open [snapshot (kv/new-snapshot kv-store)]
+    (i/seek-key-first snapshot :tx-success-index bb/get-long!)))
 
 (defn- encode-value
   "Encodes the value of the TxSuccess index.

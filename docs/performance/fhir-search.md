@@ -6,27 +6,34 @@ Under ideal conditions, Blaze can execute a FHIR Search query for a single code 
 
 ## Systems
 
-The following systems were used for performance evaluation:
+The following systems with rising resources were used for performance evaluation:
 
-| System | Provider | CPU        | Cores |     RAM |    SSD | Heap Mem | Block Cache | Resource Cache ¹ |
-|--------|----------|------------|------:|--------:|-------:|---------:|------------:|-----------------:|
-| LEA47  | on-prem  | EPYC 7543P |    16 | 128 GiB |   2 TB |   32 GiB |      32 GiB |             10 M | 
-| CCX42  | Hetzner  | EPYC 7763  |    16 |  64 GiB | 360 GB |   16 GiB |       8 GiB |              5 M | 
+| System | Provider | CPU        | Cores |     RAM |    SSD | Heap Mem ¹ | Block Cache ² | Resource Cache ³ |
+|--------|----------|------------|------:|--------:|-------:|-----------:|--------------:|-----------------:|
+| LEA25  | on-prem  | EPYC 7543P |     4 |  32 GiB |   2 TB |      8 GiB |         8 GiB |            2.5 M | 
+| LEA36  | on-prem  | EPYC 7543P |     8 |  64 GiB |   2 TB |     16 GiB |        16 GiB |              5 M | 
+| LEA47  | on-prem  | EPYC 7543P |    16 | 128 GiB |   2 TB |     32 GiB |        32 GiB |             10 M | 
+| LEA58  | on-prem  | EPYC 7543P |    32 | 256 GiB |   2 TB |     64 GiB |        64 GiB |             20 M | 
+| CCX42  | Hetzner  | EPYC 7763  |    16 |  64 GiB | 360 GB |     16 GiB |         8 GiB |              5 M | 
 
-¹ Size of the resource cache (DB_RESOURCE_CACHE_SIZE)
+¹ Size of the Java Heap (`JAVA_TOOL_OPTIONS`)
+² Size of the block cache (`DB_BLOCK_CACHE_SIZE`)
+³ Size of the resource cache (`DB_RESOURCE_CACHE_SIZE`)
+
+All systems have in common that the heap mem and the block cache both use 1/4 of the total available memory each. So the Blaze process itself will only use about half the system memory available. The rest of the system memory will be used as file system cache.
 
 ## Datasets
 
 The following datasets were used:
 
-| Dataset | History  | # Pat. ¹ | # Res. ² | # Obs. ³ | Disc Size |
-|---------|----------|---------:|---------:|---------:|----------:|
-| 100k    | 10 years |    100 k |    104 M |     59 M |   202 GiB |
-| 1M      | 10 years |      1 M |   1044 M |    593 M |  1045 GiB |
+| Dataset | History  | # Pat. ¹ | # Res. ² | # Obs. ³ | SSD Size |
+|---------|----------|---------:|---------:|---------:|---------:|
+| 100k    | 10 years |    100 k |    104 M |     59 M |  202 GiB |
+| 1M      | 10 years |      1 M |   1044 M |    593 M | 1045 GiB |
 
 ¹ Number of Patients, ² Total Number of Resources, ³ Number of Observations
 
-The creation of the datasets is described in the [Synthea section](./synthea/README.md). The disc size is measured after full manual compaction of the database.
+The creation of the datasets is described in the [Synthea section](./synthea/README.md). The disc size is measured after full manual compaction of the database. The actual disc size will be up to 50% higher, depending on the state of compaction which happens regularly in the background.
 
 ## Simple Code Search
 
@@ -124,9 +131,12 @@ curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&valu
 
 | System | Dataset | Code    | Value | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|---------|------:|-------:|---------:|-------:|-------:|
-| LEA47  | 100k    | 29463-7 |  26.8 |  158 k |    14.24 |  0.073 |  90.05 |
-| LEA47  | 100k    | 29463-7 |  79.5 |  790 k |    14.68 |  0.152 |  18.59 |
-| LEA47  | 100k    | 29463-7 |   183 |  1.6 M |    14.61 |  0.120 |   9.23 |
+| LEA47  | 100k    | 29463-7 |  26.8 |  158 k |    12.90 |  0.053 |  81.63 |
+| LEA47  | 100k    | 29463-7 |  79.5 |  790 k |    13.27 |  0.139 |  16.80 |
+| LEA47  | 100k    | 29463-7 |   183 |  1.6 M |    13.73 |  0.157 |   8.67 |
+| LEA58  | 100k    | 29463-7 |  26.8 |  158 k |    12.26 |  0.061 |  77.55 |
+| LEA58  | 100k    | 29463-7 |  79.5 |  790 k |    12.39 |  0.027 |  15.69 |
+| LEA58  | 100k    | 29463-7 |   183 |  1.6 M |    12.88 |  0.100 |   8.14 |
 | CCX42  | 100k    | 29463-7 |  26.8 |  158 k |    56.45 |  0.149 | 357.08 |
 | CCX42  | 100k    | 29463-7 |  79.5 |  790 k |    56.72 |  0.174 |  71.84 |
 | CCX42  | 100k    | 29463-7 |   183 |  1.6 M |    56.77 |  0.135 |  35.87 |
@@ -143,16 +153,19 @@ The measurements show that the time Blaze needs to count resources with two sear
 All measurements are done after Blaze is in a steady state with all resources to download in it's resource cache in order to cancel out resource load times from disk or file system cache.
 
 Download is done using the following `blazectl` command:
-
+ 
 ```sh
 blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&value-quantity=lt$VALUE|http://unitsofmeasure.org|$UNIT&_count=1000" > /dev/null"
 ```
 
 | System | Dataset | Code    | Value | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|---------|------:|-------:|---------:|-------:|-------:|
-| LEA47  | 100k    | 29463-7 |  26.8 |  158 k |    16.77 |  0.045 | 106.06 |
-| LEA47  | 100k    | 29463-7 |  79.5 |  790 k |    20.84 |  0.193 |  26.39 |
-| LEA47  | 100k    | 29463-7 |   183 |  1.6 M |    35.42 |  0.298 |  22.38 |
+| LEA47  | 100k    | 29463-7 |  26.8 |  158 k |    15.45 |  0.073 |  97.73 |
+| LEA47  | 100k    | 29463-7 |  79.5 |  790 k |    24.42 |  0.073 |  30.92 |
+| LEA47  | 100k    | 29463-7 |   183 |  1.6 M |    35.51 |  0.309 |  22.44 |
+| LEA58  | 100k    | 29463-7 |  26.8 |  158 k |    14.62 |  0.028 |  92.48 |
+| LEA58  | 100k    | 29463-7 |  79.5 |  790 k |    23.47 |  0.130 |  29.72 |
+| LEA58  | 100k    | 29463-7 |   183 |  1.6 M |    33.72 |  0.099 |  21.30 |
 | CCX42  | 100k    | 29463-7 |  26.8 |  158 k |    59.19 |  0.060 | 374.44 |
 | CCX42  | 100k    | 29463-7 |  79.5 |  790 k |    70.26 |  0.142 |  88.98 |
 | CCX42  | 100k    | 29463-7 |   183 |  1.6 M |    83.82 |  0.076 |  52.97 |
@@ -176,9 +189,12 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 | System | Dataset | Code    | Value | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|---------|------:|-------:|---------:|-------:|-------:|
-| LEA47  | 100k    | 29463-7 |  26.8 |  158 k |    15.82 |  0.045 | 100.09 |
-| LEA47  | 100k    | 29463-7 |  79.5 |  790 k |    25.50 |  0.148 |  32.29 |
-| LEA47  | 100k    | 29463-7 |   183 |  1.6 M |    26.93 |  0.132 |  17.02 |
+| LEA47  | 100k    | 29463-7 |  26.8 |  158 k |    14.62 |  0.054 |  92.48 |
+| LEA47  | 100k    | 29463-7 |  79.5 |  790 k |    19.95 |  0.057 |  25.26 |
+| LEA47  | 100k    | 29463-7 |   183 |  1.6 M |    26.89 |  0.192 |  16.99 |
+| LEA58  | 100k    | 29463-7 |  26.8 |  158 k |    13.69 |  0.037 |  86.62 |
+| LEA58  | 100k    | 29463-7 |  79.5 |  790 k |    18.84 |  0.139 |  23.86 |
+| LEA58  | 100k    | 29463-7 |   183 |  1.6 M |    25.47 |  0.302 |  16.09 |
 | CCX42  | 100k    | 29463-7 |  26.8 |  158 k |    58.07 |  0.028 | 367.36 |
 | CCX42  | 100k    | 29463-7 |  79.5 |  790 k |    65.31 |  0.197 |  82.71 |
 | CCX42  | 100k    | 29463-7 |   183 |  1.6 M |    74.40 |  0.183 |  47.01 |

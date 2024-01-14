@@ -1,9 +1,9 @@
 (ns blaze.db.impl.search-param.quantity-spec
   (:require
+   [blaze.db.impl.batch-db :as-alias batch-db]
+   [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.index.compartment.search-param-value-resource-spec]
-   [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.resource-search-param-value-spec]
-   [blaze.db.impl.index.resource-search-param-value.spec]
    [blaze.db.impl.index.search-param-value-resource-spec]
    [blaze.db.impl.search-param.quantity :as spq]
    [blaze.db.impl.search-param.quantity.spec]
@@ -14,7 +14,7 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef spq/resource-keys
-  :args (s/cat :context :blaze.db.impl.batch-db/context
+  :args (s/cat :context ::batch-db/context
                :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
                :prefix-length nat-int?
@@ -22,8 +22,7 @@
                :start-id (s/? :blaze.db/id-byte-string)))
 
 (s/fdef spq/matches?
-  :args (s/cat :next-value ::r-sp-v/next-value
-               :next-value-prev ::r-sp-v/next-value-prev
+  :args (s/cat :snapshot :blaze.db.kv/snapshot
                :c-hash :blaze.db/c-hash
                :resource-handle :blaze.db/resource-handle
                :prefix-length nat-int?

@@ -5555,6 +5555,14 @@
           count := 1
           [0 :id] := "0"))))
 
+  (testing "system-list-and-total"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (with-open [batch-db (d/new-batch-db (d/db node))]
+        (is (= 1 (count (vec (d/system-list batch-db)))))
+        (is (= 1 (d/system-total batch-db))))))
+
   (testing "compile-compartment-query"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]

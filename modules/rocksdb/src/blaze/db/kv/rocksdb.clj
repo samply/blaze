@@ -2,6 +2,7 @@
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.db.kv :as kv]
+   [blaze.db.kv.protocols :as kv-p]
    [blaze.db.kv.rocksdb.impl :as impl]
    [blaze.db.kv.rocksdb.metrics :as metrics]
    [blaze.db.kv.rocksdb.metrics.spec]
@@ -24,7 +25,7 @@
 (RocksDB/loadLibrary)
 
 (deftype RocksKvIterator [^RocksIterator i]
-  kv/KvIterator
+  kv-p/KvIterator
   (-valid [_]
     (.isValid i))
 
@@ -66,7 +67,7 @@
     (.close i)))
 
 (deftype RocksKvSnapshot [^RocksDB db ^Snapshot snapshot ^ReadOptions read-opts cfhs]
-  kv/KvSnapshot
+  kv-p/KvSnapshot
   (-new-iterator [_ column-family]
     (->RocksKvIterator (.newIterator db (impl/get-cfh cfhs column-family) read-opts)))
 
@@ -181,7 +182,7 @@
   (p/-drop-column-family store column-family))
 
 (deftype RocksKvStore [^RocksDB db path ^WriteOptions write-opts cfhs]
-  kv/KvStore
+  kv-p/KvStore
   (-new-snapshot [_]
     (let [snapshot (.getSnapshot db)]
       (->RocksKvSnapshot db snapshot (.setSnapshot (ReadOptions.) snapshot) cfhs)))

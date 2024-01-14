@@ -2,16 +2,16 @@
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :as ac]
+   [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
    [blaze.db.impl.index.resource-as-of :as rao]
+   [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
-   [blaze.db.impl.macros :refer [with-open-coll]]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.impl.search-param.util :as u]
-   [blaze.db.kv :as kv]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
@@ -127,17 +127,15 @@
     c-hash))
 
 (defn resource-keys
-  "Returns a reducible collection of [id hash-prefix] tuples starting at
+  "Returns a reducible collection of `[id hash-prefix]` tuples starting at
   `start-id` (optional)."
   ([{:keys [snapshot]} c-hash tid value]
-   (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
-     (sp-vr/prefix-keys! svri c-hash tid value value)))
+   (sp-vr/prefix-keys snapshot c-hash tid (bs/size value) value))
   ([{:keys [snapshot]} c-hash tid value start-id]
-   (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
-     (sp-vr/prefix-keys! svri c-hash tid value value start-id))))
+   (sp-vr/prefix-keys snapshot c-hash tid (bs/size value) value start-id)))
 
-(defn matches? [next-value c-hash resource-handle value]
-  (some? (next-value resource-handle c-hash value value)))
+(defn matches? [snapshot c-hash resource-handle value]
+  (some? (r-sp-v/next-value snapshot resource-handle c-hash (bs/size value) value)))
 
 (defrecord SearchParamToken [name url type base code target c-hash expression]
   p/SearchParam
@@ -163,11 +161,10 @@
                     value)))
 
   (-compartment-keys [_ context compartment tid value]
-    (with-open-coll [csvri (kv/new-iterator (:snapshot context) :compartment-search-param-value-index)]
-      (c-sp-vr/prefix-keys! csvri compartment c-hash tid value)))
+    (c-sp-vr/prefix-keys (:snapshot context) compartment c-hash tid value))
 
   (-matches? [_ context resource-handle modifier values]
-    (some? (some (partial matches? (:next-value context) (c-hash-w-modifier c-hash code modifier) resource-handle) values)))
+    (some? (some (partial matches? (:snapshot context) (c-hash-w-modifier c-hash code modifier) resource-handle) values)))
 
   (-compartment-ids [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

@@ -115,14 +115,14 @@ The `SystemStats` index keeps track of the total number of resources, and the nu
 
 The indices not depending on `t` directly point to the resource versions by their content hash. 
 
-| Name                                | Key Parts                                                        | Value |
+| Name                                | Key Parts                                                      | Value |
 |-------------------------------------|----------------------------------------------------------------|-------|
 | SearchParamValueResource            | search-param, type, value, id, hash-prefix                     | -     |
 | ResourceSearchParamValue            | type, id, hash-prefix, search-param, value                     | -     |
 | CompartmentSearchParamValueResource | comp-code, comp-id, search-param, type, value, id, hash-prefix | -     |
 | CompartmentResourceType             | comp-code, comp-id, type, id                                   | -     |
 | SearchParam                         | code, type                                                     | id    |
-| ActiveSearchParams                  | id                                                               | -     |
+| ActiveSearchParams                  | id                                                             | -     |
 
 #### SearchParamValueResource
 
@@ -239,13 +239,23 @@ Currently not used.
 
 * a transaction bundle is POST'ed to one arbitrary node
 * this node submits the transaction commands to the central transaction log
-* all nodes (inkl. the transaction submitter) receive the transaction commands from the central transaction log
+* all nodes (including the transaction submitter) receive the transaction commands from the central transaction log
 
 ### Transaction Commands
 
 ### Create
 
-**TODO**
+The `create` command is used to create a resource.
+
+#### Properties
+
+| Name          | Required | Data Type     | Description                                     |
+|---------------|----------|---------------|-------------------------------------------------|
+| type          | yes      | string        | resource type                                   |
+| id            | yes      | string        | resource id                                     |
+| hash          | yes      | hash          | resource content hash                           |
+| refs          | no       | list          | references to other resources                   |
+| if-none-exist | no       | search-clause | will only be executed if search returns nothing |
 
 ### Put
 
@@ -257,7 +267,7 @@ The `put` command is used to create or update a resource.
 |---------------|----------|---------------|---------------------------------------------|
 | type          | yes      | string        | resource type                               |
 | id            | yes      | string        | resource id                                 |
-| hash          | yes      | string        | resource content hash                       |
+| hash          | yes      | hash          | resource content hash                       |
 | refs          | no       | list          | references to other resources               |
 | if-match      | no       | number        | the t the resource to update has to match   |
 | if-none-match | no       | "*" or number | the t the resource to update must not match |
@@ -272,7 +282,7 @@ The `keep` command can be used instead of a `put` command if it's likely that th
 |----------|----------|-----------|---------------------------------------------------------------|
 | type     | yes      | string    | resource type                                                 |
 | id       | yes      | string    | resource id                                                   |
-| hash     | yes      | string    | the resource content hash the resource to update has to match |
+| hash     | yes      | hash      | the resource content hash the resource to update has to match |
 | if-match | no       | number    | the t the resource to update has to match                     |
 
 ### Delete

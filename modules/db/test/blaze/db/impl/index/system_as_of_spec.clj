@@ -13,7 +13,7 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef sao/system-history
-  :args (s/cat :snapshot :blaze.db/kv-snapshot
+  :args (s/cat :snapshot :blaze.db.kv/snapshot
                :start-t :blaze.db/t
                :start-tid (s/nilable :blaze.db/tid)
                :start-id (s/nilable :blaze.db/id-byte-string)

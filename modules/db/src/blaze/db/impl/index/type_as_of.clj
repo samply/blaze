@@ -6,9 +6,7 @@
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-handle :as rh]
-   [blaze.db.impl.iterators :as i]
-   [blaze.db.impl.macros :refer [with-open-coll]]
-   [blaze.db.kv :as kv]))
+   [blaze.db.impl.iterators :as i]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -36,15 +34,16 @@
   after decoding."
   []
   (let [ib (byte-array codec/max-id-size)]
-    (fn [kb vb]
-      (let [tid (bb/get-int! kb)
+    (fn [entry]
+      (let [kb (i/key entry)
+            tid (bb/get-int! kb)
             t (codec/descending-long (bb/get-long! kb))]
-        (rh/resource-handle
+        (rh/resource-handle!
          tid
          (let [id-size (bb/remaining kb)]
            (bb/copy-into-byte-array! kb ib 0 id-size)
            (codec/id ib 0 id-size))
-         t vb)))))
+         t (i/value entry))))))
 
 (defn encode-key
   "Encodes the key of the TypeAsOf index from `tid`, `t` and `id`."
@@ -70,6 +69,7 @@
   (inclusive) of resources with `tid`."
   [snapshot tid start-t start-id end-t]
   (coll/eduction
-   (take-while (key-valid? tid end-t))
-   (with-open-coll [taoi (kv/new-iterator snapshot :type-as-of-index)]
-     (i/kvs! taoi (decoder) (start-key tid start-t start-id)))))
+   (comp
+    (map (decoder))
+    (take-while (key-valid? tid end-t)))
+   (i/entries snapshot :type-as-of-index (start-key tid start-t start-id))))

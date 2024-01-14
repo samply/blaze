@@ -24,6 +24,6 @@
      :v-hash (bs/from-byte-buffer! buf)}))
 
 (defn decode-index-entries [kv-store & keys]
-  (with-open [snapshot (kv/new-snapshot kv-store)
-              iter (kv/new-iterator snapshot :resource-value-index)]
-    (into [] (map #(mapv % keys)) (i/keys! iter decode-key-human (bs/from-hex "00")))))
+  (with-open [snapshot (kv/new-snapshot kv-store)]
+    (->> (i/keys snapshot :resource-value-index decode-key-human bs/empty)
+         (into [] (map #(mapv % keys))))))

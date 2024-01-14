@@ -3,6 +3,7 @@
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :as ac]
+   [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-handle :as rh]
@@ -10,7 +11,6 @@
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.special :as special]
    [blaze.db.impl.search-param.util :as u]
-   [blaze.db.kv :as kv]
    [blaze.fhir.spec]
    [clojure.string :as str])
   (:import
@@ -47,7 +47,7 @@
     search-param
     (ba/not-found (search-param-not-found-msg code type))))
 
-(defn- resolve-resource-handles!
+(defn- resolve-resource-handles
   "Resolves a coll of resource handles of resources of type `tid`, referenced in
   the resource with `resource-handle` by `search-param`.
 
@@ -55,18 +55,15 @@
    * `search-param`    - Encounter.subject
    * `tid`             - Patient
    * `resource-handle` - an Encounter
-   * result            - a coll with one Patient
-
-  Changes the state of `rsvi`. Consuming the collection requires exclusive
-  access to `rsvi`. Doesn't close `iter`."
-  {:arglists '([context rsvi search-param tid resource-handle])}
-  [context rsvi {:keys [c-hash]} tid resource-handle]
+   * result            - a coll with one Patient"
+  {:arglists '([context search-param tid resource-handle])}
+  [{:keys [snapshot] :as context} {:keys [c-hash]} tid resource-handle]
   (coll/eduction
    (u/reference-resource-handle-mapper context)
    (let [tid-byte-string (codec/tid-byte-string tid)
          {:keys [tid id hash]} resource-handle]
-     (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash c-hash
-                          tid-byte-string))))
+     (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash c-hash
+                         (bs/size tid-byte-string) tid-byte-string))))
 
 (def ^:private id-cmp
   (reify Comparator
@@ -77,12 +74,11 @@
   (drop-while #(neg? (let [^String id (rh/id %)] (.compareTo id start-id)))))
 
 (defn- resource-handles*
-  [{:keys [snapshot] :as context} tid [search-param chain-search-param join-tid value]]
-  (with-open [rsvi (kv/new-iterator snapshot :resource-value-index)]
-    (into
-     (sorted-set-by id-cmp)
-     (mapcat #(resolve-resource-handles! context rsvi chain-search-param tid %))
-     (p/-resource-handles search-param context join-tid nil value))))
+  [context tid [search-param chain-search-param join-tid value]]
+  (into
+   (sorted-set-by id-cmp)
+   (mapcat (partial resolve-resource-handles context chain-search-param tid))
+   (p/-resource-handles search-param context join-tid nil value)))
 
 ;; TODO: make this cache public and configurable?
 (def ^:private ^Cache resource-handles-cache

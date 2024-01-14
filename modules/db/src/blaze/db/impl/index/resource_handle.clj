@@ -60,13 +60,13 @@
       :delete
       :put)))
 
-(defn resource-handle
+(defn resource-handle!
   "Creates a new resource handle.
 
   The type of that handle will be the keyword `:fhir/<resource-type>`."
-  [tid id t value-buffer]
-  (let [hash (hash/from-byte-buffer! value-buffer)
-        state (bb/get-long! value-buffer)]
+  [tid id t vb]
+  (let [hash (hash/from-byte-buffer! vb)
+        state (bb/get-long! vb)]
     (ResourceHandle.
      tid
      id

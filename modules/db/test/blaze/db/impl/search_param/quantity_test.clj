@@ -66,7 +66,7 @@
     (st/unstrument `spq/matches?)
 
     (try
-      (spq/matches? nil nil (codec/c-hash "value-quantity") nil 0 {:op :foo})
+      (spq/matches? nil (codec/c-hash "value-quantity") nil 0 {:op :foo})
       (catch Exception e
         (is (= "No matching clause: :foo" (ex-message e)))))))
 

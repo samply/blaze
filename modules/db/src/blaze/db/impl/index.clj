@@ -1,13 +1,12 @@
 (ns blaze.db.impl.index
   (:require
    [blaze.async.comp :as ac]
+   [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
-   [blaze.db.impl.macros :refer [with-open-coll]]
    [blaze.db.impl.search-param :as search-param]
-   [blaze.db.impl.search-param.util :as u]
-   [blaze.db.kv :as kv]))
+   [blaze.db.impl.search-param.util :as u]))
 
 (defn- other-clauses-filter [context clauses]
   (filter
@@ -95,11 +94,10 @@
   ([{:keys [snapshot] :as context} {:keys [tid id hash]} code]
    (coll/eduction
     (u/reference-resource-handle-mapper context)
-    (with-open-coll [rsvi (kv/new-iterator snapshot :resource-value-index)]
-      (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code))))
+    (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash code)))
   ([{:keys [snapshot] :as context} {:keys [tid id hash]} code target-tid]
    (coll/eduction
     (u/reference-resource-handle-mapper context)
-    (with-open-coll [rsvi (kv/new-iterator snapshot :resource-value-index)]
-      (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code
-                           (codec/tid-byte-string target-tid))))))
+    (let [start-value (codec/tid-byte-string target-tid)]
+      (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash code
+                          (bs/size start-value) start-value)))))

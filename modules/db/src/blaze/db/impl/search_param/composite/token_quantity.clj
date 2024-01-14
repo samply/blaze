@@ -61,8 +61,7 @@
      (spq/resource-keys context c-hash tid prefix-length value)))
 
   (-matches? [_ context resource-handle _ values]
-    (let [{:keys [next-value next-value-prev]} context]
-      (some? (some (partial spq/matches? next-value next-value-prev c-hash resource-handle prefix-length) values))))
+    (some? (some (partial spq/matches? (:snapshot context) c-hash resource-handle prefix-length) values)))
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]
