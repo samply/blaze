@@ -107,7 +107,7 @@
 
 (defmethod ig/init-key ::failing-kv-store [_ {:keys [msg] :as config}]
   (reify kv/KvStore
-    (-get [_ hash]
+    (-get [_ _ hash]
       (when (or (nil? (:hash config))
                 (= (hash/from-byte-buffer! (bb/wrap hash)) (:hash config)))
         (throw (Exception. ^String msg))))))
@@ -130,7 +130,7 @@
 (def ^:private error-msg "msg-154312")
 
 (defn- put! [kv-store hash content]
-  (kv/put! kv-store (hash/to-byte-array hash) (fhir-spec/unform-cbor content)))
+  (kv/put! kv-store [[:default (hash/to-byte-array hash) (fhir-spec/unform-cbor content)]]))
 
 (deftest get-test
   (testing "success"
@@ -142,7 +142,7 @@
 
   (testing "parsing error"
     (with-system [{store ::rs/kv kv-store ::kv/mem} system]
-      (kv/put! kv-store (hash/to-byte-array (hash)) (invalid-content))
+      (kv/put! kv-store [[:default (hash/to-byte-array (hash)) (invalid-content)]])
 
       (given-failed-future (rs/get store (hash))
         ::anom/category := ::anom/incorrect
@@ -150,7 +150,7 @@
 
   (testing "conforming error"
     (with-system [{store ::rs/kv kv-store ::kv/mem} system]
-      (kv/put! kv-store (hash/to-byte-array (hash)) (j/write-value-as-bytes {} cbor-object-mapper))
+      (kv/put! kv-store [[:default (hash/to-byte-array (hash)) (j/write-value-as-bytes {} cbor-object-mapper)]])
 
       (given-failed-future (rs/get store (hash))
         ::anom/category := ::anom/fault
@@ -188,7 +188,7 @@
   (testing "parsing error"
     (let [hash (hash)]
       (with-system [{store ::rs/kv kv-store ::kv/mem} system]
-        (kv/put! kv-store (hash/to-byte-array hash) (invalid-content))
+        (kv/put! kv-store [[:default (hash/to-byte-array hash) (invalid-content)]])
 
         (given-failed-future (rs/multi-get store [hash])
           ::anom/category := ::anom/incorrect

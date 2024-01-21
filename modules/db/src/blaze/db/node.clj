@@ -451,7 +451,7 @@
 (def ^:private expected-kv-store-version 0)
 
 (defn- kv-store-version [kv-store]
-  (or (some-> (kv/get kv-store version/key) version/decode-value) 0))
+  (or (some-> (kv/get kv-store :default version/key) version/decode-value) 0))
 
 (def ^:private incompatible-kv-store-version-msg
   "Incompatible index store version %1$d found. This version of Blaze needs

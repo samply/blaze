@@ -266,12 +266,9 @@
 
         (testing "and content changing transaction in between"
           (with-redefs [kv/put!
-                        (fn
-                          ([store entries]
-                           (Thread/sleep 20)
-                           (kv/-put store entries))
-                          ([store key value]
-                           (kv/-put store key value)))]
+                        (fn [store entries]
+                          (Thread/sleep 20)
+                          (kv/-put store entries))]
             (with-handler [handler node]
               [[[:create {:fhir/type :fhir/Patient :id "0"
                           :gender #fhir/code"female"}]]]
@@ -525,12 +522,9 @@
 
     (testing "and content changing transaction in between"
       (with-redefs [kv/put!
-                    (fn
-                      ([store entries]
-                       (Thread/sleep 20)
-                       (kv/-put store entries))
-                      ([store key value]
-                       (kv/-put store key value)))]
+                    (fn [store entries]
+                      (Thread/sleep 20)
+                      (kv/-put store entries))]
         (doseq [if-match [nil "W/\"1\",W/\"2\""]]
           (with-handler [handler node]
             [[[:create {:fhir/type :fhir/Patient :id "0"

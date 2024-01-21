@@ -51,13 +51,11 @@
   :ret nat-int?)
 
 (s/fdef kv/new-iterator
-  :args (s/cat :snapshot :blaze.db/kv-snapshot
-               :column-family (s/? keyword?))
+  :args (s/cat :snapshot :blaze.db/kv-snapshot :column-family keyword?)
   :ret :blaze.db/kv-iterator)
 
 (s/fdef kv/snapshot-get
-  :args (s/cat :snapshot :blaze.db/kv-snapshot
-               :column-family (s/? keyword?)
+  :args (s/cat :snapshot :blaze.db/kv-snapshot :column-family keyword?
                :key bytes?)
   :ret (s/nilable bytes?))
 
@@ -70,27 +68,16 @@
   :ret :blaze.db/kv-snapshot)
 
 (s/fdef kv/get
-  :args (s/cat :kv-store :blaze.db/kv-store
-               :column-family (s/? keyword?)
-               :key bytes?)
+  :args (s/cat :kv-store :blaze.db/kv-store :column-family keyword? :key bytes?)
   :ret (s/nilable bytes?))
 
-(s/fdef kv/multi-get
-  :args (s/cat :kv-store :blaze.db/kv-store :keys (s/coll-of bytes?))
-  :ret (s/map-of bytes? bytes?))
-
 (s/fdef kv/put!
-  :args
-  (s/alt
-   :entries
-   (s/cat
-    :kv-store :blaze.db/kv-store
-    :entries (cs/coll-of :blaze.db.kv/put-entry))
-   :kv
-   (s/cat :kv-store :blaze.db/kv-store :key bytes? :value bytes?)))
+  :args (s/cat :kv-store :blaze.db/kv-store
+               :entries (cs/coll-of :blaze.db.kv/put-entry)))
 
 (s/fdef kv/delete!
-  :args (s/cat :kv-store :blaze.db/kv-store :keys (s/coll-of bytes?)))
+  :args (s/cat :kv-store :blaze.db/kv-store
+               :entries (cs/coll-of :blaze.db.kv/delete-entry)))
 
 (s/fdef kv/write!
   :args (s/cat :kv-store :blaze.db/kv-store

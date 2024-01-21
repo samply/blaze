@@ -55,7 +55,7 @@
     (-new-snapshot [_]
       (reify
         kv/KvSnapshot
-        (-new-iterator [_]
+        (-new-iterator [_ _]
           (reify
             kv/KvIterator
             (-seek-to-last [_])
@@ -65,7 +65,7 @@
             (close [_])))
         AutoCloseable
         (close [_])))
-    (-put [_ _ _]
+    (-put [_ _]
       (throw (Exception. "put-error")))))
 
 (def config
@@ -117,7 +117,8 @@
     (with-system [{tx-log ::tx-log/local}
                   (assoc-kv-store-init-data
                    config
-                   [[(codec/encode-key 1)
+                   [[:default
+                     (codec/encode-key 1)
                      (codec/encode-tx-data
                       (Instant/ofEpochSecond 0)
                       [{:op "create" :type "Patient" :id "0"
@@ -192,7 +193,7 @@
       (with-system [{tx-log ::tx-log/local
                      kv-store [::kv/mem :blaze.db/transaction-kv-store]}
                     config]
-        (kv/put! kv-store (byte-array 0) (byte-array 0))
+        (kv/put! kv-store [[:default (byte-array 0) (byte-array 0)]])
 
         (testing "the invalid transaction data is ignored"
           (with-open [queue (tx-log/new-queue tx-log 1)]
@@ -202,11 +203,10 @@
       (with-system [{tx-log ::tx-log/local
                      kv-store [::kv/mem :blaze.db/transaction-kv-store]}
                     config]
-        (kv/put! kv-store (byte-array 0) (byte-array 0))
-        (kv/put! kv-store (codec/encode-key 1) (codec/encode-tx-data
-                                                (Instant/ofEpochSecond 0)
-                                                [{:op "create" :type "Patient" :id "0"
-                                                  :hash patient-hash-0}]))
+        (kv/put! kv-store [[:default (byte-array 0) (byte-array 0)]])
+        (kv/put! kv-store [(codec/encode-entry 1 (Instant/ofEpochSecond 0)
+                                               [{:op "create" :type "Patient"
+                                                 :id "0" :hash patient-hash-0}])])
 
         (testing "the invalid transaction data is ignored"
           (with-open [queue (tx-log/new-queue tx-log 0)]
@@ -222,12 +222,11 @@
       (with-system [{tx-log ::tx-log/local
                      kv-store [::kv/mem :blaze.db/transaction-kv-store]}
                     config]
-        (kv/put! kv-store (byte-array 0) (byte-array 0))
-        (kv/put! kv-store (byte-array 1) (byte-array 0))
-        (kv/put! kv-store (codec/encode-key 1) (codec/encode-tx-data
-                                                (Instant/ofEpochSecond 0)
-                                                [{:op "create" :type "Patient" :id "0"
-                                                  :hash patient-hash-0}]))
+        (kv/put! kv-store [[:default (byte-array 0) (byte-array 0)]])
+        (kv/put! kv-store [[:default (byte-array 1) (byte-array 0)]])
+        (kv/put! kv-store [(codec/encode-entry 1 (Instant/ofEpochSecond 0)
+                                               [{:op "create" :type "Patient"
+                                                 :id "0" :hash patient-hash-0}])])
 
         (testing "the invalid transaction data is ignored"
           (with-open [queue (tx-log/new-queue tx-log 0)]
@@ -243,7 +242,7 @@
       (with-system [{tx-log ::tx-log/local
                      kv-store [::kv/mem :blaze.db/transaction-kv-store]}
                     config]
-        (kv/put! kv-store (byte-array Long/BYTES) (byte-array 0))
+        (kv/put! kv-store [[:default (byte-array Long/BYTES) (byte-array 0)]])
 
         (testing "the invalid transaction data is ignored"
           (with-open [queue (tx-log/new-queue tx-log 1)]
@@ -253,7 +252,7 @@
       (with-system [{tx-log ::tx-log/local
                      kv-store [::kv/mem :blaze.db/transaction-kv-store]}
                     config]
-        (kv/put! kv-store (byte-array Long/BYTES) (invalid-cbor-content))
+        (kv/put! kv-store [[:default (byte-array Long/BYTES) (invalid-cbor-content)]])
 
         (testing "the invalid transaction data is ignored"
           (with-open [queue (tx-log/new-queue tx-log 1)]
@@ -263,7 +262,7 @@
       (with-system [{tx-log ::tx-log/local
                      kv-store [::kv/mem :blaze.db/transaction-kv-store]}
                     config]
-        (kv/put! kv-store (byte-array Long/BYTES) (write-cbor {:instant ""}))
+        (kv/put! kv-store [[:default (byte-array Long/BYTES) (write-cbor {:instant ""})]])
 
         (testing "the invalid transaction data is ignored"
           (with-open [queue (tx-log/new-queue tx-log 1)]
@@ -273,7 +272,7 @@
       (with-system [{tx-log ::tx-log/local
                      kv-store [::kv/mem :blaze.db/transaction-kv-store]}
                     config]
-        (kv/put! kv-store (byte-array Long/BYTES) (write-cbor {:tx-cmds [{}]}))
+        (kv/put! kv-store [[:default (byte-array Long/BYTES) (write-cbor {:tx-cmds [{}]})]])
 
         (testing "the invalid transaction data is ignored"
           (with-open [queue (tx-log/new-queue tx-log 1)]
@@ -294,7 +293,8 @@
       (with-system [{tx-log ::tx-log/local}
                     (assoc-kv-store-init-data
                      config
-                     [[(codec/encode-key 1)
+                     [[:default
+                       (codec/encode-key 1)
                        (codec/encode-tx-data
                         (Instant/ofEpochSecond 0)
                         [{:op "create" :type "Patient" :id "0"

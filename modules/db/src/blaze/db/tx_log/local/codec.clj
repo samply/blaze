@@ -54,3 +54,6 @@
         (update :tx-cmds #(mapv decode-hash %))
         (update :instant decode-instant)
         (assoc :t t))))
+
+(defn encode-entry [t instant tx-cmds]
+  [:default (encode-key t) (encode-tx-data instant tx-cmds)])

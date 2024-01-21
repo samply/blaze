@@ -133,12 +133,12 @@
 (defprotocol KvSnapshot
   "A snapshot of the contents of a KvStore."
 
-  (-new-iterator [snapshot] [snapshot column-family])
+  (-new-iterator [snapshot column-family])
 
-  (-snapshot-get [snapshot key] [snapshot column-family key]))
+  (-snapshot-get [snapshot column-family key]))
 
 (defn new-iterator
-  "Return an iterator over the contents of the database.
+  "Return an iterator over the contents of `column-family`.
 
   The result is initially invalid, so the caller must call one of the seek
   functions with the iterator before using it.
@@ -146,30 +146,24 @@
   Throws an anomaly if `column-family` was not found.
 
   Iterators have to be closed after usage."
-  (^AutoCloseable
-   [snapshot]
-   (-new-iterator snapshot))
-  (^AutoCloseable
-   [snapshot column-family]
-   (-new-iterator snapshot column-family)))
+  ^AutoCloseable
+  [snapshot column-family]
+  (-new-iterator snapshot column-family))
 
 (defn snapshot-get
-  "Returns a new byte array storing the value associated with the `key` if any."
-  ([snapshot key]
-   (-snapshot-get snapshot key))
-  ([snapshot column-family key]
-   (-snapshot-get snapshot column-family key)))
+  "Returns a new byte array storing the value associated with the `key` in
+  `column-family` if any."
+  [snapshot column-family key]
+  (-snapshot-get snapshot column-family key))
 
 (defprotocol KvStore
   "A key-value store."
 
   (-new-snapshot [store])
 
-  (-get [store key] [store column-family key])
+  (-get [store column-family key])
 
-  (-multi-get [store keys])
-
-  (-put [store entries] [store key value])
+  (-put [store entries])
 
   (-delete [store keys])
 
@@ -187,43 +181,30 @@
   (-new-snapshot store))
 
 (defn get
-  "Returns the value of `key` in `column-family` (optional) or nil if not found.
+  "Returns the value of `key` in `column-family` or nil if not found.
 
   Blocks the current thread."
-  ([store key]
-   (-get store key))
-  ([store column-family key]
-   (-get store column-family key)))
-
-(defn multi-get
-  "Returns a map of key to value of all found entries of `keys`.
-
-  Blocks the current thread."
-  ([store keys]
-   (-multi-get store keys)))
+  [store column-family key]
+  (-get store column-family key))
 
 (defn put!
-  "Stores either `entries` or the pair of `key` and `value`.
-
-  Entries are either tuples of key and value or triples of column-family, key
-  and value.
+  "Stores `entries` that are triples of column-family, key and value.
 
   Throws an anomaly if a column-family of an entry was not found.
 
   Puts are atomic. Blocks. Returns nil."
-  ([store entries]
-   (-put store entries))
-  ([store key value]
-   (-put store key value)))
+  [store entries]
+  (-put store entries))
 
 (defn delete!
-  "Deletes entries with `keys`."
-  [store keys]
-  (-delete store keys))
+  "Deletes `entries` that are tuples of column-family and key.
+
+  Deletes are atomic. Blocks. Returns nil."
+  [store entries]
+  (-delete store entries))
 
 (defn write!
-  "Entries are either triples of operator, key and value or quadruples of
-  operator, column-family, key and value.
+  "Entries are quadruples of operator, column-family, key and value.
 
   Operators are :put, :merge and :delete.
 

@@ -44,7 +44,7 @@
 (defn- tx-data [kv-store offset]
   (log/trace "fetch tx-data from storage offset =" offset)
   (with-open [snapshot (kv/new-snapshot kv-store)
-              iter (kv/new-iterator snapshot)]
+              iter (kv/new-iterator snapshot :default)]
     (let [key (bs/from-byte-array (codec/encode-key offset))]
       (into [] (take max-poll-size) (i/kvs! iter codec/decode-tx-data key)))))
 
@@ -70,7 +70,7 @@
 
 (defn- store-tx-data! [kv-store {:keys [t instant tx-cmds]}]
   (log/trace "store transaction data with t =" t)
-  (kv/put! kv-store (codec/encode-key t) (codec/encode-tx-data instant tx-cmds)))
+  (kv/put! kv-store [(codec/encode-entry t instant tx-cmds)]))
 
 (defn- transfer-tx-data! [queues tx-data]
   (log/trace "transfer transaction data to" (count queues) "queue(s)")
@@ -125,7 +125,7 @@
   in `kv-store` or nil if the log is empty."
   [kv-store]
   (with-open [snapshot (kv/new-snapshot kv-store)
-              iter (kv/new-iterator snapshot)]
+              iter (kv/new-iterator snapshot :default)]
     (kv/seek-to-last! iter)
     (when (kv/valid? iter)
       (Longs/fromByteArray (kv/key iter)))))

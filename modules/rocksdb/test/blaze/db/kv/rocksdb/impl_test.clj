@@ -176,12 +176,7 @@
 (defn- new-temp-dir! []
   (str (Files/createTempDirectory "blaze" (make-array FileAttribute 0))))
 
-(defn- kv-put-wb [state]
-  (reify WriteBatchInterface
-    (^void put [_ ^bytes key ^bytes val]
-      (swap! state conj [(to-hex key) (to-hex val)]))))
-
-(defn- cf-put-wb [state]
+(defn- put-wb [state]
   (reify WriteBatchInterface
     (^void put [_ ^ColumnFamilyHandle cfh ^bytes key ^bytes val]
       (swap! state conj [cfh (to-hex key) (to-hex val)]))))
@@ -190,195 +185,144 @@
   (.createColumnFamily ^RocksDB db (ColumnFamilyDescriptor. (from-hex name))))
 
 (deftest put-wb-test
-  (testing "without column family"
-    (are [entries state-val] (let [state (atom [])]
-                               (impl/put-wb! {} (kv-put-wb state) entries)
-                               (= state-val @state))
+  (with-open [db (RocksDB/open (str (new-temp-dir!)))]
+    (let [cfh-1 (cfh db "01")
+          cfh-2 (cfh db "02")]
+      (are [entries state-val] (let [state (atom [])]
+                                 (impl/put-wb!
+                                  {:cf-1 cfh-1
+                                   :cf-2 cfh-2}
+                                  (put-wb state)
+                                  entries)
+                                 (= state-val @state))
 
-      [[(from-hex "01") (from-hex "02")]]
-      [["01" "02"]]
+        [[:cf-1 (from-hex "01") (from-hex "02")]]
+        [[cfh-1 "01" "02"]]
 
-      [[(from-hex "01") (from-hex "02")]
-       [(from-hex "03") (from-hex "04")]]
-      [["01" "02"]
-       ["03" "04"]]))
+        [[:cf-1 (from-hex "01") (from-hex "02")]
+         [:cf-1 (from-hex "03") (from-hex "04")]]
+        [[cfh-1 "01" "02"]
+         [cfh-1 "03" "04"]]
 
-  (testing "with column families"
-    (with-open [db (RocksDB/open (str (new-temp-dir!)))]
-      (let [cfh-1 (cfh db "01")
-            cfh-2 (cfh db "02")]
-        (are [entries state-val] (let [state (atom [])]
-                                   (impl/put-wb!
-                                    {:cf-1 cfh-1
-                                     :cf-2 cfh-2}
-                                    (cf-put-wb state)
-                                    entries)
-                                   (= state-val @state))
-
-          [[:cf-1 (from-hex "01") (from-hex "02")]]
-          [[cfh-1 "01" "02"]]
-
-          [[:cf-1 (from-hex "01") (from-hex "02")]
-           [:cf-1 (from-hex "03") (from-hex "04")]]
-          [[cfh-1 "01" "02"]
-           [cfh-1 "03" "04"]]
-
-          [[:cf-1 (from-hex "01") (from-hex "02")]
-           [:cf-2 (from-hex "03") (from-hex "04")]]
-          [[cfh-1 "01" "02"]
-           [cfh-2 "03" "04"]]))))
+        [[:cf-1 (from-hex "01") (from-hex "02")]
+         [:cf-2 (from-hex "03") (from-hex "04")]]
+        [[cfh-1 "01" "02"]
+         [cfh-2 "03" "04"]])))
 
   (testing "with missing column family"
     (let [entries [[:cf-1 (byte-array 0) (byte-array 0)]]]
-      (given (ba/try-anomaly (impl/put-wb! {} (cf-put-wb nil) entries))
+      (given (ba/try-anomaly (impl/put-wb! {} (put-wb nil) entries))
         ::anom/category := ::anom/not-found
         ::anom/message := "Column family `cf-1` not found."))))
 
-(defn- kv-delete-wb [state]
-  (reify WriteBatchInterface
-    (^void delete [_ ^bytes key]
-      (swap! state conj (to-hex key)))))
-
-(deftest delete-wb-test
-  (testing "without column family"
-    (are [keys state-val] (let [state (atom [])]
-                            (impl/delete-wb! (kv-delete-wb state) keys)
-                            (= state-val @state))
-
-      [(from-hex "01")]
-      ["01"]
-
-      [(from-hex "01") (from-hex "02")]
-      ["01" "02"])))
-
-(defn- kv-merge-wb [state]
-  (reify WriteBatchInterface
-    (^void merge [_ ^bytes key ^bytes val]
-      (swap! state conj [(to-hex key) (to-hex val)]))))
-
-(defn- cf-merge-wb [state]
-  (reify WriteBatchInterface
-    (^void merge [_ ^ColumnFamilyHandle cfh ^bytes key ^bytes val]
-      (swap! state conj [cfh (to-hex key) (to-hex val)]))))
-
-(defn- cf-delete-wb [state]
+(defn- delete-wb [state]
   (reify WriteBatchInterface
     (^void delete [_ ^ColumnFamilyHandle cfh ^bytes key]
       (swap! state conj [cfh (to-hex key)]))))
 
+(deftest delete-wb-test
+  (with-open [db (RocksDB/open (str (new-temp-dir!)))]
+    (let [cfh-1 (cfh db "01")
+          cfh-2 (cfh db "02")]
+      (are [entries state-val] (let [state (atom [])]
+                                 (impl/delete-wb!
+                                  {:cf-1 cfh-1
+                                   :cf-2 cfh-2}
+                                  (delete-wb state)
+                                  entries)
+                                 (= state-val @state))
+
+        [[:cf-1 (from-hex "01")]]
+        [[cfh-1 "01"]]
+
+        [[:cf-1 (from-hex "01")]
+         [:cf-1 (from-hex "03")]]
+        [[cfh-1 "01"]
+         [cfh-1 "03"]]
+
+        [[:cf-1 (from-hex "01")]
+         [:cf-2 (from-hex "03")]]
+        [[cfh-1 "01"]
+         [cfh-2 "03"]]))))
+
+(defn- merge-wb [state]
+  (reify WriteBatchInterface
+    (^void merge [_ ^ColumnFamilyHandle cfh ^bytes key ^bytes val]
+      (swap! state conj [cfh (to-hex key) (to-hex val)]))))
+
 (deftest write-wb-test
-  (testing "without column family"
-    (testing "put"
-      (are [entries state-val] (let [state (atom [])]
-                                 (impl/write-wb! {} (kv-put-wb state) entries)
-                                 (= state-val @state))
+  (with-open [db (RocksDB/open (str (new-temp-dir!)))]
+    (let [cfh-1 (cfh db "01")
+          cfh-2 (cfh db "02")]
+      (testing "put"
+        (are [entries state-val] (let [state (atom [])]
+                                   (impl/write-wb!
+                                    {:cf-1 cfh-1
+                                     :cf-2 cfh-2}
+                                    (put-wb state)
+                                    entries)
+                                   (= state-val @state))
 
-        [[:put (from-hex "01") (from-hex "02")]]
-        [["01" "02"]]
+          [[:put :cf-1 (from-hex "01") (from-hex "02")]]
+          [[cfh-1 "01" "02"]]
 
-        [[:put (from-hex "01") (from-hex "02")]
-         [:put (from-hex "03") (from-hex "04")]]
-        [["01" "02"]
-         ["03" "04"]]))
+          [[:put :cf-1 (from-hex "01") (from-hex "02")]
+           [:put :cf-1 (from-hex "03") (from-hex "04")]]
+          [[cfh-1 "01" "02"]
+           [cfh-1 "03" "04"]]
 
-    (testing "merge"
-      (are [entries state-val] (let [state (atom [])]
-                                 (impl/write-wb! {} (kv-merge-wb state) entries)
-                                 (= state-val @state))
+          [[:put :cf-1 (from-hex "01") (from-hex "02")]
+           [:put :cf-2 (from-hex "03") (from-hex "04")]]
+          [[cfh-1 "01" "02"]
+           [cfh-2 "03" "04"]]))
 
-        [[:merge (from-hex "01") (from-hex "02")]]
-        [["01" "02"]]
+      (testing "merge"
+        (are [entries state-val] (let [state (atom [])]
+                                   (impl/write-wb!
+                                    {:cf-1 cfh-1
+                                     :cf-2 cfh-2}
+                                    (merge-wb state)
+                                    entries)
+                                   (= state-val @state))
 
-        [[:merge (from-hex "01") (from-hex "02")]
-         [:merge (from-hex "03") (from-hex "04")]]
-        [["01" "02"]
-         ["03" "04"]]))
+          [[:merge :cf-1 (from-hex "01") (from-hex "02")]]
+          [[cfh-1 "01" "02"]]
 
-    (testing "delete"
-      (are [entries state-val] (let [state (atom [])]
-                                 (impl/write-wb! {} (kv-delete-wb state) entries)
-                                 (= state-val @state))
+          [[:merge :cf-1 (from-hex "01") (from-hex "02")]
+           [:merge :cf-1 (from-hex "03") (from-hex "04")]]
+          [[cfh-1 "01" "02"]
+           [cfh-1 "03" "04"]]
 
-        [[:delete (from-hex "01")]]
-        ["01"]
+          [[:merge :cf-1 (from-hex "01") (from-hex "02")]
+           [:merge :cf-2 (from-hex "03") (from-hex "04")]]
+          [[cfh-1 "01" "02"]
+           [cfh-2 "03" "04"]]))
 
-        [[:delete (from-hex "01")]
-         [:delete (from-hex "02")]]
-        ["01" "02"])))
+      (testing "delete"
+        (are [entries state-val] (let [state (atom [])]
+                                   (impl/write-wb!
+                                    {:cf-1 cfh-1
+                                     :cf-2 cfh-2}
+                                    (delete-wb state)
+                                    entries)
+                                   (= state-val @state))
 
-  (testing "with column families"
-    (with-open [db (RocksDB/open (str (new-temp-dir!)))]
-      (let [cfh-1 (cfh db "01")
-            cfh-2 (cfh db "02")]
-        (testing "put"
-          (are [entries state-val] (let [state (atom [])]
-                                     (impl/write-wb!
-                                      {:cf-1 cfh-1
-                                       :cf-2 cfh-2}
-                                      (cf-put-wb state)
-                                      entries)
-                                     (= state-val @state))
+          [[:delete :cf-1 (from-hex "01")]]
+          [[cfh-1 "01"]]
 
-            [[:put :cf-1 (from-hex "01") (from-hex "02")]]
-            [[cfh-1 "01" "02"]]
+          [[:delete :cf-1 (from-hex "01")]
+           [:delete :cf-1 (from-hex "02")]]
+          [[cfh-1 "01"]
+           [cfh-1 "02"]]
 
-            [[:put :cf-1 (from-hex "01") (from-hex "02")]
-             [:put :cf-1 (from-hex "03") (from-hex "04")]]
-            [[cfh-1 "01" "02"]
-             [cfh-1 "03" "04"]]
-
-            [[:put :cf-1 (from-hex "01") (from-hex "02")]
-             [:put :cf-2 (from-hex "03") (from-hex "04")]]
-            [[cfh-1 "01" "02"]
-             [cfh-2 "03" "04"]]))
-
-        (testing "merge"
-          (are [entries state-val] (let [state (atom [])]
-                                     (impl/write-wb!
-                                      {:cf-1 cfh-1
-                                       :cf-2 cfh-2}
-                                      (cf-merge-wb state)
-                                      entries)
-                                     (= state-val @state))
-
-            [[:merge :cf-1 (from-hex "01") (from-hex "02")]]
-            [[cfh-1 "01" "02"]]
-
-            [[:merge :cf-1 (from-hex "01") (from-hex "02")]
-             [:merge :cf-1 (from-hex "03") (from-hex "04")]]
-            [[cfh-1 "01" "02"]
-             [cfh-1 "03" "04"]]
-
-            [[:merge :cf-1 (from-hex "01") (from-hex "02")]
-             [:merge :cf-2 (from-hex "03") (from-hex "04")]]
-            [[cfh-1 "01" "02"]
-             [cfh-2 "03" "04"]]))
-
-        (testing "delete"
-          (are [entries state-val] (let [state (atom [])]
-                                     (impl/write-wb!
-                                      {:cf-1 cfh-1
-                                       :cf-2 cfh-2}
-                                      (cf-delete-wb state)
-                                      entries)
-                                     (= state-val @state))
-
-            [[:delete :cf-1 (from-hex "01")]]
-            [[cfh-1 "01"]]
-
-            [[:delete :cf-1 (from-hex "01")]
-             [:delete :cf-1 (from-hex "02")]]
-            [[cfh-1 "01"]
-             [cfh-1 "02"]]
-
-            [[:delete :cf-1 (from-hex "01")]
-             [:delete :cf-2 (from-hex "02")]]
-            [[cfh-1 "01"]
-             [cfh-2 "02"]])))))
+          [[:delete :cf-1 (from-hex "01")]
+           [:delete :cf-2 (from-hex "02")]]
+          [[cfh-1 "01"]
+           [cfh-2 "02"]]))))
 
   (testing "with missing column family"
     (let [entries [[:put :cf-1 (byte-array 0) (byte-array 0)]]]
-      (given (ba/try-anomaly (impl/write-wb! {} (cf-put-wb nil) entries))
+      (given (ba/try-anomaly (impl/write-wb! {} (put-wb nil) entries))
         ::anom/category := ::anom/not-found
         ::anom/message := "Column family `cf-1` not found.")))
 
@@ -387,7 +331,7 @@
     ;; runtime, and we have to test that case
     (st/unstrument `impl/write-wb!)
     (try
-      (impl/write-wb! {} (cf-put-wb nil) [[:foo]])
+      (impl/write-wb! {} (put-wb nil) [[:foo]])
       (catch Exception e
         (is (= "No matching clause: :foo" (ex-message e)))))))
 

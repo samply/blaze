@@ -35,11 +35,11 @@
     (with-system [{kv-store ::kv/mem} config]
       (kv/put!
        kv-store
-       [[(ba 0x00) bytes/empty]
-        [(ba 0x01) bytes/empty]])
+       [[:default (ba 0x00) bytes/empty]
+        [:default (ba 0x01) bytes/empty]])
 
       (with-open [snapshot (kv/new-snapshot kv-store)
-                  iter (kv/new-iterator snapshot)]
+                  iter (kv/new-iterator snapshot :default)]
         (is (= [[0x00] [0x01]]
                (vec (i/keys! iter decode-1 (bs/from-hex "00"))))))))
 
@@ -47,11 +47,11 @@
     (with-system [{kv-store ::kv/mem} config]
       (kv/put!
        kv-store
-       [[(ba 0x00) bytes/empty]
-        [(ba 0x00 0x01) bytes/empty]])
+       [[:default (ba 0x00) bytes/empty]
+        [:default (ba 0x00 0x01) bytes/empty]])
 
       (with-open [snapshot (kv/new-snapshot kv-store)
-                  iter (kv/new-iterator snapshot)]
+                  iter (kv/new-iterator snapshot :default)]
         (is (= [[0x00] [0x00 0x01]]
                (vec (i/keys! iter decode-1 (bs/from-hex "00")))))))
 
@@ -59,10 +59,10 @@
       (with-system [{kv-store ::kv/mem} config]
         (kv/put!
          kv-store
-         [[(ba 0x00) bytes/empty]
-          [(ba 0x00 0x01 0x02) bytes/empty]])
+         [[:default (ba 0x00) bytes/empty]
+          [:default (ba 0x00 0x01 0x02) bytes/empty]])
 
         (with-open [snapshot (kv/new-snapshot kv-store)
-                    iter (kv/new-iterator snapshot)]
+                    iter (kv/new-iterator snapshot :default)]
           (is (= [[0x00] [0x00 0x01 0x02]]
                  (vec (i/keys! iter decode-1 (bs/from-hex "00"))))))))))
