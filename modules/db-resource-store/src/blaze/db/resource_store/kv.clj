@@ -69,11 +69,11 @@
    (fn [[hash resource]]
      (let [content (fhir-spec/unform-cbor resource)]
        (prom/observe! resource-bytes (alength ^bytes content))
-       [(hash/to-byte-array hash) content]))))
+       [:default (hash/to-byte-array hash) content]))))
 
 (defn- get-content [kv-store hash]
   (with-open [_ (prom/timer duration-seconds "get-resource")]
-    (kv/get kv-store (hash/to-byte-array hash))))
+    (kv/get kv-store :default (hash/to-byte-array hash))))
 
 (defn- get-and-parse [kv-store hash]
   (some-> (get-content kv-store hash) (parse-and-conform-cbor hash)))

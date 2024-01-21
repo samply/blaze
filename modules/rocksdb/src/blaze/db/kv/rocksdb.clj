@@ -67,14 +67,8 @@
 
 (deftype RocksKvSnapshot [^RocksDB db ^Snapshot snapshot ^ReadOptions read-opts cfhs]
   kv/KvSnapshot
-  (-new-iterator [_]
-    (->RocksKvIterator (.newIterator db read-opts)))
-
   (-new-iterator [_ column-family]
     (->RocksKvIterator (.newIterator db (impl/get-cfh cfhs column-family) read-opts)))
-
-  (-snapshot-get [_ k]
-    (.get db read-opts ^bytes k))
 
   (-snapshot-get [_ column-family k]
     (.get db (impl/get-cfh cfhs column-family) read-opts ^bytes k))
@@ -192,33 +186,17 @@
     (let [snapshot (.getSnapshot db)]
       (->RocksKvSnapshot db snapshot (.setSnapshot (ReadOptions.) snapshot) cfhs)))
 
-  (-get [_ k]
-    (.get db k))
-
   (-get [_ column-family k]
     (.get db (impl/get-cfh cfhs column-family) ^bytes k))
-
-  (-multi-get [_ keys]
-    (loop [[k & ks] keys
-           [v & vs] (.multiGetAsList db keys)
-           res {}]
-      (if k
-        (if v
-          (recur ks vs (assoc res k v))
-          (recur ks vs res))
-        res)))
 
   (-put [_ entries]
     (with-open [wb (WriteBatch.)]
       (impl/put-wb! cfhs wb entries)
       (.write db write-opts wb)))
 
-  (-put [_ key value]
-    (.put db key value))
-
-  (-delete [_ keys]
+  (-delete [_ entries]
     (with-open [wb (WriteBatch.)]
-      (impl/delete-wb! wb keys)
+      (impl/delete-wb! cfhs wb entries)
       (.write db write-opts wb)))
 
   (-write [_ entries]
@@ -305,11 +283,11 @@
     (.close db)
     (.close write-opts)))
 
+(defn- cfh-key [cfh]
+  (keyword (String. (.getName ^ColumnFamilyHandle cfh))))
+
 (defn- index-column-family-handles [column-family-handles]
-  (into
-   {}
-   (map #(vector (keyword (String. (.getName ^ColumnFamilyHandle %))) %))
-   column-family-handles))
+  (reduce #(assoc %1 (cfh-key %2) %2) {} column-family-handles))
 
 (defmethod ig/init-key ::block-cache
   [_ {:keys [size-in-mb] :or {size-in-mb 128}}]

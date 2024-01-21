@@ -26,7 +26,9 @@
                :entries (cs/coll-of :blaze.db.kv/put-entry)))
 
 (s/fdef impl/delete-wb!
-  :args (s/cat :wb ::impl/write-batch :ks (s/coll-of bytes?)))
+  :args (s/cat :cfhs (s/map-of keyword? ::impl/column-family-handle)
+               :wb ::impl/write-batch
+               :entries (cs/coll-of :blaze.db.kv/delete-entry)))
 
 (s/fdef impl/write-wb!
   :args (s/cat :cfhs (s/map-of keyword? ::impl/column-family-handle)
