@@ -29,9 +29,9 @@
   (asQuotedUTF8 [this]
     (.asUnquotedUTF8 this)))
 
-(defmethod print-dup (Class/forName "[B") [^bytes year ^Writer w]
+(defmethod print-dup (Class/forName "[B") [^bytes bytes ^Writer w]
   (.write w "#=(byte-array [")
-  (.write w ^String (str/join " " (map int (vec year))))
+  (.write w ^String (str/join " " (map int (vec bytes))))
   (.write w "])"))
 
 (defmethod print-method FieldName [^FieldName fieldName ^Writer w]

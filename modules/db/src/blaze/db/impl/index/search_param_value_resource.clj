@@ -1,5 +1,6 @@
 (ns blaze.db.impl.index.search-param-value-resource
   "Functions for accessing the SearchParamValueResource index."
+  (:refer-clojure :exclude [keys])
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
@@ -25,16 +26,13 @@
     (bb/get-byte! buf)
     [prefix id (hash/prefix-from-byte-buffer! buf)]))
 
-(defn keys!
+(defn keys
   "Returns a reducible collection of `[prefix id hash-prefix]` triples starting
   at `start-key`.
 
-  The prefix contains the c-hash, tid and value parts as encoded byte string.
-
-  Changes the state of `iter`. Consuming the collection requires exclusive
-  access to `iter`. Doesn't close `iter`."
-  [iter start-key]
-  (i/keys! iter decode-key start-key))
+  The prefix contains the c-hash, tid and value parts as encoded byte string."
+  [snapshot start-key]
+  (i/keys snapshot :search-param-value-index decode-key start-key))
 
 (def ^:const ^long base-key-size
   (+ codec/c-hash-size codec/tid-size))
@@ -71,7 +69,7 @@
        bs/from-byte-buffer!)))
 
 (def ^:private max-hash-prefix
-  (bs/from-hex "FFFFFFFF"))
+  #blaze/byte-string"FFFFFFFF")
 
 (defn- encode-seek-key-for-prev
   "It is important to cover at least the hash prefix because it could be all
@@ -96,46 +94,50 @@
     (bb/get-byte! buf)
     [value id (hash/prefix-from-byte-buffer! buf)]))
 
-(defn all-keys!
+(defn all-keys
   "Returns a reducible collection of `[value id hash-prefix]` triples of the
   whole range prefixed with `c-hash` and `tid` starting with `start-value` and
-  `start-id` (optional).
-
-  Changes the state of `iter`. Consuming the collection requires exclusive
-  access to `iter`. Doesn't close `iter`."
-  ([iter c-hash tid]
+  `start-id` (optional)."
+  ([snapshot c-hash tid]
    (let [prefix (encode-seek-key c-hash tid)]
-     (i/prefix-keys! iter prefix decode-value-id-hash-prefix prefix)))
-  ([iter c-hash tid start-value start-id]
-   (let [prefix (encode-seek-key c-hash tid)
-         start-key (encode-seek-key c-hash tid start-value start-id)]
-     (i/prefix-keys! iter prefix decode-value-id-hash-prefix start-key))))
+     (i/prefix-keys snapshot :search-param-value-index
+                    decode-value-id-hash-prefix (bs/size prefix) prefix)))
+  ([snapshot c-hash tid start-value start-id]
+   (let [start-key (encode-seek-key c-hash tid start-value start-id)]
+     (i/prefix-keys snapshot :search-param-value-index
+                    decode-value-id-hash-prefix base-key-size start-key))))
 
-(defn all-keys-prev!
+(defn all-keys-prev
   "Returns a reducible collection of `[value id hash-prefix]` triples of the
   whole range prefixed with `c-hash` and `tid` starting with `start-value` and
-  `start-id` (optional), iterating in reverse.
+  `start-id` (optional), iterating in reverse."
+  ([snapshot c-hash tid]
+   (i/prefix-keys-prev
+    snapshot
+    :search-param-value-index
+    decode-value-id-hash-prefix
+    base-key-size
+    (encode-seek-key-for-prev c-hash tid)))
+  ([snapshot c-hash tid start-value start-id]
+   (i/prefix-keys-prev
+    snapshot
+    :search-param-value-index
+    decode-value-id-hash-prefix
+    base-key-size
+    (encode-seek-key-for-prev c-hash tid start-value start-id))))
 
-  Changes the state of `iter`. Consuming the collection requires exclusive
-  access to `iter`. Doesn't close `iter`."
-  ([iter c-hash tid]
-   (let [prefix (encode-seek-key c-hash tid)
-         start-key (encode-seek-key-for-prev c-hash tid)]
-     (i/prefix-keys-prev! iter prefix decode-value-id-hash-prefix start-key)))
-  ([iter c-hash tid start-value start-id]
-   (let [prefix (encode-seek-key c-hash tid)
-         start-key (encode-seek-key-for-prev c-hash tid start-value start-id)]
-     (i/prefix-keys-prev! iter prefix decode-value-id-hash-prefix start-key))))
+(defn prefix-keys-value [snapshot c-hash tid value-prefix]
+  (let [start-key (encode-seek-key c-hash tid value-prefix)]
+    (i/prefix-keys snapshot :search-param-value-index
+                   decode-value-id-hash-prefix base-key-size start-key)))
 
-(defn prefix-keys-value! [iter c-hash tid value-prefix]
-  (let [prefix (encode-seek-key c-hash tid)
-        start-key (encode-seek-key c-hash tid value-prefix)]
-    (i/prefix-keys! iter prefix decode-value-id-hash-prefix start-key)))
-
-(defn prefix-keys-value-prev! [iter c-hash tid value-prefix]
-  (let [prefix (encode-seek-key c-hash tid)
-        start-key (encode-seek-key c-hash tid value-prefix)]
-    (i/prefix-keys-prev! iter prefix decode-value-id-hash-prefix start-key)))
+(defn prefix-keys-value-prev [snapshot c-hash tid value-prefix]
+  (i/prefix-keys-prev
+   snapshot
+   :search-param-value-index
+   decode-value-id-hash-prefix
+   base-key-size
+   (encode-seek-key c-hash tid value-prefix)))
 
 (defn decode-id-hash-prefix
   "Returns a tuple of `[id hash-prefix]`."
@@ -147,61 +149,69 @@
     (bb/get-byte! buf)
     [id (hash/prefix-from-byte-buffer! buf)]))
 
-(defn prefix-keys!
+(defn prefix-keys
   "Returns a reducible collection of decoded `[id hash-prefix]` tuples from keys
   starting at `start-value` and optional `start-id` and ending when
-  `prefix-value` is no longer a prefix of the values processed.
-
-  Changes the state of `iter`. Consuming the collection requires exclusive
-  access to `iter`. Doesn't close `iter`."
-  ([iter c-hash tid prefix-value start-value]
-   (i/prefix-keys!
-    iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
+  `prefix-length` bytes of `start-value` is no longer a prefix of the values
+  processed."
+  ([snapshot c-hash tid prefix-length start-value]
+   (i/prefix-keys
+    snapshot
+    :search-param-value-index
+    decode-id-hash-prefix
+    (+ base-key-size (long prefix-length))
     (encode-seek-key c-hash tid start-value)))
-  ([iter c-hash tid prefix-value start-value start-id]
-   (i/prefix-keys!
-    iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
+  ([snapshot c-hash tid prefix-length start-value start-id]
+   (i/prefix-keys
+    snapshot
+    :search-param-value-index
+    decode-id-hash-prefix
+    (+ base-key-size (long prefix-length))
     (encode-seek-key c-hash tid start-value start-id))))
 
-(defn prefix-keys'!
+(defn prefix-keys'
   "Returns a reducible collection of decoded `[id hash-prefix]` tuples from keys
-  starting at `start-value` and ending when `prefix-value` is no longer a prefix
-  of the values processed.
-
-  Changes the state of `iter`. Consuming the collection requires exclusive
-  access to `iter`. Doesn't close `iter`."
-  [iter c-hash tid prefix-value start-value]
-  (i/prefix-keys!
-   iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
+  starting at `start-value` and ending when `prefix-length` bytes of
+  `start-value` is no longer a prefix of the values processed."
+  [snapshot c-hash tid prefix-length start-value]
+  (i/prefix-keys
+   snapshot
+   :search-param-value-index
+   decode-id-hash-prefix
+   (+ base-key-size (long prefix-length))
    (encode-seek-key-for-prev c-hash tid start-value)))
 
-(defn prefix-keys-prev!
+(defn prefix-keys-prev
   "Returns a reducible collection of decoded `[id hash-prefix]` tuples from keys
   starting at `start-value` and optional `start-id` and ending when
-  `prefix-value` is no longer a prefix of the values processed, iterating in
-  reverse.
-
-  Changes the state of `iter`. Consuming the collection requires exclusive
-  access to `iter`. Doesn't close `iter`."
-  ([iter c-hash tid prefix-value start-value]
-   (i/prefix-keys-prev!
-    iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
+  `prefix-length` bytes of `start-value` is no longer a prefix of the values
+  processed, iterating in reverse."
+  ([snapshot c-hash tid prefix-length start-value]
+   (i/prefix-keys-prev
+    snapshot
+    :search-param-value-index
+    decode-id-hash-prefix
+    (+ base-key-size (long prefix-length))
     (encode-seek-key-for-prev c-hash tid start-value)))
-  ([iter c-hash tid prefix-value start-value start-id]
-   (i/prefix-keys-prev!
-    iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
+  ([snapshot c-hash tid prefix-length start-value start-id]
+   (i/prefix-keys-prev
+    snapshot
+    :search-param-value-index
+    decode-id-hash-prefix
+    (+ base-key-size (long prefix-length))
     (encode-seek-key-for-prev c-hash tid start-value start-id))))
 
-(defn prefix-keys-prev'!
+(defn prefix-keys-prev'
   "Returns a reducible collection of decoded `[id hash-prefix]` tuples from keys
-  starting at `start-value` and ending when `prefix-value` is no longer a prefix
-  of the values processed, iterating in reverse.
-
-  Changes the state of `iter`. Consuming the collection requires exclusive
-  access to `iter`. Doesn't close `iter`."
-  [iter c-hash tid prefix-value start-value]
-  (i/prefix-keys-prev!
-   iter (encode-seek-key c-hash tid prefix-value) decode-id-hash-prefix
+  starting at `start-value` and ending when `prefix-length` bytes of
+  `start-value` is no longer a prefix of the values processed, iterating in
+  reverse."
+  [snapshot c-hash tid prefix-length start-value]
+  (i/prefix-keys-prev
+   snapshot
+   :search-param-value-index
+   decode-id-hash-prefix
+   (+ base-key-size (long prefix-length))
    (encode-seek-key c-hash tid start-value)))
 
 (defn encode-key [c-hash tid value id hash]

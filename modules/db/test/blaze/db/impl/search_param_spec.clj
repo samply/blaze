@@ -3,6 +3,7 @@
    [blaze.async.comp :as ac]
    [blaze.byte-string-spec]
    [blaze.coll.spec :as cs]
+   [blaze.db.impl.batch-db :as-alias batch-db]
    [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec-spec]
    [blaze.db.impl.index.compartment.search-param-value-resource-spec]
@@ -36,7 +37,7 @@
 
 (s/fdef search-param/resource-handles
   :args (s/cat :search-param :blaze.db/search-param
-               :context :blaze.db.impl.batch-db/context
+               :context ::batch-db/context
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :values (s/coll-of some? :min-count 1)
@@ -45,7 +46,7 @@
 
 (s/fdef search-param/sorted-resource-handles
   :args (s/cat :search-param :blaze.db/search-param
-               :context :blaze.db.impl.batch-db/context
+               :context ::batch-db/context
                :tid :blaze.db/tid
                :direction :blaze.db.query/sort-direction
                :start-id (s/? :blaze.db/id-byte-string))
@@ -53,7 +54,7 @@
 
 (s/fdef search-param/count-resource-handles
   :args (s/cat :search-param :blaze.db/search-param
-               :context :blaze.db.impl.batch-db/context
+               :context ::batch-db/context
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :values (s/coll-of some? :min-count 1))
@@ -61,7 +62,7 @@
 
 (s/fdef search-param/compartment-resource-handles
   :args (s/cat :search-param :blaze.db/search-param
-               :context :blaze.db.impl.batch-db/context
+               :context ::batch-db/context
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
                :compiled-values (s/coll-of some? :min-count 1))
@@ -69,7 +70,7 @@
 
 (s/fdef search-param/matches?
   :args (s/cat :search-param :blaze.db/search-param
-               :context :blaze.db.impl.batch-db/context
+               :context ::batch-db/context
                :resource-handle :blaze.db/resource-handle
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1))

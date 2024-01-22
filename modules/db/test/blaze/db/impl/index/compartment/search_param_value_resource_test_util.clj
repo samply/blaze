@@ -29,6 +29,6 @@
                       (hash/prefix-from-byte-buffer! buf))}))
 
 (defn decode-index-entries [kv-store & keys]
-  (with-open [snapshot (kv/new-snapshot kv-store)
-              iter (kv/new-iterator snapshot :compartment-search-param-value-index)]
-    (into [] (map #(mapv % keys)) (i/keys! iter decode-key-human bs/empty))))
+  (with-open [snapshot (kv/new-snapshot kv-store)]
+    (->> (i/keys snapshot :compartment-search-param-value-index decode-key-human bs/empty)
+         (into [] (map #(mapv % keys))))))

@@ -7,9 +7,7 @@
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-handle :as rh]
-   [blaze.db.impl.iterators :as i]
-   [blaze.db.impl.macros :refer [with-open-coll]]
-   [blaze.db.kv :as kv]))
+   [blaze.db.impl.iterators :as i]))
 
 (set! *unchecked-math* :warn-on-boxed)
 
@@ -23,7 +21,7 @@
   [co-res-id]
   (unchecked-add-int except-co-res-id-prefix-size (bs/size co-res-id)))
 
-(defn- decode-key [buf]
+(defn- decode-key! [buf]
   (bb/set-position! buf (unchecked-add-int (bb/position buf) codec/c-hash-size))
   (let [id-size (long (bb/size-up-to-null buf))]
     (bb/set-position! buf (+ (bb/position buf) id-size 1 codec/tid-size))
@@ -34,7 +32,7 @@
 
 (defn- resource-handles-xf [resource-handle tid]
   (comp
-   (keep #(resource-handle tid %))
+   (keep (partial resource-handle tid))
    remove-deleted-xf))
 
 (defn- encode-seek-key
@@ -79,17 +77,14 @@
    (let [seek-key (encode-seek-key compartment tid)]
      (coll/eduction
       (resource-handles-xf resource-handle tid)
-      (with-open-coll [cri (kv/new-iterator snapshot :compartment-resource-type-index)]
-        (i/prefix-keys! cri seek-key decode-key seek-key)))))
+      (i/prefix-keys snapshot :compartment-resource-type-index decode-key!
+                     (bs/size seek-key) seek-key))))
   ([{:keys [snapshot resource-handle]} compartment tid start-id]
    (coll/eduction
     (resource-handles-xf resource-handle tid)
-    (with-open-coll [cri (kv/new-iterator snapshot :compartment-resource-type-index)]
-      (i/prefix-keys!
-       cri
-       (encode-seek-key compartment tid)
-       decode-key
-       (encode-key compartment tid start-id))))))
+    (i/prefix-keys snapshot :compartment-resource-type-index decode-key!
+                   (key-prefix-size (coll/nth compartment 1))
+                   (encode-key compartment tid start-id)))))
 
 (defn index-entry
   "Returns an entry of the CompartmentResourceType index build from `compartment`,

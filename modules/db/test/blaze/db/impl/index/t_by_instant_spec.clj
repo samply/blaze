@@ -7,7 +7,7 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef t-by-instant/t-by-instant
-  :args (s/cat :snapshot :blaze.db/kv-snapshot :instant :blaze.db.tx/instant)
+  :args (s/cat :snapshot :blaze.db.kv/snapshot :instant :blaze.db.tx/instant)
   :ret (s/nilable :blaze.db/t))
 
 (s/fdef t-by-instant/index-entry

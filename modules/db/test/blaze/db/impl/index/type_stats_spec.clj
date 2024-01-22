@@ -7,12 +7,8 @@
    [blaze.db.tx-log.spec]
    [clojure.spec.alpha :as s]))
 
-(s/fdef type-stats/new-iterator
-  :args (s/cat :snapshot :blaze.db/kv-snapshot)
-  :ret :blaze.db/kv-iterator)
-
-(s/fdef type-stats/get!
-  :args (s/cat :iter :blaze.db/kv-iterator :tid :blaze.db/tid :t :blaze.db/t)
+(s/fdef type-stats/seek-value
+  :args (s/cat :snapshot :blaze.db.kv/snapshot :tid :blaze.db/tid :t :blaze.db/t)
   :ret (s/nilable :blaze.db.index/stats))
 
 (s/fdef type-stats/index-entry

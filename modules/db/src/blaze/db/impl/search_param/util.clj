@@ -5,7 +5,6 @@
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
-   [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.spec :as fhir-spec]
@@ -60,22 +59,21 @@
    by-id-grouper
    (resource-handle-mapper* context tid)))
 
-(defn- id-groups-counter [{:keys [snapshot t]} tid]
+(defn- id-groups-counter [{:keys [resource-handle]} tid]
   (fn [id-groups]
-    (with-open [resource-handle (rao/resource-handle snapshot t)]
-      (reduce
-       (fn [sum [[id] :as tuples]]
-         (if-let [handle (resource-handle tid id)]
-           (cond-> sum
-             (some (contains-hash-prefix-pred handle) tuples)
-             inc)
-           sum))
-       0
-       id-groups))))
+    (reduce
+     (fn [sum [[id] :as tuples]]
+       (if-let [handle (resource-handle tid id)]
+         (cond-> sum
+           (some (contains-hash-prefix-pred handle) tuples)
+           inc)
+         sum))
+     0
+     id-groups)))
 
 (defn- resource-handle-counter
-  "Returns a transformer that takes [id hash-prefix] tuples, groups them by id,
-  partitions them and returns futures of the count of the found resource
+  "Returns a transformer that takes `[id hash-prefix]` tuples, groups them by
+  id, partitions them and returns futures of the count of the found resource
   handles in each partition."
   [context tid]
   (let [id-groups-counter (id-groups-counter context tid)]

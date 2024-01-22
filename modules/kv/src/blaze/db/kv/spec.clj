@@ -1,6 +1,7 @@
 (ns blaze.db.kv.spec
   (:require
    [blaze.db.kv :as kv]
+   [blaze.db.kv.protocols :as p]
    [clojure.spec.alpha :as s])
   (:import
    [java.lang AutoCloseable]))
@@ -8,12 +9,12 @@
 (s/def :blaze.db/kv-store
   kv/store?)
 
-(s/def :blaze.db/kv-snapshot
-  (s/and #(satisfies? kv/KvSnapshot %)
+(s/def ::kv/snapshot
+  (s/and #(satisfies? p/KvSnapshot %)
          #(instance? AutoCloseable %)))
 
-(s/def :blaze.db/kv-iterator
-  (s/and #(satisfies? kv/KvIterator %)
+(s/def ::kv/iterator
+  (s/and #(satisfies? p/KvIterator %)
          #(instance? AutoCloseable %)))
 
 (s/def ::kv/put-entry

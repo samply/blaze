@@ -1,7 +1,7 @@
 (ns blaze.db.impl.iterators-test
   (:require
    [blaze.byte-buffer :as bb]
-   [blaze.byte-string :as bs]
+   [blaze.byte-string]
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.iterators :as i]
    [blaze.db.kv :as kv]
@@ -38,10 +38,9 @@
        [[:default (ba 0x00) bytes/empty]
         [:default (ba 0x01) bytes/empty]])
 
-      (with-open [snapshot (kv/new-snapshot kv-store)
-                  iter (kv/new-iterator snapshot :default)]
+      (with-open [snapshot (kv/new-snapshot kv-store)]
         (is (= [[0x00] [0x01]]
-               (vec (i/keys! iter decode-1 (bs/from-hex "00"))))))))
+               (vec (i/keys snapshot :default decode-1 #blaze/byte-string"00")))))))
 
   (testing "too small ByteBuffer will be replaced with a larger one"
     (with-system [{kv-store ::kv/mem} config]
@@ -50,10 +49,9 @@
        [[:default (ba 0x00) bytes/empty]
         [:default (ba 0x00 0x01) bytes/empty]])
 
-      (with-open [snapshot (kv/new-snapshot kv-store)
-                  iter (kv/new-iterator snapshot :default)]
+      (with-open [snapshot (kv/new-snapshot kv-store)]
         (is (= [[0x00] [0x00 0x01]]
-               (vec (i/keys! iter decode-1 (bs/from-hex "00")))))))
+               (vec (i/keys snapshot :default decode-1 #blaze/byte-string"00"))))))
 
     (testing "new ByteBuffer is bigger than a two times increase"
       (with-system [{kv-store ::kv/mem} config]
@@ -62,7 +60,6 @@
          [[:default (ba 0x00) bytes/empty]
           [:default (ba 0x00 0x01 0x02) bytes/empty]])
 
-        (with-open [snapshot (kv/new-snapshot kv-store)
-                    iter (kv/new-iterator snapshot :default)]
+        (with-open [snapshot (kv/new-snapshot kv-store)]
           (is (= [[0x00] [0x00 0x01 0x02]]
-                 (vec (i/keys! iter decode-1 (bs/from-hex "00"))))))))))
+                 (vec (i/keys snapshot :default decode-1 #blaze/byte-string"00")))))))))

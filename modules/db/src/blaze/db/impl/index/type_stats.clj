@@ -16,21 +16,12 @@
   with the new totals for this type at its t."
   (:require
    [blaze.byte-buffer :as bb]
+   [blaze.byte-string :as bs]
    [blaze.db.impl.codec :as codec]
-   [blaze.db.kv :as kv])
-  (:import
-   [com.google.common.primitives Ints]
-   [java.lang AutoCloseable]))
+   [blaze.db.impl.iterators :as i]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
-
-(defn new-iterator
-  "Returns the iterator of the type stats index.
-
-  Has to be closed after usage."
-  ^AutoCloseable [snapshot]
-  (kv/new-iterator snapshot :type-stats-index))
 
 (def ^:private ^:const ^long key-size (+ codec/tid-size codec/t-size))
 (def ^:private ^:const ^long value-size (+ Long/BYTES Long/BYTES))
@@ -45,17 +36,12 @@
   {:total (bb/get-long! buf)
    :num-changes (bb/get-long! buf)})
 
-(defn get!
+(defn seek-value
   "Returns the value of `tid` which is most recent according to `t` if there is
-  any.
-
-  Needs to use an iterator because there could be no entry at `t`. So `kv/seek!`
-  is used to get near `t`."
-  [iter tid t]
-  (kv/seek! iter (encode-key tid t))
-  (when (kv/valid? iter)
-    (when (= ^long tid (Ints/fromByteArray (kv/key iter)))
-      (decode-value! (bb/wrap (kv/value iter))))))
+  any."
+  [snapshot tid t]
+  (i/seek-value snapshot :type-stats-index decode-value! codec/tid-size
+                (bs/from-byte-array (encode-key tid t))))
 
 (defn- encode-value [{:keys [total num-changes]}]
   (-> (bb/allocate value-size)

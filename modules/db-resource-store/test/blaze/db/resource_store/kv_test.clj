@@ -5,6 +5,7 @@
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
    [blaze.db.kv.mem-spec]
+   [blaze.db.kv.protocols :as kv-p]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store-spec]
    [blaze.db.resource-store.kv :as rs-kv]
@@ -106,7 +107,7 @@
    ::rs-kv/executor {}})
 
 (defmethod ig/init-key ::failing-kv-store [_ {:keys [msg] :as config}]
-  (reify kv/KvStore
+  (reify kv-p/KvStore
     (-get [_ _ hash]
       (when (or (nil? (:hash config))
                 (= (hash/from-byte-buffer! (bb/wrap hash)) (:hash config)))

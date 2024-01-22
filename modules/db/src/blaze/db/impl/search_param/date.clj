@@ -5,12 +5,11 @@
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.codec.date :as codec-date]
+   [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
-   [blaze.db.impl.macros :refer [with-open-coll]]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.impl.search-param.util :as u]
-   [blaze.db.kv :as kv]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
@@ -52,26 +51,22 @@
   "Returns the value of the resource with `tid` and `id` according to the
   search parameter with `c-hash`."
   {:arglists '([context c-hash tid id])}
-  [{:keys [resource-handle next-value]} c-hash tid id]
-  (next-value (resource-handle tid id) c-hash))
+  [{:keys [snapshot resource-handle]} c-hash tid id]
+  (r-sp-v/next-value snapshot (resource-handle tid id) c-hash))
 
 (defn- all-keys
   ([{:keys [snapshot]} c-hash tid]
-   (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
-     (sp-vr/all-keys! svri c-hash tid)))
+   (sp-vr/all-keys snapshot c-hash tid))
   ([{:keys [snapshot] :as context} c-hash tid start-id]
-   (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
-     (sp-vr/all-keys! svri c-hash tid (resource-value context c-hash tid start-id)
-                      start-id))))
+   (sp-vr/all-keys snapshot c-hash tid (resource-value context c-hash tid start-id)
+                   start-id)))
 
 (defn- all-keys-prev
   ([{:keys [snapshot]} c-hash tid]
-   (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
-     (sp-vr/all-keys-prev! svri c-hash tid)))
+   (sp-vr/all-keys-prev snapshot c-hash tid))
   ([{:keys [snapshot] :as context} c-hash tid start-id]
-   (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
-     (sp-vr/all-keys-prev! svri c-hash tid (resource-value context c-hash tid start-id)
-                           start-id))))
+   (sp-vr/all-keys-prev snapshot c-hash tid (resource-value context c-hash tid start-id)
+                        start-id)))
 
 (def ^:private drop-value
   (map #(subvec % 1)))
@@ -104,8 +99,7 @@
     (comp (eq-stop param-ub)
           (eq-filter param-ub)
           drop-value)
-    (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
-      (sp-vr/prefix-keys-value! svri c-hash tid param-lb))))
+    (sp-vr/prefix-keys-value snapshot c-hash tid param-lb)))
   ([context c-hash tid _param-lb param-ub start-id]
    (coll/eduction
     (comp (eq-stop param-ub)
@@ -166,8 +160,7 @@
   ([{:keys [snapshot]} c-hash tid param-lb]
    (coll/eduction
     drop-value
-    (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
-      (sp-vr/prefix-keys-value-prev! svri c-hash tid param-lb))))
+    (sp-vr/prefix-keys-value-prev snapshot c-hash tid param-lb)))
   ([context c-hash tid _param-lb start-id]
    (coll/eduction
     drop-value
@@ -232,8 +225,7 @@
   ([{:keys [snapshot]} c-hash tid param-ub]
    (coll/eduction
     drop-value
-    (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
-      (sp-vr/prefix-keys-value! svri c-hash tid param-ub))))
+    (sp-vr/prefix-keys-value snapshot c-hash tid param-ub)))
   ([context c-hash tid _param-ub start-id]
    (coll/eduction
     drop-value
@@ -316,9 +308,9 @@
      :ap (ap-keys context c-hash tid param-lb param-ub start-id))))
 
 (defn- matches?
-  [next-value c-hash resource-handle
+  [snapshot c-hash resource-handle
    {:keys [op] param-lb :lower-bound param-ub :upper-bound}]
-  (when-let [value (next-value resource-handle c-hash)]
+  (when-let [value (r-sp-v/next-value snapshot resource-handle c-hash)]
     (case op
       :eq (equal? value param-lb param-ub)
       :ne (not-equal? value param-lb param-ub)
@@ -384,7 +376,7 @@
        (all-keys-prev context c-hash tid start-id))))
 
   (-matches? [_ context resource-handle _ values]
-    (some? (some #(matches? (:next-value context) c-hash resource-handle %) values)))
+    (some? (some (partial matches? (:snapshot context) c-hash resource-handle) values)))
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

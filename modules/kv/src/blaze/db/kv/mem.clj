@@ -6,6 +6,7 @@
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.byte-buffer :as bb]
    [blaze.db.kv :as kv]
+   [blaze.db.kv.protocols :as p]
    [blaze.db.kv.spec]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
@@ -42,11 +43,11 @@
   (ba/fault "The iterator is closed."))
 
 (defn- check-valid [iter]
-  (when-not (kv/-valid iter)
+  (when-not (p/-valid iter)
     (throw-anom iterator-invalid-anom)))
 
 (deftype MemKvIterator [db cursor ^:volatile-mutable closed?]
-  kv/KvIterator
+  p/KvIterator
   (-valid [_]
     (when closed? (throw-anom iterator-closed-anom))
     (some? (@cursor :first)))
@@ -67,7 +68,7 @@
   (-seek-buffer [iter kb]
     (let [k (byte-array (bb/remaining kb))]
       (bb/copy-into-byte-array! kb k)
-      (kv/-seek iter k)))
+      (p/-seek iter k)))
 
   (-seek-for-prev [_ k]
     (when closed? (throw-anom iterator-closed-anom))
@@ -82,25 +83,21 @@
     (check-valid iter)
     (swap! cursor #(prev db %)))
 
-  (-key [_]
-    (if-let [first (@cursor :first)]
-      (copy (key first))
-      (throw-anom iterator-invalid-anom)))
+  (-key [iter]
+    (check-valid iter)
+    (copy (key (@cursor :first))))
 
-  (-key [_ buf]
-    (if-let [first (@cursor :first)]
-      (put buf (key first))
-      (throw-anom iterator-invalid-anom)))
+  (-key [iter buf]
+    (check-valid iter)
+    (put buf (key (@cursor :first))))
 
-  (-value [_]
-    (if-let [first (@cursor :first)]
-      (copy (val first))
-      (throw-anom iterator-invalid-anom)))
+  (-value [iter]
+    (check-valid iter)
+    (copy (val (@cursor :first))))
 
-  (-value [_ buf]
-    (if-let [first (@cursor :first)]
-      (put buf (val first))
-      (throw-anom iterator-invalid-anom)))
+  (-value [iter buf]
+    (check-valid iter)
+    (put buf (val (@cursor :first))))
 
   AutoCloseable
   (close [_]
@@ -110,7 +107,7 @@
   (format "column family `%s` not found" (name column-family)))
 
 (deftype MemKvSnapshot [db]
-  kv/KvSnapshot
+  p/KvSnapshot
   (-new-iterator [_ column-family]
     (if-let [db (get db column-family)]
       (->MemKvIterator db (atom {:rest (seq db)}) false)
@@ -152,7 +149,7 @@
    entries))
 
 (deftype MemKvStore [db]
-  kv/KvStore
+  p/KvStore
   (-new-snapshot [_]
     (->MemKvSnapshot @db))
 

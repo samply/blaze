@@ -2,6 +2,9 @@
  {blaze/byte-buffer
   {:local/root "../byte-buffer"}
 
+  blaze/byte-string
+  {:local/root "../byte-string"}
+
   blaze/coll
   {:local/root "../coll"}
 
@@ -14,7 +17,10 @@
 
    :extra-deps
    {blaze/module-test-util
-    {:local/root "../module-test-util"}}}
+    {:local/root "../module-test-util"}
+
+    criterium/criterium
+    {:mvn/version "0.4.6"}}}
 
   :kaocha
   {:extra-deps

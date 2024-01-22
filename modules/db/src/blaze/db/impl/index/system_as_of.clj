@@ -6,9 +6,7 @@
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-handle :as rh]
-   [blaze.db.impl.iterators :as i]
-   [blaze.db.impl.macros :refer [with-open-coll]]
-   [blaze.db.kv :as kv])
+   [blaze.db.impl.iterators :as i])
   (:import
    [com.google.common.primitives Longs]))
 
@@ -38,14 +36,15 @@
   after decoding."
   []
   (let [ib (byte-array codec/max-id-size)]
-    (fn [kb vb]
-      (let [t (codec/descending-long (bb/get-long! kb))]
-        (rh/resource-handle
+    (fn [entry]
+      (let [kb (i/key entry)
+            t (codec/descending-long (bb/get-long! kb))]
+        (rh/resource-handle!
          (bb/get-int! kb)
          (let [id-size (bb/remaining kb)]
            (bb/copy-into-byte-array! kb ib 0 id-size)
            (codec/id ib 0 id-size))
-         t vb)))))
+         t (i/value entry))))))
 
 (defn encode-key
   "Encodes the key of the SystemAsOf index from `t`, `tid` and `id`."
@@ -81,6 +80,8 @@
   Versions are resource handles."
   [snapshot start-t start-tid start-id end-t]
   (coll/eduction
-   (take-while (key-valid? end-t))
-   (with-open-coll [saoi (kv/new-iterator snapshot :system-as-of-index)]
-     (i/kvs! saoi (decoder) (bs/from-byte-array (start-key start-t start-tid start-id))))))
+   (comp
+    (map (decoder))
+    (take-while (key-valid? end-t)))
+   (i/entries snapshot :system-as-of-index
+              (bs/from-byte-array (start-key start-t start-tid start-id)))))

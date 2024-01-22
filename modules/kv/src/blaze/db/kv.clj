@@ -3,50 +3,30 @@
 
   All functions block the current thread while doing I/O."
   (:refer-clojure :exclude [get key])
+  (:require
+   [blaze.db.kv.iter-pool :as ip]
+   [blaze.db.kv.protocols :as p])
   (:import
    [java.lang AutoCloseable]))
-
-(defprotocol KvIterator
-  "A mutable iterator over a KvSnapshot."
-
-  (-valid [iter])
-
-  (-seek-to-first [iter])
-
-  (-seek-to-last [iter])
-
-  (-seek [iter target])
-
-  (-seek-buffer [iter target])
-
-  (-seek-for-prev [iter target])
-
-  (-next [iter])
-
-  (-prev [iter])
-
-  (-key [iter] [iter buf])
-
-  (-value [iter] [iter buf]))
 
 (defn valid?
   "Returns true if `iter` is positioned at an entry."
   [iter]
-  (-valid iter))
+  (p/-valid iter))
 
 (defn seek-to-first!
   "Positions `iter` at the first entry of its source.
 
   The iterator will be valid if its source is not empty."
   [iter]
-  (-seek-to-first iter))
+  (p/-seek-to-first iter))
 
 (defn seek-to-last!
   "Positions `iter` at the last entry of its source.
 
   The iterator will be valid if its source is not empty."
   [iter]
-  (-seek-to-last iter))
+  (p/-seek-to-last iter))
 
 (defn seek!
   "Positions `iter` at the first entry of its source whose key is at or past
@@ -56,7 +36,7 @@
 
   The iterator will be valid if its source contains a key at or past `target`."
   [iter target]
-  (-seek iter target))
+  (p/-seek iter target))
 
 (defn seek-buffer!
   "Positions `iter` at the first entry of its source whose key is at or past
@@ -66,7 +46,7 @@
 
   The iterator will be valid if its source contains a key at or past `target`."
   [iter target]
-  (-seek-buffer iter target))
+  (p/-seek-buffer iter target))
 
 (defn seek-for-prev!
   "Positions `iter` at the first entry of its source whose key is at or before
@@ -76,28 +56,28 @@
 
   The iterator will be valid if its source contains a key at or before `target`."
   [iter target]
-  (-seek-for-prev iter target))
+  (p/-seek-for-prev iter target))
 
 (defn next!
   "Moves `iter` to the next entry of its source.
 
   Requires `iter` to be valid."
   [iter]
-  (-next iter))
+  (p/-next iter))
 
 (defn prev!
   "Moves this iterator to the previous entry.
 
   Requires `iter` to be valid."
   [iter]
-  (-prev iter))
+  (p/-prev iter))
 
 (defn key
   "Returns the key of the current entry of `iter`.
 
   Requires `iter` to be valid."
   [iter]
-  (-key iter))
+  (p/-key iter))
 
 (defn key!
   "Puts the key of current entry of `iter` in `buf`.
@@ -109,14 +89,14 @@
   `buf`, then it indicates that the size of the `buf` is insufficient and a
   partial result is put."
   [iter buf]
-  (-key iter buf))
+  (p/-key iter buf))
 
 (defn value
   "Returns the value of the current entry of `iter`.
 
   Requires `iter` to be valid."
   [iter]
-  (-value iter))
+  (p/-value iter))
 
 (defn value!
   "Puts the value of current entry of `iter` in `buf`.
@@ -128,14 +108,7 @@
   of `buf`, then it indicates that the size of the `buf` is insufficient and a
   partial result is put."
   [iter buf]
-  (-value iter buf))
-
-(defprotocol KvSnapshot
-  "A snapshot of the contents of a KvStore."
-
-  (-new-iterator [snapshot column-family])
-
-  (-snapshot-get [snapshot column-family key]))
+  (p/-value iter buf))
 
 (defn new-iterator
   "Return an iterator over the contents of `column-family`.
@@ -148,29 +121,16 @@
   Iterators have to be closed after usage."
   ^AutoCloseable
   [snapshot column-family]
-  (-new-iterator snapshot column-family))
+  (p/-new-iterator snapshot column-family))
 
 (defn snapshot-get
   "Returns a new byte array storing the value associated with the `key` in
   `column-family` if any."
   [snapshot column-family key]
-  (-snapshot-get snapshot column-family key))
-
-(defprotocol KvStore
-  "A key-value store."
-
-  (-new-snapshot [store])
-
-  (-get [store column-family key])
-
-  (-put [store entries])
-
-  (-delete [store keys])
-
-  (-write [store entries]))
+  (p/-snapshot-get snapshot column-family key))
 
 (defn store? [x]
-  (satisfies? KvStore x))
+  (satisfies? p/KvStore x))
 
 (defn new-snapshot
   "Opens a new snapshot of `store`.
@@ -178,14 +138,14 @@
   Snapshots have to be closed after usage."
   ^AutoCloseable
   [store]
-  (-new-snapshot store))
+  (ip/pooling-snapshot (p/-new-snapshot store)))
 
 (defn get
   "Returns the value of `key` in `column-family` or nil if not found.
 
   Blocks the current thread."
   [store column-family key]
-  (-get store column-family key))
+  (p/-get store column-family key))
 
 (defn put!
   "Stores `entries` that are triples of column-family, key and value.
@@ -194,14 +154,14 @@
 
   Puts are atomic. Blocks. Returns nil."
   [store entries]
-  (-put store entries))
+  (p/-put store entries))
 
 (defn delete!
   "Deletes `entries` that are tuples of column-family and key.
 
   Deletes are atomic. Blocks. Returns nil."
   [store entries]
-  (-delete store entries))
+  (p/-delete store entries))
 
 (defn write!
   "Entries are quadruples of operator, column-family, key and value.
@@ -212,4 +172,4 @@
 
   Writes are atomic. Blocks."
   [store entries]
-  (-write store entries))
+  (p/-write store entries))

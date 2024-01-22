@@ -34,7 +34,7 @@
      (spt/resource-keys context c-hash tid value)))
 
   (-matches? [_ context resource-handle _ values]
-    (some? (some (partial spt/matches? (:next-value context) c-hash resource-handle) values)))
+    (some? (some (partial spt/matches? (:snapshot context) c-hash resource-handle) values)))
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]

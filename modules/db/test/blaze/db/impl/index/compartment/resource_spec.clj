@@ -3,6 +3,8 @@
    [blaze.byte-string-spec]
    [blaze.coll.core-spec]
    [blaze.coll.spec :as cs]
+   [blaze.db.impl.batch-db :as-alias batch-db]
+   [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec.spec]
    [blaze.db.impl.index.compartment.resource :as cr]
    [blaze.db.impl.iterators-spec]
@@ -11,7 +13,7 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef cr/resource-handles
-  :args (s/cat :context :blaze.db.impl.batch-db/context
+  :args (s/cat :context ::batch-db/context
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
                :start-id (s/? :blaze.db/id-byte-string))

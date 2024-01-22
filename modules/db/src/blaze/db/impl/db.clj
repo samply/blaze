@@ -4,14 +4,27 @@
    [blaze.async.comp :as ac]
    [blaze.db.impl.batch-db :as batch-db]
    [blaze.db.impl.index.resource-as-of :as rao]
-   [blaze.db.impl.macros :refer [with-open-coll]]
+   [blaze.db.impl.index.system-stats :as system-stats]
+   [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
    [blaze.db.kv :as kv])
   (:import
+   [clojure.lang IReduceInit Sequential]
    [java.io Writer]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
+
+(defmacro with-open-coll
+  "Like `clojure.core/with-open` but opens and closes the resources on every
+  reduce call to `coll`."
+  [bindings coll]
+  `(reify
+     Sequential
+     IReduceInit
+     (reduce [_ rf# init#]
+       (with-open ~bindings
+         (reduce rf# init# ~coll)))))
 
 (deftype Db [node kv-store basis-t t]
   p/Db
@@ -31,9 +44,8 @@
   ;; ---- Instance-Level Functions --------------------------------------------
 
   (-resource-handle [_ tid id]
-    (with-open [snapshot (kv/new-snapshot kv-store)
-                resource-handle (rao/resource-handle snapshot t)]
-      (resource-handle tid id)))
+    (with-open [snapshot (kv/new-snapshot kv-store)]
+      ((rao/resource-handle snapshot t) tid id)))
 
   ;; ---- Type-Level Functions ------------------------------------------------
 
@@ -46,8 +58,8 @@
       (p/-type-list batch-db tid start-id)))
 
   (-type-total [_ tid]
-    (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
-      (p/-type-total batch-db tid)))
+    (with-open [snapshot (kv/new-snapshot kv-store)]
+      (:total (type-stats/seek-value snapshot tid t) 0)))
 
   ;; ---- System-Level Functions ----------------------------------------------
 
@@ -60,8 +72,8 @@
       (p/-system-list batch-db start-tid start-id)))
 
   (-system-total [_]
-    (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
-      (p/-system-total batch-db)))
+    (with-open [snapshot (kv/new-snapshot kv-store)]
+      (:total (system-stats/seek-value snapshot t) 0)))
 
   ;; ---- Compartment-Level Functions -----------------------------------------
 

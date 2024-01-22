@@ -239,20 +239,17 @@
 (def ^:private empty-stats
   {:total 0 :num-changes 0})
 
-(defn- type-stat-entry!
-  [iter t new-t [tid increments]]
-  (let [current-stats (or (type-stats/get! iter tid t) empty-stats)]
+(defn- type-stat-entry [snapshot t new-t [tid increments]]
+  (let [current-stats (or (type-stats/seek-value snapshot tid t) empty-stats)]
     (type-stats/index-entry tid new-t (merge-with + current-stats increments))))
 
 (defn- conj-type-stats [entries {:keys [snapshot t]} new-t stats]
-  (with-open [_ (prom/timer duration-seconds "type-stats")
-              iter (type-stats/new-iterator snapshot)]
-    (into entries (map #(type-stat-entry! iter t new-t %)) stats)))
+  (with-open [_ (prom/timer duration-seconds "type-stats")]
+    (into entries (map (partial type-stat-entry snapshot t new-t)) stats)))
 
 (defn- system-stats [{:keys [snapshot t]} new-t stats]
-  (with-open [_ (prom/timer duration-seconds "system-stats")
-              iter (system-stats/new-iterator snapshot)]
-    (let [current-stats (or (system-stats/get! iter t) empty-stats)]
+  (with-open [_ (prom/timer duration-seconds "system-stats")]
+    (let [current-stats (or (system-stats/seek-value snapshot t) empty-stats)]
       (system-stats/index-entry new-t (apply merge-with + current-stats (vals stats))))))
 
 (defn- post-process-res [db-before t {:keys [entries stats]}]
