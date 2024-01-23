@@ -110,7 +110,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c # v3
+      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
@@ -146,7 +146,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c # v3
+      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ hashFiles('deps.edn') }}
@@ -174,7 +174,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c # v3
+      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-17-maven-build-${{ hashFiles('**/deps.edn') }}
@@ -1020,7 +1020,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c # v3
+      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-17-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
@@ -1291,7 +1291,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c # v3
+      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-17-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
