@@ -921,68 +921,97 @@
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
           [1 :fhir/type] := :fhir/Patient
-          [1 :id] := "1"))
+          [1 :id] := "1"))))
 
-      (testing "search by id"
-        (doseq [id ["0" "1"]]
-          (given (pull-type-query node "Patient" [["_id" id]])
+  (testing "search by token"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
+        [:put {:fhir/type :fhir/Patient :id "1" :active false}]
+        [:put {:fhir/type :fhir/Patient :id "2" :active true}]]
+       [[:delete "Patient" "2"]]]
+
+      (testing "the deleted patient isn't returned"
+        (given (pull-type-query node "Patient" [["active" "true"]])
+          count := 1
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0")
+        (is (= 1 (count-type-query node "Patient" [["active" "true"]]))))))
+
+  (testing "search by id"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
+        [:put {:fhir/type :fhir/Patient :id "1" :active false}]
+        [:put {:fhir/type :fhir/Patient :id "2"}]]
+       [[:delete "Patient" "2"]]]
+
+      (doseq [id ["0" "1"]]
+        (given (pull-type-query node "Patient" [["_id" id]])
+          count := 1
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := id)
+
+        (testing "it is possible to start with that id"
+          (given (pull-type-query node "Patient" [["_id" id]] id)
             count := 1
             [0 :fhir/type] := :fhir/Patient
-            [0 :id] := id)
+            [0 :id] := id))
 
-          (testing "it is possible to start with that id"
-            (given (pull-type-query node "Patient" [["_id" id]] id)
-              count := 1
-              [0 :fhir/type] := :fhir/Patient
-              [0 :id] := id))
+        (testing "will find nothing if started with another id"
+          (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" id]] "2"))))
 
-          (testing "will find nothing if started with another id"
-            (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" id]] "2"))))
+        (is (= 1 (count-type-query node "Patient" [["_id" id]]))))
 
-          (is (= 1 (count-type-query node "Patient" [["_id" id]]))))
+      (testing "doesn't find the deleted resource"
+        (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" "2"]])))
+        (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" "2"]] "2")))
+        (is (zero? (count-type-query node "Patient" [["_id" "2"]]))))
 
-        (testing "finds nothing with id not in database"
-          (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" "2"]])))
-          (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" "2"]] "2")))
-          (is (zero? (count-type-query node "Patient" [["_id" "2"]]))))
+      (testing "finds nothing with id not in database"
+        (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" "3"]])))
+        (is (coll/empty? (d/type-query (d/db node) "Patient" [["_id" "3"]] "3")))
+        (is (zero? (count-type-query node "Patient" [["_id" "3"]]))))
 
-        (testing "finds more than one patient"
-          (given (pull-type-query node "Patient" [["_id" "0" "1"]])
-            count := 2
-            [0 :fhir/type] := :fhir/Patient
-            [0 :id] := "0"
-            [1 :fhir/type] := :fhir/Patient
-            [1 :id] := "1")
+      (testing "finds more than one patient"
+        (given (pull-type-query node "Patient" [["_id" "0" "1"]])
+          count := 2
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0"
+          [1 :fhir/type] := :fhir/Patient
+          [1 :id] := "1")
 
-          (is (= 2 (count-type-query node "Patient" [["_id" "0" "1"]]))))
+        (is (= 2 (count-type-query node "Patient" [["_id" "0" "1"]]))))
 
-        (testing "as second clause"
-          (given (pull-type-query node "Patient" [["active" "true"] ["_id" "0"]])
+      (testing "as second clause"
+        (given (pull-type-query node "Patient" [["active" "true"] ["_id" "0"]])
+          count := 1
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0")
+
+        (is (zero? (count-type-query node "Patient" [["active" "true"] ["_id" "1"]]))))))
+
+  (testing "sorting by _id"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
+        [:put {:fhir/type :fhir/Patient :id "1" :active false}]]]
+
+      (testing "ascending"
+        (given (pull-type-query node "Patient" [[:sort "_id" :asc]])
+          count := 2
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0"
+          [1 :fhir/type] := :fhir/Patient
+          [1 :id] := "1")
+
+        (testing "it is possible to start with the second patient"
+          (given (pull-type-query node "Patient" [[:sort "_id" :asc]] "1")
             count := 1
             [0 :fhir/type] := :fhir/Patient
-            [0 :id] := "0")
+            [0 :id] := "1")))
 
-          (is (zero? (count-type-query node "Patient" [["active" "true"] ["_id" "1"]])))))
-
-      (testing "sorting by _id"
-        (testing "ascending"
-          (given (pull-type-query node "Patient" [[:sort "_id" :asc]])
-            count := 2
-            [0 :fhir/type] := :fhir/Patient
-            [0 :id] := "0"
-            [1 :fhir/type] := :fhir/Patient
-            [1 :id] := "1")
-
-          (testing "it is possible to start with the second patient"
-            (given (pull-type-query node "Patient" [[:sort "_id" :asc]] "1")
-              count := 1
-              [0 :fhir/type] := :fhir/Patient
-              [0 :id] := "1")))
-
-        (testing "descending"
-          (given (d/type-query (d/db node) "Patient" [[:sort "_id" :desc]])
-            ::anom/category := ::anom/unsupported
-            ::anom/message := "Unsupported sort direction `desc` for search param `_id`.")))))
+      (testing "descending"
+        (given (d/type-query (d/db node) "Patient" [[:sort "_id" :desc]])
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Unsupported sort direction `desc` for search param `_id`."))))
 
   (testing "a node with two patients in two transactions"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -1341,10 +1370,8 @@
 
   (testing "Patient"
     (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient
-               :id "id-0"
-               :meta
-               #fhir/Meta{:profile [#fhir/canonical"profile-uri-145024"]}
+      [[[:put {:fhir/type :fhir/Patient :id "id-0"
+               :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-145024"]}
                :identifier [#fhir/Identifier{:value "0"}]
                :active false
                :gender #fhir/code"male"
@@ -1354,13 +1381,11 @@
                [#fhir/Address{:line ["Philipp-Rosenthal-Straße 27"]
                               :city "Leipzig"}]
                :name [#fhir/HumanName{:family "Müller"}]}]
-        [:put {:fhir/type :fhir/Patient
-               :id "id-1"
+        [:put {:fhir/type :fhir/Patient :id "id-1"
                :active true
                :gender #fhir/code"female"
                :birthDate #fhir/date"2020-02"
-               :address
-               [#fhir/Address{:city "Berlin"}]
+               :address [#fhir/Address{:city "Berlin"}]
                :telecom
                [{:fhir/type :fhir/ContactPoint
                  :system #fhir/code"email"
@@ -1368,8 +1393,7 @@
                 {:fhir/type :fhir/ContactPoint
                  :system #fhir/code"phone"
                  :value "0815"}]}]
-        [:put {:fhir/type :fhir/Patient
-               :id "id-2"
+        [:put {:fhir/type :fhir/Patient :id "id-2"
                :active false
                :gender #fhir/code"female"
                :birthDate #fhir/date"2020"
@@ -1378,14 +1402,11 @@
                [#fhir/Address{:line ["Liebigstraße 20a"]
                               :city "Leipzig"}]
                :name [#fhir/HumanName{:family "Schmidt"}]}]
-        [:put {:fhir/type :fhir/Patient
-               :id "id-3"
+        [:put {:fhir/type :fhir/Patient :id "id-3"
                :birthDate #fhir/date"2019"}]
-        [:put {:fhir/type :fhir/Patient
-               :id "id-4"
+        [:put {:fhir/type :fhir/Patient :id "id-4"
                :birthDate #fhir/date"2021"}]
-        [:put {:fhir/type :fhir/Patient
-               :id "id-5"}]]
+        [:put {:fhir/type :fhir/Patient :id "id-5"}]]
        [[:delete "Patient" "id-5"]]]
 
       (testing "_id"
