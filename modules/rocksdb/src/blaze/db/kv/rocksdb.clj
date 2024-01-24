@@ -54,13 +54,13 @@
     (.key i))
 
   (-key [_ buf]
-    (.key i buf))
+    (.key i ^ByteBuffer buf))
 
   (-value [_]
     (.value i))
 
   (-value [_ buf]
-    (.value i buf))
+    (.value i ^ByteBuffer buf))
 
   AutoCloseable
   (close [_]
