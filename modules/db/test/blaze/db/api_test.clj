@@ -1217,6 +1217,21 @@
         (given (pull-type-query node "Patient" [["_lastUpdated" "lt3000-01-01"]])
           count := 2))))
 
+  (testing "sorting works together with token search"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
+        [:put {:fhir/type :fhir/Patient :id "1" :active false}]
+        [:put {:fhir/type :fhir/Patient :id "2" :active true}]
+        [:put {:fhir/type :fhir/Patient :id "3" :active true}]]
+       [[:delete "Patient" "3"]]]
+
+      (let [clauses [[:sort "_lastUpdated" :asc] ["active" "true"]]]
+        (given (pull-type-query node "Patient" clauses)
+          count := 2)
+
+        (testing "count query"
+          (is (= 2 (count-type-query node "Patient" clauses)))))))
+
   (testing "Special Search Parameter _has"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
@@ -2612,7 +2627,15 @@
             [0 :id] := "id-2")
 
           (testing "count query"
-            (is (= 1 (count-type-query node "Observation" clauses))))))))
+            (is (= 1 (count-type-query node "Observation" clauses))))))
+
+      (testing "status and sort by _lastUpdated"
+        (let [clauses [[:sort "_lastUpdated" :asc] ["status" "final"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 4)
+
+          (testing "count query"
+            (is (= 4 (count-type-query node "Observation" clauses))))))))
 
   (testing "Observation"
     (with-system-data [{:blaze.db/keys [node]} config]

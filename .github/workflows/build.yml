@@ -375,6 +375,12 @@ jobs:
     - name: Download Observation Resources of male Patients Sorted Descending by Last Updated
       run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "-_lastUpdated" 20466
 
+    - name: Download Laboratory Observation Resources Sorted by ID
+      run: .github/scripts/download-resources-query-sort.sh Observation "category=laboratory" "_id" 29206
+
+    - name: Download Laboratory Observation Resources Sorted Ascending by Last Updated
+      run: .github/scripts/download-resources-query-sort.sh Observation "category=laboratory" "_lastUpdated" 29206
+
     - name: Download Observation Resources of female Patients
       run: .github/scripts/download-resources-query.sh Observation "_count=500&patient.gender=female" 22463
 
