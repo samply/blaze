@@ -107,15 +107,6 @@
            id (bs/from-byte-buffer! %)]
        (non-deleted-resource-handle resource-handle tid id)))))
 
-(defn split-literal-ref [^String s]
-  (let [idx (.indexOf s 47)]
-    (when (pos? idx)
-      (let [type (.substring s 0 idx)]
-        (when (.matches (re-matcher #"[A-Z]([A-Za-z0-9_]){0,254}" type))
-          (let [id (.substring s (unchecked-inc-int idx))]
-            (when (.matches (re-matcher #"[A-Za-z0-9\-\.]{1,64}" id))
-              [type id])))))))
-
 (defn invalid-decimal-value-msg [code value]
   (format "Invalid decimal value `%s` in search parameter `%s`." value code))
 

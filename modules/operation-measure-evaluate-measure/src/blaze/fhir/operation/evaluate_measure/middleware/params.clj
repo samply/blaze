@@ -58,8 +58,8 @@
 
 (defn- coerce-subject-ref-param [{{:strs [subject]} :params}]
   (when subject
-    (let [local-ref (s/conform :blaze.fhir/local-ref subject)]
-      (if (s/invalid? local-ref)
+    (let [literal-ref (s/conform :blaze.fhir/literal-ref subject)]
+      (if (s/invalid? literal-ref)
         (if (s/valid? :blaze.resource/id subject)
           subject
           (ba/incorrect
@@ -67,7 +67,7 @@
            :fhir/issue "value"
            :fhir/operation-outcome "MSG_PARAM_INVALID"
            :fhir.issue/expression "subject"))
-        local-ref))))
+        literal-ref))))
 
 (def ^:private no-subject-list-on-get-msg
   "The parameter `reportType` with value `subject-list` is not supported for GET requests. Please use POST or one of `subject` or `population`.")

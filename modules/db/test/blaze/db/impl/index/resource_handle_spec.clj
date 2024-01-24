@@ -40,4 +40,4 @@
 
 (s/fdef rh/reference
   :args (s/cat :rh rh/resource-handle?)
-  :ret :blaze.fhir/local-ref)
+  :ret :blaze.fhir/literal-ref)

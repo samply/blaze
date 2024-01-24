@@ -11,7 +11,7 @@
 
 (s/def ::measure/subject-ref
   (s/or :id :blaze.resource/id
-        :local-ref :blaze.fhir/local-ref-tuple))
+        :local-ref :blaze.fhir/literal-ref-tuple))
 
 (s/def ::measure/population-handle
   ed/resource?)
