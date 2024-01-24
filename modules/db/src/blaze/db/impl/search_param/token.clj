@@ -14,6 +14,7 @@
    [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
    [taoensso.timbre :as log]))
 
@@ -95,7 +96,7 @@
 
 (defn- literal-reference-entries [reference]
   (when-let [value (type/value reference)]
-    (if-let [[type id] (u/split-literal-ref value)]
+    (if-let [[type id] (fsr/split-literal-ref value)]
       [[nil (codec/v-hash id)]
        [nil (codec/v-hash (str type "/" id))]
        [nil (codec/tid-id (codec/tid type)
@@ -173,7 +174,7 @@
         (fn [value]
           (when (identical? :fhir/Reference (fhir-spec/fhir-type value))
             (when-let [reference (type/value (:reference value))]
-              (some-> (u/split-literal-ref reference) (coll/nth 1))))))
+              (some-> (fsr/split-literal-ref reference) (coll/nth 1))))))
        values)))
 
   (-index-values [search-param resolver resource]

@@ -4,12 +4,12 @@
 
 The following table lists the recommended system sizes depending on the number of patients. 
 
-| # Patients | Cores |     RAM |    SSD | Heap Mem ¹ | Block Cache ² | Resource Cache ³ |
-|-----------:|------:|--------:|-------:|-----------:|--------------:|-----------------:|
-|    < 100 k |     4 |  32 GiB | 0.5 TB |      8 GiB |         8 GiB |            2.5 M | 
-|      100 k |     8 |  64 GiB |   1 TB |     16 GiB |        16 GiB |              5 M | 
-|        1 M |    16 | 128 GiB |   2 TB |     32 GiB |        32 GiB |             10 M | 
-|      > 1 M |    32 | 256 GiB |   4 TB |     64 GiB |        64 GiB |             20 M | 
+| # Patients | Cores |     RAM |    SSD | Heap Mem | Block Cache | Resource Cache |
+|-----------:|------:|--------:|-------:|---------:|------------:|---------------:|
+|    < 100 k |     4 |  32 GiB | 0.5 TB |    8 GiB |       8 GiB |          2.5 M | 
+|      100 k |     8 |  64 GiB |   1 TB |   16 GiB |      16 GiB |            5 M | 
+|        1 M |    16 | 128 GiB |   2 TB |   32 GiB |      32 GiB |           10 M | 
+|      > 1 M |    32 | 256 GiB |   4 TB |   64 GiB |      64 GiB |           20 M | 
 
 ### Configuration
 

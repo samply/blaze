@@ -19,7 +19,8 @@
    [blaze.db.impl.search-param.token]
    [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
-   [blaze.fhir.spec :as fhir-spec]))
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.references :as fsr]))
 
 (set! *warn-on-reflection* true)
 
@@ -102,7 +103,7 @@
   (reify
     fhir-path/Resolver
     (-resolve [_ uri]
-      (when-let [[type id] (some-> uri u/split-literal-ref)]
+      (when-let [[type id] (some-> uri fsr/split-literal-ref)]
         {:fhir/type (keyword "fhir" type)
          :id id}))))
 

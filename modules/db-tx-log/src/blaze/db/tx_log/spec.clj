@@ -25,7 +25,7 @@
   :fhir.resource/type)
 
 (s/def :blaze.db.tx-cmd/refs
-  (s/coll-of :blaze.fhir/local-ref-tuple))
+  (s/coll-of :blaze.fhir/literal-ref-tuple))
 
 (s/def :blaze.db/t
   (s/and int? #(<= 0 % 0xFFFFFFFFFFFFFF)))

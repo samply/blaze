@@ -16,7 +16,7 @@
 
 (s/fdef type/references
   :args (s/cat :x any?)
-  :ret (s/coll-of :blaze.fhir/local-ref-tuple))
+  :ret (s/coll-of :blaze.fhir/literal-ref-tuple))
 
 (s/fdef type/boolean
   :args (s/cat :value (s/alt :value boolean? :extended map?))

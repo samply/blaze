@@ -16,7 +16,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.luid :as luid]
-   [clojure.string :as str]
+   [clojure.spec.alpha :as s]
    [java-time.api :as time]
    [prometheus.alpha :as prom]
    [taoensso.timbre :as log])
@@ -111,7 +111,11 @@
 (defn- find-library-handle [db library-ref]
   (if-let [handle (first-library-by-url db library-ref)]
     handle
-    (non-deleted-library-handle db (peek (str/split library-ref #"/")))))
+    (let [literal-ref (s/conform :blaze.fhir/literal-ref library-ref)]
+      (when-not (s/invalid? literal-ref)
+        (let [[type id] literal-ref]
+          (when (= "Library" type)
+            (non-deleted-library-handle db id)))))))
 
 (defn- find-library [db library-ref]
   (when-let [handle (find-library-handle db library-ref)]

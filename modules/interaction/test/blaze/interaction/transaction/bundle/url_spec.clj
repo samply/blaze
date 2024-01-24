@@ -7,5 +7,5 @@
 (s/fdef url/match-url
   :args (s/cat :url string?)
   :ret (s/or :type-level (s/tuple :fhir.resource/type)
-             :instance-level :blaze.fhir/local-ref-tuple
+             :instance-level :blaze.fhir/literal-ref-tuple
              :other nil?))

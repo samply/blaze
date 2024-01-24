@@ -260,26 +260,74 @@
           [:issue 0 :expression first] := "Measure.library"))))
 
   (testing "measure with non-existing library"
-    (with-handler [handler]
-      [[[:put {:fhir/type :fhir/Measure :id "0"
-               :url #fhir/uri"url-181501"
-               :library [#fhir/canonical"library-url-094115"]}]]]
+    (testing "with URN canonical"
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Measure :id "0"
+                 :url #fhir/uri"url-181501"
+                 :library [#fhir/canonical"urn:uuid:98060091-4638-497d-ba99-7a0084ab17f6"]}]]]
 
-      (let [{:keys [status body]}
-            @(handler
-              {:params
-               {"measure" "url-181501"
-                "periodStart" "2014"
-                "periodEnd" "2015"}})]
+        (let [{:keys [status body]}
+              @(handler
+                {:params
+                 {"measure" "url-181501"
+                  "periodStart" "2014"
+                  "periodEnd" "2015"}})]
 
-        (is (= 400 status))
+          (is (= 400 status))
 
-        (given body
-          :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"value"
-          [:issue 0 :diagnostics] := "The Library resource with canonical URI `library-url-094115` was not found."
-          [:issue 0 :expression first] := "Measure.library"))))
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"value"
+            [:issue 0 :diagnostics] := "The Library resource with canonical URI `urn:uuid:98060091-4638-497d-ba99-7a0084ab17f6` was not found."
+            [:issue 0 :expression first] := "Measure.library"))))
+
+    (testing "with literal reference"
+      (testing "with non Library type"
+        (with-handler [handler]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]
+            [:put {:fhir/type :fhir/Measure :id "0"
+                   :url #fhir/uri"url-181501"
+                   :library [#fhir/canonical"Patient/0"]}]]]
+
+          (let [{:keys [status body]}
+                @(handler
+                  {:params
+                   {"measure" "url-181501"
+                    "periodStart" "2014"
+                    "periodEnd" "2015"}})]
+
+            (is (= 400 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"value"
+              [:issue 0 :diagnostics] := "The Library resource with canonical URI `Patient/0` was not found."
+              [:issue 0 :expression first] := "Measure.library"))))
+
+      (testing "with non existing id"
+        (with-handler [handler]
+          [[[:put {:fhir/type :fhir/Library :id "0"}]
+            [:put {:fhir/type :fhir/Measure :id "0"
+                   :url #fhir/uri"url-181501"
+                   :library [#fhir/canonical"Library/1"]}]]]
+
+          (let [{:keys [status body]}
+                @(handler
+                  {:params
+                   {"measure" "url-181501"
+                    "periodStart" "2014"
+                    "periodEnd" "2015"}})]
+
+            (is (= 400 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"value"
+              [:issue 0 :diagnostics] := "The Library resource with canonical URI `Library/1` was not found."
+              [:issue 0 :expression first] := "Measure.library"))))))
 
   (testing "missing content in library"
     (with-handler [handler]
@@ -361,56 +409,59 @@
     (testing "on type endpoint"
       (testing "as GET request"
         (testing "cohort scoring"
-          (with-handler [handler]
-            [[[:put
-               {:fhir/type :fhir/Measure :id "0"
-                :url #fhir/uri"url-181501"
-                :library [#fhir/canonical"library-url-094115"]
-                :scoring (scoring-concept "cohort")
-                :group
-                [{:fhir/type :fhir.Measure/group
-                  :population
-                  [{:fhir/type :fhir.Measure.group/population
-                    :code (population-concept "initial-population")
-                    :criteria (cql-expression "InInitialPopulation")}]}]}]
-              [:put
-               {:fhir/type :fhir/Library :id "0"
-                :url #fhir/uri"library-url-094115"
-                :content
-                [#fhir/Attachment
-                  {:contentType #fhir/code"text/cql"
-                   :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICBQYXRpZW50LmdlbmRlciA9ICdtYWxlJwo="}]}]
-              [:put
-               {:fhir/type :fhir/Patient
-                :id "0"
-                :gender #fhir/code"male"}]]]
+          (doseq [library-ref [#fhir/canonical"library-url-094115"
+                               #fhir/canonical"Library/0"
+                               #fhir/canonical"/Library/0"]]
+            (with-handler [handler]
+              [[[:put
+                 {:fhir/type :fhir/Measure :id "0"
+                  :url #fhir/uri"url-181501"
+                  :library [library-ref]
+                  :scoring (scoring-concept "cohort")
+                  :group
+                  [{:fhir/type :fhir.Measure/group
+                    :population
+                    [{:fhir/type :fhir.Measure.group/population
+                      :code (population-concept "initial-population")
+                      :criteria (cql-expression "InInitialPopulation")}]}]}]
+                [:put
+                 {:fhir/type :fhir/Library :id "0"
+                  :url #fhir/uri"library-url-094115"
+                  :content
+                  [#fhir/Attachment
+                    {:contentType #fhir/code"text/cql"
+                     :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICBQYXRpZW50LmdlbmRlciA9ICdtYWxlJwo="}]}]
+                [:put
+                 {:fhir/type :fhir/Patient
+                  :id "0"
+                  :gender #fhir/code"male"}]]]
 
-            (let [{:keys [status body]}
-                  @(handler
-                    {:request-method :get
-                     :params
-                     {"measure" "url-181501"
-                      "periodStart" "2014"
-                      "periodEnd" "2015"}})]
+              (let [{:keys [status body]}
+                    @(handler
+                      {:request-method :get
+                       :params
+                       {"measure" "url-181501"
+                        "periodStart" "2014"
+                        "periodEnd" "2015"}})]
 
-              (is (= 200 status))
+                (is (= 200 status))
 
-              (given body
-                :fhir/type := :fhir/MeasureReport
-                [:extension 0 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/eval-duration"
-                [:extension 0 :value :code] := #fhir/code"s"
-                [:extension 0 :value :system] := #fhir/uri"http://unitsofmeasure.org"
-                [:extension 0 :value :unit] := #fhir/string"s"
-                [:extension 0 :value :value] :instanceof BigDecimal
-                :status := #fhir/code"complete"
-                :type := #fhir/code"summary"
-                :measure := #fhir/canonical"url-181501"
-                :date := #fhir/dateTime"1970-01-01T00:00:00Z"
-                [:period :start] := #fhir/dateTime"2014"
-                [:period :end] := #fhir/dateTime"2015"
-                [:group 0 :population 0 :code :coding 0 :system] := measure-population-uri
-                [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
-                [:group 0 :population 0 :count] := 1))))
+                (given body
+                  :fhir/type := :fhir/MeasureReport
+                  [:extension 0 :url] := "https://samply.github.io/blaze/fhir/StructureDefinition/eval-duration"
+                  [:extension 0 :value :code] := #fhir/code"s"
+                  [:extension 0 :value :system] := #fhir/uri"http://unitsofmeasure.org"
+                  [:extension 0 :value :unit] := #fhir/string"s"
+                  [:extension 0 :value :value] :instanceof BigDecimal
+                  :status := #fhir/code"complete"
+                  :type := #fhir/code"summary"
+                  :measure := #fhir/canonical"url-181501"
+                  :date := #fhir/dateTime"1970-01-01T00:00:00Z"
+                  [:period :start] := #fhir/dateTime"2014"
+                  [:period :end] := #fhir/dateTime"2015"
+                  [:group 0 :population 0 :code :coding 0 :system] := measure-population-uri
+                  [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
+                  [:group 0 :population 0 :count] := 1)))))
 
         (testing "cohort scoring with stratifiers"
           (with-handler [handler]
