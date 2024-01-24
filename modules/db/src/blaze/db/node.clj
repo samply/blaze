@@ -108,17 +108,26 @@
    []
    clauses))
 
-(defn- type-priority [type]
+(defn- type-priority [{:keys [type]}]
   (case type
     "id" 0
     "token" 1
     2))
 
+(defn- priority
+  "Gives the single sorting search param the priority 0 and all other search
+  params a priority starting at 1 in order to keep the sorting search param at
+  the first position."
+  [[search-param modifier]]
+  (if (#{"asc" "desc"} modifier)
+    0
+    (inc (type-priority search-param))))
+
 (defn- order-clauses
   "Orders clauses by specificity so that the clause constraining the resources
   the most will come first."
   [clauses]
-  (sort-by (comp type-priority :type first) clauses))
+  (sort-by priority clauses))
 
 (defn- fix-last-updated [[[first-search-param first-modifier] :as clauses]]
   (if (and (= "_lastUpdated" (:code first-search-param))

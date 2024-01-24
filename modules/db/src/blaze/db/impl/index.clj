@@ -63,8 +63,7 @@
        (count
         (coll/eduction
          (other-clauses-filter context other-clauses)
-         (search-param/resource-handles
-          search-param context tid modifier values))))
+         (resource-handles search-param context tid modifier values))))
       (search-param/count-resource-handles
        search-param context tid modifier values))))
 
