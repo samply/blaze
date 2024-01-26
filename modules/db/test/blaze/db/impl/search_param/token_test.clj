@@ -59,6 +59,79 @@
                             (sr/get search-param-registry "_id" "Observation")
                             [] hash observation))))))
 
+    (testing "Observation _profile"
+      (let [observation
+            {:fhir/type :fhir/Observation :id "id-165627"
+             :meta #fhir/Meta{:profile [#fhir/canonical"uri-091902|2.3.9"]}}
+            hash (hash/generate observation)
+            [[_ k0] [_ k1] [_ k2] [_ k3] [_ k4] [_ k5] [_ k6] [_ k7]]
+            (index-entries (sr/get search-param-registry "_profile" "Observation")
+                           [] hash observation)]
+
+        (testing "first SearchParamValueResource key is about `url|version`"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k0))
+            :code := "_profile"
+            :type := "Observation"
+            :v-hash := (codec/v-hash "uri-091902|2.3.9")
+            :id := "id-165627"
+            :hash-prefix := (hash/prefix hash)))
+
+        (testing "first ResourceSearchParamValue key is about `url|version`"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k1))
+            :type := "Observation"
+            :id := "id-165627"
+            :hash-prefix := (hash/prefix hash)
+            :code := "_profile"
+            :v-hash := (codec/v-hash "uri-091902|2.3.9")))
+
+        (testing "second SearchParamValueResource key is about `url`"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k2))
+            :code := "_profile:below"
+            :type := "Observation"
+            :v-hash := (codec/v-hash "uri-091902")
+            :id := "id-165627"
+            :hash-prefix := (hash/prefix hash)))
+
+        (testing "second ResourceSearchParamValue key is about `url`"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k3))
+            :type := "Observation"
+            :id := "id-165627"
+            :hash-prefix := (hash/prefix hash)
+            :code := "_profile:below"
+            :v-hash := (codec/v-hash "uri-091902")))
+
+        (testing "third SearchParamValueResource key is about `url|major-version`"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k4))
+            :code := "_profile:below"
+            :type := "Observation"
+            :v-hash := (codec/v-hash "uri-091902|2")
+            :id := "id-165627"
+            :hash-prefix := (hash/prefix hash)))
+
+        (testing "third ResourceSearchParamValue key is about `url|major-version`"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k5))
+            :type := "Observation"
+            :id := "id-165627"
+            :hash-prefix := (hash/prefix hash)
+            :code := "_profile:below"
+            :v-hash := (codec/v-hash "uri-091902|2")))
+
+        (testing "fourth SearchParamValueResource key is about `url|major-version.minor-version`"
+          (given (sp-vr-tu/decode-key-human (bb/wrap k6))
+            :code := "_profile:below"
+            :type := "Observation"
+            :v-hash := (codec/v-hash "uri-091902|2.3")
+            :id := "id-165627"
+            :hash-prefix := (hash/prefix hash)))
+
+        (testing "fourth ResourceSearchParamValue key is about `url|major-version.minor-version`"
+          (given (r-sp-v-tu/decode-key-human (bb/wrap k7))
+            :type := "Observation"
+            :id := "id-165627"
+            :hash-prefix := (hash/prefix hash)
+            :code := "_profile:below"
+            :v-hash := (codec/v-hash "uri-091902|2.3")))))
+
     (testing "Observation code"
       (let [observation
             {:fhir/type :fhir/Observation

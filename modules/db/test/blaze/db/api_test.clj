@@ -2264,6 +2264,7 @@
   (testing "Observation"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Observation :id "id-0"
+               :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-091902"]}
                :status #fhir/code"final"
                :effective
                #fhir/Period
@@ -2276,6 +2277,7 @@
                  :code #fhir/code"kg/m2"
                  :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation :id "id-1"
+               :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-091902|1.1.0"]}
                :status #fhir/code"final"
                :effective #fhir/dateTime"2021-02-25"
                :value
@@ -2285,6 +2287,7 @@
                  :code #fhir/code"kg/m2"
                  :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation :id "id-2"
+               :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-091902|2.4.7"]}
                :status #fhir/code"final"
                :value
                #fhir/Quantity
@@ -2293,6 +2296,7 @@
                  :code #fhir/code"kg/m2"
                  :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation :id "id-3"
+               :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-091902|2.3.9"]}
                :status #fhir/code"final"
                :value
                #fhir/Quantity
@@ -2300,6 +2304,39 @@
                  :unit #fhir/string"kg/m²"
                  :code #fhir/code"kg/m2"
                  :system #fhir/uri"http://unitsofmeasure.org"}}]]]
+
+      (testing "_profile"
+        (testing "full URL and version matching without modifier"
+          (given (pull-type-query node "Observation" [["_profile" "profile-uri-091902"]])
+            count := 1
+            [0 :id] := "id-0")
+          (given (pull-type-query node "Observation" [["_profile" "profile-uri-091902|2.4.7"]])
+            count := 1
+            [0 :id] := "id-2"))
+
+        (testing "below with URL only"
+          (given (pull-type-query node "Observation" [["_profile:below" "profile-uri-091902"]])
+            count := 4
+            [0 :id] := "id-0"
+            [1 :id] := "id-1"
+            [2 :id] := "id-2"
+            [3 :id] := "id-3"))
+
+        (testing "below with URL and major version 1"
+          (given (pull-type-query node "Observation" [["_profile:below" "profile-uri-091902|1"]])
+            count := 1
+            [0 :id] := "id-1"))
+
+        (testing "below with URL and major version 2"
+          (given (pull-type-query node "Observation" [["_profile:below" "profile-uri-091902|2"]])
+            count := 2
+            [0 :id] := "id-2"
+            [1 :id] := "id-3"))
+
+        (testing "below with URL and minor version 2.4"
+          (given (pull-type-query node "Observation" [["_profile:below" "profile-uri-091902|2.4"]])
+            count := 1
+            [0 :id] := "id-2")))
 
       (testing "date"
         (testing "with year precision"

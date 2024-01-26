@@ -25,3 +25,7 @@
 (s/fdef u/soundex
   :args (s/cat :s string?)
   :ret (s/nilable string?))
+
+(s/fdef u/canonical-parts
+  :args (s/cat :canonical string?)
+  :ret (s/tuple string? (s/coll-of string?)))

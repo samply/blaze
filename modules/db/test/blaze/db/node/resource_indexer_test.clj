@@ -278,6 +278,7 @@
                 ["code" (codec/v-hash "code-204441")]
                 ["code" (codec/v-hash "system-204435|")]
                 ["code" (codec/v-hash "system-204435|code-204441")]
+                ["_profile:below" (codec/v-hash "url-164445")]
                 ["onset-date" (codec-date/encode-range #system/date-time"2020-01-30")]
                 ["subject" (codec/v-hash "Patient/id-145552")]
                 ["subject" (codec/tid-id
@@ -300,6 +301,7 @@
                 ["code" (codec/v-hash "code-204441")]
                 ["code" (codec/v-hash "system-204435|")]
                 ["code" (codec/v-hash "system-204435|code-204441")]
+                ["_profile:below" (codec/v-hash "url-164445")]
                 ["onset-date" (codec-date/encode-range #system/date-time"2020-01-30")]
                 ["subject" (codec/v-hash "Patient/id-145552")]
                 ["subject" (codec/tid-id
