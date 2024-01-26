@@ -125,3 +125,19 @@
     (try
       (.soundex soundex s)
       (catch IllegalArgumentException _))))
+
+(defn- version-parts [version]
+  (when-let [parts (seq (str/split version #"\."))]
+    (into [] (take 2) (reductions #(str %1 "." %2) parts))))
+
+(defn canonical-parts
+  "Takes a canonical URl with possible version after a `|` char and returns a
+  tuple of the URL part and a collection of at most two version parts.
+
+  That version parts are first the major version and second the major and minor
+  version separated by a period.
+
+  Example: \"url|1.2.3\" -> [\"url\" [\"1\" \"1.2\"]]"
+  [canonical]
+  (let [[url version] (str/split canonical #"\|")]
+    [(or url "") (some-> version version-parts)]))

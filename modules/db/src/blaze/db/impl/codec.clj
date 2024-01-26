@@ -252,6 +252,7 @@
    ["_id"
     "_lastUpdated"
     "_profile"
+    "_profile:below"
     "active"
     "address"
     "birthdate"

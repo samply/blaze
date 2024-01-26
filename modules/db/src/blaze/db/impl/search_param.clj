@@ -123,7 +123,7 @@
   `search-param` or an anomaly in case of errors."
   {:arglists '([search-param linked-compartments hash resource])}
   [{:keys [code c-hash] :as search-param} linked-compartments hash resource]
-  (when-ok [values (p/-index-values search-param stub-resolver resource)]
+  (when-ok [triples (p/-index-values search-param stub-resolver resource)]
     (let [{:keys [id]} resource
           type (name (fhir-spec/fhir-type resource))
           tid (codec/tid type)
@@ -153,4 +153,4 @@
              [(sp-vr/index-entry c-hash tid value id hash)
               (r-sp-v/index-entry tid id hash c-hash value)]
              linked-compartments))))
-       values))))
+       triples))))

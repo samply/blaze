@@ -21,7 +21,9 @@
 (set! *warn-on-reflection* true)
 
 (defmulti index-entries
-  "Returns index entries for `value` from a resource."
+  "Returns index entries for `value` from a resource.
+
+  Index entries are `[modifier value include-in-compartments?]` triples."
   {:arglists '([url value])}
   (fn [_ value] (fhir-spec/fhir-type value)))
 
@@ -48,7 +50,14 @@
 (defmethod index-entries :fhir/canonical
   [_ uri]
   (when-let [value (type/value uri)]
-    [[nil (codec/v-hash value)]]))
+    (let [[url version-parts] (u/canonical-parts value)]
+      (into
+       [[nil (codec/v-hash value)]
+        ["below" (codec/v-hash url)]]
+       (map
+        (fn [version-part]
+          ["below" (codec/v-hash (str url "|" version-part))]))
+       version-parts))))
 
 (defmethod index-entries :fhir/code
   [_ code]
