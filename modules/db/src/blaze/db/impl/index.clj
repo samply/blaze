@@ -8,15 +8,16 @@
    [blaze.db.impl.search-param :as search-param]
    [blaze.db.impl.search-param.util :as u]))
 
-(defn- other-clauses-filter [context clauses]
-  (filter
-   (fn [resource-handle]
-     (loop [[[search-param modifier _ values] & clauses] clauses]
-       (if search-param
-         (when (search-param/matches? search-param context resource-handle
-                                      modifier values)
-           (recur clauses))
-         true)))))
+(defn- other-clauses-filter
+  "Creates a filter xform for all `clauses` by possibly composing multiple
+  filter xforms for each clause."
+  [context clauses]
+  (transduce
+   (map
+    (fn [[search-param modifier _ values]]
+      (filter #(search-param/matches? search-param context % modifier values))))
+   comp
+   clauses))
 
 (defn- resource-handles
   ([search-param context tid modifier values]
