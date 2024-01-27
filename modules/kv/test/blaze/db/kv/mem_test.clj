@@ -46,9 +46,7 @@
   (byte-array bytes))
 
 (defn- bb [& bytes]
-  (-> (bb/allocate-direct (count bytes))
-      (bb/put-byte-array! (byte-array bytes))
-      bb/flip!))
+  (bb/wrap (byte-array bytes)))
 
 (deftest init-test
   (testing "nil config"
@@ -397,23 +395,23 @@
 
         (testing "errors on invalid iterator"
           (is (iterator-invalid-anom? (ba/try-anomaly (kv/key iter))))
-          (is (iterator-invalid-anom? (ba/try-anomaly (kv/key! iter (bb/allocate-direct 0))))))
+          (is (iterator-invalid-anom? (ba/try-anomaly (kv/key! iter (bb/allocate 0))))))
 
         (testing "puts the first byte into the buffer without overflowing"
           (kv/seek-to-first! iter)
-          (let [buf (bb/allocate-direct 1)]
+          (let [buf (bb/allocate 1)]
             (is (= 2 (kv/key! iter buf)))
             (is (= 0x01 (bb/get-byte! buf)))))
 
         (testing "sets the limit of a bigger buffer to two"
           (kv/seek-to-first! iter)
-          (let [buf (bb/allocate-direct 3)]
+          (let [buf (bb/allocate 3)]
             (is (= 2 (kv/key! iter buf)))
             (is (= 2 (bb/limit buf)))))
 
         (testing "writes the key at position"
           (kv/seek-to-first! iter)
-          (let [buf (bb/allocate-direct 3)]
+          (let [buf (bb/allocate 3)]
             (bb/set-position! buf 1)
             (is (= 2 (kv/key! iter buf)))
             (is (= 1 (bb/position buf)))
@@ -425,7 +423,7 @@
         (testing "errors on closed iterator"
           (close! iter)
           (is (iterator-closed-anom? (ba/try-anomaly (kv/key iter))))
-          (is (iterator-closed-anom? (ba/try-anomaly (kv/key! iter (bb/allocate-direct 0))))))))))
+          (is (iterator-closed-anom? (ba/try-anomaly (kv/key! iter (bb/allocate 0))))))))))
 
 (deftest value-test
   (with-system-data [{kv-store ::kv/mem} config]
@@ -437,23 +435,23 @@
 
         (testing "errors on invalid iterator"
           (is (iterator-invalid-anom? (ba/try-anomaly (kv/value iter))))
-          (is (iterator-invalid-anom? (ba/try-anomaly (kv/value! iter (bb/allocate-direct 0))))))
+          (is (iterator-invalid-anom? (ba/try-anomaly (kv/value! iter (bb/allocate 0))))))
 
         (testing "puts the first byte into the buffer without overflowing"
           (kv/seek-to-first! iter)
-          (let [buf (bb/allocate-direct 1)]
+          (let [buf (bb/allocate 1)]
             (is (= 2 (kv/value! iter buf)))
             (is (= 0x01 (bb/get-byte! buf)))))
 
         (testing "sets the limit of a bigger buffer to two"
           (kv/seek-to-first! iter)
-          (let [buf (bb/allocate-direct 3)]
+          (let [buf (bb/allocate 3)]
             (is (= 2 (kv/value! iter buf)))
             (is (= 2 (bb/limit buf)))))
 
         (testing "writes the value at position"
           (kv/seek-to-first! iter)
-          (let [buf (bb/allocate-direct 3)]
+          (let [buf (bb/allocate 3)]
             (bb/set-position! buf 1)
             (is (= 2 (kv/value! iter buf)))
             (is (= 1 (bb/position buf)))
@@ -465,7 +463,7 @@
         (testing "errors on closed iterator"
           (close! iter)
           (is (iterator-closed-anom? (ba/try-anomaly (kv/value iter))))
-          (is (iterator-closed-anom? (ba/try-anomaly (kv/value! iter (bb/allocate-direct 0))))))))))
+          (is (iterator-closed-anom? (ba/try-anomaly (kv/value! iter (bb/allocate 0))))))))))
 
 (deftest different-column-families-test
   (with-system-data [{kv-store ::kv/mem} a-b-config]

@@ -6,9 +6,6 @@
    [blaze.db.kv.spec]
    [clojure.spec.alpha :as s]))
 
-(defn- direct-buffer? [x]
-  (and (bb/byte-buffer? x) (bb/direct? x)))
-
 (s/fdef kv/valid?
   :args (s/cat :iter ::kv/iterator)
   :ret boolean?)
@@ -23,7 +20,7 @@
   :args (s/cat :iter ::kv/iterator :target bytes?))
 
 (s/fdef kv/seek-buffer!
-  :args (s/cat :iter ::kv/iterator :target direct-buffer?))
+  :args (s/cat :iter ::kv/iterator :target bb/byte-buffer?))
 
 (s/fdef kv/seek-for-prev!
   :args (s/cat :iter ::kv/iterator :target bytes?))
@@ -39,7 +36,7 @@
   :ret bytes?)
 
 (s/fdef kv/key!
-  :args (s/cat :iter ::kv/iterator :buf direct-buffer?)
+  :args (s/cat :iter ::kv/iterator :buf bb/byte-buffer?)
   :ret nat-int?)
 
 (s/fdef kv/value
@@ -47,7 +44,7 @@
   :ret bytes?)
 
 (s/fdef kv/value!
-  :args (s/cat :iter ::kv/iterator :buf direct-buffer?)
+  :args (s/cat :iter ::kv/iterator :buf bb/byte-buffer?)
   :ret nat-int?)
 
 (s/fdef kv/new-iterator

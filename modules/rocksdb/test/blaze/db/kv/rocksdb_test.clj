@@ -35,9 +35,7 @@
   (byte-array bytes))
 
 (defn- bb [& bytes]
-  (-> (bb/allocate-direct (count bytes))
-      (bb/put-byte-array! (byte-array bytes))
-      bb/flip!))
+  (bb/wrap (byte-array bytes)))
 
 (deftest init-test
   (testing "nil config"
@@ -444,19 +442,19 @@
 
       (testing "puts the first byte into the buffer without overflowing"
         (kv/seek-to-first! iter)
-        (let [buf (bb/allocate-direct 1)]
+        (let [buf (bb/allocate 1)]
           (is (= 2 (kv/key! iter buf)))
           (is (= 0x01 (bb/get-byte! buf)))))
 
       (testing "sets the limit of a bigger buffer to two"
         (kv/seek-to-first! iter)
-        (let [buf (bb/allocate-direct 3)]
+        (let [buf (bb/allocate 3)]
           (is (= 2 (kv/key! iter buf)))
           (is (= 2 (bb/limit buf)))))
 
       (testing "writes the key at position"
         (kv/seek-to-first! iter)
-        (let [buf (bb/allocate-direct 3)]
+        (let [buf (bb/allocate 3)]
           (bb/set-position! buf 1)
           (is (= 2 (kv/key! iter buf)))
           (is (= 1 (bb/position buf)))
@@ -474,19 +472,19 @@
 
       (testing "puts the first byte into the buffer without overflowing"
         (kv/seek-to-first! iter)
-        (let [buf (bb/allocate-direct 1)]
+        (let [buf (bb/allocate 1)]
           (is (= 2 (kv/value! iter buf)))
           (is (= 0x01 (bb/get-byte! buf)))))
 
       (testing "sets the limit of a bigger buffer to two"
         (kv/seek-to-first! iter)
-        (let [buf (bb/allocate-direct 3)]
+        (let [buf (bb/allocate 3)]
           (is (= 2 (kv/value! iter buf)))
           (is (= 2 (bb/limit buf)))))
 
       (testing "writes the value at position"
         (kv/seek-to-first! iter)
-        (let [buf (bb/allocate-direct 3)]
+        (let [buf (bb/allocate 3)]
           (bb/set-position! buf 1)
           (is (= 2 (kv/value! iter buf)))
           (is (= 1 (bb/position buf)))

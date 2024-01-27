@@ -29,11 +29,6 @@
   [capacity]
   (ByteBuffer/allocate capacity))
 
-(defn allocate-direct
-  {:inline (fn [capacity] `(ByteBuffer/allocateDirect ~capacity))}
-  [capacity]
-  (ByteBuffer/allocateDirect capacity))
-
 (defn wrap
   {:inline (fn [byte-array] `(ByteBuffer/wrap ~byte-array))}
   [byte-array]

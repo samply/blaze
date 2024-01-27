@@ -83,11 +83,11 @@
   "Puts the key of current entry of `iter` in `buf`.
 
   Uses the position of `buf` and sets the limit of `buf` according to the key
-  size. Supports direct buffers only.
+  size.
 
   Returns the size of the actual key. If the key is greater than the length of
   `buf`, then it indicates that the size of the `buf` is insufficient and a
-  partial result is put."
+  partial result was returned."
   [iter buf]
   (p/-key iter buf))
 
@@ -102,11 +102,11 @@
   "Puts the value of current entry of `iter` in `buf`.
 
   Uses the position of `buf` and sets the limit of `buf` according to the value
-  size. Supports direct buffers only.
+  size.
 
   Returns the size of the actual value. If the value is greater than the length
   of `buf`, then it indicates that the size of the `buf` is insufficient and a
-  partial result is put."
+  partial result was returned."
   [iter buf]
   (p/-value iter buf))
 
