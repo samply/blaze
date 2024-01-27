@@ -10,6 +10,12 @@
    [blaze.db.kv-spec]
    [clojure.spec.alpha :as s]))
 
+(s/fdef i/contains-key-prefix?
+  :args (s/cat :snapshot :blaze.db.kv/snapshot
+               :column-family (s/? keyword?)
+               :key-prefix byte-string?)
+  :ret boolean?)
+
 (s/fdef i/seek-key
   :args (s/and (s/cat :snapshot :blaze.db.kv/snapshot
                       :column-family (s/? keyword?) :decode fn?

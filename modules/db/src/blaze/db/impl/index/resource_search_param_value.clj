@@ -63,6 +63,15 @@
                  (+ (- (bs/size target) (bs/size value)) (long value-prefix-length))
                  target))))
 
+(defn value-prefix-exists?
+  "Returns true iff a key encoded from `resource-handle`, `c-hash` and
+  `value-prefix` exists."
+  {:arglists '([snapshot resource-handle c-hash value-prefix])}
+  [snapshot {:keys [tid id hash]} c-hash value-prefix]
+  (let [id (codec/id-byte-string id)
+        target (encode-key tid id hash c-hash value-prefix)]
+    (i/contains-key-prefix? snapshot :resource-value-index target)))
+
 (defn next-value-prev
   "Returns the decoded value of the key that is at or before the key encoded
   from `resource-handle`, `c-hash`, `value` and with `value-prefix-length` bytes
