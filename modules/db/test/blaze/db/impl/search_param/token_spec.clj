@@ -18,9 +18,3 @@
                :tid :blaze.db/tid
                :value byte-string?
                :start-id (s/? :blaze.db/id-byte-string)))
-
-(s/fdef spt/matches?
-  :args (s/cat :snapshot :blaze.db.kv/snapshot
-               :c-hash :blaze.db/c-hash
-               :resource-handle :blaze.db/resource-handle
-               :value byte-string?))

@@ -3,6 +3,7 @@
    [blaze.anomaly :refer [when-ok]]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
+   [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.composite.common :as cc]
    [blaze.db.impl.search-param.token :as spt]
@@ -34,7 +35,7 @@
      (spt/resource-keys context c-hash tid value)))
 
   (-matches? [_ context resource-handle _ values]
-    (some? (some (partial spt/matches? (:snapshot context) c-hash resource-handle) values)))
+    (some (partial r-sp-v/value-prefix-exists? (:snapshot context) resource-handle c-hash) values))
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]

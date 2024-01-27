@@ -75,9 +75,6 @@
      (sp-vr/prefix-keys snapshot c-hash tid (bs/size start-value) start-value
                         start-id))))
 
-(defn- matches? [snapshot c-hash resource-handle value]
-  (some? (r-sp-v/next-value snapshot resource-handle c-hash (bs/size value) value)))
-
 (defrecord SearchParamString [name type base code c-hash expression normalize]
   p/SearchParam
   (-compile-value [_ _ value]
@@ -99,7 +96,7 @@
      (resource-keys context c-hash tid value)))
 
   (-matches? [_ context resource-handle _ values]
-    (some? (some (partial matches? (:snapshot context) c-hash resource-handle) values)))
+    (some (partial r-sp-v/value-prefix-exists? (:snapshot context) resource-handle c-hash) values))
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

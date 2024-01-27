@@ -17,6 +17,18 @@
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
+(defn contains-key-prefix?
+  "Returns true iff a key with `key-prefix` exists in `column-family`."
+  [snapshot column-family key-prefix]
+  (with-open [iter (kv/new-iterator snapshot column-family)]
+    (let [target (bs/to-byte-array key-prefix)]
+      (kv/seek! iter target)
+      (when (kv/valid? iter)
+        (let [target-buf (bb/wrap target)
+              key-buf (bb/allocate (bs/size key-prefix))]
+          (kv/key! iter key-buf)
+          (= key-buf target-buf))))))
+
 (defn- prefix-matches? [target prefix-length buf]
   (let [prefix-buf (bb/allocate prefix-length)]
     (bb/put-byte-string! prefix-buf (bs/subs target 0 prefix-length))

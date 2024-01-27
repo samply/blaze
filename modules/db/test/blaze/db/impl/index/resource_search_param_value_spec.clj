@@ -15,6 +15,13 @@
                                   :value byte-string?)))
   :ret (s/nilable byte-string?))
 
+(s/fdef r-sp-v/value-prefix-exists?
+  :args (s/cat :snapshot :blaze.db.kv/snapshot
+               :resource-handle :blaze.db/resource-handle
+               :c-hash :blaze.db/c-hash
+               :value-prefix byte-string?)
+  :ret boolean?)
+
 (s/fdef r-sp-v/next-value-prev
   :args (s/cat :snapshot :blaze.db.kv/snapshot
                :resource-handle :blaze.db/resource-handle
