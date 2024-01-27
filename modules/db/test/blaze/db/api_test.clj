@@ -2672,7 +2672,15 @@
             count := 4)
 
           (testing "count query"
-            (is (= 4 (count-type-query node "Observation" clauses))))))))
+            (is (= 4 (count-type-query node "Observation" clauses))))))
+
+      (testing "three clauses"
+        (given (pull-type-query node "Observation" [["_profile:below" "profile-uri-091902"]
+                                                    ["status" "final"]
+                                                    ["date" "2021"]])
+          count := 2
+          [0 :id] := "id-0"
+          [1 :id] := "id-1"))))
 
   (testing "Observation"
     (with-system-data [{:blaze.db/keys [node]} config]
