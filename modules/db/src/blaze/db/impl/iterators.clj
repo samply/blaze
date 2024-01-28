@@ -89,20 +89,6 @@
         (when (prefix-matches? target prefix-length key-buf)
           (decode (bb/wrap (kv/value iter))))))))
 
-(defn seek-kv
-  "Returns the first decoded key and value of `column-family` were the key is at
-  or past `target` with at least `prefix-length` bytes matching.
-
-  The `decode` function has to accept a ByteBuffer and decode it into a value
-  which will be returned."
-  [snapshot column-family decode prefix-length target]
-  (with-open [iter (kv/new-iterator snapshot column-family)]
-    (kv/seek! iter (bs/to-byte-array target))
-    (when (kv/valid? iter)
-      (let [key-buf (bb/wrap (kv/key iter))]
-        (when (prefix-matches? target prefix-length key-buf)
-          (decode key-buf (bb/wrap (kv/value iter))))))))
-
 (defn- reduce-iter! [iter advance-fn rf init]
   (loop [ret init]
     (if (kv/valid? iter)

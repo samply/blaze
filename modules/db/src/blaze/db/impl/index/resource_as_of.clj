@@ -6,7 +6,9 @@
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-handle :as rh]
-   [blaze.db.impl.iterators :as i])
+   [blaze.db.impl.iterators :as i]
+   [blaze.db.kv :as kv]
+   [blaze.fhir.hash :as hash])
   (:import
    [com.google.common.primitives Ints]))
 
@@ -15,6 +17,9 @@
 
 (def ^:private ^:const ^long except-id-key-size
   (+ codec/tid-size codec/t-size))
+
+(def ^:const ^long value-size
+  (+ hash/size codec/state-size))
 
 (defn- focus-id!
   "Reduces the limit of `kb` in order to hide the t and focus on id solely."
@@ -327,14 +332,6 @@
     (take-while (instance-history-key-valid? tid (codec/id-string id) end-t)))
    (i/entries snapshot :resource-as-of-index (start-key tid id start-t))))
 
-(defn- resource-handle-decoder [tid id prefix-length]
-  (fn [kb vb]
-    (rh/resource-handle!
-     tid
-     (codec/id-string id)
-     (codec/descending-long (bb/get-long! kb prefix-length))
-     vb)))
-
 (defn resource-handle
   "Returns a function which can be called with a `tid`, an `id` and an optional
   `t` which will lookup the resource handle in `snapshot`.
@@ -345,10 +342,31 @@
     ([tid id]
      (resource-handle tid id t))
     ([tid id t]
-     (let [prefix-length (+ codec/tid-size (bs/size id))]
-       (i/seek-kv snapshot :resource-as-of-index
-                  (resource-handle-decoder tid id prefix-length) prefix-length
-                  (bs/from-byte-buffer! (bb/flip! (encode-key-buf tid id t))))))))
+     (let [tid-id-size (+ codec/tid-size (bs/size id))
+           key-size (+ tid-id-size codec/t-size)
+           target-buf (bb/flip! (encode-key-buf tid id t))
+           key-buf (bb/allocate key-size)]
+       (with-open [iter (kv/new-iterator snapshot :resource-as-of-index)]
+         (kv/seek-buffer! iter target-buf)
+         (when (kv/valid? iter)
+           (kv/key! iter key-buf)
+           ;; we have to check that we are still on target, because otherwise we
+           ;; would find the next resource
+           ;; focus target buffer on tid and id
+           (bb/rewind! target-buf)
+           (bb/set-limit! target-buf tid-id-size)
+           ;; focus key buffer on tid and id
+           (bb/set-limit! key-buf tid-id-size)
+           (when (= target-buf key-buf)
+             ;; focus key buffer on t
+             (bb/set-limit! key-buf key-size)
+             (let [value-buf (bb/allocate value-size)]
+               (kv/value! iter value-buf)
+               (rh/resource-handle!
+                tid
+                (codec/id-string id)
+                (codec/descending-long (bb/get-long! key-buf tid-id-size))
+                value-buf)))))))))
 
 (defn num-of-instance-changes
   "Returns the number of changes between `start-t` (inclusive) and `end-t`
