@@ -100,11 +100,17 @@
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-execute-query batch-db query arg1)))
 
+  ;; ---- History Functions ---------------------------------------------------
+
+  (-stop-history-at [_ instant]
+    (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
+      (p/-stop-history-at batch-db instant)))
+
   ;; ---- Instance-Level History Functions ------------------------------------
 
-  (-instance-history [_ tid id start-t since]
+  (-instance-history [_ tid id start-t]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
-      (p/-instance-history batch-db tid id start-t since)))
+      (p/-instance-history batch-db tid id start-t)))
 
   (-total-num-of-instance-changes [_ tid id since]
     (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
@@ -112,9 +118,9 @@
 
   ;; ---- Type-Level History Functions ----------------------------------------
 
-  (-type-history [_ tid start-t start-id since]
+  (-type-history [_ tid start-t start-id]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
-      (p/-type-history batch-db tid start-t start-id since)))
+      (p/-type-history batch-db tid start-t start-id)))
 
   (-total-num-of-type-changes [_ type since]
     (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
@@ -122,9 +128,9 @@
 
   ;; ---- System-Level History Functions --------------------------------------
 
-  (-system-history [_ start-t start-tid start-id since]
+  (-system-history [_ start-t start-tid start-id]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
-      (p/-system-history batch-db start-t start-tid start-id since)))
+      (p/-system-history batch-db start-t start-tid start-id)))
 
   (-total-num-of-system-changes [_ since]
     (with-open [batch-db (batch-db/new-batch-db node basis-t t)]

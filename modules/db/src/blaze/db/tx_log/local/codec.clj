@@ -1,7 +1,6 @@
 (ns blaze.db.tx-log.local.codec
   (:require
    [blaze.byte-buffer :as bb]
-   [blaze.db.impl.iterators :as i]
    [blaze.fhir.hash :as hash]
    [jsonista.core :as j]
    [taoensso.timbre :as log])
@@ -46,10 +45,8 @@
   (when (int? x)
     (Instant/ofEpochMilli x)))
 
-(defn decode-tx-data [entry]
-  (let [kb (i/key entry)
-        t (bb/get-long! kb)
-        vb (i/value entry)
+(defn decode-tx-data [[kb vb]]
+  (let [t (bb/get-long! kb)
         size (bb/remaining vb)
         value (byte-array size)]
     (bb/copy-into-byte-array! vb value 0 size)

@@ -288,6 +288,16 @@
   [query]
   (p/-clauses query))
 
+;; ---- History Functions -----------------------------------------------------
+
+(defn stop-history-at
+  "Returns a transducer that stops reducing a collection of history entries at
+  `instant`.
+
+  Can be used with `instance-history`, `type-history` and `system-history`."
+  [db instant]
+  (p/-stop-history-at db instant))
+
 ;; ---- Instance-Level History Functions --------------------------------------
 
 (defn instance-history
@@ -295,19 +305,13 @@
   `type` and `id` starting as-of `db` in reverse chronological order.
 
   The history optionally starts at `start-t` which defaults to the `t` of `db`.
-  Additionally, a `since` instant can be given to define a point in the past
-  where the history should start into the present.
 
   History entries are resource handles. Please use `pull-many` to obtain the
   full resources."
   ([db type id]
-   (p/-instance-history db (codec/tid type) (codec/id-byte-string id) nil nil))
+   (p/-instance-history db (codec/tid type) (codec/id-byte-string id) nil))
   ([db type id start-t]
-   (p/-instance-history db (codec/tid type) (codec/id-byte-string id) start-t
-                        nil))
-  ([db type id start-t since]
-   (p/-instance-history db (codec/tid type) (codec/id-byte-string id) start-t
-                        since)))
+   (p/-instance-history db (codec/tid type) (codec/id-byte-string id) start-t)))
 
 (defn total-num-of-instance-changes
   "Returns the total number of changes (versions) of the resource with the given
@@ -329,21 +333,16 @@
   `type` starting as-of `db` in reverse chronological order.
 
   The history optionally starts at `start-t` which defaults to the `t` of `db`.
-  Additionally, a `since` instant can be given to define a point in the past
-  where the history should start into the present.
 
   History entries are resource handles. Please use `pull-many` to obtain the
   full resources."
   ([db type]
-   (p/-type-history db (codec/tid type) nil nil nil))
+   (p/-type-history db (codec/tid type) nil nil))
   ([db type start-t]
-   (p/-type-history db (codec/tid type) start-t nil nil))
+   (p/-type-history db (codec/tid type) start-t nil))
   ([db type start-t start-id]
    (p/-type-history db (codec/tid type) start-t
-                    (some-> start-id codec/id-byte-string) nil))
-  ([db type start-t start-id since]
-   (p/-type-history db (codec/tid type) start-t
-                    (some-> start-id codec/id-byte-string) since)))
+                    (some-> start-id codec/id-byte-string))))
 
 (defn total-num-of-type-changes
   "Returns the total number of changes (versions) of resources with the given
@@ -363,23 +362,18 @@
   `db` in reverse chronological order.
 
   The history optionally starts at `start-t` which defaults to the `t` of `db`.
-  Additionally, a `since` instant can be given to define a point in the past
-  where the history should start into the present.
 
   History entries are resource handles. Please use `pull-many` to obtain the
   full resources."
   ([db]
-   (p/-system-history db nil nil nil nil))
+   (p/-system-history db nil nil nil))
   ([db start-t]
-   (p/-system-history db start-t nil nil nil))
+   (p/-system-history db start-t nil nil))
   ([db start-t start-type]
-   (p/-system-history db start-t (some-> start-type codec/tid) nil nil))
+   (p/-system-history db start-t (some-> start-type codec/tid) nil))
   ([db start-t start-type start-id]
    (p/-system-history db start-t (some-> start-type codec/tid)
-                      (some-> start-id codec/id-byte-string) nil))
-  ([db start-t start-type start-id since]
-   (p/-system-history db start-t (some-> start-type codec/tid)
-                      (some-> start-id codec/id-byte-string) since)))
+                      (some-> start-id codec/id-byte-string))))
 
 (defn total-num-of-system-changes
   "Returns the total number of changes (versions) of resources starting as-of

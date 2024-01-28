@@ -1,7 +1,6 @@
 (ns blaze.db.tx-log.local.codec-spec
   (:require
-   [blaze.db.impl.iterators :as-alias i]
-   [blaze.db.impl.iterators.spec]
+   [blaze.byte-buffer :refer [byte-buffer?]]
    [blaze.db.tx-log.local.codec :as codec]
    [blaze.db.tx-log.spec]
    [clojure.spec.alpha :as s]))
@@ -15,4 +14,4 @@
   :ret bytes?)
 
 (s/fdef codec/decode-tx-data
-  :args (s/cat :entry ::i/entry))
+  :args (s/cat :buffers (s/tuple byte-buffer? byte-buffer?)))

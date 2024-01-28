@@ -6,8 +6,10 @@
   https://www.hl7.org/fhir/http.html#ops"
   (:require
    [blaze.async.comp :as ac]
+   [blaze.db.api :as d]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.resource-store :as rs]
+   [blaze.db.tx-log :as-alias tx-log]
    [blaze.fhir.test-util :refer [link-url]]
    [blaze.interaction.history.system]
    [blaze.interaction.history.util-spec]
@@ -26,6 +28,7 @@
   (:import
    [java.time Instant]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-level! :trace)
 
@@ -76,6 +79,10 @@
           :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
          :blaze.test/fixed-rng-fn {}))
 
+(def system-clock-config
+  (-> (assoc config :blaze.test/system-clock {})
+      (assoc-in [::tx-log/local :clock] (ig/ref :blaze.test/system-clock))))
+
 (defn wrap-defaults [handler]
   (fn [request]
     (handler
@@ -107,7 +114,8 @@
         (testing "the bundle id is an LUID"
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
-        (is (= #fhir/code"history" (:type body)))
+        (testing "the bundle type is history"
+          (is (= #fhir/code"history" (:type body))))
 
         (is (= #fhir/unsignedInt 0 (:total body)))
 
@@ -128,7 +136,8 @@
         (testing "the bundle id is an LUID"
           (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
-        (is (= #fhir/code"history" (:type body)))
+        (testing "the bundle type is history"
+          (is (= #fhir/code"history" (:type body))))
 
         (is (= #fhir/unsignedInt 1 (:total body)))
 
@@ -221,6 +230,29 @@
           (testing "is shows the first version"
             (given (-> body :entry first)
               [:resource :id] := "0"))))))
+
+  (testing "with two versions, using since"
+    (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [system-clock]
+                        handler :blaze.interaction.history/system}
+                       system-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]]
+
+      (Thread/sleep 2000)
+      (let [since (Instant/now system-clock)
+            _ (Thread/sleep 2000)
+            _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
+                                        :gender #fhir/code"female"}]])
+            handler (-> handler wrap-defaults (wrap-db node 100) wrap-error)
+            {:keys [body]}
+            @(handler
+              {:query-params {"_since" (str since)}})]
+
+        (testing "the total count is one"
+          (is (= #fhir/unsignedInt 1 (:total body))))
+
+        (testing "it shows the second version"
+          (given (-> body :entry first)
+            [:resource :gender] := #fhir/code"female")))))
 
   (testing "missing resource contents"
     (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]

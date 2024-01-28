@@ -72,7 +72,7 @@
      id-groups)))
 
 (defn- resource-handle-counter
-  "Returns a transformer that takes `[id hash-prefix]` tuples, groups them by
+  "Returns a transducer that takes `[id hash-prefix]` tuples, groups them by
   id, partitions them and returns futures of the count of the found resource
   handles in each partition."
   [context tid]
