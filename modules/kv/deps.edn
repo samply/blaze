@@ -1,4 +1,6 @@
-{:deps
+{:paths ["src" "target/classes"]
+
+ :deps
  {blaze/byte-buffer
   {:local/root "../byte-buffer"}
 
@@ -11,8 +13,19 @@
   blaze/module-base
   {:local/root "../module-base"}}
 
+ :deps/prep-lib
+ {:alias :build
+  :fn compile
+  :ensure "target/classes"}
+
  :aliases
- {:test
+ {:build
+  {:deps
+   {io.github.clojure/tools.build
+    {:git/tag "v0.9.5" :git/sha "24f2894"}}
+   :ns-default build}
+
+  :test
   {:extra-paths ["test"]
 
    :extra-deps
