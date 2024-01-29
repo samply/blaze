@@ -14,7 +14,7 @@
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
-   [blaze.db.kv.iter_pool PooledIterator PoolingSnapshot]
+   [blaze.db.kv.iter_pool PooledIterator PoolingSnapshot State]
    [java.lang AutoCloseable]
    [java.util.concurrent Executors]))
 
@@ -51,7 +51,7 @@
   (->Snapshot (atom {:closed false})))
 
 (defn- curr-state [pooling-snapshot]
-  @(.-pool ^PoolingSnapshot pooling-snapshot))
+  (.-pool ^PoolingSnapshot pooling-snapshot))
 
 (defn- orig-iter [pooled-iterator]
   (.-iter ^PooledIterator pooled-iterator))
@@ -71,6 +71,15 @@
 (defn- iterator-closed-anom? [anom]
   (and (ba/fault? anom) (= "The iterator is closed." (::anom/message anom))))
 
+(defn- output [state]
+  (.output ^State state))
+
+(defn- borrowed [state]
+  (.borrowed ^State state))
+
+(defn- returned [state]
+  (.returned ^State state))
+
 (deftest new-iterator-test
   (testing "borrowing and closing one iterator"
     (let [snapshot (ip/pooling-snapshot (snapshot))
@@ -79,9 +88,9 @@
       (testing "snapshot state after borrowing an iterator"
         (given (curr-state snapshot)
           count := 1
-          [:a :output] := (orig-iter pooled-iter)
-          [:a :borrowed] := nil
-          [:a :returned] := nil))
+          [:a output] := (orig-iter pooled-iter)
+          [:a borrowed] := [(orig-iter pooled-iter)]
+          [:a returned] := []))
 
       (testing "original iterator column family"
         (is (= :a (curr-orig-iter-column-family pooled-iter))))
@@ -97,9 +106,9 @@
       (testing "snapshot state after closing the pooled iterator"
         (given (curr-state snapshot)
           count := 1
-          [:a :output] := nil
-          [:a :borrowed] := nil
-          [:a :returned] := (list (orig-iter pooled-iter))))
+          [:a output] := nil
+          [:a borrowed] := []
+          [:a returned] := [(orig-iter pooled-iter)]))
 
       (testing "original iterator isn't closed after closing the pooled iterator"
         (is (false? (orig-iter-closed? pooled-iter))))
@@ -108,6 +117,54 @@
 
       (testing "original iterator is closed after closing the snapshot"
         (is (true? (orig-iter-closed? pooled-iter))))
+
+      (testing "original snapshot is closed after closing the snapshot"
+        (given (curr-orig-snapshot-state snapshot)
+          :closed := true))))
+
+  (testing "borrowing and closing two iterators"
+    (let [snapshot (ip/pooling-snapshot (snapshot))
+          pooled-iter-1 (p/-new-iterator snapshot :a)
+          pooled-iter-2 (p/-new-iterator snapshot :a)]
+
+      (testing "snapshot state after borrowing two iterators"
+        (given (curr-state snapshot)
+          count := 1
+          [:a output] := (orig-iter pooled-iter-2)
+          [:a borrowed] := [(orig-iter pooled-iter-1) (orig-iter pooled-iter-2)]
+          [:a returned] := []))
+
+      (testing "original iterators column family"
+        (is (= :a (curr-orig-iter-column-family pooled-iter-1)))
+        (is (= :a (curr-orig-iter-column-family pooled-iter-2))))
+
+      (testing "iterators can be used"
+        (is (false? (kv/valid? pooled-iter-1)))
+        (is (false? (kv/valid? pooled-iter-2))))
+
+      (close pooled-iter-1)
+      (close pooled-iter-2)
+
+      (testing "errors on closed iterator"
+        (is (iterator-closed-anom? (ba/try-anomaly (kv/valid? pooled-iter-1))))
+        (is (iterator-closed-anom? (ba/try-anomaly (kv/valid? pooled-iter-2)))))
+
+      (testing "snapshot state after closing the pooled iterators"
+        (given (curr-state snapshot)
+          count := 1
+          [:a output] := nil
+          [:a borrowed] := []
+          [:a returned] := [(orig-iter pooled-iter-1) (orig-iter pooled-iter-2)]))
+
+      (testing "original iterators aren't closed after closing the pooled iterator"
+        (is (false? (orig-iter-closed? pooled-iter-1)))
+        (is (false? (orig-iter-closed? pooled-iter-2))))
+
+      (close snapshot)
+
+      (testing "original iterators are closed after closing the snapshot"
+        (is (true? (orig-iter-closed? pooled-iter-1)))
+        (is (true? (orig-iter-closed? pooled-iter-2))))
 
       (testing "original snapshot is closed after closing the snapshot"
         (given (curr-orig-snapshot-state snapshot)
@@ -141,12 +198,12 @@
       (testing "snapshot state after borrowing both iterators"
         (given (curr-state snapshot)
           count := 2
-          [:a :output] := (orig-iter pooled-iter-2)
-          [:a :borrowed] := (list (orig-iter pooled-iter-1))
-          [:a :returned] := nil
-          [:b :output] := nil
-          [:b :borrowed] := (list (orig-iter pooled-iter-3))
-          [:b :returned] := (list (orig-iter pooled-iter-4))))
+          [:a output] := (orig-iter pooled-iter-2)
+          [:a borrowed] := [(orig-iter pooled-iter-1) (orig-iter pooled-iter-2)]
+          [:a returned] := []
+          [:b output] := nil
+          [:b borrowed] := [(orig-iter pooled-iter-3)]
+          [:b returned] := [(orig-iter pooled-iter-4)]))
 
       (testing "original iterators column families"
         (is (= :a (curr-orig-iter-column-family pooled-iter-1)))
@@ -177,9 +234,9 @@
         (testing "snapshot state after borrowing an iterator"
           (given (curr-state snapshot)
             count := 1
-            [:a :output] := (orig-iter pooled-iter)
-            [:a :borrowed] := nil
-            [:a :returned] := nil))
+            [:a output] := (orig-iter pooled-iter)
+            [:a borrowed] := [(orig-iter pooled-iter)]
+            [:a returned] := []))
 
         (testing "original iterator column family"
           (is (= :a (curr-orig-iter-column-family pooled-iter))))
@@ -198,12 +255,12 @@
         (testing "snapshot state after borrowing an iterator"
           (given (curr-state snapshot)
             count := 2
-            [:a :output] := nil
-            [:a :borrowed] := nil
-            [:a :returned] := (list (orig-iter pooled-iter-a))
-            [:b :output] := (orig-iter pooled-iter-b)
-            [:b :borrowed] := nil
-            [:b :returned] := nil))
+            [:a output] := nil
+            [:a borrowed] := []
+            [:a returned] := [(orig-iter pooled-iter-a)]
+            [:b output] := (orig-iter pooled-iter-b)
+            [:b borrowed] := [(orig-iter pooled-iter-b)]
+            [:b returned] := []))
 
         (testing "original iterator column family"
           (is (= :b (curr-orig-iter-column-family pooled-iter-b))))
@@ -222,7 +279,7 @@
                            (Thread/sleep (long (rand-int 10)))
                            (close iter))
                         executor))
-                     (flatten (repeat 100000 [:a :b :c])))]
+                     (flatten (repeat 10000 [:a :b :c])))]
 
         ;; wait on all futures
         @(ac/all-of futures)
@@ -230,20 +287,40 @@
         (testing "snapshot state"
           (given (curr-state snapshot)
             count := 3
-            [:a :output] := nil
-            [:a :borrowed] := '()
-            [:a :returned count #(<= % 100)] := true
-            [:b :output] := nil
-            [:b :borrowed] := '()
-            [:b :returned count #(<= % 100)] := true
-            [:c :output] := nil
-            [:c :borrowed] := '()
-            [:c :returned count #(<= % 100)] := true))))))
+            [:a output] := nil
+            [:a borrowed] := []
+            [:a returned count #(<= % 100)] := true
+            [:b output] := nil
+            [:b borrowed] := []
+            [:b returned count #(<= % 100)] := true
+            [:c output] := nil
+            [:c borrowed] := []
+            [:c returned count #(<= % 100)] := true))))))
 
 (comment
   (require '[criterium.core :refer [bench quick-bench]])
   (st/unstrument)
 
-  ;; 120 ns for one borrow/return
+  ;; 38 ns
   (with-open [snapshot (ip/pooling-snapshot (snapshot))]
-    (quick-bench (close (p/-new-iterator snapshot :a)))))
+    (quick-bench (close (p/-new-iterator snapshot :a))))
+
+  ;; 74 ns
+  (with-open [snapshot (ip/pooling-snapshot (snapshot))]
+    (quick-bench
+     (let [i1 (p/-new-iterator snapshot :a)
+           i2 (p/-new-iterator snapshot :a)]
+       (close i1)
+       (close i2))))
+
+  ;; 150 ns
+  (with-open [snapshot (ip/pooling-snapshot (snapshot))]
+    (quick-bench
+     (let [i1 (p/-new-iterator snapshot :a)
+           i2 (p/-new-iterator snapshot :a)
+           i3 (p/-new-iterator snapshot :a)
+           i4 (p/-new-iterator snapshot :a)]
+       (close i1)
+       (close i2)
+       (close i3)
+       (close i4)))))
