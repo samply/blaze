@@ -42,12 +42,12 @@
 
   (-resource-handles [_ context tid _ list-id]
     (when-let [{:keys [hash]} (u/non-deleted-resource-handle
-                               (:resource-handle context) list-tid list-id)]
+                               context list-tid list-id)]
       (referenced-resource-handles context list-id hash tid)))
 
   (-resource-handles [_ context tid _ list-id start-id]
     (when-let [{:keys [hash]} (u/non-deleted-resource-handle
-                               (:resource-handle context) list-tid list-id)]
+                               context list-tid list-id)]
       (referenced-resource-handles context list-id hash tid start-id)))
 
   (-count-resource-handles [search-param context tid modifier list-id]

@@ -9,13 +9,17 @@
    [blaze.db.kv :as kv]
    [blaze.fhir.hash :as hash])
   (:import
-   [com.google.common.primitives Ints]))
+   [com.google.common.primitives Ints]
+   [java.lang AutoCloseable]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
 (def ^:private ^:const ^long except-id-key-size
   (+ codec/tid-size codec/t-size))
+
+(def ^:private ^:const ^long max-key-size
+  (+ except-id-key-size codec/max-id-size))
 
 (def ^:const ^long value-size
   (+ hash/size codec/state-size))
@@ -301,45 +305,94 @@
                       (decoder tid (codec/id-string id) tid-id-size)
                       tid-id-size (start-key tid id start-t))))
 
-(defn resource-handle
-  "Returns a function which can be called with a `tid`, an `id` and an optional
-  `t` which will lookup the resource handle in `snapshot`.
+(defn- resource-handle* [iter target-buf key-buf tid id t]
+  (let [tid-id-size (+ codec/tid-size (bs/size id))
+        key-size (+ tid-id-size codec/t-size)]
+    (bb/clear! target-buf)
+    (bb/put-int! target-buf tid)
+    (bb/put-byte-string! target-buf id)
+    (bb/put-long! target-buf (codec/descending-long t))
+    (bb/flip! target-buf)
+    (kv/seek-buffer! iter target-buf)
+    (when (kv/valid? iter)
+      (kv/key! iter key-buf)
+      ;; we have to check that we are still on target, because otherwise we
+      ;; would find the next resource
+      ;; focus target buffer on tid and id
+      (bb/rewind! target-buf)
+      (bb/set-limit! target-buf tid-id-size)
+      ;; focus key buffer on tid and id
+      (bb/set-limit! key-buf tid-id-size)
+      (when (= target-buf key-buf)
+        ;; focus key buffer on t
+        (bb/set-limit! key-buf key-size)
+        (let [value-buf (bb/allocate value-size)]
+          (kv/value! iter value-buf)
+          (rh/resource-handle!
+           tid
+           (codec/id-string id)
+           (codec/descending-long (bb/get-long! key-buf tid-id-size))
+           value-buf))))))
 
-  The `t` is the default if `t` isn't given at the returned function."
+(defn resource-handle
+  "Returns the resource handle with `tid` and `id` at `t` in `snapshot` when
+  found."
+  [snapshot tid id t]
+  (let [target-buf (bb/allocate max-key-size)
+        key-buf (bb/allocate max-key-size)]
+    (with-open [iter (kv/new-iterator snapshot :resource-as-of-index)]
+      (resource-handle* iter target-buf key-buf tid id t))))
+
+(defn- closer [iter]
+  (fn [rf]
+    (fn
+      ([] (rf))
+      ([result]
+       (.close ^AutoCloseable iter)
+       (rf result))
+      ([result input]
+       (rf result input)))))
+
+(defn resource-handle-xf
+  "Returns a stateful transducer that receives `[tid id]` tuples and emits
+  resource handles when found in `snapshot` at `t`.
+
+  Can only be used by a single thread."
   [snapshot t]
-  (fn resource-handle
-    ([tid id]
-     (resource-handle tid id t))
-    ([tid id t]
-     (let [tid-id-size (+ codec/tid-size (bs/size id))
-           key-size (+ tid-id-size codec/t-size)
-           target-buf (bb/flip! (encode-key-buf tid id t))
-           key-buf (bb/allocate key-size)]
-       (with-open [iter (kv/new-iterator snapshot :resource-as-of-index)]
-         (kv/seek-buffer! iter target-buf)
-         (when (kv/valid? iter)
-           (kv/key! iter key-buf)
-           ;; we have to check that we are still on target, because otherwise we
-           ;; would find the next resource
-           ;; focus target buffer on tid and id
-           (bb/rewind! target-buf)
-           (bb/set-limit! target-buf tid-id-size)
-           ;; focus key buffer on tid and id
-           (bb/set-limit! key-buf tid-id-size)
-           (when (= target-buf key-buf)
-             ;; focus key buffer on t
-             (bb/set-limit! key-buf key-size)
-             (let [value-buf (bb/allocate value-size)]
-               (kv/value! iter value-buf)
-               (rh/resource-handle!
-                tid
-                (codec/id-string id)
-                (codec/descending-long (bb/get-long! key-buf tid-id-size))
-                value-buf)))))))))
+  (let [target-buf (bb/allocate max-key-size)
+        key-buf (bb/allocate max-key-size)
+        iter (kv/new-iterator snapshot :resource-as-of-index)]
+    (comp
+     (keep
+      (fn [[tid id]]
+        (resource-handle* iter target-buf key-buf tid id t)))
+     (closer iter))))
+
+(defn resource-handle-type-xf
+  "Returns a stateful transducer that receives input and emits resource handles
+  when found.
+
+  The input depends
+
+  Can only be used by a single thread."
+  ([snapshot t tid]
+   (resource-handle-type-xf snapshot t tid identity (fn [_ _] true)))
+  ([snapshot t tid id-extractor matcher]
+   (let [target-buf (bb/allocate max-key-size)
+         key-buf (bb/allocate max-key-size)
+         iter (kv/new-iterator snapshot :resource-as-of-index)]
+     (comp
+      (keep
+       (fn [input]
+         (when-let [handle (resource-handle* iter target-buf key-buf tid
+                                             (id-extractor input) t)]
+           (when (matcher input handle)
+             handle))))
+      (closer iter)))))
 
 (defn num-of-instance-changes
   "Returns the number of changes between `start-t` (inclusive) and `end-t`
-  (inclusive) of the resource with `tid` and `id`."
-  [resource-handle tid id start-t end-t]
-  (- (long (:num-changes (resource-handle tid id start-t) 0))
-     (long (:num-changes (resource-handle tid id end-t) 0))))
+  (inclusive) of the resource with `tid` and `id` in `snapshot`."
+  [snapshot tid id start-t end-t]
+  (- (long (:num-changes (resource-handle snapshot tid id start-t) 0))
+     (long (:num-changes (resource-handle snapshot tid id end-t) 0))))

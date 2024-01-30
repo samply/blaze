@@ -5,7 +5,6 @@
    [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec-spec]
    [blaze.db.impl.index.resource-as-of :as rao]
-   [blaze.db.impl.index.resource-as-of.spec]
    [blaze.db.impl.index.resource-handle-spec]
    [blaze.db.impl.iterators-spec]
    [blaze.db.kv :as-alias kv]
@@ -38,11 +37,27 @@
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef rao/resource-handle
-  :args (s/cat :snapshot ::kv/snapshot :t :blaze.db/t)
-  :ret ::rao/resource-handle)
+  :args (s/cat :snapshot ::kv/snapshot
+               :tid :blaze.db/tid
+               :id :blaze.db/id-byte-string
+               :t :blaze.db/t)
+  :ret (s/nilable :blaze.db/resource-handle))
+
+(s/fdef rao/resource-handle-xf
+  :args (s/cat :snapshot ::kv/snapshot
+               :t :blaze.db/t)
+  :ret fn?)
+
+(s/fdef rao/resource-handle-type-xf
+  :args (s/cat :snapshot ::kv/snapshot
+               :t :blaze.db/t
+               :tid :blaze.db/tid
+               :id-extractor (s/? fn?)
+               :matcher (s/? fn?))
+  :ret fn?)
 
 (s/fdef rao/num-of-instance-changes
-  :args (s/cat :resource-handle ::rao/resource-handle
+  :args (s/cat :snapshot ::kv/snapshot
                :tid :blaze.db/tid
                :id :blaze.db/id-byte-string
                :start-t :blaze.db/t

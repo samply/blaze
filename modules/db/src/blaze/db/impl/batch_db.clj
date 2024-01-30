@@ -60,7 +60,7 @@
     (map :code))
    (sr/list-by-type search-param-registry type)))
 
-(defrecord BatchDb [node snapshot resource-handle basis-t t]
+(defrecord BatchDb [node snapshot basis-t t]
   p/Db
   (-node [_]
     node)
@@ -71,7 +71,7 @@
   ;; ---- Instance-Level Functions --------------------------------------------
 
   (-resource-handle [_ tid id]
-    (resource-handle tid id))
+    (rao/resource-handle snapshot tid id t))
 
   ;; ---- Type-Level Functions ------------------------------------------------
 
@@ -130,7 +130,7 @@
 
   (-total-num-of-instance-changes [_ tid id since]
     (let [end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
-      (rao/num-of-instance-changes resource-handle tid id t end-t)))
+      (rao/num-of-instance-changes snapshot tid id t end-t)))
 
   ;; ---- Type-Level History Functions ----------------------------------------
 
@@ -310,4 +310,4 @@
   ^AutoCloseable
   [{:keys [kv-store] :as node} basis-t t]
   (let [snapshot (kv/new-snapshot kv-store)]
-    (->BatchDb node snapshot (rao/resource-handle snapshot t) basis-t t)))
+    (->BatchDb node snapshot basis-t t)))

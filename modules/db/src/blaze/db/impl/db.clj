@@ -3,7 +3,6 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.impl.batch-db :as batch-db]
-   [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.system-stats :as system-stats]
    [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
@@ -44,8 +43,8 @@
   ;; ---- Instance-Level Functions --------------------------------------------
 
   (-resource-handle [_ tid id]
-    (with-open [snapshot (kv/new-snapshot kv-store)]
-      ((rao/resource-handle snapshot t) tid id)))
+    (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
+      (p/-resource-handle batch-db tid id)))
 
   ;; ---- Type-Level Functions ------------------------------------------------
 

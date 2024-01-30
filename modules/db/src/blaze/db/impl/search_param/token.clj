@@ -196,16 +196,14 @@
     (codec/id-byte-string value))
 
   (-resource-handles [_ context tid _ value]
-    (some-> (u/non-deleted-resource-handle (:resource-handle context) tid value)
-            vector))
+    (some-> (u/non-deleted-resource-handle context tid value) vector))
 
   (-resource-handles [sp context tid modifier value start-id]
     (when (= value start-id)
       (p/-resource-handles sp context tid modifier value)))
 
   (-count-resource-handles [_ context tid _ value]
-    (-> (if (u/non-deleted-resource-handle (:resource-handle context) tid value)
-          1 0)
+    (-> (if (u/non-deleted-resource-handle context tid value) 1 0)
         (ac/completed-future)))
 
   (-sorted-resource-handles [_ context tid _]

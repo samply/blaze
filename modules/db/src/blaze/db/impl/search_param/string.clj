@@ -4,6 +4,7 @@
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [blaze.db.impl.protocols :as p]
@@ -60,8 +61,8 @@
   "Returns the value of the resource with `tid` and `id` according to the
   search parameter with `c-hash`."
   {:arglists '([context c-hash tid id])}
-  [{:keys [snapshot resource-handle]} c-hash tid id]
-  (r-sp-v/next-value snapshot (resource-handle tid id) c-hash))
+  [{:keys [snapshot t]} c-hash tid id]
+  (r-sp-v/next-value snapshot (rao/resource-handle snapshot tid id t) c-hash))
 
 (defn- resource-keys
   "Returns a reducible collection of `[id hash-prefix]` tuples starting at

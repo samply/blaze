@@ -5,6 +5,7 @@
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.spec :as fhir-spec]
@@ -34,8 +35,8 @@
   "Transducer which groups `[id hash-prefix]` tuples by `id`."
   (partition-by (fn [[id]] id)))
 
-(defn non-deleted-resource-handle [resource-handle tid id]
-  (when-let [handle (resource-handle tid id)]
+(defn non-deleted-resource-handle [{:keys [snapshot t]} tid id]
+  (when-let [handle (rao/resource-handle snapshot tid id t)]
     (when-not (rh/deleted? handle)
       handle)))
 
@@ -43,12 +44,10 @@
   (let [hash-prefix (hash/prefix (rh/hash resource-handle))]
     (fn [tuple] (= (long (coll/nth tuple 1)) hash-prefix))))
 
-(defn- resource-handle-mapper* [{:keys [resource-handle]} tid]
-  (keep
-   (fn [[[id] :as tuples]]
-     (when-let [handle (resource-handle tid id)]
-       (when (coll/some (contains-hash-prefix-pred handle) tuples)
-         handle)))))
+(defn- resource-handle-xf [{:keys [snapshot t]} tid]
+  (rao/resource-handle-type-xf
+   snapshot t tid (fn [[[id]]] id)
+   (fn [tuples handle] (coll/some (contains-hash-prefix-pred handle) tuples))))
 
 (defn resource-handle-mapper
   "Transducer which groups `[id hash-prefix]` tuples by `id` and maps them to
@@ -57,31 +56,26 @@
   [context tid]
   (comp
    by-id-grouper
-   (resource-handle-mapper* context tid)))
+   (resource-handle-xf context tid)))
 
-(defn- id-groups-counter [{:keys [resource-handle]} tid]
-  (fn [id-groups]
-    (reduce
-     (fn [sum [[id] :as tuples]]
-       (if-let [handle (resource-handle tid id)]
-         (cond-> sum
-           (some (contains-hash-prefix-pred handle) tuples)
-           inc)
-         sum))
-     0
-     id-groups)))
+(defn- id-groups-counter [context tid]
+  (partial
+   transduce
+   (comp
+    (resource-handle-xf context tid)
+    (map (fn [_] 1)))
+   +))
 
 (defn- resource-handle-counter
   "Returns a transducer that takes `[id hash-prefix]` tuples, groups them by
   id, partitions them and returns futures of the count of the found resource
   handles in each partition."
   [context tid]
-  (let [id-groups-counter (id-groups-counter context tid)]
-    (comp by-id-grouper
-          (partition-all 1000)
-          (map
-           (fn [id-groups]
-             (ac/supply-async #(id-groups-counter id-groups)))))))
+  (comp by-id-grouper
+        (partition-all 1000)
+        (map
+         (fn [id-groups]
+           (ac/supply-async #((id-groups-counter context tid) id-groups))))))
 
 (defn count-resource-handles [context tid resource-keys]
   (let [futures (into [] (resource-handle-counter context tid) resource-keys)]
@@ -96,16 +90,14 @@
   "Returns a transducer that filters all upstream byte-string values for
   reference tid-id values, returning the non-deleted resource handles of the
   referenced resources."
-  {:arglists '([context])}
-  [{:keys [resource-handle]}]
+  [{:keys [snapshot t]}]
   (comp
    ;; there has to be at least some bytes for the id
    (filter #(< codec/tid-size (bs/size %)))
    (map bs/as-read-only-byte-buffer)
-   (keep
-    #(let [tid (bb/get-int! %)
-           id (bs/from-byte-buffer! %)]
-       (non-deleted-resource-handle resource-handle tid id)))))
+   (map (fn [buf] [(bb/get-int! buf) (bs/from-byte-buffer! buf)]))
+   (rao/resource-handle-xf snapshot t)
+   (remove rh/deleted?)))
 
 (defn invalid-decimal-value-msg [code value]
   (format "Invalid decimal value `%s` in search parameter `%s`." value code))
