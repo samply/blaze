@@ -16,6 +16,5 @@
   :args (s/cat :snapshot :blaze.db.kv/snapshot
                :start-t :blaze.db/t
                :start-tid (s/nilable :blaze.db/tid)
-               :start-id (s/nilable :blaze.db/id-byte-string)
-               :end-t :blaze.db/t)
+               :start-id (s/nilable :blaze.db/id-byte-string))
   :ret (cs/coll-of :blaze.db/resource-handle))

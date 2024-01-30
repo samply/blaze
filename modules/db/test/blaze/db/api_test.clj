@@ -855,8 +855,8 @@
   (when-ok [query (d/compile-type-query node type clauses)]
     @(d/count-query (d/db node) query)))
 
-(defn- with-system-clock [system]
-  (assoc-in system [::tx-log/local :clock] (ig/ref :blaze.test/system-clock)))
+(def system-clock-config
+  (assoc-in config [::tx-log/local :clock] (ig/ref :blaze.test/system-clock)))
 
 (deftest type-query-test
   (with-system [{:blaze.db/keys [node]} config]
@@ -1203,7 +1203,7 @@
 
   (testing "special case of _lastUpdated date search parameter"
     (testing "inequality searches do return every resource only once"
-      (with-system-data [{:blaze.db/keys [node]} (with-system-clock config)]
+      (with-system-data [{:blaze.db/keys [node]} system-clock-config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]
          [[:put {:fhir/type :fhir/Patient :id "1"}]]]
 
@@ -4969,12 +4969,13 @@
             [1 :meta :versionId] := #fhir/id"1"
             [1 meta :blaze.db/op] := :put)))))
 
-  (testing "a node with two versions"
+  (testing "a node with one patient with two versions and another patient"
     (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]]
        [[:put {:fhir/type :fhir/Patient :id "0" :active false}]]]
 
-      (testing "has two history entries"
+      (testing "the first patient has two history entries"
         (is (= 2 (d/total-num-of-instance-changes (d/db node) "Patient" "0"))))
 
       (testing "contains both versions in reverse transaction order"
@@ -4990,6 +4991,25 @@
 
       (testing "overshooting the start-t returns an empty collection"
         (is (coll/empty? (d/instance-history (d/db node) "Patient" "0" 0))))))
+
+  (testing "using since"
+    (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [system-clock]}
+                       system-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (Thread/sleep 2000)
+      (let [since (Instant/now system-clock)
+            _ (Thread/sleep 2000)
+            db @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
+                                         :active true}]])]
+
+        (testing "has one history entry"
+          (is (= 1 (d/total-num-of-instance-changes db "Patient" "0" since))))
+
+        (testing "contains the patient"
+          (given (into [] (d/stop-history-at db since) (d/instance-history db "Patient" "0"))
+            count := 1
+            [0 :id] := "0")))))
 
   (testing "the database is immutable"
     (testing "while updating a patient"
@@ -5102,6 +5122,24 @@
         (given @(d/pull-many node (d/type-history (d/db node) "Patient" 1 "1"))
           count := 1
           [0 :id] := "1"))))
+
+  (testing "using since"
+    (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [system-clock]}
+                       system-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (Thread/sleep 2000)
+      (let [since (Instant/now system-clock)
+            _ (Thread/sleep 2000)
+            db @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])]
+
+        (testing "has one history entry"
+          (is (= 1 (d/total-num-of-type-changes db "Patient" since))))
+
+        (testing "contains the patient"
+          (given (into [] (d/stop-history-at db since) (d/type-history db "Patient"))
+            count := 1
+            [0 :id] := "1")))))
 
   (testing "the database is immutable"
     (testing "while updating a patient"
@@ -5243,6 +5281,24 @@
         (given @(d/pull-many node (d/system-history (d/db node) 1 "Patient" "1"))
           count := 1
           [0 :id] := "1"))))
+
+  (testing "using since"
+    (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [system-clock]}
+                       system-clock-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (Thread/sleep 2000)
+      (let [since (Instant/now system-clock)
+            _ (Thread/sleep 2000)
+            db @(d/transact node [[:put {:fhir/type :fhir/Patient :id "1"}]])]
+
+        (testing "has one history entry"
+          (is (= 1 (d/total-num-of-system-changes db since))))
+
+        (testing "contains the patient"
+          (given (into [] (d/stop-history-at db since) (d/system-history db))
+            count := 1
+            [0 :id] := "1")))))
 
   (testing "the database is immutable"
     (testing "while updating a patient"

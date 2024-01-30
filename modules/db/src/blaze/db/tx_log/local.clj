@@ -41,14 +41,13 @@
 
 (def ^:private ^:const max-poll-size 50)
 
-(def ^:private batch-decoder
-  (comp (map codec/decode-tx-data) (take max-poll-size)))
-
 (defn- tx-data [kv-store offset]
   (log/trace "fetch tx-data from storage offset =" offset)
   (with-open [snapshot (kv/new-snapshot kv-store)]
-    (let [key (bs/from-byte-array (codec/encode-key offset))]
-      (into [] batch-decoder (i/entries snapshot :default key)))))
+    (let [start-key (bs/from-byte-array (codec/encode-key offset))
+          tx-data (i/entries snapshot :default (map codec/decode-tx-data)
+                             start-key)]
+      (into [] (take max-poll-size) tx-data))))
 
 (defn- poll! [^BlockingQueue queue timeout]
   (log/trace "poll in-memory queue with timeout =" timeout)

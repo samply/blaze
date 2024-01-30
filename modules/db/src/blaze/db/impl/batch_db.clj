@@ -114,12 +114,19 @@
   (-execute-query [db query arg1]
     (p/-execute query db arg1))
 
+  ;; ---- History Functions ---------------------------------------------------
+
+  (-stop-history-at [_ instant]
+    (let [t (t-by-instant/t-by-instant snapshot instant)]
+      (take-while
+       (fn [resource-handle]
+         (< t (rh/t resource-handle))))))
+
   ;; ---- Instance-Level History Functions ------------------------------------
 
-  (-instance-history [_ tid id start-t since]
-    (let [start-t (if (some-> start-t (<= t)) start-t t)
-          end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
-      (rao/instance-history snapshot tid id start-t end-t)))
+  (-instance-history [_ tid id start-t]
+    (let [start-t (if (some-> start-t (<= t)) start-t t)]
+      (rao/instance-history snapshot tid id start-t)))
 
   (-total-num-of-instance-changes [_ tid id since]
     (let [end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
@@ -127,10 +134,9 @@
 
   ;; ---- Type-Level History Functions ----------------------------------------
 
-  (-type-history [_ tid start-t start-id since]
-    (let [start-t (if (some-> start-t (<= t)) start-t t)
-          end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
-      (tao/type-history snapshot tid start-t start-id end-t)))
+  (-type-history [_ tid start-t start-id]
+    (let [start-t (if (some-> start-t (<= t)) start-t t)]
+      (tao/type-history snapshot tid start-t start-id)))
 
   (-total-num-of-type-changes [_ type since]
     (let [tid (codec/tid type)
@@ -140,10 +146,9 @@
 
   ;; ---- System-Level History Functions --------------------------------------
 
-  (-system-history [_ start-t start-tid start-id since]
-    (let [start-t (if (some-> start-t (<= t)) start-t t)
-          end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
-      (sao/system-history snapshot start-t start-tid start-id end-t)))
+  (-system-history [_ start-t start-tid start-id]
+    (let [start-t (if (some-> start-t (<= t)) start-t t)]
+      (sao/system-history snapshot start-t start-tid start-id)))
 
   (-total-num-of-system-changes [_ since]
     (let [end-t (some->> since (t-by-instant/t-by-instant snapshot))]
