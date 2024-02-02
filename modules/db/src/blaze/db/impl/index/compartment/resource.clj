@@ -6,6 +6,7 @@
    [blaze.coll.core :as coll]
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.iterators :as i]))
 
@@ -27,13 +28,10 @@
     (bb/set-position! buf (+ (bb/position buf) id-size 1 codec/tid-size))
     (bs/from-byte-buffer! buf)))
 
-(def ^:private remove-deleted-xf
-  (remove rh/deleted?))
-
-(defn- resource-handles-xf [resource-handle tid]
+(defn- resource-handle-xf [snapshot t tid]
   (comp
-   (keep (partial resource-handle tid))
-   remove-deleted-xf))
+   (rao/resource-handle-type-xf snapshot t tid)
+   (remove rh/deleted?)))
 
 (defn- encode-seek-key
   "Encodes the key without the id used for seeking to the start of scans."
@@ -73,15 +71,15 @@
   {:arglists
    '([context compartment tid]
      [context compartment tid start-id])}
-  ([{:keys [snapshot resource-handle]} compartment tid]
+  ([{:keys [snapshot t]} compartment tid]
    (let [seek-key (encode-seek-key compartment tid)]
      (coll/eduction
-      (resource-handles-xf resource-handle tid)
+      (resource-handle-xf snapshot t tid)
       (i/prefix-keys snapshot :compartment-resource-type-index decode-key!
                      (bs/size seek-key) seek-key))))
-  ([{:keys [snapshot resource-handle]} compartment tid start-id]
+  ([{:keys [snapshot t]} compartment tid start-id]
    (coll/eduction
-    (resource-handles-xf resource-handle tid)
+    (resource-handle-xf snapshot t tid)
     (i/prefix-keys snapshot :compartment-resource-type-index decode-key!
                    (key-prefix-size (coll/nth compartment 1))
                    (encode-key compartment tid start-id)))))
