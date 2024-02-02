@@ -15,6 +15,8 @@
 
   (-seek-for-prev [iter target])
 
+  (-seek-for-prev-buffer [iter target])
+
   (-next [iter])
 
   (-prev [iter])

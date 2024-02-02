@@ -6,6 +6,7 @@
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.iterators :as i]
+   [blaze.db.kv :as kv]
    [blaze.fhir.hash :as hash]))
 
 (set! *warn-on-reflection* true)
@@ -23,13 +24,17 @@
 (defn- key-size ^long [id]
   (+ codec/tid-size 1 (bs/size id) hash/prefix-size codec/c-hash-size))
 
-(defn- encode-key-buf-1 [size tid id hash c-hash]
-  (-> (bb/allocate size)
+(defn- encode-key-buf-1! [buf tid id hash c-hash]
+  (-> buf
       (bb/put-int! tid)
       (bb/put-byte-string! id)
       (bb/put-byte! 0)
       (hash/prefix-into-byte-buffer! (hash/prefix hash))
       (bb/put-int! c-hash)))
+
+(defn- encode-key-buf-1 [size tid id hash c-hash]
+  (-> (bb/allocate size)
+      (encode-key-buf-1! tid id hash c-hash)))
 
 (defn- encode-key-buf
   ([tid id hash c-hash]
@@ -63,27 +68,67 @@
                  (+ (- (bs/size target) (bs/size value)) (long value-prefix-length))
                  target))))
 
-(defn value-prefix-exists?
-  "Returns true iff a key encoded from `resource-handle`, `c-hash` and
-  `value-prefix` exists."
-  {:arglists '([snapshot resource-handle c-hash value-prefix])}
-  [snapshot {:keys [tid id hash]} c-hash value-prefix]
-  (let [id (codec/id-byte-string id)
-        target (encode-key tid id hash c-hash value-prefix)]
-    (i/contains-key-prefix? snapshot :resource-value-index target)))
+(defn value-filter
+  "Returns a stateful transducer that filters resource handles depending on
+  having one of the `values` match via `matches?`."
+  ([snapshot encode matches? values]
+   (i/seek-key-filter
+    snapshot
+    :resource-value-index
+    (fn [_] kv/seek-buffer!)
+    (i/target-length-matcher
+     (fn [key-buf _ value]
+       (matches? (decode-value key-buf) value)))
+    encode
+    values))
+  ([snapshot seek encode matches? value-prefix-length values]
+   (i/seek-key-filter
+    snapshot
+    :resource-value-index
+    seek
+    (i/prefix-length-matcher
+     (fn [{:keys [id]}]
+       (+ (key-size (codec/id-byte-string id)) (long value-prefix-length)))
+     (fn [key-buf _ value]
+       (matches? (decode-value key-buf) value)))
+    encode
+    values)))
 
-(defn next-value-prev
-  "Returns the decoded value of the key that is at or before the key encoded
-  from `resource-handle`, `c-hash`, `value` and with `value-prefix-length` bytes
-  of value matching."
-  {:arglists '([snapshot resource-handle c-hash value-prefix-length value])}
-  [snapshot {:keys [tid id hash]} c-hash value-prefix-length value]
-  (let [id (codec/id-byte-string id)
-        target (encode-key tid id hash c-hash value)]
-    (i/seek-key-prev snapshot :resource-value-index
-                     decode-value
-                     (+ (- (bs/size target) (bs/size value)) (long value-prefix-length))
-                     target)))
+(defn- ensure-size [target-buf size]
+  (if (< (bb/capacity target-buf) (long size))
+    (bb/allocate (max (long size) (bit-shift-left (bb/capacity target-buf) 1)))
+    target-buf))
+
+(defn resource-search-param-encoder
+  "Returns an encoder that can be used with `value-filter` that will encode the
+  resource handle and search param with `c-hash`."
+  [c-hash]
+  (fn [target-buf {:keys [tid id hash]} _]
+    (let [id (codec/id-byte-string id)
+          target-buf (ensure-size target-buf (key-size id))]
+      (encode-key-buf-1! target-buf tid id hash c-hash))))
+
+(defn resource-search-param-value-encoder
+  "Returns an encoder that can be used with `value-filter` that will encode the
+  resource handle, search param with `c-hash` and value it gets."
+  [c-hash]
+  (fn [target-buf {:keys [tid id hash]} value]
+    (let [id (codec/id-byte-string id)
+          target-buf (ensure-size target-buf (+ (key-size id) (bs/size value)))]
+      (encode-key-buf-1! target-buf tid id hash c-hash)
+      (bb/put-byte-string! target-buf value))))
+
+(defn value-prefix-filter
+  "Returns a stateful transducer that filters resource handles depending on
+  having one of the `value-prefixes` on search param with `c-hash`."
+  [snapshot c-hash value-prefixes]
+  (i/seek-key-filter
+   snapshot
+   :resource-value-index
+   (fn [_] kv/seek-buffer!)
+   (i/target-length-matcher (fn [_ _ _] true))
+   (resource-search-param-value-encoder c-hash)
+   value-prefixes))
 
 (defn prefix-keys
   "Returns a reducible collection of decoded values from keys starting at

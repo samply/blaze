@@ -163,6 +163,7 @@
   (.mark ^ByteBuffer byte-buffer))
 
 (defn reset!
+  "Resets the position of `byte-buffer` to the previously marked position."
   {:inline
    (fn [byte-buffer]
      `(.reset ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}

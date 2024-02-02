@@ -78,8 +78,8 @@
      context tid
      (spq/resource-keys context c-hash tid 0 value)))
 
-  (-matches? [_ context resource-handle _ values]
-    (some? (some (partial spq/matches? (:snapshot context) c-hash resource-handle 0) values)))
+  (-matcher [_ context _ values]
+    (spq/matcher context c-hash 0 values))
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

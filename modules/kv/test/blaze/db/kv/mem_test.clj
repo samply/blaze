@@ -321,6 +321,47 @@
           (close! iter)
           (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-for-prev! iter (ba 0x00))))))))))
 
+(deftest seek-for-prev-buffer-test
+  (with-system-data [{kv-store ::kv/mem} config]
+    [[:default (ba 0x01) (ba 0x10)]
+     [:default (ba 0x03) (ba 0x30)]]
+
+    (doseq [new-snapshot [kv/new-snapshot p/-new-snapshot]]
+      (with-open [^AutoCloseable snapshot (new-snapshot kv-store)
+                  iter (kv/new-iterator snapshot :default)]
+
+        (testing "past second entry"
+          (kv/seek-for-prev-buffer! iter (bb 0x04))
+          (is (kv/valid? iter))
+          (is (bytes= (ba 0x03) (kv/key iter)))
+          (is (bytes= (ba 0x30) (kv/value iter))))
+
+        (testing "at second entry"
+          (kv/seek-for-prev-buffer! iter (bb 0x03))
+          (is (kv/valid? iter))
+          (is (bytes= (ba 0x03) (kv/key iter)))
+          (is (bytes= (ba 0x30) (kv/value iter))))
+
+        (testing "past first entry"
+          (kv/seek-for-prev-buffer! iter (bb 0x02))
+          (is (kv/valid? iter))
+          (is (bytes= (ba 0x01) (kv/key iter)))
+          (is (bytes= (ba 0x10) (kv/value iter))))
+
+        (testing "at first entry"
+          (kv/seek-for-prev-buffer! iter (bb 0x01))
+          (is (kv/valid? iter))
+          (is (bytes= (ba 0x01) (kv/key iter)))
+          (is (bytes= (ba 0x10) (kv/value iter))))
+
+        (testing "overshoot"
+          (kv/seek-for-prev-buffer! iter (bb 0x00))
+          (is (not (kv/valid? iter))))
+
+        (testing "errors on closed iterator"
+          (close! iter)
+          (is (iterator-closed-anom? (ba/try-anomaly (kv/seek-for-prev-buffer! iter (bb 0x00))))))))))
+
 (deftest next-test
   (with-system-data [{kv-store ::kv/mem} config]
     [[:default (ba 0x01) (ba 0x10)]

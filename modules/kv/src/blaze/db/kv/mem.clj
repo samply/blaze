@@ -75,6 +75,11 @@
     (let [[x & xs] (rsubseq db <= k)]
       (reset! cursor {:first x :rest xs})))
 
+  (-seek-for-prev-buffer [iter kb]
+    (let [k (byte-array (bb/remaining kb))]
+      (bb/copy-into-byte-array! kb k)
+      (p/-seek-for-prev iter k)))
+
   (-next [iter]
     (check-valid iter)
     (swap! cursor (fn [{[x & xs] :rest}] {:first x :rest xs})))

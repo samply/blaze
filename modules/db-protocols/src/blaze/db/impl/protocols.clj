@@ -96,7 +96,7 @@
     "Returns a CompletableFuture that will complete with the count of the
     matching resource handles.")
   (-compartment-keys [search-param context compartment tid compiled-value])
-  (-matches? [search-param context resource-handle modifier compiled-values])
+  (-matcher [_ context modifier values])
   (-compartment-ids [_ resolver resource])
   (-index-values [_ resolver resource])
   (-index-value-compiler [_]))

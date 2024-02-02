@@ -64,7 +64,7 @@
     (do-sync [resource (pull db type id)]
       (response resource))))
 
-(defn- wrap-invalid-id-vid [handler]
+(defn- wrap-invalid-id [handler]
   (fn [{{:keys [id]} :path-params :as request}]
     (cond
       (not (re-matches #"[A-Za-z0-9\-\.]{1,64}" id))
@@ -79,4 +79,4 @@
 
 (defmethod ig/init-key :blaze.interaction/read [_ _]
   (log/info "Init FHIR read interaction handler")
-  (wrap-invalid-id-vid handler))
+  (wrap-invalid-id handler))

@@ -22,7 +22,7 @@
     search-param
     (ba/not-found (search-param-not-found-msg code type) :http/status 400)))
 
-(defrecord ChainedSearchParam [search-param ref-search-param ref-tid ref-modifier code]
+(defrecord ChainedSearchParam [search-param ref-search-param ref-c-hash ref-tid ref-modifier code]
   p/SearchParam
   (-compile-value [_ modifier value]
     (p/-compile-value search-param modifier value))
@@ -44,17 +44,21 @@
     (ac/completed-future
      (count (p/-resource-handles this context tid modifier compiled-value))))
 
-  (-matches? [_ context resource-handle modifier compiled-values]
-    (coll/some
-     #(p/-matches? search-param context % modifier compiled-values)
-     (index/targets context resource-handle
-                    (codec/c-hash (:code ref-search-param)) ref-tid))))
+  (-matcher [_ context modifier values]
+    (filter
+     (fn [resource-handle]
+       (transduce
+        (p/-matcher search-param context modifier values)
+        (fn ([r] r) ([_ _] (reduced true)))
+        nil
+        (index/targets context resource-handle ref-c-hash ref-tid))))))
 
 (defn- chained-search-param
   [registry ref-search-param ref-type ref-modifier original-code [code modifier]]
   (when-ok [search-param (resolve-search-param registry ref-type code)]
-    [(->ChainedSearchParam search-param ref-search-param (codec/tid ref-type)
-                           ref-modifier original-code)
+    [(->ChainedSearchParam search-param ref-search-param
+                           (codec/c-hash (:code ref-search-param))
+                           (codec/tid ref-type) ref-modifier original-code)
      modifier]))
 
 (defn- reference-type-msg [ref-code s type]

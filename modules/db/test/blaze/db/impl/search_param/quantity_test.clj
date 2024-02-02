@@ -59,17 +59,6 @@
       :code := "value-quantity"
       :c-hash := (codec/c-hash "value-quantity"))))
 
-(deftest matches-test
-  (testing "non matching op"
-    ;; although a non-matching op isn't allowed in the spec, it could happen at
-    ;; runtime, and we have to test that case
-    (st/unstrument `spq/matches?)
-
-    (try
-      (spq/matches? nil (codec/c-hash "value-quantity") nil 0 {:op :foo})
-      (catch Exception e
-        (is (= "No matching clause: :foo" (ex-message e)))))))
-
 (defn compile-quantity-value [search-param-registry value]
   (-> (value-quantity-param search-param-registry)
       (search-param/compile-values nil [value])

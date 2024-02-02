@@ -104,12 +104,12 @@
 (defn- verify-tx-cmd-create-msg [type id]
   (format "verify-tx-cmd :create %s/%s" type id))
 
-(defn- id-collision-msg [type id]
-  (format "Resource `%s/%s` already exists and can't be created again." type id))
+(defn- id-collision-msg [type id t]
+  (format "Resource `%s/%s` already exists in the database with t = %d and can't be created again." type id t))
 
 (defn- check-id-collision! [db type id]
   (when (d/resource-handle db type id)
-    (throw-anom (ba/conflict (id-collision-msg type id)))))
+    (throw-anom (ba/conflict (id-collision-msg type id (d/t db))))))
 
 (defn- index-entries [tid id t hash num-changes op]
   (rts/index-entries tid (codec/id-byte-string id) t hash num-changes op))
