@@ -155,19 +155,16 @@
   (p/-column-family-meta-data store column-family))
 
 (defn compact-range!
-  "Runs compaction in `store`.
+  "Runs compaction on `column-family` in `store`.
 
-  Additionally an optional `column-family` key can be supplied in order to
-  run compaction only of that column family.
+  After the column family has been compacted, all data will have been pushed
+  down to the last level containing any data.
 
-  Returns an anomaly if the optional column family doesn't exist.
+  Blocks until finished.
 
-  After the database has been compacted, all data will have been pushed down to
-  the last level containing any data."
-  ([store]
-   (p/-compact-range store))
-  ([store column-family]
-   (p/-compact-range store column-family)))
+  Returns an anomaly if the column family doesn't exist."
+  [store column-family]
+  (p/-compact-range store column-family))
 
 (defn drop-column-family!
   "Drops `column-family` in `store`.
@@ -271,9 +268,6 @@
   (-drop-column-family [_ column-family]
     (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
       (.dropColumnFamily db cfh)))
-
-  (-compact-range [_]
-    (.compactRange db))
 
   (-compact-range [_ column-family]
     (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
