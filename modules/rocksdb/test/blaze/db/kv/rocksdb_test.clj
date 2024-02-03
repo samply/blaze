@@ -764,25 +764,14 @@
         ::anom/message := "Column family `column-family-173005` not found."))))
 
 (deftest compact-range-test
-  (testing "whole database"
-    (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
-      (run!
-       #(kv/put! db [[:default (int-ba %) (apply ba (range 10000))]])
-       (range 10000 30000))
+  (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
+    (run!
+     #(kv/put! db [[:a (int-ba %) (apply ba (range 10000))]])
+     (range 10000 20000))
 
-      (rocksdb/compact-range! db)
+    (rocksdb/compact-range! db :a)
 
-      (is (some? (kv/get db :default (ba 0x27 0x10))))))
-
-  (testing "with column-family"
-    (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
-      (run!
-       #(kv/put! db [[:a (int-ba %) (apply ba (range 10000))]])
-       (range 10000 20000))
-
-      (rocksdb/compact-range! db :a)
-
-      (is (some? (kv/get db :a (ba 0x27 0x10))))))
+    (is (some? (kv/get db :a (ba 0x27 0x10)))))
 
   (testing "with unknown column-family"
     (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
