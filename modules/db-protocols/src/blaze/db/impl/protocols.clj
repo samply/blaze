@@ -83,6 +83,8 @@
 
 (defprotocol SearchParam
   (-compile-value [search-param modifier value] "Can return an anomaly.")
+  (-chunked-resource-handles
+    [search-param context tid modifier compiled-value])
   (-resource-handles
     [search-param context tid modifier compiled-value]
     [search-param context tid modifier compiled-value start-id]
@@ -91,10 +93,6 @@
     [search-param context tid direction]
     [search-param context tid direction start-id]
     "Returns a reducible collection.")
-  (-count-resource-handles
-    [search-param context tid modifier compiled-value]
-    "Returns a CompletableFuture that will complete with the count of the
-    matching resource handles.")
   (-compartment-keys [search-param context compartment tid compiled-value])
   (-matcher [_ context modifier values])
   (-compartment-ids [_ resolver resource])

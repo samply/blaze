@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.chained
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
-   [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index :as index]
@@ -27,6 +26,9 @@
   (-compile-value [_ modifier value]
     (p/-compile-value search-param modifier value))
 
+  (-chunked-resource-handles [search-param context tid modifier value]
+    [(p/-resource-handles search-param context tid modifier value)])
+
   (-resource-handles [_ context tid modifier compiled-value]
     (coll/eduction
      (comp (map #(p/-compile-value ref-search-param ref-modifier (rh/reference %)))
@@ -39,10 +41,6 @@
       (coll/eduction
        (drop-while #(not= start-id (rh/id %)))
        (p/-resource-handles this context tid modifier compiled-value))))
-
-  (-count-resource-handles [this context tid modifier compiled-value]
-    (ac/completed-future
-     (count (p/-resource-handles this context tid modifier compiled-value))))
 
   (-matcher [_ context modifier values]
     (filter

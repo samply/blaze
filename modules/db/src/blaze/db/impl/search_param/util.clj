@@ -1,6 +1,5 @@
 (ns blaze.db.impl.search-param.util
   (:require
-   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
@@ -50,37 +49,24 @@
    (fn [tuples handle] (coll/some (contains-hash-prefix-pred handle) tuples))))
 
 (defn resource-handle-mapper
-  "Transducer which groups `[id hash-prefix]` tuples by `id` and maps them to
-  a resource handle with `tid` if there is a current one with matching hash
-  prefix."
+  "Returns a transducer which groups `[id hash-prefix]` tuples by `id` and maps
+  them to a resource handle with `tid` if there is a current one with matching
+  hash prefix."
   [context tid]
   (comp
    by-id-grouper
    (resource-handle-xf context tid)))
 
-(defn- id-groups-counter [context tid]
-  (partial
-   transduce
-   (comp
-    (resource-handle-xf context tid)
-    (map (fn [_] 1)))
-   +))
+(defn resource-handle-chunk-mapper
+  "Like `resource-handle-mapper` but emits chunks of reducible collections of
+  matching resource handles.
 
-(defn- resource-handle-counter
-  "Returns a transducer that takes `[id hash-prefix]` tuples, groups them by
-  id, partitions them and returns futures of the count of the found resource
-  handles in each partition."
+  That chunks can be used to process the resource handle mapping in parallel."
   [context tid]
-  (comp by-id-grouper
-        (partition-all 1000)
-        (map
-         (fn [id-groups]
-           (ac/supply-async #((id-groups-counter context tid) id-groups))))))
-
-(defn count-resource-handles [context tid resource-keys]
-  (let [futures (into [] (resource-handle-counter context tid) resource-keys)]
-    (do-sync [_ (ac/all-of futures)]
-      (transduce (map ac/join) + futures))))
+  (comp
+   by-id-grouper
+   (partition-all 1000)
+   (map #(coll/eduction (resource-handle-xf context tid) %))))
 
 (defn missing-expression-msg [url]
   (format "Unsupported search parameter with URL `%s`. Required expression is missing."

@@ -49,12 +49,12 @@ curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&_sum
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|---------|-------:|---------:|-------:|-------:|
-| LEA47  | 100k    | 8310-5  |  115 k |     0.06 |  0.001 |   0.55 |
-| LEA47  | 100k    | 55758-7 |  1.0 M |     0.50 |  0.012 |   0.49 |
-| LEA47  | 100k    | 72514-3 |  2.7 M |     1.35 |  0.056 |   0.49 |
-| LEA58  | 100k    | 8310-5  |  115 k |     0.06 |  0.001 |   0.55 |
-| LEA58  | 100k    | 55758-7 |  1.0 M |     0.52 |  0.011 |   0.51 |
-| LEA58  | 100k    | 72514-3 |  2.7 M |     1.39 |  0.027 |   0.50 |
+| LEA47  | 100k    | 8310-5  |  115 k |     0.06 |  0.001 |   0.54 |
+| LEA47  | 100k    | 55758-7 |  1.0 M |     0.50 |  0.010 |   0.49 |
+| LEA47  | 100k    | 72514-3 |  2.7 M |     1.34 |  0.026 |   0.48 |
+| LEA58  | 100k    | 8310-5  |  115 k |     0.07 |  0.002 |   0.57 |
+| LEA58  | 100k    | 55758-7 |  1.0 M |     0.54 |  0.020 |   0.53 |
+| LEA58  | 100k    | 72514-3 |  2.7 M |     1.43 |  0.045 |   0.52 |
 | LEA47  | 1M      | 8310-5  |  1.1 M |     0.59 |  0.006 |   0.50 |
 | LEA47  | 1M      | 55758-7 | 10.1 M |     5.45 |  0.182 |   0.53 |
 | LEA47  | 1M      | 72514-3 | 27.3 M |    14.03 |  0.135 |   0.51 |
@@ -140,16 +140,19 @@ curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&valu
 
 | System | Dataset | Code    | Value | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|---------|------:|-------:|---------:|-------:|-------:|
-| LEA47  | 100k    | 29463-7 |  26.8 |  158 k |    10.47 |  0.038 |  66.21 |
-| LEA47  | 100k    | 29463-7 |  79.5 |  790 k |    10.77 |  0.040 |  13.64 |
-| LEA47  | 100k    | 29463-7 |   183 |  1.6 M |    10.73 |  0.028 |   6.77 |
-| LEA58  | 100k    | 29463-7 |  26.8 |  158 k |    10.33 |  0.055 |  65.33 |
-| LEA58  | 100k    | 29463-7 |  79.5 |  790 k |    10.58 |  0.045 |  13.39 |
-| LEA58  | 100k    | 29463-7 |   183 |  1.6 M |    10.95 |  0.037 |   6.91 |
+| LEA47  | 100k    | 29463-7 |  26.8 |  158 k |     0.85 |  0.006 |   5.38 |
+| LEA47  | 100k    | 29463-7 |  79.5 |  790 k |     0.84 |  0.005 |   1.06 |
+| LEA47  | 100k    | 29463-7 |   183 |  1.6 M |     0.85 |  0.007 |   0.54 |
+| LEA58  | 100k    | 29463-7 |  26.8 |  158 k |     0.87 |  0.010 |   5.53 |
+| LEA58  | 100k    | 29463-7 |  79.5 |  790 k |     0.87 |  0.014 |   1.10 |
+| LEA58  | 100k    | 29463-7 |   183 |  1.6 M |     0.89 |  0.005 |   0.55 |
+| LEA58  | 1M      | 29463-7 |  26.8 |  1.6 M |    17.89 |  0.397 |  11.45 |
+| LEA58  | 1M      | 29463-7 |  79.5 |  7.8 M |    17.69 |  0.167 |   2.25 |
+| LEA58  | 1M      | 29463-7 |   183 | 15.9 M |    17.53 |  0.110 |   1.10 |
 
 ¹ time in seconds per 1 million resources
 
-The measurements show that the time Blaze needs to count resources with two search params (code and value-quantity) is constant. In fact it depends only on the number of resources which qualify for the first search parameter which can be seen on the fixed time of 56 seconds.
+The measurements show that the time Blaze needs to count resources with two search params (code and value-quantity) is constant. In fact it depends only on the number of resources which qualify for the first search parameter which can be seen on the fixed time of 4 seconds.
 
 ### Download of Resources
 
@@ -209,12 +212,12 @@ curl -s "http://localhost:8080/fhir/Observation?date=$YEAR&_summary=count"
 
 | System | Dataset | Year | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|------|-------:|---------:|-------:|-------:|
-| LEA47  | 100k    | 2013 |  3.1 M |     2.24 |  0.036 |   0.71 |
-| LEA47  | 100k    | 2019 |  6.0 M |     4.17 |  0.136 |   0.69 |
-| LEA58  | 100k    | 2013 |  3.1 M |     2.35 |  0.058 |   0.75 |
-| LEA58  | 100k    | 2019 |  6.0 M |     4.19 |  0.031 |   0.70 |
-| LEA47  | 1M      | 2013 | 31.1 M |    23.31 |  0.206 |   0.75 |
-| LEA47  | 1M      | 2019 | 60.0 M |    45.98 |  0.582 |   0.76 |
+| LEA47  | 100k    | 2013 |  3.1 M |     2.13 |  0.068 |   0.68 |
+| LEA47  | 100k    | 2019 |  6.0 M |     4.17 |  0.175 |   0.69 |
+| LEA58  | 100k    | 2013 |  3.1 M |     2.22 |  0.071 |   0.71 |
+| LEA58  | 100k    | 2019 |  6.0 M |     4.19 |  0.056 |   0.70 |
+| LEA47  | 1M      | 2013 | 31.1 M |    21.28 |  0.439 |   0.68 |
+| LEA47  | 1M      | 2019 | 60.0 M |    42.58 |  1.502 |   0.70 |
 
 ¹ time in seconds per 1 million resources
 

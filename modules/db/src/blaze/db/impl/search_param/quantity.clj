@@ -223,6 +223,11 @@
                 ::category ::invalid-decimal-value
                 ::anom/message (u/invalid-decimal-value-msg code value)))))
 
+  (-chunked-resource-handles [_ context tid _ value]
+    (coll/eduction
+     (u/resource-handle-chunk-mapper context tid)
+     (resource-keys context c-hash tid codec/v-hash-size value)))
+
   (-resource-handles [_ context tid _ value]
     (coll/eduction
      (u/resource-handle-mapper context tid)
@@ -232,11 +237,6 @@
     (coll/eduction
      (u/resource-handle-mapper context tid)
      (resource-keys context c-hash tid codec/v-hash-size value start-id)))
-
-  (-count-resource-handles [_ context tid _ value]
-    (u/count-resource-handles
-     context tid
-     (resource-keys context c-hash tid codec/v-hash-size value)))
 
   (-matcher [_ context _ values]
     (matcher context c-hash codec/v-hash-size values))

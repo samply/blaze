@@ -1,6 +1,5 @@
 (ns blaze.db.impl.search-param-spec
   (:require
-   [blaze.async.comp :as ac]
    [blaze.byte-string-spec]
    [blaze.coll.spec :as cs]
    [blaze.db.impl.batch-db :as-alias batch-db]
@@ -52,13 +51,13 @@
                :start-id (s/? :blaze.db/id-byte-string))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
-(s/fdef search-param/count-resource-handles
+(s/fdef search-param/chunked-resource-handles
   :args (s/cat :search-param :blaze.db/search-param
                :context ::batch-db/context
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :values (s/coll-of some? :min-count 1))
-  :ret ac/completable-future?)
+  :ret (cs/coll-of (cs/coll-of :blaze.db/resource-handle)))
 
 (s/fdef search-param/compartment-resource-handles
   :args (s/cat :search-param :blaze.db/search-param
