@@ -101,8 +101,8 @@
               (resource-handles* context tid data))))))
 
 (defn- matches?
-  [context {:keys [tid] :as resource-handle} value]
-  (contains? (resource-handles context tid value) resource-handle))
+  [context {:keys [tid] :as resource-handle} values]
+  (some #(contains? (resource-handles context tid %) resource-handle) values))
 
 (defrecord SearchParamHas [index name type code]
   p/SearchParam
@@ -127,8 +127,8 @@
     (ac/completed-future
      (count (p/-resource-handles search-param context tid modifier value))))
 
-  (-matches? [_ context resource-handle _ values]
-    (some? (some #(matches? context resource-handle %) values)))
+  (-matcher [_ context _ values]
+    (filter #(matches? context % values)))
 
   (-index-values [_ _ _]
     []))

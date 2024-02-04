@@ -68,6 +68,10 @@
     (when closed? (throw-anom iterator-closed-anom))
     (p/-seek-for-prev iter target))
 
+  (-seek-for-prev-buffer [_ target]
+    (when closed? (throw-anom iterator-closed-anom))
+    (p/-seek-for-prev-buffer iter target))
+
   (-next [_]
     (when closed? (throw-anom iterator-closed-anom))
     (p/-next iter))

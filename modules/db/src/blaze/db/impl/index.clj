@@ -15,7 +15,7 @@
   (transduce
    (map
     (fn [[search-param modifier _ values]]
-      (filter #(search-param/matches? search-param context % modifier values))))
+      (search-param/matcher search-param context modifier values)))
    comp
    clauses))
 
@@ -73,7 +73,7 @@
   [])
 
 (defn compartment-query
-  "Iterates over the CSV index."
+  "Iterates over the CompartmentSearchParamValueResource index."
   [context compartment tid clauses]
   (let [[[search-param _ _ values] & other-clauses] clauses]
     (if (seq other-clauses)

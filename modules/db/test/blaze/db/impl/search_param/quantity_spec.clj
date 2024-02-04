@@ -21,9 +21,8 @@
                :value ::spq/value
                :start-id (s/? :blaze.db/id-byte-string)))
 
-(s/fdef spq/matches?
-  :args (s/cat :snapshot :blaze.db.kv/snapshot
+(s/fdef spq/matcher
+  :args (s/cat :context ::batch-db/context
                :c-hash :blaze.db/c-hash
-               :resource-handle :blaze.db/resource-handle
                :prefix-length nat-int?
-               :value ::spq/value))
+               :values (s/coll-of ::spq/value :min-count 1)))

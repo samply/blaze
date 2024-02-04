@@ -137,8 +137,8 @@
     c-hash))
 
 (defn resource-keys
-  "Returns a reducible collection of `[id hash-prefix]` tuples starting at
-  `start-id` (optional)."
+  "Returns a reducible collection of `[id hash-prefix]` tuples that have `value`
+  starting at `start-id` (optional)."
   ([{:keys [snapshot]} c-hash tid value]
    (sp-vr/prefix-keys snapshot c-hash tid (bs/size value) value))
   ([{:keys [snapshot]} c-hash tid value start-id]
@@ -170,8 +170,9 @@
   (-compartment-keys [_ context compartment tid value]
     (c-sp-vr/prefix-keys (:snapshot context) compartment c-hash tid value))
 
-  (-matches? [_ context resource-handle modifier values]
-    (some (partial r-sp-v/value-prefix-exists? (:snapshot context) resource-handle (c-hash-w-modifier c-hash code modifier)) values))
+  (-matcher [_ context modifier values]
+    (r-sp-v/value-prefix-filter (:snapshot context)
+                                (c-hash-w-modifier c-hash code modifier) values))
 
   (-compartment-ids [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

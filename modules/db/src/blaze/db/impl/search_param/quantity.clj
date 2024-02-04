@@ -10,6 +10,7 @@
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.impl.search-param.util :as u]
+   [blaze.db.kv :as kv]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
@@ -182,35 +183,26 @@
      :ge (ge-keys context c-hash tid prefix-length exact-value start-id)
      :le (le-keys context c-hash tid prefix-length exact-value start-id))))
 
-(defn eq-matches? [snapshot c-hash resource-handle prefix-length lower-bound upper-bound]
-  (when-let [value (r-sp-v/next-value snapshot resource-handle c-hash prefix-length lower-bound)]
-    (bs/<= value upper-bound)))
+(defn- resource-search-param-value-encoder [c-hash]
+  (let [encoder (r-sp-v/resource-search-param-value-encoder c-hash)]
+    (fn [target-buf resource-handle {:keys [op] :as value}]
+      (encoder target-buf resource-handle
+               (value (if (identical? :eq op) :lower-bound :exact-value))))))
 
-(defn gt-matches? [snapshot c-hash resource-handle prefix-length value]
-  (when-let [found-value (r-sp-v/next-value snapshot resource-handle c-hash prefix-length value)]
-    (bs/> found-value value)))
-
-(defn lt-matches? [snapshot c-hash resource-handle prefix-length value]
-  (when-let [found-value (r-sp-v/next-value-prev snapshot resource-handle c-hash prefix-length value)]
-    (bs/< found-value value)))
-
-(defn ge-matches? [snapshot c-hash resource-handle prefix-length value]
-  (some? (r-sp-v/next-value snapshot resource-handle c-hash prefix-length value)))
-
-(defn le-matches? [snapshot c-hash resource-handle prefix-length value]
-  (some? (r-sp-v/next-value-prev snapshot resource-handle c-hash prefix-length value)))
-
-(defn matches?
-  {:arglists '([snapshot c-hash resource-handle prefix-length value])}
-  [snapshot c-hash resource-handle prefix-length
-   {:keys [op lower-bound exact-value upper-bound]}]
-  (case op
-    :eq (eq-matches? snapshot c-hash resource-handle prefix-length lower-bound
-                     upper-bound)
-    :gt (gt-matches? snapshot c-hash resource-handle prefix-length exact-value)
-    :lt (lt-matches? snapshot c-hash resource-handle prefix-length exact-value)
-    :ge (ge-matches? snapshot c-hash resource-handle prefix-length exact-value)
-    :le (le-matches? snapshot c-hash resource-handle prefix-length exact-value)))
+(defn matcher [{:keys [snapshot]} c-hash prefix-length values]
+  (r-sp-v/value-filter
+   snapshot
+   (fn [{:keys [op]}]
+     (case op (:lt :le) kv/seek-for-prev-buffer! kv/seek-buffer!))
+   (resource-search-param-value-encoder c-hash)
+   (fn [value {:keys [op exact-value upper-bound]}]
+     (case op
+       :eq (bs/<= value upper-bound)
+       :gt (bs/> value exact-value)
+       :lt (bs/< value exact-value)
+       true))
+   prefix-length
+   values))
 
 (defrecord SearchParamQuantity [name url type base code c-hash expression]
   p/SearchParam
@@ -246,8 +238,8 @@
      context tid
      (resource-keys context c-hash tid codec/v-hash-size value)))
 
-  (-matches? [_ context resource-handle _ values]
-    (some? (some (partial matches? (:snapshot context) c-hash resource-handle codec/v-hash-size) values)))
+  (-matcher [_ context _ values]
+    (matcher context c-hash codec/v-hash-size values))
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

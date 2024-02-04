@@ -12,31 +12,23 @@
    [blaze.byte-string :as bs]
    [blaze.db.kv :as kv])
   (:import
-   [clojure.lang IReduceInit]))
+   [clojure.lang IReduceInit]
+   [java.lang AutoCloseable]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
 (def ^:const ^long buffer-size 128)
 
-(defn contains-key-prefix?
-  "Returns true iff a key with `key-prefix` exists in `column-family`."
-  [snapshot column-family key-prefix]
-  (with-open [iter (kv/new-iterator snapshot column-family)]
-    (let [target (bs/to-byte-array key-prefix)]
-      (kv/seek! iter target)
-      (when (kv/valid? iter)
-        (let [target-buf (bb/wrap target)
-              key-buf (bb/allocate (bs/size key-prefix))]
-          (kv/key! iter key-buf)
-          (= key-buf target-buf))))))
+(defn- prefix-matches* [buf-1 buf-2 length]
+  (let [mismatch (bb/mismatch buf-1 buf-2)]
+    (or (<= (long length) mismatch) (neg? mismatch))))
 
 (defn- prefix-matches? [target prefix-length buf]
   (let [prefix-buf (bb/allocate prefix-length)]
     (bb/put-byte-string! prefix-buf (bs/subs target 0 prefix-length))
     (bb/flip! prefix-buf)
-    (let [mismatch (bb/mismatch buf prefix-buf)]
-      (or (<= (long prefix-length) mismatch) (neg? mismatch)))))
+    (prefix-matches* buf prefix-buf prefix-length)))
 
 (defn seek-key
   "Returns the first decoded key of `column-family` were the key is at or past
@@ -63,20 +55,6 @@
     (when (kv/valid? iter)
       (decode (bb/wrap (kv/key iter))))))
 
-(defn seek-key-prev
-  "Returns the first decoded key of `column-family` were the key is at or before
-  `target` with at least `prefix-length` bytes matching.
-
-  The `decode` function has to accept a byte buffer and decode it into a value
-  which will be returned."
-  [snapshot column-family decode prefix-length target]
-  (with-open [iter (kv/new-iterator snapshot column-family)]
-    (kv/seek-for-prev! iter (bs/to-byte-array target))
-    (when (kv/valid? iter)
-      (let [key-buf (bb/wrap (kv/key iter))]
-        (when (prefix-matches? target prefix-length key-buf)
-          (decode key-buf))))))
-
 (defn seek-value
   "Returns the first decoded value of `column-family` were the key is at or past
   `target` with at least `prefix-length` bytes matching.
@@ -90,6 +68,100 @@
       (let [key-buf (bb/wrap (kv/key iter))]
         (when (prefix-matches? target prefix-length key-buf)
           (decode (bb/wrap (kv/value iter))))))))
+
+(defn- read!
+  "Reads from `iter` using the function `read!` and `buf`.
+
+  When `buf` is too small, a new byte buffer will be created. Returns the
+  byte buffer used to read."
+  [read! buf iter]
+  (bb/clear! buf)
+  (let [size (long (read! iter buf))]
+    (if (< (bb/capacity buf) size)
+      (let [buf (bb/allocate (max size (bit-shift-left (bb/capacity buf) 1)))]
+        (read! iter buf)
+        buf)
+      buf)))
+
+(defn- read-key! [buf iter]
+  (read! kv/key! buf iter))
+
+(defn- closer [iter]
+  (fn [rf]
+    (fn
+      ([] (rf))
+      ([result]
+       (.close ^AutoCloseable iter)
+       (rf result))
+      ([result input]
+       (rf result input)))))
+
+(defn seek-key-filter
+  "Returns a stateful transducer that filters it's inputs by finding a key in
+  `column-family` that matches with regards of one of the `values`.
+
+  It uses:
+   * the `encode` function to fill a target byte buffer,
+   * the `seek` function to decide to either seek forwards or backwards and
+   * the `matches?` function to determine a match.
+
+  The `encode` function gets the target byte buffer, the input, each value from
+  `values` and returns a possibly enlarged target byte buffer. The target byte
+  buffer will be cleared already.
+
+  The `seek` function gets each value from `values` and has to return either
+  `kv/seek-buffer!` or `kv/seek-for-prev-buffer!`.
+
+  The `matches?` function gets the target byte buffer as returned by `encode`,
+  the key byte buffer, the input, each value from `values` and returns some
+  truthy value depending on whether the input matches.
+
+  There are two helper functions that can be used to create matchers: the
+  `target-length-matcher` and the `prefix-length-matcher`."
+  [snapshot column-family seek matches? encode values]
+  (let [iter (kv/new-iterator snapshot column-family)
+        encode (fn [target-buf input value]
+                 (bb/clear! target-buf)
+                 (encode target-buf input value))
+        target-buf-state (volatile! (bb/allocate buffer-size))
+        key-buf-state (volatile! (bb/allocate buffer-size))]
+    (comp
+     (filter
+      #(some
+        (fn [value]
+          (let [target-buf (vswap! target-buf-state encode % value)]
+            (bb/flip! target-buf)
+            ((seek value) iter target-buf)
+            (when (kv/valid? iter)
+              (bb/rewind! target-buf)
+              (let [key-buf (vswap! key-buf-state read-key! iter)]
+                (matches? target-buf key-buf % value)))))
+        values))
+     (closer iter))))
+
+(defn target-length-matcher
+  "Returns a matcher that can be used with `seek-key-filter` that calls the
+  `matches?` function if the whole target byte buffer is a prefix of the key
+  byte buffer.
+
+  The `matches?` function gets the key byte buffer, the input and the value. So
+  the target byte buffer will be skipped."
+  [matches?]
+  (fn [target-buf key-buf input value]
+    (when (prefix-matches* target-buf key-buf (bb/limit target-buf))
+      (matches? key-buf input value))))
+
+(defn prefix-length-matcher
+  "Returns a matcher that can be used with `seek-key-filter` that calls the
+  `matches?` function if a prefix of `prefix-length` of the target byte buffer
+  is a prefix of the key byte buffer.
+
+  The `matches?` function gets the key byte buffer, the input and the value. So
+  the target byte buffer will be skipped."
+  [prefix-length matches?]
+  (fn [target-buf key-buf input value]
+    (when (prefix-matches* target-buf key-buf (prefix-length input))
+      (matches? key-buf input value))))
 
 (defn- reduce-iter! [iter advance-fn rf init]
   (loop [ret init]
@@ -120,23 +192,6 @@
       (with-open [iter (kv/new-iterator snapshot column-family)]
         (kv/seek-for-prev! iter (bs/to-byte-array start-key))
         (reduce-iter! iter kv/prev! (xform (completing rf)) init)))))
-
-(defn- read!
-  "Reads from `iter` using the function `read!` and `buf`.
-
-  When `buf` is too small, a new byte buffer will be created. Returns the
-  byte buffer used to read."
-  [read! buf iter]
-  (bb/clear! buf)
-  (let [size (long (read! iter buf))]
-    (if (< (bb/capacity buf) size)
-      (let [buf (bb/allocate (max size (bit-shift-left (bb/capacity buf) 1)))]
-        (read! iter buf)
-        buf)
-      buf)))
-
-(defn- read-key! [buf iter]
-  (read! kv/key! buf iter))
 
 (defn- key-reader
   "Returns a stateful transducer that will read the key from a downstream

@@ -58,6 +58,16 @@
   [iter target]
   (p/-seek-for-prev iter target))
 
+(defn seek-for-prev-buffer!
+  "Positions `iter` at the first entry of its source whose key is at or before
+  `target`.
+
+  The `target` is a byte buffer describing a key or a key prefix to seek for.
+
+  The iterator will be valid if its source contains a key at or before `target`."
+  [iter target]
+  (p/-seek-for-prev-buffer iter target))
+
 (defn next!
   "Moves `iter` to the next entry of its source.
 

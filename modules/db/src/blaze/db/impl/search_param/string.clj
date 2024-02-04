@@ -96,8 +96,8 @@
      context tid
      (resource-keys context c-hash tid value)))
 
-  (-matches? [_ context resource-handle _ values]
-    (some (partial r-sp-v/value-prefix-exists? (:snapshot context) resource-handle c-hash) values))
+  (-matcher [_ context _ values]
+    (r-sp-v/value-prefix-filter (:snapshot context) c-hash values))
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

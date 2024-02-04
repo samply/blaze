@@ -308,20 +308,21 @@
      :eb (eb-keys context c-hash tid param-lb start-id)
      :ap (ap-keys context c-hash tid param-lb param-ub start-id))))
 
-(defn- matches?
-  [snapshot c-hash resource-handle
-   {:keys [op] param-lb :lower-bound param-ub :upper-bound}]
-  (when-let [value (r-sp-v/next-value snapshot resource-handle c-hash)]
-    (case op
-      :eq (equal? value param-lb param-ub)
-      :ne (not-equal? value param-lb param-ub)
-      :gt (greater-than? param-ub value)
-      :lt (less-than? value param-lb)
-      :ge (greater-equal? param-lb param-ub value)
-      :le (less-equal? value param-lb param-ub)
-      :sa (starts-after? param-ub value)
-      :eb (ends-before? value param-lb)
-      :ap (approximately? value param-lb param-ub))))
+(defn- matcher [{:keys [snapshot]} c-hash values]
+  (r-sp-v/value-filter
+   snapshot (r-sp-v/resource-search-param-encoder c-hash)
+   (fn [value {:keys [op] param-lb :lower-bound param-ub :upper-bound}]
+     (case op
+       :eq (equal? value param-lb param-ub)
+       :ne (not-equal? value param-lb param-ub)
+       :gt (greater-than? param-ub value)
+       :lt (less-than? value param-lb)
+       :ge (greater-equal? param-lb param-ub value)
+       :le (less-equal? value param-lb param-ub)
+       :sa (starts-after? param-ub value)
+       :eb (ends-before? value param-lb)
+       :ap (approximately? value param-lb param-ub)))
+   values))
 
 (defn- invalid-date-time-value-msg [code value]
   (format "Invalid date-time value `%s` in search parameter `%s`." value code))
@@ -376,8 +377,8 @@
        (all-keys context c-hash tid start-id)
        (all-keys-prev context c-hash tid start-id))))
 
-  (-matches? [_ context resource-handle _ values]
-    (some? (some (partial matches? (:snapshot context) c-hash resource-handle) values)))
+  (-matcher [_ context _ values]
+    (matcher context c-hash values))
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

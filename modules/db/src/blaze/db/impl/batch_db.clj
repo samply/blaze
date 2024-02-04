@@ -68,6 +68,9 @@
   (-basis-t [_]
     basis-t)
 
+  (-as-of-t [_]
+    (when (not= basis-t t) t))
+
   ;; ---- Instance-Level Functions --------------------------------------------
 
   (-resource-handle [_ tid id]

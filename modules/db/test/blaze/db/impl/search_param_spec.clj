@@ -68,13 +68,12 @@
                :compiled-values (s/coll-of some? :min-count 1))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
-(s/fdef search-param/matches?
+(s/fdef search-param/matcher
   :args (s/cat :search-param :blaze.db/search-param
                :context ::batch-db/context
-               :resource-handle :blaze.db/resource-handle
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1))
-  :ret boolean?)
+  :ret fn?)
 
 (s/fdef search-param/compartment-ids
   :args (s/cat :search-param :blaze.db/search-param

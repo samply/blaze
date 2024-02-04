@@ -93,9 +93,11 @@
    (u/resource-handle-mapper context tid)
    (compartment-keys search-param context compartment tid compiled-values)))
 
-(defn matches?
-  [search-param context resource-handle modifier compiled-values]
-  (p/-matches? search-param context resource-handle modifier compiled-values))
+(defn matcher
+  "Returns a stateful transducer that filters resource handles depending on
+  having one of `compiled-values` for `search-param` with `modifier`."
+  [search-param context modifier compiled-values]
+  (p/-matcher search-param context modifier compiled-values))
 
 (def ^:private stub-resolver
   "A resolver which only returns a resource stub with type and id from the local

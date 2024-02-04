@@ -44,6 +44,9 @@
   (-seek-for-prev [_ target]
     (.seekForPrev i ^bytes target))
 
+  (-seek-for-prev-buffer [_ target]
+    (.seekForPrev i ^ByteBuffer target))
+
   (-next [_]
     (.next i))
 

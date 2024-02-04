@@ -15,20 +15,20 @@
                                   :value byte-string?)))
   :ret (s/nilable byte-string?))
 
-(s/fdef r-sp-v/value-prefix-exists?
+(s/fdef r-sp-v/value-filter
   :args (s/cat :snapshot :blaze.db.kv/snapshot
-               :resource-handle :blaze.db/resource-handle
-               :c-hash :blaze.db/c-hash
-               :value-prefix byte-string?)
-  :ret boolean?)
+               :seek (s/? fn?)
+               :encode fn?
+               :matches? fn?
+               :value-prefix-length (s/? nat-int?)
+               :values (s/coll-of some? :min-count 1))
+  :ret fn?)
 
-(s/fdef r-sp-v/next-value-prev
+(s/fdef r-sp-v/value-prefix-filter
   :args (s/cat :snapshot :blaze.db.kv/snapshot
-               :resource-handle :blaze.db/resource-handle
                :c-hash :blaze.db/c-hash
-               :value-prefix-length nat-int?
-               :value byte-string?)
-  :ret (s/nilable byte-string?))
+               :value-prefixes (s/coll-of byte-string? :min-count 1))
+  :ret fn?)
 
 (s/fdef r-sp-v/index-entry
   :args (s/cat :tid :blaze.db/tid
