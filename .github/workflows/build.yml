@@ -92,6 +92,13 @@ jobs:
         - '17'
         - '21'
 
+        exclude:
+        - module: jepsen
+          java-version: '11'
+        - module: jepsen
+          java-version: '17'
+
+
     runs-on: ubuntu-22.04
 
     steps:
@@ -1015,7 +1022,7 @@ jobs:
       uses: actions/setup-java@387ac29b308b003ca37ba93a6cab5eb57c8f5f93 # v4
       with:
         distribution: 'temurin'
-        java-version: '17'
+        java-version: '21'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
@@ -1286,7 +1293,7 @@ jobs:
       uses: actions/setup-java@387ac29b308b003ca37ba93a6cab5eb57c8f5f93 # v4
       with:
         distribution: 'temurin'
-        java-version: '17'
+        java-version: '21'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
