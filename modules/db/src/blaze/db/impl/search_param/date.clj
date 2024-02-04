@@ -346,6 +346,11 @@
           (ba/unsupported (u/unsupported-prefix-msg code op)))
         #(assoc % ::anom/message (invalid-date-time-value-msg code value)))))
 
+  (-chunked-resource-handles [_ context tid _ value]
+    (coll/eduction
+     (u/resource-handle-chunk-mapper context tid)
+     (resource-keys context c-hash tid value)))
+
   (-resource-handles [_ context tid _ value]
     (coll/eduction
      (u/resource-handle-mapper context tid)
@@ -355,11 +360,6 @@
     (coll/eduction
      (u/resource-handle-mapper context tid)
      (resource-keys context c-hash tid value start-id)))
-
-  (-count-resource-handles [_ context tid _ value]
-    (u/count-resource-handles
-     context tid
-     (resource-keys context c-hash tid value)))
 
   (-sorted-resource-handles [_ context tid direction]
     (coll/eduction

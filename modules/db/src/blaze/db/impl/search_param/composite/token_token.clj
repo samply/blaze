@@ -19,6 +19,11 @@
             v2 (cc/compile-component-value c1 v2)]
         (bs/concat v1 v2))))
 
+  (-chunked-resource-handles [_ context tid _ value]
+    (coll/eduction
+     (u/resource-handle-chunk-mapper context tid)
+     (spt/resource-keys context c-hash tid value)))
+
   (-resource-handles [_ context tid _ value]
     (coll/eduction
      (u/resource-handle-mapper context tid)
@@ -28,11 +33,6 @@
     (coll/eduction
      (u/resource-handle-mapper context tid)
      (spt/resource-keys context c-hash tid value start-id)))
-
-  (-count-resource-handles [_ context tid _ value]
-    (u/count-resource-handles
-     context tid
-     (spt/resource-keys context c-hash tid value)))
 
   (-matcher [_ context _ values]
     (r-sp-v/value-prefix-filter (:snapshot context) c-hash values))

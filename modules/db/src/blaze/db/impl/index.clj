@@ -1,6 +1,6 @@
 (ns blaze.db.impl.index
   (:require
-   [blaze.async.comp :as ac]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
@@ -54,19 +54,40 @@
        (resource-handles
         search-param context tid modifier values start-id)))))
 
+(defn- resource-handle-chunk-counter [context other-clauses chunk]
+  (transduce
+   (other-clauses-filter context other-clauses)
+   (completing (fn [sum _] (inc sum)))
+   0
+   chunk))
+
+(defn- resource-handle-chunk-counter-mapper [context other-clauses]
+  (map #(ac/supply-async (fn [] (resource-handle-chunk-counter context other-clauses %)))))
+
+(defn- count-resource-handles [xform chunked-resource-handles]
+  (let [futures (into [] xform chunked-resource-handles)]
+    (do-sync [_ (ac/all-of futures)]
+      (transduce (map ac/join) + futures))))
+
+(defn- chunked-resource-handles
+  [search-param context tid modifier values]
+  (condp = modifier
+    "asc" [(search-param/sorted-resource-handles search-param context tid :asc)]
+    "desc" [(search-param/sorted-resource-handles search-param context tid :desc)]
+    (search-param/chunked-resource-handles search-param context tid modifier values)))
+
 (defn type-query-total
   "Returns a CompletableFuture that will complete with the count of the
   matching resource handles."
   [context tid clauses]
   (let [[[search-param modifier _ values] & other-clauses] clauses]
     (if (seq other-clauses)
-      (ac/completed-future
-       (count
-        (coll/eduction
-         (other-clauses-filter context other-clauses)
-         (resource-handles search-param context tid modifier values))))
-      (search-param/count-resource-handles
-       search-param context tid modifier values))))
+      (count-resource-handles
+       (resource-handle-chunk-counter-mapper context other-clauses)
+       (chunked-resource-handles search-param context tid modifier values))
+      (count-resource-handles
+       (map #(ac/supply-async (fn [] (reduce (fn [sum _] (inc sum)) 0 %))))
+       (chunked-resource-handles search-param context tid modifier values)))))
 
 (defn system-query [_ _]
   ;; TODO: implement

@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.token
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
-   [blaze.async.comp :as ac]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
@@ -149,6 +148,12 @@
   (-compile-value [_ _ value]
     (codec/v-hash value))
 
+  (-chunked-resource-handles [_ context tid modifier value]
+    (coll/eduction
+     (u/resource-handle-chunk-mapper context tid)
+     (resource-keys context (c-hash-w-modifier c-hash code modifier) tid
+                    value)))
+
   (-resource-handles [_ context tid modifier value]
     (coll/eduction
      (u/resource-handle-mapper context tid)
@@ -160,12 +165,6 @@
      (u/resource-handle-mapper context tid)
      (resource-keys context (c-hash-w-modifier c-hash code modifier) tid value
                     start-id)))
-
-  (-count-resource-handles [_ context tid modifier value]
-    (u/count-resource-handles
-     context tid
-     (resource-keys context (c-hash-w-modifier c-hash code modifier) tid
-                    value)))
 
   (-compartment-keys [_ context compartment tid value]
     (c-sp-vr/prefix-keys (:snapshot context) compartment c-hash tid value))
@@ -196,16 +195,15 @@
   (-compile-value [_ _ value]
     (codec/id-byte-string value))
 
+  (-chunked-resource-handles [search-param context tid modifier value]
+    [(p/-resource-handles search-param context tid modifier value)])
+
   (-resource-handles [_ context tid _ value]
     (some-> (u/non-deleted-resource-handle context tid value) vector))
 
   (-resource-handles [sp context tid modifier value start-id]
     (when (= value start-id)
       (p/-resource-handles sp context tid modifier value)))
-
-  (-count-resource-handles [_ context tid _ value]
-    (-> (if (u/non-deleted-resource-handle context tid value) 1 0)
-        (ac/completed-future)))
 
   (-sorted-resource-handles [_ context tid _]
     (rao/type-list context tid))

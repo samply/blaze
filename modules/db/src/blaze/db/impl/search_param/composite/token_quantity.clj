@@ -45,6 +45,11 @@
                      code (::spq/unsupported-prefix %)))
              %)))))
 
+  (-chunked-resource-handles [_ context tid _ value]
+    (coll/eduction
+     (u/resource-handle-chunk-mapper context tid)
+     (spq/resource-keys context c-hash tid prefix-length value)))
+
   (-resource-handles [_ context tid _ value]
     (coll/eduction
      (u/resource-handle-mapper context tid)
@@ -54,11 +59,6 @@
     (coll/eduction
      (u/resource-handle-mapper context tid)
      (spq/resource-keys context c-hash tid prefix-length value start-id)))
-
-  (-count-resource-handles [_ context tid _ value]
-    (u/count-resource-handles
-     context tid
-     (spq/resource-keys context c-hash tid prefix-length value)))
 
   (-matcher [_ context _ values]
     (spq/matcher context c-hash prefix-length values))
