@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.24.0
+
+### Notes
+
+This release contains performance improvements for FHIR search and CQL. Counting the number of resources by using `_summary=count` in FHIR search with more than one search parameter uses all cores now and so is up to 10 times faster than before. CQL queries which test the existence of multiple condition codes are up to twice as fast.
+
+### Enhancements
+
+* Implement Below Modifier for Canonical References ([#1418](https://github.com/samply/blaze/issues/1418))
+* Add Admin UI ([#1408](https://github.com/samply/blaze/pull/1408))
+
+### Bugfixes
+
+* Fix FHIR Search Combination of Sorting and Token Search ([#1431](https://github.com/samply/blaze/issues/1431))
+* FHIR Search _id Queries Should Not Return Deleted Patients ([#1415](https://github.com/samply/blaze/issues/1397))
+
+### Performance
+
+* Improve FHIR Search Count Performance ([#1466](https://github.com/samply/blaze/pull/1466))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/76?closed=1).
+
 ## v0.23.4
 
 ### Bugfixes
