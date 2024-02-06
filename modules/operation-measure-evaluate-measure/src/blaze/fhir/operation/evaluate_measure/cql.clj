@@ -16,10 +16,10 @@
 
 (set! *warn-on-reflection* true)
 
-(def eval-sequential-chunk-size
+(def ^:private eval-sequential-chunk-size
   "Size of chunks of resources to evaluate sequential.
 
-  Each chunk of those resources if evaluated sequential and the results of
+  Each chunk of those resources is evaluated sequential and the results of
   multiple of those parallel evaluations are combined afterwards."
   1000)
 
@@ -118,9 +118,10 @@
      (reduce-op context) subject-handles)))
 
 (defn- evaluate-expression**
-  "Evaluates the expression within `def` over `subject-handles` parallel.
+  "Returns a CompletableFuture that will complete with the result of evaluating
+  the expression of `expression-def` over `subject-handles`.
 
-  Subject handles have to be a vector in order to ensure parallel execution."
+  The future will be executed on :executor of `context`."
   [{:keys [executor] :as context} expression-def subject-handles]
   (ac/supply-async
    #(evaluate-expression*** context expression-def subject-handles)
