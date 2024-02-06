@@ -23,6 +23,7 @@
     fhirpathParser$DateLiteralContext
     fhirpathParser$DateTimeLiteralContext
     fhirpathParser$EqualityExpressionContext
+    fhirpathParser$ExpressionContext
     fhirpathParser$FunctionContext
     fhirpathParser$FunctionInvocationContext
     fhirpathParser$IdentifierContext
@@ -392,6 +393,11 @@
 (def ^:private ^CharMatcher quote-matcher (CharMatcher/is \'))
 
 (extend-protocol FPCompiler
+  fhirpathParser$ExpressionContext
+  (-compile [ctx]
+    (let [token (.getText (.getOffendingToken (.-exception ctx)))]
+      (throw-anom (ba/fault (format "Error while parsing token `%s`" token)))))
+
   fhirpathParser$TermExpressionContext
   (-compile [ctx]
     (-compile (.term ctx)))
@@ -550,6 +556,9 @@
         l (fhirpathLexer. s)
         t (CommonTokenStream. l)
         p (fhirpathParser. t)]
+    ;; if not removed, it will print errors on console
+    (.removeErrorListeners l)
+    (.removeErrorListeners p)
     (-> (ba/try-anomaly (-compile (.expression p)))
         (ba/exceptionally
          #(-> (update % ::anom/message str (format " in expression `%s`" expr))

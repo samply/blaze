@@ -1,15 +1,15 @@
 (ns blaze.db.impl.search-param.string
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
-   [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
+   [blaze.db.impl.index.resource-as-of :as rao]
+   [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
-   [blaze.db.impl.macros :refer [with-open-coll]]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.impl.search-param.util :as u]
-   [blaze.db.kv :as kv]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
@@ -61,29 +61,30 @@
   "Returns the value of the resource with `tid` and `id` according to the
   search parameter with `c-hash`."
   {:arglists '([context c-hash tid id])}
-  [{:keys [resource-handle next-value]} c-hash tid id]
-  (next-value (resource-handle tid id) c-hash))
+  [{:keys [snapshot t]} c-hash tid id]
+  (r-sp-v/next-value snapshot (rao/resource-handle snapshot tid id t) c-hash))
 
 (defn- resource-keys
   "Returns a reducible collection of `[id hash-prefix]` tuples starting at
   `start-id` (optional)."
   {:arglists '([context c-hash tid value] [context c-hash tid value start-id])}
   ([{:keys [snapshot]} c-hash tid value]
-   (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
-     (sp-vr/prefix-keys! svri c-hash tid value value)))
+   (sp-vr/prefix-keys snapshot c-hash tid (bs/size value) value))
   ([{:keys [snapshot] :as context} c-hash tid _value start-id]
    (let [start-value (resource-value context c-hash tid start-id)]
      (assert start-value)
-     (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
-       (sp-vr/prefix-keys! svri c-hash tid start-value start-value start-id)))))
-
-(defn- matches? [next-value c-hash resource-handle value]
-  (some? (next-value resource-handle c-hash value value)))
+     (sp-vr/prefix-keys snapshot c-hash tid (bs/size start-value) start-value
+                        start-id))))
 
 (defrecord SearchParamString [name type base code c-hash expression normalize]
   p/SearchParam
   (-compile-value [_ _ value]
     (codec/string (normalize value)))
+
+  (-chunked-resource-handles [_ context tid _ value]
+    (coll/eduction
+     (u/resource-handle-chunk-mapper context tid)
+     (resource-keys context c-hash tid value)))
 
   (-resource-handles [_ context tid _ value]
     (coll/eduction
@@ -95,17 +96,8 @@
      (u/resource-handle-mapper context tid)
      (resource-keys context c-hash tid value start-id)))
 
-  (-count-resource-handles [_ context tid _ value]
-    (u/count-resource-handles
-     context tid
-     (resource-keys context c-hash tid value)))
-
-  (-compartment-keys [_ context compartment tid value]
-    (with-open-coll [csvri (kv/new-iterator (:snapshot context) :compartment-search-param-value-index)]
-      (c-sp-vr/prefix-keys! csvri compartment c-hash tid value)))
-
-  (-matches? [_ context resource-handle _ values]
-    (some? (some (partial matches? (:next-value context) c-hash resource-handle) values)))
+  (-matcher [_ context _ values]
+    (r-sp-v/value-prefix-filter (:snapshot context) c-hash values))
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

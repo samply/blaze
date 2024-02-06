@@ -119,7 +119,7 @@
       "__t")))
 
 (deftest put-tx-op-test
-  (testing "with empty database"
+  (testing "on empty database"
     (with-system [{:blaze.db/keys [node]} mem-node-config]
       (testing "with empty if-match header"
         (given (iu/update-tx-op (d/db node) {:fhir/type :fhir/Patient :id "0"} "" nil)

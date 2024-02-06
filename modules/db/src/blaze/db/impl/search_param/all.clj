@@ -15,6 +15,9 @@
   (reify p/SearchParam
     (-compile-value [_ _ _])
 
+    (-chunked-resource-handles [search-param context tid modifier value]
+      [(p/-resource-handles search-param context tid modifier value)])
+
     (-resource-handles [_ context tid _ _]
       (rao/type-list context tid))
 

@@ -1,4 +1,4 @@
-{:paths ["src"]
+{:paths ["src" "resources"]
 
  :deps
  {com.google.guava/guava
@@ -10,7 +10,7 @@
     com.google.j2objc/j2objc-annotations]}
 
   com.google.protobuf/protobuf-java
-  {:mvn/version "3.25.1"}
+  {:mvn/version "3.25.2"}
 
   com.fasterxml.jackson.core/jackson-databind
   {:mvn/version "2.16.1"}}}

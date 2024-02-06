@@ -17,13 +17,12 @@
 
 
 (comment
-  (rocksdb/compact-range!
-    (index-kv-store)
-    :resource-as-of-index)
-
-  (rocksdb/compact-range!
-    (index-kv-store)
-    :search-param-value-index)
+  (rocksdb/compact-range! (index-kv-store) :resource-as-of-index)
+  (rocksdb/compact-range! (index-kv-store) :type-as-of-index)
+  (rocksdb/compact-range! (index-kv-store) :system-as-of-index)
+  (rocksdb/compact-range! (index-kv-store) :search-param-value-index)
+  (rocksdb/compact-range! (index-kv-store) :compartment-search-param-value-index)
+  (rocksdb/compact-range! (index-kv-store) :resource-value-index)
 
   (mapv
     (fn [^ThreadStatus status]
@@ -36,5 +35,10 @@
     (.getThreadList (Env/getDefault)))
 
   (rocksdb/tables (index-kv-store) :resource-as-of-index)
+
+  (rocksdb/column-family-meta-data (index-kv-store) :search-param-value-index)
+  (rocksdb/column-family-meta-data (index-kv-store) :compartment-search-param-value-index)
+  (rocksdb/column-family-meta-data (index-kv-store) :resource-as-of-index)
+  (rocksdb/column-family-meta-data (index-kv-store) :patient-last-change-index)
 
   )

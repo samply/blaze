@@ -307,7 +307,7 @@
                :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
       (let [{:keys [status]
-             {[first-entry second-entry third-entry forth-entry] :entry
+             {[first-entry second-entry third-entry fourth-entry] :entry
               :as body} :body}
             @(handler {:path-params {:id "0"}})]
 
@@ -340,9 +340,9 @@
           (is (= (str base-url context-path "/Observation/0")
                  (:fullUrl third-entry))))
 
-        (testing "the forth entry has the right fullUrl"
+        (testing "the fourth entry has the right fullUrl"
           (is (= (str base-url context-path "/Specimen/0")
-                 (:fullUrl forth-entry)))))))
+                 (:fullUrl fourth-entry)))))))
 
   (testing "Patient with MedicationAdministration because it is reachable twice
             via the search param `patient` and `subject`.

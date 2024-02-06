@@ -3,10 +3,10 @@
 		type CapabilityStatement,
 		type CapabilityStatementSearchParam,
 		SearchParamType
-	} from '../../fhir';
-	import type { QueryParam } from './query-param';
-	import { sortByProperty } from '../../util';
-	import { defaultCount } from '../../util';
+	} from '../../fhir.js';
+	import type { QueryParam } from './query-param.js';
+	import { sortByProperty } from '../../util.js';
+	import { defaultCount } from '../../util.js';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
@@ -30,7 +30,7 @@
 		updateAtIndex,
 		moveUpAtIndex,
 		moveDownAtIndex
-	} from '../../util';
+	} from '../../util.js';
 
 	export let capabilityStatement: CapabilityStatement;
 
@@ -104,12 +104,12 @@
 
 {#if resource}
 	<form
-		class="flex gap-2 bg-white shadow sm:rounded-lg px-4 py-5 sm:px-6"
+		class="flex gap-2 px-4 py-5 sm:px-6 border-b border-gray-200"
 		on:submit|preventDefault={send}
 	>
 		<div class="flex-grow flex flex-col gap-2">
 			{#each queryParams as queryParam, index (queryParam.id)}
-				<div in:fade|global={{ duration: 300, easing: quintIn }} class="flex gap-2">
+				<div in:fade={{ duration: 200, easing: quintIn }} class="flex gap-2">
 					<CheckboxActive
 						{index}
 						active={queryParam.active}
@@ -162,7 +162,7 @@
 		<div>
 			<button
 				type="submit"
-				class="w-20 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+				class="w-20 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
 				>Search</button
 			>
 		</div>

@@ -1,26 +1,28 @@
 (ns blaze.db.impl.search-param.token
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
-   [blaze.async.comp :as ac]
+   [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
    [blaze.db.impl.index.resource-as-of :as rao]
+   [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
-   [blaze.db.impl.macros :refer [with-open-coll]]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.impl.search-param.util :as u]
-   [blaze.db.kv :as kv]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
    [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 
 (defmulti index-entries
-  "Returns index entries for `value` from a resource."
+  "Returns index entries for `value` from a resource.
+
+  Index entries are `[modifier value include-in-compartments?]` triples."
   {:arglists '([url value])}
   (fn [_ value] (fhir-spec/fhir-type value)))
 
@@ -47,7 +49,14 @@
 (defmethod index-entries :fhir/canonical
   [_ uri]
   (when-let [value (type/value uri)]
-    [[nil (codec/v-hash value)]]))
+    (let [[url version-parts] (u/canonical-parts value)]
+      (into
+       [[nil (codec/v-hash value)]
+        ["below" (codec/v-hash url)]]
+       (map
+        (fn [version-part]
+          ["below" (codec/v-hash (str url "|" version-part))]))
+       version-parts))))
 
 (defmethod index-entries :fhir/code
   [_ code]
@@ -95,7 +104,7 @@
 
 (defn- literal-reference-entries [reference]
   (when-let [value (type/value reference)]
-    (if-let [[type id] (u/split-literal-ref value)]
+    (if-let [[type id] (fsr/split-literal-ref value)]
       [[nil (codec/v-hash id)]
        [nil (codec/v-hash (str type "/" id))]
        [nil (codec/tid-id (codec/tid type)
@@ -127,22 +136,23 @@
     c-hash))
 
 (defn resource-keys
-  "Returns a reducible collection of [id hash-prefix] tuples starting at
-  `start-id` (optional)."
+  "Returns a reducible collection of `[id hash-prefix]` tuples that have `value`
+  starting at `start-id` (optional)."
   ([{:keys [snapshot]} c-hash tid value]
-   (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
-     (sp-vr/prefix-keys! svri c-hash tid value value)))
+   (sp-vr/prefix-keys snapshot c-hash tid (bs/size value) value))
   ([{:keys [snapshot]} c-hash tid value start-id]
-   (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
-     (sp-vr/prefix-keys! svri c-hash tid value value start-id))))
-
-(defn matches? [next-value c-hash resource-handle value]
-  (some? (next-value resource-handle c-hash value value)))
+   (sp-vr/prefix-keys snapshot c-hash tid (bs/size value) value start-id)))
 
 (defrecord SearchParamToken [name url type base code target c-hash expression]
   p/SearchParam
   (-compile-value [_ _ value]
     (codec/v-hash value))
+
+  (-chunked-resource-handles [_ context tid modifier value]
+    (coll/eduction
+     (u/resource-handle-chunk-mapper context tid)
+     (resource-keys context (c-hash-w-modifier c-hash code modifier) tid
+                    value)))
 
   (-resource-handles [_ context tid modifier value]
     (coll/eduction
@@ -156,18 +166,12 @@
      (resource-keys context (c-hash-w-modifier c-hash code modifier) tid value
                     start-id)))
 
-  (-count-resource-handles [_ context tid modifier value]
-    (u/count-resource-handles
-     context tid
-     (resource-keys context (c-hash-w-modifier c-hash code modifier) tid
-                    value)))
-
   (-compartment-keys [_ context compartment tid value]
-    (with-open-coll [csvri (kv/new-iterator (:snapshot context) :compartment-search-param-value-index)]
-      (c-sp-vr/prefix-keys! csvri compartment c-hash tid value)))
+    (c-sp-vr/prefix-keys (:snapshot context) compartment c-hash tid value))
 
-  (-matches? [_ context resource-handle modifier values]
-    (some? (some (partial matches? (:next-value context) (c-hash-w-modifier c-hash code modifier) resource-handle) values)))
+  (-matcher [_ context modifier values]
+    (r-sp-v/value-prefix-filter (:snapshot context)
+                                (c-hash-w-modifier c-hash code modifier) values))
 
   (-compartment-ids [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
@@ -176,7 +180,7 @@
         (fn [value]
           (when (identical? :fhir/Reference (fhir-spec/fhir-type value))
             (when-let [reference (type/value (:reference value))]
-              (some-> (u/split-literal-ref reference) (coll/nth 1))))))
+              (some-> (fsr/split-literal-ref reference) (coll/nth 1))))))
        values)))
 
   (-index-values [search-param resolver resource]
@@ -191,15 +195,15 @@
   (-compile-value [_ _ value]
     (codec/id-byte-string value))
 
+  (-chunked-resource-handles [search-param context tid modifier value]
+    [(p/-resource-handles search-param context tid modifier value)])
+
   (-resource-handles [_ context tid _ value]
-    (some-> ((:resource-handle context) tid value) vector))
+    (some-> (u/non-deleted-resource-handle context tid value) vector))
 
-  (-resource-handles [_ context tid _ value start-id]
+  (-resource-handles [sp context tid modifier value start-id]
     (when (= value start-id)
-      (some-> ((:resource-handle context) tid value) vector)))
-
-  (-count-resource-handles [_ context tid _ value]
-    (ac/completed-future (if ((:resource-handle context) tid value) 1 0)))
+      (p/-resource-handles sp context tid modifier value)))
 
   (-sorted-resource-handles [_ context tid _]
     (rao/type-list context tid))

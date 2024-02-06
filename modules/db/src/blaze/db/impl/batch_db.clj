@@ -5,20 +5,19 @@
   cost associated with open and closing them."
   (:require
    [blaze.async.comp :as ac]
+   [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index :as index]
    [blaze.db.impl.index.compartment.resource :as cr]
    [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-handle :as rh]
-   [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [blaze.db.impl.index.system-as-of :as sao]
    [blaze.db.impl.index.system-stats :as system-stats]
    [blaze.db.impl.index.t-by-instant :as t-by-instant]
    [blaze.db.impl.index.type-as-of :as tao]
    [blaze.db.impl.index.type-stats :as type-stats]
-   [blaze.db.impl.macros :refer [with-open-coll]]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.all :as search-param-all]
    [blaze.db.impl.search-param.util :as u]
@@ -61,8 +60,7 @@
     (map :code))
    (sr/list-by-type search-param-registry type)))
 
-(defrecord BatchDb [node snapshot resource-handle next-value next-value-prev
-                    basis-t t]
+(defrecord BatchDb [node snapshot basis-t t]
   p/Db
   (-node [_]
     node)
@@ -70,109 +68,112 @@
   (-basis-t [_]
     basis-t)
 
+  (-as-of-t [_]
+    (when (not= basis-t t) t))
+
   ;; ---- Instance-Level Functions --------------------------------------------
 
   (-resource-handle [_ tid id]
-    (resource-handle tid id))
+    (rao/resource-handle snapshot tid id t))
 
   ;; ---- Type-Level Functions ------------------------------------------------
 
-  (-type-list [context tid]
-    (rao/type-list context tid))
+  (-type-list [db tid]
+    (rao/type-list db tid))
 
-  (-type-list [context tid start-id]
-    (rao/type-list context tid start-id))
+  (-type-list [db tid start-id]
+    (rao/type-list db tid start-id))
 
   (-type-total [_ tid]
-    (with-open [iter (type-stats/new-iterator snapshot)]
-      (:total (type-stats/get! iter tid t) 0)))
+    (:total (type-stats/seek-value snapshot tid t) 0))
 
   ;; ---- System-Level Functions ----------------------------------------------
 
-  (-system-list [context]
-    (rao/system-list context))
+  (-system-list [db]
+    (rao/system-list db))
 
-  (-system-list [context start-tid start-id]
-    (rao/system-list context start-tid start-id))
+  (-system-list [db start-tid start-id]
+    (rao/system-list db start-tid start-id))
 
   (-system-total [_]
-    (with-open [iter (system-stats/new-iterator snapshot)]
-      (:total (system-stats/get! iter t) 0)))
+    (:total (system-stats/seek-value snapshot t) 0))
 
   ;; ---- Compartment-Level Functions -----------------------------------------
 
-  (-compartment-resource-handles [context compartment tid]
-    (cr/resource-handles context compartment tid))
+  (-compartment-resource-handles [db compartment tid]
+    (cr/resource-handles db compartment tid))
 
-  (-compartment-resource-handles [context compartment tid start-id]
-    (cr/resource-handles context compartment tid start-id))
+  (-compartment-resource-handles [db compartment tid start-id]
+    (cr/resource-handles db compartment tid start-id))
 
   ;; ---- Common Query Functions ----------------------------------------------
 
-  (-count-query [context query]
-    (p/-count query context))
+  (-count-query [db query]
+    (p/-count query db))
 
-  (-execute-query [context query]
-    (p/-execute query context))
+  (-execute-query [db query]
+    (p/-execute query db))
 
-  (-execute-query [context query arg1]
-    (p/-execute query context arg1))
+  (-execute-query [db query arg1]
+    (p/-execute query db arg1))
+
+  ;; ---- History Functions ---------------------------------------------------
+
+  (-stop-history-at [_ instant]
+    (let [t (t-by-instant/t-by-instant snapshot instant)]
+      (take-while
+       (fn [resource-handle]
+         (< t (rh/t resource-handle))))))
 
   ;; ---- Instance-Level History Functions ------------------------------------
 
-  (-instance-history [_ tid id start-t since]
-    (let [start-t (if (some-> start-t (<= t)) start-t t)
-          end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
-      (rao/instance-history snapshot tid id start-t end-t)))
+  (-instance-history [_ tid id start-t]
+    (let [start-t (if (some-> start-t (<= t)) start-t t)]
+      (rao/instance-history snapshot tid id start-t)))
 
   (-total-num-of-instance-changes [_ tid id since]
     (let [end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
-      (rao/num-of-instance-changes resource-handle tid id t end-t)))
+      (rao/num-of-instance-changes snapshot tid id t end-t)))
 
   ;; ---- Type-Level History Functions ----------------------------------------
 
-  (-type-history [_ tid start-t start-id since]
-    (let [start-t (if (some-> start-t (<= t)) start-t t)
-          end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
-      (tao/type-history snapshot tid start-t start-id end-t)))
+  (-type-history [_ tid start-t start-id]
+    (let [start-t (if (some-> start-t (<= t)) start-t t)]
+      (tao/type-history snapshot tid start-t start-id)))
 
   (-total-num-of-type-changes [_ type since]
     (let [tid (codec/tid type)
           end-t (some->> since (t-by-instant/t-by-instant snapshot))]
-      (with-open [iter (type-stats/new-iterator snapshot)]
-        (- (:num-changes (type-stats/get! iter tid t) 0)
-           (:num-changes (some->> end-t (type-stats/get! iter tid)) 0)))))
+      (- (:num-changes (type-stats/seek-value snapshot tid t) 0)
+         (:num-changes (some->> end-t (type-stats/seek-value snapshot tid)) 0))))
 
   ;; ---- System-Level History Functions --------------------------------------
 
-  (-system-history [_ start-t start-tid start-id since]
-    (let [start-t (if (some-> start-t (<= t)) start-t t)
-          end-t (or (some->> since (t-by-instant/t-by-instant snapshot)) 0)]
-      (sao/system-history snapshot start-t start-tid start-id end-t)))
+  (-system-history [_ start-t start-tid start-id]
+    (let [start-t (if (some-> start-t (<= t)) start-t t)]
+      (sao/system-history snapshot start-t start-tid start-id)))
 
   (-total-num-of-system-changes [_ since]
     (let [end-t (some->> since (t-by-instant/t-by-instant snapshot))]
-      (with-open [iter (system-stats/new-iterator snapshot)]
-        (- (:num-changes (system-stats/get! iter t) 0)
-           (:num-changes (some->> end-t (system-stats/get! iter)) 0)))))
+      (- (:num-changes (system-stats/seek-value snapshot t) 0)
+         (:num-changes (some->> end-t (system-stats/seek-value snapshot)) 0))))
 
   ;; ---- Include ---------------------------------------------------------------
 
-  (-include [context resource-handle code]
-    (index/targets context resource-handle (codec/c-hash code)))
+  (-include [db resource-handle code]
+    (index/targets db resource-handle (codec/c-hash code)))
 
-  (-include [context resource-handle code target-type]
-    (index/targets context resource-handle (codec/c-hash code)
+  (-include [db resource-handle code target-type]
+    (index/targets db resource-handle (codec/c-hash code)
                    (codec/tid target-type)))
 
-  (-rev-include [context resource-handle source-type code]
+  (-rev-include [db resource-handle source-type code]
     (let [reference (codec/v-hash (rh/reference resource-handle))
           source-tid (codec/tid source-type)]
       (coll/eduction
-       (u/resource-handle-mapper context source-tid)
-       (with-open-coll [svri (kv/new-iterator snapshot :search-param-value-index)]
-         (sp-vr/prefix-keys! svri (codec/c-hash code) source-tid
-                             reference reference)))))
+       (u/resource-handle-mapper db source-tid)
+       (sp-vr/prefix-keys snapshot (codec/c-hash code) source-tid
+                          (bs/size reference) reference))))
 
   (-patient-everything [db patient-handle]
     (let [search-param-registry (:search-param-registry node)
@@ -243,9 +244,6 @@
 
   AutoCloseable
   (close [_]
-    (.close ^AutoCloseable next-value-prev)
-    (.close ^AutoCloseable next-value)
-    (.close ^AutoCloseable resource-handle)
     (.close ^AutoCloseable snapshot)))
 
 (defmethod print-method BatchDb [^BatchDb db ^Writer w]
@@ -280,8 +278,7 @@
   p/Query
   (-count [_ context]
     (ac/completed-future
-     (with-open [iter (type-stats/new-iterator (:snapshot context))]
-       (:total (type-stats/get! iter tid (:t context)) 0))))
+     (:total (type-stats/seek-value (:snapshot context) tid (:t context)) 0)))
   (-execute [_ context]
     (rao/type-list context tid))
   (-execute [_ context start-id]
@@ -316,11 +313,4 @@
   ^AutoCloseable
   [{:keys [kv-store] :as node} basis-t t]
   (let [snapshot (kv/new-snapshot kv-store)]
-    (->BatchDb
-     node
-     snapshot
-     (rao/resource-handle snapshot t)
-     (r-sp-v/next-value-fn snapshot)
-     (r-sp-v/next-value-prev-fn snapshot)
-     basis-t
-     t)))
+    (->BatchDb node snapshot basis-t t)))

@@ -29,8 +29,7 @@
     (coll/eduction
      (comp
       (p/-index-value-compiler search-param)
-      (filter (fn [[modifier]] (nil? modifier)))
-      (map (fn [[_ value]] value)))
+      (keep (fn [[modifier value]] (when (nil? modifier) value))))
      values)))
 
 (defn index-values [resolver c1 c2]

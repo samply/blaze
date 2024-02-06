@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { FhirObject } from '../resource-card';
+	import type { FhirObject } from '../resource-card.js';
 	import Property from './property.svelte';
 
 	export let indent = 0;

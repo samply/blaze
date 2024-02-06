@@ -3,6 +3,7 @@
    [blaze.anomaly :refer [when-ok]]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
+   [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.composite.common :as cc]
    [blaze.db.impl.search-param.token :as spt]
@@ -18,6 +19,11 @@
             v2 (cc/compile-component-value c1 v2)]
         (bs/concat v1 v2))))
 
+  (-chunked-resource-handles [_ context tid _ value]
+    (coll/eduction
+     (u/resource-handle-chunk-mapper context tid)
+     (spt/resource-keys context c-hash tid value)))
+
   (-resource-handles [_ context tid _ value]
     (coll/eduction
      (u/resource-handle-mapper context tid)
@@ -28,13 +34,8 @@
      (u/resource-handle-mapper context tid)
      (spt/resource-keys context c-hash tid value start-id)))
 
-  (-count-resource-handles [_ context tid _ value]
-    (u/count-resource-handles
-     context tid
-     (spt/resource-keys context c-hash tid value)))
-
-  (-matches? [_ context resource-handle _ values]
-    (some? (some (partial spt/matches? (:next-value context) c-hash resource-handle) values)))
+  (-matcher [_ context _ values]
+    (r-sp-v/value-prefix-filter (:snapshot context) c-hash values))
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]

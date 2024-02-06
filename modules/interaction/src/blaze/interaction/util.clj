@@ -12,18 +12,18 @@
   (let [[_ t] (re-find #"W/\"(\d+)\"" etag)]
     (some-> t parse-long)))
 
-(defn- remove-query-param? [[k]]
-  (and (str/starts-with? k "_")
-       (not (#{"_id" "_list" "_profile" "_lastUpdated"} k))
-       (not (str/starts-with? k "_has"))))
+(defn- remove-query-param? [[param-key]]
+  (let [[code] (str/split param-key #":" 2)]
+    (and (str/starts-with? code "_")
+         (not (#{"_id" "_list" "_profile" "_lastUpdated" "_has"} code)))))
 
 (defn- query-param->clauses
   "Takes a query param with possible multiple values and returns possible
   multiple clauses one for each query param."
-  [[k v]]
+  [[param-key param-value]]
   (map
-   #(into [k] (map str/trim) (str/split % #","))
-   (u/to-seq v)))
+   #(into [param-key] (map str/trim) (str/split % #","))
+   (u/to-seq param-value)))
 
 (def ^:private query-params->clauses-xf
   (comp

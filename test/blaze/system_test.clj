@@ -35,39 +35,65 @@
   (are [config env res] (= res (system/resolve-config config env))
     {:a (system/->Cfg "SERVER_PORT" (s/spec nat-int?) 8080)}
     {"SERVER_PORT" "80"}
-    {:a 80}
+    {:a 80
+     :blaze/admin-api
+     {:settings
+      [{:name "SERVER_PORT"
+        :value 80
+        :default-value 8080}]}}
 
     {:a (system/->Cfg "SERVER_PORT" (s/spec nat-int?) 8080)}
     nil
-    {:a 8080}
+    {:a 8080
+     :blaze/admin-api
+     {:settings
+      [{:name "SERVER_PORT"
+        :value 8080
+        :default-value 8080}]}}
 
     {:a (system/->Cfg "SERVER_PORT" (s/spec nat-int?) 8080)}
     {"SERVER_PORT" "a"}
-    {:a ::s/invalid})
+    {:a ::s/invalid
+     :blaze/admin-api
+     {:settings
+      [{:name "SERVER_PORT"
+        :value ::s/invalid
+        :default-value 8080}]}})
 
   (testing "Blank env vars are handled same as missing ones"
     (are [config env res] (= res (system/resolve-config config env))
       {:a (system/->Cfg "PROXY_HOST" (s/spec string?) nil)}
       {"PROXY_HOST" ""}
-      {:a nil}
+      {:a nil :blaze/admin-api {:settings []}}
 
       {:a (system/->Cfg "PROXY_HOST" (s/spec string?) nil)}
       {}
-      {:a nil}
+      {:a nil :blaze/admin-api {:settings []}}
 
       {:a (system/->Cfg "PROXY_HOST" (s/spec string?) "default")}
       {"PROXY_HOST" ""}
-      {:a "default"}
+      {:a "default"
+       :blaze/admin-api
+       {:settings
+        [{:name "PROXY_HOST"
+          :value "default"
+          :default-value "default"}]}}
 
       {:a (system/->Cfg "PROXY_HOST" (s/spec string?) "default")}
       {}
-      {:a "default"})))
+      {:a "default"
+       :blaze/admin-api
+       {:settings
+        [{:name "PROXY_HOST"
+          :value "default"
+          :default-value "default"}]}})))
 
 (def config
   (assoc mem-node-config
          :blaze/rest-api
          {:base-url "http://localhost:8080"
           :version "0.1.0"
+          :release-date "2024-01-07"
           :structure-definition-repo structure-definition-repo
           :node (ig/ref :blaze.db/node)
           :search-param-registry (ig/ref :blaze.db/search-param-registry)

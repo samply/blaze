@@ -50,3 +50,23 @@
       (prop/for-all [s gen/string]
         (let [r (u/soundex s)]
           (or (string? r) (nil? r)))))))
+
+(deftest canonical-parts-test
+  (are [canonical parts] (= parts (u/canonical-parts canonical))
+    "|" ["" nil]
+    "url" ["url" nil]
+    "url|" ["url" nil]
+    "url|." ["url" nil]
+    "url|1" ["url" ["1"]]
+    "url|1.2" ["url" ["1" "1.2"]]
+    "url|1.2-alpha" ["url" ["1" "1.2-alpha"]]
+    "url|1.2.3" ["url" ["1" "1.2"]]
+    "url|1.2.3-draft" ["url" ["1" "1.2"]])
+
+  (testing "random strings"
+    (satisfies-prop 10000
+      (prop/for-all [s gen/string]
+        (let [[url version-parts] (u/canonical-parts s)]
+          (and (string? url)
+               (every? string? version-parts)
+               (<= (count version-parts) 2)))))))

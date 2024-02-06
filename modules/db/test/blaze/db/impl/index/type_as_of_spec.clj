@@ -12,9 +12,8 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef tao/type-history
-  :args (s/cat :snapshot :blaze.db/kv-snapshot
+  :args (s/cat :snapshot :blaze.db.kv/snapshot
                :tid :blaze.db/tid
                :start-t :blaze.db/t
-               :start-id (s/nilable :blaze.db/id-byte-string)
-               :end-t :blaze.db/t)
+               :start-id (s/nilable :blaze.db/id-byte-string))
   :ret (cs/coll-of :blaze.db/resource-handle))

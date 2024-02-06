@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { FhirObject } from '../resource/resource-card';
-	import type { Reference } from '../fhir';
+	import type { FhirObject } from '../resource/resource-card.js';
+	import type { Reference } from '../fhir.js';
 	import { base } from '$app/paths';
 
 	export let values: FhirObject[];

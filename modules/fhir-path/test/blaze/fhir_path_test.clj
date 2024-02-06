@@ -2,14 +2,17 @@
   "See: http://hl7.org/fhirpath/index.html"
   (:refer-clojure :exclude [eval])
   (:require
+   [blaze.anomaly :as ba]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir-path-spec]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type]
    [blaze.fhir.test-util]
-   [blaze.test-util :as tu]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
+   [clojure.test.check.generators :as gen]
+   [clojure.test.check.properties :as prop]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
@@ -18,6 +21,13 @@
 (log/set-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
+
+(deftest compile-test
+  (testing "random input"
+    (satisfies-prop 1000
+      (prop/for-all [s gen/string]
+        (let [x (fhir-path/compile s)]
+          (or (ba/anomaly? x) (satisfies? fhir-path/Expression x)))))))
 
 (def ^:private resolver
   (reify

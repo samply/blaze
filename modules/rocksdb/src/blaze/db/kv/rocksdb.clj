@@ -2,6 +2,7 @@
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.db.kv :as kv]
+   [blaze.db.kv.protocols :as kv-p]
    [blaze.db.kv.rocksdb.impl :as impl]
    [blaze.db.kv.rocksdb.metrics :as metrics]
    [blaze.db.kv.rocksdb.metrics.spec]
@@ -24,7 +25,7 @@
 (RocksDB/loadLibrary)
 
 (deftype RocksKvIterator [^RocksIterator i]
-  kv/KvIterator
+  kv-p/KvIterator
   (-valid [_]
     (.isValid i))
 
@@ -43,6 +44,9 @@
   (-seek-for-prev [_ target]
     (.seekForPrev i ^bytes target))
 
+  (-seek-for-prev-buffer [_ target]
+    (.seekForPrev i ^ByteBuffer target))
+
   (-next [_]
     (.next i))
 
@@ -53,28 +57,22 @@
     (.key i))
 
   (-key [_ buf]
-    (.key i buf))
+    (.key i ^ByteBuffer buf))
 
   (-value [_]
     (.value i))
 
   (-value [_ buf]
-    (.value i buf))
+    (.value i ^ByteBuffer buf))
 
   AutoCloseable
   (close [_]
     (.close i)))
 
 (deftype RocksKvSnapshot [^RocksDB db ^Snapshot snapshot ^ReadOptions read-opts cfhs]
-  kv/KvSnapshot
-  (-new-iterator [_]
-    (->RocksKvIterator (.newIterator db read-opts)))
-
+  kv-p/KvSnapshot
   (-new-iterator [_ column-family]
     (->RocksKvIterator (.newIterator db (impl/get-cfh cfhs column-family) read-opts)))
-
-  (-snapshot-get [_ k]
-    (.get db read-opts ^bytes k))
 
   (-snapshot-get [_ column-family k]
     (.get db (impl/get-cfh cfhs column-family) read-opts ^bytes k))
@@ -100,7 +98,8 @@
   Additionally an optional `column-family` key can be supplied in order to
   obtain the value of a column family specific property.
 
-  Returns an anomaly if the optional column family doesn't exist."
+  Returns an anomaly if the property was not found or the optional column family
+  doesn't exist."
   ([store name]
    (p/-property store name))
   ([store column-family name]
@@ -112,14 +111,17 @@
   Additionally an optional `column-family` key can be supplied in order to
   obtain the value of a column family specific property.
 
-  Returns an anomaly if the optional column family doesn't exist."
+  Returns an anomaly if the property was not found or the optional column family
+  doesn't exist."
   ([store name]
    (p/-long-property store name))
   ([store column-family name]
    (p/-long-property store column-family name)))
 
 (defn agg-long-property
-  "Returns the aggregated long value of the property with `name` from `store`."
+  "Returns the aggregated long value of the property with `name` from `store`.
+
+  Returns an anomaly if the property was not found."
   [store name]
   (p/-agg-long-property store name))
 
@@ -129,7 +131,8 @@
   Additionally an optional `column-family` key can be supplied in order to
   obtain the value of a column family specific property.
 
-  Returns an anomaly if the optional column family doesn't exist."
+  Returns an anomaly if the property was not found or the optional column family
+  doesn't exist."
   ([store name]
    (p/-map-property store name))
   ([store column-family name]
@@ -155,19 +158,16 @@
   (p/-column-family-meta-data store column-family))
 
 (defn compact-range!
-  "Runs compaction in `store`.
+  "Runs compaction on `column-family` in `store`.
 
-  Additionally an optional `column-family` key can be supplied in order to
-  run compaction only of that column family.
+  After the column family has been compacted, all data will have been pushed
+  down to the last level containing any data.
 
-  Returns an anomaly if the optional column family doesn't exist.
+  Blocks until finished.
 
-  After the database has been compacted, all data will have been pushed down to
-  the last level containing any data."
-  ([store]
-   (p/-compact-range store))
-  ([store column-family]
-   (p/-compact-range store column-family)))
+  Returns an anomaly if the column family doesn't exist."
+  [store column-family]
+  (p/-compact-range store column-family))
 
 (defn drop-column-family!
   "Drops `column-family` in `store`.
@@ -182,38 +182,22 @@
   (p/-drop-column-family store column-family))
 
 (deftype RocksKvStore [^RocksDB db path ^WriteOptions write-opts cfhs]
-  kv/KvStore
+  kv-p/KvStore
   (-new-snapshot [_]
     (let [snapshot (.getSnapshot db)]
       (->RocksKvSnapshot db snapshot (.setSnapshot (ReadOptions.) snapshot) cfhs)))
 
-  (-get [_ k]
-    (.get db k))
-
   (-get [_ column-family k]
     (.get db (impl/get-cfh cfhs column-family) ^bytes k))
-
-  (-multi-get [_ keys]
-    (loop [[k & ks] keys
-           [v & vs] (.multiGetAsList db keys)
-           res {}]
-      (if k
-        (if v
-          (recur ks vs (assoc res k v))
-          (recur ks vs res))
-        res)))
 
   (-put [_ entries]
     (with-open [wb (WriteBatch.)]
       (impl/put-wb! cfhs wb entries)
       (.write db write-opts wb)))
 
-  (-put [_ key value]
-    (.put db key value))
-
-  (-delete [_ keys]
+  (-delete [_ entries]
     (with-open [wb (WriteBatch.)]
-      (impl/delete-wb! wb keys)
+      (impl/delete-wb! cfhs wb entries)
       (.write db write-opts wb)))
 
   (-write [_ entries]
@@ -288,9 +272,6 @@
     (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
       (.dropColumnFamily db cfh)))
 
-  (-compact-range [_]
-    (.compactRange db))
-
   (-compact-range [_ column-family]
     (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
       (.compactRange db cfh)))
@@ -300,11 +281,11 @@
     (.close db)
     (.close write-opts)))
 
+(defn- cfh-key [cfh]
+  (keyword (String. (.getName ^ColumnFamilyHandle cfh))))
+
 (defn- index-column-family-handles [column-family-handles]
-  (into
-   {}
-   (map #(vector (keyword (String. (.getName ^ColumnFamilyHandle %))) %))
-   column-family-handles))
+  (reduce #(assoc %1 (cfh-key %2) %2) {} column-family-handles))
 
 (defmethod ig/init-key ::block-cache
   [_ {:keys [size-in-mb] :or {size-in-mb 128}}]

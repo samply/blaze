@@ -1,23 +1,23 @@
 (ns blaze.db.impl.index
   (:require
-   [blaze.async.comp :as ac]
+   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
-   [blaze.db.impl.macros :refer [with-open-coll]]
    [blaze.db.impl.search-param :as search-param]
-   [blaze.db.impl.search-param.util :as u]
-   [blaze.db.kv :as kv]))
+   [blaze.db.impl.search-param.util :as u]))
 
-(defn- other-clauses-filter [context clauses]
-  (filter
-   (fn [resource-handle]
-     (loop [[[search-param modifier _ values] & clauses] clauses]
-       (if search-param
-         (when (search-param/matches? search-param context resource-handle
-                                      modifier values)
-           (recur clauses))
-         true)))))
+(defn- other-clauses-filter
+  "Creates a filter xform for all `clauses` by possibly composing multiple
+  filter xforms for each clause."
+  [context clauses]
+  (transduce
+   (map
+    (fn [[search-param modifier _ values]]
+      (search-param/matcher search-param context modifier values)))
+   comp
+   clauses))
 
 (defn- resource-handles
   ([search-param context tid modifier values]
@@ -54,27 +54,47 @@
        (resource-handles
         search-param context tid modifier values start-id)))))
 
+(defn- resource-handle-chunk-counter [context other-clauses chunk]
+  (transduce
+   (other-clauses-filter context other-clauses)
+   (completing (fn [sum _] (inc sum)))
+   0
+   chunk))
+
+(defn- resource-handle-chunk-counter-mapper [context other-clauses]
+  (map #(ac/supply-async (fn [] (resource-handle-chunk-counter context other-clauses %)))))
+
+(defn- count-resource-handles [xform chunked-resource-handles]
+  (let [futures (into [] xform chunked-resource-handles)]
+    (do-sync [_ (ac/all-of futures)]
+      (transduce (map ac/join) + futures))))
+
+(defn- chunked-resource-handles
+  [search-param context tid modifier values]
+  (condp = modifier
+    "asc" [(search-param/sorted-resource-handles search-param context tid :asc)]
+    "desc" [(search-param/sorted-resource-handles search-param context tid :desc)]
+    (search-param/chunked-resource-handles search-param context tid modifier values)))
+
 (defn type-query-total
   "Returns a CompletableFuture that will complete with the count of the
   matching resource handles."
   [context tid clauses]
   (let [[[search-param modifier _ values] & other-clauses] clauses]
     (if (seq other-clauses)
-      (ac/completed-future
-       (count
-        (coll/eduction
-         (other-clauses-filter context other-clauses)
-         (search-param/resource-handles
-          search-param context tid modifier values))))
-      (search-param/count-resource-handles
-       search-param context tid modifier values))))
+      (count-resource-handles
+       (resource-handle-chunk-counter-mapper context other-clauses)
+       (chunked-resource-handles search-param context tid modifier values))
+      (count-resource-handles
+       (map #(ac/supply-async (fn [] (reduce (fn [sum _] (inc sum)) 0 %))))
+       (chunked-resource-handles search-param context tid modifier values)))))
 
 (defn system-query [_ _]
   ;; TODO: implement
   [])
 
 (defn compartment-query
-  "Iterates over the CSV index."
+  "Iterates over the CompartmentSearchParamValueResource index."
   [context compartment tid clauses]
   (let [[[search-param _ _ values] & other-clauses] clauses]
     (if (seq other-clauses)
@@ -95,11 +115,10 @@
   ([{:keys [snapshot] :as context} {:keys [tid id hash]} code]
    (coll/eduction
     (u/reference-resource-handle-mapper context)
-    (with-open-coll [rsvi (kv/new-iterator snapshot :resource-value-index)]
-      (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code))))
+    (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash code)))
   ([{:keys [snapshot] :as context} {:keys [tid id hash]} code target-tid]
    (coll/eduction
     (u/reference-resource-handle-mapper context)
-    (with-open-coll [rsvi (kv/new-iterator snapshot :resource-value-index)]
-      (r-sp-v/prefix-keys! rsvi tid (codec/id-byte-string id) hash code
-                           (codec/tid-byte-string target-tid))))))
+    (let [start-value (codec/tid-byte-string target-tid)]
+      (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash code
+                          (bs/size start-value) start-value)))))

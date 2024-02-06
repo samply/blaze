@@ -93,8 +93,9 @@
 
 (defn- with-index-store-version [config version]
   (assoc-in config [[::kv/mem :blaze.db/index-kv-store] :init-data]
-            [[version/key (version/encode-value version)]
-             (tx-success/index-entry 1 Instant/EPOCH)]))
+            (cond-> [(tx-success/index-entry 1 Instant/EPOCH)]
+              version
+              (conj [:default version/key (version/encode-value version)]))))
 
 (deftest init-test
   (testing "nil config"
@@ -262,6 +263,10 @@
 
     ;; but it isn't terminated yet
     (is (not (ex/terminated? indexer-executor)))))
+
+(deftest existing-data-without-version
+  (with-system [{:blaze.db/keys [node]} (with-index-store-version config nil)]
+    (is node)))
 
 (deftest existing-data-with-compatible-version
   (with-system [{:blaze.db/keys [node]} (with-index-store-version config 0)]

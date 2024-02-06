@@ -70,7 +70,7 @@
       {:no-doc true
        :handler default-options-handler}})))
 
-(defn handler
+(defn- handler
   "Whole app Ring handler."
   [{:keys [auth-backends] :as context}]
   (-> (reitit.ring/ring-handler
@@ -91,6 +91,7 @@
    :req-un
    [:blaze/base-url
     :blaze/version
+    :blaze/release-date
     :blaze.fhir/structure-definition-repo
     :blaze.db/node
     :blaze.db/search-param-registry

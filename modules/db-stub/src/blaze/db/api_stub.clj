@@ -32,8 +32,10 @@
    ::tx-log/local
    {:kv-store (ig/ref :blaze.db/transaction-kv-store)
     :clock (ig/ref :blaze.test/fixed-clock)}
+
    [::kv/mem :blaze.db/transaction-kv-store]
    {:column-families {}}
+
    :blaze.test/fixed-clock {}
 
    :blaze.db/tx-cache

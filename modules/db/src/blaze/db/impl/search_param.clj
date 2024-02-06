@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
-   [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
@@ -19,7 +18,8 @@
    [blaze.db.impl.search-param.token]
    [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
-   [blaze.fhir.spec :as fhir-spec]))
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.references :as fsr]))
 
 (set! *warn-on-reflection* true)
 
@@ -65,19 +65,19 @@
   ([search-param context tid direction start-id]
    (p/-sorted-resource-handles search-param context tid direction start-id)))
 
-(defn count-resource-handles
-  "Returns a CompletableFuture that will complete with the count of the
-  matching resource handles."
+(defn chunked-resource-handles
+  "Returns an reducible collection of chunks of resource handles.
+
+  Each chunk is a CompletableFuture that will complete with reducible
+  collection of matching resource handles."
   [search-param context tid modifier values]
   (if (= 1 (count values))
-    (p/-count-resource-handles search-param context tid modifier (first values))
-    (ac/completed-future
-     (count
-      (coll/eduction
-       (comp
-        (mapcat (partial p/-resource-handles search-param context tid modifier))
-        (distinct))
-       values)))))
+    (p/-chunked-resource-handles search-param context tid modifier (first values))
+    [(coll/eduction
+      (comp
+       (mapcat (partial p/-resource-handles search-param context tid modifier))
+       (distinct))
+      values)]))
 
 (defn- compartment-keys
   "Returns a reducible collection of `[prefix id hash-prefix]` triples."
@@ -92,9 +92,11 @@
    (u/resource-handle-mapper context tid)
    (compartment-keys search-param context compartment tid compiled-values)))
 
-(defn matches?
-  [search-param context resource-handle modifier compiled-values]
-  (p/-matches? search-param context resource-handle modifier compiled-values))
+(defn matcher
+  "Returns a stateful transducer that filters resource handles depending on
+  having one of `compiled-values` for `search-param` with `modifier`."
+  [search-param context modifier compiled-values]
+  (p/-matcher search-param context modifier compiled-values))
 
 (def ^:private stub-resolver
   "A resolver which only returns a resource stub with type and id from the local
@@ -102,7 +104,7 @@
   (reify
     fhir-path/Resolver
     (-resolve [_ uri]
-      (when-let [[type id] (some-> uri u/split-literal-ref)]
+      (when-let [[type id] (some-> uri fsr/split-literal-ref)]
         {:fhir/type (keyword "fhir" type)
          :id id}))))
 
@@ -122,7 +124,7 @@
   `search-param` or an anomaly in case of errors."
   {:arglists '([search-param linked-compartments hash resource])}
   [{:keys [code c-hash] :as search-param} linked-compartments hash resource]
-  (when-ok [values (p/-index-values search-param stub-resolver resource)]
+  (when-ok [triples (p/-index-values search-param stub-resolver resource)]
     (let [{:keys [id]} resource
           type (name (fhir-spec/fhir-type resource))
           tid (codec/tid type)
@@ -152,4 +154,4 @@
              [(sp-vr/index-entry c-hash tid value id hash)
               (r-sp-v/index-entry tid id hash c-hash value)]
              linked-compartments))))
-       values))))
+       triples))))

@@ -1,7 +1,6 @@
 (ns blaze.db.kv.rocksdb.impl
   (:require
    [blaze.anomaly :as ba :refer [throw-anom]]
-   [blaze.coll.core :as coll]
    [blaze.db.kv.rocksdb.column-family-meta-data :as-alias column-family-meta-data]
    [blaze.db.kv.rocksdb.column-family-meta-data.level :as-alias column-family-meta-data-level]
    [clojure.core.protocols :as p])
@@ -131,32 +130,23 @@
 
 (defn put-wb! [cfhs ^WriteBatchInterface wb entries]
   (run!
-   (fn [entry]
-     (if (= 3 (coll/count entry))
-       (let [column-family (coll/nth entry 0)
-             key (coll/nth entry 1)
-             value (coll/nth entry 2)]
-         (.put wb (get-cfh cfhs column-family) ^bytes key ^bytes value))
-       (let [key (coll/nth entry 0)
-             value (coll/nth entry 1)]
-         (.put wb ^bytes key ^bytes value))))
+   (fn [[column-family key value]]
+     (.put wb (get-cfh cfhs column-family) ^bytes key ^bytes value))
    entries))
 
-(defn delete-wb! [^WriteBatchInterface wb ks]
-  (run! #(.delete wb ^bytes %) ks))
+(defn delete-wb! [cfhs ^WriteBatchInterface wb entries]
+  (run!
+   (fn [[column-family key]]
+     (.delete wb (get-cfh cfhs column-family) ^bytes key))
+   entries))
 
 (defn write-wb! [cfhs ^WriteBatchInterface wb entries]
   (run!
    (fn [[op column-family k v]]
-     (if (keyword? column-family)
-       (case op
-         :put (.put wb (get-cfh cfhs column-family) ^bytes k ^bytes v)
-         :merge (.merge wb (get-cfh cfhs column-family) ^bytes k ^bytes v)
-         :delete (.delete wb (get-cfh cfhs column-family) ^bytes k))
-       (case op
-         :put (.put wb ^bytes column-family ^bytes k)
-         :merge (.merge wb ^bytes column-family ^bytes k)
-         :delete (.delete wb ^bytes column-family))))
+     (case op
+       :put (.put wb (get-cfh cfhs column-family) ^bytes k ^bytes v)
+       :merge (.merge wb (get-cfh cfhs column-family) ^bytes k ^bytes v)
+       :delete (.delete wb (get-cfh cfhs column-family) ^bytes k)))
    entries))
 
 (defn property-error [^RocksDBException e name]

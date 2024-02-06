@@ -10,6 +10,10 @@ Blaze keeps track over the history of all updates of each resource. However if t
 
 ### Search Type
 
+#### _profile
+
+Search for `Resource.meta.profile` is supported using the `_profile` search param with exact match or using the `below` modifier as in `_profile:below` with major and minor version prefix match. [Semver][6] is expected for version numbers so a search value of `<url>|1` will find all versions with major version `1` and a search value of `<url>|1.2` will find all versions with major version `1` and minor version `2`. Patch versions are not supported with the `below` modifier.
+
 #### Sorting
 
 The special search parameter `_sort` supports the values `_id`, `_lastUpdated` and `-_lastUpdated`.
@@ -37,3 +41,4 @@ Besides the static `BASE_URL` setting, Blaze also respects the reverse proxy hea
 [3]: <https://github.com/samply/blaze/issues>
 [4]: <https://datatracker.ietf.org/doc/html/rfc7239>
 [5]: <https://hl7.org/fhir/http.html#capabilities>
+[6]: <https://semver.org>

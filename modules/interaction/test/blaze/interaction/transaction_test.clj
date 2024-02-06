@@ -8,6 +8,7 @@
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.kv :as kv]
+   [blaze.db.kv.protocols :as kv-p]
    [blaze.db.node :as node]
    [blaze.db.resource-store :as rs]
    [blaze.db.spec :refer [node?]]
@@ -478,12 +479,9 @@
 
             (testing "and content changing transaction in between"
               (with-redefs [kv/put!
-                            (fn
-                              ([store entries]
-                               (Thread/sleep 20)
-                               (kv/-put store entries))
-                              ([store key value]
-                               (kv/-put store key value)))]
+                            (fn [store entries]
+                              (Thread/sleep 20)
+                              (kv-p/-put store entries))]
                 (with-handler [handler node]
                   [[[:put {:fhir/type :fhir/Patient :id "0"
                            :gender #fhir/code"female"}]]]
@@ -1352,12 +1350,9 @@
 
           (testing "and content changing transaction in between"
             (with-redefs [kv/put!
-                          (fn
-                            ([store entries]
-                             (Thread/sleep 20)
-                             (kv/-put store entries))
-                            ([store key value]
-                             (kv/-put store key value)))]
+                          (fn [store entries]
+                            (Thread/sleep 20)
+                            (kv-p/-put store entries))]
               (with-handler [handler node]
                 [[[:create {:fhir/type :fhir/Patient :id "0"
                             :gender #fhir/code"female"}]]]
@@ -1968,12 +1963,9 @@
 
           (testing "and content changing transaction in between"
             (with-redefs [kv/put!
-                          (fn
-                            ([store entries]
-                             (Thread/sleep 20)
-                             (kv/-put store entries))
-                            ([store key value]
-                             (kv/-put store key value)))]
+                          (fn [store entries]
+                            (Thread/sleep 20)
+                            (kv-p/-put store entries))]
               (with-handler [handler node]
                 [[[:create {:fhir/type :fhir/Patient :id "0"
                             :gender #fhir/code"female"}]]]
@@ -2080,12 +2072,9 @@
 
           (testing "and content changing transaction in between"
             (with-redefs [kv/put!
-                          (fn
-                            ([store entries]
-                             (Thread/sleep 20)
-                             (kv/-put store entries))
-                            ([store key value]
-                             (kv/-put store key value)))]
+                          (fn [store entries]
+                            (Thread/sleep 20)
+                            (kv-p/-put store entries))]
               (with-handler [handler node]
                 [[[:create {:fhir/type :fhir/Patient :id "0"
                             :birthDate #fhir/date"2020"}]]]

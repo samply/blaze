@@ -18,12 +18,26 @@
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
+   [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)
+
+(deftest create-test
+  (testing "missing expression"
+    (doseq [type ["date" "number" "quantity" "reference" "string" "token" "uri"]]
+      (given (sc/search-param nil {:type type :url "url-165259"})
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported search parameter with URL `url-165259`. Required expression is missing.")))
+
+  (testing "invalid expression"
+    (doseq [type ["date" "number" "quantity" "reference" "string" "token" "uri"]]
+      (given (sc/search-param nil {:type type :expression ""})
+        ::anom/category := ::anom/fault
+        ::anom/message := "Error while parsing token `<EOF>` in expression ``"))))
 
 (defn birthdate [search-param-registry]
   (sr/get search-param-registry "birthdate" "Patient"))

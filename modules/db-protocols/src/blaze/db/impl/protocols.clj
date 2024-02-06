@@ -29,15 +29,17 @@
 
   (-execute-query [db query] [db query arg1])
 
-  (-instance-history [db tid id start-t since])
+  (-stop-history-at [db instant])
+
+  (-instance-history [db tid id start-t])
 
   (-total-num-of-instance-changes [_ tid id since])
 
-  (-type-history [db type start-t start-id since])
+  (-type-history [db type start-t start-id])
 
   (-total-num-of-type-changes [db type since])
 
-  (-system-history [db start-t start-tid start-id since])
+  (-system-history [db start-t start-tid start-id])
 
   (-total-num-of-system-changes [db since])
 
@@ -81,6 +83,8 @@
 
 (defprotocol SearchParam
   (-compile-value [search-param modifier value] "Can return an anomaly.")
+  (-chunked-resource-handles
+    [search-param context tid modifier compiled-value])
   (-resource-handles
     [search-param context tid modifier compiled-value]
     [search-param context tid modifier compiled-value start-id]
@@ -89,12 +93,8 @@
     [search-param context tid direction]
     [search-param context tid direction start-id]
     "Returns a reducible collection.")
-  (-count-resource-handles
-    [search-param context tid modifier compiled-value]
-    "Returns a CompletableFuture that will complete with the count of the
-    matching resource handles.")
   (-compartment-keys [search-param context compartment tid compiled-value])
-  (-matches? [search-param context resource-handle modifier compiled-values])
+  (-matcher [_ context modifier values])
   (-compartment-ids [_ resolver resource])
   (-index-values [_ resolver resource])
   (-index-value-compiler [_]))

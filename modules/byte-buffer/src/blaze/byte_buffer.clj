@@ -29,11 +29,6 @@
   [capacity]
   (ByteBuffer/allocate capacity))
 
-(defn allocate-direct
-  {:inline (fn [capacity] `(ByteBuffer/allocateDirect ~capacity))}
-  [capacity]
-  (ByteBuffer/allocateDirect capacity))
-
 (defn wrap
   {:inline (fn [byte-array] `(ByteBuffer/wrap ~byte-array))}
   [byte-array]
@@ -168,6 +163,7 @@
   (.mark ^ByteBuffer byte-buffer))
 
 (defn reset!
+  "Resets the position of `byte-buffer` to the previously marked position."
   {:inline
    (fn [byte-buffer]
      `(.reset ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
@@ -198,10 +194,15 @@
 
 (defn get-long!
   {:inline
-   (fn [byte-buffer]
-     `(.getLong ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
-  [byte-buffer]
-  (.getLong ^ByteBuffer byte-buffer))
+   (fn
+     ([byte-buffer]
+      `(.getLong ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))
+     ([byte-buffer index]
+      `(.getLong ~(vary-meta byte-buffer assoc :tag `ByteBuffer) (int ~index))))}
+  ([byte-buffer]
+   (.getLong ^ByteBuffer byte-buffer))
+  ([byte-buffer index]
+   (.getLong ^ByteBuffer byte-buffer (int index))))
 
 (defn copy-into-byte-array!
   "Copies all bytes of `byte-buffer` into `byte-array`."

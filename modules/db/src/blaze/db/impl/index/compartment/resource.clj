@@ -6,10 +6,9 @@
    [blaze.coll.core :as coll]
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-handle :as rh]
-   [blaze.db.impl.iterators :as i]
-   [blaze.db.impl.macros :refer [with-open-coll]]
-   [blaze.db.kv :as kv]))
+   [blaze.db.impl.iterators :as i]))
 
 (set! *unchecked-math* :warn-on-boxed)
 
@@ -23,19 +22,16 @@
   [co-res-id]
   (unchecked-add-int except-co-res-id-prefix-size (bs/size co-res-id)))
 
-(defn- decode-key [buf]
+(defn- decode-key! [buf]
   (bb/set-position! buf (unchecked-add-int (bb/position buf) codec/c-hash-size))
   (let [id-size (long (bb/size-up-to-null buf))]
     (bb/set-position! buf (+ (bb/position buf) id-size 1 codec/tid-size))
     (bs/from-byte-buffer! buf)))
 
-(def ^:private remove-deleted-xf
-  (remove rh/deleted?))
-
-(defn- resource-handles-xf [resource-handle tid]
+(defn- resource-handle-xf [snapshot t tid]
   (comp
-   (keep #(resource-handle tid %))
-   remove-deleted-xf))
+   (rao/resource-handle-type-xf snapshot t tid)
+   (remove rh/deleted?)))
 
 (defn- encode-seek-key
   "Encodes the key without the id used for seeking to the start of scans."
@@ -75,21 +71,18 @@
   {:arglists
    '([context compartment tid]
      [context compartment tid start-id])}
-  ([{:keys [snapshot resource-handle]} compartment tid]
+  ([{:keys [snapshot t]} compartment tid]
    (let [seek-key (encode-seek-key compartment tid)]
      (coll/eduction
-      (resource-handles-xf resource-handle tid)
-      (with-open-coll [cri (kv/new-iterator snapshot :compartment-resource-type-index)]
-        (i/prefix-keys! cri seek-key decode-key seek-key)))))
-  ([{:keys [snapshot resource-handle]} compartment tid start-id]
+      (resource-handle-xf snapshot t tid)
+      (i/prefix-keys snapshot :compartment-resource-type-index decode-key!
+                     (bs/size seek-key) seek-key))))
+  ([{:keys [snapshot t]} compartment tid start-id]
    (coll/eduction
-    (resource-handles-xf resource-handle tid)
-    (with-open-coll [cri (kv/new-iterator snapshot :compartment-resource-type-index)]
-      (i/prefix-keys!
-       cri
-       (encode-seek-key compartment tid)
-       decode-key
-       (encode-key compartment tid start-id))))))
+    (resource-handle-xf snapshot t tid)
+    (i/prefix-keys snapshot :compartment-resource-type-index decode-key!
+                   (key-prefix-size (coll/nth compartment 1))
+                   (encode-key compartment tid start-id)))))
 
 (defn index-entry
   "Returns an entry of the CompartmentResourceType index build from `compartment`,

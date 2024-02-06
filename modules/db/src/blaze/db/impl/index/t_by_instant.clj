@@ -5,7 +5,9 @@
   This functionality is needed to support the `since` parameter in history
   queries."
   (:require
-   [blaze.db.kv :as kv])
+   [blaze.byte-buffer :as bb]
+   [blaze.byte-string :as bs]
+   [blaze.db.impl.iterators :as i])
   (:import
    [com.google.common.primitives Longs]))
 
@@ -14,17 +16,12 @@
 (defn- encode-key [instant]
   (Longs/toByteArray (inst-ms instant)))
 
-(defn- t-by-instant* [iter instant]
-  (kv/seek! iter (encode-key instant))
-  (when (kv/valid? iter)
-    (Longs/fromByteArray (kv/value iter))))
-
 (defn t-by-instant
   "Returns the `t` of the database that was created at or before `instant` or
   nil if there is none."
   [snapshot instant]
-  (with-open [iter (kv/new-iterator snapshot :t-by-instant-index)]
-    (t-by-instant* iter instant)))
+  (i/seek-value snapshot :t-by-instant-index bb/get-long! 0
+                (bs/from-byte-array (encode-key instant))))
 
 (defn index-entry
   "Returns an entry of the TByInstant index build from `instant` and `t`."

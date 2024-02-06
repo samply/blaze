@@ -7,17 +7,32 @@
   (:require
    [blaze.log]
    [clojure.java.io :as io]
+   [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
    [clojure.walk :as walk]
    [integrant.core :as ig]
-   [spec-coerce.alpha :refer [coerce]]
+   [java-time.api :as time]
+   [spec-coerce.alpha :as sc :refer [coerce]]
    [taoensso.timbre :as log])
   (:import
    [java.io PushbackReader]
    [java.security SecureRandom]
    [java.time Clock]
    [java.util.concurrent ThreadLocalRandom]))
+
+(defmethod sc/pred-coercer `java-time.amount/duration?
+  [_]
+  (reify
+    sc/Coercer
+    (-coerce [_ x]
+      (cond
+        (string? x)
+        (try
+          (time/duration x)
+          (catch Exception _
+            ::s/invalid))
+        :else ::s/invalid))))
 
 (defrecord Cfg [env-var spec default])
 
@@ -53,13 +68,17 @@
   "Resolves config entries to their actual values with the help of an
   environment."
   [config env]
-  (walk/postwalk
-   (fn [x]
-     (if (instance? Cfg x)
-       (when-let [value (get-blank env (:env-var x) (:default x))]
-         (coerce (:spec x) value))
-       x))
-   config))
+  (let [settings (volatile! {})]
+    (-> (walk/postwalk
+         (fn [x]
+           (if (instance? Cfg x)
+             (when-let [value (get-blank env (:env-var x) (:default x))]
+               (let [value (coerce (:spec x) value)]
+                 (vswap! settings assoc (:env-var x) {:value value :default-value (:default x)})
+                 value))
+             x))
+         config)
+        (assoc-in [:blaze/admin-api :settings] (vec (sort-by :name (map #(assoc (val %) :name (key %)) @settings)))))))
 
 (defn- load-namespaces [config]
   (log/info "Loading namespaces (can take up to 20 seconds) ...")
@@ -73,7 +92,9 @@
     (into {} (map (fn [[k v]] [k (resolvef k v)])) (ig/find-derived config key))))
 
 (def ^:private root-config
-  {:blaze/version "0.23.4"
+  {:blaze/version "0.24.0"
+
+   :blaze/release-date "2024-02-06"
 
    :blaze/clock {}
 
@@ -88,6 +109,7 @@
    :blaze/rest-api
    {:base-url (->Cfg "BASE_URL" string? "http://localhost:8080")
     :version (ig/ref :blaze/version)
+    :release-date (ig/ref :blaze/release-date)
     :structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)
     :node (ig/ref :blaze.db/node)
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
@@ -144,7 +166,11 @@
   (let [key (get env "STORAGE" "in-memory")]
     (log/info "Use storage variant" key)
     (-> (assoc-in config [:base-config :blaze.db/storage] (keyword key))
-        (update :base-config merge (get storage (keyword key))))))
+        (update :base-config (partial merge-with merge) (get storage (keyword key))))))
+
+(defn- conj-feature [config {:keys [name toggle]} enabled?]
+  (update-in config [:blaze/admin-api :features] (fnil conj [])
+             {:name name :toggle toggle :enabled enabled?}))
 
 (defn- merge-features
   "Merges feature config portions of enabled features into `base-config`."
@@ -152,10 +178,11 @@
   [{:keys [base-config features]} env]
   (reduce
    (fn [res {:keys [name config] :as feature}]
-     (let [enabled? (feature-enabled? env feature)]
+     (let [enabled? (feature-enabled? env feature)
+           res (conj-feature res feature enabled?)]
        (log/info "Feature" name (if enabled? "enabled" "disabled"))
        (if enabled?
-         (merge-with merge res config)
+         (merge-with (partial merge-with merge) res config)
          res)))
    base-config
    features))
@@ -178,6 +205,10 @@
 (defmethod ig/init-key :blaze/version
   [_ version]
   version)
+
+(defmethod ig/init-key :blaze/release-date
+  [_ release-date]
+  release-date)
 
 (defmethod ig/init-key :blaze.db/storage
   [_ storage]

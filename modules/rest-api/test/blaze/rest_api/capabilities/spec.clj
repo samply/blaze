@@ -9,6 +9,7 @@
   (s/keys
    :req-un
    [:blaze/version
+    :blaze/release-date
     :blaze.rest-api/structure-definitions
     :blaze.db/search-param-registry]
    :opt-un

@@ -17,12 +17,12 @@
   (sched/schedule-at-fixed-rate
    scheduler
    #(try
-      (log/info "Fetch public key from" provider-url "...")
+      (log/debug "Fetch public key from" provider-url "...")
       (let [^PublicKey public-key (impl/fetch-public-key http-client provider-url)]
         (reset! secret-state public-key)
-        (log/info "Done fetching public key from" provider-url
-                  (str "algorithm=" (.getAlgorithm public-key))
-                  (str "format=" (.getFormat public-key))))
+        (log/debug "Done fetching public key from" provider-url
+                   (str "algorithm=" (.getAlgorithm public-key))
+                   (str "format=" (.getFormat public-key))))
       (catch Exception e
         (log/error (format "Error while fetching public key from %s:"
                            provider-url)

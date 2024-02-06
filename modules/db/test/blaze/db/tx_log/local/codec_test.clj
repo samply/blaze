@@ -23,14 +23,14 @@
 
 (deftest encode-tx-data-test
   (given (codec/decode-tx-data
-          (-> (codec/encode-key t) bb/wrap)
-          (-> (codec/encode-tx-data
-               Instant/EPOCH
-               [{:op "create"
-                 :type "Patient"
-                 :id "id-211709"
-                 :hash patient-hash}])
-              bb/wrap))
+          [(-> (codec/encode-key t) bb/wrap)
+           (-> (codec/encode-tx-data
+                Instant/EPOCH
+                [{:op "create"
+                  :type "Patient"
+                  :id "id-211709"
+                  :hash patient-hash}])
+               bb/wrap)])
     :instant := Instant/EPOCH
     [:tx-cmds 0 :op] := "create"
     [:tx-cmds 0 :type] := "Patient"
@@ -40,7 +40,7 @@
 
 (deftest decode-tx-data-test
   (testing "empty value buffer"
-    (given (codec/decode-tx-data (bb/allocate 8) (bb/allocate 0))
+    (given (codec/decode-tx-data [(bb/allocate 8) (bb/allocate 0)])
       :instant := nil
       :tx-cmds := []
       :t 0)))

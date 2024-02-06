@@ -364,7 +364,7 @@
         @(ac/retry future-fn 2)
         (is (< 3e8 (- (System/nanoTime) start)))))
 
-    (testing "with forth call successful"
+    (testing "with fourth call successful"
       (let [counter (atom 0)
             future-fn #(ac/completed-future
                         (let [n (swap! counter inc)]

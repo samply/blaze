@@ -15,40 +15,29 @@
   totals at its t."
   (:require
    [blaze.byte-buffer :as bb]
+   [blaze.byte-string :as bs]
    [blaze.db.impl.codec :as codec]
-   [blaze.db.kv :as kv])
+   [blaze.db.impl.iterators :as i])
   (:import
-   [com.google.common.primitives Longs]
-   [java.lang AutoCloseable]))
+   [com.google.common.primitives Longs]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
-(defn new-iterator
-  "Returns the iterator of the system stats index.
-
-  Has to be closed after usage."
-  ^AutoCloseable [snapshot]
-  (kv/new-iterator snapshot :system-stats-index))
-
 (def ^:private ^:const ^long value-size (+ Long/BYTES Long/BYTES))
 
-(defn- encode-key [t]
+(defn encode-key [t]
   (Longs/toByteArray (codec/descending-long ^long t)))
 
 (defn- decode-value! [buf]
   {:total (bb/get-long! buf)
    :num-changes (bb/get-long! buf)})
 
-(defn get!
-  "Returns the value which is most recent according to `t` if there is any.
-
-  Needs to use an iterator because there could be no entry at `t`. So `kv/seek!`
-  is used to get near `t`."
-  [iter t]
-  (kv/seek! iter (encode-key t))
-  (when (kv/valid? iter)
-    (decode-value! (bb/wrap (kv/value iter)))))
+(defn seek-value
+  "Returns the value which is most recent according to `t` if there is any."
+  [snapshot t]
+  (i/seek-value snapshot :system-stats-index decode-value! 0
+                (bs/from-byte-array (encode-key t))))
 
 (defn- encode-value [{:keys [total num-changes]}]
   (-> (bb/allocate value-size)

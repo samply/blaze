@@ -1,6 +1,6 @@
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
-import { fhirObject } from '../../../../../resource/resource-card';
+import { fhirObject } from '../../../../../resource/resource-card.js';
 
 export async function load({ fetch, params }) {
 	const res = await fetch(`${base}/${params.type}/${params.id}/_history/${params.vid}`, {
@@ -13,7 +13,7 @@ export async function load({ fetch, params }) {
 			message:
 				res.status == 404
 					? `The ${params.type} with ID ${params.id} and version ${params.vid} was not found.`
-					: `An error happend while loading the ${params.type} with ID ${params.id} and version ${params.vid}. Please try again later.`
+					: `An error happened while loading the ${params.type} with ID ${params.id} and version ${params.vid}. Please try again later.`
 		});
 	}
 

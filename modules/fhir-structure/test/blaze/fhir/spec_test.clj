@@ -85,11 +85,6 @@
     "A"
     "0"))
 
-(deftest local-ref-spec-test
-  (is (= ["Patient" "0"] (s/conform :blaze.fhir/local-ref "Patient/0")))
-
-  (is (s/invalid? (s/conform :blaze.fhir/local-ref "Patient/0/1"))))
-
 (deftest patient-id-test
   (are [s] (s2/valid? :fhir.Patient/id s)
     "."

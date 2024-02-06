@@ -1,6 +1,6 @@
 (ns blaze.db.impl.index.search-param-value-resource-spec
   (:require
-   [blaze.byte-string :refer [byte-string?]]
+   [blaze.byte-string :as bs :refer [byte-string?]]
    [blaze.byte-string-spec]
    [blaze.coll.core-spec]
    [blaze.db.impl.codec-spec]
@@ -10,16 +10,18 @@
    [blaze.fhir.hash.spec]
    [clojure.spec.alpha :as s]))
 
-(s/fdef sp-vr/keys!
-  :args (s/cat :iter :blaze.db/kv-iterator :start-key byte-string?))
+(s/fdef sp-vr/keys
+  :args (s/cat :snapshot :blaze.db.kv/snapshot :start-key byte-string?))
 
-(s/fdef sp-vr/prefix-keys!
-  :args (s/cat :iter :blaze.db/kv-iterator
-               :c-hash :blaze.db/c-hash
-               :tid :blaze.db/tid
-               :prefix-value byte-string?
-               :start-value byte-string?
-               :start-id (s/? :blaze.db/id-byte-string)))
+(s/fdef sp-vr/prefix-keys
+  :args (s/and (s/cat :snapshot :blaze.db.kv/snapshot
+                      :c-hash :blaze.db/c-hash
+                      :tid :blaze.db/tid
+                      :prefix-length nat-int?
+                      :start-value byte-string?
+                      :start-id (s/? :blaze.db/id-byte-string))
+               (fn [{:keys [prefix-length start-value]}]
+                 (<= prefix-length (bs/size start-value)))))
 
 (s/fdef sp-vr/encode-seek-key
   :args (s/cat :c-hash :blaze.db/c-hash

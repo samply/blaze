@@ -38,12 +38,12 @@
   (with-open [_ (prom/timer generate-duration-seconds "xml")]
     (generate-xml* body)))
 
-(defn- encode-response-json [response content-type]
-  (-> (update response :body generate-json)
+(defn- encode-response-json [{:keys [body] :as response} content-type]
+  (-> (cond-> response body (update :body generate-json))
       (ring/content-type content-type)))
 
-(defn- encode-response-xml [response content-type]
-  (-> (update response :body generate-xml)
+(defn- encode-response-xml [{:keys [body] :as response} content-type]
+  (-> (cond-> response body (update :body generate-xml))
       (ring/content-type content-type)))
 
 (defn- format-key [format]
@@ -68,7 +68,7 @@
         (some format-key accept)
         :fhir+json)))
 
-(defn- encode-response [opts request response]
+(defn- handle-response [opts request response]
   (case (request-format request)
     :fhir+json (encode-response-json response "application/fhir+json;charset=utf-8")
     :fhir+xml (encode-response-xml response "application/fhir+xml;charset=utf-8")
@@ -78,9 +78,6 @@
     :text-xml (encode-response-xml response "text/xml;charset=utf-8")
     (when (:accept-all? opts) (dissoc response :body))))
 
-(defn- handle-response [opts request {:keys [body] :as response}]
-  (cond->> response body (encode-response opts request)))
-
 (defn wrap-output
   "Middleware to output resources in JSON or XML."
   ([handler]
@@ -89,12 +86,14 @@
    (fn [request respond raise]
      (handler request #(respond (handle-response opts request %)) raise))))
 
-(defn- handle-json-response [response]
-  (-> (update response :body j/write-value-as-bytes)
+(defn- handle-json-response [object-mapper response]
+  (-> (update response :body #(j/write-value-as-bytes % object-mapper))
       (ring/content-type "application/json;charset=utf-8")))
 
 (defn wrap-json-output
-  "Middleware to output data (not resources) in JSON"
-  [handler]
-  (fn [request respond raise]
-    (handler request #(respond (handle-json-response %)) raise)))
+  "Middleware to output data (not resources) in JSON."
+  [opts]
+  (let [object-mapper (j/object-mapper opts)]
+    (fn [handler]
+      (fn [request respond raise]
+        (handler request #(respond (handle-json-response object-mapper %)) raise)))))

@@ -1,5 +1,6 @@
 (ns blaze.byte-string
   (:refer-clojure :exclude [concat empty nth subs < <= > >=])
+  (:require [clojure.string :as str])
   (:import
    [com.google.common.io BaseEncoding]
    [com.google.protobuf ByteString]
@@ -135,6 +136,11 @@
   (.write w "#blaze/byte-string\"")
   (.write w ^String (hex bs))
   (.write w "\""))
+
+(defmethod print-dup (Class/forName "[B") [^bytes bytes ^Writer w]
+  (.write w "#=(byte-array [")
+  (.write w ^String (str/join " " (map int (vec bytes))))
+  (.write w "])"))
 
 (defmethod print-dup ByteString [^ByteString bs ^Writer w]
   (.write w "#=(com.google.protobuf.ByteString/copyFrom ")

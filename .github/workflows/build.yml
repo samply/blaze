@@ -92,6 +92,13 @@ jobs:
         - '17'
         - '21'
 
+        exclude:
+        - module: jepsen
+          java-version: '11'
+        - module: jepsen
+          java-version: '17'
+
+
     runs-on: ubuntu-22.04
 
     steps:
@@ -110,7 +117,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3
+      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
@@ -146,7 +153,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3
+      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ hashFiles('deps.edn') }}
@@ -174,7 +181,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3
+      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-17-maven-build-${{ hashFiles('**/deps.edn') }}
@@ -183,7 +190,7 @@ jobs:
       run: make uberjar
 
     - name: Upload Blaze Uberjar
-      uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392 # v4
+      uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4
       with:
         name: blaze-uberjar
         path: target/blaze-*-standalone.jar
@@ -199,7 +206,7 @@ jobs:
         outputs: type=docker,dest=/tmp/blaze.tar
 
     - name: Upload Blaze Image
-      uses: actions/upload-artifact@c7d193f32edcb7bfad88892161225aeda64e9392 # v4
+      uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4
       with:
         name: blaze-image
         path: /tmp/blaze.tar
@@ -212,7 +219,7 @@ jobs:
 
     steps:
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -234,7 +241,7 @@ jobs:
 
     - name: Upload Trivy Scan Results to GitHub Security Tab
       if: ${{ (github.repository_owner == 'samply') || (vars.IMAGE_SCAN_UPLOAD == 'true') }}
-      uses: github/codeql-action/upload-sarif@e5f05b81d5b6ff8cfa111c80c22c5fd02a384118 # v3
+      uses: github/codeql-action/upload-sarif@e8893c57a1f3a2b659b6b55564fdfdbbd2982911 # v3
       with:
         sarif_file: trivy-results.sarif
 
@@ -256,7 +263,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -321,6 +328,9 @@ jobs:
     - name: Check Capability Statement Filtered by _elements
       run: .github/scripts/check-capability-statement-filtered.sh
 
+    - name: Check Capability Statement Caching
+      run: .github/scripts/check-capability-statement-caching.sh
+
     - name: Check Referential Integrity Enforced
       run: .github/scripts/check-referential-integrity-enforced.sh
 
@@ -329,6 +339,9 @@ jobs:
 
     - name: Check Total-Number of Resources are 92114
       run: .github/scripts/check-total-number-of-resources.sh 92114
+
+    - name: Check Resource Totals
+      run: .github/scripts/check-resource-totals.sh
 
     - name: Count Resources
       run: blazectl count-resources --server http://localhost:8080/fhir
@@ -368,6 +381,12 @@ jobs:
 
     - name: Download Observation Resources of male Patients Sorted Descending by Last Updated
       run: .github/scripts/download-resources-query-sort.sh Observation "patient.gender=male" "-_lastUpdated" 20466
+
+    - name: Download Laboratory Observation Resources Sorted by ID
+      run: .github/scripts/download-resources-query-sort.sh Observation "category=laboratory" "_id" 29206
+
+    - name: Download Laboratory Observation Resources Sorted Ascending by Last Updated
+      run: .github/scripts/download-resources-query-sort.sh Observation "category=laboratory" "_lastUpdated" 29206
 
     - name: Download Observation Resources of female Patients
       run: .github/scripts/download-resources-query.sh Observation "_count=500&patient.gender=female" 22463
@@ -702,7 +721,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -764,7 +783,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -809,7 +828,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -850,7 +869,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -885,7 +904,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -920,7 +939,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -946,7 +965,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -977,7 +996,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1003,7 +1022,7 @@ jobs:
       uses: actions/setup-java@387ac29b308b003ca37ba93a6cab5eb57c8f5f93 # v4
       with:
         distribution: 'temurin'
-        java-version: '17'
+        java-version: '21'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
@@ -1014,7 +1033,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3
+      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-17-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
@@ -1026,7 +1045,7 @@ jobs:
       run: sudo apt-get install gnuplot
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1058,7 +1077,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1093,7 +1112,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1128,7 +1147,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1169,7 +1188,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1204,7 +1223,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1230,7 +1249,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1274,7 +1293,7 @@ jobs:
       uses: actions/setup-java@387ac29b308b003ca37ba93a6cab5eb57c8f5f93 # v4
       with:
         distribution: 'temurin'
-        java-version: '17'
+        java-version: '21'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
@@ -1285,7 +1304,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Cache Local Maven Repo
-      uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84 # v3
+      uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-17-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
@@ -1297,7 +1316,7 @@ jobs:
       run: sudo apt-get install gnuplot
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1378,13 +1397,13 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Uberjar
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-uberjar
         path: target
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@f44cd7b40bfd40b6aa1cc1b9b5b7bf03d3c67110 # v4
+      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1407,7 +1426,7 @@ jobs:
 
     - name: GHCR meta
       id: ghcr-meta
-      uses: docker/metadata-action@dbef88086f6cef02e264edb7dbf63250c17cef6c # v5
+      uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5
       with:
         images: |
           ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
@@ -1437,7 +1456,7 @@ jobs:
     - name: DockerHub meta
       if: ${{ env.dockerhub_username != '' }}
       id: dockerhub-meta
-      uses: docker/metadata-action@dbef88086f6cef02e264edb7dbf63250c17cef6c # v5
+      uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5
       with:
         images: |
           ${{ github.repository_owner }}/${{ github.event.repository.name }}
@@ -1508,4 +1527,4 @@ jobs:
     steps:
     - name: Deploy to GitHub Pages
       id: deployment
-      uses: actions/deploy-pages@7a9bd943aa5e5175aeb8502edcc6c1c02d398e10 # v4
+      uses: actions/deploy-pages@87c3283f01cd6fe19a0ab93a23b2f6fcba5a8e42 # v4

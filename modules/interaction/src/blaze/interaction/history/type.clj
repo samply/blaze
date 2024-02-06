@@ -27,9 +27,10 @@
                               (:id resource-handle))})
 
 (defn- build-response
-  [{:blaze/keys [db] :as context} query-params total version-handles]
+  [{:blaze/keys [db] :as context} query-params total version-handles since]
   (let [page-size (fhir-util/page-size query-params)
-        paged-version-handles (into [] (take (inc page-size)) version-handles)
+        page-xform (history-util/page-xform db page-size since)
+        paged-version-handles (into [] page-xform version-handles)
         self-link (partial link context query-params "self")
         next-link (partial link context query-params "next")]
     ;; we need take here again because we take page-size + 1 above
@@ -68,10 +69,10 @@
           page-id (when page-t (fhir-util/page-id query-params))
           since (history-util/since query-params)
           total (d/total-num-of-type-changes db type since)
-          version-handles (d/type-history db type page-t page-id since)
+          version-handles (d/type-history db type page-t page-id)
           context (assoc context
                          :blaze/base-url base-url
                          :blaze/db db
                          ::reitit/router router
                          ::reitit/match match)]
-      (build-response context query-params total version-handles))))
+      (build-response context query-params total version-handles since))))

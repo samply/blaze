@@ -45,6 +45,11 @@
                      code (::spq/unsupported-prefix %)))
              %)))))
 
+  (-chunked-resource-handles [_ context tid _ value]
+    (coll/eduction
+     (u/resource-handle-chunk-mapper context tid)
+     (spq/resource-keys context c-hash tid prefix-length value)))
+
   (-resource-handles [_ context tid _ value]
     (coll/eduction
      (u/resource-handle-mapper context tid)
@@ -55,14 +60,8 @@
      (u/resource-handle-mapper context tid)
      (spq/resource-keys context c-hash tid prefix-length value start-id)))
 
-  (-count-resource-handles [_ context tid _ value]
-    (u/count-resource-handles
-     context tid
-     (spq/resource-keys context c-hash tid prefix-length value)))
-
-  (-matches? [_ context resource-handle _ values]
-    (let [{:keys [next-value next-value-prev]} context]
-      (some? (some (partial spq/matches? next-value next-value-prev c-hash resource-handle prefix-length) values))))
+  (-matcher [_ context _ values]
+    (spq/matcher context c-hash prefix-length values))
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]

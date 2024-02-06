@@ -1,5 +1,5 @@
 (ns blaze.operation.patient.everything
-  "Main entry point into the $everything operation."
+  "Main entry point into the Patient $everything operation."
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :refer [do-sync]]
@@ -66,11 +66,7 @@
       (nil? page-size)
       (assoc :total (type/->UnsignedInt (count entries))))))
 
-(defmethod ig/pre-init-spec :blaze.operation.patient/everything [_]
-  (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
-
-(defmethod ig/init-key :blaze.operation.patient/everything [_ context]
-  (log/info "Init FHIR Patient $everything operation handler")
+(defn- handler [context]
   (fn [{:blaze/keys [db]
         {:keys [id]} :path-params
         :keys [query-params] :as request}]
@@ -79,3 +75,10 @@
       (when-ok [{:keys [handles next-offset]} (handles db id page-offset page-size)]
         (do-sync [resources (d/pull-many db handles)]
           (ring/response (bundle context request resources page-size next-offset)))))))
+
+(defmethod ig/pre-init-spec :blaze.operation.patient/everything [_]
+  (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
+
+(defmethod ig/init-key :blaze.operation.patient/everything [_ context]
+  (log/info "Init FHIR Patient $everything operation handler")
+  (handler context))

@@ -8,7 +8,6 @@
    [blaze.fhir.spec.impl.xml-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.structure-definition-repo :as sdr]
-   [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.test-util :as tu]
    [clojure.alpha.spec :as s2]
    [clojure.data.xml.name :as xml-name]
@@ -16,15 +15,22 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [clojure.walk :as walk]
-   [juxt.iota :refer [given]])
+   [integrant.core :as ig]
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log])
   (:import
    [java.util.regex Pattern]))
 
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 
 (st/instrument)
+(log/set-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
+
+(defonce structure-definition-repo
+  (:blaze.fhir/structure-definition-repo
+   (ig/init {:blaze.fhir/structure-definition-repo {}})))
 
 (defn- regexes->str
   "Replaces all regular expression patterns in `form` with their string

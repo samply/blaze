@@ -35,9 +35,7 @@
   (byte-array bytes))
 
 (defn- bb [& bytes]
-  (-> (bb/allocate-direct (count bytes))
-      (bb/put-byte-array! (byte-array bytes))
-      bb/flip!))
+  (bb/wrap (byte-array bytes)))
 
 (deftest init-test
   (testing "nil config"
@@ -159,7 +157,7 @@
 (deftest valid-test
   (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
     (with-open [snapshot (kv/new-snapshot db)
-                iter (kv/new-iterator snapshot)]
+                iter (kv/new-iterator snapshot :default)]
       (testing "iterator is initially invalid"
         (is (not (kv/valid? iter)))))))
 
@@ -174,11 +172,11 @@
 
 (deftest seek-to-first-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
-    [[(ba 0x01) (ba 0x10)]
-     [(ba 0x02) (ba 0x20)]]
+    [[:default (ba 0x01) (ba 0x10)]
+     [:default (ba 0x02) (ba 0x20)]]
 
     (with-open [snapshot (kv/new-snapshot db)
-                iter (kv/new-iterator snapshot)]
+                iter (kv/new-iterator snapshot :default)]
 
       (kv/seek-to-first! iter)
       (is (kv/valid? iter))
@@ -187,11 +185,11 @@
 
 (deftest seek-to-last-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
-    [[(ba 0x01) (ba 0x10)]
-     [(ba 0x02) (ba 0x20)]]
+    [[:default (ba 0x01) (ba 0x10)]
+     [:default (ba 0x02) (ba 0x20)]]
 
     (with-open [snapshot (kv/new-snapshot db)
-                iter (kv/new-iterator snapshot)]
+                iter (kv/new-iterator snapshot :default)]
 
       (kv/seek-to-last! iter)
       (is (kv/valid? iter))
@@ -209,11 +207,11 @@
 
 (deftest seek-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
-    [[(ba 0x01) (ba 0x10)]
-     [(ba 0x03) (ba 0x30)]]
+    [[:default (ba 0x01) (ba 0x10)]
+     [:default (ba 0x03) (ba 0x30)]]
 
     (with-open [snapshot (kv/new-snapshot db)
-                iter (kv/new-iterator snapshot)]
+                iter (kv/new-iterator snapshot :default)]
 
       (testing "before first entry"
         (kv/seek! iter (ba 0x00))
@@ -281,11 +279,11 @@
 
 (deftest seek-buffer-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
-    [[(ba 0x01) (ba 0x10)]
-     [(ba 0x03) (ba 0x30)]]
+    [[:default (ba 0x01) (ba 0x10)]
+     [:default (ba 0x03) (ba 0x30)]]
 
     (with-open [snapshot (kv/new-snapshot db)
-                iter (kv/new-iterator snapshot)]
+                iter (kv/new-iterator snapshot :default)]
 
       (testing "before first entry"
         (kv/seek-buffer! iter (bb 0x00))
@@ -353,11 +351,11 @@
 
 (deftest seek-for-prev-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
-    [[(ba 0x01) (ba 0x10)]
-     [(ba 0x03) (ba 0x30)]]
+    [[:default (ba 0x01) (ba 0x10)]
+     [:default (ba 0x03) (ba 0x30)]]
 
     (with-open [snapshot (kv/new-snapshot db)
-                iter (kv/new-iterator snapshot)]
+                iter (kv/new-iterator snapshot :default)]
 
       (testing "past second entry"
         (kv/seek-for-prev! iter (ba 0x04))
@@ -387,13 +385,49 @@
         (kv/seek-for-prev! iter (ba 0x00))
         (is (not (kv/valid? iter)))))))
 
-(deftest next-test
+(deftest seek-for-prev-buffer-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
-    [[(ba 0x01) (ba 0x10)]
-     [(ba 0x03) (ba 0x30)]]
+    [[:default (ba 0x01) (ba 0x10)]
+     [:default (ba 0x03) (ba 0x30)]]
 
     (with-open [snapshot (kv/new-snapshot db)
-                iter (kv/new-iterator snapshot)]
+                iter (kv/new-iterator snapshot :default)]
+
+      (testing "past second entry"
+        (kv/seek-for-prev-buffer! iter (bb 0x04))
+        (is (kv/valid? iter))
+        (is (bytes= (ba 0x03) (kv/key iter)))
+        (is (bytes= (ba 0x30) (kv/value iter))))
+
+      (testing "at second entry"
+        (kv/seek-for-prev-buffer! iter (bb 0x03))
+        (is (kv/valid? iter))
+        (is (bytes= (ba 0x03) (kv/key iter)))
+        (is (bytes= (ba 0x30) (kv/value iter))))
+
+      (testing "past first entry"
+        (kv/seek-for-prev-buffer! iter (bb 0x02))
+        (is (kv/valid? iter))
+        (is (bytes= (ba 0x01) (kv/key iter)))
+        (is (bytes= (ba 0x10) (kv/value iter))))
+
+      (testing "at first entry"
+        (kv/seek-for-prev-buffer! iter (bb 0x01))
+        (is (kv/valid? iter))
+        (is (bytes= (ba 0x01) (kv/key iter)))
+        (is (bytes= (ba 0x10) (kv/value iter))))
+
+      (testing "overshoot"
+        (kv/seek-for-prev-buffer! iter (bb 0x00))
+        (is (not (kv/valid? iter)))))))
+
+(deftest next-test
+  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
+    [[:default (ba 0x01) (ba 0x10)]
+     [:default (ba 0x03) (ba 0x30)]]
+
+    (with-open [snapshot (kv/new-snapshot db)
+                iter (kv/new-iterator snapshot :default)]
 
       (testing "first entry"
         (kv/seek-to-first! iter)
@@ -413,11 +447,11 @@
 
 (deftest prev-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
-    [[(ba 0x01) (ba 0x10)]
-     [(ba 0x03) (ba 0x30)]]
+    [[:default (ba 0x01) (ba 0x10)]
+     [:default (ba 0x03) (ba 0x30)]]
 
     (with-open [snapshot (kv/new-snapshot db)
-                iter (kv/new-iterator snapshot)]
+                iter (kv/new-iterator snapshot :default)]
 
       (testing "first entry"
         (kv/seek-to-last! iter)
@@ -437,26 +471,26 @@
 
 (deftest key-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
-    [[(ba 0x01 0x02) (ba 0x00)]]
+    [[:default (ba 0x01 0x02) (ba 0x00)]]
 
     (with-open [snapshot (kv/new-snapshot db)
-                iter (kv/new-iterator snapshot)]
+                iter (kv/new-iterator snapshot :default)]
 
       (testing "puts the first byte into the buffer without overflowing"
         (kv/seek-to-first! iter)
-        (let [buf (bb/allocate-direct 1)]
+        (let [buf (bb/allocate 1)]
           (is (= 2 (kv/key! iter buf)))
           (is (= 0x01 (bb/get-byte! buf)))))
 
       (testing "sets the limit of a bigger buffer to two"
         (kv/seek-to-first! iter)
-        (let [buf (bb/allocate-direct 3)]
+        (let [buf (bb/allocate 3)]
           (is (= 2 (kv/key! iter buf)))
           (is (= 2 (bb/limit buf)))))
 
       (testing "writes the key at position"
         (kv/seek-to-first! iter)
-        (let [buf (bb/allocate-direct 3)]
+        (let [buf (bb/allocate 3)]
           (bb/set-position! buf 1)
           (is (= 2 (kv/key! iter buf)))
           (is (= 1 (bb/position buf)))
@@ -467,26 +501,26 @@
 
 (deftest value-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
-    [[(ba 0x00) (ba 0x01 0x02)]]
+    [[:default (ba 0x00) (ba 0x01 0x02)]]
 
     (with-open [snapshot (kv/new-snapshot db)
-                iter (kv/new-iterator snapshot)]
+                iter (kv/new-iterator snapshot :default)]
 
       (testing "puts the first byte into the buffer without overflowing"
         (kv/seek-to-first! iter)
-        (let [buf (bb/allocate-direct 1)]
+        (let [buf (bb/allocate 1)]
           (is (= 2 (kv/value! iter buf)))
           (is (= 0x01 (bb/get-byte! buf)))))
 
       (testing "sets the limit of a bigger buffer to two"
         (kv/seek-to-first! iter)
-        (let [buf (bb/allocate-direct 3)]
+        (let [buf (bb/allocate 3)]
           (is (= 2 (kv/value! iter buf)))
           (is (= 2 (bb/limit buf)))))
 
       (testing "writes the value at position"
         (kv/seek-to-first! iter)
-        (let [buf (bb/allocate-direct 3)]
+        (let [buf (bb/allocate 3)]
           (bb/set-position! buf 1)
           (is (= 2 (kv/value! iter buf)))
           (is (= 1 (bb/position buf)))
@@ -534,75 +568,44 @@
    ::rocksdb/stats {}})
 
 (deftest snapshot-get-test
-  (with-system-data [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
-    [[(ba 0x00) (ba 0x01)]
-     [:a (ba 0x00) (ba 0x02)]]
+  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
+    [[:default (ba 0x00) (ba 0x01)]]
 
     (with-open [snapshot (kv/new-snapshot db)]
 
       (testing "returns found value"
-        (is (bytes= (ba 0x01) (kv/snapshot-get snapshot (ba 0x00)))))
+        (is (bytes= (ba 0x01) (kv/snapshot-get snapshot :default (ba 0x00)))))
 
       (testing "returns nil on not found value"
-        (is (nil? (kv/snapshot-get snapshot (ba 0x01)))))
-
-      (testing "returns found value of column-family :a"
-        (is (bytes= (ba 0x02) (kv/snapshot-get snapshot :a (ba 0x00)))))
-
-      (testing "returns nil on not found value of column-family :a"
-        (is (nil? (kv/snapshot-get snapshot :a (ba 0x01))))))))
+        (is (nil? (kv/snapshot-get snapshot :default (ba 0x01))))))))
 
 (deftest get-test
-  (with-system-data [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
-    [[(ba 0x00) (ba 0x01)]
-     [:a (ba 0x00) (ba 0x02)]]
+  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
+    [[:default (ba 0x00) (ba 0x01)]]
 
     (testing "returns found value"
-      (is (bytes= (ba 0x01) (kv/get db (ba 0x00)))))
+      (is (bytes= (ba 0x01) (kv/get db :default (ba 0x00)))))
 
     (testing "returns nil on not found value"
-      (is (nil? (kv/get db (ba 0x01)))))
-
-    (testing "returns found value of column-family :a"
-      (is (bytes= (ba 0x02) (kv/get db :a (ba 0x00)))))
-
-    (testing "returns nil on not found value of column-family :a"
-      (is (nil? (kv/get db :a (ba 0x01)))))))
-
-(deftest multi-get-test
-  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
-    [[(ba 0x00) (ba 0x10)]
-     [(ba 0x01) (ba 0x11)]]
-
-    (testing "returns all found entries"
-      (let [m (into
-               {}
-               (map (fn [[k v]] [(vec k) (vec v)]))
-               (kv/multi-get db [(ba 0x00) (ba 0x01) (ba 0x02)]))]
-        (is (= [0x10] (get m [0x00])))
-        (is (= [0x11] (get m [0x01])))))))
+      (is (nil? (kv/get db :default (ba 0x01)))))))
 
 (deftest put-test
   (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
 
-    (testing "key value"
-      (kv/put! db (ba 0x00) (ba 0x01))
-      (is (bytes= (ba 0x01) (kv/get db (ba 0x00)))))
-
-    (testing "entries"
+    (testing "get after put"
       (kv/put! db [[:default (ba 0x00) (ba 0x01)]])
-      (is (bytes= (ba 0x01) (kv/get db (ba 0x00)))))
+      (is (bytes= (ba 0x01) (kv/get db :default (ba 0x00)))))
 
     (testing "errors on unknown column-family"
       (is (ba/not-found? (ba/try-anomaly (kv/put! db [[:a (ba 0x00) (ba 0x01)]])))))))
 
 (deftest delete-test
   (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
-    [[(ba 0x00) (ba 0x10)]]
+    [[:default (ba 0x00) (ba 0x10)]]
 
-    (kv/delete! db [(ba 0x00)])
+    (kv/delete! db [[:default (ba 0x00)]])
 
-    (is (nil? (kv/get db (ba 0x00))))))
+    (is (nil? (kv/get db :default (ba 0x00))))))
 
 (defn- merge-config [dir]
   {::kv/rocksdb
@@ -613,49 +616,22 @@
    ::rocksdb/block-cache {}
    ::rocksdb/stats {}})
 
-(defn- merge-a-config [dir]
-  {::kv/rocksdb
-   {:dir dir
-    :block-cache (ig/ref ::rocksdb/block-cache)
-    :stats (ig/ref ::rocksdb/stats)
-    :column-families {:a {:merge-operator :stringappend}}}
-   ::rocksdb/block-cache {}
-   ::rocksdb/stats {}})
-
 (deftest write-test
-  (testing "default column-family"
-    (with-system-data [{db ::kv/rocksdb} (merge-config (new-temp-dir!))]
-      [[(ba 0x00) (ba 0x10)]]
+  (with-system-data [{db ::kv/rocksdb} (merge-config (new-temp-dir!))]
+    [[:default (ba 0x00) (ba 0x10)]]
 
-      (testing "put"
-        (kv/write! db [[:put (ba 0x01) (ba 0x11)]])
-        (is (bytes= (ba 0x11) (kv/get db (ba 0x01)))))
+    (testing "put"
+      (kv/write! db [[:put :default (ba 0x01) (ba 0x11)]])
+      (is (bytes= (ba 0x11) (kv/get db :default (ba 0x01)))))
 
-      (testing "merge"
-        (kv/write! db [[:merge (ba 0x00) (ba 0x20)]])
-        ;; 0x2C is a comma
-        (is (bytes= (ba 0x10 0x2C 0x20) (kv/get db (ba 0x00)))))
+    (testing "merge"
+      (kv/write! db [[:merge :default (ba 0x00) (ba 0x20)]])
+      ;; 0x2C is a comma
+      (is (bytes= (ba 0x10 0x2C 0x20) (kv/get db :default (ba 0x00)))))
 
-      (testing "delete"
-        (kv/write! db [[:delete (ba 0x00)]])
-        (is (nil? (kv/get db (ba 0x00)))))))
-
-  (testing "custom column-family"
-    (with-system-data [{db ::kv/rocksdb} (merge-a-config (new-temp-dir!))]
-      [[:a (ba 0x00) (ba 0x10)]]
-
-      (testing "put"
-        (kv/write! db [[:put :a (ba 0x01) (ba 0x11)]])
-        (is (bytes= (ba 0x11) (kv/get db :a (ba 0x01)))))
-
-      (testing "merge"
-        (kv/write! db [[:merge :a (ba 0x00) (ba 0x20)]])
-        ;; 0x2C is a comma
-        (is (bytes= (ba 0x10 0x2C 0x20) (kv/get db :a (ba 0x00)))))
-
-      (testing "delete"
-        (kv/write! db [[:delete :a (ba 0x00)]])
-        (is (nil? (kv/get db :a (ba 0x00))))))))
+    (testing "delete"
+      (kv/write! db [[:delete :default (ba 0x00)]])
+      (is (nil? (kv/get db :default (ba 0x00)))))))
 
 (deftest path-test
   (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
@@ -748,15 +724,14 @@
             ::anom/category := ::anom/not-found
             ::anom/message := "Property with name `name-143127` was not found on column-family with name `a`."))))))
 
+(defn int-ba [i]
+  (bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i)))))
+
 (deftest tables-test
   (testing "default column-family"
     (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
       (run!
-       (fn [i]
-         (kv/put!
-          db
-          (bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i))))
-          (apply ba (range 10000))))
+       #(kv/put! db [[:default (int-ba %) (apply ba (range 10000))]])
        (range 10000 20000))
 
       (is (pos-int? (rocksdb/long-property db "rocksdb.estimate-live-data-size")))
@@ -777,12 +752,7 @@
   (testing "with column-family"
     (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
       (run!
-       (fn [i]
-         (kv/put!
-          db
-          [[:a
-            (bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i))))
-            (apply ba (range 10000))]]))
+       #(kv/put! db [[:a (int-ba %) (apply ba (range 10000))]])
        (range 10000 20000))
 
       (is (= 0 (rocksdb/long-property db :default "rocksdb.estimate-live-data-size")))
@@ -830,34 +800,14 @@
         ::anom/message := "Column family `column-family-173005` not found."))))
 
 (deftest compact-range-test
-  (testing "whole database"
-    (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
-      (run!
-       (fn [i]
-         (kv/put!
-          db
-          [[(bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i))))
-            (apply ba (range 10000))]]))
-       (range 10000 30000))
+  (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
+    (run!
+     #(kv/put! db [[:a (int-ba %) (apply ba (range 10000))]])
+     (range 10000 20000))
 
-      (rocksdb/compact-range! db)
+    (rocksdb/compact-range! db :a)
 
-      (is (some? (kv/get db (ba 0x27 0x10))))))
-
-  (testing "with column-family"
-    (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
-      (run!
-       (fn [i]
-         (kv/put!
-          db
-          [[:a
-            (bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i))))
-            (apply ba (range 10000))]]))
-       (range 10000 20000))
-
-      (rocksdb/compact-range! db :a)
-
-      (is (some? (kv/get db :a (ba 0x27 0x10))))))
+    (is (some? (kv/get db :a (ba 0x27 0x10)))))
 
   (testing "with unknown column-family"
     (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]

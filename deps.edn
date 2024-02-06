@@ -25,6 +25,9 @@
   blaze.operation/patient-everything
   {:local/root "modules/operation-patient-everything"}
 
+  blaze.operation/totals
+  {:local/root "modules/operation-totals"}
+
   blaze/openid-auth
   {:local/root "modules/openid-auth"}
 
@@ -73,7 +76,7 @@
     {:mvn/version "0.4.6"}
 
     org.clojure/tools.namespace
-    {:mvn/version "1.4.4"}}}
+    {:mvn/version "1.4.5"}}}
 
   :kaocha
   {:extra-deps
@@ -87,7 +90,7 @@
 
    :extra-deps
    {org.clojure/tools.namespace
-    {:mvn/version "1.4.4"}}}
+    {:mvn/version "1.4.5"}}}
 
   :outdated
   {:replace-deps

@@ -3,15 +3,27 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.impl.batch-db :as batch-db]
-   [blaze.db.impl.index.resource-as-of :as rao]
-   [blaze.db.impl.macros :refer [with-open-coll]]
+   [blaze.db.impl.index.system-stats :as system-stats]
+   [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
    [blaze.db.kv :as kv])
   (:import
+   [clojure.lang IReduceInit Sequential]
    [java.io Writer]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
+
+(defmacro with-open-coll
+  "Like `clojure.core/with-open` but opens and closes the resources on every
+  reduce call to `coll`."
+  [bindings coll]
+  `(reify
+     Sequential
+     IReduceInit
+     (reduce [_ rf# init#]
+       (with-open ~bindings
+         (reduce rf# init# ~coll)))))
 
 (deftype Db [node kv-store basis-t t]
   p/Db
@@ -31,9 +43,8 @@
   ;; ---- Instance-Level Functions --------------------------------------------
 
   (-resource-handle [_ tid id]
-    (with-open [snapshot (kv/new-snapshot kv-store)
-                resource-handle (rao/resource-handle snapshot t)]
-      (resource-handle tid id)))
+    (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
+      (p/-resource-handle batch-db tid id)))
 
   ;; ---- Type-Level Functions ------------------------------------------------
 
@@ -46,8 +57,8 @@
       (p/-type-list batch-db tid start-id)))
 
   (-type-total [_ tid]
-    (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
-      (p/-type-total batch-db tid)))
+    (with-open [snapshot (kv/new-snapshot kv-store)]
+      (:total (type-stats/seek-value snapshot tid t) 0)))
 
   ;; ---- System-Level Functions ----------------------------------------------
 
@@ -60,8 +71,8 @@
       (p/-system-list batch-db start-tid start-id)))
 
   (-system-total [_]
-    (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
-      (p/-system-total batch-db)))
+    (with-open [snapshot (kv/new-snapshot kv-store)]
+      (:total (system-stats/seek-value snapshot t) 0)))
 
   ;; ---- Compartment-Level Functions -----------------------------------------
 
@@ -88,11 +99,17 @@
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-execute-query batch-db query arg1)))
 
+  ;; ---- History Functions ---------------------------------------------------
+
+  (-stop-history-at [_ instant]
+    (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
+      (p/-stop-history-at batch-db instant)))
+
   ;; ---- Instance-Level History Functions ------------------------------------
 
-  (-instance-history [_ tid id start-t since]
+  (-instance-history [_ tid id start-t]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
-      (p/-instance-history batch-db tid id start-t since)))
+      (p/-instance-history batch-db tid id start-t)))
 
   (-total-num-of-instance-changes [_ tid id since]
     (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
@@ -100,9 +117,9 @@
 
   ;; ---- Type-Level History Functions ----------------------------------------
 
-  (-type-history [_ tid start-t start-id since]
+  (-type-history [_ tid start-t start-id]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
-      (p/-type-history batch-db tid start-t start-id since)))
+      (p/-type-history batch-db tid start-t start-id)))
 
   (-total-num-of-type-changes [_ type since]
     (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
@@ -110,9 +127,9 @@
 
   ;; ---- System-Level History Functions --------------------------------------
 
-  (-system-history [_ start-t start-tid start-id since]
+  (-system-history [_ start-t start-tid start-id]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
-      (p/-system-history batch-db start-t start-tid start-id since)))
+      (p/-system-history batch-db start-t start-tid start-id)))
 
   (-total-num-of-system-changes [_ since]
     (with-open [batch-db (batch-db/new-batch-db node basis-t t)]

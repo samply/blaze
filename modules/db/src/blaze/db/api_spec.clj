@@ -138,14 +138,18 @@
   :args (s/cat :query :blaze.db/query)
   :ret (s/nilable :blaze.db.query/clauses))
 
+;; ---- History Functions -----------------------------------------------------
+
+(s/fdef d/stop-history-at
+  :args (s/cat :db :blaze.db/db :since inst?))
+
 ;; ---- Instance-Level History Functions --------------------------------------
 
 (s/fdef d/instance-history
   :args (s/cat :db :blaze.db/db
                :type :fhir.resource/type
                :id :blaze.resource/id
-               :start-t (s/? (s/nilable :blaze.db/t))
-               :since (s/? (s/nilable inst?)))
+               :start-t (s/? (s/nilable :blaze.db/t)))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef d/total-num-of-instance-changes
@@ -161,8 +165,7 @@
   :args (s/cat :db :blaze.db/db
                :type :fhir.resource/type
                :start-t (s/? (s/nilable :blaze.db/t))
-               :start-id (s/? (s/nilable :blaze.resource/id))
-               :since (s/? (s/nilable inst?)))
+               :start-id (s/? (s/nilable :blaze.resource/id)))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef d/total-num-of-type-changes
@@ -182,10 +185,7 @@
                :more
                (s/? (s/cat
                      :start-type (s/nilable :fhir.resource/type)
-                     :more
-                     (s/? (s/cat
-                           :start-id (s/nilable :blaze.resource/id)
-                           :since (s/? (s/nilable inst?)))))))))
+                     :start-id (s/? (s/nilable :blaze.resource/id)))))))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef d/total-num-of-system-changes

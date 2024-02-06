@@ -45,7 +45,7 @@
   (when (int? x)
     (Instant/ofEpochMilli x)))
 
-(defn decode-tx-data [kb vb]
+(defn decode-tx-data [[kb vb]]
   (let [t (bb/get-long! kb)
         size (bb/remaining vb)
         value (byte-array size)]
@@ -54,3 +54,6 @@
         (update :tx-cmds #(mapv decode-hash %))
         (update :instant decode-instant)
         (assoc :t t))))
+
+(defn encode-entry [t instant tx-cmds]
+  [:default (encode-key t) (encode-tx-data instant tx-cmds)])

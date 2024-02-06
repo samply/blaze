@@ -13,6 +13,9 @@
 (s/def :blaze/version
   string?)
 
+(s/def :blaze/release-date
+  string?)
+
 ;; The context path of Blaze that is appended to the :blaze/base-url
 (s/def :blaze/context-path
   (s/and
