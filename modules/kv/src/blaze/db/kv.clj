@@ -92,8 +92,8 @@
 (defn key!
   "Puts the key of current entry of `iter` in `buf`.
 
-  Uses the position of `buf` and sets the limit of `buf` according to the key
-  size.
+  Uses the position and limit of `buf` and sets the limit of `buf` according to
+  the key size. Note: doesn't read bytes over the limit!
 
   Returns the size of the actual key. If the key is greater than the length of
   `buf`, then it indicates that the size of the `buf` is insufficient and a
