@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.24.1
+
+### Notes
+
+Please update from v0.24.0 if you use variable length logical id's.
+
+### Bugfixes
+
+* Fix Error While Reading Non-Existent Resource ([#1475](https://github.com/samply/blaze/issues/1475))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/84?closed=1).
+ 
 ## v0.24.0
 
 ### Notes
