@@ -56,7 +56,7 @@
   {:mvn/version "1.3.7"}
 
   org.slf4j/slf4j-nop
-  {:mvn/version "2.0.11"}}
+  {:mvn/version "2.0.12"}}
 
  :aliases
  {:build
