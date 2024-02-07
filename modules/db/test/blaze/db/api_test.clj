@@ -28,6 +28,7 @@
    [blaze.log]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu :refer [satisfies-prop]]
+   [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
@@ -550,12 +551,12 @@
             [:subject :reference] := "Patient/0"
             [meta :blaze.db/op] := :create)))))
 
-  (testing "creating 100 transactions in parallel"
+  (testing "creating 1000 transactions in parallel"
     (with-system [{:blaze.db/keys [node]} slow-resource-store-system]
       (let [db-futures
             (mapv
              #(d/transact node [[:create {:fhir/type :fhir/Patient :id (str %)}]])
-             (range 100))]
+             (range 1000))]
 
         (testing "wait for all transactions finishing"
           @(ac/all-of db-futures))
@@ -568,7 +569,7 @@
                 true?
                 (map
                  #(= % (d/type-total (d/as-of db %) "Patient"))
-                 (range 100))))))))))
+                 (range 1000))))))))))
 
   (testing "with failing resource storage"
     (testing "on put"
@@ -630,6 +631,12 @@
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
       (is (d/resource-handle? (d/resource-handle (d/db node) "Patient" "0")))))
+
+  (testing "doesn't find a resource handle mit prefix of it's id"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "00"}]]]
+
+      (is (nil? (d/resource-handle (d/db node) "Patient" "0")))))
 
   (testing "a node contains a resource after a create transaction"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -943,9 +950,21 @@
           count := 1
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0")
-        (is (= 1 (count-type-query node "Patient" [["active" "true"]]))))))
+        (is (= 1 (count-type-query node "Patient" [["active" "true"]])))))
 
-  (testing "search by id"
+    (testing "works with variable length ids"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "1" :active true}]
+          [:put {:fhir/type :fhir/Patient :id "10" :active true}]]]
+
+        (given (pull-type-query node "Patient" [["active" "true"]])
+          count := 2
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "1"
+          [1 :fhir/type] := :fhir/Patient
+          [1 :id] := "10"))))
+
+  (testing "search by _id"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
         [:put {:fhir/type :fhir/Patient :id "1" :active false}]
@@ -999,8 +1018,8 @@
 
   (testing "sorting by _id"
     (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
-        [:put {:fhir/type :fhir/Patient :id "1" :active false}]]]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
       (testing "ascending"
         (given (pull-type-query node "Patient" [[:sort "_id" :asc]])
@@ -1019,7 +1038,15 @@
       (testing "descending"
         (given (d/type-query (d/db node) "Patient" [[:sort "_id" :desc]])
           ::anom/category := ::anom/unsupported
-          ::anom/message := "Unsupported sort direction `desc` for search param `_id`."))))
+          ::anom/message := "Unsupported sort direction `desc` for search param `_id`.")))
+
+    (testing "random id's"
+      (satisfies-prop 100
+        (prop/for-all [ids (gen/set (s/gen :blaze.resource/id) {:min-elements 1})]
+          (with-system-data [{:blaze.db/keys [node]} config]
+            [(mapv #(vector :create {:fhir/type :fhir/Patient :id %}) ids)]
+
+            (= (sort ids) (mapv :id (pull-type-query node "Patient" [[:sort "_id" :asc]]))))))))
 
   (testing "a node with two patients in two transactions"
     (with-system-data [{:blaze.db/keys [node]} config]

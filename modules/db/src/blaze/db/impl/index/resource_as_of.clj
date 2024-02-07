@@ -315,24 +315,29 @@
     (bb/flip! target-buf)
     (kv/seek-buffer! iter target-buf)
     (when (kv/valid? iter)
+      ;; it's important to clear key-buf before reading, because otherwise
+      ;; the limit could be to small
+      (bb/clear! key-buf)
       (kv/key! iter key-buf)
       ;; we have to check that we are still on target, because otherwise we
-      ;; would find the next resource
-      ;; focus target buffer on tid and id
-      (bb/rewind! target-buf)
-      (bb/set-limit! target-buf tid-id-size)
-      ;; focus key buffer on tid and id
-      (bb/set-limit! key-buf tid-id-size)
-      (when (= target-buf key-buf)
-        ;; focus key buffer on t
-        (bb/set-limit! key-buf key-size)
-        (let [value-buf (bb/allocate value-size)]
-          (kv/value! iter value-buf)
-          (rh/resource-handle!
-           tid
-           (codec/id-string id)
-           (codec/descending-long (bb/get-long! key-buf tid-id-size))
-           value-buf))))))
+      ;; would find the next resource. First the length of the found key has
+      ;; to equal our key size
+      (when (= key-size (bb/limit key-buf))
+        ;; focus target buffer on tid and id
+        (bb/rewind! target-buf)
+        (bb/set-limit! target-buf tid-id-size)
+        ;; focus key buffer on tid and id
+        (bb/set-limit! key-buf tid-id-size)
+        (when (= target-buf key-buf)
+          ;; focus key buffer on t
+          (bb/set-limit! key-buf key-size)
+          (let [value-buf (bb/allocate value-size)]
+            (kv/value! iter value-buf)
+            (rh/resource-handle!
+             tid
+             (codec/id-string id)
+             (codec/descending-long (bb/get-long! key-buf tid-id-size))
+             value-buf)))))))
 
 (defn resource-handle
   "Returns the resource handle with `tid` and `id` at `t` in `snapshot` when
