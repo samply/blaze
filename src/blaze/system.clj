@@ -92,9 +92,9 @@
     (into {} (map (fn [[k v]] [k (resolvef k v)])) (ig/find-derived config key))))
 
 (def ^:private root-config
-  {:blaze/version "0.24.0"
+  {:blaze/version "0.24.1"
 
-   :blaze/release-date "2024-02-06"
+   :blaze/release-date "2024-02-07"
 
    :blaze/clock {}
 
