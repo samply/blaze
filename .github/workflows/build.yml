@@ -219,7 +219,7 @@ jobs:
 
     steps:
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -263,7 +263,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -721,7 +721,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -783,7 +783,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -828,7 +828,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -869,7 +869,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -904,7 +904,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -939,7 +939,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -965,7 +965,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -996,7 +996,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1045,7 +1045,7 @@ jobs:
       run: sudo apt-get install gnuplot
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1077,7 +1077,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1112,7 +1112,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1147,7 +1147,7 @@ jobs:
       run: .github/scripts/install-blazectl.sh
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1188,7 +1188,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1223,7 +1223,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1249,7 +1249,7 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1316,7 +1316,7 @@ jobs:
       run: sudo apt-get install gnuplot
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
@@ -1397,13 +1397,13 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Uberjar
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-uberjar
         path: target
 
     - name: Download Blaze Image
-      uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935 # v4
+      uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe # v4
       with:
         name: blaze-image
         path: /tmp
