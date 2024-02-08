@@ -305,7 +305,7 @@
                       (decoder tid (codec/id-string id) tid-id-size)
                       tid-id-size (start-key tid id start-t))))
 
-(defn- resource-handle* [iter target-buf key-buf tid id t]
+(defn- resource-handle* [iter target-buf key-buf value-buf tid id t]
   (let [tid-id-size (+ codec/tid-size (bs/size id))
         key-size (+ tid-id-size codec/t-size)]
     (bb/clear! target-buf)
@@ -331,22 +331,25 @@
         (when (= target-buf key-buf)
           ;; focus key buffer on t
           (bb/set-limit! key-buf key-size)
-          (let [value-buf (bb/allocate value-size)]
-            (kv/value! iter value-buf)
-            (rh/resource-handle!
-             tid
-             (codec/id-string id)
-             (codec/descending-long (bb/get-long! key-buf tid-id-size))
-             value-buf)))))))
+          ;; read value
+          (bb/clear! value-buf)
+          (kv/value! iter value-buf)
+          ;; build resource handle
+          (rh/resource-handle!
+           tid
+           (codec/id-string id)
+           (codec/descending-long (bb/get-long! key-buf tid-id-size))
+           value-buf))))))
 
 (defn resource-handle
   "Returns the resource handle with `tid` and `id` at `t` in `snapshot` when
   found."
   [snapshot tid id t]
   (let [target-buf (bb/allocate max-key-size)
-        key-buf (bb/allocate max-key-size)]
+        key-buf (bb/allocate max-key-size)
+        value-buf (bb/allocate value-size)]
     (with-open [iter (kv/new-iterator snapshot :resource-as-of-index)]
-      (resource-handle* iter target-buf key-buf tid id t))))
+      (resource-handle* iter target-buf key-buf value-buf tid id t))))
 
 (defn- closer [iter]
   (fn [rf]
@@ -366,11 +369,12 @@
   [snapshot t]
   (let [target-buf (bb/allocate max-key-size)
         key-buf (bb/allocate max-key-size)
+        value-buf (bb/allocate value-size)
         iter (kv/new-iterator snapshot :resource-as-of-index)]
     (comp
      (keep
       (fn [[tid id]]
-        (resource-handle* iter target-buf key-buf tid id t)))
+        (resource-handle* iter target-buf key-buf value-buf tid id t)))
      (closer iter))))
 
 (defn resource-handle-type-xf
@@ -385,12 +389,13 @@
   ([snapshot t tid id-extractor matcher]
    (let [target-buf (bb/allocate max-key-size)
          key-buf (bb/allocate max-key-size)
+         value-buf (bb/allocate value-size)
          iter (kv/new-iterator snapshot :resource-as-of-index)]
      (comp
       (keep
        (fn [input]
-         (when-let [handle (resource-handle* iter target-buf key-buf tid
-                                             (id-extractor input) t)]
+         (when-let [handle (resource-handle* iter target-buf key-buf value-buf
+                                             tid (id-extractor input) t)]
            (when (matcher input handle)
              handle))))
       (closer iter)))))
