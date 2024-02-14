@@ -11,27 +11,27 @@
 (set! *warn-on-reflection* true)
 
 (defn metadata
-  "Returns a CompletableFuture that completes with the CapabilityStatement in
-  case of success or completes exceptionally with an anomaly in case of an
-  error."
+  "Returns a CompletableFuture that will complete with the CapabilityStatement
+  in case of success or will complete exceptionally with an anomaly in case of
+  an error."
   [base-uri & [opts]]
   (impl/fetch (str base-uri "/metadata") opts))
 
 (defn read
-  "Returns a CompletableFuture that completes with the resource with `type` and
-  `id` in case of success or completes exceptionally with an anomaly in case of
-  an error."
+  "Returns a CompletableFuture that will complete with the resource with `type`
+  and `id` in case of success or will complete exceptionally with an anomaly in
+  case of an error."
   [base-uri type id & [opts]]
   (impl/fetch (str base-uri "/" type "/" id) opts))
 
 (defn update
-  "Returns a CompletableFuture that completes with `resource` updated."
+  "Returns a CompletableFuture that will complete with `resource` updated."
   {:arglists '([base-uri resource & [opts]])}
   [base-uri {:fhir/keys [type] :keys [id] :as resource} & [opts]]
   (impl/update (str base-uri "/" (name type) "/" id) resource opts))
 
 (defn transact
-  "Returns a CompletableFuture that completes with `bundle` transacted."
+  "Returns a CompletableFuture that will complete with `bundle` transacted."
   {:arglists '([base-uri bundle & [opts]])}
   [base-uri bundle & [opts]]
   (impl/transact base-uri bundle opts))
@@ -45,8 +45,9 @@
 
   Params to the operation can be given in :query-params in `opts`.
 
-  Returns a CompletableFuture that completes with either a Parameters resource
-  or a resource of the type of the single out parameter named `return`."
+  Returns a CompletableFuture that will complete with either a Parameters
+  resource or a resource of the type of the single out parameter named
+  `return`."
   [base-uri type name & [opts]]
   (log/trace (execute-type-get-msg type name opts))
   (impl/fetch (apply str base-uri "/" type "/$" name) opts))
@@ -68,9 +69,9 @@
   (flow/mapcat #(map :resource (:entry %))))
 
 (defn search-type
-  "Returns a CompletableFuture that completes with all resources of `type` in
-  case of success or completes exceptionally with an anomaly in case of an
-  error."
+  "Returns a CompletableFuture that will complete with all resources of `type`
+  in case of success or will complete exceptionally with an anomaly in case of
+  an error."
   [base-uri type & [opts]]
   (let [src (search-type-publisher base-uri type opts)
         pro (resource-processor)
@@ -90,8 +91,8 @@
            (flow/on-subscribe! subscriber)))))
 
 (defn search-system
-  "Returns a CompletableFuture that completes with all resource in case of
-  success or completes exceptionally with an anomaly in case of an error."
+  "Returns a CompletableFuture that will complete with all resource in case of
+  success or will complete exceptionally with an anomaly in case of an error."
   [base-uri & [opts]]
   (let [src (search-system-publisher base-uri opts)
         pro (resource-processor)
@@ -100,7 +101,7 @@
     dst))
 
 (defn spit
-  "Returns a CompletableFuture that completes with a vector of all filenames
+  "Returns a CompletableFuture that will complete with a vector of all filenames
   written of all resources the `publisher` produces."
   [dir publisher]
   (let [future (ac/future)]

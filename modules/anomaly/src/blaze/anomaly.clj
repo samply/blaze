@@ -164,6 +164,7 @@
   an anomaly is detected, it is redurned and subsequent expressions are not
   evaluated. If all expressions evaluate to non-anomalies, the body is evaluated
   with all binding forms in scope."
+  {:arglists '([[bindings*] & body])}
   [bindings & body]
   (if (seq bindings)
     (let [[binding-form expr-form & next] bindings]
