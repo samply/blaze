@@ -99,14 +99,28 @@
 (deftest list-by-target-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
     (testing "Patient"
-      (given (sr/list-by-target search-param-registry "Patient")
+      (testing "every search param is of type reference"
+        (is (every? (comp #{"reference"} :type)
+                    (sr/list-by-target-type search-param-registry "Patient"))))
+
+      (given (sr/list-by-target-type search-param-registry "Patient")
         count := 210
         [0 :base] := ["Account"]
         [0 :code] := "patient"
         [1 :base] := ["Account"]
         [1 :code] := "subject"
         [2 :base] := ["ActivityDefinition"]
-        [2 :code] := "composed-of"))))
+        [2 :code] := "composed-of"))
+
+    (testing "Encounter"
+      (testing "every search param is of type reference"
+        (is (every? (comp #{"reference"} :type)
+                    (sr/list-by-target-type search-param-registry "Encounter"))))
+
+      (given (sr/list-by-target-type search-param-registry "Encounter")
+        count := 100
+        [0 :base] := ["ActivityDefinition"]
+        [0 :code] := "composed-of"))))
 
 (deftest linked-compartments-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]

@@ -20,9 +20,9 @@
                :type :fhir.resource/type)
   :ret (s/coll-of :blaze.db/search-param :kind vector?))
 
-(s/fdef sr/list-by-target
+(s/fdef sr/list-by-target-type
   :args (s/cat :search-param-registry :blaze.db/search-param-registry
-               :target string?)
+               :target-type :fhir.resource/type)
   :ret (s/coll-of :blaze.db/search-param :kind vector?))
 
 (s/fdef sr/linked-compartments

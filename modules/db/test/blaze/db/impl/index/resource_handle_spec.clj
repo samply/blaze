@@ -41,3 +41,7 @@
 (s/fdef rh/reference
   :args (s/cat :rh rh/resource-handle?)
   :ret :blaze.fhir/literal-ref)
+
+(s/fdef rh/local-ref-tuple
+  :args (s/cat :rh rh/resource-handle?)
+  :ret :blaze.fhir/literal-ref-tuple)

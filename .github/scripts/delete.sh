@@ -30,8 +30,8 @@ else
   exit 1
 fi
 
-PATIENT_STATUS=$(curl -is "$BASE/Patient/$PATIENT_ID" | grep HTTP | tr -d '\r\n')
-if [ "$PATIENT_STATUS" = "HTTP/1.1 410 Gone" ]; then
+PATIENT_STATUS=$(curl -is "$BASE/Patient/$PATIENT_ID" -o /dev/null -w '%{response_code}')
+if [ "$PATIENT_STATUS" = "410" ]; then
   echo "OK 👍: patient status is HTTP/1.1 410 Gone"
 else
   echo "Fail 😞: patient status is $PATIENT_STATUS"

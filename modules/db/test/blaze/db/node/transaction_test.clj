@@ -5,6 +5,7 @@
    [blaze.db.node.transaction :as tx]
    [blaze.db.node.transaction-spec]
    [blaze.fhir.spec.type]
+   [blaze.fhir.test-util]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -127,11 +128,21 @@
               (= if-match (:if-match (ffirst (tx/prepare-ops context [tx-op]))))))))))
 
   (testing "delete"
-    (given (tx/prepare-ops context [[:delete "Patient" "0"]])
-      [0 0 :op] := "delete"
-      [0 0 :type] := "Patient"
-      [0 0 :id] := "0"
-      [1] := {})))
+    (testing "with referential integrity enabled (by default)"
+      (given (tx/prepare-ops {} [[:delete "Patient" "0"]])
+        [0 0 :op] := "delete"
+        [0 0 :type] := "Patient"
+        [0 0 :id] := "0"
+        [0 0 :check-refs] := true
+        [1] := {}))
+
+    (testing "with referential integrity disabled"
+      (given (tx/prepare-ops {:blaze.db/enforce-referential-integrity false} [[:delete "Patient" "0"]])
+        [0 0 :op] := "delete"
+        [0 0 :type] := "Patient"
+        [0 0 :id] := "0"
+        [0 0 :check-refs] := nil
+        [1] := {}))))
 
 (deftest load-tx-result-test
   (with-redefs [tx-success/tx (fn [_ _])

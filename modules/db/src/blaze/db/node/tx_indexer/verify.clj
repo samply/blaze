@@ -261,37 +261,52 @@
   (when-let [{:keys [op]} (d/resource-handle db type id)]
     (not (identical? :delete op))))
 
-(defn- ref-integrity-del-msg [src-type src-id type id]
-  (format "Referential integrity violated. Resource `%s/%s` should be deleted but is referenced from `%s/%s`."
-          type id src-type src-id))
+(defn- ref-integrity-del-msg [src-type src-id type id more?]
+  (format "Referential integrity violated. Resource `%s/%s` should be deleted but is referenced from `%s/%s`%s."
+          type id src-type src-id (if more? " and others" "")))
 
-(defn- ref-integrity-del-anom [src-type src-id type id]
-  (ba/conflict (ref-integrity-del-msg src-type src-id type id)))
+(defn- ref-integrity-del-anom [src-type src-id type id more?]
+  (ba/conflict (ref-integrity-del-msg src-type src-id type id more?)))
 
 (defn- ref-integrity-msg [type id]
   (format "Referential integrity violated. Resource `%s/%s` doesn't exist."
           type id))
 
-(defn- check-referential-integrity*!
+(defn- check-referential-integrity-write!
   [db new-resources del-resources src-type src-id references]
   (run!
    (fn [[type id :as reference]]
      (cond
        (contains? del-resources reference)
-       (throw-anom (ref-integrity-del-anom src-type src-id type id))
+       (throw-anom (ref-integrity-del-anom src-type src-id type id false))
 
        (and (not (contains? new-resources reference))
             (not (resource-exists? db type id)))
        (throw-anom (ba/conflict (ref-integrity-msg type id)))))
    references))
 
+(defn- check-referential-integrity-delete!
+  [db del-resources type id]
+  (when-let [resource-handle (d/resource-handle db type id)]
+    (let [[[type-ref id-ref] second]
+          (into
+           []
+           (comp (map rh/local-ref-tuple) (remove del-resources) (take 2))
+           (d/rev-include db resource-handle))]
+      (when type-ref
+        (throw-anom (ref-integrity-del-anom type-ref id-ref type id second))))))
+
 (defn- check-referential-integrity!
   [db {:keys [new-resources del-resources]} cmds]
   (run!
-   (fn [{:keys [type id refs]}]
-     (when refs
-       (check-referential-integrity*!
-        db new-resources del-resources type id refs)))
+   (fn [{:keys [op type id refs check-refs]}]
+     (if (= op "delete")
+       (when check-refs
+         (check-referential-integrity-delete!
+          db del-resources type id))
+       (when refs
+         (check-referential-integrity-write!
+          db new-resources del-resources type id refs))))
    cmds))
 
 (defn- verify-tx-cmds* [db-before t cmds]

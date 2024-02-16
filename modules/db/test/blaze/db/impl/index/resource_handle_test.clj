@@ -68,8 +68,14 @@
     (prop/for-all [id (s/gen :blaze.resource/id)]
       (let [rh (resource-handle 1495153489 id)]
         (= (str "Condition/" id)
-           (rh/reference rh)
-           (apply rh/reference [rh]))))))
+           (rh/reference rh))))))
+
+(deftest local-ref-tuple-test
+  (satisfies-prop 100
+    (prop/for-all [id (s/gen :blaze.resource/id)]
+      (let [rh (resource-handle 1495153489 id)]
+        (= ["Condition" id]
+           (rh/local-ref-tuple rh))))))
 
 (deftest not-found-key-test
   (is (nil? (:foo (resource-handle 0 "foo"))))

@@ -167,6 +167,19 @@
     (index/targets db resource-handle (codec/c-hash code)
                    (codec/tid target-type)))
 
+  (-rev-include [db resource-handle]
+    (let [search-param-registry (:search-param-registry node)
+          type (name (type/type resource-handle))]
+      (coll/eduction
+       (comp
+        (mapcat
+         (fn [{:keys [base code]}]
+           (coll/eduction
+            (mapcat #(p/-rev-include db resource-handle % code))
+            base)))
+        (distinct))
+       (sr/list-by-target-type search-param-registry type))))
+
   (-rev-include [db resource-handle source-type code]
     (let [reference (codec/v-hash (rh/reference resource-handle))
           source-tid (codec/tid source-type)]
