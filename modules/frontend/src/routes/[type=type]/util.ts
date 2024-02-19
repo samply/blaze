@@ -1,31 +1,9 @@
-import type {
-	SearchSetBundle,
-	SearchSetBundleEntry,
-	Resource,
-	OperationOutcome
-} from '../../fhir.js';
+import type { OperationOutcome } from 'fhir/r4';
 import type { RouteParams } from './$types.js';
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 import { processParams } from '../../util.js';
-import { fhirObject, type FhirObject } from '../../resource/resource-card.js';
-
-export async function transformBundle(
-	fetch: typeof window.fetch,
-	bundle: SearchSetBundle<Resource>
-): Promise<SearchSetBundle<FhirObject>> {
-	return bundle.entry !== undefined
-		? {
-				...bundle,
-				entry: await Promise.all(
-					bundle.entry.map(async (e: SearchSetBundleEntry<Resource>) => ({
-						...e,
-						resource: await fhirObject(e.resource, fetch)
-					}))
-				)
-			}
-		: (bundle as SearchSetBundle<unknown> as SearchSetBundle<FhirObject>);
-}
+import { transformBundle } from '../../resource/resource-card.js';
 
 async function outcome(res: Response): Promise<OperationOutcome> {
 	return (await res.json()) as OperationOutcome;
@@ -56,7 +34,11 @@ export async function appError(params: RouteParams, res: Response) {
 	}
 }
 
-export async function fetchBundle(fetch: typeof window.fetch, params: RouteParams, url: URL) {
+export async function fetchBundleWithDuration(
+	fetch: typeof window.fetch,
+	params: RouteParams,
+	url: URL
+) {
 	const start = Date.now();
 
 	const res = await fetch(`${base}/${params.type}?${processParams(url.searchParams)}`, {
@@ -67,9 +49,8 @@ export async function fetchBundle(fetch: typeof window.fetch, params: RouteParam
 		error(res.status as NumericRange<400, 599>, await appError(params, res));
 	}
 
-	const bundle = (await res.json()) as SearchSetBundle<Resource>;
-
-	bundle.duration = Date.now() - start;
-
-	return transformBundle(fetch, bundle);
+	return {
+		bundle: await transformBundle(fetch, await res.json()),
+		duration: Date.now() - start
+	};
 }

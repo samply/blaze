@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Coding } from '../fhir.js';
+	import type { Coding } from 'fhir/r4';
 	import ExternalLink from './util/external-link.svelte';
 
 	export let value: Coding;
@@ -18,7 +18,7 @@
 				>
 			{/if}
 		</p>
-	{:else if value.system.startsWith('http://terminology.hl7.org/CodeSystem') || value.system == 'http://www.nlm.nih.gov/research/umls/rxnorm'}
+	{:else if value.system.startsWith('http://terminology.hl7.org/CodeSystem') || value.system === 'http://www.nlm.nih.gov/research/umls/rxnorm'}
 		<p>
 			<ExternalLink href={value.system} title={value.system}
 				>{#if value.display}{value.display}{:else if value.code}{value.code}{:else}{value.system}{/if}</ExternalLink

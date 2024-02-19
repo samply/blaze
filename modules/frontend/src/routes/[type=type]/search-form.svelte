@@ -1,9 +1,6 @@
 <script lang="ts">
-	import {
-		type CapabilityStatement,
-		type CapabilityStatementSearchParam,
-		SearchParamType
-	} from '../../fhir.js';
+	import type { CapabilityStatement, CapabilityStatementRestResourceSearchParam } from 'fhir/r4';
+	import { SearchParamType } from '../../fhir.js';
 	import type { QueryParam } from './query-param.js';
 	import { sortByProperty } from '../../util.js';
 	import { defaultCount } from '../../util.js';
@@ -34,13 +31,11 @@
 
 	export let capabilityStatement: CapabilityStatement;
 
-	$: server = capabilityStatement.rest[0];
-	$: resource = server.resource.find((r) => r.type == $page.params.type);
-	$: searchParams = (
-		resource?.searchParam === undefined
-			? server.searchParam
-			: [...server.searchParam, ...resource.searchParam]
-	).sort(sortByProperty('name'));
+	$: server = capabilityStatement.rest?.at(0);
+	$: resource = server?.resource?.find((r) => r.type == $page.params.type);
+	$: searchParams = [...(server?.searchParam || []), ...(resource?.searchParam || [])].sort(
+		sortByProperty('name')
+	);
 
 	function removeInactiveModifier(name: string): [string, boolean] {
 		const active = !name.endsWith(':inactive');
@@ -58,7 +53,7 @@
 	}
 
 	function initQueryParams(
-		searchParams: CapabilityStatementSearchParam[],
+		searchParams: CapabilityStatementRestResourceSearchParam[],
 		urlSearchParams: URLSearchParams
 	): QueryParam[] {
 		const queryParams: QueryParam[] = [];
@@ -121,13 +116,13 @@
 					/>
 
 					<SearchParamComboBox {searchParams} {index} bind:selected={queryParam.name} />
-					{#if queryParam.name == '_include' && resource.searchInclude}
+					{#if queryParam.name === '_include' && resource.searchInclude}
 						<ValueComboBox
 							options={resource.searchInclude}
 							{index}
 							bind:selected={queryParam.value}
 						/>
-					{:else if queryParam.name == '_revinclude' && resource.searchRevInclude}
+					{:else if queryParam.name === '_revinclude' && resource.searchRevInclude}
 						<ValueComboBox
 							options={resource.searchRevInclude}
 							{index}
@@ -136,7 +131,7 @@
 					{:else}
 						<QueryParamValue {index} bind:value={queryParam.value} />
 					{/if}
-					{#if index == 0}
+					{#if index === 0}
 						<ButtonMoveDown
 							disabled={queryParams.length < 2}
 							on:click={() => (queryParams = moveDownAtIndex(queryParams, index))}
@@ -145,7 +140,7 @@
 						<ButtonMoveUp on:click={() => (queryParams = moveUpAtIndex(queryParams, index))} />
 					{/if}
 					<RemoveButton
-						disabled={queryParams.length == 1}
+						disabled={queryParams.length === 1}
 						on:click={() => (queryParams = removeAtIndex(queryParams, index, selectParam(0)))}
 					/>
 					<AddButton

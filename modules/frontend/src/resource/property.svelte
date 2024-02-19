@@ -5,15 +5,24 @@
 		type FhirPrimitive,
 		type FhirObject
 	} from './resource-card.js';
+	import type {
+		Attachment,
+		Identifier,
+		HumanName,
+		Address,
+		ContactPoint,
+		Reference,
+		Dosage
+	} from 'fhir/r4';
 	import PrimitiveValue from './primitive-value.svelte';
 	import ComplexValue from './complex-value.svelte';
-	import Attachment from '../values/attachment.svelte';
-	import Identifier from '../values/identifier.svelte';
-	import HumanName from '../values/human-name.svelte';
-	import Address from '../values/address.svelte';
-	import ContactPoint from '../values/contact-point.svelte';
-	import Reference from '../values/reference.svelte';
-	import Dosage from '../values/dosage.svelte';
+	import AttachmentValues from '../values/attachment.svelte';
+	import IdentifierValues from '../values/identifier.svelte';
+	import HumanNameValues from '../values/human-name.svelte';
+	import AddressValues from '../values/address.svelte';
+	import ContactPointValues from '../values/contact-point.svelte';
+	import ReferenceValues from '../values/reference.svelte';
+	import DosageValues from '../values/dosage.svelte';
 
 	export let property: FhirProperty;
 
@@ -36,6 +45,34 @@
 	const multipleComplexValues = !isPrimitive(property.type)
 		? (toArray(property.value) as FhirObject[])
 		: undefined;
+
+	function asAttachmentValues(property: FhirProperty) {
+		return toArray(property.value) as FhirObject<Attachment>[];
+	}
+
+	function asIdentifierValues(property: FhirProperty) {
+		return toArray(property.value) as FhirObject<Identifier>[];
+	}
+
+	function asHumanNameValues(property: FhirProperty) {
+		return toArray(property.value) as FhirObject<HumanName>[];
+	}
+
+	function asAddressValues(property: FhirProperty) {
+		return toArray(property.value) as FhirObject<Address>[];
+	}
+
+	function asContactPointValues(property: FhirProperty) {
+		return toArray(property.value) as FhirObject<ContactPoint>[];
+	}
+
+	function asReferenceValues(property: FhirProperty) {
+		return toArray(property.value) as FhirObject<Reference>[];
+	}
+
+	function asDosageValues(property: FhirProperty) {
+		return toArray(property.value) as FhirObject<Dosage>[];
+	}
 </script>
 
 <div class="py-4 sm:grid sm:grid-cols-4 sm:gap-4 sm:px-6 sm:py-5">
@@ -48,31 +85,31 @@
 				<PrimitiveValue value={primitiveValue} />
 			{/each}
 		{:else if multipleComplexValues}
-			{#if property.type.code == 'Attachment'}
-				<Attachment values={multipleComplexValues} />
-			{:else if property.type.code == 'Identifier'}
-				<Identifier values={multipleComplexValues} />
-			{:else if property.type.code == 'HumanName'}
-				<HumanName values={multipleComplexValues} />
-			{:else if property.type.code == 'Address'}
-				<Address values={multipleComplexValues} />
-			{:else if property.type.code == 'ContactPoint'}
-				<ContactPoint values={multipleComplexValues} />
-			{:else if property.type.code == 'Reference'}
-				<Reference values={multipleComplexValues} />
-			{:else if property.type.code == 'Dosage'}
-				<Dosage values={multipleComplexValues} />
-			{:else if property.type.code == 'Element'}
+			{#if property.type.code === 'Attachment'}
+				<AttachmentValues values={asAttachmentValues(property)} />
+			{:else if property.type.code === 'Identifier'}
+				<IdentifierValues values={asIdentifierValues(property)} />
+			{:else if property.type.code === 'HumanName'}
+				<HumanNameValues values={asHumanNameValues(property)} />
+			{:else if property.type.code === 'Address'}
+				<AddressValues values={asAddressValues(property)} />
+			{:else if property.type.code === 'ContactPoint'}
+				<ContactPointValues values={asContactPointValues(property)} />
+			{:else if property.type.code === 'Reference'}
+				<ReferenceValues values={asReferenceValues(property)} />
+			{:else if property.type.code === 'Dosage'}
+				<DosageValues values={asDosageValues(property)} />
+			{:else if property.type.code === 'Element'}
 				<p class="text-gray-500">{multipleComplexValues.length > 0 ? '<elements>' : '<element>'}</p>
-			{:else if property.type.code == 'BackboneElement'}
+			{:else if property.type.code === 'BackboneElement'}
 				<p class="text-gray-500">
 					{multipleComplexValues.length > 0 ? '<backbone-elements>' : '<backbone-element>'}
 				</p>
-			{:else if property.type.code == 'Extension'}
+			{:else if property.type.code === 'Extension'}
 				<p class="text-gray-500">
 					{multipleComplexValues.length > 0 ? '<extensions>' : '<extension>'}
 				</p>
-			{:else if property.type.code == 'Resource'}
+			{:else if property.type.code === 'Resource'}
 				<p class="text-gray-500">
 					{multipleComplexValues.length > 0 ? '<resources>' : '<resource>'}
 				</p>

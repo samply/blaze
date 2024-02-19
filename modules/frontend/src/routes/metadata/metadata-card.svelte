@@ -1,9 +1,6 @@
 <script lang="ts">
-	import {
-		type CapabilityStatement,
-		RestfulInteraction,
-		ConditionalDeleteStatus
-	} from '../../fhir.js';
+	import type { CapabilityStatement } from 'fhir/r4';
+	import { RestfulInteraction } from '../../fhir.js';
 	import type { FhirObject } from '../../resource/resource-card.js';
 	import { isTabActive } from '../../util.js';
 	import { base } from '$app/paths';
@@ -63,11 +60,10 @@
 				<InteractionTh label="Conditional Create" />
 				<InteractionTh label="Conditional Read" />
 				<InteractionTh label="Conditional Update" />
-				<InteractionTh label="Conditional Patch" />
 				<InteractionTh label="Conditional Delete" />
 			</tr>
 
-			{#each capabilityStatement.rest[0].resource as resource (resource.type)}
+			{#each capabilityStatement.rest?.at(0)?.resource || [] as resource (resource.type)}
 				<tr>
 					<td class="whitespace-nowrap py-2 pl-4 text-sm sm:pl-0 text-gray-900"
 						><a href="{base}/{resource.type}" class="hover:text-gray-500">{resource.type}</a></td
@@ -123,14 +119,7 @@
 						{/if}
 					</td>
 					<td class="py-2">
-						{#if resource.conditionalPath}
-							<Check />
-						{:else}
-							<XMark />
-						{/if}
-					</td>
-					<td class="py-2">
-						{#if resource.conditionalDelete !== ConditionalDeleteStatus.notSupported}
+						{#if resource.conditionalDelete !== 'not-supported'}
 							<Check />
 						{:else}
 							<XMark />

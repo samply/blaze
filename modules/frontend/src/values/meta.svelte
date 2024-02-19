@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Meta } from '../fhir.js';
+	import type { Meta } from 'fhir/r4';
 	import ExternalLink from './util/external-link.svelte';
 
 	export let value: Meta;
@@ -11,7 +11,7 @@
 			<tbody>
 				{#each value.profile as profile, i}
 					<tr>
-						{#if i == 0}
+						{#if i === 0}
 							<td
 								class="px-5 py-3 text-sm text-gray-500 table-cell w-1/3"
 								rowspan={value.profile.length}>Profiles</td

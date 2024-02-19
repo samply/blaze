@@ -1,24 +1,22 @@
 <script lang="ts">
-	import { HttpVerb } from '../fhir.js';
+	export let method: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'unknown';
 
-	export let method: HttpVerb;
-
-	function modeBgColor(mode: HttpVerb): string {
+	function modeBgColor(mode: string): string {
 		switch (mode) {
-			case HttpVerb.POST:
+			case 'POST':
 				return 'bg-green-100';
-			case HttpVerb.PUT:
+			case 'PUT':
 				return 'bg-fuchsia-100';
 			default:
 				return 'bg-red-100';
 		}
 	}
 
-	function modeTextColor(mode: HttpVerb): string {
+	function modeTextColor(mode: string): string {
 		switch (mode) {
-			case HttpVerb.POST:
+			case 'POST':
 				return 'text-green-800';
-			case HttpVerb.PUT:
+			case 'PUT':
 				return 'text-fuchsia-800';
 			default:
 				return 'text-red-800';

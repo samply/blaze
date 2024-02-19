@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { Data } from './+page.js';
+	import type { PageData } from './$types';
 
 	import TotalCard from '../../total-card.svelte';
 	import TotalBadge from '../../total-badge.svelte';
 	import EntryCard from '../../history/entry-card.svelte';
 
-	export let data: Data;
+	export let data: PageData;
 </script>
 
 <svelte:head>
@@ -21,8 +21,8 @@
 		</p>
 	</TotalCard>
 
-	{#if data.bundle.entry !== undefined && data.bundle.entry.length > 0}
-		{#each data.bundle.entry as entry (entry.fullUrl + entry.response.etag)}
+	{#if data.bundle.fhirObjectEntry !== undefined && data.bundle.fhirObjectEntry.length > 0}
+		{#each data.bundle.fhirObjectEntry as entry ((entry.fullUrl || '') + (entry.response?.etag || ''))}
 			<EntryCard {entry} />
 		{/each}
 		<TotalCard bundle={data.bundle}>

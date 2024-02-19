@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Address } from '../../fhir.js';
+	import type { Address } from 'fhir/r4';
 	import { joinStrings } from '../../util.js';
 
 	export let value: Address;

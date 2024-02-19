@@ -1,8 +1,7 @@
-import type { HistoryBundle, Resource } from '../../../fhir.js';
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 import { processParams } from '../../../util.js';
-import { transformBundle } from '../../../history/util.js';
+import { transformBundle } from '../../../resource/resource-card.js';
 
 export async function load({ fetch, params, url }) {
 	const res = await fetch(`${base}/${params.type}/_history?${processParams(url.searchParams)}`, {
@@ -16,7 +15,5 @@ export async function load({ fetch, params, url }) {
 		);
 	}
 
-	const bundle = (await res.json()) as HistoryBundle<Resource>;
-
-	return { bundle: await transformBundle(fetch, bundle) };
+	return { bundle: await transformBundle(fetch, await res.json()) };
 }

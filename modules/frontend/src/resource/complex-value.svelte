@@ -1,28 +1,53 @@
 <script lang="ts">
 	import type { FhirObject } from './resource-card.js';
+	import type { CodeableConcept, Coding, Meta, Money, Period, Quantity } from 'fhir/r4';
 
-	import CodeableConcept from '../values/codeable-concept.svelte';
-	import Coding from '../values/coding.svelte';
-	import Meta from '../values/meta.svelte';
-	import Money from '../values/money.svelte';
-	import Period from '../values/period.svelte';
-	import Quantity from '../values/quantity.svelte';
+	import CodeableConceptValue from '../values/codeable-concept.svelte';
+	import CodingValue from '../values/coding.svelte';
+	import MetaValue from '../values/meta.svelte';
+	import MoneyValue from '../values/money.svelte';
+	import PeriodValue from '../values/period.svelte';
+	import QuantityValue from '../values/quantity.svelte';
 
 	export let value: FhirObject;
+
+	function isCodeableConcept(value: FhirObject): value is FhirObject<CodeableConcept> {
+		return value.type.code === 'CodeableConcept';
+	}
+
+	function isCoding(value: FhirObject): value is FhirObject<Coding> {
+		return value.type.code === 'Coding';
+	}
+
+	function isMeta(value: FhirObject): value is FhirObject<Meta> {
+		return value.type.code === 'Meta';
+	}
+
+	function isMoney(value: FhirObject<unknown>): value is FhirObject<Money> {
+		return value.type.code === 'Money';
+	}
+
+	function isPeriod(value: FhirObject): value is FhirObject<Period> {
+		return value.type.code === 'Period';
+	}
+
+	function isQuantity(value: FhirObject): value is FhirObject<Quantity> {
+		return value.type.code === 'Quantity';
+	}
 </script>
 
-{#if value.type.code == 'CodeableConcept'}
-	<CodeableConcept value={value.object} />
-{:else if value.type.code == 'Coding'}
-	<Coding value={value.object} />
-{:else if value.type.code == 'Meta'}
-	<Meta value={value.object} />
-{:else if value.type.code == 'Money'}
-	<Money value={value.object} />
-{:else if value.type.code == 'Period'}
-	<Period value={value.object} />
-{:else if value.type.code == 'Quantity'}
-	<Quantity value={value.object} />
+{#if isCodeableConcept(value)}
+	<CodeableConceptValue value={value.object} />
+{:else if isCoding(value)}
+	<CodingValue value={value.object} />
+{:else if isMeta(value)}
+	<MetaValue value={value.object} />
+{:else if isMoney(value)}
+	<MoneyValue value={value.object} />
+{:else if isPeriod(value)}
+	<PeriodValue value={value.object} />
+{:else if isQuantity(value)}
+	<QuantityValue value={value.object} />
 {:else}
 	({value.type.code}) {value.object}
 {/if}

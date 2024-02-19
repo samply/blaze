@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Element, Meta, Resource } from 'fhir/r4';
 	import type { FhirObject } from './resource-card.js';
 
 	import { base } from '$app/paths';
@@ -19,9 +20,14 @@
 	export let embedded = false;
 	export let versionLink = false;
 
+	function hasMeta(element: Element): element is Resource & { meta: Meta } {
+		return (element as Resource).meta !== undefined;
+	}
+
 	function href(resource: FhirObject) {
 		const href = `${base}/${resource.type.code}/${resource.object.id}`;
-		return versionLink ? href + `/_history/${resource.object.meta.versionId}` : href;
+		const versionId = (resource.object as Resource).meta?.versionId;
+		return versionLink && versionId !== undefined ? href + `/_history/${versionId}` : href;
 	}
 
 	$: properties = resource.properties.filter(
@@ -57,9 +63,11 @@
 				</h3>
 				<slot name="header" />
 			</div>
-			<p class="mt-1 max-w-2xl text-sm text-gray-500">
-				Last Updated&nbsp;<DateTime value={resource.object.meta.lastUpdated} />
-			</p>
+			{#if hasMeta(resource.object) && resource.object.meta.lastUpdated !== undefined}
+				<p class="mt-1 max-w-2xl text-sm text-gray-500">
+					Last Updated&nbsp;<DateTime value={resource.object.meta.lastUpdated} />
+				</p>
+			{/if}
 		</div>
 		<div in:fade|global={fadeParams} class="border-t border-gray-200 px-4 py-5 sm:p-0">
 			<dl class="sm:divide-y sm:divide-gray-200">

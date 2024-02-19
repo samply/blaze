@@ -1,13 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import type { Bundle } from 'fhir/r4';
+
+import { describe, expect, it } from 'vitest';
 import { bundleLink } from './fhir.js';
 
 describe('bundleLink test', () => {
 	it('missing link property', () => {
-		const bundle = { resourceType: 'Bundle', type: 'searchset' };
+		const bundle: Bundle = { resourceType: 'Bundle', type: 'searchset' };
 		expect(bundleLink(bundle, 'foo')).toBeUndefined();
 	});
 	it('empty link array', () => {
-		const bundle = {
+		const bundle: Bundle = {
 			resourceType: 'Bundle',
 			type: 'searchset',
 			link: []
@@ -15,7 +17,7 @@ describe('bundleLink test', () => {
 		expect(bundleLink(bundle, 'foo')).toBeUndefined();
 	});
 	it('non-matching link relation', () => {
-		const bundle = {
+		const bundle: Bundle = {
 			resourceType: 'Bundle',
 			type: 'searchset',
 			link: [{ relation: 'foo', url: 'bar' }]
@@ -23,7 +25,7 @@ describe('bundleLink test', () => {
 		expect(bundleLink(bundle, 'bar')).toBeUndefined();
 	});
 	it('matching link relation', () => {
-		const bundle = {
+		const bundle: Bundle = {
 			resourceType: 'Bundle',
 			type: 'searchset',
 			link: [{ relation: 'foo', url: 'bar' }]

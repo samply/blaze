@@ -37,8 +37,8 @@
 		</p>
 	</TotalCard>
 
-	{#if data.bundle.entry}
-		{#each data.bundle.entry as entry (entry.fullUrl + entry.response.etag)}
+	{#if data.bundle.fhirObjectEntry !== undefined && data.bundle.fhirObjectEntry.length > 0}
+		{#each data.bundle.fhirObjectEntry as entry ((entry.fullUrl || '') + (entry.response?.etag || ''))}
 			<EntryCard {entry} />
 		{/each}
 	{/if}

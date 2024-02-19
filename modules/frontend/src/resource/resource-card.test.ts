@@ -1,4 +1,4 @@
-import type { StructureDefinition } from '../fhir.js';
+import type { StructureDefinition } from 'fhir/r4';
 import { describe, it, expect } from 'vitest';
 import { error } from '@sveltejs/kit';
 import { calcPropertiesDeep, type FhirObject } from './resource-card.js';
@@ -239,23 +239,25 @@ describe('calcPropertiesDeep test', () => {
 			structureDefinitionMedicationAdministration,
 			{
 				resourceType: 'MedicationAdministration',
+				status: 'unknown',
 				medicationCodeableConcept: {
 					text: 'text-131123'
-				}
+				},
+				subject: {}
 			}
 		);
 		expect(result).toHaveProperty('type', { code: 'MedicationAdministration' });
 		expect(result).toHaveProperty('properties');
-		expect(result.properties).toHaveLength(2);
-		const secondProperty = result.properties[1];
-		expect(secondProperty).toHaveProperty('name', 'medicationCodeableConcept');
-		expect(secondProperty).toHaveProperty('value');
-		expect(secondProperty.value).toHaveProperty('type', { code: 'CodeableConcept' });
-		expect(secondProperty.value).toHaveProperty('properties');
-		const secondPropertyValue = secondProperty.value as FhirObject;
-		expect(secondPropertyValue.properties).toHaveLength(1);
-		expect(secondPropertyValue.properties[0]).toHaveProperty('name', 'text');
-		expect(secondPropertyValue.properties[0]).toHaveProperty('value', {
+		expect(result.properties).toHaveLength(4);
+		const thirdProperty = result.properties[2];
+		expect(thirdProperty).toHaveProperty('name', 'medicationCodeableConcept');
+		expect(thirdProperty).toHaveProperty('value');
+		expect(thirdProperty.value).toHaveProperty('type', { code: 'CodeableConcept' });
+		expect(thirdProperty.value).toHaveProperty('properties');
+		const thirdPropertyValue = thirdProperty.value as FhirObject;
+		expect(thirdPropertyValue.properties).toHaveLength(1);
+		expect(thirdPropertyValue.properties[0]).toHaveProperty('name', 'text');
+		expect(thirdPropertyValue.properties[0]).toHaveProperty('value', {
 			type: { code: 'string' },
 			value: 'text-131123'
 		});
@@ -382,7 +384,10 @@ describe('calcPropertiesDeep test', () => {
 						status: 'completed'
 					}
 				}
-			]
+			],
+			status: 'unknown',
+			intent: 'proposal',
+			subject: {}
 		});
 		expect(result).toStrictEqual({
 			type: { code: 'CarePlan' },
@@ -391,6 +396,27 @@ describe('calcPropertiesDeep test', () => {
 					name: 'resourceType',
 					type: { code: 'string' },
 					value: { type: { code: 'string' }, value: 'CarePlan' }
+				},
+				{
+					name: 'status',
+					type: { code: 'code' },
+					value: { type: { code: 'code' }, value: 'unknown' }
+				},
+				{
+					name: 'intent',
+					type: { code: 'code' },
+					value: { type: { code: 'code' }, value: 'proposal' }
+				},
+				{
+					name: 'subject',
+					type: {
+						code: 'Reference',
+						targetProfile: [
+							'http://hl7.org/fhir/StructureDefinition/Patient',
+							'http://hl7.org/fhir/StructureDefinition/Group'
+						]
+					},
+					value: { type: { code: 'Reference' }, properties: [], object: {} }
 				},
 				{
 					name: 'activity',
@@ -434,7 +460,10 @@ describe('calcPropertiesDeep test', () => {
 							status: 'completed'
 						}
 					}
-				]
+				],
+				status: 'unknown',
+				intent: 'proposal',
+				subject: {}
 			}
 		});
 	});
@@ -448,7 +477,9 @@ describe('calcPropertiesDeep test', () => {
 					repeat: {
 						frequency: 1
 					}
-				}
+				},
+				code: {},
+				status: 'final'
 			}
 		);
 		expect(result).toStrictEqual({
@@ -458,6 +489,16 @@ describe('calcPropertiesDeep test', () => {
 					name: 'resourceType',
 					type: { code: 'string' },
 					value: { type: { code: 'string' }, value: 'Observation' }
+				},
+				{
+					name: 'status',
+					type: { code: 'code' },
+					value: { type: { code: 'code' }, value: 'final' }
+				},
+				{
+					name: 'code',
+					type: { code: 'CodeableConcept' },
+					value: { type: { code: 'CodeableConcept' }, object: {}, properties: [] }
 				},
 				{
 					name: 'effectiveTiming',
@@ -497,7 +538,9 @@ describe('calcPropertiesDeep test', () => {
 					repeat: {
 						frequency: 1
 					}
-				}
+				},
+				code: {},
+				status: 'final'
 			}
 		});
 	});
