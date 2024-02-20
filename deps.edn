@@ -76,7 +76,7 @@
     {:mvn/version "0.4.6"}
 
     org.clojure/tools.namespace
-    {:mvn/version "1.4.5"}}}
+    {:mvn/version "1.5.0"}}}
 
   :kaocha
   {:extra-deps
@@ -90,7 +90,7 @@
 
    :extra-deps
    {org.clojure/tools.namespace
-    {:mvn/version "1.4.5"}}}
+    {:mvn/version "1.5.0"}}}
 
   :outdated
   {:replace-deps
