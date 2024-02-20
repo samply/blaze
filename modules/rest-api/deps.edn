@@ -20,7 +20,7 @@
    :exclusions [com.cognitect/transit-clj]}
 
   org.clojure/data.xml
-  {:mvn/version "0.2.0-alpha8"}}
+  {:mvn/version "0.2.0-alpha9"}}
 
  :aliases
  {:test
