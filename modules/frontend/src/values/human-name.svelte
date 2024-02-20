@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { FhirObject } from '../resource/resource-card.js';
-	import type { HumanName } from '../fhir.js';
+	import type { HumanName } from 'fhir/r4';
 	import GrayBadge from './util/gray-badge.svelte';
 
 	export let values: FhirObject[];
@@ -32,7 +32,7 @@
 			</tbody>
 		</table>
 	</div>
-{:else if humanNames.length == 1}
+{:else if humanNames.length === 1}
 	{display(humanNames[0])}
 	{#if humanNames[0].use}
 		<GrayBadge value={humanNames[0].use} />

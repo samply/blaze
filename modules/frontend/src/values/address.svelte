@@ -1,10 +1,11 @@
 <script lang="ts">
+	import type { Address } from 'fhir/r4';
 	import type { FhirObject } from '../resource/resource-card.js';
 	import { joinStrings } from '../util.js';
 	import Single from './address/single.svelte';
 	import GrayBadge from './util/gray-badge.svelte';
 
-	export let values: FhirObject[];
+	export let values: FhirObject<Address>[];
 </script>
 
 {#if values.length > 1}
@@ -24,7 +25,7 @@
 			</tbody>
 		</table>
 	</div>
-{:else if values.length == 1}
+{:else if values.length === 1}
 	<Single value={values[0].object} />
 	{#if values[0].object.use}
 		<GrayBadge value={values[0].object.use} />

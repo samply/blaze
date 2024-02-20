@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { FhirObject } from '../resource/resource-card.js';
-	import type { ContactPoint } from '../fhir.js';
+	import type { ContactPoint } from 'fhir/r4';
 	import { joinStrings } from '../util.js';
 	import GrayBadge from './util/gray-badge.svelte';
 
@@ -24,7 +24,7 @@
 			</tbody>
 		</table>
 	</div>
-{:else if contactPoints.length == 1}
+{:else if contactPoints.length === 1}
 	{contactPoints[0].value}
 	{#if contactPoints[0].system}
 		<GrayBadge value={contactPoints[0].system} />

@@ -1,13 +1,13 @@
 <script lang="ts">
 	import type { FhirObject } from '../resource/resource-card.js';
-	import type { Identifier } from '../fhir.js';
+	import type { Identifier } from 'fhir/r4';
 	import { sortByProperty } from '../util.js';
 
 	function compactType(value: Identifier): string | undefined {
-		return value.type === undefined ? undefined : value.type.text;
+		return value.type?.text;
 	}
 
-	export let values: FhirObject[];
+	export let values: FhirObject<Identifier>[];
 
 	$: compactValues = values
 		.map((v) => ({ type: compactType(v.object), value: v.object.value }))

@@ -1,16 +1,38 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import type {
 	Resource,
 	Element,
+	Bundle,
+	BundleEntry,
 	StructureDefinition,
 	ElementDefinition,
-	ElementDefinitionType
-} from '../fhir.js';
-import { StructureDefinitionKind } from '../fhir.js';
+	ElementDefinitionType,
+	Address,
+	Attachment,
+	Identifier,
+	FhirResource,
+	Money,
+	Period,
+	Quantity,
+	Coding,
+	CodeableConcept,
+	Meta,
+	HumanName
+} from 'fhir/r4';
 import { toTitleCase } from '../util.js';
 import { fetchStructureDefinition } from '../metadata.js';
 
 export function isPrimitive(type: Type) {
 	return type.code[0].toLowerCase() == type.code[0];
+}
+
+export interface FhirObjectBundle extends Bundle {
+	fhirObjectEntry?: FhirObjectBundleEntry[];
+}
+
+export interface FhirObjectBundleEntry extends BundleEntry {
+	fhirObject?: FhirObject;
 }
 
 export interface Type {
@@ -22,12 +44,24 @@ export interface FhirType {
 	type: Type;
 }
 
+export type FhirComplexType =
+	| Address
+	| Attachment
+	| Identifier
+	| Meta
+	| Money
+	| Period
+	| Quantity
+	| Coding
+	| CodeableConcept
+	| HumanName;
+
 /**
  * A structured representation of a Resource with ordered properties and type annotations.
  */
-export interface FhirObject extends FhirType {
+export interface FhirObject<ObjectType = FhirComplexType> extends FhirType {
 	properties: FhirProperty[];
-	object: Element;
+	object: ObjectType;
 }
 
 /**
@@ -43,14 +77,31 @@ export interface FhirPrimitive extends FhirType {
 	value: string | number | boolean;
 }
 
+export async function transformBundle(
+	fetch: typeof window.fetch,
+	bundle: Bundle
+): Promise<FhirObjectBundle> {
+	return bundle.entry !== undefined
+		? {
+				...bundle,
+				fhirObjectEntry: await Promise.all(
+					bundle.entry.map(async (e: BundleEntry) =>
+						e.resource !== undefined ? { ...e, fhirObject: await fhirObject(e.resource, fetch) } : e
+					)
+				)
+			}
+		: bundle;
+}
+
 /**
  * Returns a Promise of a FhirObject of the given Resource.
  *
  * @param resource the Resource to use
+ * @param fetch the fetch function to use, defaults to window.fetch
  * @returns the FhirObject representation of the given Resource
  */
 export async function fhirObject(
-	resource: Resource,
+	resource: FhirResource,
 	fetch: typeof window.fetch = window.fetch
 ): Promise<FhirObject> {
 	const structureDefinition = await fetchStructureDefinition(resource.resourceType, fetch);
@@ -68,16 +119,16 @@ function onlyType(element: ElementDefinition): Type | undefined {
 export async function calcPropertiesDeep(
 	fetchStructureDefinition: (type: string) => Promise<StructureDefinition>,
 	structureDefinition: StructureDefinition,
-	resource: Resource | Element
+	resource: FhirResource | Element
 ): Promise<FhirObject> {
 	const properties = (
 		await Promise.all(
-			structureDefinition.snapshot.element
+			(structureDefinition.snapshot?.element || [])
 				.filter((element) => element.path.split('.').length == 2)
 				.map((element) =>
 					processElement(
 						element,
-						structureDefinition.snapshot.element,
+						structureDefinition.snapshot?.element || [],
 						resource,
 						fetchStructureDefinition
 					)
@@ -90,7 +141,7 @@ export async function calcPropertiesDeep(
 	return {
 		type: { code: structureDefinition.name },
 		properties:
-			structureDefinition.kind == StructureDefinitionKind.resource
+			structureDefinition.kind == 'resource'
 				? [
 						{
 							name: 'resourceType',
@@ -139,7 +190,7 @@ function mapType(type: ElementDefinitionType): Type {
 
 async function processResourceElement(
 	element: ElementDefinition,
-	resource: Resource | Element,
+	resource: (Resource | Element) & { [key: string]: any },
 	fetchStructureDefinition: (type: string) => Promise<StructureDefinition>
 ): Promise<FhirProperty | undefined> {
 	const name = element.path.split('.')[1];
@@ -173,7 +224,7 @@ async function processAbstractElement(
 	element: ElementDefinition,
 	elements: ElementDefinition[],
 	type: Type,
-	resource: Resource | Element,
+	resource: (Resource | Element) & { [key: string]: any },
 	fetchStructureDefinition: (type: string) => Promise<StructureDefinition>
 ): Promise<FhirProperty | undefined> {
 	const path = element.path;
@@ -220,7 +271,7 @@ async function processAbstractElementValue(
 
 async function processTypedElement(
 	element: ElementDefinition,
-	resource: Resource | Element,
+	resource: (Resource | Element) & { [key: string]: any },
 	fetchStructureDefinition: (type: string) => Promise<StructureDefinition>
 ): Promise<FhirProperty | undefined> {
 	const types = element.type;

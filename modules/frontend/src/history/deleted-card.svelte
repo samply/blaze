@@ -1,14 +1,10 @@
 <script lang="ts">
-	import type { code, uri, instant } from '../fhir.js';
-	import { HttpVerb } from '../fhir.js';
+	import type { BundleEntryRequest } from 'fhir/r4';
 	import DateTime from '../values/date-time.svelte';
 	import MethodBadge from './method-badge.svelte';
 
-	export let request: {
-		method: code;
-		url: uri;
-	};
-	export let lastModified: instant;
+	export let request: BundleEntryRequest;
+	export let lastModified: string;
 </script>
 
 <div class="overflow-hidden">
@@ -17,7 +13,7 @@
 			<h3 class="flex-grow text-base font-semibold leading-6 text-gray-900">
 				{request.url}
 			</h3>
-			<MethodBadge method={HttpVerb.DELETE} />
+			<MethodBadge method={'DELETE'} />
 		</div>
 		<p class="mt-1 max-w-2xl text-sm text-gray-500">
 			Last Updated&nbsp;<DateTime value={lastModified} />

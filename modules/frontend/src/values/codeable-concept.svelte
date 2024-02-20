@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { CodeableConcept } from '../fhir.js';
+	import type { CodeableConcept } from 'fhir/r4';
 	import Coding from './coding.svelte';
 
 	export let value: CodeableConcept;

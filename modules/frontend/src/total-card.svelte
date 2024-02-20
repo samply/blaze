@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { type Bundle, bundleLink } from './fhir.js';
+	import type { Bundle } from 'fhir/r4';
+	import { bundleLink } from './fhir.js';
 	import { dev } from '$app/environment';
 	import { base } from '$app/paths';
 	import { fade } from 'svelte/transition';
 	import { quintIn } from 'svelte/easing';
 
-	export let bundle: Bundle<unknown>;
+	export let bundle: Bundle;
 	export let showFirstLink = false;
 
 	$: firstLinkUrl = bundleLink(bundle, 'first')?.url;

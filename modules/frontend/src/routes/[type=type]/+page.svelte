@@ -61,7 +61,9 @@
 				</code>
 			</div>
 		{/if}
-	{:then bundle}
+	{:then bundleWithDuration}
+		{@const bundle = bundleWithDuration.bundle}
+
 		<TotalCard {bundle}>
 			<HistoryButton />
 			<p class="py-1.5 ml-2">
@@ -70,12 +72,12 @@
 				{/if}
 			</p>
 			<p class="flex-grow py-1.5">
-				<DurationBadge duration={bundle.duration} />
+				<DurationBadge duration={bundleWithDuration.duration} />
 			</p>
 		</TotalCard>
 
-		{#if bundle.entry && bundle.entry.length > 0}
-			{#each bundle.entry as entry (entry.fullUrl)}
+		{#if bundle.fhirObjectEntry !== undefined && bundle.fhirObjectEntry.length > 0}
+			{#each bundle.fhirObjectEntry as entry (entry.fullUrl)}
 				<EntryCard {entry} />
 			{/each}
 		{:else if bundle.total === undefined}

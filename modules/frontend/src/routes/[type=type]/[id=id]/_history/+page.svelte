@@ -29,8 +29,8 @@
 </header>
 
 <main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8 flex flex-col gap-4">
-	{#if data.bundle.entry}
-		{#each data.bundle.entry as entry (entry.fullUrl + entry.response.etag)}
+	{#if data.bundle.fhirObjectEntry}
+		{#each data.bundle.fhirObjectEntry as entry ((entry.fullUrl || '') + (entry.response?.etag || ''))}
 			<EntryCard {entry} />
 		{/each}
 	{/if}
