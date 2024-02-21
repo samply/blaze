@@ -47,10 +47,6 @@
   {:name :db
    :wrap db/wrap-db})
 
-(def ^:private wrap-search-db
-  {:name :search-db
-   :wrap db/wrap-search-db})
-
 (def ^:private wrap-snapshot-db
   {:name :snapshot-db
    :wrap db/wrap-snapshot-db})
@@ -115,7 +111,7 @@
       (cond-> {:name (keyword name "type")}
         (contains? interactions :search-type)
         (assoc :get {:interaction "search-type"
-                     :middleware [[wrap-search-db node db-sync-timeout]
+                     :middleware [[wrap-db node db-sync-timeout]
                                   wrap-link-headers]
                      :handler (-> interactions :search-type
                                   :blaze.rest-api.interaction/handler)})
@@ -286,7 +282,7 @@
          (cond-> {}
            (some? search-system-handler)
            (assoc :get {:interaction "search-system"
-                        :middleware [[wrap-search-db node db-sync-timeout]
+                        :middleware [[wrap-db node db-sync-timeout]
                                      wrap-link-headers]
                         :handler search-system-handler})
            (some? transaction-handler)

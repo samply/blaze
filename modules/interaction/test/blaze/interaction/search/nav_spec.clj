@@ -10,9 +10,7 @@
   :args (s/cat :base-url string?
                :match some?
                :params (s/nilable map?)
-               :clauses (s/nilable :blaze.db.query/clauses)
-               :t :blaze.db/t
-               :offset (s/nilable map?))
+               :clauses (s/nilable :blaze.db.query/clauses))
   :ret string?)
 
 (s/fdef nav/token-url!

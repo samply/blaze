@@ -122,17 +122,13 @@
               :clauses clauses}))))
     ac/completed-future))
 
-(defn- self-link-offset [first-entry]
-  (when-let [id (-> first-entry :resource :id)]
-    {"__page-id" id}))
-
 (defn- link [relation url]
   {:fhir/type :fhir.Bundle/link
    :relation relation
    :url url})
 
-(defn- self-link [{:keys [self-link-url-fn]} clauses first-entry]
-  (link "self" (self-link-url-fn clauses (self-link-offset first-entry))))
+(defn- self-link [{:keys [self-link-url-fn]} clauses]
+  (link "self" (self-link-url-fn clauses)))
 
 (defn- first-link [{:keys [first-link-url-fn]} token clauses]
   (link "first" (first-link-url-fn token clauses)))
@@ -166,22 +162,24 @@
 (defn- zero-bundle
   "Generate a special bundle if the search results in zero matches to avoid
   generating a token for the first link, we don't need in this case."
-  [context clauses entries]
+  [context clauses]
   {:fhir/type :fhir/Bundle
    :id (iu/luid context)
    :type #fhir/code"searchset"
    :total #fhir/unsignedInt 0
-   :link [(self-link context clauses (first entries))]})
+   :link [(self-link context clauses)]})
 
-(defn- normal-bundle [context token clauses entries total]
+(defn- normal-bundle
+  [{{{route-name :name} :data} ::reitit/match :as context} token clauses entries
+   total]
   (cond->
    {:fhir/type :fhir/Bundle
     :id (iu/luid context)
     :type #fhir/code"searchset"
     :entry entries
-    :link [(self-link context clauses (first entries))
-           (first-link context token clauses)]}
-
+    :link [(first-link context token clauses)]}
+    (not= "page" (name route-name))
+    (update :link conj (self-link context clauses))
     total
     (assoc :total (type/->UnsignedInt total))))
 
@@ -196,7 +194,7 @@
        (fn [{:keys [entries num-matches next-handle clauses]}]
          (let [total (total context num-matches next-handle)]
            (if (some-> total zero?)
-             (ac/completed-future (zero-bundle context clauses entries))
+             (ac/completed-future (zero-bundle context clauses))
              (do-sync [token (gen-token! context clauses)]
                (if next-handle
                  (-> (normal-bundle context token clauses entries total)
@@ -226,7 +224,7 @@
      :id (iu/luid context)
      :type #fhir/code"searchset"
      :total (type/->UnsignedInt total)
-     :link [(self-link context clauses [])]}))
+     :link [(self-link context clauses)]}))
 
 (defn- search [{:keys [params] :as context}]
   (if (:summary? params)
@@ -239,13 +237,13 @@
    name]
   (reitit/match-by-name router (keyword type name)))
 
-(defn- self-link-url-fn [{:blaze/keys [base-url db] :as request} params]
-  (fn [clauses offset]
-    (nav/url base-url (match request "type") params clauses (d/t db) offset)))
+(defn- self-link-url-fn [{:blaze/keys [base-url] :as request} params]
+  (fn [clauses]
+    (nav/url base-url (match request "type") params clauses)))
 
 (defn- gen-token-fn
   [{:keys [page-store]} {{{route-name :name} :data} ::reitit/match}]
-  (if (= "search" (some-> route-name name))
+  (if (= "search" (name route-name))
     (fn [clauses]
       (if (empty? clauses)
         (ac/completed-future nil)
@@ -274,7 +272,7 @@
    {{{:fhir.resource/keys [type]} :data} ::reitit/match
     :keys [headers params]
     :blaze/keys [base-url db]
-    ::reitit/keys [router]
+    ::reitit/keys [router match]
     :as request}]
   (let [handling (handler-util/preference headers "handling")]
     (do-sync [params (params/decode page-store handling params)]
@@ -283,6 +281,7 @@
               :blaze/base-url base-url
               :blaze/db db
               ::reitit/router router
+              ::reitit/match match
               :type type
               :params params
               :self-link-url-fn (self-link-url-fn request params)
