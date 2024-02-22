@@ -121,7 +121,7 @@
                       :handler (-> interactions :create
                                    :blaze.rest-api.interaction/handler)}))]
      ["/_history"
-      (cond-> {:conflicting true}
+      (cond-> {:name (keyword name "history") :conflicting true}
         (contains? interactions :history-type)
         (assoc :get {:interaction "history-type"
                      :middleware [[wrap-db node db-sync-timeout]
@@ -151,6 +151,14 @@
                              wrap-link-headers]
                 :handler (-> interactions :search-type
                              :blaze.rest-api.interaction/handler)}))]
+     ["/__history-page"
+      (cond-> {:name (keyword name "history-page") :conflicting true}
+        (contains? interactions :history-type)
+        (assoc :get {:interaction "history-type"
+                     :middleware [[wrap-snapshot-db node db-sync-timeout]
+                                  wrap-link-headers]
+                     :handler (-> interactions :history-type
+                                  :blaze.rest-api.interaction/handler)}))]
      ["/{id}"
       [""
        (cond->
@@ -187,7 +195,17 @@
           (assoc :get {:interaction "vread"
                        :middleware [[wrap-versioned-instance-db node db-sync-timeout]]
                        :handler (-> interactions :vread
-                                    :blaze.rest-api.interaction/handler)}))]]]]))
+                                    :blaze.rest-api.interaction/handler)}))]]
+      ["/__history-page"
+       (cond->
+        {:name (keyword name "history-instance-page")
+         :conflicting true}
+         (contains? interactions :history-instance)
+         (assoc :get {:interaction "history-instance"
+                      :middleware [[wrap-snapshot-db node db-sync-timeout]
+                                   wrap-link-headers]
+                      :handler (-> interactions :history-instance
+                                   :blaze.rest-api.interaction/handler)}))]]]))
 
 (defn compartment-route
   {:arglists '([context compartment])}
@@ -295,7 +313,7 @@
          {:interaction "capabilities"
           :get capabilities-handler}]
         ["/_history"
-         (cond-> {}
+         (cond-> {:name :history}
            (some? history-system-handler)
            (assoc :get {:interaction "history-system"
                         :middleware [[wrap-db node db-sync-timeout]
@@ -312,7 +330,14 @@
             :post {:interaction "search-system"
                    :middleware [[wrap-snapshot-db node db-sync-timeout]
                                 wrap-link-headers]
-                   :handler search-system-handler}))]]
+                   :handler search-system-handler}))]
+        ["/__history-page"
+         (cond-> {:name :history-page}
+           (some? history-system-handler)
+           (assoc :get {:interaction "history-system"
+                        :middleware [[wrap-snapshot-db node db-sync-timeout]
+                                     wrap-link-headers]
+                        :handler history-system-handler}))]]
        (into
         (mapcat (partial operation-system-handler-route context))
         operations)

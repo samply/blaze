@@ -35,20 +35,35 @@
   [{v "__page-t"}]
   (some fhir-util/parse-nat-long (u/to-seq v)))
 
-(defn nav-url
+(defn- nav-url
+  "Returns a nav URL which points to a the start of the history.
+
+  Uses `match` to generate a link based on the current path with appended
+  `query-params`."
+  {:arglists '([context query-params])}
+  [{:blaze/keys [base-url] ::reitit/keys [match]} query-params]
+  (let [path (reitit/match->path match (select-keys query-params ["_count"]))]
+    (str base-url path)))
+
+(defn self-link [context query-params]
+  {:fhir/type :fhir.Bundle/link
+   :relation "self"
+   :url (nav-url context query-params)})
+
+(defn page-nav-url
   "Returns a nav URL which points to a page with it's first entry described by
   the specified values.
 
   Uses `match` to generate a link based on the current path with appended
-  `query-params` and the extra paging params calculated from `t`, `page-t`,
-  `type` and `id`."
+  `query-params` and the extra paging params calculated from `page-t`, `type`
+  and `id`."
   {:arglists
-   '([context query-params t page-t]
-     [context query-params t page-t id]
-     [context query-params t page-t type id])}
-  [{:blaze/keys [base-url db] ::reitit/keys [match]} query-params page-t & more]
+   '([context query-params page-t]
+     [context query-params page-t id]
+     [context query-params page-t type id])}
+  [{:blaze/keys [base-url db] ::reitit/keys [page-match]} query-params page-t & more]
   (let [path (reitit/match->path
-              match
+              page-match
               (cond-> (assoc query-params "__t" (d/t db) "__page-t" page-t)
                 (= 1 (count more))
                 (assoc "__page-id" (first more))

@@ -13,6 +13,7 @@
    [blaze.interaction.search.util :as search-util]
    [blaze.interaction.util :as iu]
    [blaze.page-store.spec]
+   [blaze.util :refer [conj-vec]]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -76,7 +77,7 @@
          (if (< page-size (count entries))
            (do-sync [next-link (next-link context entries)]
              (-> (normal-bundle context entries)
-                 (update :link (fnil conj []) next-link)))
+                 (update :link conj-vec next-link)))
            (-> (normal-bundle context entries)
                ac/completed-future))))))
 

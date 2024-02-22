@@ -700,6 +700,24 @@ jobs:
     - name: Patient Identical Update
       run: .github/scripts/patient-identical-update.sh
 
+    - name: System History
+      run: .github/scripts/system-history-paged.sh
+
+    - name: Patient History
+      run: .github/scripts/patient-history-paged.sh
+
+    - name: Patient X79746011X History
+      run: .github/scripts/single-patient-history.sh X79746011X
+
+    - name: History Paging uses a Stable Snapshot of the Database (system)
+      run: .github/scripts/follow-system-history-next-link-after-write.sh
+
+    - name: History Paging uses a Stable Snapshot of the Database (Patient)
+      run: .github/scripts/follow-patient-history-next-link-after-write.sh
+
+    - name: History Paging uses a Stable Snapshot of the Database (single Patient)
+      run: .github/scripts/follow-single-patient-history-next-link-after-write.sh
+
     - name: Prometheus Metrics
       run: .github/scripts/test-metrics.sh
       if: ${{ matrix.variant == 'standalone' }}

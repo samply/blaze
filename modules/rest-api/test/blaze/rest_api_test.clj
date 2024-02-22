@@ -115,16 +115,19 @@
         "" :get "search-system"
         "" :post "transaction"
         "/_history" :get "history-system"
+        "/__history-page" :get "history-system"
         "/__page" :get "search-system"
         "/__page" :post "search-system"
         "/Patient" :get "search-type"
         "/Patient" :post "create"
-        "/Patient/_history" :get "history-type"
         "/Patient/_search" :post "search-type"
+        "/Patient/_history" :get "history-type"
+        "/Patient/__history-page" :get "history-type"
         "/Patient/0" :get "read"
         "/Patient/0" :put "update"
         "/Patient/0" :delete "delete"
         "/Patient/0/_history" :get "history-instance"
+        "/Patient/0/__history-page" :get "history-instance"
         "/Patient/0/_history/42" :get "vread"
         "/Patient/0/Condition" :get "search-compartment"
         "/Patient/0/Observation" :get "search-compartment"
@@ -147,14 +150,19 @@
       "" :get ::search-system
       "" :post ::transaction
       "/_history" :get ::history-system
+      "/__history-page" :get ::history-system
+      "/__page" :get ::search-system
+      "/__page" :post ::search-system
       "/Patient" :get ::search-type
       "/Patient" :post ::create
       "/Patient/_history" :get ::history-type
+      "/Patient/__history-page" :get ::history-type
       "/Patient/_search" :post ::search-type
       "/Patient/0" :get ::read
       "/Patient/0" :put ::update
       "/Patient/0" :delete ::delete
       "/Patient/0/_history" :get ::history-instance
+      "/Patient/0/__history-page" :get ::history-instance
       "/Patient/0/_history/42" :get ::vread
       "/Patient/0/Condition" :get ::search-patient-compartment
       "/Patient/0/Observation" :get ::search-patient-compartment
@@ -188,11 +196,13 @@
       "" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
       "" :post [:observe-request-duration :params :output :error :forwarded :sync :resource :wrap-batch-handler]
       "/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
+      "/__history-page" :get [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
       "/__page" :get [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
       "/__page" :post [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
       "/Patient" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
       "/Patient" :post [:observe-request-duration :params :output :error :forwarded :sync :resource]
       "/Patient/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
+      "/Patient/__history-page" :get [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
       "/Patient/_search" :post [:observe-request-duration :params :output :error :forwarded :sync :ensure-form-body :db :link-headers]
       "/Patient/__page" :get [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
       "/Patient/__page" :post [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
@@ -200,6 +210,7 @@
       "/Patient/0" :put [:observe-request-duration :params :output :error :forwarded :sync :resource]
       "/Patient/0" :delete [:observe-request-duration :params :output :error :forwarded :sync]
       "/Patient/0/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
+      "/Patient/0/__history-page" :get [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
       "/Patient/0/_history/42" :get [:observe-request-duration :params :output :error :forwarded :sync :versioned-instance-db]
       "/Patient/0/Condition" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
       "/Patient/0/Observation" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
