@@ -10,6 +10,7 @@
    [blaze.elm.compiler.macros :refer [defbinop defunop]]
    [blaze.elm.compiler.queries :as queries]
    [blaze.elm.protocols :as p]
+   [blaze.util :refer [conj-vec]]
    [cognitect.anomalies :as anom])
   (:import
    [clojure.lang ExceptionInfo]))
@@ -247,6 +248,6 @@
 (defbinop times [list1 list2]
   (transduce
    (mapcat #(eduction (map (partial merge %)) list1))
-   (completing (fnil conj []))
+   (completing conj-vec)
    nil
    list2))

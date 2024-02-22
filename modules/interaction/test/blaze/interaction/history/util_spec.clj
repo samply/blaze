@@ -16,14 +16,21 @@
   :args (s/cat :query-params (s/nilable :ring.request/query-params))
   :ret (s/nilable :blaze.db/t))
 
-(s/fdef util/nav-url
+(s/fdef util/self-link
+  :args
+  (s/cat
+   :context (s/keys :req [:blaze/base-url ::reitit/match])
+   :query-params (s/nilable :ring.request/query-params)))
+
+(s/fdef util/page-nav-url
   :args
   (s/cat
    :context (s/keys :req [:blaze/base-url :blaze/db ::reitit/match])
    :query-params (s/nilable :ring.request/query-params)
    :page-t :blaze.db/t
    :type (s/? :fhir.resource/type)
-   :id (s/? :blaze.resource/id)))
+   :id (s/? :blaze.resource/id))
+  :ret string?)
 
 (s/fdef util/build-entry
   :args (s/cat :context (s/keys :req [:blaze/base-url ::reitit/router])

@@ -1065,7 +1065,7 @@
             (testing "the bundle type is searchset"
               (is (= #fhir/code"searchset" (:type body))))
 
-            (testing "the total count is 0"
+            (testing "the total count is zero"
               (is (= #fhir/unsignedInt 0 (:total body))))
 
             (testing "the bundle contains no entry"
@@ -1084,7 +1084,7 @@
 
             (is (= 200 status))
 
-            (testing "the total count is 0"
+            (testing "the total count is zero"
               (is (= #fhir/unsignedInt 0 (:total body))))
 
             (testing "the bundle contains one entry"
