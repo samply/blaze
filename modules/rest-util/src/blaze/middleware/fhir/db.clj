@@ -41,21 +41,6 @@
       (ac/or-timeout! timeout TimeUnit/MILLISECONDS)
       (ac/exceptionally #(cond-> % (ba/busy? %) (assoc ::anom/message (timeout-t-msg t timeout))))))
 
-(defn wrap-search-db
-  "Database wrapping for requests that like to either operate on the latest
-  known database state or a known database state.
-
-  Currently the `t` of the database state taken from the query or form param
-  `__t`."
-  [handler node timeout]
-  (fn [{:keys [params] :as request}]
-    (if (:blaze/db request)
-      (handler request)
-      (-> (if-let [t (fhir-util/t params)]
-            (sync-t node t timeout)
-            (sync node timeout))
-          (ac/then-compose #(handler (assoc request :blaze/db %)))))))
-
 (defn wrap-snapshot-db
   "Database wrapping for requests that like to operate on a known database state.
 

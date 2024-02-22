@@ -63,11 +63,12 @@
    {:syntax :bracket
     :path context-path}))
 
-(def patient-match
+(defn match-of [type]
   (reitit/map->Match
    {:data
-    {:fhir.resource/type "Patient"}
-    :path (str context-path "/Patient")}))
+    {:name (keyword type "type")
+     :fhir.resource/type type}
+    :path (str context-path "/" type)}))
 
 (def patient-search-match
   (reitit/map->Match
@@ -82,42 +83,6 @@
     {:name :Patient/page
      :fhir.resource/type "Patient"}
     :path (str context-path "/Patient")}))
-
-(def measure-report-match
-  (reitit/map->Match
-   {:data
-    {:fhir.resource/type "MeasureReport"}
-    :path (str context-path "/MeasureReport")}))
-
-(def list-match
-  (reitit/map->Match
-   {:data
-    {:fhir.resource/type "List"}
-    :path (str context-path "/List")}))
-
-(def observation-match
-  (reitit/map->Match
-   {:data
-    {:fhir.resource/type "Observation"}
-    :path (str context-path "/Observation")}))
-
-(def condition-match
-  (reitit/map->Match
-   {:data
-    {:fhir.resource/type "Condition"}
-    :path (str context-path "/Condition")}))
-
-(def encounter-match
-  (reitit/map->Match
-   {:data
-    {:fhir.resource/type "Encounter"}
-    :path (str context-path "/Encounter")}))
-
-(def medication-statement-match
-  (reitit/map->Match
-   {:data
-    {:fhir.resource/type "MedicationStatement"}
-    :path (str context-path "/MedicationStatement")}))
 
 (deftest init-test
   (testing "nil config"
@@ -154,17 +119,19 @@
          :blaze.test/fixed-rng {}))
 
 (defn wrap-defaults [handler]
-  (fn [request]
+  (fn [{::reitit/keys [match] :as request}]
     (handler
-     (assoc request
-            :blaze/base-url base-url
-            ::reitit/router router))))
+     (cond-> (assoc request
+                    :blaze/base-url base-url
+                    ::reitit/router router)
+       (nil? match)
+       (assoc ::reitit/match (match-of "Patient"))))))
 
 (defn wrap-db [handler node]
   (fn [{::reitit/keys [match] :as request}]
     (if (= patient-page-match match)
       ((db/wrap-snapshot-db handler node 100) request)
-      ((db/wrap-search-db handler node 100) request))))
+      ((db/wrap-db handler node 100) request))))
 
 (defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
@@ -184,8 +151,7 @@
           (testing "normal result"
             (let [{:keys [status body]}
                   @(handler
-                    {::reitit/match patient-match
-                     :headers {"prefer" "handling=strict"}
+                    {:headers {"prefer" "handling=strict"}
                      :params {"foo" "bar"}})]
 
               (is (= 400 status))
@@ -199,8 +165,7 @@
           (testing "summary result"
             (let [{:keys [status body]}
                   @(handler
-                    {::reitit/match patient-match
-                     :headers {"prefer" "handling=strict"}
+                    {:headers {"prefer" "handling=strict"}
                      :params {"foo" "bar" "_summary" "count"}})]
 
               (is (= 400 status))
@@ -220,8 +185,7 @@
             (testing "normal result"
               (let [{:keys [status body]}
                     @(handler
-                      {::reitit/match patient-match
-                       :headers {"prefer" "handling=lenient"}
+                      {:headers {"prefer" "handling=lenient"}
                        :params {"foo" "bar"}})]
 
                 (is (= 200 status))
@@ -242,14 +206,13 @@
                   (is (= 1 (count (:entry body)))))
 
                 (testing "has a self link"
-                  (is (= (str base-url context-path "/Patient?_count=50&__t=1&__page-id=0")
+                  (is (= (str base-url context-path "/Patient?_count=50")
                          (link-url body "self"))))))
 
             (testing "summary result"
               (let [{:keys [status body]}
                     @(handler
-                      {::reitit/match patient-match
-                       :headers {"prefer" "handling=lenient"}
+                      {:headers {"prefer" "handling=lenient"}
                        :params {"foo" "bar" "_summary" "count"}})]
 
                 (is (= 200 status))
@@ -270,7 +233,7 @@
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
-                  (is (= (str base-url context-path "/Patient?_summary=count&_count=50&__t=1")
+                  (is (= (str base-url context-path "/Patient?_summary=count&_count=50")
                          (link-url body "self"))))))))
 
         (testing "with another search parameter"
@@ -282,8 +245,7 @@
             (testing "normal result"
               (let [{:keys [status body]}
                     @(handler
-                      {::reitit/match patient-match
-                       :headers {"prefer" "handling=lenient"}
+                      {:headers {"prefer" "handling=lenient"}
                        :params {"foo" "bar" "active" "true"}})]
 
                 (is (= 200 status))
@@ -304,14 +266,13 @@
                   (is (= 1 (count (:entry body)))))
 
                 (testing "has a self link"
-                  (is (= (str base-url context-path "/Patient?active=true&_count=50&__t=1&__page-id=1")
+                  (is (= (str base-url context-path "/Patient?active=true&_count=50")
                          (link-url body "self"))))))
 
             (testing "summary result"
               (let [{:keys [status body]}
                     @(handler
-                      {::reitit/match patient-match
-                       :headers {"prefer" "handling=lenient"}
+                      {:headers {"prefer" "handling=lenient"}
                        :params {"foo" "bar" "active" "true" "_summary" "count"}})]
 
                 (is (= 200 status))
@@ -332,7 +293,7 @@
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
-                  (is (= (str base-url context-path "/Patient?active=true&_summary=count&_count=50&__t=1")
+                  (is (= (str base-url context-path "/Patient?active=true&_summary=count&_count=50")
                          (link-url body "self"))))))))))
 
     (testing "with default handling"
@@ -344,8 +305,7 @@
             (testing "normal result"
               (let [{:keys [status body]}
                     @(handler
-                      {::reitit/match patient-match
-                       :params {"foo" "bar"}})]
+                      {:params {"foo" "bar"}})]
 
                 (is (= 200 status))
 
@@ -365,14 +325,13 @@
                   (is (= 1 (count (:entry body)))))
 
                 (testing "has a self link"
-                  (is (= (str base-url context-path "/Patient?_count=50&__t=1&__page-id=0")
+                  (is (= (str base-url context-path "/Patient?_count=50")
                          (link-url body "self"))))))
 
             (testing "summary result"
               (let [{:keys [status body]}
                     @(handler
-                      {::reitit/match patient-match
-                       :params {"foo" "bar" "_summary" "count"}})]
+                      {:params {"foo" "bar" "_summary" "count"}})]
 
                 (is (= 200 status))
 
@@ -392,7 +351,7 @@
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
-                  (is (= (str base-url context-path "/Patient?_summary=count&_count=50&__t=1")
+                  (is (= (str base-url context-path "/Patient?_summary=count&_count=50")
                          (link-url body "self"))))))))
 
         (testing "with another search parameter"
@@ -404,8 +363,7 @@
             (testing "normal result"
               (let [{:keys [status body]}
                     @(handler
-                      {::reitit/match patient-match
-                       :params {"foo" "bar" "active" "true"}})]
+                      {:params {"foo" "bar" "active" "true"}})]
 
                 (is (= 200 status))
 
@@ -425,14 +383,13 @@
                   (is (= 1 (count (:entry body)))))
 
                 (testing "has a self link"
-                  (is (= (str base-url context-path "/Patient?active=true&_count=50&__t=1&__page-id=1")
+                  (is (= (str base-url context-path "/Patient?active=true&_count=50")
                          (link-url body "self"))))))
 
             (testing "summary result"
               (let [{:keys [status body]}
                     @(handler
-                      {::reitit/match patient-match
-                       :params {"foo" "bar" "active" "true" "_summary" "count"}})]
+                      {:params {"foo" "bar" "active" "true" "_summary" "count"}})]
 
                 (is (= 200 status))
 
@@ -452,7 +409,7 @@
                   (is (empty? (:entry body))))
 
                 (testing "has a self link"
-                  (is (= (str base-url context-path "/Patient?active=true&_summary=count&_count=50&__t=1")
+                  (is (= (str base-url context-path "/Patient?active=true&_summary=count&_count=50")
                          (link-url body "self")))))))))))
 
   (testing "on unsupported second sort parameter"
@@ -461,8 +418,7 @@
         (testing "normal result"
           (let [{:keys [status body]}
                 @(handler
-                  {::reitit/match patient-match
-                   :params {"_sort" "a,b"}})]
+                  {:params {"_sort" "a,b"}})]
 
             (is (= 422 status))
 
@@ -475,8 +431,7 @@
         (testing "summary result"
           (let [{:keys [status body]}
                 @(handler
-                  {::reitit/match patient-match
-                   :params {"_sort" "a,b" "_summary" "count"}})]
+                  {:params {"_sort" "a,b" "_summary" "count"}})]
 
             (is (= 422 status))
 
@@ -492,7 +447,7 @@
         (testing "normal result"
           (let [{:keys [status body]}
                 @(handler
-                  {::reitit/match observation-match
+                  {::reitit/match (match-of "Observation")
                    ;; the date is already URl decoded and so contains a space instead of a plus
                    :params {"date" "2021-12-09T00:00:00 01:00"}})]
 
@@ -507,7 +462,7 @@
         (testing "summary result"
           (let [{:keys [status body]}
                 @(handler
-                  {::reitit/match observation-match
+                  {::reitit/match (match-of "Observation")
                    ;; the date is already URl decoded and so contains a space instead of a plus
                    :params {"date" "2021-12-09T00:00:00 01:00" "_summary" "count"}})]
 
@@ -558,7 +513,7 @@
 
       (testing "Returns all existing resources of type"
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
-              @(handler {::reitit/match patient-match})]
+              @(handler {})]
 
           (is (= 200 status))
 
@@ -572,7 +527,7 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= (str base-url context-path "/Patient?_count=50&__t=1&__page-id=0")
+            (is (= (str base-url context-path "/Patient?_count=50")
                    (link-url body "self"))))
 
           (testing "the bundle contains one entry"
@@ -597,8 +552,7 @@
       (testing "with param _summary equal to count"
         (let [{:keys [status body]}
               @(handler
-                {::reitit/match patient-match
-                 :params {"_summary" "count"}})]
+                {:params {"_summary" "count"}})]
 
           (is (= 200 status))
 
@@ -612,7 +566,7 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= (str base-url context-path "/Patient?_summary=count&_count=50&__t=1")
+            (is (= (str base-url context-path "/Patient?_summary=count&_count=50")
                    (link-url body "self"))))
 
           (testing "the bundle contains no entry"
@@ -621,8 +575,7 @@
       (testing "with param _count equal to zero"
         (let [{:keys [status body]}
               @(handler
-                {::reitit/match patient-match
-                 :params {"_count" "0"}})]
+                {:params {"_count" "0"}})]
 
           (is (= 200 status))
 
@@ -636,7 +589,7 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= (str base-url context-path "/Patient?_count=0&__t=1")
+            (is (= (str base-url context-path "/Patient?_count=0")
                    (link-url body "self"))))
 
           (testing "the bundle contains no entry"
@@ -650,14 +603,13 @@
       (testing "search for all patients with _count=1"
         (let [{:keys [body]}
               @(handler
-                {::reitit/match patient-match
-                 :params {"_count" "1"}})]
+                {:params {"_count" "1"}})]
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= (str base-url context-path "/Patient?_count=1&__t=1&__page-id=0")
+            (is (= (str base-url context-path "/Patient?_count=1")
                    (link-url body "self"))))
 
           (testing "has a first link"
@@ -674,14 +626,13 @@
       (testing "following the self link"
         (let [{:keys [body]}
               @(handler
-                {::reitit/match patient-match
-                 :params {"_count" "1" "__t" "1" "__page-id" "0"}})]
+                {:params {"_count" "1" "__t" "1" "__page-id" "0"}})]
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= (str base-url context-path "/Patient?_count=1&__t=1&__page-id=0")
+            (is (= (str base-url context-path "/Patient?_count=1")
                    (link-url body "self"))))
 
           (testing "has a first link"
@@ -698,14 +649,13 @@
       (testing "following the next link"
         (let [{:keys [body]}
               @(handler
-                {::reitit/match patient-match
-                 :params {"_count" "1" "__t" "1" "__page-id" "1"}})]
+                {:params {"_count" "1" "__t" "1" "__page-id" "1"}})]
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "has a self link"
-            (is (= (str base-url context-path "/Patient?_count=1&__t=1&__page-id=1")
+            (is (= (str base-url context-path "/Patient?_count=1")
                    (link-url body "self"))))
 
           (testing "has a first link"
@@ -729,7 +679,7 @@
               (is (= #fhir/unsignedInt 2 (:total body))))
 
             (testing "has a self link"
-              (is (= (str base-url context-path "/Patient?_count=1&__t=1&__page-id=0")
+              (is (= (str base-url context-path "/Patient?_count=1")
                      (link-url body "self"))))
 
             (testing "has a first link"
@@ -746,30 +696,6 @@
       (testing "adding a third patient doesn't influence the paging"
         @(d/transact node [[:put {:fhir/type :fhir/Patient :id "2"}]])
 
-        (testing "following the self link"
-          (let [{:keys [body]}
-                @(handler
-                  {::reitit/match patient-match
-                   :params {"_count" "1" "__t" "1" "__page-id" "0"}})]
-
-            (testing "the total count is 2"
-              (is (= #fhir/unsignedInt 2 (:total body))))
-
-            (testing "has a self link"
-              (is (= (str base-url context-path "/Patient?_count=1&__t=1&__page-id=0")
-                     (link-url body "self"))))
-
-            (testing "has a first link"
-              (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1")
-                     (link-url body "first"))))
-
-            (testing "has a next link"
-              (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1&__page-id=1")
-                     (link-url body "next"))))
-
-            (testing "the bundle contains one entry"
-              (is (= 1 (count (:entry body)))))))
-
         (testing "following the next link"
           (let [{:keys [body]}
                 @(handler
@@ -779,9 +705,8 @@
             (testing "the total count is 2"
               (is (= #fhir/unsignedInt 2 (:total body))))
 
-            (testing "has a self link"
-              (is (= (str base-url context-path "/Patient?_count=1&__t=1&__page-id=1")
-                     (link-url body "self"))))
+            (testing "has no self link"
+              (is (nil? (link-url body "self"))))
 
             (testing "has a first link"
               (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1")
@@ -803,8 +728,7 @@
         (testing "with strict handling"
           (let [{:keys [body]}
                 @(handler
-                  {::reitit/match patient-match
-                   :headers {"prefer" "handling=strict"}
+                  {:headers {"prefer" "handling=strict"}
                    :params {"active" "true" "_summary" "count"}})]
 
             (testing "their is a total count because we used _summary=count"
@@ -813,8 +737,7 @@
         (testing "with default handling"
           (let [{:keys [body]}
                 @(handler
-                  {::reitit/match patient-match
-                   :params {"active" "true" "_summary" "count"}})]
+                  {:params {"active" "true" "_summary" "count"}})]
 
             (testing "their is a total count because we used _summary=count"
               (is (= #fhir/unsignedInt 2 (:total body)))))))
@@ -823,15 +746,14 @@
         (testing "search for active patients with _count=1"
           (let [{:keys [body]}
                 @(handler
-                  {::reitit/match patient-match
-                   :params {"active" "true" "_count" "1"}})]
+                  {:params {"active" "true" "_count" "1"}})]
 
             (testing "their is no total count because we have clauses and we have
                     more hits than page-size"
               (is (nil? (:total body))))
 
             (testing "has a self link"
-              (is (= (str base-url context-path "/Patient?active=true&_count=1&__t=1&__page-id=1")
+              (is (= (str base-url context-path "/Patient?active=true&_count=1")
                      (link-url body "self"))))
 
             (testing "has a first link"
@@ -848,14 +770,13 @@
         (testing "search for inactive patients"
           (let [{:keys [body]}
                 @(handler
-                  {::reitit/match patient-match
-                   :params {"active" "false"}})]
+                  {:params {"active" "false"}})]
 
             (testing "the total is zero"
               (is (zero? (type/value (:total body)))))
 
             (testing "has a self link"
-              (is (= (str base-url context-path "/Patient?active=false&_count=50&__t=1")
+              (is (= (str base-url context-path "/Patient?active=false&_count=50")
                      (link-url body "self"))))
 
             (testing "has no first link"
@@ -879,7 +800,7 @@
               (is (nil? (:total body))))
 
             (testing "has a self link"
-              (is (= (str base-url context-path "/Patient?active=true&_count=1&__t=1&__page-id=1")
+              (is (= (str base-url context-path "/Patient?active=true&_count=1")
                      (link-url body "self"))))
 
             (testing "has a first link with token"
@@ -903,7 +824,7 @@
               (is (zero? (type/value (:total body)))))
 
             (testing "has a self link"
-              (is (= (str base-url context-path "/Patient?active=false&_count=50&__t=1")
+              (is (= (str base-url context-path "/Patient?active=false&_count=50")
                      (link-url body "self"))))
 
             (testing "has no first link"
@@ -918,15 +839,14 @@
       (testing "following the self link"
         (let [{:keys [body]}
               @(handler
-                {::reitit/match patient-match
-                 :params {"active" "true" "_count" "1" "__t" "1" "__page-id" "1"}})]
+                {:params {"active" "true" "_count" "1" "__t" "1" "__page-id" "1"}})]
 
           (testing "their is no total count because we have clauses and we have
                     more hits than page-size"
             (is (nil? (:total body))))
 
           (testing "has a self link"
-            (is (= (str base-url context-path "/Patient?active=true&_count=1&__t=1&__page-id=1")
+            (is (= (str base-url context-path "/Patient?active=true&_count=1")
                    (link-url body "self"))))
 
           (testing "has a first link with search params"
@@ -950,9 +870,8 @@
                     more hits than page-size"
             (is (nil? (:total body))))
 
-          (testing "has a self link"
-            (is (= (str base-url context-path "/Patient?active=true&_count=1&__t=1&__page-id=2")
-                   (link-url body "self"))))
+          (testing "has no self link"
+            (is (nil? (link-url body "self"))))
 
           (testing "has a first link with token"
             (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1")
@@ -975,8 +894,7 @@
         (testing "search for active patients with _count=1"
           (let [{:keys [body]}
                 @(handler
-                  {::reitit/match patient-match
-                   :params {"active" "true" "_count" "1"}})]
+                  {:params {"active" "true" "_count" "1"}})]
 
             (testing "has a next link with search params"
               (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1&__page-id=2")
@@ -990,6 +908,9 @@
                 @(handler
                   {::reitit/match patient-page-match
                    :params {"active" "true" "_count" "1" "__t" "1" "__page-id" "2"}})]
+
+            (testing "has no self link"
+              (is (nil? (link-url body "self"))))
 
             (testing "has a next link with search params"
               (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1&__page-id=3")
@@ -1019,6 +940,9 @@
                   {::reitit/match patient-page-match
                    :params {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"}})]
 
+            (testing "has no self link"
+              (is (nil? (link-url body "self"))))
+
             (testing "has a next link with token"
               (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1&__page-id=3")
                      (link-url body "next")))))))))
@@ -1031,8 +955,7 @@
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                {::reitit/match patient-match
-                 :headers {"prefer" (str "handling=" handling)}
+                {:headers {"prefer" (str "handling=" handling)}
                  :params {"_id" "0"}})]
 
           (is (= 200 status))
@@ -1067,8 +990,7 @@
         (doseq [handling ["strict" "lenient"]]
           (let [{:keys [status] {[first-entry] :entry :as body} :body}
                 @(handler
-                  {::reitit/match patient-match
-                   :headers {"prefer" (str "handling=" handling)}
+                  {:headers {"prefer" (str "handling=" handling)}
                    :params {"_id" "0,2"}})]
 
             (is (= 200 status))
@@ -1111,8 +1033,7 @@
         (doseq [handling ["strict" "lenient"]]
           (let [{:keys [status body]}
                 @(handler
-                  {::reitit/match patient-match
-                   :headers {"prefer" (str "handling=" handling)}
+                  {:headers {"prefer" (str "handling=" handling)}
                    :params {"_lastUpdated" "1970-01-01"}})]
 
             (is (= 200 status))
@@ -1133,8 +1054,7 @@
         (doseq [handling ["strict" "lenient"]]
           (let [{:keys [status body]}
                 @(handler
-                  {::reitit/match patient-match
-                   :headers {"prefer" (str "handling=" handling)}
+                  {:headers {"prefer" (str "handling=" handling)}
                    :params {"_lastUpdated" "gt1970-01-02"}})]
 
             (is (= 200 status))
@@ -1159,8 +1079,7 @@
         (doseq [handling ["strict" "lenient"]]
           (let [{:keys [status body]}
                 @(handler
-                  {::reitit/match patient-match
-                   :headers {"prefer" (str "handling=" handling)}
+                  {:headers {"prefer" (str "handling=" handling)}
                    :params {"_lastUpdated" "1970-01-01"}})]
 
             (is (= 200 status))
@@ -1181,8 +1100,7 @@
         (doseq [handling ["strict" "lenient"]]
           (let [{:keys [status body]}
                 @(handler
-                  {::reitit/match patient-match
-                   :headers {"prefer" (str "handling=" handling)}
+                  {:headers {"prefer" (str "handling=" handling)}
                    :params {"_sort" "_id"}})]
 
             (is (= 200 status))
@@ -1206,7 +1124,7 @@
                 [2 :resource :id] := "2"))
 
             (testing "has a self link"
-              (is (= (str base-url context-path "/Patient?_sort=_id&_count=50&__t=3&__page-id=0")
+              (is (= (str base-url context-path "/Patient?_sort=_id&_count=50")
                      (link-url body "self"))))
 
             (testing "has a first link"
@@ -1217,8 +1135,7 @@
         (doseq [handling ["strict" "lenient"]]
           (let [{:keys [status body]}
                 @(handler
-                  {::reitit/match patient-match
-                   :headers {"prefer" (str "handling=" handling)}
+                  {:headers {"prefer" (str "handling=" handling)}
                    :params {"_sort" "-_id"}})]
 
             (is (= 422 status))
@@ -1239,8 +1156,7 @@
         (doseq [handling ["strict" "lenient"]]
           (let [{:keys [status body]}
                 @(handler
-                  {::reitit/match patient-match
-                   :headers {"prefer" (str "handling=" handling)}
+                  {:headers {"prefer" (str "handling=" handling)}
                    :params {"_sort" "_lastUpdated"}})]
 
             (is (= 200 status))
@@ -1264,7 +1180,7 @@
                 [2 :resource :id] := "2"))
 
             (testing "has a self link"
-              (is (= (str base-url context-path "/Patient?_sort=_lastUpdated&_count=50&__t=3&__page-id=0")
+              (is (= (str base-url context-path "/Patient?_sort=_lastUpdated&_count=50")
                      (link-url body "self"))))
 
             (testing "has a first link"
@@ -1275,8 +1191,7 @@
         (doseq [handling ["strict" "lenient"]]
           (let [{:keys [status body]}
                 @(handler
-                  {::reitit/match patient-match
-                   :headers {"prefer" (str "handling=" handling)}
+                  {:headers {"prefer" (str "handling=" handling)}
                    :params {"_sort" "-_lastUpdated"}})]
 
             (is (= 200 status))
@@ -1300,7 +1215,7 @@
                 [2 :resource :id] := "0"))
 
             (testing "has a self link"
-              (is (= (str base-url context-path "/Patient?_sort=-_lastUpdated&_count=50&__t=3&__page-id=2")
+              (is (= (str base-url context-path "/Patient?_sort=-_lastUpdated&_count=50")
                      (link-url body "self"))))
 
             (testing "has a first link"
@@ -1317,8 +1232,7 @@
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                {::reitit/match patient-match
-                 :headers {"prefer" (str "handling=" handling)}
+                {:headers {"prefer" (str "handling=" handling)}
                  :params {"_profile" "profile-uri-151511"}})]
 
           (is (= 200 status))
@@ -1360,8 +1274,7 @@
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
               @(handler
-                {::reitit/match patient-match
-                 :headers {"prefer" (str "handling=" handling)}
+                {:headers {"prefer" (str "handling=" handling)}
                  :params {"_profile:below" "profile-uri-151511|1"}})]
 
           (is (= 200 status))
@@ -1400,8 +1313,7 @@
 
         (let [{:keys [status body]}
               @(handler
-                {::reitit/match patient-match
-                 :headers {"prefer" (str "handling=" handling)}
+                {:headers {"prefer" (str "handling=" handling)}
                  :params {"_profile:below" "profile-uri-151511|1"
                           "_summary" "count"}})]
 
@@ -1433,8 +1345,7 @@
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                {::reitit/match patient-match
-                 :headers {"prefer" (str "handling=" handling)}
+                {:headers {"prefer" (str "handling=" handling)}
                  :params {"_list" "0"}})]
 
           (is (= 200 status))
@@ -1485,7 +1396,7 @@
               value ["ge70" " ge70" "ge70 " "ge 70" " ge 70 "]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                {::reitit/match observation-match
+                {::reitit/match (match-of "Observation")
                  :headers {"prefer" (str "handling=" handling)}
                  :params {"value-quantity" value}})]
 
@@ -1562,8 +1473,7 @@
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                {::reitit/match patient-match
-                 :headers {"prefer" (str "handling=" handling)}
+                {:headers {"prefer" (str "handling=" handling)}
                  :params {"_has:Observation:patient:code-value-quantity" "8480-6$ge130"}})]
 
           (is (= 200 status))
@@ -1599,8 +1509,7 @@
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                {::reitit/match patient-match
-                 :headers {"prefer" (str "handling=" handling)}
+                {:headers {"prefer" (str "handling=" handling)}
                  :params {"identifier" "0"}})]
 
           (is (= 200 status))
@@ -1656,8 +1565,7 @@
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                {::reitit/match patient-match
-                 :headers {"prefer" (str "handling=" handling)}
+                {:headers {"prefer" (str "handling=" handling)}
                  :params {"language" ["de" "en"]}})]
 
           (is (= 200 status))
@@ -1689,7 +1597,7 @@
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                {::reitit/match {:data {:fhir.resource/type "Library"}}
+                {::reitit/match (match-of "Library")
                  :headers {"prefer" (str "handling=" handling)}
                  :params {"title" "A"}})]
 
@@ -1723,7 +1631,7 @@
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                {::reitit/match measure-report-match
+                {::reitit/match (match-of "MeasureReport")
                  :headers {"prefer" (str "handling=" handling)}
                  :params {"measure" "http://server.com/Measure/0"}})]
 
@@ -1773,7 +1681,7 @@
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                {::reitit/match list-match
+                {::reitit/match (match-of "List")
                  :headers {"prefer" (str "handling=" handling)}
                  :params {"item:identifier" "system-122917|value-143818"}})]
 
@@ -1857,7 +1765,7 @@
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status body]}
               @(handler
-                {::reitit/match observation-match
+                {::reitit/match (match-of "Observation")
                  :headers {"prefer" (str "handling=" handling)}
                  :params
                  {"combo-code-value-quantity"
@@ -1893,7 +1801,7 @@
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                {::reitit/match condition-match
+                {::reitit/match (match-of "Condition")
                  :headers {"prefer" (str "handling=" handling)}
                  :params {"code" "C71.4,C71.4"}})]
 
@@ -1943,7 +1851,7 @@
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                {::reitit/match condition-match
+                {::reitit/match (match-of "Condition")
                  :headers {"prefer" (str "handling=" handling)}
                  :params {"code" "0,1" "_count" "2"
                           "__t" "1" "__page-id" "1"}})]
@@ -2002,7 +1910,7 @@
       (testing "success"
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                {::reitit/match encounter-match
+                {::reitit/match (match-of "Encounter")
                  :params {"diagnosis:Condition.code" "foo"}})]
 
           (is (= 200 status))
@@ -2023,7 +1931,7 @@
       (testing "ambiguous type"
         (let [{:keys [status body]}
               @(handler
-                {::reitit/match encounter-match
+                {::reitit/match (match-of "Encounter")
                  :headers {"prefer" "handling=strict"}
                  :params {"diagnosis.code" "foo"}})]
 
@@ -2044,7 +1952,7 @@
 
         (let [{:keys [status body]}
               @(handler
-                {::reitit/match observation-match
+                {::reitit/match (match-of "Observation")
                  :params {"_include" "Observation:subject"}})]
 
           (is (= 200 status))
@@ -2059,7 +1967,7 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= (str base-url context-path "/Observation?_include=Observation%3Asubject&_count=50&__t=1&__page-id=0")
+            (is (= (str base-url context-path "/Observation?_include=Observation%3Asubject&_count=50")
                    (link-url body "self"))))
 
           (testing "has a first link"
@@ -2089,7 +1997,7 @@
 
           (let [{:keys [status body]}
                 @(handler
-                  {::reitit/match observation-match
+                  {::reitit/match (match-of "Observation")
                    :params {"_include" "Observation:subject:Group"}})]
 
             (is (= 200 status))
@@ -2122,7 +2030,7 @@
 
           (let [{:keys [status body]}
                 @(handler
-                  {::reitit/match observation-match
+                  {::reitit/match (match-of "Observation")
                    :params {"_include" "Observation:subject"}})]
 
             (is (= 200 status))
@@ -2168,7 +2076,7 @@
 
           (let [{:keys [status body]}
                 @(handler
-                  {::reitit/match observation-match
+                  {::reitit/match (match-of "Observation")
                    :params
                    {"_include" ["Observation:subject" "Observation:encounter"]}})]
 
@@ -2215,7 +2123,7 @@
 
           (let [{:keys [status body]}
                 @(handler
-                  {::reitit/match observation-match
+                  {::reitit/match (match-of "Observation")
                    :params {"_include" "Observation:subject" "_count" "1"}})]
 
             (is (= 200 status))
@@ -2251,7 +2159,7 @@
             (testing "second page"
               (let [{:keys [status body]}
                     @(handler
-                      {::reitit/match observation-match
+                      {::reitit/match (match-of "Observation")
                        :params {"_include" "Observation:subject" "_count" "2"
                                 "__t" "1" "__page-id" "3"}})]
 
@@ -2267,7 +2175,7 @@
                   (is (= #fhir/unsignedInt 2 (:total body))))
 
                 (testing "has a self link"
-                  (is (= (str base-url context-path "/Observation?_include=Observation%3Asubject&_count=2&__t=1&__page-id=3")
+                  (is (= (str base-url context-path "/Observation?_include=Observation%3Asubject&_count=2")
                          (link-url body "self"))))
 
                 (testing "has a first link"
@@ -2303,7 +2211,7 @@
 
         (let [{:keys [status body]}
               @(handler
-                {::reitit/match medication-statement-match
+                {::reitit/match (match-of "MedicationStatement")
                  :params
                  {"_include" "MedicationStatement:medication"
                   "_include:iterate" "Medication:manufacturer"}})]
@@ -2354,7 +2262,7 @@
 
         (let [{:keys [status body]}
               @(handler
-                {::reitit/match medication-statement-match
+                {::reitit/match (match-of "MedicationStatement")
                  :params
                  {"_include"
                   ["MedicationStatement:medication" "Medication:manufacturer"]}})]
@@ -2393,8 +2301,7 @@
 
         (let [{:keys [status body]}
               @(handler
-                {::reitit/match patient-match
-                 :params {"_revinclude" "Observation:subject"}})]
+                {:params {"_revinclude" "Observation:subject"}})]
 
           (is (= 200 status))
 
@@ -2408,7 +2315,7 @@
             (is (= #fhir/unsignedInt 1 (:total body))))
 
           (testing "has a self link"
-            (is (= (str base-url context-path "/Patient?_revinclude=Observation%3Asubject&_count=50&__t=1&__page-id=0")
+            (is (= (str base-url context-path "/Patient?_revinclude=Observation%3Asubject&_count=50")
                    (link-url body "self"))))
 
           (testing "has a first link"
@@ -2440,8 +2347,7 @@
 
           (let [{:keys [status body]}
                 @(handler
-                  {::reitit/match patient-match
-                   :params
+                  {:params
                    {"_revinclude" ["Observation:subject" "Condition:subject"]}})]
 
             (is (= 200 status))
@@ -2456,7 +2362,7 @@
               (is (= #fhir/unsignedInt 1 (:total body))))
 
             (testing "has a self link"
-              (is (= (str base-url context-path "/Patient?_revinclude=Observation%3Asubject&_revinclude=Condition%3Asubject&_count=50&__t=1&__page-id=0")
+              (is (= (str base-url context-path "/Patient?_revinclude=Observation%3Asubject&_revinclude=Condition%3Asubject&_count=50")
                      (link-url body "self"))))
 
             (testing "has a first link"
@@ -2488,8 +2394,7 @@
       (with-handler [handler]
         (let [{:keys [status body]}
               @(handler
-                {::reitit/match patient-match
-                 :headers {"prefer" "handling=strict"}
+                {:headers {"prefer" "handling=strict"}
                  :params {"_include" "Observation"}})]
 
           (is (= 400 status))
@@ -2512,7 +2417,7 @@
 
       (let [{:keys [status body] {[{:keys [resource] :as entry}] :entry} :body}
             @(handler
-              {::reitit/match observation-match
+              {::reitit/match (match-of "Observation")
                :params {"_elements" "subject"
                         "_count" "1"}})]
 
@@ -2556,7 +2461,7 @@
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (let [{:keys [status body]}
-              @(handler {::reitit/match patient-match})]
+              @(handler {})]
 
           (is (= 500 status))
 

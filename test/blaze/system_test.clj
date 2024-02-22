@@ -261,7 +261,7 @@
     (with-system [{:blaze/keys [rest-api]} config]
       (given (call rest-api {:request-method :get :uri "/Patient"})
         :status := 200
-        [:headers "Link"] := "<http://localhost:8080/Patient?_count=50&__t=0>;rel=\"self\""
+        [:headers "Link"] := "<http://localhost:8080/Patient?_count=50>;rel=\"self\""
         [:body fhir-spec/parse-json :resourceType] := "Bundle")))
 
   (testing "using POST"

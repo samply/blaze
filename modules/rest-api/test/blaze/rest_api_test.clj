@@ -185,12 +185,12 @@
                   (reitit/match-by-path (router []) path)
                   [:result request-method :data :middleware])
                  (mapv (comp :name #(if (sequential? %) (first %) %)))))
-      "" :get [:observe-request-duration :params :output :error :forwarded :sync :search-db :link-headers]
+      "" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
       "" :post [:observe-request-duration :params :output :error :forwarded :sync :resource :wrap-batch-handler]
       "/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
       "/__page" :get [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
       "/__page" :post [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
-      "/Patient" :get [:observe-request-duration :params :output :error :forwarded :sync :search-db :link-headers]
+      "/Patient" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
       "/Patient" :post [:observe-request-duration :params :output :error :forwarded :sync :resource]
       "/Patient/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
       "/Patient/_search" :post [:observe-request-duration :params :output :error :forwarded :sync :ensure-form-body :db :link-headers]
@@ -218,7 +218,7 @@
                     (reitit/match-by-path (router [:auth-backend]) path)
                     [:result request-method :data :middleware])
                    (mapv (comp :name #(if (sequential? %) (first %) %)))))
-        "" :get [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :search-db :link-headers]
+        "" :get [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db :link-headers]
         "" :post [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :resource :wrap-batch-handler]
         "/$compact-db" :get [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db]
         "/$compact-db" :post [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db :resource]
