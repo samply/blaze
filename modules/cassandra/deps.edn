@@ -3,7 +3,8 @@
   {:local/root "../async"}
 
   com.datastax.oss/java-driver-core
-  {:mvn/version "4.17.0"}
+  {:mvn/version "4.17.0"
+   :exclusions [com.github.spotbugs/spotbugs-annotations]}
 
   ;; current version of transitive dependency of com.datastax.oss/java-driver-core
   com.fasterxml.jackson.core/jackson-databind
