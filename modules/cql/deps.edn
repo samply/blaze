@@ -12,10 +12,14 @@
 
   info.cqframework/cql-to-elm
   {:mvn/version "2.11.0"
-   :exclusions [xpp3/xpp3_xpath]}
+   :exclusions
+   [org.antlr/antlr4
+    xpp3/xpp3
+    xpp3/xpp3_xpath]}
 
   info.cqframework/elm-jackson
-  {:mvn/version "2.11.0"}
+  {:mvn/version "2.11.0"
+   :exclusions [org.glassfish/javax.json]}
 
   info.cqframework/model-jackson
   {:mvn/version "2.11.0"}
@@ -38,10 +42,7 @@
 
    :extra-deps
    {blaze/db-stub
-    {:local/root "../db-stub"}
-
-    org.clojure/data.xml
-    {:mvn/version "0.2.0-alpha9"}}}
+    {:local/root "../db-stub"}}}
 
   :test-perf
   {:extra-paths ["test-perf"]
