@@ -1249,6 +1249,9 @@ jobs:
     - name: Check out Git repository
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
     - name: Download Blaze Image
       uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4
       with:
@@ -1264,8 +1267,17 @@ jobs:
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
 
+    - name: Load Data
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+
     - name: Check Frontend
       run:  .github/scripts/check-frontend.sh
+
+    - name: Check Column Family resource-as-of-index
+      run:  .github/scripts/admin-api/column-family-metadata.sh resource-as-of-index
+
+    - name: Check Column Family search-param-value-index
+      run:  .github/scripts/admin-api/column-family-metadata.sh search-param-value-index
 
   missing-resource-content-test:
     needs: build
