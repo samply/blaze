@@ -6,3 +6,7 @@
 (defn wrap-error [handler]
   (fn [request respond _]
     (handler request respond #(respond (handler-util/error-response %)))))
+
+(defn wrap-json-error [handler]
+  (fn [request respond _]
+    (handler request respond #(respond (handler-util/json-error-response %)))))

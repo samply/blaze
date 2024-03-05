@@ -1,6 +1,5 @@
 (ns blaze.rest-api.routes
   (:require
-   [blaze.async.comp :as ac]
    [blaze.db.search-param-registry.spec]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.error :as error]
@@ -12,6 +11,7 @@
    [blaze.rest-api.middleware.metrics :as metrics]
    [blaze.rest-api.middleware.output :as output]
    [blaze.rest-api.middleware.resource :as resource]
+   [blaze.rest-api.middleware.sync :as sync]
    [blaze.rest-api.spec]
    [blaze.rest-api.util :as u]
    [blaze.spec]
@@ -65,15 +65,7 @@
 
 (def ^:private wrap-sync
   {:name :sync
-   :wrap
-   (fn [handler]
-     (fn [request respond raise]
-       (-> (handler request)
-           (ac/when-complete
-            (fn [response e]
-              (if e
-                (raise e)
-                (respond response)))))))})
+   :wrap sync/wrap-sync})
 
 (def ^:private wrap-output
   {:name :output
@@ -84,7 +76,10 @@
 
 (def ^:private wrap-error
   {:name :error
-   :wrap error/wrap-error})
+   :compile (fn [{:keys [response-type]} _]
+              (if (= :json response-type)
+                error/wrap-json-error
+                error/wrap-error))})
 
 (def ^:private wrap-observe-request-duration
   {:name :observe-request-duration

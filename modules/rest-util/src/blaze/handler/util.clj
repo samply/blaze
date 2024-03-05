@@ -157,6 +157,15 @@
          (headers error)
          (ring/status (or status (category->status category)))))))
 
+(defn json-error-response
+  [error]
+  (error-response*
+   error
+   (fn [{::anom/keys [category] :http/keys [status] :as error}]
+     (-> (ring/response {:msg (::anom/message error)})
+         (headers error)
+         (ring/status (or status (category->status category)))))))
+
 (defn bundle-error-response
   "Returns an error response suitable for bundles.
 
