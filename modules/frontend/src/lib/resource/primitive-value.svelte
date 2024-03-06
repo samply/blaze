@@ -1,10 +1,10 @@
 <script lang="ts">
 	import type { FhirPrimitive } from './resource-card.js';
 
-	import Canonical from '../values/canonical.svelte';
-	import Date from '../values/date.svelte';
-	import Time from '../values/time.svelte';
-	import DateTime from '../values/date-time.svelte';
+	import Canonical from '$lib/values/canonical.svelte';
+	import Date from '$lib/values/date.svelte';
+	import Time from '$lib/values/time.svelte';
+	import DateTime from '$lib/values/date-time.svelte';
 
 	export let value: FhirPrimitive;
 </script>

@@ -1,5 +1,5 @@
 import { fetchBundleWithDuration } from '../util.js';
-import { fetchStructureDefinition } from '../../../metadata.js';
+import { fetchStructureDefinition } from '$lib/metadata.js';
 
 export async function load({ fetch, params, url }) {
 	fetchStructureDefinition(params.type, fetch);

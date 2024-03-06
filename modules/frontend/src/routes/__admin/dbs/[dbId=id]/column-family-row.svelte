@@ -3,7 +3,7 @@
 	import { page } from '$app/stores';
 	import { pascalCase } from 'change-case';
 	import prettyBytes from 'pretty-bytes';
-	import prettyNum from '../../../../pretty-num.js';
+	import prettyNum from '$lib/pretty-num.js';
 
 	export let name: string;
 	export let estimateNumKeys: number;

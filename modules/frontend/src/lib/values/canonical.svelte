@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { FhirPrimitive, Type } from '../resource/resource-card.js';
+	import type { FhirPrimitive, Type } from '$lib/resource/resource-card.js';
 	import { base } from '$app/paths';
 
 	export let value: FhirPrimitive;

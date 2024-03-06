@@ -1,6 +1,6 @@
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
-import { transformBundle } from '../../../../resource/resource-card.js';
+import { transformBundle } from '$lib/resource/resource-card.js';
 
 export async function load({ fetch, params }) {
 	const res = await fetch(`${base}/${params.type}/${params.id}/_history`, {

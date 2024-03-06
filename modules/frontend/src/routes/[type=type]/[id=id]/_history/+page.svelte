@@ -8,7 +8,7 @@
 	import BreadcrumbEntryResource from '../breadcrumb-entry-resource.svelte';
 	import BreadcrumbEntryHistory from './breadcrumb-entry-history.svelte';
 
-	import EntryCard from '../../../../history/entry-card.svelte';
+	import EntryCard from '$lib/history/entry-card.svelte';
 
 	export let data: PageData;
 </script>

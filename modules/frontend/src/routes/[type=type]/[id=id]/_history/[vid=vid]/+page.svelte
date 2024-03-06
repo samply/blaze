@@ -7,7 +7,7 @@
 	import BreadcrumbEntryType from '../../../breadcrumb-entry-type.svelte';
 	import BreadcrumbEntryResource from './../../breadcrumb-entry-resource.svelte';
 	import BreadcrumbEntryVersion from './breadcrumb-entry-version.svelte';
-	import ResourceCard from '../../../../../resource/resource-card.svelte';
+	import ResourceCard from '$lib/resource/resource-card.svelte';
 
 	export let data: PageData;
 </script>

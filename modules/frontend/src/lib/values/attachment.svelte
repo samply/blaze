@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Attachment } from 'fhir/r4';
-	import type { FhirObject } from '../resource/resource-card.js';
+	import type { FhirObject } from '$lib/resource/resource-card.js';
 
 	export let values: FhirObject<Attachment>[];
 </script>

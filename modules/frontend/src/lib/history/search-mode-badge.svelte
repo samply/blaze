@@ -1,5 +1,5 @@
 <script lang="ts">
-	export let method: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'unknown';
+	export let mode: 'match' | 'include' | 'outcome' | 'unknown';
 
 	function modeBgColor(mode: string): string {
 		switch (mode) {
@@ -27,9 +27,9 @@
 <div class="ml-2 flex flex-shrink-0">
 	<p
 		class="inline-flex items-center rounded-full {modeBgColor(
-			method
-		)} px-2.5 py-0.5 text-xs font-medium {modeTextColor(method)}"
+			mode
+		)} px-2.5 py-0.5 text-xs font-medium {modeTextColor(mode)}"
 	>
-		{method}
+		{mode}
 	</p>
 </div>

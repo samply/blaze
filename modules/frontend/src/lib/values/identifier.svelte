@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { FhirObject } from '../resource/resource-card.js';
+	import type { FhirObject } from '$lib/resource/resource-card.js';
 	import type { Identifier } from 'fhir/r4';
 	import { sortByProperty } from '../util.js';
 

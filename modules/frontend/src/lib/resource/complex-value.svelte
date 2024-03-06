@@ -2,12 +2,12 @@
 	import type { FhirObject } from './resource-card.js';
 	import type { CodeableConcept, Coding, Meta, Money, Period, Quantity } from 'fhir/r4';
 
-	import CodeableConceptValue from '../values/codeable-concept.svelte';
-	import CodingValue from '../values/coding.svelte';
-	import MetaValue from '../values/meta.svelte';
-	import MoneyValue from '../values/money.svelte';
-	import PeriodValue from '../values/period.svelte';
-	import QuantityValue from '../values/quantity.svelte';
+	import CodeableConceptValue from '$lib/values/codeable-concept.svelte';
+	import CodingValue from '$lib/values/coding.svelte';
+	import MetaValue from '$lib/values/meta.svelte';
+	import MoneyValue from '$lib/values/money.svelte';
+	import PeriodValue from '$lib/values/period.svelte';
+	import QuantityValue from '$lib/values/quantity.svelte';
 
 	export let value: FhirObject;
 

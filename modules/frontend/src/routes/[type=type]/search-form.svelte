@@ -1,9 +1,9 @@
 <script lang="ts">
 	import type { CapabilityStatement, CapabilityStatementRestResourceSearchParam } from 'fhir/r4';
-	import { SearchParamType } from '../../fhir.js';
+	import { SearchParamType } from '$lib/fhir.js';
 	import type { QueryParam } from './query-param.js';
-	import { sortByProperty } from '../../util.js';
-	import { defaultCount } from '../../util.js';
+	import { sortByProperty } from '$lib/util.js';
+	import { defaultCount } from '$lib/util.js';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
@@ -27,7 +27,7 @@
 		updateAtIndex,
 		moveUpAtIndex,
 		moveDownAtIndex
-	} from '../../util.js';
+	} from '$lib/util.js';
 
 	export let capabilityStatement: CapabilityStatement;
 
