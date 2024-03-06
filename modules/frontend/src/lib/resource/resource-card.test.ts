@@ -12,7 +12,7 @@ const structureDefinitionMedicationAdministration = await readStructureDefinitio
 const structureDefinitionCarePlan = await readStructureDefinition('CarePlan');
 
 async function readStructureDefinition(name: string): Promise<StructureDefinition> {
-	const data = readFileSync(`src/resource/test/${name}.json`);
+	const data = readFileSync(`src/lib/resource/test/${name}.json`);
 	return Promise.resolve(JSON.parse(data.toString()));
 }
 

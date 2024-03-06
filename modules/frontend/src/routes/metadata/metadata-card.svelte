@@ -1,20 +1,20 @@
 <script lang="ts">
 	import type { CapabilityStatement } from 'fhir/r4';
-	import { RestfulInteraction } from '../../fhir.js';
-	import type { FhirObject } from '../../resource/resource-card.js';
-	import { isTabActive } from '../../util.js';
+	import { RestfulInteraction } from '$lib/fhir.js';
+	import type { FhirObject } from '$lib/resource/resource-card.js';
+	import { isTabActive } from '$lib/util.js';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
 
-	import DateTime from '../../values/date-time.svelte';
+	import DateTime from '$lib/values/date-time.svelte';
 	import Download from './download.svelte';
 	import Check from './check.svelte';
 	import XMark from './x-mark.svelte';
-	import Object from '../../resource/json/object.svelte';
-	import TabItem from '../../tab-item.svelte';
+	import Object from '$lib/resource/json/object.svelte';
+	import TabItem from '$lib/tab-item.svelte';
 	import InteractionTh from './interaction-th.svelte';
 	import InteractionTd from './interaction-td.svelte';
-	import Table from '../../tailwind/table/table.svelte';
+	import Table from '$lib/tailwind/table/table.svelte';
 
 	export let resource: FhirObject;
 

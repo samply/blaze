@@ -16,13 +16,13 @@
 	} from 'fhir/r4';
 	import PrimitiveValue from './primitive-value.svelte';
 	import ComplexValue from './complex-value.svelte';
-	import AttachmentValues from '../values/attachment.svelte';
-	import IdentifierValues from '../values/identifier.svelte';
-	import HumanNameValues from '../values/human-name.svelte';
-	import AddressValues from '../values/address.svelte';
-	import ContactPointValues from '../values/contact-point.svelte';
-	import ReferenceValues from '../values/reference.svelte';
-	import DosageValues from '../values/dosage.svelte';
+	import AttachmentValues from '$lib/values/attachment.svelte';
+	import IdentifierValues from '$lib/values/identifier.svelte';
+	import HumanNameValues from '$lib/values/human-name.svelte';
+	import AddressValues from '$lib/values/address.svelte';
+	import ContactPointValues from '$lib/values/contact-point.svelte';
+	import ReferenceValues from '$lib/values/reference.svelte';
+	import DosageValues from '$lib/values/dosage.svelte';
 
 	export let property: FhirProperty;
 

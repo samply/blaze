@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Address } from 'fhir/r4';
-	import type { FhirObject } from '../resource/resource-card.js';
+	import type { FhirObject } from '$lib/resource/resource-card.js';
 	import { joinStrings } from '../util.js';
 	import Single from './address/single.svelte';
 	import GrayBadge from './util/gray-badge.svelte';

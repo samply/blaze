@@ -8,11 +8,11 @@
 	import { quintIn } from 'svelte/easing';
 
 	import { isTabActive } from '../util.js';
-	import { willBeRendered as willMetaBeRendered } from '../values/meta.js';
+	import { willBeRendered as willMetaBeRendered } from '$lib/values/meta.js';
 
 	import TabItem from '../tab-item.svelte';
 	import TabItemEmbedded from '../tab-item-embedded.svelte';
-	import DateTime from '../values/date-time.svelte';
+	import DateTime from '$lib/values/date-time.svelte';
 	import Property from './property.svelte';
 	import Object from './json/object.svelte';
 
@@ -61,7 +61,9 @@
 				<h3 class="flex-grow text-base font-semibold leading-6 text-gray-900">
 					<a href={href(resource)}>{resource.type.code}/{resource.object.id}</a>
 				</h3>
-				<slot name="header" />
+				{#if $$slots.header}
+					<slot name="header" />
+				{/if}
 			</div>
 			{#if hasMeta(resource.object) && resource.object.meta.lastUpdated !== undefined}
 				<p class="mt-1 max-w-2xl text-sm text-gray-500">

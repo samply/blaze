@@ -7,9 +7,9 @@
 	import BreadcrumbEntryType from '../breadcrumb-entry-type.svelte';
 	import BreadcrumbEntryHistory from './breadcrumb-entry-history.svelte';
 
-	import TotalCard from '../../../total-card.svelte';
-	import TotalBadge from '../../../total-badge.svelte';
-	import EntryCard from '../../../history/entry-card.svelte';
+	import TotalCard from '$lib/total-card.svelte';
+	import TotalBadge from '$lib/total-badge.svelte';
+	import EntryCard from '$lib/history/entry-card.svelte';
 
 	export let data: PageData;
 </script>

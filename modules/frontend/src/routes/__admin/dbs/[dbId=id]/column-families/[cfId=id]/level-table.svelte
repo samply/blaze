@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Table from '../../../../../../tailwind/table/table.svelte';
+	import Table from '$lib/tailwind/table/table.svelte';
 	import LevelRow from './level-row.svelte';
 	import type { Level } from './+page.js';
 

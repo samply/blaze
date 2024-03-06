@@ -1,6 +1,6 @@
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
-import { toTitleCase } from '../../../../../../util.js';
+import { toTitleCase } from '$lib/util.js';
 import { pascalCase } from 'change-case';
 
 export interface Level {

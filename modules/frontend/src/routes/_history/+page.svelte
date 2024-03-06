@@ -1,9 +1,9 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 
-	import TotalCard from '../../total-card.svelte';
-	import TotalBadge from '../../total-badge.svelte';
-	import EntryCard from '../../history/entry-card.svelte';
+	import TotalCard from '$lib/total-card.svelte';
+	import TotalBadge from '$lib/total-badge.svelte';
+	import EntryCard from '$lib/history/entry-card.svelte';
 
 	export let data: PageData;
 </script>

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { FhirObjectBundleEntry } from '../../resource/resource-card.js';
-	import ResourceCard from '../../resource/resource-card.svelte';
+	import type { FhirObjectBundleEntry } from '$lib/resource/resource-card.js';
+	import ResourceCard from '$lib/resource/resource-card.svelte';
 	import SearchModeBadge from './search-mode-badge.svelte';
 
 	export let entry: FhirObjectBundleEntry;

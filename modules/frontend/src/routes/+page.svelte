@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Data } from './+page.js';
 
-	import Table from '../tailwind/table/table.svelte';
+	import Table from '$lib/tailwind/table/table.svelte';
 	import ResourceRow from './resource-row.svelte';
 
 	export let data: Data;

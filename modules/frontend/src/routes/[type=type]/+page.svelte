@@ -9,10 +9,10 @@
 	import BreadcrumbEntryType from './breadcrumb-entry-type.svelte';
 
 	import SearchForm from './search-form.svelte';
-	import TotalCard from '../../total-card.svelte';
-	import TotalBadge from '../../total-badge.svelte';
-	import DurationBadge from '../../duration-badge.svelte';
-	import EntryCard from './entry-card.svelte';
+	import TotalCard from '$lib/total-card.svelte';
+	import TotalBadge from '$lib/total-badge.svelte';
+	import DurationBadge from '$lib/duration-badge.svelte';
+	import EntryCard from '$lib/history/entry-card.svelte';
 	import NoResultsCard from './no-results-card.svelte';
 	import ErrorCard from './../error-card.svelte';
 	import HistoryButton from './history-button.svelte';

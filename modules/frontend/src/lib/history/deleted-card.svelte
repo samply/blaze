@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { BundleEntryRequest } from 'fhir/r4';
-	import DateTime from '../values/date-time.svelte';
+	import DateTime from '$lib/values/date-time.svelte';
 	import MethodBadge from './method-badge.svelte';
 
 	export let request: BundleEntryRequest;

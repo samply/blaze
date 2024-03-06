@@ -1,6 +1,6 @@
 <script lang="ts">
 	import ColumnFamilyTable from './column-family-table.svelte';
-	import { toTitleCase } from '../../../../util.js';
+	import { toTitleCase } from '$lib/util.js';
 	import { descriptions } from './../util.js';
 	import Stats from './stats.svelte';
 	import { page } from '$app/stores';

@@ -2,8 +2,8 @@ import type { OperationOutcome } from 'fhir/r4';
 import type { RouteParams } from './$types.js';
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
-import { processParams } from '../../util.js';
-import { transformBundle } from '../../resource/resource-card.js';
+import { processParams } from '$lib/util.js';
+import { transformBundle } from '$lib/resource/resource-card.js';
 
 async function outcome(res: Response): Promise<OperationOutcome> {
 	return (await res.json()) as OperationOutcome;
