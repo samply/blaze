@@ -1,8 +1,3 @@
-<script lang="ts">
-	import { base } from '$app/paths';
-	import { page } from '$app/stores';
-</script>
-
 <li>
 	<div class="flex items-center">
 		<svg
@@ -17,9 +12,6 @@
 				clip-rule="evenodd"
 			/>
 		</svg>
-		<a
-			href="{base}/{$page.params.type}"
-			class="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700">{$page.params.type}</a
-		>
+		<slot />
 	</div>
 </li>

@@ -5,9 +5,9 @@
 	import { page } from '$app/stores';
 	import { fade, slide } from 'svelte/transition';
 
-	import BreadcrumbEntryHome from '../../breadcrumb-entry-home.svelte';
-	import BreadcrumbEntryType from './../breadcrumb-entry-type.svelte';
-	import BreadcrumbEntryPage from './breadcrumb-entry-page.svelte';
+	import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
+	import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
+	import BreadcrumbEntryPage from '$lib/breadcrumb/page.svelte';
 
 	import SearchForm from './../search-form.svelte';
 	import TotalCard from '$lib/total-card.svelte';
@@ -38,7 +38,7 @@
 		<ol class="flex items-center py-0.5 space-x-4">
 			<BreadcrumbEntryHome />
 			<BreadcrumbEntryType />
-			{#if $page.url.searchParams.has('__page-id')}<BreadcrumbEntryPage />{/if}
+			<BreadcrumbEntryPage />
 		</ol>
 	</nav>
 </header>

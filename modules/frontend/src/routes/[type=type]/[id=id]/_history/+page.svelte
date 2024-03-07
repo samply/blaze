@@ -3,10 +3,10 @@
 
 	import { page } from '$app/stores';
 
-	import BreadcrumbEntryHome from '../../../breadcrumb-entry-home.svelte';
-	import BreadcrumbEntryType from '../../breadcrumb-entry-type.svelte';
-	import BreadcrumbEntryResource from '../breadcrumb-entry-resource.svelte';
-	import BreadcrumbEntryHistory from './breadcrumb-entry-history.svelte';
+	import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
+	import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
+	import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
+	import BreadcrumbEntryHistory from '$lib/breadcrumb/history.svelte';
 
 	import EntryCard from '$lib/history/entry-card.svelte';
 
@@ -23,7 +23,7 @@
 			<BreadcrumbEntryHome />
 			<BreadcrumbEntryType />
 			<BreadcrumbEntryResource />
-			<BreadcrumbEntryHistory />
+			<BreadcrumbEntryHistory url="{$page.params.type}/{$page.params.id}/_history" />
 		</ol>
 	</nav>
 </header>
