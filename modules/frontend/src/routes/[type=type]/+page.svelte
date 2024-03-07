@@ -5,8 +5,8 @@
 	import { page } from '$app/stores';
 	import { fade, slide } from 'svelte/transition';
 
-	import BreadcrumbEntryHome from '../breadcrumb-entry-home.svelte';
-	import BreadcrumbEntryType from './breadcrumb-entry-type.svelte';
+	import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
+	import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
 
 	import SearchForm from './search-form.svelte';
 	import TotalCard from '$lib/total-card.svelte';

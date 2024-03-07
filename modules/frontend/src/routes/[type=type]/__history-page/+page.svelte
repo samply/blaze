@@ -6,6 +6,7 @@
 	import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
 	import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
 	import BreadcrumbEntryHistory from '$lib/breadcrumb/history.svelte';
+	import BreadcrumbEntryPage from '$lib/breadcrumb/page.svelte';
 
 	import TotalCard from '$lib/total-card.svelte';
 	import TotalBadge from '$lib/total-badge.svelte';
@@ -24,6 +25,7 @@
 			<BreadcrumbEntryHome />
 			<BreadcrumbEntryType />
 			<BreadcrumbEntryHistory url="{$page.params.type}/_history" />
+			<BreadcrumbEntryPage />
 		</ol>
 	</nav>
 </header>
