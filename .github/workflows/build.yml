@@ -1517,7 +1517,7 @@ jobs:
         labels: ${{ steps.dockerhub-meta.outputs.labels }}
 
     - name: Release
-      uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
+      uses: softprops/action-gh-release@d99959edae48b5ffffd7b00da66dcdb0a33a52ee # v2
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: target/blaze-*-standalone.jar
