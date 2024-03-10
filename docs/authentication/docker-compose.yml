@@ -1,20 +1,14 @@
 services:
   keycloak:
-    image: "jboss/keycloak:15.0.2"
-    environment:
-      KEYCLOAK_USER: admin
-      KEYCLOAK_PASSWORD: admin
-      KEYCLOAK_IMPORT: /tmp/realm.json
-    ports:
-    - "8090:8080"
+    image: "quay.io/keycloak/keycloak:24.0.1"
+    command: "start-dev --import-realm"
     volumes:
-    - "../../.github/openid-auth-test/realm.json:/tmp/realm.json"
+    - "../../.github/openid-auth-test/realm:/opt/keycloak/data/import"
   blaze:
     image: "samply/blaze:0.24"
     environment:
-      BASE_URL: "http://localhost:8080"
-      JAVA_TOOL_OPTIONS: "-Xmx2g"
-      OPENID_PROVIDER_URL: "http://keycloak:8080/auth/realms/blaze"
+      JAVA_TOOL_OPTIONS: "-Xmx1g"
+      OPENID_PROVIDER_URL: "http://keycloak:8080/realms/blaze"
     ports:
     - "8080:8080"
     volumes:
