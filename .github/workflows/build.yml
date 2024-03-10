@@ -1112,8 +1112,14 @@ jobs:
     - name: Load Blaze Image
       run: docker load --input /tmp/blaze.tar
 
-    - name: Run Keycloak and Blaze
-      run: docker-compose -f .github/openid-auth-test/docker-compose.yml up -d
+    - name: Run Keycloak
+      run: docker-compose -f .github/openid-auth-test/docker-compose.yml up -d keycloak
+
+    - name: Wait for Keycloak
+      run: .github/scripts/wait-for-url.sh  http://localhost:8090/health/ready
+
+    - name: Run Blaze
+      run: docker-compose -f .github/openid-auth-test/docker-compose.yml up -d blaze
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
