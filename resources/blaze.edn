@@ -756,19 +756,13 @@
  :features
  [
   ;;
-  ;; Frontend
+  ;; Admin API
   ;;
-  {:key :frontend
-   :name "Frontend"
-   :toggle "ENABLE_FRONTEND"
+  {:key :admin-api
+   :name "Admin API"
+   :toggle "ENABLE_ADMIN_API"
    :config
-   {:blaze.handler/app
-    {:frontend #blaze/ref :blaze/frontend}
-
-    :blaze/frontend
-    {:context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]}
-
-    :blaze/rest-api
+   {:blaze/rest-api
     {:metadata-handler #blaze/ref :blaze.rest-api/metadata-handler
      :admin-handler #blaze/ref :blaze/admin-api}
 
@@ -786,10 +780,12 @@
    :toggle "OPENID_PROVIDER_URL"
    :config
    {:blaze.openid-auth/backend
-    {:http-client #blaze/ref :blaze/http-client
+    {:http-client #blaze/ref :blaze.openid-auth/http-client
      :scheduler #blaze/ref :blaze/scheduler
      :provider-url #blaze/cfg ["OPENID_PROVIDER_URL" string?]}
 
-    :blaze/http-client {}
+    [:blaze/http-client :blaze.openid-auth/http-client]
+    {:trust-store #blaze/cfg ["OPENID_CLIENT_TRUST_STORE" string?]
+     :trust-store-pass #blaze/cfg ["OPENID_CLIENT_TRUST_STORE_PASS" string?]}
 
     :blaze/scheduler {}}}]}

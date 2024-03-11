@@ -148,7 +148,7 @@ services:
       HEAP_NEWSIZE: "200M"
 
   blaze-1:
-    image: "samply/blaze:0.25"
+    image: "samply/blaze:latest"
     hostname: "blaze-1"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx4g -Dclojure.server.repl='{:address,\"0.0.0.0\",:port,5555,:accept,clojure.core.server/repl}'"
@@ -163,7 +163,6 @@ services:
       DB_KAFKA_SSL_KEY_PASSWORD: "password"
       DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042,cassandra-3:9042"
       LOG_LEVEL: "debug"
-      BASE_URL: "http://localhost:8080"
     ports:
     - "8081:8081"
     volumes:
@@ -178,7 +177,7 @@ services:
     restart: unless-stopped
 
   blaze-2:
-    image: "samply/blaze:0.25"
+    image: "samply/blaze:latest"
     hostname: "blaze-2"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx4g"

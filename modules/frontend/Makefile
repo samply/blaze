@@ -4,44 +4,20 @@ install:
 update:
 	npm update
 
-fmt-clj:
-	cljfmt check clj/src clj/test
-
-fmt: fmt-clj
-
-lint-js: install
-	npm run lint
-
-lint-clj:
-	clj-kondo --lint clj deps.edn
-
-lint: lint-js lint-clj
-
-check: install
+fmt: install
 	npm run check
 
-test-js: check
+lint: install
+	npm run lint
+
+test: install
 	npm run test:unit
 
-build: test-js
+build: test
 	npm run build
-
-prep: build
-	clojure -X:deps prep
-
-test: prep
-	clojure -M:test:kaocha --profile :ci
-
-test-coverage: prep
-	clojure -M:test:coverage
-
-deps-tree:
-	clojure -X:deps tree
-
-deps-list:
-	clojure -X:deps list
+	cat shutdown.js >> build/index.js
 
 clean:
-	rm -rf .clj-kondo/.cache .cpcache target build node_modules .svelte-kit
+	rm -rf build node_modules .svelte-kit
 
-.PHONY: install update fmt-clj fmt lint-js lint-clj lint check test-js build prep test test-coverage deps-tree deps-list clean
+.PHONY: install update fmt lint test test-coverage build clean

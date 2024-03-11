@@ -46,8 +46,6 @@ jobs:
       run: make lint
 
   test:
-    needs: [ lint ]
-
     strategy:
       matrix:
         module:
@@ -67,7 +65,6 @@ jobs:
         - fhir-client
         - fhir-path
         - fhir-structure
-        - frontend
         - http-client
         - interaction
         - jepsen
@@ -126,8 +123,6 @@ jobs:
       run: make -C modules/${{ matrix.module }} test
 
   test-root:
-    needs: [ lint ]
-
     strategy:
       matrix:
         java-version:
@@ -162,7 +157,7 @@ jobs:
       run: make test-root
 
   build:
-    needs: [ test, test-root ]
+    needs: [ fmt, lint, test, test-root ]
     runs-on: ubuntu-22.04
 
     steps:
@@ -211,21 +206,58 @@ jobs:
         name: blaze-image
         path: /tmp/blaze.tar
 
+  build-frontend:
+    needs: [ fmt, lint ]
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+    - name: Setup Node
+      uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4
+      with:
+        node-version: 21
+
+    - name: Build Frontend
+      run: make build-frontend
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@2b51285047da1547ffb1b2203d8be4c0af6b1f20 # v3
+
+    - name: Build and Export to Docker
+      uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 # v5
+      with:
+        context: modules/frontend
+        tags: blaze-frontend:latest
+        outputs: type=docker,dest=/tmp/blaze-frontend.tar
+
+    - name: Upload Blaze Image
+      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4
+      with:
+        name: blaze-frontend-image
+        path: /tmp/blaze-frontend.tar
+
   image-scan:
-    needs: build
+    needs: [ build, build-frontend ]
     runs-on: ubuntu-22.04
     permissions:
       security-events: write
+    strategy:
+      matrix:
+        image:
+        - blaze
+        - blaze-frontend
 
     steps:
-    - name: Download Blaze Image
+    - name: Download Image
       uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4
       with:
-        name: blaze-image
+        name: ${{ matrix.image }}-image
         path: /tmp
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Load Image
+      run: docker load --input /tmp/${{ matrix.image }}.tar
 
     - name: Check out Git repository
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
@@ -233,7 +265,7 @@ jobs:
     - name: Run Trivy Vulnerability Scanner
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: blaze:latest
+        image-ref: ${{ matrix.image }}:latest
         format: sarif
         output: trivy-results.sarif
         severity: 'CRITICAL,HIGH'
@@ -280,15 +312,15 @@ jobs:
       if: ${{ matrix.variant == 'distributed' }}
 
     - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
       if: ${{ matrix.variant == 'standalone' }}
 
     - name: Wait for Blaze 1
-      run: .github/scripts/wait-for-url.sh  http://localhost:8081/metrics
+      run: .github/scripts/wait-for-url.sh http://localhost:8081/metrics
       if: ${{ matrix.variant == 'distributed' }}
 
     - name: Wait for Blaze 2
-      run: .github/scripts/wait-for-url.sh  http://localhost:8082/metrics
+      run: .github/scripts/wait-for-url.sh http://localhost:8082/metrics
       if: ${{ matrix.variant == 'distributed' }}
 
     - name: Docker Logs
@@ -760,7 +792,7 @@ jobs:
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=2048 -p 8080:8080 -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Check Capability Statement
       run: .github/scripts/check-capability-statement.sh
@@ -822,7 +854,7 @@ jobs:
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Docker Logs
       run: docker logs blaze
@@ -870,7 +902,7 @@ jobs:
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Docker Logs
       run: docker logs blaze
@@ -911,7 +943,7 @@ jobs:
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Docker Logs
       run: docker logs blaze
@@ -946,7 +978,7 @@ jobs:
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT=10 -p 8080:8080 -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Docker Logs
       run: docker logs blaze
@@ -981,7 +1013,7 @@ jobs:
       run: docker run --rm -d -e JAVA_TOOL_OPTIONS=-Xmx1g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 blaze:latest
 
     - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Test Include
       run: .github/scripts/include-without-referential-integrity.sh
@@ -1007,7 +1039,7 @@ jobs:
       run: docker run --rm -d -e JAVA_TOOL_OPTIONS=-Xmx1g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 blaze:latest
 
     - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Test Chaining
       run: .github/scripts/chaining-without-referential-integrity.sh
@@ -1038,7 +1070,7 @@ jobs:
       run: docker run --rm -d -e JAVA_TOOL_OPTIONS=-Xmx1g -p 8080:8080 blaze:latest
 
     - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Load Data
       run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/bundle-with-references
@@ -1087,7 +1119,7 @@ jobs:
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Docker Logs
       run: docker logs blaze
@@ -1119,13 +1151,13 @@ jobs:
       run: docker-compose -f .github/openid-auth-test/docker-compose.yml up -d keycloak
 
     - name: Wait for Keycloak
-      run: .github/scripts/wait-for-url.sh  http://localhost:8090/health/ready
+      run: .github/scripts/wait-for-url.sh http://localhost:8090/health/ready
 
     - name: Run Blaze
       run: docker-compose -f .github/openid-auth-test/docker-compose.yml up -d blaze
 
     - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Docker Logs Keycloak
       run: docker-compose -f .github/openid-auth-test/docker-compose.yml logs keycloak
@@ -1160,7 +1192,7 @@ jobs:
       run: docker-compose -f .github/custom-search-parameters-test/docker-compose.yml up -d
 
     - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Docker Logs Blaze
       run: docker-compose -f .github/custom-search-parameters-test/docker-compose.yml logs blaze
@@ -1195,13 +1227,13 @@ jobs:
       run: docker-compose -f docs/data-sync/copy/docker-compose.yml -f .github/doc-copy-data-test/docker-compose.override.yml up -d
 
     - name: Wait for Source Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Load Data Into Source Blaze
       run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
 
     - name: Wait for Destination Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8082/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8082/health
 
     - name: Copy All Resources from Source to Destination
       run: scripts/copy-data.sh http://localhost:8080/fhir http://localhost:8082/fhir
@@ -1236,7 +1268,7 @@ jobs:
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_RESOURCE_CACHE_SIZE=0 -p 8080:8080 -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Generate Large Binary Resources (JSON and XML)
       run: .github/scripts/generate-large-binary-resource.sh
@@ -1251,12 +1283,17 @@ jobs:
       run:  test "2" = "$(curl -s http://localhost:8080/fhir/Binary | jq .total)"
 
   frontend-test:
-    needs: build
+    needs: [ build, build-frontend ]
     runs-on: ubuntu-22.04
 
     steps:
     - name: Check out Git repository
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+    - name: Setup Node
+      uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4
+      with:
+        node-version: 21
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -1270,23 +1307,64 @@ jobs:
     - name: Load Blaze Image
       run: docker load --input /tmp/blaze.tar
 
-    - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_FRONTEND=true -p 8080:8080 -v blaze-data:/app/data blaze:latest
+    - name: Download Blaze Frontend Image
+      uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4
+      with:
+        name: blaze-frontend-image
+        path: /tmp
 
-    - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+    - name: Load Blaze Frontend Image
+      run: docker load --input /tmp/blaze-frontend.tar
+
+      # https://bugs.webkit.org/show_bug.cgi?id=160504
+    - name: Add Blaze Localhost Entry needed for Webkit
+      run: |
+        sudo echo "127.0.0.1 blaze.localhost" | sudo tee -a /etc/hosts
+        sudo echo "127.0.0.1 keycloak.localhost" | sudo tee -a /etc/hosts
+
+    - name: Generate Ingress Certificates
+      run: make build-ingress
+
+    - name: Run Keycloak
+      run: docker-compose -f modules/frontend-e2e/docker-compose.yml up -d keycloak
+
+    - name: Sleep 20 Seconds
+      run: sleep 20
+
+    - name: Run Everything Else
+      run: docker-compose -f modules/frontend-e2e/docker-compose.yml up -d
+
+    - name: Sleep 30 Seconds
+      run: sleep 30
+
+    - name: Docker Logs
+      run: docker-compose -f modules/frontend-e2e/docker-compose.yml logs
 
     - name: Load Data
-      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+      run: modules/frontend-e2e/upload.sh
 
     - name: Check Frontend
-      run:  .github/scripts/check-frontend.sh
+      run: .github/scripts/check-frontend.sh
 
     - name: Check Column Family resource-as-of-index
-      run:  .github/scripts/admin-api/column-family-metadata.sh resource-as-of-index
+      run: .github/scripts/admin-api/column-family-metadata.sh resource-as-of-index
 
     - name: Check Column Family search-param-value-index
-      run:  .github/scripts/admin-api/column-family-metadata.sh search-param-value-index
+      run: .github/scripts/admin-api/column-family-metadata.sh search-param-value-index
+
+    - name: Download Patient Resources
+      run: modules/frontend-e2e/download-patient-resources.sh
+
+    - name: Install Playwright
+      run: make -C modules/frontend-e2e install
+
+    - name: Run Playwright Tests
+      run: make -C modules/frontend-e2e test
+
+    - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4
+      with:
+        name: playwright-report
+        path: modules/frontend-e2e/playwright-report/
 
   missing-resource-content-test:
     needs: build
@@ -1312,7 +1390,7 @@ jobs:
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v "$(pwd)/data:/app/data" blaze:latest
 
     - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Create Patient
       run: .github/scripts/create-patient-0.sh
@@ -1327,7 +1405,7 @@ jobs:
       run: docker start blaze
 
     - name: Wait for Blaze
-      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
     - name: Fetch Patient Expecting an Error
       run: .github/scripts/fetch-resource-0-with-missing-resource-content.sh
@@ -1376,10 +1454,10 @@ jobs:
       run: docker-compose -f .github/distributed-test/docker-compose.yml up -d
 
     - name: Wait for Blaze 1
-      run: .github/scripts/wait-for-url.sh  http://localhost:8081/metrics
+      run: .github/scripts/wait-for-url.sh http://localhost:8081/metrics
 
     - name: Wait for Blaze 2
-      run: .github/scripts/wait-for-url.sh  http://localhost:8082/metrics
+      run: .github/scripts/wait-for-url.sh http://localhost:8082/metrics
 
     - name: Docker Logs Zookepper
       run: docker-compose -f .github/distributed-test/docker-compose.yml logs zookeeper
@@ -1414,7 +1492,6 @@ jobs:
   push-image:
     if: github.event_name != 'pull_request' || (github.event.pull_request.base.repo.full_name == github.event.pull_request.head.repo.full_name)
     needs:
-    - build
     - image-scan
     - integration-test
     - integration-test-synthea-1000
@@ -1437,6 +1514,13 @@ jobs:
     permissions:
       packages: write
       contents: write
+    strategy:
+      matrix:
+        image:
+        - name: ${{ github.event.repository.name }}
+          context: .
+        - name: ${{ github.event.repository.name }}-frontend
+          context: modules/frontend
     env:
       dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
 
@@ -1445,19 +1529,30 @@ jobs:
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
     - name: Download Blaze Uberjar
+      if: ${{ matrix.image.context == '.' }}
       uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4
       with:
         name: blaze-uberjar
         path: target
 
-    - name: Download Blaze Image
+    - name: Setup Node
+      if: ${{ matrix.image.context == 'modules/frontend' }}
+      uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4
+      with:
+        node-version: 21
+
+    - name: Build Frontend
+      if: ${{ matrix.image.context == 'modules/frontend' }}
+      run: make build-frontend
+
+    - name: Download Image
       uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4
       with:
-        name: blaze-image
+        name: ${{ matrix.image.name }}-image
         path: /tmp
 
-    - name: Load Blaze Image
-      run: docker load --input /tmp/blaze.tar
+    - name: Load Image
+      run: docker load --input /tmp/${{ matrix.image.name }}.tar
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@68827325e0b33c7199eb31dd4e31fbe9023e06e3 # v3
@@ -1477,7 +1572,7 @@ jobs:
       uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5
       with:
         images: |
-          ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+          ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}
         tags: |
           type=schedule
           type=ref,event=branch
@@ -1488,7 +1583,7 @@ jobs:
     - name: Build and push to GHCR
       uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 # v5
       with:
-        context: .
+        context: ${{ matrix.image.context }}
         platforms: linux/amd64,linux/arm64
         push: true
         tags: ${{ steps.ghcr-meta.outputs.tags }}
@@ -1507,7 +1602,7 @@ jobs:
       uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81 # v5
       with:
         images: |
-          ${{ github.repository_owner }}/${{ github.event.repository.name }}
+          ${{ github.repository_owner }}/${{ matrix.image.name }}
         tags: |
           type=schedule
           type=ref,event=branch
@@ -1519,15 +1614,24 @@ jobs:
       if: ${{ env.dockerhub_username != '' }}
       uses: docker/build-push-action@2cdde995de11925a030ce8070c3d77a52ffcf1c0 # v5
       with:
-        context: .
+        context: ${{ matrix.image.context }}
         platforms: linux/amd64,linux/arm64
         push: true
         tags: ${{ steps.dockerhub-meta.outputs.tags }}
         labels: ${{ steps.dockerhub-meta.outputs.labels }}
 
+  release:
+    if: github.ref_type == 'tag'
+    needs:
+    - push-image
+    runs-on: ubuntu-22.04
+    permissions:
+      packages: write
+      contents: write
+
+    steps:
     - name: Release
       uses: softprops/action-gh-release@9d7c94cfd0a1f3ed45544c887983e9fa900f0564 # v2
-      if: startsWith(github.ref, 'refs/tags/')
       with:
         files: target/blaze-*-standalone.jar
 

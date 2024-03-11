@@ -6,6 +6,7 @@
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.core.protocols :refer [Datafiable]]
    [clojure.datafy :refer [datafy]]
+   [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -39,12 +40,38 @@
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `map?))
 
-  (testing "invalid caches"
+  (testing "invalid connect timeout"
     (given-thrown (ig/init {:blaze/http-client {:connect-timeout ::invalid}})
       :key := :blaze/http-client
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `pos-int?
-      [:explain ::s/problems 0 :val] := ::invalid)))
+      [:explain ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid trust store"
+    (given-thrown (ig/init {:blaze/http-client {:trust-store ::invalid}})
+      :key := :blaze/http-client
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `string?
+      [:explain ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid trust store password"
+    (given-thrown (ig/init {:blaze/http-client {:trust-store-pass ::invalid}})
+      :key := :blaze/http-client
+      :reason := ::ig/build-failed-spec
+      [:explain ::s/problems 0 :pred] := `string?
+      [:explain ::s/problems 0 :val] := ::invalid))
+
+  (testing "default config"
+    (with-system [{:blaze/keys [http-client]} {:blaze/http-client {}}]
+      (is (s/valid? :blaze/http-client http-client))))
+
+  (testing "nil trust store"
+    (with-system [{:blaze/keys [http-client]} {:blaze/http-client {:trust-store nil}}]
+      (is (s/valid? :blaze/http-client http-client))))
+
+  (testing "nil trust store password"
+    (with-system [{:blaze/keys [http-client]} {:blaze/http-client {:trust-store-pass nil}}]
+      (is (s/valid? :blaze/http-client http-client)))))
 
 (deftest http-client-test
   (testing "without options"
@@ -55,8 +82,11 @@
   (testing "with 2 seconds connect timeout"
     (with-system [{:blaze/keys [http-client]} {:blaze/http-client {:connect-timeout 2000}}]
       (given (datafy http-client)
-        :connect-timeout := (time/millis 2000)))))
+        :connect-timeout := (time/millis 2000))))
 
-(deftest spec-test
-  (with-system [{:blaze/keys [http-client]} {:blaze/http-client {}}]
-    (is (s/valid? :blaze/http-client http-client))))
+  (testing "with trust store"
+    (with-system [{:blaze/keys [http-client]}
+                  {:blaze/http-client
+                   {:trust-store (str (io/resource "blaze/http_client/trust-store.p12"))
+                    :trust-store-pass "foobar"}}]
+      (is (s/valid? :blaze/http-client http-client)))))
