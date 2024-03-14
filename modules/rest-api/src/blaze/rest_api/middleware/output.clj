@@ -1,7 +1,9 @@
 (ns blaze.rest-api.middleware.output
   "JSON/XML serialization middleware."
   (:require
+   [blaze.anomaly :as ba]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.handler.util :as handler-util]
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [jsonista.core :as j]
@@ -27,11 +29,17 @@
   (with-open [_ (prom/timer generate-duration-seconds "json")]
     (fhir-spec/unform-json body)))
 
-(defn- generate-xml* [body]
+(defn- generate-xml** [body]
   (let [out (ByteArrayOutputStream.)]
     (with-open [writer (io/writer out)]
       (xml/emit (fhir-spec/unform-xml body) writer))
     (.toByteArray out)))
+
+(defn- generate-xml* [body]
+  (try
+    (generate-xml** body)
+    (catch Throwable e
+      (generate-xml** (handler-util/operation-outcome (ba/anomaly e))))))
 
 (defn- generate-xml [body]
   (log/trace "generate XML")

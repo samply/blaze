@@ -35,6 +35,11 @@
    (fn [_ respond _]
      (respond (ring/status 304)))))
 
+(defn- special-resource-handler [resource]
+  (wrap-output
+   (fn [_ respond _]
+     (respond (ring/response resource)))))
+
 (defn- parse-json [body]
   (fhir-spec/conform-json (fhir-spec/parse-json body)))
 
@@ -195,7 +200,12 @@
   (testing "not modified"
     (given (call resource-handler-304 {:headers {"accept" "application/fhir+xml"}})
       [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
-      :body := nil)))
+      :body := nil))
+
+  (testing "failing XML emit"
+    (given (call (special-resource-handler {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"foo\u001Ebar"}) {:headers {"accept" "application/fhir+xml"}})
+      [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
+      [:body parse-xml :issue 0 :diagnostics] := "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))
 
 (deftest not-acceptable-test
   (is (nil? (call resource-handler-200 {:headers {"accept" "text/plain"}}))))

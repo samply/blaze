@@ -818,6 +818,7 @@
 
 (declare markdown?)
 (declare markdown)
+(declare xml->Markdown)
 
 (def-primitive-type Markdown [value] :hash-num 16)
 

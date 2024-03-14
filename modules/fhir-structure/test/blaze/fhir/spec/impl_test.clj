@@ -90,12 +90,12 @@
            [{:key :fhir/string
              :spec-form `type/string?}
             {:key :fhir.json/string
-             :spec-form `(specs/json-regex-primitive "[ \\r\\n\\t\\S]+" type/string)}
+             :spec-form `(specs/json-regex-primitive "[\\r\\n\\t\\u0020-\\uFFFF]+" type/string)}
             {:key :fhir.xml/string
              :spec-form
              `(s2/and
                xml/element?
-               (fn [~'e] (xml/value-matches? "[ \\r\\n\\t\\S]+" ~'e))
+               (fn [~'e] (xml/value-matches? "[\\r\\n\\t\\u0020-\\uFFFF]+" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                (s2/conformer type/xml->String type/to-xml))}
@@ -127,12 +127,12 @@
            [{:key :fhir/uri
              :spec-form `type/uri?}
             {:key :fhir.json/uri
-             :spec-form `(specs/json-regex-primitive "\\S*" type/uri)}
+             :spec-form `(specs/json-regex-primitive "[\\u0021-\\uFFFF]*" type/uri)}
             {:key :fhir.xml/uri
              :spec-form
              `(s2/and
                xml/element?
-               (fn [~'e] (xml/value-matches? "\\S*" ~'e))
+               (fn [~'e] (xml/value-matches? "[\\u0021-\\uFFFF]*" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                (s2/conformer type/xml->Uri type/to-xml))}
@@ -145,12 +145,12 @@
            [{:key :fhir/canonical
              :spec-form `type/canonical?}
             {:key :fhir.json/canonical
-             :spec-form `(specs/json-regex-primitive "\\S*" type/canonical)}
+             :spec-form `(specs/json-regex-primitive "[\\u0021-\\uFFFF]*" type/canonical)}
             {:key :fhir.xml/canonical
              :spec-form
              `(s2/and
                xml/element?
-               (fn [~'e] (xml/value-matches? "\\S*" ~'e))
+               (fn [~'e] (xml/value-matches? "[\\u0021-\\uFFFF]*" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                (s2/conformer type/xml->Canonical type/to-xml))}
@@ -181,12 +181,12 @@
            [{:key :fhir/code
              :spec-form `type/code?}
             {:key :fhir.json/code
-             :spec-form `(specs/json-regex-primitive "[^\\s]+(\\s[^\\s]+)*" type/code)}
+             :spec-form `(specs/json-regex-primitive "[\\u0021-\\uFFFF]+([ \\t\\n\\r][\\u0021-\\uFFFF]+)*" type/code)}
             {:key :fhir.xml/code
              :spec-form
              `(s2/and
                xml/element?
-               (fn [~'e] (xml/value-matches? "[^\\s]+(\\s[^\\s]+)*" ~'e))
+               (fn [~'e] (xml/value-matches? "[\\u0021-\\uFFFF]+([ \\t\\n\\r][\\u0021-\\uFFFF]+)*" ~'e))
                (s2/conformer xml/remove-character-content xml/set-extension-tag)
                (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
                (s2/conformer type/xml->Code type/to-xml))}
@@ -420,11 +420,11 @@
   (testing "XML representation of Extension"
     (given (group-by :key (impl/struct-def->spec-def (complex-type "Extension")))
       [:fhir.Extension/url 0 :spec-form regexes->str]
-      := `(s2/and string? (specs/regex "\\S*" impl/intern-string))
+      := `(s2/and string? (specs/regex "[\\u0021-\\uFFFF]*" impl/intern-string))
       [:fhir.json.Extension/url 0 :spec-form regexes->str]
-      := `(s2/and string? (specs/regex "\\S*" impl/intern-string))
+      := `(s2/and string? (specs/regex "[\\u0021-\\uFFFF]*" impl/intern-string))
       [:fhir.xml.Extension/url 0 :spec-form regexes->str]
-      := `(s2/and string? (specs/regex "\\S*" impl/intern-string))
+      := `(s2/and string? (specs/regex "[\\u0021-\\uFFFF]*" impl/intern-string))
       [:fhir.xml.Extension/url 0 :representation] := :xmlAttr))
 
   (testing "XML representation of Coding"
@@ -461,14 +461,14 @@
   (testing "JSON representation of Quantity.unit"
     (given (group-by :key (impl/struct-def->spec-def (complex-type "Quantity")))
       [:fhir.json.Quantity/unit 0 :spec-form regexes->str]
-      := `(specs/json-regex-primitive "[ \\r\\n\\t\\S]+" type/intern-string)))
+      := `(specs/json-regex-primitive "[\\r\\n\\t\\u0020-\\uFFFF]+" type/intern-string)))
 
   (testing "XML representation of Quantity.unit"
     (given (group-by :key (impl/struct-def->spec-def (complex-type "Quantity")))
       [:fhir.xml.Quantity/unit 0 :spec-form regexes->str]
       := `(s2/and
            xml/element?
-           (fn [~'e] (xml/value-matches? "[ \\r\\n\\t\\S]+" ~'e))
+           (fn [~'e] (xml/value-matches? "[\\r\\n\\t\\u0020-\\uFFFF]+" ~'e))
            (s2/conformer xml/remove-character-content xml/set-extension-tag)
            (s2/schema {:content (s2/coll-of :fhir.xml/Extension)})
            (s2/conformer type/xml->InternedString type/to-xml))))

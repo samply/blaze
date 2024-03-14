@@ -18,4 +18,6 @@
   {:level :off}
 
   :unused-private-var
-  {:exclude [blaze.fhir.spec.type/at-utc]}}}
+  {:exclude [blaze.fhir.spec.type/at-utc]}}
+
+ :exclude-files "src/blaze/fhir/spec/type.clj"}

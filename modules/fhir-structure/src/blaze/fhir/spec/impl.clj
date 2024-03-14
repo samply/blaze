@@ -52,7 +52,7 @@
   (intern/intern-value identity))
 
 (def uri-matcher-form
-  `(specs/regex #"\S*" intern-string))
+  `(specs/regex #"[\u0021-\uFFFF]*" intern-string))
 
 (def conform-xml-value
   "Takes the value out of an XML element."
@@ -172,7 +172,7 @@
       :spec-form
       (case path
         ("Quantity.unit" "Coding.version" "Coding.display" "CodeableConcept.text")
-        `(specs/json-regex-primitive #"[ \r\n\t\S]+" type/intern-string)
+        `(specs/json-regex-primitive #"[\r\n\t\u0020-\uFFFF]+" type/intern-string)
         (keyword "fhir.json" (:code type)))}
      (cond->
       {:key (path-parts->key' "fhir.xml" (split-path path))
@@ -184,7 +184,7 @@
        :spec-form
        (case path
          ("Quantity.unit" "Coding.version" "Coding.display" "CodeableConcept.text")
-         (xml/primitive-xml-form #"[ \r\n\t\S]+" `type/xml->InternedString)
+         (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/xml->InternedString)
          (keyword (if rep "fhir.json" "fhir.xml") (:code type)))}
        rep
        (assoc :representation rep))
@@ -679,20 +679,20 @@
     (case name
       "boolean" `(specs/json-pred-primitive boolean? type/boolean)
       "integer" `(specs/json-pred-primitive int? type/integer)
-      "string" `(specs/json-regex-primitive ~pattern type/string)
+      "string" `(specs/json-regex-primitive #"[\r\n\t\u0020-\uFFFF]+" type/string)
       "decimal" `(specs/json-pred-primitive decimal-or-int? type/decimal)
-      "uri" `(specs/json-regex-primitive ~pattern type/uri)
-      "url" `(specs/json-regex-primitive ~pattern type/url)
-      "canonical" `(specs/json-regex-primitive ~pattern type/canonical)
+      "uri" `(specs/json-regex-primitive #"[\u0021-\uFFFF]*" type/uri)
+      "url" `(specs/json-regex-primitive #"[\u0021-\uFFFF]*" type/url)
+      "canonical" `(specs/json-regex-primitive #"[\u0021-\uFFFF]*" type/canonical)
       "base64Binary" `(specs/json-regex-primitive ~pattern type/base64Binary)
       "instant" `(specs/json-regex-primitive ~pattern type/instant)
       "date" `(specs/json-regex-primitive ~pattern type/date)
       "dateTime" `(specs/json-regex-primitive ~pattern type/dateTime)
       "time" `(specs/json-regex-primitive ~pattern type/time)
-      "code" `(specs/json-regex-primitive ~pattern type/code)
+      "code" `(specs/json-regex-primitive #"[\u0021-\uFFFF]+([ \t\n\r][\u0021-\uFFFF]+)*" type/code)
       "oid" `(specs/json-regex-primitive ~pattern type/oid)
       "id" `(specs/json-regex-primitive ~pattern type/id)
-      "markdown" `(specs/json-regex-primitive ~pattern type/markdown)
+      "markdown" `(specs/json-regex-primitive #"[\r\n\t\u0020-\uFFFF]+" type/markdown)
       "unsignedInt" `(specs/json-pred-primitive int? type/unsignedInt)
       "positiveInt" `(specs/json-pred-primitive int? type/positiveInt)
       "uuid" `(specs/json-regex-primitive ~pattern type/uuid)
@@ -700,11 +700,17 @@
       (throw (ex-info (format "Unknown primitive type `%s`." name) {})))))
 
 (defn- xml-spec-form [name {:keys [element]}]
-  (let [regex (type-regex (value-type element))
+  (let [pattern (type-regex (value-type element))
         constructor (str "xml->" (su/capital name))]
     (case name
+      "string" (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/xml->String)
+      "uri" (xml/primitive-xml-form #"[\u0021-\uFFFF]*" `type/xml->Uri)
+      "url" (xml/primitive-xml-form #"[\u0021-\uFFFF]*" `type/xml->Url)
+      "canonical" (xml/primitive-xml-form #"[\u0021-\uFFFF]*" `type/xml->Canonical)
+      "code" (xml/primitive-xml-form #"[\u0021-\uFFFF]+([ \t\n\r][\u0021-\uFFFF]+)*" `type/xml->Code)
+      "markdown" (xml/primitive-xml-form #"[\r\n\t\u0020-\uFFFF]+" `type/xml->Markdown)
       "xhtml" `(s/and xml/element? (s/conformer type/xml->Xhtml type/to-xml))
-      (xml/primitive-xml-form regex (symbol "blaze.fhir.spec.type" constructor)))))
+      (xml/primitive-xml-form pattern (symbol "blaze.fhir.spec.type" constructor)))))
 
 (defn- cbor-spec-form [name _]
   (case name

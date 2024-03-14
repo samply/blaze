@@ -487,7 +487,7 @@
     (-lower-bound (.atStartOfDay date)))
   LocalDateTime
   (-lower-bound [date-time]
-    (-lower-bound (.atOffset date-time (ZoneOffset/UTC))))
+    (-lower-bound (.atOffset date-time ZoneOffset/UTC)))
   OffsetDateTime
   (-lower-bound [date-time]
     (.toEpochSecond date-time)))
@@ -527,7 +527,7 @@
     (-upper-bound (.atTime date 23 59 59)))
   LocalDateTime
   (-upper-bound [date-time]
-    (-upper-bound (.atOffset date-time (ZoneOffset/UTC))))
+    (-upper-bound (.atOffset date-time ZoneOffset/UTC)))
   OffsetDateTime
   (-upper-bound [date-time]
     (.toEpochSecond date-time)))
