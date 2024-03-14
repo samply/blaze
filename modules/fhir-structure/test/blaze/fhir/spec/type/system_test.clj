@@ -305,7 +305,7 @@
       #system/date-time"2020-01"
       #system/date-time"2020-01-01"
       (system/date-time 2020 1 1 0 0 0 0)
-      (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)))
+      (system/date-time 2020 1 1 0 0 0 0 ZoneOffset/UTC))
 
     (are [x] (not (system/date-time? x))
       nil
@@ -379,14 +379,14 @@
           nil (system/date-time 2020 1 1 0 0 1 0) nil?
           nil nil nil?
 
-          (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) true?
-          (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) false?
-          (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) nil nil?
-          (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) false?
-          (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) true?
-          (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) nil nil?
-          nil (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) nil?
-          nil (system/date-time 2020 1 1 0 0 1 0 (ZoneOffset/UTC)) nil?
+          (system/date-time 2020 1 1 0 0 0 0 ZoneOffset/UTC) (system/date-time 2020 1 1 0 0 0 0 ZoneOffset/UTC) true?
+          (system/date-time 2020 1 1 0 0 0 0 ZoneOffset/UTC) (system/date-time 2020 1 1 0 0 1 0 ZoneOffset/UTC) false?
+          (system/date-time 2020 1 1 0 0 0 0 ZoneOffset/UTC) nil nil?
+          (system/date-time 2020 1 1 0 0 1 0 ZoneOffset/UTC) (system/date-time 2020 1 1 0 0 0 0 ZoneOffset/UTC) false?
+          (system/date-time 2020 1 1 0 0 1 0 ZoneOffset/UTC) (system/date-time 2020 1 1 0 0 1 0 ZoneOffset/UTC) true?
+          (system/date-time 2020 1 1 0 0 1 0 ZoneOffset/UTC) nil nil?
+          nil (system/date-time 2020 1 1 0 0 0 0 ZoneOffset/UTC) nil?
+          nil (system/date-time 2020 1 1 0 0 1 0 ZoneOffset/UTC) nil?
           nil nil nil?))
 
       (testing "with date"
@@ -405,8 +405,8 @@
           #system/date-time"2020-01" #system/date-time"2020" nil?
           #system/date-time"2020-01" #system/date-time"2020-01-01" nil?
           #system/date-time"2020-01-01" #system/date-time"2020-01" nil?
-          (system/date-time 2020 1 1 0 0 0 0) (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) nil?
-          (system/date-time 2020 1 1 0 0 0 0 (ZoneOffset/UTC)) (system/date-time 2020 1 1 0 0 0 0) nil?))
+          (system/date-time 2020 1 1 0 0 0 0) (system/date-time 2020 1 1 0 0 0 0 ZoneOffset/UTC) nil?
+          (system/date-time 2020 1 1 0 0 0 0 ZoneOffset/UTC) (system/date-time 2020 1 1 0 0 0 0) nil?))
 
       (testing "with date"
         (are [a b pred] (pred (system/equals a b))
