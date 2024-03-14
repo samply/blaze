@@ -22,7 +22,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cljfmt: 0.11.2
+        cljfmt: 0.12.0
 
     - name: Check out Git repository
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
@@ -37,7 +37,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        clj-kondo: '2023.12.15'
+        clj-kondo: '2024.03.13'
 
     - name: Check out Git repository
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
@@ -111,7 +111,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1403'
+        cli: '1.11.2.1446'
 
     - name: Check out Git repository
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
@@ -147,7 +147,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1403'
+        cli: '1.11.2.1446'
 
     - name: Check out Git repository
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
@@ -175,7 +175,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1403'
+        cli: '1.11.2.1446'
 
     - name: Check out Git repository
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
@@ -1057,7 +1057,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1403'
+        cli: '1.11.2.1446'
 
     - name: Check out Git repository
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
@@ -1346,7 +1346,7 @@ jobs:
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@master
       with:
-        cli: '1.11.1.1403'
+        cli: '1.11.2.1446'
 
     - name: Check out Git repository
       uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4

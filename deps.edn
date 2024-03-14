@@ -53,7 +53,7 @@
   {:mvn/version "1.11.2"}
 
   org.clojure/tools.reader
-  {:mvn/version "1.4.0"}
+  {:mvn/version "1.4.1"}
 
   org.slf4j/slf4j-nop
   {:mvn/version "2.0.12"}}
@@ -62,7 +62,7 @@
  {:build
   {:deps
    {io.github.clojure/tools.build
-    {:git/tag "v0.9.5" :git/sha "24f2894"}}
+    {:git/tag "v0.10.0" :git/sha "3a2c484"}}
    :ns-default build}
 
   :test
@@ -95,7 +95,7 @@
   :outdated
   {:replace-deps
    {com.github.liquidz/antq
-    {:mvn/version "2.5.1109"}
+    {:mvn/version "2.8.1185"}
 
     org.slf4j/slf4j-nop
     {:mvn/version "2.0.9"}}
