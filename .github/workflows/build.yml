@@ -517,6 +517,9 @@ jobs:
     - name: Download Observations using _elements=subject
       run: .github/scripts/download-observations-elements.sh
 
+    - name: Download Observations of all Encounters using ID's
+      run: .github/scripts/download-observations-of-all-encounters.sh
+
     - name: Search Observation _lastUpdated
       run: .github/scripts/search-patient-last-updated.sh
 
