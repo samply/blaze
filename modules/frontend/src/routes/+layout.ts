@@ -1,4 +1,4 @@
-import type { CapabilityStatement } from '../fhir.js';
+import type { CapabilityStatement } from 'fhir/r4';
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 

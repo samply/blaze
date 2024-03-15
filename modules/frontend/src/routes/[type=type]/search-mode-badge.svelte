@@ -1,24 +1,22 @@
 <script lang="ts">
-	import { SearchEntryMode } from '../../fhir.js';
+	export let searchMode: 'match' | 'include' | 'outcome' | 'unknown';
 
-	export let searchMode: SearchEntryMode;
-
-	function modeBgColor(mode: SearchEntryMode): string {
+	function modeBgColor(mode: string): string {
 		switch (mode) {
-			case SearchEntryMode.match:
+			case 'match':
 				return 'bg-green-100';
-			case SearchEntryMode.include:
+			case 'include':
 				return 'bg-fuchsia-100';
 			default:
 				return 'bg-red-100';
 		}
 	}
 
-	function modeTextColor(mode: SearchEntryMode): string {
+	function modeTextColor(mode: string): string {
 		switch (mode) {
-			case SearchEntryMode.match:
+			case 'match':
 				return 'text-green-800';
-			case SearchEntryMode.include:
+			case 'include':
 				return 'text-fuchsia-800';
 			default:
 				return 'text-red-800';

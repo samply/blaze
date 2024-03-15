@@ -14,7 +14,7 @@
    [blaze.interaction.history.type]
    [blaze.interaction.history.util-spec]
    [blaze.interaction.test-util :refer [wrap-error]]
-   [blaze.middleware.fhir.db :refer [wrap-db]]
+   [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
@@ -39,16 +39,33 @@
 
 (def router
   (reitit/router
-   [["/Patient" {:name :Patient/type}]]
+   [["/Patient"
+     {:fhir.resource/type "Patient"
+      :name :Patient/type}]
+    ["/Patient/_history"
+     {:fhir.resource/type "Patient"
+      :name :Patient/history}]
+    ["/Patient/__history-page"
+     {:fhir.resource/type "Patient"
+      :name :Patient/history-page}]]
    {:syntax :bracket
     :path context-path}))
 
-(def match
+(def default-match
   (reitit/map->Match
    {:data
     {:blaze/base-url ""
-     :fhir.resource/type "Patient"}
+     :fhir.resource/type "Patient"
+     :name :Patient/history}
     :path (str context-path "/Patient/_history")}))
+
+(def page-match
+  (reitit/map->Match
+   {:data
+    {:blaze/base-url ""
+     :fhir.resource/type "Patient"
+     :name :Patient/history-page}
+    :path (str context-path "/Patient/__history-page")}))
 
 (deftest init-test
   (testing "nil config"
@@ -85,20 +102,28 @@
       (assoc-in [::tx-log/local :clock] (ig/ref :blaze.test/system-clock))))
 
 (defn wrap-defaults [handler]
-  (fn [request]
+  (fn [{::reitit/keys [match] :as request}]
     (handler
-     (assoc request
-            :blaze/base-url base-url
-            ::reitit/router router
-            ::reitit/match match))))
+     (cond-> (assoc request
+                    :blaze/base-url base-url
+                    ::reitit/router router)
+       (nil? match)
+       (assoc ::reitit/match default-match)))))
 
-(defmacro with-handler [[handler-binding] & more]
+(defn wrap-db [handler node]
+  (fn [{::reitit/keys [match] :as request}]
+    (if (= page-match match)
+      ((db/wrap-snapshot-db handler node 100) request)
+      ((db/wrap-db handler node 100) request))))
+
+(defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
                          handler# :blaze.interaction.history/type} config]
        ~txs
-       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# 100)
-                                  wrap-error)]
+       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+                                  wrap-error)
+             ~(or node-binding '_) node#]
          ~@body))))
 
 (deftest handler-test
@@ -118,7 +143,8 @@
         (testing "the bundle type is history"
           (is (= #fhir/code"history" (:type body))))
 
-        (is (= #fhir/unsignedInt 0 (:total body)))
+        (testing "the total count is zero"
+          (is (= #fhir/unsignedInt 0 (:total body))))
 
         (is (empty? (:entry body))))))
 
@@ -126,7 +152,7 @@
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (let [{:keys [status body]}
+      (let [{:keys [status] {[first-entry] :entry :as body} :body}
             @(handler {})]
 
         (is (= 200 status))
@@ -140,25 +166,91 @@
         (testing "the bundle type is history"
           (is (= #fhir/code"history" (:type body))))
 
-        (is (= #fhir/unsignedInt 1 (:total body)))
+        (testing "the total count is 1"
+          (is (= #fhir/unsignedInt 1 (:total body))))
 
         (testing "has self link"
-          (is (= (str base-url context-path "/Patient/_history?__t=1&__page-t=1&__page-id=0")
+          (is (= (str base-url context-path "/Patient/_history")
                  (link-url body "self"))))
+
+        (testing "has no next link"
+          (is (nil? (link-url body "next"))))
 
         (testing "the bundle contains one entry"
           (is (= 1 (count (:entry body)))))
 
-        (given (-> body :entry first)
-          :fullUrl := (str base-url context-path "/Patient/0")
-          [:request :method] := #fhir/code"PUT"
-          [:request :url] := "Patient/0"
-          [:resource :id] := "0"
-          [:resource :fhir/type] := :fhir/Patient
-          [:resource :meta :versionId] := #fhir/id"1"
-          [:response :status] := "201"
-          [:response :etag] := "W/\"1\""
-          [:response :lastModified] := Instant/EPOCH))))
+        (testing "the entry has the right fullUrl"
+          (is (= (str base-url context-path "/Patient/0")
+                 (:fullUrl first-entry))))
+
+        (testing "the entry has the right resource"
+          (given (:resource first-entry)
+            :fhir/type := :fhir/Patient
+            :id := "0"
+            [:meta :versionId] := #fhir/id"1"
+            [:meta :lastUpdated] := Instant/EPOCH))
+
+        (testing "the second entry has the right request"
+          (given (:request first-entry)
+            :method := #fhir/code"PUT"
+            :url := "Patient/0"))
+
+        (testing "the entry has the right response"
+          (given (:response first-entry)
+            :status := "201"
+            :etag := "W/\"1\""
+            :lastModified := Instant/EPOCH)))))
+
+  (testing "with two patients in one transaction"
+    (with-handler [handler node]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+      (let [{:keys [status] {[first-entry] :entry :as body} :body}
+            @(handler {:params {"_count" "1"}})]
+
+        (is (= 200 status))
+
+        (testing "the total count is 2"
+          (is (= #fhir/unsignedInt 2 (:total body))))
+
+        (testing "has a self link"
+          (is (= (str base-url context-path "/Patient/_history?_count=1")
+                 (link-url body "self"))))
+
+        (testing "has a next link"
+          (is (= (str base-url context-path "/Patient/__history-page?_count=1&__t=1&__page-t=1&__page-id=1")
+                 (link-url body "next"))))
+
+        (testing "the entry has the right fullUrl"
+          (is (= (str base-url context-path "/Patient/0")
+                 (:fullUrl first-entry)))))
+
+      (testing "calling the second page"
+        (testing "updating the patient will not affect the second page"
+          @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]))
+
+        (let [{:keys [status] {[first-entry] :entry :as body} :body}
+              @(handler
+                {::reitit/match page-match
+                 :params {"_count" "1" "__t" "1" "__page-t" "1"
+                          "__page-type" "Patient" "__page-id" "1"}})]
+
+          (is (= 200 status))
+
+          (testing "the total count is 2"
+            (is (= #fhir/unsignedInt 2 (:total body))))
+
+          (testing "has a self link"
+            (is (= (str base-url context-path "/Patient/_history?_count=1")
+                   (link-url body "self"))))
+
+          (testing "has no next link"
+            (is (nil? (link-url body "next"))))
+
+          (testing "the entry has the right fullUrl"
+            (is (= (str base-url context-path "/Patient/1")
+                   (:fullUrl first-entry))))))))
 
   (testing "with two versions, using since"
     (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [system-clock]
@@ -171,12 +263,12 @@
             _ (Thread/sleep 2000)
             _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
                                         :gender #fhir/code"female"}]])
-            handler (-> handler wrap-defaults (wrap-db node 100) wrap-error)
+            handler (-> handler wrap-defaults (wrap-db node) wrap-error)
             {:keys [body]}
             @(handler
-              {:query-params {"_since" (str since)}})]
+              {:params {"_since" (str since)}})]
 
-        (testing "the total count is one"
+        (testing "the total count is 1"
           (is (= #fhir/unsignedInt 1 (:total body))))
 
         (testing "it shows the second version"

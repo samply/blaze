@@ -39,6 +39,9 @@
 (s/def :blaze.db.tx-cmd/if-none-match
   (s/or :any #{"*"} :t :blaze.db/t))
 
+(s/def :blaze.db.tx-cmd/check-refs
+  boolean?)
+
 (defmulti tx-cmd "Transaction command" :op)
 
 (defmethod tx-cmd "create" [_]
@@ -69,7 +72,8 @@
   (s/keys :req-un [:blaze.db.tx-cmd/op
                    :blaze.db.tx-cmd/type
                    :blaze.resource/id]
-          :opt-un [:blaze.db.tx-cmd/if-match]))
+          :opt-un [:blaze.db.tx-cmd/if-match
+                   :blaze.db.tx-cmd/check-refs]))
 
 (s/def :blaze.db/tx-cmd
   (s/multi-spec tx-cmd :op))

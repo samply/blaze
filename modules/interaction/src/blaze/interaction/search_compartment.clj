@@ -46,12 +46,10 @@
   (into [] (entries-xf context) resources))
 
 (defn- self-link
-  [{:keys [match] :blaze/keys [base-url db]
-    {:keys [page-offset] :as params} :params} clauses]
+  [{:keys [match params] :blaze/keys [base-url]} clauses]
   {:fhir/type :fhir.Bundle/link
    :relation "self"
-   :url (nav/url base-url match params clauses (d/t db)
-                 {"__page-offset" page-offset})})
+   :url (nav/url base-url match params clauses)})
 
 (defn- next-link-offset [{:keys [page-offset]} entries]
   {"__page-offset" (+ page-offset (dec (count entries)))})

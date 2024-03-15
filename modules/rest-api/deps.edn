@@ -16,11 +16,8 @@
    :exclusions [buddy/buddy-sign]}
 
   metosin/muuntaja
-  {:mvn/version "0.6.8"
-   :exclusions [com.cognitect/transit-clj]}
-
-  org.clojure/data.xml
-  {:mvn/version "0.2.0-alpha8"}}
+  {:mvn/version "0.6.10"
+   :exclusions [com.cognitect/transit-clj]}}
 
  :aliases
  {:test

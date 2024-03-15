@@ -17,10 +17,10 @@
   {:mvn/version "3.1.8"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
-  {:mvn/version "2.16.1"}
+  {:mvn/version "2.17.0"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-xml
-  {:mvn/version "2.16.1"}
+  {:mvn/version "2.17.0"}
 
   com.taoensso/timbre
   {:mvn/version "5.2.1"}
@@ -33,7 +33,7 @@
    :git/sha "5c86612d50ab523e48a3937d9d437116a1964bd6"}
 
   org.clojure/data.xml
-  {:mvn/version "0.2.0-alpha8"}}
+  {:mvn/version "0.2.0-alpha9"}}
 
  :deps/prep-lib
  {:alias :build
@@ -44,7 +44,7 @@
  {:build
   {:deps
    {io.github.clojure/tools.build
-    {:git/tag "v0.9.5" :git/sha "24f2894"}}
+    {:git/tag "v0.10.0" :git/sha "3a2c484"}}
    :ns-default build}
 
   :test

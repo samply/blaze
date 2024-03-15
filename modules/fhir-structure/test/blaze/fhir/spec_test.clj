@@ -1,6 +1,5 @@
 (ns blaze.fhir.spec-test
   (:require
-   [blaze.anomaly :as ba]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec-spec]
    [blaze.fhir.spec.generators :as fg]
@@ -8,8 +7,10 @@
    [blaze.fhir.spec.impl.xml-spec]
    [blaze.fhir.spec.spec]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.structure-definition-repo]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.alpha.spec :as s2]
+   [clojure.data.xml :as xml]
    [clojure.data.xml.name :as xml-name]
    [clojure.data.xml.prxml :as prxml]
    [clojure.spec.alpha :as s]
@@ -18,6 +19,7 @@
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [juxt.iota :refer [given]])
   (:import
    [java.nio.charset StandardCharsets]
@@ -29,6 +31,10 @@
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)
+
+(def structure-definition-repo
+  (:blaze.fhir/structure-definition-repo
+   (ig/init {:blaze.fhir/structure-definition-repo {}})))
 
 (deftest parse-json-test
   (testing "fails on unexpected end-of-input"
@@ -182,8 +188,15 @@
       [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `{}`. Expected type is `Resource`."
       [:fhir/issues 0 :fhir.issues/expression] := "entry[0].resource"))
 
-  (testing "missing resourceType"
-    (is (ba/anomaly? (fhir-spec/conform-json {}))))
+  (testing "Observation with invalid control character in value"
+    (given (fhir-spec/conform-json
+            {:resourceType "Observation"
+             :valueString "foo\u001Ebar"})
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid JSON representation of a resource."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `foo\u001Ebar`. Expected type is `string`, regex `[\\r\\n\\t\\u0020-\\uFFFF]+`."
+      [:fhir/issues 0 :fhir.issues/expression] := "valueString"))
 
   (testing "empty patient resource"
     (testing "gets type annotated"
@@ -282,6 +295,15 @@
       ::anom/message := "Invalid XML representation of a resource."
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `<:xmlns.http%3A%2F%2Fhl7.org%2Ffhir/resource>foo</:xmlns.http%3A%2F%2Fhl7.org%2Ffhir/resource>`. Expected type is `Resource`."))
+
+  (testing "Observation with invalid control character in value"
+    (given (conform-xml
+            [::f/Observation {:xmlns "http://hl7.org/fhir"}
+             [::f/valueString {:value "foo\u001Ebar"}]])
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Invalid XML representation of a resource."
+      [:fhir/issues 0 :fhir.issues/code] := "invariant"
+      [:fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `foo\u001Ebar`. Expected type is `string`, regex `[\\r\\n\\t\\u0020-\\uFFFF]+`."))
 
   (testing "empty patient resource"
     (testing "gets type annotated"
@@ -600,12 +622,12 @@
       [:fhir/issues 0 :fhir.issues/severity] := "error"
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
-      "Error on value ``. Expected type is `code`, regex `[^\\s]+(\\s[^\\s]+)*`."
+      "Error on value ``. Expected type is `code`, regex `[\\u0021-\\uFFFF]+([ \\t\\n\\r][\\u0021-\\uFFFF]+)*`."
       [:fhir/issues 0 :fhir.issues/expression] := "name[0].use"
       [:fhir/issues 1 :fhir.issues/severity] := "error"
       [:fhir/issues 1 :fhir.issues/code] := "invariant"
       [:fhir/issues 1 :fhir.issues/diagnostics] :=
-      "Error on value `[]`. Expected type is `string`, regex `[ \\r\\n\\t\\S]+`."
+      "Error on value `[]`. Expected type is `string`, regex `[\\r\\n\\t\\u0020-\\uFFFF]+`."
       [:fhir/issues 1 :fhir.issues/expression] := "name[0].text"))
 
   (testing "invalid backbone-element"
@@ -654,7 +676,7 @@
       [:fhir/issues 0 :fhir.issues/severity] := "error"
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
-      "Error on value `1`. Expected type is `code`, regex `[^\\s]+(\\s[^\\s]+)*`."
+      "Error on value `1`. Expected type is `code`, regex `[\\u0021-\\uFFFF]+([ \\t\\n\\r][\\u0021-\\uFFFF]+)*`."
       [:fhir/issues 0 :fhir.issues/expression] := "entry[0].resource.gender"))
 
   (testing "Invalid Coding in Observation"
@@ -664,7 +686,7 @@
       [:fhir/issues 0 :fhir.issues/severity] := "error"
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
-      "Error on value `1`. Expected type is `uri`, regex `\\S*`."
+      "Error on value `1`. Expected type is `uri`, regex `[\\u0021-\\uFFFF]*`."
       [:fhir/issues 0 :fhir.issues/expression] := "code.coding[0].system")))
 
 (deftest explain-data-xml-test
@@ -693,7 +715,7 @@
       [:fhir/issues 0 :fhir.issues/severity] := "error"
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
-      "Error on value ``. Expected type is `code`, regex `[^\\s]+(\\s[^\\s]+)*`."
+      "Error on value ``. Expected type is `code`, regex `[\\u0021-\\uFFFF]+([ \\t\\n\\r][\\u0021-\\uFFFF]+)*`."
       ;; TODO: implement expression for XML
       (comment [:fhir/issues 0 :fhir.issues/expression] := "name[0].use")))
 
@@ -707,7 +729,7 @@
       [:fhir/issues 0 :fhir.issues/severity] := "error"
       [:fhir/issues 0 :fhir.issues/code] := "invariant"
       [:fhir/issues 0 :fhir.issues/diagnostics] :=
-      "Error on value ` `. Expected type is `code`, regex `[^\\s]+(\\s[^\\s]+)*`."
+      "Error on value ` `. Expected type is `code`, regex `[\\u0021-\\uFFFF]+([ \\t\\n\\r][\\u0021-\\uFFFF]+)*`."
       ;; TODO: implement expression for XML
       (comment
         [:fhir/issues 0 :fhir.issues/expression] :=
@@ -719,11 +741,14 @@
 
 ;; ---- Primitive Types -------------------------------------------------------
 
+(defn- emit [element]
+  (xml/emit-str (assoc element :tag :foo)))
+
 (deftest fhir-boolean-test
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/boolean-value]
             (= (type/boolean value) (s2/conform :fhir.json/boolean value))))
 
@@ -774,7 +799,7 @@
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/boolean-value]
             (= (type/boolean value) (s2/conform :fhir.cbor/boolean value))))
 
@@ -801,9 +826,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/boolean-value]
-            (= (sexp-value (str value)) (s2/unform :fhir.xml/boolean (type/boolean value))))))
+            (= (sexp-value (str value)) (s2/unform :fhir.xml/boolean (type/boolean value)))))
+
+        (testing "emit"
+          (satisfies-prop 100
+            (prop/for-all [value fg/boolean-value]
+              (emit (s2/unform :fhir.xml/boolean (type/boolean value)))))))
 
       (testing "with extension"
         (satisfies-prop 100
@@ -828,7 +858,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/integer-value]
             (= (type/integer value) (s2/conform :fhir.json/integer value))))
 
@@ -879,7 +909,7 @@
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/integer-value]
             (= (type/integer value) (s2/conform :fhir.cbor/integer value))))
 
@@ -906,9 +936,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/integer-value]
-            (= (sexp-value (str value)) (s2/unform :fhir.xml/integer (type/integer value))))))
+            (= (sexp-value (str value)) (s2/unform :fhir.xml/integer (type/integer value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value fg/integer-value]
+              (emit (s2/unform :fhir.xml/integer (type/integer value)))))))
 
       (testing "with extension"
         (satisfies-prop 100
@@ -933,7 +968,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/string-value]
             (= (type/string value) (s2/conform :fhir.json/string value))))
 
@@ -955,6 +990,9 @@
       (testing "invalid"
         (are [x] (s2/invalid? (s2/conform :fhir.json/string x))
           ""
+          "\u001e"
+          "\u001f"
+          ;"\u007f"
           {})))
 
     (testing "XML"
@@ -980,11 +1018,12 @@
 
       (testing "invalid"
         (are [v] (s2/invalid? (s2/conform :fhir.xml/string (sexp-value v)))
-          "")))
+          ""
+          "\u001e")))
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/string-value]
             (= (type/string value) (s2/conform :fhir.cbor/string value))))
 
@@ -1011,9 +1050,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/string-value]
-            (= (sexp-value value) (s2/unform :fhir.xml/string (type/string value))))))
+            (= (sexp-value value) (s2/unform :fhir.xml/string (type/string value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value fg/string-value]
+              (emit (s2/unform :fhir.xml/string (type/string value)))))))
 
       (testing "with extension"
         (satisfies-prop 100
@@ -1038,7 +1082,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/decimal-value]
             (= (type/decimal value) (s2/conform :fhir.json/decimal value))))
 
@@ -1062,6 +1106,7 @@
       (testing "invalid"
         (are [x] (s2/invalid? (s2/conform :fhir.json/decimal x))
           "a"
+          "\u001e"
           {})))
 
     (testing "XML"
@@ -1087,11 +1132,12 @@
 
       (testing "invalid"
         (are [v] (s2/invalid? (s2/conform :fhir.xml/decimal (sexp-value v)))
-          "a")))
+          "a"
+          "\u001e")))
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/decimal-value]
             (= (type/decimal value) (s2/conform :fhir.cbor/decimal value))))
 
@@ -1118,12 +1164,12 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/decimal-value]
             (= (sexp-value (str value)) (s2/unform :fhir.xml/decimal (type/decimal value))))))
 
       (testing "with extension"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
                          extension-url fg/uri-value
                          value (gen/one-of [fg/decimal-value (gen/return nil)])]
@@ -1145,7 +1191,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/uri-value]
             (= (type/uri value) (s2/conform :fhir.json/uri value))))
 
@@ -1167,6 +1213,7 @@
       (testing "invalid"
         (are [x] (s2/invalid? (s2/conform :fhir.json/uri x))
           " "
+          "\u001e"
           {})))
 
     (testing "XML"
@@ -1195,7 +1242,7 @@
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/uri-value]
             (= (type/uri value) (s2/conform :fhir.cbor/uri value))))
 
@@ -1222,9 +1269,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/uri-value]
-            (= (sexp-value value) (s2/unform :fhir.xml/uri (type/uri value))))))
+            (= (sexp-value value) (s2/unform :fhir.xml/uri (type/uri value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value fg/uri-value]
+              (emit (s2/unform :fhir.xml/uri (type/uri value)))))))
 
       (testing "with extension"
         (satisfies-prop 100
@@ -1249,7 +1301,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/url-value]
             (= (type/url value) (s2/conform :fhir.json/url value))))
 
@@ -1271,11 +1323,12 @@
       (testing "invalid"
         (are [x] (s2/invalid? (s2/conform :fhir.json/url x))
           " "
+          "\u001e"
           {})))
 
     (testing "XML"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/url-value]
             (= (type/url value) (s2/conform :fhir.xml/url (sexp-value value)))))
 
@@ -1295,11 +1348,12 @@
 
       (testing "invalid"
         (are [v] (s2/invalid? (s2/conform :fhir.xml/url (sexp-value v)))
-          " ")))
+          " "
+          "\u001e")))
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/url-value]
             (= (type/url value) (s2/conform :fhir.cbor/url value))))
 
@@ -1326,9 +1380,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/url-value]
-            (= (sexp-value value) (s2/unform :fhir.xml/url (type/url value))))))
+            (= (sexp-value value) (s2/unform :fhir.xml/url (type/url value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value fg/url-value]
+              (emit (s2/unform :fhir.xml/url (type/url value)))))))
 
       (testing "with extension"
         (satisfies-prop 100
@@ -1353,7 +1412,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/canonical-value]
             (= (type/canonical value) (s2/conform :fhir.json/canonical value))))
 
@@ -1375,6 +1434,7 @@
       (testing "invalid"
         (are [x] (s2/invalid? (s2/conform :fhir.json/canonical x))
           " "
+          "\u001e"
           {})))
 
     (testing "XML"
@@ -1399,11 +1459,12 @@
 
       (testing "invalid"
         (are [v] (s2/invalid? (s2/conform :fhir.xml/canonical (sexp-value v)))
-          " ")))
+          " "
+          "\u001e")))
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/canonical-value]
             (= (type/canonical value) (s2/conform :fhir.cbor/canonical value))))
 
@@ -1430,9 +1491,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/canonical-value]
-            (= (sexp-value value) (s2/unform :fhir.xml/canonical (type/canonical value))))))
+            (= (sexp-value value) (s2/unform :fhir.xml/canonical (type/canonical value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value fg/canonical-value]
+              (emit (s2/unform :fhir.xml/canonical (type/canonical value)))))))
 
       (testing "with extension"
         (satisfies-prop 100
@@ -1457,7 +1523,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/base64Binary-value]
             (= (type/base64Binary value) (s2/conform :fhir.json/base64Binary value))))
 
@@ -1507,7 +1573,7 @@
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/base64Binary-value]
             (= (type/base64Binary value) (s2/conform :fhir.cbor/base64Binary value))))
 
@@ -1534,9 +1600,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/base64Binary-value]
-            (= (sexp-value value) (s2/unform :fhir.xml/base64Binary (type/base64Binary value))))))
+            (= (sexp-value value) (s2/unform :fhir.xml/base64Binary (type/base64Binary value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value fg/base64Binary-value]
+              (emit (s2/unform :fhir.xml/base64Binary (type/base64Binary value)))))))
 
       (testing "with extension"
         (satisfies-prop 100
@@ -1561,7 +1632,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/instant-value]
             (= (type/instant value) (s2/conform :fhir.json/instant value))))
 
@@ -1613,7 +1684,7 @@
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/instant-value]
             (= (type/instant value) (s2/conform :fhir.cbor/instant value))))
 
@@ -1640,9 +1711,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/instant-value]
-            (= (sexp-value value) (s2/unform :fhir.xml/instant (type/instant value))))))
+            (= (sexp-value value) (s2/unform :fhir.xml/instant (type/instant value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value fg/instant-value]
+              (emit (s2/unform :fhir.xml/instant (type/instant value)))))))
 
       (testing "with extension"
         (satisfies-prop 100
@@ -1671,7 +1747,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/date-value]
             (= (type/date value) (s2/conform :fhir.json/date value))))
 
@@ -1724,7 +1800,7 @@
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/date-value]
             (= (type/date value) (s2/conform :fhir.cbor/date value))))
 
@@ -1751,9 +1827,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/date-value]
-            (= (sexp-value value) (s2/unform :fhir.xml/date (type/date value))))))
+            (= (sexp-value value) (s2/unform :fhir.xml/date (type/date value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value fg/date-value]
+              (emit (s2/unform :fhir.xml/date (type/date value)))))))
 
       (testing "with extension"
         (satisfies-prop 100
@@ -1779,7 +1860,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value (fg/dateTime-value)]
             (= (type/dateTime value) (s2/conform :fhir.json/dateTime value))))
 
@@ -1831,7 +1912,7 @@
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value (fg/dateTime-value)]
             (= (type/dateTime value) (s2/conform :fhir.cbor/dateTime value))))
 
@@ -1858,9 +1939,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value (fg/dateTime-value)]
-            (= (sexp-value value) (s2/unform :fhir.xml/dateTime (type/dateTime value))))))
+            (= (sexp-value value) (s2/unform :fhir.xml/dateTime (type/dateTime value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value (fg/dateTime-value)]
+              (emit (s2/unform :fhir.xml/dateTime (type/dateTime value)))))))
 
       (testing "with extension"
         (satisfies-prop 100
@@ -1958,18 +2044,23 @@
 
   (testing "unforming"
     (testing "JSON"
-      (satisfies-prop 100
+      (satisfies-prop 1000
         (prop/for-all [value fg/time-value]
           (= value (fhir-spec/parse-json (fhir-spec/unform-json (type/time value)))))))
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/time-value]
-            (= (sexp-value value) (s2/unform :fhir.xml/time (type/time value))))))
+            (= (sexp-value value) (s2/unform :fhir.xml/time (type/time value)))))
+
+        (testing "emit"
+          (satisfies-prop 100
+            (prop/for-all [value fg/time-value]
+              (emit (s2/unform :fhir.xml/time (type/time value)))))))
 
       (testing "with extension"
-        (satisfies-prop 1000
+        (satisfies-prop 100
           (prop/for-all [id (gen/one-of [fg/id-value (gen/return nil)])
                          extension-url fg/uri-value
                          value (gen/one-of [fg/time-value (gen/return nil)])]
@@ -1991,7 +2082,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/code-value]
             (= (type/code value) (s2/conform :fhir.json/code value))))
 
@@ -2013,6 +2104,7 @@
       (testing "invalid"
         (are [x] (s2/invalid? (s2/conform :fhir.json/code x))
           ""
+          "\u001e"
           {})))
 
     (testing "XML"
@@ -2037,11 +2129,12 @@
 
       (testing "invalid"
         (are [v] (s2/invalid? (s2/conform :fhir.xml/code (sexp-value v)))
-          "")))
+          ""
+          "\u001e")))
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/code-value]
             (= (type/code value) (s2/conform :fhir.cbor/code value))))
 
@@ -2068,9 +2161,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/code-value]
-            (= (sexp-value value) (s2/unform :fhir.xml/code (type/code value))))))
+            (= (sexp-value value) (s2/unform :fhir.xml/code (type/code value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value fg/code-value]
+              (emit (s2/unform :fhir.xml/code (type/code value)))))))
 
       (testing "with extension"
         (satisfies-prop 100
@@ -2095,7 +2193,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/oid-value]
             (= (type/oid value) (s2/conform :fhir.json/oid value))))
 
@@ -2145,7 +2243,7 @@
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/oid-value]
             (= (type/oid value) (s2/conform :fhir.cbor/oid value))))
 
@@ -2172,9 +2270,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/oid-value]
-            (= (sexp-value value) (s2/unform :fhir.xml/oid (type/oid value))))))
+            (= (sexp-value value) (s2/unform :fhir.xml/oid (type/oid value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value fg/oid-value]
+              (emit (s2/unform :fhir.xml/oid (type/oid value)))))))
 
       (testing "with extension"
         (satisfies-prop 100
@@ -2199,7 +2302,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/id-value]
             (= (type/id value) (s2/conform :fhir.json/id value))))
 
@@ -2249,7 +2352,7 @@
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/id-value]
             (= (type/id value) (s2/conform :fhir.cbor/id value))))
 
@@ -2276,9 +2379,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/id-value]
-            (= (sexp-value value) (s2/unform :fhir.xml/id (type/id value))))))
+            (= (sexp-value value) (s2/unform :fhir.xml/id (type/id value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value fg/id-value]
+              (emit (s2/unform :fhir.xml/id (type/id value)))))))
 
       (testing "with extension"
         (satisfies-prop 100
@@ -2303,7 +2411,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/markdown-value]
             (= (type/markdown value) (s2/conform :fhir.json/markdown value))))
 
@@ -2325,6 +2433,7 @@
       (testing "invalid"
         (are [x] (s2/invalid? (s2/conform :fhir.json/markdown x))
           ""
+          "\u001e"
           {})))
 
     (testing "XML"
@@ -2349,11 +2458,12 @@
 
       (testing "invalid"
         (are [v] (s2/invalid? (s2/conform :fhir.xml/markdown (sexp-value v)))
-          "")))
+          ""
+          "\u001e")))
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/markdown-value]
             (= (type/markdown value) (s2/conform :fhir.cbor/markdown value))))
 
@@ -2380,9 +2490,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/markdown-value]
-            (= (sexp-value value) (s2/unform :fhir.xml/markdown (type/markdown value))))))
+            (= (sexp-value value) (s2/unform :fhir.xml/markdown (type/markdown value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value fg/markdown-value]
+              (emit (s2/unform :fhir.xml/markdown (type/markdown value)))))))
 
       (testing "with extension"
         (satisfies-prop 100
@@ -2407,7 +2522,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/unsignedInt-value]
             (= (type/unsignedInt value) (s2/conform :fhir.json/unsignedInt value))))
 
@@ -2457,7 +2572,7 @@
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/unsignedInt-value]
             (= (type/unsignedInt value) (s2/conform :fhir.cbor/unsignedInt value))))
 
@@ -2484,9 +2599,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/unsignedInt-value]
-            (= (sexp-value value) (s2/unform :fhir.xml/unsignedInt (type/unsignedInt value))))))
+            (= (sexp-value value) (s2/unform :fhir.xml/unsignedInt (type/unsignedInt value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value fg/unsignedInt-value]
+              (emit (s2/unform :fhir.xml/unsignedInt (type/unsignedInt value)))))))
 
       (testing "with extension"
         (satisfies-prop 100
@@ -2511,7 +2631,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/positiveInt-value]
             (= (type/positiveInt value) (s2/conform :fhir.json/positiveInt value))))
 
@@ -2561,7 +2681,7 @@
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/positiveInt-value]
             (= (type/positiveInt value) (s2/conform :fhir.cbor/positiveInt value))))
 
@@ -2588,9 +2708,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/positiveInt-value]
-            (= (sexp-value value) (s2/unform :fhir.xml/positiveInt (type/positiveInt value))))))
+            (= (sexp-value value) (s2/unform :fhir.xml/positiveInt (type/positiveInt value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value fg/positiveInt-value]
+              (emit (s2/unform :fhir.xml/positiveInt (type/positiveInt value)))))))
 
       (testing "with extension"
         (satisfies-prop 100
@@ -2615,7 +2740,7 @@
   (testing "conforming"
     (testing "JSON"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/uuid-value]
             (= (type/uuid value) (s2/conform :fhir.json/uuid value))))
 
@@ -2665,7 +2790,7 @@
 
     (testing "CBOR"
       (testing "valid"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/uuid-value]
             (= (type/uuid value) (s2/conform :fhir.cbor/uuid value))))
 
@@ -2692,9 +2817,14 @@
 
     (testing "XML"
       (testing "value only"
-        (satisfies-prop 100
+        (satisfies-prop 1000
           (prop/for-all [value fg/uuid-value]
-            (= (sexp-value value) (s2/unform :fhir.xml/uuid (type/uuid value))))))
+            (= (sexp-value value) (s2/unform :fhir.xml/uuid (type/uuid value)))))
+
+        (testing "emit"
+          (satisfies-prop 1000
+            (prop/for-all [value fg/uuid-value]
+              (emit (s2/unform :fhir.xml/uuid (type/uuid value)))))))
 
       (testing "with extension"
         (satisfies-prop 100

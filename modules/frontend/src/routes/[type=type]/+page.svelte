@@ -5,14 +5,14 @@
 	import { page } from '$app/stores';
 	import { fade, slide } from 'svelte/transition';
 
-	import BreadcrumbEntryHome from '../breadcrumb-entry-home.svelte';
-	import BreadcrumbEntryType from './breadcrumb-entry-type.svelte';
+	import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
+	import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
 
 	import SearchForm from './search-form.svelte';
-	import TotalCard from '../../total-card.svelte';
-	import TotalBadge from '../../total-badge.svelte';
-	import DurationBadge from '../../duration-badge.svelte';
-	import EntryCard from './entry-card.svelte';
+	import TotalCard from '$lib/total-card.svelte';
+	import TotalBadge from '$lib/total-badge.svelte';
+	import DurationBadge from '$lib/duration-badge.svelte';
+	import EntryCard from '$lib/history/entry-card.svelte';
 	import NoResultsCard from './no-results-card.svelte';
 	import ErrorCard from './../error-card.svelte';
 	import HistoryButton from './history-button.svelte';
@@ -61,7 +61,9 @@
 				</code>
 			</div>
 		{/if}
-	{:then bundle}
+	{:then bundleWithDuration}
+		{@const bundle = bundleWithDuration.bundle}
+
 		<TotalCard {bundle}>
 			<HistoryButton />
 			<p class="py-1.5 ml-2">
@@ -70,12 +72,12 @@
 				{/if}
 			</p>
 			<p class="flex-grow py-1.5">
-				<DurationBadge duration={bundle.duration} />
+				<DurationBadge duration={bundleWithDuration.duration} />
 			</p>
 		</TotalCard>
 
-		{#if bundle.entry && bundle.entry.length > 0}
-			{#each bundle.entry as entry (entry.fullUrl)}
+		{#if bundle.fhirObjectEntry !== undefined && bundle.fhirObjectEntry.length > 0}
+			{#each bundle.fhirObjectEntry as entry (entry.fullUrl)}
 				<EntryCard {entry} />
 			{/each}
 		{:else if bundle.total === undefined}

@@ -5,15 +5,15 @@
 	import { page } from '$app/stores';
 	import { fade, slide } from 'svelte/transition';
 
-	import BreadcrumbEntryHome from '../../breadcrumb-entry-home.svelte';
-	import BreadcrumbEntryType from './../breadcrumb-entry-type.svelte';
-	import BreadcrumbEntryPage from './breadcrumb-entry-page.svelte';
+	import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
+	import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
+	import BreadcrumbEntryPage from '$lib/breadcrumb/page.svelte';
 
 	import SearchForm from './../search-form.svelte';
-	import TotalCard from '../../../total-card.svelte';
-	import TotalBadge from '../../../total-badge.svelte';
-	import DurationBadge from '../../../duration-badge.svelte';
-	import EntryCard from './../entry-card.svelte';
+	import TotalCard from '$lib/total-card.svelte';
+	import TotalBadge from '$lib/total-badge.svelte';
+	import DurationBadge from '$lib/duration-badge.svelte';
+	import EntryCard from '$lib/history/entry-card.svelte';
 	import NoResultsCard from './../no-results-card.svelte';
 	import ErrorCard from './../../error-card.svelte';
 
@@ -38,7 +38,7 @@
 		<ol class="flex items-center py-0.5 space-x-4">
 			<BreadcrumbEntryHome />
 			<BreadcrumbEntryType />
-			{#if $page.url.searchParams.has('__page-id')}<BreadcrumbEntryPage />{/if}
+			<BreadcrumbEntryPage />
 		</ol>
 	</nav>
 </header>
@@ -62,7 +62,9 @@
 				</code>
 			</div>
 		{/if}
-	{:then bundle}
+	{:then bundleWithDuration}
+		{@const bundle = bundleWithDuration.bundle}
+
 		<TotalCard {bundle}>
 			<p class="py-1.5 text-gray-900">
 				{#if bundle.total !== undefined}
@@ -70,12 +72,12 @@
 				{/if}
 			</p>
 			<p class="ml-2 flex-grow py-1.5 text-gray-900">
-				<DurationBadge duration={bundle.duration} />
+				<DurationBadge duration={bundleWithDuration.duration} />
 			</p>
 		</TotalCard>
 
-		{#if bundle.entry && bundle.entry.length > 0}
-			{#each bundle.entry as entry (entry.fullUrl)}
+		{#if bundle.fhirObjectEntry !== undefined && bundle.fhirObjectEntry.length > 0}
+			{#each bundle.fhirObjectEntry as entry (entry.fullUrl)}
 				<EntryCard {entry} />
 			{/each}
 		{:else if bundle.total === undefined}

@@ -9,10 +9,10 @@
   {:local/root "../spec"}
 
   com.walmartlabs/lacinia
-  {:mvn/version "1.2.1"}
+  {:mvn/version "1.2.2"}
 
   org.antlr/antlr4
-  {:mvn/version "4.13.0"
+  {:mvn/version "4.10.1"
    :exclusions
    [com.ibm.icu/icu4j
     org.abego.treelayout/org.abego.treelayout.core

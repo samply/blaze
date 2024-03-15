@@ -5,6 +5,7 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.interaction.delete]
+   [blaze.interaction.history.type]
    [blaze.interaction.read]
    [blaze.interaction.search-system]
    [blaze.interaction.search-type]
@@ -113,7 +114,10 @@
                {:handler (ig/ref :blaze.interaction/delete)}
               :search-type
               #:blaze.rest-api.interaction
-               {:handler (ig/ref :blaze.interaction/search-type)}}}]}
+               {:handler (ig/ref :blaze.interaction/search-type)}
+              :history-type
+              #:blaze.rest-api.interaction
+               {:handler (ig/ref :blaze.interaction.history/type)}}}]}
          :blaze.db/search-param-registry
          {:structure-definition-repo structure-definition-repo}
          ::auth-backend {}
@@ -133,6 +137,9 @@
          {:clock (ig/ref :blaze.test/fixed-clock)
           :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
           :page-store (ig/ref ::page-store)}
+         :blaze.interaction.history/type
+         {:clock (ig/ref :blaze.test/fixed-clock)
+          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
          :blaze.test/executor {}
          :blaze.test/fixed-clock {}
          :blaze.test/fixed-rng-fn {}
@@ -261,7 +268,7 @@
     (with-system [{:blaze/keys [rest-api]} config]
       (given (call rest-api {:request-method :get :uri "/Patient"})
         :status := 200
-        [:headers "Link"] := "<http://localhost:8080/Patient?_count=50&__t=0>;rel=\"self\""
+        [:headers "Link"] := "<http://localhost:8080/Patient?_count=50>;rel=\"self\""
         [:body fhir-spec/parse-json :resourceType] := "Bundle")))
 
   (testing "using POST"
@@ -279,6 +286,13 @@
                                :body (input-stream (byte-array 0))})
           :status := 415
           [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))))
+
+(deftest history-type-test
+  (with-system [{:blaze/keys [rest-api]} config]
+    (given (call rest-api {:request-method :get :uri "/Patient/_history"})
+      :status := 200
+      [:headers "Link"] := "<http://localhost:8080/Patient/_history>;rel=\"self\""
+      [:body fhir-spec/parse-json :resourceType] := "Bundle")))
 
 (deftest redirect-slash-test
   (with-system [{:blaze/keys [rest-api]} config]

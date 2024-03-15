@@ -1,5 +1,5 @@
 <script lang="ts">
-	import SimpleStats from '../../../../tailwind/stats/simple.svelte';
+	import SimpleStats from '$lib/tailwind/stats/simple.svelte';
 	import type { Stats } from './+page.js';
 	import prettyBytes from 'pretty-bytes';
 

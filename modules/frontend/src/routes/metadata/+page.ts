@@ -1,4 +1,4 @@
-import { type FhirObject, fhirObject } from '../../resource/resource-card.js';
+import { type FhirObject, fhirObject } from '$lib/resource/resource-card.js';
 
 export interface Data {
 	capabilityStatement: FhirObject;

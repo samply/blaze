@@ -6,14 +6,14 @@
   {:local/root "../module-base"}
 
   ring/ring-core
-  {:mvn/version "1.11.0"
+  {:mvn/version "1.12.0"
    :exclusions
    [org.apache.commons/commons-fileupload2-core
     crypto-equality/crypto-equality
     crypto-random/crypto-random]}
 
   info.sunng/ring-jetty9-adapter
-  {:mvn/version "0.22.3"}}
+  {:mvn/version "0.22.6"}}
 
  :aliases
  {:test

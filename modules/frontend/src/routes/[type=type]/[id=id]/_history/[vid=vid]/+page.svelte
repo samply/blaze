@@ -3,11 +3,11 @@
 
 	import { page } from '$app/stores';
 
-	import BreadcrumbEntryHome from '../../../../breadcrumb-entry-home.svelte';
-	import BreadcrumbEntryType from '../../../breadcrumb-entry-type.svelte';
-	import BreadcrumbEntryResource from './../../breadcrumb-entry-resource.svelte';
-	import BreadcrumbEntryVersion from './breadcrumb-entry-version.svelte';
-	import ResourceCard from '../../../../../resource/resource-card.svelte';
+	import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
+	import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
+	import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
+	import BreadcrumbEntryVersion from '$lib/breadcrumb/version.svelte';
+	import ResourceCard from '$lib/resource/resource-card.svelte';
 
 	export let data: PageData;
 </script>

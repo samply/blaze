@@ -6,10 +6,16 @@ If this feature is activated, all FHIR Endpoints will require a valid [JWT][2] i
 
 ## Usage
 
-In order to test the authentication feature, please start [Keycloak][4] and Blaze as defined in the Docker Compose file in the `docs/authentication` directory:
+In order to test the authentication feature, please start first [Keycloak][4] and then Blaze as defined in the Docker Compose file in the `docs/authentication` directory:
 
 ```sh
-docker-compose up
+docker-compose up keycloak
+```
+
+wait until keycloak is started
+
+```sh
+docker-compose up blaze
 ```
 
 after both services are up, please run:
@@ -22,17 +28,16 @@ The output should be:
 
 ```json
 {
-  "entry": [],
+  "resourceType": "Bundle",
   "id": "C6IJYWHRYMGMXUFH",
+  "type": "searchset",
+  "total": 0,
   "link": [
     {
       "relation": "self",
       "url": "http://localhost:8080/fhir?_count=50&__t=0"
     }
-  ],
-  "resourceType": "Bundle",
-  "total": 0,
-  "type": "searchset"
+  ]
 }
 ```
 

@@ -2,7 +2,7 @@
 
  :deps
  {com.google.guava/guava
-  {:mvn/version "33.0.0-jre"
+  {:mvn/version "33.1.0-jre"
    :exclusions
    [com.google.code.findbugs/jsr305
     org.checkerframework/checker-qual
@@ -10,7 +10,7 @@
     com.google.j2objc/j2objc-annotations]}
 
   com.google.protobuf/protobuf-java
-  {:mvn/version "3.25.2"}
+  {:mvn/version "4.26.0"}
 
   com.fasterxml.jackson.core/jackson-databind
-  {:mvn/version "2.16.1"}}}
+  {:mvn/version "2.17.0"}}}

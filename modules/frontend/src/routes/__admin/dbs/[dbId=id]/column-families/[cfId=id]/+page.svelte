@@ -1,7 +1,7 @@
 <script lang="ts">
-	import SimpleStats from '../../../../../../tailwind/stats/simple.svelte';
+	import SimpleStats from '$lib/tailwind/stats/simple.svelte';
 	import LevelsCard from './level-table.svelte';
-	import { toTitleCase } from '../../../../../../util.js';
+	import { toTitleCase } from '$lib/util.js';
 	import { descriptions } from './util.js';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';

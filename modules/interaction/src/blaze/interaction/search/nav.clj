@@ -84,11 +84,11 @@
 (defn- query-params [params clauses]
   (merge-params (clauses->query-params clauses) params))
 
-(defn url [base-url match params clauses t offset]
+(defn url
+  "Returns the URL created from `clauses` used in self links."
+  [base-url match params clauses]
   (let [query-params (query-params params clauses)]
-    (str base-url (reitit/match->path match (-> query-params
-                                                (assoc "__t" t)
-                                                (merge offset))))))
+    (str base-url (reitit/match->path match query-params))))
 
 (defn- token-query-params!
   [page-store {:keys [token] :as params} clauses]

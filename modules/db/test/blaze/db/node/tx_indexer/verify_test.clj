@@ -1,7 +1,6 @@
 (ns blaze.db.node.tx-indexer.verify-test
   (:require
    [blaze.db.api :as d]
-   [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-as-of-test-util :as rao-tu]
    [blaze.db.impl.index.rts-as-of-test-util :as rts-tu]
    [blaze.db.impl.index.system-as-of-test-util :as sao-tu]
@@ -34,14 +33,15 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def tid-patient (codec/tid "Patient"))
-
 (def patient-0 {:fhir/type :fhir/Patient :id "0"})
 (def patient-0-v2 {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"})
 (def patient-1 {:fhir/type :fhir/Patient :id "1"})
 (def patient-2 {:fhir/type :fhir/Patient :id "2"
                 :identifier [#fhir/Identifier{:value "120426"}]})
-
+(def observation-0 {:fhir/type :fhir/Observation :id "0"
+                    :subject #fhir/Reference{:reference "Patient/0"}})
+(def observation-1 {:fhir/type :fhir/Observation :id "1"
+                    :subject #fhir/Reference{:reference "Patient/0"}})
 (deftest verify-tx-cmds-test
   (testing "adding one Patient to an empty store"
     (let [hash (hash/generate patient-0)]
@@ -341,7 +341,49 @@
           [4 1 ss-tu/decode-key] := {:t 2}
           [4 2 ss-tu/decode-val] := {:total 2 :num-changes 2}))))
 
+  (testing "adding an observation referring to an existing patient"
+    (let [hash (hash/generate observation-0)]
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put patient-0]]]
+
+        (given (verify/verify-tx-cmds
+                (d/db node) 2
+                [{:op "put" :type "Observation" :id "0" :hash hash :refs [["Patient" "0"]]}])
+
+          count := 5
+
+          [0 0] := :resource-as-of-index
+          [0 1 rao-tu/decode-key] := {:type "Observation" :id "0" :t 2}
+          [0 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op :put}
+
+          [1 0] := :type-as-of-index
+          [1 1 tao-tu/decode-key] := {:type "Observation" :t 2 :id "0"}
+          [1 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op :put}
+
+          [2 0] := :system-as-of-index
+          [2 1 sao-tu/decode-key] := {:t 2 :type "Observation" :id "0"}
+          [2 2 rts-tu/decode-val] := {:hash hash :num-changes 1 :op :put}
+
+          [3 0] := :type-stats-index
+          [3 1 ts-tu/decode-key] := {:type "Observation" :t 2}
+          [3 2 ts-tu/decode-val] := {:total 1 :num-changes 1}
+
+          [4 0] := :system-stats-index
+          [4 1 ss-tu/decode-key] := {:t 2}
+          [4 2 ss-tu/decode-val] := {:total 2 :num-changes 2}))))
+
   (testing "update conflict"
+    (testing "adding an observation referring to an empty store"
+      (let [hash (hash/generate observation-0)]
+        (with-system [{:blaze.db/keys [node]} config]
+
+          (given (verify/verify-tx-cmds
+                  (d/db node) 2
+                  [{:op "put" :type "Observation" :id "0" :hash hash :refs [["Patient" "0"]]}])
+
+            ::anom/category := ::anom/conflict
+            ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))
+
     (testing "using non-matching if-match"
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put patient-0]]]
@@ -380,6 +422,124 @@
           ::anom/category := ::anom/conflict
           ::anom/message := "Resource `Patient/0` with version 1 already exists."
           :http/status := 412))))
+
+  (testing "delete conflict"
+    (testing "deleting a patient and creating a resource referencing it in the same transaction"
+      (let [hash (hash/generate observation-0)]
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:put patient-0]]]
+
+          (given (verify/verify-tx-cmds
+                  (d/db node) 2
+                  [{:op "delete" :type "Patient" :id "0" :check-refs true}
+                   {:op "put" :type "Observation" :id "0" :hash hash :refs [["Patient" "0"]]}])
+
+            ::anom/category := ::anom/conflict
+            ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`."))))
+
+    (testing "deleting a patient and an observation referencing it in the same transaction"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put patient-0]
+          [:put observation-0]]]
+
+        (given (verify/verify-tx-cmds
+                (d/db node) 2
+                [{:op "delete" :type "Patient" :id "0" :check-refs true}
+                 {:op "delete" :type "Observation" :id "0" :check-refs true}])
+
+          count := 9
+
+          [0 0] := :resource-as-of-index
+          [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
+          [0 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+          [1 0] := :type-as-of-index
+          [1 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "0"}
+          [1 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+          [2 0] := :system-as-of-index
+          [2 1 sao-tu/decode-key] := {:t 2 :type "Patient" :id "0"}
+          [2 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+          [3 0] := :resource-as-of-index
+          [3 1 rao-tu/decode-key] := {:type "Observation" :id "0" :t 2}
+          [3 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+          [4 0] := :type-as-of-index
+          [4 1 tao-tu/decode-key] := {:type "Observation" :t 2 :id "0"}
+          [4 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+          [5 0] := :system-as-of-index
+          [5 1 sao-tu/decode-key] := {:t 2 :type "Observation" :id "0"}
+          [5 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+          [6 0] := :type-stats-index
+          [6 1 ts-tu/decode-key] := {:type "Patient" :t 2}
+          [6 2 ts-tu/decode-val] := {:total 0 :num-changes 2}
+
+          [7 0] := :type-stats-index
+          [7 1 ts-tu/decode-key] := {:type "Observation" :t 2}
+          [7 2 ts-tu/decode-val] := {:total 0 :num-changes 2}
+
+          [8 0] := :system-stats-index
+          [8 1 ss-tu/decode-key] := {:t 2}
+          [8 2 ss-tu/decode-val] := {:total 0 :num-changes 4})))
+
+    (testing "deleting a patient which is referenced by a still existing observation"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put patient-0]
+          [:put observation-0]]]
+
+        (given (verify/verify-tx-cmds
+                (d/db node) 2
+                [{:op "delete" :type "Patient" :id "0" :check-refs true}])
+
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`.")))
+
+    (testing "deleting a patient which is referenced by a still existing observation without checking references"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put patient-0]
+          [:put observation-0]]]
+
+        (given (verify/verify-tx-cmds
+                (d/db node) 2
+                [{:op "delete" :type "Patient" :id "0"}])
+
+          count := 5
+
+          [0 0] := :resource-as-of-index
+          [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
+          [0 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+          [1 0] := :type-as-of-index
+          [1 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "0"}
+          [1 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+          [2 0] := :system-as-of-index
+          [2 1 sao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
+          [2 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+          [3 0] := :type-stats-index
+          [3 1 ts-tu/decode-key] := {:type "Patient", :t 2}
+          [3 2 ts-tu/decode-val] := {:total 0, :num-changes 2}
+
+          [4 0] := :system-stats-index
+          [4 1 ss-tu/decode-key] := {:t 2}
+          [4 2 ss-tu/decode-val] := {:total 1 :num-changes 3}))))
+
+  (testing "deleting a patient which is referenced by two still existing observations"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put patient-0]
+        [:put observation-0]
+        [:put observation-1]]]
+
+      (given (verify/verify-tx-cmds
+              (d/db node) 2
+              [{:op "delete" :type "Patient" :id "0" :check-refs true}])
+
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0` and others.")))
 
   (testing "conditional create"
     (testing "conflict"

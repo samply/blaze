@@ -50,19 +50,19 @@
   {:mvn/version "0.4.0"}
 
   org.clojure/clojure
-  {:mvn/version "1.11.1"}
+  {:mvn/version "1.11.2"}
 
   org.clojure/tools.reader
-  {:mvn/version "1.3.7"}
+  {:mvn/version "1.4.1"}
 
   org.slf4j/slf4j-nop
-  {:mvn/version "2.0.11"}}
+  {:mvn/version "2.0.12"}}
 
  :aliases
  {:build
   {:deps
    {io.github.clojure/tools.build
-    {:git/tag "v0.9.5" :git/sha "24f2894"}}
+    {:git/tag "v0.10.0" :git/sha "3a2c484"}}
    :ns-default build}
 
   :test
@@ -76,7 +76,7 @@
     {:mvn/version "0.4.6"}
 
     org.clojure/tools.namespace
-    {:mvn/version "1.4.5"}}}
+    {:mvn/version "1.5.0"}}}
 
   :kaocha
   {:extra-deps
@@ -90,15 +90,15 @@
 
    :extra-deps
    {org.clojure/tools.namespace
-    {:mvn/version "1.4.5"}}}
+    {:mvn/version "1.5.0"}}}
 
   :outdated
   {:replace-deps
    {com.github.liquidz/antq
-    {:mvn/version "2.5.1109"}
+    {:mvn/version "2.8.1185"}
 
     org.slf4j/slf4j-nop
-    {:mvn/version "2.0.9"}}
+    {:mvn/version "2.0.12"}}
 
    :main-opts
    ["-m" "antq.core"

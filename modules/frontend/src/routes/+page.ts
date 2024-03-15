@@ -1,4 +1,4 @@
-import type { Parameters } from '../fhir.js';
+import type { Parameters } from 'fhir/r4';
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 
@@ -8,10 +8,12 @@ interface ResourceTypeTotal {
 }
 
 function resourceTypeTotals(parameters: Parameters): ResourceTypeTotal[] {
-	return parameters.parameter.map((p) => ({
-		name: p.name,
-		total: p.valueUnsignedInt || 0
-	}));
+	return (
+		parameters.parameter?.map((p) => ({
+			name: p.name,
+			total: p.valueUnsignedInt || 0
+		})) || []
+	);
 }
 
 export interface Data {

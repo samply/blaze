@@ -7,7 +7,7 @@ codesystem idco3: 'urn:oid:2.16.840.1.113883.6.43.1'
 codesystem therapie_art: 'http://dktk.dkfz.de/fhir/onco/core/CodeSystem/SYSTTherapieartCS'
 
 define Strahlentherapien:
-  [Procedure: category in Code 'ST' from therapie_art]
+  [Procedure: category ~ Code 'ST' from therapie_art]
 
 define EwingSarkomMitStrahlentherapie:
   exists

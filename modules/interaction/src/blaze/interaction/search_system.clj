@@ -13,6 +13,7 @@
    [blaze.interaction.search.util :as search-util]
    [blaze.interaction.util :as iu]
    [blaze.page-store.spec]
+   [blaze.util :refer [conj-vec]]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -38,14 +39,10 @@
        (fn [resources]
          (mapv (partial search-util/entry context) resources)))))
 
-(defn- self-link-offset [[{first-resource :resource}]]
-  (when-let [{:fhir/keys [type] :keys [id]} first-resource]
-    {"__page-type" (name type) "__page-id" id}))
-
-(defn- self-link [{:keys [match params] :blaze/keys [base-url db]} entries]
+(defn- self-link [{:keys [params] :blaze/keys [base-url] ::reitit/keys [match]}]
   {:fhir/type :fhir.Bundle/link
    :relation "self"
-   :url (nav/url base-url match params [] (d/t db) (self-link-offset entries))})
+   :url (nav/url base-url match params [])})
 
 (defn- next-link-offset [entries]
   (let [{:fhir/keys [type] :keys [id]} (:resource (peek entries))]
@@ -60,15 +57,18 @@
      :url url}))
 
 (defn- normal-bundle
-  [{:blaze/keys [db] {:keys [page-size]} :params :as context} entries]
-  {:fhir/type :fhir/Bundle
-   :id (iu/luid context)
-   :type #fhir/code"searchset"
-   :total (type/->UnsignedInt (d/system-total db))
-   :entry (if (< page-size (count entries))
-            (pop entries)
-            entries)
-   :link [(self-link context entries)]})
+  [{:blaze/keys [db] {:keys [page-size]} :params
+    {{route-name :name} :data} ::reitit/match :as context} entries]
+  (cond->
+   {:fhir/type :fhir/Bundle
+    :id (iu/luid context)
+    :type #fhir/code"searchset"
+    :total (type/->UnsignedInt (d/system-total db))
+    :entry (if (< page-size (count entries))
+             (pop entries)
+             entries)}
+    (not= :page route-name)
+    (assoc :link [(self-link context)])))
 
 (defn- search-normal [{{:keys [page-size]} :params :as context}]
   (-> (entries context)
@@ -77,7 +77,7 @@
          (if (< page-size (count entries))
            (do-sync [next-link (next-link context entries)]
              (-> (normal-bundle context entries)
-                 (update :link conj next-link)))
+                 (update :link conj-vec next-link)))
            (-> (normal-bundle context entries)
                ac/completed-future))))))
 
@@ -87,7 +87,7 @@
     :id (iu/luid context)
     :type #fhir/code"searchset"
     :total (type/->UnsignedInt (d/system-total db))
-    :link [(self-link context [])]}))
+    :link [(self-link context)]}))
 
 (defn- search [{:keys [params] :as context}]
   (if (:summary? params)
@@ -105,7 +105,7 @@
              :blaze/base-url base-url
              :blaze/db db
              ::reitit/router router
-             :match match
+             ::reitit/match match
              :page-match (reitit/match-by-name router :page)
              :params params))))
 

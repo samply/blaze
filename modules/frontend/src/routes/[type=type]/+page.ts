@@ -1,5 +1,5 @@
-import { fetchBundle } from './util.js';
-import { fetchStructureDefinition } from '../../metadata.js';
+import { fetchBundleWithDuration } from './util.js';
+import { fetchStructureDefinition } from '$lib/metadata.js';
 
 export async function load({ fetch, params, url }) {
 	fetchStructureDefinition(params.type, fetch);
@@ -7,7 +7,7 @@ export async function load({ fetch, params, url }) {
 	return {
 		streamed: {
 			start: Date.now(),
-			bundle: fetchBundle(fetch, params, url)
+			bundle: fetchBundleWithDuration(fetch, params, url)
 		}
 	};
 }

@@ -3,12 +3,12 @@
 
 	import { page } from '$app/stores';
 
-	import BreadcrumbEntryHome from '../../../breadcrumb-entry-home.svelte';
-	import BreadcrumbEntryType from '../../breadcrumb-entry-type.svelte';
-	import BreadcrumbEntryResource from '../breadcrumb-entry-resource.svelte';
-	import BreadcrumbEntryHistory from './breadcrumb-entry-history.svelte';
+	import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
+	import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
+	import BreadcrumbEntryResource from '$lib/breadcrumb/resource.svelte';
+	import BreadcrumbEntryHistory from '$lib/breadcrumb/history.svelte';
 
-	import EntryCard from '../../../../history/entry-card.svelte';
+	import EntryCard from '$lib/history/entry-card.svelte';
 
 	export let data: PageData;
 </script>
@@ -23,14 +23,14 @@
 			<BreadcrumbEntryHome />
 			<BreadcrumbEntryType />
 			<BreadcrumbEntryResource />
-			<BreadcrumbEntryHistory />
+			<BreadcrumbEntryHistory url="{$page.params.type}/{$page.params.id}/_history" />
 		</ol>
 	</nav>
 </header>
 
 <main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8 flex flex-col gap-4">
-	{#if data.bundle.entry}
-		{#each data.bundle.entry as entry (entry.fullUrl + entry.response.etag)}
+	{#if data.bundle.fhirObjectEntry}
+		{#each data.bundle.fhirObjectEntry as entry ((entry.fullUrl || '') + (entry.response?.etag || ''))}
 			<EntryCard {entry} />
 		{/each}
 	{/if}

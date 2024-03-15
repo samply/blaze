@@ -199,7 +199,7 @@
 
 (s/fdef d/rev-include
   :args (s/cat :db :blaze.db/db :resource-handle :blaze.db/resource-handle
-               :source-type :fhir.resource/type :code string?)
+               :source-type (s/? :fhir.resource/type) :code (s/? string?))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef d/patient-everything

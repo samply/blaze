@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.25.0
+
+### Notes
+
+If you don't have [referential integrity disabled](https://github.com/samply/blaze/blob/v0.25.0/docs/importing-data.md#disabling-referential-integrity-checks), with v0.25.0, you will no longer be able to delete resources which are referenced by other resources. 
+
+### Enhancements
+
+* Maintain Referential Integrity while Deleting Resources ([#543](https://github.com/samply/blaze/issues/543))
+
+### Bugfixes
+
+* Fix XML Output for Resources with Control Chars ([#1552](https://github.com/samply/blaze/issues/1552))
+* Make History Paging Stable ([#1509](https://github.com/samply/blaze/issues/1509))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/82?closed=1).
+
 ## v0.24.1
 
 ### Notes

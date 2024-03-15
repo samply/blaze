@@ -22,7 +22,6 @@
 (defn- fixture [f]
   (st/instrument)
   (st/unstrument `db/wrap-db)
-  (st/unstrument `db/wrap-search-db)
   (st/unstrument `db/wrap-snapshot-db)
   (st/unstrument `db/wrap-versioned-instance-db)
   (st/unstrument `d/sync)
@@ -69,84 +68,6 @@
       (given-failed-future ((db/wrap-db handler ::node timeout) {})
         ::anom/category := ::anom/fault
         ::anom/message := "msg-115845"))))
-
-(deftest wrap-search-db-test
-  (testing "uses existing database value"
-    (is (= ::db @((db/wrap-search-db handler ::node timeout) {:blaze/db ::db}))))
-
-  (testing "with missing or invalid __t"
-    (doseq [t ["a" "-1"]]
-      (testing "uses sync for database value acquisition"
-        (with-redefs
-         [d/sync
-          (fn [node]
-            (assert (= ::node node))
-            (ac/completed-future ::db))]
-
-          (is (= ::db @((db/wrap-search-db handler ::node timeout) {:params {"__t" t}})))))))
-
-  (testing "uses __t for database value acquisition"
-    (with-redefs
-     [d/sync
-      (fn [node t]
-        (assert (= ::node node))
-        (assert (= 114429 t))
-        (ac/completed-future ::db))
-      d/as-of
-      (fn [db t]
-        (assert (= ::db db))
-        (assert (= 114429 t))
-        ::as-of-db)]
-
-      (is (= ::as-of-db @((db/wrap-search-db handler ::node timeout) {:params {"__t" "114429"}})))))
-
-  (testing "fails on timeout"
-    (testing "with t"
-      (with-redefs
-       [d/sync
-        (fn [node t]
-          (assert (= ::node node))
-          (assert (= 213937 t))
-          (ac/supply-async (constantly ::db) (ac/delayed-executor 1 TimeUnit/SECONDS)))]
-
-        (given-failed-future ((db/wrap-search-db handler ::node timeout) {:params {"__t" "213937"}})
-          ::anom/category := ::anom/busy
-          ::anom/message := "Timeout while trying to acquire the database state with t=213937. The indexer has probably fallen behind. Please try to lower the transaction load or increase the timeout of 100 ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often.")))
-
-    (testing "without t"
-      (with-redefs
-       [d/sync
-        (fn [node]
-          (assert (= ::node node))
-          (ac/supply-async (constantly ::db) (ac/delayed-executor 1 TimeUnit/SECONDS)))]
-
-        (given-failed-future ((db/wrap-search-db handler ::node timeout) {})
-          ::anom/category := ::anom/busy
-          ::anom/message := "Timeout while trying to acquire the latest known database state. At least one known transaction hasn't been completed yet. Please try to lower the transaction load or increase the timeout of 100 ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often."))))
-
-  (testing "fails on other sync error"
-    (testing "with t"
-      (with-redefs
-       [d/sync
-        (fn [node t]
-          (assert (= ::node node))
-          (assert (= 114148 t))
-          (ac/completed-future (ba/fault "msg-120127")))]
-
-        (given-failed-future ((db/wrap-search-db handler ::node timeout) {:params {"__t" "114148"}})
-          ::anom/category := ::anom/fault
-          ::anom/message := "msg-120127")))
-
-    (testing "without t"
-      (with-redefs
-       [d/sync
-        (fn [node]
-          (assert (= ::node node))
-          (ac/completed-future (ba/fault "msg-115918")))]
-
-        (given-failed-future ((db/wrap-search-db handler ::node timeout) {})
-          ::anom/category := ::anom/fault
-          ::anom/message := "msg-115918")))))
 
 (deftest wrap-snapshot-db-test
   (testing "uses existing database value"

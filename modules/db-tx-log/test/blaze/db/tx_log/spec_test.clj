@@ -7,7 +7,7 @@
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest]]
+   [clojure.test :as test :refer [are deftest testing]]
    [taoensso.timbre :as log]))
 
 (st/instrument)
@@ -25,22 +25,34 @@
 (def observation-hash-0 (hash/generate {:fhir/type :fhir/Observation :id "0"}))
 
 (deftest tx-cmd-test
-  (are [tx-cmd] (s/valid? :blaze.db/tx-cmd tx-cmd)
-    {:op "create"
-     :type "Patient"
-     :id "0"
-     :hash patient-hash-0}
-    {:op "create"
-     :type "Observation"
-     :id "0"
-     :hash observation-hash-0
-     :refs [["Patient" "0"]]}
-    {:op "put"
-     :type "Patient"
-     :id "0"
-     :hash patient-hash-0
-     :if-match 1}
-    {:op "delete"
-     :type "Patient"
-     :id "0"
-     :if-match 1}))
+  (testing "valid"
+    (are [tx-cmd] (s/valid? :blaze.db/tx-cmd tx-cmd)
+      {:op "create"
+       :type "Patient"
+       :id "0"
+       :hash patient-hash-0}
+      {:op "create"
+       :type "Observation"
+       :id "0"
+       :hash observation-hash-0
+       :refs [["Patient" "0"]]}
+      {:op "put"
+       :type "Patient"
+       :id "0"
+       :hash patient-hash-0
+       :if-match 1}
+      {:op "delete"
+       :type "Patient"
+       :id "0"
+       :if-match 1}
+      {:op "delete"
+       :type "Patient"
+       :id "0"
+       :check-refs true}))
+
+  (testing "invalid"
+    (are [tx-cmd] (not (s/valid? :blaze.db/tx-cmd tx-cmd))
+      {:op "delete"
+       :type "Patient"
+       :id "0"
+       :check-refs "i should be a boolean"})))

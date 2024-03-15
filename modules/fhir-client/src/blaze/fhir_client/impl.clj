@@ -66,8 +66,9 @@
   {"cache-control" "no-cache"})
 
 (defn fetch
-  "Returns a CompletableFuture that completes with the resource at `uri` in case
-  of success or completes exceptionally with an anomaly in case of an error."
+  "Returns a CompletableFuture that will complete with the resource at `uri` in
+  case of success or will complete exceptionally with an anomaly in case of an
+  error."
   [uri opts]
   (log/trace "Fetch" uri)
   (hc/get

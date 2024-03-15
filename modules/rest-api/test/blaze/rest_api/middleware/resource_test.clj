@@ -78,7 +78,7 @@
       [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
       [:body :issue 0 :code] := #fhir/code"invariant"
-      [:body :issue 0 :diagnostics] := "Error on value `{}`. Expected type is `code`, regex `[^\\s]+(\\s[^\\s]+)*`."
+      [:body :issue 0 :diagnostics] := "Error on value `{}`. Expected type is `code`, regex `[\\u0021-\\uFFFF]+([ \\t\\n\\r][\\u0021-\\uFFFF]+)*`."
       [:body :issue 0 :expression] := ["gender"]))
 
   (testing "body with bundle with null resource"
@@ -100,7 +100,7 @@
       [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"
       [:body :issue 0 :code] := #fhir/code"invariant"
-      [:body :issue 0 :diagnostics] := "Error on value `{}`. Expected type is `code`, regex `[^\\s]+(\\s[^\\s]+)*`."
+      [:body :issue 0 :diagnostics] := "Error on value `{}`. Expected type is `code`, regex `[\\u0021-\\uFFFF]+([ \\t\\n\\r][\\u0021-\\uFFFF]+)*`."
       [:body :issue 0 :expression] := ["entry[0].resource.gender"])))
 
 (deftest xml-test

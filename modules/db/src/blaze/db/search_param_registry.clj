@@ -30,10 +30,11 @@
   [search-param-registry type]
   (p/-list-by-type search-param-registry type))
 
-(defn list-by-target
-  "Returns a seq of search params of `target`."
-  [search-param-registry target]
-  (p/-list-by-target search-param-registry target))
+(defn list-by-target-type
+  "Returns a seq of search params of type reference which point to
+  `target-type`."
+  [search-param-registry target-type]
+  (p/-list-by-target search-param-registry target-type))
 
 (defn linked-compartments
   "Returns a list of compartments linked to `resource`.

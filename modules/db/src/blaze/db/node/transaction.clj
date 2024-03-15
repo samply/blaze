@@ -64,22 +64,30 @@
      (assoc :if-match if-match))})
 
 (defmethod prepare-op :delete
-  [_ [_ type id]]
+  [{:blaze.db/keys [enforce-referential-integrity]} [_ type id]]
   {:blaze.db/tx-cmd
-   {:op "delete"
-    :type type
-    :id id}})
+   (cond->
+    {:op "delete"
+     :type type
+     :id id}
+     enforce-referential-integrity
+     (assoc :check-refs true))})
 
 (def ^:private split
   (juxt #(mapv :blaze.db/tx-cmd %) #(into {} (map :hash-resource) %)))
 
 (defn- ctx
   [{:blaze.db/keys [enforce-referential-integrity]
-    :or {enforce-referential-integrity true}}]
-  {:references-fn
+    :or {enforce-referential-integrity true}
+    :as context}]
+  (assoc
+   context
+   :blaze.db/enforce-referential-integrity
+   enforce-referential-integrity
+   :references-fn
    (if enforce-referential-integrity
      type/references
-     (constantly nil))})
+     (constantly nil))))
 
 (defn prepare-ops
   "Splits `tx-ops` into a tuple of :blaze.db/tx-cmds and a map of resource

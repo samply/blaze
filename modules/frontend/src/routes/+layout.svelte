@@ -22,6 +22,7 @@
 		return (
 			routeId != null &&
 			!routeId.startsWith('/_history') &&
+			!routeId.startsWith('/__history-page') &&
 			!routeId.startsWith('/metadata') &&
 			!routeId.startsWith('/__admin')
 		);
@@ -35,7 +36,8 @@
 				<div class="flex space-x-8">
 					<NavItem active={isHomeRoute($page.route.id)} id="/" label="Home" />
 					<NavItem
-						active={$page.route.id?.startsWith('/_history')}
+						active={$page.route.id?.startsWith('/_history') ||
+							$page.route.id?.startsWith('/__history-page')}
 						id="/_history"
 						label="History"
 					/>
