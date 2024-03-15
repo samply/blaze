@@ -247,8 +247,8 @@
     :syntax :bracket}))
 
 (defmethod ig/pre-init-spec :blaze/admin-api [_]
-  (s/keys :req-un [:blaze/context-path ::dbs ::settings ::features]
-          :opt [::expr/cache]))
+  (s/keys :req-un [:blaze/context-path ::settings ::features]
+          :opt-un [::dbs] :opt [::expr/cache]))
 
 (defmethod ig/init-key :blaze/admin-api
   [_ context]
