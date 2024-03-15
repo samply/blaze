@@ -11,7 +11,7 @@ docker volume create blaze-data
 ## Blaze
 
 ```sh
-docker run -d --name blaze -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.24
+docker run -d --name blaze -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.25
 ```
 
 Blaze should log something like this:
@@ -27,7 +27,7 @@ Blaze should log something like this:
 2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:67] - JVM version: 17.0.7
 2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:68] - Maximum available memory: 1738 MiB
 2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:69] - Number of available processors: 2
-2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:70] - Successfully started 🔥 Blaze version 0.24.1 in 9.0 seconds
+2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:70] - Successfully started 🔥 Blaze version 0.25.0 in 9.0 seconds
 ```
 
 In order to test connectivity, query the health endpoint:
@@ -47,7 +47,7 @@ that should return:
 ```json
 {
   "name": "Blaze",
-  "version": "0.24.1"
+  "version": "0.25.0"
 }
 ```
 
@@ -60,7 +60,7 @@ A Docker Compose file looks like this:
 ```text
 services:
   blaze:
-    image: "samply/blaze:0.24"
+    image: "samply/blaze:0.25"
     environment:
       BASE_URL: "http://localhost:8080"
       JAVA_TOOL_OPTIONS: "-Xmx2g"
@@ -81,7 +81,7 @@ Per default, Blaze supports FHIR Search on all FHIR R4 search parameters. Howeve
 ```text
 services:
   blaze:
-    image: "samply/blaze:0.24"
+    image: "samply/blaze:0.25"
     environment:
       DB_SEARCH_PARAM_BUNDLE: "/app/custom-search-parameters.json"
     ports:

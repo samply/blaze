@@ -5,7 +5,7 @@ services:
     volumes:
     - "../../.github/openid-auth-test/realm:/opt/keycloak/data/import"
   blaze:
-    image: "samply/blaze:0.24"
+    image: "samply/blaze:0.25"
     environment:
       JAVA_TOOL_OPTIONS: "-Xmx1g"
       OPENID_PROVIDER_URL: "http://keycloak:8080/realms/blaze"
