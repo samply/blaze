@@ -36,20 +36,18 @@
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :dbs))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :features))))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :features))))
 
   (testing "invalid context path"
     (given-thrown (ig/init {:blaze/admin-api {:context-path ::invalid}})
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :dbs))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :features))
-      [:explain ::s/problems 3 :via] := [:blaze/context-path]
-      [:explain ::s/problems 3 :pred] := `string?
-      [:explain ::s/problems 3 :val] := ::invalid))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :features))
+      [:explain ::s/problems 2 :via] := [:blaze/context-path]
+      [:explain ::s/problems 2 :pred] := `string?
+      [:explain ::s/problems 2 :val] := ::invalid))
 
   (testing "invalid databases"
     (given-thrown (ig/init {:blaze/admin-api {:dbs ::invalid}})
@@ -67,22 +65,20 @@
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :dbs))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :features))
-      [:explain ::s/problems 3 :via] := [::admin-api/settings]
-      [:explain ::s/problems 3 :pred] := `coll?
-      [:explain ::s/problems 3 :val] := ::invalid))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :features))
+      [:explain ::s/problems 2 :via] := [::admin-api/settings]
+      [:explain ::s/problems 2 :pred] := `coll?
+      [:explain ::s/problems 2 :val] := ::invalid))
 
   (testing "invalid features"
     (given-thrown (ig/init {:blaze/admin-api {:features ::invalid}})
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :dbs))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:explain ::s/problems 3 :via] := [::admin-api/features]
-      [:explain ::s/problems 3 :pred] := `coll?
-      [:explain ::s/problems 3 :val] := ::invalid)))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:explain ::s/problems 2 :via] := [::admin-api/features]
+      [:explain ::s/problems 2 :pred] := `coll?
+      [:explain ::s/problems 2 :val] := ::invalid)))
 
 (defn- new-temp-dir! []
   (str (Files/createTempDirectory "blaze" (make-array FileAttribute 0))))
