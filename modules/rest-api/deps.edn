@@ -16,7 +16,7 @@
    :exclusions [buddy/buddy-sign]}
 
   metosin/muuntaja
-  {:mvn/version "0.6.8"
+  {:mvn/version "0.6.10"
    :exclusions [com.cognitect/transit-clj]}}
 
  :aliases
