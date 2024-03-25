@@ -1,3 +1,5 @@
+import type { PageLoad } from './$types';
+
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 import { toTitleCase } from '$lib/util.js';
@@ -27,11 +29,6 @@ export interface ColumnFamilyData {
 	estimateNumKeys: number;
 	liveSstFilesSize: number;
 	sizeAllMemTables: number;
-}
-
-export interface Data {
-	stats: Stats;
-	columnFamilies: ColumnFamilyData[];
 }
 
 async function loadStats(fetch: Fetch, dbId: string): Promise<Stats> {
@@ -74,9 +71,9 @@ async function loadColumnFamilies(fetch: Fetch, dbId: string): Promise<ColumnFam
 	return await res.json();
 }
 
-export async function load({ fetch, params }): Promise<Data> {
+export const load: PageLoad = async ({ fetch, params }) => {
 	return {
 		stats: await loadStats(fetch, params.dbId),
 		columnFamilies: await loadColumnFamilies(fetch, params.dbId)
 	};
-}
+};

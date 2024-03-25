@@ -3,23 +3,22 @@
    [blaze.db.search-param-registry.spec]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.error :as error]
+   [blaze.middleware.fhir.output :as fhir-output]
+   [blaze.middleware.fhir.resource :as resource]
+   [blaze.middleware.output :as output]
    [blaze.rest-api.middleware.auth-guard :as auth-guard]
    [blaze.rest-api.middleware.batch-handler :as batch-handler]
    [blaze.rest-api.middleware.ensure-form-body :as ensure-form-body]
    [blaze.rest-api.middleware.forwarded :as forwarded]
    [blaze.rest-api.middleware.link-headers :as link-headers]
    [blaze.rest-api.middleware.metrics :as metrics]
-   [blaze.rest-api.middleware.output :as output]
-   [blaze.rest-api.middleware.resource :as resource]
    [blaze.rest-api.middleware.sync :as sync]
    [blaze.rest-api.spec]
    [blaze.rest-api.util :as u]
    [blaze.spec]
    [reitit.ring]
    [reitit.ring.spec]
-   [ring.middleware.params :as ring-params])
-  (:import
-   [com.google.common.base CaseFormat]))
+   [ring.middleware.params :as ring-params]))
 
 (set! *warn-on-reflection* true)
 
@@ -70,9 +69,10 @@
 (def ^:private wrap-output
   {:name :output
    :compile (fn [{:keys [response-type] :response-type.json/keys [opts]} _]
-              (if (= :json response-type)
-                (output/wrap-json-output opts)
-                output/wrap-output))})
+              (condp = response-type
+                :json (output/wrap-output opts)
+                :none identity
+                fhir-output/wrap-output))})
 
 (def ^:private wrap-error
   {:name :error
@@ -259,9 +259,6 @@
                 :handler instance-handler}}])
      resource-types)))
 
-(defn- camel [s]
-  (.to CaseFormat/LOWER_HYPHEN CaseFormat/LOWER_CAMEL s))
-
 (defn routes
   {:arglists '([context capabilities-handler batch-handler-promise])}
   [{:keys
@@ -357,5 +354,5 @@
     (conj
      ["/__admin{*more}"
       {:get {:handler admin-handler}
-       :response-type :json
-       :response-type.json/opts {:encode-key-fn (comp camel name)}}])))
+       :post {:handler admin-handler}
+       :response-type :none}])))

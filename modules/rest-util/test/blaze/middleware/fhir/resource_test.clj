@@ -1,9 +1,10 @@
-(ns blaze.rest-api.middleware.resource-test
+(ns blaze.middleware.fhir.resource-test
   (:require
    [blaze.async.comp :as ac]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.test-util]
    [blaze.handler.util :as handler-util]
-   [blaze.rest-api.middleware.resource :refer [wrap-resource]]
+   [blaze.middleware.fhir.resource :refer [wrap-resource]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]

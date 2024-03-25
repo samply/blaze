@@ -10,7 +10,7 @@ keycloak-trust-store.p12: keycloak-cert.pem
 all: blaze-cert.pem keycloak-trust-store.p12
 
 clean:
-	rm *.pem
-	rm *.p12
+	rm -f *.pem
+	rm -f *.p12
 
 .PHONY: fmt lint test-coverage all cloc-prod cloc-test clean

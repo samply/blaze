@@ -20,23 +20,6 @@
    [ring.util.codec :as ring-codec]
    [taoensso.timbre :as log]))
 
-(defn- resource-type-mismatch-msg [type body]
-  (format "Resource type `%s` doesn't match the endpoint type `%s`."
-          (-> body :fhir/type name) type))
-
-(defn- validate-resource [type body]
-  (cond
-    (nil? body)
-    (ba/incorrect
-     "Missing HTTP body."
-     :fhir/issue "invalid")
-
-    (not= type (-> body :fhir/type name))
-    (ba/incorrect
-     (resource-type-mismatch-msg type body)
-     :fhir/issue "invariant"
-     :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH")))
-
 (defn- create-op [resource conditional-clauses]
   (cond-> [:create resource]
     (seq conditional-clauses)
@@ -61,27 +44,50 @@
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         :keys [headers body]
         :as request}]
-    (if-ok [_ (validate-resource type body)]
-      (let [id (iu/luid context)
-            conditional-clauses (conditional-clauses headers)
-            tx-op (create-op (assoc (iu/strip-meta body) :id id) conditional-clauses)]
-        (-> (d/transact node [tx-op])
-            (ac/then-compose
-             (fn [db-after]
-               (if-let [handle (d/resource-handle db-after type id)]
+    (let [id (iu/luid context)
+          conditional-clauses (conditional-clauses headers)
+          tx-op (create-op (assoc (iu/strip-meta body) :id id) conditional-clauses)]
+      (-> (d/transact node [tx-op])
+          (ac/then-compose
+           (fn [db-after]
+             (if-let [handle (d/resource-handle db-after type id)]
+               (response/build-response
+                (response-context request db-after) tx-op nil handle)
+               (let [handle (coll/first (d/type-query db-after type conditional-clauses))]
                  (response/build-response
-                  (response-context request db-after) tx-op nil handle)
-                 (let [handle (coll/first (d/type-query db-after type conditional-clauses))]
-                   (response/build-response
-                    (response-context request db-after) tx-op handle handle)))))
-            (ac/exceptionally
-             (fn [e]
-               (cond-> e
-                 (ba/not-found? e)
-                 (assoc
-                  ::anom/category ::anom/fault
-                  ::anom/message (resource-content-not-found-msg e)
-                  :fhir/issue "incomplete"))))))
+                  (response-context request db-after) tx-op handle handle)))))
+          (ac/exceptionally
+           (fn [e]
+             (cond-> e
+               (ba/not-found? e)
+               (assoc
+                ::anom/category ::anom/fault
+                ::anom/message (resource-content-not-found-msg e)
+                :fhir/issue "incomplete"))))))))
+
+(defn- resource-type-mismatch-msg [type body]
+  (format "Resource type `%s` doesn't match the endpoint type `%s`."
+          (-> body :fhir/type name) type))
+
+(defn- validate-resource [type body]
+  (cond
+    (nil? body)
+    (ba/incorrect
+     "Missing HTTP body."
+     :fhir/issue "invalid")
+
+    (not= type (-> body :fhir/type name))
+    (ba/incorrect
+     (resource-type-mismatch-msg type body)
+     :fhir/issue "invariant"
+     :fhir/operation-outcome "MSG_RESOURCE_TYPE_MISMATCH")))
+
+(defn- wrap-validation [handler]
+  (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
+        :keys [body]
+        :as request}]
+    (if-ok [_ (validate-resource type body)]
+      (handler request)
       ac/completed-future)))
 
 (defmethod ig/pre-init-spec :blaze.interaction/create [_]
@@ -89,4 +95,5 @@
 
 (defmethod ig/init-key :blaze.interaction/create [_ context]
   (log/info "Init FHIR create interaction handler")
-  (handler context))
+  (-> (handler context)
+      (wrap-validation)))

@@ -1,0 +1,30 @@
+{:paths ["src" "resources"]
+
+ :deps
+ {blaze/job-scheduler
+  {:local/root "../job-scheduler"}
+
+  blaze/module-base
+  {:local/root "../module-base"}}
+
+ :aliases
+ {:test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/db-stub
+    {:local/root "../db-stub"}}}
+
+  :kaocha
+  {:extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.87.1366"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :coverage
+  {:extra-deps
+   {cloverage/cloverage
+    {:mvn/version "1.2.4"}}
+
+   :main-opts ["-m" "cloverage.coverage" "--codecov" "-p" "src" "-s" "test"]}}}

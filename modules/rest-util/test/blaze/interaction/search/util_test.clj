@@ -28,7 +28,7 @@
       :fullUrl := "/Patient/0"
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
-      [:search :mode] #fhir/code "match"))
+      [:search :mode] #fhir/code"match"))
 
   (testing "search mode include"
     (given (search-util/entry context {:fhir/type :fhir/Patient :id "0"}
@@ -37,4 +37,4 @@
       :fullUrl := "/Patient/0"
       [:resource :fhir/type] := :fhir/Patient
       [:resource :id] := "0"
-      [:search :mode] #fhir/code "include")))
+      [:search :mode] #fhir/code"include")))

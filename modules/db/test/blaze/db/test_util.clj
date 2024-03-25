@@ -3,7 +3,7 @@
    [blaze.db.api :as d]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
-   [blaze.db.node]
+   [blaze.db.node :as node]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.tx-cache]
@@ -21,12 +21,12 @@
 
 (def config
   {:blaze.db/node
-   {:tx-log (ig/ref :blaze.db/tx-log)
+   {:tx-log (ig/ref ::tx-log/local)
     :tx-cache (ig/ref :blaze.db/tx-cache)
-    :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
+    :indexer-executor (ig/ref ::node/indexer-executor)
     :resource-store (ig/ref ::rs/kv)
     :kv-store (ig/ref :blaze.db/index-kv-store)
-    :resource-indexer (ig/ref :blaze.db.node/resource-indexer)
+    :resource-indexer (ig/ref ::node/resource-indexer)
     :search-param-registry search-param-registry
     :poll-timeout (time/millis 10)}
 
@@ -43,7 +43,7 @@
    :blaze.db/tx-cache
    {:kv-store (ig/ref :blaze.db/index-kv-store)}
 
-   :blaze.db.node/indexer-executor {}
+   ::node/indexer-executor {}
 
    [::kv/mem :blaze.db/index-kv-store]
    {:column-families
@@ -70,7 +70,7 @@
 
    ::rs-kv/executor {}
 
-   :blaze.db.node/resource-indexer
+   ::node/resource-indexer
    {:kv-store (ig/ref :blaze.db/index-kv-store)
     :resource-store (ig/ref ::rs/kv)
     :search-param-registry search-param-registry

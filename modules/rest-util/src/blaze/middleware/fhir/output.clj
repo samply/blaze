@@ -1,4 +1,4 @@
-(ns blaze.rest-api.middleware.output
+(ns blaze.middleware.fhir.output
   "JSON/XML serialization middleware."
   (:require
    [blaze.anomaly :as ba]
@@ -6,7 +6,6 @@
    [blaze.handler.util :as handler-util]
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
-   [jsonista.core :as j]
    [muuntaja.parse :as parse]
    [prometheus.alpha :as prom]
    [ring.util.response :as ring]
@@ -76,7 +75,7 @@
         (some format-key accept)
         :fhir+json)))
 
-(defn- handle-response [opts request response]
+(defn handle-response [opts request response]
   (case (request-format request)
     :fhir+json (encode-response-json response "application/fhir+json;charset=utf-8")
     :fhir+xml (encode-response-xml response "application/fhir+xml;charset=utf-8")
@@ -93,15 +92,3 @@
   ([handler opts]
    (fn [request respond raise]
      (handler request #(respond (handle-response opts request %)) raise))))
-
-(defn- handle-json-response [object-mapper response]
-  (-> (update response :body #(j/write-value-as-bytes % object-mapper))
-      (ring/content-type "application/json;charset=utf-8")))
-
-(defn wrap-json-output
-  "Middleware to output data (not resources) in JSON."
-  [opts]
-  (let [object-mapper (j/object-mapper opts)]
-    (fn [handler]
-      (fn [request respond raise]
-        (handler request #(respond (handle-json-response object-mapper %)) raise)))))

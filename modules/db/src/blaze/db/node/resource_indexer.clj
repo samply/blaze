@@ -1,13 +1,17 @@
 (ns blaze.db.node.resource-indexer
+  "This namespace contains the resource indexer component."
   (:require
    [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac]
+   [blaze.async.comp :as ac :refer [do-async do-sync]]
+   [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.compartment.resource :as cr]
+   [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.search-param :as search-param]
    [blaze.db.kv :as kv]
    [blaze.db.kv.spec]
    [blaze.db.node.resource-indexer.spec]
+   [blaze.db.node.util :as node-util]
    [blaze.db.resource-store :as rs]
    [blaze.db.search-param-registry :as sr]
    [blaze.executors :as ex]
@@ -108,7 +112,7 @@
    executor))
 
 (defn- index-resources* [context entries]
-  (log/trace "index" (count entries) "resource(s)")
+  (log/trace "Index" (count entries) "resource(s)")
   (ac/all-of (mapv (partial async-index-resource context) entries)))
 
 (defn- hashes [tx-cmds]
@@ -127,8 +131,43 @@
     (if resources
       (index-resources* context resources)
       (-> (rs/multi-get resource-store (hashes tx-cmds))
-          (ac/then-compose
+          (ac/then-compose-async
            (partial index-resources* context))))))
+
+(defn- re-index-resource [search-param [hash resource]]
+  (log/trace "Re-index resource with hash" hash)
+  (search-param-index-entries search-param nil hash resource))
+
+(defn async-re-index-resources [kv-store executor search-param resources]
+  (ac/supply-async
+   #(kv/put!
+     kv-store
+     (coll/eduction
+      (mapcat (partial re-index-resource search-param))
+      resources))
+   executor))
+
+(defn- re-index-resources*
+  [{:keys [resource-store kv-store executor]} search-param resource-handles]
+  (log/trace "Re-index" (count resource-handles) "resource(s)")
+  (do-async [resources (rs/multi-get resource-store (mapv rh/hash resource-handles))]
+    (async-re-index-resources kv-store executor search-param resources)))
+
+(defn re-index-resources
+  "Indexes the first 10000 resources from `resource-handles` using
+  `search-param`.
+
+  Returns a CompletableFuture that will complete with a map of:
+  * :num-resources - the number of resources indexed
+  * :next - the resource handle to continue with"
+  [resource-indexer search-param resource-handles]
+  (let [handles (into [] (take 10001) resource-handles)
+        [to-index next] (if (< 10000 (count handles))
+                          [(pop handles) (peek handles)]
+                          [handles])]
+    (do-sync [_ (re-index-resources* resource-indexer search-param to-index)]
+      {:num-resources (count to-index)
+       :next next})))
 
 (defmethod ig/pre-init-spec :blaze.db.node/resource-indexer [_]
   (s/keys :req-un [:blaze.db/kv-store
@@ -137,20 +176,18 @@
                    ::executor]))
 
 (defmethod ig/init-key :blaze.db.node/resource-indexer
-  [_ resource-indexer]
-  (log/info "Init resource indexer")
+  [key resource-indexer]
+  (log/info "Init" (node-util/component-name key "resource indexer"))
   resource-indexer)
 
 (defmethod ig/pre-init-spec ::executor [_]
   (s/keys :opt-un [::num-threads]))
 
-(defn- executor-init-msg [num-threads]
-  (format "Init resource indexer executor with %d threads" num-threads))
-
 (defmethod ig/init-key ::executor
-  [_ {:keys [num-threads] :or {num-threads 4}}]
-  (log/info (executor-init-msg num-threads))
-  (ex/io-pool num-threads "resource-indexer-%d"))
+  [key {:keys [num-threads] :or {num-threads 4}}]
+  (log/info "Init" (node-util/component-name key "resource indexer executor")
+            "with" num-threads "threads")
+  (ex/io-pool num-threads (node-util/thread-name-template key "resource-indexer-%d")))
 
 (defmethod ig/halt-key! ::executor
   [_ executor]

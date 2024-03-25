@@ -38,10 +38,7 @@
   (KafkaProducer. ^Map (c/producer-config config)
                   codec/serializer codec/serializer))
 
-(def ^:private ^TopicPartition tx-partition
-  (TopicPartition. "tx" 0))
-
-(defn create-consumer ^Consumer [config]
+(defn create-consumer ^Consumer [tx-partition config]
   (doto (KafkaConsumer. ^Map (c/consumer-config config)
                         codec/deserializer codec/deserializer)
     (.assign [tx-partition])))
@@ -68,17 +65,18 @@
                             (ex-message e))))
     (ba/ex-anom (ba/fault (ex-message e)))))
 
-(defn- end-offset [^Consumer consumer]
+(defn- end-offset [^Consumer consumer tx-partition]
   (with-open [_ (prom/timer duration-seconds "end-offset")]
     (get (.endOffsets consumer [tx-partition]) tx-partition)))
 
-(deftype KafkaTxLog [config ^Producer producer last-t-consumer last-t-executor]
+(deftype KafkaTxLog [config ^TopicPartition partition ^Producer producer
+                     last-t-consumer last-t-executor]
   tx-log/TxLog
   (-submit [_ tx-cmds _]
     (log/trace "submit" (count tx-cmds) "tx-cmds")
     (let [timer (prom/timer duration-seconds "submit")
           future (ac/future)]
-      (.send producer (ProducerRecord. "tx" tx-cmds)
+      (.send producer (ProducerRecord. (:topic config) tx-cmds)
              (reify Callback
                (onCompletion [_ metadata e]
                  (prom/observe-duration! timer)
@@ -88,12 +86,12 @@
       future))
 
   (-last-t [_]
-    (ac/supply-async #(end-offset last-t-consumer) last-t-executor))
+    (ac/supply-async #(end-offset last-t-consumer partition) last-t-executor))
 
   (-new-queue [_ offset]
     (log/trace "new-queue offset =" offset)
-    (doto (create-consumer config)
-      (.seek tx-partition ^long (dec offset))))
+    (doto (create-consumer partition config)
+      (.seek partition ^long (dec offset))))
 
   AutoCloseable
   (close [_]
@@ -110,6 +108,7 @@
 
 (defmethod ig/pre-init-spec :blaze.db.tx-log/kafka [_]
   (s/keys :req-un [::bootstrap-servers
+                   ::topic
                    ::last-t-executor]
           :opt-un [::max-request-size
                    ::compression-type
@@ -121,18 +120,18 @@
                    ::key-password]))
 
 (defmethod ig/init-key :blaze.db.tx-log/kafka
-  [_ config]
-  (log/info (l/init-msg config))
-  (->KafkaTxLog config (create-producer config) (create-last-t-consumer config)
-                (:last-t-executor config)))
+  [key {:keys [topic] :as config}]
+  (log/info (l/init-msg key config))
+  (let [partition (TopicPartition. topic 0)]
+    (->KafkaTxLog config partition (create-producer config)
+                  (create-last-t-consumer partition config)
+                  (:last-t-executor config))))
 
 (defmethod ig/halt-key! :blaze.db.tx-log/kafka
   [_ tx-log]
   (log/info "Closing Kafka transaction log...")
   (.close ^AutoCloseable tx-log)
   (log/info "Kafka transaction log was closed successfully"))
-
-(derive :blaze.db.tx-log/kafka :blaze.db/tx-log)
 
 (defmethod ig/init-key ::last-t-executor
   [_ _]

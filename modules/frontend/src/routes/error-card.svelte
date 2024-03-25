@@ -4,6 +4,8 @@
 
 	export let status = $page.status;
 	export let error = $page.error;
+	export let homeHref = base;
+	export let homeMsg = 'Go back home';
 </script>
 
 <div class="text-center overflow-hidden py-20">
@@ -16,9 +18,9 @@
 	</p>
 	<div class="mt-10 flex items-center justify-center gap-x-6">
 		<a
-			href={base}
+			href={homeHref}
 			class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-			>Go back home</a
+			>{homeMsg}</a
 		>
 		<slot />
 	</div>

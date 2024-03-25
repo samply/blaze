@@ -4,9 +4,11 @@
   A batch database keeps key-value store iterators open in order to avoid the
   cost associated with open and closing them."
   (:require
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
+   [blaze.db.api :as d]
    [blaze.db.impl.batch-db.patient-everything :as pe]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index :as index]
@@ -24,6 +26,7 @@
    [blaze.db.impl.search-param.chained :as spc]
    [blaze.db.impl.search-param.util :as u]
    [blaze.db.kv :as kv]
+   [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.search-param-registry :as sr]
    [blaze.fhir.spec.type :as type])
   (:import
@@ -31,6 +34,33 @@
    [java.lang AutoCloseable]))
 
 (set! *warn-on-reflection* true)
+
+(defn- sp-total
+  [db {:keys [base]}]
+  (if (= ["Resource"] base)
+    (d/system-total db)
+    (transduce (map (partial d/type-total db)) + base)))
+
+(defn- sp-list
+  "Returns a reducible collection of all resource handles of base types of
+  `search-param` in `db` optionally starting with `start-type` and `start-id`."
+  {:arglists '([db search-param] [db search-param start-type start-id])}
+  ([db {:keys [base]}]
+   (if (= ["Resource"] base)
+     (d/system-list db)
+     (coll/eduction (mapcat (partial d/type-list db)) base)))
+  ([db {:keys [base]} start-type start-id]
+   (if (= ["Resource"] base)
+     (d/system-list db start-type start-id)
+     (let [rest (drop 1 (drop-while (complement #{start-type}) base))]
+       (coll/eduction
+        cat
+        [(d/type-list db start-type start-id)
+         (coll/eduction (mapcat (partial d/type-list db)) rest)])))))
+
+(defn- sp-get-by-url [{{:keys [search-param-registry]} :node} url]
+  (or (sr/get-by-url search-param-registry url)
+      (ba/not-found (format "Search parameter with URL `%s` not found." url))))
 
 (defrecord BatchDb [node snapshot basis-t t]
   p/Db
@@ -162,6 +192,20 @@
 
   (-patient-everything [db patient-handle start end]
     (pe/patient-everything db patient-handle start end))
+
+  (-re-index-total [db search-param-url]
+    (when-ok [search-param (sp-get-by-url db search-param-url)]
+      (sp-total db search-param)))
+
+  (-re-index [db search-param-url]
+    (if-ok [search-param (sp-get-by-url db search-param-url)]
+      (resource-indexer/re-index-resources (:resource-indexer node) search-param (sp-list db search-param))
+      ac/completed-future))
+
+  (-re-index [db search-param-url start-type start-id]
+    (if-ok [search-param (sp-get-by-url db search-param-url)]
+      (resource-indexer/re-index-resources (:resource-indexer node) search-param (sp-list db search-param start-type start-id))
+      ac/completed-future))
 
   ;; ---- Transaction ---------------------------------------------------------
 

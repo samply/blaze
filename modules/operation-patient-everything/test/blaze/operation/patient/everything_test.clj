@@ -21,7 +21,7 @@
    [java.time Instant]))
 
 (st/instrument)
-(log/set-level! :info)
+(log/set-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 

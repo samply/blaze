@@ -4,28 +4,15 @@
   https://www.hl7.org/fhir/http.html#read"
   (:require
    [blaze.anomaly :as ba :refer [if-ok]]
-   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.async.comp :as ac :refer [do-async]]
    [blaze.db.api :as d]
    [blaze.db.spec]
+   [blaze.handler.fhir.util :as fhir-util]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [reitit.core :as reitit]
    [ring.util.response :as ring]
-   [taoensso.timbre :as log])
-  (:import
-   [java.time ZoneId ZonedDateTime]
-   [java.time.format DateTimeFormatter]))
-
-(set! *warn-on-reflection* true)
-
-(def ^:private gmt (ZoneId/of "GMT"))
-
-(defn- last-modified [{:blaze.db.tx/keys [instant]}]
-  (->> (ZonedDateTime/ofInstant instant gmt)
-       (.format DateTimeFormatter/RFC_1123_DATE_TIME)))
-
-(defn- etag [{:blaze.db/keys [t]}]
-  (str "W/\"" t "\""))
+   [taoensso.timbre :as log]))
 
 (defn- resource-handle [db type id]
   (if-let [{:keys [op t] :as handle} (d/resource-handle db type id)]
@@ -35,8 +22,8 @@
          (format "Resource `%s/%s` was deleted." type id)
          :http/status 410
          :http/headers
-         [["Last-Modified" (last-modified tx)]
-          ["ETag" (etag tx)]]
+         [["Last-Modified" (fhir-util/last-modified tx)]
+          ["ETag" (fhir-util/etag tx)]]
          :fhir/issue "deleted"))
       handle)
     (ba/not-found
@@ -55,13 +42,13 @@
 (defn- response [resource]
   (let [{:blaze.db/keys [tx]} (meta resource)]
     (-> (ring/response resource)
-        (ring/header "Last-Modified" (last-modified tx))
-        (ring/header "ETag" (etag tx)))))
+        (ring/header "Last-Modified" (fhir-util/last-modified tx))
+        (ring/header "ETag" (fhir-util/etag tx)))))
 
 (def ^:private handler
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params :blaze/keys [db]}]
-    (do-sync [resource (pull db type id)]
+    (do-async [resource (pull db type id)]
       (response resource))))
 
 (defn- wrap-invalid-id [handler]

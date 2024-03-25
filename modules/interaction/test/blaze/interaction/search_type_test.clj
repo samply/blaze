@@ -33,7 +33,7 @@
    [java.time Instant]))
 
 (st/instrument)
-(log/set-level! :info)
+(log/set-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -1488,19 +1488,19 @@
                :value
                #fhir/Quantity
                 {:value 65M
-                 :code #fhir/code "kg"
+                 :code #fhir/code"kg"
                  :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :value
                #fhir/Quantity
                 {:value 75M
-                 :code #fhir/code "kg"
+                 :code #fhir/code"kg"
                  :system #fhir/uri"http://unitsofmeasure.org"}}]
         [:put {:fhir/type :fhir/Observation :id "2"
                :value
                #fhir/Quantity
                 {:value 100M
-                 :code #fhir/code "kg"
+                 :code #fhir/code"kg"
                  :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
       (doseq [handling ["strict" "lenient"]
@@ -1517,7 +1517,7 @@
             (is (= :fhir/Bundle (:fhir/type body))))
 
           (testing "the bundle type is searchset"
-            (is (= #fhir/code "searchset" (:type body))))
+            (is (= #fhir/code"searchset" (:type body))))
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
@@ -2538,7 +2538,7 @@
           (is (= :fhir/Bundle (:fhir/type body))))
 
         (testing "the bundle type is searchset"
-          (is (= #fhir/code "searchset" (:type body))))
+          (is (= #fhir/code"searchset" (:type body))))
 
         (testing "the total count is 2"
           (is (= #fhir/unsignedInt 2 (:total body))))

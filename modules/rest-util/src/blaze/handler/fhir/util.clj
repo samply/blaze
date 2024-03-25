@@ -8,7 +8,12 @@
    [blaze.util :as u]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [reitit.core :as reitit]))
+   [reitit.core :as reitit])
+  (:import
+   [java.time ZoneId ZonedDateTime]
+   [java.time.format DateTimeFormatter]))
+
+(set! *warn-on-reflection* true)
 
 (defn parse-nat-long [s]
   (when-let [n (parse-long s)]
@@ -111,3 +116,19 @@
   ;; URLs are build by hand here, because id's do not need to be URL encoded
   ;; and the URL encoding in reitit is slow: https://github.com/metosin/reitit/issues/477
   (str (instance-url context type id) "/_history/" vid))
+
+(def ^:private gmt (ZoneId/of "GMT"))
+
+(defn last-modified
+  "Returns the instant of `tx` formatted suitable for the Last-Modified HTTP
+  header."
+  {:arglists '([tx])}
+  [{:blaze.db.tx/keys [instant]}]
+  (->> (ZonedDateTime/ofInstant instant gmt)
+       (.format DateTimeFormatter/RFC_1123_DATE_TIME)))
+
+(defn etag
+  "Returns the t of `tx` formatted as ETag."
+  {:arglists '([tx])}
+  [{:blaze.db/keys [t]}]
+  (str "W/\"" t "\""))

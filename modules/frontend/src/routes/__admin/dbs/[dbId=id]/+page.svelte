@@ -1,12 +1,13 @@
 <script lang="ts">
+	import type { PageData } from './$types';
+
 	import ColumnFamilyTable from './column-family-table.svelte';
 	import { toTitleCase } from '$lib/util.js';
-	import { descriptions } from './../util.js';
+	import { descriptions } from '../util.js';
 	import Stats from './stats.svelte';
 	import { page } from '$app/stores';
-	import type { Data } from './+page.js';
 
-	export let data: Data;
+	export let data: PageData;
 </script>
 
 <svelte:head>
