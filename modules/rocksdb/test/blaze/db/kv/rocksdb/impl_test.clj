@@ -66,7 +66,8 @@
 
   DBOptions
   (datafy [options]
-    {:wal-dir (.walDir options)
+    {:statistics (.statistics options)
+     :wal-dir (.walDir options)
      :max-background-jobs (.maxBackgroundJobs options)
      :compaction-readahead-size (.compactionReadaheadSize options)
      :enable-pipelined-write (.enablePipelinedWrite options)
@@ -143,13 +144,25 @@
 
 (deftest db-options-test
   (testing "with defaults"
-    (given (datafy/datafy (impl/db-options (Statistics.) (event-listener) nil))
-      :wal-dir := ""
-      :max-background-jobs := 2
-      :compaction-readahead-size := 2097152
-      :enable-pipelined-write := true
-      :create-if-missing := true
-      :create-missing-column-families := true)
+    (testing "with statistics"
+      (given (datafy/datafy (impl/db-options (Statistics.) (event-listener) nil))
+        :statistics :? some?
+        :wal-dir := ""
+        :max-background-jobs := 2
+        :compaction-readahead-size := 2097152
+        :enable-pipelined-write := true
+        :create-if-missing := true
+        :create-missing-column-families := true))
+
+    (testing "without statistics"
+      (given (datafy/datafy (impl/db-options nil (event-listener) nil))
+        :statistics :? nil?
+        :wal-dir := ""
+        :max-background-jobs := 2
+        :compaction-readahead-size := 2097152
+        :enable-pipelined-write := true
+        :create-if-missing := true
+        :create-missing-column-families := true))
 
     (given (datafy/datafy (impl/db-options (Statistics.) (event-listener) {:compaction-readahead-size nil}))
       :compaction-readahead-size := 2097152))
