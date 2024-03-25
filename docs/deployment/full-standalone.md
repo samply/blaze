@@ -82,7 +82,7 @@ curl -sk --oauth2-bearer "$(./fetch-access-token.sh)" 'https://blaze.localhost/f
 
 After that works, we can also use blazectl to do the same:
 
-> [!INFO]
+> [!IMPORTANT]
 > You need at least blazectl v0.14.0.
 
 ```sh
