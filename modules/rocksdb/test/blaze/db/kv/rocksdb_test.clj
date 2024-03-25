@@ -48,25 +48,22 @@
     (given-thrown (ig/init {::kv/rocksdb {}})
       :key := ::kv/rocksdb
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :dir))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :stats))))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :dir))))
 
   (testing "invalid dir"
     (given-thrown (ig/init {::kv/rocksdb {:dir ::invalid}})
       :key := ::kv/rocksdb
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :stats))
-      [:explain ::s/problems 1 :pred] := `string?
-      [:explain ::s/problems 1 :val] := ::invalid))
+      [:explain ::s/problems 0 :pred] := `string?
+      [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid block-cache"
     (given-thrown (ig/init {::kv/rocksdb {:block-cache ::invalid}})
       :key := ::kv/rocksdb
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :dir))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :stats))
-      [:explain ::s/problems 2 :via] := [::rocksdb/block-cache]
-      [:explain ::s/problems 2 :val] := ::invalid))
+      [:explain ::s/problems 1 :via] := [::rocksdb/block-cache]
+      [:explain ::s/problems 1 :val] := ::invalid))
 
   (testing "invalid stats"
     (given-thrown (ig/init {::kv/rocksdb {:stats ::invalid}})

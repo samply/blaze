@@ -102,13 +102,14 @@
     :or {wal-dir ""
          max-background-jobs 2}}]
   (cond-> (doto (DBOptions.)
-            (.setStatistics ^Statistics stats)
             (.setWalDir (str wal-dir))
             (.setMaxBackgroundJobs (long max-background-jobs))
             (.setEnablePipelinedWrite true)
             (.setCreateIfMissing true)
             (.setCreateMissingColumnFamilies true)
             (.setListeners ^List (list listener)))
+    stats
+    (.setStatistics ^Statistics stats)
     (int? compaction-readahead-size)
     (.setCompactionReadaheadSize (long compaction-readahead-size))))
 

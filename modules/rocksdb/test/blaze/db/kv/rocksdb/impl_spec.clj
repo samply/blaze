@@ -13,7 +13,7 @@
                :opts (s/tuple simple-keyword? (s/nilable ::rocksdb/column-family-options))))
 
 (s/fdef impl/db-options
-  :args (s/cat :stats ::rocksdb/stats
+  :args (s/cat :stats (s/nilable ::rocksdb/stats)
                :listener ::rocksdb/listener
                :opts (s/nilable ::rocksdb/db-options)))
 
