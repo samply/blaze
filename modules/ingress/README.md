@@ -17,8 +17,8 @@ ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDS
 ssl_prefer_server_ciphers off;
 ```
 
-[!HINT]
-Please consider to constrain `ssl_ciphers` depending on the browsers and clients you use. To do so https://ssl-config.mozilla.org/ can be used.
+> [!HINT]
+> Please consider to constrain `ssl_ciphers` depending on the browsers and clients you use. To do so https://ssl-config.mozilla.org/ can be used.
 
 ## Compression Config
 
@@ -49,8 +49,8 @@ add_header X-Content-Type-Options nosniff;
 add_header X-Frame-Options SAMEORIGIN;
 ```
 
-[!HINT]
-Please consider adding the `Strict-Transport-Security` header in production.
+> [!HINT]
+> Please consider adding the `Strict-Transport-Security` header in production.
 
 ## Reverse Proxy Forward
 

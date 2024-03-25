@@ -12,11 +12,11 @@ Please also have a look into the [architecture](../architecture.md) and [authent
 
 The `docs/deployment/full-standalone` directory contains a Docker Compose file with an example system consisting of all components needed in a full standalone setup.
 
-[!CAUTION]
-The Docker Compose setup shown here contains publicly known passwords and secrets. Please don't use it in production without changes.
+> [!CAUTION]
+> The Docker Compose setup shown here contains publicly known passwords and secrets. Please don't use it in production without changes.
 
-[!NOTE]
-You will need about 16 GB of RAM to be able to run the example smoothly. 
+> [!NOTE]
+> You will need about 16 GB of RAM to be able to run the example smoothly. 
 
 Before you can start the system, you have to generate certificates for the ingress component. To do so, please go into the base directory of this Blaze repository and run:
 
@@ -46,11 +46,11 @@ docker-compose logs -f
 
 In your browser, please go to `https://blaze.localhost/fhir`. 
 
-[!NOTE]
-The hostname `blaze.localhost` doesn't work in Safari.
+> [!NOTE]
+> The hostname `blaze.localhost` doesn't work in Safari.
 
-[!IMPORTANT]
-You have to accept certificate violations in your browser twice, once for the `blaze.localhost` domain and once for the `keycloak.localhost` domain.
+> [!IMPORTANT]
+> You have to accept certificate violations in your browser twice, once for the `blaze.localhost` domain and once for the `keycloak.localhost` domain.
 
 You should see a big button with the text "Sign in with Keycloak":
 
@@ -82,8 +82,8 @@ curl -sk --oauth2-bearer "$(./fetch-access-token.sh)" 'https://blaze.localhost/f
 
 After that works, we can also use blazectl to do the same:
 
-[!INFO]
-You need at least blazectl v0.14.0.
+> [!INFO]
+> You need at least blazectl v0.14.0.
 
 ```sh
 blazectl -k --server https://blaze.localhost/fhir --token "$(./fetch-access-token.sh)" count-resources
@@ -154,8 +154,8 @@ frontend:
 
 The documentation of the environment variables can be found [here](./environment-variables.md).
 
-[!CAUTION]
-Please don't use the same secrets in production.
+> [!CAUTION]
+> Please don't use the same secrets in production.
 
 ### Backend
 
@@ -182,8 +182,8 @@ Important environment variables are `ENABLE_ADMIN_API` and `OPENID_PROVIDER_URL`
 
 For Keycloak the realm `docs/deployment/full-standalone/keycloak/import/realm-blaze.json` is imported at startup. It contains a client with the name `account` and secret `e11a3a8e-6e24-4f9d-b914-da7619e8b31f` and a user with name `john` and password `insecure`.
 
-[!CAUTION]
-Please don't use this realm in production.
+> [!CAUTION]
+> Please don't use this realm in production.
 
 On top of the realm an admin user with name `admin` and password `admin` is configured. You can go to `https://keycloak.localhost/admin` and modify settings. More in-depth configuration of Keycloak it out of scope of the Blaze documentation.
 
