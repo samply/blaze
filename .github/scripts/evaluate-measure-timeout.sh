@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash -e
 
 BASE="http://localhost:8080/fhir"
 NAME="$1"

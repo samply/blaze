@@ -17,3 +17,11 @@ test-le() {
     exit 1
   fi
 }
+
+create() {
+  curl -s -H 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d @- "$1"
+}
+
+update() {
+  curl -XPUT -s -H 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d @- -o /dev/null "$1"
+}
