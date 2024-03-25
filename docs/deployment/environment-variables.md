@@ -1,6 +1,22 @@
 # Environment Variables
 
-Blaze is configured solely through environment variables. There is a default for every variable. So all variables are optional. 
+## Frontend
+
+| Name                | Default | Since | Depr ¹ | Description                                                                                       |
+|:--------------------|:--------|:------|:-------|:--------------------------------------------------------------------------------------------------|
+| ORIGIN              | —       | v0.26 |        | The base URL of the frontend as accessed by the browser.                                          |
+| BACKEND_BASE_URL    | —       | v0.26 |        | The `BASE_URL` of the backend as reachable by the frontend.                                       |
+| AUTH_CLIENT_ID      | —       | v0.26 |        | The client ID of the OAuth client used to communicate with the auth provider.                     |
+| AUTH_CLIENT_SECRET  | —       | v0.26 |        | The client ID of the OAuth client used to communicate with the auth provider.                     |
+| AUTH_ISSUER         | —       | v0.26 |        | The base URL of the auth provider. For Keycloak that is the realm base URL.                       |
+| AUTH_SECRET         | —       | v0.26 |        | A secret random string that is used to encrypt the session cookie.                                |
+| PROTOCOL_HEADER     | —       | v0.26 |        | Set this to `x-forwarded-proto` if the frontend is deployed behind a reverse proxy.               |
+| HOST_HEADER         | —       | v0.26 |        | Set this to `x-forwarded-host` if the frontend is deployed behind a reverse proxy.                |
+| NODE_EXTRA_CA_CERTS | —       | v0.26 |        | The name of a file with additional CA certificates needed to access especially the auth provider. |
+
+## Backend
+
+Blaze backend is configured solely through environment variables. There is a default for every variable. So all variables are optional. 
 
 A part of the environment variables depends on the storage variant chosen. The storage variant can be set through the `STORAGE` env var. The default is `in-memory` for the JAR and `standalone` for the Docker image. The third setting is `distributed`. The following tables list the database relevant environment variables by storage variant.
 
@@ -66,7 +82,7 @@ The distributed storage variant only uses the index database locally.
 
 ¹ Deprecated, ² In the JAR variant. The Docker image uses a directory below the `/app/data` directory.
 
-More information about distributed deployment are available [here](distributed.md). 
+More information about distributed deployment are available [here](distributed-backend.md). 
 
 ### Other Environment Variables
 
@@ -88,15 +104,27 @@ More information about distributed deployment are available [here](distributed.m
 | FHIR_OPERATION_EVALUATE_MEASURE_THREADS | —                          | v0.8   | v0.23.3 | The number threads used for $evaluate-measure executions.                                      |
 | FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT | 3600000 (1h)               | v0.19  | —       | Timeout in milliseconds for $evaluate-measure executions.                                      |
 | OPENID_PROVIDER_URL                     | —                          | v0.11  | —       | [OpenID Connect][4] provider URL to enable [authentication][5]                                 |
+| OPENID_CLIENT_TRUST_STORE               | —                          | v0.26  | —       | A PKCS #12 trust store containing CA certificates needed for the [OpenID Connect][4] provider. |
+| OPENID_CLIENT_TRUST_STORE_PASS          | —                          | v0.26  | —       | The password for the PKCS #12 trust store.                                                     |
 | ENFORCE_REFERENTIAL_INTEGRITY           | true                       | v0.14  | —       | Enforce referential integrity on resource create, update and delete.                           |
 | DB_SYNC_TIMEOUT                         | 10000                      | v0.15  | —       | Timeout in milliseconds for all reading FHIR interactions acquiring the newest database state. |
 | DB_SEARCH_PARAM_BUNDLE                  | —                          | v0.21  | —       | Name of a custom search parameter bundle file.                                                 |
+| ENABLE_ADMIN_API                        | —                          | v0.26  | —       | Set to `true` if the optional Admin API should be enabled. Needed by the frontend.             |
 
 ¹ Deprecated
 
 #### BASE_URL
 
-The [FHIR RESTful API](https://www.hl7.org/fhir/http.html) will be accessible under `BASE_URL/CONTEXT_PATH`. Possible X-Forwarded-Host, X-Forwarded-Proto and Forwarded request headers will override this URL.
+The [FHIR RESTful API](https://www.hl7.org/fhir/http.html) will be accessible under `BASE_URL/CONTEXT_PATH`. Possible `X-Forwarded-Host`, `X-Forwarded-Proto` and `Forwarded` request headers will override this URL.
+
+#### OPENID_CLIENT_TRUST_STORE
+
+The PKCS #12 trust store has to be generated by the Java keytool. OpenSSL will not work.
+
+```sh
+keytool -importcert -storetype PKCS12 -keystore "trust-store.p12" \
+  -storepass "..." -alias ca -file "cert.pem" -noprompt
+```
 
 #### ENFORCE_REFERENTIAL_INTEGRITY
 

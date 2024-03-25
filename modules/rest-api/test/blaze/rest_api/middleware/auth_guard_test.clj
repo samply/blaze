@@ -22,7 +22,7 @@
       :body := ::foo))
 
   (testing "without identity"
-    (given @((wrap-auth-guard handler) {})
+    (given @((wrap-auth-guard handler) {:request-method :get})
       :status := 401
       [:body :fhir/type] := :fhir/OperationOutcome
       [:body :issue 0 :severity] := #fhir/code"error"

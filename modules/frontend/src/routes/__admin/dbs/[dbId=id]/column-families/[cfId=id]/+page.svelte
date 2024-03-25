@@ -14,7 +14,7 @@
 
 <svelte:head>
 	<title
-		>${pascalCase($page.params.cfId)} Column Family - {toTitleCase($page.params.dbId)} Database - Admin
+		>{pascalCase($page.params.cfId)} Column Family - {toTitleCase($page.params.dbId)} Database - Admin
 		- Blaze</title
 	>
 </svelte:head>

@@ -31,6 +31,9 @@ export const descriptions: Descriptions = {
 		'cql-bloom-filter': 'Contains Bloom filters for the CQL cache',
 		default: "Contains versioning information's"
 	},
+	transaction: {
+		default: 'Contains all transactions'
+	},
 	resource: {
 		default: 'Contains all resources by content hash'
 	}

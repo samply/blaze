@@ -1,10 +1,26 @@
 import { fetchBundleWithDuration } from './util.js';
-import { fetchStructureDefinition } from '$lib/metadata.js';
+import type { CapabilityStatementRestResourceSearchParam } from 'fhir/r4';
+import { base } from '$app/paths';
+import { error, type NumericRange } from '@sveltejs/kit';
+
+async function loadSearchParams(
+	fetch: typeof window.fetch,
+	type: string
+): Promise<CapabilityStatementRestResourceSearchParam[]> {
+	const res = await fetch(`${base}/${type}/__search-params`, {
+		headers: { Accept: 'application/json' }
+	});
+
+	if (!res.ok) {
+		error(res.status as NumericRange<400, 599>, 'error while fetching the search params');
+	}
+
+	return (await res.json()).searchParams;
+}
 
 export async function load({ fetch, params, url }) {
-	fetchStructureDefinition(params.type, fetch);
-
 	return {
+		searchParams: await loadSearchParams(fetch, params.type),
 		streamed: {
 			start: Date.now(),
 			bundle: fetchBundleWithDuration(fetch, params, url)

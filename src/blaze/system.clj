@@ -124,8 +124,7 @@
 
    :blaze.handler/app
    {:rest-api (ig/ref :blaze/rest-api)
-    :health-handler (ig/ref :blaze.handler/health)
-    :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")}
+    :health-handler (ig/ref :blaze.handler/health)}
 
    :blaze/server
    {:port (->Cfg "SERVER_PORT" nat-int? 8080)

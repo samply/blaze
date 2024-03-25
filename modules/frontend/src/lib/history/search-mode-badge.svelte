@@ -1,11 +1,11 @@
 <script lang="ts">
-	export let mode: 'match' | 'include' | 'outcome' | 'unknown';
+	export let mode: 'match' | 'include' | 'outcome';
 
 	function modeBgColor(mode: string): string {
 		switch (mode) {
-			case 'POST':
+			case 'match':
 				return 'bg-green-100';
-			case 'PUT':
+			case 'include':
 				return 'bg-fuchsia-100';
 			default:
 				return 'bg-red-100';
@@ -14,9 +14,9 @@
 
 	function modeTextColor(mode: string): string {
 		switch (mode) {
-			case 'POST':
+			case 'match':
 				return 'text-green-800';
-			case 'PUT':
+			case 'include':
 				return 'text-fuchsia-800';
 			default:
 				return 'text-red-800';

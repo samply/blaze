@@ -292,8 +292,8 @@
     (with-handler [handler]
       (assoc-in (config (new-temp-dir!))
                 [:blaze/admin-api :features]
-                [{:name "Frontend"
-                  :toggle "ENABLE_FRONTEND"
+                [{:name "OpenID Authentication"
+                  :toggle "OPENID_PROVIDER_URL"
                   :enabled true}])
       []
       (testing "success"
@@ -303,8 +303,8 @@
           :status := 200
           [:body :settings count] := 0
           [:body :features count] := 1
-          [:body :features 0 :name] := "Frontend"
-          [:body :features 0 :toggle] := "ENABLE_FRONTEND"
+          [:body :features 0 :name] := "OpenID Authentication"
+          [:body :features 0 :toggle] := "OPENID_PROVIDER_URL"
           [:body :features 0 :enabled] := true)))))
 
 (deftest databases-test

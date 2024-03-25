@@ -25,7 +25,7 @@ In order to run Blaze just execute the following:
 
 ```sh
 docker volume create blaze-data
-docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.25
+docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:latest
 ```
 
 Blaze will create multiple directories inside the `blaze-data` volume on its first start and use the same directories on subsequent starts.

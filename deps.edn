@@ -10,9 +10,6 @@
   blaze/db-tx-log-kafka
   {:local/root "modules/db-tx-log-kafka"}
 
-  blaze/frontend
-  {:local/root "modules/frontend"}
-
   blaze/interaction
   {:local/root "modules/interaction"}
 

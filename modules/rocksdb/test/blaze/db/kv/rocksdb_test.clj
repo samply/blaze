@@ -734,6 +734,8 @@
        #(kv/put! db [[:default (int-ba %) (apply ba (range 10000))]])
        (range 10000 20000))
 
+      (Thread/sleep 1000)
+
       (is (pos-int? (rocksdb/long-property db "rocksdb.estimate-live-data-size")))
       (is (pos-int? (rocksdb/agg-long-property db "rocksdb.estimate-live-data-size")))
 
@@ -754,6 +756,8 @@
       (run!
        #(kv/put! db [[:a (int-ba %) (apply ba (range 10000))]])
        (range 10000 20000))
+
+      (Thread/sleep 1000)
 
       (is (= 0 (rocksdb/long-property db :default "rocksdb.estimate-live-data-size")))
       (is (pos-int? (rocksdb/long-property db :a "rocksdb.estimate-live-data-size")))

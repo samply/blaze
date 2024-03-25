@@ -1,6 +1,0 @@
-#kaocha/v1
-    #merge
-        [{:tests [{:source-paths ["clj/src"]
-                   :test-paths ["clj/test"]}]}
-         #profile {:ci {:reporter kaocha.report/documentation
-                        :color? false}}]

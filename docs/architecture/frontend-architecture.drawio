@@ -1,0 +1,128 @@
+<mxfile host="app.diagrams.net" modified="2024-03-23T12:37:26.855Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15" etag="UUCiJhCqTDNORpGZ-DYS" version="24.0.9" type="device">
+  <diagram id="VETf5LYlRZAwOjoE17p3" name="Page-1">
+    <mxGraphModel dx="1057" dy="-32" grid="1" gridSize="10" guides="0" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="rUtkjNJ1uQe5wAA12E_K-9" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=default;" parent="1" vertex="1">
+          <mxGeometry x="320" y="900" width="200" height="520" as="geometry" />
+        </mxCell>
+        <mxCell id="l390X0jVVyObdNu9A5I7-1" value="Blaze vHost" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="330" y="950" width="180" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="rUtkjNJ1uQe5wAA12E_K-11" value="nginx Ingress&lt;div&gt;(TLS Termination)&lt;/div&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="340" y="900" width="155" height="48.5" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="dbGFg-htKO2WQg47awPi-22" target="dbGFg-htKO2WQg47awPi-5" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="502.5" y="1022.7619047619047" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-3" value="Backend&lt;div&gt;(FHIR and Admin API)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="610" y="1100" width="210" height="141" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="dbGFg-htKO2WQg47awPi-5" target="dbGFg-htKO2WQg47awPi-25" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-5" value="Frontend" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="610" y="920" width="210" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="dbGFg-htKO2WQg47awPi-8" target="dbGFg-htKO2WQg47awPi-10" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-8" value="Direct API Routes" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;strokeColor=default;" parent="1" vertex="1">
+          <mxGeometry x="350" y="1160" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-10" value="OAuth" style="rounded=0;whiteSpace=wrap;html=1;textDirection=vertical-rl;horizontal=1;flipH=1;flipV=1;" parent="1" vertex="1">
+          <mxGeometry x="600" y="1140" width="20" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-12" value="Auth Provider&lt;div&gt;(Keycloak)&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="610" y="1280" width="210" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-13" value="Auth Provider&amp;nbsp;Routes" style="text;html=1;strokeColor=default;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="350" y="1330" width="150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.111;entryY=0.615;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="dbGFg-htKO2WQg47awPi-5" edge="1" target="l390X0jVVyObdNu9A5I7-2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="513" y="1033" as="sourcePoint" />
+            <mxPoint x="340" y="1360" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="840" y="990" />
+              <mxPoint x="840" y="1440" />
+              <mxPoint x="300" y="1440" />
+              <mxPoint x="300" y="1360" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="dbGFg-htKO2WQg47awPi-13" target="dbGFg-htKO2WQg47awPi-12" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="513" y="1114" as="sourcePoint" />
+            <mxPoint x="600" y="1180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-18" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" parent="1" source="dbGFg-htKO2WQg47awPi-3" target="dbGFg-htKO2WQg47awPi-13" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="580" y="1120" as="sourcePoint" />
+            <mxPoint x="320" y="1330" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="840" y="1171" />
+              <mxPoint x="840" y="1440" />
+              <mxPoint x="300" y="1440" />
+              <mxPoint x="300" y="1360" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.25;exitDx=0;exitDy=0;" parent="1" source="dbGFg-htKO2WQg47awPi-19" target="dbGFg-htKO2WQg47awPi-22" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-19" value="Browser" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="50" y="960" width="170" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="dbGFg-htKO2WQg47awPi-20" target="dbGFg-htKO2WQg47awPi-8" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-20" value="API Client" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="50" y="1130" width="170" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-22" value="Frontend Routes" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;strokeColor=default;" parent="1" vertex="1">
+          <mxGeometry x="350" y="980" width="150" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-25" value="OAuth" style="rounded=0;whiteSpace=wrap;html=1;textDirection=vertical-rl;horizontal=1;flipH=1;flipV=1;rotation=-90;" parent="1" vertex="1">
+          <mxGeometry x="705" y="1070" width="20" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-27" value="&lt;font style=&quot;font-size: 10px;&quot;&gt;Access Token&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="710" y="1060" width="90" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-28" value="&lt;font style=&quot;font-size: 10px;&quot;&gt;Access Token&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="220" y="1170" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.25;entryDx=0;entryDy=0;exitX=1;exitY=0.75;exitDx=0;exitDy=0;" parent="1" source="dbGFg-htKO2WQg47awPi-19" target="dbGFg-htKO2WQg47awPi-13" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="300" y="1050" />
+              <mxPoint x="300" y="1340" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-30" value="&lt;font style=&quot;font-size: 10px;&quot;&gt;Session Cookie&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="220" y="990" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-32" value="&lt;font style=&quot;font-size: 10px;&quot;&gt;User Credentials&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="220" y="1050" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-33" value="&lt;font style=&quot;font-size: 10px;&quot;&gt;Authorisation Code Flow&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="820" y="960" width="70" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-34" value="&lt;font style=&quot;font-size: 10px;&quot;&gt;OIDC Provider Config&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="300" y="1440" width="110" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="dbGFg-htKO2WQg47awPi-35" value="&lt;font style=&quot;font-size: 10px;&quot;&gt;Access Token&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" parent="1" vertex="1">
+          <mxGeometry x="520" y="1170" width="80" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="l390X0jVVyObdNu9A5I7-2" value="Keycloak vHost" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="330" y="1280" width="180" height="130" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

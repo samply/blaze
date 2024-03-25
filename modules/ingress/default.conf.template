@@ -1,0 +1,66 @@
+map $http_authorization $upstream {
+    default http://frontend:3000;
+
+    "~Bearer" http://backend:8080;
+}
+
+server {
+    listen       443 ssl;
+    server_name  ${BLAZE_HOST};
+    http2 on;
+
+    # TLS certificates and config
+    ssl_certificate /etc/nginx/conf.d/blaze-cert.pem;
+    ssl_certificate_key /etc/nginx/conf.d/blaze-key.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+    ssl_prefer_server_ciphers off;
+
+    # DNS resolver needed for Docker
+    resolver 127.0.0.11 valid=10s;
+
+    # Needed for large FHIR uploads
+    client_max_body_size 100M;
+
+    # Compression config
+    gzip  on;
+    gzip_types text/javascript text/css application/json application/fhir+json;
+
+    # General reverse proxy config
+    proxy_http_version      1.1;
+    proxy_buffer_size       32k;
+    proxy_buffers           8 32k;
+    proxy_request_buffering off;
+
+    # Security related headers
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options SAMEORIGIN;
+
+    location /fhir {
+        proxy_pass $upstream;
+        proxy_set_header x-forwarded-proto https;
+        proxy_set_header x-forwarded-host ${BLAZE_HOST};
+    }
+}
+
+server {
+    listen       443 ssl;
+    server_name  ${KEYCLOAK_HOST};
+    http2 on;
+
+    # TLS certificates and config
+    ssl_certificate /etc/nginx/conf.d/keycloak-cert.pem;
+    ssl_certificate_key /etc/nginx/conf.d/keycloak-key.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+    ssl_prefer_server_ciphers off;
+
+    # DNS resolver needed for Docker
+    resolver 127.0.0.11 valid=10s;
+
+    # Keycloak: https://www.keycloak.org/server/reverseproxy
+    location / {
+        proxy_pass http://keycloak:8080;
+        proxy_set_header forwarded "host=${KEYCLOAK_HOST};proto=https";
+    }
+}

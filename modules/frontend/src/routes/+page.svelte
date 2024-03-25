@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { Data } from './+page.js';
+	import type { PageData } from './$types';
 
 	import Table from '$lib/tailwind/table/table.svelte';
 	import ResourceRow from './resource-row.svelte';
 
-	export let data: Data;
+	export let data: PageData;
 </script>
 
 <svelte:head>
