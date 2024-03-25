@@ -132,8 +132,6 @@
   (.close ^AutoCloseable tx-log)
   (log/info "Kafka transaction log was closed successfully"))
 
-(derive :blaze.db.tx-log/kafka :blaze.db/tx-log)
-
 (defmethod ig/init-key ::last-t-executor
   [_ _]
   (log/info "Init last-t executor")

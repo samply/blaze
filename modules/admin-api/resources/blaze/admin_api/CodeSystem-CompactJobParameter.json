@@ -1,0 +1,15 @@
+{
+  "resourceType": "CodeSystem",
+  "status": "draft",
+  "content": "complete",
+  "name": "CompactJobParameter",
+  "id": "CompactJobParameter",
+  "url": "https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter",
+  "concept": [
+    {
+      "code": "column-family-name",
+      "display": "Column Family Name"
+    }
+  ],
+  "count": 1
+}

@@ -1,0 +1,33 @@
+{
+  "resourceType": "Task",
+  "id": "ReIndexJobExample",
+  "meta": {
+    "profile": [
+      "https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"
+    ]
+  },
+  "input": [
+    {
+      "type": {
+        "coding": [
+          {
+            "code": "search-param-url",
+            "system": "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter"
+          }
+        ]
+      },
+      "valueCanonical": "http://hl7.org/fhir/SearchParameter/Resource-profile"
+    }
+  ],
+  "code": {
+    "coding": [
+      {
+        "code": "re-index",
+        "system": "https://samply.github.io/blaze/fhir/CodeSystem/JobType",
+        "display": "(Re)Index a Search Parameter"
+      }
+    ]
+  },
+  "status": "ready",
+  "intent": "order"
+}

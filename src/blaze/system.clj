@@ -111,7 +111,7 @@
     :version (ig/ref :blaze/version)
     :release-date (ig/ref :blaze/release-date)
     :structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)
-    :node (ig/ref :blaze.db/node)
+    :node (ig/ref :blaze.db.main/node)
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :auth-backends (ig/refset :blaze.auth/backend)
     :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")

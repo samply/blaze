@@ -62,13 +62,18 @@
 (defmethod ig/pre-init-spec :blaze/thread-pool-executor-collector [_]
   (s/keys :req-un [::executors]))
 
+(defn- executor-name [key]
+  (if (keyword? key)
+    (str (namespace key) "." (name key))
+    (executor-name (second key))))
+
 (defmethod ig/init-key :blaze/thread-pool-executor-collector
   [_ {:keys [executors]}]
   (log/info "Init thread pool executor collector")
   (->> executors
        (map
         (fn [[key executor]]
-          (let [name (str (namespace key) "." (name key))]
+          (let [name (executor-name key)]
             (log/debug "Collecting from" name "executor")
             [name executor])))
        (thread-pool-executor-collector)))

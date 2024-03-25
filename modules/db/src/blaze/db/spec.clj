@@ -2,16 +2,13 @@
   (:require
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.protocols :as p]
-   [blaze.db.node.protocols :as np]
+   [blaze.db.node :refer [node?]]
    [blaze.db.resource-store.spec]
    [blaze.db.tx-log.spec]
    [blaze.spec]
    [clojure.spec.alpha :as s])
   (:import
    [com.github.benmanes.caffeine.cache LoadingCache]))
-
-(defn node? [x]
-  (satisfies? np/Node x))
 
 (s/def :blaze.db/node
   node?)

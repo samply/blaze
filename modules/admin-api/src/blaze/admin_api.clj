@@ -1,11 +1,20 @@
 (ns blaze.admin-api
   (:require
    [blaze.admin-api.spec]
-   [blaze.anomaly :refer [if-ok]]
+   [blaze.admin-api.validation]
+   [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac]
    [blaze.db.kv.rocksdb :as rocksdb]
    [blaze.elm.expression :as-alias expr]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.handler.util :as handler-util]
+   [blaze.job-scheduler.spec]
+   [blaze.middleware.fhir.db :as db]
+   [blaze.middleware.fhir.output :as fhir-output]
+   [blaze.middleware.fhir.resource :as resource]
+   [blaze.middleware.output :as output]
    [blaze.spec]
+   [clojure.datafy :as datafy]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [reitit.openapi :as openapi]
@@ -14,8 +23,13 @@
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
+   [com.google.common.base CaseFormat]
    [java.io File]
-   [java.nio.file Files]))
+   [java.nio.file Files]
+   [java.util ArrayList]
+   [org.hl7.fhir.r5.elementmodel Manager$FhirFormat]
+   [org.hl7.fhir.r5.formats FormatUtilities]
+   [org.hl7.fhir.validation ValidationEngine ValidationEngine$ValidationEngineBuilder]))
 
 (set! *warn-on-reflection* true)
 
@@ -94,8 +108,8 @@
 (defn- db-not-found [db-name]
   (ring/not-found {:msg (format "The database `%s` was not found." db-name)}))
 
-(def ^:private wrap-db
-  {:name :wrap-db
+(def ^:private wrap-dbs-db
+  {:name :wrap-dbs-db
    :wrap (fn [handler dbs]
            (fn [{{db-name :db} :path-params :as request}]
              (if-let [db (dbs db-name)]
@@ -103,12 +117,85 @@
                (-> (db-not-found db-name)
                    (ac/completed-future)))))})
 
+(def ^:private wrap-output
+  {:name :output
+   :compile (fn [{:keys [response-type] :response-type.json/keys [opts]} _]
+              (condp = response-type
+                :json (output/wrap-future-output opts)
+                :fhir fhir-output/wrap-future-output))})
+
+(def ^:private wrap-db
+  {:name :db
+   :wrap db/wrap-db})
+
+(def ^:private wrap-resource
+  {:name :resource
+   :wrap resource/wrap-resource})
+
+(def ^:private allowed-profiles
+  #{#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"
+    #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"})
+
+(defn- check-profile [resource]
+  (if (some allowed-profiles (-> resource :meta :profile))
+    resource
+    (ba/incorrect
+     "No allowed profile found."
+     :outcome
+     {:fhir/type :fhir/OperationOutcome
+      :issue
+      [{:fhir/type :fhir.OperationOutcome/issue
+        :severity #fhir/code"error"
+        :code #fhir/code"value"
+        :details #fhir/CodeableConcept
+                  {:text "No allowed profile found."}}]})))
+
+(defn- validate [validator resource]
+  (-> (.validate ^ValidationEngine validator
+                 ^bytes (fhir-spec/unform-json resource)
+                 Manager$FhirFormat/JSON
+                 (ArrayList.)
+                 (ArrayList.))
+      (datafy/datafy)))
+
+(defn- error-issues [outcome]
+  (update outcome :issue (partial filterv (comp #{#fhir/code"error"} :severity))))
+
+(def ^:private wrap-validate-job
+  {:name :wrap-validate-job
+   :wrap (fn [handler validator]
+           (fn [{:keys [body] :as request}]
+             (if-ok [body (check-profile body)]
+               (let [outcome (error-issues (validate validator body))]
+                 (if (seq (:issue outcome))
+                   (ac/completed-future (ring/bad-request outcome))
+                   (handler request)))
+               #(ac/completed-future (ring/bad-request (:outcome %))))))})
+
+(defn wrap-error* [handler]
+  (fn [request]
+    (-> (handler request)
+        (ac/exceptionally handler-util/error-response))))
+
+(def ^:private wrap-error
+  {:name :wrap-error
+   :wrap wrap-error*})
+
+(defn- camel [s]
+  (.to CaseFormat/LOWER_HYPHEN CaseFormat/LOWER_CAMEL s))
+
 (defn- router
-  [{:keys [context-path dbs] :or {context-path ""} :as context}]
+  [{:keys [context-path admin-node validator db-sync-timeout dbs create-handler
+           read-handler search-type-handler]
+    :or {context-path ""
+         db-sync-timeout 10000}
+    :as context}]
   (reitit.ring/router
    [""
     {:openapi {:id :admin-api}
-     :middleware [openapi/openapi-feature]}
+     :middleware [wrap-output openapi/openapi-feature]
+     :response-type :json
+     :response-type.json/opts {:encode-key-fn (comp camel name)}}
     [""
      {:get
       {:handler (root-handler context)}}]
@@ -171,7 +258,7 @@
              {:type "array"
               :items {:type "string"}}}}}}}}}]
      ["/{db}"
-      {:middleware [[wrap-db dbs]]}
+      {:middleware [[wrap-dbs-db dbs]]}
       ["/stats"
        {:get
         {:handler db-stats-handler
@@ -242,19 +329,62 @@
                  {:type "object"
                   :properties
                   {:data-size {:type "number"}
-                   :total-raw-key-size {:type "number"}}}}}}}}}}}]]]]]]
+                   :total-raw-key-size {:type "number"}}}}}}}}}}}]]]]]
+    ["/jobs"
+     {:fhir.resource/type "Task"
+      :response-type :fhir
+      :middleware [wrap-error]}
+     [""
+      {:name :Task/type
+       :get
+       {:middleware [[wrap-db admin-node db-sync-timeout]]
+        :handler search-type-handler}
+       :post
+       {:middleware [wrap-resource [wrap-validate-job validator]]
+        :handler create-handler}}]
+     ["/{id}"
+      {:get
+       {:middleware [[wrap-db admin-node db-sync-timeout]]
+        :handler read-handler}}]]]
    {:path (str context-path "/__admin")
     :syntax :bracket}))
 
+(defn- load-profile [name]
+  (log/debug "Load profile" name)
+  (let [parser (FormatUtilities/makeParser Manager$FhirFormat/JSON)
+        classloader (.getContextClassLoader (Thread/currentThread))
+        source (.readAllBytes (.getResourceAsStream classloader name))]
+    (.parse parser source)))
+
+(defn- create-validator* []
+  (doto (-> (ValidationEngine$ValidationEngineBuilder.)
+            (.withNoTerminologyServer)
+            (.fromSource "hl7.fhir.r4.core#4.0.1"))
+    (.seeResource (load-profile "blaze/admin_api/CodeSystem-JobType.json"))
+    (.seeResource (load-profile "blaze/admin_api/CodeSystem-ReIndexJobParameter.json"))
+    (.seeResource (load-profile "blaze/admin_api/StructureDefinition-ReIndexJob.json"))
+    (.seeResource (load-profile "blaze/admin_api/CodeSystem-CompactJobParameter.json"))
+    (.seeResource (load-profile "blaze/admin_api/StructureDefinition-CompactJob.json"))))
+
+(defn- create-validator []
+  (try
+    (create-validator*)
+    (catch Exception e
+      (log/error e)
+      (throw e))))
+
 (defmethod ig/pre-init-spec :blaze/admin-api [_]
-  (s/keys :req-un [:blaze/context-path ::settings ::features]
-          :opt-un [::dbs] :opt [::expr/cache]))
+  (s/keys :req-un [:blaze/context-path ::admin-node :blaze/job-scheduler
+                   ::create-handler ::read-handler ::search-type-handler
+                   ::settings ::features]
+          :opt [::dbs ::expr/cache ::db-sync-timeout]))
 
 (defmethod ig/init-key :blaze/admin-api
   [_ context]
   (log/info "Init Admin endpoint")
   (reitit.ring/ring-handler
-   (router context)
-   (fn [{:keys [uri]}]
-     (-> (ring/not-found {:uri uri})
-         (ac/completed-future)))))
+   (router (assoc context :validator (create-validator)))
+   ((output/wrap-future-output {})
+    (fn [{:keys [uri]}]
+      (-> (ring/not-found {"uri" uri})
+          (ac/completed-future))))))

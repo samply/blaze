@@ -1,0 +1,15 @@
+{
+  "resourceType": "CodeSystem",
+  "status": "draft",
+  "content": "complete",
+  "name": "ReIndexJobParameter",
+  "id": "ReIndexJobParameter",
+  "url": "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter",
+  "concept": [
+    {
+      "code": "search-param-url",
+      "display": "Search Param URL"
+    }
+  ],
+  "count": 1
+}

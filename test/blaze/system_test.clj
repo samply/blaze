@@ -162,7 +162,7 @@
 
 (def search-bundle
   {:fhir/type :fhir/Bundle
-   :type #fhir/code "batch"
+   :type #fhir/code"batch"
    :entry
    [{:fhir/type :fhir.Bundle/entry
      :request
@@ -204,7 +204,7 @@
 
 (def read-bundle
   {:fhir/type :fhir/Bundle
-   :type #fhir/code "batch"
+   :type #fhir/code"batch"
    :entry
    [{:fhir/type :fhir.Bundle/entry
      :request
@@ -230,7 +230,7 @@
 
 (def metadata-bundle
   {:fhir/type :fhir/Bundle
-   :type #fhir/code "batch"
+   :type #fhir/code"batch"
    :entry
    [{:fhir/type :fhir.Bundle/entry
      :request

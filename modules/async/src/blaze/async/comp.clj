@@ -321,11 +321,19 @@
 (defmacro do-sync
   "Returns a CompletionStage that, when `stage-form` completes normally,
   executes `body` with `stage-forms`'s result bound to `binding-form`."
-  [[binding-form stage-form] & body]
-  `(then-apply
-    ~stage-form
-    (fn [~binding-form]
-      ~@body)))
+  {:arglists '([[bindings+] & body])}
+  [bindings & body]
+  (if (= 2 (count bindings))
+    (let [[binding-form stage-form] bindings]
+      `(then-apply
+        ~stage-form
+        (fn [~binding-form]
+          ~@body)))
+    (let [[binding-form stage-form & next] bindings]
+      `(then-compose
+        ~stage-form
+        (fn [~binding-form]
+          (do-sync ~(vec next) ~@body))))))
 
 (defn- retryable? [{::anom/keys [category]}]
   (#{::anom/not-found ::anom/busy} category))

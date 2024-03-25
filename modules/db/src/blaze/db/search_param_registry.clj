@@ -20,6 +20,12 @@
   [search-param-registry code type]
   (p/-get search-param-registry code type))
 
+(defn get-by-url
+  "Returns the search parameter with `url`."
+  [search-param-registry url]
+  (or (p/-get-by-url search-param-registry url)
+      (ba/not-found (format "Search param with URL `%s` not found." url))))
+
 (defn all-types
   "Returns a set of all types with search parameters."
   [search-param-registry]
@@ -53,12 +59,15 @@
   [search-param-registry type]
   (p/-compartment-resources search-param-registry type))
 
-(deftype MemSearchParamRegistry [index target-index compartment-index
+(deftype MemSearchParamRegistry [url-index index target-index compartment-index
                                  compartment-resource-index]
   p/SearchParamRegistry
   (-get [_ code type]
     (or (get-in index [type code])
         (get-in index ["Resource" code])))
+
+  (-get-by-url [_ url]
+    (url-index url))
 
   (-all-types [_]
     (disj (set (keys index)) "Resource"))
@@ -236,7 +245,7 @@
         patient-compartment (read-classpath-json-resource "blaze/db/compartment/patient.json")]
     (when-ok [url-index (build-url-index entries)
               index (build-index url-index entries)]
-      (->MemSearchParamRegistry (add-special index)
+      (->MemSearchParamRegistry url-index (add-special index)
                                 (build-target-index url-index entries)
                                 (index-compartment-def index patient-compartment)
                                 (index-compartment-resources patient-compartment)))))

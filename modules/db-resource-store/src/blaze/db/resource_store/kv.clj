@@ -11,8 +11,10 @@
    [blaze.executors :as ex]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type.string-util :as su]
    [blaze.module :refer [reg-collector]]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [prometheus.alpha :as prom :refer [defhistogram]]
@@ -112,33 +114,42 @@
      executor)))
 
 (defmethod ig/pre-init-spec ::rs/kv [_]
-  (s/keys :req-un [:blaze.db/kv-store ::executor]))
+  (s/keys :req-un [:blaze.db/kv-store] :opt-un [::executor]))
 
 (defmethod ig/init-key ::rs/kv
   [_ {:keys [kv-store executor]}]
   (log/info "Open key-value store backed resource store.")
-  (->KvResourceStore kv-store executor))
-
-(derive ::rs/kv :blaze.db/resource-store)
+  (->KvResourceStore kv-store (or executor (ex/single-thread-executor))))
 
 (defmethod ig/pre-init-spec ::executor [_]
   (s/keys :opt-un [::num-threads]))
 
-(defn- executor-init-msg [num-threads]
-  (format "Init resource store key-value executor with %d threads" num-threads))
+(defn- name-part [[_ key]]
+  (-> key namespace (str/split #"\.") last))
+
+(defn- executor-name [key]
+  (cond->> "resource store key-value executor"
+    (vector? key)
+    (str (name-part key) " ")))
+
+(defn- thread-name-template [key]
+  (cond->> "resource-store-kv-%d"
+    (vector? key)
+    (str (name-part key) "-")))
 
 (defmethod ig/init-key ::executor
-  [_ {:keys [num-threads] :or {num-threads 4}}]
-  (log/info (executor-init-msg num-threads))
-  (ex/io-pool num-threads "resource-store-kv-%d"))
+  [key {:keys [num-threads] :or {num-threads 4}}]
+  (log/info "Init" (executor-name key) "with" num-threads "threads")
+  (ex/io-pool num-threads (thread-name-template key)))
 
 (defmethod ig/halt-key! ::executor
-  [_ executor]
-  (log/info "Stopping resource store key-value executor...")
-  (ex/shutdown! executor)
-  (if (ex/await-termination executor 10 TimeUnit/SECONDS)
-    (log/info "Resource store key-value executor was stopped successfully")
-    (log/warn "Got timeout while stopping the resource store key-value executor")))
+  [key executor]
+  (let [name (executor-name key)]
+    (log/info "Stopping" name)
+    (ex/shutdown! executor)
+    (if (ex/await-termination executor 10 TimeUnit/SECONDS)
+      (log/info (su/capital name) "was stopped successfully")
+      (log/warn "Got timeout while stopping the" name))))
 
 (derive ::executor :blaze.metrics/thread-pool-executor)
 

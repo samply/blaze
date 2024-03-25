@@ -1,0 +1,16 @@
+{
+  "resourceType": "CodeSystem",
+  "status": "draft",
+  "content": "complete",
+  "name": "JobType",
+  "id": "JobType",
+  "title": "Job Type",
+  "url": "https://samply.github.io/blaze/fhir/CodeSystem/JobType",
+  "concept": [
+    {
+      "code": "re-index",
+      "display": "(Re)Index a Search Parameter"
+    }
+  ],
+  "count": 1
+}

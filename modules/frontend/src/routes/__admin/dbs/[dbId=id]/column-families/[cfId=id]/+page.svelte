@@ -1,15 +1,16 @@
 <script lang="ts">
+	import type { PageData } from './$types';
+
 	import SimpleStats from '$lib/tailwind/stats/simple.svelte';
 	import LevelsCard from './level-table.svelte';
 	import { toTitleCase } from '$lib/util.js';
 	import { descriptions } from './util.js';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
-	import type { Data } from './+page.js';
 	import { pascalCase } from 'change-case';
 	import prettyBytes from 'pretty-bytes';
 
-	export let data: Data;
+	export let data: PageData;
 </script>
 
 <svelte:head>
