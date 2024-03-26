@@ -1,7 +1,7 @@
 (ns blaze.db.impl.db
   "Primary Database Implementation"
   (:require
-   [blaze.async.comp :as ac]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.impl.batch-db :as batch-db]
    [blaze.db.impl.index.system-stats :as system-stats]
    [blaze.db.impl.index.type-stats :as type-stats]
@@ -156,6 +156,18 @@
   (-patient-everything [_ patient-handle]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-patient-everything batch-db patient-handle)))
+
+  (-re-index [_ search-param-url]
+    (let [batch-db (batch-db/new-batch-db node basis-t t)]
+      (do-sync [next (p/-re-index batch-db search-param-url)]
+        (.close batch-db)
+        next)))
+
+  (-re-index [_ search-param-url start-type start-id]
+    (let [batch-db (batch-db/new-batch-db node basis-t t)]
+      (do-sync [next (p/-re-index batch-db search-param-url start-type start-id)]
+        (.close batch-db)
+        next)))
 
   ;; ---- Batch DB ------------------------------------------------------------
 

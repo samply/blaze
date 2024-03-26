@@ -19,8 +19,8 @@
        (.format DateTimeFormatter/RFC_1123_DATE_TIME)))
 
 (defn- location-header [response context type id vid]
-  (let [url (fhir-util/versioned-instance-url context type id vid)]
-    (ring/header response "Location" url)))
+  (->> (fhir-util/versioned-instance-url context type id vid)
+       (ring/header response "Location")))
 
 (defn- body
   [{:blaze/keys [db] return-preference :blaze.preference/return} new-handle]

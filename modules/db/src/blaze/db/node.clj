@@ -3,6 +3,7 @@
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.db.api :as d]
    [blaze.db.impl.batch-db :as batch-db]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.db :as db]
@@ -25,6 +26,7 @@
    [blaze.db.node.validation :as validation]
    [blaze.db.node.version :as version]
    [blaze.db.resource-store :as rs]
+   [blaze.db.search-param-registry]
    [blaze.db.search-param-registry.spec]
    [blaze.db.tx-log :as tx-log]
    [blaze.executors :as ex]
@@ -34,6 +36,7 @@
    [blaze.spec]
    [blaze.util :refer [conj-vec]]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [java-time.api :as time]
@@ -41,9 +44,12 @@
    [taoensso.timbre :as log])
   (:import
    [java.lang AutoCloseable]
-   [java.util.concurrent CompletableFuture TimeUnit]))
+   [java.util.concurrent CompletableFuture SubmissionPublisher TimeUnit]))
 
 (set! *warn-on-reflection* true)
+
+(defn node? [x]
+  (satisfies? np/Node x))
 
 (defn submit-tx [node tx-ops]
   (np/-submit-tx node tx-ops))
@@ -51,9 +57,9 @@
 (defn tx-result
   "Waits for the transaction with `t` to happen on `node`.
 
-  Returns a CompletableFuture that completes with the database after the
-  transaction in case of success or completes exceptionally with an anomaly in
-  case of a transaction error or other errors."
+  Returns a CompletableFuture that will complete with the database after the
+  transaction in case of success or will complete exceptionally with an anomaly
+  in case of a transaction error or other errors."
   [node t]
   (np/-tx-result node t))
 
@@ -148,6 +154,7 @@
     (add-watch
      state future
      (fn [future state _ {:keys [e] new-t :t new-error-t :error-t}]
+       (log/trace "process watch for t =" new-t)
        (cond
          (<= t (max new-t new-error-t))
          (do (log/trace "complete database future with new db with t =" new-t)
@@ -243,7 +250,8 @@
       (assoc :lastUpdated instant)))
 
 (defn- mk-meta [handle tx]
-  {:blaze.db/num-changes (rh/num-changes handle)
+  {:blaze.resource/hash (rh/hash handle)
+   :blaze.db/num-changes (rh/num-changes handle)
    :blaze.db/op (rh/op handle)
    :blaze.db/tx tx})
 
@@ -351,6 +359,18 @@
 
         :else
         (ac/then-apply future (fn [_] (tx/load-tx-result node t))))))
+
+  (-subscription-publisher [node type]
+    (let [publisher (SubmissionPublisher.)]
+      (add-watch
+       state publisher
+       (fn [publisher _state _ {:keys [t]}]
+         (when t
+           (with-open [db (batch-db/new-batch-db node t t)]
+             (->> (d/type-history db type)
+                  (into [] (take-while #(= t (rh/t %))))
+                  (.submit ^SubmissionPublisher publisher))))))
+      publisher))
 
   p/Tx
   (-tx [_ t]
@@ -515,10 +535,23 @@
   (log/info "Close local database node")
   (.close ^AutoCloseable node))
 
+(defn- name-part [[_ key]]
+  (-> key namespace (str/split #"\.") last))
+
+(defn- executor-name [key]
+  (cond->> "indexer executor"
+    (vector? key)
+    (str (name-part key) " ")))
+
+(defn- thread-name-template [key]
+  (cond->> "indexer"
+    (vector? key)
+    (str (name-part key) "-")))
+
 (defmethod ig/init-key ::indexer-executor
-  [_ _]
-  (log/info "Init indexer executor")
-  (ex/single-thread-executor "indexer"))
+  [key _]
+  (log/info "Init" (executor-name key))
+  (ex/single-thread-executor (thread-name-template key)))
 
 (defmethod ig/halt-key! ::indexer-executor
   [_ executor]

@@ -43,6 +43,34 @@
 
 (test/use-fixtures :each tu/fixture)
 
+(def config
+  {::node/resource-indexer
+   {:kv-store (ig/ref :blaze.db/index-kv-store)
+    :resource-store (ig/ref ::rs/kv)
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)}
+
+   [::kv/mem :blaze.db/index-kv-store]
+   {:column-families
+    {:search-param-value-index nil
+     :resource-value-index nil
+     :compartment-search-param-value-index nil
+     :compartment-resource-type-index nil
+     :active-search-params nil}}
+
+   ::rs/kv
+   {:kv-store (ig/ref :blaze.db/resource-kv-store)}
+
+   [::kv/mem :blaze.db/resource-kv-store]
+   {:column-families {}}
+
+   :blaze.db/search-param-registry
+   {:structure-definition-repo structure-definition-repo}})
+
+(def executor-config
+  (-> (assoc-in config [::node/resource-indexer :executor]
+                (ig/ref ::rs-kv/executor))
+      (assoc ::rs-kv/executor {})))
+
 (deftest init-test
   (testing "nil config"
     (given-thrown (ig/init {::node/resource-indexer nil})
@@ -56,8 +84,7 @@
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
 
   (testing "invalid kv-store"
     (given-thrown (ig/init {::node/resource-indexer {:kv-store ::invalid}})
@@ -65,9 +92,8 @@
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:explain ::s/problems 3 :pred] := `kv/store?
-      [:explain ::s/problems 3 :val] := ::invalid))
+      [:explain ::s/problems 2 :pred] := `kv/store?
+      [:explain ::s/problems 2 :val] := ::invalid))
 
   (testing "invalid resource-store"
     (given-thrown (ig/init {::node/resource-indexer {:resource-store ::invalid}})
@@ -75,9 +101,8 @@
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:explain ::s/problems 3 :pred] := `resource-store?
-      [:explain ::s/problems 3 :val] := ::invalid))
+      [:explain ::s/problems 2 :pred] := `resource-store?
+      [:explain ::s/problems 2 :val] := ::invalid))
 
   (testing "invalid search-param-registry"
     (given-thrown (ig/init {::node/resource-indexer {:search-param-registry ::invalid}})
@@ -85,9 +110,8 @@
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:explain ::s/problems 3 :pred] := `search-param-registry?
-      [:explain ::s/problems 3 :val] := ::invalid))
+      [:explain ::s/problems 2 :pred] := `search-param-registry?
+      [:explain ::s/problems 2 :val] := ::invalid))
 
   (testing "invalid executor"
     (given-thrown (ig/init {::node/resource-indexer {:executor ::invalid}})
@@ -97,7 +121,15 @@
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
       [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
       [:explain ::s/problems 3 :pred] := `ex/executor?
-      [:explain ::s/problems 3 :val] := ::invalid)))
+      [:explain ::s/problems 3 :val] := ::invalid))
+
+  (testing "with executor"
+    (with-system [{{:keys [executor]} ::node/resource-indexer} executor-config]
+      (is (ex/executor? executor))))
+
+  (testing "without executor"
+    (with-system [{{:keys [executor]} ::node/resource-indexer} config]
+      (is (ex/executor? executor)))))
 
 (deftest executor-init-test
   (testing "nil config"
@@ -121,37 +153,8 @@
   (with-system [{collector ::resource-indexer/index-entries} {::resource-indexer/index-entries {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
 
-(def config
-  {[::kv/mem :blaze.db/index-kv-store]
-   {:column-families
-    {:search-param-value-index nil
-     :resource-value-index nil
-     :compartment-search-param-value-index nil
-     :compartment-resource-type-index nil
-     :active-search-params nil}}
-
-   ::rs/kv
-   {:kv-store (ig/ref :blaze.db/resource-kv-store)
-    :executor (ig/ref ::rs-kv/executor)}
-
-   [::kv/mem :blaze.db/resource-kv-store]
-   {:column-families {}}
-
-   ::rs-kv/executor {}
-
-   :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}
-
-   :blaze.db.node/resource-indexer
-   {:kv-store (ig/ref :blaze.db/index-kv-store)
-    :resource-store (ig/ref ::rs/kv)
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)
-    :executor (ig/ref ::resource-indexer/executor)}
-
-   ::resource-indexer/executor {}})
-
 (deftest fails-on-kv-put-test
-  (with-system [{:blaze.db.node/keys [resource-indexer]} config]
+  (with-system [{::node/keys [resource-indexer]} config]
     (let [patient {:fhir/type :fhir/Patient :id "0"}
           hash (hash/generate patient)]
       (with-redefs [kv/put! (fn [_ _] (throw (Exception. "msg-200802")))]
@@ -172,7 +175,7 @@
 
 (deftest skips-on-failing-fhir-path-eval-test
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
-                 :blaze.db.node/keys [resource-indexer]} config]
+                 ::node/keys [resource-indexer]} config]
 
     (let [observation {:fhir/type :fhir/Observation :id "0"
                        :subject #fhir/Reference{:reference "foo"}}
@@ -195,7 +198,7 @@
 (deftest index-patient-resource-test
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
                  resource-store ::rs/kv
-                 :blaze.db.node/keys [resource-indexer]} config]
+                 ::node/keys [resource-indexer]} config]
     (let [resource
           {:fhir/type :fhir/Patient :id "id-104313"
            :active #fhir/boolean true}
@@ -238,7 +241,7 @@
 (deftest index-condition-resource-test
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
                  resource-store ::rs/kv
-                 :blaze.db.node/keys [resource-indexer]} config]
+                 ::node/keys [resource-indexer]} config]
     (let [resource
           {:fhir/type :fhir/Condition :id "id-204446"
            :code
@@ -326,7 +329,7 @@
 (deftest index-observation-resource-test
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
                  resource-store ::rs/kv
-                 :blaze.db.node/keys [resource-indexer]} config]
+                 ::node/keys [resource-indexer]} config]
     (let [resource {:fhir/type :fhir/Observation :id "id-192702"
                     :status #fhir/code"status-193613"
                     :category
@@ -456,7 +459,7 @@
 
 (deftest index-delete-cmd-test
   (with-system [{kv-store [::kv/mem :blaze.db/index-kv-store]
-                 :blaze.db.node/keys [resource-indexer]} config]
+                 ::node/keys [resource-indexer]} config]
     @(resource-indexer/index-resources
       resource-indexer
       {:t 0

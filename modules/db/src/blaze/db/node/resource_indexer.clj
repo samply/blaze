@@ -14,6 +14,7 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.module :refer [reg-collector]]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [prometheus.alpha :as prom :refer [defhistogram]]
@@ -133,24 +134,41 @@
 (defmethod ig/pre-init-spec :blaze.db.node/resource-indexer [_]
   (s/keys :req-un [:blaze.db/kv-store
                    :blaze.db/resource-store
-                   :blaze.db/search-param-registry
-                   ::executor]))
+                   :blaze.db/search-param-registry]
+          :opt-un [::executor]))
+
+(defn- name-part [[_ key]]
+  (-> key namespace (str/split #"\.") last))
+
+(defn- indexer-name [key]
+  (cond->> "resource indexer"
+    (vector? key)
+    (str (name-part key) " ")))
 
 (defmethod ig/init-key :blaze.db.node/resource-indexer
-  [_ resource-indexer]
-  (log/info "Init resource indexer")
-  resource-indexer)
+  [key resource-indexer]
+  (log/info "Init" (indexer-name key))
+  (cond-> resource-indexer
+    (nil? (:executor resource-indexer))
+    (assoc :executor (ex/single-thread-executor))))
 
 (defmethod ig/pre-init-spec ::executor [_]
   (s/keys :opt-un [::num-threads]))
 
-(defn- executor-init-msg [num-threads]
-  (format "Init resource indexer executor with %d threads" num-threads))
+(defn- executor-name [key]
+  (cond->> "resource indexer executor"
+    (vector? key)
+    (str (name-part key) " ")))
+
+(defn- thread-name-template [key]
+  (cond->> "resource-indexer-%d"
+    (vector? key)
+    (str (name-part key) "-")))
 
 (defmethod ig/init-key ::executor
-  [_ {:keys [num-threads] :or {num-threads 4}}]
-  (log/info (executor-init-msg num-threads))
-  (ex/io-pool num-threads "resource-indexer-%d"))
+  [key {:keys [num-threads] :or {num-threads 4}}]
+  (log/info "Init" (executor-name key) "with" num-threads "threads")
+  (ex/io-pool num-threads (thread-name-template key)))
 
 (defmethod ig/halt-key! ::executor
   [_ executor]

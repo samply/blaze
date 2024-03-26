@@ -2,7 +2,6 @@ import { type Handle, type HandleFetch, redirect } from '@sveltejs/kit';
 import { error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { sequence } from '@sveltejs/kit/hooks';
-
 import { handle as handleAuthentication } from '$lib/server/auth';
 import { base } from '$app/paths';
 
@@ -11,7 +10,7 @@ export const handleAuthorization: Handle = async ({ event, resolve }) => {
 		// authenticate the user
 		const session = await event.locals.auth();
 
-		if (!session) {
+		if (!session || !session.expiresAt || session.expiresAt - Date.now() < 10000) {
 			throw redirect(307, `${base}/__sign-in?redirect=${event.url}`);
 		}
 

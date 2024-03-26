@@ -49,6 +49,8 @@
 
   (-patient-everything [db patient-handle])
 
+  (-re-index [db search-param-url] [db search-param-url start-type start-id])
+
   (-new-batch-db [db]))
 
 (defprotocol Tx
@@ -101,6 +103,7 @@
 
 (defprotocol SearchParamRegistry
   (-get [_ code type])
+  (-get-by-url [_ url])
   (-all-types [_])
   (-list-by-type [_ type])
   (-list-by-target [_ target])

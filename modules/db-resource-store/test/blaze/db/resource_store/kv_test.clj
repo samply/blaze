@@ -10,6 +10,7 @@
    [blaze.db.resource-store-spec]
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.resource-store.kv-spec]
+   [blaze.db.resource-store.spec :refer [resource-store?]]
    [blaze.executors :as ex]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
@@ -58,16 +59,14 @@
     (given-thrown (ig/init {::rs/kv {}})
       :key := ::rs/kv
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))))
 
   (testing "invalid kv-store"
     (given-thrown (ig/init {::rs/kv {:kv-store ::invalid}})
       :key := ::rs/kv
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:explain ::s/problems 1 :pred] := `kv/store?
-      [:explain ::s/problems 1 :val] := ::invalid))
+      [:explain ::s/problems 0 :pred] := `kv/store?
+      [:explain ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid executor"
     (given-thrown (ig/init {::rs/kv {:executor ::invalid}})
@@ -75,7 +74,21 @@
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
       [:explain ::s/problems 1 :pred] := `ex/executor?
-      [:explain ::s/problems 1 :val] := ::invalid)))
+      [:explain ::s/problems 1 :val] := ::invalid))
+
+  (testing "with simple key"
+    (with-system [{::rs/keys [kv]} {::rs/kv
+                                    {:kv-store (ig/ref ::kv/mem)}
+                                    ::kv/mem {:column-families {}}}]
+      (is (resource-store? kv)))
+
+    (testing "with executor"
+      (with-system [{::rs/keys [kv]} {::rs/kv
+                                      {:kv-store (ig/ref ::kv/mem)
+                                       :executor (ig/ref ::rs-kv/executor)}
+                                      ::kv/mem {:column-families {}}
+                                      ::rs-kv/executor {}}]
+        (is (resource-store? kv))))))
 
 (deftest executor-init-test
   (testing "nil config"
@@ -89,7 +102,15 @@
       :key := ::rs-kv/executor
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `nat-int?
-      [:explain ::s/problems 0 :val] := ::invalid)))
+      [:explain ::s/problems 0 :val] := ::invalid))
+
+  (testing "with simple key"
+    (with-system [{::rs-kv/keys [executor]} {::rs-kv/executor {}}]
+      (is (ex/executor? executor))))
+
+  (testing "with renamed key"
+    (with-system [{executor [::rs-kv/executor ::executor]} {[::rs-kv/executor ::executor] {}}]
+      (is (ex/executor? executor)))))
 
 (deftest resource-bytes-collector-init-test
   (with-system [{collector ::rs-kv/resource-bytes} {::rs-kv/resource-bytes {}}]
@@ -99,12 +120,10 @@
   (with-system [{collector ::rs-kv/duration-seconds} {::rs-kv/duration-seconds {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
 
-(def ^:private system
+(def ^:private config
   {::rs/kv
-   {:kv-store (ig/ref ::kv/mem)
-    :executor (ig/ref ::rs-kv/executor)}
-   ::kv/mem {:column-families {}}
-   ::rs-kv/executor {}})
+   {:kv-store (ig/ref ::kv/mem)}
+   ::kv/mem {:column-families {}}})
 
 (defmethod ig/init-key ::failing-kv-store [_ {:keys [msg] :as config}]
   (reify kv-p/KvStore
@@ -113,15 +132,13 @@
                 (= (hash/from-byte-buffer! (bb/wrap hash)) (:hash config)))
         (throw (Exception. ^String msg))))))
 
-(defn- failing-kv-store-system
+(defn- failing-kv-store-config
   ([msg]
-   (failing-kv-store-system msg nil))
+   (failing-kv-store-config msg nil))
   ([msg hash]
    {::failing-kv-store {:msg msg :hash hash}
-    ::rs-kv/executor {}
     ::rs/kv
-    {:kv-store (ig/ref ::failing-kv-store)
-     :executor (ig/ref ::rs-kv/executor)}}))
+    {:kv-store (ig/ref ::failing-kv-store)}}))
 
 (def ^:private cbor-object-mapper
   (j/object-mapper
@@ -136,13 +153,13 @@
 (deftest get-test
   (testing "success"
     (let [content {:fhir/type :fhir/Patient :id "0"}]
-      (with-system [{store ::rs/kv kv-store ::kv/mem} system]
+      (with-system [{store ::rs/kv kv-store ::kv/mem} config]
         (put! kv-store (hash) content)
 
         (is (= content @(rs/get store (hash)))))))
 
   (testing "parsing error"
-    (with-system [{store ::rs/kv kv-store ::kv/mem} system]
+    (with-system [{store ::rs/kv kv-store ::kv/mem} config]
       (kv/put! kv-store [[:default (hash/to-byte-array (hash)) (invalid-content)]])
 
       (given-failed-future (rs/get store (hash))
@@ -150,7 +167,7 @@
         ::anom/message :# "Error while parsing resource content(.|\\s)*")))
 
   (testing "conforming error"
-    (with-system [{store ::rs/kv kv-store ::kv/mem} system]
+    (with-system [{store ::rs/kv kv-store ::kv/mem} config]
       (kv/put! kv-store [[:default (hash/to-byte-array (hash)) (j/write-value-as-bytes {} cbor-object-mapper)]])
 
       (given-failed-future (rs/get store (hash))
@@ -158,11 +175,11 @@
         ::anom/message := (format "Error while conforming resource content with hash `%s`." (hash)))))
 
   (testing "not-found"
-    (with-system [{store ::rs/kv} system]
+    (with-system [{store ::rs/kv} config]
       (is (nil? @(rs/get store (hash))))))
 
   (testing "error"
-    (with-system [{store ::rs/kv} (failing-kv-store-system error-msg)]
+    (with-system [{store ::rs/kv} (failing-kv-store-config error-msg)]
       (given-failed-future (rs/get store (hash))
         ::anom/category := ::anom/fault
         ::anom/message := error-msg))))
@@ -171,7 +188,7 @@
   (testing "success"
     (testing "with one hash"
       (let [content {:fhir/type :fhir/Patient :id "0"}]
-        (with-system [{store ::rs/kv kv-store ::kv/mem} system]
+        (with-system [{store ::rs/kv kv-store ::kv/mem} config]
           (put! kv-store (hash) content)
 
           (is (= {(hash) content} @(rs/multi-get store [(hash)]))))))
@@ -179,7 +196,7 @@
     (testing "with two hashes"
       (let [content-0 {:fhir/type :fhir/Patient :id "0"}
             content-1 {:fhir/type :fhir/Patient :id "1"}]
-        (with-system [{store ::rs/kv kv-store ::kv/mem} system]
+        (with-system [{store ::rs/kv kv-store ::kv/mem} config]
           (put! kv-store (hash "0") content-0)
           (put! kv-store (hash "1") content-1)
 
@@ -188,7 +205,7 @@
 
   (testing "parsing error"
     (let [hash (hash)]
-      (with-system [{store ::rs/kv kv-store ::kv/mem} system]
+      (with-system [{store ::rs/kv kv-store ::kv/mem} config]
         (kv/put! kv-store [[:default (hash/to-byte-array hash) (invalid-content)]])
 
         (given-failed-future (rs/multi-get store [hash])
@@ -196,38 +213,38 @@
           ::anom/message :# "Error while parsing resource content(.|\\s)*"))))
 
   (testing "not-found"
-    (with-system [{store ::rs/kv} system]
+    (with-system [{store ::rs/kv} config]
       (is (= {} @(rs/multi-get store [(hash)])))))
 
   (testing "error"
     (testing "with one hash"
-      (with-system [{store ::rs/kv} (failing-kv-store-system error-msg)]
+      (with-system [{store ::rs/kv} (failing-kv-store-config error-msg)]
         (given-failed-future (rs/multi-get store [(hash)])
           ::anom/category := ::anom/fault
           ::anom/message := error-msg)))
 
     (testing "with two hashes"
       (testing "failing on both"
-        (with-system [{store ::rs/kv} (failing-kv-store-system error-msg)]
+        (with-system [{store ::rs/kv} (failing-kv-store-config error-msg)]
           (given-failed-future (rs/multi-get store [(hash "0") (hash "1")])
             ::anom/category := ::anom/fault
             ::anom/message := error-msg)))
 
       (testing "failing on first"
-        (with-system [{store ::rs/kv} (failing-kv-store-system error-msg (hash "0"))]
+        (with-system [{store ::rs/kv} (failing-kv-store-config error-msg (hash "0"))]
           (given-failed-future (rs/multi-get store [(hash "0") (hash "1")])
             ::anom/category := ::anom/fault
             ::anom/message := error-msg)))
 
       (testing "failing on second"
-        (with-system [{store ::rs/kv} (failing-kv-store-system error-msg (hash "1"))]
+        (with-system [{store ::rs/kv} (failing-kv-store-config error-msg (hash "1"))]
           (given-failed-future (rs/multi-get store [(hash "0") (hash "1")])
             ::anom/category := ::anom/fault
             ::anom/message := error-msg))))))
 
 (deftest put-test
   (let [content {:fhir/type :fhir/Patient :id "0"}]
-    (with-system [{store ::rs/kv} system]
+    (with-system [{store ::rs/kv} config]
       @(rs/put! store {(hash) content})
 
       (is (= content @(rs/get store (hash)))))))

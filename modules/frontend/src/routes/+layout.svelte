@@ -63,7 +63,7 @@
 								aria-expanded="false"
 								aria-haspopup="true"
 								on:click={() => (userProfileOpen = !userProfileOpen)}
-								disabled={!$page.data.user}
+								disabled={!$page.data.session}
 							>
 								<span class="absolute -inset-1.5"></span>
 								<span class="sr-only">Open user menu</span>
@@ -74,8 +74,8 @@
 									stroke-width="1.5"
 									stroke="currentColor"
 									class="w-8 h-8"
-									class:text-gray-900={$page.data.user}
-									class:text-gray-500={!$page.data.user}
+									class:text-gray-900={$page.data.session}
+									class:text-gray-500={!$page.data.session}
 								>
 									<path
 										stroke-linecap="round"
@@ -104,7 +104,7 @@
 							tabindex="-1"
 							class:hidden={!userProfileOpen}
 						>
-							<p class="block px-4 py-2 text-sm text-gray-900">{$page.data.user?.name}</p>
+							<p class="block px-4 py-2 text-sm text-gray-900">{$page.data.session?.user?.name}</p>
 							<button
 								on:click={() => signOut()}
 								class="block px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"

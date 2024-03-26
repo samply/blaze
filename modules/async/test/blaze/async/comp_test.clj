@@ -301,6 +301,11 @@
   (testing "on normally completed future"
     (is (= 2 @(do-sync [x (ac/completed-future 1)] (inc x))))
 
+    (testing "with two futures"
+      (is (= 4 @(do-sync [x (ac/completed-future 1)
+                          y (ac/completed-future (+ x 2))]
+                  (inc y)))))
+
     (testing "without body"
       (is (nil? @(do-sync [_ (ac/completed-future 1)])))))
 

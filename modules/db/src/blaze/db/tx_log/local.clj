@@ -18,6 +18,7 @@
    [blaze.db.tx-log.local.codec :as codec]
    [blaze.module :refer [reg-collector]]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [integrant.core :as ig]
    [java-time.api :as time]
    [prometheus.alpha :as prom :refer [defhistogram]]
@@ -134,13 +135,19 @@
 (defmethod ig/pre-init-spec :blaze.db.tx-log/local [_]
   (s/keys :req-un [:blaze.db/kv-store :blaze/clock]))
 
+(defn- name-part [[_ key]]
+  (-> key namespace (str/split #"\.") last))
+
+(defn- tx-log-name [key]
+  (cond->> "local transaction log"
+    (vector? key)
+    (str (name-part key) " ")))
+
 (defmethod ig/init-key :blaze.db.tx-log/local
-  [_ {:keys [kv-store clock]}]
-  (log/info "Open local transaction log")
+  [key {:keys [kv-store clock]}]
+  (log/info "Open" (tx-log-name key))
   (->LocalTxLog kv-store clock (ReentrantLock.)
                 (atom {:t (or (last-t kv-store) 0)})))
-
-(derive :blaze.db.tx-log/local :blaze.db/tx-log)
 
 (reg-collector ::duration-seconds
   duration-seconds)

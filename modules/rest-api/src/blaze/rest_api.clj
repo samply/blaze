@@ -5,13 +5,13 @@
    [blaze.db.spec]
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.handler.util :as handler-util]
+   [blaze.middleware.fhir.output :as output]
+   [blaze.middleware.fhir.resource :as resource]
    [blaze.module :refer [reg-collector]]
    [blaze.rest-api.capabilities :as capabilities]
    [blaze.rest-api.middleware.cors :as cors]
    [blaze.rest-api.middleware.log :refer [wrap-log]]
    [blaze.rest-api.middleware.metrics :as metrics]
-   [blaze.rest-api.middleware.output :as output]
-   [blaze.rest-api.middleware.resource :as resource]
    [blaze.rest-api.routes :as routes]
    [blaze.rest-api.spec]
    [blaze.spec]
@@ -95,7 +95,7 @@
     :blaze.fhir/structure-definition-repo
     :blaze.db/node
     :blaze.db/search-param-registry
-    :blaze.rest-api/db-sync-timeout]
+    ::db-sync-timeout]
    :opt-un
    [:blaze/context-path
     ::auth-backends

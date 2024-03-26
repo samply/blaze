@@ -5,6 +5,7 @@
    [blaze.anomaly-spec]
    [blaze.async.comp :as ac]
    [blaze.async.comp-spec]
+   [blaze.async.flow :as flow]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.db.api-spec]
@@ -693,6 +694,62 @@
          (d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]])
           ::anom/category := ::anom/fault
           ::x ::y)))))
+
+(deftest subscription-publisher-test
+  (testing "with one task"
+    (with-system [{:blaze.db/keys [node]} config]
+
+      (let [publisher (d/subscription-publisher node "Task")
+            pro (flow/take 1)
+            future (flow/collect pro)]
+        (flow/subscribe! publisher pro)
+
+        @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
+
+        (given @future
+          count := 1
+          [0 count] := 1
+          [0 0 :fhir/type] := :fhir/Task
+          [0 0 :id] := "0"))))
+
+  (testing "with two tasks in one transaction"
+    (with-system [{:blaze.db/keys [node]} config]
+
+      (let [publisher (d/subscription-publisher node "Task")
+            pro (flow/take 1)
+            future (flow/collect pro)]
+        (flow/subscribe! publisher pro)
+
+        @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]
+                           [:create {:fhir/type :fhir/Task :id "1"}]])
+
+        (given @future
+          count := 1
+          [0 count] := 2
+          [0 0 :fhir/type] := :fhir/Task
+          [0 0 :id] := "0"
+          [0 1 :fhir/type] := :fhir/Task
+          [0 1 :id] := "1"))))
+
+  (testing "with two tasks in two transaction"
+    (with-system [{:blaze.db/keys [node]} config]
+
+      (let [publisher (d/subscription-publisher node "Task")
+            pro (flow/take 2)
+            future (flow/collect pro)]
+        (flow/subscribe! publisher pro)
+
+        @(d/transact node [[:create {:fhir/type :fhir/Task :id "0"}]])
+        @(d/transact node [[:create {:fhir/type :fhir/Task :id "1"}]])
+
+        (given @future
+          count := 2
+          [0 count] := 1
+          [0 0 :fhir/type] := :fhir/Task
+          [0 0 :id] := "0"
+          [1 count] := 1
+          [1 0 :fhir/type] := :fhir/Task
+          [1 0 :id] := "1")))))
 
 (deftest as-of-test
   (with-system-data [{:blaze.db/keys [node]} config]
@@ -3622,7 +3679,7 @@
       (testing "forward chaining to Patient"
         (given (pull-type-query node "Condition" [["patient.gender" "male"]])
           count := 1
-          [0 fhir-spec/fhir-type] := :fhir/Condition
+          [0 :fhir/type] := :fhir/Condition
           [0 :id] := "1")
 
         (testing "count query"
@@ -4318,44 +4375,44 @@
       (testing "Encounter with foo Condition"
         (given (pull-type-query node "Encounter" [["diagnosis:Condition.code" "foo"]])
           count := 2
-          [0 fhir-spec/fhir-type] := :fhir/Encounter
+          [0 :fhir/type] := :fhir/Encounter
           [0 :id] := "0"
-          [1 fhir-spec/fhir-type] := :fhir/Encounter
+          [1 :fhir/type] := :fhir/Encounter
           [1 :id] := "2")
 
         (testing "as second parameter"
           (given (pull-type-query node "Encounter" [["date" "ge2015-01-01"]
                                                     ["diagnosis:Condition.code" "foo"]])
             count := 2
-            [0 fhir-spec/fhir-type] := :fhir/Encounter
+            [0 :fhir/type] := :fhir/Encounter
             [0 :id] := "0"
-            [1 fhir-spec/fhir-type] := :fhir/Encounter
+            [1 :fhir/type] := :fhir/Encounter
             [1 :id] := "2")
 
           (testing "it is possible to start with the second Encounter"
             (given (pull-type-query node "Encounter" [["date" "ge2015-01-01"]
                                                       ["diagnosis:Condition.code" "foo"]] "2")
               count := 1
-              [0 fhir-spec/fhir-type] := :fhir/Encounter
+              [0 :fhir/type] := :fhir/Encounter
               [0 :id] := "2")))
 
         (testing "it is possible to start with the second Encounter"
           (given (pull-type-query node "Encounter" [["diagnosis:Condition.code" "foo"]] "2")
             count := 1
-            [0 fhir-spec/fhir-type] := :fhir/Encounter
+            [0 :fhir/type] := :fhir/Encounter
             [0 :id] := "2")))
 
       (testing "Encounter with bar Condition"
         (given (pull-type-query node "Encounter" [["diagnosis:Condition.code" "bar"]])
           count := 1
-          [0 fhir-spec/fhir-type] := :fhir/Encounter
+          [0 :fhir/type] := :fhir/Encounter
           [0 :id] := "1")
 
         (testing "as second parameter"
           (given (pull-type-query node "Encounter" [["date" "ge2015-01-01"]
                                                     ["diagnosis:Condition.code" "bar"]])
             count := 1
-            [0 fhir-spec/fhir-type] := :fhir/Encounter
+            [0 :fhir/type] := :fhir/Encounter
             [0 :id] := "1")))
 
       (testing "search param foo is not found"
@@ -4395,9 +4452,9 @@
 
         (given (pull-type-query node "Observation" [["patient.gender" "male"]])
           count := 2
-          [0 fhir-spec/fhir-type] := :fhir/Observation
+          [0 :fhir/type] := :fhir/Observation
           [0 :id] := "0"
-          [1 fhir-spec/fhir-type] := :fhir/Observation
+          [1 :fhir/type] := :fhir/Observation
           [1 :id] := "1")))
 
     (testing "two Patients"
@@ -4417,13 +4474,13 @@
 
         (given (pull-type-query node "Observation" [["patient.gender" "male"]])
           count := 4
-          [0 fhir-spec/fhir-type] := :fhir/Observation
+          [0 :fhir/type] := :fhir/Observation
           [0 :id] := "0"
-          [1 fhir-spec/fhir-type] := :fhir/Observation
+          [1 :fhir/type] := :fhir/Observation
           [1 :id] := "1"
-          [2 fhir-spec/fhir-type] := :fhir/Observation
+          [2 :fhir/type] := :fhir/Observation
           [2 :id] := "2"
-          [3 fhir-spec/fhir-type] := :fhir/Observation
+          [3 :fhir/type] := :fhir/Observation
           [3 :id] := "3")))
 
     (testing "three Patients"
@@ -4449,17 +4506,17 @@
 
         (given (pull-type-query node "Observation" [["patient.gender" "male"]])
           count := 6
-          [0 fhir-spec/fhir-type] := :fhir/Observation
+          [0 :fhir/type] := :fhir/Observation
           [0 :id] := "0"
-          [1 fhir-spec/fhir-type] := :fhir/Observation
+          [1 :fhir/type] := :fhir/Observation
           [1 :id] := "1"
-          [2 fhir-spec/fhir-type] := :fhir/Observation
+          [2 :fhir/type] := :fhir/Observation
           [2 :id] := "2"
-          [3 fhir-spec/fhir-type] := :fhir/Observation
+          [3 :fhir/type] := :fhir/Observation
           [3 :id] := "3"
-          [4 fhir-spec/fhir-type] := :fhir/Observation
+          [4 :fhir/type] := :fhir/Observation
           [4 :id] := "4"
-          [5 fhir-spec/fhir-type] := :fhir/Observation
+          [5 :fhir/type] := :fhir/Observation
           [5 :id] := "5")))))
 
 (deftest compile-type-query-test
@@ -5611,13 +5668,13 @@
             (testing "without target type"
               (given (vec (d/include db observation code))
                 count := 1
-                [0 fhir-spec/fhir-type] := :fhir/Patient
+                [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"))
 
             (testing "with target type"
               (given (vec (d/include db observation code "Patient"))
                 count := 1
-                [0 fhir-spec/fhir-type] := :fhir/Patient
+                [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"))))))
 
     (testing "encounter"
@@ -5632,7 +5689,7 @@
               observation (d/resource-handle db "Observation" "0")]
           (given (vec (d/include db observation "encounter"))
             count := 1
-            [0 fhir-spec/fhir-type] := :fhir/Encounter
+            [0 :fhir/type] := :fhir/Encounter
             [0 :id] := "0"))))
 
     (testing "with Group subject"
@@ -5648,7 +5705,7 @@
           (testing "returns group with subject param"
             (given (vec (d/include db observation "subject"))
               count := 1
-              [0 fhir-spec/fhir-type] := :fhir/Group
+              [0 :fhir/type] := :fhir/Group
               [0 :id] := "0"))
 
           (testing "returns nothing with patient param"
@@ -5657,7 +5714,7 @@
           (testing "returns group with subject param and Group target type"
             (given (vec (d/include db observation "subject" "Group"))
               count := 1
-              [0 fhir-spec/fhir-type] := :fhir/Group
+              [0 :fhir/type] := :fhir/Group
               [0 :id] := "0"))
 
           (testing "returns nothing with subject param and Patient target type"
@@ -5754,9 +5811,9 @@
 
             (given (vec (d/rev-include db patient "Observation" code))
               count := 2
-              [0 fhir-spec/fhir-type] := :fhir/Observation
+              [0 :fhir/type] := :fhir/Observation
               [0 :id] := "0"
-              [1 fhir-spec/fhir-type] := :fhir/Observation
+              [1 :fhir/type] := :fhir/Observation
               [1 :id] := "1")))))
 
     (testing "non-reference search parameter code"
@@ -5784,7 +5841,7 @@
 
         (given (vec (d/patient-everything db patient))
           count := 1
-          [0 fhir-spec/fhir-type] := :fhir/Patient
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"))))
 
   (testing "with three resources"
@@ -5802,13 +5859,13 @@
 
         (given (vec (d/patient-everything db patient))
           count := 4
-          [0 fhir-spec/fhir-type] := :fhir/Patient
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [1 fhir-spec/fhir-type] := :fhir/Condition
+          [1 :fhir/type] := :fhir/Condition
           [1 :id] := "0"
-          [2 fhir-spec/fhir-type] := :fhir/Observation
+          [2 :fhir/type] := :fhir/Observation
           [2 :id] := "0"
-          [3 fhir-spec/fhir-type] := :fhir/Specimen
+          [3 :fhir/type] := :fhir/Specimen
           [3 :id] := "0"))))
 
   (testing "With MedicationAdministration because it is reachable twice via
@@ -5826,9 +5883,9 @@
 
         (given (vec (d/patient-everything db patient))
           count := 2
-          [0 fhir-spec/fhir-type] := :fhir/Patient
+          [0 :fhir/type] := :fhir/Patient
           [0 :id] := "0"
-          [1 fhir-spec/fhir-type] := :fhir/MedicationAdministration
+          [1 :fhir/type] := :fhir/MedicationAdministration
           [1 :id] := "0"))))
 
   (testing "one MedicationAdministration with referenced Medication"
@@ -5845,11 +5902,11 @@
         (testing "contains also the Medication"
           (given (vec (d/patient-everything db patient))
             count := 3
-            [0 fhir-spec/fhir-type] := :fhir/Patient
+            [0 :fhir/type] := :fhir/Patient
             [0 :id] := "0"
-            [1 fhir-spec/fhir-type] := :fhir/MedicationAdministration
+            [1 :fhir/type] := :fhir/MedicationAdministration
             [1 :id] := "0"
-            [2 fhir-spec/fhir-type] := :fhir/Medication
+            [2 :fhir/type] := :fhir/Medication
             [2 :id] := "0")))))
 
   (testing "two MedicationAdministrations with two referenced Medications"
@@ -5870,15 +5927,15 @@
         (testing "contains both Medications"
           (given (vec (d/patient-everything db patient))
             count := 5
-            [0 fhir-spec/fhir-type] := :fhir/Patient
+            [0 :fhir/type] := :fhir/Patient
             [0 :id] := "0"
-            [1 fhir-spec/fhir-type] := :fhir/MedicationAdministration
+            [1 :fhir/type] := :fhir/MedicationAdministration
             [1 :id] := "0"
-            [2 fhir-spec/fhir-type] := :fhir/Medication
+            [2 :fhir/type] := :fhir/Medication
             [2 :id] := "0"
-            [3 fhir-spec/fhir-type] := :fhir/MedicationAdministration
+            [3 :fhir/type] := :fhir/MedicationAdministration
             [3 :id] := "1"
-            [4 fhir-spec/fhir-type] := :fhir/Medication
+            [4 :fhir/type] := :fhir/Medication
             [4 :id] := "1")))))
 
   (testing "two MedicationAdministrations with one referenced Medication"
@@ -5898,13 +5955,13 @@
         (testing "contains the Medication only once"
           (given (vec (d/patient-everything db patient))
             count := 4
-            [0 fhir-spec/fhir-type] := :fhir/Patient
+            [0 :fhir/type] := :fhir/Patient
             [0 :id] := "0"
-            [1 fhir-spec/fhir-type] := :fhir/MedicationAdministration
+            [1 :fhir/type] := :fhir/MedicationAdministration
             [1 :id] := "0"
-            [2 fhir-spec/fhir-type] := :fhir/Medication
+            [2 :fhir/type] := :fhir/Medication
             [2 :id] := "0"
-            [3 fhir-spec/fhir-type] := :fhir/MedicationAdministration
+            [3 :fhir/type] := :fhir/MedicationAdministration
             [3 :id] := "1")))))
 
   (testing "no duplicates are returned"
@@ -6070,3 +6127,33 @@
       (with-open [batch-db (d/new-batch-db (d/db node))]
         (given (d/tx batch-db (d/basis-t batch-db))
           :blaze.db.tx/instant := Instant/EPOCH)))))
+
+(defn- patient-profile-create-op [id]
+  [:create {:fhir/type :fhir/Patient :id (format "%04d" id)
+            :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-145024"]}}])
+
+(deftest re-index-test
+  (testing "profile"
+    (testing "one resource"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[(patient-profile-create-op 0)]]
+
+        (given @(d/re-index (d/db node) "http://hl7.org/fhir/SearchParameter/Resource-profile")
+          :num-resources := 1
+          :next := nil)))
+
+    (testing "1001 resources"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [(mapv patient-profile-create-op (range 1001))]
+
+        (let [db (d/db node)]
+          (testing "returns Patient with id 1000 as the next one to re-index"
+            (given @(d/re-index db "http://hl7.org/fhir/SearchParameter/Resource-profile")
+              :num-resources := 1000
+              [:next :id] := "1000"))
+
+          (testing "can start with that next Patient"
+            (given @(d/re-index db "http://hl7.org/fhir/SearchParameter/Resource-profile"
+                                "Patient" "1000")
+              :num-resources := 1
+              :next := nil)))))))

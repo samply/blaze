@@ -7,7 +7,6 @@
    [blaze.db.resource-cache-spec]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store-spec]
-   [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.resource-store.spec :refer [resource-store?]]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
@@ -37,10 +36,9 @@
   {:blaze.db/resource-cache
    {:resource-store (ig/ref ::rs/kv)
     :max-size 100}
-   ::rs/kv
-   {:kv-store (ig/ref ::kv/mem)
-    :executor (ig/ref ::rs-kv/executor)}
-   ::rs-kv/executor {}
+
+   ::rs/kv {:kv-store (ig/ref ::kv/mem)}
+
    ::kv/mem {:column-families {}}})
 
 (deftest init-test

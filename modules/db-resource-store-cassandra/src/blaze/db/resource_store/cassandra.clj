@@ -160,8 +160,6 @@
   (log/info "Close Cassandra resource store")
   (.close ^AutoCloseable store))
 
-(derive ::rs/cassandra :blaze.db/resource-store)
-
 (reg-collector ::duration-seconds
   duration-seconds)
 

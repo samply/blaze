@@ -4,9 +4,11 @@
   A batch database keeps key-value store iterators open in order to avoid the
   cost associated with open and closing them."
   (:require
-   [blaze.async.comp :as ac]
+   [blaze.anomaly :refer [when-ok]]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
+   [blaze.db.api :as d]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index :as index]
    [blaze.db.impl.index.compartment.resource :as cr]
@@ -19,6 +21,7 @@
    [blaze.db.impl.index.type-as-of :as tao]
    [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
+   [blaze.db.impl.search-param :as search-param]
    [blaze.db.impl.search-param.all :as search-param-all]
    [blaze.db.impl.search-param.util :as u]
    [blaze.db.kv :as kv]
@@ -59,6 +62,37 @@
     (filter (comp (partial some non-compartment-types) :target))
     (map :code))
    (sr/list-by-type search-param-registry type)))
+
+(defn- index-resources*
+  [{:keys [kv-store] :as node} search-param resource-handles]
+  (do-sync [resources (d/pull-many node resource-handles)]
+    (kv/put!
+     kv-store
+     (coll/eduction
+      (mapcat
+       (fn [resource]
+         (let [hash (:blaze.resource/hash (meta resource))]
+           (search-param/index-entries search-param nil hash resource))))
+      resources))))
+
+(defn- index-resources [node search-param resource-handles]
+  (let [handles (into [] (take 1001) resource-handles)
+        [to-index next] (if (< 1000 (count handles))
+                          [(pop handles) (peek handles)]
+                          [handles])]
+    (do-sync [_ (index-resources* node search-param to-index)]
+      {:num-resources (count to-index)
+       :next next})))
+
+(defn- sp-list
+  ([db {:keys [base]}]
+   (if (= ["Resource"] base)
+     (d/system-list db)
+     (coll/eduction (mapcat (partial d/type-list db)) base)))
+  ([db {:keys [base]} start-type start-id]
+   (if (= ["Resource"] base)
+     (d/system-list db start-type start-id)
+     (coll/eduction (mapcat (partial d/type-list db)) base))))
 
 (defrecord BatchDb [node snapshot basis-t t]
   p/Db
@@ -215,6 +249,14 @@
                 codes))))
           (distinct))
          (sr/compartment-resources search-param-registry "Patient"))])))
+
+  (-re-index [db search-param-url]
+    (when-ok [search-param (sr/get-by-url (:search-param-registry node) search-param-url)]
+      (index-resources node search-param (sp-list db search-param))))
+
+  (-re-index [db search-param-url start-type start-id]
+    (when-ok [search-param (sr/get-by-url (:search-param-registry node) search-param-url)]
+      (index-resources node search-param (sp-list db search-param start-type start-id))))
 
   ;; ---- Transaction ---------------------------------------------------------
 

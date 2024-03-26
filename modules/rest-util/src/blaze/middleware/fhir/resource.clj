@@ -1,4 +1,4 @@
-(ns blaze.rest-api.middleware.resource
+(ns blaze.middleware.fhir.resource
   "JSON/XML deserialization middleware."
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]

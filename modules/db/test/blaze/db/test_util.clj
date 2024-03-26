@@ -5,7 +5,7 @@
    [blaze.db.kv.mem]
    [blaze.db.node]
    [blaze.db.resource-store :as rs]
-   [blaze.db.resource-store.kv :as rs-kv]
+   [blaze.db.resource-store.kv]
    [blaze.db.tx-cache]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
@@ -21,7 +21,7 @@
 
 (def config
   {:blaze.db/node
-   {:tx-log (ig/ref :blaze.db/tx-log)
+   {:tx-log (ig/ref ::tx-log/local)
     :tx-cache (ig/ref :blaze.db/tx-cache)
     :indexer-executor (ig/ref :blaze.db.node/indexer-executor)
     :resource-store (ig/ref ::rs/kv)
@@ -62,21 +62,15 @@
      :system-stats-index nil}}
 
    ::rs/kv
-   {:kv-store (ig/ref :blaze.db/resource-kv-store)
-    :executor (ig/ref ::rs-kv/executor)}
+   {:kv-store (ig/ref :blaze.db/resource-kv-store)}
 
    [::kv/mem :blaze.db/resource-kv-store]
    {:column-families {}}
 
-   ::rs-kv/executor {}
-
    :blaze.db.node/resource-indexer
    {:kv-store (ig/ref :blaze.db/index-kv-store)
     :resource-store (ig/ref ::rs/kv)
-    :search-param-registry search-param-registry
-    :executor (ig/ref :blaze.db.node.resource-indexer/executor)}
-
-   :blaze.db.node.resource-indexer/executor {}})
+    :search-param-registry search-param-registry}})
 
 (defmacro with-system-data
   "Runs `body` inside a system that is initialized from `config`, bound to

@@ -2,10 +2,24 @@
   (:require
    [blaze.admin-api :as-alias admin-api]
    [blaze.admin-api.feature :as-alias feature]
+   [blaze.admin-api.job :as-alias job]
    [blaze.admin-api.setting :as-alias setting]
    [blaze.db.kv :as-alias kv]
    [blaze.db.kv.rocksdb.spec]
+   [blaze.db.spec]
    [clojure.spec.alpha :as s]))
+
+(s/def ::admin-api/admin-node
+  :blaze.db/node)
+
+(s/def ::create-handler
+  fn?)
+
+(s/def ::read-handler
+  fn?)
+
+(s/def ::search-type-handler
+  fn?)
 
 (s/def ::admin-api/dbs
   (s/map-of string? ::kv/rocksdb))
@@ -39,3 +53,9 @@
 
 (s/def ::feature/enabled
   boolean?)
+
+(s/def ::admin-api/job
+  (s/keys :req-un [::job/code]))
+
+(s/def ::job/code
+  string?)
