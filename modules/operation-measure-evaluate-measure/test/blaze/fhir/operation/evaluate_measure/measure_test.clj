@@ -351,14 +351,15 @@
 
   (testing "library with syntax error"
     (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
       [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                :content [(library-content "library Test
                                            define Error: (")]}]]]
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                     :blaze/base-url "" ::reitit/router router}
+                     :blaze/base-url "" ::reitit/router router
+                     :executor executor}
             measure-id "measure-id-133021"
             measure {:fhir/type :fhir/Measure :id measure-id
                      :library [#fhir/canonical"0"]
@@ -378,13 +379,14 @@
 
   (testing "missing criteria"
     (with-system-data
-      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
       [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                :content [(library-content (library-gender true))]}]]]
 
       (let [db (d/db node)
             context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                     :blaze/base-url "" ::reitit/router router}
+                     :blaze/base-url "" ::reitit/router router
+                     :executor executor}
             measure-id "measure-id-133021"
             measure {:fhir/type :fhir/Measure :id measure-id
                      :library [#fhir/canonical"0"]
@@ -512,13 +514,14 @@
 
     (testing "invalid subject"
       (with-system-data
-        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
+        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
         [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                  :content [(library-content (library-gender true))]}]]]
 
         (let [db (d/db node)
               context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                       :blaze/base-url "" ::reitit/router router}
+                       :blaze/base-url "" ::reitit/router router
+                       :executor executor}
               measure {:fhir/type :fhir/Measure :id "0"
                        :library [#fhir/canonical"0"]
                        :group
@@ -536,13 +539,14 @@
 
     (testing "missing subject"
       (with-system-data
-        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
+        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
         [[[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                  :content [(library-content (library-gender true))]}]]]
 
         (let [db (d/db node)
               context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                       :blaze/base-url "" ::reitit/router router}
+                       :blaze/base-url "" ::reitit/router router
+                       :executor executor}
               measure {:fhir/type :fhir/Measure :id "0"
                        :library [#fhir/canonical"0"]
                        :group
@@ -560,7 +564,7 @@
 
     (testing "deleted subject"
       (with-system-data
-        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn]} config]
+        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
                  :content [(library-content (library-gender true))]}]]
@@ -568,7 +572,8 @@
 
         (let [db (d/db node)
               context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                       :blaze/base-url "" ::reitit/router router}
+                       :blaze/base-url "" ::reitit/router router
+                       :executor executor}
               measure {:fhir/type :fhir/Measure :id "0"
                        :library [#fhir/canonical"0"]
                        :group
