@@ -10,7 +10,7 @@
     com.google.j2objc/j2objc-annotations]}
 
   com.google.protobuf/protobuf-java
-  {:mvn/version "4.26.0"}
+  {:mvn/version "4.26.1"}
 
   com.fasterxml.jackson.core/jackson-databind
   {:mvn/version "2.17.0"}}}
