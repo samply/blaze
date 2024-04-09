@@ -112,6 +112,16 @@
         ::anom/category := ::anom/unsupported
         ::anom/message := "More than one sort parameter is unsupported.")))
 
+  (testing "removes redundant sort clause"
+    (is (= [["_id" "b"]]
+           (iu/clauses {"_sort" "a" "_id" "b"})
+           (iu/clauses {"_id" "b" "_sort" "a"})))
+
+    (is (= [["_id" "b"] ["c" "d"]]
+           (iu/clauses {"_sort" "a" "_id" "b" "c" "d"})
+           (iu/clauses {"_id" "b" "_sort" "a" "c" "d"})
+           (iu/clauses {"_id" "b" "c" "d" "_sort" "a"}))))
+
   (testing "removes keys"
     (are [key] (empty? (iu/clauses {key "bar"}))
       "_foo"

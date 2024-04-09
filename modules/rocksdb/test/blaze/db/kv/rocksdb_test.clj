@@ -756,7 +756,7 @@
 
       (Thread/sleep 1000)
 
-      (is (= 0 (rocksdb/long-property db :default "rocksdb.estimate-live-data-size")))
+      (is (zero? (rocksdb/long-property db :default "rocksdb.estimate-live-data-size")))
       (is (pos-int? (rocksdb/long-property db :a "rocksdb.estimate-live-data-size")))
       (is (pos-int? (rocksdb/agg-long-property db "rocksdb.estimate-live-data-size")))
 
