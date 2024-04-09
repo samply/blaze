@@ -6,14 +6,12 @@
    [blaze.db.impl.batch-db :as batch-db]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.db :as db]
+   [blaze.db.impl.index :as index]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.t-by-instant :as t-by-instant]
    [blaze.db.impl.index.tx-error :as tx-error]
    [blaze.db.impl.index.tx-success :as tx-success]
    [blaze.db.impl.protocols :as p]
-   [blaze.db.impl.search-param :as search-param]
-   [blaze.db.impl.search-param.all :as search-param-all]
-   [blaze.db.impl.search-param.chained :as spc]
    [blaze.db.kv :as kv]
    [blaze.db.node.protocols :as np]
    [blaze.db.node.resource-indexer :as resource-indexer]
@@ -71,73 +69,6 @@
    :subsystem "db_node"
    :name "transaction_sizes"}
   (take 16 (iterate #(* 2 %) 1)))
-
-(defmulti resolve-search-param (fn [_registry _type _ret [type] _lenient?] type))
-
-(defmethod resolve-search-param :search-clause
-  [registry type ret [_ [param & values]] lenient?]
-  (let [values (distinct values)]
-    (if-ok [[search-param modifier] (spc/parse-search-param registry type param)]
-      (if-ok [compiled-values (search-param/compile-values search-param modifier values)]
-        (conj ret [search-param modifier values compiled-values])
-        reduced)
-      #(if lenient? ret (reduced %)))))
-
-(defmethod resolve-search-param :sort-clause
-  [registry type ret [_ [_ param direction]] _lenient?]
-  (cond
-    (seq ret)
-    (reduced (ba/incorrect "Sort clauses are only allowed at first position."))
-
-    (not (#{"_id" "_lastUpdated"} param))
-    (reduced (ba/incorrect (format "Unknown search-param `%s` in sort clause." param)))
-
-    (and (= "_id" param) (= :desc direction))
-    (reduced (ba/unsupported "Unsupported sort direction `desc` for search param `_id`."))
-
-    :else
-    (let [[search-param] (spc/parse-search-param registry type param)]
-      (conj ret [search-param (name direction) [] []]))))
-
-(defn- conform-clause [clause]
-  (s/conform :blaze.db.query/clause clause))
-
-(defn- resolve-search-params* [registry type clauses lenient?]
-  (reduce
-   #(resolve-search-param registry type %1 (conform-clause %2) lenient?)
-   []
-   clauses))
-
-(defn- type-priority [{:keys [type]}]
-  (case type
-    "id" 0
-    "token" 1
-    2))
-
-(defn- priority
-  "Gives the single sorting search param the priority 0 and all other search
-  params a priority starting at 1 in order to keep the sorting search param at
-  the first position."
-  [[search-param modifier]]
-  (if (#{"asc" "desc"} modifier)
-    0
-    (inc (type-priority search-param))))
-
-(defn- order-clauses
-  "Orders clauses by specificity so that the clause constraining the resources
-  the most will come first."
-  [clauses]
-  (sort-by priority clauses))
-
-(defn- fix-last-updated [[[first-search-param first-modifier] :as clauses]]
-  (if (and (= "_lastUpdated" (:code first-search-param))
-           (not (#{"asc" "desc"} first-modifier)))
-    (into [[search-param-all/search-param nil [""] [""]]] clauses)
-    clauses))
-
-(defn- resolve-search-params [registry type clauses lenient?]
-  (when-ok [clauses (resolve-search-params* registry type clauses lenient?)]
-    (-> clauses order-clauses fix-last-updated)))
 
 (defn- db-future
   "Adds a watcher to `node` and returns a CompletableFuture that will complete
@@ -281,16 +212,16 @@
     (rs/get resource-store (rh/hash resource-handle))))
 
 (defn- compile-type-query [search-param-registry type clauses lenient?]
-  (when-ok [clauses (resolve-search-params search-param-registry type clauses
-                                           lenient?)]
+  (when-ok [clauses (index/resolve-search-params search-param-registry type clauses
+                                                 lenient?)]
     (if (empty? clauses)
       (batch-db/->EmptyTypeQuery (codec/tid type))
       (batch-db/->TypeQuery (codec/tid type) clauses))))
 
 (defn- compile-compartment-query
   [search-param-registry code type clauses lenient?]
-  (when-ok [clauses (resolve-search-params search-param-registry type clauses
-                                           lenient?)]
+  (when-ok [clauses (index/resolve-search-params search-param-registry type clauses
+                                                 lenient?)]
     (if (empty? clauses)
       (batch-db/->EmptyCompartmentQuery (codec/c-hash code) (codec/tid type))
       (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
@@ -364,8 +295,8 @@
     (compile-type-query search-param-registry type clauses true))
 
   (-compile-system-query [_ clauses]
-    (when-ok [clauses (resolve-search-params search-param-registry "Resource"
-                                             clauses false)]
+    (when-ok [clauses (index/resolve-search-params search-param-registry
+                                                   "Resource" clauses false)]
       (batch-db/->SystemQuery clauses)))
 
   (-compile-compartment-query [_ code type clauses]

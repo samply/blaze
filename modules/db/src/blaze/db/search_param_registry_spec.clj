@@ -11,6 +11,11 @@
                :code string? :type :fhir.resource/type)
   :ret (s/nilable :blaze.db/search-param))
 
+(s/fdef sr/get-by-url
+  :args (s/cat :search-param-registry :blaze.db/search-param-registry
+               :url string?)
+  :ret (s/nilable :blaze.db/search-param))
+
 (s/fdef sr/all-types
   :args (s/cat :search-param-registry :blaze.db/search-param-registry)
   :ret (s/coll-of :fhir.resource/type :kind set?))

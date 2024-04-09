@@ -8,6 +8,8 @@
    [blaze.db.spec]
    [blaze.db.tx-log.spec]
    [blaze.fhir.spec]
+   [blaze.fhir.spec.type.system.spec]
+   [blaze.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 
@@ -203,7 +205,9 @@
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef d/patient-everything
-  :args (s/cat :db :blaze.db/db :patient-handle :blaze.db/resource-handle)
+  :args (s/cat :db :blaze.db/db :patient-handle :blaze.db/resource-handle
+               :date-range (s/? (s/cat :start (s/nilable :system/date)
+                                       :end (s/nilable :system/date))))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 ;; ---- Batch DB --------------------------------------------------------------

@@ -1,7 +1,6 @@
 (ns blaze.db.impl.search-param.util-spec
   (:require
    [blaze.byte-string-spec]
-   [blaze.db.impl.batch-db :as-alias batch-db]
    [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec.spec]
    [blaze.db.impl.index.resource-search-param-value-spec]
@@ -16,7 +15,13 @@
   :ret (s/tuple keyword? string?))
 
 (s/fdef u/resource-handle-mapper
-  :args (s/cat :context ::batch-db/context :tid :blaze.db/tid))
+  :args (s/cat :batch-db :blaze.db.impl/batch-db :tid :blaze.db/tid))
+
+(s/fdef u/resource-handle-chunk-mapper
+  :args (s/cat :batch-db :blaze.db.impl/batch-db :tid :blaze.db/tid))
+
+(s/fdef u/reference-resource-handle-mapper
+  :args (s/cat :batch-db :blaze.db.impl/batch-db))
 
 (s/fdef u/eq-value
   :args (s/cat :f ifn? :decimal-value decimal?)

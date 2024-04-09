@@ -49,6 +49,7 @@ jobs:
     strategy:
       matrix:
         module:
+        - admin-api
         - anomaly
         - async
         - byte-buffer
@@ -75,6 +76,8 @@ jobs:
         - openid-auth
         - operation-graphql
         - operation-measure-evaluate-measure
+        - operation-patient-everything
+        - operation-totals
         - page-store
         - page-store-cassandra
         - rest-api
@@ -728,6 +731,9 @@ jobs:
 
     - name: Patient Everything
       run: .github/scripts/patient-everything.sh
+
+    - name: Patient Everything with Date Range
+      run: .github/scripts/patient-everything-date-range.sh
 
     - name: Patient Everything Paged
       run: .github/scripts/patient-everything-paged.sh

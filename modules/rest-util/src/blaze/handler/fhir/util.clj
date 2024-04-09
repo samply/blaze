@@ -2,7 +2,9 @@
   "Utilities for FHIR interactions."
   (:refer-clojure :exclude [sync])
   (:require
+   [blaze.anomaly :as ba]
    [blaze.fhir.spec]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.util :as u]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -71,6 +73,23 @@
   {:arglists '([query-params])}
   [{v "_elements"}]
   (mapv keyword (some-> v (str/split #"\s*,\s*"))))
+
+(defn- incorrect-date-msg [name value]
+  (format "The value `%s` of the query param `%s` is no valid date." value name))
+
+(defn date
+  "Returns the value of the query param with `name` parsed as FHIR date or nil
+  if not found.
+
+  Returns an anomaly if the query param is available but can't be converted to a
+  FHIR date."
+  {:arglists '([query-params name])}
+  [query-params name]
+  (when-let [value (get query-params name)]
+    (let [date (system/parse-date value)]
+      (if (ba/anomaly? date)
+        (ba/incorrect (incorrect-date-msg name value))
+        date))))
 
 (defn type-url
   "Returns the URL of a resource type like `[base]/[type]`."

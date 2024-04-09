@@ -11,6 +11,9 @@
   blaze/module-base
   {:local/root "../module-base"}
 
+  blaze/rest-util
+  {:local/root "../rest-util"}
+
   blaze/spec
   {:local/root "../spec"}}
 
@@ -20,10 +23,7 @@
 
    :extra-deps
    {blaze/db-stub
-    {:local/root "../db-stub"}
-
-    blaze/rest-util
-    {:local/root "../rest-util"}}}
+    {:local/root "../db-stub"}}}
 
   :kaocha
   {:extra-deps

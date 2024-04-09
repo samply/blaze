@@ -1,11 +1,13 @@
 (ns blaze.handler.fhir.util-spec
   (:require
    [blaze.fhir.spec]
+   [blaze.fhir.spec.type.system.spec]
    [blaze.handler.fhir.util :as util]
    [blaze.handler.fhir.util.spec]
    [blaze.http.spec]
    [blaze.spec]
    [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]
    [reitit.core :as reitit]))
 
 (s/fdef util/t
@@ -32,6 +34,11 @@
 (s/fdef util/elements
   :args (s/cat :query-params (s/nilable :ring.request/query-params))
   :ret (s/nilable (s/coll-of simple-keyword?)))
+
+(s/fdef util/date
+  :args (s/cat :query-params (s/nilable :ring.request/query-params)
+               :name string?)
+  :ret (s/or :date :system/date :anomaly ::anom/anomaly))
 
 (s/fdef util/type-url
   :args (s/cat :context (s/keys :req [:blaze/base-url ::reitit/router])

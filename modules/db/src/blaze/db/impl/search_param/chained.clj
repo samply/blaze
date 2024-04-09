@@ -1,16 +1,36 @@
 (ns blaze.db.impl.search-param.chained
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
-   [blaze.db.impl.index :as index]
    [blaze.db.impl.index.resource-handle :as rh]
+   [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
    [blaze.db.impl.protocols :as p]
+   [blaze.db.impl.search-param.util :as u]
    [blaze.db.node.resource-indexer.spec]
    [blaze.db.node.spec]
    [blaze.db.search-param-registry :as sr]
    [blaze.db.search-param-registry.spec]
    [clojure.string :as str]))
+
+(defn targets
+  "Returns a reducible collection of non-deleted resource handles that are
+  referenced by `resource-handle` via a search-param with `code` having a type
+  with `target-tid` (optional)."
+  {:arglists
+   '([batch-db resource-handle code]
+     [batch-db resource-handle code target-tid])}
+  ([{:keys [snapshot] :as batch-db} {:keys [tid id hash]} code]
+   (coll/eduction
+    (u/reference-resource-handle-mapper batch-db)
+    (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash code)))
+  ([{:keys [snapshot] :as batch-db} {:keys [tid id hash]} code target-tid]
+   (coll/eduction
+    (u/reference-resource-handle-mapper batch-db)
+    (let [start-value (codec/tid-byte-string target-tid)]
+      (r-sp-v/prefix-keys snapshot tid (codec/id-byte-string id) hash code
+                          (bs/size start-value) start-value)))))
 
 (defn- search-param-not-found-msg [code type]
   (format "The search-param with code `%s` and type `%s` was not found."
@@ -26,30 +46,30 @@
   (-compile-value [_ modifier value]
     (p/-compile-value search-param modifier value))
 
-  (-chunked-resource-handles [search-param context tid modifier value]
-    [(p/-resource-handles search-param context tid modifier value)])
+  (-chunked-resource-handles [this batch-db tid modifier value]
+    [(p/-resource-handles this batch-db tid modifier value)])
 
-  (-resource-handles [_ context tid modifier compiled-value]
+  (-resource-handles [_ batch-db tid modifier compiled-value]
     (coll/eduction
      (comp (map #(p/-compile-value ref-search-param ref-modifier (rh/reference %)))
-           (mapcat #(p/-resource-handles ref-search-param context tid modifier %))
+           (mapcat #(p/-resource-handles ref-search-param batch-db tid modifier %))
            (distinct))
-     (p/-resource-handles search-param context ref-tid modifier compiled-value)))
+     (p/-resource-handles search-param batch-db ref-tid modifier compiled-value)))
 
-  (-resource-handles [this context tid modifier compiled-value start-id]
+  (-resource-handles [this batch-db tid modifier compiled-value start-id]
     (let [start-id (codec/id-string start-id)]
       (coll/eduction
        (drop-while #(not= start-id (rh/id %)))
-       (p/-resource-handles this context tid modifier compiled-value))))
+       (p/-resource-handles this batch-db tid modifier compiled-value))))
 
-  (-matcher [_ context modifier values]
+  (-matcher [_ batch-db modifier values]
     (filter
      (fn [resource-handle]
        (transduce
-        (p/-matcher search-param context modifier values)
+        (p/-matcher search-param batch-db modifier values)
         (fn ([r] r) ([_ _] (reduced true)))
         nil
-        (index/targets context resource-handle ref-c-hash ref-tid))))))
+        (targets batch-db resource-handle ref-c-hash ref-tid))))))
 
 (defn- chained-search-param
   [registry ref-search-param ref-type ref-modifier original-code [code modifier]]

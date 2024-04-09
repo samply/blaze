@@ -2,7 +2,6 @@
   (:require
    [blaze.byte-string-spec]
    [blaze.coll.spec :as cs]
-   [blaze.db.impl.batch-db :as-alias batch-db]
    [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.codec-spec]
    [blaze.db.impl.index.compartment.search-param-value-resource-spec]
@@ -10,6 +9,7 @@
    [blaze.db.impl.index.search-param-value-resource-spec]
    [blaze.db.impl.iterators-spec]
    [blaze.db.impl.search-param :as search-param]
+   [blaze.db.impl.search-param.chained-spec]
    [blaze.db.impl.search-param.composite-spec]
    [blaze.db.impl.search-param.date-spec]
    [blaze.db.impl.search-param.has-spec]
@@ -36,7 +36,7 @@
 
 (s/fdef search-param/resource-handles
   :args (s/cat :search-param :blaze.db/search-param
-               :context ::batch-db/context
+               :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :values (s/coll-of some? :min-count 1)
@@ -45,7 +45,7 @@
 
 (s/fdef search-param/sorted-resource-handles
   :args (s/cat :search-param :blaze.db/search-param
-               :context ::batch-db/context
+               :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
                :direction :blaze.db.query/sort-direction
                :start-id (s/? :blaze.db/id-byte-string))
@@ -53,7 +53,7 @@
 
 (s/fdef search-param/chunked-resource-handles
   :args (s/cat :search-param :blaze.db/search-param
-               :context ::batch-db/context
+               :batch-db :blaze.db.impl/batch-db
                :tid :blaze.db/tid
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :values (s/coll-of some? :min-count 1))
@@ -61,7 +61,7 @@
 
 (s/fdef search-param/compartment-resource-handles
   :args (s/cat :search-param :blaze.db/search-param
-               :context ::batch-db/context
+               :batch-db :blaze.db.impl/batch-db
                :compartment :blaze.db/compartment
                :tid :blaze.db/tid
                :compiled-values (s/coll-of some? :min-count 1))
@@ -69,7 +69,7 @@
 
 (s/fdef search-param/matcher
   :args (s/cat :search-param :blaze.db/search-param
-               :context ::batch-db/context
+               :batch-db :blaze.db.impl/batch-db
                :modifier (s/nilable :blaze.db.search-param/modifier)
                :compiled-values (s/coll-of some? :min-count 1))
   :ret fn?)

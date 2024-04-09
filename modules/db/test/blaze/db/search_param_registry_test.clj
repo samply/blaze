@@ -87,12 +87,33 @@
       (testing "clinical-code"
         (given (sr/get search-param-registry "code" "Observation")
           :type := "token"
-          :url := "http://hl7.org/fhir/SearchParameter/clinical-code"))))
+          :url := "http://hl7.org/fhir/SearchParameter/clinical-code"))
+
+      (testing "not found"
+        (is (nil? (sr/get search-param-registry "not-existing" "Observation"))))))
 
   (testing "with extra bundle file"
     (with-system [{:blaze.db/keys [search-param-registry]} config-extra]
       (testing "marital-status"
         (given (sr/get search-param-registry "marital-status" "Patient")
+          :type := "token"
+          :url := "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status")))))
+
+(deftest get-by-url-test
+  (testing "default system"
+    (with-system [{:blaze.db/keys [search-param-registry]} config]
+      (testing "clinical-code"
+        (given (sr/get-by-url search-param-registry "http://hl7.org/fhir/SearchParameter/clinical-code")
+          :type := "token"
+          :url := "http://hl7.org/fhir/SearchParameter/clinical-code"))
+
+      (testing "not found"
+        (is (nil? (sr/get-by-url search-param-registry "not-existing"))))))
+
+  (testing "with extra bundle file"
+    (with-system [{:blaze.db/keys [search-param-registry]} config-extra]
+      (testing "marital-status"
+        (given (sr/get-by-url search-param-registry "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status")
           :type := "token"
           :url := "https://samply.github.io/blaze/fhir/SearchParameter/Patient-marital-status")))))
 

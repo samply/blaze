@@ -5920,7 +5920,87 @@
           (let [db (d/db node)
                 patient (d/resource-handle db "Patient" "0")
                 res (vec (d/patient-everything db patient))]
-            (= (count (set res)) (count res))))))))
+            (= (count (set res)) (count res)))))))
+
+  (testing "with start date"
+    (testing "Observation"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Observation :id "0"
+                 :subject #fhir/Reference{:reference "Patient/0"}}]
+          [:put {:fhir/type :fhir/Observation :id "1"
+                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :effective #fhir/dateTime"2024-01-04T23:45:50Z"}]]]
+
+        (let [db (d/db node)
+              patient (d/resource-handle db "Patient" "0")]
+
+          (given (vec (d/patient-everything db patient #system/date"2024" nil))
+            count := 2
+            [0 fhir-spec/fhir-type] := :fhir/Patient
+            [0 :id] := "0"
+            [1 fhir-spec/fhir-type] := :fhir/Observation
+            [1 :id] := "1"))))
+
+    (testing "Encounter"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Encounter :id "0"
+                 :subject #fhir/Reference{:reference "Patient/0"}}]
+          [:put {:fhir/type :fhir/Encounter :id "1"
+                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :period #fhir/Period{:start #fhir/dateTime"2024-01-04T23:45:50Z"}}]]]
+
+        (let [db (d/db node)
+              patient (d/resource-handle db "Patient" "0")]
+
+          (given (vec (d/patient-everything db patient #system/date"2024" nil))
+            count := 2
+            [0 fhir-spec/fhir-type] := :fhir/Patient
+            [0 :id] := "0"
+            [1 fhir-spec/fhir-type] := :fhir/Encounter
+            [1 :id] := "1")))))
+
+  (testing "with end date"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :effective #fhir/dateTime"2024-01-04T23:45:50Z"}]]]
+
+      (let [db (d/db node)
+            patient (d/resource-handle db "Patient" "0")]
+
+        (given (vec (d/patient-everything db patient nil #system/date"2024"))
+          count := 2
+          [0 fhir-spec/fhir-type] := :fhir/Patient
+          [0 :id] := "0"
+          [1 fhir-spec/fhir-type] := :fhir/Observation
+          [1 :id] := "1"))))
+
+  (testing "with start and end date"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :effective #fhir/dateTime"2024-01-04T23:45:50Z"}]
+        [:put {:fhir/type :fhir/Observation :id "2"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :effective #fhir/dateTime"2025-01-04T23:45:50Z"}]]]
+
+      (let [db (d/db node)
+            patient (d/resource-handle db "Patient" "0")]
+
+        (given (vec (d/patient-everything db patient #system/date"2024" #system/date"2024"))
+          count := 2
+          [0 fhir-spec/fhir-type] := :fhir/Patient
+          [0 :id] := "0"
+          [1 fhir-spec/fhir-type] := :fhir/Observation
+          [1 :id] := "1")))))
 
 (deftest batch-db-test
   (testing "resource-handle"

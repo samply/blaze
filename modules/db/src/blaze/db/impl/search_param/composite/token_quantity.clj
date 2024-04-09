@@ -45,23 +45,23 @@
                      code (::spq/unsupported-prefix %)))
              %)))))
 
-  (-chunked-resource-handles [_ context tid _ value]
+  (-chunked-resource-handles [_ batch-db tid _ value]
     (coll/eduction
-     (u/resource-handle-chunk-mapper context tid)
-     (spq/resource-keys context c-hash tid prefix-length value)))
+     (u/resource-handle-chunk-mapper batch-db tid)
+     (spq/resource-keys batch-db c-hash tid prefix-length value)))
 
-  (-resource-handles [_ context tid _ value]
+  (-resource-handles [_ batch-db tid _ value]
     (coll/eduction
-     (u/resource-handle-mapper context tid)
-     (spq/resource-keys context c-hash tid prefix-length value)))
+     (u/resource-handle-mapper batch-db tid)
+     (spq/resource-keys batch-db c-hash tid prefix-length value)))
 
-  (-resource-handles [_ context tid _ value start-id]
+  (-resource-handles [_ batch-db tid _ value start-id]
     (coll/eduction
-     (u/resource-handle-mapper context tid)
-     (spq/resource-keys context c-hash tid prefix-length value start-id)))
+     (u/resource-handle-mapper batch-db tid)
+     (spq/resource-keys batch-db c-hash tid prefix-length value start-id)))
 
-  (-matcher [_ context _ values]
-    (spq/matcher context c-hash prefix-length values))
+  (-matcher [_ batch-db _ values]
+    (spq/matcher batch-db c-hash prefix-length values))
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]

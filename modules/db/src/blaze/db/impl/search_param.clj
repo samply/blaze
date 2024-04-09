@@ -38,12 +38,12 @@
   "Returns a reducible collection of distinct resource handles.
 
   Concatenates resource handles of each value in compiled `values`."
-  ([search-param context tid modifier values]
+  ([search-param batch-db tid modifier values]
    (if (= 1 (count values))
-     (p/-resource-handles search-param context tid modifier (first values))
+     (p/-resource-handles search-param batch-db tid modifier (first values))
      (coll/eduction
       (comp
-       (mapcat (partial p/-resource-handles search-param context tid modifier))
+       (mapcat (partial p/-resource-handles search-param batch-db tid modifier))
        (distinct))
       values)))
   ([search-param context tid modifier values start-id]
@@ -60,43 +60,43 @@
   `search-param` in `direction`.
 
   Optionally starts at `start-id`"
-  ([search-param context tid direction]
-   (p/-sorted-resource-handles search-param context tid direction))
-  ([search-param context tid direction start-id]
-   (p/-sorted-resource-handles search-param context tid direction start-id)))
+  ([search-param batch-db tid direction]
+   (p/-sorted-resource-handles search-param batch-db tid direction))
+  ([search-param batch-db tid direction start-id]
+   (p/-sorted-resource-handles search-param batch-db tid direction start-id)))
 
 (defn chunked-resource-handles
   "Returns an reducible collection of chunks of resource handles.
 
   Each chunk is a CompletableFuture that will complete with reducible
   collection of matching resource handles."
-  [search-param context tid modifier values]
+  [search-param batch-db tid modifier values]
   (if (= 1 (count values))
-    (p/-chunked-resource-handles search-param context tid modifier (first values))
+    (p/-chunked-resource-handles search-param batch-db tid modifier (first values))
     [(coll/eduction
       (comp
-       (mapcat (partial p/-resource-handles search-param context tid modifier))
+       (mapcat (partial p/-resource-handles search-param batch-db tid modifier))
        (distinct))
       values)]))
 
 (defn- compartment-keys
   "Returns a reducible collection of `[prefix id hash-prefix]` triples."
-  [search-param context compartment tid compiled-values]
+  [search-param batch-db compartment tid compiled-values]
   (coll/eduction
-   (mapcat #(p/-compartment-keys search-param context compartment tid %))
+   (mapcat #(p/-compartment-keys search-param batch-db compartment tid %))
    compiled-values))
 
 (defn compartment-resource-handles
-  [search-param context compartment tid compiled-values]
+  [search-param batch-db compartment tid compiled-values]
   (coll/eduction
-   (u/resource-handle-mapper context tid)
-   (compartment-keys search-param context compartment tid compiled-values)))
+   (u/resource-handle-mapper batch-db tid)
+   (compartment-keys search-param batch-db compartment tid compiled-values)))
 
 (defn matcher
   "Returns a stateful transducer that filters resource handles depending on
   having one of `compiled-values` for `search-param` with `modifier`."
-  [search-param context modifier compiled-values]
-  (p/-matcher search-param context modifier compiled-values))
+  [search-param batch-db modifier compiled-values]
+  (p/-matcher search-param batch-db modifier compiled-values))
 
 (def ^:private stub-resolver
   "A resolver which only returns a resource stub with type and id from the local

@@ -153,9 +153,9 @@
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-rev-include batch-db resource-handle source-type code)))
 
-  (-patient-everything [_ patient-handle]
+  (-patient-everything [_ patient-handle start end]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
-      (p/-patient-everything batch-db patient-handle)))
+      (p/-patient-everything batch-db patient-handle start end)))
 
   ;; ---- Batch DB ------------------------------------------------------------
 

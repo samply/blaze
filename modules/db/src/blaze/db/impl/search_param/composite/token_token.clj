@@ -19,23 +19,23 @@
             v2 (cc/compile-component-value c1 v2)]
         (bs/concat v1 v2))))
 
-  (-chunked-resource-handles [_ context tid _ value]
+  (-chunked-resource-handles [_ batch-db tid _ value]
     (coll/eduction
-     (u/resource-handle-chunk-mapper context tid)
-     (spt/resource-keys context c-hash tid value)))
+     (u/resource-handle-chunk-mapper batch-db tid)
+     (spt/resource-keys batch-db c-hash tid value)))
 
-  (-resource-handles [_ context tid _ value]
+  (-resource-handles [_ batch-db tid _ value]
     (coll/eduction
-     (u/resource-handle-mapper context tid)
-     (spt/resource-keys context c-hash tid value)))
+     (u/resource-handle-mapper batch-db tid)
+     (spt/resource-keys batch-db c-hash tid value)))
 
-  (-resource-handles [_ context tid _ value start-id]
+  (-resource-handles [_ batch-db tid _ value start-id]
     (coll/eduction
-     (u/resource-handle-mapper context tid)
-     (spt/resource-keys context c-hash tid value start-id)))
+     (u/resource-handle-mapper batch-db tid)
+     (spt/resource-keys batch-db c-hash tid value start-id)))
 
-  (-matcher [_ context _ values]
-    (r-sp-v/value-prefix-filter (:snapshot context) c-hash values))
+  (-matcher [_ batch-db _ values]
+    (r-sp-v/value-prefix-filter (:snapshot batch-db) c-hash values))
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]

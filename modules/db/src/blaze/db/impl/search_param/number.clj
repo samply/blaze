@@ -63,23 +63,23 @@
                 ::category ::invalid-decimal-value
                 ::anom/message (u/invalid-decimal-value-msg code value)))))
 
-  (-chunked-resource-handles [_ context tid _ value]
+  (-chunked-resource-handles [_ batch-db tid _ value]
     (coll/eduction
-     (u/resource-handle-chunk-mapper context tid)
-     (spq/resource-keys context c-hash tid 0 value)))
+     (u/resource-handle-chunk-mapper batch-db tid)
+     (spq/resource-keys batch-db c-hash tid 0 value)))
 
-  (-resource-handles [_ context tid _ value]
+  (-resource-handles [_ batch-db tid _ value]
     (coll/eduction
-     (u/resource-handle-mapper context tid)
-     (spq/resource-keys context c-hash tid 0 value)))
+     (u/resource-handle-mapper batch-db tid)
+     (spq/resource-keys batch-db c-hash tid 0 value)))
 
-  (-resource-handles [_ context tid _ value start-id]
+  (-resource-handles [_ batch-db tid _ value start-id]
     (coll/eduction
-     (u/resource-handle-mapper context tid)
-     (spq/resource-keys context c-hash tid 0 value start-id)))
+     (u/resource-handle-mapper batch-db tid)
+     (spq/resource-keys batch-db c-hash tid 0 value start-id)))
 
-  (-matcher [_ context _ values]
-    (spq/matcher context c-hash 0 values))
+  (-matcher [_ batch-db _ values]
+    (spq/matcher batch-db c-hash 0 values))
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
