@@ -969,6 +969,10 @@
           (testing "the total count is 1"
             (is (= #fhir/unsignedInt 1 (:total body))))
 
+          (testing "has a self link"
+            (is (= (str base-url context-path "/Patient?_id=0&_count=50")
+                   (link-url body "self"))))
+
           (testing "the bundle contains one entry"
             (is (= 1 (count (:entry body)))))
 
@@ -1004,7 +1008,11 @@
             (testing "the total count is 2"
               (is (= #fhir/unsignedInt 2 (:total body))))
 
-            (testing "the bundle contains one entry"
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient?_id=0%2C2&_count=50")
+                     (link-url body "self"))))
+
+            (testing "the bundle contains two entries"
               (is (= 2 (count (:entry body)))))
 
             (testing "the first entry has the right fullUrl"
@@ -1023,7 +1031,110 @@
             (testing "the second entry has the right resource"
               (given (-> body :entry second :resource)
                 :fhir/type := :fhir/Patient
-                :id := "2")))))))
+                :id := "2"))))))
+
+    (testing "with additional _profile search param"
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Patient :id "0"
+                 :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-095443"]}}]]]
+
+        (doseq [handling ["strict" "lenient"]]
+          (let [{:keys [status] {[first-entry] :entry :as body} :body}
+                @(handler
+                  {:headers {"prefer" (str "handling=" handling)}
+                   :params {"_id" "0" "_profile" "profile-uri-095443"}})]
+
+            (is (= 200 status))
+
+            (testing "the body contains a bundle"
+              (is (= :fhir/Bundle (:fhir/type body))))
+
+            (testing "the bundle type is searchset"
+              (is (= #fhir/code"searchset" (:type body))))
+
+            (testing "the total count is 1"
+              (is (= #fhir/unsignedInt 1 (:total body))))
+
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient?_id=0&_profile=profile-uri-095443&_count=50")
+                     (link-url body "self"))))
+
+            (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body)))))
+
+            (testing "the entry has the right fullUrl"
+              (is (= (str base-url context-path "/Patient/0")
+                     (:fullUrl first-entry))))
+
+            (testing "the first entry has the right resource"
+              (given (:resource first-entry)
+                :fhir/type := :fhir/Patient
+                :id := "0"))))))
+
+    (testing "with additional _sort search param"
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (doseq [handling ["strict" "lenient"]]
+          (let [{:keys [status] {[first-entry] :entry :as body} :body}
+                @(handler
+                  {:headers {"prefer" (str "handling=" handling)}
+                   :params {"_id" "0" "_sort" "_id"}})]
+
+            (is (= 200 status))
+
+            (testing "the body contains a bundle"
+              (is (= :fhir/Bundle (:fhir/type body))))
+
+            (testing "the bundle type is searchset"
+              (is (= #fhir/code"searchset" (:type body))))
+
+            (testing "the total count is 1"
+              (is (= #fhir/unsignedInt 1 (:total body))))
+
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient?_id=0&_count=50")
+                     (link-url body "self"))))
+
+            (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body)))))
+
+            (testing "the entry has the right fullUrl"
+              (is (= (str base-url context-path "/Patient/0")
+                     (:fullUrl first-entry))))
+
+            (testing "the first entry has the right resource"
+              (given (:resource first-entry)
+                :fhir/type := :fhir/Patient
+                :id := "0"))))))
+
+    (testing "with additional _profile and _sort search param matching no patient"
+      (with-handler [handler]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (doseq [handling ["strict" "lenient"]]
+          (let [{:keys [status body]}
+                @(handler
+                  {:headers {"prefer" (str "handling=" handling)}
+                   :params {"_id" "0" "_profile" "profile-uri-095443" "_sort" "_id"}})]
+
+            (is (= 200 status))
+
+            (testing "the body contains a bundle"
+              (is (= :fhir/Bundle (:fhir/type body))))
+
+            (testing "the bundle type is searchset"
+              (is (= #fhir/code"searchset" (:type body))))
+
+            (testing "the total count is zero"
+              (is (= #fhir/unsignedInt 0 (:total body))))
+
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient?_id=0&_profile=profile-uri-095443&_count=50")
+                     (link-url body "self"))))
+
+            (testing "the bundle contains no entry"
+              (is (zero? (count (:entry body))))))))))
 
   (testing "_lastUpdated search"
     (with-handler [handler]
@@ -1329,7 +1440,7 @@
             (is (= #fhir/unsignedInt 2 (:total body))))
 
           (testing "the bundle contains no entries"
-            (is (= 0 (count (:entry body)))))))))
+            (is (zero? (count (:entry body)))))))))
 
   (testing "_list search"
     (with-handler [handler]
