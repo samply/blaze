@@ -1,6 +1,4 @@
-{:paths ["dev" "src"]
-
- :deps
+{:deps
  {blaze/async
   {:local/root "../async"}
 

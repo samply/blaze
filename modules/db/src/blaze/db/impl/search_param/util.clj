@@ -52,21 +52,21 @@
   "Returns a transducer which groups `[id hash-prefix]` tuples by `id` and maps
   them to a resource handle with `tid` if there is a current one with matching
   hash prefix."
-  [context tid]
+  [batch-db tid]
   (comp
    by-id-grouper
-   (resource-handle-xf context tid)))
+   (resource-handle-xf batch-db tid)))
 
 (defn resource-handle-chunk-mapper
   "Like `resource-handle-mapper` but emits chunks of reducible collections of
   matching resource handles.
 
   That chunks can be used to process the resource handle mapping in parallel."
-  [context tid]
+  [batch-db tid]
   (comp
    by-id-grouper
    (partition-all 1000)
-   (map #(coll/eduction (resource-handle-xf context tid) %))))
+   (map #(coll/eduction (resource-handle-xf batch-db tid) %))))
 
 (defn missing-expression-msg [url]
   (format "Unsupported search parameter with URL `%s`. Required expression is missing."

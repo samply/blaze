@@ -69,8 +69,8 @@
 
   An optional `start-id` can be given."
   {:arglists
-   '([context compartment tid]
-     [context compartment tid start-id])}
+   '([batch-db compartment tid]
+     [batch-db compartment tid start-id])}
   ([{:keys [snapshot t]} compartment tid]
    (let [seek-key (encode-seek-key compartment tid)]
      (coll/eduction

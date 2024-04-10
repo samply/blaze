@@ -426,8 +426,10 @@
   Medications, Locations, Organizations etc.
 
   The `patient-handle` itself is returned first."
-  [db patient-handle]
-  (p/-patient-everything db patient-handle))
+  ([db patient-handle]
+   (p/-patient-everything db patient-handle nil nil))
+  ([db patient-handle start end]
+   (p/-patient-everything db patient-handle start end)))
 
 ;; ---- Batch DB --------------------------------------------------------------
 

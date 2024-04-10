@@ -162,26 +162,26 @@
   The `prefix-length` is the length of the prefix of `value` that all found
   values have to have."
   {:arglists
-   '([context c-hash tid prefix-length value]
-     [context c-hash tid prefix-length value start-id])}
-  ([context c-hash tid prefix-length
+   '([batch-db c-hash tid prefix-length value]
+     [batch-db c-hash tid prefix-length value start-id])}
+  ([batch-db c-hash tid prefix-length
     {:keys [op lower-bound exact-value upper-bound]}]
    (case op
-     :eq (eq-keys context c-hash tid lower-bound upper-bound)
-     :gt (gt-keys context c-hash tid prefix-length exact-value)
-     :lt (lt-keys context c-hash tid prefix-length exact-value)
-     :ge (ge-keys context c-hash tid prefix-length exact-value)
-     :le (le-keys context c-hash tid prefix-length exact-value)))
-  ([context c-hash tid prefix-length
+     :eq (eq-keys batch-db c-hash tid lower-bound upper-bound)
+     :gt (gt-keys batch-db c-hash tid prefix-length exact-value)
+     :lt (lt-keys batch-db c-hash tid prefix-length exact-value)
+     :ge (ge-keys batch-db c-hash tid prefix-length exact-value)
+     :le (le-keys batch-db c-hash tid prefix-length exact-value)))
+  ([batch-db c-hash tid prefix-length
     {:keys [op lower-bound exact-value upper-bound]}
     start-id]
    (case op
-     :eq (eq-keys context c-hash tid (bs/subs lower-bound 0 prefix-length)
+     :eq (eq-keys batch-db c-hash tid (bs/subs lower-bound 0 prefix-length)
                   upper-bound start-id)
-     :gt (gt-keys context c-hash tid prefix-length exact-value start-id)
-     :lt (lt-keys context c-hash tid prefix-length exact-value start-id)
-     :ge (ge-keys context c-hash tid prefix-length exact-value start-id)
-     :le (le-keys context c-hash tid prefix-length exact-value start-id))))
+     :gt (gt-keys batch-db c-hash tid prefix-length exact-value start-id)
+     :lt (lt-keys batch-db c-hash tid prefix-length exact-value start-id)
+     :ge (ge-keys batch-db c-hash tid prefix-length exact-value start-id)
+     :le (le-keys batch-db c-hash tid prefix-length exact-value start-id))))
 
 (defn- resource-search-param-value-encoder [c-hash]
   (let [encoder (r-sp-v/resource-search-param-value-encoder c-hash)]
@@ -223,23 +223,23 @@
                 ::category ::invalid-decimal-value
                 ::anom/message (u/invalid-decimal-value-msg code value)))))
 
-  (-chunked-resource-handles [_ context tid _ value]
+  (-chunked-resource-handles [_ batch-db tid _ value]
     (coll/eduction
-     (u/resource-handle-chunk-mapper context tid)
-     (resource-keys context c-hash tid codec/v-hash-size value)))
+     (u/resource-handle-chunk-mapper batch-db tid)
+     (resource-keys batch-db c-hash tid codec/v-hash-size value)))
 
-  (-resource-handles [_ context tid _ value]
+  (-resource-handles [_ batch-db tid _ value]
     (coll/eduction
-     (u/resource-handle-mapper context tid)
-     (resource-keys context c-hash tid codec/v-hash-size value)))
+     (u/resource-handle-mapper batch-db tid)
+     (resource-keys batch-db c-hash tid codec/v-hash-size value)))
 
-  (-resource-handles [_ context tid _ value start-id]
+  (-resource-handles [_ batch-db tid _ value start-id]
     (coll/eduction
-     (u/resource-handle-mapper context tid)
-     (resource-keys context c-hash tid codec/v-hash-size value start-id)))
+     (u/resource-handle-mapper batch-db tid)
+     (resource-keys batch-db c-hash tid codec/v-hash-size value start-id)))
 
-  (-matcher [_ context _ values]
-    (matcher context c-hash codec/v-hash-size values))
+  (-matcher [_ batch-db _ values]
+    (matcher batch-db c-hash codec/v-hash-size values))
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]

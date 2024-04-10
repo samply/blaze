@@ -47,7 +47,7 @@
 
   (-rev-include [db resource-handle] [db resource-handle source-type code])
 
-  (-patient-everything [db patient-handle])
+  (-patient-everything [db patient-handle start end])
 
   (-new-batch-db [db]))
 
@@ -84,23 +84,24 @@
 (defprotocol SearchParam
   (-compile-value [search-param modifier value] "Can return an anomaly.")
   (-chunked-resource-handles
-    [search-param context tid modifier compiled-value])
+    [search-param batch-db tid modifier compiled-value])
   (-resource-handles
-    [search-param context tid modifier compiled-value]
-    [search-param context tid modifier compiled-value start-id]
+    [search-param batch-db tid modifier compiled-value]
+    [search-param batch-db tid modifier compiled-value start-id]
     "Returns a reducible collection.")
   (-sorted-resource-handles
-    [search-param context tid direction]
-    [search-param context tid direction start-id]
+    [search-param batch-db tid direction]
+    [search-param batch-db tid direction start-id]
     "Returns a reducible collection.")
   (-compartment-keys [search-param context compartment tid compiled-value])
-  (-matcher [_ context modifier values])
+  (-matcher [_ batch-db modifier values])
   (-compartment-ids [_ resolver resource])
   (-index-values [_ resolver resource])
   (-index-value-compiler [_]))
 
 (defprotocol SearchParamRegistry
   (-get [_ code type])
+  (-get-by-url [_ url])
   (-all-types [_])
   (-list-by-type [_ type])
   (-list-by-target [_ target])

@@ -327,6 +327,17 @@
 (defn- invalid-date-time-value-msg [code value]
   (format "Invalid date-time value `%s` in search parameter `%s`." value code))
 
+(defn- dual-bound-value [op date-time]
+  {:op op
+   :lower-bound (codec-date/encode-lower-bound date-time)
+   :upper-bound (codec-date/encode-upper-bound date-time)})
+
+(defn ge-value [date-time]
+  (dual-bound-value :ge date-time))
+
+(defn le-value [date-time]
+  (dual-bound-value :le date-time))
+
 (defrecord SearchParamDate [name url type base code c-hash expression]
   p/SearchParam
   (-compile-value [_ _ value]
@@ -334,9 +345,7 @@
       (if-ok [date-time-value (system/parse-date-time value)]
         (case op
           (:eq :ne :ge :le :ap)
-          {:op op
-           :lower-bound (codec-date/encode-lower-bound date-time-value)
-           :upper-bound (codec-date/encode-upper-bound date-time-value)}
+          (dual-bound-value op date-time-value)
           (:gt :sa)
           {:op op
            :upper-bound (codec-date/encode-upper-bound date-time-value)}
@@ -346,39 +355,39 @@
           (ba/unsupported (u/unsupported-prefix-msg code op)))
         #(assoc % ::anom/message (invalid-date-time-value-msg code value)))))
 
-  (-chunked-resource-handles [_ context tid _ value]
+  (-chunked-resource-handles [_ batch-db tid _ value]
     (coll/eduction
-     (u/resource-handle-chunk-mapper context tid)
-     (resource-keys context c-hash tid value)))
+     (u/resource-handle-chunk-mapper batch-db tid)
+     (resource-keys batch-db c-hash tid value)))
 
-  (-resource-handles [_ context tid _ value]
+  (-resource-handles [_ batch-db tid _ value]
     (coll/eduction
-     (u/resource-handle-mapper context tid)
-     (resource-keys context c-hash tid value)))
+     (u/resource-handle-mapper batch-db tid)
+     (resource-keys batch-db c-hash tid value)))
 
-  (-resource-handles [_ context tid _ value start-id]
+  (-resource-handles [_ batch-db tid _ value start-id]
     (coll/eduction
-     (u/resource-handle-mapper context tid)
-     (resource-keys context c-hash tid value start-id)))
+     (u/resource-handle-mapper batch-db tid)
+     (resource-keys batch-db c-hash tid value start-id)))
 
-  (-sorted-resource-handles [_ context tid direction]
-    (coll/eduction
-     (comp drop-value
-           (u/resource-handle-mapper context tid))
-     (if (= :asc direction)
-       (all-keys context c-hash tid)
-       (all-keys-prev context c-hash tid))))
-
-  (-sorted-resource-handles [_ context tid direction start-id]
+  (-sorted-resource-handles [_ batch-db tid direction]
     (coll/eduction
      (comp drop-value
-           (u/resource-handle-mapper context tid))
+           (u/resource-handle-mapper batch-db tid))
      (if (= :asc direction)
-       (all-keys context c-hash tid start-id)
-       (all-keys-prev context c-hash tid start-id))))
+       (all-keys batch-db c-hash tid)
+       (all-keys-prev batch-db c-hash tid))))
 
-  (-matcher [_ context _ values]
-    (matcher context c-hash values))
+  (-sorted-resource-handles [_ batch-db tid direction start-id]
+    (coll/eduction
+     (comp drop-value
+           (u/resource-handle-mapper batch-db tid))
+     (if (= :asc direction)
+       (all-keys batch-db c-hash tid start-id)
+       (all-keys-prev batch-db c-hash tid start-id))))
+
+  (-matcher [_ batch-db _ values]
+    (matcher batch-db c-hash values))
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
