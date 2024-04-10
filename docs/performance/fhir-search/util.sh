@@ -42,14 +42,15 @@ calc-print-stats() {
 
 count-resources-raw() {
   BASE="$1"
-  SEARCH_PARAMS="$2"
-  TIMES_FILE="$3"
+  RESOURCE_TYPE="$2"
+  SEARCH_PARAMS="$3"
+  TIMES_FILE="$4"
 
-  COUNT=$(curl -s "$BASE/Observation?$SEARCH_PARAMS&_summary=count" | jq .total)
+  COUNT=$(curl -s "$BASE/$RESOURCE_TYPE?$SEARCH_PARAMS&_summary=count" | jq .total)
 
   # this are 7 tests of which 5 will be taken for the statistics
   for i in {0..6}; do
-    curl -s "$BASE/Observation?$SEARCH_PARAMS&_summary=count" -o /dev/null -w '%{time_starttransfer}\n' >> "$TIMES_FILE"
+    curl -s "$BASE/$RESOURCE_TYPE?$SEARCH_PARAMS&_summary=count" -o /dev/null -w '%{time_starttransfer}\n' >> "$TIMES_FILE"
   done
 
   calc-print-stats "$TIMES_FILE" "$COUNT"
@@ -57,14 +58,15 @@ count-resources-raw() {
 
 download-resources-raw() {
   BASE="$1"
-  SEARCH_PARAMS="$2"
-  TIMES_FILE="$3"
+  RESOURCE_TYPE="$2"
+  SEARCH_PARAMS="$3"
+  TIMES_FILE="$4"
 
-  COUNT=$(curl -s "$BASE/Observation?$SEARCH_PARAMS&_summary=count" | jq .total)
+  COUNT=$(curl -s "$BASE/$RESOURCE_TYPE?$SEARCH_PARAMS&_summary=count" | jq .total)
 
   # this are 5 tests of which 3 will be taken for the statistics
   for i in {0..4}; do
-    $TIME -f "%e" -a -o "$TIMES_FILE" blazectl download --server "$BASE" Observation -q "$SEARCH_PARAMS&_count=1000" >/dev/null 2>/dev/null
+    $TIME -f "%e" -a -o "$TIMES_FILE" blazectl download --server "$BASE" "$RESOURCE_TYPE" -q "$SEARCH_PARAMS&_count=1000" >/dev/null 2>/dev/null
   done
 
   calc-print-stats "$TIMES_FILE" "$COUNT"

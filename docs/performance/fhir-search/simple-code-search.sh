@@ -11,21 +11,21 @@ count-resources() {
   CODE="$1"
 
   echo "Counting Observations with code $CODE..."
-  count-resources-raw "$BASE" "code=http://loinc.org|$CODE" "$START_EPOCH-count-$CODE.times"
+  count-resources-raw "$BASE" "Observation" "code=http://loinc.org|$CODE" "$START_EPOCH-count-$CODE.times"
 }
 
 download-resources() {
   CODE="$1"
 
   echo "Downloading Observations with code $CODE..."
-  download-resources-raw "$BASE" "code=http://loinc.org|$CODE" "$START_EPOCH-download-$CODE.times"
+  download-resources-raw "$BASE" "Observation" "code=http://loinc.org|$CODE" "$START_EPOCH-download-$CODE.times"
 }
 
 download-resources-elements-subject() {
   CODE="$1"
 
   echo "Downloading Observations with code $CODE and _elements=subject..."
-  download-resources-raw "$BASE" "code=http://loinc.org|$CODE&_elements=subject" "$START_EPOCH-download-subject-$CODE.times"
+  download-resources-raw "$BASE" "Observation" "code=http://loinc.org|$CODE&_elements=subject" "$START_EPOCH-download-subject-$CODE.times"
 }
 
 restart "$COMPOSE_FILE"

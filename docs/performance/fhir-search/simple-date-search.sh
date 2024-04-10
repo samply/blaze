@@ -11,21 +11,21 @@ count-resources() {
   YEAR="$1"
 
   echo "Counting Observations with date in $YEAR..."
-  count-resources-raw "$BASE" "date=$YEAR" "$START_EPOCH-count-$YEAR.times"
+  count-resources-raw "$BASE" "Observation" "date=$YEAR" "$START_EPOCH-count-$YEAR.times"
 }
 
 download-resources() {
   YEAR="$1"
 
   echo "Downloading Observations with date in $YEAR..."
-  download-resources-raw "$BASE" "date=$YEAR" "$START_EPOCH-download-$YEAR.times"
+  download-resources-raw "$BASE" "Observation" "date=$YEAR" "$START_EPOCH-download-$YEAR.times"
 }
 
 download-resources-elements-subject() {
   YEAR="$1"
 
   echo "Downloading Observations with date in $YEAR and _elements=subject..."
-  download-resources-raw "$BASE" "date=$YEAR&_elements=subject" "$START_EPOCH-download-subject-$YEAR.times"
+  download-resources-raw "$BASE" "Observation" "date=$YEAR&_elements=subject" "$START_EPOCH-download-subject-$YEAR.times"
 }
 
 restart "$COMPOSE_FILE"

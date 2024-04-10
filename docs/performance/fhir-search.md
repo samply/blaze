@@ -289,6 +289,57 @@ blazectl download --server http://localhost:8080/fhir Observation -q "date=$YEAR
 
 ¹ time in seconds per 1 million resources, ² resource cache size is smaller than the number of resources returned
 
+## Patient Date Search
+
+In this section, FHIR Search for selecting Patient resources with a certain birth date is used.
+
+### Counting
+
+Counting is done using the following `curl` command:
+
+```sh
+curl -s "http://localhost:8080/fhir/Patient?birthdate=$DATE&_summary=count"
+```
+
+| System | Dataset | Date         | # Hits | Time (s) | StdDev | T/1M ¹ |
+|--------|---------|--------------|-------:|---------:|-------:|-------:|
+| LEA47  | 1M      | gt1998-04-10 |  227 k |     0.38 |  0.005 |   1.68 |
+| LEA47  | 1M      | ge1998-04-10 |  227 k |     0.40 |  0.007 |   1.74 |
+| LEA47  | 1M      | lt1998-04-10 |  773 k |     0.58 |  0.017 |   0.75 |
+| LEA47  | 1M      | le1998-04-10 |  773 k |     0.60 |  0.005 |   0.78 |
+
+### Download of Resources
+
+Download is done using the following `blazectl` command:
+
+```sh
+blazectl download --server http://localhost:8080/fhir Patient -q "birthdate=$DATE&_count=1000" > /dev/null"
+```
+
+| System | Dataset | Date         | # Hits | Time (s) | StdDev | T/1M ¹ |
+|--------|---------|--------------|-------:|---------:|-------:|-------:|
+| LEA47  | 1M      | gt1998-04-10 |  227 k |     7.77 |  0.033 |  34.17 |
+| LEA47  | 1M      | ge1998-04-10 |  227 k |     7.91 |  0.056 |  34.77 |
+| LEA47  | 1M      | lt1998-04-10 |  773 k |    26.85 |  0.065 |  34.74 |
+| LEA47  | 1M      | le1998-04-10 |  773 k |    27.73 |  0.012 |  35.88 |
+
+### Download of Resources with Subsetting
+
+In case only a subset of information of a resource is needed, the special [_elements][1] search parameter can be used to retrieve only certain properties of a resource. Here `_elements=id` was used.
+
+Download is done using the following `blazectl` command:
+
+```sh
+blazectl download --server http://localhost:8080/fhir Patient -q "birthdate=$DATE&_elements=id&_count=1000" > /dev/null"
+```
+
+| System | Dataset | Date         | # Hits | Time (s) | StdDev | T/1M ¹ |
+|--------|---------|--------------|-------:|---------:|-------:|-------:|
+| LEA47  | 1M      | gt1998-04-10 |  227 k |     3.15 |  0.016 |  13.85 |
+| LEA47  | 1M      | ge1998-04-10 |  227 k |     3.09 |  0.108 |  13.58 |
+| LEA47  | 1M      | lt1998-04-10 |  773 k |     9.90 |  0.249 |  12.81 |
+| LEA47  | 1M      | le1998-04-10 |  773 k |     9.73 |  0.073 |  12.59 |
+
 ## Used Dataset
 
 The dataset used is generated with Synthea v3.1.1. The resource generation is described [here](synthea/README.md).

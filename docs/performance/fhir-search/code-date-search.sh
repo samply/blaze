@@ -11,7 +11,7 @@ count-resources() {
   YEAR="$1"
 
   echo "Counting Laboratory Observations with date in $YEAR..."
-  count-resources-raw "$BASE" "category=laboratory&date=$YEAR" "$START_EPOCH-count-laboratory-$YEAR.times"
+  count-resources-raw "$BASE" "Observation" "category=laboratory&date=$YEAR" "$START_EPOCH-count-laboratory-$YEAR.times"
 }
 
 restart "$COMPOSE_FILE"
