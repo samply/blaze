@@ -13,4 +13,4 @@ clean:
 	rm *.pem
 	rm *.p12
 
-.PHONY: fmt lint test-coverage all clean
+.PHONY: fmt lint test-coverage all cloc-prod cloc-test clean

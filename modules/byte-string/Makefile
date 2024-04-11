@@ -10,7 +10,10 @@ test:
 test-coverage:
 	true
 
+cloc-prod:
+	cloc src
+
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: fmt lint test test-coverage clean
+.PHONY: fmt lint test test-coverage cloc-prod cloc-test clean

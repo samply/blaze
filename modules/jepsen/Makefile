@@ -19,7 +19,13 @@ register-test-fast: prep
 register-test-slow: prep
 	clojure -M:register test --concurrency 16 --time-limit 60 -n localhost:8080 --delta-time 0.1
 
+cloc-prod:
+	cloc src
+
+cloc-test:
+	cloc test
+
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target store
 
-.PHONY: fmt lint prep test test-coverage clean
+.PHONY: fmt lint prep test test-coverage cloc-prod cloc-test clean

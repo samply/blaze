@@ -5,4 +5,9 @@ install:
 test:
 	npx playwright test
 
-.PHONY: fmt lint install test test-coverage
+cloc-prod:
+
+cloc-test:
+	cloc src
+
+.PHONY: fmt lint install test test-coverage cloc-prod cloc-test clean

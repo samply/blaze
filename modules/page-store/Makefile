@@ -19,7 +19,13 @@ deps-tree:
 deps-list:
 	clojure -X:deps list
 
+cloc-prod:
+	cloc src
+
+cloc-test:
+	cloc test
+
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: fmt lint prep test test-coverage deps-tree deps-list clean
+.PHONY: fmt lint prep test test-coverage deps-tree deps-list cloc-prod cloc-test clean
