@@ -31,8 +31,7 @@
   (let [timer (prom/timer request-duration-seconds)]
     (-> (expand-value-set* base-uri http-client params)
         (ac/when-complete
-         (fn [_ _]
-           (prom/observe-duration! timer))))))
+         (fn [_ _] (prom/observe-duration! timer))))))
 
 (defn- cache [base-uri http-client]
   (-> (Caffeine/newBuilder)

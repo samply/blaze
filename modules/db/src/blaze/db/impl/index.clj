@@ -1,4 +1,5 @@
 (ns blaze.db.impl.index
+  "This namespace contains query functions."
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]

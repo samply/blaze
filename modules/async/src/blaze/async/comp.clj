@@ -288,21 +288,21 @@
 
 (defn when-complete
   "Returns a CompletionStage with the same result or exception as `stage`, that
-  executes the given action when `stage` completes.
+  runs `f` when `stage` completes.
 
   When `stage` is complete, the given action is invoked with the result (or nil
-  if none) and the exception (or nil if none) of `stage` as arguments. The
+  if none) and the anomaly (or nil if none) of `stage` as arguments. The
   returned stage is completed when the action returns."
   [stage f]
   (.whenComplete
    ^CompletionStage stage
    (reify BiConsumer
      (accept [_ x e]
-       (f x e)))))
+       (f x (some-> e -completion-cause ba/anomaly))))))
 
 (defn when-complete-async
   "Returns a CompletionStage with the same result or exception as `stage`, that
-  executes the given action using `executor` when `stage` completes.
+  runs `f` using `executor` when `stage` completes.
 
   When `stage` is complete, the given action is invoked with the result (or nil
   if none) and the exception (or nil if none) of `stage` as arguments. The
@@ -323,6 +323,16 @@
   executes `body` with `stage-forms`'s result bound to `binding-form`."
   [[binding-form stage-form] & body]
   `(then-apply
+    ~stage-form
+    (fn [~binding-form]
+      ~@body)))
+
+(defmacro do-async
+  "Returns a CompletionStage that, when `stage-form` completes normally,
+  executes `body` with `stage-forms`'s result bound to `binding-form` using
+  `stage-forms`'s default asynchronous execution facility."
+  [[binding-form stage-form] & body]
+  `(then-apply-async
     ~stage-form
     (fn [~binding-form]
       ~@body)))

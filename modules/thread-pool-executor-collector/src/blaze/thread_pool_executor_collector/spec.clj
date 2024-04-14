@@ -8,4 +8,5 @@
   (instance? ThreadPoolExecutor x))
 
 (s/def :blaze.thread-pool-executor-collector/executors
-  (s/map-of keyword? thread-pool-executor?))
+  (s/map-of (s/or :simple-key keyword? :key (s/tuple keyword? keyword?))
+            thread-pool-executor?))

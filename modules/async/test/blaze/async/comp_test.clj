@@ -1,7 +1,7 @@
 (ns blaze.async.comp-test
   (:require
    [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.async.comp :as ac :refer [do-sync do-async]]
    [blaze.async.comp-spec]
    [blaze.executors :as ex]
    [blaze.test-util :as tu]
@@ -264,7 +264,7 @@
   (testing "with error"
     (let [f (ac/future)
           f' (ac/future)
-          f'' (ac/when-complete f (fn [_ e] (ac/complete! f' (ex-message e))))]
+          f'' (ac/when-complete f (fn [_ e] (ac/complete! f' (::anom/message e))))]
       (ac/complete-exceptionally! f (ex-info "e" {}))
       (is (= "e" @f'))
       (try
@@ -306,6 +306,17 @@
 
   (testing "on normally exceptionally future"
     (given-failed-future (do-sync [x (ac/completed-future (ba/fault))] (inc x))
+      ::anom/category := ::anom/fault)))
+
+(deftest do-async-test
+  (testing "on normally completed future"
+    (is (= 2 @(do-async [x (ac/completed-future 1)] (inc x))))
+
+    (testing "without body"
+      (is (nil? @(do-async [_ (ac/completed-future 1)])))))
+
+  (testing "on normally exceptionally future"
+    (given-failed-future (do-async [x (ac/completed-future (ba/fault))] (inc x))
       ::anom/category := ::anom/fault)))
 
 (deftest retry-test

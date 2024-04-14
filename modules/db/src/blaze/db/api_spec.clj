@@ -233,3 +233,13 @@
                :resource-handles (cs/coll-of :blaze.db/resource-handle)
                :elements (s/? (s/coll-of keyword?)))
   :ret ac/completable-future?)
+
+(s/fdef d/re-index-total
+  :args (s/cat :db :blaze.db/db :search-param-url string?)
+  :ret (s/or :total nat-int? :anomaly ::anom/anomaly))
+
+(s/fdef d/re-index
+  :args (s/cat :db :blaze.db/db :search-param-url string?
+               :start (s/? (s/cat :start-type :fhir.resource/type
+                                  :start-id :blaze.resource/id)))
+  :ret ac/completable-future?)

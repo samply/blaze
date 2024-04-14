@@ -62,7 +62,7 @@
    config
    {:blaze.db/node
     {:resource-store (ig/ref ::resource-store-failing-on-get)}
-    :blaze.db.node/resource-indexer
+    ::node/resource-indexer
     {:resource-store (ig/ref ::resource-store-failing-on-get)}
     ::resource-store-failing-on-get {}}))
 
@@ -86,7 +86,7 @@
    config
    {:blaze.db/node
     {:resource-store (ig/ref ::resource-store-slow-on-put)}
-    :blaze.db.node/resource-indexer
+    ::node/resource-indexer
     {:resource-store (ig/ref ::resource-store-slow-on-put)}
     ::resource-store-slow-on-put
     {:resource-store (ig/ref ::rs/kv)}}))

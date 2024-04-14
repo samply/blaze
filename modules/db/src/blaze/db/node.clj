@@ -1,8 +1,10 @@
 (ns blaze.db.node
-  "Local Database Node"
+  "This namespace contains the local database node component."
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.async.comp :as ac :refer [do-async do-sync]]
+   [blaze.async.flow :as flow]
+   [blaze.db.api :as d]
    [blaze.db.impl.batch-db :as batch-db]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.db :as db]
@@ -20,9 +22,11 @@
    [blaze.db.node.transaction :as tx]
    [blaze.db.node.tx-indexer :as tx-indexer]
    [blaze.db.node.tx-indexer.verify :as tx-indexer-verify]
+   [blaze.db.node.util :as node-util]
    [blaze.db.node.validation :as validation]
    [blaze.db.node.version :as version]
    [blaze.db.resource-store :as rs]
+   [blaze.db.search-param-registry]
    [blaze.db.search-param-registry.spec]
    [blaze.db.tx-log :as tx-log]
    [blaze.executors :as ex]
@@ -39,9 +43,12 @@
    [taoensso.timbre :as log])
   (:import
    [java.lang AutoCloseable]
-   [java.util.concurrent CompletableFuture TimeUnit]))
+   [java.util.concurrent CompletableFuture SubmissionPublisher TimeUnit]))
 
 (set! *warn-on-reflection* true)
+
+(defn node? [x]
+  (satisfies? np/Node x))
 
 (defn submit-tx [node tx-ops]
   (np/-submit-tx node tx-ops))
@@ -49,9 +56,9 @@
 (defn tx-result
   "Waits for the transaction with `t` to happen on `node`.
 
-  Returns a CompletableFuture that completes with the database after the
-  transaction in case of success or completes exceptionally with an anomaly in
-  case of a transaction error or other errors."
+  Returns a CompletableFuture that will complete with the database after the
+  transaction in case of success or will complete exceptionally with an anomaly
+  in case of a transaction error or other errors."
   [node t]
   (np/-tx-result node t))
 
@@ -79,6 +86,7 @@
     (add-watch
      state future
      (fn [future state _ {:keys [e] new-t :t new-error-t :error-t}]
+       (log/trace "process watch for t =" new-t)
        (cond
          (<= t (max new-t new-error-t))
          (do (log/trace "complete database future with new db with t =" new-t)
@@ -174,7 +182,8 @@
       (assoc :lastUpdated instant)))
 
 (defn- mk-meta [handle tx]
-  {:blaze.db/num-changes (rh/num-changes handle)
+  {:blaze.resource/hash (rh/hash handle)
+   :blaze.db/num-changes (rh/num-changes handle)
    :blaze.db/op (rh/op handle)
    :blaze.db/tx tx})
 
@@ -240,6 +249,10 @@
     (comp (map #(select-keys % keys))
           add-subsetted-xf)))
 
+(defn- changed-handles [node type t]
+  (with-open [db (batch-db/new-batch-db node t t)]
+    (into [] (take-while #(= t (rh/t %))) (d/type-history db type))))
+
 (defrecord Node [context tx-log tx-cache kv-store resource-store sync-fn
                  search-param-registry resource-indexer state run? poll-timeout
                  finished]
@@ -263,7 +276,8 @@
     (if-ok [_ (validation/validate-ops tx-ops)]
       (let [[tx-cmds entries] (tx/prepare-ops context tx-ops)]
         (-> (rs/put! resource-store entries)
-            (ac/then-compose (fn [_] (tx-log/submit tx-log tx-cmds entries)))))
+            (ac/then-compose-async
+             (fn [_] (tx-log/submit tx-log tx-cmds entries)))))
       ac/completed-future))
 
   (-tx-result [node t]
@@ -282,6 +296,17 @@
 
         :else
         (ac/then-apply future (fn [_] (tx/load-tx-result node t))))))
+
+  (-changed-resources-publisher [node type]
+    (let [publisher (SubmissionPublisher.)]
+      (add-watch
+       state publisher
+       (fn [publisher _state _ {:keys [t error-t]}]
+         (when (< error-t t)
+           (let [changed-handles (changed-handles node type t)]
+             (log/debug "Publish" (count changed-handles) "changed" type "resource handles")
+             (flow/submit! publisher changed-handles)))))
+      publisher))
 
   p/Tx
   (-tx [_ t]
@@ -307,19 +332,19 @@
 
   p/Pull
   (-pull [_ resource-handle]
-    (do-sync [resource (get-resource resource-store resource-handle)]
+    (do-async [resource (get-resource resource-store resource-handle)]
       (or (some->> resource (enhance-resource tx-cache resource-handle))
           (resource-content-not-found-anom resource-handle))))
 
   (-pull-content [_ resource-handle]
-    (do-sync [resource (get-resource resource-store resource-handle)]
+    (do-async [resource (get-resource resource-store resource-handle)]
       (or (some-> resource (with-meta (meta resource-handle)))
           (resource-content-not-found-anom resource-handle))))
 
   (-pull-many [_ resource-handles]
     (let [resource-handles (vec resource-handles)           ; don't evaluate resource-handles twice
           hashes (hashes-of-non-deleted resource-handles)]
-      (do-sync [resources (rs/multi-get resource-store hashes)]
+      (do-async [resources (rs/multi-get resource-store hashes)]
         (into
          []
          (comp (map (partial to-resource tx-cache resources))
@@ -447,9 +472,9 @@
   (.close ^AutoCloseable node))
 
 (defmethod ig/init-key ::indexer-executor
-  [_ _]
-  (log/info "Init indexer executor")
-  (ex/single-thread-executor "indexer"))
+  [key _]
+  (log/info "Init" (node-util/component-name key "indexer executor"))
+  (ex/single-thread-executor (node-util/thread-name-template key "indexer")))
 
 (defmethod ig/halt-key! ::indexer-executor
   [_ executor]

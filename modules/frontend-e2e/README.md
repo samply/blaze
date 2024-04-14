@@ -1,25 +1,12 @@
 # Frontend End-2-End Tests
 
-Inside that directory, you can run several commands:
+Run test in dev mode:
 
 ```sh
-npx playwright test
+make test-dev
 ```
-Runs the end-to-end tests.
+Run test in dev mode with UI:
 
 ```sh
-npx playwright test --ui
+test-ui-dev
 ```
-Starts the interactive UI mode.
-
-npx playwright test --project=chromium
-Runs the tests only on Desktop Chrome.
-
-npx playwright test example
-Runs the tests in a specific file.
-
-npx playwright test --debug
-Runs the tests in debug mode.
-
-npx playwright codegen
-Auto generate tests with Codegen.

@@ -1,4 +1,6 @@
 {:config-paths
  ["../../../.clj-kondo/root"
+  "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"
   "../../async/resources/clj-kondo.exports/blaze/async"
-  "../../db-stub/resources/clj-kondo.exports/blaze/db-stub"]}
+  "../../db-stub/resources/clj-kondo.exports/blaze/db-stub"
+  "../../module-base/resources/clj-kondo.exports/prom-metrics/prom-metrics"]}

@@ -49,6 +49,10 @@
 
   (-patient-everything [db patient-handle start end])
 
+  (-re-index-total [db search-param-url])
+
+  (-re-index [db search-param-url] [db search-param-url start-type start-id])
+
   (-new-batch-db [db]))
 
 (defprotocol Tx

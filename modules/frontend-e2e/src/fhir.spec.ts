@@ -61,8 +61,12 @@ test('Metadata Page', async ({page}) => {
 
 test.describe('Admin', () => {
 
-    test('Overview', async ({page}) => {
+    const goToAdmin = async (page: Page) => {
         await page.getByRole('link', {name: 'Admin', exact: true}).click();
+    }
+
+    test('Overview', async ({page}) => {
+        await goToAdmin(page);
 
         await expect(page).toHaveTitle("Overview - Admin - Blaze");
         await expectActiveNavLink(page, 'Overview');
@@ -72,42 +76,49 @@ test.describe('Admin', () => {
         await expect(page.getByRole('heading', {name: 'Features'})).toBeVisible();
     });
 
-    test('Databases', async ({page}) => {
-        await page.getByRole('link', {name: 'Admin', exact: true}).click();
-        await page.getByRole('link', {name: 'Databases', exact: true}).click();
-
-        await expect(page).toHaveTitle("Databases - Admin - Blaze");
-        await expectInActiveNavLink(page, 'Overview');
-        await expectActiveNavLink(page, 'Databases');
-
-        await expect(page.getByRole('link', {name: 'Index'})).toBeVisible();
-        await expect(page.getByRole('link', {name: 'Transaction'})).toBeVisible();
-        await expect(page.getByRole('link', {name: 'Resource'})).toBeVisible();
-    });
-
     test.describe('Databases', () => {
 
-        test('Index', async ({page}) => {
-            await page.getByRole('link', {name: 'Admin', exact: true}).click();
+        const goToDatabases = async (page: Page) => {
+            await goToAdmin(page);
             await page.getByRole('link', {name: 'Databases', exact: true}).click();
-            await page.getByRole('link', {name: 'Index', exact: true}).click();
+        }
 
-            await expect(page).toHaveTitle("Index Database - Admin - Blaze");
+        test('Overview', async ({page}) => {
+            await goToDatabases(page);
+
+            await expect(page).toHaveTitle("Databases - Admin - Blaze");
             await expectInActiveNavLink(page, 'Overview');
             await expectActiveNavLink(page, 'Databases');
 
-            await expect(page.getByRole('heading', {name: 'Index'})).toBeVisible();
-            await expect(page.getByRole('heading', {name: 'Column Families'})).toBeVisible();
-
-            await expect(page.getByRole('link', {name: 'ResourceAsOfIndex'})).toBeVisible();
+            await expect(page.getByRole('link', {name: 'Index'})).toBeVisible();
+            await expect(page.getByRole('link', {name: 'Transaction'})).toBeVisible();
+            await expect(page.getByRole('link', {name: 'Resource'})).toBeVisible();
         });
 
         test.describe('Index', () => {
 
-            test('ResourceAsOfIndex Column Family', async ({page}) => {
-                await page.getByRole('link', {name: 'Admin', exact: true}).click();
-                await page.getByRole('link', {name: 'Databases', exact: true}).click();
+            const goToIndexDatabase = async (page: Page) => {
+                await goToDatabases(page);
                 await page.getByRole('link', {name: 'Index', exact: true}).click();
+            }
+
+            test('Overview', async ({page}) => {
+                await goToIndexDatabase(page);
+
+                await expect(page).toHaveTitle("Index Database - Admin - Blaze");
+                await expectInActiveNavLink(page, 'Overview');
+                await expectActiveNavLink(page, 'Databases');
+
+                await expect(page.getByRole('heading', {name: 'Index'})).toBeVisible();
+                await expect(page.getByRole('heading', {name: 'Column Families'})).toBeVisible();
+
+                for (const name of ['ResourceAsOfIndex', 'ResourceValueIndex', 'SearchParamValueIndex']) {
+                    await expect(page.getByRole('link', {name: name, exact: true})).toBeVisible();
+                }
+            });
+
+            test('ResourceAsOfIndex Column Family', async ({page}) => {
+                await goToIndexDatabase(page);
                 await page.getByRole('link', {name: 'ResourceAsOfIndex', exact: true}).click();
 
                 await expect(page).toHaveTitle("ResourceAsOfIndex Column Family - Index Database - Admin - Blaze");
@@ -117,6 +128,56 @@ test.describe('Admin', () => {
                 await expect(page.getByRole('heading', {name: 'Index - ResourceAsOfIndex'})).toBeVisible();
                 await expect(page.getByRole('heading', {name: 'Levels'})).toBeVisible();
             });
+        });
+    });
+
+    test.describe('Jobs', () => {
+
+        const goToJobs = async (page: Page) => {
+            await goToAdmin(page);
+            await page.getByRole('link', {name: 'Jobs', exact: true}).click();
+        }
+
+        test('Overview', async ({page}) => {
+            await goToJobs(page);
+
+            await expect(page).toHaveTitle("Jobs - Admin - Blaze");
+            await expect(page.getByRole('link', {name: 'New Job'})).toBeVisible();
+        });
+
+        test('Create Job and wait unit completed', async ({page}) => {
+            await goToJobs(page);
+            await page.getByRole('link', {name: 'New Job', exact: true}).click();
+
+            await expect(page).toHaveTitle("Create New Job - Admin - Blaze");
+
+            const searchParamUrl = 'http://hl7.org/fhir/SearchParameter/Resource-profile';
+
+            await page.getByLabel('Search Param URL').fill(searchParamUrl)
+            await page.getByRole('button', {name: 'Submit New Job'}).click()
+
+            await expect(page).toHaveTitle(/Job #\d+ - Admin - Blaze/);
+            await expect(page.getByRole('heading', {name: /Job #\d+/})).toBeVisible();
+            await expect(page.getByText('Status')).toBeVisible();
+            await expect(page.getByText('Type (Re)Index a Search')).toBeVisible();
+            await expect(page.getByText('Search Param URL ' + searchParamUrl)).toBeVisible();
+
+            // may appear later
+            await expect(page.getByText('Total Resources 92.1 k')).toBeVisible({timeout: 30000});
+            await expect(page.getByText('Resources Processed 92.1 k')).toBeVisible({timeout: 50000});
+            await expect(page.getByText('Processing Duration')).toBeVisible({timeout: 50000});
+            await expect(page.getByText('Status completed')).toBeVisible({timeout: 50000});
+        });
+
+        test('Cancel Job Creation', async ({page}) => {
+            await goToJobs(page);
+            await page.getByRole('link', {name: 'New Job', exact: true}).click();
+
+            await expect(page).toHaveTitle("Create New Job - Admin - Blaze");
+
+            await page.getByRole('link', {name: 'Cancel'}).click()
+
+            await expect(page).toHaveTitle("Jobs - Admin - Blaze");
         });
     });
 });

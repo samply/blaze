@@ -110,7 +110,7 @@
                 #(assoc %
                         ::anom/category ::anom/fault
                         :fhir/issue "incomplete")))))
-        (ac/then-compose (partial handle (assoc context :db db) request)))))
+        (ac/then-compose-async (partial handle (assoc context :db db) request)))))
 
 (defmethod ig/pre-init-spec ::handler [_]
   (s/keys :req-un [:blaze.db/node ::executor :blaze/clock :blaze/rng-fn]

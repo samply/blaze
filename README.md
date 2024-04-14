@@ -40,6 +40,7 @@ Please have a look into [Manual Deployment](docs/deployment/manual-deployment.md
 
 * [Deployment](docs/deployment/README.md)
 * [FHIR RESTful API](docs/api.md)
+* [Frontend (Web UI)](docs/frontend.md)
 * [Importing Data](docs/importing-data.md)
 * [Sync Data](docs/data-sync.md)
 * [Conformance](docs/conformance.md)

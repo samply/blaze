@@ -1,15 +1,16 @@
 (ns blaze.db.node.resource-indexer.spec
   (:require
    [blaze.db.kv.spec]
+   [blaze.db.node.resource-indexer :as-alias resource-indexer]
    [blaze.db.resource-store.spec]
    [blaze.db.search-param-registry.spec]
    [blaze.executors :as ex]
    [clojure.spec.alpha :as s]))
 
-(s/def :blaze.db.node.resource-indexer/executor
+(s/def ::resource-indexer/executor
   ex/executor?)
 
-(s/def :blaze.db.node.resource-indexer/num-threads
+(s/def ::resource-indexer/num-threads
   pos-int?)
 
 (s/def :blaze.db.node/resource-indexer
@@ -18,4 +19,4 @@
    [:blaze.db/kv-store
     :blaze.db/resource-store
     :blaze.db/search-param-registry
-    :blaze.db.node.resource-indexer/executor]))
+    ::resource-indexer/executor]))

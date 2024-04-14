@@ -6,6 +6,7 @@
    [blaze.fhir.structure-definition-repo]
    [clojure.test :refer [is]]
    [integrant.core :as ig]
+   [java-time.api :as time]
    [juxt.iota :refer [given]])
   (:import
    [java.time Clock Instant ZoneId]
@@ -21,6 +22,10 @@
 (defmethod ig/init-key :blaze.test/fixed-clock
   [_ _]
   (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
+
+(defmethod ig/init-key :blaze.test/offset-clock
+  [_ {:keys [clock offset-seconds]}]
+  (time/offset-clock clock (time/seconds offset-seconds)))
 
 (defmethod ig/init-key :blaze.test/system-clock
   [_ _]

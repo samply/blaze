@@ -1,5 +1,6 @@
 (ns blaze.handler.fhir.util-spec
   (:require
+   [blaze.db.spec]
    [blaze.fhir.spec]
    [blaze.fhir.spec.type.system.spec]
    [blaze.handler.fhir.util :as util]
@@ -53,4 +54,12 @@
 (s/fdef util/versioned-instance-url
   :args (s/cat :context (s/keys :req [:blaze/base-url ::reitit/router])
                :type :fhir.resource/type :id :blaze.resource/id :vid string?)
+  :ret string?)
+
+(s/fdef util/last-modified
+  :args (s/cat :tx :blaze.db/tx)
+  :ret string?)
+
+(s/fdef util/etag
+  :args (s/cat :tx :blaze.db/tx)
   :ret string?)

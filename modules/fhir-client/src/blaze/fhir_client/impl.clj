@@ -133,7 +133,7 @@
           (ac/when-complete
            (fn [page e]
              (if e
-               (.onError subscriber e)
+               (.onError subscriber (ex-info (::anom/message e) e))
                (if-let [next (next-url page)]
                  (do (log/trace "next uri" next)
                      (vreset! volatile-uri next)

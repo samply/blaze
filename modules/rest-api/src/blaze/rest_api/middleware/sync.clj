@@ -1,7 +1,8 @@
 (ns blaze.rest-api.middleware.sync
   (:require
    [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac]))
+   [blaze.async.comp :as ac]
+   [cognitect.anomalies :as anom]))
 
 (defn wrap-sync [handler]
   (fn [request respond raise]
@@ -12,5 +13,5 @@
         (ac/when-complete
          (fn [response e]
            (if e
-             (raise e)
+             (raise (ex-info (::anom/message e) e))
              (respond response)))))))

@@ -1,67 +1,109 @@
 services:
-  zookeeper:
-    image: "docker.io/bitnami/zookeeper:3@sha256:8104cf1ff552cb2c0270ed71c8d2aed31ac4b69cb109695871a2d08193dea7c1"
-    volumes:
-    - "zookeeper-data:/bitnami"
-    environment:
-      ALLOW_ANONYMOUS_LOGIN: "yes"
-
   kafka:
-    image: "docker.io/bitnami/kafka:2@sha256:2096ad73e2cbe3b615bcb7953b19f021cde62011435465c08707d5cfd9ecc9da"
-    hostname: "kafka"
+    image: "apache/kafka:3.7.0"
     environment:
-      KAFKA_CFG_ZOOKEEPER_CONNECT: "zookeeper:2181"
-      ALLOW_PLAINTEXT_LISTENER: "yes"
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CLIENT:SSL"
-      KAFKA_CFG_LISTENERS: "CLIENT://:9092"
-      KAFKA_CFG_ADVERTISED_LISTENERS: "CLIENT://kafka:9092"
-      KAFKA_INTER_BROKER_LISTENER_NAME: "CLIENT"
-      KAFKA_CERTIFICATE_PASSWORD: "password"
-      KAFKA_CFG_TLS_TYPE: "JKS"
-      KAFKA_TLS_TRUSTSTORE_FILE: "/opt/bitnami/kafka/config/certs/kafka.truststore.jks"
+      KAFKA_NODE_ID: 1
+      CLUSTER_ID: '5L6g3nShT-eMCtK--X86sw'
+      # KRaft
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@localhost:29093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'SSL-INTERNAL'
+      # Listeners
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "SSL:SSL,CONTROLLER:PLAINTEXT,SSL-INTERNAL:SSL"
+      KAFKA_LISTENERS: "SSL://:9092,CONTROLLER://:29093,SSL-INTERNAL://:19093"
+      KAFKA_ADVERTISED_LISTENERS: "SSL://kafka:9092,SSL-INTERNAL://kafka:19093"
+      KAFKA_SSL_KEYSTORE_FILENAME: "kafka.keystore.jks"
+      KAFKA_SSL_KEY_CREDENTIALS: "credentials"
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: "credentials"
+      KAFKA_SSL_TRUSTSTORE_FILENAME: "kafka.truststore.jks"
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: "credentials"
+      KAFKA_SSL_CLIENT_AUTH: 'required'
       # It's important to create the tx topic ourselves, because it needs to use
       # LogAppendTime timestamps
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
     volumes:
-    - "./kafka.keystore.jks:/opt/bitnami/kafka/config/certs/kafka.keystore.jks:ro"
-    - "./kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro"
-    - "kafka-data:/bitnami"
-    depends_on:
-    - zookeeper
+    - "./kafka.keystore.jks:/etc/kafka/secrets/kafka.keystore.jks:ro"
+    - "./kafka.truststore.jks:/etc/kafka/secrets/kafka.truststore.jks:ro"
+    - "./credentials:/etc/kafka/secrets/credentials:ro"
+    - "kafka-data:/var/lib/kafka/data"
+    healthcheck:
+      test: nc -z localhost 9092 || exit -1
+      start_period: 15s
+      interval: 5s
+      timeout: 10s
+      retries: 10
 
-  kafka-topic-creator:
-    image: "docker.io/bitnami/kafka:2@sha256:2096ad73e2cbe3b615bcb7953b19f021cde62011435465c08707d5cfd9ecc9da"
-    command: "/opt/bitnami/kafka/bin/kafka-init.sh"
+  kafka-topic-creator-main:
+    image: "apache/kafka:3.7.0"
+    command: "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 
+      --command-config /etc/kafka/kafka-init.conf --create --if-not-exists 
+      --topic blaze-tx-main --partitions 1 --replication-factor 1 
+      --config message.timestamp.type=LogAppendTime --config retention.ms=-1"
     volumes:
-    - "./kafka-init.sh:/opt/bitnami/kafka/bin/kafka-init.sh:ro"
-    - "./kafka-init.conf:/opt/bitnami/kafka/config/kafka-init.conf:ro"
-    - "./kafka-topic-creator.keystore.jks:/opt/bitnami/kafka/config/certs/kafka-topic-creator.keystore.jks:ro"
-    - "./kafka.truststore.jks:/opt/bitnami/kafka/config/certs/kafka.truststore.jks:ro"
+    - "./kafka-init.conf:/etc/kafka/kafka-init.conf:ro"
+    - "./kafka-topic-creator.keystore.jks:/etc/kafka/secrets/kafka-topic-creator.keystore.jks:ro"
+    - "./kafka.truststore.jks:/etc/kafka/secrets/kafka.truststore.jks:ro"
     depends_on:
-    - zookeeper
-    - kafka
+      kafka:
+        condition: service_healthy
+
+  kafka-topic-creator-admin:
+    image: "apache/kafka:3.7.0"
+    command: "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 
+      --command-config /etc/kafka/kafka-init.conf --create --if-not-exists 
+      --topic blaze-tx-admin --partitions 1 --replication-factor 1 
+      --config message.timestamp.type=LogAppendTime --config retention.ms=-1"
+    volumes:
+    - "./kafka-init.conf:/etc/kafka/kafka-init.conf:ro"
+    - "./kafka-topic-creator.keystore.jks:/etc/kafka/secrets/kafka-topic-creator.keystore.jks:ro"
+    - "./kafka.truststore.jks:/etc/kafka/secrets/kafka.truststore.jks:ro"
+    depends_on:
+      kafka:
+        condition: service_healthy
 
   cassandra-1:
-    image: "docker.io/bitnami/cassandra:3@sha256:60b13bf8f0a01ad6db72689be114c8fabf9134c7a2b5ba6d855b79ad457344e9"
-    hostname: "cassandra-1"
+    image: "cassandra:4.1.4"
     volumes:
-    - "./cassandra-init.cql:/docker-entrypoint-initdb.d/cassandra-init.cql:ro"
-    - "cassandra-1-data:/bitnami"
+    - "cassandra-1-data:/var/lib/cassandra"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
-      CASSANDRA_PASSWORD_SEEDER: "yes"
       MAX_HEAP_SIZE: "512M"
       HEAP_NEWSIZE: "100M"
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
+      start_period: 45s
+      interval: 5s
+      timeout: 10s
+      retries: 10
 
   cassandra-2:
-    image: "docker.io/bitnami/cassandra:3@sha256:60b13bf8f0a01ad6db72689be114c8fabf9134c7a2b5ba6d855b79ad457344e9"
-    hostname: "cassandra-2"
+    image: "cassandra:4.1.4"
     volumes:
-    - "cassandra-2-data:/bitnami"
+    - "cassandra-2-data:/var/lib/cassandra"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
       MAX_HEAP_SIZE: "512M"
       HEAP_NEWSIZE: "100M"
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
+      start_period: 45s
+      interval: 5s
+      timeout: 10s
+      retries: 10
+
+  cassandra-init-data:
+    image: "cassandra:4.1.4"
+    command: "cqlsh -f /scripts/cassandra-init.cql"
+    environment:
+      CQLSH_HOST: "cassandra-1"
+    volumes:
+    - "./cassandra-init.cql:/scripts/cassandra-init.cql:ro"
+    depends_on:
+      cassandra-1:
+        condition: service_healthy
+      cassandra-2:
+        condition: service_healthy
 
   blaze-1:
     image: "blaze:latest"
@@ -80,6 +122,7 @@ services:
       DB_CASSANDRA_REQUEST_TIMEOUT: "60000"
       DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
       DB_RESOURCE_CACHE_SIZE: "100000"
+      ENABLE_ADMIN_API: "true"
       LOG_LEVEL: "debug"
     ports:
     - "8081:8081"
@@ -88,10 +131,9 @@ services:
     - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
     - "blaze-1-data:/app/data"
     depends_on:
-    - kafka-topic-creator
-    - cassandra-1
-    - cassandra-2
-    restart: unless-stopped
+    - kafka-topic-creator-main
+    - kafka-topic-creator-admin
+    - cassandra-init-data
 
   blaze-2:
     image: "blaze:latest"
@@ -110,6 +152,7 @@ services:
       DB_CASSANDRA_REQUEST_TIMEOUT: "60000"
       DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
       DB_RESOURCE_CACHE_SIZE: "100000"
+      ENABLE_ADMIN_API: "true"
       LOG_LEVEL: "debug"
     ports:
     - "8082:8081"
@@ -118,10 +161,9 @@ services:
     - "./kafka.truststore.jks:/app/kafka.truststore.jks:ro"
     - "blaze-2-data:/app/data"
     depends_on:
-    - kafka-topic-creator
-    - cassandra-1
-    - cassandra-2
-    restart: unless-stopped
+    - kafka-topic-creator-main
+    - kafka-topic-creator-admin
+    - cassandra-init-data
 
   ingress:
     image: "haproxy:2.8@sha256:d533c21b446c45e47dc5b89933df1e256ec09976dc5e83a4c1bea209c2baeeaa"
@@ -134,7 +176,6 @@ services:
     - blaze-2
 
 volumes:
-  zookeeper-data:
   kafka-data:
   cassandra-1-data:
   cassandra-2-data:

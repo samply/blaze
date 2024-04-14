@@ -5,6 +5,7 @@
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.fhir.util-spec]
    [blaze.test-util :as tu]
+   [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
    [clojure.test :as test :refer [are deftest is testing]]
@@ -12,7 +13,8 @@
    [clojure.test.check.properties :as prop]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]
-   [reitit.core :as reitit]))
+   [reitit.core :as reitit])
+  (:import [java.time Instant]))
 
 (st/instrument)
 
@@ -179,3 +181,8 @@
 (deftest versioned-instance-url-test
   (is (= "http://localhost:8080/fhir/Patient/0/_history/1"
          (fhir-util/versioned-instance-url context "Patient" "0" "1"))))
+
+(deftest etag-test
+  (tu/satisfies-prop 1000
+    (prop/for-all [t (s/gen :blaze.db/t)]
+      (= (format "W/\"%d\"" t) (fhir-util/etag {:blaze.db/t t :blaze.db.tx/instant Instant/EPOCH})))))

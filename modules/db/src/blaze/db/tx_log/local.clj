@@ -14,6 +14,7 @@
    [blaze.byte-string :as bs]
    [blaze.db.impl.iterators :as i]
    [blaze.db.kv :as kv]
+   [blaze.db.node.util :as node-util]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local.codec :as codec]
    [blaze.module :refer [reg-collector]]
@@ -25,7 +26,6 @@
   (:import
    [com.google.common.primitives Longs]
    [java.lang AutoCloseable]
-   [java.time Instant]
    [java.util.concurrent ArrayBlockingQueue BlockingQueue TimeUnit]
    [java.util.concurrent.locks Lock ReentrantLock]))
 
@@ -89,7 +89,7 @@
   order."
   [kv-store clock state tx-cmds local-payload]
   (let [{:keys [t queues]} (swap! state update :t inc)
-        tx-data {:t t :instant (Instant/now clock) :tx-cmds tx-cmds}]
+        tx-data {:t t :instant (time/instant clock) :tx-cmds tx-cmds}]
     (store-tx-data! kv-store tx-data)
     (transfer-tx-data! (vals queues) [(assoc-local-payload tx-data local-payload)])
     t))
@@ -135,12 +135,10 @@
   (s/keys :req-un [:blaze.db/kv-store :blaze/clock]))
 
 (defmethod ig/init-key :blaze.db.tx-log/local
-  [_ {:keys [kv-store clock]}]
-  (log/info "Open local transaction log")
+  [key {:keys [kv-store clock]}]
+  (log/info "Open" (node-util/component-name key "local transaction log"))
   (->LocalTxLog kv-store clock (ReentrantLock.)
                 (atom {:t (or (last-t kv-store) 0)})))
-
-(derive :blaze.db.tx-log/local :blaze.db/tx-log)
 
 (reg-collector ::duration-seconds
   duration-seconds)
