@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:6.0 as fhir-packages
+FROM mcr.microsoft.com/dotnet/sdk:6.0@sha256:3bfaf0ce4417fb6c63d9a6ac1ddde8af9684c35a2b409815dd7ce15efe3d984b as fhir-packages
 
 RUN dotnet tool install -g firely.terminal
 RUN /root/.dotnet/tools/fhir install hl7.fhir.r4.core 4.0.1
