@@ -50,7 +50,7 @@
     jakarta-regexp/jakarta-regexp]}
 
   org.fhir/ucum
-  {:mvn/version "1.0.3"
+  {:mvn/version "1.0.8"
    :exclusions [xpp3/xpp3 xpp3/xpp3_xpath]}}
 
  :aliases
