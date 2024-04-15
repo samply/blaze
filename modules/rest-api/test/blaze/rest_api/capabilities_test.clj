@@ -59,7 +59,7 @@
             [:implementation :url] := #fhir/url"base-url-131713"
             :fhirVersion := #fhir/code"4.0.1"
             :format := [#fhir/code"application/fhir+json"
-                        #fhir/code"application/xml+json"]
+                        #fhir/code"application/fhir+xml"]
             [:rest 0 :searchParam 0 :name] := "_id"
             [:rest 0 :searchParam 0 :type] := "token"
             [:rest 0 :searchParam 0 :definition] := "http://hl7.org/fhir/SearchParameter/Resource-id"
