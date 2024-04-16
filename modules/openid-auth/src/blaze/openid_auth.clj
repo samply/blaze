@@ -13,13 +13,13 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- schedule [{:keys [scheduler http-client provider-url]} secret-state]
+(defn- schedule [{:keys [scheduler http-client provider-url]} public-key-state]
   (sched/schedule-at-fixed-rate
    scheduler
    #(try
       (log/debug "Fetch public key from" provider-url "...")
       (let [^PublicKey public-key (impl/fetch-public-key http-client provider-url)]
-        (reset! secret-state public-key)
+        (reset! public-key-state public-key)
         (log/debug "Done fetching public key from" provider-url
                    (str "algorithm=" (.getAlgorithm public-key))
                    (str "format=" (.getFormat public-key))))
@@ -35,8 +35,8 @@
 (defmethod ig/init-key :blaze.openid-auth/backend
   [_ {:keys [provider-url] :as context}]
   (log/info "Start OpenID authentication backend with provider:" provider-url)
-  (let [secret-state (atom nil)]
-    (impl/->Backend (schedule context secret-state) secret-state)))
+  (let [public-key-state (atom nil)]
+    (impl/->Backend (schedule context public-key-state) public-key-state)))
 
 (defmethod ig/halt-key! :blaze.openid-auth/backend
   [_ {:keys [future]}]
