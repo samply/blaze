@@ -45,7 +45,7 @@
           (is (= 200 status))
 
           (testing "ETag header"
-            (is (= "W/\"fb1de2e1\"" (get headers "ETag"))))
+            (is (= "W/\"518da6fc\"" (get headers "ETag"))))
 
           (given body
             :fhir/type := :fhir/CapabilityStatement
@@ -108,7 +108,7 @@
                 (= (set (conj ks :fhir/type)) (set (keys body)))))))
 
         (testing "cache validation"
-          (doseq [if-none-match ["W/\"fb1de2e1\"" "W/\"fb1de2e1\", \"foo\""]]
+          (doseq [if-none-match ["W/\"518da6fc\"" "W/\"518da6fc\", \"foo\""]]
             (let [{:keys [status headers]}
                   @(handler
                     {:headers {"if-none-match" if-none-match}
@@ -117,7 +117,7 @@
               (is (= 304 status))
 
               (testing "ETag header"
-                (is (= "W/\"fb1de2e1\"" (get headers "ETag")))))))))
+                (is (= "W/\"518da6fc\"" (get headers "ETag")))))))))
 
     (testing "minimal config + search-system"
       (let [{:keys [headers body]}
@@ -131,7 +131,7 @@
               {})]
 
         (testing "ETag header"
-          (is (= "W/\"86c99a0a\"" (get headers "ETag"))))
+          (is (= "W/\"eab92abb\"" (get headers "ETag"))))
 
         (given body
           :fhir/type := :fhir/CapabilityStatement
