@@ -1,12 +1,10 @@
+import type { PageLoad } from './$types';
+
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 import type { Stats } from './[dbId=id]/+page.js';
 
-export interface Data {
-	databases: Stats[];
-}
-
-export async function load({ fetch }): Promise<Data> {
+export const load: PageLoad = async ({ fetch }) => {
 	const res = await fetch(`${base}/__admin/dbs`, {
 		headers: { Accept: 'application/json' }
 	});
@@ -18,5 +16,5 @@ export async function load({ fetch }): Promise<Data> {
 		});
 	}
 
-	return { databases: await res.json() };
-}
+	return { databases: (await res.json()) as Stats[] };
+};

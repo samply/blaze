@@ -1,4 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash -e
+
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+. "$SCRIPT_DIR/util.sh"
 
 library() {
 cat <<END
@@ -67,10 +70,6 @@ create-measure() {
   measure | jq -cM ".url = \"urn:uuid:$1\" | .library[0] = \"urn:uuid:$2\""
 }
 
-post() {
-  curl -sH "Content-Type: application/fhir+json" -d @- "$1/$2"
-}
-
 evaluate-measure() {
   curl -s "$1/Measure/$2/\$evaluate-measure?periodStart=2000&periodEnd=2030&subject=$3"
 }
@@ -81,9 +80,9 @@ DATA=$(base64 "$FILE" | tr -d '\n')
 LIBRARY_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 MEASURE_URI=$(uuidgen | tr '[:upper:]' '[:lower:]')
 
-create-library "$LIBRARY_URI" "$DATA" | post "$BASE" "Library" > /dev/null
+create-library "$LIBRARY_URI" "$DATA" | create "$BASE/Library" > /dev/null
 
-MEASURE_ID=$(create-measure "$MEASURE_URI" "$LIBRARY_URI" | post "$BASE" "Measure" | jq -r .id)
+MEASURE_ID=$(create-measure "$MEASURE_URI" "$LIBRARY_URI" | create "$BASE/Measure" | jq -r .id)
 
 MALE_PATIENT_ID=$(curl -s "$BASE/Patient?gender=male&_count=1" | jq -r '.entry[].resource.id')
 COUNT=$(evaluate-measure "$BASE" "$MEASURE_ID" "$MALE_PATIENT_ID" | jq -r ".group[0].population[0].count")

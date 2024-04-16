@@ -1,3 +1,5 @@
+import type { PageLoad } from './$types';
+
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 import { toTitleCase } from '$lib/util.js';
@@ -16,7 +18,7 @@ export interface Data {
 	levels: Level[];
 }
 
-export async function load({ fetch, params }): Promise<Data> {
+export const load: PageLoad = async ({ fetch, params }) => {
 	const res = await fetch(
 		`${base}/__admin/dbs/${params.dbId}/column-families/${params.cfId}/metadata`,
 		{ headers: { Accept: 'application/json' } }
@@ -36,5 +38,5 @@ export async function load({ fetch, params }): Promise<Data> {
 		});
 	}
 
-	return await res.json();
-}
+	return (await res.json()) as Data;
+};

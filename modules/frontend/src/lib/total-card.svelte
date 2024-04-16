@@ -1,8 +1,6 @@
 <script lang="ts">
 	import type { Bundle } from 'fhir/r4';
 	import { bundleLink } from './fhir.js';
-	import { dev } from '$app/environment';
-	import { base } from '$app/paths';
 	import { fade } from 'svelte/transition';
 	import { quintIn } from 'svelte/easing';
 
@@ -20,14 +18,14 @@
 	<slot />
 	{#if showFirstLink && firstLinkUrl}
 		<a
-			href={dev ? firstLinkUrl.replace('http://localhost:8080/fhir', base) : firstLinkUrl}
+			href={firstLinkUrl}
 			class="flex-none rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
 			>First</a
 		>
 	{/if}
 	{#if nextLinkUrl}
 		<a
-			href={dev ? nextLinkUrl.replace('http://localhost:8080/fhir', base) : nextLinkUrl}
+			href={nextLinkUrl}
 			class="flex-none w-20 inline-flex items-center gap-x-1.5 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
 		>
 			Next

@@ -1,0 +1,12 @@
+services:
+  keycloak:
+    image: 'quay.io/keycloak/keycloak:24.0.1'
+    command: 'start-dev --import-realm'
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      HTTP_PORT: 8095
+    ports:
+      - '8095:8080'
+    volumes:
+      - './keycloak/import:/opt/keycloak/data/import'

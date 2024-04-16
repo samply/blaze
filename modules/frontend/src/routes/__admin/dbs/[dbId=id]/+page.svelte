@@ -1,16 +1,17 @@
 <script lang="ts">
+	import type { PageData } from './$types';
+
 	import ColumnFamilyTable from './column-family-table.svelte';
 	import { toTitleCase } from '$lib/util.js';
-	import { descriptions } from './../util.js';
+	import { descriptions } from '../util.js';
 	import Stats from './stats.svelte';
 	import { page } from '$app/stores';
-	import type { Data } from './+page.js';
 
-	export let data: Data;
+	export let data: PageData;
 </script>
 
 <svelte:head>
-	<title>{toTitleCase($page.params.dbId)} - Database - Admin - Blaze</title>
+	<title>{toTitleCase($page.params.dbId)} Database - Admin - Blaze</title>
 </svelte:head>
 
 <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

@@ -61,9 +61,7 @@
 				<h3 class="flex-grow text-base font-semibold leading-6 text-gray-900">
 					<a href={href(resource)}>{resource.type.code}/{resource.object.id}</a>
 				</h3>
-				{#if $$slots.header}
-					<slot name="header" />
-				{/if}
+				<slot name="header" />
 			</div>
 			{#if hasMeta(resource.object) && resource.object.meta.lastUpdated !== undefined}
 				<p class="mt-1 max-w-2xl text-sm text-gray-500">

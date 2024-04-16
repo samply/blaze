@@ -6,6 +6,7 @@
   if-ok [[:block 1]]
   when-ok [[:block 1]]
   do-sync [[:block 1]]
+  do-async [[:block 1]]
   has-form [[:block 1]]
   reg-collector [[:block 1]]
   deftests [[:block 1]]

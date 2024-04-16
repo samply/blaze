@@ -1,19 +1,19 @@
 (ns blaze.db.node
-  "Local Database Node"
+  "This namespace contains the local database node component."
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.async.comp :as ac :refer [do-async do-sync]]
+   [blaze.async.flow :as flow]
+   [blaze.db.api :as d]
    [blaze.db.impl.batch-db :as batch-db]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.db :as db]
+   [blaze.db.impl.index :as index]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.t-by-instant :as t-by-instant]
    [blaze.db.impl.index.tx-error :as tx-error]
    [blaze.db.impl.index.tx-success :as tx-success]
    [blaze.db.impl.protocols :as p]
-   [blaze.db.impl.search-param :as search-param]
-   [blaze.db.impl.search-param.all :as search-param-all]
-   [blaze.db.impl.search-param.chained :as spc]
    [blaze.db.kv :as kv]
    [blaze.db.node.protocols :as np]
    [blaze.db.node.resource-indexer :as resource-indexer]
@@ -22,9 +22,11 @@
    [blaze.db.node.transaction :as tx]
    [blaze.db.node.tx-indexer :as tx-indexer]
    [blaze.db.node.tx-indexer.verify :as tx-indexer-verify]
+   [blaze.db.node.util :as node-util]
    [blaze.db.node.validation :as validation]
    [blaze.db.node.version :as version]
    [blaze.db.resource-store :as rs]
+   [blaze.db.search-param-registry]
    [blaze.db.search-param-registry.spec]
    [blaze.db.tx-log :as tx-log]
    [blaze.executors :as ex]
@@ -41,9 +43,12 @@
    [taoensso.timbre :as log])
   (:import
    [java.lang AutoCloseable]
-   [java.util.concurrent CompletableFuture TimeUnit]))
+   [java.util.concurrent CompletableFuture SubmissionPublisher TimeUnit]))
 
 (set! *warn-on-reflection* true)
+
+(defn node? [x]
+  (satisfies? np/Node x))
 
 (defn submit-tx [node tx-ops]
   (np/-submit-tx node tx-ops))
@@ -51,9 +56,9 @@
 (defn tx-result
   "Waits for the transaction with `t` to happen on `node`.
 
-  Returns a CompletableFuture that completes with the database after the
-  transaction in case of success or completes exceptionally with an anomaly in
-  case of a transaction error or other errors."
+  Returns a CompletableFuture that will complete with the database after the
+  transaction in case of success or will complete exceptionally with an anomaly
+  in case of a transaction error or other errors."
   [node t]
   (np/-tx-result node t))
 
@@ -72,73 +77,6 @@
    :name "transaction_sizes"}
   (take 16 (iterate #(* 2 %) 1)))
 
-(defmulti resolve-search-param (fn [_registry _type _ret [type] _lenient?] type))
-
-(defmethod resolve-search-param :search-clause
-  [registry type ret [_ [param & values]] lenient?]
-  (let [values (distinct values)]
-    (if-ok [[search-param modifier] (spc/parse-search-param registry type param)]
-      (if-ok [compiled-values (search-param/compile-values search-param modifier values)]
-        (conj ret [search-param modifier values compiled-values])
-        reduced)
-      #(if lenient? ret (reduced %)))))
-
-(defmethod resolve-search-param :sort-clause
-  [registry type ret [_ [_ param direction]] _lenient?]
-  (cond
-    (seq ret)
-    (reduced (ba/incorrect "Sort clauses are only allowed at first position."))
-
-    (not (#{"_id" "_lastUpdated"} param))
-    (reduced (ba/incorrect (format "Unknown search-param `%s` in sort clause." param)))
-
-    (and (= "_id" param) (= :desc direction))
-    (reduced (ba/unsupported "Unsupported sort direction `desc` for search param `_id`."))
-
-    :else
-    (let [[search-param] (spc/parse-search-param registry type param)]
-      (conj ret [search-param (name direction) [] []]))))
-
-(defn- conform-clause [clause]
-  (s/conform :blaze.db.query/clause clause))
-
-(defn- resolve-search-params* [registry type clauses lenient?]
-  (reduce
-   #(resolve-search-param registry type %1 (conform-clause %2) lenient?)
-   []
-   clauses))
-
-(defn- type-priority [{:keys [type]}]
-  (case type
-    "id" 0
-    "token" 1
-    2))
-
-(defn- priority
-  "Gives the single sorting search param the priority 0 and all other search
-  params a priority starting at 1 in order to keep the sorting search param at
-  the first position."
-  [[search-param modifier]]
-  (if (#{"asc" "desc"} modifier)
-    0
-    (inc (type-priority search-param))))
-
-(defn- order-clauses
-  "Orders clauses by specificity so that the clause constraining the resources
-  the most will come first."
-  [clauses]
-  (sort-by priority clauses))
-
-(defn- fix-last-updated [[[first-search-param first-modifier] :as clauses]]
-  (if (and (= "_lastUpdated" (:code first-search-param))
-           (not (#{"asc" "desc"} first-modifier)))
-    (into [[search-param-all/search-param nil [""] [""]]] clauses)
-    clauses))
-
-(defn- resolve-search-params [registry type clauses lenient?]
-  (when-ok [clauses (resolve-search-params* registry type clauses lenient?)]
-    (-> clauses order-clauses fix-last-updated)))
-
 (defn- db-future
   "Adds a watcher to `node` and returns a CompletableFuture that will complete
   with the database value of at least the point in time `t` if `t` is reached or
@@ -148,6 +86,7 @@
     (add-watch
      state future
      (fn [future state _ {:keys [e] new-t :t new-error-t :error-t}]
+       (log/trace "process watch for t =" new-t)
        (cond
          (<= t (max new-t new-error-t))
          (do (log/trace "complete database future with new db with t =" new-t)
@@ -243,7 +182,8 @@
       (assoc :lastUpdated instant)))
 
 (defn- mk-meta [handle tx]
-  {:blaze.db/num-changes (rh/num-changes handle)
+  {:blaze.resource/hash (rh/hash handle)
+   :blaze.db/num-changes (rh/num-changes handle)
    :blaze.db/op (rh/op handle)
    :blaze.db/tx tx})
 
@@ -281,16 +221,16 @@
     (rs/get resource-store (rh/hash resource-handle))))
 
 (defn- compile-type-query [search-param-registry type clauses lenient?]
-  (when-ok [clauses (resolve-search-params search-param-registry type clauses
-                                           lenient?)]
+  (when-ok [clauses (index/resolve-search-params search-param-registry type clauses
+                                                 lenient?)]
     (if (empty? clauses)
       (batch-db/->EmptyTypeQuery (codec/tid type))
       (batch-db/->TypeQuery (codec/tid type) clauses))))
 
 (defn- compile-compartment-query
   [search-param-registry code type clauses lenient?]
-  (when-ok [clauses (resolve-search-params search-param-registry type clauses
-                                           lenient?)]
+  (when-ok [clauses (index/resolve-search-params search-param-registry type clauses
+                                                 lenient?)]
     (if (empty? clauses)
       (batch-db/->EmptyCompartmentQuery (codec/c-hash code) (codec/tid type))
       (batch-db/->CompartmentQuery (codec/c-hash code) (codec/tid type)
@@ -308,6 +248,10 @@
   (let [keys (conj (seq elements) :fhir/type :id :meta)]
     (comp (map #(select-keys % keys))
           add-subsetted-xf)))
+
+(defn- changed-handles [node type t]
+  (with-open [db (batch-db/new-batch-db node t t)]
+    (into [] (take-while #(= t (rh/t %))) (d/type-history db type))))
 
 (defrecord Node [context tx-log tx-cache kv-store resource-store sync-fn
                  search-param-registry resource-indexer state run? poll-timeout
@@ -332,7 +276,8 @@
     (if-ok [_ (validation/validate-ops tx-ops)]
       (let [[tx-cmds entries] (tx/prepare-ops context tx-ops)]
         (-> (rs/put! resource-store entries)
-            (ac/then-compose (fn [_] (tx-log/submit tx-log tx-cmds entries)))))
+            (ac/then-compose-async
+             (fn [_] (tx-log/submit tx-log tx-cmds entries)))))
       ac/completed-future))
 
   (-tx-result [node t]
@@ -352,6 +297,17 @@
         :else
         (ac/then-apply future (fn [_] (tx/load-tx-result node t))))))
 
+  (-changed-resources-publisher [node type]
+    (let [publisher (SubmissionPublisher.)]
+      (add-watch
+       state publisher
+       (fn [publisher _state _ {:keys [t error-t]}]
+         (when (< error-t t)
+           (let [changed-handles (changed-handles node type t)]
+             (log/debug "Publish" (count changed-handles) "changed" type "resource handles")
+             (flow/submit! publisher changed-handles)))))
+      publisher))
+
   p/Tx
   (-tx [_ t]
     (tx-success/tx tx-cache t))
@@ -364,8 +320,8 @@
     (compile-type-query search-param-registry type clauses true))
 
   (-compile-system-query [_ clauses]
-    (when-ok [clauses (resolve-search-params search-param-registry "Resource"
-                                             clauses false)]
+    (when-ok [clauses (index/resolve-search-params search-param-registry
+                                                   "Resource" clauses false)]
       (batch-db/->SystemQuery clauses)))
 
   (-compile-compartment-query [_ code type clauses]
@@ -376,19 +332,19 @@
 
   p/Pull
   (-pull [_ resource-handle]
-    (do-sync [resource (get-resource resource-store resource-handle)]
+    (do-async [resource (get-resource resource-store resource-handle)]
       (or (some->> resource (enhance-resource tx-cache resource-handle))
           (resource-content-not-found-anom resource-handle))))
 
   (-pull-content [_ resource-handle]
-    (do-sync [resource (get-resource resource-store resource-handle)]
+    (do-async [resource (get-resource resource-store resource-handle)]
       (or (some-> resource (with-meta (meta resource-handle)))
           (resource-content-not-found-anom resource-handle))))
 
   (-pull-many [_ resource-handles]
     (let [resource-handles (vec resource-handles)           ; don't evaluate resource-handles twice
           hashes (hashes-of-non-deleted resource-handles)]
-      (do-sync [resources (rs/multi-get resource-store hashes)]
+      (do-async [resources (rs/multi-get resource-store hashes)]
         (into
          []
          (comp (map (partial to-resource tx-cache resources))
@@ -516,9 +472,9 @@
   (.close ^AutoCloseable node))
 
 (defmethod ig/init-key ::indexer-executor
-  [_ _]
-  (log/info "Init indexer executor")
-  (ex/single-thread-executor "indexer"))
+  [key _]
+  (log/info "Init" (node-util/component-name key "indexer executor"))
+  (ex/single-thread-executor (node-util/thread-name-template key "indexer")))
 
 (defmethod ig/halt-key! ::indexer-executor
   [_ executor]

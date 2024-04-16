@@ -1,6 +1,5 @@
 (ns blaze.db.impl.search-param.quantity-spec
   (:require
-   [blaze.db.impl.batch-db :as-alias batch-db]
    [blaze.db.impl.batch-db.spec]
    [blaze.db.impl.index.compartment.search-param-value-resource-spec]
    [blaze.db.impl.index.resource-search-param-value-spec]
@@ -14,7 +13,7 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef spq/resource-keys
-  :args (s/cat :context ::batch-db/context
+  :args (s/cat :batch-db :blaze.db.impl/batch-db
                :c-hash :blaze.db/c-hash
                :tid :blaze.db/tid
                :prefix-length nat-int?
@@ -22,7 +21,7 @@
                :start-id (s/? :blaze.db/id-byte-string)))
 
 (s/fdef spq/matcher
-  :args (s/cat :context ::batch-db/context
+  :args (s/cat :batch-db :blaze.db.impl/batch-db
                :c-hash :blaze.db/c-hash
                :prefix-length nat-int?
                :values (s/coll-of ::spq/value :min-count 1)))

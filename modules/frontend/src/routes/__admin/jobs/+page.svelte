@@ -1,0 +1,55 @@
+<script lang="ts">
+	import type { PageData } from './$types';
+
+	import { afterUpdate, onDestroy } from 'svelte';
+	import { base } from '$app/paths';
+	import { invalidateAll } from '$app/navigation';
+	import TaskRow from './task-row.svelte';
+
+	export let data: PageData;
+
+	let timeout: ReturnType<typeof setTimeout>;
+
+	// reload page data every 10 seconds if at least one of the jobs is still in progress
+	afterUpdate(() => {
+		if (data.all.entry?.find((e) => e?.resource?.status === 'in-progress')) {
+			timeout = setTimeout(() => {
+				invalidateAll();
+			}, 10000);
+		}
+	});
+
+	onDestroy(() => {
+		if (timeout) {
+			clearTimeout(timeout);
+		}
+	});
+</script>
+
+<svelte:head>
+	<title>Jobs - Admin - Blaze</title>
+</svelte:head>
+
+<main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8">
+	<div class="md:flex md:items-center md:justify-between">
+		<h1 class="flex-1 text-base font-semibold leading-6 text-gray-900">All Jobs</h1>
+		<div class="flex md:ml-4">
+			<a
+				class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white text-nowrap hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+				href="{base}/__admin/jobs/new"
+			>
+				New Job
+			</a>
+		</div>
+	</div>
+
+	<ul role="list" class="divide-y divide-gray-100 mt-4">
+		{#if data.all.entry !== undefined && data.all.entry.length > 0}
+			{#each data.all.entry as entry}
+				{#if entry.resource}
+					<TaskRow job={entry.resource} />
+				{/if}
+			{/each}
+		{/if}
+	</ul>
+</main>

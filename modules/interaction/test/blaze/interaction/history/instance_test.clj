@@ -319,7 +319,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]]
 
       (Thread/sleep 2000)
-      (let [since (Instant/now system-clock)
+      (let [since (time/instant system-clock)
             _ (Thread/sleep 2000)
             _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
                                         :gender #fhir/code"female"}]])

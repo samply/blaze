@@ -142,7 +142,7 @@
    :fhirVersion #fhir/code"4.0.1"
    :format
    [#fhir/code"application/fhir+json"
-    #fhir/code"application/xml+json"]
+    #fhir/code"application/fhir+xml"]
    :rest
    [{:mode #fhir/code"server"
      :resource

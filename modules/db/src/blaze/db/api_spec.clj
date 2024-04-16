@@ -8,6 +8,8 @@
    [blaze.db.spec]
    [blaze.db.tx-log.spec]
    [blaze.fhir.spec]
+   [blaze.fhir.spec.type.system.spec]
+   [blaze.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]))
 
@@ -203,7 +205,9 @@
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 (s/fdef d/patient-everything
-  :args (s/cat :db :blaze.db/db :patient-handle :blaze.db/resource-handle)
+  :args (s/cat :db :blaze.db/db :patient-handle :blaze.db/resource-handle
+               :date-range (s/? (s/cat :start (s/nilable :system/date)
+                                       :end (s/nilable :system/date))))
   :ret (cs/coll-of :blaze.db/resource-handle))
 
 ;; ---- Batch DB --------------------------------------------------------------
@@ -228,4 +232,14 @@
   :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
                :resource-handles (cs/coll-of :blaze.db/resource-handle)
                :elements (s/? (s/coll-of keyword?)))
+  :ret ac/completable-future?)
+
+(s/fdef d/re-index-total
+  :args (s/cat :db :blaze.db/db :search-param-url string?)
+  :ret (s/or :total nat-int? :anomaly ::anom/anomaly))
+
+(s/fdef d/re-index
+  :args (s/cat :db :blaze.db/db :search-param-url string?
+               :start (s/? (s/cat :start-type :fhir.resource/type
+                                  :start-id :blaze.resource/id)))
   :ret ac/completable-future?)

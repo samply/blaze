@@ -4,9 +4,12 @@
   A batch database keeps key-value store iterators open in order to avoid the
   cost associated with open and closing them."
   (:require
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
+   [blaze.db.api :as d]
+   [blaze.db.impl.batch-db.patient-everything :as pe]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index :as index]
    [blaze.db.impl.index.compartment.resource :as cr]
@@ -20,8 +23,10 @@
    [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.all :as search-param-all]
+   [blaze.db.impl.search-param.chained :as spc]
    [blaze.db.impl.search-param.util :as u]
    [blaze.db.kv :as kv]
+   [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.search-param-registry :as sr]
    [blaze.fhir.spec.type :as type])
   (:import
@@ -30,35 +35,32 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- non-compartment-types [search-param-registry]
-  (apply disj (sr/all-types search-param-registry)
-         "Bundle"
-         "CapabilityStatement"
-         "CompartmentDefinition"
-         "ConceptMap"
-         "GraphDefinition"
-         "ImplementationGuide"
-         "MessageDefinition"
-         "MessageHeader"
-         "OperationDefinition"
-         "SearchParameter"
-         "Subscription"
-         "TerminologyCapabilities"
-         "TestReport"
-         "TestScript"
-         (map first (sr/compartment-resources search-param-registry "Patient"))))
+(defn- sp-total
+  [db {:keys [base]}]
+  (if (= ["Resource"] base)
+    (d/system-total db)
+    (transduce (map (partial d/type-total db)) + base)))
 
-(defn- supporting-codes
-  "Returns all codes of search params of resources with `type` that point to one
-  of the `non-compartment-types`."
-  [search-param-registry non-compartment-types type]
-  (into
-   []
-   (comp
-    (filter (comp #{"reference"} :type))
-    (filter (comp (partial some non-compartment-types) :target))
-    (map :code))
-   (sr/list-by-type search-param-registry type)))
+(defn- sp-list
+  "Returns a reducible collection of all resource handles of base types of
+  `search-param` in `db` optionally starting with `start-type` and `start-id`."
+  {:arglists '([db search-param] [db search-param start-type start-id])}
+  ([db {:keys [base]}]
+   (if (= ["Resource"] base)
+     (d/system-list db)
+     (coll/eduction (mapcat (partial d/type-list db)) base)))
+  ([db {:keys [base]} start-type start-id]
+   (if (= ["Resource"] base)
+     (d/system-list db start-type start-id)
+     (let [rest (drop 1 (drop-while (complement #{start-type}) base))]
+       (coll/eduction
+        cat
+        [(d/type-list db start-type start-id)
+         (coll/eduction (mapcat (partial d/type-list db)) rest)])))))
+
+(defn- sp-get-by-url [{{:keys [search-param-registry]} :node} url]
+  (or (sr/get-by-url search-param-registry url)
+      (ba/not-found (format "Search parameter with URL `%s` not found." url))))
 
 (defrecord BatchDb [node snapshot basis-t t]
   p/Db
@@ -161,11 +163,11 @@
   ;; ---- Include ---------------------------------------------------------------
 
   (-include [db resource-handle code]
-    (index/targets db resource-handle (codec/c-hash code)))
+    (spc/targets db resource-handle (codec/c-hash code)))
 
   (-include [db resource-handle code target-type]
-    (index/targets db resource-handle (codec/c-hash code)
-                   (codec/tid target-type)))
+    (spc/targets db resource-handle (codec/c-hash code)
+                 (codec/tid target-type)))
 
   (-rev-include [db resource-handle]
     (let [search-param-registry (:search-param-registry node)
@@ -188,33 +190,22 @@
        (sp-vr/prefix-keys snapshot (codec/c-hash code) source-tid
                           (bs/size reference) reference))))
 
-  (-patient-everything [db patient-handle]
-    (let [search-param-registry (:search-param-registry node)
-          non-compartment-types (non-compartment-types search-param-registry)
-          supporting-codes (partial supporting-codes search-param-registry
-                                    non-compartment-types)]
-      (coll/eduction
-       cat
-       [[patient-handle]
-        (coll/eduction
-         (comp
-          (mapcat
-           (fn [[type codes]]
-             (let [supporting-codes (supporting-codes type)]
-               (coll/eduction
-                (comp
-                 (mapcat (partial p/-rev-include db patient-handle type))
-                 (mapcat
-                  (fn [resource-handle]
-                    (into
-                     [resource-handle]
-                     (comp
-                      (mapcat (partial p/-include db resource-handle))
-                      (filter (comp non-compartment-types name type/type)))
-                     supporting-codes))))
-                codes))))
-          (distinct))
-         (sr/compartment-resources search-param-registry "Patient"))])))
+  (-patient-everything [db patient-handle start end]
+    (pe/patient-everything db patient-handle start end))
+
+  (-re-index-total [db search-param-url]
+    (when-ok [search-param (sp-get-by-url db search-param-url)]
+      (sp-total db search-param)))
+
+  (-re-index [db search-param-url]
+    (if-ok [search-param (sp-get-by-url db search-param-url)]
+      (resource-indexer/re-index-resources (:resource-indexer node) search-param (sp-list db search-param))
+      ac/completed-future))
+
+  (-re-index [db search-param-url start-type start-id]
+    (if-ok [search-param (sp-get-by-url db search-param-url)]
+      (resource-indexer/re-index-resources (:resource-indexer node) search-param (sp-list db search-param start-type start-id))
+      ac/completed-future))
 
   ;; ---- Transaction ---------------------------------------------------------
 

@@ -1,13 +1,18 @@
 <script lang="ts">
-	import type { CapabilityStatement, CapabilityStatementRestResourceSearchParam } from 'fhir/r4';
+	import type { CapabilityStatementRestResourceSearchParam } from 'fhir/r4';
 	import { SearchParamType } from '$lib/fhir.js';
 	import type { QueryParam } from './query-param.js';
-	import { sortByProperty } from '$lib/util.js';
-	import { defaultCount } from '$lib/util.js';
-	import { goto } from '$app/navigation';
+	import {
+		defaultCount,
+		insertAtIndex,
+		moveDownAtIndex,
+		moveUpAtIndex,
+		removeAtIndex,
+		updateAtIndex
+	} from '$lib/util.js';
+	import { afterNavigate, goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { page } from '$app/stores';
-	import { afterNavigate } from '$app/navigation';
 
 	import CheckboxActive from './search-forum/checkbox-active.svelte';
 	import SearchParamComboBox from './search-forum/search-param-combo-box.svelte';
@@ -20,22 +25,36 @@
 
 	import { fade } from 'svelte/transition';
 	import { quintIn } from 'svelte/easing';
+	import { error, type NumericRange } from '@sveltejs/kit';
 
-	import {
-		removeAtIndex,
-		insertAtIndex,
-		updateAtIndex,
-		moveUpAtIndex,
-		moveDownAtIndex
-	} from '$lib/util.js';
+	export let searchParams: CapabilityStatementRestResourceSearchParam[];
 
-	export let capabilityStatement: CapabilityStatement;
+	async function loadSearchIncludes(type: string): Promise<string[]> {
+		const res = await fetch(`${base}/${type}/__search-includes`, {
+			headers: { Accept: 'application/json' }
+		});
 
-	$: server = capabilityStatement.rest?.at(0);
-	$: resource = server?.resource?.find((r) => r.type == $page.params.type);
-	$: searchParams = [...(server?.searchParam || []), ...(resource?.searchParam || [])].sort(
-		sortByProperty('name')
-	);
+		if (!res.ok) {
+			error(res.status as NumericRange<400, 599>, 'error while fetching the search includes');
+		}
+
+		return (await res.json()).searchIncludes;
+	}
+
+	async function loadSearchRevIncludes(type: string): Promise<string[]> {
+		const res = await fetch(`${base}/${type}/__search-rev-includes`, {
+			headers: { Accept: 'application/json' }
+		});
+
+		if (!res.ok) {
+			error(
+				res.status as NumericRange<400, 599>,
+				'error while fetching the search reverse includes'
+			);
+		}
+
+		return (await res.json()).searchRevIncludes;
+	}
 
 	function removeInactiveModifier(name: string): [string, boolean] {
 		const active = !name.endsWith(':inactive');
@@ -97,69 +116,64 @@
 	}
 </script>
 
-{#if resource}
-	<form
-		class="flex gap-2 px-4 py-5 sm:px-6 border-b border-gray-200"
-		on:submit|preventDefault={send}
-	>
-		<div class="flex-grow flex flex-col gap-2">
-			{#each queryParams as queryParam, index (queryParam.id)}
-				<div in:fade={{ duration: 200, easing: quintIn }} class="flex gap-2">
-					<CheckboxActive
-						{index}
-						active={queryParam.active}
-						on:change={() =>
-							(queryParams = updateAtIndex(queryParams, index, (p) => ({
-								...p,
-								active: !p.active
-							})))}
-					/>
+<form class="flex gap-2 px-4 py-5 sm:px-6 border-b border-gray-200" on:submit|preventDefault={send}>
+	<div class="flex-grow flex flex-col gap-2">
+		{#each queryParams as queryParam, index (queryParam.id)}
+			<div in:fade={{ duration: 200, easing: quintIn }} class="flex gap-2">
+				<CheckboxActive
+					{index}
+					active={queryParam.active}
+					on:change={() =>
+						(queryParams = updateAtIndex(queryParams, index, (p) => ({
+							...p,
+							active: !p.active
+						})))}
+				/>
 
-					<SearchParamComboBox {searchParams} {index} bind:selected={queryParam.name} />
-					{#if queryParam.name === '_include' && resource.searchInclude}
-						<ValueComboBox
-							options={resource.searchInclude}
-							{index}
-							bind:selected={queryParam.value}
-						/>
-					{:else if queryParam.name === '_revinclude' && resource.searchRevInclude}
-						<ValueComboBox
-							options={resource.searchRevInclude}
-							{index}
-							bind:selected={queryParam.value}
-						/>
-					{:else}
-						<QueryParamValue {index} bind:value={queryParam.value} />
-					{/if}
-					{#if index === 0}
-						<ButtonMoveDown
-							disabled={queryParams.length < 2}
-							on:click={() => (queryParams = moveDownAtIndex(queryParams, index))}
-						/>
-					{:else}
-						<ButtonMoveUp on:click={() => (queryParams = moveUpAtIndex(queryParams, index))} />
-					{/if}
-					<RemoveButton
-						disabled={queryParams.length === 1}
-						on:click={() => (queryParams = removeAtIndex(queryParams, index, selectParam(0)))}
+				<SearchParamComboBox {searchParams} {index} bind:selected={queryParam.name} />
+				{#if queryParam.name === '_include'}
+					{#await loadSearchIncludes($page.params.type)}
+						<ValueComboBox {index} bind:selected={queryParam.value} />
+					{:then searchIncludes}
+						<ValueComboBox options={searchIncludes} {index} bind:selected={queryParam.value} />
+					{/await}
+				{:else if queryParam.name === '_revinclude'}
+					{#await loadSearchRevIncludes($page.params.type)}
+						<ValueComboBox {index} bind:selected={queryParam.value} />
+					{:then searchRevIncludes}
+						<ValueComboBox options={searchRevIncludes} {index} bind:selected={queryParam.value} />
+					{/await}
+				{:else}
+					<QueryParamValue {index} bind:value={queryParam.value} />
+				{/if}
+				{#if index === 0}
+					<ButtonMoveDown
+						disabled={queryParams.length < 2}
+						on:click={() => (queryParams = moveDownAtIndex(queryParams, index))}
 					/>
-					<AddButton
-						on:click={() =>
-							(queryParams = insertAtIndex(
-								queryParams,
-								index,
-								selectParam(Math.max(...queryParams.map((p) => p.id)) + 1)
-							))}
-					/>
-				</div>
-			{/each}
-		</div>
-		<div>
-			<button
-				type="submit"
-				class="w-20 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-				>Search</button
-			>
-		</div>
-	</form>
-{/if}
+				{:else}
+					<ButtonMoveUp on:click={() => (queryParams = moveUpAtIndex(queryParams, index))} />
+				{/if}
+				<RemoveButton
+					disabled={queryParams.length === 1}
+					on:click={() => (queryParams = removeAtIndex(queryParams, index, selectParam(0)))}
+				/>
+				<AddButton
+					on:click={() =>
+						(queryParams = insertAtIndex(
+							queryParams,
+							index,
+							selectParam(Math.max(...queryParams.map((p) => p.id)) + 1)
+						))}
+				/>
+			</div>
+		{/each}
+	</div>
+	<div>
+		<button
+			type="submit"
+			class="w-20 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+			>Search
+		</button>
+	</div>
+</form>

@@ -148,29 +148,29 @@
   (-compile-value [_ _ value]
     (codec/v-hash value))
 
-  (-chunked-resource-handles [_ context tid modifier value]
+  (-chunked-resource-handles [_ batch-db tid modifier value]
     (coll/eduction
-     (u/resource-handle-chunk-mapper context tid)
-     (resource-keys context (c-hash-w-modifier c-hash code modifier) tid
+     (u/resource-handle-chunk-mapper batch-db tid)
+     (resource-keys batch-db (c-hash-w-modifier c-hash code modifier) tid
                     value)))
 
-  (-resource-handles [_ context tid modifier value]
+  (-resource-handles [_ batch-db tid modifier value]
     (coll/eduction
-     (u/resource-handle-mapper context tid)
-     (resource-keys context (c-hash-w-modifier c-hash code modifier) tid
+     (u/resource-handle-mapper batch-db tid)
+     (resource-keys batch-db (c-hash-w-modifier c-hash code modifier) tid
                     value)))
 
-  (-resource-handles [_ context tid modifier value start-id]
+  (-resource-handles [_ batch-db tid modifier value start-id]
     (coll/eduction
-     (u/resource-handle-mapper context tid)
-     (resource-keys context (c-hash-w-modifier c-hash code modifier) tid value
+     (u/resource-handle-mapper batch-db tid)
+     (resource-keys batch-db (c-hash-w-modifier c-hash code modifier) tid value
                     start-id)))
 
   (-compartment-keys [_ context compartment tid value]
     (c-sp-vr/prefix-keys (:snapshot context) compartment c-hash tid value))
 
-  (-matcher [_ context modifier values]
-    (r-sp-v/value-prefix-filter (:snapshot context)
+  (-matcher [_ batch-db modifier values]
+    (r-sp-v/value-prefix-filter (:snapshot batch-db)
                                 (c-hash-w-modifier c-hash code modifier) values))
 
   (-compartment-ids [_ resolver resource]
@@ -195,21 +195,21 @@
   (-compile-value [_ _ value]
     (codec/id-byte-string value))
 
-  (-chunked-resource-handles [search-param context tid modifier value]
-    [(p/-resource-handles search-param context tid modifier value)])
+  (-chunked-resource-handles [search-param batch-db tid modifier value]
+    [(p/-resource-handles search-param batch-db tid modifier value)])
 
-  (-resource-handles [_ context tid _ value]
-    (some-> (u/non-deleted-resource-handle context tid value) vector))
+  (-resource-handles [_ batch-db tid _ value]
+    (some-> (u/non-deleted-resource-handle batch-db tid value) vector))
 
-  (-resource-handles [sp context tid modifier value start-id]
+  (-resource-handles [sp batch-db tid modifier value start-id]
     (when (= value start-id)
-      (p/-resource-handles sp context tid modifier value)))
+      (p/-resource-handles sp batch-db tid modifier value)))
 
-  (-sorted-resource-handles [_ context tid _]
-    (rao/type-list context tid))
+  (-sorted-resource-handles [_ batch-db tid _]
+    (rao/type-list batch-db tid))
 
-  (-sorted-resource-handles [_ context tid _ start-id]
-    (rao/type-list context tid start-id))
+  (-sorted-resource-handles [_ batch-db tid _ start-id]
+    (rao/type-list batch-db tid start-id))
 
   (-index-values [_ _ _]))
 

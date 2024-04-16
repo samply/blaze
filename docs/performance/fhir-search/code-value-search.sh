@@ -14,7 +14,7 @@ count-resources() {
   SEARCH_PARAMS="code=http://loinc.org|$CODE&value-quantity=lt$VALUE|http://unitsofmeasure.org|$UNIT"
 
   echo "Counting Observations with code $CODE and value $VALUE..."
-  count-resources-raw "$BASE" "$SEARCH_PARAMS" "$START_EPOCH-count-$CODE-value-$VALUE.times"
+  count-resources-raw "$BASE" "Observation" "$SEARCH_PARAMS" "$START_EPOCH-count-$CODE-value-$VALUE.times"
 }
 
 download-resources() {
@@ -23,7 +23,7 @@ download-resources() {
   SEARCH_PARAMS="code=http://loinc.org|$CODE&value-quantity=lt$VALUE|http://unitsofmeasure.org|$UNIT"
 
   echo "Downloading Observations with code $CODE and value $VALUE..."
-  download-resources-raw "$BASE" "$SEARCH_PARAMS" "$START_EPOCH-download-$CODE-value-$VALUE.times"
+  download-resources-raw "$BASE" "Observation" "$SEARCH_PARAMS" "$START_EPOCH-download-$CODE-value-$VALUE.times"
 }
 
 download-resources-subject() {
@@ -32,7 +32,7 @@ download-resources-subject() {
   SEARCH_PARAMS="code=http://loinc.org|$CODE&value-quantity=lt$VALUE|http://unitsofmeasure.org|$UNIT&_elements=subject"
 
   echo "Downloading Observations with code $CODE, value $VALUE and _elements=subject..."
-  download-resources-raw "$BASE" "$SEARCH_PARAMS" "$START_EPOCH-download-$CODE-value-$VALUE-subject.times"
+  download-resources-raw "$BASE" "Observation" "$SEARCH_PARAMS" "$START_EPOCH-download-$CODE-value-$VALUE-subject.times"
 }
 
 restart "$COMPOSE_FILE"

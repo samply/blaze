@@ -92,9 +92,9 @@
     (into {} (map (fn [[k v]] [k (resolvef k v)])) (ig/find-derived config key))))
 
 (def ^:private root-config
-  {:blaze/version "0.25.0"
+  {:blaze/version "0.26.0"
 
-   :blaze/release-date "2024-03-15"
+   :blaze/release-date "2024-04-16"
 
    :blaze/clock {}
 
@@ -111,7 +111,7 @@
     :version (ig/ref :blaze/version)
     :release-date (ig/ref :blaze/release-date)
     :structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)
-    :node (ig/ref :blaze.db/node)
+    :node (ig/ref :blaze.db.main/node)
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :auth-backends (ig/refset :blaze.auth/backend)
     :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")
@@ -124,8 +124,7 @@
 
    :blaze.handler/app
    {:rest-api (ig/ref :blaze/rest-api)
-    :health-handler (ig/ref :blaze.handler/health)
-    :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")}
+    :health-handler (ig/ref :blaze.handler/health)}
 
    :blaze/server
    {:port (->Cfg "SERVER_PORT" nat-int? 8080)

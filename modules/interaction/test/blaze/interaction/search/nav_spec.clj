@@ -4,6 +4,7 @@
    [blaze.db.spec]
    [blaze.interaction.search.nav :as nav]
    [blaze.page-store.spec]
+   [blaze.spec]
    [clojure.spec.alpha :as s]))
 
 (s/fdef nav/url

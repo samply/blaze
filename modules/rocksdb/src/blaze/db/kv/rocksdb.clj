@@ -305,8 +305,8 @@
     (.setBackgroundThreads 6 Priority/LOW)))
 
 (defmethod ig/pre-init-spec ::kv/rocksdb [_]
-  (s/keys :req-un [::dir ::stats]
-          :opt-un [::block-cache ::opts ::column-families]))
+  (s/keys :req-un [::dir]
+          :opt-un [::block-cache ::stats ::opts ::column-families]))
 
 (defn- init-log-msg [dir opts]
   (format "Open RocksDB key-value store in directory `%s` with options: %s. This can take up to several minutes due to forced compaction."

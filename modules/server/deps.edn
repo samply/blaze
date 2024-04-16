@@ -6,7 +6,7 @@
   {:local/root "../module-base"}
 
   ring/ring-core
-  {:mvn/version "1.12.0"
+  {:mvn/version "1.12.1"
    :exclusions
    [org.apache.commons/commons-fileupload2-core
     crypto-equality/crypto-equality
@@ -29,7 +29,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.87.1366"}}
+    {:mvn/version "1.88.1376"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

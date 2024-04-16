@@ -39,3 +39,6 @@
                :tx-cmds tx-cmds}]
              (log/warn (invalid-tx-data-msg t (s/explain-str :blaze.db/tx-cmds tx-cmds)))))
          (log/warn (invalid-timestamp-type-msg t (.timestampType record))))))))
+
+(defn integrant-key-name-part [[_ key]]
+  (-> key namespace (str/split #"\.") last))

@@ -10,6 +10,12 @@ test:
 test-coverage:
 	clojure -M:test:coverage
 
+cloc-prod:
+	cloc src
+
+cloc-test:
+	cloc test
+
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 

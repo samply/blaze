@@ -2,7 +2,7 @@
   "This namespace provides functions to work with Java 9 Reactive Streams.
 
   https://www.baeldung.com/java-9-reactive-streams"
-  (:refer-clojure :exclude [mapcat])
+  (:refer-clojure :exclude [mapcat take])
   (:require
    [blaze.async.comp :as ac])
   (:import
@@ -23,7 +23,9 @@
 (defn processor? [x]
   (instance? Flow$Processor x))
 
-(defn subscribe! [publisher subscriber]
+(defn subscribe!
+  "Adds `subscriber` to the list of subscribers of `publisher`."
+  [publisher subscriber]
   (.subscribe ^Flow$Publisher publisher subscriber))
 
 (defn on-subscribe! [subscriber subscription]
@@ -35,6 +37,9 @@
 (defn cancel! [subscription]
   (.cancel ^Flow$Subscription subscription))
 
+(defn submit! [submission-publisher x]
+  (.submit ^SubmissionPublisher submission-publisher x))
+
 (deftype Collector
          [xs ^:volatile-mutable future ^:volatile-mutable subscription]
   Flow$Subscriber
@@ -42,8 +47,8 @@
     (set! subscription s)
     (request! subscription 1))
   (onNext [_ x]
-    (request! subscription 1)
-    (swap! xs conj x))
+    (swap! xs conj x)
+    (request! subscription 1))
   (onError [_ e]
     (cancel! subscription)
     (ac/complete-exceptionally! future e))
@@ -54,7 +59,7 @@
   (->Collector (atom []) future nil))
 
 (defn collect
-  "Returns a CompletableFuture that completes with a vector of all values
+  "Returns a CompletableFuture that will complete with a vector of all values
   `publisher` produces."
   [publisher]
   (let [future (ac/future)]
@@ -71,8 +76,25 @@
         (vreset! subscription s)
         (request! s 1))
       (onNext [x]
-        (run! #(.submit ^SubmissionPublisher this %) (f x))
+        (run! (partial submit! this) (f x))
         (request! @subscription 1))
+      (onError [e]
+        (.closeExceptionally ^SubmissionPublisher this e))
+      (onComplete []
+        (.close ^SubmissionPublisher this)))))
+
+(defn take [n]
+  (let [subscription (volatile! nil)
+        remaining (volatile! n)]
+    (proxy [SubmissionPublisher Flow$Processor] []
+      (onSubscribe [s]
+        (vreset! subscription s)
+        (request! s 1))
+      (onNext [x]
+        (submit! this x)
+        (if (zero? (vswap! remaining dec))
+          (.close ^SubmissionPublisher this)
+          (request! @subscription 1)))
       (onError [e]
         (.closeExceptionally ^SubmissionPublisher this e))
       (onComplete []

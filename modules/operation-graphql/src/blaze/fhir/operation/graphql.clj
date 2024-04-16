@@ -6,6 +6,7 @@
    [blaze.executors :as ex]
    [blaze.fhir.operation.graphql.spec]
    [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]
    [com.walmartlabs.lacinia :as lacinia]
    [com.walmartlabs.lacinia.resolve :as resolve]
    [com.walmartlabs.lacinia.schema :as ls]
@@ -50,8 +51,8 @@
     (d/type-query db type (clauses args))
     (d/type-list db type)))
 
-(defn- to-error [e]
-  {:message (ex-message e)})
+(defn- to-error [{::anom/keys [message]}]
+  {:message message})
 
 (defn- resolve-type-list [type {:blaze/keys [db]} args _]
   (log/trace (format "execute %sList query" type))
@@ -59,7 +60,7 @@
     (-> (d/pull-many db (type-query db type args))
         (ac/when-complete
          (fn [r e]
-           (resolve/deliver! result r (some-> e ac/-completion-cause to-error)))))
+           (resolve/deliver! result r (some-> e to-error)))))
     result))
 
 (defn- compile-schema [options]

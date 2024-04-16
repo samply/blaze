@@ -55,7 +55,7 @@
              {:handler #blaze/ref :blaze.interaction.history/type}
          :create
          #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction/create}
+             {:handler #blaze/ref :blaze.interaction.main/create}
          :search-type
          #:blaze.rest-api.interaction
              {:handler #blaze/ref :blaze.interaction/search-type}}}]
@@ -96,8 +96,8 @@
   ;;
   ;; FHIR interactions implement most of the RESTful API. There are system, type
   ;; and instance level interactions. Interactions are referred by the rest-api
-  ;; above. All interactions depend on the database node :blaze.db/node which
-  ;; provides read and write access to the actual resources.
+  ;; above. All interactions depend on the database node :blaze.db.main/node
+  ;; which provides read and write access to the actual resources.
   ;;
   :blaze.interaction.history/system
   {:clock #blaze/ref :blaze/clock
@@ -111,13 +111,13 @@
   {:clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
 
-  :blaze.interaction/create
-  {:node #blaze/ref :blaze.db/node
+  [:blaze.interaction/create :blaze.interaction.main/create]
+  {:node #blaze/ref :blaze.db.main/node
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction/delete
-  {:node #blaze/ref :blaze.db/node}
+  {:node #blaze/ref :blaze.db.main/node}
 
   :blaze.interaction/read {}
 
@@ -137,12 +137,12 @@
    :page-store #blaze/ref :blaze/page-store}
 
   :blaze.interaction/transaction
-  {:node #blaze/ref :blaze.db/node
+  {:node #blaze/ref :blaze.db.main/node
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
 
   :blaze.interaction/update
-  {:node #blaze/ref :blaze.db/node}
+  {:node #blaze/ref :blaze.db.main/node}
 
   ;;
   ;; FHIR Operation Evaluate Measure
@@ -152,7 +152,7 @@
   ;; evaluate-duration-seconds are exported.
   ;;
   :blaze.fhir.operation.evaluate-measure/handler
-  {:node #blaze/ref :blaze.db/node
+  {:node #blaze/ref :blaze.db.main/node
    :executor #blaze/ref :blaze.fhir.operation.evaluate-measure/executor
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
@@ -170,7 +170,7 @@
   ;; FHIR Operation GraphQL
   ;;
   :blaze.fhir.operation.graphql/handler
-  {:node #blaze/ref :blaze.db/node
+  {:node #blaze/ref :blaze.db.main/node
    :executor #blaze/ref :blaze.fhir.operation.graphql/executor}
 
   :blaze.fhir.operation.graphql/executor
@@ -191,11 +191,19 @@
   :blaze.fhir.operation/totals
   {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}
 
+  ;;
+  ;; Admin API
+  ;;
   :blaze/admin-api
-  {:context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]}
+  {:context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]
+   :admin-node #blaze/ref :blaze.db.admin/node
+   :job-scheduler #blaze/ref :blaze/job-scheduler
+   :db-sync-timeout #blaze/cfg ["DB_SYNC_TIMEOUT" pos-int? 10000]
+   :read-job-handler #blaze/ref :blaze.interaction/read
+   :search-type-job-handler #blaze/ref :blaze.interaction/search-type}
 
   ;;
-  ;; Database Node
+  ;; Main Database Node
   ;;
   ;; The database node offers the implementation of the database which is used
   ;; by FHIR interactions and operations. The database node depends on:
@@ -214,30 +222,60 @@
   ;;
   ;; The resource cache collector exports metrics of the resource cache.
   ;;
-  :blaze.db/node
+  [:blaze.db/node :blaze.db.main/node]
   {:storage #blaze/ref :blaze.db/storage
-   :tx-log #blaze/ref :blaze.db/tx-log
-   :tx-cache #blaze/ref :blaze.db/tx-cache
-   :indexer-executor #blaze/ref :blaze.db.node/indexer-executor
+   :tx-log #blaze/ref :blaze.db.main/tx-log
+   :tx-cache #blaze/ref :blaze.db.main/tx-cache
+   :indexer-executor #blaze/ref :blaze.db.node.main/indexer-executor
    :resource-store #blaze/ref :blaze.db/resource-cache
-   :kv-store #blaze/ref :blaze.db/index-kv-store
-   :resource-indexer #blaze/ref :blaze.db.node/resource-indexer
+   :kv-store #blaze/ref :blaze.db.main/index-kv-store
+   :resource-indexer #blaze/ref :blaze.db.node.main/resource-indexer
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
    :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]}
 
-  :blaze.db.node/indexer-executor {}
+  [:blaze.db.node/indexer-executor :blaze.db.node.main/indexer-executor] {}
+
+  ;;
+  ;; Admin Database Node
+  ;;
+  [:blaze.db/node :blaze.db.admin/node]
+  {:storage #blaze/ref :blaze.db/storage
+   :tx-log #blaze/ref :blaze.db.admin/tx-log
+   :tx-cache #blaze/ref :blaze.db.admin/tx-cache
+   :indexer-executor #blaze/ref :blaze.db.node.admin/indexer-executor
+   :resource-store #blaze/ref :blaze.db/resource-cache
+   :kv-store #blaze/ref :blaze.db.admin/index-kv-store
+   :resource-indexer #blaze/ref :blaze.db.node.admin/resource-indexer
+   :search-param-registry #blaze/ref :blaze.db/search-param-registry}
+
+  [:blaze.db.node/indexer-executor :blaze.db.node.admin/indexer-executor] {}
 
   :blaze.db.node/duration-seconds {}
   :blaze.db.node/transaction-sizes {}
 
-  :blaze.db.node/resource-indexer
-  {:kv-store #blaze/ref :blaze.db/index-kv-store
+  ;;
+  ;; Main Resource Indexer
+  ;;
+  [:blaze.db.node/resource-indexer :blaze.db.node.main/resource-indexer]
+  {:kv-store #blaze/ref :blaze.db.main/index-kv-store
    :resource-store #blaze/ref :blaze.db/resource-cache
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
-   :executor #blaze/ref :blaze.db.node.resource-indexer/executor}
+   :executor #blaze/ref :blaze.db.node.resource-indexer.main/executor}
 
-  :blaze.db.node.resource-indexer/executor
+  [:blaze.db.node.resource-indexer/executor :blaze.db.node.resource-indexer.main/executor]
   {:num-threads #blaze/cfg ["DB_RESOURCE_INDEXER_THREADS" pos-int? 4]}
+
+  ;;
+  ;; Admin Resource Indexer
+  ;;
+  [:blaze.db.node/resource-indexer :blaze.db.node.admin/resource-indexer]
+  {:kv-store #blaze/ref :blaze.db.admin/index-kv-store
+   :resource-store #blaze/ref :blaze.db/resource-cache
+   :search-param-registry #blaze/ref :blaze.db/search-param-registry
+   :executor #blaze/ref :blaze.db.node.resource-indexer.admin/executor}
+
+  [:blaze.db.node.resource-indexer/executor :blaze.db.node.resource-indexer.admin/executor]
+  {:num-threads 2}
 
   :blaze.db.node.resource-indexer/duration-seconds {}
   :blaze.db.node.resource-indexer/index-entries {}
@@ -246,19 +284,29 @@
 
   :blaze.db/cache-collector
   {:caches
-   {"tx-cache" #blaze/ref :blaze.db/tx-cache
+   {"tx-cache" #blaze/ref :blaze.db.main/tx-cache
     "resource-cache" #blaze/ref :blaze.db/resource-cache}}
 
   ;;
-  ;; Transaction Cache
+  ;; Main Transaction Cache
   ;;
   ;; The transaction cache holds transaction data that currently only consists
   ;; of the instant at which the transaction happened. Transaction data is keyed
   ;; by t.
   ;;
-  :blaze.db/tx-cache
-  {:kv-store #blaze/ref :blaze.db/index-kv-store
+  [:blaze.db/tx-cache :blaze.db.main/tx-cache]
+  {:kv-store #blaze/ref :blaze.db.main/index-kv-store
    :max-size #blaze/cfg ["DB_TRANSACTION_CACHE_SIZE" nat-int? 100000]}
+
+  ;;
+  ;; Admin Transaction Cache
+  ;;
+  ;; The transaction cache holds transaction data that currently only consists
+  ;; of the instant at which the transaction happened. Transaction data is keyed
+  ;; by t.
+  ;;
+  [:blaze.db/tx-cache :blaze.db.admin/tx-cache]
+  {:kv-store #blaze/ref :blaze.db.admin/index-kv-store}
 
   ;;
   ;; Resource Cache
@@ -286,19 +334,27 @@
   ;;
   :blaze.db/search-param-registry
   {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo
-   :extra-bundle-file #blaze/cfg ["DB_SEARCH_PARAM_BUNDLE" string?]}}
+   :extra-bundle-file #blaze/cfg ["DB_SEARCH_PARAM_BUNDLE" string?]}
+
+  ;;
+  ;; Job Scheduler
+  ;;
+  :blaze/job-scheduler
+  {:main-node #blaze/ref :blaze.db.main/node
+   :admin-node #blaze/ref :blaze.db.admin/node
+   :clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}}
 
  :storage
  {:in-memory
   {
    ;;
-   ;; In-Memory, Volatile Index Store
+   ;; Main In-Memory, Volatile Index Store
    ;;
    ;; In-memory, volatile key-value store implementation for demonstration
-   ;; purposes in case no local directory is available. Can be referred by the
-   ;; super key :blaze.db/index-kv-store.
+   ;; purposes in case no local directory is available.
    ;;
-   [:blaze.db.kv/mem :blaze.db/index-kv-store]
+   [:blaze.db.kv/mem :blaze.db.main/index-kv-store]
    {:column-families
     {:search-param-value-index nil
      :resource-value-index nil
@@ -315,25 +371,63 @@
      :system-stats-index nil}}
 
    ;;
-   ;; Local Transaction Log for Single Node Deployments
+   ;; Admin In-Memory, Volatile Index Store
    ;;
-   ;; Can be referred by the super key :blaze.db/tx-log. The local transaction
-   ;; log uses a key-value store to persist transactions.
+   ;; In-memory, volatile key-value store implementation for demonstration
+   ;; purposes in case no local directory is available.
    ;;
-   :blaze.db.tx-log/local
-   {:kv-store #blaze/ref :blaze.db/transaction-kv-store
+   [:blaze.db.kv/mem :blaze.db.admin/index-kv-store]
+   {:column-families
+    {:search-param-value-index nil
+     :resource-value-index nil
+     :compartment-search-param-value-index nil
+     :compartment-resource-type-index nil
+     :active-search-params nil
+     :tx-success-index {:reverse-comparator? true}
+     :tx-error-index nil
+     :t-by-instant-index {:reverse-comparator? true}
+     :resource-as-of-index nil
+     :type-as-of-index nil
+     :system-as-of-index nil
+     :type-stats-index nil
+     :system-stats-index nil}}
+
+   ;;
+   ;; Main Local Transaction Log for Single Node Deployments
+   ;;
+   ;; The local transaction log uses a key-value store to persist transactions.
+   ;;
+   [:blaze.db.tx-log/local :blaze.db.main/tx-log]
+   {:kv-store #blaze/ref :blaze.db.main/transaction-kv-store
+    :clock #blaze/ref :blaze/clock}
+
+   ;;
+   ;; Admin Local Transaction Log for Single Node Deployments
+   ;;
+   ;; The local transaction log uses a key-value store to persist transactions.
+   ;;
+   [:blaze.db.tx-log/local :blaze.db.admin/tx-log]
+   {:kv-store #blaze/ref :blaze.db.admin/transaction-kv-store
     :clock #blaze/ref :blaze/clock}
 
    :blaze.db.tx-log.local/duration-seconds {}
 
    ;;
-   ;; In-Memory, Volatile Transaction Store
+   ;; Main In-Memory, Volatile Transaction Store
    ;;
    ;; In-memory, volatile key-value store implementation for demonstration
-   ;; purposes in case no local directory is available. Can be referred by the
-   ;; super key :blaze.db/transaction-kv-store.
+   ;; purposes in case no local directory is available.
    ;;
-   [:blaze.db.kv/mem :blaze.db/transaction-kv-store]
+   [:blaze.db.kv/mem :blaze.db.main/transaction-kv-store]
+   {:column-families {}}
+
+   ;;
+   ;; Admin In-Memory, Volatile Transaction Store
+   ;;
+   ;; In-memory, volatile key-value store implementation for demonstration
+   ;; purposes in case no local directory is available.
+   ;;
+   [:blaze.db.kv/mem :blaze.db.admin/transaction-kv-store]
    {:column-families {}}
 
    ;;
@@ -362,9 +456,18 @@
    {:column-families {}}
 
    ;;
+   ;; Admin API
+   ;;
+   ;; Definition of the RocksDB Databases as empty map because we have none in
+   ;; the in-memory storage variant.
+   ;;
+   :blaze/admin-api
+   {:dbs {}}
+
+   ;;
    ;; Local Page Store
    ;;
-   ;; Can be referred by the super key :blaze.db/resource-store.
+   ;; Can be referred by the super key :blaze/page-store.
    ;;
    :blaze.page-store/local
    {:secure-rng #blaze/ref :blaze/secure-rng}
@@ -375,18 +478,16 @@
   :standalone
   {
    ;;
-   ;; RocksDB Index Store
+   ;; Main RocksDB Index Store
    ;;
-   [:blaze.db.kv/rocksdb :blaze.db/index-kv-store]
+   [:blaze.db.kv/rocksdb :blaze.db.main/index-kv-store]
    {:dir #blaze/cfg ["INDEX_DB_DIR" string? "index"]
     :block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache
-    :stats #blaze/ref :blaze.db.index-kv-store/stats
+    :stats #blaze/ref :blaze.db.index-kv-store.main/stats
     :opts
     {:wal-dir #blaze/cfg ["INDEX_DB_WAL_DIR" string? ""]
-     :max-background-jobs
-     #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
-     :compaction-readahead-size
-     #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" nat-int?]}
+     :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
+     :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" nat-int?]}
     :column-families
     {:search-param-value-index
      {:write-buffer-size-in-mb 64
@@ -465,29 +566,118 @@
       :target-file-size-base-in-mb 2
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
 
-   [:blaze.db.kv.rocksdb/stats :blaze.db.index-kv-store/stats] {}
+   [:blaze.db.kv.rocksdb/stats :blaze.db.index-kv-store.main/stats] {}
 
    ;;
-   ;; Local Transaction Log for Single Node Deployments
+   ;; Admin RocksDB Index Store
    ;;
-   ;; Can be referred by the super key :blaze.db/tx-log. The local transaction
-   ;; log uses a key-value store to persist transactions.
+   [:blaze.db.kv/rocksdb :blaze.db.admin/index-kv-store]
+   {:dir #blaze/cfg ["ADMIN_INDEX_DB_DIR" string? "admin-index"]
+    :column-families
+    {:search-param-value-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-value-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :compartment-search-param-value-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :compartment-resource-type-index
+     {:write-buffer-size-in-mb 4
+      :max-bytes-for-level-base-in-mb 16
+      :target-file-size-base-in-mb 4
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :active-search-params
+     {:block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :tx-success-index
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :reverse-comparator? true}
+
+     :tx-error-index
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :t-by-instant-index
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :reverse-comparator? true}
+
+     :resource-as-of-index
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 8
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-as-of-index
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 8
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :system-as-of-index
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 8
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-stats-index
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :system-stats-index
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
+
    ;;
-   :blaze.db.tx-log/local
-   {:kv-store #blaze/ref :blaze.db/transaction-kv-store
+   ;; Main Local Transaction Log for Single Node Deployments
+   ;;
+   ;; The local transaction log uses a key-value store to persist transactions.
+   ;;
+   [:blaze.db.tx-log/local :blaze.db.main/tx-log]
+   {:kv-store #blaze/ref :blaze.db.main/transaction-kv-store
+    :clock #blaze/ref :blaze/clock}
+
+   ;;
+   ;; Admin Local Transaction Log for Single Node Deployments
+   ;;
+   ;; The local transaction log uses a key-value store to persist transactions.
+   ;;
+   [:blaze.db.tx-log/local :blaze.db.admin/tx-log]
+   {:kv-store #blaze/ref :blaze.db.admin/transaction-kv-store
     :clock #blaze/ref :blaze/clock}
 
    :blaze.db.tx-log.local/duration-seconds {}
 
    ;;
-   ;; RocksDB Transaction Store
+   ;; Main RocksDB Transaction Store
    ;;
-   ;; Needed by :blaze.db.tx-log/local.
-   ;;
-   [:blaze.db.kv/rocksdb :blaze.db/transaction-kv-store]
+   [:blaze.db.kv/rocksdb :blaze.db.main/transaction-kv-store]
    {:dir #blaze/cfg ["TRANSACTION_DB_DIR" string? "transaction"]
     :block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache
-    :stats #blaze/ref :blaze.db.transaction-kv-store/stats
+    :stats #blaze/ref :blaze.db.transaction-kv-store.main/stats
     :opts
     {:wal-dir #blaze/cfg ["TRANSACTION_DB_WAL_DIR" string? ""]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
@@ -499,7 +689,19 @@
       :target-file-size-base-in-mb 3
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
 
-   [:blaze.db.kv.rocksdb/stats :blaze.db.transaction-kv-store/stats] {}
+   [:blaze.db.kv.rocksdb/stats :blaze.db.transaction-kv-store.main/stats] {}
+
+   ;;
+   ;; Admin RocksDB Transaction Store
+   ;;
+   [:blaze.db.kv/rocksdb :blaze.db.admin/transaction-kv-store]
+   {:dir #blaze/cfg ["ADMIN_TRANSACTION_DB_DIR" string? "admin-transaction"]
+    :column-families
+    {:default
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 3
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
 
    ;;
    ;; Key-Value Resource Store
@@ -549,8 +751,8 @@
 
    :blaze.db.kv.rocksdb/stats-collector
    {:stats
-    {"index" #blaze/ref :blaze.db.index-kv-store/stats
-     "transaction" #blaze/ref :blaze.db.transaction-kv-store/stats
+    {"index" #blaze/ref :blaze.db.index-kv-store.main/stats
+     "transaction" #blaze/ref :blaze.db.transaction-kv-store.main/stats
      "resource" #blaze/ref :blaze.db.resource-kv-store/stats}}
 
    :blaze.db.kv.rocksdb/block-cache-collector
@@ -558,20 +760,25 @@
 
    :blaze.db.kv.rocksdb/table-reader-collector
    {:stores
-    {"index" #blaze/ref :blaze.db/index-kv-store
-     "transaction" #blaze/ref :blaze.db/transaction-kv-store
+    {"index" #blaze/ref :blaze.db.main/index-kv-store
+     "transaction" #blaze/ref :blaze.db.main/transaction-kv-store
      "resource" #blaze/ref :blaze.db/resource-kv-store}}
 
+   ;;
+   ;; Admin API
+   ;;
+   ;; Definition of the RocksDB Databases
+   ;;
    :blaze/admin-api
    {:dbs
-    {"index" #blaze/ref :blaze.db/index-kv-store
-     "transaction" #blaze/ref :blaze.db/transaction-kv-store
+    {"index" #blaze/ref :blaze.db.main/index-kv-store
+     "transaction" #blaze/ref :blaze.db.main/transaction-kv-store
      "resource" #blaze/ref :blaze.db/resource-kv-store}}
 
    ;;
    ;; Local Page Store
    ;;
-   ;; Can be referred by the super key :blaze.db/resource-store.
+   ;; Can be referred by the super key :blaze/page-store.
    ;;
    :blaze.page-store/local
    {:secure-rng #blaze/ref :blaze/secure-rng
@@ -583,19 +790,101 @@
   :distributed
   {
    ;;
-   ;; RocksDB Index Store
+   ;; Main RocksDB Index Store
    ;;
-   ;; Currently the only durable option. Can be referred by the super key
-   ;; :blaze.db/index-kv-store. Will be enabled if a INDEX_DB_DIR is set.
-   ;;
-   [:blaze.db.kv/rocksdb :blaze.db/index-kv-store]
-   {:dir #blaze/cfg ["INDEX_DB_DIR" string?]
+   [:blaze.db.kv/rocksdb :blaze.db.main/index-kv-store]
+   {:dir #blaze/cfg ["INDEX_DB_DIR" string? "index"]
     :block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache
-    :stats #blaze/ref :blaze.db.index-kv-store/stats
+    :stats #blaze/ref :blaze.db.index-kv-store.main/stats
     :opts
     {:wal-dir #blaze/cfg ["INDEX_DB_WAL_DIR" string? ""]
      :max-background-jobs #blaze/cfg ["DB_MAX_BACKGROUND_JOBS" int? 4]
      :compaction-readahead-size #blaze/cfg ["DB_COMPACTION_READAHEAD_SIZE" nat-int?]}
+    :column-families
+    {:search-param-value-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-value-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :compartment-search-param-value-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :compartment-resource-type-index
+     {:write-buffer-size-in-mb 4
+      :max-bytes-for-level-base-in-mb 16
+      :target-file-size-base-in-mb 4
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :active-search-params
+     {:block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :tx-success-index
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :reverse-comparator? true}
+
+     :tx-error-index
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :t-by-instant-index
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :reverse-comparator? true}
+
+     :resource-as-of-index
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 8
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-as-of-index
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 8
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :system-as-of-index
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 8
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-stats-index
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :system-stats-index
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
+
+   [:blaze.db.kv.rocksdb/stats :blaze.db.index-kv-store.main/stats] {}
+
+   ;;
+   ;; Admin RocksDB Index Store
+   ;;
+   [:blaze.db.kv/rocksdb :blaze.db.admin/index-kv-store]
+   {:dir #blaze/cfg ["ADMIN_INDEX_DB_DIR" string? "admin-index"]
     :column-families
     {:search-param-value-index
      {:write-buffer-size-in-mb 64
@@ -679,28 +968,48 @@
 
    :blaze.db.kv.rocksdb/env {}
 
-   [:blaze.db.kv.rocksdb/stats :blaze.db.index-kv-store/stats] {}
-
    :blaze.db.kv.rocksdb/stats-collector
    {:stats
-    {"index" #blaze/ref :blaze.db.index-kv-store/stats}}
+    {"index" #blaze/ref :blaze.db.index-kv-store.main/stats}}
 
    :blaze.db.kv.rocksdb/block-cache-collector
    {:block-cache #blaze/ref :blaze.db.kv.rocksdb/block-cache}
 
    :blaze.db.kv.rocksdb/table-reader-collector
    {:stores
-    {"index" #blaze/ref :blaze.db/index-kv-store}}
+    {"index" #blaze/ref :blaze.db.main/index-kv-store}}
 
+   ;;
+   ;; Admin API
+   ;;
+   ;; Definition of the RocksDB Databases
+   ;;
    :blaze/admin-api
    {:dbs
-    {"index" #blaze/ref :blaze.db/index-kv-store}}
+    {"index" #blaze/ref :blaze.db.main/index-kv-store}}
 
    ;;
-   ;; Kafka Transaction Log
+   ;; Main Kafka Transaction Log
    ;;
-   :blaze.db.tx-log/kafka
+   [:blaze.db.tx-log/kafka :blaze.db.main/tx-log]
    {:bootstrap-servers #blaze/cfg ["DB_KAFKA_BOOTSTRAP_SERVERS" string? "localhost:9092"]
+    :topic "blaze-tx-main"
+    :last-t-executor #blaze/ref :blaze.db.tx-log.kafka/last-t-executor
+    :max-request-size #blaze/cfg ["DB_KAFKA_MAX_REQUEST_SIZE" nat-int? 1048576]
+    :compression-type #blaze/cfg ["DB_KAFKA_COMPRESSION_TYPE" string? "snappy"]
+    :security-protocol #blaze/cfg ["DB_KAFKA_SECURITY_PROTOCOL" string? "PLAINTEXT"]
+    :ssl-truststore-location #blaze/cfg ["DB_KAFKA_SSL_TRUSTSTORE_LOCATION" string?]
+    :ssl-truststore-password #blaze/cfg ["DB_KAFKA_SSL_TRUSTSTORE_PASSWORD" string?]
+    :ssl-keystore-location #blaze/cfg ["DB_KAFKA_SSL_KEYSTORE_LOCATION" string?]
+    :ssl-keystore-password #blaze/cfg ["DB_KAFKA_SSL_KEYSTORE_PASSWORD" string?]
+    :ssl-key-password #blaze/cfg ["DB_KAFKA_SSL_KEY_PASSWORD" string?]}
+
+   ;;
+   ;; Admin Kafka Transaction Log
+   ;;
+   [:blaze.db.tx-log/kafka :blaze.db.admin/tx-log]
+   {:bootstrap-servers #blaze/cfg ["DB_KAFKA_BOOTSTRAP_SERVERS" string? "localhost:9092"]
+    :topic "blaze-tx-admin"
     :last-t-executor #blaze/ref :blaze.db.tx-log.kafka/last-t-executor
     :max-request-size #blaze/cfg ["DB_KAFKA_MAX_REQUEST_SIZE" nat-int? 1048576]
     :compression-type #blaze/cfg ["DB_KAFKA_COMPRESSION_TYPE" string? "snappy"]
@@ -756,19 +1065,13 @@
  :features
  [
   ;;
-  ;; Frontend
+  ;; Admin API
   ;;
-  {:key :frontend
-   :name "Frontend"
-   :toggle "ENABLE_FRONTEND"
+  {:key :admin-api
+   :name "Admin API"
+   :toggle "ENABLE_ADMIN_API"
    :config
-   {:blaze.handler/app
-    {:frontend #blaze/ref :blaze/frontend}
-
-    :blaze/frontend
-    {:context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]}
-
-    :blaze/rest-api
+   {:blaze/rest-api
     {:metadata-handler #blaze/ref :blaze.rest-api/metadata-handler
      :admin-handler #blaze/ref :blaze/admin-api}
 
@@ -786,10 +1089,12 @@
    :toggle "OPENID_PROVIDER_URL"
    :config
    {:blaze.openid-auth/backend
-    {:http-client #blaze/ref :blaze/http-client
+    {:http-client #blaze/ref :blaze.openid-auth/http-client
      :scheduler #blaze/ref :blaze/scheduler
      :provider-url #blaze/cfg ["OPENID_PROVIDER_URL" string?]}
 
-    :blaze/http-client {}
+    [:blaze/http-client :blaze.openid-auth/http-client]
+    {:trust-store #blaze/cfg ["OPENID_CLIENT_TRUST_STORE" string?]
+     :trust-store-pass #blaze/cfg ["OPENID_CLIENT_TRUST_STORE_PASS" string?]}
 
     :blaze/scheduler {}}}]}

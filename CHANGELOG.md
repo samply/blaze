@@ -1,10 +1,36 @@
 # Changelog
 
+## v0.26.0
+
+### Notes
+
+This version of Blaze comes the first time with a frontend (Web UI). That frontend is required to use the new [Job System](https://github.com/samply/blaze/blob/v0.26.0/docs/frontend.md#job-system) which starts with a job for incremental update of indices. The deployment documentation including the new frontend container can be found [here](https://github.com/samply/blaze/v0.26.0/develop/docs/deployment/full-standalone.md). 
+
+If the frontend is not needed, nothing will change for the deployment of the Blaze container.
+
+This version will also create two new directories in the data volume called `admin-index` and `admin-transaction`. That directories will contain the administrative database storing the jobs of the job system. That database works identically to the main database but is separated in order to not interfere with the normal FHIR resources.
+
+### Enhancements
+
+* Implement Incremental Update of Indices ([#1442](https://github.com/samply/blaze/issues/1442)) 
+
+* Implement a Persistent Job Scheduler ([#1486](https://github.com/samply/blaze/issues/1486))
+
+* Implement Date Ranges for Patient $everything ([#1581](https://github.com/samply/blaze/issues/1581))
+
+### Changes
+
+Only relevant in the the integrated frontend was already used.
+
+* Separate Frontend from Blaze ([#1569](https://github.com/samply/blaze/pull/1569))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/86?closed=1).
+
 ## v0.25.0
 
 ### Notes
 
-If you don't have [referential integrity disabled](https://github.com/samply/blaze/blob/v0.25.0/docs/importing-data.md#disabling-referential-integrity-checks), with v0.25.0, you will no longer be able to delete resources which are referenced by other resources. 
+If you don't have [referential integrity disabled](https://github.com/samply/blaze/blob/v0.26.0/docs/importing-data.md#disabling-referential-integrity-checks), with v0.26.0, you will no longer be able to delete resources which are referenced by other resources. 
 
 ### Enhancements
 

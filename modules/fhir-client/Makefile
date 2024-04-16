@@ -13,7 +13,13 @@ test: prep
 test-coverage: prep
 	clojure -M:test:coverage
 
+cloc-prod:
+	cloc src
+
+cloc-test:
+	cloc test
+
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: fmt lint prep test test-coverage clean
+.PHONY: fmt lint prep test test-coverage cloc-prod cloc-test clean

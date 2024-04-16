@@ -31,8 +31,13 @@ clean: $(MODULES) clean-root
 build-frontend:
 	$(MAKE) -C modules/frontend build
 
-uberjar: prep build-frontend
+build-ingress:
+	$(MAKE) -C modules/ingress all
+
+uberjar: prep
 	clojure -T:build uber
+
+build-all: uberjar build-frontend build-ingress
 
 outdated:
 	clojure -M:outdated
@@ -40,10 +45,16 @@ outdated:
 deps-tree:
 	clojure -X:deps tree
 
-deps-list:
-	clojure -X:deps list
+cloc-prod-root:
+	cloc src
 
-cloc: clean
-	cloc --exclude-ext=iml,json,csv .github dev docs modules profiling scripts src test
+cloc-prod: $(MODULES) cloc-prod-root
 
-.PHONY: $(MODULES) lint-root lint prep test-root test test-coverage clean-root clean build-frontend uberjar outdated deps-tree deps-list cloc
+cloc-test-root:
+	cloc dev profiling test .github
+
+cloc-test: $(MODULES) cloc-test-root
+
+.PHONY: $(MODULES) lint-root lint prep test-root test test-coverage clean-root \
+	clean build-frontend build-ingress uberjar build-all outdated deps-tree \
+	deps-list cloc-prod cloc-test

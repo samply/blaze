@@ -2,10 +2,12 @@
   (:require
    [blaze.byte-string-spec]
    [blaze.db.impl.batch-db :as batch-db]
+   [blaze.db.impl.batch-db.patient-everything-spec]
    [blaze.db.impl.index.compartment.resource-spec]
    [blaze.db.impl.index.resource-as-of-spec]
    [blaze.db.impl.index.system-as-of-spec]
    [blaze.db.impl.index.type-as-of-spec]
+   [blaze.db.impl.search-param.chained-spec]
    [clojure.spec.alpha :as s]))
 
 (s/fdef batch-db/new-batch-db

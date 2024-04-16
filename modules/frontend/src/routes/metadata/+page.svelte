@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { Data } from './+page.js';
+	import type { PageData } from './$types';
 
 	import MetadataCard from './metadata-card.svelte';
 
-	export let data: Data;
+	export let data: PageData;
 </script>
 
 <svelte:head>

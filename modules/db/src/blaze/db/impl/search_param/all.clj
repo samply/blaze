@@ -15,13 +15,13 @@
   (reify p/SearchParam
     (-compile-value [_ _ _])
 
-    (-chunked-resource-handles [search-param context tid modifier value]
-      [(p/-resource-handles search-param context tid modifier value)])
+    (-chunked-resource-handles [search-param batch-db tid modifier value]
+      [(p/-resource-handles search-param batch-db tid modifier value)])
 
-    (-resource-handles [_ context tid _ _]
-      (rao/type-list context tid))
+    (-resource-handles [_ batch-db tid _ _]
+      (rao/type-list batch-db tid))
 
-    (-resource-handles [_ context tid _ _ start-id]
-      (rao/type-list context tid start-id))
+    (-resource-handles [_ batch-db tid _ _ start-id]
+      (rao/type-list batch-db tid start-id))
 
     (-index-values [_ _ _])))

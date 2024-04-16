@@ -90,9 +90,9 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 | LEA58  | 100k    | 8310-5  |  115 k |     1.96 |  0.039 |   17.04 |  
 | LEA58  | 100k    | 55758-7 |  1.0 M |    16.61 |  0.161 |   16.48 |
 | LEA58  | 100k    | 72514-3 |  2.7 M |    43.84 |  0.124 |   15.95 |         
-| LEA47  | 1M      | 8310-5  |  1.1 M |    19.88 |  0.206 |   17.15 |         
-| LEA47  | 1M      | 55758-7 | 10.1 M |   208.97 |  5.157 | 20.60 ² |         
-| LEA47  | 1M      | 72514-3 | 27.3 M |   799.61 |  9.035 | 29.24 ² |
+| LEA47  | 1M      | 8310-5  |  1.1 M |    19.20 |  0.102 |   16.56 |         
+| LEA47  | 1M      | 55758-7 | 10.1 M |   206.52 |  1.478 | 20.36 ² |         
+| LEA47  | 1M      | 72514-3 | 27.3 M |   673.10 |  3.072 | 24.61 ² |
 | LEA58  | 1M      | 8310-5  |  1.1 M |    18.95 |  0.075 |   16.34 |         
 | LEA58  | 1M      | 55758-7 | 10.1 M |   160.31 |  0.976 |   15.80 |         
 | LEA58  | 1M      | 72514-3 | 27.3 M |   498.38 |  9.773 | 18.22 ² |         
@@ -124,9 +124,9 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 | LEA58  | 100k    | 8310-5  |  115 k |     1.28 |  0.017 |   11.08 |
 | LEA58  | 100k    | 55758-7 |  1.0 M |    10.55 |  0.209 |   10.47 |
 | LEA58  | 100k    | 72514-3 |  2.7 M |    27.15 |  0.749 |    9.87 |
-| LEA47  | 1M      | 8310-5  |  1.1 M |    13.13 |  0.085 |   11.32 |          
-| LEA47  | 1M      | 55758-7 | 10.1 M |   146.38 |  1.231 | 14.43 ² |          
-| LEA47  | 1M      | 72514-3 | 27.3 M |   602.81 |  8.866 | 22.04 ² |
+| LEA47  | 1M      | 8310-5  |  1.1 M |    13.14 |  0.540 |   11.33 |          
+| LEA47  | 1M      | 55758-7 | 10.1 M |   145.59 |  0.618 | 14.35 ² |          
+| LEA47  | 1M      | 72514-3 | 27.3 M |   437.43 |  3.461 | 15.99 ² |
 | LEA58  | 1M      | 8310-5  |  1.1 M |    12.28 |  0.351 |   10.59 |          
 | LEA58  | 1M      | 55758-7 | 10.1 M |   103.67 |  1.057 |   10.22 |          
 | LEA58  | 1M      | 72514-3 | 27.3 M |   309.76 |  1.580 | 11.32 ² |          
@@ -288,6 +288,57 @@ blazectl download --server http://localhost:8080/fhir Observation -q "date=$YEAR
 | LEA47  | 1M      | 2019 | 60.0 M |  1516.90 |  0.482 | 25.25 ² |
 
 ¹ time in seconds per 1 million resources, ² resource cache size is smaller than the number of resources returned
+
+## Patient Date Search
+
+In this section, FHIR Search for selecting Patient resources with a certain birth date is used.
+
+### Counting
+
+Counting is done using the following `curl` command:
+
+```sh
+curl -s "http://localhost:8080/fhir/Patient?birthdate=$DATE&_summary=count"
+```
+
+| System | Dataset | Date         | # Hits | Time (s) | StdDev | T/1M ¹ |
+|--------|---------|--------------|-------:|---------:|-------:|-------:|
+| LEA47  | 1M      | gt1998-04-10 |  227 k |     0.38 |  0.005 |   1.68 |
+| LEA47  | 1M      | ge1998-04-10 |  227 k |     0.40 |  0.007 |   1.74 |
+| LEA47  | 1M      | lt1998-04-10 |  773 k |     0.58 |  0.017 |   0.75 |
+| LEA47  | 1M      | le1998-04-10 |  773 k |     0.60 |  0.005 |   0.78 |
+
+### Download of Resources
+
+Download is done using the following `blazectl` command:
+
+```sh
+blazectl download --server http://localhost:8080/fhir Patient -q "birthdate=$DATE&_count=1000" > /dev/null"
+```
+
+| System | Dataset | Date         | # Hits | Time (s) | StdDev | T/1M ¹ |
+|--------|---------|--------------|-------:|---------:|-------:|-------:|
+| LEA47  | 1M      | gt1998-04-10 |  227 k |     7.77 |  0.033 |  34.17 |
+| LEA47  | 1M      | ge1998-04-10 |  227 k |     7.91 |  0.056 |  34.77 |
+| LEA47  | 1M      | lt1998-04-10 |  773 k |    26.85 |  0.065 |  34.74 |
+| LEA47  | 1M      | le1998-04-10 |  773 k |    27.73 |  0.012 |  35.88 |
+
+### Download of Resources with Subsetting
+
+In case only a subset of information of a resource is needed, the special [_elements][1] search parameter can be used to retrieve only certain properties of a resource. Here `_elements=id` was used.
+
+Download is done using the following `blazectl` command:
+
+```sh
+blazectl download --server http://localhost:8080/fhir Patient -q "birthdate=$DATE&_elements=id&_count=1000" > /dev/null"
+```
+
+| System | Dataset | Date         | # Hits | Time (s) | StdDev | T/1M ¹ |
+|--------|---------|--------------|-------:|---------:|-------:|-------:|
+| LEA47  | 1M      | gt1998-04-10 |  227 k |     3.15 |  0.016 |  13.85 |
+| LEA47  | 1M      | ge1998-04-10 |  227 k |     3.09 |  0.108 |  13.58 |
+| LEA47  | 1M      | lt1998-04-10 |  773 k |     9.90 |  0.249 |  12.81 |
+| LEA47  | 1M      | le1998-04-10 |  773 k |     9.73 |  0.073 |  12.59 |
 
 ## Used Dataset
 

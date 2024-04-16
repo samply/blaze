@@ -2,6 +2,18 @@
  {blaze/async
   {:local/root "../async"}
 
+  blaze/interaction
+  {:local/root "../interaction"}
+
+  blaze/job-scheduler
+  {:local/root "../job-scheduler"}
+
+  blaze/job-re-index
+  {:local/root "../job-re-index"}
+
+  blaze/luid
+  {:local/root "../luid"}
+
   blaze/module-base
   {:local/root "../module-base"}
 
@@ -15,7 +27,31 @@
   {:local/root "../spec"}
 
   fi.metosin/reitit-openapi
-  {:mvn/version "0.7.0-alpha7"}}
+  {:mvn/version "0.7.0-alpha7"}
+
+  ca.uhn.hapi.fhir/org.hl7.fhir.validation
+  {:mvn/version "6.3.4"
+   :exclusions
+   [ca.uhn.hapi.fhir/org.hl7.fhir.dstu2
+    ca.uhn.hapi.fhir/org.hl7.fhir.dstu2016may
+    org.apache.httpcomponents/httpclient
+    org.xerial/sqlite-jdbc
+    net.sf.saxon/Saxon-HE
+    info.cqframework/cql
+    info.cqframework/model
+    info.cqframework/elm
+    info.cqframework/cql-to-elm
+    info.cqframework/quick
+    info.cqframework/qdm
+    org.thymeleaf/thymeleaf
+    com.nimbusds/nimbus-jose-jwt
+    net.sourceforge.plantuml/plantuml-mit
+    junit/junit
+    jakarta-regexp/jakarta-regexp]}
+
+  org.fhir/ucum
+  {:mvn/version "1.0.8"
+   :exclusions [xpp3/xpp3 xpp3/xpp3_xpath]}}
 
  :aliases
  {:test
@@ -28,7 +64,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.87.1366"}}
+    {:mvn/version "1.88.1376"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

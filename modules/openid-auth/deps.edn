@@ -9,7 +9,15 @@
   {:local/root "../scheduler"}
 
   buddy/buddy-auth
-  {:mvn/version "3.0.323"}}
+  {:mvn/version "3.0.323"}
+
+  ;; newer version for buddy-auth dependency
+  buddy/buddy-core
+  {:mvn/version "1.11.423"}
+
+  ;; newer version for buddy-core dependency
+  cheshire/cheshire
+  {:mvn/version "5.13.0"}}
 
  :aliases
  {:test
@@ -25,7 +33,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.87.1366"}}
+    {:mvn/version "1.88.1376"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

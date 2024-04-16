@@ -4,7 +4,7 @@
   https://www.hl7.org/fhir/http.html#delete"
   (:require
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
-   [blaze.db.spec :refer [node?]]
+   [blaze.db.node :refer [node?]]
    [blaze.interaction.delete]
    [blaze.log]
    [blaze.test-util :as tu :refer [given-thrown]]

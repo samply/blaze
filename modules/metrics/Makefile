@@ -13,7 +13,13 @@ test: build
 test-coverage: build
 	clojure -M:test:coverage
 
+cloc-prod:
+	cloc src
+
+cloc-test:
+	cloc test
+
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: fmt lint build test test-coverage clean
+.PHONY: fmt lint build test test-coverage cloc-prod cloc-test clean

@@ -4,6 +4,7 @@
    [blaze.cql-translator-spec]
    [blaze.db.spec]
    [blaze.elm.expression.spec]
+   [blaze.fhir.operation.evaluate-measure :as-alias evaluate-measure]
    [blaze.fhir.operation.evaluate-measure.cql-spec]
    [blaze.fhir.operation.evaluate-measure.measure :as measure]
    [blaze.fhir.operation.evaluate-measure.measure.spec]
@@ -17,7 +18,8 @@
 
 (s/def ::context
   (s/keys :req [:blaze/base-url ::reitit/router]
-          :req-un [:blaze/clock :blaze/rng-fn :blaze.db/db]))
+          :req-un [:blaze/clock :blaze/rng-fn :blaze.db/db
+                   ::evaluate-measure/executor]))
 
 (defn- temporal? [x]
   (instance? Temporal x))

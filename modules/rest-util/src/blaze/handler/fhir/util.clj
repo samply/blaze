@@ -2,11 +2,18 @@
   "Utilities for FHIR interactions."
   (:refer-clojure :exclude [sync])
   (:require
+   [blaze.anomaly :as ba]
    [blaze.fhir.spec]
+   [blaze.fhir.spec.type.system :as system]
    [blaze.util :as u]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [reitit.core :as reitit]))
+   [reitit.core :as reitit])
+  (:import
+   [java.time ZoneId ZonedDateTime]
+   [java.time.format DateTimeFormatter]))
+
+(set! *warn-on-reflection* true)
 
 (defn parse-nat-long [s]
   (when-let [n (parse-long s)]
@@ -72,6 +79,23 @@
   [{v "_elements"}]
   (mapv keyword (some-> v (str/split #"\s*,\s*"))))
 
+(defn- incorrect-date-msg [name value]
+  (format "The value `%s` of the query param `%s` is no valid date." value name))
+
+(defn date
+  "Returns the value of the query param with `name` parsed as FHIR date or nil
+  if not found.
+
+  Returns an anomaly if the query param is available but can't be converted to a
+  FHIR date."
+  {:arglists '([query-params name])}
+  [query-params name]
+  (when-let [value (get query-params name)]
+    (let [date (system/parse-date value)]
+      (if (ba/anomaly? date)
+        (ba/incorrect (incorrect-date-msg name value))
+        date))))
+
 (defn type-url
   "Returns the URL of a resource type like `[base]/[type]`."
   [{:blaze/keys [base-url] ::reitit/keys [router]} type]
@@ -92,3 +116,19 @@
   ;; URLs are build by hand here, because id's do not need to be URL encoded
   ;; and the URL encoding in reitit is slow: https://github.com/metosin/reitit/issues/477
   (str (instance-url context type id) "/_history/" vid))
+
+(def ^:private gmt (ZoneId/of "GMT"))
+
+(defn last-modified
+  "Returns the instant of `tx` formatted suitable for the Last-Modified HTTP
+  header."
+  {:arglists '([tx])}
+  [{:blaze.db.tx/keys [instant]}]
+  (->> (ZonedDateTime/ofInstant instant gmt)
+       (.format DateTimeFormatter/RFC_1123_DATE_TIME)))
+
+(defn etag
+  "Returns the t of `tx` formatted as ETag."
+  {:arglists '([tx])}
+  [{:blaze.db/keys [t]}]
+  (str "W/\"" t "\""))

@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { Data } from './+layout.js';
+	import type { PageData } from './$types';
 
 	import Table from '$lib/tailwind/table/table.svelte';
 	import SettingRow from './setting-row.svelte';
 	import FeatureRow from './feature-row.svelte';
 
-	export let data: Data;
+	export let data: PageData;
 </script>
 
 <svelte:head>

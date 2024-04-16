@@ -10,9 +10,6 @@
   blaze/db-tx-log-kafka
   {:local/root "modules/db-tx-log-kafka"}
 
-  blaze/frontend
-  {:local/root "modules/frontend"}
-
   blaze/interaction
   {:local/root "modules/interaction"}
 
@@ -56,7 +53,7 @@
   {:mvn/version "1.4.1"}
 
   org.slf4j/slf4j-nop
-  {:mvn/version "2.0.12"}}
+  {:mvn/version "2.0.13"}}
 
  :aliases
  {:build
@@ -81,7 +78,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.87.1366"}}
+    {:mvn/version "1.88.1376"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

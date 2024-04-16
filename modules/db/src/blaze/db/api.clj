@@ -27,12 +27,12 @@
 (defn sync
   "Used to coordinate with other nodes.
 
-  When called with `t`, returns a CompletionStage that completes with the
+  When called with `t`, returns a CompletionStage that will complete with the
   database value with at least the point in time `t` available. Does not
   communicate with the transaction log. Simply waits for the database value
   becoming available.
 
-  When called without `t`, returns a CompletionStage that completes with the
+  When called without `t`, returns a CompletionStage that will complete with the
   database value guaranteed to include all transactions that were complete at
   the time sync was called. Communicates with the transaction log."
   ([node]
@@ -52,12 +52,17 @@
   * [:put resource precondition?]
   * [:delete type id]
 
-  Returns a CompletableFuture that completes with the database after the
-  transaction in case of success or completes exceptionally with an anomaly in
-  case of a transaction error or other errors."
+  Returns a CompletableFuture that will complete with the database after the
+  transaction in case of success or will complete exceptionally with an anomaly
+  in case of a transaction error or other errors."
   [node tx-ops]
   (-> (np/-submit-tx node tx-ops)
-      (ac/then-compose #(np/-tx-result node %))))
+      (ac/then-compose-async #(np/-tx-result node %))))
+
+(defn changed-resources-publisher
+  "Returns a publisher that publishes all changed resources of `type`."
+  [node type]
+  (np/-changed-resources-publisher node type))
 
 (defn node
   "Returns the node of `db`."
@@ -426,8 +431,10 @@
   Medications, Locations, Organizations etc.
 
   The `patient-handle` itself is returned first."
-  [db patient-handle]
-  (p/-patient-everything db patient-handle))
+  ([db patient-handle]
+   (p/-patient-everything db patient-handle nil nil))
+  ([db patient-handle start end]
+   (p/-patient-everything db patient-handle start end)))
 
 ;; ---- Batch DB --------------------------------------------------------------
 
@@ -472,3 +479,22 @@
    (p/-pull-many node-or-db resource-handles))
   ([node-or-db resource-handles elements]
    (p/-pull-many node-or-db resource-handles elements)))
+
+;; ---- (Re) Index ------------------------------------------------------------
+
+(defn re-index-total
+  [db search-param-url]
+  (p/-re-index-total db search-param-url))
+
+(defn re-index
+  "Indexes the first 10000 resources of the search param with `search-param-url`.
+
+  Optionally starts at `start-type` and `start-id`.
+
+  Returns a CompletableFuture that will complete with a map of:
+  * :num-resources - the number of resources indexed
+  * :next - the resource handle to continue with"
+  ([db search-param-url]
+   (p/-re-index db search-param-url))
+  ([db search-param-url start-type start-id]
+   (p/-re-index db search-param-url start-type start-id)))

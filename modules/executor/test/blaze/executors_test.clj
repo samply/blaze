@@ -70,6 +70,13 @@
     (Thread/sleep 10)
     (is (= 1 @state))))
 
+(deftest scheduled-pool-test
+  (let [pool (ex/scheduled-pool 1 "name-%d")
+        state (atom 0)]
+    (ex/execute! pool #(reset! state 1))
+    (Thread/sleep 10)
+    (is (= 1 @state))))
+
 (deftest single-thread-executor-test
   (is (ex/single-thread-executor))
 

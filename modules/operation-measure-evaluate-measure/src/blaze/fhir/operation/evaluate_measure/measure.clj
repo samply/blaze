@@ -1,7 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.measure
   (:require
-   [blaze.anomaly :as ba :refer [if-ok when-ok]]
-   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.async.comp :as ac :refer [do-sync do-async]]
    [blaze.coll.core :as coll]
    [blaze.cql-translator :as cql-translator]
    [blaze.db.api :as d]
@@ -118,8 +118,13 @@
             (non-deleted-library-handle db id)))))))
 
 (defn- find-library [db library-ref]
-  (when-let [handle (find-library-handle db library-ref)]
-    @(d/pull db handle)))
+  (if-let [handle (find-library-handle db library-ref)]
+    (d/pull db handle)
+    (ac/completed-future
+     (ba/incorrect
+      (format "The Library resource with canonical URI `%s` was not found." library-ref)
+      :fhir/issue "value"
+      :fhir.issue/expression "Measure.library"))))
 
 (defn- compile-primary-library
   "Compiles the CQL code from the first library resource which is referenced
@@ -131,17 +136,14 @@
   Returns an anomaly on errors."
   [db measure opts]
   (if-let [library-ref (-> measure :library first type/value)]
-    (if-let [library (find-library db library-ref)]
-      (compile-library (d/node db) library opts)
-      (ba/incorrect
-       (format "The Library resource with canonical URI `%s` was not found." library-ref)
-       :fhir/issue "value"
-       :fhir.issue/expression "Measure.library"))
-    (ba/unsupported
-     "Missing primary library. Currently only CQL expressions together with one primary library are supported."
-     :fhir/issue "not-supported"
-     :fhir.issue/expression "Measure.library"
-     :measure measure)))
+    (do-async [library (find-library db library-ref)]
+      (compile-library (d/node db) library opts))
+    (ac/completed-future
+     (ba/unsupported
+      "Missing primary library. Currently only CQL expressions together with one primary library are supported."
+      :fhir/issue "not-supported"
+      :fhir.issue/expression "Measure.library"
+      :measure measure))))
 
 ;; ---- Evaluation ------------------------------------------------------------
 
@@ -300,7 +302,7 @@
   (if-let [{:keys [op] :as handle} (d/resource-handle db type id)]
     (if (identical? :delete op)
       (ba/incorrect (missing-subject-msg type id))
-      (ed/mk-resource db handle))
+      handle)
     (ba/incorrect (missing-subject-msg type id))))
 
 (defn- type-mismatch-msg [measure-subject-type eval-subject-type]
@@ -335,25 +337,25 @@
   (let [subject-type (subject-type measure)
         now (now clock)
         timeout-instant (time/instant (time/plus now timeout))]
-    (when-ok [{:keys [expression-defs function-defs parameter-default-values]}
-              (compile-primary-library db measure {})
-              subject-handle (some->> subject-ref (subject-handle db subject-type))]
-      (let [context
-            (assoc context
-                   :db db
-                   :now now
-                   :timeout-eclipsed? #(not (.isBefore (.instant ^Clock clock) timeout-instant))
-                   :timeout timeout
-                   :expression-defs expression-defs
-                   :function-defs function-defs
-                   :parameters parameter-default-values
-                   :subject-type subject-type
-                   :report-type report-type
-                   :luids (successive-luids context))]
-        (when-ok [expression-defs (eval-unfiltered context expression-defs)]
-          (cond-> (assoc context :expression-defs expression-defs)
-            subject-handle
-            (assoc :subject-handle subject-handle)))))))
+    (do-sync [{:keys [expression-defs function-defs parameter-default-values]}
+              (compile-primary-library db measure {})]
+      (when-ok [subject-handle (some->> subject-ref (subject-handle db subject-type))]
+        (let [context
+              (assoc context
+                     :db db
+                     :now now
+                     :timeout-eclipsed? #(not (.isBefore (.instant ^Clock clock) timeout-instant))
+                     :timeout timeout
+                     :expression-defs expression-defs
+                     :function-defs function-defs
+                     :parameters parameter-default-values
+                     :subject-type subject-type
+                     :report-type report-type
+                     :luids (successive-luids context))]
+          (when-ok [expression-defs (eval-unfiltered context expression-defs)]
+            (cond-> (assoc context :expression-defs expression-defs)
+              subject-handle
+              (assoc :subject-handle (ed/mk-resource db subject-handle)))))))))
 
 (defn evaluate-measure
   "Evaluates `measure` inside `period` in `db` with evaluation time of `now`.
@@ -363,13 +365,12 @@
   will complete exceptionally with an anomaly in case of errors."
   {:arglists '([context measure params])}
   [context {:keys [id] :as measure} params]
-  (if-ok [context (enhance-context context measure params)]
-    (-> (evaluate-groups context measure)
-        (ac/exceptionally #(assoc % :measure-id id))
-        (ac/then-apply
-         (fn [[{:keys [tx-ops]} :as result]]
+  (-> (enhance-context context measure params)
+      (ac/then-compose
+       (fn [context]
+         (do-sync [[{:keys [tx-ops]} :as result] (evaluate-groups context measure)]
            (cond->
             {:resource (measure-report context measure params result)}
              (seq tx-ops)
              (assoc :tx-ops tx-ops)))))
-    #(ac/completed-future (assoc % :measure-id id))))
+      (ac/exceptionally #(assoc % :measure-id id))))

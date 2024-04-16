@@ -1,6 +1,6 @@
 (ns blaze.interaction.util
   (:require
-   [blaze.anomaly :as ba]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.db.api :as d]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.spec.type :as type]
@@ -39,9 +39,17 @@
          [:sort (subs param 1) :desc]
          [:sort param :asc])])))
 
-(defn clauses [{sort "_sort" :as query-params}]
-  (into (if (str/blank? sort) [] (sort-clauses sort))
-        query-params->clauses-xf query-params))
+(defn clauses
+  "Extracts search clauses from `query-params`.
+
+  Removes some redundant or not supported special query params."
+  {:arglists '([query-params])}
+  [{sort "_sort" :as query-params}]
+  (let [clauses (into [] query-params->clauses-xf query-params)]
+    (if (or (str/blank? sort) (some (fn [[code]] (= "_id" code)) clauses))
+      clauses
+      (when-ok [sort-clauses (sort-clauses sort)]
+        (into sort-clauses clauses)))))
 
 (defn search-clauses [query-params]
   (into [] query-params->clauses-xf query-params))

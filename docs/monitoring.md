@@ -8,7 +8,7 @@ It's recommended to use [Prometheus][1] and [Grafana][2] to monitor the runtime 
 
 A basic Prometheus config looks like this:
 
-```yml
+```yaml
 global:
   scrape_interval: 15s
 

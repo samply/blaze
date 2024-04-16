@@ -1,34 +1,38 @@
 (ns blaze.db.tx-log.kafka.spec
   (:require
+   [blaze.db.tx-log.kafka :as-alias kafka]
    [blaze.executors :as ex]
    [clojure.spec.alpha :as s]))
 
-(s/def :blaze.db.tx-log.kafka/bootstrap-servers
+(s/def ::kafka/bootstrap-servers
   string?)
 
-(s/def :blaze.db.tx-log.kafka/last-t-executor
+(s/def ::kafka/topic
+  string?)
+
+(s/def ::kafka/last-t-executor
   ex/executor?)
 
-(s/def :blaze.db.tx-log.kafka/max-request-size
+(s/def ::kafka/max-request-size
   nat-int?)
 
-(s/def :blaze.db.tx-log.kafka/compression-type
+(s/def ::kafka/compression-type
   #{"none" "gzip" "snappy" "lz4" "zstd"})
 
-(s/def :blaze.db.tx-log.kafka/security-protocol
+(s/def ::kafka/security-protocol
   #{"PLAINTEXT" "SSL"})
 
-(s/def :blaze.db.tx-log.kafka/truststore-location
+(s/def ::kafka/truststore-location
   string?)
 
-(s/def :blaze.db.tx-log.kafka/truststore-password
+(s/def ::kafka/truststore-password
   string?)
 
-(s/def :blaze.db.tx-log.kafka/keystore-location
+(s/def ::kafka/keystore-location
   string?)
 
-(s/def :blaze.db.tx-log.kafka/keystore-password
+(s/def ::kafka/keystore-password
   string?)
 
-(s/def :blaze.db.tx-log.kafka/key-password
+(s/def ::kafka/key-password
   string?)

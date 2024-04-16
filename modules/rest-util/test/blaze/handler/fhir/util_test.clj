@@ -1,14 +1,20 @@
 (ns blaze.handler.fhir.util-test
   (:require
+   [blaze.fhir.spec.generators :as fg]
+   [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.fhir.util-spec]
    [blaze.test-util :as tu]
+   [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
    [clojure.test :as test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
-   [reitit.core :as reitit]))
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]]
+   [reitit.core :as reitit])
+  (:import [java.time Instant]))
 
 (st/instrument)
 
@@ -131,6 +137,25 @@
           (= (set (fhir-util/elements query-params))
              (set (fields :vector))))))))
 
+(deftest date-test
+  (testing "missing"
+    (are [query-params] (nil? (fhir-util/date query-params "start"))
+      nil
+      {}
+      {"end" "2024"}))
+
+  (testing "invalid"
+    (given (fhir-util/date {"start" "invalid"} "start")
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "The value `invalid` of the query param `start` is no valid date."))
+
+  (testing "valid"
+    (tu/satisfies-prop 1000
+      (prop/for-all [name gen/string-alphanumeric
+                     value fg/date-value]
+        (let [query-params {name value}]
+          (= (type/date value) (fhir-util/date query-params name)))))))
+
 (def router
   (reitit/router
    [[""
@@ -156,3 +181,8 @@
 (deftest versioned-instance-url-test
   (is (= "http://localhost:8080/fhir/Patient/0/_history/1"
          (fhir-util/versioned-instance-url context "Patient" "0" "1"))))
+
+(deftest etag-test
+  (tu/satisfies-prop 1000
+    (prop/for-all [t (s/gen :blaze.db/t)]
+      (= (format "W/\"%d\"" t) (fhir-util/etag {:blaze.db/t t :blaze.db.tx/instant Instant/EPOCH})))))

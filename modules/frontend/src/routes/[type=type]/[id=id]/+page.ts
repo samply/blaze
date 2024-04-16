@@ -1,10 +1,13 @@
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
 import { fhirObject } from '$lib/resource/resource-card.js';
+import type { PageLoad } from './$types';
 
-export async function load({ fetch, params }) {
+export const load: PageLoad = async ({ fetch, params }) => {
 	const res = await fetch(`${base}/${params.type}/${params.id}`, {
-		headers: { Accept: 'application/fhir+json' }
+		headers: {
+			Accept: 'application/fhir+json'
+		}
 	});
 
 	if (!res.ok) {
@@ -24,4 +27,4 @@ export async function load({ fetch, params }) {
 	return {
 		resource: await fhirObject(resource, fetch)
 	};
-}
+};

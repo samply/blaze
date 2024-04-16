@@ -20,15 +20,15 @@
   (testing "with publisher generating two numbers"
     (let [publisher (SubmissionPublisher.)
           future (flow/collect publisher)]
-      (.submit publisher 1)
-      (.submit publisher 2)
+      (flow/submit! publisher 1)
+      (flow/submit! publisher 2)
       (.close publisher)
       (is (= [1 2] @future))))
 
   (testing "with exceptionally closed publisher"
     (let [publisher (SubmissionPublisher.)
           future (flow/collect publisher)]
-      (.submit publisher 1)
+      (flow/submit! publisher 1)
       (.closeExceptionally publisher (ex-info "e" {}))
       (try
         @future
@@ -41,7 +41,7 @@
           processor (flow/mapcat #(repeat % %))
           future (flow/collect processor)]
       (flow/subscribe! publisher processor)
-      (.submit publisher 1)
+      (flow/submit! publisher 1)
       (.close publisher)
       (is (= [1] @future))))
 
@@ -50,8 +50,8 @@
           processor (flow/mapcat #(repeat % %))
           future (flow/collect processor)]
       (flow/subscribe! publisher processor)
-      (.submit publisher 1)
-      (.submit publisher 2)
+      (flow/submit! publisher 1)
+      (flow/submit! publisher 2)
       (.close publisher)
       (is (= [1 2 2] @future))))
 
@@ -60,9 +60,59 @@
           processor (flow/mapcat #(repeat % %))
           future (flow/collect processor)]
       (flow/subscribe! publisher processor)
-      (.submit publisher 1)
+      (flow/submit! publisher 1)
       (.closeExceptionally publisher (ex-info "e" {}))
       (try
         @future
+        (is false)
+        (catch Exception e
+          (is (= "e" (ex-message (ex-cause e)))))))))
+
+(deftest take-test
+  (testing "with publisher generating one number"
+    (let [publisher (SubmissionPublisher.)
+          processor (flow/take 1)
+          future (flow/collect processor)]
+      (flow/subscribe! publisher processor)
+      (flow/submit! publisher 1)
+      (.close publisher)
+
+      (testing "that number is returned"
+        (is (= [1] @future)))))
+
+  (testing "with publisher generating two numbers"
+    (testing "taking only one"
+      (let [publisher (SubmissionPublisher.)
+            processor (flow/take 1)
+            future (flow/collect processor)]
+        (flow/subscribe! publisher processor)
+        (flow/submit! publisher 1)
+        (flow/submit! publisher 2)
+        (.close publisher)
+
+        (testing "only one number is returned"
+          (is (= [1] @future)))))
+
+    (testing "taking both"
+      (let [publisher (SubmissionPublisher.)
+            processor (flow/take 2)
+            future (flow/collect processor)]
+        (flow/subscribe! publisher processor)
+        (flow/submit! publisher 1)
+        (flow/submit! publisher 2)
+        (.close publisher)
+
+        (testing "only one number is returned"
+          (is (= [1 2] @future))))))
+
+  (testing "with exceptionally closed publisher"
+    (let [publisher (SubmissionPublisher.)
+          processor (flow/take 1)
+          future (flow/collect processor)]
+      (flow/subscribe! publisher processor)
+      (.closeExceptionally publisher (ex-info "e" {}))
+      (try
+        @future
+        (is false)
         (catch Exception e
           (is (= "e" (ex-message (ex-cause e)))))))))

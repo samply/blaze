@@ -1,6 +1,7 @@
 import type { Parameters } from 'fhir/r4';
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
+import type { PageLoad } from './$types';
 
 interface ResourceTypeTotal {
 	name: string;
@@ -20,7 +21,7 @@ export interface Data {
 	resourceTypeTotals: ResourceTypeTotal[];
 }
 
-export async function load({ fetch }): Promise<Data> {
+export const load: PageLoad = async ({ fetch }) => {
 	const res = await fetch(`${base}/$totals`, { headers: { Accept: 'application/fhir+json' } });
 
 	if (!res.ok) {
@@ -28,4 +29,4 @@ export async function load({ fetch }): Promise<Data> {
 	}
 
 	return { resourceTypeTotals: resourceTypeTotals(await res.json()) };
-}
+};

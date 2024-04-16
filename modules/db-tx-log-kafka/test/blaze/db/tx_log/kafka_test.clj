@@ -42,8 +42,30 @@
 (def config
   {::tx-log/kafka
    {:bootstrap-servers bootstrap-servers
+    :topic "tx"
     :last-t-executor (ig/ref ::kafka/last-t-executor)}
    ::kafka/last-t-executor {}})
+
+(def none-default-key-config
+  {[::tx-log/kafka :blaze.db.admin/tx-log]
+   {:bootstrap-servers bootstrap-servers
+    :topic "tx-admin"
+    :last-t-executor (ig/ref ::kafka/last-t-executor)}
+   ::kafka/last-t-executor {}})
+
+(defn- no-op-producer [{servers :bootstrap-servers}]
+  (assert (= bootstrap-servers servers))
+  (reify
+    Producer
+    AutoCloseable
+    (close [_])))
+
+(defn- no-op-consumer [_ {servers :bootstrap-servers}]
+  (assert (= bootstrap-servers servers))
+  (reify
+    Consumer
+    AutoCloseable
+    (close [_])))
 
 (deftest init-test
   (testing "nil config"
@@ -57,33 +79,36 @@
       :key := ::tx-log/kafka
       :reason := ::ig/build-failed-spec
       [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :bootstrap-servers))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :last-t-executor))))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :topic))
+      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :last-t-executor))))
 
   (testing "invalid bootstrap servers"
     (given-thrown (ig/init {::tx-log/kafka {:bootstrap-servers ::invalid}})
       :key := ::tx-log/kafka
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :last-t-executor))
-      [:explain ::s/problems 1 :pred] := `string?
-      [:explain ::s/problems 1 :val] := ::invalid)))
+      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :topic))
+      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :last-t-executor))
+      [:explain ::s/problems 2 :pred] := `string?
+      [:explain ::s/problems 2 :val] := ::invalid))
+
+  (testing "non default key"
+    (with-redefs
+     [kafka/create-producer
+      (fn [{servers :bootstrap-servers}]
+        (assert (= bootstrap-servers servers))
+        (reify
+          Producer
+          (send [_ _ callback]
+            (.onCompletion callback (RecordMetadata. nil 0 0 0 0 0) nil))
+          AutoCloseable
+          (close [_])))
+      kafka/create-last-t-consumer no-op-consumer]
+      (with-system [{tx-log [::tx-log/kafka :blaze.db.admin/tx-log]} none-default-key-config]
+        (is (satisfies? tx-log/TxLog tx-log))))))
 
 (deftest duration-seconds-collector-init-test
   (with-system [{collector ::kafka/duration-seconds} {::kafka/duration-seconds {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
-
-(defn- no-op-producer [{servers :bootstrap-servers}]
-  (assert (= bootstrap-servers servers))
-  (reify
-    Producer
-    AutoCloseable
-    (close [_])))
-
-(defn- no-op-consumer [{servers :bootstrap-servers}]
-  (assert (= bootstrap-servers servers))
-  (reify
-    Consumer
-    AutoCloseable
-    (close [_])))
 
 (deftest tx-log-test
   (testing "submit"
@@ -141,12 +166,12 @@
     (with-redefs
      [kafka/create-producer no-op-producer
       kafka/create-consumer
-      (fn [{servers :bootstrap-servers}]
+      (fn [tx-partition {servers :bootstrap-servers}]
         (assert (= bootstrap-servers servers))
         (reify
           Consumer
           (^void seek [_ ^TopicPartition partition ^long offset]
-            (assert (= (TopicPartition. "tx" 0) partition))
+            (assert (= tx-partition partition))
             (assert (zero? offset)))
           (^ConsumerRecords poll [_ ^Duration duration]
             (assert (= (time/seconds 1) duration))
@@ -162,12 +187,12 @@
     (with-redefs
      [kafka/create-producer no-op-producer
       kafka/create-last-t-consumer
-      (fn [{servers :bootstrap-servers}]
+      (fn [tx-partition {servers :bootstrap-servers}]
         (assert (= bootstrap-servers servers))
         (reify
           Consumer
           (endOffsets [_ partitions]
-            (assert (= (TopicPartition. "tx" 0) (first partitions)))
+            (assert (= tx-partition (first partitions)))
             (Map/of (first partitions) 104614))
           AutoCloseable
           (close [_])))]
@@ -180,9 +205,10 @@
   (is (instance? KafkaProducer (kafka/create-producer producer-config))))
 
 (deftest create-consumer-test
-  (given (.assignment (kafka/create-consumer producer-config))
-    count := 1
-    [0] := (TopicPartition. "tx" 0)))
+  (let [tx-partition (TopicPartition. "tx" 0)]
+    (given (.assignment (kafka/create-consumer tx-partition producer-config))
+      count := 1
+      [0] := tx-partition)))
 
 (deftest last-t-executor-shutdown-timeout-test
   (let [{::kafka/keys [last-t-executor] :as system}

@@ -54,3 +54,24 @@ export async function fetchBundleWithDuration(
 		duration: Date.now() - start
 	};
 }
+
+export async function fetchPageBundleWithDuration(
+	fetch: typeof window.fetch,
+	params: RouteParams,
+	url: URL
+) {
+	const start = Date.now();
+
+	const res = await fetch(`${base}/${params.type}/__page?${processParams(url.searchParams)}`, {
+		headers: { Accept: 'application/fhir+json' }
+	});
+
+	if (!res.ok) {
+		error(res.status as NumericRange<400, 599>, await appError(params, res));
+	}
+
+	return {
+		bundle: await transformBundle(fetch, await res.json()),
+		duration: Date.now() - start
+	};
+}

@@ -13,7 +13,12 @@ test:
 test-coverage:
 	true
 
+cloc-prod:
+
+cloc-test:
+	cloc src
+
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: fmt lint prep test test-coverage clean
+.PHONY: fmt lint prep test test-coverage cloc-prod cloc-test clean

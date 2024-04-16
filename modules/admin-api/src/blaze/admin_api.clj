@@ -1,21 +1,41 @@
 (ns blaze.admin-api
   (:require
    [blaze.admin-api.spec]
-   [blaze.anomaly :refer [if-ok]]
-   [blaze.async.comp :as ac]
+   [blaze.admin-api.validation]
+   [blaze.anomaly :as ba :refer [if-ok]]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.kv.rocksdb :as rocksdb]
    [blaze.elm.expression :as-alias expr]
+   [blaze.fhir.response.create :as create-response]
+   [blaze.fhir.spec :as fhir-spec]
+   [blaze.handler.fhir.util :as fhir-util]
+   [blaze.handler.util :as handler-util]
+   [blaze.interaction.util :as iu]
+   [blaze.job-scheduler :as js]
+   [blaze.job-scheduler.spec]
+   [blaze.job.re-index]
+   [blaze.middleware.fhir.db :as db]
+   [blaze.middleware.fhir.output :as fhir-output]
+   [blaze.middleware.fhir.resource :as resource]
+   [blaze.middleware.output :as output]
    [blaze.spec]
+   [clojure.datafy :as datafy]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
+   [jsonista.core :as j]
    [reitit.openapi :as openapi]
    [reitit.ring]
    [reitit.ring.spec]
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
+   [com.google.common.base CaseFormat]
    [java.io File]
-   [java.nio.file Files]))
+   [java.nio.file Files]
+   [java.util ArrayList]
+   [org.hl7.fhir.r5.elementmodel Manager$FhirFormat]
+   [org.hl7.fhir.r5.formats FormatUtilities]
+   [org.hl7.fhir.validation ValidationEngine ValidationEngine$ValidationEngineBuilder]))
 
 (set! *warn-on-reflection* true)
 
@@ -94,8 +114,8 @@
 (defn- db-not-found [db-name]
   (ring/not-found {:msg (format "The database `%s` was not found." db-name)}))
 
-(def ^:private wrap-db
-  {:name :wrap-db
+(def ^:private wrap-dbs-db
+  {:name :wrap-dbs-db
    :wrap (fn [handler dbs]
            (fn [{{db-name :db} :path-params :as request}]
              (if-let [db (dbs db-name)]
@@ -103,12 +123,102 @@
                (-> (db-not-found db-name)
                    (ac/completed-future)))))})
 
+(defn- wrap-json-output
+  "Middleware to output data (not resources) in JSON."
+  [opts]
+  (let [object-mapper (j/object-mapper opts)]
+    (fn [handler]
+      (fn [request]
+        (do-sync [response (handler request)]
+          (output/handle-response object-mapper response))))))
+
+(defn- wrap-fhir-output
+  "Middleware to output FHIR resources in JSON or XML."
+  [handler]
+  (fn [request]
+    (do-sync [response (handler request)]
+      (fhir-output/handle-response {} request response))))
+
+(def ^:private wrap-output
+  {:name :output
+   :compile (fn [{:keys [response-type] :response-type.json/keys [opts]} _]
+              (condp = response-type
+                :json (wrap-json-output opts)
+                :fhir wrap-fhir-output))})
+
+(def ^:private wrap-db
+  {:name :db
+   :wrap db/wrap-db})
+
+(def ^:private wrap-resource
+  {:name :resource
+   :wrap resource/wrap-resource})
+
+(def ^:private allowed-profiles
+  #{#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"
+    #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"})
+
+(defn- check-profile [resource]
+  (if (some allowed-profiles (-> resource :meta :profile))
+    resource
+    (ba/incorrect
+     "No allowed profile found."
+     :outcome
+     {:fhir/type :fhir/OperationOutcome
+      :issue
+      [{:fhir/type :fhir.OperationOutcome/issue
+        :severity #fhir/code"error"
+        :code #fhir/code"value"
+        :details #fhir/CodeableConcept
+                  {:text "No allowed profile found."}}]})))
+
+(defn- validate [validator resource]
+  (-> (.validate ^ValidationEngine validator
+                 ^bytes (fhir-spec/unform-json resource)
+                 Manager$FhirFormat/JSON
+                 (ArrayList.)
+                 (ArrayList.))
+      (datafy/datafy)))
+
+(defn- error-issues [outcome]
+  (update outcome :issue (partial filterv (comp #{#fhir/code"error"} :severity))))
+
+(def ^:private wrap-validate-job
+  {:name :wrap-validate-job
+   :wrap (fn [handler validator]
+           (fn [{:keys [body] :as request}]
+             (if-ok [body (check-profile body)]
+               (let [outcome (error-issues (validate validator body))]
+                 (if (seq (:issue outcome))
+                   (ac/completed-future (ring/bad-request outcome))
+                   (handler request)))
+               #(ac/completed-future (ring/bad-request (:outcome %))))))})
+
+(defn wrap-error* [handler]
+  (fn [request]
+    (-> (handler request)
+        (ac/exceptionally handler-util/error-response))))
+
+(def ^:private wrap-error
+  {:name :wrap-error
+   :wrap wrap-error*})
+
+(defn- camel [s]
+  (.to CaseFormat/LOWER_HYPHEN CaseFormat/LOWER_CAMEL s))
+
 (defn- router
-  [{:keys [context-path dbs] :or {context-path ""} :as context}]
+  [{:keys [context-path admin-node validator db-sync-timeout dbs
+           create-job-handler read-job-handler search-type-job-handler
+           pause-job-handler resume-job-handler]
+    :or {context-path ""
+         db-sync-timeout 10000}
+    :as context}]
   (reitit.ring/router
    [""
     {:openapi {:id :admin-api}
-     :middleware [openapi/openapi-feature]}
+     :middleware [wrap-output openapi/openapi-feature]
+     :response-type :json
+     :response-type.json/opts {:encode-key-fn (comp camel name)}}
     [""
      {:get
       {:handler (root-handler context)}}]
@@ -171,7 +281,7 @@
              {:type "array"
               :items {:type "string"}}}}}}}}}]
      ["/{db}"
-      {:middleware [[wrap-db dbs]]}
+      {:middleware [[wrap-dbs-db dbs]]}
       ["/stats"
        {:get
         {:handler db-stats-handler
@@ -242,19 +352,100 @@
                  {:type "object"
                   :properties
                   {:data-size {:type "number"}
-                   :total-raw-key-size {:type "number"}}}}}}}}}}}]]]]]]
+                   :total-raw-key-size {:type "number"}}}}}}}}}}}]]]]]
+    ["/Task"
+     {:fhir.resource/type "Task"
+      :response-type :fhir
+      :middleware [wrap-error]}
+     [""
+      {:name :Task/type
+       :get
+       {:middleware [[wrap-db admin-node db-sync-timeout]]
+        :handler search-type-job-handler}
+       :post
+       {:middleware [wrap-resource [wrap-validate-job validator]]
+        :handler create-job-handler}}]
+     ["/{id}"
+      [""
+       {:get
+        {:middleware [[wrap-db admin-node db-sync-timeout]]
+         :handler read-job-handler}}]
+      ["/$pause"
+       {:post
+        {:handler pause-job-handler}}]
+      ["/$resume"
+       {:post
+        {:handler resume-job-handler}}]]]]
    {:path (str context-path "/__admin")
     :syntax :bracket}))
 
+(defn- load-profile [name]
+  (log/debug "Load profile" name)
+  (let [parser (FormatUtilities/makeParser Manager$FhirFormat/JSON)
+        classloader (.getContextClassLoader (Thread/currentThread))
+        source (.readAllBytes (.getResourceAsStream classloader name))]
+    (.parse parser source)))
+
+(defn- create-validator* []
+  (doto (-> (ValidationEngine$ValidationEngineBuilder.)
+            (.withNoTerminologyServer)
+            (.fromSource "hl7.fhir.r4.core#4.0.1"))
+    (.seeResource (load-profile "blaze/job_scheduler/CodeSystem-JobType.json"))
+    (.seeResource (load-profile "blaze/job_scheduler/CodeSystem-JobOutput.json"))
+    (.seeResource (load-profile "blaze/job_scheduler/StructureDefinition-Job.json"))
+    (.seeResource (load-profile "blaze/job/re_index/CodeSystem-ReIndexJobParameter.json"))
+    (.seeResource (load-profile "blaze/job/re_index/CodeSystem-ReIndexJobOutput.json"))
+    (.seeResource (load-profile "blaze/job/re_index/StructureDefinition-ReIndexJob.json"))))
+
+(defn- create-validator []
+  (try
+    (create-validator*)
+    (catch Exception e
+      (log/error e)
+      (throw e))))
+
+(defn- create-job-handler [job-scheduler]
+  (fn [{:keys [body] :as request}]
+    (do-sync [job (js/create-job job-scheduler (iu/strip-meta body))]
+      (let [{:blaze.db/keys [tx]} (meta job)]
+        (-> (ring/response job)
+            (ring/status 201)
+            (ring/header "Last-Modified" (fhir-util/last-modified tx))
+            (ring/header "ETag" (fhir-util/etag tx))
+            (create-response/location-header request "Task" (:id job)
+                                             (str (:blaze.db/t tx))))))))
+
+(defn- pause-job-handler [job-scheduler]
+  (fn [{{:keys [id]} :path-params}]
+    (do-sync [job (js/pause-job job-scheduler id)]
+      (let [{:blaze.db/keys [tx]} (meta job)]
+        (-> (ring/response job)
+            (ring/header "Last-Modified" (fhir-util/last-modified tx))
+            (ring/header "ETag" (fhir-util/etag tx)))))))
+
+(defn- resume-job-handler [job-scheduler]
+  (fn [{{:keys [id]} :path-params}]
+    (do-sync [job (js/resume-job job-scheduler id)]
+      (let [{:blaze.db/keys [tx]} (meta job)]
+        (-> (ring/response job)
+            (ring/header "Last-Modified" (fhir-util/last-modified tx))
+            (ring/header "ETag" (fhir-util/etag tx)))))))
+
 (defmethod ig/pre-init-spec :blaze/admin-api [_]
-  (s/keys :req-un [:blaze/context-path ::settings ::features]
-          :opt-un [::dbs] :opt [::expr/cache]))
+  (s/keys :req-un [:blaze/context-path ::admin-node :blaze/job-scheduler
+                   ::read-job-handler ::search-type-job-handler
+                   ::settings ::features]
+          :opt [::dbs ::expr/cache ::db-sync-timeout]))
 
 (defmethod ig/init-key :blaze/admin-api
-  [_ context]
+  [_ {:keys [job-scheduler] :as context}]
   (log/info "Init Admin endpoint")
   (reitit.ring/ring-handler
-   (router context)
-   (fn [{:keys [uri]}]
-     (-> (ring/not-found {:uri uri})
-         (ac/completed-future)))))
+   (router (assoc context :validator (create-validator)
+                  :create-job-handler (create-job-handler job-scheduler)
+                  :pause-job-handler (pause-job-handler job-scheduler)
+                  :resume-job-handler (resume-job-handler job-scheduler)))
+   ((wrap-json-output {})
+    (fn [{:keys [uri]}]
+      (-> (ring/not-found {"uri" uri})
+          (ac/completed-future))))))
