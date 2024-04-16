@@ -12,12 +12,12 @@
   (format "Missing key in JWKS document config at `%s`." jwks-uri))
 
 (defn- public-key
-  "Take the first jwk from the parsed jwks-json map and converts it into a
-  PublicKey.
+  "Take the first jwk with usage signature from the parsed jwks-json map and
+  converts it into a PublicKey.
 
   Returns nil of no key was found."
   [[jwks-uri jwks-document]]
-  (if-let [key (some-> jwks-document :keys first)]
+  (if-let [key (some #(when (= "sig" (:use %)) %) (:keys jwks-document))]
     (keys/jwk->public-key key)
     (throw-anom (ba/fault (missing-key-msg jwks-uri)))))
 

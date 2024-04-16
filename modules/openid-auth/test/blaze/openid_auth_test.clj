@@ -2,6 +2,7 @@
   (:require
    [blaze.module.test-util :refer [with-system]]
    [blaze.openid-auth :as openid-auth]
+   [blaze.openid-auth.impl-test :refer [jwks-document-one-key]]
    [blaze.openid-auth.spec]
    [blaze.test-util :as tu :refer [given-thrown]]
    [buddy.auth.protocols :as p]
@@ -19,19 +20,6 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(defmethod ig/init-key ::http-client [_ _]
-  (let [http-client (HttpClientMock.)]
-    (-> (.onGet http-client "http://localhost:8080/.well-known/openid-configuration")
-        (.doReturnStatus 404))))
-
-(def config
-  {::openid-auth/backend
-   {:http-client (ig/ref ::http-client)
-    :scheduler (ig/ref :blaze/scheduler)
-    :provider-url "http://localhost:8080"}
-   ::http-client {}
-   :blaze/scheduler {}})
-
 (deftest init-test
   (testing "nil config"
     (given-thrown (ig/init {::openid-auth/backend nil})
@@ -47,7 +35,43 @@
       [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))
       [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :provider-url)))))
 
+(defmethod ig/init-key ::http-client-not-found [_ _]
+  (let [http-client (HttpClientMock.)]
+    (-> (.onGet http-client "http://localhost:8080/.well-known/openid-configuration")
+        (.doReturnStatus 404))
+    http-client))
+
+(defmethod ig/init-key ::http-client-success [_ _]
+  (let [http-client (HttpClientMock.)]
+    (-> (.onGet http-client "http://localhost:8080/.well-known/openid-configuration")
+        (.doReturnJSON "{\"jwks_uri\":\"http://localhost:8080/jwks\"}"))
+    (-> (.onGet http-client "http://localhost:8080/jwks")
+        (.doReturnJSON jwks-document-one-key))
+    http-client))
+
+(def config-not-found
+  {::openid-auth/backend
+   {:http-client (ig/ref ::http-client-not-found)
+    :scheduler (ig/ref :blaze/scheduler)
+    :provider-url "http://localhost:8080"}
+   ::http-client-not-found {}
+   :blaze/scheduler {}})
+
+(def config-success
+  {::openid-auth/backend
+   {:http-client (ig/ref ::http-client-success)
+    :scheduler (ig/ref :blaze/scheduler)
+    :provider-url "http://localhost:8080"}
+   ::http-client-success {}
+   :blaze/scheduler {}})
+
 (deftest backend-test
-  (with-system [{::openid-auth/keys [backend]} config]
-    (is (satisfies? p/IAuthentication backend))
-    (Thread/sleep 2000)))
+  (testing "public key not found"
+    (with-system [{::openid-auth/keys [backend]} config-not-found]
+      (is (satisfies? p/IAuthentication backend))
+      (Thread/sleep 2000)))
+
+  (testing "public key found"
+    (with-system [{::openid-auth/keys [backend]} config-success]
+      (is (satisfies? p/IAuthentication backend))
+      (Thread/sleep 2000))))
