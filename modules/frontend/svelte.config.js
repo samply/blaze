@@ -16,7 +16,8 @@ const config = {
 			directives: {
 				'script-src': ['self'],
 				'object-src': ['none'],
-				'base-uri': ['none']
+				'base-uri': ['none'],
+				'frame-ancestors': ['none']
 			}
 		}
 	}

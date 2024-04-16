@@ -31,22 +31,20 @@ gzip_types text/javascript text/css application/json application/fhir+json;
 
 ## Reverse Proxy Config
 
-Special reverse proxy config is needed because the frontend uses quite large cookies to store the session information. Also request buffering is turned off i order to not buffer large FHIR uploads.
+Special reverse proxy config is needed because the frontend uses quite large cookies to store the session information. Also request buffering is turned off in order to not buffer large FHIR uploads.
 
 ```text
 proxy_http_version      1.1;
-proxy_buffer_size       32k;
-proxy_buffers           8 32k;
+proxy_buffer_size       8k;
 proxy_request_buffering off;
 ```
 
 ## Security Related Headers
 
-The following headers are added to enhance security: 
+The following header is added to enhance security: 
 
 ```text
 add_header X-Content-Type-Options nosniff;
-add_header X-Frame-Options SAMEORIGIN;
 ```
 
 > [!TIP]

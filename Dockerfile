@@ -30,6 +30,5 @@ ENV TRANSACTION_DB_DIR="/app/data/transaction"
 ENV RESOURCE_DB_DIR="/app/data/resource"
 ENV ADMIN_INDEX_DB_DIR="/app/data/admin-index"
 ENV ADMIN_TRANSACTION_DB_DIR="/app/data/admin-transaction"
-ENV ADMIN_RESOURCE_DB_DIR="/app/data/admin-resource"
 
 CMD ["java", "-jar",  "blaze-0.25.0-standalone.jar"]
