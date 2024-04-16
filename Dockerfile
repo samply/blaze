@@ -16,7 +16,7 @@ RUN groupadd -g 1001 blaze
 RUN useradd -u 1001 -g 1001 --create-home blaze
 
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
-COPY target/blaze-0.25.0-standalone.jar /app/
+COPY target/blaze-0.26.0-standalone.jar /app/
 COPY --from=fhir-packages /root/.fhir/packages /home/blaze/.fhir/packages/
 RUN chown -R 1001:1001 /home/blaze/.fhir
 
@@ -31,4 +31,4 @@ ENV RESOURCE_DB_DIR="/app/data/resource"
 ENV ADMIN_INDEX_DB_DIR="/app/data/admin-index"
 ENV ADMIN_TRANSACTION_DB_DIR="/app/data/admin-transaction"
 
-CMD ["java", "-jar",  "blaze-0.25.0-standalone.jar"]
+CMD ["java", "-jar",  "blaze-0.26.0-standalone.jar"]

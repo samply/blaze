@@ -37,8 +37,7 @@ In addition to the REPL development inside a single module, it's possible to run
 ## Release Checklist
 
 * create a release branch called `release/v<version>` like `release/v0.13.1`
-* rename every occurrence of the old version, say `0.13.0` into the new version, say `0.13.1`
-* rename every occurrence of old Docker images like `samply/blaze:0.13` into the new image, say `samply/blaze:0.14`
+* rename every occurrence of the old version, say `0.25.0` into the new version, say `0.26.0`
 * update the release date in namespace `blaze.system`
 * update the CHANGELOG based on the milestone
 * create a commit with the title `Release v<version>`
