@@ -2,17 +2,17 @@
 
 ## Frontend
 
-| Name                | Default | Since | Depr ¹ | Description                                                                                       |
-|:--------------------|:--------|:------|:-------|:--------------------------------------------------------------------------------------------------|
-| ORIGIN              | —       | v0.26 |        | The base URL of the frontend as accessed by the browser.                                          |
-| BACKEND_BASE_URL    | —       | v0.26 |        | The `BASE_URL` of the backend as reachable by the frontend.                                       |
-| AUTH_CLIENT_ID      | —       | v0.26 |        | The client ID of the OAuth client used to communicate with the auth provider.                     |
-| AUTH_CLIENT_SECRET  | —       | v0.26 |        | The client ID of the OAuth client used to communicate with the auth provider.                     |
-| AUTH_ISSUER         | —       | v0.26 |        | The base URL of the auth provider. For Keycloak that is the realm base URL.                       |
-| AUTH_SECRET         | —       | v0.26 |        | A secret random string that is used to encrypt the session cookie.                                |
-| PROTOCOL_HEADER     | —       | v0.26 |        | Set this to `x-forwarded-proto` if the frontend is deployed behind a reverse proxy.               |
-| HOST_HEADER         | —       | v0.26 |        | Set this to `x-forwarded-host` if the frontend is deployed behind a reverse proxy.                |
-| NODE_EXTRA_CA_CERTS | —       | v0.26 |        | The name of a file with additional CA certificates needed to access especially the auth provider. |
+| Name                | Default | Since | Depr ¹ | Description                                                                                                                                                                                    |
+|:--------------------|:--------|:------|:-------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ORIGIN              | —       | v0.26 |        | The base URL of the frontend as accessed by the browser.                                                                                                                                       |
+| BACKEND_BASE_URL    | —       | v0.26 |        | The `BASE_URL` of the backend as reachable by the frontend.                                                                                                                                    |
+| AUTH_CLIENT_ID      | —       | v0.26 |        | The client ID of the OAuth client used to communicate with the auth provider.                                                                                                                  |
+| AUTH_CLIENT_SECRET  | —       | v0.26 |        | The client ID of the OAuth client used to communicate with the auth provider.                                                                                                                  |
+| AUTH_ISSUER         | —       | v0.26 |        | The base URL of the auth provider. For Keycloak that is the realm base URL.                                                                                                                    |
+| AUTH_SECRET         | —       | v0.26 |        | A secret random string that is used to encrypt the session cookie. This should be a minimum of 32 characters, random string. On UNIX systems you can use openssl rand -hex 32 to generate one. |
+| PROTOCOL_HEADER     | —       | v0.26 |        | Set this to `x-forwarded-proto` if the frontend is deployed behind a reverse proxy.                                                                                                            |
+| HOST_HEADER         | —       | v0.26 |        | Set this to `x-forwarded-host` if the frontend is deployed behind a reverse proxy.                                                                                                             |
+| NODE_EXTRA_CA_CERTS | —       | v0.26 |        | The name of a file with additional CA certificates needed to access especially the auth provider.                                                                                              |
 
 ## Backend
 

@@ -185,6 +185,10 @@ For Keycloak the realm `docs/deployment/full-standalone/keycloak/import/realm-bl
 > [!CAUTION]
 > Please don't use this realm in production.
 
+As you can see in the `realm-blaze.json` file, the redirect URL for the client is set to `https://blaze.localhost/fhir/auth/callback/keycloak`. You have to change the redirect URL if you use a different hostname.
+
+If your users immediately sign-in after clicking on the **Sign in with Keycloak** button, the Keycloak session still exists and so Keycloak will sign in the user automatically without requiring credentials. If ou like to disable the Keycloak sessions, you can open the Keycloak Admin UI and go to Authentication -> browser flow and disable the Cookie step.
+
 On top of the realm an admin user with name `admin` and password `admin` is configured. You can go to `https://keycloak.localhost/admin` and modify settings. More in-depth configuration of Keycloak it out of scope of the Blaze documentation.
 
 ```yaml

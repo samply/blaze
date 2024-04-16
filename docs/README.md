@@ -2,6 +2,7 @@
 
 * [Deployment](deployment/README.md)
 * [FHIR RESTful API](api.md)
+* * [Frontend (Web UI)](frontend.md)
 * [Importing Data](importing-data.md)
 * [Sync Data](data-sync.md)
 * [Conformance](conformance.md)
