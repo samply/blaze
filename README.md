@@ -11,11 +11,15 @@ A FHIR® Store with internal, fast CQL Evaluation Engine
 
 The goal of this project is to provide a FHIR® Store with an internal CQL Evaluation Engine which is able to answer population wide aggregate queries in a timely manner to enable interactive, online queries.
 
+## Demo
+
+A demo installation can be found [here](https://blaze.life.uni-leipzig.de/fhir) (user/password: demo).
+
 ## State
 
-Blaze passes all [Touchstone FHIR 4.0.1 Basic Tests][12] and almost all [CQL Tests][3]. Please refer to the [Conformance](docs/conformance.md) section and report any issues you encounter during evaluation.
+Blaze is widely used in the [Medical Informatics Initiative](https://www.medizininformatik-initiative.de) in Germany and in [Biobanks](https://www.bbmri-eric.eu) across Europe. A 1.0 version is expected in the next months.
 
-Latest release: [v0.25.0][5]
+Latest release: [v0.26.0][5]
 
 ## Quick Start
 
@@ -30,11 +34,7 @@ docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:latest
 
 Blaze will create multiple directories inside the `blaze-data` volume on its first start and use the same directories on subsequent starts.
 
-Please refer to [Docker Deployment](docs/deployment/docker-deployment.md) for the full documentation.
-
-### Standalone Java without Docker
-
-Please have a look into [Manual Deployment](docs/deployment/manual-deployment.md).
+Please refer to [Deployment](docs/deployment/README.md) for the full documentation.
 
 ## Documentation
 
@@ -75,7 +75,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
-[5]: <https://github.com/samply/blaze/releases/tag/v0.25.0>
+[5]: <https://github.com/samply/blaze/releases/tag/v0.26.0>
 [6]: <https://www.yourkit.com/java/profiler/>
 [7]: <https://www.yourkit.com/.net/profiler/>
 [8]: <https://www.yourkit.com/youmonitor/>
