@@ -190,7 +190,7 @@ jobs:
       run: make uberjar
 
     - name: Upload Blaze Uberjar
-      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4
+      uses: actions/upload-artifact@1746f4ab65b179e0ea60a494b83293b640dd5bba # v4
       with:
         name: blaze-uberjar
         path: target/blaze-*-standalone.jar
@@ -206,7 +206,7 @@ jobs:
         outputs: type=docker,dest=/tmp/blaze.tar
 
     - name: Upload Blaze Image
-      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4
+      uses: actions/upload-artifact@1746f4ab65b179e0ea60a494b83293b640dd5bba # v4
       with:
         name: blaze-image
         path: /tmp/blaze.tar
@@ -238,7 +238,7 @@ jobs:
         outputs: type=docker,dest=/tmp/blaze-frontend.tar
 
     - name: Upload Blaze Image
-      uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4
+      uses: actions/upload-artifact@1746f4ab65b179e0ea60a494b83293b640dd5bba # v4
       with:
         name: blaze-frontend-image
         path: /tmp/blaze-frontend.tar
@@ -1365,7 +1365,7 @@ jobs:
     - name: Run Playwright Tests
       run: make -C modules/frontend-e2e test
 
-    - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4
+    - uses: actions/upload-artifact@1746f4ab65b179e0ea60a494b83293b640dd5bba # v4
       with:
         name: playwright-report
         path: modules/frontend-e2e/playwright-report/
