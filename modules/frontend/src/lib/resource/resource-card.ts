@@ -129,6 +129,7 @@ export async function calcPropertiesDeep(
 					processElement(
 						element,
 						structureDefinition.snapshot?.element || [],
+						structureDefinition.snapshot?.element || [],
 						resource,
 						fetchStructureDefinition
 					)
@@ -155,23 +156,47 @@ export async function calcPropertiesDeep(
 	};
 }
 
-function dropFirstSegment(path: string): string {
-	return path.split('.').slice(1).join('.');
+function dropSegments(path: string, n: number): string {
+	return path.split('.').slice(n).join('.');
 }
 
 async function processElement(
 	element: ElementDefinition,
-	elements: ElementDefinition[],
+	resourceElements: ElementDefinition[],
+	typeElements: ElementDefinition[],
 	resource: Resource | Element,
 	fetchStructureDefinition: (type: string) => Promise<StructureDefinition>
 ): Promise<FhirProperty | undefined> {
+	if (element.contentReference !== undefined) {
+		const id = element.contentReference.substring(1);
+		const referencedElement = resourceElements.find((e) => e.id === id);
+		return referencedElement === undefined
+			? undefined
+			: processAbstractElement(
+					{ ...referencedElement, path: element.path },
+					resourceElements,
+					resourceElements
+						.filter(
+							(e) => e.path.startsWith(referencedElement.path) && e.path != referencedElement.path
+						)
+						.map((e) => ({
+							...e,
+							path: dropSegments(e.path, referencedElement.path.split('.').length - 1)
+						})),
+					{ code: 'BackboneElement' },
+					resource,
+					fetchStructureDefinition
+				);
+	}
+
 	const type = onlyType(element);
 	return type?.code == 'Element' || type?.code == 'BackboneElement'
 		? processAbstractElement(
 				element,
-				elements
+				resourceElements,
+				typeElements
 					.filter((e) => e.path.startsWith(element.path) && e.path != element.path)
-					.map((e) => ({ ...e, path: dropFirstSegment(e.path) })),
+					.map((e) => ({ ...e, path: dropSegments(e.path, 1) })),
 				type,
 				resource,
 				fetchStructureDefinition
@@ -222,7 +247,8 @@ async function processResourceValue(
 // Processes one of the abstract elements. Type is one of 'Element' or 'BackboneElement'.
 async function processAbstractElement(
 	element: ElementDefinition,
-	elements: ElementDefinition[],
+	resourceElements: ElementDefinition[],
+	typeElements: ElementDefinition[],
 	type: Type,
 	resource: (Resource | Element) & { [key: string]: any },
 	fetchStructureDefinition: (type: string) => Promise<StructureDefinition>
@@ -241,23 +267,38 @@ async function processAbstractElement(
 		value: await (Array.isArray(value)
 			? Promise.all(
 					(value as Element[]).map((v) =>
-						processAbstractElementValue(elements, type, v, fetchStructureDefinition)
+						processAbstractElementValue(
+							resourceElements,
+							typeElements,
+							type,
+							v,
+							fetchStructureDefinition
+						)
 					)
 				)
-			: processAbstractElementValue(elements, type, value, fetchStructureDefinition))
+			: processAbstractElementValue(
+					resourceElements,
+					typeElements,
+					type,
+					value,
+					fetchStructureDefinition
+				))
 	};
 }
 
 async function processAbstractElementValue(
-	elements: ElementDefinition[],
+	resourceElements: ElementDefinition[],
+	typeElements: ElementDefinition[],
 	type: Type,
 	value: Element,
 	fetchStructureDefinition: (type: string) => Promise<StructureDefinition>
 ): Promise<FhirObject> {
 	const properties = await Promise.all(
-		elements
+		typeElements
 			.filter((element) => element.path.split('.').length == 2)
-			.map((element) => processElement(element, elements, value, fetchStructureDefinition))
+			.map((element) =>
+				processElement(element, resourceElements, typeElements, value, fetchStructureDefinition)
+			)
 	);
 	return {
 		type: type,
