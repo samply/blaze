@@ -45,7 +45,7 @@
 	},
 	"type": "module",
 	"dependencies": {
-		"@auth/sveltekit": "^0.14.0",
+		"@auth/sveltekit": "^1.0.0",
 		"@fontsource-variable/inter": "^5.0.8",
 		"@tailwindcss/forms": "^0.5.3"
 	}
