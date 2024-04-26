@@ -4,7 +4,7 @@ RUN dotnet tool install -g firely.terminal
 RUN /root/.dotnet/tools/fhir install hl7.fhir.r4.core 4.0.1
 RUN /root/.dotnet/tools/fhir install hl7.fhir.xver-extensions 0.1.0
 
-FROM eclipse-temurin:17-jre-jammy@sha256:426b1a6458d218ce1180c443099c0c05ff277ee89e532413a9d18c3c634f350e
+FROM eclipse-temurin:17-jre-jammy@sha256:ed5ea3ef6b4db2a39d241ba8f040394c11450f5373329824390c227da7f229be
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install libjemalloc2 -y && \
