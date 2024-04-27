@@ -38,7 +38,7 @@
   {:local/root "../spec"}
 
   commons-codec/commons-codec
-  {:mvn/version "1.16.1"}}
+  {:mvn/version "1.17.0"}}
 
  :aliases
  {:test
