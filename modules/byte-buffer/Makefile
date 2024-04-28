@@ -8,7 +8,7 @@ test:
 	clojure -M:test:kaocha --profile :ci
 
 test-coverage:
-	true
+	clojure -M:test:coverage
 
 cloc-prod:
 	cloc src

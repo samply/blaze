@@ -53,6 +53,7 @@ jobs:
         - anomaly
         - async
         - byte-buffer
+        - byte-string
         - cassandra
         - coll
         - cql

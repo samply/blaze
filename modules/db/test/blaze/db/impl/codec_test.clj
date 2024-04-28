@@ -9,9 +9,7 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
-   [clojure.test.check.properties :as prop])
-  (:import
-   [java.nio.charset StandardCharsets]))
+   [clojure.test.check.properties :as prop]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -49,8 +47,8 @@
   (satisfies-prop 100
     (prop/for-all [s (s/gen string?)]
       (= s
-         (bs/to-string (codec/string s) StandardCharsets/UTF_8)
-         (bs/to-string (apply codec/string [s]) StandardCharsets/UTF_8)))))
+         (bs/to-string-utf8 (codec/string s))
+         (bs/to-string-utf8 (apply codec/string [s]))))))
 
 (deftest number-test
   (testing "encode/decode"
