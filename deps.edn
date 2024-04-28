@@ -47,10 +47,10 @@
   {:mvn/version "0.4.0"}
 
   org.clojure/clojure
-  {:mvn/version "1.11.2"}
+  {:mvn/version "1.11.3"}
 
   org.clojure/tools.reader
-  {:mvn/version "1.4.1"}
+  {:mvn/version "1.4.2"}
 
   org.slf4j/slf4j-nop
   {:mvn/version "2.0.13"}}

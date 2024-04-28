@@ -12,7 +12,7 @@
    [blaze.db.kv.rocksdb.impl-spec]
    [blaze.db.kv.rocksdb.metrics :as-alias metrics]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu :refer [bytes= given-thrown]]
+   [blaze.test-util :as tu :refer [ba bb bytes= given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
@@ -30,12 +30,6 @@
 (log/set-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
-
-(defn- ba [& bytes]
-  (byte-array bytes))
-
-(defn- bb [& bytes]
-  (bb/wrap (byte-array bytes)))
 
 (deftest init-test
   (testing "nil config"

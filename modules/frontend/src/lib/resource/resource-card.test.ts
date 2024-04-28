@@ -1,5 +1,5 @@
-import type { StructureDefinition } from 'fhir/r4';
-import { describe, it, expect } from 'vitest';
+import type { Bundle, StructureDefinition } from 'fhir/r4';
+import { describe, expect, it } from 'vitest';
 import { error } from '@sveltejs/kit';
 import { calcPropertiesDeep, type FhirObject } from './resource-card.js';
 import { readFileSync } from 'fs';
@@ -11,9 +11,26 @@ const structureDefinitionMedicationAdministration = await readStructureDefinitio
 );
 const structureDefinitionCarePlan = await readStructureDefinition('CarePlan');
 
+function readBundle(name: string): Bundle {
+	const data = readFileSync(name);
+	return JSON.parse(data.toString());
+}
+
+function readStructureDefinitionFrom(file: string, name: string): StructureDefinition | undefined {
+	const bundle = readBundle(`../fhir-structure/resources/blaze/fhir/r4/profiles-${file}.json`);
+	return bundle.entry?.find((e) => e.resource?.id === name)?.resource as StructureDefinition;
+}
+
 async function readStructureDefinition(name: string): Promise<StructureDefinition> {
-	const data = readFileSync(`src/lib/resource/test/${name}.json`);
-	return Promise.resolve(JSON.parse(data.toString()));
+	const structureDefinition = readStructureDefinitionFrom('types', name);
+	if (structureDefinition === undefined) {
+		const structureDefinition = readStructureDefinitionFrom('resources', name);
+		return structureDefinition === undefined
+			? Promise.reject(`StructureDefinition ${name} not found`)
+			: Promise.resolve(structureDefinition);
+	} else {
+		return Promise.resolve(structureDefinition);
+	}
 }
 
 describe('calcPropertiesDeep test', () => {
@@ -233,7 +250,7 @@ describe('calcPropertiesDeep test', () => {
 			}
 		});
 	});
-	it('polymorth attribute with complex type', async () => {
+	it('polymorph attribute with complex type', async () => {
 		const result = await calcPropertiesDeep(
 			readStructureDefinition,
 			structureDefinitionMedicationAdministration,
@@ -467,6 +484,228 @@ describe('calcPropertiesDeep test', () => {
 			}
 		});
 	});
+	it('recursive backbone elements', async () => {
+		const result = await calcPropertiesDeep(
+			readStructureDefinition,
+			await readStructureDefinition('Consent'),
+			{
+				resourceType: 'Consent',
+				provision: {
+					type: 'deny',
+					provision: [
+						{
+							type: 'permit'
+						}
+					]
+				},
+				category: [{}],
+				scope: {},
+				status: 'draft'
+			}
+		);
+		expect(result).toStrictEqual({
+			type: { code: 'Consent' },
+			properties: [
+				{
+					name: 'resourceType',
+					type: { code: 'string' },
+					value: { type: { code: 'string' }, value: 'Consent' }
+				},
+				{
+					name: 'status',
+					type: { code: 'code' },
+					value: { type: { code: 'code' }, value: 'draft' }
+				},
+				{
+					name: 'scope',
+					type: { code: 'CodeableConcept' },
+					value: {
+						type: { code: 'CodeableConcept' },
+						properties: [],
+						object: {}
+					}
+				},
+				{
+					name: 'category',
+					type: { code: 'CodeableConcept' },
+					value: [
+						{
+							type: { code: 'CodeableConcept' },
+							properties: [],
+							object: {}
+						}
+					]
+				},
+				{
+					name: 'provision',
+					type: { code: 'BackboneElement' },
+					value: {
+						type: { code: 'BackboneElement' },
+						properties: [
+							{
+								name: 'type',
+								type: { code: 'code' },
+								value: { type: { code: 'code' }, value: 'deny' }
+							},
+							{
+								name: 'provision',
+								type: { code: 'BackboneElement' },
+								value: [
+									{
+										type: { code: 'BackboneElement' },
+										properties: [
+											{
+												name: 'type',
+												type: { code: 'code' },
+												value: { type: { code: 'code' }, value: 'permit' }
+											}
+										],
+										object: {
+											type: 'permit'
+										}
+									}
+								]
+							}
+						],
+						object: {
+							type: 'deny',
+							provision: [
+								{
+									type: 'permit'
+								}
+							]
+						}
+					}
+				}
+			],
+			object: {
+				resourceType: 'Consent',
+				provision: {
+					type: 'deny',
+					provision: [
+						{
+							type: 'permit'
+						}
+					]
+				},
+				category: [{}],
+				scope: {},
+				status: 'draft'
+			}
+		});
+	});
+	it('nested referenced backbone elements', async () => {
+		const result = await calcPropertiesDeep(
+			readStructureDefinition,
+			await readStructureDefinition('ValueSet'),
+			{
+				resourceType: 'ValueSet',
+				compose: {
+					include: [
+						{
+							system: 'system-1'
+						}
+					],
+					exclude: [
+						{
+							system: 'system-2'
+						}
+					]
+				},
+				status: 'draft'
+			}
+		);
+		expect(result).toStrictEqual({
+			type: { code: 'ValueSet' },
+			properties: [
+				{
+					name: 'resourceType',
+					type: { code: 'string' },
+					value: { type: { code: 'string' }, value: 'ValueSet' }
+				},
+				{
+					name: 'status',
+					type: { code: 'code' },
+					value: { type: { code: 'code' }, value: 'draft' }
+				},
+				{
+					name: 'compose',
+					type: { code: 'BackboneElement' },
+					value: {
+						type: { code: 'BackboneElement' },
+						properties: [
+							{
+								name: 'include',
+								type: { code: 'BackboneElement' },
+								value: [
+									{
+										type: { code: 'BackboneElement' },
+										properties: [
+											{
+												name: 'system',
+												type: { code: 'uri' },
+												value: { type: { code: 'uri' }, value: 'system-1' }
+											}
+										],
+										object: {
+											system: 'system-1'
+										}
+									}
+								]
+							},
+							{
+								name: 'exclude',
+								type: { code: 'BackboneElement' },
+								value: [
+									{
+										type: { code: 'BackboneElement' },
+										properties: [
+											{
+												name: 'system',
+												type: { code: 'uri' },
+												value: { type: { code: 'uri' }, value: 'system-2' }
+											}
+										],
+										object: {
+											system: 'system-2'
+										}
+									}
+								]
+							}
+						],
+						object: {
+							include: [
+								{
+									system: 'system-1'
+								}
+							],
+							exclude: [
+								{
+									system: 'system-2'
+								}
+							]
+						}
+					}
+				}
+			],
+			object: {
+				resourceType: 'ValueSet',
+				compose: {
+					include: [
+						{
+							system: 'system-1'
+						}
+					],
+					exclude: [
+						{
+							system: 'system-2'
+						}
+					]
+				},
+				status: 'draft'
+			}
+		});
+	});
 	it('element', async () => {
 		const result = await calcPropertiesDeep(
 			readStructureDefinition,
@@ -541,6 +780,121 @@ describe('calcPropertiesDeep test', () => {
 				},
 				code: {},
 				status: 'final'
+			}
+		});
+	});
+	it('primitive extension', async () => {
+		await expect(
+			calcPropertiesDeep(readStructureDefinition, structureDefinitionPatient, {
+				resourceType: 'Patient',
+				id: 'foo',
+				gender: 'other',
+				_gender: {
+					extension: [
+						{
+							url: 'http://fhir.de/StructureDefinition/gender-amtlich-de',
+							valueCoding: {
+								system: 'http://fhir.de/CodeSystem/gender-amtlich-de',
+								code: 'D',
+								display: 'divers'
+							}
+						}
+					]
+				}
+			})
+		).resolves.toStrictEqual({
+			type: { code: 'Patient' },
+			properties: [
+				{
+					name: 'resourceType',
+					type: { code: 'string' },
+					value: { type: { code: 'string' }, value: 'Patient' }
+				},
+				{
+					name: 'id',
+					type: { code: 'string' },
+					value: { type: { code: 'string' }, value: 'foo' }
+				},
+				{
+					name: 'gender',
+					type: { code: 'code' },
+					value: {
+						type: { code: 'code' },
+						value: 'other',
+						extensions: [
+							{
+								type: { code: 'Extension' },
+								properties: [
+									{
+										name: 'url',
+										type: { code: 'string' },
+										value: {
+											type: { code: 'string' },
+											value: 'http://fhir.de/StructureDefinition/gender-amtlich-de'
+										}
+									},
+									{
+										name: 'valueCoding',
+										type: { code: 'Coding' },
+										value: {
+											type: { code: 'Coding' },
+											properties: [
+												{
+													name: 'system',
+													type: { code: 'uri' },
+													value: {
+														type: { code: 'uri' },
+														value: 'http://fhir.de/CodeSystem/gender-amtlich-de'
+													}
+												},
+												{
+													name: 'code',
+													type: { code: 'code' },
+													value: { type: { code: 'code' }, value: 'D' }
+												},
+												{
+													name: 'display',
+													type: { code: 'string' },
+													value: { type: { code: 'string' }, value: 'divers' }
+												}
+											],
+											object: {
+												system: 'http://fhir.de/CodeSystem/gender-amtlich-de',
+												code: 'D',
+												display: 'divers'
+											}
+										}
+									}
+								],
+								object: {
+									url: 'http://fhir.de/StructureDefinition/gender-amtlich-de',
+									valueCoding: {
+										system: 'http://fhir.de/CodeSystem/gender-amtlich-de',
+										code: 'D',
+										display: 'divers'
+									}
+								}
+							}
+						]
+					}
+				}
+			],
+			object: {
+				resourceType: 'Patient',
+				id: 'foo',
+				gender: 'other',
+				_gender: {
+					extension: [
+						{
+							url: 'http://fhir.de/StructureDefinition/gender-amtlich-de',
+							valueCoding: {
+								system: 'http://fhir.de/CodeSystem/gender-amtlich-de',
+								code: 'D',
+								display: 'divers'
+							}
+						}
+					]
+				}
 			}
 		});
 	});

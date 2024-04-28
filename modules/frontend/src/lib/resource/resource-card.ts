@@ -18,7 +18,8 @@ import type {
 	Coding,
 	CodeableConcept,
 	Meta,
-	HumanName
+	HumanName,
+	Extension
 } from 'fhir/r4';
 import { toTitleCase } from '../util.js';
 import { fetchStructureDefinition } from '../metadata.js';
@@ -75,6 +76,7 @@ export interface FhirProperty {
 
 export interface FhirPrimitive extends FhirType {
 	value: string | number | boolean;
+	extensions?: FhirObject<Extension>[];
 }
 
 export async function transformBundle(
@@ -129,6 +131,7 @@ export async function calcPropertiesDeep(
 					processElement(
 						element,
 						structureDefinition.snapshot?.element || [],
+						structureDefinition.snapshot?.element || [],
 						resource,
 						fetchStructureDefinition
 					)
@@ -155,23 +158,47 @@ export async function calcPropertiesDeep(
 	};
 }
 
-function dropFirstSegment(path: string): string {
-	return path.split('.').slice(1).join('.');
+function dropSegments(path: string, n: number): string {
+	return path.split('.').slice(n).join('.');
 }
 
 async function processElement(
 	element: ElementDefinition,
-	elements: ElementDefinition[],
+	resourceElements: ElementDefinition[],
+	typeElements: ElementDefinition[],
 	resource: Resource | Element,
 	fetchStructureDefinition: (type: string) => Promise<StructureDefinition>
 ): Promise<FhirProperty | undefined> {
+	if (element.contentReference !== undefined) {
+		const id = element.contentReference.substring(1);
+		const referencedElement = resourceElements.find((e) => e.id === id);
+		return referencedElement === undefined
+			? undefined
+			: processAbstractElement(
+					{ ...referencedElement, path: element.path },
+					resourceElements,
+					resourceElements
+						.filter(
+							(e) => e.path.startsWith(referencedElement.path) && e.path != referencedElement.path
+						)
+						.map((e) => ({
+							...e,
+							path: dropSegments(e.path, referencedElement.path.split('.').length - 1)
+						})),
+					{ code: 'BackboneElement' },
+					resource,
+					fetchStructureDefinition
+				);
+	}
+
 	const type = onlyType(element);
 	return type?.code == 'Element' || type?.code == 'BackboneElement'
 		? processAbstractElement(
 				element,
-				elements
+				resourceElements,
+				typeElements
 					.filter((e) => e.path.startsWith(element.path) && e.path != element.path)
-					.map((e) => ({ ...e, path: dropFirstSegment(e.path) })),
+					.map((e) => ({ ...e, path: dropSegments(e.path, 1) })),
 				type,
 				resource,
 				fetchStructureDefinition
@@ -222,7 +249,8 @@ async function processResourceValue(
 // Processes one of the abstract elements. Type is one of 'Element' or 'BackboneElement'.
 async function processAbstractElement(
 	element: ElementDefinition,
-	elements: ElementDefinition[],
+	resourceElements: ElementDefinition[],
+	typeElements: ElementDefinition[],
 	type: Type,
 	resource: (Resource | Element) & { [key: string]: any },
 	fetchStructureDefinition: (type: string) => Promise<StructureDefinition>
@@ -241,23 +269,38 @@ async function processAbstractElement(
 		value: await (Array.isArray(value)
 			? Promise.all(
 					(value as Element[]).map((v) =>
-						processAbstractElementValue(elements, type, v, fetchStructureDefinition)
+						processAbstractElementValue(
+							resourceElements,
+							typeElements,
+							type,
+							v,
+							fetchStructureDefinition
+						)
 					)
 				)
-			: processAbstractElementValue(elements, type, value, fetchStructureDefinition))
+			: processAbstractElementValue(
+					resourceElements,
+					typeElements,
+					type,
+					value,
+					fetchStructureDefinition
+				))
 	};
 }
 
 async function processAbstractElementValue(
-	elements: ElementDefinition[],
+	resourceElements: ElementDefinition[],
+	typeElements: ElementDefinition[],
 	type: Type,
 	value: Element,
 	fetchStructureDefinition: (type: string) => Promise<StructureDefinition>
 ): Promise<FhirObject> {
 	const properties = await Promise.all(
-		elements
+		typeElements
 			.filter((element) => element.path.split('.').length == 2)
-			.map((element) => processElement(element, elements, value, fetchStructureDefinition))
+			.map((element) =>
+				processElement(element, resourceElements, typeElements, value, fetchStructureDefinition)
+			)
 	);
 	return {
 		type: type,
@@ -301,7 +344,7 @@ async function processTypedElement(
 			name: propertyName,
 			type: type,
 			value: isPrimitive(type)
-				? processPrimitiveValue(type, value)
+				? await processPrimitiveValue(name, type, value, resource, fetchStructureDefinition)
 				: await processNonPrimitiveValue(fetchStructureDefinition, type, value)
 		};
 	}
@@ -317,24 +360,62 @@ async function processTypedElement(
 		name: name,
 		type: type,
 		value: isPrimitive(type)
-			? processPrimitiveValue(type, value)
+			? await processPrimitiveValue(name, type, value, resource, fetchStructureDefinition)
 			: await processNonPrimitiveValue(fetchStructureDefinition, type, value)
 	};
 }
 
-function processPrimitiveValue(
+async function processPrimitiveValue(
+	name: string,
 	type: Type,
-	value: string | number | boolean
-): FhirPrimitive[] | FhirPrimitive {
-	return Array.isArray(value)
-		? value.map((v) => ({
+	value: string | number | boolean,
+	resource: (Resource | Element) & { [key: string]: any },
+	fetchStructureDefinition: (type: string) => Promise<StructureDefinition>
+): Promise<FhirPrimitive[] | FhirPrimitive> {
+	if (Array.isArray(value)) {
+		return Promise.all(
+			value.map((v) => processPrimitiveValue1(name, type, v, resource, fetchStructureDefinition))
+		);
+	}
+
+	return processPrimitiveValue1(name, type, value, resource, fetchStructureDefinition);
+}
+
+async function processPrimitiveValue1(
+	name: string,
+	type: Type,
+	value: string | number | boolean,
+	resource: (Resource | Element) & { [key: string]: any },
+	fetchStructureDefinition: (type: string) => Promise<StructureDefinition>
+): Promise<FhirPrimitive> {
+	const siblingValue = resource['_' + name];
+	const extension = siblingValue ? siblingValue['extension'] : undefined;
+	return extension
+		? {
 				type: type,
-				value: v
-			}))
+				value: value,
+				extensions: await processExtension(fetchStructureDefinition, extension)
+			}
 		: {
 				type: type,
 				value: value
 			};
+}
+
+async function processExtension(
+	fetchStructureDefinition: (type: string) => Promise<StructureDefinition>,
+	value: Extension[]
+): Promise<FhirObject<Extension>[]> {
+	const structureDefinition = await fetchStructureDefinition('Extension');
+
+	return Promise.all(
+		value.map(
+			(v) =>
+				calcPropertiesDeep(fetchStructureDefinition, structureDefinition, v) as Promise<
+					FhirObject<Extension>
+				>
+		)
+	);
 }
 
 async function processNonPrimitiveValue(
@@ -351,4 +432,20 @@ async function processNonPrimitiveValue(
 	}
 
 	return calcPropertiesDeep(fetchStructureDefinition, structureDefinition, value);
+}
+
+export function wrapPrimitiveExtensions(extensions: FhirObject<Extension>[]): FhirObject {
+	return {
+		type: { code: 'Element' },
+		properties: [
+			{
+				name: 'extension',
+				type: { code: 'Extension' },
+				value: extensions
+			}
+		],
+		object: {
+			extension: extensions.map((e) => e.object)
+		}
+	};
 }

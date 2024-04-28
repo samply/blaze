@@ -199,20 +199,18 @@
 ;; ---- Identifier Functions --------------------------------------------------
 
 (defn id-byte-string
-  {:inline
-   (fn [id]
-     `(bs/from-string ~id StandardCharsets/ISO_8859_1))}
+  {:inline (fn [id] `(bs/from-iso-8859-1-string ~id))}
   [id]
-  (bs/from-string id StandardCharsets/ISO_8859_1))
+  (bs/from-iso-8859-1-string id))
 
 (defn id-string
   "Converts the byte-string representation of a resource id into it's string
   representation."
   {:inline
    (fn [id-byte-string]
-     `(bs/to-string ~id-byte-string StandardCharsets/ISO_8859_1))}
+     `(bs/to-string-iso-8859-1 ~id-byte-string))}
   [id-byte-string]
-  (bs/to-string id-byte-string StandardCharsets/ISO_8859_1))
+  (bs/to-string-iso-8859-1 id-byte-string))
 
 (defn id
   "Creates an resource id as String from the byte array `id-bytes`."

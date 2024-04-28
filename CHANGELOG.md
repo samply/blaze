@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.26.1
+
+### Bugfixes
+
+* Fix Rendering of Recursive FHIR Structures ([#1552](https://github.com/samply/blaze/issues/1648))
+* Fix Rendering of Primitive Extensions ([#1552](https://github.com/samply/blaze/issues/1677))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/87?closed=1).
+
 ## v0.26.0
 
 ### Notes

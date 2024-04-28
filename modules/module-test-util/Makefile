@@ -10,10 +10,16 @@ test:
 test-coverage:
 	true
 
+deps-tree:
+	clojure -X:deps tree
+
+deps-list:
+	clojure -X:deps list
+
 cloc-test:
 	cloc src
 
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target
 
-.PHONY: fmt lint test test-coverage cloc-prod cloc-test clean
+.PHONY: fmt lint test test-coverage deps-tree deps-list cloc-prod cloc-test clean

@@ -2,16 +2,19 @@ fmt:
 	cljfmt check
 
 lint:
-	clj-kondo --lint src deps.edn
+	clj-kondo --lint src test deps.edn
 
 test:
-	true
+	clojure -M:test:kaocha --profile :ci
 
 test-coverage:
-	true
+	clojure -M:test:coverage
 
 cloc-prod:
 	cloc src
+
+cloc-test:
+	cloc test
 
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target

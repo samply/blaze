@@ -30,7 +30,7 @@
   {:mvn/version "0.7.0-alpha7"}
 
   ca.uhn.hapi.fhir/org.hl7.fhir.validation
-  {:mvn/version "6.3.4"
+  {:mvn/version "6.3.6"
    :exclusions
    [ca.uhn.hapi.fhir/org.hl7.fhir.dstu2
     ca.uhn.hapi.fhir/org.hl7.fhir.dstu2016may
