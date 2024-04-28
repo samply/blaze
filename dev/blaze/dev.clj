@@ -89,5 +89,5 @@
 (comment
   (def resource-store (::rs/cassandra system))
 
-  (rs/get resource-store (bs/from-string "072e074677eae7a5cfa4408e870bf32d839d58bb2c59470c0a7f1eced74eb6d8"))
+  (rs/get resource-store (bs/from-iso-8859-1-string "072e074677eae7a5cfa4408e870bf32d839d58bb2c59470c0a7f1eced74eb6d8"))
   )

@@ -1,7 +1,10 @@
 (ns blaze.byte-string
   (:refer-clojure :exclude [concat empty nth subs < <= > >=])
-  (:require [clojure.string :as str])
+  (:require
+   [blaze.byte-buffer :as bb]
+   [clojure.string :as str])
   (:import
+   [clojure.lang IObj]
    [com.google.common.io BaseEncoding]
    [com.google.protobuf ByteString]
    [com.fasterxml.jackson.core JsonGenerator]
@@ -9,7 +12,7 @@
    [com.fasterxml.jackson.databind.ser.std StdSerializer]
    [java.io Writer]
    [java.nio ByteBuffer]
-   [java.nio.charset Charset]))
+   [java.nio.charset StandardCharsets]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -20,10 +23,13 @@
 (def empty
   ByteString/EMPTY)
 
+(defn- tag [x tag]
+  (cond-> x (instance? IObj x) (with-meta {:tag tag})))
+
 (defn from-byte-array
   {:inline
    (fn [bs]
-     `(ByteString/copyFrom ~(with-meta bs {:tag 'bytes})))}
+     `(ByteString/copyFrom ~(tag bs 'bytes)))}
   [bs]
   (ByteString/copyFrom ^bytes bs))
 
@@ -32,27 +38,40 @@
   [s]
   (ByteString/copyFromUtf8 s))
 
-(defn from-string
+(defn from-iso-8859-1-string
   {:inline
-   (fn [s charset]
-     `(ByteString/copyFrom ~(if (symbol? s) (with-meta s {:tag `String}) s)
-                           ~charset))}
-  [s charset]
-  (ByteString/copyFrom ^String s ^Charset charset))
+   (fn [s]
+     `(ByteString/copyFrom ~(tag s `String) StandardCharsets/ISO_8859_1))}
+  [s]
+  (ByteString/copyFrom ^String s StandardCharsets/ISO_8859_1))
 
 (defn from-byte-buffer!
-  "Returns the remaining bytes from `byte-buffer` as byte string."
+  "Returns the remaining or `size` bytes from `byte-buffer` as byte string.
+
+  Increments the position of `byte-buffer` by `size`.
+
+  Throws IndexOutOfBoundsException if `(< (remaining byte-buffer) size)`."
   {:inline
    (fn
      ([byte-buffer]
-      `(ByteString/copyFrom ~(with-meta byte-buffer {:tag `ByteBuffer})))
+      `(ByteString/copyFrom ~(tag byte-buffer `ByteBuffer)))
      ([byte-buffer size]
-      `(ByteString/copyFrom ~(with-meta byte-buffer {:tag `ByteBuffer})
-                            (int ~size))))}
+      `(ByteString/copyFrom ~(tag byte-buffer `ByteBuffer) (int ~size))))}
   ([byte-buffer]
    (ByteString/copyFrom ^ByteBuffer byte-buffer))
   ([byte-buffer size]
    (ByteString/copyFrom ^ByteBuffer byte-buffer (int size))))
+
+(defn from-byte-buffer-null-terminated!
+  "Returns the bytes from `byte-buffer` up to (exclusive) a null byte (0x00) as
+  byte string ot nil if `byte-buffer` doesn't include a null byte.
+
+  Increments the position of `byte-buffer` up to including the null byte."
+  [byte-buffer]
+  (when-let [size (bb/size-up-to-null byte-buffer)]
+    (let [bs (from-byte-buffer! byte-buffer size)]
+      (bb/get-byte! byte-buffer)
+      bs)))
 
 (defn from-hex [s]
   (ByteString/copyFrom (.decode (BaseEncoding/base16) s)))
@@ -61,12 +80,12 @@
   "Returns the byte at `index` from `bs`."
   {:inline
    (fn [bs index]
-     `(.byteAt ^ByteString ~(with-meta bs {:tag `ByteString}) (int ~index)))}
+     `(.byteAt ~(tag bs `ByteString) (int ~index)))}
   [bs index]
   (.byteAt ^ByteString bs index))
 
 (defn size
-  {:inline (fn [bs] `(.size ~(with-meta bs {:tag `ByteString})))}
+  {:inline (fn [bs] `(.size ~(tag bs `ByteString)))}
   [bs]
   (.size ^ByteString bs))
 
@@ -74,18 +93,19 @@
   {:inline
    (fn
      ([bs start]
-      `(.substring ~(with-meta bs {:tag `ByteString}) (int ~start)))
+      `(.substring ~(tag bs `ByteString) (int ~start)))
      ([bs start end]
-      `(.substring ~(with-meta bs {:tag `ByteString}) (int ~start) (int ~end))))}
+      `(.substring ~(tag bs `ByteString) (int ~start) (int ~end))))}
   ([bs start]
    (.substring ^ByteString bs start))
   ([bs start end]
    (.substring ^ByteString bs start end)))
 
 (defn concat
+  "Concatenates the byte strings `a` and `b`."
   {:inline
    (fn [a b]
-     `(.concat ~(with-meta a {:tag `ByteString}) ~b))}
+     `(.concat ~(tag a `ByteString) ~b))}
   [a b]
   (.concat ^ByteString a b))
 
@@ -101,24 +121,26 @@
 (defn > [a b]
   (pos? (.compare (ByteString/unsignedLexicographicalComparator) a b)))
 
-(defn >= [a b]
-  (clojure.core/>= (.compare (ByteString/unsignedLexicographicalComparator) a b) 0))
-
 (defn hex
   "Returns an upper-case hexadecimal string representation of `bs`."
   [bs]
   (.encode (BaseEncoding/base16) (.toByteArray ^ByteString bs)))
 
 (defn to-byte-array
-  {:inline (fn [bs] `(.toByteArray ~(with-meta bs {:tag `ByteString})))}
+  {:inline (fn [bs] `(.toByteArray ~(tag bs `ByteString)))}
   [bs]
   (.toByteArray ^ByteString bs))
 
-(defn to-string
+(defn to-string-utf8
+  {:inline (fn [bs] `(.toStringUtf8 ~(tag bs `ByteString)))}
+  [bs]
+  (.toStringUtf8 ^ByteString bs))
+
+(defn to-string-iso-8859-1
   {:inline
-   (fn [bs charset] `(.toString ~(with-meta bs {:tag `ByteString}) ~charset))}
-  [bs charset]
-  (.toString ^ByteString bs ^Charset charset))
+   (fn [bs] `(.toString ~(tag bs `ByteString) StandardCharsets/ISO_8859_1))}
+  [bs]
+  (.toString ^ByteString bs StandardCharsets/ISO_8859_1))
 
 (defn as-read-only-byte-buffer [bs]
   (.asReadOnlyByteBuffer ^ByteString bs))

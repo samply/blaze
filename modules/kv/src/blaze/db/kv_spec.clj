@@ -48,11 +48,11 @@
   :ret nat-int?)
 
 (s/fdef kv/new-iterator
-  :args (s/cat :snapshot ::kv/snapshot :column-family keyword?)
+  :args (s/cat :snapshot ::kv/snapshot :column-family simple-keyword?)
   :ret ::kv/iterator)
 
 (s/fdef kv/snapshot-get
-  :args (s/cat :snapshot ::kv/snapshot :column-family keyword?
+  :args (s/cat :snapshot ::kv/snapshot :column-family simple-keyword?
                :key bytes?)
   :ret (s/nilable bytes?))
 
@@ -65,7 +65,7 @@
   :ret ::kv/snapshot)
 
 (s/fdef kv/get
-  :args (s/cat :kv-store :blaze.db/kv-store :column-family keyword? :key bytes?)
+  :args (s/cat :kv-store :blaze.db/kv-store :column-family simple-keyword? :key bytes?)
   :ret (s/nilable bytes?))
 
 (s/fdef kv/put!

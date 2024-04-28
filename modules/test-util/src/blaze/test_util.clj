@@ -5,6 +5,7 @@
    [clojure.test.check :as tc]
    [juxt.iota :refer [given]])
   (:import
+   [java.nio ByteBuffer]
    [java.util Arrays]))
 
 (set! *warn-on-reflection* true)
@@ -27,6 +28,16 @@
        (if (true? (:result result#))
          (is :success)
          (is (clojure.pprint/pprint result#))))))
+
+(defn ba
+  "Creates a byte array from `bytes`."
+  [& bytes]
+  (byte-array bytes))
+
+(defn bb
+  "Creates a byte buffer from `bytes`."
+  [& bytes]
+  (ByteBuffer/wrap (byte-array bytes)))
 
 (defn bytes=
   "Compares two byte arrays for equivalence."

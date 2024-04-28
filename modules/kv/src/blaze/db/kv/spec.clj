@@ -26,13 +26,13 @@
 (defmulti write-entry first)
 
 (defmethod write-entry :put [_]
-  (s/cat :op #{:put} :column-family keyword? :key bytes? :val bytes?))
+  (s/cat :op #{:put} :column-family simple-keyword? :key bytes? :val bytes?))
 
 (defmethod write-entry :merge [_]
-  (s/cat :op #{:merge} :column-family keyword? :key bytes? :val bytes?))
+  (s/cat :op #{:merge} :column-family simple-keyword? :key bytes? :val bytes?))
 
 (defmethod write-entry :delete [_]
-  (s/cat :op #{:delete} :column-family keyword? :key bytes?))
+  (s/cat :op #{:delete} :column-family simple-keyword? :key bytes?))
 
 (s/def ::kv/write-entry
   (s/multi-spec write-entry first))

@@ -45,6 +45,9 @@ outdated:
 deps-tree:
 	clojure -X:deps tree
 
+deps-list:
+	clojure -X:deps list
+
 cloc-prod-root:
 	cloc src
 

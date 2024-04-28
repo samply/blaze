@@ -10,13 +10,6 @@
 (defn byte-buffer? [x]
   #(instance? ByteBuffer x))
 
-(defn direct?
-  {:inline
-   (fn [byte-buffer]
-     `(.isDirect ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
-  [byte-buffer]
-  (.isDirect ^ByteBuffer byte-buffer))
-
 (defn allocate
   "Allocates a new byte buffer.
 
@@ -30,6 +23,7 @@
   (ByteBuffer/allocate capacity))
 
 (defn wrap
+  "Wraps `byte-array` into a byte buffer."
   {:inline (fn [byte-array] `(ByteBuffer/wrap ~byte-array))}
   [byte-array]
   (ByteBuffer/wrap byte-array))
@@ -135,6 +129,9 @@
   (.remaining ^ByteBuffer byte-buffer))
 
 (defn flip!
+  "Flips `byte-buffer`.
+
+  The limit is set to the current position and then the position is set to zero. If the mark is defined then it is discarded.\nAfter a sequence of channel-read or put operations, invoke this method to prepare for a sequence of channel-write or relative get operations."
   {:inline
    (fn [byte-buffer]
      `(.flip ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
@@ -142,6 +139,9 @@
   (.flip ^ByteBuffer byte-buffer))
 
 (defn rewind!
+  "Rewinds `byte-buffer`.
+
+  The position is set to zero and the mark is discarded."
   {:inline
    (fn [byte-buffer]
      `(.rewind ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
@@ -149,6 +149,10 @@
   (.rewind ^ByteBuffer byte-buffer))
 
 (defn clear!
+  "Clears `byte-buffer`.
+
+  The position is set to zero, the limit is set to the capacity, and the mark is
+  discarded."
   {:inline
    (fn [byte-buffer]
      `(.clear ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
@@ -156,6 +160,7 @@
   (.clear ^ByteBuffer byte-buffer))
 
 (defn mark!
+  "Sets `byte-buffer`'s mark at its position."
   {:inline
    (fn [byte-buffer]
      `(.mark ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
@@ -218,7 +223,10 @@
   ([byte-buffer byte-array offset length]
    (.get ^ByteBuffer byte-buffer ^bytes byte-array offset length)))
 
-(defn size-up-to-null [byte-buffer]
+(defn size-up-to-null
+  "Returns the number of bytes up to the next null byte (0x00) in `byte-buffer`
+  or nil if `byte-buffer` doesn't contain a null byte."
+  [byte-buffer]
   (when (pos? (remaining byte-buffer))
     (mark! byte-buffer)
     (loop [byte (bit-and (long (get-byte! byte-buffer)) 0xFF)
