@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { FhirPrimitive } from './resource-card.js';
+	import { type FhirPrimitive } from './resource-card.js';
 
 	import Canonical from '$lib/values/canonical.svelte';
 	import Date from '$lib/values/date.svelte';
@@ -49,4 +49,8 @@
 	{value.value}
 {:else}
 	({value.type.code}) {value}
+{/if}
+
+{#if value.extensions !== undefined}
+	(has extensions)
 {/if}

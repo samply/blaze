@@ -18,7 +18,8 @@ import type {
 	Coding,
 	CodeableConcept,
 	Meta,
-	HumanName
+	HumanName,
+	Extension
 } from 'fhir/r4';
 import { toTitleCase } from '../util.js';
 import { fetchStructureDefinition } from '../metadata.js';
@@ -75,6 +76,7 @@ export interface FhirProperty {
 
 export interface FhirPrimitive extends FhirType {
 	value: string | number | boolean;
+	extensions?: FhirObject<Extension>[];
 }
 
 export async function transformBundle(
@@ -342,7 +344,7 @@ async function processTypedElement(
 			name: propertyName,
 			type: type,
 			value: isPrimitive(type)
-				? processPrimitiveValue(type, value)
+				? await processPrimitiveValue(name, type, value, resource, fetchStructureDefinition)
 				: await processNonPrimitiveValue(fetchStructureDefinition, type, value)
 		};
 	}
@@ -358,24 +360,62 @@ async function processTypedElement(
 		name: name,
 		type: type,
 		value: isPrimitive(type)
-			? processPrimitiveValue(type, value)
+			? await processPrimitiveValue(name, type, value, resource, fetchStructureDefinition)
 			: await processNonPrimitiveValue(fetchStructureDefinition, type, value)
 	};
 }
 
-function processPrimitiveValue(
+async function processPrimitiveValue(
+	name: string,
 	type: Type,
-	value: string | number | boolean
-): FhirPrimitive[] | FhirPrimitive {
-	return Array.isArray(value)
-		? value.map((v) => ({
+	value: string | number | boolean,
+	resource: (Resource | Element) & { [key: string]: any },
+	fetchStructureDefinition: (type: string) => Promise<StructureDefinition>
+): Promise<FhirPrimitive[] | FhirPrimitive> {
+	if (Array.isArray(value)) {
+		return Promise.all(
+			value.map((v) => processPrimitiveValue1(name, type, v, resource, fetchStructureDefinition))
+		);
+	}
+
+	return processPrimitiveValue1(name, type, value, resource, fetchStructureDefinition);
+}
+
+async function processPrimitiveValue1(
+	name: string,
+	type: Type,
+	value: string | number | boolean,
+	resource: (Resource | Element) & { [key: string]: any },
+	fetchStructureDefinition: (type: string) => Promise<StructureDefinition>
+): Promise<FhirPrimitive> {
+	const siblingValue = resource['_' + name];
+	const extension = siblingValue ? siblingValue['extension'] : undefined;
+	return extension
+		? {
 				type: type,
-				value: v
-			}))
+				value: value,
+				extensions: await processExtension(fetchStructureDefinition, extension)
+			}
 		: {
 				type: type,
 				value: value
 			};
+}
+
+async function processExtension(
+	fetchStructureDefinition: (type: string) => Promise<StructureDefinition>,
+	value: Extension[]
+): Promise<FhirObject<Extension>[]> {
+	const structureDefinition = await fetchStructureDefinition('Extension');
+
+	return Promise.all(
+		value.map(
+			(v) =>
+				calcPropertiesDeep(fetchStructureDefinition, structureDefinition, v) as Promise<
+					FhirObject<Extension>
+				>
+		)
+	);
 }
 
 async function processNonPrimitiveValue(
@@ -392,4 +432,20 @@ async function processNonPrimitiveValue(
 	}
 
 	return calcPropertiesDeep(fetchStructureDefinition, structureDefinition, value);
+}
+
+export function wrapPrimitiveExtensions(extensions: FhirObject<Extension>[]): FhirObject {
+	return {
+		type: { code: 'Element' },
+		properties: [
+			{
+				name: 'extension',
+				type: { code: 'Extension' },
+				value: extensions
+			}
+		],
+		object: {
+			extension: extensions.map((e) => e.object)
+		}
+	};
 }

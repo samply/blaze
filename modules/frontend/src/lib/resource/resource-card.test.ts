@@ -783,6 +783,121 @@ describe('calcPropertiesDeep test', () => {
 			}
 		});
 	});
+	it('primitive extension', async () => {
+		await expect(
+			calcPropertiesDeep(readStructureDefinition, structureDefinitionPatient, {
+				resourceType: 'Patient',
+				id: 'foo',
+				gender: 'other',
+				_gender: {
+					extension: [
+						{
+							url: 'http://fhir.de/StructureDefinition/gender-amtlich-de',
+							valueCoding: {
+								system: 'http://fhir.de/CodeSystem/gender-amtlich-de',
+								code: 'D',
+								display: 'divers'
+							}
+						}
+					]
+				}
+			})
+		).resolves.toStrictEqual({
+			type: { code: 'Patient' },
+			properties: [
+				{
+					name: 'resourceType',
+					type: { code: 'string' },
+					value: { type: { code: 'string' }, value: 'Patient' }
+				},
+				{
+					name: 'id',
+					type: { code: 'string' },
+					value: { type: { code: 'string' }, value: 'foo' }
+				},
+				{
+					name: 'gender',
+					type: { code: 'code' },
+					value: {
+						type: { code: 'code' },
+						value: 'other',
+						extensions: [
+							{
+								type: { code: 'Extension' },
+								properties: [
+									{
+										name: 'url',
+										type: { code: 'string' },
+										value: {
+											type: { code: 'string' },
+											value: 'http://fhir.de/StructureDefinition/gender-amtlich-de'
+										}
+									},
+									{
+										name: 'valueCoding',
+										type: { code: 'Coding' },
+										value: {
+											type: { code: 'Coding' },
+											properties: [
+												{
+													name: 'system',
+													type: { code: 'uri' },
+													value: {
+														type: { code: 'uri' },
+														value: 'http://fhir.de/CodeSystem/gender-amtlich-de'
+													}
+												},
+												{
+													name: 'code',
+													type: { code: 'code' },
+													value: { type: { code: 'code' }, value: 'D' }
+												},
+												{
+													name: 'display',
+													type: { code: 'string' },
+													value: { type: { code: 'string' }, value: 'divers' }
+												}
+											],
+											object: {
+												system: 'http://fhir.de/CodeSystem/gender-amtlich-de',
+												code: 'D',
+												display: 'divers'
+											}
+										}
+									}
+								],
+								object: {
+									url: 'http://fhir.de/StructureDefinition/gender-amtlich-de',
+									valueCoding: {
+										system: 'http://fhir.de/CodeSystem/gender-amtlich-de',
+										code: 'D',
+										display: 'divers'
+									}
+								}
+							}
+						]
+					}
+				}
+			],
+			object: {
+				resourceType: 'Patient',
+				id: 'foo',
+				gender: 'other',
+				_gender: {
+					extension: [
+						{
+							url: 'http://fhir.de/StructureDefinition/gender-amtlich-de',
+							valueCoding: {
+								system: 'http://fhir.de/CodeSystem/gender-amtlich-de',
+								code: 'D',
+								display: 'divers'
+							}
+						}
+					]
+				}
+			}
+		});
+	});
 	it('with error during StructureDefinition fetch', async () => {
 		await expect(() =>
 			calcPropertiesDeep(
