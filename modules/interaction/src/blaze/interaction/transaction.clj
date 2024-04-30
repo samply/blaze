@@ -4,7 +4,7 @@
   https://www.hl7.org/fhir/http.html#transaction"
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-   [blaze.async.comp :as ac :refer [do-sync do-async]]
+   [blaze.async.comp :as ac :refer [do-async do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.fhir.spec :as fhir-spec]
@@ -14,6 +14,7 @@
    [blaze.interaction.transaction.bundle :as bundle]
    [blaze.interaction.transaction.bundle.url :as url]
    [blaze.interaction.util :as iu]
+   [blaze.module :as m]
    [blaze.spec]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -501,7 +502,7 @@
    :type (type/code (str (type/value type) "-response"))
    :entry entries})
 
-(defmethod ig/pre-init-spec :blaze.interaction/transaction [_]
+(defmethod m/pre-init-spec :blaze.interaction/transaction [_]
   (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn]))
 
 (defmethod ig/init-key :blaze.interaction/transaction [_ context]

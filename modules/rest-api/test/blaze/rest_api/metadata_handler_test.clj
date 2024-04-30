@@ -22,20 +22,20 @@
     (given-thrown (ig/init {:blaze.rest-api/metadata-handler nil})
       :key := :blaze.rest-api/metadata-handler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {:blaze.rest-api/metadata-handler {}})
       :key := :blaze.rest-api/metadata-handler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))))
 
   (testing "invalid executor"
     (given-thrown (ig/init {:blaze.rest-api/metadata-handler {:structure-definition-repo ::invalid}})
       :key := :blaze.rest-api/metadata-handler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `structure-definition-repo?
-      [:explain ::s/problems 0 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `structure-definition-repo?
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def config
   {:blaze.rest-api/metadata-handler

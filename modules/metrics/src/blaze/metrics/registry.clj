@@ -2,19 +2,20 @@
   (:require
    [blaze.metrics.core :as metrics]
    [blaze.metrics.spec]
+   [blaze.module :as m]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [taoensso.timbre :as log])
   (:import
    [io.prometheus.client CollectorRegistry]
    [io.prometheus.client.hotspot
-    StandardExports MemoryPoolsExports
-    GarbageCollectorExports ThreadExports
-    ClassLoadingExports VersionInfoExports]))
+    ClassLoadingExports GarbageCollectorExports
+    MemoryPoolsExports StandardExports
+    ThreadExports VersionInfoExports]))
 
 (set! *warn-on-reflection* true)
 
-(defmethod ig/pre-init-spec :blaze.metrics/registry [_]
+(defmethod m/pre-init-spec :blaze.metrics/registry [_]
   (s/keys :opt-un [:blaze.metrics/collectors]))
 
 (defn- register-collectors! [registry collectors]

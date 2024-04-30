@@ -48,13 +48,13 @@
     (given-thrown (ig/init {::kv/mem nil})
       :key := ::kv/mem
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {::kv/mem {}})
       :key := ::kv/mem
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :column-families)))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :column-families)))))
 
 (defn- iterator-invalid-anom? [anom]
   (and (ba/fault? anom) (= "The iterator is invalid." (::anom/message anom))))

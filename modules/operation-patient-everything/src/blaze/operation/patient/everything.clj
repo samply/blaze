@@ -8,6 +8,7 @@
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.search.util :as search-util]
    [blaze.luid :as luid]
+   [blaze.module :as m]
    [blaze.spec]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
@@ -79,7 +80,7 @@
         (do-sync [resources (d/pull-many db handles)]
           (ring/response (bundle context request resources page-size next-offset)))))))
 
-(defmethod ig/pre-init-spec :blaze.operation.patient/everything [_]
+(defmethod m/pre-init-spec :blaze.operation.patient/everything [_]
   (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
 
 (defmethod ig/init-key :blaze.operation.patient/everything [_ context]

@@ -28,42 +28,42 @@
     (given-thrown (ig/init {:blaze/server nil})
       :key := :blaze/server
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {:blaze/server {}})
       :key := :blaze/server
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :port))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :handler))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :version))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :port))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :handler))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :version))))
 
   (testing "invalid port"
     (given-thrown (ig/init {:blaze/server {:port ::invalid}})
       :key := :blaze/server
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :handler))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:explain ::s/problems 2 :pred] := `nat-int?
-      [:explain ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :handler))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :version))
+      [:cause-data ::s/problems 2 :pred] := `nat-int?
+      [:cause-data ::s/problems 2 :val] := ::invalid))
 
   (testing "invalid handler"
     (given-thrown (ig/init {:blaze/server {:handler ::invalid}})
       :key := :blaze/server
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :port))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:explain ::s/problems 2 :pred] := `fn?
-      [:explain ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :port))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :version))
+      [:cause-data ::s/problems 2 :pred] := `fn?
+      [:cause-data ::s/problems 2 :val] := ::invalid))
 
   (testing "invalid version"
     (given-thrown (ig/init {:blaze/server {:version ::invalid}})
       :key := :blaze/server
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :port))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :handler))
-      [:explain ::s/problems 2 :pred] := `string?
-      [:explain ::s/problems 2 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :port))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :handler))
+      [:cause-data ::s/problems 2 :pred] := `string?
+      [:cause-data ::s/problems 2 :val] := ::invalid)))
 
 (defn ok-handler [_]
   (ring/response "OK"))

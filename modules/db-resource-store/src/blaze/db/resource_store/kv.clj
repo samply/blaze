@@ -11,7 +11,7 @@
    [blaze.executors :as ex]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.module :refer [reg-collector]]
+   [blaze.module :as m :refer [reg-collector]]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -111,7 +111,7 @@
         (kv/put! kv-store (coll/eduction entry-freezer entries)))
      executor)))
 
-(defmethod ig/pre-init-spec ::rs/kv [_]
+(defmethod m/pre-init-spec ::rs/kv [_]
   (s/keys :req-un [:blaze.db/kv-store ::executor]))
 
 (defmethod ig/init-key ::rs/kv
@@ -121,7 +121,7 @@
 
 (derive ::rs/kv :blaze.db/resource-store)
 
-(defmethod ig/pre-init-spec ::executor [_]
+(defmethod m/pre-init-spec ::executor [_]
   (s/keys :opt-un [::num-threads]))
 
 (defn- executor-init-msg [num-threads]

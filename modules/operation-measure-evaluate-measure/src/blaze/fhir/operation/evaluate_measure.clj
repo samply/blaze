@@ -14,7 +14,7 @@
    [blaze.fhir.response.create :as response]
    [blaze.handler.util :as handler-util]
    [blaze.luid :as luid]
-   [blaze.module :refer [reg-collector]]
+   [blaze.module :as m :refer [reg-collector]]
    [blaze.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
@@ -112,7 +112,7 @@
                         :fhir/issue "incomplete")))))
         (ac/then-compose-async (partial handle (assoc context :db db) request)))))
 
-(defmethod ig/pre-init-spec ::handler [_]
+(defmethod m/pre-init-spec ::handler [_]
   (s/keys :req-un [:blaze.db/node ::executor :blaze/clock :blaze/rng-fn]
           :opt-un [::timeout]))
 
@@ -120,7 +120,7 @@
   (log/info "Init FHIR $evaluate-measure operation handler")
   (wrap-coerce-params (handler context)))
 
-(defmethod ig/pre-init-spec ::timeout [_]
+(defmethod m/pre-init-spec ::timeout [_]
   (s/keys :req-un [:blaze.fhir.operation.evaluate-measure.timeout/millis]))
 
 (defmethod ig/init-key ::timeout [_ {:keys [millis]}]

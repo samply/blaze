@@ -9,7 +9,7 @@
    [blaze.db.tx-log.kafka.spec]
    [blaze.db.tx-log.kafka.util :as u]
    [blaze.executors :as ex]
-   [blaze.module :refer [reg-collector]]
+   [blaze.module :as m :refer [reg-collector]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [prometheus.alpha :as prom :refer [defhistogram]]
@@ -106,7 +106,7 @@
 (def create-last-t-consumer
   create-consumer)
 
-(defmethod ig/pre-init-spec :blaze.db.tx-log/kafka [_]
+(defmethod m/pre-init-spec :blaze.db.tx-log/kafka [_]
   (s/keys :req-un [::bootstrap-servers
                    ::topic
                    ::last-t-executor]

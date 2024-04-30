@@ -72,24 +72,24 @@
     (given-thrown (ig/init {::tx-log/kafka nil})
       :key := ::tx-log/kafka
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {::tx-log/kafka {}})
       :key := ::tx-log/kafka
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :bootstrap-servers))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :topic))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :last-t-executor))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :bootstrap-servers))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :topic))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :last-t-executor))))
 
   (testing "invalid bootstrap servers"
     (given-thrown (ig/init {::tx-log/kafka {:bootstrap-servers ::invalid}})
       :key := ::tx-log/kafka
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :topic))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :last-t-executor))
-      [:explain ::s/problems 2 :pred] := `string?
-      [:explain ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :topic))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :last-t-executor))
+      [:cause-data ::s/problems 2 :pred] := `string?
+      [:cause-data ::s/problems 2 :val] := ::invalid))
 
   (testing "non default key"
     (with-redefs

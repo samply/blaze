@@ -25,20 +25,20 @@
     (given-thrown (ig/init {:blaze.interaction/delete nil})
       :key := :blaze.interaction/delete
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {:blaze.interaction/delete {}})
       :key := :blaze.interaction/delete
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))))
 
   (testing "invalid executor"
     (given-thrown (ig/init {:blaze.interaction/delete {:node ::invalid}})
       :key := :blaze.interaction/delete
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `node?
-      [:explain ::s/problems 0 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `node?
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def config
   (assoc api-stub/mem-node-config

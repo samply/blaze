@@ -14,6 +14,7 @@
    [blaze.interaction.search.params :as params]
    [blaze.interaction.search.util :as search-util]
    [blaze.interaction.util :as iu]
+   [blaze.module :as m]
    [blaze.page-store :as page-store]
    [blaze.page-store.spec]
    [blaze.spec]
@@ -291,7 +292,7 @@
         handling
         (assoc :blaze.preference/handling handling)))))
 
-(defmethod ig/pre-init-spec :blaze.interaction/search-type [_]
+(defmethod m/pre-init-spec :blaze.interaction/search-type [_]
   (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store]))
 
 (defmethod ig/init-key :blaze.interaction/search-type [_ context]

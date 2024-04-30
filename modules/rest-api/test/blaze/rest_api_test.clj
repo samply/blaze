@@ -301,33 +301,33 @@
     (given-thrown (ig/init {:blaze/rest-api nil})
       :key := :blaze/rest-api
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {:blaze/rest-api {}})
       :key := :blaze/rest-api
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :release-date))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :version))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :release-date))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
 
   (testing "invalid enforce-referential-integrity"
     (given-thrown (ig/init {:blaze/rest-api {:enforce-referential-integrity ::invalid}})
       :key := :blaze/rest-api
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :version))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :release-date))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
-      [:explain ::s/problems 7 :pred] := `boolean?
-      [:explain ::s/problems 7 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-url))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :version))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :release-date))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
+      [:cause-data ::s/problems 7 :pred] := `boolean?
+      [:cause-data ::s/problems 7 :val] := ::invalid)))
 
 (deftest requests-total-collector-init-test
   (with-system [{collector :blaze.rest-api/requests-total} {:blaze.rest-api/requests-total {}}]

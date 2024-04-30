@@ -5,6 +5,7 @@
    [blaze.db.api :as d]
    [blaze.executors :as ex]
    [blaze.fhir.operation.graphql.spec]
+   [blaze.module :as m]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [com.walmartlabs.lacinia :as lacinia]
@@ -76,7 +77,7 @@
       (lacinia/execute schema query variables {:blaze/db db}))
     (lacinia/execute schema (get (:params request) "query") nil {:blaze/db db})))
 
-(defmethod ig/pre-init-spec ::handler [_]
+(defmethod m/pre-init-spec ::handler [_]
   (s/keys :req-un [:blaze.db/node ::executor]))
 
 (defmethod ig/init-key ::handler [_ {:keys [executor] :as context}]
@@ -87,7 +88,7 @@
        #(ring/response (execute-query schema db request))
        executor))))
 
-(defmethod ig/pre-init-spec ::executor [_]
+(defmethod m/pre-init-spec ::executor [_]
   (s/keys :opt-un [::num-threads]))
 
 (defn- executor-init-msg [num-threads]

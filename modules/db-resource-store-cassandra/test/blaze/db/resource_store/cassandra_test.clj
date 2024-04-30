@@ -75,15 +75,15 @@
     (given-thrown (ig/init {::rs/cassandra nil})
       :key := ::rs/cassandra
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid contact-points"
     (given-thrown (ig/init {::rs/cassandra {:contact-points ::invalid}})
       :key := ::rs/cassandra
       :reason := ::ig/build-failed-spec
       [:value :contact-points] := ::invalid
-      [:explain ::s/problems 0 :path] := [:contact-points]
-      [:explain ::s/problems 0 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :path] := [:contact-points]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def cbor-object-mapper
   (j/object-mapper

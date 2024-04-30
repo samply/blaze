@@ -8,6 +8,7 @@
    [blaze.db.kv :as kv]
    [blaze.db.kv.protocols :as p]
    [blaze.db.kv.spec]
+   [blaze.module :as m]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [taoensso.timbre :as log])
@@ -189,7 +190,7 @@
 (defn- init-db [column-families]
   (into {} (map init-column-family) column-families))
 
-(defmethod ig/pre-init-spec ::kv/mem [_]
+(defmethod m/pre-init-spec ::kv/mem [_]
   (s/keys :req-un [::kv/column-families]))
 
 (defmethod ig/init-key ::kv/mem

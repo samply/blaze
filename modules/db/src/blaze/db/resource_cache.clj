@@ -8,6 +8,7 @@
    [blaze.db.resource-cache.spec]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.spec]
+   [blaze.module :as m]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [taoensso.timbre :as log])
@@ -39,7 +40,7 @@
   (-> (.synchronous ^AsyncLoadingCache (.cache ^ResourceCache resource-cache))
       (.invalidateAll)))
 
-(defmethod ig/pre-init-spec :blaze.db/resource-cache [_]
+(defmethod m/pre-init-spec :blaze.db/resource-cache [_]
   (s/keys :req-un [:blaze.db/resource-store] :opt-un [::max-size]))
 
 (defmethod ig/init-key :blaze.db/resource-cache

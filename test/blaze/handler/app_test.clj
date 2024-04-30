@@ -22,30 +22,30 @@
     (given-thrown (ig/init {:blaze.handler/app nil})
       :key := :blaze.handler/app
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {:blaze.handler/app {}})
       :key := :blaze.handler/app
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rest-api))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :health-handler))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rest-api))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :health-handler))))
 
   (testing "invalid rest-api"
     (given-thrown (ig/init {:blaze.handler/app {:rest-api ::invalid}})
       :key := :blaze.handler/app
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :health-handler))
-      [:explain ::s/problems 1 :pred] := `fn?
-      [:explain ::s/problems 1 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :health-handler))
+      [:cause-data ::s/problems 1 :pred] := `fn?
+      [:cause-data ::s/problems 1 :val] := ::invalid))
 
   (testing "invalid health"
     (given-thrown (ig/init {:blaze.handler/app {:health-handler ::invalid}})
       :key := :blaze.handler/app
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rest-api))
-      [:explain ::s/problems 1 :pred] := `fn?
-      [:explain ::s/problems 1 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rest-api))
+      [:cause-data ::s/problems 1 :pred] := `fn?
+      [:cause-data ::s/problems 1 :val] := ::invalid)))
 
 (defn- rest-api [_ respond _]
   (respond (ring/response ::rest-api)))
