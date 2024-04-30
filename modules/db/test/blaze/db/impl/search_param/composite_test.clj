@@ -10,6 +10,8 @@
    [blaze.db.impl.search-param :as search-param]
    [blaze.db.impl.search-param-spec]
    [blaze.db.impl.search-param.core :as sc]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv.mem]
    [blaze.db.search-param-registry :as sr]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.hash :as hash]
@@ -21,6 +23,7 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
@@ -39,7 +42,12 @@
 
 (def config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:kv-store (ig/ref ::kv/mem)
+    :structure-definition-repo structure-definition-repo}
+   ::kv/mem
+   {:column-families
+    {:search-param-code nil
+     :system nil}}})
 
 (deftest code-value-quantity-param-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
@@ -305,6 +313,7 @@
 (deftest create-test
   (testing "not found component"
     (given (sc/search-param
+            nil
             {}
             {:type "composite"
              :component
@@ -318,6 +327,7 @@
       (fn [_]
         {::anom/category ::anom/fault})]
       (given (sc/search-param
+              nil
               {"url-210148"
                {:type "token"}
                "url-211659"

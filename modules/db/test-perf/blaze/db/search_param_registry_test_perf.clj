@@ -1,17 +1,25 @@
 (ns blaze.db.search-param-registry-test-perf
   (:require
+   [blaze.db.kv :as kv]
+   [blaze.db.kv.mem]
    [blaze.db.search-param-registry :as sr]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [with-system]]
    [clojure.test :refer [deftest testing]]
    [criterium.core :as criterium]
+   [integrant.core :as ig]
    [taoensso.timbre :as log]))
 
 (log/set-min-level! :info)
 
 (def config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:kv-store (ig/ref ::kv/mem)
+    :structure-definition-repo structure-definition-repo}
+   ::kv/mem
+   {:column-families
+    {:search-param-code nil
+     :system nil}}})
 
 (deftest linked-compartments-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]

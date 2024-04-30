@@ -46,6 +46,9 @@
   (-compile-value [_ modifier value]
     (p/-compile-value search-param modifier value))
 
+  (-compile-value-composite [_ modifier value]
+    (p/-compile-value-composite search-param modifier value))
+
   (-chunked-resource-handles [this batch-db tid modifier value]
     [(p/-resource-handles this batch-db tid modifier value)])
 

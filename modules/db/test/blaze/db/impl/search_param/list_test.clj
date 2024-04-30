@@ -2,12 +2,15 @@
   (:require
    [blaze.byte-string-spec]
    [blaze.db.impl.search-param-spec]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv.mem]
    [blaze.db.search-param-registry :as sr]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest]]
+   [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
 
@@ -21,7 +24,12 @@
 
 (def config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:kv-store (ig/ref ::kv/mem)
+    :structure-definition-repo structure-definition-repo}
+   ::kv/mem
+   {:column-families
+    {:search-param-code nil
+     :system nil}}})
 
 (deftest list-param-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]

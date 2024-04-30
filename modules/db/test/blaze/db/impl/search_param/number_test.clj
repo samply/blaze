@@ -9,6 +9,8 @@
    [blaze.db.impl.search-param-spec]
    [blaze.db.impl.search-param.number :as spn]
    [blaze.db.impl.search-param.util-spec]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv.mem]
    [blaze.db.search-param-registry :as sr]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.hash :as hash]
@@ -20,6 +22,7 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
 
@@ -38,7 +41,12 @@
 
 (def config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:kv-store (ig/ref ::kv/mem)
+    :structure-definition-repo structure-definition-repo}
+   ::kv/mem
+   {:column-families
+    {:search-param-code nil
+     :system nil}}})
 
 (deftest compile-value-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]

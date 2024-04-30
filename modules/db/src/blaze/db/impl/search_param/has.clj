@@ -114,6 +114,9 @@
        (codec/tid type)
        (p/-compile-value search-param nil value)]))
 
+  (-compile-value-composite [search-param modifier value]
+    (p/-compile-value search-param modifier value))
+
   (-chunked-resource-handles [search-param batch-db tid modifier value]
     [(p/-resource-handles search-param batch-db tid modifier value)])
 
@@ -127,6 +130,9 @@
 
   (-matcher [_ batch-db _ values]
     (filter #(matches? batch-db % values)))
+
+  (-index-entries [search-param resolver linked-compartments hash resource]
+    (u/index-entries search-param resolver linked-compartments hash resource))
 
   (-index-values [_ _ _]
     []))

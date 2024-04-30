@@ -27,7 +27,7 @@
 
 (s/fdef bs/from-byte-buffer-null-terminated!
   :args (s/cat :byte-buffer byte-buffer?)
-  :ret (s/nilable bs/byte-string?))
+  :ret bs/byte-string?)
 
 (s/fdef bs/from-hex
   :args (s/cat :s string?)

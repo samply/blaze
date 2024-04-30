@@ -16,10 +16,17 @@
 
 (def ^:const ^long c-hash-size Integer/BYTES)
 (def ^:const ^long v-hash-size Integer/BYTES)
+(def ^:const ^long tb-size 1)
 (def ^:const ^long tid-size Integer/BYTES)
+(def ^:const ^long search-param-code-id-size 3)
+(def ^:const ^long system-id-size 3)
 (def ^:const ^long t-size Long/BYTES)
 (def ^:const ^long state-size Long/BYTES)
 (def ^:const ^long max-id-size 64)
+
+;; ---- Default Values --------------------------------------------------------
+
+(def ^:const null-system-id #blaze/byte-string"000000")
 
 ;; ---- Type Identifier -------------------------------------------------------
 
@@ -280,6 +287,7 @@
     "series"
     "status"
     "subject"
+    "subject:identifier"
     "url"
     "value-quantity"
     "variant-start"

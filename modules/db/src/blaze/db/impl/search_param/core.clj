@@ -10,10 +10,10 @@
   in the registry. Other namespaces can provide their own implementations here.
 
   The conversion can return an anomaly."
-  {:arglists '([index definition])}
-  (fn [_ {:keys [type]}] type))
+  {:arglists '([context index definition])}
+  (fn [_ _ {:keys [name type]}] (if (= "_profile" name) "reference" type)))
 
 (defmethod search-param :default
-  [_ {:keys [url type]}]
+  [_ _ {:keys [url type]}]
   (log/warn (format "Skip creating search parameter `%s` of type `%s` because it is not implemented." url type))
   {::anom/category ::anom/unsupported})

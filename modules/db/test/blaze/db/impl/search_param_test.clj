@@ -9,9 +9,12 @@
    [blaze.db.impl.search-param :as search-param]
    [blaze.db.impl.search-param-spec]
    [blaze.db.impl.search-param.core :as sc]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv.mem]
    [blaze.db.search-param-registry :as sr]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
+   [blaze.fhir.spec.references-spec]
    [blaze.fhir.spec.type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [with-system]]
@@ -19,6 +22,7 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [juxt.iota :refer [given]]))
 
 (set! *warn-on-reflection* true)
@@ -29,13 +33,13 @@
 (deftest create-test
   (testing "missing expression"
     (doseq [type ["date" "number" "quantity" "reference" "string" "token" "uri"]]
-      (given (sc/search-param nil {:type type :url "url-165259"})
+      (given (sc/search-param nil nil {:type type :url "url-165259"})
         ::anom/category := ::anom/unsupported
         ::anom/message := "Unsupported search parameter with URL `url-165259`. Required expression is missing.")))
 
   (testing "invalid expression"
     (doseq [type ["date" "number" "quantity" "reference" "string" "token" "uri"]]
-      (given (sc/search-param nil {:type type :expression ""})
+      (given (sc/search-param nil nil {:type type :expression ""})
         ::anom/category := ::anom/fault
         ::anom/message := "Error while parsing token `<EOF>` in expression ``"))))
 
@@ -47,7 +51,12 @@
 
 (def config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:kv-store (ig/ref ::kv/mem)
+    :structure-definition-repo structure-definition-repo}
+   ::kv/mem
+   {:column-families
+    {:search-param-code nil
+     :system nil}}})
 
 (deftest compile-value-test
   (with-system [{:blaze.db/keys [search-param-registry]} config]
@@ -287,6 +296,7 @@
             [[_ k0] [_ k1]]
             (index-entries
              (sc/search-param
+              nil
               {}
               {:type "number"
                :name "rank"
@@ -319,6 +329,7 @@
             [[_ k0] [_ k1]]
             (index-entries
              (sc/search-param
+              nil
               {}
               {:type "number"
                :name "priority"

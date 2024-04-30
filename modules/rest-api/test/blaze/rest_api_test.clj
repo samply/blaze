@@ -141,8 +141,9 @@
     :release-date "2024-05-23"
     :structure-definition-repo structure-definition-repo
     :search-param-registry (ig/ref :blaze.db/search-param-registry)}
-   :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}
+         :blaze.db/search-param-registry
+   {:kv-store (ig/ref :blaze.db/index-kv-store)
+    :structure-definition-repo structure-definition-repo}
    :blaze.test/fixed-rng-fn {}
    :blaze.test/page-id-cipher {}))
 

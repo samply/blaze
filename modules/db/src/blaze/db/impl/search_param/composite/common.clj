@@ -21,7 +21,7 @@
       res)))
 
 (defn compile-component-value [{:keys [search-param]} value]
-  (p/-compile-value search-param nil value))
+  (p/-compile-value-composite search-param nil value))
 
 (defn- component-index-values
   [resolver main-value {:keys [expression search-param]}]

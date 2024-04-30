@@ -3,7 +3,7 @@
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
    [blaze.byte-string-spec]
-   [blaze.test-util :as tu :refer [ba bb bytes=]]
+   [blaze.test-util :as tu :refer [ba bb bytes= given-thrown]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]))
 
@@ -50,10 +50,12 @@
 
 (deftest from-byte-buffer-null-terminated-test
   (testing "empty byte buffer"
-    (is (nil? (bs/from-byte-buffer-null-terminated! (bb)))))
+    (given-thrown (bs/from-byte-buffer-null-terminated! (bb))
+      :message := "Can't read null terminated byte string."))
 
   (testing "one non-null byte"
-    (is (nil? (bs/from-byte-buffer-null-terminated! (bb 0x01)))))
+    (given-thrown (bs/from-byte-buffer-null-terminated! (bb 0x01))
+      :message := "Can't read null terminated byte string."))
 
   (testing "one null byte"
     (let [bb (bb 0x00)]
