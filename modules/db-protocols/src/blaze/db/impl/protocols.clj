@@ -99,7 +99,9 @@
   (-pull-many [pull resource-handles variant]))
 
 (defprotocol SearchParam
+  (-of-type [search-param tb])
   (-compile-value [search-param modifier value] "Can return an anomaly.")
+  (-compile-value-composite [search-param modifier value] "Can return an anomaly.")
   (-chunked-resource-handles
     [search-param batch-db tid modifier compiled-value])
   (-resource-handles
@@ -113,6 +115,7 @@
   (-compartment-keys [search-param context compartment tid compiled-value])
   (-matcher [_ batch-db modifier values])
   (-compartment-ids [_ resolver resource])
+  (-index-entries [_ resolver linked-compartments hash resource])
   (-index-values [_ resolver resource])
   (-index-value-compiler [_]))
 
@@ -123,4 +126,5 @@
   (-list-by-type [_ type])
   (-list-by-target [_ target])
   (-linked-compartments [_ resource])
-  (-compartment-resources [_ compartment-type] [_ compartment-type type]))
+  (-compartment-resources [_ compartment-type] [_ compartment-type type])
+  (-tb [_ type]))

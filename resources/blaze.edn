@@ -409,7 +409,8 @@
   ;; in FHIR R4.
   ;;
   :blaze.db/search-param-registry
-  {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo
+  {:kv-store #blaze/ref :blaze.db.main/index-kv-store
+   :structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo
    :extra-bundle-file #blaze/cfg ["DB_SEARCH_PARAM_BUNDLE" string?]}
 
   ;;
@@ -473,6 +474,15 @@
      :resource-value-index nil
      :compartment-search-param-value-index nil
      :compartment-resource-type-index nil
+     :type-search-param-token-full-resource-index nil
+     :type-search-param-token-system-resource-index nil
+     :type-search-param-reference-local-resource-index nil
+     :type-search-param-reference-url-resource-index nil
+     :resource-search-param-token-full-index nil
+     :resource-search-param-token-system-index nil
+     :resource-search-param-reference-local-index nil
+     :resource-search-param-reference-url-index nil
+     :patient-type-search-param-token-full-resource-index nil
      :active-search-params nil
      :tx-success-index {:reverse-comparator? true}
      :tx-error-index nil
@@ -484,7 +494,10 @@
      :type-stats-index nil
      :system-stats-index nil
      :cql-bloom-filter nil
-     :cql-bloom-filter-by-t nil}}
+     :cql-bloom-filter-by-t nil
+     :system-stats-index nil
+     :search-param-code nil
+     :system nil}}
 
    ;;
    ;; Admin In-Memory, Volatile Index Store
@@ -498,6 +511,15 @@
      :resource-value-index nil
      :compartment-search-param-value-index nil
      :compartment-resource-type-index nil
+     :type-search-param-token-full-resource-index nil
+     :type-search-param-token-system-resource-index nil
+     :type-search-param-reference-local-resource-index nil
+     :type-search-param-reference-url-resource-index nil
+     :resource-search-param-token-full-index nil
+     :resource-search-param-token-system-index nil
+     :resource-search-param-reference-local-index nil
+     :resource-search-param-reference-url-index nil
+     :patient-type-search-param-token-full-resource-index nil
      :active-search-params nil
      :tx-success-index {:reverse-comparator? true}
      :tx-error-index nil
@@ -509,7 +531,10 @@
      :type-stats-index nil
      :system-stats-index nil
      :cql-bloom-filter nil
-     :cql-bloom-filter-by-t nil}}
+     :cql-bloom-filter-by-t nil
+     :system-stats-index nil
+     :search-param-code nil
+     :system nil}}
 
    ;;
    ;; Main Local Transaction Log for Single Node Deployments
@@ -636,6 +661,60 @@
       :target-file-size-base-in-mb 4
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
+     :type-search-param-token-full-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-search-param-token-system-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-search-param-reference-local-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-search-param-reference-url-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-search-param-token-full-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-search-param-token-system-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-search-param-reference-local-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-search-param-reference-url-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :patient-type-search-param-token-full-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
      :active-search-params
      {:block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
@@ -708,7 +787,13 @@
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
-      :reverse-comparator? true}}}
+      :reverse-comparator? true}
+
+     :search-param-code
+     {:block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :system
+     {:block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
 
    [:blaze.db.kv.rocksdb/stats :blaze.db.index-kv-store.main/stats] {}
 
@@ -740,6 +825,60 @@
      {:write-buffer-size-in-mb 4
       :max-bytes-for-level-base-in-mb 16
       :target-file-size-base-in-mb 4
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-search-param-token-full-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-search-param-token-system-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-search-param-reference-local-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-search-param-reference-url-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-search-param-token-full-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-search-param-token-system-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-search-param-reference-local-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-search-param-reference-url-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :patient-type-search-param-token-full-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :active-search-params
@@ -994,6 +1133,60 @@
       :target-file-size-base-in-mb 4
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
+     :type-search-param-token-full-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-search-param-token-system-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-search-param-reference-local-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-search-param-reference-url-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-search-param-token-full-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-search-param-token-system-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-search-param-reference-local-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-search-param-reference-url-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :patient-type-search-param-token-full-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
      :active-search-params
      {:block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
@@ -1066,7 +1259,13 @@
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
-      :reverse-comparator? true}}}
+      :reverse-comparator? true}
+
+     :search-param-code
+     {:block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :system
+     {:block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
 
    [:blaze.db.kv.rocksdb/stats :blaze.db.index-kv-store.main/stats] {}
 
@@ -1098,6 +1297,60 @@
      {:write-buffer-size-in-mb 4
       :max-bytes-for-level-base-in-mb 16
       :target-file-size-base-in-mb 4
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-search-param-token-full-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-search-param-token-system-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-search-param-reference-local-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :type-search-param-reference-url-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-search-param-token-full-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-search-param-token-system-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-search-param-reference-local-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :resource-search-param-reference-url-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :patient-type-search-param-token-full-resource-index
+     {:write-buffer-size-in-mb 64
+      :max-bytes-for-level-base-in-mb 512
+      :target-file-size-base-in-mb 64
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :active-search-params

@@ -9,11 +9,14 @@
   are index with different lastUpdate times."
   (:require
    [blaze.db.impl.index.resource-as-of :as rao]
-   [blaze.db.impl.protocols :as p]))
+   [blaze.db.impl.protocols :as p]
+   [blaze.db.impl.search-param.util :as u]))
 
 (def search-param
   (reify p/SearchParam
     (-compile-value [_ _ _])
+
+    (-compile-value-composite [_ _ _])
 
     (-chunked-resource-handles [search-param batch-db tid modifier value]
       [(p/-resource-handles search-param batch-db tid modifier value)])
@@ -23,5 +26,8 @@
 
     (-resource-handles [_ batch-db tid _ _ start-id]
       (rao/type-list batch-db tid start-id))
+
+    (-index-entries [search-param resolver linked-compartments hash resource]
+      (u/index-entries search-param resolver linked-compartments hash resource))
 
     (-index-values [_ _ _])))

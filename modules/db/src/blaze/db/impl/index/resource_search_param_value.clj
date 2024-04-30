@@ -5,6 +5,7 @@
    [blaze.byte-string :as bs]
    [blaze.db.impl.bytes :as bytes]
    [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.util :as u]
    [blaze.db.impl.iterators :as i]
    [blaze.db.kv :as kv]
    [blaze.fhir.hash :as hash]))
@@ -93,18 +94,13 @@
     encode
     values)))
 
-(defn- ensure-size [target-buf size]
-  (if (< (bb/capacity target-buf) (long size))
-    (bb/allocate (max (long size) (bit-shift-left (bb/capacity target-buf) 1)))
-    target-buf))
-
 (defn resource-search-param-encoder
   "Returns an encoder that can be used with `value-filter` that will encode the
   resource handle and search param with `c-hash`."
   [c-hash]
   (fn [target-buf {:keys [tid id hash]} _]
     (let [id (codec/id-byte-string id)
-          target-buf (ensure-size target-buf (key-size id))]
+          target-buf (u/ensure-size target-buf (key-size id))]
       (encode-key-buf-1! target-buf tid id hash c-hash))))
 
 (defn resource-search-param-value-encoder
@@ -113,7 +109,7 @@
   [c-hash]
   (fn [target-buf {:keys [tid id hash]} value]
     (let [id (codec/id-byte-string id)
-          target-buf (ensure-size target-buf (+ (key-size id) (bs/size value)))]
+          target-buf (u/ensure-size target-buf (+ (key-size id) (bs/size value)))]
       (encode-key-buf-1! target-buf tid id hash c-hash)
       (bb/put-byte-string! target-buf value))))
 

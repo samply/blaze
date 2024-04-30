@@ -223,6 +223,9 @@
                 ::category ::invalid-decimal-value
                 ::anom/message (u/invalid-decimal-value-msg code value)))))
 
+  (-compile-value-composite [search-param modifier value]
+    (p/-compile-value search-param modifier value))
+
   (-chunked-resource-handles [_ batch-db tid _ value]
     (coll/eduction
      (u/resource-handle-chunk-mapper batch-db tid)
@@ -240,6 +243,9 @@
 
   (-matcher [_ batch-db _ values]
     (matcher batch-db c-hash codec/v-hash-size values))
+
+  (-index-entries [search-param resolver linked-compartments hash resource]
+    (u/index-entries search-param resolver linked-compartments hash resource))
 
   (-index-values [search-param resolver resource]
     (when-ok [values (fhir-path/eval resolver expression resource)]
@@ -259,7 +265,7 @@
     expression))
 
 (defmethod sc/search-param "quantity"
-  [_ {:keys [name url type base code expression]}]
+  [_ _ {:keys [name url type base code expression]}]
   (if expression
     (when-ok [expression (fhir-path/compile (fix-expr url expression))]
       (->SearchParamQuantity name url type base code (codec/c-hash code)

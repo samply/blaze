@@ -3,7 +3,7 @@
    [blaze.admin-api :as admin-api]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
-   [blaze.db.api-stub]
+   [blaze.db.api-stub :as api-stub]
    [blaze.db.impl.index.patient-last-change :as plc]
    [blaze.db.kv :as-alias kv]
    [blaze.db.kv.rocksdb :as rocksdb]
@@ -98,50 +98,21 @@
    {:dir (str dir "/index")
     :block-cache (ig/ref ::rocksdb/block-cache)
     :column-families
-    {:search-param-value-index
-     {:write-buffer-size-in-mb 1
-      :max-write-buffer-number 1
-      :max-bytes-for-level-base-in-mb 1
-      :target-file-size-base-in-mb 1}
-     :resource-value-index nil
+    (assoc
+     api-stub/index-kv-store-column-families
      :compartment-search-param-value-index
      {:write-buffer-size-in-mb 1
       :max-write-buffer-number 1
       :max-bytes-for-level-base-in-mb 1
       :target-file-size-base-in-mb 1}
-     :compartment-resource-type-index nil
-     :active-search-params nil
-     :tx-success-index {:reverse-comparator? true}
-     :tx-error-index nil
-     :t-by-instant-index {:reverse-comparator? true}
-     :resource-as-of-index nil
-     :type-as-of-index nil
-     :system-as-of-index nil
      :patient-last-change-index
      {:write-buffer-size-in-mb 1
       :max-write-buffer-number 1
       :max-bytes-for-level-base-in-mb 1
-      :target-file-size-base-in-mb 1}
-     :type-stats-index nil
-     :system-stats-index nil
-     :cql-bloom-filter nil
-     :cql-bloom-filter-by-t nil}}
+      :target-file-size-base-in-mb 1})}
 
    [::kv/mem :blaze.db.admin/index-kv-store]
-   {:column-families
-    {:search-param-value-index nil
-     :resource-value-index nil
-     :compartment-search-param-value-index nil
-     :compartment-resource-type-index nil
-     :active-search-params nil
-     :tx-success-index {:reverse-comparator? true}
-     :tx-error-index nil
-     :t-by-instant-index {:reverse-comparator? true}
-     :resource-as-of-index nil
-     :type-as-of-index nil
-     :system-as-of-index nil
-     :type-stats-index nil
-     :system-stats-index nil}}
+   {:column-families api-stub/index-kv-store-column-families}
 
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
@@ -170,7 +141,8 @@
    [:blaze.db.node.resource-indexer/executor :blaze.db.node.resource-indexer.admin/executor] {}
 
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}
+   {:kv-store (ig/ref :blaze.db.main/index-kv-store)
+    :structure-definition-repo structure-definition-repo}
 
    ::rocksdb/block-cache {:size-in-mb 1}
 

@@ -45,6 +45,9 @@
                      code (::spq/unsupported-prefix %)))
              %)))))
 
+  (-compile-value-composite [search-param modifier value]
+    (p/-compile-value search-param modifier value))
+
   (-chunked-resource-handles [_ batch-db tid _ value]
     (coll/eduction
      (u/resource-handle-chunk-mapper batch-db tid)
@@ -62,6 +65,9 @@
 
   (-matcher [_ batch-db _ values]
     (spq/matcher batch-db c-hash prefix-length values))
+
+  (-index-entries [search-param resolver linked-compartments hash resource]
+    (u/index-entries search-param resolver linked-compartments hash resource))
 
   (-index-values [_ resolver resource]
     (when-ok [values (fhir-path/eval resolver main-expression resource)]

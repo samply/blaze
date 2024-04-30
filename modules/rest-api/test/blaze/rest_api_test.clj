@@ -145,8 +145,9 @@
     :structure-definition-repo structure-definition-repo
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :terminology-service (ig/ref ::ts/local)}
-   :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}
+         :blaze.db/search-param-registry
+   {:kv-store (ig/ref :blaze.db/index-kv-store)
+    :structure-definition-repo structure-definition-repo}
    ::ts/local
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)

@@ -122,14 +122,27 @@ The `SystemStats` index keeps track of the total number of resources, and the nu
 
 The indices not depending on `t` directly point to the resource versions by their content hash. 
 
-| Name                                | Key Parts                                                      | Value |
-|-------------------------------------|----------------------------------------------------------------|-------|
-| SearchParamValueResource            | search-param, type, value, id, hash-prefix                     | -     |
-| ResourceSearchParamValue            | type, id, hash-prefix, search-param, value                     | -     |
-| CompartmentSearchParamValueResource | comp-code, comp-id, search-param, type, value, id, hash-prefix | -     |
-| CompartmentResourceType             | comp-code, comp-id, type, id                                   | -     |
-| SearchParam                         | code, type                                                     | id    |
-| ActiveSearchParams                  | id                                                             | -     |
+| Name                                      | Key Parts                                                      | Value | Since |
+|-------------------------------------------|----------------------------------------------------------------|-------|------:|
+| SearchParamValueResource                  | search-param, type, value, id, hash-prefix                     | -     |
+| ResourceSearchParamValue                  | type, id, hash-prefix, search-param, value                     | -     |
+| CompartmentSearchParamValueResource       | comp-code, comp-id, search-param, type, value, id, hash-prefix | -     |
+| CompartmentResourceType                   | comp-code, comp-id, type, id                                   | -     |
+| TypeSearchParamTokenFullResource          | search-param, type, value, system, id, hash-prefix             | -     |  0.27 |
+| TypeSearchParamTokenSystemResource        | search-param, type, system, id, hash-prefix                    | -     |  0.27 |
+| TypeSearchParamReferenceCanonicalResource | search-param, type, url, version, id, hash-prefix              | -     |  0.27 |
+| TypeSearchParamReferenceUrlResource       | search-param, type, url, id, hash-prefix                       | -     |  0.27 |
+| TypeSearchParamReferenceLocalResource     | search-param, type, ref-id, ref-type, id, hash-prefix          | -     |  0.27 |
+| ResourceSearchParamTokenFull              | type, id, hash-prefix, search-param, value, system             | -     |  0.27 |
+| ResourceSearchParamTokenSystem            | type, id, hash-prefix, search-param, system                    | -     |  0.27 |
+| ResourceSearchParamReferenceCanonical     | type, id, hash-prefix, search-param, url, version              | -     |  0.27 |
+| ResourceSearchParamReferenceUrl           | type, id, hash-prefix, search-param, url                       | -     |  0.27 |
+| ResourceSearchParamReferenceLocal         | type, id, hash-prefix, search-param, ref-id, ref-type          | -     |  0.27 |
+| PatientTypeSearchParamTokenFullResource   | patient-id, search-param, type, value, system, id, hash-prefix | -     |  0.27 |
+| SearchParam                               | code, type                                                     | id    |
+| ActiveSearchParams                        | id                                                             | -     |
+| SearchParamCode                           | code                                                           | id    |
+| System                                    | code                                                           | id    |
 
 #### SearchParamValueResource
 
@@ -139,7 +152,7 @@ The `SearchParamValueResource` index is used to find resources based on search p
 * `type` - a 4-byte hash of the resource type
 * `value` - the encoded value of the resource reachable by the search parameters FHIRPath expression. The encoding depends on the search parameters type.
 * `id` - the logical id of the resource
- * `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
+* `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
 
 The way the `SearchParamValueResource` index is used, depends on the type of the search parameter. The following sections will explain this in detail for each type:
 
@@ -225,6 +238,102 @@ The `ResourceSearchParamValue` index is used to decide whether a resource contai
 * `search-param` - a 4-byte hash of the search parameters code used to identify the search parameter
 * `value` - the encoded value of the resource reachable by the search parameters FHIRPath expression. The encoding depends on the search parameters type.
 
+#### TypeSearchParamTokenFullResource
+
+New index in v0.27.0. It is used to find resources based on full values of search parameters of type token. Full values consist of the system and value for Identifiers or code for Codings. The system will be the special value 0x000000 if not available in the resource.
+
+* `type` - the type byte of the resource type (one byte)
+* `search-param` - a 3-byte identifier of the search parameters code used to identify the search parameter
+* `value` - the full code/value
+* `system` - a 3-byte identifier of the system URI
+* `id` - the logical id of the resource
+* `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
+
+#### TypeSearchParamTokenSystemResource
+
+New index in v0.27.0. It is used to find resources based on the system only of search parameters of type token. If the system is not available, no index entry will be written.
+
+* `type` - the type byte of the resource type (one byte)
+* `search-param` - a 3-byte identifier of the search parameters code used to identify the search parameter
+* `system` - a 3-byte identifier of the system URI
+* `id` - the logical id of the resource
+* `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
+
+#### TypeSearchParamReferenceCanonicalResource
+
+New index in v0.27.0. It is used to find resources based on the reference value in case it is an canonical URL of search parameters of type reference.
+
+* `type` - the type byte of the resource type (one byte)
+* `search-param` - a 3-byte identifier of the search parameters code used to identify the search parameter
+* `url` - a 4-byte identifier of the canonical URL
+* `version` - the full version
+* `id` - the logical id of the resource
+* `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
+
+#### TypeSearchParamReferenceUrlResource
+
+New index in v0.27.0. It is used to find resources based on the reference value in case it is an URL of search parameters of type reference.
+
+* `type` - the type byte of the resource type (one byte)
+* `search-param` - a 3-byte identifier of the search parameters code used to identify the search parameter
+* `url` - the full url
+* `id` - the logical id of the resource
+* `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
+
+#### TypeSearchParamReferenceLocalResource
+
+New index in v0.27.0. It is used to find resources based on the reference value in case it is a local reference of search parameters of type reference.
+
+* `type` - the type byte of the resource type (one byte)
+* `search-param` - a 3-byte identifier of the search parameters code used to identify the search parameter
+* `ref-id` - the logical id of the referenced resource
+* `ref-type` - the type byte of the referenced resource type (one byte)
+* `id` - the logical id of the resource
+* `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
+
+#### ResourceSearchParamTokenFull
+
+* `type` - the type byte of the resource type (one byte)
+* `id` - the logical id of the resource
+* `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
+* `search-param` - a 3-byte identifier of the search parameters code used to identify the search parameter
+* `value` - the full code/value
+* `system` - a 3-byte identifier of the system URI
+
+#### ResourceSearchParamTokenSystem
+
+* `type` - the type byte of the resource type (one byte)
+* `id` - the logical id of the resource
+* `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
+* `search-param` - a 3-byte identifier of the search parameters code used to identify the search parameter
+* `system` - a 3-byte identifier of the system URI
+
+#### ResourceSearchParamReferenceCanonical
+
+* `type` - the type byte of the resource type (one byte)
+* `id` - the logical id of the resource
+* `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
+* `search-param` - a 3-byte identifier of the search parameters code used to identify the search parameter
+* `url` - a 4-byte identifier of the canonical URL
+* `version` - the full version
+
+#### ResourceSearchParamReferenceUrl
+
+* `type` - the type byte of the resource type (one byte)
+* `id` - the logical id of the resource
+* `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
+* `search-param` - a 3-byte identifier of the search parameters code used to identify the search parameter
+* `url` - the full url
+
+#### ResourceSearchParamReferenceLocal
+
+* `type` - the type byte of the resource type (one byte)
+* `id` - the logical id of the resource
+* `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
+* `search-param` - a 3-byte identifier of the search parameters code used to identify the search parameter
+* `ref-id` - the logical id of the referenced resource
+* `ref-type` - the type byte of the referenced resource type (one byte)
+
 #### CompartmentSearchParamValueResource
 
 The `CompartmentSearchParamValueResource` index is used to find resources of a particular compartment based on search parameter values.
@@ -237,6 +346,18 @@ The `CompartmentResourceType` index is used to find all resources that belong to
  * `comp-id` - the logical id of the compartment, ex. the logical id of the Patient
  * `type` - a 4-byte hash of the resource type of the resource that belongs to the compartment, ex. `Observation`
  * `id` - the logical id of the resource that belongs to the compartment, ex. the logical id of the Observation
+
+#### PatientTypeSearchParamTokenFullResource
+
+New index in v0.27.0. It is used to find resources based on full values of search parameters of type token. Full values consist of the system and value for Identifiers or code for Codings. The system will be the special value 0x000000 if not available in the resource.
+
+* `patient-id` - the logical id of the patient
+* `type` - the type byte of the resource type (one byte)
+* `search-param` - a 3-byte identifier of the search parameters code used to identify the search parameter
+* `value` - the full code/value
+* `system` - a 3-byte identifier of the system URI
+* `id` - the logical id of the resource
+* `hash-prefix` - a 4-byte prefix of the content-hash of the resource version
 
 #### ActiveSearchParams
 

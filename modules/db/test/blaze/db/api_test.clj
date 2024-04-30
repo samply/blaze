@@ -3765,21 +3765,21 @@
           count := 4
           [0 :id] := "id-0"
           [1 :id] := "id-1"
-          [2 :id] := "id-2"
-          [3 :id] := "id-3")
+          [2 :id] := "id-3"
+          [3 :id] := "id-2")
 
         (testing "it is possible to start with the second observation"
           (given (pull-type-query node "Observation" [["_profile:below" "http://example.com/profile-uri-091902"]] "id-1")
             count := 3
             [0 :id] := "id-1"
-            [1 :id] := "id-2"
-            [2 :id] := "id-3"))
+            [1 :id] := "id-3"
+            [2 :id] := "id-2"))
 
         (testing "it is possible to start with the third observation"
-          (given (pull-type-query node "Observation" [["_profile:below" "http://example.com/profile-uri-091902"]] "id-2")
+          (given (pull-type-query node "Observation" [["_profile:below" "http://example.com/profile-uri-091902"]] "id-3")
             count := 2
-            [0 :id] := "id-2"
-            [1 :id] := "id-3")))
+            [0 :id] := "id-3"
+            [1 :id] := "id-2")))
 
       (testing "below with URL and major version 1"
         (given (pull-type-query node "Observation" [["_profile:below" "http://example.com/profile-uri-091902|1"]])
@@ -3789,14 +3789,14 @@
       (testing "below with URL and major version 2"
         (given (pull-type-query node "Observation" [["_profile:below" "http://example.com/profile-uri-091902|2"]])
           count := 2
-          [0 :id] := "id-2"
-          [1 :id] := "id-3")
+          [0 :id] := "id-3"
+          [1 :id] := "id-2")
 
         (testing "it is possible to start with the second observation"
-          (given (pull-type-query node "Observation" [["_profile:below" "http://example.com/profile-uri-091902"]] "id-2")
+          (given (pull-type-query node "Observation" [["_profile:below" "http://example.com/profile-uri-091902"]] "id-3")
             count := 2
-            [0 :id] := "id-2"
-            [1 :id] := "id-3")))
+            [0 :id] := "id-3"
+            [1 :id] := "id-2")))
 
       (testing "below with URL and minor version 2.4"
         (given (pull-type-query node "Observation" [["_profile:below" "http://example.com/profile-uri-091902|2.4"]])

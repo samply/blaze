@@ -21,6 +21,7 @@
   @(kv/compact! (index-kv-store) :resource-as-of-index)
 
   (doseq [index [:search-param-value-index
+                 :type-search-param-token-full-resource-index
                  :resource-value-index
                  :compartment-search-param-value-index
                  :compartment-resource-type-index

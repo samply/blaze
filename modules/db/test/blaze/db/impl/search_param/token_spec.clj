@@ -6,6 +6,8 @@
    [blaze.db.impl.codec.spec]
    [blaze.db.impl.index.compartment.search-param-value-resource-spec]
    [blaze.db.impl.index.search-param-value-resource-spec]
+   [blaze.db.impl.search-param.search-param-code-registry-spec]
+   [blaze.db.impl.search-param.system-registry-spec]
    [blaze.db.impl.search-param.token :as spt]
    [blaze.db.kv.spec]
    [blaze.db.spec]

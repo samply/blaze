@@ -19,6 +19,7 @@
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.resource-store.spec]
    [blaze.db.search-param-registry.spec :refer [search-param-registry?]]
+   [blaze.db.test-util :refer [index-kv-store-column-families]]
    [blaze.executors :as ex]
    [blaze.fhir-path :as fhir-path]
    [blaze.fhir.hash :as hash]
@@ -45,12 +46,7 @@
 
 (def base-config
   {[::kv/mem :blaze.db/index-kv-store]
-   {:column-families
-    {:search-param-value-index nil
-     :resource-value-index nil
-     :compartment-search-param-value-index nil
-     :compartment-resource-type-index nil
-     :active-search-params nil}}
+   {:column-families index-kv-store-column-families}
 
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
@@ -62,7 +58,8 @@
    ::rs-kv/executor {}
 
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:kv-store (ig/ref :blaze.db/index-kv-store)
+    :structure-definition-repo structure-definition-repo}})
 
 (def config
   (assoc

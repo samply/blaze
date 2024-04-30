@@ -1,0 +1,27 @@
+(ns blaze.db.impl.index.type-search-param-token-full-resource-spec
+  (:require
+   [blaze.byte-buffer-spec]
+   [blaze.byte-string :refer [byte-string?]]
+   [blaze.db.impl.codec.spec]
+   [blaze.db.impl.index.type-search-param-token-full-resource :as t-sp-tfr]
+   [blaze.db.kv.spec]
+   [blaze.fhir.hash.spec]
+   [blaze.fhir.spec.spec]
+   [clojure.spec.alpha :as s]))
+
+(s/fdef t-sp-tfr/prefix-keys
+  :args (s/cat :snapshot :blaze.db.kv/snapshot
+               :tb :blaze.db/tb
+               :search-param-code-id :blaze.db/search-param-code-id
+               :value byte-string?
+               :system-id (s/? :blaze.db/system-id)
+               :start-id (s/? :blaze.db/id-byte-string)))
+
+(s/fdef t-sp-tfr/index-entry
+  :args (s/cat :tb :blaze.db/tb
+               :search-param-code-id :blaze.db/search-param-code-id
+               :value byte-string?
+               :system-id :blaze.db/system-id
+               :id :blaze.db/id-byte-string
+               :hash :blaze.resource/hash)
+  :ret :blaze.db.kv/put-entry)

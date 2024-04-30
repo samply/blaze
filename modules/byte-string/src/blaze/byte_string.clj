@@ -64,14 +64,15 @@
 
 (defn from-byte-buffer-null-terminated!
   "Returns the bytes from `byte-buffer` up to (exclusive) a null byte (0x00) as
-  byte string ot nil if `byte-buffer` doesn't include a null byte.
+  byte string or nil if `byte-buffer` doesn't include a null byte.
 
   Increments the position of `byte-buffer` up to including the null byte."
   [byte-buffer]
-  (when-let [size (bb/size-up-to-null byte-buffer)]
+  (if-let [size (bb/size-up-to-null byte-buffer)]
     (let [bs (from-byte-buffer! byte-buffer size)]
-      (bb/get-byte! byte-buffer)
-      bs)))
+      (bb/set-position! byte-buffer (inc (bb/position byte-buffer)))
+      bs)
+    (throw (Exception. "Can't read null terminated byte string."))))
 
 (defn from-hex [s]
   (ByteString/copyFrom (.decode (BaseEncoding/base16) s)))

@@ -1,5 +1,7 @@
 (ns blaze.db.search-param-registry-test
   (:require
+   [blaze.db.kv :as kv]
+   [blaze.db.kv.mem]
    [blaze.db.search-param-registry :as sr]
    [blaze.db.search-param-registry-spec]
    [blaze.fhir-path :as fhir-path]
@@ -9,7 +11,7 @@
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest is testing]]
+   [clojure.test :as test :refer [are deftest is testing]]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
@@ -22,12 +24,22 @@
 
 (def config
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:kv-store (ig/ref ::kv/mem)
+    :structure-definition-repo structure-definition-repo}
+   ::kv/mem
+   {:column-families
+    {:search-param-code nil
+     :system nil}}})
 
 (def config-extra
   {:blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo
-    :extra-bundle-file "../../.github/custom-search-parameters-test/custom-search-parameters.json"}})
+   {:kv-store (ig/ref ::kv/mem)
+    :structure-definition-repo structure-definition-repo
+    :extra-bundle-file "../../.github/custom-search-parameters-test/custom-search-parameters.json"}
+   ::kv/mem
+   {:column-families
+    {:search-param-code nil
+     :system nil}}})
 
 (deftest init-test
   (testing "nil config"
@@ -40,35 +52,41 @@
     (given-thrown (ig/init {:blaze.db/search-param-registry {}})
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))))
+
+  (testing "invalid kv-store"
+    (given-thrown (ig/init {:blaze.db/search-param-registry {:kv-store ::invalid}})
+      :key := :blaze.db/search-param-registry
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:cause-data ::s/problems 1 :pred] := `kv/store?
+      [:cause-data ::s/problems 1 :val] := ::invalid))
 
   (testing "invalid structure-definition-repo"
     (given-thrown (ig/init {:blaze.db/search-param-registry {:structure-definition-repo ::invalid}})
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :via] := [:blaze.fhir/structure-definition-repo]
-      [:cause-data ::s/problems 0 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
+      [:cause-data ::s/problems 1 :via] := [:blaze.fhir/structure-definition-repo]
+      [:cause-data ::s/problems 1 :val] := ::invalid))
 
   (testing "invalid extra-bundle-file"
-    (given-thrown (ig/init {:blaze.db/search-param-registry
-                            {:structure-definition-repo structure-definition-repo
-                             :extra-bundle-file ::invalid}})
+    (given-thrown (ig/init {:blaze.db/search-param-registry {:extra-bundle-file ::invalid}})
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `string?
-      [:cause-data ::s/problems 0 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:cause-data ::s/problems 2 :pred] := `string?
+      [:cause-data ::s/problems 2 :val] := ::invalid))
 
   (testing "not-found extra-bundle-file"
-    (given-thrown (ig/init {:blaze.db/search-param-registry
-                            {:structure-definition-repo structure-definition-repo
-                             :extra-bundle-file "foo"}})
+    (given-thrown (ig/init (assoc-in config [:blaze.db/search-param-registry :extra-bundle-file] "foo"))
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-threw-exception))
 
   (testing "with nil extra bundle file"
-    (is (->> (ig/init {:blaze.db/search-param-registry
-                       {:structure-definition-repo structure-definition-repo
-                        :extra-bundle-file nil}})
+    (is (->> (ig/init (assoc-in config [:blaze.db/search-param-registry :extra-bundle-file] nil))
              :blaze.db/search-param-registry
              (s/valid? :blaze.db/search-param-registry))))
 
@@ -239,3 +257,22 @@
 
       (testing "Device isn't in patient compartment"
         (is (empty? (sr/compartment-resources search-param-registry "Patient" "Device")))))))
+
+(deftest type-byte-test
+  (with-system [{:blaze.db/keys [search-param-registry]} config]
+
+    (testing "no type byte is zero"
+      (is (every? (comp not zero?) (sr/tb search-param-registry type))))
+
+    (testing "every type byte is smaller than 255"
+      (is (every? (partial > 255) (sr/tb search-param-registry type))))
+
+    (testing "examples"
+      (are [type tb] (= tb (sr/tb search-param-registry type))
+        "Account" 1
+        "Condition" 28
+        "Observation" 96
+        "Patient" 103
+        "Procedure" 110
+        "Specimen" 126
+        "VisionPrescription" 146))))

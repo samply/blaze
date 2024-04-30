@@ -1,12 +1,9 @@
 (ns blaze.db.impl.search-param
   (:require
-   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.anomaly :as ba]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
-   [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
    [blaze.db.impl.index.resource-handle :as rh]
-   [blaze.db.impl.index.resource-search-param-value :as r-sp-v]
-   [blaze.db.impl.index.search-param-value-resource :as sp-vr]
    [blaze.db.impl.protocols :as p]
    [blaze.db.impl.search-param.composite]
    [blaze.db.impl.search-param.date]
@@ -14,11 +11,11 @@
    [blaze.db.impl.search-param.list]
    [blaze.db.impl.search-param.number]
    [blaze.db.impl.search-param.quantity]
+   [blaze.db.impl.search-param.reference]
    [blaze.db.impl.search-param.string]
    [blaze.db.impl.search-param.token]
    [blaze.db.impl.search-param.util :as u]
    [blaze.fhir-path :as fhir-path]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.references :as fsr]))
 
 (set! *warn-on-reflection* true)
@@ -114,44 +111,8 @@
   [search-param resource]
   (p/-compartment-ids search-param stub-resolver resource))
 
-(defn c-hash-w-modifier [c-hash code modifier]
-  (if modifier
-    (codec/c-hash (str code ":" modifier))
-    c-hash))
-
 (defn index-entries
   "Returns reducible collection of index entries of `resource` with `hash` for
   `search-param` or an anomaly in case of errors."
-  {:arglists '([search-param linked-compartments hash resource])}
-  [{:keys [code c-hash] :as search-param} linked-compartments hash resource]
-  (when-ok [triples (p/-index-values search-param stub-resolver resource)]
-    (let [{:keys [id]} resource
-          type (name (fhir-spec/fhir-type resource))
-          tid (codec/tid type)
-          id (codec/id-byte-string id)
-          linked-compartments
-          (mapv
-           (fn [[code comp-id]]
-             [(codec/c-hash code)
-              (codec/id-byte-string comp-id)])
-           linked-compartments)]
-      (coll/eduction
-       (mapcat
-        (fn index-entry [[modifier value include-in-compartments?]]
-          (let [c-hash (c-hash-w-modifier c-hash code modifier)]
-            (transduce
-             (keep
-              (fn index-compartment-entry [compartment]
-                (when include-in-compartments?
-                  (c-sp-vr/index-entry
-                   compartment
-                   c-hash
-                   tid
-                   value
-                   id
-                   hash))))
-             conj
-             [(sp-vr/index-entry c-hash tid value id hash)
-              (r-sp-v/index-entry tid id hash c-hash value)]
-             linked-compartments))))
-       triples))))
+  [search-param linked-compartments hash resource]
+  (p/-index-entries search-param stub-resolver linked-compartments hash resource))

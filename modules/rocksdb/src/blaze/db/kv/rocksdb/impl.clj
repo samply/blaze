@@ -98,12 +98,15 @@
   [stats
    listener
    {:keys [wal-dir
+           max-total-wal-size
            max-background-jobs
            compaction-readahead-size]
     :or {wal-dir ""
+         max-total-wal-size 0
          max-background-jobs 2}}]
   (cond-> (doto (DBOptions.)
             (.setWalDir (str wal-dir))
+            (.setMaxTotalWalSize (long max-total-wal-size))
             (.setMaxBackgroundJobs (long max-background-jobs))
             (.setEnablePipelinedWrite true)
             (.setCreateIfMissing true)

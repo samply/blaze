@@ -4,6 +4,7 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.api-spec]
+   [blaze.db.api-stub :as api-stub]
    [blaze.db.impl.protocols :as p]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
@@ -125,36 +126,10 @@
    {}
 
    [::kv/mem :blaze.db.main/index-kv-store]
-   {:column-families
-    {:search-param-value-index nil
-     :resource-value-index nil
-     :compartment-search-param-value-index nil
-     :compartment-resource-type-index nil
-     :active-search-params nil
-     :tx-success-index {:reverse-comparator? true}
-     :tx-error-index nil
-     :t-by-instant-index {:reverse-comparator? true}
-     :resource-as-of-index nil
-     :type-as-of-index nil
-     :system-as-of-index nil
-     :type-stats-index nil
-     :system-stats-index nil}}
+   {:column-families api-stub/index-kv-store-column-families}
 
    [::kv/mem :blaze.db.admin/index-kv-store]
-   {:column-families
-    {:search-param-value-index nil
-     :resource-value-index nil
-     :compartment-search-param-value-index nil
-     :compartment-resource-type-index nil
-     :active-search-params nil
-     :tx-success-index {:reverse-comparator? true}
-     :tx-error-index nil
-     :t-by-instant-index {:reverse-comparator? true}
-     :resource-as-of-index nil
-     :type-as-of-index nil
-     :system-as-of-index nil
-     :type-stats-index nil
-     :system-stats-index nil}}
+   {:column-families api-stub/index-kv-store-column-families}
 
    [::node/resource-indexer :blaze.db.node.main/resource-indexer]
    {:kv-store (ig/ref :blaze.db.main/index-kv-store)
@@ -184,7 +159,8 @@
    ::rs-kv/executor {}
 
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}
+   {:kv-store (ig/ref :blaze.db.main/index-kv-store)
+    :structure-definition-repo structure-definition-repo}
 
    :blaze/scheduler {}
 

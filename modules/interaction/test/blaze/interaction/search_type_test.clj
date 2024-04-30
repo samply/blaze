@@ -1150,13 +1150,13 @@
     (testing "with additional _profile search param"
       (with-handler [handler]
         [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-095443"]}}]]]
+                 :meta #fhir/Meta{:profile [#fhir/canonical"http://example.com/profile-uri-095443"]}}]]]
 
         (doseq [handling ["strict" "lenient"]]
           (let [{:keys [status] {[first-entry] :entry :as body} :body}
                 @(handler
                   {:headers {"prefer" (str "handling=" handling)}
-                   :params {"_id" "0" "_profile" "profile-uri-095443"}})]
+                   :params {"_id" "0" "_profile" "http://example.com/profile-uri-095443"}})]
 
             (is (= 200 status))
 
@@ -1170,7 +1170,7 @@
               (is (= #fhir/unsignedInt 1 (:total body))))
 
             (testing "has a self link"
-              (is (= (str base-url context-path "/Patient?_id=0&_profile=profile-uri-095443&_count=50")
+              (is (= (str base-url context-path "/Patient?_id=0&_profile=http%3A%2F%2Fexample.com%2Fprofile-uri-095443&_count=50")
                      (link-url body "self"))))
 
             (testing "the bundle contains one entry"
@@ -1230,7 +1230,7 @@
           (let [{:keys [status body]}
                 @(handler
                   {:headers {"prefer" (str "handling=" handling)}
-                   :params {"_id" "0" "_profile" "profile-uri-095443" "_sort" "_id"}})]
+                   :params {"_id" "0" "_profile" "http://example.com/profile-uri-095443" "_sort" "_id"}})]
 
             (is (= 200 status))
 
@@ -1244,7 +1244,7 @@
               (is (= #fhir/unsignedInt 0 (:total body))))
 
             (testing "has a self link"
-              (is (= (str base-url context-path "/Patient?_id=0&_profile=profile-uri-095443&_count=50")
+              (is (= (str base-url context-path "/Patient?_id=0&_profile=http%3A%2F%2Fexample.com%2Fprofile-uri-095443&_count=50")
                      (link-url body "self"))))
 
             (testing "the bundle contains no entry"
@@ -1452,13 +1452,13 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put
          {:fhir/type :fhir/Patient :id "1"
-          :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-151511"]}}]]]
+          :meta #fhir/Meta{:profile [#fhir/canonical"http://example.com/profile-uri-151511"]}}]]]
 
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
                 {:headers {"prefer" (str "handling=" handling)}
-                 :params {"_profile" "profile-uri-151511"}})]
+                 :params {"_profile" "http://example.com/profile-uri-151511"}})]
 
           (is (= 200 status))
 
@@ -1481,7 +1481,7 @@
           (testing "the entry has the right resource"
             (given (:resource first-entry)
               :fhir/type := :fhir/Patient
-              [:meta :profile 0] := #fhir/canonical"profile-uri-151511"
+              [:meta :profile 0] := #fhir/canonical"http://example.com/profile-uri-151511"
               :id := "1"))))))
 
   (testing "_tag search"
@@ -1525,19 +1525,19 @@
     (with-handler [handler]
       [[[:put
          {:fhir/type :fhir/Patient :id "0"
-          :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-151511|1.1"]}}]
+          :meta #fhir/Meta{:profile [#fhir/canonical"http://example.com/profile-uri-151511|1.1"]}}]
         [:put
          {:fhir/type :fhir/Patient :id "1"
-          :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-151511|1.2"]}}]
+          :meta #fhir/Meta{:profile [#fhir/canonical"http://example.com/profile-uri-151511|1.2"]}}]
         [:put
          {:fhir/type :fhir/Patient :id "2"
-          :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-151511|2.1"]}}]]]
+          :meta #fhir/Meta{:profile [#fhir/canonical"http://example.com/profile-uri-151511|2.1"]}}]]]
 
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
               @(handler
                 {:headers {"prefer" (str "handling=" handling)}
-                 :params {"_profile:below" "profile-uri-151511|1"}})]
+                 :params {"_profile:below" "http://example.com/profile-uri-151511|1"}})]
 
           (is (= 200 status))
 
@@ -1564,19 +1564,19 @@
           (testing "the first entry has the right resource"
             (given (:resource first-entry)
               :fhir/type := :fhir/Patient
-              [:meta :profile 0] := #fhir/canonical"profile-uri-151511|1.1"
+              [:meta :profile 0] := #fhir/canonical"http://example.com/profile-uri-151511|1.1"
               :id := "0"))
 
           (testing "the second entry has the right resource"
             (given (:resource second-entry)
               :fhir/type := :fhir/Patient
-              [:meta :profile 0] := #fhir/canonical"profile-uri-151511|1.2"
+              [:meta :profile 0] := #fhir/canonical"http://example.com/profile-uri-151511|1.2"
               :id := "1")))
 
         (let [{:keys [status body]}
               @(handler
                 {:headers {"prefer" (str "handling=" handling)}
-                 :params {"_profile:below" "profile-uri-151511|1"
+                 :params {"_profile:below" "http://example.com/profile-uri-151511|1"
                           "_summary" "count"}})]
 
           (is (= 200 status))

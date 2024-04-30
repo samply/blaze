@@ -65,3 +65,7 @@
 (s/fdef bb/size-up-to-null
   :args (s/cat :byte-buffer byte-buffer?)
   :ret (s/nilable nat-int?))
+
+(s/fdef bb/skip-null-terminated!
+  :args (s/cat :byte-buffer byte-buffer?)
+  :ret byte-buffer?)

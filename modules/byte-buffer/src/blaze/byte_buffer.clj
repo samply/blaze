@@ -141,6 +141,13 @@
   [byte-buffer position]
   (.position ^ByteBuffer byte-buffer (int position)))
 
+(defn inc-position!
+  {:inline
+   (fn [byte-buffer amount]
+     `(set-position! ~byte-buffer (unchecked-add-int (position ~byte-buffer) (int ~amount))))}
+  [byte-buffer amount]
+  (set-position! byte-buffer (+ (position byte-buffer) (long amount))))
+
 (defn remaining
   "Returns the number of elements between the current position and the limit of
   `byte-buffer`."
@@ -260,19 +267,21 @@
   [byte-buffer]
   (when (pos? (remaining byte-buffer))
     (mark! byte-buffer)
-    (loop [byte (bit-and (long (get-byte! byte-buffer)) 0xFF)
+    (loop [byte (long (get-byte! byte-buffer))
            size 0]
-      (cond
-        (zero? byte)
+      (if (zero? byte)
         (do (reset! byte-buffer)
             size)
 
-        (pos? (remaining byte-buffer))
-        (recur (bit-and (long (get-byte! byte-buffer)) 0xFF) (inc size))
+        (if (zero? (remaining byte-buffer))
+          (do (reset! byte-buffer)
+              nil)
+          (recur (long (get-byte! byte-buffer)) (inc size)))))))
 
-        :else
-        (do (reset! byte-buffer)
-            nil)))))
+(defn skip-null-terminated! [byte-buffer]
+  (if-let [size (size-up-to-null byte-buffer)]
+    (set-position! byte-buffer (+ (position byte-buffer) (long size) 1))
+    (throw (Exception. "Can't skip null terminated byte sequence."))))
 
 (defn mismatch
   "Finds and returns the relative index of the first mismatch between `a` and

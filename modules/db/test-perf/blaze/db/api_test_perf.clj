@@ -51,6 +51,15 @@
      :resource-value-index nil
      :compartment-search-param-value-index nil
      :compartment-resource-type-index nil
+     :type-search-param-token-full-resource-index nil
+     :type-search-param-token-system-resource-index nil
+     :type-search-param-reference-local-resource-index nil
+     :type-search-param-reference-url-resource-index nil
+     :resource-search-param-token-full-index nil
+     :resource-search-param-token-system-index nil
+     :resource-search-param-reference-local-index nil
+     :resource-search-param-reference-url-index nil
+     :patient-type-search-param-token-full-resource-index nil
      :active-search-params nil
      :tx-success-index {:reverse-comparator? true}
      :tx-error-index nil
@@ -60,7 +69,9 @@
      :system-as-of-index nil
      :patient-last-change-index nil
      :type-stats-index nil
-     :system-stats-index nil}}
+     :system-stats-index nil
+     :search-param-code nil
+     :system nil}}
 
    ::rs/kv
    {:kv-store (ig/ref :blaze.db/resource-kv-store)
@@ -80,7 +91,8 @@
    :blaze.db.node.resource-indexer/executor {}
 
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:kv-store (ig/ref :blaze.db/index-kv-store)
+    :structure-definition-repo structure-definition-repo}})
 
 (defmacro with-system-data
   "Runs `body` inside a system that is initialized from `config`, bound to
