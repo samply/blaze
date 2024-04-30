@@ -27,7 +27,7 @@
   {:local/root "../spec"}
 
   fi.metosin/reitit-openapi
-  {:mvn/version "0.7.0-alpha7"}
+  {:mvn/version "0.7.0"}
 
   ca.uhn.hapi.fhir/org.hl7.fhir.validation
   {:mvn/version "6.3.6"
