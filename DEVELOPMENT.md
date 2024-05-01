@@ -56,11 +56,7 @@ Documentation: [Environment Variables](docs/deployment/environment-variables.md)
 
 ## Style Guide
 
-The Clojure code in this project follows the [Clojure Style Guide][2].
-
-### Exceptions:
-
-* we use two empty lines between top-level forms
+The Clojure code in this project mainly follows the [Clojure Style Guide][2], enforced by `cljfmt`. For more details, please check `cljfmt.edn`."
 
 ## Pure Functions
 
