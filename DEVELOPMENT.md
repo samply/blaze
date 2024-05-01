@@ -6,7 +6,7 @@ The main build artefact of Blaze is a single Docker image. Apart from the Docker
 
 ### Using GitHub CI
 
-The most reliable way to build Blaze is to use GitHub CI. If you create a PR, a Docker image with the label `pr-<num>` is created. You can use that image after the pipeline ended successfully.   
+The most reliable way to build Blaze is to use GitHub CI. If you create a PR, a Docker image with the label `pr-<num>` is created. You can use that image after the pipeline ended successfully.
 
 ### Using a Local Build Environment
 
@@ -76,7 +76,7 @@ Such components reside in a namespace. There exists a constructor function calle
 
 ```clojure
 (ns blaze.db.node
-  (:require 
+  (:require
     [clojure.spec.alpha :as s]
     [integrant.core :as ig])
   (:import
@@ -114,7 +114,7 @@ Every public function should have a spec. Function specs are declared in a names
 
 ## Java Interop
 
-It is important that we don't use reflection. In order to see reflection warnings ```(set! *warn-on-reflection* true)``` should be used in every namespace which does Java interop.
+It is important to avoid using reflection. In order to see reflection warnings, make sure to use ```(set! *warn-on-reflection* true)``` in every namespace which does Java interop.
 
 ## REPL
 
@@ -123,7 +123,7 @@ It is important that we don't use reflection. In order to see reflection warning
 * add `-Dclojure.server.repl='{:address,\"0.0.0.0\",:port,5555,:accept,clojure.core.server/repl}'` to the `JAVA_TOOL_OPTIONS` env var
 * bind port 5555
 * create remote REPL in Cursive
-* 
+*
 
 [1]: <https://github.com/weavejester/integrant>
 [2]: <https://github.com/bbatsov/clojure-style-guide>
