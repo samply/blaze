@@ -32,7 +32,14 @@ The best way to use a REPL, is to use it from your IDE. If you use Intellij, the
 
 Inside the REPL you should be able to discover and play with the functions and execute unit tests. Developing a new feature will always include writing unit tests. Code coverage is measured in CI and should only increase. The unit tests should already ensure that the feature is implemented correctly on a module level. In addition to that, integration tests can be added to the GitHub CI pipeline available in the file `.github/workflows/build.yml`.
 
-In addition to the REPL development inside a single module, it's possible to run a REPL were Blaze can be started as a system. Such a REPL should be started with the namespace `blaze.dev` loaded available in the file `dev/blaze/dev.clj`. In that namespace Blaze can be started by invoking the `init` function. The configuration of the development system is done with the same environment variables used in the production system. That variables are documented [here](docs/deployment/environment-variables.md).
+In addition to the REPL development inside a single module, it is also possible to run a REPL were Blaze can be started as a system. This procedure is automated via a Makefile alias.
+
+```make repl```
+
+See the files `Makefile` and `dev/blaze/dev.clj` for more details.
+
+The configuration of the development system is done with the same environment variables used in the production system.
+Documentation: [Environment Variables](docs/deployment/environment-variables.md).
 
 ## Release Checklist
 
