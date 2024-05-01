@@ -104,24 +104,24 @@
     (given-thrown (ig/init {:blaze.interaction/transaction nil})
       :key := :blaze.interaction/transaction
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {:blaze.interaction/transaction {}})
       :key := :blaze.interaction/transaction
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
   (testing "invalid node"
     (given-thrown (ig/init {:blaze.interaction/transaction {:node ::invalid}})
       :key := :blaze.interaction/transaction
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:explain ::s/problems 2 :pred] := `node?
-      [:explain ::s/problems 2 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 2 :pred] := `node?
+      [:cause-data ::s/problems 2 :val] := ::invalid)))
 
 (def config
   (assoc api-stub/mem-node-config

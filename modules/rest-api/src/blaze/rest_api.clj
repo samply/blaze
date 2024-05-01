@@ -7,7 +7,7 @@
    [blaze.handler.util :as handler-util]
    [blaze.middleware.fhir.output :as output]
    [blaze.middleware.fhir.resource :as resource]
-   [blaze.module :refer [reg-collector]]
+   [blaze.module :as m :refer [reg-collector]]
    [blaze.rest-api.capabilities :as capabilities]
    [blaze.rest-api.middleware.cors :as cors]
    [blaze.rest-api.middleware.log :refer [wrap-log]]
@@ -86,7 +86,7 @@
           (conj #(apply wrap-authentication % auth-backends)))})
       wrap-log))
 
-(defmethod ig/pre-init-spec :blaze/rest-api [_]
+(defmethod m/pre-init-spec :blaze/rest-api [_]
   (s/keys
    :req-un
    [:blaze/base-url

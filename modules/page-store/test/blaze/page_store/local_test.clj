@@ -37,37 +37,37 @@
     (given-thrown (ig/init {:blaze.page-store/local nil})
       :key := :blaze.page-store/local
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {:blaze.page-store/local {}})
       :key := :blaze.page-store/local
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :secure-rng))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :secure-rng))))
 
   (testing "invalid secure random number generator"
     (given-thrown (ig/init {:blaze.page-store/local {:secure-rng ::invalid}})
       :key := :blaze.page-store/local
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid max size"
     (given-thrown (ig/init {:blaze.page-store/local {:max-size-in-mb ::invalid}})
       :key := :blaze.page-store/local
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :secure-rng))
-      [:explain ::s/problems 1 :path 0] := :max-size-in-mb
-      [:explain ::s/problems 1 :pred] := `nat-int?
-      [:explain ::s/problems 1 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :secure-rng))
+      [:cause-data ::s/problems 1 :path 0] := :max-size-in-mb
+      [:cause-data ::s/problems 1 :pred] := `nat-int?
+      [:cause-data ::s/problems 1 :val] := ::invalid))
 
   (testing "invalid expire duration"
     (given-thrown (ig/init {:blaze.page-store/local {:expire-duration ::invalid}})
       :key := :blaze.page-store/local
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :secure-rng))
-      [:explain ::s/problems 1 :path 0] := :expire-duration
-      [:explain ::s/problems 1 :pred] := `time/duration?
-      [:explain ::s/problems 1 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :secure-rng))
+      [:cause-data ::s/problems 1 :path 0] := :expire-duration
+      [:cause-data ::s/problems 1 :pred] := `time/duration?
+      [:cause-data ::s/problems 1 :val] := ::invalid))
 
   (testing "is a page store"
     (with-system [{store :blaze.page-store/local} config]
@@ -100,20 +100,20 @@
     (given-thrown (ig/init {:blaze.page-store.local/collector nil})
       :key := :blaze.page-store.local/collector
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {:blaze.page-store.local/collector {}})
       :key := :blaze.page-store.local/collector
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :page-store))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :page-store))))
 
   (testing "invalid page store"
     (given-thrown (ig/init {:blaze.page-store.local/collector {:page-store ::invalid}})
       :key := :blaze.page-store.local/collector
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `page-store?
-      [:explain ::s/problems 0 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `page-store?
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "is a collector"
     (with-system [{collector :blaze.page-store.local/collector} config]

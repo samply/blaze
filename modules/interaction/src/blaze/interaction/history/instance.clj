@@ -11,6 +11,7 @@
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.history.util :as history-util]
    [blaze.interaction.util :as iu]
+   [blaze.module :as m]
    [blaze.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
@@ -54,7 +55,7 @@
               (< page-size (count paged-version-handles))
               (update :link conj (next-link (peek paged-version-handles))))))))))
 
-(defmethod ig/pre-init-spec :blaze.interaction.history/instance [_]
+(defmethod m/pre-init-spec :blaze.interaction.history/instance [_]
   (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
 
 (defmethod ig/init-key :blaze.interaction.history/instance [_ context]

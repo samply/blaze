@@ -9,6 +9,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.job-scheduler.job-util :as job-util]
    [blaze.luid :as luid]
+   [blaze.module :as m]
    [blaze.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
@@ -225,7 +226,7 @@
                (keys @running-jobs)))
   (some-> (vals @running-jobs) ac/all-of ac/join))
 
-(defmethod ig/pre-init-spec :blaze/job-scheduler [_]
+(defmethod m/pre-init-spec :blaze/job-scheduler [_]
   (s/keys :req-un [::main-node ::admin-node :blaze/clock :blaze/rng-fn]))
 
 (defmethod ig/init-key :blaze/job-scheduler

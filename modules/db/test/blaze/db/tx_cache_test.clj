@@ -29,19 +29,19 @@
     (given-thrown (ig/init {:blaze.db/tx-cache nil})
       :key := :blaze.db/tx-cache
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing store"
     (given-thrown (ig/init {:blaze.db/tx-cache {}})
       :key := :blaze.db/tx-cache
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn [~'%] (contains? ~'% :kv-store))))
+      [:cause-data ::s/problems 0 :pred] := `(fn [~'%] (contains? ~'% :kv-store))))
 
   (testing "invalid store"
     (given-thrown (ig/init {:blaze.db/tx-cache {:kv-store nil}})
       :key := :blaze.db/tx-cache
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `kv/store?))
+      [:cause-data ::s/problems 0 :pred] := `kv/store?))
 
   (testing "invalid max-size"
     (given-thrown (ig/init {:blaze.db/tx-cache
@@ -50,7 +50,7 @@
                             ::kv/mem {:column-families {}}})
       :key := :blaze.db/tx-cache
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `nat-int?)))
+      [:cause-data ::s/problems 0 :pred] := `nat-int?)))
 
 (deftest empty-store-test
   (with-system [{cache :blaze.db/tx-cache} config]

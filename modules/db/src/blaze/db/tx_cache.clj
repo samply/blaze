@@ -7,6 +7,7 @@
    [blaze.db.impl.index.tx-success :as tx-success]
    [blaze.db.kv.spec]
    [blaze.db.tx-cache.spec]
+   [blaze.module :as m]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [taoensso.timbre :as log])
@@ -15,7 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod ig/pre-init-spec :blaze.db/tx-cache [_]
+(defmethod m/pre-init-spec :blaze.db/tx-cache [_]
   (s/keys :req-un [:blaze.db/kv-store] :opt-un [::max-size]))
 
 (defmethod ig/init-key :blaze.db/tx-cache

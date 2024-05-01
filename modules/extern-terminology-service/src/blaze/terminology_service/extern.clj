@@ -3,7 +3,7 @@
    [blaze.async.comp :as ac]
    [blaze.fhir-client :as fhir-client]
    [blaze.http-client.spec]
-   [blaze.module :refer [reg-collector]]
+   [blaze.module :as m :refer [reg-collector]]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.extern.spec]
    [clojure.spec.alpha :as s]
@@ -46,7 +46,7 @@
   (-expand-value-set [_ params]
     (.get cache params)))
 
-(defmethod ig/pre-init-spec :blaze.terminology-service/extern [_]
+(defmethod m/pre-init-spec :blaze.terminology-service/extern [_]
   (s/keys :req-un [::base-uri :blaze/http-client]))
 
 (defmethod ig/init-key :blaze.terminology-service/extern

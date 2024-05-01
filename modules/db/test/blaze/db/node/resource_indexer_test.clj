@@ -92,56 +92,56 @@
     (given-thrown (ig/init {::node/resource-indexer nil})
       :key := ::node/resource-indexer
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {::node/resource-indexer {}})
       :key := ::node/resource-indexer
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
 
   (testing "invalid kv-store"
     (given-thrown (ig/init {::node/resource-indexer {:kv-store ::invalid}})
       :key := ::node/resource-indexer
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:explain ::s/problems 3 :pred] := `kv/store?
-      [:explain ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
+      [:cause-data ::s/problems 3 :pred] := `kv/store?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid resource-store"
     (given-thrown (ig/init {::node/resource-indexer {:resource-store ::invalid}})
       :key := ::node/resource-indexer
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:explain ::s/problems 3 :pred] := `resource-store?
-      [:explain ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
+      [:cause-data ::s/problems 3 :pred] := `resource-store?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid search-param-registry"
     (given-thrown (ig/init {::node/resource-indexer {:search-param-registry ::invalid}})
       :key := ::node/resource-indexer
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:explain ::s/problems 3 :pred] := `search-param-registry?
-      [:explain ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
+      [:cause-data ::s/problems 3 :pred] := `search-param-registry?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid executor"
     (given-thrown (ig/init {::node/resource-indexer {:executor ::invalid}})
       :key := ::node/resource-indexer
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:explain ::s/problems 3 :pred] := `ex/executor?
-      [:explain ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:cause-data ::s/problems 3 :pred] := `ex/executor?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "with custom name"
     (let [system (ig/init main-config)
@@ -153,14 +153,14 @@
     (given-thrown (ig/init {::resource-indexer/executor nil})
       :key := ::resource-indexer/executor
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid num-threads"
     (given-thrown (ig/init {::resource-indexer/executor {:num-threads ::invalid}})
       :key := ::resource-indexer/executor
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `pos-int?
-      [:explain ::s/problems 0 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `pos-int?
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest duration-seconds-collector-init-test
   (with-system [{collector ::resource-indexer/duration-seconds} {::resource-indexer/duration-seconds {}}]

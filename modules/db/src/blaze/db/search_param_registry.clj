@@ -8,6 +8,7 @@
    [blaze.db.impl.search-param.core :as sc]
    [blaze.db.search-param-registry.spec]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.module :as m]
    [blaze.util :refer [conj-vec]]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
@@ -230,7 +231,7 @@
    {}
    entries))
 
-(defmethod ig/pre-init-spec :blaze.db/search-param-registry [_]
+(defmethod m/pre-init-spec :blaze.db/search-param-registry [_]
   (s/keys :req-un [:blaze.fhir/structure-definition-repo]
           :opt-un [::extra-bundle-file]))
 

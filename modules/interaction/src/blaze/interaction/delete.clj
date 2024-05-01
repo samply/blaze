@@ -7,6 +7,7 @@
    [blaze.db.api :as d]
    [blaze.db.spec]
    [blaze.handler.fhir.util :as fhir-util]
+   [blaze.module :as m]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [reitit.core :as reitit]
@@ -20,7 +21,7 @@
         (ring/header "Last-Modified" (fhir-util/last-modified tx))
         (ring/header "ETag" (fhir-util/etag tx)))))
 
-(defmethod ig/pre-init-spec :blaze.interaction/delete [_]
+(defmethod m/pre-init-spec :blaze.interaction/delete [_]
   (s/keys :req-un [:blaze.db/node]))
 
 (defmethod ig/init-key :blaze.interaction/delete [_ {:keys [node]}]

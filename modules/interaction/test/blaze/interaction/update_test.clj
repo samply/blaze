@@ -58,20 +58,20 @@
     (given-thrown (ig/init {:blaze.interaction/update nil})
       :key := :blaze.interaction/update
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {:blaze.interaction/update {}})
       :key := :blaze.interaction/update
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))))
 
   (testing "invalid node"
     (given-thrown (ig/init {:blaze.interaction/update {:node ::invalid}})
       :key := :blaze.interaction/update
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `node?
-      [:explain ::s/problems 0 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `node?
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def config
   (assoc api-stub/mem-node-config

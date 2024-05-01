@@ -1,6 +1,7 @@
 (ns blaze.server
   "HTTP Server."
   (:require
+   [blaze.module :as m]
    [blaze.server.spec]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
@@ -21,7 +22,7 @@
      (-> (server-request request)
          (handler #(respond (ring/header % "Server" server)) raise)))))
 
-(defmethod ig/pre-init-spec :blaze/server [_]
+(defmethod m/pre-init-spec :blaze/server [_]
   (s/keys :req-un [::port ::handler ::version]
           :opt-un [::name ::async? ::min-threads ::max-threads]))
 
@@ -33,7 +34,7 @@
    (wrap-server handler (str "Blaze/" version))
    {:port port
     :async? async?
-     ;; TODO: remove such a long timeout only here because of FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT
+    ;; TODO: remove such a long timeout only here because of FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT
     :async-timeout 3610000                                 ; 1 h and 10 s
     :join? false
     :send-server-version? false

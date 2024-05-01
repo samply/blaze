@@ -18,6 +18,7 @@
    [blaze.middleware.fhir.output :as fhir-output]
    [blaze.middleware.fhir.resource :as resource]
    [blaze.middleware.output :as output]
+   [blaze.module :as m]
    [blaze.spec]
    [clojure.datafy :as datafy]
    [clojure.spec.alpha :as s]
@@ -431,7 +432,7 @@
             (ring/header "Last-Modified" (fhir-util/last-modified tx))
             (ring/header "ETag" (fhir-util/etag tx)))))))
 
-(defmethod ig/pre-init-spec :blaze/admin-api [_]
+(defmethod m/pre-init-spec :blaze/admin-api [_]
   (s/keys :req-un [:blaze/context-path ::admin-node :blaze/job-scheduler
                    ::read-job-handler ::search-type-job-handler
                    ::settings ::features]

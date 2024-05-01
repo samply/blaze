@@ -12,6 +12,7 @@
    [blaze.interaction.search.params :as params]
    [blaze.interaction.search.util :as search-util]
    [blaze.interaction.util :as iu]
+   [blaze.module :as m]
    [blaze.page-store.spec]
    [blaze.util :refer [conj-vec]]
    [clojure.spec.alpha :as s]
@@ -109,7 +110,7 @@
              :page-match (reitit/match-by-name router :page)
              :params params))))
 
-(defmethod ig/pre-init-spec :blaze.interaction/search-system [_]
+(defmethod m/pre-init-spec :blaze.interaction/search-system [_]
   (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store]))
 
 (defmethod ig/init-key :blaze.interaction/search-system [_ context]

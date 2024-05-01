@@ -28,36 +28,36 @@
     (given-thrown (ig/init {::graphql/handler nil})
       :key := ::graphql/handler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {::graphql/handler {}})
       :key := ::graphql/handler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
 
   (testing "invalid executor"
     (given-thrown (ig/init {::graphql/handler {:executor ::invalid}})
       :key := ::graphql/handler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 1 :pred] := `ex/executor?
-      [:explain ::s/problems 1 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 1 :pred] := `ex/executor?
+      [:cause-data ::s/problems 1 :val] := ::invalid)))
 
 (deftest executor-init-test
   (testing "nil config"
     (given-thrown (ig/init {::graphql/executor nil})
       :key := ::graphql/executor
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid num-threads"
     (given-thrown (ig/init {::graphql/executor {:num-threads ::invalid}})
       :key := ::graphql/executor
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `pos-int?
-      [:explain ::s/problems 0 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `pos-int?
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "with default num-threads"
     (with-system [{::graphql/keys [executor]}

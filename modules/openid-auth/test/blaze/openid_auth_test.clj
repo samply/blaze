@@ -25,15 +25,15 @@
     (given-thrown (ig/init {::openid-auth/backend nil})
       :key := ::openid-auth/backend
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {::openid-auth/backend {}})
       :key := ::openid-auth/backend
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :provider-url)))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :provider-url)))))
 
 (defmethod ig/init-key ::http-client-not-found [_ _]
   (let [http-client (HttpClientMock.)]

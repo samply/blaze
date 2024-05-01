@@ -29,20 +29,20 @@
     (given-thrown (ig/init {:blaze.db/cache-collector nil})
       :key := :blaze.db/cache-collector
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {:blaze.db/cache-collector {}})
       :key := :blaze.db/cache-collector
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :caches))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :caches))))
 
   (testing "invalid caches"
     (given-thrown (ig/init {:blaze.db/cache-collector {:caches ::invalid}})
       :key := :blaze.db/cache-collector
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?
-      [:explain ::s/problems 0 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `map?
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest cache-collector-test
   (with-system [{collector :blaze.db/cache-collector} config]
