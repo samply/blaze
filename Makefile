@@ -48,6 +48,9 @@ deps-tree:
 deps-list:
 	clojure -X:deps list
 
+repl:
+	clj -M:test -e "(require 'blaze.dev) (in-ns 'blaze.dev)" --repl
+
 cloc-prod-root:
 	cloc src
 

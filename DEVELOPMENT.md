@@ -6,7 +6,7 @@ The main build artefact of Blaze is a single Docker image. Apart from the Docker
 
 ### Using GitHub CI
 
-The most reliable way to build Blaze is to use GitHub CI. If you create a PR, a Docker image with the label `pr-<num>` is created. You can use that image after the pipeline ended successfully.   
+The most reliable way to build Blaze is to use GitHub CI. If you create a PR, a Docker image with the label `pr-<num>` is created. You can use that image after the pipeline ended successfully.
 
 ### Using a Local Build Environment
 
@@ -32,7 +32,14 @@ The best way to use a REPL, is to use it from your IDE. If you use Intellij, the
 
 Inside the REPL you should be able to discover and play with the functions and execute unit tests. Developing a new feature will always include writing unit tests. Code coverage is measured in CI and should only increase. The unit tests should already ensure that the feature is implemented correctly on a module level. In addition to that, integration tests can be added to the GitHub CI pipeline available in the file `.github/workflows/build.yml`.
 
-In addition to the REPL development inside a single module, it's possible to run a REPL were Blaze can be started as a system. Such a REPL should be started with the namespace `blaze.dev` loaded available in the file `dev/blaze/dev.clj`. In that namespace Blaze can be started by invoking the `init` function. The configuration of the development system is done with the same environment variables used in the production system. That variables are documented [here](docs/deployment/environment-variables.md).
+In addition to the REPL development inside a single module, it is also possible to run a REPL were Blaze can be started as a system. This procedure is automated via a Makefile alias.
+
+```make repl```
+
+See the files `Makefile` and `dev/blaze/dev.clj` for more details.
+
+The configuration of the development system is done with the same environment variables used in the production system.
+Documentation: [Environment Variables](docs/deployment/environment-variables.md).
 
 ## Release Checklist
 
@@ -49,11 +56,7 @@ In addition to the REPL development inside a single module, it's possible to run
 
 ## Style Guide
 
-The Clojure code in this project follows the [Clojure Style Guide][2].
-
-### Exceptions:
-
-* we use two empty lines between top-level forms
+The Clojure code in this project mainly follows the [Clojure Style Guide][2], enforced by `cljfmt`. For more details, please check `cljfmt.edn`."
 
 ## Pure Functions
 
@@ -69,7 +72,7 @@ Such components reside in a namespace. There exists a constructor function calle
 
 ```clojure
 (ns blaze.db.node
-  (:require 
+  (:require
     [clojure.spec.alpha :as s]
     [integrant.core :as ig])
   (:import
@@ -107,7 +110,7 @@ Every public function should have a spec. Function specs are declared in a names
 
 ## Java Interop
 
-It is important that we don't use reflection. In order to see reflection warnings ```(set! *warn-on-reflection* true)``` should be used in every namespace which does Java interop.
+It is important to avoid using reflection. In order to see reflection warnings, make sure to use ```(set! *warn-on-reflection* true)``` in every namespace which does Java interop.
 
 ## REPL
 
@@ -116,7 +119,7 @@ It is important that we don't use reflection. In order to see reflection warning
 * add `-Dclojure.server.repl='{:address,\"0.0.0.0\",:port,5555,:accept,clojure.core.server/repl}'` to the `JAVA_TOOL_OPTIONS` env var
 * bind port 5555
 * create remote REPL in Cursive
-* 
+*
 
 [1]: <https://github.com/weavejester/integrant>
 [2]: <https://github.com/bbatsov/clojure-style-guide>
