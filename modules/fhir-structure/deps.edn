@@ -30,7 +30,7 @@
 
   org.clojure/alpha.spec
   {:git/url "https://github.com/alexanderkiel/spec-alpha2.git"
-   :git/sha "5c86612d50ab523e48a3937d9d437116a1964bd6"}
+   :git/sha "c087ded910b3532a938b37e853df79fc3b9c48c1"}
 
   org.clojure/data.xml
   {:mvn/version "0.2.0-alpha9"}}
