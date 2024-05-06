@@ -23,7 +23,7 @@
   {:mvn/version "2.17.1"}
 
   com.taoensso/timbre
-  {:mvn/version "5.2.1"}
+  {:mvn/version "6.5.0"}
 
   metosin/jsonista
   {:mvn/version "0.3.8"}
