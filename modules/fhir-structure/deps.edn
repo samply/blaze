@@ -1,13 +1,7 @@
 {:paths ["src" "resources" "target/classes"]
 
  :deps
- {blaze/anomaly
-  {:local/root "../anomaly"}
-
-  blaze/byte-string
-  {:local/root "../byte-string"}
-
-  blaze/coll
+ {blaze/coll
   {:local/root "../coll"}
 
   blaze/module-base
@@ -21,9 +15,6 @@
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-xml
   {:mvn/version "2.17.1"}
-
-  com.taoensso/timbre
-  {:mvn/version "6.5.0"}
 
   metosin/jsonista
   {:mvn/version "0.3.8"}
