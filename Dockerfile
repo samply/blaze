@@ -1,9 +1,3 @@
-FROM mcr.microsoft.com/dotnet/sdk:6.0@sha256:5c0d4c483ce2781fa522c96a6069d12f719f1313635cba76f9e061dd17740077 as fhir-packages
-
-RUN dotnet tool install -g firely.terminal
-RUN /root/.dotnet/tools/fhir install hl7.fhir.r4.core 4.0.1
-RUN /root/.dotnet/tools/fhir install hl7.fhir.xver-extensions 0.1.0
-
 FROM eclipse-temurin:17.0.11_9-jre-jammy@sha256:d7d18c361578b6d2395054bc89b7a4790f696120d91a1955ac52ecf4e12d77c8
 
 RUN apt-get update && apt-get upgrade -y && \
@@ -12,13 +6,8 @@ RUN apt-get update && apt-get upgrade -y && \
     apt-get autoremove -y && apt-get clean && \
     rm -rf /var/lib/apt/lists/
 
-RUN groupadd -g 1001 blaze
-RUN useradd -u 1001 -g 1001 --create-home blaze
-
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
 COPY target/blaze-0.26.1-standalone.jar /app/
-COPY --from=fhir-packages /root/.fhir/packages /home/blaze/.fhir/packages/
-RUN chown -R 1001:1001 /home/blaze/.fhir
 
 WORKDIR /app
 USER 1001

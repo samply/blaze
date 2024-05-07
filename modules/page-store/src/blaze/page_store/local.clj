@@ -50,7 +50,7 @@
   [_ {:keys [secure-rng max-size-in-mb expire-duration]
       :or {max-size-in-mb 10 expire-duration (time/hours 24)}}]
   (log/info "Open local page store with a capacity of" max-size-in-mb
-            "MiB and an expire duration of" expire-duration)
+            "MiB and an expire duration of" (str expire-duration))
   (->LocalPageStore
    secure-rng
    (-> (Caffeine/newBuilder)

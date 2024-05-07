@@ -4,11 +4,11 @@
    [clojure.core.protocols :as p]
    [clojure.datafy :as datafy])
   (:import
-   [org.hl7.fhir.r5.model
+   [org.hl7.fhir.r4.model
     CodeableConcept OperationOutcome
     OperationOutcome$OperationOutcomeIssueComponent]))
 
-(set! *warn-on-reflection*  true)
+(set! *warn-on-reflection* true)
 
 (extend-protocol p/Datafiable
   OperationOutcome
@@ -24,7 +24,9 @@
       (.hasCode issue)
       (assoc :code (type/code (.toCode (.getCode issue))))
       (.hasDetails issue)
-      (assoc :details (datafy/datafy (.getDetails issue)))))
+      (assoc :details (datafy/datafy (.getDetails issue)))
+      (.hasDiagnostics issue)
+      (assoc :diagnostics (.getDiagnostics issue))))
 
   CodeableConcept
   (datafy [concept]

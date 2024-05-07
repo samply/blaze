@@ -30,13 +30,18 @@
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
+   [ca.uhn.fhir.context FhirContext]
+   [ca.uhn.fhir.context.support DefaultProfileValidationSupport]
+   [ca.uhn.fhir.validation FhirValidator]
    [com.google.common.base CaseFormat]
    [java.io File]
+   [java.nio.charset StandardCharsets]
    [java.nio.file Files]
-   [java.util ArrayList]
-   [org.hl7.fhir.r5.elementmodel Manager$FhirFormat]
-   [org.hl7.fhir.r5.formats FormatUtilities]
-   [org.hl7.fhir.validation ValidationEngine ValidationEngine$ValidationEngineBuilder]))
+   [org.hl7.fhir.common.hapi.validation.support
+    CommonCodeSystemsTerminologyService
+    InMemoryTerminologyServerValidationSupport PrePopulatedValidationSupport
+    ValidationSupportChain]
+   [org.hl7.fhir.common.hapi.validation.validator FhirInstanceValidator]))
 
 (set! *warn-on-reflection* true)
 
@@ -173,12 +178,12 @@
         :details #fhir/CodeableConcept
                   {:text "No allowed profile found."}}]})))
 
-(defn- validate [validator resource]
-  (-> (.validate ^ValidationEngine validator
-                 ^bytes (fhir-spec/unform-json resource)
-                 Manager$FhirFormat/JSON
-                 (ArrayList.)
-                 (ArrayList.))
+(defn- unform-json [resource]
+  (String. ^bytes (fhir-spec/unform-json resource) StandardCharsets/UTF_8))
+
+(defn- validate [^FhirValidator validator resource]
+  (-> (.validateWithResult validator ^String (unform-json resource))
+      (.toOperationOutcome)
       (datafy/datafy)))
 
 (defn- error-issues [outcome]
@@ -380,23 +385,38 @@
    {:path (str context-path "/__admin")
     :syntax :bracket}))
 
-(defn- load-profile [name]
+(defn- load-profile [context name]
   (log/debug "Load profile" name)
-  (let [parser (FormatUtilities/makeParser Manager$FhirFormat/JSON)
+  (let [parser (.newJsonParser ^FhirContext context)
         classloader (.getContextClassLoader (Thread/currentThread))
-        source (.readAllBytes (.getResourceAsStream classloader name))]
-    (.parse parser source)))
+        source (.getResourceAsStream classloader name)]
+    (.parseResource parser source)))
+
+(defn- profile-validation-support [context]
+  (let [s (PrePopulatedValidationSupport. context)]
+    (run!
+     #(.addResource s (load-profile context %))
+     ["blaze/job_scheduler/CodeSystem-JobType.json"
+      "blaze/job_scheduler/CodeSystem-JobOutput.json"
+      "blaze/job_scheduler/StructureDefinition-Job.json"
+      "blaze/job/re_index/CodeSystem-ReIndexJobParameter.json"
+      "blaze/job/re_index/CodeSystem-ReIndexJobOutput.json"
+      "blaze/job/re_index/StructureDefinition-ReIndexJob.json"
+      "blaze/admin_api/StructureDefinition-CompactJob.json"])
+    s))
 
 (defn- create-validator* []
-  (doto (-> (ValidationEngine$ValidationEngineBuilder.)
-            (.withNoTerminologyServer)
-            (.fromSource "hl7.fhir.r4.core#4.0.1"))
-    (.seeResource (load-profile "blaze/job_scheduler/CodeSystem-JobType.json"))
-    (.seeResource (load-profile "blaze/job_scheduler/CodeSystem-JobOutput.json"))
-    (.seeResource (load-profile "blaze/job_scheduler/StructureDefinition-Job.json"))
-    (.seeResource (load-profile "blaze/job/re_index/CodeSystem-ReIndexJobParameter.json"))
-    (.seeResource (load-profile "blaze/job/re_index/CodeSystem-ReIndexJobOutput.json"))
-    (.seeResource (load-profile "blaze/job/re_index/StructureDefinition-ReIndexJob.json"))))
+  (let [context (FhirContext/forR4)
+        _ (.newJsonParser context)
+        validator (.newValidator context)
+        chain (doto (ValidationSupportChain.)
+                (.addValidationSupport (DefaultProfileValidationSupport. context))
+                (.addValidationSupport (InMemoryTerminologyServerValidationSupport. context))
+                (.addValidationSupport (CommonCodeSystemsTerminologyService. context))
+                (.addValidationSupport (profile-validation-support context)))
+        instanceValidator (FhirInstanceValidator. chain)]
+    (.registerValidatorModule validator instanceValidator)
+    validator))
 
 (defn- create-validator []
   (try
