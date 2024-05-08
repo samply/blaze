@@ -172,56 +172,56 @@
     (given-thrown (ig/init {:blaze/job-scheduler nil})
       :key := :blaze/job-scheduler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {:blaze/job-scheduler {}})
       :key := :blaze/job-scheduler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
   (testing "invalid main node"
     (given-thrown (ig/init {:blaze/job-scheduler {:main-node ::invalid}})
       :key := :blaze/job-scheduler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:explain ::s/problems 3 :pred] := `node?
-      [:explain ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 3 :pred] := `node?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid admin node"
     (given-thrown (ig/init {:blaze/job-scheduler {:admin-node ::invalid}})
       :key := :blaze/job-scheduler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:explain ::s/problems 3 :pred] := `node?
-      [:explain ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 3 :pred] := `node?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid clock"
     (given-thrown (ig/init {:blaze/job-scheduler {:clock ::invalid}})
       :key := :blaze/job-scheduler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:explain ::s/problems 3 :pred] := `time/clock?
-      [:explain ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 3 :pred] := `time/clock?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid rng-fn"
     (given-thrown (ig/init {:blaze/job-scheduler {:rng-fn ::invalid}})
       :key := :blaze/job-scheduler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 3 :pred] := `fn?
-      [:explain ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 3 :pred] := `fn?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "success"
     (with-system [{:blaze/keys [job-scheduler]} config]

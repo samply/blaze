@@ -8,6 +8,7 @@
    [blaze.db.kv.rocksdb.metrics.spec]
    [blaze.db.kv.rocksdb.protocols :as p]
    [blaze.db.kv.rocksdb.spec]
+   [blaze.module :as m]
    [clojure.datafy :as datafy]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
@@ -304,7 +305,7 @@
     (.setBackgroundThreads 2 Priority/HIGH)
     (.setBackgroundThreads 6 Priority/LOW)))
 
-(defmethod ig/pre-init-spec ::kv/rocksdb [_]
+(defmethod m/pre-init-spec ::kv/rocksdb [_]
   (s/keys :req-un [::dir]
           :opt-un [::block-cache ::stats ::opts ::column-families]))
 
@@ -346,21 +347,21 @@
   (log/info "Shutdown RocksDB statistics")
   (.close ^AutoCloseable stats))
 
-(defmethod ig/pre-init-spec ::stats-collector [_]
+(defmethod m/pre-init-spec ::stats-collector [_]
   (s/keys :req-un [::metrics/stats]))
 
 (defmethod ig/init-key ::stats-collector
   [_ {:keys [stats]}]
   (metrics/stats-collector stats))
 
-(defmethod ig/pre-init-spec ::block-cache-collector [_]
+(defmethod m/pre-init-spec ::block-cache-collector [_]
   (s/keys :req-un [::block-cache]))
 
 (defmethod ig/init-key ::block-cache-collector
   [_ {:keys [block-cache]}]
   (metrics/block-cache-collector block-cache))
 
-(defmethod ig/pre-init-spec ::table-reader-collector [_]
+(defmethod m/pre-init-spec ::table-reader-collector [_]
   (s/keys :req-un [::metrics/stores]))
 
 (defmethod ig/init-key ::table-reader-collector

@@ -25,20 +25,20 @@
     (given-thrown (ig/init {:blaze.fhir.operation/totals nil})
       :key := :blaze.fhir.operation/totals
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {:blaze.fhir.operation/totals {}})
       :key := :blaze.fhir.operation/totals
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))))
 
   (testing "invalid structure definition repo"
     (given-thrown (ig/init {:blaze.fhir.operation/totals {:structure-definition-repo ::invalid}})
       :key := :blaze.fhir.operation/totals
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `structure-definition-repo?
-      [:explain ::s/problems 0 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `structure-definition-repo?
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def config
   (assoc api-stub/mem-node-config

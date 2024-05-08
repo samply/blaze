@@ -48,27 +48,27 @@
     (given-thrown (ig/init {:blaze.db/resource-cache nil})
       :key := :blaze.db/resource-cache
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing store"
     (given-thrown (ig/init {:blaze.db/resource-cache {}})
       :key := :blaze.db/resource-cache
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))))
 
   (testing "invalid store"
     (given-thrown (ig/init {:blaze.db/resource-cache {:resource-store ::invalid}})
       :key := :blaze.db/resource-cache
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `resource-store?
-      [:explain ::s/problems 0 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `resource-store?
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid max-size"
     (given-thrown (ig/init (assoc-in config [:blaze.db/resource-cache :max-size] ::invalid))
       :key := :blaze.db/resource-cache
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `nat-int?
-      [:explain ::s/problems 0 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `nat-int?
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest get-test
   (testing "success"

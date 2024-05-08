@@ -8,7 +8,7 @@
   {:local/root "../executor"}
 
   com.taoensso/timbre
-  {:mvn/version "5.2.1"}}
+  {:mvn/version "6.5.0"}}
 
  :aliases
  {:test
@@ -21,7 +21,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.88.1376"}}
+    {:mvn/version "1.89.1380"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

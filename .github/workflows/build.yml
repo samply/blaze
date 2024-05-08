@@ -310,7 +310,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
       if: ${{ matrix.variant == 'standalone' }}
 
     - name: Run Kafka, Cassandra and Blaze
@@ -794,10 +794,13 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=2048 -p 8080:8080 -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=2048 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+
+    - name: Docker Logs
+      run: docker logs blaze
 
     - name: Check Capability Statement
       run: .github/scripts/check-capability-statement.sh
@@ -856,7 +859,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -878,6 +881,38 @@ jobs:
 
     - name: Check Referential Integrity Not Enforced For Delete
       run: .github/scripts/check-referential-integrity-for-delete.sh 204
+
+  admin-api-test:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+
+    - name: Docker Logs
+      run: docker logs blaze
+
+    - name: Create Invalid Jobs
+      run: .github/scripts/admin-api/create-invalid-jobs.sh
 
   # This test uploads many small transactions in order to show that Blaze can handle many small requests containing
   # chunked payload blazectl uses. Versions of Blaze from 0.13.2 to 0.15.3, starting with the migration to Jetty, had
@@ -904,7 +939,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -945,7 +980,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -980,7 +1015,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT=10 -p 8080:8080 -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT=10 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -1015,10 +1050,13 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --rm -d -e JAVA_TOOL_OPTIONS=-Xmx1g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+
+    - name: Docker Logs
+      run: docker logs blaze
 
     - name: Test Include
       run: .github/scripts/include-without-referential-integrity.sh
@@ -1041,10 +1079,13 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --rm -d -e JAVA_TOOL_OPTIONS=-Xmx1g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENFORCE_REFERENTIAL_INTEGRITY=false -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+
+    - name: Docker Logs
+      run: docker logs blaze
 
     - name: Test Chaining
       run: .github/scripts/chaining-without-referential-integrity.sh
@@ -1072,10 +1113,13 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --rm -d -e JAVA_TOOL_OPTIONS=-Xmx1g -p 8080:8080 blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+
+    - name: Docker Logs
+      run: docker logs blaze
 
     - name: Load Data
       run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/bundle-with-references
@@ -1121,7 +1165,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -1270,10 +1314,13 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_RESOURCE_CACHE_SIZE=0 -p 8080:8080 -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_RESOURCE_CACHE_SIZE=0 -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+
+    - name: Docker Logs
+      run: docker logs blaze
 
     - name: Generate Large Binary Resources (JSON and XML)
       run: .github/scripts/generate-large-binary-resource.sh
@@ -1392,10 +1439,13 @@ jobs:
       run: mkdir data
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -v "$(pwd)/data:/app/data" blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v "$(pwd)/data:/app/data" blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+
+    - name: Docker Logs
+      run: docker logs blaze
 
     - name: Create Patient
       run: .github/scripts/create-patient-0.sh
@@ -1498,6 +1548,7 @@ jobs:
     - integration-test
     - integration-test-synthea-1000
     - not-enforcing-referential-integrity-test
+    - admin-api-test
     - small-transactions-test
     - big-transaction-test
     - evaluate-measure-timeout-test
@@ -1633,7 +1684,7 @@ jobs:
 
     steps:
     - name: Release
-      uses: softprops/action-gh-release@9d7c94cfd0a1f3ed45544c887983e9fa900f0564 # v2
+      uses: softprops/action-gh-release@69320dbe05506a9a39fc8ae11030b214ec2d1f87 # v2
       with:
         files: target/blaze-*-standalone.jar
 

@@ -12,7 +12,8 @@
   {:mvn/version "5.2.4"}
 
   metosin/reitit-ring
-  {:mvn/version "0.6.0"}
+  {:mvn/version "0.7.0"
+   :exclusions [org.apache.commons/commons-fileupload2-core]}
 
   metosin/muuntaja
   {:mvn/version "0.6.10"
@@ -36,7 +37,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.88.1376"}}
+    {:mvn/version "1.89.1380"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

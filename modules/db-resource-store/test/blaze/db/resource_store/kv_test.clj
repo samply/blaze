@@ -52,44 +52,44 @@
     (given-thrown (ig/init {::rs/kv nil})
       :key := ::rs/kv
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {::rs/kv {}})
       :key := ::rs/kv
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))))
 
   (testing "invalid kv-store"
     (given-thrown (ig/init {::rs/kv {:kv-store ::invalid}})
       :key := ::rs/kv
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:explain ::s/problems 1 :pred] := `kv/store?
-      [:explain ::s/problems 1 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :executor))
+      [:cause-data ::s/problems 1 :pred] := `kv/store?
+      [:cause-data ::s/problems 1 :val] := ::invalid))
 
   (testing "invalid executor"
     (given-thrown (ig/init {::rs/kv {:executor ::invalid}})
       :key := ::rs/kv
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
-      [:explain ::s/problems 1 :pred] := `ex/executor?
-      [:explain ::s/problems 1 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
+      [:cause-data ::s/problems 1 :pred] := `ex/executor?
+      [:cause-data ::s/problems 1 :val] := ::invalid)))
 
 (deftest executor-init-test
   (testing "nil config"
     (given-thrown (ig/init {::rs-kv/executor nil})
       :key := ::rs-kv/executor
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid num-threads"
     (given-thrown (ig/init {::rs-kv/executor {:num-threads ::invalid}})
       :key := ::rs-kv/executor
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `nat-int?
-      [:explain ::s/problems 0 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `nat-int?
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (deftest resource-bytes-collector-init-test
   (with-system [{collector ::rs-kv/resource-bytes} {::rs-kv/resource-bytes {}}]

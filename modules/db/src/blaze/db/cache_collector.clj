@@ -3,6 +3,7 @@
    [blaze.db.cache-collector.protocols :as p]
    [blaze.db.cache-collector.spec]
    [blaze.metrics.core :as metrics]
+   [blaze.module :as m]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig])
   (:import
@@ -35,7 +36,7 @@
      (when cache
        [name (p/-stats cache) (p/-estimated-size cache)]))))
 
-(defmethod ig/pre-init-spec :blaze.db/cache-collector [_]
+(defmethod m/pre-init-spec :blaze.db/cache-collector [_]
   (s/keys :req-un [::caches]))
 
 (defmethod ig/init-key :blaze.db/cache-collector

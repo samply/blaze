@@ -38,28 +38,28 @@
     (given-thrown (ig/init {:blaze/http-client nil})
       :key := :blaze/http-client
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid connect timeout"
     (given-thrown (ig/init {:blaze/http-client {:connect-timeout ::invalid}})
       :key := :blaze/http-client
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `pos-int?
-      [:explain ::s/problems 0 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `pos-int?
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid trust store"
     (given-thrown (ig/init {:blaze/http-client {:trust-store ::invalid}})
       :key := :blaze/http-client
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `string?
-      [:explain ::s/problems 0 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `string?
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid trust store password"
     (given-thrown (ig/init {:blaze/http-client {:trust-store-pass ::invalid}})
       :key := :blaze/http-client
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `string?
-      [:explain ::s/problems 0 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `string?
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "default config"
     (with-system [{:blaze/keys [http-client]} {:blaze/http-client {}}]

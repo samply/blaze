@@ -32,7 +32,7 @@
    [blaze.executors :as ex]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
-   [blaze.module :refer [reg-collector]]
+   [blaze.module :as m :refer [reg-collector]]
    [blaze.spec]
    [blaze.util :refer [conj-vec]]
    [clojure.spec.alpha :as s]
@@ -400,7 +400,7 @@
     :or {enforce-referential-integrity true}}]
   {:blaze.db/enforce-referential-integrity enforce-referential-integrity})
 
-(defmethod ig/pre-init-spec :blaze.db/node [_]
+(defmethod m/pre-init-spec :blaze.db/node [_]
   (s/keys
    :req-un
    [:blaze.db/tx-log

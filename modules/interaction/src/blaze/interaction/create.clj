@@ -12,6 +12,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.handler.util :as handler-util]
    [blaze.interaction.util :as iu]
+   [blaze.module :as m]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]
@@ -90,7 +91,7 @@
       (handler request)
       ac/completed-future)))
 
-(defmethod ig/pre-init-spec :blaze.interaction/create [_]
+(defmethod m/pre-init-spec :blaze.interaction/create [_]
   (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn]))
 
 (defmethod ig/init-key :blaze.interaction/create [_ context]

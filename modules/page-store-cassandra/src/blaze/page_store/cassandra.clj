@@ -5,7 +5,7 @@
    [blaze.byte-buffer :as bb]
    [blaze.cassandra :as cass]
    [blaze.cassandra.spec]
-   [blaze.module :refer [reg-collector]]
+   [blaze.module :as m :refer [reg-collector]]
    [blaze.page-store :as-alias page-store]
    [blaze.page-store.cassandra.codec :as codec]
    [blaze.page-store.cassandra.statement :as statement]
@@ -91,7 +91,7 @@
   (close [_]
     (cass/close session)))
 
-(defmethod ig/pre-init-spec ::page-store/cassandra [_]
+(defmethod m/pre-init-spec ::page-store/cassandra [_]
   (s/keys :req-un [::page-store/secure-rng]
           :opt-un [::cass/contact-points ::cass/key-space
                    ::cass/username ::cass/password

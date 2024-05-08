@@ -31,7 +31,7 @@
     (given-thrown (ig/init {::page-store/cassandra nil})
       :key := ::page-store/cassandra
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid contact-points"
     (given-thrown (ig/init {::page-store/cassandra {:secure-rng (SecureRandom.)
@@ -39,8 +39,8 @@
       :key := ::page-store/cassandra
       :reason := ::ig/build-failed-spec
       [:value :contact-points] := ::invalid
-      [:explain ::s/problems 0 :path] := [:contact-points]
-      [:explain ::s/problems 0 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :path] := [:contact-points]
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (defn- prepare [session statement]
   (assert (= ::session session))

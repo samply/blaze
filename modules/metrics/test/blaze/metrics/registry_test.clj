@@ -25,14 +25,14 @@
     (given-thrown (ig/init {:blaze.metrics/registry nil})
       :key := :blaze.metrics/registry
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid collectors"
     (given-thrown (ig/init {:blaze.metrics/registry {:collectors ::invalid}})
       :key := :blaze.metrics/registry
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `coll?
-      [:explain ::s/problems 0 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `coll?
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def collector
   (metrics/collector [(metrics/counter-metric "foo_total" "" [] [])]))

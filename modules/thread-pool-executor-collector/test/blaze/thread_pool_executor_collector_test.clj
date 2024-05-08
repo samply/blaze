@@ -26,27 +26,27 @@
     (given-thrown (ig/init {:blaze/thread-pool-executor-collector nil})
       :key := :blaze/thread-pool-executor-collector
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "nil executors"
     (given-thrown (ig/init {:blaze/thread-pool-executor-collector {:executors nil}})
       :key := :blaze/thread-pool-executor-collector
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "invalid executor key"
     (given-thrown (ig/init {:blaze/thread-pool-executor-collector {:executors {"a" nil}}})
       :key := :blaze/thread-pool-executor-collector
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `keyword?
-      [:explain ::s/problems 0 :val] := "a"))
+      [:cause-data ::s/problems 0 :pred] := `keyword?
+      [:cause-data ::s/problems 0 :val] := "a"))
 
   (testing "invalid executor"
     (given-thrown (ig/init {:blaze/thread-pool-executor-collector {:executors {:a nil}}})
       :key := :blaze/thread-pool-executor-collector
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `spec/thread-pool-executor?
-      [:explain ::s/problems 0 :val] := nil)))
+      [:cause-data ::s/problems 0 :pred] := `spec/thread-pool-executor?
+      [:cause-data ::s/problems 0 :val] := nil)))
 
 (def config
   {:blaze/thread-pool-executor-collector

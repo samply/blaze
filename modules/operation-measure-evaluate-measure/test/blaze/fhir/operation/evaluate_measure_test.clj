@@ -68,46 +68,46 @@
     (given-thrown (ig/init {::evaluate-measure/handler nil})
       :key := ::evaluate-measure/handler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {::evaluate-measure/handler {}})
       :key := ::evaluate-measure/handler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
   (testing "invalid executor"
     (given-thrown (ig/init {::evaluate-measure/handler {:executor ::invalid}})
       :key := ::evaluate-measure/handler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:explain ::s/problems 3 :pred] := `ex/executor?
-      [:explain ::s/problems 3 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 3 :pred] := `ex/executor?
+      [:cause-data ::s/problems 3 :val] := ::invalid)))
 
 (deftest timeout-init-test
   (testing "nil config"
     (given-thrown (ig/init {::evaluate-measure/timeout nil})
       :key := ::evaluate-measure/timeout
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {::evaluate-measure/timeout {}})
       :key := ::evaluate-measure/timeout
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :millis))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :millis))))
 
   (testing "invalid millis"
     (given-thrown (ig/init {::evaluate-measure/timeout {:millis ::invalid}})
       :key := ::evaluate-measure/timeout
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `nat-int?
-      [:explain ::s/problems 0 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `nat-int?
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "init"
     (with-system [{::evaluate-measure/keys [timeout]}

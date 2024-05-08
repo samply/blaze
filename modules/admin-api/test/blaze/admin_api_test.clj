@@ -210,75 +210,75 @@
     (given-thrown (ig/init {:blaze/admin-api nil})
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {:blaze/admin-api {}})
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:explain ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :features))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :features))))
 
   (testing "invalid context path"
     (given-thrown (ig/init {:blaze/admin-api {:context-path ::invalid}})
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :features))
-      [:explain ::s/problems 6 :via] := [:blaze/context-path]
-      [:explain ::s/problems 6 :pred] := `string?
-      [:explain ::s/problems 6 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :features))
+      [:cause-data ::s/problems 6 :via] := [:blaze/context-path]
+      [:cause-data ::s/problems 6 :pred] := `string?
+      [:cause-data ::s/problems 6 :val] := ::invalid))
 
   (testing "invalid admin node"
     (given-thrown (ig/init {:blaze/admin-api {:admin-node ::invalid}})
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :features))
-      [:explain ::s/problems 6 :via] := [:blaze.db/node]
-      [:explain ::s/problems 6 :pred] := `node?
-      [:explain ::s/problems 6 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :features))
+      [:cause-data ::s/problems 6 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 6 :pred] := `node?
+      [:cause-data ::s/problems 6 :val] := ::invalid))
 
   (testing "invalid settings"
     (given-thrown (ig/init {:blaze/admin-api {:settings ::invalid}})
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :features))
-      [:explain ::s/problems 6 :via] := [::admin-api/settings]
-      [:explain ::s/problems 6 :pred] := `coll?
-      [:explain ::s/problems 6 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :features))
+      [:cause-data ::s/problems 6 :via] := [::admin-api/settings]
+      [:cause-data ::s/problems 6 :pred] := `coll?
+      [:cause-data ::s/problems 6 :val] := ::invalid))
 
   (testing "invalid features"
     (given-thrown (ig/init {:blaze/admin-api {:features ::invalid}})
       :key := :blaze/admin-api
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:explain ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
-      [:explain ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:explain ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:explain ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:explain ::s/problems 6 :via] := [::admin-api/features]
-      [:explain ::s/problems 6 :pred] := `coll?
-      [:explain ::s/problems 6 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 6 :via] := [::admin-api/features]
+      [:cause-data ::s/problems 6 :pred] := `coll?
+      [:cause-data ::s/problems 6 :val] := ::invalid))
 
   (testing "with minimal config"
     (with-system [{handler :blaze/admin-api} (config (new-temp-dir!))]
@@ -640,6 +640,7 @@
              {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
               :code #fhir/code"compact"
               :display "Compact Database Column Families"}]}
+   :authoredOn #fhir/dateTime"2024-04-13T10:05:20.927Z"
    :input
    [{:fhir/type :fhir.Task/input
      :type #fhir/CodeableConcept
@@ -705,8 +706,8 @@
         (given body
           "resourceType" := "OperationOutcome"
           ["issue" 0 "severity"] := "error"
-          ["issue" 0 "code"] := "structure"
-          ["issue" 0 "details" "text"] := "Task.code: minimum required = 1, but only found 0 (from https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob)"))))
+          ["issue" 0 "code"] := "processing"
+          ["issue" 0 "diagnostics"] := "Task.code: minimum required = 1, but only found 0 (from https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob)"))))
 
   (testing "missing authoredOn"
     (with-handler [handler] (config (new-temp-dir!)) []
@@ -722,8 +723,8 @@
         (given body
           "resourceType" := "OperationOutcome"
           ["issue" 0 "severity"] := "error"
-          ["issue" 0 "code"] := "structure"
-          ["issue" 0 "details" "text"] := "Task.authoredOn: minimum required = 1, but only found 0 (from https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob)"))))
+          ["issue" 0 "code"] := "processing"
+          ["issue" 0 "diagnostics"] := "Task.authoredOn: minimum required = 1, but only found 0 (from https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob)"))))
 
   (testing "wrong code"
     (with-handler [handler] (config (new-temp-dir!)) []
@@ -739,8 +740,8 @@
         (given body
           "resourceType" := "OperationOutcome"
           ["issue" 0 "severity"] := "error"
-          ["issue" 0 "code"] := "value"
-          ["issue" 0 "details" "text"] := "The pattern [system https://samply.github.io/blaze/fhir/CodeSystem/JobType, code re-index, and display '(Re)Index a Search Parameter'] defined in the profile https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob not found. Issues: [ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.code,message=Value is 'compact' but must be 're-index'], ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.display,message=Value is 'Compact Database Column Families' but must be '(Re)Index a Search Parameter']]"))))
+          ["issue" 0 "code"] := "processing"
+          ["issue" 0 "diagnostics"] := "The pattern [system https://samply.github.io/blaze/fhir/CodeSystem/JobType, code re-index, and display '(Re)Index a Search Parameter'] defined in the profile https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob not found. Issues: [ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.code,message=Value is 'compact' but must be 're-index'], ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.display,message=Value is 'Compact Database Column Families' but must be '(Re)Index a Search Parameter']]"))))
 
   (testing "re-index job"
     (with-handler [handler] (config (new-temp-dir!)) []

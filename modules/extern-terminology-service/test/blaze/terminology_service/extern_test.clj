@@ -35,22 +35,22 @@
     (given-thrown (ig/init {::ts/extern nil})
       :key := ::ts/extern
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {::ts/extern {}})
       :key := ::ts/extern
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-uri))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :http-client))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-uri))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :http-client))))
 
   (testing "invalid base-uri"
     (given-thrown (ig/init {::ts/extern {:base-uri ::invalid}})
       :key := ::ts/extern
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
-      [:explain ::s/problems 1 :pred] := `string?
-      [:explain ::s/problems 1 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
+      [:cause-data ::s/problems 1 :pred] := `string?
+      [:cause-data ::s/problems 1 :val] := ::invalid)))
 
 (deftest terminology-service-test
   (with-system [{ts ::ts/extern ::keys [http-client]} config]

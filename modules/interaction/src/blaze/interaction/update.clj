@@ -10,6 +10,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.handler.util :as handler-util]
    [blaze.interaction.util :as iu]
+   [blaze.module :as m]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -81,7 +82,7 @@
               new-handle)))))
     ac/completed-future))
 
-(defmethod ig/pre-init-spec :blaze.interaction/update [_]
+(defmethod m/pre-init-spec :blaze.interaction/update [_]
   (s/keys :req-un [:blaze.db/node]))
 
 (defmethod ig/init-key :blaze.interaction/update [_ context]

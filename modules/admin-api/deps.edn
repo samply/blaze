@@ -1,4 +1,6 @@
-{:deps
+{:paths ["src" "resources"]
+
+ :deps
  {blaze/async
   {:local/root "../async"}
 
@@ -27,31 +29,37 @@
   {:local/root "../spec"}
 
   fi.metosin/reitit-openapi
-  {:mvn/version "0.7.0-alpha7"}
+  {:mvn/version "0.7.0"
+   :exclusions [javax.xml.bind/jaxb-api]}
 
-  ca.uhn.hapi.fhir/org.hl7.fhir.validation
-  {:mvn/version "6.3.6"
+  ca.uhn.hapi.fhir/hapi-fhir-validation
+  {:mvn/version "7.0.2"
    :exclusions
-   [ca.uhn.hapi.fhir/org.hl7.fhir.dstu2
-    ca.uhn.hapi.fhir/org.hl7.fhir.dstu2016may
-    org.apache.httpcomponents/httpclient
+   [net.sf.saxon/Saxon-HE
+    org.ogce/xpp3
+    ognl/ognl
+    org.attoparser/attoparser
+    org.unbescape/unbescape
     org.xerial/sqlite-jdbc
-    net.sf.saxon/Saxon-HE
-    info.cqframework/cql
-    info.cqframework/model
-    info.cqframework/elm
-    info.cqframework/cql-to-elm
-    info.cqframework/quick
-    info.cqframework/qdm
-    org.thymeleaf/thymeleaf
-    com.nimbusds/nimbus-jose-jwt
-    net.sourceforge.plantuml/plantuml-mit
-    junit/junit
-    jakarta-regexp/jakarta-regexp]}
+    commons-beanutils/commons-beanutils
+    org.apache.httpcomponents/httpclient]}
+
+  ca.uhn.hapi.fhir/hapi-fhir-structures-r4
+  {:mvn/version "7.0.2"
+   :exclusions [com.google.code.findbugs/jsr305]}
+
+  ca.uhn.hapi.fhir/hapi-fhir-validation-resources-r4
+  {:mvn/version "7.0.2"}
+
+  ca.uhn.hapi.fhir/hapi-fhir-caching-caffeine
+  {:mvn/version "7.0.2"}
 
   org.fhir/ucum
   {:mvn/version "1.0.8"
-   :exclusions [xpp3/xpp3 xpp3/xpp3_xpath]}}
+   :exclusions [xpp3/xpp3 xpp3/xpp3_xpath]}
+
+  com.fasterxml.jackson.datatype/jackson-datatype-jsr310
+  {:mvn/version "2.17.1"}}
 
  :aliases
  {:test
@@ -64,7 +72,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.88.1376"}}
+    {:mvn/version "1.89.1380"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

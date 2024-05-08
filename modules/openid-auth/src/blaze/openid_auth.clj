@@ -1,5 +1,6 @@
 (ns blaze.openid-auth
   (:require
+   [blaze.module :as m]
    [blaze.openid-auth.impl :as impl]
    [blaze.openid-auth.spec]
    [blaze.scheduler :as sched]
@@ -29,7 +30,7 @@
                    (ex-message e) (pr-str (ex-data e)))))
    (time/seconds 1) (time/seconds 60)))
 
-(defmethod ig/pre-init-spec :blaze.openid-auth/backend [_]
+(defmethod m/pre-init-spec :blaze.openid-auth/backend [_]
   (s/keys :req-un [:blaze/http-client :blaze/scheduler ::provider-url]))
 
 (defmethod ig/init-key :blaze.openid-auth/backend

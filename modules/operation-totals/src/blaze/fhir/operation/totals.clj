@@ -5,6 +5,7 @@
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.structure-definition-repo :as sdr]
+   [blaze.module :as m]
    [blaze.spec]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
@@ -27,7 +28,7 @@
     (-> (ring/response (parameters db types))
         (ac/completed-future))))
 
-(defmethod ig/pre-init-spec :blaze.fhir.operation/totals [_]
+(defmethod m/pre-init-spec :blaze.fhir.operation/totals [_]
   (s/keys :req-un [:blaze.fhir/structure-definition-repo]))
 
 (defmethod ig/init-key :blaze.fhir.operation/totals

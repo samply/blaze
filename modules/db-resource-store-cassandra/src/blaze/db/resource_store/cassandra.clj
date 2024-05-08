@@ -8,7 +8,7 @@
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.cassandra.statement :as statement]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.module :refer [reg-collector]]
+   [blaze.module :as m :refer [reg-collector]]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -133,7 +133,7 @@
   (close [_]
     (cass/close session)))
 
-(defmethod ig/pre-init-spec ::rs/cassandra [_]
+(defmethod m/pre-init-spec ::rs/cassandra [_]
   (s/keys :opt-un [::cass/contact-points ::cass/key-space
                    ::cass/username ::cass/password
                    ::cass/put-consistency-level

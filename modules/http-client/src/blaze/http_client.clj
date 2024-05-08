@@ -1,12 +1,13 @@
 (ns blaze.http-client
   (:require
    [blaze.http-client.spec]
+   [blaze.module :as m]
    [clojure.spec.alpha :as s]
    [hato.client :as hc]
    [integrant.core :as ig]
    [taoensso.timbre :as log]))
 
-(defmethod ig/pre-init-spec :blaze/http-client [_]
+(defmethod m/pre-init-spec :blaze/http-client [_]
   (s/keys :opt-un [::connect-timeout ::trust-store ::trust-store-pass]))
 
 (defn init-msg [connect-timeout trust-store]

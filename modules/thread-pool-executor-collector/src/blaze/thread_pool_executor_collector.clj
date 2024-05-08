@@ -1,6 +1,7 @@
 (ns blaze.thread-pool-executor-collector
   (:require
    [blaze.metrics.core :as metrics]
+   [blaze.module :as m]
    [blaze.thread-pool-executor-collector.spec]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
@@ -59,7 +60,7 @@
       #(.size ^BlockingQueue (.getQueue ^ThreadPoolExecutor %))
       executors)]))
 
-(defmethod ig/pre-init-spec :blaze/thread-pool-executor-collector [_]
+(defmethod m/pre-init-spec :blaze/thread-pool-executor-collector [_]
   (s/keys :req-un [::executors]))
 
 (defn- executor-name [key]

@@ -23,20 +23,20 @@
     (given-thrown (ig/init {:blaze.metrics/handler nil})
       :key := :blaze.metrics/handler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {:blaze.metrics/handler {}})
       :key := :blaze.metrics/handler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :registry))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :registry))))
 
   (testing "invalid registry"
     (given-thrown (ig/init {:blaze.metrics/handler {:registry ::invalid}})
       :key := :blaze.metrics/handler
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `spec/registry?
-      [:explain ::s/problems 0 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `spec/registry?
+      [:cause-data ::s/problems 0 :val] := ::invalid)))
 
 (def config
   {:blaze.metrics/handler {:registry (ig/ref :blaze.metrics/registry)}

@@ -17,7 +17,7 @@
    [blaze.db.node.util :as node-util]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local.codec :as codec]
-   [blaze.module :refer [reg-collector]]
+   [blaze.module :as m :refer [reg-collector]]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [java-time.api :as time]
@@ -131,7 +131,7 @@
     (when (kv/valid? iter)
       (Longs/fromByteArray (kv/key iter)))))
 
-(defmethod ig/pre-init-spec :blaze.db.tx-log/local [_]
+(defmethod m/pre-init-spec :blaze.db.tx-log/local [_]
   (s/keys :req-un [:blaze.db/kv-store :blaze/clock]))
 
 (defmethod ig/init-key :blaze.db.tx-log/local

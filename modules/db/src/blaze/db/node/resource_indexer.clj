@@ -16,7 +16,7 @@
    [blaze.db.search-param-registry :as sr]
    [blaze.executors :as ex]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.module :refer [reg-collector]]
+   [blaze.module :as m :refer [reg-collector]]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -169,7 +169,7 @@
       {:num-resources (count to-index)
        :next next})))
 
-(defmethod ig/pre-init-spec :blaze.db.node/resource-indexer [_]
+(defmethod m/pre-init-spec :blaze.db.node/resource-indexer [_]
   (s/keys :req-un [:blaze.db/kv-store
                    :blaze.db/resource-store
                    :blaze.db/search-param-registry
@@ -180,7 +180,7 @@
   (log/info "Init" (node-util/component-name key "resource indexer"))
   resource-indexer)
 
-(defmethod ig/pre-init-spec ::executor [_]
+(defmethod m/pre-init-spec ::executor [_]
   (s/keys :opt-un [::num-threads]))
 
 (defmethod ig/init-key ::executor

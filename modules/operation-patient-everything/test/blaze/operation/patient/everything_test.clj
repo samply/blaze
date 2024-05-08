@@ -30,22 +30,22 @@
     (given-thrown (ig/init {:blaze.operation.patient/everything nil})
       :key := :blaze.operation.patient/everything
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {:blaze.operation.patient/everything {}})
       :key := :blaze.operation.patient/everything
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:explain ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
   (testing "invalid clock"
     (given-thrown (ig/init {:blaze.operation.patient/everything {:clock ::invalid}})
       :key := :blaze.operation.patient/everything
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:explain ::s/problems 1 :pred] := `time/clock?
-      [:explain ::s/problems 1 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 1 :pred] := `time/clock?
+      [:cause-data ::s/problems 1 :val] := ::invalid)))
 
 (def base-url "base-url-113047")
 (def context-path "/context-path-173858")

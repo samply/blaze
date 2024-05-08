@@ -10,6 +10,7 @@
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.history.util :as history-util]
    [blaze.interaction.util :as iu]
+   [blaze.module :as m]
    [blaze.spec]
    [blaze.util :refer [conj-vec]]
    [clojure.spec.alpha :as s]
@@ -56,7 +57,7 @@
               (< page-size (count paged-version-handles))
               (update :link conj-vec (next-link (peek paged-version-handles))))))))))
 
-(defmethod ig/pre-init-spec :blaze.interaction.history/type [_]
+(defmethod m/pre-init-spec :blaze.interaction.history/type [_]
   (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
 
 (defmethod ig/init-key :blaze.interaction.history/type [_ context]

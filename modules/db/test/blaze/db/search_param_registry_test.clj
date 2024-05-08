@@ -35,20 +35,20 @@
     (given-thrown (ig/init {:blaze.db/search-param-registry nil})
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `map?))
+      [:cause-data ::s/problems 0 :pred] := `map?))
 
   (testing "missing config"
     (given-thrown (ig/init {:blaze.db/search-param-registry {}})
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))))
 
   (testing "invalid structure-definition-repo"
     (given-thrown (ig/init {:blaze.db/search-param-registry {:structure-definition-repo ::invalid}})
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `structure-definition-repo?
-      [:explain ::s/problems 0 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `structure-definition-repo?
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid extra-bundle-file"
     (given-thrown (ig/init {:blaze.db/search-param-registry
@@ -56,8 +56,8 @@
                              :extra-bundle-file ::invalid}})
       :key := :blaze.db/search-param-registry
       :reason := ::ig/build-failed-spec
-      [:explain ::s/problems 0 :pred] := `string?
-      [:explain ::s/problems 0 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `string?
+      [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "not-found extra-bundle-file"
     (given-thrown (ig/init {:blaze.db/search-param-registry

@@ -1,6 +1,6 @@
 {
 	"name": "blaze-frontend",
-	"version": "0.26.1",
+	"version": "0.26.2",
 	"private": true,
 	"scripts": {
 		"dev": "vite dev",
@@ -41,7 +41,7 @@
 		"tslib": "^2.4.1",
 		"typescript": "^5.0.0",
 		"vite": "^5.0.0",
-		"vitest": "1.5.2"
+		"vitest": "1.5.3"
 	},
 	"type": "module",
 	"dependencies": {
