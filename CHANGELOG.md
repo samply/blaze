@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.26.2
+
+### Operation
+
+* Remove Need for FHIR Validator Local Package Cache ([#1709](https://github.com/samply/blaze/issues/1709))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/89?closed=1).
+
 ## v0.26.1
 
 ### Bugfixes
