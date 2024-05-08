@@ -6,5 +6,6 @@ build:
 	cp fsh-generated/resources/CodeSystem-ReIndexJobOutput.json ../modules/job-re-index/resources/blaze/job/re_index/CodeSystem-ReIndexJobOutput.json
 	cp fsh-generated/resources/CodeSystem-ReIndexJobParameter.json ../modules/job-re-index/resources/blaze/job/re_index/CodeSystem-ReIndexJobParameter.json
 	cp fsh-generated/resources/StructureDefinition-ReIndexJob.json ../modules/job-re-index/resources/blaze/job/re_index/StructureDefinition-ReIndexJob.json
+	cp fsh-generated/resources/StructureDefinition-CompactJob.json ../modules/admin-api/resources/blaze/admin_api/StructureDefinition-CompactJob.json
 
 .PHONY: build
