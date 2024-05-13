@@ -44,6 +44,10 @@
     commons-beanutils/commons-beanutils
     org.apache.httpcomponents/httpclient]}
 
+  ;; CVE-2024-26308, we need at least 1.26.0
+  org.apache.commons/commons-compress
+  {:mvn/version "1.26.1"}
+
   ca.uhn.hapi.fhir/hapi-fhir-structures-r4
   {:mvn/version "7.0.2"
    :exclusions [com.google.code.findbugs/jsr305]}
