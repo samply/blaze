@@ -17,23 +17,25 @@
 
 (deftest expression-test
   (testing "missing criteria"
-    (given (u/expression (constantly "path-184642") nil)
+    (given (u/expression-name (constantly "path-184642") nil)
       ::anom/category := ::anom/incorrect
       ::anom/message := "Missing criteria."
       :fhir/issue := "required"
       :fhir.issue/expression := "path-184642"))
 
   (testing "unsupported language"
-    (given (u/expression (constantly "path-184706")
-                         {:language #fhir/code"lang-184851"})
+    (given (u/expression-name (constantly "path-184706")
+                              {:fhir/type :fhir/Expression
+                               :language #fhir/code"lang-184851"})
       ::anom/category := ::anom/unsupported
       ::anom/message := "Unsupported language `lang-184851`."
       :fhir/issue := "not-supported"
       :fhir.issue/expression := "path-184706.criteria.language"))
 
   (testing "missing expression"
-    (given (u/expression (constantly "path-184642")
-                         {:language #fhir/code"text/cql-identifier"})
+    (given (u/expression-name (constantly "path-184642")
+                              {:fhir/type :fhir/Expression
+                               :language #fhir/code"text/cql-identifier"})
       ::anom/category := ::anom/incorrect
       ::anom/message := "Missing expression."
       :fhir/issue := "required"
@@ -42,13 +44,15 @@
   (testing "works with `text/cql-identifier`"
     (satisfies-prop 10
       (prop/for-all [expression gen/string]
-        (= expression (u/expression (constantly "foo")
-                                    {:language #fhir/code"text/cql-identifier"
-                                     :expression expression})))))
+        (= expression (u/expression-name (constantly "foo")
+                                         {:fhir/type :fhir/Expression
+                                          :language #fhir/code"text/cql-identifier"
+                                          :expression expression})))))
 
   (testing "works with `text/cql`"
     (satisfies-prop 10
       (prop/for-all [expression gen/string]
-        (= expression (u/expression (constantly "foo")
-                                    {:language #fhir/code"text/cql"
-                                     :expression expression}))))))
+        (= expression (u/expression-name (constantly "foo")
+                                         {:fhir/type :fhir/Expression
+                                          :language #fhir/code"text/cql"
+                                          :expression expression}))))))

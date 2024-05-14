@@ -50,7 +50,7 @@
       (into [] (take max-poll-size) tx-data))))
 
 (defn- poll! [^BlockingQueue queue timeout]
-  (log/trace "poll in-memory queue with timeout =" timeout)
+  (log/trace "poll in-memory queue with timeout =" (str timeout))
   (.poll queue (time/as timeout :millis) TimeUnit/MILLISECONDS))
 
 (deftype LocalQueue [kv-store offset queue queue-start unsubscribe!]

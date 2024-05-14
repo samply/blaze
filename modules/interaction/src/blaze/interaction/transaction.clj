@@ -14,6 +14,7 @@
    [blaze.interaction.transaction.bundle :as bundle]
    [blaze.interaction.transaction.bundle.url :as url]
    [blaze.interaction.util :as iu]
+   [blaze.luid :as luid]
    [blaze.module :as m]
    [blaze.spec]
    [clojure.spec.alpha :as s]
@@ -191,8 +192,8 @@
 (defn- prepare-entry [res {{:keys [method]} :request :as entry}]
   (case (type/value method)
     "POST"
-    (let [entry (update entry :resource assoc :id (first (:luids res)))]
-      (-> (update res :luids next)
+    (let [entry (update entry :resource assoc :id (luid/head (::luid/generator res)))]
+      (-> (update res ::luid/generator luid/next)
           (update :entries conj entry)))
 
     (update res :entries conj entry)))
@@ -225,7 +226,7 @@
         (when-ok [entries (validate-entries entries)]
           (-> (reduce
                prepare-entry
-               {:luids (iu/successive-luids context) :entries []}
+               {::luid/generator (iu/luid-generator context) :entries []}
                entries)
               :entries))
         entries))))

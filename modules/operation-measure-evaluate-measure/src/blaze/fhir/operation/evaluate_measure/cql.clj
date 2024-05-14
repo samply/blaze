@@ -9,7 +9,6 @@
    [blaze.elm.expression :as expr]
    [blaze.elm.util :as elm-util]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.util :refer [conj-vec]]
    [taoensso.timbre :as log])
   (:import
    [java.time Duration]))
@@ -60,11 +59,10 @@
     (evaluate-expression-1* context subject name expression)))
 
 (defmulti result-xf
-  (fn [{:keys [return-handles? population-basis]} _ _]
-    [(if return-handles? :return-handles :count)
-     (if (nil? population-basis) :subject-based :population-based)]))
+  (fn [{:keys [population-basis]} _ _]
+    (if (nil? population-basis) :subject-based :population-based)))
 
-(defmethod result-xf [:return-handles :subject-based]
+(defmethod result-xf :subject-based
   [context name expression]
   (keep
    (fn [subject]
@@ -73,40 +71,19 @@
        (when matches?
          {:population-handle subject :subject-handle subject})))))
 
-(defmethod result-xf [:return-handles :population-based]
+(defmethod result-xf :population-based
   [context name expression]
   (mapcat
    (fn [subject]
-     (when-ok [population-resources (evaluate-expression-1 context subject
-                                                           name expression)]
+     (if-ok [population-resources (evaluate-expression-1 context subject
+                                                         name expression)]
        (coll/eduction
         (map
          (fn [population-resource]
            {:population-handle population-resource
             :subject-handle subject}))
-        population-resources)))))
-
-(defmethod result-xf [:count :subject-based]
-  [context name expression]
-  (map
-   (fn [subject]
-     (when-ok [matches? (evaluate-expression-1 context subject name
-                                               expression)]
-       (if matches? 1 0)))))
-
-(defmethod result-xf [:count :population-based]
-  [context name expression]
-  (map
-   (fn [subject]
-     (when-ok [population-resources (evaluate-expression-1 context subject
-                                                           name expression)]
-       (count population-resources)))))
-
-(defn- reduce-op [{:keys [return-handles?]}]
-  (if return-handles? conj +))
-
-(defn- combine-op [{:keys [return-handles?]}]
-  (if return-handles? into +))
+        population-resources)
+       vector))))
 
 (defn- evaluate-expression***
   [{:keys [db] :as context} {:keys [name expression]} subject-handles]
@@ -115,7 +92,7 @@
      (comp (map (partial ed/mk-resource db))
            (result-xf (assoc context :db db) name expression)
            (halt-when ba/anomaly?))
-     (reduce-op context) subject-handles)))
+     ((:reduce-op context) db) subject-handles)))
 
 (defn- evaluate-expression**
   "Returns a CompletableFuture that will complete with the result of evaluating
@@ -140,15 +117,7 @@
   (log/trace "Evaluate expression" (c/form (:expression expression-def)))
   (let [futures (evaluate-expression-futures context expression-def subject-type)]
     (do-sync [_ (ac/all-of futures)]
-      (transduce (map ac/join) (combine-op context) futures))))
-
-(defn- missing-expression-anom [name]
-  (ba/incorrect
-   (format "Missing expression with name `%s`." name)
-   :expression-name name))
-
-(defn- expression-def [{:keys [expression-defs]} name]
-  (or (get expression-defs name) (missing-expression-anom name)))
+      (transduce (map ac/join) (completing (:combine-op context)) futures))))
 
 (defn- check-context
   "Returns an anomaly if `subject-type` differs from :context of
@@ -192,33 +161,41 @@
          :population-basis population-basis
          :expression-result-type result-type)))))
 
+(defn- missing-expression-anom [name]
+  (ba/incorrect
+   (format "Missing expression with name `%s`." name)
+   :expression-name name))
+
+(defn- expression-def [{:keys [expression-defs]} name]
+  (or (get expression-defs name) (missing-expression-anom name)))
+
 (defn evaluate-expression
   "Evaluates the expression with `name` on each subject of `subject-type`
   available in :db of `context`.
 
   The context consists of:
-   * context :db                - the database to use for obtaining subjects and
-                                  evaluating the expression
-   * context :executor          - the executor in which the expression is evaluated
-   * context :now               - the evaluation time
-   * context :timeout-eclipsed? - a function returning ture if the evaluation
-                                  timeout is eclipsed
-   * context :timeout           - the evaluation timeout itself
-   * context :expression-defs   - a map of available expression definitions
-   * context :parameters        - an optional map of parameters
-   * context :return-handles?   - whether subject-handles or a simple count
-                                  should be returned
-   * context :population-basis  - an optional population basis of a type like
-                                  `Encounter`
-   * name                       - the name of the expression
-   * subject-type               - the type of subjects like `Patient`
+   * :db                - the database to use for obtaining subjects and
+                          evaluating the expression
+   * :executor          - the executor in which the expression is evaluated
+   * :now               - the evaluation time
+   * :timeout-eclipsed? - a function returning ture if the evaluation timeout is
+                          eclipsed
+   * :timeout           - the evaluation timeout itself
+   * :expression-defs   - a map of available expression definitions
+   * :parameters        - an optional map of parameters
+   * :reduce-op         - a reduce function that gets the result reduced so far
+                          and a map of :population-handle and :subject-handle.
+                          The function also has to return an initial value if
+                          called with no argument
+   * :combine-op        - a combine function that gets two already reduced
+                          results and returns a new one
+   * :population-basis  - an optional population basis of a type like `Encounter`
 
   The context of the expression has to match `subject-type`. The result type of
   the expression has to match the `population-basis`.
 
-  Returns a CompletableFuture that will complete with a list of subject-handles
-  or a simple count or will complete exceptionally with an anomaly in\n  case of
-  errors."
+  Returns a CompletableFuture that will complete with the result of :combine-op
+  or will complete exceptionally with an anomaly in case of errors."
   [{:keys [population-basis] :as context} name subject-type]
   (if-ok [expression-def (expression-def context name)
           _ (check-context subject-type expression-def)
@@ -230,31 +207,56 @@
   "Evaluates the expression with `name` on `subject` according to `context`.
 
   The context consists of:
-   * context :db                - the database to use for obtaining subjects and
-                                  evaluating the expression
-   * context :executor          - the executor in which the expression is evaluated
-   * context :now               - the evaluation time
-   * context :timeout-eclipsed? - a function returning ture if the evaluation
-                                  timeout is eclipsed
-   * context :timeout           - the evaluation timeout itself
-   * context :expression-defs   - a map of available expression definitions
-   * context :parameters        - an optional map of parameters
-   * context :return-handles?   - whether subject-handles or a simple count
-                                  should be returned
+   * :db                - the database to use for obtaining subjects and
+                          evaluating the expression
+   * :executor          - the executor in which the expression is evaluated
+   * :now               - the evaluation time
+   * :timeout-eclipsed? - a function returning ture if the evaluation timeout is
+                          eclipsed
+   * :timeout           - the evaluation timeout itself
+   * :expression-defs   - a map of available expression definitions
+   * :parameters        - an optional map of parameters
+   * :reduce-op         - a reduce function that gets the result reduced so far
+                          and a map of :population-handle and :subject-handle.
+                          The function also has to return an initial value if
+                          called with no argument
+   * :combine-op        - a combine function that gets two already reduced
+                          results and returns a new one
 
   Returns an anomaly in case of errors."
-  [{:keys [executor return-handles?] :as context} subject name]
+  [{:keys [executor reduce-op db] :as context} subject name]
   (if-ok [{:keys [name expression]} (expression-def context name)]
     (ac/supply-async
      #(when-ok [matches? (evaluate-expression-1 context subject name expression)]
-        (if matches?
-          (if return-handles?
-            [{:population-handle subject
-              :subject-handle subject}]
-            1)
-          (if return-handles? [] 0)))
+        (let [reduce-op (reduce-op db)]
+          (cond-> (reduce-op)
+            matches?
+            (reduce-op {:population-handle subject
+                        :subject-handle subject}))))
      executor)
     ac/completed-future))
+
+(defn evaluate-multi-component-stratum [context handle evaluators]
+  (into
+   []
+   (comp (map #(% context handle))
+         (halt-when ba/anomaly?))
+   evaluators))
+
+(defn- missing-function-anom [name]
+  (ba/incorrect
+   (format "Missing function with name `%s`." name)
+   :function-name name))
+
+(defn- function-def [{:keys [function-defs]} name]
+  (or (get function-defs name) (missing-function-anom name)))
+
+(defn- expression-or-function-def
+  [{:keys [expression-defs population-basis] :as context} name]
+  (or (get expression-defs name)
+      (if (string? population-basis)
+        (function-def context name)
+        (missing-expression-anom name))))
 
 (defn- incorrect-stratum-msg [{:keys [id] :as resource} expression-name]
   (format "CQL expression `%s` returned more than one value for resource `%s/%s`."
@@ -266,155 +268,20 @@
       (ba/incorrect (incorrect-stratum-msg subject name))
       result)))
 
-(defn- calc-strata***
-  [{:keys [db] :as context} {:keys [name expression]} handles]
-  (with-open [db (d/new-batch-db db)]
-    (let [context (assoc context :db db)]
-      (reduce
-       (fn [ret {:keys [subject-handle] :as handle}]
-         (if-ok [stratum (evaluate-stratum-expression context subject-handle
-                                                      name expression)]
-           (update ret stratum conj-vec handle)
-           reduced))
-       {} handles))))
-
-(defn- calc-strata** [{:keys [executor] :as context} expression-def handles]
-  (ac/supply-async
-   #(calc-strata*** context expression-def handles)
-   executor))
-
-(defn- calc-strata-futures [context expression-def handles]
-  (into
-   []
-   (comp
-    (partition-all eval-sequential-chunk-size)
-    (map (partial calc-strata** context expression-def)))
-   handles))
-
-(defn- calc-strata* [context expression-def handles]
-  (let [futures (calc-strata-futures context expression-def handles)]
-    (do-sync [_ (ac/all-of futures)]
-      (transduce (map ac/join) (partial merge-with into) futures))))
-
-(defn calc-strata
-  "Returns a CompletableFuture that will complete with a map of stratum value to
-  a list of subject handles or will complete exceptionally with an anomaly in
-  case of errors."
-  [context expression-name handles]
-  (if-ok [expression-def (expression-def context expression-name)]
-    (calc-strata* context expression-def handles)
-    ac/completed-future))
-
-(defn- calc-function-strata***
-  [{:keys [db] :as context} {:keys [name function]} handles]
-  (with-open [db (d/new-batch-db db)]
-    (let [context (assoc context :db db)]
-      (reduce
-       (fn [ret {:keys [population-handle subject-handle] :as handle}]
-         (if-ok [stratum (evaluate-stratum-expression context subject-handle
-                                                      name (function [population-handle]))]
-           (update ret stratum conj-vec handle)
-           reduced))
-       {} handles))))
-
-(defn- calc-function-strata**
-  [{:keys [executor] :as context} function-def handles]
-  (ac/supply-async
-   #(calc-function-strata*** context function-def handles)
-   executor))
-
-(defn- calc-function-strata-futures [context function-def handles]
-  (into
-   []
-   (comp
-    (partition-all eval-sequential-chunk-size)
-    (map (partial calc-function-strata** context function-def)))
-   handles))
-
-(defn- calc-function-strata* [context function-def handles]
-  (let [futures (calc-function-strata-futures context function-def handles)]
-    (do-sync [_ (ac/all-of futures)]
-      (transduce (map ac/join) (partial merge-with into) futures))))
-
-(defn- missing-function-anom [name]
-  (ba/incorrect
-   (format "Missing function with name `%s`." name)
-   :function-name name))
-
-(defn- function-def [{:keys [function-defs]} name]
-  (or (get function-defs name) (missing-function-anom name)))
-
-(defn calc-function-strata
-  "Returns a CompletableFuture that will complete with a map of stratum value to
-  a list of subject handles or will complete exceptionally with an anomaly in
-  case of errors."
-  [context function-name handles]
-  (if-ok [function-def (function-def context function-name)]
-    (calc-function-strata* context function-def handles)
-    ac/completed-future))
-
-(defn- evaluate-multi-component-stratum-1
-  [context
-   {:keys [subject-handle population-handle]}
-   {:keys [name expression function]}]
+(defn stratum-expression-evaluator* [{:keys [name expression function]}]
   (if function
-    (evaluate-stratum-expression context subject-handle name (function [population-handle]))
-    (evaluate-stratum-expression context subject-handle name expression)))
+    (fn [context {:keys [subject-handle population-handle]}]
+      (evaluate-stratum-expression context subject-handle name (function [population-handle])))
+    (fn [context {:keys [subject-handle]}]
+      (evaluate-stratum-expression context subject-handle name expression))))
 
-(defn- evaluate-multi-component-stratum [context handle defs]
-  (transduce
-   (comp (map (partial evaluate-multi-component-stratum-1 context handle))
-         (halt-when ba/anomaly?))
-   conj
-   defs))
+(defn stratum-expression-evaluator [context name]
+  (when-ok [def (expression-or-function-def context name)]
+    (stratum-expression-evaluator* def)))
 
-(defn calc-multi-component-strata*** [{:keys [db] :as context} defs handles]
-  (with-open [db (d/new-batch-db db)]
-    (let [context (assoc context :db db)]
-      (reduce
-       (fn [ret handle]
-         (if-ok [stratum (evaluate-multi-component-stratum context handle defs)]
-           (update ret stratum conj-vec handle)
-           reduced))
-       {} handles))))
-
-(defn- calc-multi-component-strata**
-  [{:keys [executor] :as context} defs handles]
-  (ac/supply-async
-   #(calc-multi-component-strata*** context defs handles)
-   executor))
-
-(defn- calc-multi-component-strata-futures [context defs handles]
+(defn stratum-expression-evaluators [context names]
   (into
    []
-   (comp
-    (partition-all eval-sequential-chunk-size)
-    (map (partial calc-multi-component-strata** context defs)))
-   handles))
-
-(defn calc-multi-component-strata* [context defs handles]
-  (let [futures (calc-multi-component-strata-futures context defs handles)]
-    (do-sync [_ (ac/all-of futures)]
-      (transduce (map ac/join) (partial merge-with into) futures))))
-
-(defn- def [{:keys [expression-defs population-basis] :as context} name]
-  (or (get expression-defs name)
-      (if (string? population-basis)
-        (function-def context name)
-        (missing-expression-anom name))))
-
-(defn- defs [context names]
-  (transduce
-   (comp (map (partial def context))
+   (comp (map (partial stratum-expression-evaluator context))
          (halt-when ba/anomaly?))
-   conj
    names))
-
-(defn calc-multi-component-strata
-  "Returns a CompletableFuture that will complete with a map of stratum value to
-  a list of subject handles or will complete exceptionally with an anomaly in
-  case of errors."
-  [context expression-names handles]
-  (if-ok [defs (defs context expression-names)]
-    (calc-multi-component-strata* context defs handles)
-    ac/completed-future))

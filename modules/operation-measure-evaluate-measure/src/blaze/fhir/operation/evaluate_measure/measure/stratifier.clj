@@ -1,12 +1,16 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.stratifier
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.fhir.operation.evaluate-measure.cql :as cql]
    [blaze.fhir.operation.evaluate-measure.measure.util :as u]
-   [blaze.fhir.spec.type :as type]))
+   [blaze.fhir.spec.type :as type]
+   [blaze.luid :as luid]
+   [blaze.util :refer [conj-vec]]))
 
-(defn- value-concept [value]
+(defn- value-concept
+  "Converts `value` into a CodeableConcept so that it can be used in a
+  Stratifier."
+  [value]
   (let [type (type/type value)]
     (cond
       (identical? :fhir/CodeableConcept type)
@@ -25,51 +29,82 @@
    {:url "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.value"
     :value value}))
 
-(defn- stratum* [population value]
+(defn stratum-count [[value populations]]
   (cond-> {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
            :value (value-concept value)
-           :population [population]}
+           :population
+           (mapv
+            (fn [[code count]]
+              {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/population
+               :code code
+               :count (type/integer count)})
+            populations)}
 
     (identical? :fhir/Quantity (type/type value))
     (assoc :extension [(stratum-value-extension value)])))
 
-(defn- stratum [context population-code value handles]
-  (-> (u/population
-       context :fhir.MeasureReport.group.stratifier.stratum/population
-       population-code handles)
-      (update :result stratum* value)))
+(defn- stratum-subject-list-populations [context populations]
+  (reduce
+   (fn [{::luid/keys [generator] :keys [result tx-ops]} [code handles]]
+     (let [list-id (luid/head generator)]
+       {:result
+        (conj
+         result
+         (cond->
+          {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/population
+           :count (type/integer (count handles))
+           :subjectResults (u/list-reference list-id)}
+           code
+           (assoc :code code)))
+        ::luid/generator (luid/next generator)
+        :tx-ops (into tx-ops (u/population-tx-ops list-id handles))}))
+   (assoc context :result [])
+   populations))
 
-(defn- stratifier* [strata code]
-  (cond-> {:fhir/type :fhir.MeasureReport.group/stratifier
-           :stratum (vec (sort-by (comp type/value :text :value) strata))}
-    code
-    (assoc :code [code])))
+(defn stratum-subject-list
+  "Creates a stratum from `value` and `populations` in case subject lists are
+  requested.
 
-(defn- stratifier [{:keys [luids] :as context} code population-code strata]
-  (-> (reduce-kv
-       (fn [{:keys [luids] :as ret} value handles]
-         (->> (stratum (assoc context :luids luids) population-code value handles)
-              (u/merge-result ret)))
-       {:result [] :luids luids :tx-ops []}
-       strata)
-      (update :result stratifier* code)))
+  Uses ::luid/generator from `context` as generator for list ids and :tx-ops
+  from `context` to append the transaction operators for creating the subject
+  lists.
+
+  Returns a map of the stratum as :result, the new ::luid/generator and the
+  appended :tx-ops."
+  [context value populations]
+  (update
+   (stratum-subject-list-populations context populations)
+   :result
+   #(cond-> {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
+             :value (value-concept value)
+             :population %}
+
+      (identical? :fhir/Quantity (type/type value))
+      (assoc :extension [(stratum-value-extension value)]))))
 
 (defn- stratifier-path [group-idx stratifier-idx]
   (format "Measure.group[%d].stratifier[%d]" group-idx stratifier-idx))
 
-(defn- calc-strata [{:keys [population-basis] :as context} name handles]
-  (if (nil? population-basis)
-    (cql/calc-strata context name handles)
-    (cql/calc-function-strata context name handles)))
+(defn- reduce-op** [{:keys [report-type] :as context} name]
+  (let [stratum-update
+        (if (= "subject-list" report-type)
+          conj-vec
+          (fn [count _handle] (inc (or count 0))))]
+    (when-ok [evaluator (cql/stratum-expression-evaluator context name)]
+      (fn [db]
+        (let [context (assoc context :db db)]
+          (fn
+            ([] {})
+            ([ret handle]
+             (if-ok [stratum (evaluator context handle)]
+               (update ret stratum stratum-update handle)
+               reduced))))))))
 
-(defn- evaluate-stratifier
-  {:arglists '([context evaluated-populations stratifier])}
-  [{:keys [group-idx stratifier-idx] :as context} evaluated-populations
-   {:keys [code criteria]}]
-  (if-ok [name (u/expression #(stratifier-path group-idx stratifier-idx) criteria)]
-    (do-sync [strata (calc-strata context name (-> evaluated-populations :handles first))]
-      (stratifier context code (-> evaluated-populations :result first :code) strata))
-    ac/completed-future))
+(defn- reduce-op*
+  [{:keys [group-idx stratifier-idx] :as context} {:keys [criteria]}]
+  (let [path-fn #(stratifier-path group-idx stratifier-idx)]
+    (when-ok [expression-name (u/expression-name path-fn criteria)]
+      (reduce-op** context expression-name))))
 
 (defn- stratifier-component-path [{:keys [group-idx stratifier-idx component-idx]}]
   (format "Measure.group[%d].stratifier[%d].component[%d]"
@@ -83,9 +118,9 @@
      "Missing code."
      :fhir/issue "required"
      :fhir.issue/expression (str (stratifier-component-path context) ".code"))
-    (when-ok [expression (u/expression #(stratifier-component-path context)
-                                       criteria)]
-      [code expression])))
+    (let [path-fn #(stratifier-component-path context)]
+      (when-ok [expression-name (u/expression-name path-fn criteria)]
+        [code expression-name]))))
 
 (defn- extract-stratifier-component*
   ([_context x] x)
@@ -97,7 +132,7 @@
          (update :expression-names conj expression-name))
      reduced)))
 
-(defn- extract-stratifier-components
+(defn extract-stratifier-components
   "Extracts code and expression-name from each of `stratifier-components`."
   [context stratifier-components]
   (transduce
@@ -112,58 +147,77 @@
    {:url "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.component.value"
     :value value}))
 
-(defn- multi-component-stratum* [population codes values]
+(defn components [codes values]
+  (mapv
+   (fn [code value]
+     (cond-> {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/component
+              :code code
+              :value (value-concept value)}
+
+       (identical? :fhir/Quantity (type/type value))
+       (assoc :extension [(stratum-component-value-extension value)])))
+   codes
+   values))
+
+(defn multi-component-stratum-count [codes [values populations]]
   {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
-   :component
+   :component (components codes values)
+   :population
    (mapv
-    (fn [code value]
-      (cond-> {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/component
-               :code code
-               :value (value-concept value)}
+    (fn [[code count]]
+      {:fhir/type :fhir.MeasureReport.group.stratifier.stratum/population
+       :code code
+       :count (type/integer count)})
+    populations)})
 
-        (identical? :fhir/Quantity (type/type value))
-        (assoc :extension [(stratum-component-value-extension value)])))
-    codes
-    values)
-   :population [population]})
+(defn multi-component-stratum-subject-list
+  "Creates a stratum with multiple components with `codes` from `values` and
+  `populations` in case subject lists are requested.
 
-(defn- multi-component-stratum [context codes population-code values result]
-  (-> (u/population
-       context :fhir.MeasureReport.group.stratifier.stratum/population
-       population-code result)
-      (update :result multi-component-stratum* codes values)))
+  Uses ::luid/generator from `context` as generator for list ids and :tx-ops
+  from `context` to append the transaction operators for creating the subject
+  lists.
 
-(defn- multi-component-stratifier* [strata codes]
-  {:fhir/type :fhir.MeasureReport.group/stratifier
-   :code codes
-   :stratum (vec (sort-by (comp #(mapv (comp type/value :text :value) %) :component) strata))})
+  Returns a map of the stratum as :result, the new ::luid/generator and the
+  appended :tx-ops."
+  [codes context values populations]
+  (update
+   (stratum-subject-list-populations context populations)
+   :result
+   #(cond-> {:fhir/type :fhir.MeasureReport.group.stratifier/stratum
+             :component (components codes values)
+             :population %}
 
-(defn- multi-component-stratifier
-  [{:keys [luids] :as context} codes population-code strata]
-  (-> (reduce-kv
-       (fn [{:keys [luids] :as ret} values result]
-         (->> (multi-component-stratum (assoc context :luids luids) codes
-                                       population-code values result)
-              (u/merge-result ret)))
-       {:result [] :luids luids :tx-ops []}
-       strata)
-      (update :result multi-component-stratifier* codes)))
+      (identical? :fhir/Quantity (type/type values))
+      (assoc :extension [(stratum-value-extension values)]))))
 
-(defn- evaluate-multi-component-stratifier
-  [context evaluated-populations {:keys [component]}]
-  (if-ok [{:keys [codes expression-names]} (extract-stratifier-components context component)]
-    (do-sync [strata (cql/calc-multi-component-strata
-                      context
-                      expression-names
-                      (-> evaluated-populations :handles first))]
-      (multi-component-stratifier context codes
-                                  (-> evaluated-populations :result first :code)
-                                  strata))
-    ac/completed-future))
+(defn- multi-component-reduce-op* [{:keys [report-type] :as context} expression-names]
+  (let [stratum-update
+        (if (= "subject-list" report-type)
+          conj-vec
+          (fn [count _handle] (inc (or count 0))))]
+    (when-ok [evaluators (cql/stratum-expression-evaluators context expression-names)]
+      (fn [db]
+        (let [context (assoc context :db db)]
+          (fn
+            ([] {})
+            ([ret handle]
+             (if-ok [stratum (cql/evaluate-multi-component-stratum context handle evaluators)]
+               (update ret stratum stratum-update handle)
+               reduced))))))))
 
-(defn evaluate
-  {:arglists '([context evaluated-populations stratifier])}
-  [context evaluated-populations {:keys [component] :as stratifier}]
+(defn- multi-component-reduce-op
+  [context {:keys [component]}]
+  (when-ok [{:keys [expression-names]} (extract-stratifier-components context component)]
+    (multi-component-reduce-op* context expression-names)))
+
+(defn reduce-op
+  "Returns a function that when called with a database will return a reduce
+  operator or an anomaly in case of errors.
+
+  The reduce operator will accumulate strata over handles."
+  {:arglists '([context stratifier])}
+  [context {:keys [component] :as stratifier}]
   (if (seq component)
-    (evaluate-multi-component-stratifier context evaluated-populations stratifier)
-    (evaluate-stratifier context evaluated-populations stratifier)))
+    (multi-component-reduce-op context stratifier)
+    (reduce-op* context stratifier)))

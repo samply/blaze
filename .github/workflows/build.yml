@@ -829,6 +829,9 @@ jobs:
     - name: Count the number of Patients with Stress Conditions at Inpatient Encounters using CQL
       run: .github/scripts/evaluate-measure-blazectl.sh inpatient-stress 13
 
+    - name: Condition Code Stratifier
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh stratifier-condition-code 51599
+
     - name: Patient Everything Too Costly
       run: .github/scripts/patient-everything-too-costly.sh
 
