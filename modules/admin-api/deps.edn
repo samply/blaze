@@ -56,7 +56,7 @@
   {:mvn/version "7.0.2"}
 
   ca.uhn.hapi.fhir/hapi-fhir-caching-caffeine
-  {:mvn/version "7.0.2"}
+  {:mvn/version "7.2.0"}
 
   org.fhir/ucum
   {:mvn/version "1.0.8"
