@@ -49,7 +49,7 @@
   {:mvn/version "1.26.1"}
 
   ca.uhn.hapi.fhir/hapi-fhir-structures-r4
-  {:mvn/version "7.0.2"
+  {:mvn/version "7.2.0"
    :exclusions [com.google.code.findbugs/jsr305]}
 
   ca.uhn.hapi.fhir/hapi-fhir-validation-resources-r4
