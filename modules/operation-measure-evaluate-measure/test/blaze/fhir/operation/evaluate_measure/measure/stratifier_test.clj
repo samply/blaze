@@ -6,14 +6,13 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.elm.compiler.library :as library]
-   [blaze.fhir.operation.evaluate-measure.measure.stratifier :as stratifier]
+   [blaze.fhir.operation.evaluate-measure.measure.stratifier :as strat]
    [blaze.fhir.operation.evaluate-measure.measure.stratifier-spec]
    [blaze.fhir.operation.evaluate-measure.test-util :as em-tu]
-   [blaze.fhir.test-util :refer [given-failed-future]]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest testing]]
+   [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
    [java-time.api :as time]
    [juxt.iota :refer [given]])
@@ -160,19 +159,21 @@
 (defn- context
   [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock executor]} library]
   (let [{:keys [expression-defs function-defs]} (compile-library node library)]
-    {:db (d/db node)
-     :now (now fixed-clock)
-     :timeout-eclipsed? (constantly false)
-     :timeout (time/seconds 42)
-     :expression-defs expression-defs
-     :function-defs function-defs
-     :executor executor}))
+    (cond->
+     {:db (d/db node)
+      :now (now fixed-clock)
+      :timeout-eclipsed? (constantly false)
+      :timeout (time/seconds 42)
+      :expression-defs expression-defs
+      :executor executor}
+      function-defs
+      (assoc :function-defs function-defs))))
 
 (def ^:private config
   (assoc mem-node-config
          :blaze.test/executor {}))
 
-(deftest evaluate
+(deftest reduce-op-test
   (testing "one component"
     (testing "gender"
       (with-system-data [system config]
@@ -182,48 +183,25 @@
           [:put {:fhir/type :fhir/Patient :id "3" :gender #fhir/code"male"}]]]
 
         (let [{:keys [db] :as context} (context system library-age-gender)
-              handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))
-              evaluated-populations {:handles [handles]}]
+              handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))]
 
           (testing "report-type population"
-            (given @(stratifier/evaluate (assoc context :report-type "population")
-                                         evaluated-populations gender-stratifier)
-              [:result :fhir/type] := :fhir.MeasureReport.group/stratifier
-              [:result :code 0 :text] := #fhir/string"gender"
-              [:result :stratum 0 :value :text] := #fhir/string"female"
-              [:result :stratum 0 :population 0 :count] := #fhir/integer 1
-              [:result :stratum 1 :value :text] := #fhir/string"male"
-              [:result :stratum 1 :population 0 :count] := #fhir/integer 2
-              [:result :stratum 2 :value :text] := #fhir/string"null"
-              [:result :stratum 2 :population 0 :count] := #fhir/integer 1))
+            (let [op ((strat/reduce-op
+                       (assoc context :report-type "population")
+                       gender-stratifier) db)]
+              (is (= (reduce op (op) handles)
+                     {nil 1
+                      #fhir/code"male" 2
+                      #fhir/code"female" 1}))))
 
           (testing "report-type subject-list"
-            (given @(stratifier/evaluate
-                     (assoc context
-                            :luids ["L0" "L1" "L2"]
-                            :report-type "subject-list")
-                     evaluated-populations gender-stratifier)
-              [:result :fhir/type] := :fhir.MeasureReport.group/stratifier
-              [:result :code 0 :text] := #fhir/string"gender"
-              [:result :stratum 0 :value :text] := #fhir/string"female"
-              [:result :stratum 0 :population 0 :count] := #fhir/integer 1
-              [:result :stratum 0 :population 0 :subjectResults :reference] := "List/L2"
-              [:result :stratum 1 :value :text] := #fhir/string"male"
-              [:result :stratum 1 :population 0 :count] := #fhir/integer 2
-              [:result :stratum 1 :population 0 :subjectResults :reference] := "List/L1"
-              [:result :stratum 2 :value :text] := #fhir/string"null"
-              [:result :stratum 2 :population 0 :count] := #fhir/integer 1
-              [:result :stratum 2 :population 0 :subjectResults :reference] := "List/L0"
-              [:tx-ops 0 0] := :create
-              [:tx-ops 0 1 :fhir/type] := :fhir/List
-              [:tx-ops 0 1 :id] := "L0"
-              [:tx-ops 0 1 :entry 0 :item :reference] := "Patient/0"
-              [:tx-ops 1 1 :id] := "L1"
-              [:tx-ops 1 1 :entry 0 :item :reference] := "Patient/1"
-              [:tx-ops 1 1 :entry 1 :item :reference] := "Patient/3"
-              [:tx-ops 2 1 :id] := "L2"
-              [:tx-ops 2 1 :entry 0 :item :reference] := "Patient/2"
-              [:tx-ops count] := 3)))))
+            (let [op ((strat/reduce-op
+                       (assoc context :report-type "subject-list")
+                       gender-stratifier) db)]
+              (is (= (reduce op (op) handles)
+                     {nil [(nth handles 0)]
+                      #fhir/code"male" [(nth handles 1) (nth handles 3)]
+                      #fhir/code"female" [(nth handles 2)]})))))))
 
     (testing "CodeableConcept"
       (with-system-data [system config]
@@ -234,23 +212,23 @@
                          [#fhir/Coding{:system #fhir/uri"http://loinc.org"
                                        :code #fhir/code"17861-6"}]}
                  :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
         (let [{:keys [db] :as context} (context system library-observation-code)
-              evaluated-populations
-              {:handles
-               [[{:population-handle (em-tu/resource db "Observation" "0")
-                  :subject-handle (em-tu/resource db "Patient" "0")}]]}]
+              handles [{:population-handle (em-tu/resource db "Observation" "0")
+                        :subject-handle (em-tu/resource db "Patient" "0")}]]
 
           (testing "report-type population"
-            (given @(stratifier/evaluate
-                     (assoc context
-                            :report-type "population"
-                            :population-basis "Observation")
-                     evaluated-populations observation-code-stratifier)
-              [:result :fhir/type] := :fhir.MeasureReport.group/stratifier
-              [:result :code 0 :text] := #fhir/string"code"
-              [:result :stratum 0 :value :coding 0 :system] := #fhir/uri"http://loinc.org"
-              [:result :stratum 0 :value :coding 0 :code] := #fhir/code"17861-6"
-              [:result :stratum 0 :population 0 :count] := #fhir/integer 1)))))
+            (let [op ((strat/reduce-op
+                       (assoc context
+                              :report-type "population"
+                              :population-basis "Observation")
+                       observation-code-stratifier) db)]
+              (is (= (reduce op (op) handles)
+                     {#fhir/CodeableConcept
+                       {:coding
+                        [#fhir/Coding{:system #fhir/uri"http://loinc.org"
+                                      :code #fhir/code"17861-6"}]}
+                      1})))))))
 
     (testing "Quantity"
       (with-system-data [system config]
@@ -263,45 +241,40 @@
           [:put {:fhir/type :fhir/Observation :id "1"
                  :subject #fhir/Reference{:reference "Patient/0"}
                  :value #fhir/Quantity
+                         {:value #fhir/decimal 2M}}]
+          [:put {:fhir/type :fhir/Observation :id "2"
+                 :subject #fhir/Reference{:reference "Patient/0"}
+                 :value #fhir/Quantity
                          {:value #fhir/decimal 2M}}]]]
+
         (let [{:keys [db] :as context} (context system library-observation-value-age)
-              evaluated-populations
-              {:handles
-               [[{:population-handle (em-tu/resource db "Observation" "0")
-                  :subject-handle (em-tu/resource db "Patient" "0")}
-                 {:population-handle (em-tu/resource db "Observation" "1")
-                  :subject-handle (em-tu/resource db "Patient" "0")}]]}]
+              handles [{:population-handle (em-tu/resource db "Observation" "0")
+                        :subject-handle (em-tu/resource db "Patient" "0")}
+                       {:population-handle (em-tu/resource db "Observation" "1")
+                        :subject-handle (em-tu/resource db "Patient" "0")}
+                       {:population-handle (em-tu/resource db "Observation" "2")
+                        :subject-handle (em-tu/resource db "Patient" "0")}]]
 
           (testing "report-type population"
-            (given @(stratifier/evaluate
-                     (assoc context
-                            :report-type "population"
-                            :population-basis "Observation")
-                     evaluated-populations observation-value-stratifier)
-              [:result :fhir/type] := :fhir.MeasureReport.group/stratifier
-              [:result :code 0 :text] := #fhir/string"value"
-              [:result :stratum 0 :extension 0 :url] := "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.value"
-              [:result :stratum 0 :extension 0 :value :value] := #fhir/decimal 1M
-              [:result :stratum 0 :extension 0 :value :code] := #fhir/code"kg"
-              [:result :stratum 0 :value :text] := "1 kg"
-              [:result :stratum 0 :population 0 :count] := #fhir/integer 1
-              [:result :stratum 1 :extension 0 :url] := "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.value"
-              [:result :stratum 1 :extension 0 :value :value] := #fhir/decimal 2M
-              [:result :stratum 1 :value :text] := "2"
-              [:result :stratum 1 :population 0 :count] := #fhir/integer 1)))))
+            (let [op ((strat/reduce-op
+                       (assoc context
+                              :report-type "population"
+                              :population-basis "Observation")
+                       observation-value-stratifier) db)]
+              (is (= (reduce op (op) handles)
+                     {#fhir/Quantity{:value #fhir/decimal 1M :code #fhir/code"kg"} 1
+                      #fhir/Quantity{:value #fhir/decimal 2M} 2})))))))
 
     (testing "errors"
       (testing "with expression"
         (with-system [system config]
-          (let [context (context system empty-library)
-                evaluated-populations {:handles [[]]}]
-            (given-failed-future (stratifier/evaluate
-                                  (assoc context
-                                         :report-type "population"
-                                         :group-idx 1
-                                         :stratifier-idx 2)
-                                  evaluated-populations
-                                  stratifier-with-missing-expression)
+          (let [context (context system empty-library)]
+            (given (strat/reduce-op
+                    (assoc context
+                           :report-type "population"
+                           :group-idx 1
+                           :stratifier-idx 2)
+                    stratifier-with-missing-expression)
               ::anom/category := ::anom/incorrect
               ::anom/message := "Missing expression."
               :fhir/issue := "required"
@@ -309,28 +282,12 @@
 
       (testing "with unknown expression"
         (with-system [system config]
-          (let [context (context system empty-library)
-                evaluated-populations {:handles [[]]}]
-            (given-failed-future (stratifier/evaluate (assoc context :report-type "population")
-                                                      evaluated-populations gender-stratifier)
+          (let [context (context system empty-library)]
+            (given (strat/reduce-op (assoc context :report-type "population")
+                                    gender-stratifier)
               ::anom/category := ::anom/incorrect
               ::anom/message := "Missing expression with name `Gender`."
-              :expression-name := "Gender"))))
-
-      (testing "gender"
-        (with-system-data [system config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
-
-          (let [{:keys [db] :as context} (context system library-age-gender)
-                handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))
-                evaluated-populations {:handles [handles]}]
-
-            (given-failed-future (stratifier/evaluate (assoc context
-                                                             :report-type "population"
-                                                             :timeout-eclipsed? (constantly true))
-                                                      evaluated-populations gender-stratifier)
-              ::anom/category := ::anom/interrupted
-              ::anom/message := "Timeout of 42000 millis eclipsed while evaluating."))))))
+              :expression-name := "Gender"))))))
 
   (testing "two components"
     (testing "subject-based measure"
@@ -345,30 +302,18 @@
           [:put {:fhir/type :fhir/Patient :id "3"
                  :gender #fhir/code"male"
                  :birthDate #fhir/date"1950"}]]]
+
         (let [{:keys [db] :as context} (context system library-age-gender)
-              handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))
-              evaluated-populations {:handles [handles]}]
+              handles (into [] (em-tu/handle-mapper db) (d/type-list db "Patient"))]
 
           (testing "report-type population"
-            (given @(stratifier/evaluate (assoc context :report-type "population")
-                                         evaluated-populations age-gender-stratifier)
-              [:result :fhir/type] := :fhir.MeasureReport.group/stratifier
-              [:result :code 0 :text] := #fhir/string"age"
-              [:result :code 1 :text] := #fhir/string"gender"
-              [:result :stratum 0 :component 0 :code :text] := #fhir/string"age"
-              [:result :stratum 0 :component 0 :value :text] := #fhir/string"10"
-              [:result :stratum 0 :component 1 :code :text] := #fhir/string"gender"
-              [:result :stratum 0 :component 1 :value :text] := #fhir/string"female"
-              [:result :stratum 0 :population 0 :count] := #fhir/integer 1
-              [:result :stratum 1 :component 0 :value :text] := #fhir/string"10"
-              [:result :stratum 1 :component 1 :value :text] := #fhir/string"male"
-              [:result :stratum 1 :population 0 :count] := #fhir/integer 1
-              [:result :stratum 2 :component 0 :value :text] := #fhir/string"20"
-              [:result :stratum 2 :component 1 :value :text] := #fhir/string"male"
-              [:result :stratum 2 :population 0 :count] := #fhir/integer 1
-              [:result :stratum 3 :component 0 :value :text] := #fhir/string"null"
-              [:result :stratum 3 :component 1 :value :text] := #fhir/string"null"
-              [:result :stratum 3 :population 0 :count] := #fhir/integer 1)))))
+            (let [op ((strat/reduce-op (assoc context :report-type "population")
+                                       age-gender-stratifier) db)]
+              (is (= (reduce op (op) handles)
+                     {[nil nil] 1
+                      [10 #fhir/code"female"] 1
+                      [10 #fhir/code"male"] 1
+                      [20 #fhir/code"male"] 1})))))))
 
     (testing "Encounter measure"
       (with-system-data [system config]
@@ -388,42 +333,35 @@
           [:put {:fhir/type :fhir/Encounter :id "3"
                  :status #fhir/code"finished"
                  :subject #fhir/Reference{:reference "Patient/2"}
+                 :period #fhir/Period{:start #fhir/dateTime"2022"}}]
+          [:put {:fhir/type :fhir/Encounter :id "4"
+                 :status #fhir/code"finished"
+                 :subject #fhir/Reference{:reference "Patient/2"}
                  :period #fhir/Period{:start #fhir/dateTime"2022"}}]]]
+
         (let [{:keys [db] :as context} (context system library-encounter-status-age)
-              evaluated-populations
-              {:handles
-               [[{:population-handle (em-tu/resource db "Encounter" "0")
-                  :subject-handle (em-tu/resource db "Patient" "0")}
-                 {:population-handle (em-tu/resource db "Encounter" "1")
-                  :subject-handle (em-tu/resource db "Patient" "0")}
-                 {:population-handle (em-tu/resource db "Encounter" "2")
-                  :subject-handle (em-tu/resource db "Patient" "1")}
-                 {:population-handle (em-tu/resource db "Encounter" "3")
-                  :subject-handle (em-tu/resource db "Patient" "2")}]]}]
+              handles [{:population-handle (em-tu/resource db "Encounter" "0")
+                        :subject-handle (em-tu/resource db "Patient" "0")}
+                       {:population-handle (em-tu/resource db "Encounter" "1")
+                        :subject-handle (em-tu/resource db "Patient" "0")}
+                       {:population-handle (em-tu/resource db "Encounter" "2")
+                        :subject-handle (em-tu/resource db "Patient" "1")}
+                       {:population-handle (em-tu/resource db "Encounter" "3")
+                        :subject-handle (em-tu/resource db "Patient" "2")}
+                       {:population-handle (em-tu/resource db "Encounter" "4")
+                        :subject-handle (em-tu/resource db "Patient" "2")}]]
 
           (testing "report-type population"
-            (given @(stratifier/evaluate
-                     (assoc context
-                            :report-type "population"
-                            :population-basis "Encounter")
-                     evaluated-populations status-age-stratifier)
-              [:result :fhir/type] := :fhir.MeasureReport.group/stratifier
-              [:result :code 0 :text] := #fhir/string"status"
-              [:result :code 1 :text] := #fhir/string"age"
-              [:result :stratum 0 :component 0 :code :text] := #fhir/string"status"
-              [:result :stratum 0 :component 0 :value :text] := #fhir/string"finished"
-              [:result :stratum 0 :component 1 :code :text] := #fhir/string"age"
-              [:result :stratum 0 :component 1 :value :text] := #fhir/string"19"
-              [:result :stratum 0 :population 0 :count] := #fhir/integer 1
-              [:result :stratum 1 :component 0 :value :text] := #fhir/string"finished"
-              [:result :stratum 1 :component 1 :value :text] := #fhir/string"20"
-              [:result :stratum 1 :population 0 :count] := #fhir/integer 1
-              [:result :stratum 2 :component 0 :value :text] := #fhir/string"null"
-              [:result :stratum 2 :component 1 :value :text] := #fhir/string"null"
-              [:result :stratum 2 :population 0 :count] := #fhir/integer 1
-              [:result :stratum 3 :component 0 :value :text] := #fhir/string"planned"
-              [:result :stratum 3 :component 1 :value :text] := #fhir/string"20"
-              [:result :stratum 3 :population 0 :count] := #fhir/integer 1)))))
+            (let [op ((strat/reduce-op
+                       (assoc context
+                              :report-type "population"
+                              :population-basis "Encounter")
+                       status-age-stratifier) db)]
+              (is (= (reduce op (op) handles)
+                     {[nil nil] 1
+                      [#fhir/code"finished" 19] 2
+                      [#fhir/code"finished" 20] 1
+                      [#fhir/code"planned" 20] 1})))))))
 
     (testing "Quantity"
       (with-system-data [system config]
@@ -439,49 +377,33 @@
                  :effective #fhir/dateTime"2021"
                  :value #fhir/Quantity
                          {:value #fhir/decimal 2M}}]]]
+
         (let [{:keys [db] :as context} (context system library-observation-value-age)
-              evaluated-populations
-              {:handles
-               [[{:population-handle (em-tu/resource db "Observation" "0")
-                  :subject-handle (em-tu/resource db "Patient" "0")}
-                 {:population-handle (em-tu/resource db "Observation" "1")
-                  :subject-handle (em-tu/resource db "Patient" "0")}]]}]
+              handles [{:population-handle (em-tu/resource db "Observation" "0")
+                        :subject-handle (em-tu/resource db "Patient" "0")}
+                       {:population-handle (em-tu/resource db "Observation" "1")
+                        :subject-handle (em-tu/resource db "Patient" "0")}]]
 
           (testing "report-type population"
-            (given @(stratifier/evaluate
-                     (assoc context
-                            :report-type "population"
-                            :population-basis "Observation")
-                     evaluated-populations observation-value-age-stratifier)
-              [:result :fhir/type] := :fhir.MeasureReport.group/stratifier
-              [:result :code 0 :text] := #fhir/string"value"
-              [:result :code 1 :text] := #fhir/string"age"
-              [:result :stratum 0 :component 0 :extension 0 :url] := "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.component.value"
-              [:result :stratum 0 :component 0 :extension 0 :value :value] := #fhir/decimal 1M
-              [:result :stratum 0 :component 0 :extension 0 :value :code] := #fhir/code"kg"
-              [:result :stratum 0 :component 0 :code :text] := #fhir/string"value"
-              [:result :stratum 0 :component 0 :value :text] := #fhir/string"1 kg"
-              [:result :stratum 0 :component 1 :code :text] := #fhir/string"age"
-              [:result :stratum 0 :component 1 :value :text] := #fhir/string"20"
-              [:result :stratum 0 :population 0 :count] := #fhir/integer 1
-              [:result :stratum 1 :component 0 :extension 0 :url] := "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.component.value"
-              [:result :stratum 1 :component 0 :extension 0 :value :value] := #fhir/decimal 2M
-              [:result :stratum 1 :component 0 :value :text] := #fhir/string"2"
-              [:result :stratum 1 :component 1 :value :text] := #fhir/string"21"
-              [:result :stratum 1 :population 0 :count] := #fhir/integer 1)))))
+            (let [op ((strat/reduce-op
+                       (assoc context
+                              :report-type "population"
+                              :population-basis "Observation")
+                       observation-value-age-stratifier) db)]
+              (is (= (reduce op (op) handles)
+                     {[#fhir/Quantity{:value #fhir/decimal 1M :code #fhir/code"kg"} 20] 1
+                      [#fhir/Quantity{:value #fhir/decimal 2M} 21] 1})))))))
 
     (testing "errors"
       (testing "with expression"
         (with-system [system config]
-          (let [context (context system empty-library)
-                evaluated-populations {:handles [[]]}]
-            (given-failed-future (stratifier/evaluate
-                                  (assoc context
-                                         :report-type "population"
-                                         :group-idx 1
-                                         :stratifier-idx 2)
-                                  evaluated-populations
-                                  multi-component-stratifier-with-missing-expression)
+          (let [context (context system empty-library)]
+            (given (strat/reduce-op
+                    (assoc context
+                           :report-type "population"
+                           :group-idx 1
+                           :stratifier-idx 2)
+                    multi-component-stratifier-with-missing-expression)
               ::anom/category := ::anom/incorrect
               ::anom/message := "Missing expression."
               :fhir/issue := "required"
@@ -489,10 +411,9 @@
 
       (testing "with unknown expression"
         (with-system [system config]
-          (let [context (context system empty-library)
-                evaluated-populations {:handles [[]]}]
-            (given-failed-future (stratifier/evaluate (assoc context :report-type "population")
-                                                      evaluated-populations age-gender-stratifier)
+          (let [context (context system empty-library)]
+            (given (strat/reduce-op (assoc context :report-type "population")
+                                    age-gender-stratifier)
               ::anom/category := ::anom/incorrect
               ::anom/message := "Missing expression with name `Age`."
               :expression-name := "Age")))))))

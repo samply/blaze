@@ -521,12 +521,12 @@
                 [:group 0 :stratifier 0 :code 0 :text] := #fhir/string"gender"
                 [:group 0 :stratifier 0 :stratum 0 :population 0 :code :coding 0 :system] := measure-population-uri
                 [:group 0 :stratifier 0 :stratum 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
-                [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := 2
-                [:group 0 :stratifier 0 :stratum 0 :value :text] := #fhir/string"female"
+                [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := 1
+                [:group 0 :stratifier 0 :stratum 0 :value :text] := #fhir/string"male"
                 [:group 0 :stratifier 0 :stratum 1 :population 0 :code :coding 0 :system] := measure-population-uri
                 [:group 0 :stratifier 0 :stratum 1 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
-                [:group 0 :stratifier 0 :stratum 1 :population 0 :count] := 1
-                [:group 0 :stratifier 0 :stratum 1 :value :text] := #fhir/string"male")))))
+                [:group 0 :stratifier 0 :stratum 1 :population 0 :count] := 2
+                [:group 0 :stratifier 0 :stratum 1 :value :text] := #fhir/string"female")))))
 
       (testing "as POST request"
         (testing "with no Prefer header"

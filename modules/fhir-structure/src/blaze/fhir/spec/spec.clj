@@ -27,3 +27,18 @@
 
 (s/def :blaze/resource
   #(s2/valid? :fhir/Resource %))
+
+(s/def :fhir/CodeableConcept
+  #(s2/valid? :fhir/CodeableConcept %))
+
+(s/def :fhir/Expression
+  #(s2/valid? :fhir/Expression %))
+
+(s/def :fhir.Measure/group
+  #(s2/valid? :fhir.Measure/group %))
+
+(s/def :fhir.Measure.group/stratifier
+  #(s2/valid? :fhir.Measure.group/stratifier %))
+
+(s/def :fhir.Measure.group/population
+  #(s2/valid? :fhir.Measure.group/population %))

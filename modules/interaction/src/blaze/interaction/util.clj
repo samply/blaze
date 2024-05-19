@@ -57,8 +57,8 @@
 (defn luid [{:keys [clock rng-fn]}]
   (luid/luid clock (rng-fn)))
 
-(defn successive-luids [{:keys [clock rng-fn]}]
-  (luid/successive-luids clock (rng-fn)))
+(defn luid-generator [{:keys [clock rng-fn]}]
+  (luid/generator clock (rng-fn)))
 
 (defn- prep-if-none-match [if-none-match]
   (if (= "*" if-none-match)

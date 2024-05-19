@@ -14,7 +14,7 @@ else
   exit 1
 fi
 
-STRATIFIER_DATA=$(echo "$REPORT" | jq -r '.group[0].stratifier[0].stratum[] | [.value.text, .population[0].count] | @csv')
+STRATIFIER_DATA=$(echo "$REPORT" | jq -r '.group[0].stratifier[0].stratum[] | [.value.text, .population[0].count] | @csv' | sort)
 EXPECTED_STRATIFIER_DATA=$(cat ".github/scripts/cql/$NAME.csv")
 
 if [ "$STRATIFIER_DATA" = "$EXPECTED_STRATIFIER_DATA" ]; then
