@@ -3,6 +3,7 @@
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.byte-string :as bs]
    [blaze.coll.core :as coll]
+   [blaze.db.api :as d]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.compartment.search-param-value-resource :as c-sp-vr]
    [blaze.db.impl.index.resource-as-of :as rao]
@@ -190,6 +191,78 @@
   (-index-value-compiler [_]
     (mapcat (partial index-entries url))))
 
+(defn- resource-handles
+  ([batch-db c-hash tid value]
+   (into
+    []
+    (u/resource-handle-mapper batch-db tid)
+    (resource-keys batch-db c-hash tid (codec/v-hash value))))
+  ([batch-db c-hash tid value start-id]
+   (into
+    []
+    (u/resource-handle-mapper batch-db tid)
+    (resource-keys batch-db c-hash tid (codec/v-hash value) start-id))))
+
+(def ^:private noop-resolver
+  (reify fhir-path/Resolver (-resolve [_ _])))
+
+(defn- identifier-values [{:keys [value system]}]
+  (let [value (type/value value)
+        system (type/value system)]
+    (cond-> []
+      value
+      (conj value)
+      system
+      (conj (str system "|"))
+      (and value system)
+      (conj (str system "|" value))
+      (and value (nil? system))
+      (conj (str "|" value)))))
+
+(defn- remove-non-matching [db expression value resource-handle]
+  (let [resource @(d/pull db resource-handle)
+        values (fhir-path/eval noop-resolver expression resource)]
+    (assert (not (ba/anomaly? values)))
+    (some #{value} (mapcat identifier-values values))))
+
+(defrecord SearchParamTokenIdentifier [name url type base code target c-hash expression]
+  p/SearchParam
+  (-compile-value [_ _ value]
+    value)
+
+  (-chunked-resource-handles [search-param batch-db tid modifier value]
+    [(p/-resource-handles search-param batch-db tid modifier value)])
+
+  (-resource-handles [_ batch-db tid modifier value]
+    (let [c-hash (c-hash-w-modifier c-hash code modifier)
+          resource-handles (resource-handles batch-db c-hash tid value)]
+      (if (< 1 (count resource-handles))
+        (filterv (partial remove-non-matching batch-db expression value) resource-handles)
+        resource-handles)))
+
+  (-resource-handles [_ batch-db tid modifier value start-id]
+    (let [c-hash (c-hash-w-modifier c-hash code modifier)
+          resource-handles (resource-handles batch-db c-hash tid value start-id)]
+      (if (< 1 (count resource-handles))
+        (filterv (partial remove-non-matching batch-db expression value) resource-handles)
+        resource-handles)))
+
+  (-compartment-keys [_ _ _ _ _])
+
+  (-matcher [_ batch-db modifier values]
+    (r-sp-v/value-prefix-filter (:snapshot batch-db)
+                                (c-hash-w-modifier c-hash code modifier)
+                                (mapv codec/v-hash values)))
+
+  (-compartment-ids [_ _ _])
+
+  (-index-values [search-param resolver resource]
+    (when-ok [values (fhir-path/eval resolver expression resource)]
+      (coll/eduction (p/-index-value-compiler search-param) values)))
+
+  (-index-value-compiler [_]
+    (mapcat (partial index-entries url))))
+
 (defrecord SearchParamId [name type code]
   p/SearchParam
   (-compile-value [_ _ value]
@@ -229,7 +302,9 @@
     (->SearchParamId "_id" "id" "_id")
     (if expression
       (when-ok [expression (fhir-path/compile (fix-expr url expression))]
-        (->SearchParamToken name url type base code target (codec/c-hash code) expression))
+        (if (= "identifier" code)
+          (->SearchParamTokenIdentifier name url type base code target (codec/c-hash code) expression)
+          (->SearchParamToken name url type base code target (codec/c-hash code) expression)))
       (ba/unsupported (u/missing-expression-msg url)))))
 
 (defmethod sc/search-param "reference"

@@ -47,7 +47,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -4560,6 +4560,89 @@
           [4 :id] := "4"
           [5 :fhir/type] := :fhir/Observation
           [5 :id] := "5")))))
+
+(defn- patient-w-identifier [i]
+  {:fhir/type :fhir/Patient :id (str i)
+   :identifier [(type/map->Identifier {:value (str i)})]})
+
+(deftest type-query-identifier-non-matching-test
+  (st/unstrument)
+  (log/set-min-level! :info)
+  (testing "doesn't return non-matching resources"
+    (let [test-size 200000]
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [(mapv (fn [i] [:create (patient-w-identifier i)]) (range test-size))]
+
+        (let [db (d/db node)]
+          (is (every?
+               #(= 1 @(d/count-query db (d/compile-type-query node "Patient" [["identifier" (str %)]])))
+               (range test-size)))))))
+  (log/set-min-level! :trace))
+
+(deftest type-query-identifier-test
+  (testing "works with non-unique identifiers"
+    (doseq [system [nil #fhir/uri"foo"]]
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"
+                 :active true
+                 :identifier
+                 [(type/map->Identifier {:system system :value "0"})]}]
+          [:put {:fhir/type :fhir/Patient :id "1"
+                 :active true
+                 :identifier
+                 [(type/map->Identifier {:system system :value "0"})]}]
+          [:put {:fhir/type :fhir/Patient :id "2"
+                 :active true
+                 :identifier
+                 [(type/map->Identifier {:system system :value "0"})]}]]]
+
+        (doseq [value (if system ["0" "foo|0"] ["0" "|0"])]
+          (given (pull-type-query node "Patient" [["identifier" value]])
+            count := 3
+            [0 :id] := "0"
+            [1 :id] := "1"
+            [2 :id] := "2")
+
+          (testing "it is possible to start with the second patient"
+            (given (pull-type-query node "Patient" [["identifier" value]] "1")
+              count := 2
+              [0 :id] := "1"
+              [1 :id] := "2"))
+
+          (testing "as second clause"
+            (given (pull-type-query node "Patient" [["active" "true"]
+                                                    ["identifier" value]])
+              count := 3
+              [0 :id] := "0"
+              [1 :id] := "1"
+              [2 :id] := "2"))))))
+
+  (testing "system search"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :active true
+               :identifier
+               [#fhir/Identifier{:system #fhir/uri"system-115849"}]}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :active true
+               :identifier
+               [#fhir/Identifier{:system #fhir/uri"system-115849"}]}]]]
+
+      (given (pull-type-query node "Patient" [["identifier" "system-115849|"]])
+        count := 2
+        [0 :id] := "0"
+        [1 :id] := "1")
+
+      (testing "it is possible to start with the second patient"
+        (given (pull-type-query node "Patient" [["identifier" "system-115849|"]] "1")
+          count := 1
+          [0 :id] := "1"))
+
+      (testing "as second clause"
+        (given (pull-type-query node "Patient" [["active" "true"] ["identifier" "system-115849|"]])
+          count := 2
+          [0 :id] := "0"
+          [1 :id] := "1")))))
 
 (deftest compile-type-query-test
   (testing "a node with one patient"
