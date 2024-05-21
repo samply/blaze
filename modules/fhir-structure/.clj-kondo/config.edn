@@ -3,7 +3,8 @@
   "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
 
  :lint-as
- {blaze.fhir.spec.type.macros/def-primitive-type clojure.core/deftype
+ {blaze.fhir.spec.generators/def-resource-gen clojure.core/def
+  blaze.fhir.spec.type.macros/def-primitive-type clojure.core/deftype
   blaze.fhir.spec.type.macros/defextended clojure.core/defrecord}
 
  :hooks
@@ -18,6 +19,9 @@
   {:level :off}
 
   :unused-private-var
-  {:exclude [blaze.fhir.spec.type/at-utc]}}
+  {:exclude [blaze.fhir.spec.type/at-utc]}
+
+  :unresolved-symbol
+  {:exclude [(blaze.fhir.spec.generators/def-resource-gen)]}}
 
  :exclude-files "src/blaze/fhir/spec/type.clj"}
