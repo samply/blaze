@@ -14,7 +14,15 @@
     {
       "code": "compact",
       "display": "Compact Database Column Families"
+    },
+    {
+      "code": "async-interaction",
+      "display": "Asynchronous Interaction Request"
+    },
+    {
+      "code": "async-bulk-data",
+      "display": "Asynchronous Bulk Data Request"
     }
   ],
-  "count": 2
+  "count": 4
 }

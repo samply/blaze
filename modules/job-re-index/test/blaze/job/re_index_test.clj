@@ -14,11 +14,11 @@
    [blaze.db.tx-cache]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
-   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.job-scheduler :as js]
-   [blaze.job-scheduler.job-util :as job-util]
    [blaze.job.re-index]
+   [blaze.job.test-util :as jtu]
+   [blaze.job.util :as job-util]
    [blaze.log]
    [blaze.luid :as luid]
    [blaze.module.test-util :refer [with-system]]
@@ -28,9 +28,7 @@
    [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]
-   [taoensso.timbre :as log])
-  (:import
-   [java.util.concurrent TimeUnit]))
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -213,11 +211,6 @@
                 :code #fhir/code"search-param-url"}]}
      :value #fhir/canonical"unknown"}]))
 
-(defn- combined-status [{:keys [status] :as job}]
-  (if-let [status-reason (job-util/status-reason job)]
-    (keyword (type/value status) status-reason)
-    (keyword (type/value status))))
-
 (defn- output-value [job code]
   (job-util/output-value job "https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobOutput" code))
 
@@ -235,25 +228,6 @@
 
 (defn- job-id [{{:keys [clock rng-fn]} :context}]
   (luid/luid clock (rng-fn)))
-
-(defn- pull-job*
-  [{:blaze/keys [job-scheduler] :blaze.db.admin/keys [node] :as system} status]
-  (-> (d/pull node (d/resource-handle (d/db node) "Task" (job-id job-scheduler)))
-      (ac/then-compose-async
-       (fn [job]
-         (if (= status (combined-status job))
-           (ac/completed-future job)
-           (pull-job* system status)))
-       (ac/delayed-executor 10 TimeUnit/MILLISECONDS))))
-
-(defn- pull-job [system status]
-  (-> (pull-job* system status)
-      (ac/or-timeout! 10 TimeUnit/SECONDS)))
-
-(defn pull-job-history
-  [{:blaze/keys [job-scheduler] :blaze.db.admin/keys [node]}]
-  (-> (d/pull-many node (d/instance-history (d/db node) "Task" (job-id job-scheduler)))
-      (ac/then-apply reverse)))
 
 (defn gen-tx-data [n]
   (mapv
@@ -273,10 +247,10 @@
         @(js/create-job job-scheduler job-clinical-code)
 
         (testing "the job is completed"
-          (given @(pull-job system :completed)
+          (given @(jtu/pull-job system :completed)
             :fhir/type := :fhir/Task
             job-util/job-number := "1"
-            combined-status := :completed
+            jtu/combined-status := :completed
             total-resources := #fhir/unsignedInt 20001
             resources-processed := #fhir/unsignedInt 20001
             [processing-duration :value] :? pos?
@@ -286,14 +260,14 @@
             next-resource := nil))
 
         (testing "the job was incrementally updated"
-          (given @(pull-job-history system)
+          (given @(jtu/pull-job-history system)
             count := 5
 
-            [0 combined-status] := :ready
-            [1 combined-status] := :in-progress/started
-            [2 combined-status] := :in-progress/incremented
-            [3 combined-status] := :in-progress/incremented
-            [4 combined-status] := :completed
+            [0 jtu/combined-status] := :ready
+            [1 jtu/combined-status] := :in-progress/started
+            [2 jtu/combined-status] := :in-progress/incremented
+            [3 jtu/combined-status] := :in-progress/incremented
+            [4 jtu/combined-status] := :completed
 
             [0 total-resources] := nil
             [1 total-resources] := #fhir/unsignedInt 20001
@@ -320,10 +294,10 @@
         @(js/create-job job-scheduler job-clinical-code)
 
         (testing "the job is completed"
-          (given @(pull-job system :completed)
+          (given @(jtu/pull-job system :completed)
             :fhir/type := :fhir/Task
             job-util/job-number := "1"
-            combined-status := :completed
+            jtu/combined-status := :completed
             total-resources := #fhir/unsignedInt 20001
             resources-processed := #fhir/unsignedInt 20001
             [processing-duration :value] :? pos?
@@ -332,12 +306,12 @@
             [processing-duration :code] := #fhir/code"s"))
 
         (testing "the job was incrementally updated"
-          (given @(pull-job-history system)
+          (given @(jtu/pull-job-history system)
             count := 3
 
-            [0 combined-status] := :ready
-            [1 combined-status] := :in-progress/started
-            [2 combined-status] := :completed
+            [0 jtu/combined-status] := :ready
+            [1 jtu/combined-status] := :in-progress/started
+            [2 jtu/combined-status] := :completed
 
             [0 total-resources] := nil
             [1 total-resources] := #fhir/unsignedInt 20001
@@ -357,10 +331,10 @@
       @(js/create-job job-scheduler job-missing-search-param)
 
       (testing "the job has failed"
-        (given @(pull-job system :failed)
+        (given @(jtu/pull-job system :failed)
           :fhir/type := :fhir/Task
           job-util/job-number := "1"
-          combined-status := :failed
+          jtu/combined-status := :failed
           job-util/error-msg := "Missing search parameter URL."))))
 
   (testing "unknown search param URL"
@@ -369,10 +343,10 @@
       @(js/create-job job-scheduler job-unknown-search-param)
 
       (testing "the job has failed"
-        (given @(pull-job system :failed)
+        (given @(jtu/pull-job system :failed)
           :fhir/type := :fhir/Task
           job-util/job-number := "1"
-          combined-status := :failed
+          jtu/combined-status := :failed
           job-util/error-msg := "Search parameter with URL `unknown` not found."))))
 
   (testing "failing indexing at first re-index call"
@@ -386,19 +360,19 @@
         @(js/create-job job-scheduler job-clinical-code)
 
         (testing "the job has failed"
-          (given @(pull-job system :failed)
+          (given @(jtu/pull-job system :failed)
             :fhir/type := :fhir/Task
             job-util/job-number := "1"
-            combined-status := :failed
+            jtu/combined-status := :failed
             job-util/error-msg := "mock error"))
 
         (testing "job history"
-          (given @(pull-job-history system)
+          (given @(jtu/pull-job-history system)
             count := 3
 
-            [0 combined-status] := :ready
-            [1 combined-status] := :in-progress/started
-            [2 combined-status] := :failed
+            [0 jtu/combined-status] := :ready
+            [1 jtu/combined-status] := :in-progress/started
+            [2 jtu/combined-status] := :failed
 
             [0 total-resources] := nil
             [1 total-resources] := #fhir/unsignedInt 20001
@@ -422,20 +396,20 @@
         @(js/create-job job-scheduler job-clinical-code)
 
         (testing "the job has failed"
-          (given @(pull-job system :failed)
+          (given @(jtu/pull-job system :failed)
             :fhir/type := :fhir/Task
             job-util/job-number := "1"
-            combined-status := :failed
+            jtu/combined-status := :failed
             job-util/error-msg := "mock error"))
 
         (testing "job history"
-          (given @(pull-job-history system)
+          (given @(jtu/pull-job-history system)
             count := 4
 
-            [0 combined-status] := :ready
-            [1 combined-status] := :in-progress/started
-            [2 combined-status] := :in-progress/incremented
-            [3 combined-status] := :failed
+            [0 jtu/combined-status] := :ready
+            [1 jtu/combined-status] := :in-progress/started
+            [2 jtu/combined-status] := :in-progress/incremented
+            [3 jtu/combined-status] := :failed
 
             [0 total-resources] := nil
             [1 total-resources] := #fhir/unsignedInt 20001
@@ -454,23 +428,23 @@
 
       @(js/create-job job-scheduler job-clinical-code)
 
-      @(pull-job system :in-progress/started)
+      @(jtu/pull-job system :in-progress/started)
 
       (given @(js/pause-job job-scheduler (job-id job-scheduler))
         :fhir/type := :fhir/Task
         job-util/job-number := "1"
-        combined-status := :on-hold/paused)
+        jtu/combined-status := :on-hold/paused)
 
       (given @(js/resume-job job-scheduler (job-id job-scheduler))
         :fhir/type := :fhir/Task
         job-util/job-number := "1"
-        combined-status := :in-progress/resumed)
+        jtu/combined-status := :in-progress/resumed)
 
       (testing "the job is completed"
-        (given @(pull-job system :completed)
+        (given @(jtu/pull-job system :completed)
           :fhir/type := :fhir/Task
           job-util/job-number := "1"
-          combined-status := :completed
+          jtu/combined-status := :completed
           total-resources := #fhir/unsignedInt 60001
           resources-processed := #fhir/unsignedInt 60001
           [processing-duration :value] :? pos?
@@ -479,14 +453,14 @@
           [processing-duration :code] := #fhir/code"s"))
 
       (testing "the job was incrementally updated"
-        (given @(pull-job-history system)
+        (given @(jtu/pull-job-history system)
           count := 5
 
-          [0 combined-status] := :ready
-          [1 combined-status] := :in-progress/started
-          [2 combined-status] := :on-hold/paused
-          [3 combined-status] := :in-progress/resumed
-          [4 combined-status] := :completed
+          [0 jtu/combined-status] := :ready
+          [1 jtu/combined-status] := :in-progress/started
+          [2 jtu/combined-status] := :on-hold/paused
+          [3 jtu/combined-status] := :in-progress/resumed
+          [4 jtu/combined-status] := :completed
 
           [0 total-resources] := nil
           [1 total-resources] := #fhir/unsignedInt 60001
@@ -506,23 +480,23 @@
 
       @(js/create-job job-scheduler job-clinical-code)
 
-      @(pull-job system :in-progress/incremented)
+      @(jtu/pull-job system :in-progress/incremented)
 
       (given @(js/pause-job job-scheduler (job-id job-scheduler))
         :fhir/type := :fhir/Task
         job-util/job-number := "1"
-        combined-status := :on-hold/paused)
+        jtu/combined-status := :on-hold/paused)
 
       (given @(js/resume-job job-scheduler (job-id job-scheduler))
         :fhir/type := :fhir/Task
         job-util/job-number := "1"
-        combined-status := :in-progress/resumed)
+        jtu/combined-status := :in-progress/resumed)
 
       (testing "the job is completed"
-        (given @(pull-job system :completed)
+        (given @(jtu/pull-job system :completed)
           :fhir/type := :fhir/Task
           job-util/job-number := "1"
-          combined-status := :completed
+          jtu/combined-status := :completed
           total-resources := #fhir/unsignedInt 60001
           resources-processed := #fhir/unsignedInt 60001
           [processing-duration :value] :? pos?
@@ -531,7 +505,7 @@
           [processing-duration :code] := #fhir/code"s"))
 
       (testing "the job was incrementally updated"
-        (given @(pull-job-history system)
-          [0 combined-status] := :ready
-          [1 combined-status] := :in-progress/started
-          [2 combined-status] := :in-progress/incremented)))))
+        (given @(jtu/pull-job-history system)
+          [0 jtu/combined-status] := :ready
+          [1 jtu/combined-status] := :in-progress/started
+          [2 jtu/combined-status] := :in-progress/incremented)))))

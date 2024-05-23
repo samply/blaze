@@ -1,10 +1,21 @@
-(ns blaze.job-scheduler.job-util-spec
+(ns blaze.job.util-spec
   (:require
    [blaze.db.spec]
    [blaze.fhir.spec]
-   [blaze.job-scheduler.job-util :as job-util]
-   [blaze.job-scheduler.spec]
+   [blaze.job.util :as job-util]
    [clojure.spec.alpha :as s]))
+
+(s/fdef job-util/job-number
+  :args (s/cat :job :blaze/resource)
+  :ret string?)
+
+(s/fdef job-util/job-type
+  :args (s/cat :job :blaze/resource)
+  :ret simple-keyword?)
+
+(s/fdef job-util/status-reason
+  :args (s/cat :job :blaze/resource)
+  :ret string?)
 
 (s/fdef job-util/input-value
   :args (s/cat :job :blaze/resource :system string? :code string?)

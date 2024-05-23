@@ -1,17 +1,6 @@
-{:paths ["src" "resources"]
-
- :deps
+{:deps
  {blaze/db
-  {:local/root "../db"}
-
-  blaze/luid
-  {:local/root "../luid"}
-
-  blaze/job-util
-  {:local/root "../job-util"}
-
-  blaze/module-base
-  {:local/root "../module-base"}}
+  {:local/root "../db"}}
 
  :aliases
  {:test
@@ -19,15 +8,12 @@
 
    :extra-deps
    {blaze/db-stub
-    {:local/root "../db-stub"}
-
-    blaze/job-test-util
-    {:local/root "../job-test-util"}}}
+    {:local/root "../db-stub"}}}
 
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.91.1392"}}
+    {:mvn/version "1.90.1383"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 
