@@ -13,7 +13,10 @@
 
    :extra-deps
    {blaze/db-stub
-    {:local/root "../db-stub"}}}
+    {:local/root "../db-stub"}
+
+    blaze/job-test-util
+    {:local/root "../job-test-util"}}}
 
   :kaocha
   {:extra-deps

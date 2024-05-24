@@ -5,7 +5,7 @@
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
    [blaze.job-scheduler :as js]
-   [blaze.job-scheduler.job-util :as job-util]
+   [blaze.job.util :as job-util]
    [clojure.string :as str]
    [java-time.api :as time]))
 

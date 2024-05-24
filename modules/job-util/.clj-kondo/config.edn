@@ -1,0 +1,3 @@
+{:config-paths
+ ["../../../.clj-kondo/root"
+  "../../db-stub/resources/clj-kondo.exports/blaze/db-stub"]}

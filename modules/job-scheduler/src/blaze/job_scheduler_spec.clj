@@ -3,12 +3,13 @@
    [blaze.async.comp :as ac]
    [blaze.fhir.spec.spec]
    [blaze.job-scheduler :as js]
-   [blaze.job-scheduler.job-util-spec]
    [blaze.job-scheduler.spec]
+   [blaze.job.util-spec]
    [clojure.spec.alpha :as s]))
 
 (s/fdef js/create-job
-  :args (s/cat :scheduler :blaze/job-scheduler :job :blaze/resource)
+  :args (s/cat :scheduler :blaze/job-scheduler :job :blaze/resource
+               :other-resources (s/* :blaze/resource))
   :ret ac/completable-future?)
 
 (s/fdef js/pause-job

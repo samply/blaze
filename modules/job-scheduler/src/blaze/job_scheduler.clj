@@ -7,7 +7,7 @@
    [blaze.db.api :as d]
    [blaze.db.spec]
    [blaze.fhir.spec.type :as type]
-   [blaze.job-scheduler.job-util :as job-util]
+   [blaze.job.util :as job-util]
    [blaze.luid :as luid]
    [blaze.module :as m]
    [blaze.spec]
@@ -25,6 +25,8 @@
 
   The jobs status will be ready and should be set to in-progress/incremented if
   it can be started.
+
+  The `context` contains the :main-node and the :admin-node.
 
   Returns a CompletableFuture that will complete with a possibly updated job
   or will complete exceptionally with an anomaly in case of errors."
@@ -146,16 +148,23 @@
       (update :identifier (fnil conj []) (job-number-identifier job-number))))
 
 (defn create-job
-  [{{:keys [admin-node] :as context} :context} job]
+  "Returns a CompletableFuture that will complete with `job` created or will
+  complete exceptionally with an anomaly in case of errors."
+  {:arglists '([job-scheduler job & other-resources])}
+  [{{:keys [admin-node] :as context} :context} job & other-resources]
   (-> (current-job-number-observation context (d/db admin-node))
       (ac/then-compose-async
        (fn [{job-number :value :as obs}]
          (let [id (luid context)]
            (-> (d/transact
                 admin-node
-                [[:put (update obs :value inc-fhir-integer) [:if-match (:blaze.db/t (:blaze.db/tx (meta obs)))]]
-                 [:create (prepare-job job id (inc (type/value job-number)))]])
-               (ac/then-compose #(d/pull % (d/resource-handle % "Task" id)))))))))
+                (into
+                 [[:put (update obs :value inc-fhir-integer) [:if-match (:blaze.db/t (:blaze.db/tx (meta obs)))]]
+                  [:create (prepare-job job id (inc (type/value job-number)))]]
+                 (map (fn [resource] [:create resource]))
+                 other-resources))
+               (ac/then-compose
+                (fn [db] (d/pull db (d/resource-handle db "Task" id))))))))))
 
 (defn- hold-job** [job reason]
   (assoc

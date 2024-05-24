@@ -1,4 +1,4 @@
-(ns blaze.job-scheduler.job-util
+(ns blaze.job.util
   (:require
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
@@ -46,11 +46,13 @@
   (some #(when (= system (type/value (:system %))) (type/value (:code %))) coding))
 
 (defn job-type
+  "Returns the type of `job` as keyword."
   {:arglists '([job])}
   [{:keys [code]}]
   (keyword (code-value type-url code)))
 
 (defn status-reason
+  "Returns the status reason of `job`."
   {:arglists '([job])}
   [{:keys [statusReason]}]
   (code-value status-reason-url statusReason))
@@ -74,7 +76,9 @@
   ([{:keys [output]} system code]
    (some (io-pred system code) output)))
 
-(defn error-msg [job]
+(defn error-msg
+  "Returns the error message of `job` in case it failed."
+  [job]
   (output-value job "error"))
 
 (defn- update-output-value* [system code f x output]
