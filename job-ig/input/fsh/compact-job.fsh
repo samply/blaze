@@ -3,6 +3,8 @@ Alias: $CJP = https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter
 
 CodeSystem: CompactJobParameter
 Id: CompactJobParameter
+Title: "Compact Job Parameter"
+* ^status = #active
 * #column-family-name "Column Family Name"
 
 Profile: CompactJob
@@ -10,7 +12,7 @@ Parent: Job
 * code = $JT#compact "Compact Database Column Families"
 * input ^slicing.discriminator.type = #pattern
 * input ^slicing.discriminator.path = "type"
-* input ^slicing.rules = #closed
+* input ^slicing.rules = #open
 * input contains columnFamilyName 1..1
 * input[columnFamilyName] ^short = "Column Family Name"
 * input[columnFamilyName] ^definition = "The name of the column family to compact."

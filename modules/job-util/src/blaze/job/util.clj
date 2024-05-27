@@ -15,6 +15,9 @@
 (def ^:const status-reason-url
   "https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason")
 
+(def ^:const cancelled-sub-status-url
+  "https://samply.github.io/blaze/fhir/CodeSystem/JobCancelledSubStatus")
+
 (def ^:private output-system
   "https://samply.github.io/blaze/fhir/CodeSystem/JobOutput")
 
@@ -25,11 +28,20 @@
       {:system (type/uri status-reason-url)
        :code (type/code reason)})]}))
 
+(defn- mk-sub-status [system-url code]
+  (type/map->CodeableConcept
+   {:coding
+    [(type/map->Coding
+      {:system (type/uri system-url)
+       :code (type/code code)})]}))
+
 (def orderly-shut-down-status-reason (mk-status-reason "orderly-shutdown"))
 (def paused-status-reason (mk-status-reason "paused"))
 (def resumed-status-reason (mk-status-reason "resumed"))
 (def incremented-status-reason (mk-status-reason "incremented"))
 (def started-status-reason (mk-status-reason "started"))
+(def cancellation-requested-sub-status (mk-sub-status cancelled-sub-status-url "requested"))
+(def cancellation-finished-sub-status (mk-sub-status cancelled-sub-status-url "finished"))
 
 (defn job-number
   {:arglists '([job])}
@@ -56,6 +68,13 @@
   {:arglists '([job])}
   [{:keys [statusReason]}]
   (code-value status-reason-url statusReason))
+
+(defn cancelled-sub-status
+  "Returns the business/sub status with system `.../JobCancelledSubStatus` of
+  `job`."
+  {:arglists '([job])}
+  [{:keys [businessStatus]}]
+  (code-value cancelled-sub-status-url businessStatus))
 
 (defn- io-pred [system code]
   #(when (= code (code-value system (:type %))) (:value %)))
@@ -118,6 +137,46 @@
 (defn- update-tx-op [{{version-id :versionId} :meta :as job}]
   [:put job [:if-match (parse-long (type/value version-id))]])
 
+(defn- tx-ops [job other-resources]
+  (into [(update-tx-op job)] (map (partial vector :create)) other-resources))
+
+(defn- tag-update-error [e]
+  (assoc e ::js/action :update-job))
+
+(defn pull-job
+  ([node id]
+   (pull-job node (d/db node) id))
+  ([node db id]
+   (d/pull node (d/resource-handle db "Task" id))))
+
+(defn- then-pull-job [stage node id]
+  (ac/then-compose stage #(pull-job node % id)))
+
+(defn update-job+
+  "Submits a transaction that updates `job` to a state as result of applying
+  `f` to `job` and any supplied args. In addition to `job`, `other-resources`
+  are also stored.
+
+  Returns a CompletableFuture that will complete with the job after the
+  transaction in case of success or will complete exceptionally with an anomaly
+  in case of a transaction error or other errors."
+  {:arglists
+   '([node job other-resources f]
+     [node job other-resources f x]
+     [node job other-resources f x y])}
+  ([node {:keys [id] :as job} other-resources f]
+   (-> (d/transact node (tx-ops (f job) other-resources))
+       (then-pull-job node id)
+       (ac/exceptionally tag-update-error)))
+  ([node {:keys [id] :as job} other-resources f x]
+   (-> (d/transact node (tx-ops (f job x) other-resources))
+       (then-pull-job node id)
+       (ac/exceptionally tag-update-error)))
+  ([node {:keys [id] :as job} other-resources f x y]
+   (-> (d/transact node (tx-ops (f job x y) other-resources))
+       (then-pull-job node id)
+       (ac/exceptionally tag-update-error))))
+
 (defn update-job
   "Submits a transaction that updates `job` to a state as result of applying
   `f` to `job` and any supplied args.
@@ -126,19 +185,17 @@
   transaction in case of success or will complete exceptionally with an anomaly
   in case of a transaction error or other errors."
   {:arglists '([node job f] [node job f x])}
-  ([node {:keys [id] :as job} f]
-   (-> (d/transact node [(update-tx-op (f job))])
-       (ac/then-compose #(d/pull node (d/resource-handle % "Task" id)))
-       (ac/exceptionally #(assoc % ::js/action :update-job))))
-  ([node {:keys [id] :as job} f x]
-   (-> (d/transact node [(update-tx-op (f job x))])
-       (ac/then-compose #(d/pull node (d/resource-handle % "Task" id)))
-       (ac/exceptionally #(assoc % ::js/action :update-job)))))
+  ([node job f]
+   (update-job+ node job nil f))
+  ([node job f x]
+   (update-job+ node job nil f x)))
 
-(defn job-update-failed? [{::anom/keys [category] ::js/keys [action]}]
+(defn job-update-failed?
+  {:arglists '([anomaly])}
+  [{::anom/keys [category] ::js/keys [action]}]
   (and (= ::anom/conflict category) (= :update-job action)))
 
 (defn fail-job [job {::anom/keys [message]}]
   (-> (assoc job :status #fhir/code"failed")
-      (dissoc :statusReason)
+      (dissoc :statusReason :businessStatus)
       (add-output "error" (or message "empty error message"))))

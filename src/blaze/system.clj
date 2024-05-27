@@ -48,12 +48,18 @@
           spec-form)]
     (->Cfg env-var spec default)))
 
+(defrecord RefMap [key]
+  ig/RefLike
+  (ref-key [_] key)
+  (ref-resolve [_ config resolvef]
+    (into {} (map (fn [[k v]] [k (resolvef k v)])) (ig/find-derived config key))))
+
 (defn- read-blaze-edn []
   (log/info "Try to read blaze.edn ...")
   (try
     (with-open [rdr (PushbackReader. (io/reader (io/resource "blaze.edn")))]
       (edn/read
-       {:readers {'blaze/ref ig/ref 'blaze/cfg cfg}}
+       {:readers {'blaze/ref ig/ref 'blaze/ref-map ->RefMap 'blaze/cfg cfg}}
        rdr))
     (catch Exception e
       (log/warn "Problem while reading blaze.edn. Skipping it." e))))
@@ -85,12 +91,6 @@
   (let [loaded-ns (ig/load-namespaces config)]
     (log/info "Loaded the following namespaces:" (str/join ", " loaded-ns))))
 
-(defrecord RefMap [key]
-  ig/RefLike
-  (ref-key [_] key)
-  (ref-resolve [_ config resolvef]
-    (into {} (map (fn [[k v]] [k (resolvef k v)])) (ig/find-derived config key))))
-
 (def ^:private root-config
   {:blaze/version "0.26.2"
 
@@ -108,11 +108,7 @@
 
    :blaze/rest-api
    {:base-url (->Cfg "BASE_URL" string? "http://localhost:8080")
-    :version (ig/ref :blaze/version)
-    :release-date (ig/ref :blaze/release-date)
     :structure-definition-repo (ig/ref :blaze.fhir/structure-definition-repo)
-    :node (ig/ref :blaze.db.main/node)
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)
     :auth-backends (ig/refset :blaze.auth/backend)
     :context-path (->Cfg "CONTEXT_PATH" string? "/fhir")
     :db-sync-timeout (->Cfg "DB_SYNC_TIMEOUT" pos-int? 10000)}

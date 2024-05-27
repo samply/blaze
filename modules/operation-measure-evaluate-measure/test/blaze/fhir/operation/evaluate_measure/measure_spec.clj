@@ -18,8 +18,10 @@
 
 (s/def ::context
   (s/keys :req [:blaze/base-url ::reitit/router]
+          :opt [:blaze/cancelled?]
           :req-un [:blaze/clock :blaze/rng-fn :blaze.db/db
-                   ::evaluate-measure/executor]))
+                   ::evaluate-measure/executor]
+          :opt-un [::evaluate-measure/timeout]))
 
 (defn- temporal? [x]
   (instance? Temporal x))

@@ -23,73 +23,88 @@
   ;; namespace blaze/rest-api can be found in the rest-api module. The rest-api
   ;; depends on FHIR interactions and operations.
   ;;
+  :blaze/rest-api
+  {:node #blaze/ref :blaze.db.main/node
+   :admin-node #blaze/ref :blaze.db.admin/node
+   :search-system-handler #blaze/ref :blaze.interaction/search-system
+   :transaction-handler #blaze/ref :blaze.interaction/transaction
+   :history-system-handler #blaze/ref :blaze.interaction.history/system
+   :capabilities-handler #blaze/ref :blaze.rest-api/capabilities-handler
+   :async-status-handler #blaze/ref :blaze.rest-api/async-status-handler
+   :async-status-cancel-handler #blaze/ref :blaze.rest-api/async-status-cancel-handler
+   :resource-patterns #blaze/ref :blaze.rest-api/resource-patterns
+   :compartments
+   [#:blaze.rest-api.compartment
+           {:code "Patient"
+            :search-handler #blaze/ref :blaze.interaction/search-compartment}]
+   :operations #blaze/ref :blaze.rest-api/operations
+   :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]
+   :job-scheduler #blaze/ref :blaze/job-scheduler
+   :clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
+
+  ;;
+  ;; Resource patterns
+  ;;
   ;; Resource patterns offer control over which interactions are enabled for
   ;; which resource type. The default configuration enables all interactions for
   ;; all resource types.
   ;;
-  :blaze/rest-api
-  {:search-system-handler #blaze/ref :blaze.interaction/search-system
-   :transaction-handler #blaze/ref :blaze.interaction/transaction
-   :history-system-handler #blaze/ref :blaze.interaction.history/system
-   :resource-patterns
-   [#:blaze.rest-api.resource-pattern
-       {:type :default
-        :interactions
-        {:read
-         #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction/read}
-         :vread
-         #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction/read}
-         :update
-         #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction/update}
-         :delete
-         #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction/delete}
-         :history-instance
-         #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction.history/instance}
-         :history-type
-         #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction.history/type}
-         :create
-         #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction.main/create}
-         :search-type
-         #:blaze.rest-api.interaction
-             {:handler #blaze/ref :blaze.interaction/search-type}}}]
-   :compartments
-   [#:blaze.rest-api.compartment
-       {:code "Patient"
-        :search-handler #blaze/ref :blaze.interaction/search-compartment}]
-   :operations
-   [#:blaze.rest-api.operation
-       {:code "evaluate-measure"
-        :def-uri "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
-        :resource-types ["Measure"]
-        :type-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler
-        :instance-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler}
-    #:blaze.rest-api.operation
-       {:code "graphql"
-        :def-uri "http://hl7.org/fhir/OperationDefinition/Resource-graphql"
-        :resource-types ["Resource"]
-        :post-middleware #blaze/ref :blaze.fhir.operation.graphql.middleware/query
-        :response-type :json
-        :system-handler #blaze/ref :blaze.fhir.operation.graphql/handler}
-    #:blaze.rest-api.operation
-       {:code "everything"
-        :def-uri "http://hl7.org/fhir/OperationDefinition/Patient-everything"
-        :resource-types ["Patient"]
-        :instance-handler #blaze/ref :blaze.operation.patient/everything
-        :documentation "Returns all resources from the patient compartment of one concrete patient including the patient. Has a fix limit of 10,000 resources if paging isn't used. Paging is supported when the _count parameter is used. No other params are supported."}
-    #:blaze.rest-api.operation
-       {:code "totals"
-        :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/totals"
-        :resource-types ["Resource"]
-        :system-handler #blaze/ref :blaze.fhir.operation/totals
-        :documentation "Retrieves the total counts of resources available by resource type."}]
-   :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]}
+  :blaze.rest-api/resource-patterns
+  [#:blaze.rest-api.resource-pattern
+          {:type :default
+           :interactions
+           {:read
+            #:blaze.rest-api.interaction
+                    {:handler #blaze/ref :blaze.interaction/read}
+            :vread
+            #:blaze.rest-api.interaction
+                    {:handler #blaze/ref :blaze.interaction/read}
+            :update
+            #:blaze.rest-api.interaction
+                    {:handler #blaze/ref :blaze.interaction/update}
+            :delete
+            #:blaze.rest-api.interaction
+                    {:handler #blaze/ref :blaze.interaction/delete}
+            :history-instance
+            #:blaze.rest-api.interaction
+                    {:handler #blaze/ref :blaze.interaction.history/instance}
+            :history-type
+            #:blaze.rest-api.interaction
+                    {:handler #blaze/ref :blaze.interaction.history/type}
+            :create
+            #:blaze.rest-api.interaction
+                    {:handler #blaze/ref :blaze.interaction.main/create}
+            :search-type
+            #:blaze.rest-api.interaction
+                    {:handler #blaze/ref :blaze.interaction/search-type}}}]
+
+  :blaze.rest-api/operations
+  [#:blaze.rest-api.operation
+          {:code "evaluate-measure"
+           :def-uri "http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
+           :resource-types ["Measure"]
+           :type-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler
+           :instance-handler #blaze/ref :blaze.fhir.operation.evaluate-measure/handler}
+   #:blaze.rest-api.operation
+           {:code "graphql"
+            :def-uri "http://hl7.org/fhir/OperationDefinition/Resource-graphql"
+            :resource-types ["Resource"]
+            :post-middleware #blaze/ref :blaze.fhir.operation.graphql.middleware/query
+            :response-type :json
+            :system-handler #blaze/ref :blaze.fhir.operation.graphql/handler}
+   #:blaze.rest-api.operation
+           {:code "everything"
+            :def-uri "http://hl7.org/fhir/OperationDefinition/Patient-everything"
+            :resource-types ["Patient"]
+            :instance-handler #blaze/ref :blaze.operation.patient/everything
+            :documentation "Returns all resources from the patient compartment of one concrete patient including the patient. Has a fix limit of 10,000 resources if paging isn't used. Paging is supported when the _count parameter is used. No other params are supported."}
+   #:blaze.rest-api.operation
+           {:code "totals"
+            :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/totals"
+            :resource-types ["Resource"]
+            :system-handler #blaze/ref :blaze.fhir.operation/totals
+            :documentation "Retrieves the total counts of resources available by resource type."}]
 
   ;;
   ;; FHIR Interactions
@@ -129,7 +144,8 @@
   :blaze.interaction/search-type
   {:clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
-   :page-store #blaze/ref :blaze/page-store}
+   :page-store #blaze/ref :blaze/page-store
+   :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]}
 
   :blaze.interaction/search-compartment
   {:clock #blaze/ref :blaze/clock
@@ -138,11 +154,39 @@
 
   :blaze.interaction/transaction
   {:node #blaze/ref :blaze.db.main/node
+   :batch-handler #blaze/ref :blaze.rest-api/batch-handler
    :clock #blaze/ref :blaze/clock
-   :rng-fn #blaze/ref :blaze/rng-fn}
+   :rng-fn #blaze/ref :blaze/rng-fn
+   :db-sync-timeout #blaze/cfg ["DB_SYNC_TIMEOUT" pos-int? 10000]}
 
   :blaze.interaction/update
   {:node #blaze/ref :blaze.db.main/node}
+
+  :blaze.rest-api/batch-handler
+  {:context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]
+   :structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo
+   :capabilities-handler #blaze/ref :blaze.rest-api/capabilities-handler
+   :resource-patterns #blaze/ref :blaze.rest-api/resource-patterns
+   :operations #blaze/ref :blaze.rest-api/operations}
+
+  :blaze.rest-api/capabilities-handler
+  {:version #blaze/ref :blaze/version
+   :release-date #blaze/ref :blaze/release-date
+   :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]
+   :structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo
+   :search-param-registry #blaze/ref :blaze.db/search-param-registry
+   :search-system-handler #blaze/ref :blaze.interaction/search-system
+   :transaction-handler-active? true
+   :history-system-handler #blaze/ref :blaze.interaction.history/system
+   :resource-patterns #blaze/ref :blaze.rest-api/resource-patterns
+   :operations #blaze/ref :blaze.rest-api/operations
+   :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]}
+
+  :blaze.rest-api/async-status-handler
+  {}
+
+  :blaze.rest-api/async-status-cancel-handler
+  {:job-scheduler #blaze/ref :blaze/job-scheduler}
 
   ;;
   ;; FHIR Operation Evaluate Measure
@@ -156,7 +200,8 @@
    :executor #blaze/ref :blaze.fhir.operation.evaluate-measure/executor
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
-   :timeout #blaze/ref :blaze.fhir.operation.evaluate-measure/timeout}
+   :timeout #blaze/ref :blaze.fhir.operation.evaluate-measure/timeout
+   :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]}
 
   :blaze.fhir.operation.evaluate-measure/timeout
   {:millis #blaze/cfg ["FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT" nat-int? 3600000]}
@@ -340,10 +385,25 @@
   ;; Job Scheduler
   ;;
   :blaze/job-scheduler
+  {:node #blaze/ref :blaze.db.admin/node
+   :handlers #blaze/ref-map :blaze.job/handler
+   :clock #blaze/ref :blaze/clock
+   :rng-fn #blaze/ref :blaze/rng-fn}
+
+  :blaze.job/async-interaction
   {:main-node #blaze/ref :blaze.db.main/node
    :admin-node #blaze/ref :blaze.db.admin/node
+   :batch-handler #blaze/ref :blaze.rest-api/batch-handler
+   :db-sync-timeout #blaze/cfg ["DB_SYNC_TIMEOUT" pos-int? 10000]
+   :blaze/base-url #blaze/cfg ["BASE_URL" string? "http://localhost:8080"]
+   :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]
    :clock #blaze/ref :blaze/clock
-   :rng-fn #blaze/ref :blaze/rng-fn}}
+   :rng-fn #blaze/ref :blaze/rng-fn}
+
+  :blaze.job/re-index
+  {:main-node #blaze/ref :blaze.db.main/node
+   :admin-node #blaze/ref :blaze.db.admin/node
+   :clock #blaze/ref :blaze/clock}}
 
  :storage
  {:in-memory

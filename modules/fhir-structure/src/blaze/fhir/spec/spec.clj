@@ -34,11 +34,20 @@
 (s/def :fhir/Expression
   #(s2/valid? :fhir/Expression %))
 
+(s/def :fhir/Task
+  #(s2/valid? :fhir/Task %))
+
 (s/def :fhir.Measure/group
   #(s2/valid? :fhir.Measure/group %))
+
+(s/def :fhir.Bundle/entry
+  #(s2/valid? :fhir.Bundle/entry %))
 
 (s/def :fhir.Measure.group/stratifier
   #(s2/valid? :fhir.Measure.group/stratifier %))
 
 (s/def :fhir.Measure.group/population
   #(s2/valid? :fhir.Measure.group/population %))
+
+(s/def :fhir/dateTime
+  #(s2/valid? :fhir/dateTime %))

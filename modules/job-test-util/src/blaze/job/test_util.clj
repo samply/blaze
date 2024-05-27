@@ -10,8 +10,12 @@
 
 (defn combined-status [{:keys [status] :as job}]
   (if-let [status-reason (job-util/status-reason job)]
-    (keyword (type/value status) status-reason)
-    (keyword (type/value status))))
+    (if-let [cancelled-sub (job-util/cancelled-sub-status job)]
+      (keyword (str (type/value status) "." cancelled-sub) status-reason)
+      (keyword (type/value status) status-reason))
+    (if-let [cancelled-sub (job-util/cancelled-sub-status job)]
+      (keyword (type/value status) cancelled-sub)
+      (keyword (type/value status)))))
 
 (defn- job-id [{{:keys [clock rng-fn]} :context}]
   (luid/luid clock (rng-fn)))
@@ -37,6 +41,11 @@
        (ac/or-timeout! 10 TimeUnit/SECONDS))))
 
 (defn pull-job-history
-  [{:blaze/keys [job-scheduler] :blaze.db.admin/keys [node]}]
-  (-> (d/pull-many node (d/instance-history (d/db node) "Task" (job-id job-scheduler)))
-      (ac/then-apply reverse)))
+  ([{:blaze/keys [job-scheduler] :as system}]
+   (pull-job-history system (job-id job-scheduler)))
+  ([{:blaze.db.admin/keys [node]} job-id]
+   (-> (d/pull-many node (d/instance-history (d/db node) "Task" job-id))
+       (ac/then-apply reverse))))
+
+(defn pull-other-resource [{:blaze.db.admin/keys [node]} type id]
+  (d/pull node (d/resource-handle (d/db node) type id)))

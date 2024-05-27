@@ -11,7 +11,6 @@
    [blaze.interaction.search.nav :as nav]
    [blaze.interaction.search.params :as params]
    [blaze.interaction.search.util :as search-util]
-   [blaze.interaction.util :as iu]
    [blaze.module :as m]
    [blaze.page-store.spec]
    [blaze.util :refer [conj-vec]]
@@ -62,7 +61,7 @@
     {{route-name :name} :data} ::reitit/match :as context} entries]
   (cond->
    {:fhir/type :fhir/Bundle
-    :id (iu/luid context)
+    :id (handler-util/luid context)
     :type #fhir/code"searchset"
     :total (type/->UnsignedInt (d/system-total db))
     :entry (if (< page-size (count entries))
@@ -85,7 +84,7 @@
 (defn- search-summary [{:blaze/keys [db] :as context}]
   (ac/completed-future
    {:fhir/type :fhir/Bundle
-    :id (iu/luid context)
+    :id (handler-util/luid context)
     :type #fhir/code"searchset"
     :total (type/->UnsignedInt (d/system-total db))
     :link [(self-link context)]}))

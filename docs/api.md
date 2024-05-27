@@ -35,8 +35,92 @@ Get the capability statement for Blaze. Blaze supports filtering the capability 
 The following Operations are implemented:
 
 * [$graphql](http://hl7.org/fhir/resource-operation-graphql.html)
-* [Measure $evaluate-measure](https://www.hl7.org/fhir/operation-measure-evaluate-measure.html)
+* [Measure $evaluate-measure](api/operation-measure-evaluate-measure.md)
 * [Patient $everything](api/operation-patient-everything.md)
+
+## Asynchronous Requests
+
+Some requests like $evaluate-measure or complex FHIR searches with `_summary=count` can take longer as a typical HTTP request response cycle should be open. Typical HTTP request timeouts from client and intermediates are 30 seconds. Requests that take longer than that would require special handling. In oder to overcome that synchronous request handling, FHIR specifies [Asynchronous Request Patterns](http://hl7.org/fhir/R5/async.html).
+
+Blaze implements the [Asynchronous Interaction Request Pattern][8] from FHIR R5.
+
+### Example FHIR Search Request
+
+To initiate a sync request, the HTTP header `Prefer` has to set to `respond-async`:
+
+```sh
+curl -svH 'Prefer: respond-async' "http://localhost:8080/fhir/Observation?code=http://loinc.org|8310-5&_summary=count" 
+```
+
+The response will look like this:
+
+```text
+HTTP/1.1 202 Accepted
+Content-Location: http://localhost:8080/fhir/__async-status/DD7MLX6H7OGJN7SD
+```
+
+The status code 202 indicates that the request was accepted and will continue to be processed in the background. The `Content-Location` header contains an opaque URL to a status endpoint.
+
+> [!NOTE]
+> Please be aware that Blaze will respond synchronously if the response is available in time or the async handling isn't implemented yet. Clients always have to be able to handle synchronous responses as well.  
+
+Polling that status endpoint:
+
+```sh
+curl -svH 'Accept: application/fhir+json' "http://localhost:8080/fhir/__async-status/DD7MLX6H7OGJN7SD" 
+```
+
+will either result in a intermediate result like this:
+
+```text
+HTTP/1.1 202 Accepted
+X-Progress: in-progress
+```
+
+or in the final response:
+
+```text
+HTTP/1.1 200 OK
+Content-Type: application/fhir+json;charset=utf-8
+Content-Length: 412
+```
+
+The response itself will be a Bundle of type `batch-response`:
+
+```json
+{
+  "resourceType": "Bundle",
+  "id": "DD7MLX6JYN54OHKZ",
+  "type": "batch-response",
+  "entry": [
+    {
+      "response": {
+        "status": "200"
+      },
+      "resource": {
+        "resourceType": "Bundle",
+        "id": "DD7MLX6JZHGD5YSA",
+        "type": "searchset",
+        "total": 1689,
+        "link": [
+          {
+            "relation": "self",
+            "url": "http://localhost:8080/fhir/Observation?code=http%3A%2F%2Floinc.org%7C8310-5&_summary=count&_count=50"
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+### Cancelling an Async Request
+
+Async requests can be cancelled before they are completed:
+
+```sh
+curl -svXDELETE "http://localhost:8080/fhir/__async-status/DD7MLX6H7OGJN7SD"
+```
 
 ## Absolute URLs
 
@@ -51,3 +135,4 @@ Besides the static `BASE_URL` setting, Blaze also respects the reverse proxy hea
 [5]: <https://hl7.org/fhir/http.html#capabilities>
 [6]: <https://semver.org>
 [7]: <https://en.wikipedia.org/wiki/Coordinated_Universal_Time>
+[8]: <http://hl7.org/fhir/R5/async-bundle.html>

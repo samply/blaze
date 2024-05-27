@@ -17,6 +17,7 @@
    [blaze.fhir.test-util :refer [given-failed-future structure-definition-repo]]
    [blaze.job-scheduler :as js]
    [blaze.job-scheduler-spec]
+   [blaze.job-scheduler.protocols :as p]
    [blaze.job.test-util :as jtu]
    [blaze.job.util :as job-util]
    [blaze.log]
@@ -43,12 +44,78 @@
 (derive :blaze.db.main/node :blaze.db/node)
 (derive :blaze.db.admin/node :blaze.db/node)
 
+(defn- start-job [job]
+  (assoc
+   job
+   :status #fhir/code"in-progress"
+   :statusReason job-util/started-status-reason))
+
+(defn- finish-job [job]
+  (-> (assoc job :status #fhir/code"completed")
+      (dissoc :statusReason)))
+
+(defn- async-delay [x]
+  (let [future (ac/future)]
+    (ac/complete-on-timeout! future x 150 TimeUnit/MILLISECONDS)
+    future))
+
+(defn- finish-cancellation [job]
+  (assoc job :businessStatus job-util/cancellation-finished-sub-status))
+
+(defmethod ig/init-key :blaze.job/test
+  [_ {:keys [admin-node]}]
+  (let [delays (atom {})]
+    (reify p/JobHandler
+      (-on-start [_ job]
+        (-> (job-util/update-job admin-node job start-job)
+            (ac/then-compose
+             (fn [{:keys [id] :as job}]
+               (let [delay (async-delay job)]
+                 (swap! delays assoc id delay)
+                 (-> delay
+                     (ac/then-compose
+                      #(job-util/update-job admin-node % finish-job))
+                     (ac/exceptionally-compose
+                      (fn [e]
+                        (if (ba/interrupted? e)
+                          (-> (job-util/pull-job admin-node id)
+                              (ac/then-compose-async
+                               #(job-util/update-job admin-node % finish-cancellation)))
+                          e)))))))))
+      (-on-resume [_ job]
+        (-> (async-delay job)
+            (ac/then-compose #(job-util/update-job admin-node % finish-job))))
+      (-on-cancel [_ job]
+        (ac/cancel! (get @delays (:id job)))
+        (ac/completed-future job)))))
+
+(defmethod ig/init-key :blaze.job/error
+  [_ _]
+  (reify p/JobHandler
+    (-on-start [_ _]
+      (ac/completed-future (ba/fault "error-150651")))))
+
+(defmethod ig/init-key :blaze.job/throws-error
+  [_ _]
+  (reify p/JobHandler
+    (-on-start [_ _]
+      (throw (Exception.)))))
+
 (def config
   {:blaze/job-scheduler
-   {:main-node (ig/ref :blaze.db.main/node)
-    :admin-node (ig/ref :blaze.db.admin/node)
+   {:node (ig/ref :blaze.db.admin/node)
+    :handlers
+    {:blaze.job/test (ig/ref :blaze.job/test)
+     :blaze.job/error (ig/ref :blaze.job/error)
+     :blaze.job/throws-error (ig/ref :blaze.job/throws-error)}
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref ::incrementing-rng-fn)}
+
+   :blaze.job/test
+   {:admin-node (ig/ref :blaze.db.admin/node)}
+
+   :blaze.job/error {}
+   :blaze.job/throws-error {}
 
    :blaze.db.main/node
    {:tx-log (ig/ref :blaze.db.main/tx-log)
@@ -179,94 +246,40 @@
     (given-thrown (ig/init {:blaze/job-scheduler {}})
       :key := :blaze/job-scheduler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
-  (testing "invalid main node"
-    (given-thrown (ig/init {:blaze/job-scheduler {:main-node ::invalid}})
+  (testing "invalid node"
+    (given-thrown (ig/init {:blaze/job-scheduler {:node ::invalid}})
       :key := :blaze/job-scheduler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 3 :pred] := `node?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
-
-  (testing "invalid admin node"
-    (given-thrown (ig/init {:blaze/job-scheduler {:admin-node ::invalid}})
-      :key := :blaze/job-scheduler
-      :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 3 :pred] := `node?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 2 :pred] := `node?
+      [:cause-data ::s/problems 2 :val] := ::invalid))
 
   (testing "invalid clock"
     (given-thrown (ig/init {:blaze/job-scheduler {:clock ::invalid}})
       :key := :blaze/job-scheduler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 3 :pred] := `time/clock?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 2 :pred] := `time/clock?
+      [:cause-data ::s/problems 2 :val] := ::invalid))
 
   (testing "invalid rng-fn"
     (given-thrown (ig/init {:blaze/job-scheduler {:rng-fn ::invalid}})
       :key := :blaze/job-scheduler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 3 :pred] := `fn?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 2 :pred] := `fn?
+      [:cause-data ::s/problems 2 :val] := ::invalid))
 
   (testing "success"
     (with-system [{:blaze/keys [job-scheduler]} config]
       (is (s/valid? :blaze/job-scheduler job-scheduler)))))
-
-(defn- start-job [job]
-  (assoc
-   job
-   :status #fhir/code"in-progress"
-   :statusReason job-util/started-status-reason))
-
-(defn- finish-job [job]
-  (-> (assoc job :status #fhir/code"completed")
-      (dissoc :statusReason)))
-
-(defn- async-delay [x]
-  (let [future (ac/future)]
-    (ac/complete-on-timeout! future x 150 TimeUnit/MILLISECONDS)
-    future))
-
-(defmethod js/on-start :test
-  [{:keys [admin-node]} job]
-  (-> (job-util/update-job admin-node job start-job)
-      (ac/then-compose async-delay)
-      (ac/then-compose #(job-util/update-job admin-node % finish-job))))
-
-(defmethod js/on-resume :test
-  [{:keys [admin-node]} job]
-  (-> (async-delay job)
-      (ac/then-compose #(job-util/update-job admin-node % finish-job))))
-
-(defmethod js/on-start :start-only
-  [{:keys [admin-node]} job]
-  (-> (job-util/update-job admin-node job start-job)
-      (ac/then-compose async-delay)
-      (ac/then-compose #(job-util/update-job admin-node % finish-job))))
-
-(defmethod js/on-start :error
-  [_ _]
-  (ac/completed-future (ba/fault "error-150651")))
-
-(defmethod js/on-start :throws-error
-  [_ _]
-  (throw (Exception.)))
 
 (defn- job-type [type]
   (type/map->CodeableConcept
@@ -303,7 +316,7 @@
 (defn- bundle-input [job]
   (job-util/input-value job "https://samply.github.io/blaze/fhir/CodeSystem/AsyncInteractionJobParameter" "bundle"))
 
-(deftest create-test
+(deftest create-job-test
   (testing "test job"
     (with-system [{:blaze/keys [job-scheduler] :as system} config]
 
@@ -326,7 +339,15 @@
           :fhir/type := :fhir/Task
           job-util/job-number := "1"
           jtu/combined-status := :completed
-          job-util/job-type := :test))))
+          job-util/job-type := :test))
+
+      (testing "job history"
+        (given @(jtu/pull-job-history system job-id)
+          count := 3
+
+          [0 jtu/combined-status] := :ready
+          [1 jtu/combined-status] := :in-progress/started
+          [2 jtu/combined-status] := :completed))))
 
   (testing "create a second job"
     (with-system [{:blaze/keys [job-scheduler]} config]
@@ -340,7 +361,7 @@
           jtu/combined-status := :ready
           job-util/job-type := :test))))
 
-  (testing "job fails if there is no on-start implementation"
+  (testing "job fails if the job handler isn't found"
     (with-system [{:blaze/keys [job-scheduler] :as system} config]
 
       @(js/create-job job-scheduler (ready-job "unknown-142504"))
@@ -398,7 +419,115 @@
             :fhir/type := :fhir/Bundle
             :type := #fhir/code"batch"))))))
 
-(deftest pause-test
+(defn- in-progress-job [type]
+  {:fhir/type :fhir/Task
+   :status #fhir/code"in-progress"
+   :statusReason job-util/started-status-reason
+   :code (job-type type)})
+
+(defn- completed-job [type]
+  {:fhir/type :fhir/Task
+   :status #fhir/code"completed"
+   :code (job-type type)})
+
+(defn- failed-job [type]
+  {:fhir/type :fhir/Task
+   :status #fhir/code"failed"
+   :code (job-type type)})
+
+(defn- cancellation-requested-job [type]
+  {:fhir/type :fhir/Task
+   :status #fhir/code"cancelled"
+   :businessStatus job-util/cancellation-requested-sub-status
+   :code (job-type type)})
+
+(defn- cancellation-finished-job [type]
+  {:fhir/type :fhir/Task
+   :status #fhir/code"cancelled"
+   :businessStatus job-util/cancellation-finished-sub-status
+   :code (job-type type)})
+
+(deftest cancel-job-test
+  (testing "works while job is in-progress"
+    (with-system [{:blaze/keys [job-scheduler] :as system} config]
+
+      @(js/create-job job-scheduler (ready-job "test"))
+
+      @(jtu/pull-job system job-id :in-progress/started)
+
+      (given @(js/cancel-job job-scheduler job-id)
+        :fhir/type := :fhir/Task
+        job-util/job-number := "1"
+        jtu/combined-status := :cancelled/requested
+        job-util/job-type := :test)
+
+      @(jtu/pull-job system job-id :cancelled/finished)
+
+      (testing "job history"
+        (given @(jtu/pull-job-history system job-id)
+          count := 4
+
+          [0 jtu/combined-status] := :ready
+          [1 jtu/combined-status] := :in-progress/started
+          [2 jtu/combined-status] := :cancelled/requested
+          [3 jtu/combined-status] := :cancelled/finished))))
+
+  (testing "fails if job is already completed"
+    (with-system [{:blaze/keys [job-scheduler]} config]
+
+      @(js/create-job job-scheduler (completed-job "test"))
+
+      (given-failed-future (js/cancel-job job-scheduler job-id)
+        ::anom/category := ::anom/conflict
+        ::anom/message := (format "Can't cancel job `%s` because it's status is `completed`." job-id))))
+
+  (testing "fails if job is already failed"
+    (with-system [{:blaze/keys [job-scheduler]} config]
+
+      @(js/create-job job-scheduler (failed-job "test"))
+
+      (given-failed-future (js/cancel-job job-scheduler job-id)
+        ::anom/category := ::anom/conflict
+        ::anom/message := (format "Can't cancel job `%s` because it's status is `failed`." job-id))))
+
+  (testing "fails if job has already a requested cancellation"
+    (with-system [{:blaze/keys [job-scheduler]} config]
+
+      @(js/create-job job-scheduler (cancellation-requested-job "test"))
+
+      (given-failed-future (js/cancel-job job-scheduler job-id)
+        ::anom/category := ::anom/conflict
+        ::anom/message := (format "Can't cancel job `%s` because it's status is `cancelled`." job-id))))
+
+  (testing "fails if job has already a finished cancellation"
+    (with-system [{:blaze/keys [job-scheduler]} config]
+
+      @(js/create-job job-scheduler (cancellation-finished-job "test"))
+
+      (given-failed-future (js/cancel-job job-scheduler job-id)
+        ::anom/category := ::anom/conflict
+        ::anom/message := (format "Can't cancel job `%s` because it's status is `cancelled`." job-id))))
+
+  (testing "job fails if the job handler isn't found"
+    (with-system [{:blaze/keys [job-scheduler] :as system} config]
+
+      @(js/create-job job-scheduler (in-progress-job "unknown-141028"))
+
+      (given @(js/cancel-job job-scheduler job-id)
+        :fhir/type := :fhir/Task
+        job-util/job-number := "1"
+        jtu/combined-status := :cancelled/requested
+        job-util/job-type := :unknown-141028)
+
+      (testing "the job has failed"
+        (given @(jtu/pull-job system job-id :failed)
+          :fhir/type := :fhir/Task
+          job-util/job-number := "1"
+          jtu/combined-status := :failed
+          job-util/job-type := :unknown-141028
+          job-util/error-msg := "Failed to cancel because the implementation is missing.")))))
+
+(deftest pause-job-test
   (testing "works while job is in-progress"
     (with-system [{:blaze/keys [job-scheduler] :as system} config]
 
@@ -437,7 +566,12 @@
         ::anom/category := ::anom/conflict
         ::anom/message := (format "Can't pause job `%s` because it isn't in-progress. It's status is `completed`." job-id)))))
 
-(deftest resume-test
+(defn- on-hold-job [type]
+  {:fhir/type :fhir/Task
+   :status #fhir/code"on-hold"
+   :code (job-type type)})
+
+(deftest resume-job-test
   (testing "works while job is on-hold"
     (with-system [{:blaze/keys [job-scheduler] :as system} config]
 
@@ -471,27 +605,23 @@
         ::anom/category := ::anom/conflict
         ::anom/message := (format "Can't resume job `%s` because it isn't on-hold. It's status is `completed`." job-id))))
 
-  (testing "job fails if there is no on-resume implementation"
+  (testing "job fails if the job handler isn't found"
     (with-system [{:blaze/keys [job-scheduler] :as system} config]
 
-      @(js/create-job job-scheduler (ready-job "start-only"))
-
-      @(jtu/pull-job system job-id :in-progress/started)
-
-      @(js/pause-job job-scheduler job-id)
+      @(js/create-job job-scheduler (on-hold-job "unknown-105857"))
 
       (given @(js/resume-job job-scheduler job-id)
         :fhir/type := :fhir/Task
         job-util/job-number := "1"
         jtu/combined-status := :in-progress/resumed
-        job-util/job-type := :start-only)
+        job-util/job-type := :unknown-105857)
 
       (testing "the job has failed"
         (given @(jtu/pull-job system job-id :failed)
           :fhir/type := :fhir/Task
           job-util/job-number := "1"
           jtu/combined-status := :failed
-          job-util/job-type := :start-only
+          job-util/job-type := :unknown-105857
           job-util/error-msg := "Failed to resume because the implementation is missing.")))))
 
 (deftest shutdown-test
@@ -512,3 +642,12 @@
         job-util/job-number := "1"
         jtu/combined-status := :on-hold/orderly-shutdown
         job-util/job-type := :test))))
+
+(deftest error-in-on-next-handler-test
+  (with-redefs [js/on-start (fn [_ _] (throw (Exception.)))]
+    (with-system [{:blaze/keys [job-scheduler]} config]
+
+      @(js/create-job job-scheduler (ready-job "test"))
+
+      ;; we only wait here to be sure that on-start is called and the TaskSubscriber fails
+      (is (nil? (Thread/sleep 100))))))

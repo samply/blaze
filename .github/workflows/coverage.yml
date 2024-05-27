@@ -21,6 +21,14 @@ jobs:
       with:
         cli: '1.11.2.1446'
 
+    - name: Setup Node
+      uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4
+      with:
+        node-version: 21
+
+    - name: Install SUSHI
+      run: npm install -g fsh-sushi
+
     - name: Check out Git repository
       uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
 
@@ -29,6 +37,10 @@ jobs:
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-17-maven-test-coverage-${{ hashFiles('**/deps.edn') }}
+
+    - name: Build
+      working-directory: job-ig
+      run: make build
 
     - name: Test Coverage
       run: make test-coverage

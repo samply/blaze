@@ -6,15 +6,24 @@
   (:import
    [clojure.lang ExceptionInfo]
    [java.util Map]
-   [java.util.concurrent ExecutionException TimeoutException]))
+   [java.util.concurrent CancellationException ExecutionException TimeoutException]))
 
 (set! *warn-on-reflection* true)
 
 (defn anomaly? [x]
   (some? (::anom/category x)))
 
+(defn unavailable? [x]
+  (identical? ::anom/unavailable (::anom/category x)))
+
+(defn interrupted? [x]
+  (identical? ::anom/interrupted (::anom/category x)))
+
 (defn incorrect? [x]
   (identical? ::anom/incorrect (::anom/category x)))
+
+(defn forbidden? [x]
+  (identical? ::anom/forbidden (::anom/category x)))
 
 (defn unsupported? [x]
   (identical? ::anom/unsupported (::anom/category x)))
@@ -37,8 +46,14 @@
   ([category msg kvs]
    (merge (anomaly* category msg) kvs)))
 
-(defn interrupted [msg & {:as kvs}]
-  (anomaly* ::anom/interrupted msg kvs))
+(defn unavailable [msg & {:as kvs}]
+  (anomaly* ::anom/unavailable msg kvs))
+
+(defn interrupted
+  ([]
+   (interrupted nil))
+  ([msg & {:as kvs}]
+   (anomaly* ::anom/interrupted msg kvs)))
 
 (defn incorrect [msg & {:as kvs}]
   (anomaly* ::anom/incorrect msg kvs))
@@ -52,8 +67,11 @@
 (defn not-found [msg & {:as kvs}]
   (anomaly* ::anom/not-found msg kvs))
 
-(defn conflict [msg & {:as kvs}]
-  (anomaly* ::anom/conflict msg kvs))
+(defn conflict
+  ([]
+   (conflict nil))
+  ([msg & {:as kvs}]
+   (anomaly* ::anom/conflict msg kvs)))
 
 (defn fault
   ([]
@@ -85,6 +103,9 @@
   TimeoutException
   (-anomaly [e]
     (busy (.getMessage e)))
+  CancellationException
+  (-anomaly [e]
+    (interrupted (.getMessage e)))
   ExceptionInfo
   (-anomaly [e]
     (cond->

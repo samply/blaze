@@ -16,30 +16,22 @@
     [java-time.api :as time]
     [taoensso.timbre :as log]))
 
-
-;; Spec Instrumentation
-(st/instrument)
-
-
 (defonce system nil)
-
 
 (defn init []
   (alter-var-root #'system (constantly (system/init! (System/getenv))))
+  (st/instrument)
   nil)
-
 
 (defn reset []
   (some-> system system/shutdown!)
   (refresh :after `init))
-
 
 ;; Init Development
 (comment
   (init)
   (pst)
   )
-
 
 ;; Reset after making changes
 (comment

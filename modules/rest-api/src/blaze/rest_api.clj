@@ -1,14 +1,13 @@
 (ns blaze.rest-api
   (:require
    [blaze.async.comp :as ac]
-   [blaze.db.search-param-registry.spec]
    [blaze.db.spec]
-   [blaze.fhir.structure-definition-repo :as sdr]
+   [blaze.handler.fhir.util.spec]
    [blaze.handler.util :as handler-util]
+   [blaze.job-scheduler.spec]
    [blaze.middleware.fhir.output :as output]
    [blaze.middleware.fhir.resource :as resource]
    [blaze.module :as m :refer [reg-collector]]
-   [blaze.rest-api.capabilities :as capabilities]
    [blaze.rest-api.middleware.cors :as cors]
    [blaze.rest-api.middleware.log :refer [wrap-log]]
    [blaze.rest-api.middleware.metrics :as metrics]
@@ -29,19 +28,11 @@
   {:name :cors
    :wrap cors/wrap-cors})
 
-(defn batch-handler
-  "Handler for individual requests of a batch request."
-  [routes context-path]
-  (reitit.ring/ring-handler
-   (reitit.ring/router
-    routes
-    {:path context-path
-     :syntax :bracket
-     :reitit.middleware/transform
-     (fn [middleware]
-       (filterv (comp not #{:resource :auth-guard :output :sync :forwarded
-                            :error :observe-request-duration} :name) middleware))})
-   handler-util/default-batch-handler))
+(def ^:private wrap-job-scheduler
+  {:name :job-scheduler
+   :wrap (fn [handler job-scheduler]
+           (fn [request respond raise]
+             (handler (assoc request :blaze/job-scheduler job-scheduler) respond raise)))})
 
 (defn- allowed-methods [{{:keys [result]} ::reitit/match}]
   (->> result
@@ -55,33 +46,25 @@
       (ring/header "Access-Control-Allow-Headers" "content-type")
       (ac/completed-future)))
 
-(defn router
-  {:arglists '([context capabilities-handler])}
-  [{:keys [context-path] :or {context-path ""} :as context} capabilities-handler]
-  (let [batch-handler-promise (promise)
-        routes (routes/routes context capabilities-handler
-                              batch-handler-promise)]
-    (deliver batch-handler-promise (batch-handler routes context-path))
-    (reitit.ring/router
-     routes
-     {:path context-path
-      :syntax :bracket
-      :reitit.ring/default-options-endpoint
-      {:no-doc true
-       :handler default-options-handler}})))
+(defn- router [{:keys [context-path] :or {context-path ""} :as config}]
+  (reitit.ring/router
+   (routes/routes config)
+   {:path context-path
+    :syntax :bracket
+    :reitit.ring/default-options-endpoint
+    {:no-doc true
+     :handler default-options-handler}}))
 
 (defn- handler
   "Whole app Ring handler."
-  [{:keys [auth-backends] :as context}]
+  [{:keys [job-scheduler auth-backends] :as config}]
   (-> (reitit.ring/ring-handler
-       (router
-        context
-        (capabilities/capabilities-handler context))
+       (router config)
        (reitit.ring/routes
         (reitit.ring/redirect-trailing-slash-handler {:method :strip})
         (output/wrap-output handler-util/default-handler {:accept-all? true}))
        {:middleware
-        (cond-> [wrap-cors]
+        (cond-> [wrap-cors [wrap-job-scheduler job-scheduler]]
           (seq auth-backends)
           (conj #(apply wrap-authentication % auth-backends)))})
       wrap-log))
@@ -90,11 +73,15 @@
   (s/keys
    :req-un
    [:blaze/base-url
-    :blaze/version
-    :blaze/release-date
     :blaze.fhir/structure-definition-repo
     :blaze.db/node
-    :blaze.db/search-param-registry
+    ::admin-node
+    :blaze/job-scheduler
+    :blaze/clock
+    :blaze/rng-fn
+    ::async-status-handler
+    ::async-status-cancel-handler
+    ::capabilities-handler
     ::db-sync-timeout]
    :opt-un
    [:blaze/context-path
@@ -109,15 +96,10 @@
     :blaze.db/enforce-referential-integrity]))
 
 (defmethod ig/init-key :blaze/rest-api
-  [_
-   {:keys [base-url context-path db-sync-timeout structure-definition-repo]
-    :as context}]
+  [_ {:keys [base-url context-path db-sync-timeout] :as config}]
   (log/info "Init FHIR RESTful API with base URL:" (str base-url context-path)
             "and a database sync timeout of" db-sync-timeout "ms")
-  (handler
-   (-> context
-       (dissoc :structure-definition-repo)
-       (assoc :structure-definitions (sdr/resources structure-definition-repo)))))
+  (handler config))
 
 (reg-collector ::requests-total
   metrics/requests-total)
@@ -130,3 +112,11 @@
 
 (reg-collector ::generate-duration-seconds
   output/generate-duration-seconds)
+
+(defmethod ig/init-key :blaze.rest-api/resource-patterns
+  [_ patterns]
+  patterns)
+
+(defmethod ig/init-key :blaze.rest-api/operations
+  [_ operations]
+  operations)

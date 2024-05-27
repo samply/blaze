@@ -3,13 +3,14 @@
    [blaze.anomaly :as ba]
    [blaze.byte-buffer :as bb]
    [blaze.executors :as ex]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.structure-definition-repo]
    [clojure.test :refer [is]]
    [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]])
   (:import
-   [java.time Clock Instant ZoneId]
+   [java.time Clock Instant]
    [java.util Random]
    [java.util.concurrent Executors TimeUnit]))
 
@@ -21,7 +22,7 @@
 
 (defmethod ig/init-key :blaze.test/fixed-clock
   [_ _]
-  (Clock/fixed Instant/EPOCH (ZoneId/of "UTC")))
+  (time/fixed-clock Instant/EPOCH "UTC"))
 
 (defmethod ig/init-key :blaze.test/offset-clock
   [_ {:keys [clock offset-seconds]}]
@@ -60,4 +61,4 @@
    (ig/init {:blaze.fhir/structure-definition-repo {}})))
 
 (defn link-url [body link-relation]
-  (->> body :link (filter (comp #{link-relation} :relation)) first :url))
+  (->> body :link (filter (comp #{link-relation} :relation)) first :url type/value))

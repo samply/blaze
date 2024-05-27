@@ -15,10 +15,12 @@
    [blaze.interaction.search.params-spec]
    [blaze.interaction.search.util-spec]
    [blaze.interaction.test-util :refer [wrap-error]]
+   [blaze.job-scheduler-spec]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
    [blaze.page-store-spec]
    [blaze.page-store.local]
+   [blaze.page-store.spec :refer [page-store?]]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -33,7 +35,7 @@
    [java.time Instant]))
 
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -106,19 +108,53 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
       [:cause-data ::s/problems 2 :pred] := `time/clock?
-      [:cause-data ::s/problems 2 :val] := ::invalid)))
+      [:cause-data ::s/problems 2 :val] := ::invalid))
+
+  (testing "invalid rng-fn"
+    (given-thrown (ig/init {:blaze.interaction/search-type {:rng-fn ::invalid}})
+      :key := :blaze.interaction/search-type
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
+      [:cause-data ::s/problems 2 :pred] := `fn?
+      [:cause-data ::s/problems 2 :val] := ::invalid))
+
+  (testing "invalid page-store"
+    (given-thrown (ig/init {:blaze.interaction/search-type {:page-store ::invalid}})
+      :key := :blaze.interaction/search-type
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 2 :pred] := `page-store?
+      [:cause-data ::s/problems 2 :val] := ::invalid))
+
+  (testing "invalid context-path"
+    (given-thrown (ig/init {:blaze.interaction/search-type {:context-path ::invalid}})
+      :key := :blaze.interaction/search-type
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
+      [:cause-data ::s/problems 3 :pred] := `string?
+      [:cause-data ::s/problems 3 :val] := ::invalid)))
 
 (def config
-  (assoc api-stub/mem-node-config
-         :blaze.interaction/search-type
-         {:clock (ig/ref :blaze.test/fixed-clock)
-          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-          :page-store (ig/ref :blaze.page-store/local)}
-         :blaze.test/fixed-rng-fn {}
-         :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
-         :blaze.test/fixed-rng {}))
+  (assoc
+   api-stub/mem-node-config
+   :blaze.interaction/search-type
+   {:clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :page-store (ig/ref :blaze.page-store/local)
+    :context-path context-path}
+   :blaze/job-scheduler
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+   :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
+   :blaze.test/fixed-rng-fn {}
+   :blaze.test/fixed-rng {}))
 
-(defn wrap-defaults [handler]
+(defn- wrap-defaults [handler]
   (fn [{::reitit/keys [match] :as request}]
     (handler
      (cond-> (assoc request
@@ -127,18 +163,24 @@
        (nil? match)
        (assoc ::reitit/match (match-of "Patient"))))))
 
-(defn wrap-db [handler node]
+(defn- wrap-db [handler node]
   (fn [{::reitit/keys [match] :as request}]
     (if (= patient-page-match match)
       ((db/wrap-snapshot-db handler node 100) request)
       ((db/wrap-db handler node 100) request))))
 
+(defn- wrap-job-scheduler [handler job-scheduler]
+  (fn [request]
+    (handler (assoc request :blaze/job-scheduler job-scheduler))))
+
 (defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
+                         job-scheduler# :blaze/job-scheduler
                          handler# :blaze.interaction/search-type} config]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+                                  (wrap-job-scheduler job-scheduler#)
                                   wrap-error)
              ~(or node-binding '_) node#]
          ~@body))))
@@ -210,31 +252,32 @@
                          (link-url body "self"))))))
 
             (testing "summary result"
-              (let [{:keys [status body]}
-                    @(handler
-                      {:headers {"prefer" "handling=lenient"}
-                       :params {"foo" "bar" "_summary" "count"}})]
+              (doseq [prefer ["handling=lenient" "handling=lenient,respond-async"]]
+                (let [{:keys [status body]}
+                      @(handler
+                        {:headers {"prefer" prefer}
+                         :params {"foo" "bar" "_summary" "count"}})]
 
-                (is (= 200 status))
+                  (is (= 200 status))
 
-                (testing "the body contains a bundle"
-                  (is (= :fhir/Bundle (:fhir/type body))))
+                  (testing "the body contains a bundle"
+                    (is (= :fhir/Bundle (:fhir/type body))))
 
-                (testing "the bundle id is an LUID"
-                  (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+                  (testing "the bundle id is an LUID"
+                    (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
-                (testing "the bundle type is searchset"
-                  (is (= #fhir/code"searchset" (:type body))))
+                  (testing "the bundle type is searchset"
+                    (is (= #fhir/code"searchset" (:type body))))
 
-                (testing "the total count is 1"
-                  (is (= #fhir/unsignedInt 1 (:total body))))
+                  (testing "the total count is 1"
+                    (is (= #fhir/unsignedInt 1 (:total body))))
 
-                (testing "the bundle contains no entry"
-                  (is (empty? (:entry body))))
+                  (testing "the bundle contains no entry"
+                    (is (empty? (:entry body))))
 
-                (testing "has a self link"
-                  (is (= (str base-url context-path "/Patient?_summary=count&_count=50")
-                         (link-url body "self"))))))))
+                  (testing "has a self link"
+                    (is (= (str base-url context-path "/Patient?_summary=count&_count=50")
+                           (link-url body "self")))))))))
 
         (testing "with another search parameter"
           (with-handler [handler]
@@ -294,7 +337,22 @@
 
                 (testing "has a self link"
                   (is (= (str base-url context-path "/Patient?active=true&_summary=count&_count=50")
-                         (link-url body "self"))))))))))
+                         (link-url body "self")))))
+
+              (testing "with async response"
+                (let [{:keys [status headers]}
+                      @(handler
+                        {:request-method :get
+                         :headers {"prefer" "handling=lenient,respond-async"}
+                         :uri (str context-path "/Patient")
+                         :query-string "foo=bar&active=true&_summary=count"
+                         :params {"foo" "bar" "active" "true" "_summary" "count"}})]
+
+                  (is (= 202 status))
+
+                  (testing "the Content-Location header contains the status endpoint URL"
+                    (is (= (get headers "Content-Location")
+                           (str base-url context-path "/__async-status/AAAAAAAAAAAAAAAA")))))))))))
 
     (testing "with default handling"
       (testing "returns results with a self link lacking the unknown search parameter"
@@ -329,30 +387,32 @@
                          (link-url body "self"))))))
 
             (testing "summary result"
-              (let [{:keys [status body]}
-                    @(handler
-                      {:params {"foo" "bar" "_summary" "count"}})]
+              (doseq [prefer ["" "respond-async"]]
+                (let [{:keys [status body]}
+                      @(handler
+                        {:headers {"prefer" prefer}
+                         :params {"foo" "bar" "_summary" "count"}})]
 
-                (is (= 200 status))
+                  (is (= 200 status))
 
-                (testing "the body contains a bundle"
-                  (is (= :fhir/Bundle (:fhir/type body))))
+                  (testing "the body contains a bundle"
+                    (is (= :fhir/Bundle (:fhir/type body))))
 
-                (testing "the bundle id is an LUID"
-                  (is (= "AAAAAAAAAAAAAAAA" (:id body))))
+                  (testing "the bundle id is an LUID"
+                    (is (= "AAAAAAAAAAAAAAAA" (:id body))))
 
-                (testing "the bundle type is searchset"
-                  (is (= #fhir/code"searchset" (:type body))))
+                  (testing "the bundle type is searchset"
+                    (is (= #fhir/code"searchset" (:type body))))
 
-                (testing "the total count is 1"
-                  (is (= #fhir/unsignedInt 1 (:total body))))
+                  (testing "the total count is 1"
+                    (is (= #fhir/unsignedInt 1 (:total body))))
 
-                (testing "the bundle contains no entry"
-                  (is (empty? (:entry body))))
+                  (testing "the bundle contains no entry"
+                    (is (empty? (:entry body))))
 
-                (testing "has a self link"
-                  (is (= (str base-url context-path "/Patient?_summary=count&_count=50")
-                         (link-url body "self"))))))))
+                  (testing "has a self link"
+                    (is (= (str base-url context-path "/Patient?_summary=count&_count=50")
+                           (link-url body "self")))))))))
 
         (testing "with another search parameter"
           (with-handler [handler]
@@ -410,7 +470,22 @@
 
                 (testing "has a self link"
                   (is (= (str base-url context-path "/Patient?active=true&_summary=count&_count=50")
-                         (link-url body "self")))))))))))
+                         (link-url body "self")))))
+
+              (testing "with async response"
+                (let [{:keys [status headers]}
+                      @(handler
+                        {:request-method :get
+                         :headers {"prefer" "respond-async"}
+                         :uri (str context-path "/Patient")
+                         :query-string "foo=bar&active=true&_summary=count"
+                         :params {"foo" "bar" "active" "true" "_summary" "count"}})]
+
+                  (is (= 202 status))
+
+                  (testing "the Content-Location header contains the status endpoint URL"
+                    (is (= (get headers "Content-Location")
+                           (str base-url context-path "/__async-status/AAAAAAAAAAAAAAAA"))))))))))))
 
   (testing "on unsupported second sort parameter"
     (testing "returns error"
@@ -2544,7 +2619,7 @@
           (is (= #fhir/unsignedInt 2 (:total body))))
 
         (testing "the next link includes the _elements query param"
-          (is (str/includes? (type/value (link-url body "next")) "_elements=subject")))
+          (is (str/includes? (link-url body "next") "_elements=subject")))
 
         (testing "the bundle contains one entry"
           (is (= 1 (count (:entry body)))))

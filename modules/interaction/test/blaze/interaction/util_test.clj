@@ -199,8 +199,3 @@
           (testing "generates a put op because the newer t could still match inside the transaction and removes the older t that can't match anymore"
             (is (= (iu/update-tx-op (d/db node) male-patient "W/\"1\",W/\"3\"" nil)
                    [:put male-patient [:if-match 3]]))))))))
-
-(deftest subsetted-test
-  (are [coding] (not (iu/subsetted? coding))
-    {:code #fhir/code"SUBSETTED"}
-    {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"}))

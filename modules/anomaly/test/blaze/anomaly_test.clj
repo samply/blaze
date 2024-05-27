@@ -8,7 +8,7 @@
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]])
   (:import
-   [java.util.concurrent ExecutionException TimeoutException]))
+   [java.util.concurrent CancellationException ExecutionException TimeoutException]))
 
 (st/instrument)
 
@@ -25,6 +25,26 @@
   (testing "nil is no anomaly"
     (is (not (ba/anomaly? nil)))))
 
+(deftest unavailable?-test
+  (testing "a unavailable anomaly has to have the right category"
+    (is (ba/unavailable? {::anom/category ::anom/unavailable})))
+
+  (testing "anomalies with other categories are no unavailable anomalies"
+    (is (not (ba/unavailable? {::anom/category ::anom/fault}))))
+
+  (testing "nil is no unavailable anomaly"
+    (is (not (ba/anomaly? nil)))))
+
+(deftest interrupted?-test
+  (testing "a interrupted anomaly has to have the right category"
+    (is (ba/interrupted? {::anom/category ::anom/interrupted})))
+
+  (testing "anomalies with other categories are no interrupted anomalies"
+    (is (not (ba/interrupted? {::anom/category ::anom/fault}))))
+
+  (testing "nil is no interrupted anomaly"
+    (is (not (ba/anomaly? nil)))))
+
 (deftest incorrect?-test
   (testing "a incorrect anomaly has to have the right category"
     (is (ba/incorrect? {::anom/category ::anom/incorrect})))
@@ -33,6 +53,16 @@
     (is (not (ba/incorrect? {::anom/category ::anom/fault}))))
 
   (testing "nil is no incorrect anomaly"
+    (is (not (ba/anomaly? nil)))))
+
+(deftest forbidden?-test
+  (testing "a forbidden anomaly has to have the right category"
+    (is (ba/forbidden? {::anom/category ::anom/forbidden})))
+
+  (testing "anomalies with other categories are no forbidden anomalies"
+    (is (not (ba/forbidden? {::anom/category ::anom/fault}))))
+
+  (testing "nil is no forbidden anomaly"
     (is (not (ba/anomaly? nil)))))
 
 (deftest unsupported?-test
@@ -85,7 +115,25 @@
   (testing "nil is no busy anomaly"
     (is (not (ba/anomaly? nil)))))
 
+(deftest unavailable-test
+  (testing "with nil message"
+    (is (= (ba/unavailable nil) {::anom/category ::anom/unavailable})))
+
+  (testing "with message only"
+    (given (ba/unavailable "msg-183005")
+      ::anom/category := ::anom/unavailable
+      ::anom/message := "msg-183005"))
+
+  (testing "with additional kvs"
+    (given (ba/unavailable "msg-183005" ::foo ::bar)
+      ::anom/category := ::anom/unavailable
+      ::anom/message := "msg-183005"
+      ::foo := ::bar)))
+
 (deftest interrupted-test
+  (testing "without message"
+    (is (= (ba/interrupted) {::anom/category ::anom/interrupted})))
+
   (testing "with nil message"
     (is (= (ba/interrupted nil) {::anom/category ::anom/interrupted})))
 
@@ -160,6 +208,24 @@
       ::anom/message := "msg-183005"
       ::foo := ::bar)))
 
+(deftest conflict-test
+  (testing "without message"
+    (is (= (ba/conflict) {::anom/category ::anom/conflict})))
+
+  (testing "with nil message"
+    (is (= (ba/conflict nil) {::anom/category ::anom/conflict})))
+
+  (testing "with message only"
+    (given (ba/conflict "msg-183005")
+      ::anom/category := ::anom/conflict
+      ::anom/message := "msg-183005"))
+
+  (testing "with additional kvs"
+    (given (ba/conflict "msg-183005" ::foo ::bar)
+      ::anom/category := ::anom/conflict
+      ::anom/message := "msg-183005"
+      ::foo := ::bar)))
+
 (deftest fault-test
   (testing "without message"
     (is (= (ba/fault) {::anom/category ::anom/fault})))
@@ -206,6 +272,11 @@
     (given (ba/anomaly (TimeoutException. "msg-122233"))
       ::anom/category := ::anom/busy
       ::anom/message := "msg-122233"))
+
+  (testing "CancellationException"
+    (given (ba/anomaly (CancellationException. "msg-184321"))
+      ::anom/category := ::anom/interrupted
+      ::anom/message := "msg-184321"))
 
   (testing "ExceptionInfo"
     (testing "without an anomaly in data"

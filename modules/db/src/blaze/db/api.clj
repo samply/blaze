@@ -97,8 +97,8 @@
 ;; ---- Instance-Level Functions ----------------------------------------------
 
 (defn resource-handle
-  "Returns the resource handle with the given `type` and `id` or nil
-  if its resource never existed.
+  "Returns the resource handle with `type` and `id` or nil if its resource never
+  existed.
 
   Handles of deleted resources have an :op of :delete.
 
@@ -144,7 +144,7 @@
 
   Please use `pull-many` to obtain the full resources."
   ([db type clauses]
-   (log/trace "type query on" type)
+   (log/trace "Execute type query on" type)
    (when-ok [query (p/-compile-type-query db type clauses)]
      (p/-execute-query db query)))
   ([db type clauses start-id]

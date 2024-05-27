@@ -1,8 +1,8 @@
 fmt:
-	cljfmt check
+	cljfmt check src test build.clj
 
 lint:
-	clj-kondo --lint src test deps.edn
+	clj-kondo --lint src test build.clj deps.edn
 
 build:
 	clojure -T:build compile

@@ -72,16 +72,6 @@
   define InInitialPopulation:
     [Encounter]")
 
-(def library-encounter-status
-  "library Retrieve
-  using FHIR version '4.0.0'
-  include FHIRHelpers version '4.0.0'
-
-  context Patient
-
-  define function Status(encounter Encounter):
-    encounter.status")
-
 (def library-specimen
   "library Retrieve
   using FHIR version '4.0.0'
@@ -104,7 +94,7 @@
   (let [{:keys [expression-defs function-defs]} (compile-library node library)]
     {:db (d/db node)
      :now (now fixed-clock)
-     :interrupted? (constantly false)
+     :interrupted? (constantly nil)
      :expression-defs expression-defs
      :function-defs function-defs
      :executor executor}))

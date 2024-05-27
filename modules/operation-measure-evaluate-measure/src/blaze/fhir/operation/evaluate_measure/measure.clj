@@ -279,6 +279,10 @@
    (ac/completed-future {:result [] ::luid/generator generator :tx-ops []})
    groups))
 
+(defn- cancelled-groups-msg [id subject-type duration]
+  (format "Evaluation of Measure with ID `%s` and subject type `%s` was cancelled after %.0f ms."
+          id subject-type (* duration 1e3)))
+
 (defn- evaluate-groups-msg [id subject-type duration]
   (format "Evaluated Measure with ID `%s` and subject type `%s` in %.0f ms."
           id subject-type (* duration 1e3)))
@@ -287,10 +291,16 @@
   [{:keys [subject-type] :as context} {:keys [id] groups :group}]
   (log/debug (format "Start evaluating Measure with ID `%s`..." id))
   (let [timer (prom/timer evaluate-duration-seconds subject-type)]
-    (do-sync [groups (evaluate-groups* context groups)]
-      (let [duration (prom/observe-duration! timer)]
-        (log/debug (evaluate-groups-msg id subject-type duration))
-        [groups duration]))))
+    (-> (evaluate-groups* context groups)
+        (ac/handle
+         (fn [groups anom]
+           (let [duration (prom/observe-duration! timer)]
+             (if anom
+               (do (when (ba/interrupted? anom)
+                     (log/debug (cancelled-groups-msg id subject-type duration)))
+                   anom)
+               (do (log/debug (evaluate-groups-msg id subject-type duration))
+                   [groups duration]))))))))
 
 (defn- canonical [context {:keys [id url version]}]
   (if-let [url (type/value url)]
@@ -388,14 +398,22 @@
              (completing (fn [r [k v]] (assoc r k v)))
              expression-defs expression-defs))
 
+(defn timeout-eclipsed-fn [clock now timeout]
+  (let [timeout-instant (time/instant (time/plus now timeout))]
+    #(when-not (.isBefore (.instant ^Clock clock) timeout-instant)
+       (ba/interrupted
+        (timeout-eclipsed-msg timeout)
+        :timeout timeout))))
+
 (defn- enhance-context
   [{:keys [clock db timeout]
+    :blaze/keys [cancelled?]
     :or {timeout (time/hours 1)}
     :as context} measure
    {:keys [report-type subject-ref]}]
   (let [subject-type (subject-type measure)
         now (now clock)
-        timeout-instant (time/instant (time/plus now timeout))]
+        timeout-eclipsed? (timeout-eclipsed-fn clock now timeout)]
     (do-sync [{:keys [expression-defs function-defs parameter-default-values]}
               (compile-primary-library db measure {})]
       (when-ok [subject-handle (some->> subject-ref (subject-handle db subject-type))]
@@ -405,11 +423,8 @@
                 context
                 :db db
                 :now now
-                :interrupted?
-                #(when-not (.isBefore (.instant ^Clock clock) timeout-instant)
-                   (ba/interrupted
-                    (timeout-eclipsed-msg timeout)
-                    :timeout timeout))
+                ;; if a cancelled? function is available we don't use timeout
+                :interrupted? (if cancelled? cancelled? timeout-eclipsed?)
                 :expression-defs expression-defs
                 :parameters parameter-default-values
                 :subject-type subject-type

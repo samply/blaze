@@ -1,26 +1,16 @@
 <script lang="ts">
-	import type { Task } from 'fhir/r4';
-
 	import { base } from '$app/paths';
-	import { number, type, input, output } from '$lib/jobs';
+	import { type Job } from '$lib/jobs';
 	import Status from '$lib/jobs/status-round.svelte';
 	import TimeAgo from '$lib/time-ago.svelte';
+	import type { SummaryJob } from './+page.server';
 	import humanizeDuration from 'humanize-duration';
 
-	const reIndexJobParameterUrl =
-		'https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter';
-	const reIndexJobOutputUrl = 'https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobOutput';
-
-	function actionsAvailable(job: Task) {
+	function actionsAvailable(job: Job) {
 		return job.status === 'in-progress' || job.status === 'on-hold';
 	}
 
-	function processingDuration(job: Task) {
-		const duration = output(job, reIndexJobOutputUrl, 'processing-duration')?.valueQuantity?.value;
-		return duration !== undefined ? humanizeDuration(duration * 1000, { round: true }) : undefined;
-	}
-
-	export let job: Task;
+	export let job: SummaryJob;
 	let actionMenuOpen = false;
 </script>
 
@@ -29,11 +19,13 @@
 		<Status {job} />
 		<div class="min-w-0 flex-auto">
 			<p class="text-sm font-semibold leading-6 text-gray-900">
-				<a href="{base}/__admin/jobs/{job.id}" class="hover:underline">{type(job)}</a>
+				<a href="{base}/__admin/jobs/{job.type.code}/{job.id}" class="hover:underline"
+					>{job.type.display}</a
+				>
 			</p>
 			<p class="mt-1 flex text-xs leading-5 text-gray-500">
-				#{number(job)}
-				{input(job, reIndexJobParameterUrl, 'search-param-url')?.valueCanonical}
+				#{job.number}
+				{job.detail}
 			</p>
 		</div>
 	</div>
@@ -54,12 +46,7 @@
 						d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"
 					/>
 				</svg>
-
-				{#if job.authoredOn}
-					<TimeAgo value={job.authoredOn} />
-				{:else}
-					Unknown
-				{/if}
+				<TimeAgo value={job.authoredOn} />
 			</p>
 			<p class="text-xs leading-6 text-gray-500">
 				<svg
@@ -77,7 +64,9 @@
 					/>
 				</svg>
 
-				{processingDuration(job)}
+				{#if job.processingDuration}
+					{humanizeDuration(job.processingDuration * 1000, { round: true })}
+				{/if}
 			</p>
 		</div>
 		<div class="relative flex-none">
@@ -116,18 +105,32 @@
 				aria-labelledby="options-menu-0-button"
 				tabindex="-1"
 			>
-				{#if job.status === 'in-progress'}
-					<form method="POST" action="?/pause" class="flex flex-col items-stretch">
-						<input type="hidden" name="job-id" value={job.id} />
-						<button
-							type="submit"
-							class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 hover:bg-gray-50"
-							role="menuitem"
-							tabindex="-1"
-							id="options-menu-0-item-0"
-							>Pause
-						</button>
-					</form>
+				{#if job.status === 'in-progress' && (job.type.code === 'async-interaction' || job.type.code === 're-index')}
+					{#if job.type.code === 'async-interaction'}
+						<form method="POST" action="?/cancel" class="flex flex-col items-stretch">
+							<input type="hidden" name="job-id" value={job.id} />
+							<button
+								type="submit"
+								class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 hover:bg-gray-50"
+								role="menuitem"
+								tabindex="-1"
+								id="options-menu-0-item-0"
+								>Cancel
+							</button>
+						</form>
+					{:else if job.type.code === 're-index'}
+						<form method="POST" action="?/pause" class="flex flex-col items-stretch">
+							<input type="hidden" name="job-id" value={job.id} />
+							<button
+								type="submit"
+								class="block px-3 py-1 text-sm leading-6 text-left text-gray-900 hover:bg-gray-50"
+								role="menuitem"
+								tabindex="-1"
+								id="options-menu-0-item-0"
+								>Pause
+							</button>
+						</form>
+					{/if}
 				{/if}
 				{#if job.status === 'on-hold'}
 					<form method="POST" action="?/resume" class="flex flex-col items-stretch">

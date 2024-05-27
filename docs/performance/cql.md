@@ -389,6 +389,7 @@ cql/search.sh condition-ten-rare
 
 | Dataset | System | # Hits | Time (s) | StdDev | Pat./s |
 |---------|--------|-------:|---------:|-------:|-------:|
+| 100k    | LEA58  |  5.2 M |    12.79 |  0.325 |  7.8 k |
 | 1M      | LEA58  | 52.3 M |   399.64 | 11.966 |  2.5 k |
 
 ## Laboratory Observation Code Stratification

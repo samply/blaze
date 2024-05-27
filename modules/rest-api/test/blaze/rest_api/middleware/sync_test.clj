@@ -8,12 +8,10 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
-   [juxt.iota :refer [given]]
-   [taoensso.timbre :as log]))
+   [juxt.iota :refer [given]]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 

@@ -34,9 +34,7 @@ const origin = env.ORIGIN || '';
 const forwarded = `host=${new URL(origin).host};proto=${new URL(origin).protocol.replace(':', '')}`;
 
 function translateUrl(request: Request) {
-	return request.url
-		.replace(origin, env.BACKEND_BASE_URL || '')
-		.replace('__admin/jobs', '__admin/Task');
+	return request.url.replace(origin, env.BACKEND_BASE_URL || '');
 }
 
 export const handleFetch: HandleFetch = async ({ request, fetch, event }) => {

@@ -8,6 +8,9 @@
   blaze/fhir-structure
   {:local/root "../fhir-structure"}
 
+  blaze/job-scheduler
+  {:local/root "../job-scheduler"}
+
   org.apache.httpcomponents.core5/httpcore5
   {:mvn/version "5.2.4"}
 

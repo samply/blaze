@@ -162,7 +162,8 @@
 
 (def ^:private allowed-profiles
   #{#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"
-    #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"})
+    #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"
+    #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"})
 
 (defn- check-profile [resource]
   (if (some allowed-profiles (-> resource :meta :profile))
@@ -215,7 +216,7 @@
 (defn- router
   [{:keys [context-path admin-node validator db-sync-timeout dbs
            create-job-handler read-job-handler search-type-job-handler
-           pause-job-handler resume-job-handler]
+           pause-job-handler resume-job-handler cancel-job-handler]
     :or {context-path ""
          db-sync-timeout 10000}
     :as context}]
@@ -381,7 +382,10 @@
         {:handler pause-job-handler}}]
       ["/$resume"
        {:post
-        {:handler resume-job-handler}}]]]]
+        {:handler resume-job-handler}}]
+      ["/$cancel"
+       {:post
+        {:handler cancel-job-handler}}]]]]
    {:path (str context-path "/__admin")
     :syntax :bracket}))
 
@@ -396,13 +400,18 @@
   (let [s (PrePopulatedValidationSupport. context)]
     (run!
      #(.addResource s (load-profile context %))
-     ["blaze/job_scheduler/CodeSystem-JobType.json"
+     ["blaze/job_scheduler/StructureDefinition-Job.json"
+      "blaze/job_scheduler/CodeSystem-JobType.json"
       "blaze/job_scheduler/CodeSystem-JobOutput.json"
-      "blaze/job_scheduler/StructureDefinition-Job.json"
-      "blaze/job/re_index/CodeSystem-ReIndexJobParameter.json"
-      "blaze/job/re_index/CodeSystem-ReIndexJobOutput.json"
+      "blaze/job/async_interaction/StructureDefinition-AsyncInteractionJob.json"
+      "blaze/job/async_interaction/StructureDefinition-AsyncInteractionRequestBundle.json"
+      "blaze/job/async_interaction/StructureDefinition-AsyncInteractionResponseBundle.json"
+      "blaze/job/async_interaction/CodeSystem-AsyncInteractionJobParameter.json"
+      "blaze/job/async_interaction/CodeSystem-AsyncInteractionJobOutput.json"
+      "blaze/job/compact/StructureDefinition-CompactJob.json"
       "blaze/job/re_index/StructureDefinition-ReIndexJob.json"
-      "blaze/admin_api/StructureDefinition-CompactJob.json"])
+      "blaze/job/re_index/CodeSystem-ReIndexJobParameter.json"
+      "blaze/job/re_index/CodeSystem-ReIndexJobOutput.json"])
     s))
 
 (defn- create-validator* []
@@ -436,17 +445,9 @@
             (create-response/location-header request "Task" (:id job)
                                              (str (:blaze.db/t tx))))))))
 
-(defn- pause-job-handler [job-scheduler]
+(defn- job-action-handler [job-scheduler f]
   (fn [{{:keys [id]} :path-params}]
-    (do-sync [job (js/pause-job job-scheduler id)]
-      (let [{:blaze.db/keys [tx]} (meta job)]
-        (-> (ring/response job)
-            (ring/header "Last-Modified" (fhir-util/last-modified tx))
-            (ring/header "ETag" (fhir-util/etag tx)))))))
-
-(defn- resume-job-handler [job-scheduler]
-  (fn [{{:keys [id]} :path-params}]
-    (do-sync [job (js/resume-job job-scheduler id)]
+    (do-sync [job (f job-scheduler id)]
       (let [{:blaze.db/keys [tx]} (meta job)]
         (-> (ring/response job)
             (ring/header "Last-Modified" (fhir-util/last-modified tx))
@@ -464,8 +465,9 @@
   (reitit.ring/ring-handler
    (router (assoc context :validator (create-validator)
                   :create-job-handler (create-job-handler job-scheduler)
-                  :pause-job-handler (pause-job-handler job-scheduler)
-                  :resume-job-handler (resume-job-handler job-scheduler)))
+                  :pause-job-handler (job-action-handler job-scheduler js/pause-job)
+                  :resume-job-handler (job-action-handler job-scheduler js/resume-job)
+                  :cancel-job-handler (job-action-handler job-scheduler js/cancel-job)))
    ((wrap-json-output {})
     (fn [{:keys [uri]}]
       (-> (ring/not-found {"uri" uri})

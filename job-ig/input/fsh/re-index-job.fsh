@@ -1,15 +1,20 @@
 Alias: UCUM = http://unitsofmeasure.org
 Alias: $JT = https://samply.github.io/blaze/fhir/CodeSystem/JobType
+Alias: $JSR = https://samply.github.io/blaze/fhir/CodeSystem/JobStatusReason
 Alias: $JO = https://samply.github.io/blaze/fhir/CodeSystem/JobOutput
 Alias: $RJP = https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobParameter
 Alias: $RJO = https://samply.github.io/blaze/fhir/CodeSystem/ReIndexJobOutput
 
 CodeSystem: ReIndexJobParameter
 Id: ReIndexJobParameter
+Title: "(Re)Index Job Parameter"
+* ^status = #active
 * #search-param-url "Search Param URL"
 
 CodeSystem: ReIndexJobOutput
 Id: ReIndexJobOutput
+Title: "(Re)Index Job Output"
+* ^status = #active
 * #total-resources "Total Resources"
 * #resources-processed "Resources Processed"
 * #processing-duration "Processing Duration"
@@ -20,7 +25,7 @@ Parent: Job
 * code = $JT#re-index "(Re)Index a Search Parameter"
 * input ^slicing.discriminator.type = #pattern
 * input ^slicing.discriminator.path = "type"
-* input ^slicing.rules = #closed
+* input ^slicing.rules = #open
 * input contains searchParamUrl 1..1
 * input[searchParamUrl] ^short = "Search Param URL"
 * input[searchParamUrl] ^definition = "The URL of the Search Parameter to (re)index."
@@ -28,7 +33,7 @@ Parent: Job
 * input[searchParamUrl].value[x] only canonical
 * output ^slicing.discriminator.type = #pattern
 * output ^slicing.discriminator.path = "type"
-* output ^slicing.rules = #closed
+* output ^slicing.rules = #open
 * output contains totalResources 0..1
 * output[totalResources] ^short = "Total Resources"
 * output[totalResources] ^definition = "Total number of resources to (re)index."
@@ -48,7 +53,7 @@ Parent: Job
   * system 1..1
   * system = UCUM
   * code 1..1
-  * code = #ms "milliseconds"
+  * code = #s "seconds"
 * output contains nextResource 0..1
 * output[nextResource] ^short = "Next Resource"
 * output[nextResource] ^definition = "The literal reference of the resource to continue with. Used in case the job is resumed after manual pausing or shutdown of Blaze."
@@ -67,6 +72,7 @@ InstanceOf: ReIndexJob
 Instance: ReIndexJobInProgressExample
 InstanceOf: ReIndexJob
 * status = #in-progress
+* statusReason = $JSR#started "Started"
 * intent = #order
 * code = $JT#re-index "(Re)Index a Search Parameter"
 * authoredOn = "2024-04-13T10:05:20.927Z"

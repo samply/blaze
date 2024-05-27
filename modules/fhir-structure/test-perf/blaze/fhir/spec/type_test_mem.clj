@@ -1,14 +1,13 @@
 (ns blaze.fhir.spec.type-test-mem
   (:require
-    [blaze.fhir.spec.memory :as mem]
-    [blaze.fhir.spec.type :as type]
-    [blaze.test-util]
-    [clojure.alpha.spec :as s2]
-    [clojure.string :as str]
-    [clojure.test :refer [are deftest is testing]])
+   [blaze.fhir.spec.memory :as mem]
+   [blaze.fhir.spec.type :as type]
+   [blaze.test-util]
+   [clojure.alpha.spec :as s2]
+   [clojure.string :as str]
+   [clojure.test :refer [are deftest is testing]])
   (:import
-    [java.time Instant ZoneOffset]))
-
+   [java.time Instant ZoneOffset]))
 
 (deftest mem-test
   (are [x size] (= (mem/total-size x) size)
@@ -130,23 +129,21 @@
       (is (= 248 (mem/total-size #fhir/Meta{:profile [#fhir/canonical"foo"]}
                                  #fhir/Meta{:profile [#fhir/canonical"foo"]}))))))
 
-
 (deftest extension-url-test
   (testing "conformed instance size"
     (testing "JSON"
       (testing "two interned instances take the same memory as one"
         (is (= (mem/total-size "foo")
                (mem/total-size
-                 (s2/conform :fhir.json.Extension/url (String. "foo"))
-                 (s2/conform :fhir.json.Extension/url (String. "foo")))))))
+                (s2/conform :fhir.json.Extension/url (String. "foo"))
+                (s2/conform :fhir.json.Extension/url (String. "foo")))))))
 
     (testing "CBOR"
       (testing "two interned instances take the same memory as one"
         (is (= (mem/total-size "foo")
                (mem/total-size
-                 (s2/conform :fhir.cbor.Extension/url (String. "foo"))
-                 (s2/conform :fhir.cbor.Extension/url (String. "foo")))))))))
-
+                (s2/conform :fhir.cbor.Extension/url (String. "foo"))
+                (s2/conform :fhir.cbor.Extension/url (String. "foo")))))))))
 
 (deftest extension-test
   (testing "conformed instance size"
@@ -157,25 +154,24 @@
 
       (testing "two instances have only the 48 byte instance overhead"
         (is (= (+ (mem/total-size
-                    (s2/conform :fhir.json/Extension
-                                {:url "foo" :valueString "bar"}))
+                   (s2/conform :fhir.json/Extension
+                               {:url "foo" :valueString "bar"}))
                   48)
                (mem/total-size
-                 (s2/conform :fhir.json/Extension
-                             {:url (String. "foo") :valueString "bar"})
-                 (s2/conform :fhir.json/Extension
-                             {:url (String. "foo") :valueString "bar"})))))
+                (s2/conform :fhir.json/Extension
+                            {:url (String. "foo") :valueString "bar"})
+                (s2/conform :fhir.json/Extension
+                            {:url (String. "foo") :valueString "bar"})))))
 
       (testing "two instances with code values take the same amount of memory as one"
         (is (= (mem/total-size
-                 (s2/conform :fhir.json/Extension
-                             {:url "foo" :valueCode "bar"}))
+                (s2/conform :fhir.json/Extension
+                            {:url "foo" :valueCode "bar"}))
                (mem/total-size
-                 (s2/conform :fhir.json/Extension
-                             {:url (String. "foo") :valueCode "bar"})
-                 (s2/conform :fhir.json/Extension
-                             {:url (String. "foo") :valueCode "bar"}))))))))
-
+                (s2/conform :fhir.json/Extension
+                            {:url (String. "foo") :valueCode "bar"})
+                (s2/conform :fhir.json/Extension
+                            {:url (String. "foo") :valueCode "bar"}))))))))
 
 (deftest coding-test
   (testing "conformed instance size"
@@ -188,23 +184,21 @@
         (is (= 296 (mem/total-size (s2/conform :fhir.json/Coding {:system "foo" :code "bar"})
                                    (s2/conform :fhir.json/Coding {:system "foo" :code "bar"}))))))))
 
-
 (deftest quantity-unit-test
   (testing "conformed instance size"
     (testing "JSON"
       (testing "two interned instances take the same memory as one"
         (is (= (mem/total-size "foo")
                (mem/total-size
-                 (s2/conform :fhir.json.Quantity/unit (String. "foo"))
-                 (s2/conform :fhir.json.Quantity/unit (String. "foo")))))))
+                (s2/conform :fhir.json.Quantity/unit (String. "foo"))
+                (s2/conform :fhir.json.Quantity/unit (String. "foo")))))))
 
     (testing "CBOR"
       (testing "two interned instances take the same memory as one"
         (is (= (mem/total-size "foo")
                (mem/total-size
-                 (s2/conform :fhir.cbor.Quantity/unit (String. "foo"))
-                 (s2/conform :fhir.cbor.Quantity/unit (String. "foo")))))))))
-
+                (s2/conform :fhir.cbor.Quantity/unit (String. "foo"))
+                (s2/conform :fhir.cbor.Quantity/unit (String. "foo")))))))))
 
 (deftest human-name-test
   (testing "conformed instance size"
@@ -220,7 +214,6 @@
         {:use "usual"} 184
         {:given ["given-212441"]} 184))))
 
-
 (deftest address-test
   (testing "conformed instance size"
     (are [json size] (= size (mem/total-size (s2/conform :fhir.json/Address json)))
@@ -230,7 +223,6 @@
                    {:url (String. "foo") :valueCode (String. "bar")}]} 360
       {:text "text-212402"} 136
       {:line ["line-212441"]} 200)))
-
 
 (deftest meta-test
   (testing "conformed instance size"
