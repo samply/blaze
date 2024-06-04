@@ -23,7 +23,7 @@
    [taoensso.timbre :as log])
   (:import
    [java.nio.charset StandardCharsets]
-   [java.time Clock OffsetDateTime]
+   [java.time Clock Duration OffsetDateTime]
    [java.util Base64]))
 
 (set! *warn-on-reflection* true)
@@ -371,6 +371,10 @@
       (ba/incorrect (type-mismatch-msg subject-type (first subject-ref))))
     (subject-handle* db subject-type subject-ref)))
 
+(defn- timeout-eclipsed-msg [timeout]
+  (format "Timeout of %d millis eclipsed while evaluating."
+          (.toMillis ^Duration timeout)))
+
 (defn- eval-unfiltered-xf [context]
   (comp (filter (comp #{"Unfiltered"} :context val))
         (map
@@ -401,8 +405,11 @@
                 context
                 :db db
                 :now now
-                :timeout-eclipsed? #(not (.isBefore (.instant ^Clock clock) timeout-instant))
-                :timeout timeout
+                :interrupted?
+                #(when-not (.isBefore (.instant ^Clock clock) timeout-instant)
+                   (ba/interrupted
+                    (timeout-eclipsed-msg timeout)
+                    :timeout timeout))
                 :expression-defs expression-defs
                 :parameters parameter-default-values
                 :subject-type subject-type

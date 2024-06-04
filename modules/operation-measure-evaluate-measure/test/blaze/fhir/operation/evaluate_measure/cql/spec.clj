@@ -7,20 +7,15 @@
    [blaze.fhir.operation.evaluate-measure :as-alias evaluate-measure]
    [blaze.fhir.operation.evaluate-measure.cql :as-alias cql]
    [blaze.fhir.operation.evaluate-measure.spec]
-   [clojure.spec.alpha :as s]
-   [java-time.api :as time]))
+   [clojure.spec.alpha :as s]))
 
-(s/def ::cql/timeout-eclipsed?
+(s/def ::cql/interrupted?
   ifn?)
-
-(s/def ::cql/timeout
-  time/duration?)
 
 (s/def ::cql/context
   (s/merge
    ::expr/context
-   (s/keys :req-un [::cql/timeout-eclipsed? ::cql/timeout
-                    ::c/expression-defs])))
+   (s/keys :req-un [::cql/interrupted? ::c/expression-defs])))
 
 (s/def ::cql/reduce-op
   fn?)

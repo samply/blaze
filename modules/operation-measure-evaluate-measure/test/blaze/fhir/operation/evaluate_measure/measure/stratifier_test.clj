@@ -14,7 +14,6 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
-   [java-time.api :as time]
    [juxt.iota :refer [given]])
   (:import
    [java.time Clock OffsetDateTime]))
@@ -162,8 +161,7 @@
     (cond->
      {:db (d/db node)
       :now (now fixed-clock)
-      :timeout-eclipsed? (constantly false)
-      :timeout (time/seconds 42)
+      :interrupted? (constantly false)
       :expression-defs expression-defs
       :executor executor}
       function-defs

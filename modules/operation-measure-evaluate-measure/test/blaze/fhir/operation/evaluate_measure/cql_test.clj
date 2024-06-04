@@ -1,6 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.cql-test
   (:require
-   [blaze.anomaly :refer [when-ok]]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.anomaly-spec]
    [blaze.cql-translator :as cql-translator]
    [blaze.db.api :as d]
@@ -18,7 +18,6 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
-   [java-time.api :as time]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
@@ -26,7 +25,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -105,8 +104,7 @@
   (let [{:keys [expression-defs function-defs]} (compile-library node library)]
     {:db (d/db node)
      :now (now fixed-clock)
-     :timeout-eclipsed? (constantly false)
-     :timeout (time/seconds 42)
+     :interrupted? (constantly false)
      :expression-defs expression-defs
      :function-defs function-defs
      :executor executor}))
@@ -254,17 +252,17 @@
               ::anom/category := ::anom/fault
               ::anom/message := "Error while evaluating the expression `InInitialPopulation`: msg-222453"))))))
 
-  (testing "timeout eclipsed"
+  (testing "interrupted"
     (with-system-data [system config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (let [context (-> (context system library-gender)
                         (with-ops conj-reduce-op into)
-                        (assoc :timeout-eclipsed? (constantly true)))]
+                        (assoc :interrupted? (constantly (ba/interrupted "msg-083943"))))]
 
         (given-failed-future (cql/evaluate-expression context "InInitialPopulation" "Patient")
           ::anom/category := ::anom/interrupted
-          ::anom/message := "Timeout of 42000 millis eclipsed while evaluating.")))))
+          ::anom/message := "msg-083943")))))
 
 (deftest evaluate-individual-expression-test
   (testing "counting"

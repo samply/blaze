@@ -18,7 +18,7 @@
                :subject (s/nilable ed/resource?)
                :name string?
                :expression ::c/expression)
-  :ret ac/completable-future?)
+  :ret (s/or :result any? :anomaly ::anom/anomaly))
 
 (s/fdef cql/evaluate-expression
   :args (s/cat :context ::cql/evaluate-expression-context :name string?
