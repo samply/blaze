@@ -9,9 +9,7 @@
    [blaze.elm.expression :as expr]
    [blaze.elm.util :as elm-util]
    [blaze.fhir.spec :as fhir-spec]
-   [taoensso.timbre :as log])
-  (:import
-   [java.time Duration]))
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -42,21 +40,11 @@
              :expression-name name)
             (merge ex-data))))))
 
-(defn- timeout-millis [{:keys [timeout]}]
-  (.toMillis ^Duration timeout))
-
-(defn- timeout-eclipsed-msg [context]
-  (format "Timeout of %d millis eclipsed while evaluating."
-          (timeout-millis context)))
-
 (defn evaluate-expression-1
+  "Evaluates `expression` with `name` on `subject` in `context`."
   {:arglists '([context subject name expression])}
-  [{:keys [timeout-eclipsed?] :as context} subject name expression]
-  (if (timeout-eclipsed?)
-    (ba/interrupted
-     (timeout-eclipsed-msg context)
-     :timeout (:timeout context))
-    (evaluate-expression-1* context subject name expression)))
+  [{:keys [interrupted?] :as context} subject name expression]
+  (or (interrupted?) (evaluate-expression-1* context subject name expression)))
 
 (defmulti result-xf
   (fn [{:keys [population-basis]} _ _]
@@ -174,22 +162,21 @@
   available in :db of `context`.
 
   The context consists of:
-   * :db                - the database to use for obtaining subjects and
-                          evaluating the expression
-   * :executor          - the executor in which the expression is evaluated
-   * :now               - the evaluation time
-   * :timeout-eclipsed? - a function returning ture if the evaluation timeout is
-                          eclipsed
-   * :timeout           - the evaluation timeout itself
-   * :expression-defs   - a map of available expression definitions
-   * :parameters        - an optional map of parameters
-   * :reduce-op         - a reduce function that gets the result reduced so far
-                          and a map of :population-handle and :subject-handle.
-                          The function also has to return an initial value if
-                          called with no argument
-   * :combine-op        - a combine function that gets two already reduced
-                          results and returns a new one
-   * :population-basis  - an optional population basis of a type like `Encounter`
+   * :db               - the database to use for obtaining subjects and
+                         evaluating the expression
+   * :executor         - the executor in which the expression is evaluated
+   * :now              - the evaluation time
+   * :interrupted?     - a function returning an anomaly if the evaluation
+                         should be interrupted
+   * :expression-defs  - a map of available expression definitions
+   * :parameters       - an optional map of parameters
+   * :reduce-op        - a reduce function that gets the result reduced so far
+                         and a map of :population-handle and :subject-handle.
+                         The function also has to return an initial value if
+                         called with no argument
+   * :combine-op       - a combine function that gets two already reduced
+                         results and returns a new one
+   * :population-basis - an optional population basis of a type like `Encounter`
 
   The context of the expression has to match `subject-type`. The result type of
   the expression has to match the `population-basis`.
@@ -207,21 +194,20 @@
   "Evaluates the expression with `name` on `subject` according to `context`.
 
   The context consists of:
-   * :db                - the database to use for obtaining subjects and
-                          evaluating the expression
-   * :executor          - the executor in which the expression is evaluated
-   * :now               - the evaluation time
-   * :timeout-eclipsed? - a function returning ture if the evaluation timeout is
-                          eclipsed
-   * :timeout           - the evaluation timeout itself
-   * :expression-defs   - a map of available expression definitions
-   * :parameters        - an optional map of parameters
-   * :reduce-op         - a reduce function that gets the result reduced so far
-                          and a map of :population-handle and :subject-handle.
-                          The function also has to return an initial value if
-                          called with no argument
-   * :combine-op        - a combine function that gets two already reduced
-                          results and returns a new one
+   * :db              - the database to use for obtaining subjects and
+                        evaluating the expression
+   * :executor        - the executor in which the expression is evaluated
+   * :now             - the evaluation time
+   * :interrupted?    - a function returning an anomaly if the evaluation
+                        should be interrupted
+   * :expression-defs - a map of available expression definitions
+   * :parameters      - an optional map of parameters
+   * :reduce-op       - a reduce function that gets the result reduced so far
+                        and a map of :population-handle and :subject-handle.
+                        The function also has to return an initial value if
+                        called with no argument
+   * :combine-op      - a combine function that gets two already reduced
+                        results and returns a new one
 
   Returns an anomaly in case of errors."
   [{:keys [executor reduce-op db] :as context} subject name]
@@ -263,7 +249,7 @@
           expression-name (-> resource fhir-spec/fhir-type name) id))
 
 (defn- evaluate-stratum-expression [context subject name expression]
-  (let [result (evaluate-expression-1 context subject name expression)]
+  (let [result (evaluate-expression-1* context subject name expression)]
     (if (sequential? result)
       (ba/incorrect (incorrect-stratum-msg subject name))
       result)))
