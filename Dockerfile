@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17.0.11_9-jre-jammy@sha256:c775542787fc3051502977ec7fdc508b2611219c70bccf035ed1ac73a4ee2da3
+FROM eclipse-temurin:17.0.11_9-jre-jammy@sha256:c1cd13b3cc4e0ec634dec367b3769131947201352ca290f5da7d373f6a620393
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install libjemalloc2 -y && \
