@@ -1,4 +1,4 @@
-FROM node:21-alpine@sha256:3c27c3c7a43ecd9f970a435a187ecbddaaa558a4ea741b0edb8e9107aff0e86d
+FROM node:21-alpine@sha256:78c45726ea205bbe2f23889470f03b46ac988d14b6d813d095e2e9909f586f93
 
 COPY build /app
 COPY package*.json /app/
