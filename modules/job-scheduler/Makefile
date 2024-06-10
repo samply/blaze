@@ -1,10 +1,13 @@
 fmt:
-	cljfmt check
+	cljfmt check src test build.clj
 
 lint:
-	clj-kondo --lint src test deps.edn
+	clj-kondo --lint src test build.clj deps.edn
 
-prep:
+build:
+	clojure -T:build copy-profiles
+
+prep: build
 	clojure -X:deps prep
 
 test: prep
@@ -20,6 +23,6 @@ cloc-test:
 	cloc test
 
 clean:
-	rm -rf .clj-kondo/.cache .cpcache target
+	rm -rf .clj-kondo/.cache .cpcache target resources
 
-.PHONY: fmt lint test test-coverage cloc-prod cloc-test clean
+.PHONY: fmt lint build prep test test-coverage cloc-prod cloc-test clean

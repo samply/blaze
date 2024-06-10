@@ -2,7 +2,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defn split-literal-ref [^String s]
+(defn split-literal-ref
+  "Tries to split `s` into a type and id.
+
+  Returns nil if `s` doesn't contain a valid type and id separated by `/`."
+  {:arglists '([s])}
+  [^String s]
   (if (and (pos? (.length s)) (= \/ (.charAt s 0)))
     (recur (.substring s 1))
     (let [idx (.indexOf s 47)]

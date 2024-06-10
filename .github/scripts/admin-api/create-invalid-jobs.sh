@@ -16,10 +16,11 @@ cat <<END
     "profile": [
       "https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"
     ]
-  }
+  },
+  "status": "on-hold"
 }
 END
 }
 
 ERROR_MESSAGE="$(curl -s -H 'Content-Type: application/fhir+json' -H 'Accept: application/fhir+json' -d "$(re-index-job)" "$BASE/__admin/Task" | jq -r '.issue[0].diagnostics')"
-test "error message" "$ERROR_MESSAGE" "Task.status: minimum required = 1, but only found 0 (from https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob)"
+test "error message" "$ERROR_MESSAGE" "Rule status-reason-on-hold: 'Assigns possible reasons to the 'on-hold' status.' Failed"

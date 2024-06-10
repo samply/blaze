@@ -4,13 +4,15 @@
    [blaze.elm.compiler.external-data :as ed]
    [blaze.elm.compiler.library.spec]
    [blaze.elm.expression :as-alias expr]
+   [blaze.elm.expression.spec]
    [blaze.fhir.operation.evaluate-measure :as-alias evaluate-measure]
    [blaze.fhir.operation.evaluate-measure.cql :as-alias cql]
    [blaze.fhir.operation.evaluate-measure.spec]
-   [clojure.spec.alpha :as s]))
+   [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]))
 
 (s/def ::cql/interrupted?
-  ifn?)
+  (s/fspec :args (s/cat) :ret (s/nilable ::anom/anomaly)))
 
 (s/def ::cql/context
   (s/merge

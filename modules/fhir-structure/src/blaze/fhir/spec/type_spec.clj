@@ -53,3 +53,35 @@
 (s/fdef type/dateTime
   :args (s/cat :value (s/alt :value string? :extended map?))
   :ret (s/or :value type/dateTime? :invalid s2/invalid?))
+
+(s/fdef type/time
+  :args (s/cat :value (s/alt :value string? :extended map?))
+  :ret (s/or :value type/time? :invalid s2/invalid?))
+
+(s/fdef type/code
+  :args (s/cat :value (s/alt :value string? :extended map?))
+  :ret (s/or :value type/code? :invalid s2/invalid?))
+
+(s/fdef type/oid
+  :args (s/cat :value (s/alt :value string? :extended map?))
+  :ret (s/or :value type/oid? :invalid s2/invalid?))
+
+(s/fdef type/id
+  :args (s/cat :value (s/alt :value string? :extended map?))
+  :ret (s/or :value type/id? :invalid s2/invalid?))
+
+(s/fdef type/markdown
+  :args (s/cat :value (s/alt :value string? :extended map?))
+  :ret (s/or :value type/markdown? :invalid s2/invalid?))
+
+(s/fdef type/unsignedInt
+  :args (s/cat :value (s/alt :value int? :extended map?))
+  :ret (s/or :value type/unsignedInt? :invalid s2/invalid?))
+
+(s/fdef type/positiveInt
+  :args (s/cat :value (s/alt :value int? :extended map?))
+  :ret (s/or :value type/positiveInt? :invalid s2/invalid?))
+
+(s/fdef type/uuid
+  :args (s/cat :value (s/alt :value string? :extended map?))
+  :ret (s/or :value type/uuid? :invalid s2/invalid?))

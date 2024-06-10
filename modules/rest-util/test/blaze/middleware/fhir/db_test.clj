@@ -8,6 +8,7 @@
    [blaze.db.api :as d]
    [blaze.db.api-spec]
    [blaze.fhir.test-util :refer [given-failed-future]]
+   [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.fhir.util-spec]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
@@ -24,6 +25,7 @@
   (st/unstrument `db/wrap-db)
   (st/unstrument `db/wrap-snapshot-db)
   (st/unstrument `db/wrap-versioned-instance-db)
+  (st/unstrument `fhir-util/sync)
   (st/unstrument `d/sync)
   (st/unstrument `d/as-of)
   (f)

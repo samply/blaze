@@ -13,7 +13,11 @@
    [blaze.module.test-util :refer [with-system]]
    [blaze.module.test-util.ring :refer [call]]
    [blaze.page-store.protocols :as pp]
-   [blaze.rest-api]
+   [blaze.rest-api :as rest-api]
+   [blaze.rest-api.async-status-cancel-handler]
+   [blaze.rest-api.async-status-handler]
+   [blaze.rest-api.batch-handler]
+   [blaze.rest-api.capabilities-handler]
    [blaze.system :as system]
    [blaze.system-spec]
    [blaze.test-util :as tu]
@@ -28,7 +32,7 @@
    [java.io ByteArrayInputStream]))
 
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -90,60 +94,87 @@
           :default-value "default"}]}})))
 
 (def config
-  (assoc mem-node-config
-         :blaze/rest-api
-         {:base-url "http://localhost:8080"
-          :version "0.1.0"
-          :release-date "2024-01-07"
-          :structure-definition-repo structure-definition-repo
-          :node (ig/ref :blaze.db/node)
-          :search-param-registry (ig/ref :blaze.db/search-param-registry)
-          :db-sync-timeout 10000
-          :auth-backends [(ig/ref ::auth-backend)]
-          :search-system-handler (ig/ref :blaze.interaction/search-system)
-          :transaction-handler (ig/ref :blaze.interaction/transaction)
-          :resource-patterns
-          [#:blaze.rest-api.resource-pattern
-            {:type :default
-             :interactions
-             {:read
-              #:blaze.rest-api.interaction
-               {:handler (ig/ref :blaze.interaction/read)}
-              :delete
-              #:blaze.rest-api.interaction
-               {:handler (ig/ref :blaze.interaction/delete)}
-              :search-type
-              #:blaze.rest-api.interaction
-               {:handler (ig/ref :blaze.interaction/search-type)}
-              :history-type
-              #:blaze.rest-api.interaction
-               {:handler (ig/ref :blaze.interaction.history/type)}}}]}
-         :blaze.db/search-param-registry
-         {:structure-definition-repo structure-definition-repo}
-         ::auth-backend {}
-         :blaze.interaction/transaction
-         {:node (ig/ref :blaze.db/node)
-          :executor (ig/ref :blaze.test/executor)
-          :clock (ig/ref :blaze.test/fixed-clock)
-          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-         :blaze.interaction/read {}
-         :blaze.interaction/delete
-         {:node (ig/ref :blaze.db/node)}
-         :blaze.interaction/search-system
-         {:clock (ig/ref :blaze.test/fixed-clock)
-          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-          :page-store (ig/ref ::page-store)}
-         :blaze.interaction/search-type
-         {:clock (ig/ref :blaze.test/fixed-clock)
-          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-          :page-store (ig/ref ::page-store)}
-         :blaze.interaction.history/type
-         {:clock (ig/ref :blaze.test/fixed-clock)
-          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-         :blaze.test/executor {}
-         :blaze.test/fixed-clock {}
-         :blaze.test/fixed-rng-fn {}
-         ::page-store {}))
+  (assoc
+   mem-node-config
+   :blaze/rest-api
+   {:base-url "http://localhost:8080"
+    :structure-definition-repo structure-definition-repo
+    :node (ig/ref :blaze.db/node)
+    :admin-node (ig/ref :blaze.db/node)
+    :db-sync-timeout 10000
+    :auth-backends [(ig/ref ::auth-backend)]
+    :search-system-handler (ig/ref :blaze.interaction/search-system)
+    :transaction-handler (ig/ref :blaze.interaction/transaction)
+    :async-status-handler (ig/ref ::rest-api/async-status-handler)
+    :async-status-cancel-handler (ig/ref ::rest-api/async-status-cancel-handler)
+    :capabilities-handler (ig/ref ::rest-api/capabilities-handler)
+    :resource-patterns (ig/ref ::rest-api/resource-patterns)
+    :job-scheduler (ig/ref :blaze/job-scheduler)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+   :blaze.db/search-param-registry
+   {:structure-definition-repo structure-definition-repo}
+   ::auth-backend {}
+   :blaze.interaction/transaction
+   {:node (ig/ref :blaze.db/node)
+    :batch-handler (ig/ref ::rest-api/batch-handler)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :db-sync-timeout 10000}
+   :blaze.interaction/read {}
+   :blaze.interaction/delete
+   {:node (ig/ref :blaze.db/node)}
+   :blaze.interaction/search-system
+   {:clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :page-store (ig/ref ::page-store)}
+   :blaze.interaction/search-type
+   {:clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :page-store (ig/ref ::page-store)}
+   :blaze.interaction.history/type
+   {:clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+   ::rest-api/async-status-handler
+   {}
+   ::rest-api/async-status-cancel-handler
+   {:job-scheduler (ig/ref :blaze/job-scheduler)}
+   ::rest-api/capabilities-handler
+   {:version "0.1.0"
+    :release-date "2024-01-07"
+    :structure-definition-repo structure-definition-repo
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :search-system-handler (ig/ref :blaze.interaction/search-system)
+    :transaction-handler-active? true
+    :resource-patterns (ig/ref ::rest-api/resource-patterns)}
+   ::rest-api/batch-handler
+   {:structure-definition-repo structure-definition-repo
+    :capabilities-handler (ig/ref ::rest-api/capabilities-handler)
+    :resource-patterns (ig/ref ::rest-api/resource-patterns)}
+   :blaze/job-scheduler
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+   ::rest-api/resource-patterns
+   [#:blaze.rest-api.resource-pattern
+     {:type :default
+      :interactions
+      {:read
+       #:blaze.rest-api.interaction
+        {:handler (ig/ref :blaze.interaction/read)}
+       :delete
+       #:blaze.rest-api.interaction
+        {:handler (ig/ref :blaze.interaction/delete)}
+       :search-type
+       #:blaze.rest-api.interaction
+        {:handler (ig/ref :blaze.interaction/search-type)}
+       :history-type
+       #:blaze.rest-api.interaction
+        {:handler (ig/ref :blaze.interaction.history/type)}}}]
+   :blaze.test/executor {}
+   :blaze.test/fixed-clock {}
+   :blaze.test/fixed-rng-fn {}
+   ::page-store {}))
 
 (defmethod ig/init-key ::auth-backend
   [_ _]

@@ -4,6 +4,7 @@
    [blaze.luid-spec]
    [blaze.test-util :as tu]
    [clojure.math :as math]
+   [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [java-time.api :as time])
@@ -20,7 +21,7 @@
 (deftest luid-test
   (testing "length is 16 chars"
     (dotimes [_ 1000]
-      (is (= 16 (count (luid/luid (Clock/systemUTC) (ThreadLocalRandom/current))))))))
+      (is (s/valid? :blaze/luid (luid/luid (time/system-clock) (ThreadLocalRandom/current)))))))
 
 (defn p [k bit]
   (/ (math/pow k 2.0) (* 2.0 (math/pow 2.0 bit))))

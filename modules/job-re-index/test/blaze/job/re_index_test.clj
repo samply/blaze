@@ -7,7 +7,7 @@
    [blaze.db.impl.protocols :as p]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
-   [blaze.db.node :as node]
+   [blaze.db.node :as node :refer [node?]]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.search-param-registry]
@@ -22,7 +22,8 @@
    [blaze.log]
    [blaze.luid :as luid]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
    [integrant.core :as ig]
@@ -33,19 +34,48 @@
 (set! *warn-on-reflection* true)
 (st/instrument)
 ;; trace is just to violent for this test
-(log/set-level! :debug)
+(log/set-min-level! :debug)
 
 (test/use-fixtures :each tu/fixture)
+
+(deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {:blaze.job/re-index nil})
+      :key := :blaze.job/re-index
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {:blaze.job/re-index {}})
+      :key := :blaze.job/re-index
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :main-node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
+
+  (testing "invalid main-node"
+    (given-thrown (ig/init {:blaze.job/re-index {:main-node ::invalid}})
+      :key := :blaze.job/re-index
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 2 :pred] := `node?
+      [:cause-data ::s/problems 2 :val] := ::invalid)))
 
 (derive :blaze.db.main/node :blaze.db/node)
 (derive :blaze.db.admin/node :blaze.db/node)
 
 (def config
   {:blaze/job-scheduler
-   {:main-node (ig/ref :blaze.db.main/node)
-    :admin-node (ig/ref :blaze.db.admin/node)
+   {:node (ig/ref :blaze.db.admin/node)
+    :handlers {:blaze.job/re-index (ig/ref :blaze.job/re-index)}
     :clock (ig/ref :blaze.test/offset-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+
+   :blaze.job/re-index
+   {:main-node (ig/ref :blaze.db.main/node)
+    :admin-node (ig/ref :blaze.db.admin/node)
+    :clock (ig/ref :blaze.test/offset-clock)}
 
    :blaze.db.main/node
    {:tx-log (ig/ref :blaze.db.main/tx-log)
@@ -259,7 +289,7 @@
             [processing-duration :code] := #fhir/code"s"
             next-resource := nil))
 
-        (testing "the job was incrementally updated"
+        (testing "job history"
           (given @(jtu/pull-job-history system)
             count := 5
 
@@ -305,7 +335,7 @@
             [processing-duration :system] := #fhir/uri"http://unitsofmeasure.org"
             [processing-duration :code] := #fhir/code"s"))
 
-        (testing "the job was incrementally updated"
+        (testing "job history"
           (given @(jtu/pull-job-history system)
             count := 3
 
@@ -452,7 +482,7 @@
           [processing-duration :system] := #fhir/uri"http://unitsofmeasure.org"
           [processing-duration :code] := #fhir/code"s"))
 
-      (testing "the job was incrementally updated"
+      (testing "job history"
         (given @(jtu/pull-job-history system)
           count := 5
 
@@ -504,7 +534,7 @@
           [processing-duration :system] := #fhir/uri"http://unitsofmeasure.org"
           [processing-duration :code] := #fhir/code"s"))
 
-      (testing "the job was incrementally updated"
+      (testing "job history"
         (given @(jtu/pull-job-history system)
           [0 jtu/combined-status] := :ready
           [1 jtu/combined-status] := :in-progress/started

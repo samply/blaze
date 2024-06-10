@@ -12,6 +12,7 @@
    [blaze.db.node :as node :refer [node?]]
    [blaze.db.resource-store :as rs]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.spec.type-spec]
    [blaze.handler.util :as handler-util]
    [blaze.interaction.create]
    [blaze.interaction.delete]
@@ -22,7 +23,7 @@
    [blaze.interaction.update]
    [blaze.interaction.util-spec]
    [blaze.log]
-   [blaze.middleware.fhir.db :refer [wrap-db]]
+   [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
    [blaze.page-store-spec]
    [blaze.page-store.local]
@@ -42,7 +43,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -51,9 +52,14 @@
 
 (def base-url "base-url-115515")
 
+(def ^:private wrap-db
+  {:name :db
+   :wrap db/wrap-db})
+
 (defmethod ig/init-key ::router
   [_ {:keys [node create-handler search-type-handler
-             read-handler delete-handler update-handler]}]
+             read-handler delete-handler update-handler
+             batch?]}]
   (reitit.ring/router
    [["/metadata"
      {:get
@@ -94,10 +100,16 @@
       :put update-handler}]
     ["/Patient/{id}/_history/{vid}"
      {:name :Patient/versioned-instance}]]
-   {:syntax :bracket}))
+   (cond-> {:syntax :bracket}
+     batch?
+     (assoc :reitit.middleware/transform
+            (fn [middleware]
+              (into [] (remove (comp #{:db} :name)) middleware))))))
 
-(defn batch-handler [router]
+(defmethod ig/init-key ::batch-handler [_ {:keys [router]}]
   (reitit.ring/ring-handler router handler-util/default-batch-handler))
+
+(derive ::batch-router ::router)
 
 (deftest init-handler-test
   (testing "nil config"
@@ -111,64 +123,87 @@
       :key := :blaze.interaction/transaction
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :batch-handler))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))))
 
   (testing "invalid node"
     (given-thrown (ig/init {:blaze.interaction/transaction {:node ::invalid}})
       :key := :blaze.interaction/transaction
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `node?
-      [:cause-data ::s/problems 2 :val] := ::invalid)))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :batch-handler))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :db-sync-timeout))
+      [:cause-data ::s/problems 4 :pred] := `node?
+      [:cause-data ::s/problems 4 :val] := ::invalid)))
 
 (def config
-  (assoc api-stub/mem-node-config
-         :blaze.interaction/transaction
-         {:node (ig/ref :blaze.db/node)
-          :clock (ig/ref :blaze.test/fixed-clock)
-          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+  (assoc
+   api-stub/mem-node-config
+   :blaze.interaction/transaction
+   {:node (ig/ref :blaze.db/node)
+    :batch-handler (ig/ref ::batch-handler)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :db-sync-timeout 1000}
 
-         :blaze.interaction/create
-         {:node (ig/ref :blaze.db/node)
-          :clock (ig/ref :blaze.test/fixed-clock)
-          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+   :blaze.interaction/create
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
 
-         :blaze.interaction/search-type
-         {:node (ig/ref :blaze.db/node)
-          :clock (ig/ref :blaze.test/fixed-clock)
-          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-          :page-store (ig/ref :blaze.page-store/local)}
+   :blaze.interaction/search-type
+   {:job-scheduler (ig/ref :blaze/job-scheduler)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :page-store (ig/ref :blaze.page-store/local)}
 
-         :blaze.interaction/read
-         {:node (ig/ref :blaze.db/node)}
+   :blaze.interaction/read
+   {:node (ig/ref :blaze.db/node)}
 
-         :blaze.interaction/delete
-         {:node (ig/ref :blaze.db/node)}
+   :blaze.interaction/delete
+   {:node (ig/ref :blaze.db/node)}
 
-         :blaze.interaction/update
-         {:node (ig/ref :blaze.db/node)}
+   :blaze.interaction/update
+   {:node (ig/ref :blaze.db/node)}
 
-         ::router
-         {:node (ig/ref :blaze.db/node)
-          :create-handler (ig/ref :blaze.interaction/create)
-          :search-type-handler (ig/ref :blaze.interaction/search-type)
-          :read-handler (ig/ref :blaze.interaction/read)
-          :delete-handler (ig/ref :blaze.interaction/delete)
-          :update-handler (ig/ref :blaze.interaction/update)}
+   ::batch-handler
+   {:router (ig/ref ::batch-router)}
 
-         :blaze.test/fixed-rng-fn {}
-         :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
-         :blaze.test/fixed-rng {}))
+   ::router
+   {:node (ig/ref :blaze.db/node)
+    :create-handler (ig/ref :blaze.interaction/create)
+    :search-type-handler (ig/ref :blaze.interaction/search-type)
+    :read-handler (ig/ref :blaze.interaction/read)
+    :delete-handler (ig/ref :blaze.interaction/delete)
+    :update-handler (ig/ref :blaze.interaction/update)}
+
+   ::batch-router
+   {:batch? true
+    :node (ig/ref :blaze.db/node)
+    :create-handler (ig/ref :blaze.interaction/create)
+    :search-type-handler (ig/ref :blaze.interaction/search-type)
+    :read-handler (ig/ref :blaze.interaction/read)
+    :delete-handler (ig/ref :blaze.interaction/delete)
+    :update-handler (ig/ref :blaze.interaction/update)}
+
+   :blaze/job-scheduler
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+
+   :blaze.test/fixed-rng-fn {}
+   :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
+   :blaze.test/fixed-rng {}))
 
 (defn wrap-defaults [handler router]
   (fn [request]
     (handler
      (assoc request
             :blaze/base-url base-url
-            ::reitit/router router
-            :batch-handler (batch-handler router)))))
+            ::reitit/router router))))
 
 (defmacro with-handler [[handler-binding & [node-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
@@ -321,7 +356,8 @@
 
         (testing "and updated resource"
           (let [entries
-                [{:resource
+                [{:fhir/type :fhir.Bundle/entry
+                  :resource
                   {:fhir/type :fhir/Patient :id "0"
                    :gender #fhir/code"male"}
                   :request
@@ -399,7 +435,8 @@
 
         (testing "with identical content"
           (let [entries
-                [{:resource
+                [{:fhir/type :fhir.Bundle/entry
+                  :resource
                   {:fhir/type :fhir/Patient :id "0"
                    :meta (type/map->Meta {:versionId #fhir/id"1"
                                           :lastUpdated Instant/EPOCH})
@@ -933,7 +970,7 @@
                  {:fhir/type :fhir/Bundle
                   :type #fhir/code"transaction"
                   :entry
-                  [{}]}})]
+                  [{:fhir/type :fhir.Bundle/entry}]}})]
 
           (testing "returns error"
             (is (= 400 status))
@@ -954,7 +991,8 @@
                   :type #fhir/code"transaction"
                   :entry
                   [{:fhir/type :fhir.Bundle/entry
-                    :request {}}]}})]
+                    :request
+                    {:fhir/type :fhir.Bundle.entry/request}}]}})]
 
           (testing "returns error"
             (is (= 400 status))
@@ -963,7 +1001,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"value"
-              [:issue 0 :diagnostics] := "Missing url."
+              [:issue 0 :diagnostics] := "Missing request URL."
               [:issue 0 :expression 0] := "Bundle.entry[0].request")))))
 
     (testing "on missing request method"
@@ -986,7 +1024,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"value"
-              [:issue 0 :diagnostics] := "Missing method."
+              [:issue 0 :diagnostics] := "Missing request method."
               [:issue 0 :expression 0] := "Bundle.entry[0].request")))))
 
     (testing "on unknown method"
@@ -1010,7 +1048,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"value"
-              [:issue 0 :diagnostics] := "Unknown method `FOO`."
+              [:issue 0 :diagnostics] := "Unknown request method `FOO`."
               [:issue 0 :expression 0] := "Bundle.entry[0].request.method")))))
 
     (testing "on unsupported method"
@@ -1034,7 +1072,7 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"not-supported"
-              [:issue 0 :diagnostics] := "Unsupported method `PATCH`."
+              [:issue 0 :diagnostics] := "Unsupported request method `PATCH`."
               [:issue 0 :expression 0] := "Bundle.entry[0].request.method")))))
 
     (testing "and update interaction"
@@ -1059,7 +1097,7 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"value"
-                [:issue 0 :diagnostics] := "Can't parse type from `entry.request.url` ``."
+                [:issue 0 :diagnostics] := "Can't parse type from request URL ``."
                 [:issue 0 :expression 0] := "Bundle.entry[0].request.url")))))
 
       (testing "on unknown type"
@@ -1083,7 +1121,7 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"value"
-                [:issue 0 :diagnostics] := "Unknown type `Foo` in bundle entry URL `Foo/0`."
+                [:issue 0 :diagnostics] := "Unknown type `Foo` in bundle entry request URL `Foo/0`."
                 [:issue 0 :expression 0] := "Bundle.entry[0].request.url")))))
 
       (testing "on missing resource type"
@@ -1095,8 +1133,6 @@
                     :type #fhir/code"transaction"
                     :entry
                     [{:fhir/type :fhir.Bundle/entry
-                      :resource
-                      {}
                       :request
                       {:fhir/type :fhir.Bundle.entry/request
                        :method #fhir/code"PUT"
@@ -1109,8 +1145,8 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"required"
-                [:issue 0 :diagnostics] := "Resource type is missing."
-                [:issue 0 :expression 0] := "Bundle.entry[0].resource.resourceType")))))
+                [:issue 0 :diagnostics] := "Missing resource type."
+                [:issue 0 :expression 0] := "Bundle.entry[0].resource")))))
 
       (testing "on type mismatch"
         (with-handler [handler]
@@ -1180,11 +1216,10 @@
                     [{:fhir/type :fhir.Bundle/entry
                       :resource
                       {:fhir/type :fhir/Patient :id "0"
-                       :meta
-                       {:tag
-                        [#fhir/Coding
-                          {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-                           :code #fhir/code"SUBSETTED"}]}}
+                       :meta #fhir/Meta{:tag
+                                        [#fhir/Coding
+                                          {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+                                           :code #fhir/code"SUBSETTED"}]}}
                       :request
                       {:fhir/type :fhir.Bundle.entry/request
                        :method #fhir/code"PUT"
@@ -1225,34 +1260,6 @@
                 [:issue 0 :code] := #fhir/code"value"
                 [:issue 0 :diagnostics] := "Can't parse id from URL `Patient`."
                 [:issue 0 :expression 0] := "Bundle.entry[0].request.url")))))
-
-      (testing "on invalid ID"
-        (with-handler [handler]
-          (let [{:keys [status body]}
-                @(handler
-                  {:body
-                   {:fhir/type :fhir/Bundle
-                    :type #fhir/code"transaction"
-                    :entry
-                    [{:fhir/type :fhir.Bundle/entry
-                      :resource
-                      {:fhir/type :fhir/Patient :id "A_B"}
-                      :request
-                      {:fhir/type :fhir.Bundle.entry/request
-                       :method #fhir/code"PUT"
-                       :url #fhir/uri"Patient/0"}}]}})]
-
-            (testing "returns error"
-              (is (= 400 status))
-
-              (given body
-                :fhir/type := :fhir/OperationOutcome
-                [:issue 0 :severity] := #fhir/code"error"
-                [:issue 0 :code] := #fhir/code"value"
-                [:issue 0 :details :coding 0 :system] := operation-outcome
-                [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_ID_INVALID"
-                [:issue 0 :diagnostics] := "Resource id `A_B` is invalid."
-                [:issue 0 :expression 0] := "Bundle.entry[0].resource.id")))))
 
       (testing "on ID mismatch"
         (with-handler [handler]
@@ -1512,15 +1519,19 @@
                    {:fhir/type :fhir/Bundle
                     :type #fhir/code"transaction"
                     :entry
-                    [{:resource
+                    [{:fhir/type :fhir.Bundle/entry
+                      :resource
                       {:fhir/type :fhir/Patient}
                       :request
-                      {:method #fhir/code"POST"
+                      {:fhir/type :fhir.Bundle.entry/request
+                       :method #fhir/code"POST"
                        :url #fhir/uri"Patient"}}
-                     {:resource
+                     {:fhir/type :fhir.Bundle/entry
+                      :resource
                       {:fhir/type :fhir/Patient}
                       :request
-                      {:method #fhir/code"POST"
+                      {:fhir/type :fhir.Bundle.entry/request
+                       :method #fhir/code"POST"
                        :url #fhir/uri"Patient"}}]}})]
             (given body
               [:entry 0 :resource :id] := "AAAAAAAAAAAAAAAA"
@@ -1535,7 +1546,8 @@
                    {:fhir/type :fhir/Bundle
                     :type #fhir/code"transaction"
                     :entry
-                    [{:fullUrl #fhir/uri"urn:uuid:44cf9905-f381-4849-8a35-79a6b29ae1b5"
+                    [{:fhir/type :fhir.Bundle/entry
+                      :fullUrl #fhir/uri"urn:uuid:44cf9905-f381-4849-8a35-79a6b29ae1b5"
                       :resource
                       {:fhir/type :fhir/DocumentReference
                        :content
@@ -1543,13 +1555,16 @@
                          :attachment
                          #fhir/Attachment{:url #fhir/url"urn:uuid:5b016a4d-d393-48df-8d92-7ac4d1b8e56d"}}]}
                       :request
-                      {:method #fhir/code"POST"
+                      {:fhir/type :fhir.Bundle.entry/request
+                       :method #fhir/code"POST"
                        :url #fhir/uri"DocumentReference"}}
-                     {:fullUrl #fhir/uri"urn:uuid:5b016a4d-d393-48df-8d92-7ac4d1b8e56d"
+                     {:fhir/type :fhir.Bundle/entry
+                      :fullUrl #fhir/uri"urn:uuid:5b016a4d-d393-48df-8d92-7ac4d1b8e56d"
                       :resource
                       {:fhir/type :fhir/Binary}
                       :request
-                      {:method #fhir/code"POST"
+                      {:fhir/type :fhir.Bundle.entry/request
+                       :method #fhir/code"POST"
                        :url #fhir/uri"Binary"}}]}})]
             (given body
               [:entry 0 :resource :content 0 :attachment :url] := #fhir/url"Binary/AAAAAAAAAAAAAAAB"
@@ -1662,7 +1677,7 @@
                  {:fhir/type :fhir/Bundle
                   :type #fhir/code"batch"
                   :entry
-                  [{}]}})]
+                  [{:fhir/type :fhir.Bundle/entry}]}})]
 
           (testing "response status"
             (is (= 200 status)))
@@ -1688,7 +1703,7 @@
                   :type #fhir/code"batch"
                   :entry
                   [{:fhir/type :fhir.Bundle/entry
-                    :request {}}]}})]
+                    :request {:fhir/type :fhir.Bundle.entry/request}}]}})]
 
           (testing "response status"
             (is (= 200 status)))
@@ -1702,7 +1717,7 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"value"
-                [:issue 0 :diagnostics] := "Missing url."
+                [:issue 0 :diagnostics] := "Missing request URL."
                 [:issue 0 :expression 0] := "Bundle.entry[0].request"))))))
 
     (testing "on missing request method"
@@ -1730,7 +1745,7 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"value"
-                [:issue 0 :diagnostics] := "Missing method."
+                [:issue 0 :diagnostics] := "Missing request method."
                 [:issue 0 :expression 0] := "Bundle.entry[0].request"))))))
 
     (testing "on unknown method"
@@ -1759,7 +1774,7 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"value"
-                [:issue 0 :diagnostics] := "Unknown method `FOO`."
+                [:issue 0 :diagnostics] := "Unknown request method `FOO`."
                 [:issue 0 :expression 0] := "Bundle.entry[0].request.method"))))))
 
     (testing "on unsupported method"
@@ -1788,7 +1803,7 @@
                 :fhir/type := :fhir/OperationOutcome
                 [:issue 0 :severity] := #fhir/code"error"
                 [:issue 0 :code] := #fhir/code"not-supported"
-                [:issue 0 :diagnostics] := "Unsupported method `PATCH`."
+                [:issue 0 :diagnostics] := "Unsupported request method `PATCH`."
                 [:issue 0 :expression 0] := "Bundle.entry[0].request.method"))))))
 
     (testing "on subsetted"
@@ -1803,10 +1818,10 @@
                     :resource
                     {:fhir/type :fhir/Patient :id "0"
                      :meta
-                     {:tag
-                      [#fhir/Coding
-                        {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-                         :code #fhir/code"SUBSETTED"}]}}
+                     #fhir/Meta{:tag
+                                [#fhir/Coding
+                                  {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+                                   :code #fhir/code"SUBSETTED"}]}}
                     :request
                     {:fhir/type :fhir.Bundle.entry/request
                      :method #fhir/code"PUT"
@@ -2203,7 +2218,7 @@
                   :fhir/type := :fhir/OperationOutcome
                   [:issue 0 :severity] := #fhir/code"error"
                   [:issue 0 :code] := #fhir/code"value"
-                  [:issue 0 :diagnostics] := "Unknown type `Foo` in bundle entry URL `Foo`."
+                  [:issue 0 :diagnostics] := "Unknown type `Foo` in bundle entry request URL `Foo`."
                   [:issue 0 :expression 0] := "Bundle.entry[0].request.url"))))))
 
       (testing "on invalid instance-level URL"

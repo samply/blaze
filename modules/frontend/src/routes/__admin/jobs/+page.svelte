@@ -12,11 +12,9 @@
 
 	// reload page data every 10 seconds if at least one of the jobs is still in progress
 	afterUpdate(() => {
-		if (data.all.entry?.find((e) => e?.resource?.status === 'in-progress')) {
-			timeout = setTimeout(() => {
-				invalidateAll();
-			}, 10000);
-		}
+		timeout = setTimeout(() => {
+			invalidateAll();
+		}, 10000);
 	});
 
 	onDestroy(() => {
@@ -44,12 +42,8 @@
 	</div>
 
 	<ul role="list" class="divide-y divide-gray-100 mt-4">
-		{#if data.all.entry !== undefined && data.all.entry.length > 0}
-			{#each data.all.entry as entry}
-				{#if entry.resource}
-					<TaskRow job={entry.resource} />
-				{/if}
-			{/each}
-		{/if}
+		{#each data.all as job}
+			<TaskRow {job} />
+		{/each}
 	</ul>
 </main>

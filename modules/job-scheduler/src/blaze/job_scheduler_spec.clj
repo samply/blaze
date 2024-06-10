@@ -12,6 +12,10 @@
                :other-resources (s/* :blaze/resource))
   :ret ac/completable-future?)
 
+(s/fdef js/cancel-job
+  :args (s/cat :scheduler :blaze/job-scheduler :id :blaze.resource/id)
+  :ret ac/completable-future?)
+
 (s/fdef js/pause-job
   :args (s/cat :scheduler :blaze/job-scheduler :id :blaze.resource/id)
   :ret ac/completable-future?)

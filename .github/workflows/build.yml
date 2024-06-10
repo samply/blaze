@@ -45,6 +45,35 @@ jobs:
     - name: Lint
       run: make lint
 
+  job-ig:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Setup Node
+      uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4
+      with:
+        node-version: 21
+
+    - name: Install SUSHI
+      run: npm install -g fsh-sushi
+
+    - name: Check out Git repository
+      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+
+    - name: Build
+      working-directory: job-ig
+      run: make build
+
+    - name: Validate
+      working-directory: job-ig
+      run: make validate
+
+    - name: Upload Profiles
+      uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+      with:
+        name: job-ig-profiles
+        path: job-ig/fsh-generated/resources/*.json
+
   test:
     strategy:
       matrix:
@@ -70,8 +99,10 @@ jobs:
         - http-client
         - interaction
         - jepsen
+        - job-async-interaction
         - job-re-index
         - job-scheduler
+        - job-util
         - kv
         - luid
         - metrics
@@ -101,7 +132,7 @@ jobs:
         - module: jepsen
           java-version: '17'
 
-
+    needs: job-ig
     runs-on: ubuntu-22.04
 
     steps:
@@ -125,6 +156,12 @@ jobs:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ matrix.module }}-${{ hashFiles(format('modules/{0}/deps.edn', matrix.module)) }}
 
+    - name: Download Job IG Profiles
+      uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4
+      with:
+        name: job-ig-profiles
+        path: job-ig/fsh-generated/resources
+
     - name: Test
       run: make -C modules/${{ matrix.module }} test
 
@@ -136,6 +173,7 @@ jobs:
         - '17'
         - '21'
 
+    needs: job-ig
     runs-on: ubuntu-22.04
 
     steps:
@@ -158,6 +196,12 @@ jobs:
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-${{ matrix.java-version }}-maven-${{ hashFiles('deps.edn') }}
+
+    - name: Download Job IG Profiles
+      uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4
+      with:
+        name: job-ig-profiles
+        path: job-ig/fsh-generated/resources
 
     - name: Test
       run: make test-root
@@ -186,6 +230,12 @@ jobs:
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-temurin-17-maven-build-${{ hashFiles('**/deps.edn') }}
+
+    - name: Download Job IG Profiles
+      uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4
+      with:
+        name: job-ig-profiles
+        path: job-ig/fsh-generated/resources
 
     - name: Build Uberjar
       run: make uberjar
@@ -566,11 +616,20 @@ jobs:
     - name: Evaluate CQL Query 1
       run: .github/scripts/evaluate-measure.sh q1 56
 
+    - name: Evaluate CQL Query 1 as Batch
+      run: .github/scripts/evaluate-measure-as-batch.sh q1 56
+
+    - name: Evaluate CQL Query 1 async
+      run: .github/scripts/evaluate-measure-async.sh q1 56
+
     - name: Evaluate CQL Query 1 using Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q1 56
 
     - name: Evaluate CQL Query 1 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q1 56
+
+    - name: Evaluate CQL Query 1 - Subject List as Batch
+      run: .github/scripts/evaluate-measure-subject-list-as-batch.sh q1 56
 
     - name: Evaluate CQL Query 1 on Individual Patients
       run: .github/scripts/evaluate-patient-q1-measure.sh
@@ -578,11 +637,17 @@ jobs:
     - name: Evaluate CQL Query 2
       run: .github/scripts/evaluate-measure.sh q2 42
 
+    - name: Evaluate CQL Query 2 as Batch
+      run: .github/scripts/evaluate-measure-as-batch.sh q2 42
+
     - name: Evaluate CQL Query 2 using Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q2 42
 
     - name: Evaluate CQL Query 2 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q2 42
+
+    - name: Evaluate CQL Query 2 - Subject List as Batch
+      run: .github/scripts/evaluate-measure-subject-list-as-batch.sh q2 42
 
     - name: Evaluate CQL Query 4
       run: .github/scripts/evaluate-measure.sh q4 0
@@ -758,6 +823,15 @@ jobs:
     - name: History Paging uses a Stable Snapshot of the Database (single Patient)
       run: .github/scripts/follow-single-patient-history-next-link-after-write.sh
 
+    - name: Count Async 17861-6
+      run: .github/scripts/count-async.sh "17861-6" "299"
+
+    - name: Count Async 8310-5
+      run: .github/scripts/count-async.sh "8310-5" "512"
+
+    - name: Cancel Async Query
+      run: .github/scripts/cancel-async.sh
+
     - name: Prometheus Metrics
       run: .github/scripts/test-metrics.sh
       if: ${{ matrix.variant == 'standalone' }}
@@ -916,6 +990,9 @@ jobs:
 
     - name: Create Invalid Jobs
       run: .github/scripts/admin-api/create-invalid-jobs.sh
+
+    - name: Create Async Job
+      run: .github/scripts/admin-api/async-job.sh
 
   # This test uploads many small transactions in order to show that Blaze can handle many small requests containing
   # chunked payload blazectl uses. Versions of Blaze from 0.13.2 to 0.15.3, starting with the migration to Jetty, had

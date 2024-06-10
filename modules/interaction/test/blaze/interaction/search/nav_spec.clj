@@ -23,3 +23,13 @@
                :t :blaze.db/t
                :offset (s/nilable map?))
   :ret ac/completable-future?)
+
+(s/fdef nav/token-url
+  :args (s/cat :base-url string?
+               :match some?
+               :params (s/nilable map?)
+               :token any?
+               :clauses (s/nilable :blaze.db.query/clauses)
+               :t :blaze.db/t
+               :offset (s/nilable map?))
+  :ret string?)

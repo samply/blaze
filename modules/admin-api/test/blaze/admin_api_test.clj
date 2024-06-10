@@ -37,7 +37,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -179,8 +179,7 @@
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
 
    :blaze/job-scheduler
-   {:main-node (ig/ref :blaze.db.main/node)
-    :admin-node (ig/ref :blaze.db.admin/node)
+   {:node (ig/ref :blaze.db.admin/node)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
 
@@ -194,7 +193,8 @@
    :blaze.interaction/search-type
    {:clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :page-store (ig/ref :blaze/page-store)}
+    :page-store (ig/ref :blaze/page-store)
+    :context-path "/fhir"}
 
    :blaze.page-store/local
    {:secure-rng (ig/ref :blaze.test/fixed-rng)}
@@ -919,3 +919,29 @@
         (given body
           "resourceType" := "Task"
           "status" := "in-progress")))))
+
+(deftest cancel-job-test
+  (with-redefs
+   [js/cancel-job
+    (fn [_job-scheduler _id]
+      (ac/completed-future
+       (with-meta (assoc re-index-job :status #fhir/code"cancelled")
+         {:blaze.db/tx
+          {:blaze.db.tx/instant Instant/EPOCH
+           :blaze.db/t 1}})))]
+    (with-handler [handler] (config (new-temp-dir!)) []
+      (let [{:keys [status headers body]}
+            @(handler
+              {:request-method :post
+               :uri "/fhir/__admin/Task/AAAAAAAAAAAAAAAA/$cancel"
+               :headers {"content-type" "application/fhir+json"}})]
+
+        (is (= 200 status))
+
+        (given headers
+          "Last-Modified" := "Thu, 1 Jan 1970 00:00:00 GMT"
+          "ETag" := "W/\"1\"")
+
+        (given body
+          "resourceType" := "Task"
+          "status" := "cancelled")))))

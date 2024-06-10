@@ -4,9 +4,13 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
-   [blaze.job-scheduler :as js]
+   [blaze.job-scheduler.protocols :as p]
+   [blaze.job.re-index.spec]
    [blaze.job.util :as job-util]
+   [blaze.module :as m]
+   [clojure.spec.alpha :as s]
    [clojure.string :as str]
+   [integrant.core :as ig]
    [java-time.api :as time]))
 
 (set! *warn-on-reflection* true)
@@ -123,7 +127,7 @@
 (def ^:private missing-search-param-anom
   (ba/incorrect "Missing search parameter URL."))
 
-(defmethod js/on-start :re-index
+(defn- on-start
   [{:keys [main-node admin-node] :as context} job]
   (let [main-db (d/db main-node)]
     (if-let [search-param-url (search-param-url job)]
@@ -139,7 +143,7 @@
       (job-util/update-job admin-node job job-util/fail-job
                            missing-search-param-anom))))
 
-(defmethod js/on-resume :re-index
+(defn- on-resume
   [{:keys [main-node] :as context} job]
   (let [main-db (d/db main-node)
         search-param-url (search-param-url job)
@@ -148,3 +152,16 @@
     (-> (if type (re-index type id) (re-index))
         (ac/handle (continuation context re-index job))
         (ac/then-compose identity))))
+
+(defmethod m/pre-init-spec :blaze.job/re-index [_]
+  (s/keys :req-un [::main-node ::admin-node :blaze/clock]))
+
+(defmethod ig/init-key :blaze.job/re-index
+  [_ config]
+  (reify p/JobHandler
+    (-on-start [_ job]
+      (on-start config job))
+    (-on-resume [_ job]
+      (on-resume config job))))
+
+(derive :blaze.job/re-index :blaze.job/handler)

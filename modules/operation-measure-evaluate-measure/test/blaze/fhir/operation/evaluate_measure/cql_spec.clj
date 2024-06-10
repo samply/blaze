@@ -5,8 +5,6 @@
    [blaze.elm.compiler.external-data :as ed]
    [blaze.elm.compiler.external-data-spec]
    [blaze.elm.compiler.spec]
-   [blaze.elm.expression :as-alias expr]
-   [blaze.elm.expression.spec]
    [blaze.fhir.operation.evaluate-measure.cql :as cql]
    [blaze.fhir.operation.evaluate-measure.cql.spec]
    [blaze.fhir.spec]
@@ -14,7 +12,7 @@
    [cognitect.anomalies :as anom]))
 
 (s/fdef cql/evaluate-expression-1
-  :args (s/cat :context ::expr/context
+  :args (s/cat :context ::cql/context
                :subject (s/nilable ed/resource?)
                :name string?
                :expression ::c/expression)

@@ -3,8 +3,8 @@
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.fhir.spec.type :as type]
+   [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.transaction.bundle.links :as links]
-   [blaze.interaction.transaction.bundle.url :as url]
    [blaze.interaction.util :as iu]
    [clojure.string :as str]
    [ring.util.codec :as ring-codec]))
@@ -34,7 +34,7 @@
 
 (defmethod entry-tx-op "DELETE"
   [_ {{:keys [url]} :request :as entry}]
-  (let [[type id] (url/match-url (type/value url))]
+  (let [{:keys [type id]} (fhir-util/match-url (type/value url))]
     (assoc entry :tx-op [:delete type id])))
 
 (defmethod entry-tx-op :default
@@ -42,8 +42,8 @@
   entry)
 
 (defn assoc-tx-ops
-  "Returns `entries` with transaction operation associated under :tx-op. Or an
-  anomaly in case of errors."
+  "Returns `entries` with possible transaction operation associated under
+  :tx-op for each entry. Or an anomaly in case of errors."
   [db entries]
   (transduce
    (comp (map (partial entry-tx-op db)) (halt-when ba/anomaly?))

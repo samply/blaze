@@ -13,7 +13,7 @@
    [blaze.interaction.search.nav :as nav]
    [blaze.interaction.search.params :as params]
    [blaze.interaction.search.util :as search-util]
-   [blaze.interaction.util :as iu]
+   [blaze.job.async-interaction.request :as req]
    [blaze.module :as m]
    [blaze.page-store :as page-store]
    [blaze.page-store.spec]
@@ -126,7 +126,7 @@
 (defn- link [relation url]
   {:fhir/type :fhir.Bundle/link
    :relation relation
-   :url url})
+   :url (type/uri url)})
 
 (defn- self-link [{:keys [self-link-url-fn]} clauses]
   (link "self" (self-link-url-fn clauses)))
@@ -165,7 +165,7 @@
   generating a token for the first link, we don't need in this case."
   [context clauses]
   {:fhir/type :fhir/Bundle
-   :id (iu/luid context)
+   :id (handler-util/luid context)
    :type #fhir/code"searchset"
    :total #fhir/unsignedInt 0
    :link [(self-link context clauses)]})
@@ -175,7 +175,7 @@
    total]
   (cond->
    {:fhir/type :fhir/Bundle
-    :id (iu/luid context)
+    :id (handler-util/luid context)
     :type #fhir/code"searchset"
     :entry entries
     :link [(first-link context token clauses)]}
@@ -200,7 +200,8 @@
                (if next-handle
                  (-> (normal-bundle context token clauses entries total)
                      (update :link conj (next-link context token clauses next-handle)))
-                 (normal-bundle context token clauses entries total)))))))))
+                 (normal-bundle context token clauses entries total)))))))
+      (ac/then-apply ring/response)))
 
 (defn- compile-type-query
   [{:keys [type] :blaze/keys [db] :blaze.preference/keys [handling]
@@ -209,23 +210,30 @@
     (d/compile-type-query db type clauses)
     (d/compile-type-query-lenient db type clauses)))
 
-(defn- summary-total
-  [{:keys [type] :blaze/keys [db] {:keys [clauses]} :params :as context}]
-  (if (empty? clauses)
-    (ac/completed-future {:total (d/type-total db type)})
-    (if-ok [query (compile-type-query context)]
-      (do-sync [total (d/count-query db query)]
-        {:total total
-         :clauses (d/query-clauses query)})
-      ac/completed-future)))
+(defn- summary-response [context total clauses]
+  (ring/response
+   {:fhir/type :fhir/Bundle
+    :id (handler-util/luid context)
+    :type #fhir/code"searchset"
+    :total (type/->UnsignedInt total)
+    :link [(self-link context clauses)]}))
 
-(defn- search-summary [context]
-  (do-sync [{:keys [total clauses]} (summary-total context)]
-    {:fhir/type :fhir/Bundle
-     :id (iu/luid context)
-     :type #fhir/code"searchset"
-     :total (type/->UnsignedInt total)
-     :link [(self-link context clauses)]}))
+(defn no-query-summary-response [{:keys [type] :blaze/keys [db] :as context}]
+  (ac/completed-future (summary-response context (d/type-total db type) [])))
+
+(defn- search-summary
+  [{:blaze/keys [db] {:keys [clauses]} :params :as context}]
+  (if (empty? clauses)
+    (no-query-summary-response context)
+    (if-ok [query (compile-type-query context)]
+      (let [clauses (d/query-clauses query)]
+        (if (empty? clauses)
+          (no-query-summary-response context)
+          (if (:blaze.preference/respond-async context)
+            (req/handle-async context (:request context))
+            (do-sync [total (d/count-query db query)]
+              (summary-response context total clauses)))))
+      ac/completed-future)))
 
 (defn- search [{:keys [params] :as context}]
   (if (:summary? params)
@@ -275,12 +283,14 @@
     :blaze/keys [base-url db]
     ::reitit/keys [router match]
     :as request}]
-  (let [handling (handler-util/preference headers "handling")]
+  (let [handling (handler-util/preference headers "handling")
+        respond-async (handler-util/preference headers "respond-async")]
     (do-sync [params (params/decode page-store handling params)]
       (cond->
        (assoc context
               :blaze/base-url base-url
               :blaze/db db
+              :request request
               ::reitit/router router
               ::reitit/match match
               :type type
@@ -290,14 +300,16 @@
               :first-link-url-fn (first-link-url-fn request params)
               :next-link-url-fn (next-link-url-fn request params))
         handling
-        (assoc :blaze.preference/handling handling)))))
+        (assoc :blaze.preference/handling handling)
+        respond-async
+        (assoc :blaze.preference/respond-async true)))))
 
 (defmethod m/pre-init-spec :blaze.interaction/search-type [_]
-  (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store]))
+  (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store]
+          :opt-un [:blaze/context-path]))
 
 (defmethod ig/init-key :blaze.interaction/search-type [_ context]
   (log/info "Init FHIR search-type interaction handler")
   (fn [request]
     (-> (search-context context request)
-        (ac/then-compose search)
-        (ac/then-apply ring/response))))
+        (ac/then-compose search))))

@@ -6,8 +6,8 @@
    [clojure.spec.alpha :as s]))
 
 (s/fdef luid/luid
-  :args (s/cat :clock :blaze/clock :rng-fn :blaze/rng)
-  :ret string?)
+  :args (s/cat :clock :blaze/clock :rng :blaze/rng)
+  :ret :blaze/luid)
 
 (s/fdef luid/generator?
   :args (s/cat :x any?)
@@ -15,12 +15,12 @@
 
 (s/fdef luid/head
   :args (s/cat :generator ::luid/generator)
-  :ret string?)
+  :ret :blaze/luid)
 
 (s/fdef luid/next
   :args (s/cat :generator ::luid/generator)
   :ret ::luid/generator)
 
 (s/fdef luid/generator
-  :args (s/cat :clock :blaze/clock :rng-fn :blaze/rng)
+  :args (s/cat :clock :blaze/clock :rng :blaze/rng)
   :ret ::luid/generator)

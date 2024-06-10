@@ -161,7 +161,7 @@
     (cond->
      {:db (d/db node)
       :now (now fixed-clock)
-      :interrupted? (constantly false)
+      :interrupted? (constantly nil)
       :expression-defs expression-defs
       :executor executor}
       function-defs

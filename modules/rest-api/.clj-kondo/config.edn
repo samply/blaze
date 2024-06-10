@@ -6,4 +6,7 @@
   "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
 
  :lint-as
- {blaze.rest-api.metadata-handler-test/with-handler clojure.core/fn}}
+ {blaze.rest-api.async-status-handler-test/with-handler clojure.core/fn
+  blaze.rest-api.async-status-cancel-handler-test/with-handler clojure.core/fn
+  blaze.rest-api.capabilities-handler-test/with-handler clojure.core/let
+  blaze.rest-api.metadata-handler-test/with-handler clojure.core/fn}}

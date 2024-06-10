@@ -9,7 +9,6 @@
    [blaze.interaction.search.nav :as nav]
    [blaze.interaction.search.params :as params]
    [blaze.interaction.search.util :as search-util]
-   [blaze.interaction.util :as iu]
    [blaze.module :as m]
    [blaze.page-store.spec]
    [blaze.spec]
@@ -65,7 +64,7 @@
 
 (defn- bundle* [context handles clauses]
   {:fhir/type :fhir/Bundle
-   :id (iu/luid context)
+   :id (handler-util/luid context)
    :type #fhir/code"searchset"
    :total (type/->UnsignedInt (count handles))
    :link [(self-link context clauses)]})

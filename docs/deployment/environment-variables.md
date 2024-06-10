@@ -102,7 +102,7 @@ More information about distributed deployment are available [here](distributed-b
 | LOG_LEVEL                               | info                       | v0.6   | —       | one of trace, debug, info, warn or error                                                       |
 | JAVA_TOOL_OPTIONS                       | —                          | —      | —       | JVM options \(Docker only\)                                                                    |
 | FHIR_OPERATION_EVALUATE_MEASURE_THREADS | —                          | v0.8   | v0.23.3 | The number threads used for $evaluate-measure executions.                                      |
-| FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT | 3600000 (1h)               | v0.19  | —       | Timeout in milliseconds for $evaluate-measure executions.                                      |
+| FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT | 3600000 (1h)               | v0.19  | —       | Timeout in milliseconds for synchronous $evaluate-measure executions.                          |
 | OPENID_PROVIDER_URL                     | —                          | v0.11  | —       | [OpenID Connect][4] provider URL to enable [authentication][5]                                 |
 | OPENID_CLIENT_TRUST_STORE               | —                          | v0.26  | —       | A PKCS #12 trust store containing CA certificates needed for the [OpenID Connect][4] provider. |
 | OPENID_CLIENT_TRUST_STORE_PASS          | —                          | v0.26  | —       | The password for the PKCS #12 trust store.                                                     |

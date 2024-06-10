@@ -1,9 +1,8 @@
 (ns blaze.fhir.hash-test-perf
   (:require
-    [blaze.fhir.hash :as hash]
-    [blaze.test-util]
-    [criterium.core :as criterium]))
-
+   [blaze.fhir.hash :as hash]
+   [blaze.test-util]
+   [criterium.core :as criterium]))
 
 (def observation
   {:fhir/type :fhir/Observation :id "DACG22233TWT7CK4"
@@ -15,11 +14,11 @@
    :status #fhir/code"final"
    :category
    [#fhir/CodeableConcept
-           {:coding
-            [#fhir/Coding
-                    {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/observation-category"
-                     :code #fhir/code"vital-signs"
-                     :display "vital-signs"}]}]
+     {:coding
+      [#fhir/Coding
+        {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/observation-category"
+         :code #fhir/code"vital-signs"
+         :display "vital-signs"}]}]
    :code #fhir/CodeableConcept
           {:coding [#fhir/Coding{:system #fhir/uri"http://loinc.org"
                                  :code #fhir/code"39156-5"
@@ -29,13 +28,10 @@
    :effective #fhir/dateTime"2013-01-04T23:45:50Z"
    :issued #fhir/instant"2013-01-04T23:45:50.072Z"
    :value #fhir/Quantity
-          {:value 14.97M
-           :unit "kg/m2"
-           :system #fhir/uri"http://unitsofmeasure.org"
-           :code #fhir/code"kg/m2"}})
-
+           {:value 14.97M
+            :unit "kg/m2"
+            :system #fhir/uri"http://unitsofmeasure.org"
+            :code #fhir/code"kg/m2"}})
 
 (comment
-  (criterium/bench (hash/generate observation))
-
-  )
+  (criterium/bench (hash/generate observation)))

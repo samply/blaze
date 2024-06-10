@@ -1,5 +1,6 @@
 (ns blaze.fhir.operation.evaluate-measure.measure-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.fhir.operation.evaluate-measure.measure :as measure]
@@ -440,10 +441,87 @@
 
         (doseq [report-type ["population" "subject-list"]
                 :let [params (assoc params :report-type report-type)]]
+
           (given-failed-future (measure/evaluate-measure context measure params)
             ::anom/category := ::anom/interrupted
             ::anom/message := "Timeout of 0 millis eclipsed while evaluating."
             :measure-id := measure-id)))))
+
+  (testing "cancellation"
+    (with-system-data
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+               :content [(library-content (library-gender true))]}]]]
+
+      (doseq [cancelled? [(ba/interrupted "The evaluation was cancelled.") nil]]
+        (let [db (d/db node)
+              context {:clock fixed-clock :rng-fn fixed-rng-fn
+                       :db db :blaze/cancelled? (constantly cancelled?)
+                       :executor executor
+                       :blaze/base-url "" ::reitit/router router}
+              measure-id "measure-id-132321"
+              measure {:fhir/type :fhir/Measure :id measure-id
+                       :library [#fhir/canonical"0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              params {:period [#system/date "2000" #system/date "2020"]}]
+
+          (doseq [report-type ["population" "subject-list"]
+                  :let [params (assoc params :report-type report-type)]]
+
+            (if cancelled?
+              (given-failed-future (measure/evaluate-measure context measure params)
+                ::anom/category := ::anom/interrupted
+                ::anom/message := "The evaluation was cancelled."
+                :measure-id := measure-id)
+
+              (given @(measure/evaluate-measure context measure params)
+                [:resource :fhir/type] := :fhir/MeasureReport))))))
+
+    (testing "Encounter population basis"
+      (with-system-data
+        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference "Patient/0"}}]
+          [:put {:fhir/type :fhir/Patient :id "1"}]
+          [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference "Patient/1"}}]
+          [:put {:fhir/type :fhir/Encounter :id "1-1" :subject #fhir/Reference{:reference "Patient/1"}}]
+          [:put {:fhir/type :fhir/Patient :id "2"}]]
+         [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+                 :content [(library-content library-encounter)]}]]]
+
+        (let [db (d/db node)
+              context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                       :blaze/cancelled?
+                       (constantly (ba/interrupted "msg-114556"))
+                       :executor executor
+                       :blaze/base-url "" ::reitit/router router}
+              measure {:fhir/type :fhir/Measure :id "0"
+                       :library [#fhir/canonical"0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :extension
+                         [#fhir/Extension
+                           {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
+                            :value #fhir/code"Encounter"}]
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              params {:period [#system/date "2000" #system/date "2020"]}]
+
+          (doseq [report-type ["population" "subject-list"]
+                  :let [params (assoc params :report-type report-type)]]
+
+            (given-failed-future (measure/evaluate-measure context measure params)
+              ::anom/category := ::anom/interrupted
+              ::anom/message := "msg-114556"
+              :measure-id := "0"))))))
 
   (testing "single subject"
     (doseq [subject-ref ["0" ["Patient" "0"]]

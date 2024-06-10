@@ -7,6 +7,7 @@
    [blaze.db.api :as d]
    [blaze.db.spec]
    [blaze.fhir.spec.type :as type]
+   [blaze.job-scheduler.protocols :as p]
    [blaze.job.util :as job-util]
    [blaze.luid :as luid]
    [blaze.module :as m]
@@ -20,49 +21,41 @@
 
 (set! *warn-on-reflection* true)
 
-(defmulti on-start
-  "Handles the event that a job was started.
+(defn- find-handler [{:keys [handlers]} job]
+  (get handlers (keyword "blaze.job" (name (job-util/job-type job)))))
 
-  The jobs status will be ready and should be set to in-progress/incremented if
-  it can be started.
-
-  The `context` contains the :main-node and the :admin-node.
-
-  Returns a CompletableFuture that will complete with a possibly updated job
-  or will complete exceptionally with an anomaly in case of errors."
-  {:arglists '([context job])}
-  (fn [_ job]
-    (job-util/job-type job)))
-
-(defn- failed-msg [action {:keys [id] :as job}]
+(defn- missing-handler-msg [action {:keys [id] :as job}]
   (format "Failed to %s job with id `%s` because the implementation for the type `%s` is missing."
           action id (name (job-util/job-type job))))
 
-(defn- failed-fault [action]
+(defn- missing-handler-fault [action]
   (ba/fault (format "Failed to %s because the implementation is missing." action)))
 
-(defmethod on-start :default
-  [{:keys [admin-node]} job]
-  (log/warn (failed-msg "start" job))
-  (job-util/update-job admin-node job job-util/fail-job (failed-fault "start")))
+(defn- on-missing-handler [{:keys [node]} action job]
+  (log/warn (missing-handler-msg action job))
+  (job-util/update-job node job job-util/fail-job (missing-handler-fault action)))
 
-(defn- pull-job [admin-node id]
-  (d/pull admin-node (d/resource-handle (d/db admin-node) "Task" id)))
+(defn- on-start* [context job]
+  (if-let [handler (find-handler context job)]
+    (p/-on-start handler job)
+    (on-missing-handler context "start" job)))
 
-(defn- fail-job-on-error [admin-node id e]
-  (log/error "Error while executing the job with id =" id (::anom/message e))
-  (-> (pull-job admin-node id)
+(defn- fail-job-on-error [node id e]
+  (log/error (format "Error while executing the job with id `%s`:" id) (::anom/message e))
+  (-> (job-util/pull-job node id)
       (ac/then-compose-async
-       #(job-util/update-job admin-node % job-util/fail-job e))))
+       #(job-util/update-job node % job-util/fail-job e))))
 
-(defn- job-completion-handler [{:keys [admin-node]} running-jobs id]
-  (fn [_ e]
+(defn- job-completion-handler [{:keys [node]} running-jobs id]
+  (fn [{:keys [status]} e]
     (swap! running-jobs dissoc id)
     (if e
       (if (job-util/job-update-failed? e)
         (log/debug "Paused job with id =" id)
-        (fail-job-on-error admin-node id e))
-      (log/debug "Finished job with id =" id))))
+        (fail-job-on-error node id e))
+      (if (= #fhir/code"cancelled" status)
+        (log/debug "Cancelled job with id =" id)
+        (log/debug "Completed job with id =" id)))))
 
 (defn- wrap-error [f context job]
   (try
@@ -70,62 +63,74 @@
     (catch Exception e
       (ac/completed-future (ba/anomaly e)))))
 
-(defn- on-start* [{:keys [context running-jobs]} {:keys [id] :as job}]
+(defn- on-start [{:keys [context running-jobs]} {:keys [id] :as job}]
   (log/debug "Started job with id =" id)
-  (->> (ac/handle (wrap-error on-start context job)
+  (->> (ac/handle (wrap-error on-start* context job)
                   (job-completion-handler context running-jobs id))
        (swap! running-jobs assoc id)))
 
-(defmulti on-resume
-  "Handles the event that a job was resumed.
+(defn- on-resume* [context job]
+  (if-let [handler (find-handler context job)]
+    (p/-on-resume handler job)
+    (on-missing-handler context "resume" job)))
 
-  The jobs status will be in-progress/resumed and should be set to
-  in-progress/incremented on the next increment.
-
-  Returns a CompletableFuture that will complete with a possibly updated job
-  or will complete exceptionally with an anomaly in case of errors."
-  {:arglists '([context job])}
-  (fn [_ job]
-    (job-util/job-type job)))
-
-(defmethod on-resume :default
-  [{:keys [admin-node]} job]
-  (log/warn (failed-msg "resume" job))
-  (job-util/update-job admin-node job job-util/fail-job (failed-fault "resume")))
-
-(defn- on-resume* [{:keys [context running-jobs]} {:keys [id] :as job}]
+(defn- on-resume [{:keys [context running-jobs]} {:keys [id] :as job}]
   (log/debug "Resumed job with id =" id)
-  (->> (ac/handle (wrap-error on-resume context job)
+  (->> (ac/handle (wrap-error on-resume* context job)
                   (job-completion-handler context running-jobs id))
        (swap! running-jobs assoc id)))
 
-(deftype TaskSubscriber [admin-node job-scheduler ^:volatile-mutable subscription]
+(defn- on-cancel* [context job]
+  (if-let [handler (find-handler context job)]
+    (p/-on-cancel handler job)
+    (on-missing-handler context "cancel" job)))
+
+(defn- job-cancellation-completion-handler [running-jobs id]
+  (fn [_ _]
+    (swap! running-jobs dissoc id)
+    (log/debug (format "Finished requesting cancellation of job with id `%s`." id))))
+
+(defn- on-cancel [{:keys [context running-jobs]} {:keys [id] :as job}]
+  (log/debug (format "Request cancellation of job with id `%s`." id))
+  (->> (ac/handle (wrap-error on-cancel* context job)
+                  (job-cancellation-completion-handler running-jobs id))
+       (swap! running-jobs assoc id)))
+
+(deftype TaskSubscriber [node job-scheduler ^:volatile-mutable subscription]
   Flow$Subscriber
   (onSubscribe [_ s]
     (set! subscription s)
     (flow/request! subscription 1))
   (onNext [_ task-handles]
-    (log/debug "Got" (count task-handles) "changed task(s)")
+    (log/trace "Got" (count task-handles) "changed task(s)")
     (run!
      (fn [{:keys [status] :as job}]
        (cond
          (= #fhir/code"ready" status)
-         (on-start* job-scheduler job)
-         (and (= #fhir/code"in-progress" status) (= "resumed" (job-util/status-reason job)))
-         (on-resume* job-scheduler job)))
-     @(d/pull-many admin-node task-handles))
+         (on-start job-scheduler job)
+
+         (and (= #fhir/code"in-progress" status)
+              (= "resumed" (job-util/status-reason job)))
+
+         (on-resume job-scheduler job)
+
+         (and (= #fhir/code"cancelled" status)
+              (= "requested" (job-util/cancelled-sub-status job)))
+         (on-cancel job-scheduler job)))
+     @(d/pull-many node task-handles))
     (flow/request! subscription 1))
-  (onError [_ _e]
+  (onError [_ e]
+    (log/fatal "Job scheduler failed. Please restart Blaze. Cause:" (ex-message e))
     (flow/cancel! subscription))
   (onComplete [_]))
 
 (defn- luid [{:keys [clock rng-fn]}]
   (luid/luid clock (rng-fn)))
 
-(defn- current-job-number-observation [{:keys [admin-node] :as context} db]
+(defn- current-job-number-observation [{:keys [node] :as context} db]
   (if-let [handle (coll/first (d/type-query db "Observation" [["identifier" "job-number"]]))]
-    (d/pull admin-node handle)
-    (-> (d/transact admin-node
+    (d/pull node handle)
+    (-> (d/transact node
                     [[:create
                       {:fhir/type :fhir/Observation
                        :id (luid context)
@@ -151,20 +156,51 @@
   "Returns a CompletableFuture that will complete with `job` created or will
   complete exceptionally with an anomaly in case of errors."
   {:arglists '([job-scheduler job & other-resources])}
-  [{{:keys [admin-node] :as context} :context} job & other-resources]
-  (-> (current-job-number-observation context (d/db admin-node))
+  [{{:keys [node] :as context} :context} job & other-resources]
+  (-> (current-job-number-observation context (d/db node))
       (ac/then-compose-async
        (fn [{job-number :value :as obs}]
          (let [id (luid context)]
            (-> (d/transact
-                admin-node
+                node
                 (into
                  [[:put (update obs :value inc-fhir-integer) [:if-match (:blaze.db/t (:blaze.db/tx (meta obs)))]]
                   [:create (prepare-job job id (inc (type/value job-number)))]]
                  (map (fn [resource] [:create resource]))
                  other-resources))
                (ac/then-compose
-                (fn [db] (d/pull db (d/resource-handle db "Task" id))))))))))
+                (fn [db]
+                  (log/debug "Created new job with id =" id)
+                  (d/pull db (d/resource-handle db "Task" id))))))))))
+
+(defn- cancel-job* [job]
+  (-> (assoc
+       job
+       :status #fhir/code"cancelled"
+       :businessStatus job-util/cancellation-requested-sub-status)
+      (dissoc :statusReason)))
+
+(defn- cancel-conflict-msg [{:keys [id status]}]
+  (format "Can't cancel job `%s` because it's status is `%s`."
+          id (type/value status)))
+
+(defn cancel-job
+  "Returns a CompletableFuture that will complete with a possibly cancelled job
+  or will complete exceptionally with an anomaly in case of errors.
+
+  In case the status of the job is one of `completed`, `failed` or `cancelled`
+  the job will not be cancelled and the anomaly will have the category conflict
+  and contain the status under the key :job/status."
+  {:arglists '([job-scheduler id])}
+  [{{:keys [node]} :context} id]
+  (log/debug "Try to cancel job with id =" id)
+  (-> (job-util/pull-job node id)
+      (ac/then-compose-async
+       (fn [{:keys [status] :as job}]
+         (if-not (#{#fhir/code"completed" #fhir/code"failed" #fhir/code"cancelled"} status)
+           (job-util/update-job node job cancel-job*)
+           (ac/completed-future
+            (ba/conflict (cancel-conflict-msg job) :job/status (type/value status))))))))
 
 (defn- hold-job** [job reason]
   (assoc
@@ -172,13 +208,13 @@
    :status #fhir/code"on-hold"
    :statusReason reason))
 
-(defn- hold-job* [{:keys [admin-node]} id reason conflict-msg]
-  (-> (pull-job admin-node id)
+(defn- hold-job* [{:keys [node]} id reason conflict-msg]
+  (-> (job-util/pull-job node id)
       (ac/then-compose-async
        (fn [{:keys [status] :as job}]
          (condp = status
            #fhir/code"in-progress"
-           (job-util/update-job admin-node job hold-job** reason)
+           (job-util/update-job node job hold-job** reason)
            #fhir/code"on-hold"
            (ac/completed-future job)
            (ac/completed-future (ba/conflict (conflict-msg job))))))))
@@ -205,13 +241,13 @@
    :status #fhir/code"in-progress"
    :statusReason job-util/resumed-status-reason))
 
-(defn- resume-job* [{:keys [admin-node]} id]
-  (-> (pull-job admin-node id)
+(defn- resume-job* [{:keys [node]} id]
+  (-> (job-util/pull-job node id)
       (ac/then-compose-async
        (fn [{:keys [status] :as job}]
          (condp = status
            #fhir/code"on-hold"
-           (job-util/update-job admin-node job resume-job**)
+           (job-util/update-job node job resume-job**)
            (ac/completed-future (ba/conflict (resume-conflict-msg job))))))))
 
 (defn resume-job
@@ -236,14 +272,15 @@
   (some-> (vals @running-jobs) ac/all-of ac/join))
 
 (defmethod m/pre-init-spec :blaze/job-scheduler [_]
-  (s/keys :req-un [::main-node ::admin-node :blaze/clock :blaze/rng-fn]))
+  (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn]
+          :opt-un [::handlers]))
 
 (defmethod ig/init-key :blaze/job-scheduler
-  [_ {:keys [admin-node] :as context}]
+  [_ {:keys [node] :as config}]
   (log/info "Start job scheduler")
-  (let [publisher (d/changed-resources-publisher admin-node "Task")
-        job-scheduler {:context context :running-jobs (atom {})}
-        subscriber (->TaskSubscriber admin-node job-scheduler nil)]
+  (let [publisher (d/changed-resources-publisher node "Task")
+        job-scheduler {:context config :running-jobs (atom {})}
+        subscriber (->TaskSubscriber node job-scheduler nil)]
     (flow/subscribe! publisher subscriber)
     job-scheduler))
 

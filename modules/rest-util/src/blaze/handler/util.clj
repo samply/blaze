@@ -5,6 +5,7 @@
    [blaze.async.comp :as ac]
    [blaze.fhir.spec.type :as type]
    [blaze.http.util :as hu]
+   [blaze.luid :as luid]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]
    [io.aviso.exception :as aviso]
@@ -19,7 +20,11 @@
   nil if there is none."
   [headers name]
   (->> (hu/parse-header-value (get headers "prefer"))
-       (some #(when (= name (:name %)) (keyword (str "blaze.preference." name) (:value %))))))
+       (some
+        #(when (= name (:name %))
+           (if (:value %)
+             (keyword (str "blaze.preference." name) (:value %))
+             (keyword "blaze.preference" name))))))
 
 (defn- issue-code [category]
   (case category
@@ -109,8 +114,7 @@
     category
     (do
       (when-not (:blaze/stacktrace error)
-        (case category
-          ::anom/fault
+        (if (ba/fault? category)
           (log/error error)
           (log/warn error)))
       (f error))
@@ -222,3 +226,9 @@
   "A handler returning failed futures."
   (reitit.ring/create-default-handler
    {:method-not-allowed method-not-allowed-batch-handler}))
+
+(defn luid
+  "Creates an LUID from :clock :rng-fn in `context`."
+  {:arglists '([context])}
+  [{:keys [clock rng-fn]}]
+  (luid/luid clock (rng-fn)))

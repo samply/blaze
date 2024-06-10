@@ -45,7 +45,7 @@
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         :keys [headers body]
         :as request}]
-    (let [id (iu/luid context)
+    (let [id (handler-util/luid context)
           conditional-clauses (conditional-clauses headers)
           tx-op (create-op (assoc (iu/strip-meta body) :id id) conditional-clauses)]
       (-> (d/transact node [tx-op])

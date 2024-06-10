@@ -10,6 +10,12 @@
   blaze/job-scheduler
   {:local/root "../job-scheduler"}
 
+  blaze/job-async-interaction
+  {:local/root "../job-async-interaction"}
+
+  blaze/job-compact
+  {:local/root "../job-compact"}
+
   blaze/job-re-index
   {:local/root "../job-re-index"}
 
