@@ -47,7 +47,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -1350,77 +1350,6 @@
           [0 :fhir/type] := :fhir/Patient
           [0 :id] := "2"))))
 
-  (testing "Special Search Parameter _list"
-    (testing "a node with two patients, one observation and one list in one transaction"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Patient :id "1"}]
-          [:put {:fhir/type :fhir/Observation :id "0"}]
-          [:put {:fhir/type :fhir/List :id "0"
-                 :entry
-                 [{:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Patient/0"}}
-                  {:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Observation/0"}}]}]]]
-
-        (testing "returns only the patient referenced in the list"
-          (given (pull-type-query node "Patient" [["_list" "0"]])
-            count := 1
-            [0 :fhir/type] := :fhir/Patient
-            [0 :id] := "0")
-
-          (testing "count query"
-            (is (= 1 (count-type-query node "Patient" [["_list" "0"]])))))
-
-        (testing "returns only the observation referenced in the list"
-          (given (pull-type-query node "Observation" [["_list" "0"]])
-            count := 1
-            [0 :fhir/type] := :fhir/Observation
-            [0 :id] := "0"))))
-
-    (testing "a node with four patients and one list in one transaction"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Patient :id "1"}]
-          [:put {:fhir/type :fhir/Patient :id "2"}]
-          [:put {:fhir/type :fhir/Patient :id "3"}]
-          [:put {:fhir/type :fhir/List :id "0"
-                 :entry
-                 [{:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Patient/0"}}
-                  {:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Patient/2"}}
-                  {:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Patient/3"}}]}]]]
-
-        (testing "it is possible to start with the second patient"
-          (given (pull-type-query node "Patient" [["_list" "0"]] "2")
-            count := 2
-            [0 :id] := "2"
-            [1 :id] := "3"))))
-
-    (testing "doesn't return the deleted patient"
-      (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :enforce-referential-integrity] false)]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]
-          [:put {:fhir/type :fhir/Patient :id "1"}]
-          [:put {:fhir/type :fhir/Patient :id "2"}]
-          [:put {:fhir/type :fhir/Patient :id "3"}]
-          [:put {:fhir/type :fhir/List :id "0"
-                 :entry
-                 [{:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Patient/0"}}
-                  {:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Patient/2"}}
-                  {:fhir/type :fhir.List/entry
-                   :item #fhir/Reference {:reference "Patient/3"}}]}]]
-         [[:delete "Patient" "2"]]]
-
-        (testing "it is possible to start with the second patient"
-          (given (pull-type-query node "Patient" [["_list" "0"]])
-            count := 2
-            [0 :id] := "0"
-            [1 :id] := "3")))))
-
   (testing "special case of _lastUpdated date search parameter"
     (testing "inequality searches do return every resource only once"
       (with-system-data [{:blaze.db/keys [node]} system-clock-config]
@@ -1451,142 +1380,6 @@
 
         (testing "count query"
           (is (= 2 (count-type-query node "Patient" clauses)))))))
-
-  (testing "Special Search Parameter _has"
-    (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"
-               :active true}]
-        [:put {:fhir/type :fhir/Patient :id "1"
-               :active false}]
-        [:put {:fhir/type :fhir/Patient :id "2"
-               :active false}]
-        [:put {:fhir/type :fhir/Patient :id "3"
-               :active false}]
-        [:put {:fhir/type :fhir/Observation :id "0"
-               :subject #fhir/Reference{:reference "Patient/0"}
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"8480-6"}]}
-               :value
-               #fhir/Quantity
-                {:value 130M
-                 :code #fhir/code"mm[Hg]"
-                 :system #fhir/uri"http://unitsofmeasure.org"}}]
-        [:put {:fhir/type :fhir/Observation :id "1"
-               :subject #fhir/Reference{:reference "Patient/0"}
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"8480-6"}]}
-               :value
-               #fhir/Quantity
-                {:value 150M
-                 :code #fhir/code"mm[Hg]"
-                 :system #fhir/uri"http://unitsofmeasure.org"}}]
-        [:put {:fhir/type :fhir/Observation :id "2"
-               :subject #fhir/Reference{:reference "Patient/1"}
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"8480-6"}]}
-               :value
-               #fhir/Quantity
-                {:value 100M
-                 :code #fhir/code"mm[Hg]"
-                 :system #fhir/uri"http://unitsofmeasure.org"}}]
-        [:put {:fhir/type :fhir/Observation :id "3"
-               :subject #fhir/Reference{:reference "Patient/3"}
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"8480-6"}]}
-               :value
-               #fhir/Quantity
-                {:value 10M
-                 :code #fhir/code"mm[Hg]"
-                 :system #fhir/uri"http://unitsofmeasure.org"}}]]]
-
-      (testing "select the Patient with >= 130 mm[Hg]"
-        (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$ge130"]]]
-          (given (pull-type-query node "Patient" clauses)
-            count := 1
-            [0 :id] := "0")
-
-          (testing "count query"
-            (is (= 1 (count-type-query node "Patient" clauses))))))
-
-      (testing "select the Patient with 100 mm[Hg]"
-        (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$100"]]]
-          (given (pull-type-query node "Patient" clauses)
-            count := 1
-            [0 :id] := "1")))
-
-      (testing "select all Patients"
-        (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$ge100"]]]
-          (given (pull-type-query node "Patient" clauses)
-            count := 2
-            [0 :id] := "0"
-            [1 :id] := "1"))
-
-        (testing "it is possible to start with the second patient"
-          (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$ge100"]]]
-            (given (pull-type-query node "Patient" clauses "1")
-              count := 1
-              [0 :id] := "1"))))
-
-      (testing "as second clause"
-        (testing "select the Patient with > 130 mm[Hg]"
-          (let [clauses [["active" "false"]
-                         ["_has:Observation:patient:code-value-quantity" "8480-6$10"]]]
-            (given (pull-type-query node "Patient" clauses)
-              count := 1
-              [0 :id] := "3")))))
-
-    (testing "errors"
-      (testing "missing modifier"
-        (with-system [{:blaze.db/keys [node]} config]
-          (given (d/type-query (d/db node) "Patient" [["_has" ""]])
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Missing modifier of _has search param.")))
-
-      (testing "missing type"
-        (with-system [{:blaze.db/keys [node]} config]
-          (given (d/type-query (d/db node) "Patient" [["_has:" ""]])
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Missing type in _has search param `_has:`.")))
-
-      (testing "missing chaining search param"
-        (with-system [{:blaze.db/keys [node]} config]
-          (given (d/type-query (d/db node) "Patient" [["_has:foo" ""]])
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Missing chaining search param in _has search param `_has:foo`.")))
-
-      (testing "missing search param"
-        (with-system [{:blaze.db/keys [node]} config]
-          (given (d/type-query (d/db node) "Patient" [["_has:foo:bar" ""]])
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Missing search param in _has search param `_has:foo:bar`.")))
-
-      (testing "main search param not found"
-        (with-system [{:blaze.db/keys [node]} config]
-          (given (d/type-query (d/db node) "Patient" [["_has:Observation:patient:foo" ""]])
-            ::anom/category := ::anom/not-found
-            ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))
-
-      (testing "chain search param not found"
-        (with-system [{:blaze.db/keys [node]} config]
-          (given (d/type-query (d/db node) "Patient" [["_has:Observation:foo:code" ""]])
-            ::anom/category := ::anom/not-found
-            ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))))
 
   (testing "Patient phonetic"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -1642,7 +1435,7 @@
   (testing "Patient"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "id-0"
-               :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-145024"]}
+               :meta #fhir/Meta{:profile [#fhir/canonical"http://example.com/profile-uri-145024"]}
                :identifier [#fhir/Identifier{:value "0"}]
                :active false
                :gender #fhir/code"male"
@@ -1695,7 +1488,7 @@
             count := 0)))
 
       (testing "_profile"
-        (given (pull-type-query node "Patient" [["_profile" "profile-uri-145024"]])
+        (given (pull-type-query node "Patient" [["_profile" "http://example.com/profile-uri-145024"]])
           count := 1
           [0 :id] := "id-0"))
 
@@ -2425,533 +2218,6 @@
           count := 1
           [0 :id] := "id-0"))))
 
-  (testing "Condition"
-    (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient
-               :id "id-0"}]
-        [:put {:fhir/type :fhir/Condition :id "id-0"
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"http://fhir.de/CodeSystem/dimdi/icd-10-gm"
-                    :code #fhir/code"C71.4"}]}
-               :subject #fhir/Reference{:reference "Patient/id-0"}
-               :onset
-               {:fhir/type :fhir/Age
-                :value 63M}}]
-        [:put {:fhir/type :fhir/Condition :id "id-1"}]]]
-
-      (testing "patient"
-        (given (pull-type-query node "Condition" [["patient" "id-0"]])
-          count := 1
-          [0 :id] := "id-0"))
-
-      (testing "code"
-        (testing "duplicate values have no effect (#293)"
-          (given (pull-type-query node "Condition" [["code" "C71.4" "C71.4"]])
-            count := 1
-            [0 :id] := "id-0")))
-
-      (testing "onset-age"
-        (given (pull-type-query node "Condition" [["onset-age" "63"]])
-          count := 1
-          [0 :id] := "id-0")))
-
-    (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Condition :id "0"
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:code #fhir/code"0"}]}}]
-        [:put {:fhir/type :fhir/Condition :id "3"
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:code #fhir/code"0"}]}}]
-        [:put {:fhir/type :fhir/Condition :id "4"
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:code #fhir/code"0"}]}}]
-        [:put {:fhir/type :fhir/Condition :id "1"
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:code #fhir/code"1"}]}}]
-        [:put {:fhir/type :fhir/Condition :id "2"
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:code #fhir/code"1"}]}}]]]
-
-      (testing "code"
-        (given (pull-type-query node "Condition" [["code" "0" "1"]])
-          count := 5
-          [0 :id] := "0"
-          [1 :id] := "3"
-          [2 :id] := "4"
-          [3 :id] := "1"
-          [4 :id] := "2")
-
-        (testing "count query"
-          (is (= 5 (count-type-query node "Condition" [["code" "0" "1"]]))))
-
-        (testing "starting with ID `1` does not return Conditions with ID `3`
-                  and `4` because they were already returned"
-          (given (pull-type-query node "Condition" [["code" "0" "1"]] "1")
-            count := 2
-            [0 :id] := "1"
-            [1 :id] := "2"))
-
-        (testing "starting with ID `4` does return Conditions with ID `1` and
-                  `2` even if they are smaller than `4`"
-          (given (pull-type-query node "Condition" [["code" "0" "1"]] "4")
-            count := 3
-            [0 :id] := "4"
-            [1 :id] := "1"
-            [2 :id] := "2")))))
-
-  (testing "Observation"
-    (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Observation :id "id-0"
-               :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-091902"]}
-               :status #fhir/code"final"
-               :effective
-               #fhir/Period
-                {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
-                 :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
-               :value
-               #fhir/Quantity
-                {:value 0M
-                 :unit #fhir/string"kg/m²"
-                 :code #fhir/code"kg/m2"
-                 :system #fhir/uri"http://unitsofmeasure.org"}}]
-        [:put {:fhir/type :fhir/Observation :id "id-1"
-               :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-091902|1.1.0"]}
-               :status #fhir/code"final"
-               :effective #fhir/dateTime"2021-02-25"
-               :value
-               #fhir/Quantity
-                {:value 1M
-                 :unit #fhir/string"kg/m²"
-                 :code #fhir/code"kg/m2"
-                 :system #fhir/uri"http://unitsofmeasure.org"}}]
-        [:put {:fhir/type :fhir/Observation :id "id-2"
-               :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-091902|2.4.7"]}
-               :status #fhir/code"final"
-               :value
-               #fhir/Quantity
-                {:value 2.11M
-                 :unit #fhir/string"kg/m²"
-                 :code #fhir/code"kg/m2"
-                 :system #fhir/uri"http://unitsofmeasure.org"}}]
-        [:put {:fhir/type :fhir/Observation :id "id-3"
-               :meta #fhir/Meta{:profile [#fhir/canonical"profile-uri-091902|2.3.9"]}
-               :status #fhir/code"final"
-               :value
-               #fhir/Quantity
-                {:value 3M
-                 :unit #fhir/string"kg/m²"
-                 :code #fhir/code"kg/m2"
-                 :system #fhir/uri"http://unitsofmeasure.org"}}]]]
-
-      (testing "_profile"
-        (testing "full URL and version matching without modifier"
-          (given (pull-type-query node "Observation" [["_profile" "profile-uri-091902"]])
-            count := 1
-            [0 :id] := "id-0")
-          (given (pull-type-query node "Observation" [["_profile" "profile-uri-091902|2.4.7"]])
-            count := 1
-            [0 :id] := "id-2"))
-
-        (testing "below with URL only"
-          (given (pull-type-query node "Observation" [["_profile:below" "profile-uri-091902"]])
-            count := 4
-            [0 :id] := "id-0"
-            [1 :id] := "id-1"
-            [2 :id] := "id-2"
-            [3 :id] := "id-3"))
-
-        (testing "below with URL and major version 1"
-          (given (pull-type-query node "Observation" [["_profile:below" "profile-uri-091902|1"]])
-            count := 1
-            [0 :id] := "id-1"))
-
-        (testing "below with URL and major version 2"
-          (given (pull-type-query node "Observation" [["_profile:below" "profile-uri-091902|2"]])
-            count := 2
-            [0 :id] := "id-2"
-            [1 :id] := "id-3"))
-
-        (testing "below with URL and minor version 2.4"
-          (given (pull-type-query node "Observation" [["_profile:below" "profile-uri-091902|2.4"]])
-            count := 1
-            [0 :id] := "id-2")))
-
-      (testing "date"
-        (testing "with year precision"
-          (given (pull-type-query node "Observation" [["date" "2021"]])
-            count := 2
-            [0 :id] := "id-0"
-            [1 :id] := "id-1"))
-
-        (testing "with day precision"
-          (testing "before the period"
-            (given (pull-type-query node "Observation" [["date" "2021-02-22"]])
-              count := 0))
-
-          (testing "within the period"
-            (given (pull-type-query node "Observation" [["date" "2021-02-23"]])
-              count := 1
-              [0 :id] := "id-0"))
-
-          (testing "after the period"
-            (given (pull-type-query node "Observation" [["date" "2021-02-24"]])
-              count := 0)))
-
-        (testing "with second precision"
-          (testing "before the start of the period"
-            (given (pull-type-query node "Observation" [["date" "ap2021-02-23T15:12:44+01:00"]])
-              count := 0))
-
-          (testing "at the start of the period"
-            (given (pull-type-query node "Observation" [["date" "ap2021-02-23T15:12:45+01:00"]])
-              count := 1
-              [0 :id] := "id-0"))
-
-          (testing "within the period"
-            (doseq [date ["ap2021-02-23T15:12:46+01:00"
-                          "ap2021-02-23T15:30:00+01:00"
-                          "ap2021-02-23T15:59:59+01:00"]]
-              (given (pull-type-query node "Observation" [["date" date]])
-                count := 1
-                [0 :id] := "id-0")))
-
-          (testing "at the end of the period"
-            (given (pull-type-query node "Observation" [["date" "ap2021-02-23T16:00:00+01:00"]])
-              count := 1
-              [0 :id] := "id-0"))
-
-          (testing "after the end of the period"
-            (given (pull-type-query node "Observation" [["date" "ap2021-02-23T16:00:01+01:00"]])
-              count := 0))))
-
-      (testing "value-quantity"
-        (testing "without unit"
-          (let [clauses [["value-quantity" "2.11"]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 1
-              [0 :id] := "id-2")
-
-            (testing "count query"
-              (is (= 1 (count-type-query node "Observation" clauses))))))
-
-        (testing "with minimal unit"
-          (let [clauses [["value-quantity" "2.11|kg/m2"]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 1
-              [0 :id] := "id-2")))
-
-        (testing "with human unit"
-          (let [clauses [["value-quantity" "2.11|kg/m²"]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 1
-              [0 :id] := "id-2")))
-
-        (testing "with full unit"
-          (let [clauses [["value-quantity" "2.11|http://unitsofmeasure.org|kg/m2"]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 1
-              [0 :id] := "id-2")))
-
-        (testing "with lesser precision"
-          (let [clauses [["value-quantity" "2.1"]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 1
-              [0 :id] := "id-2")))
-
-        (testing "with even lesser precision"
-          (let [clauses [["value-quantity" "2"]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 1
-              [0 :id] := "id-2")))
-
-        (testing "with two values"
-          (let [clauses [["value-quantity" "0" "3"]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 2
-              [0 :id] := "id-0"
-              [1 :id] := "id-3")))
-
-        (testing "with prefix"
-          (testing "not equal"
-            (given (d/type-query (d/db node) "Observation" [["value-quantity" "ne2.11"]])
-              ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`."))
-
-          (testing "greater than"
-            (let [clauses [["value-quantity" "gt2.11"]]]
-              (given (pull-type-query node "Observation" clauses)
-                count := 1
-                [0 :id] := "id-3"))
-
-            (testing "with lesser precision"
-              (let [clauses [["value-quantity" "gt2.1"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-2"
-                  [1 :id] := "id-3"))
-
-              (testing "it is possible to start with the second observation"
-                (let [clauses [["value-quantity" "gt2.1"]]]
-                  (given (pull-type-query node "Observation" clauses "id-3")
-                    count := 1
-                    [0 :id] := "id-3"))))
-
-            (testing "with even lesser precision"
-              (let [clauses [["value-quantity" "gt2"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-2"
-                  [1 :id] := "id-3"))))
-
-          (testing "less than"
-            (let [clauses [["value-quantity" "lt2.11"]]]
-              (given (pull-type-query node "Observation" clauses)
-                count := 2
-                [0 :id] := "id-1"
-                [1 :id] := "id-0"))
-
-            (testing "it is possible to start with the second observation"
-              (let [clauses [["value-quantity" "lt2.11"]]]
-                (given (pull-type-query node "Observation" clauses "id-0")
-                  count := 1
-                  [0 :id] := "id-0")))
-
-            (testing "with lesser precision"
-              (let [clauses [["value-quantity" "lt2.1"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-1"
-                  [1 :id] := "id-0")))
-
-            (testing "with even lesser precision"
-              (let [clauses [["value-quantity" "lt2"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-1"
-                  [1 :id] := "id-0"))))
-
-          (testing "greater equal"
-            (let [clauses [["value-quantity" "ge2.11"]]]
-              (given (pull-type-query node "Observation" clauses)
-                count := 2
-                [0 :id] := "id-2"
-                [1 :id] := "id-3"))
-
-            (testing "it is possible to start with the second observation"
-              (let [clauses [["value-quantity" "ge2.11"]]]
-                (given (pull-type-query node "Observation" clauses "id-3")
-                  count := 1
-                  [0 :id] := "id-3")))
-
-            (testing "with lesser precision"
-              (let [clauses [["value-quantity" "ge2.1"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-2"
-                  [1 :id] := "id-3")))
-
-            (testing "with even lesser precision"
-              (let [clauses [["value-quantity" "ge2"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-2"
-                  [1 :id] := "id-3"))))
-
-          (testing "less equal"
-            (let [clauses [["value-quantity" "le2.11"]]]
-              (given (pull-type-query node "Observation" clauses)
-                count := 3
-                [0 :id] := "id-2"
-                [1 :id] := "id-1"
-                [2 :id] := "id-0"))
-
-            (testing "it is possible to start with the second observation"
-              (let [clauses [["value-quantity" "le2.11"]]]
-                (given (pull-type-query node "Observation" clauses "id-1")
-                  count := 2
-                  [0 :id] := "id-1"
-                  [1 :id] := "id-0")))
-
-            (testing "with lesser precision"
-              (let [clauses [["value-quantity" "le2.1"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-1"
-                  [1 :id] := "id-0")))
-
-            (testing "with even lesser precision"
-              (let [clauses [["value-quantity" "le2"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-1"
-                  [1 :id] := "id-0"))))
-
-          (testing "starts after"
-            (given (d/type-query (d/db node) "Observation" [["value-quantity" "sa2.11"]])
-              ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `sa` in search parameter `value-quantity`."))
-
-          (testing "ends before"
-            (given (d/type-query (d/db node) "Observation" [["value-quantity" "eb2.11"]])
-              ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `eb` in search parameter `value-quantity`."))
-
-          (testing "approximately"
-            (given (d/type-query (d/db node) "Observation" [["value-quantity" "ap2.11"]])
-              ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `ap` in search parameter `value-quantity`.")))
-
-        (testing "with more than one value"
-          (let [clauses [["value-quantity" "2.11|kg/m2" "1|kg/m2"]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 2
-              [0 :id] := "id-2"
-              [1 :id] := "id-1")))
-
-        (testing "with invalid decimal value"
-          (given (d/type-query (d/db node) "Observation" [["value-quantity" "a"]])
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Invalid decimal value `a` in search parameter `value-quantity`.")))
-
-      (testing "status and value-quantity"
-        (let [clauses [["status" "final"] ["value-quantity" "2.11|kg/m2"]]]
-          (given (pull-type-query node "Observation" clauses)
-            count := 1
-            [0 :id] := "id-2"))
-
-        (testing "with lesser precision"
-          (let [clauses [["status" "final"] ["value-quantity" "2.1|kg/m2"]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 1
-              [0 :id] := "id-2")))
-
-        (testing "with two values"
-          (let [clauses [["status" "final"] ["value-quantity" "0" "3"]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 2
-              [0 :id] := "id-0"
-              [1 :id] := "id-3")))
-
-        (testing "with prefix"
-          (testing "not equal"
-            (given (let [clauses [["status" "final"] ["value-quantity" "ne2.11|kg/m2"]]]
-                     (d/type-query (d/db node) "Observation" clauses))
-              ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`."))
-
-          (testing "greater than"
-            (let [clauses [["status" "final"] ["value-quantity" "gt2.11|kg/m2"]]]
-              (given (pull-type-query node "Observation" clauses)
-                count := 1
-                [0 :id] := "id-3"))
-
-            (testing "with lesser precision"
-              (let [clauses [["status" "final"] ["value-quantity" "gt2.1|kg/m2"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-2"
-                  [1 :id] := "id-3"))))
-
-          (testing "less than"
-            (let [clauses [["status" "final"] ["value-quantity" "lt2.11|kg/m2"]]]
-              (given (pull-type-query node "Observation" clauses)
-                count := 2
-                [0 :id] := "id-0"
-                [1 :id] := "id-1")))
-
-          (testing "greater equal"
-            (let [clauses [["status" "final"] ["value-quantity" "ge2.11|kg/m2"]]]
-              (given (pull-type-query node "Observation" clauses)
-                count := 2
-                [0 :id] := "id-2"
-                [1 :id] := "id-3")
-
-              (testing "count query"
-                (is (= 2 (count-type-query node "Observation" clauses))))))
-
-          (testing "less equal"
-            (let [clauses [["status" "final"] ["value-quantity" "le2.11|kg/m2"]]]
-              (given (pull-type-query node "Observation" clauses)
-                count := 3
-                [0 :id] := "id-0"
-                [1 :id] := "id-1"
-                [2 :id] := "id-2"))
-
-            (testing "with lesser precision"
-              (let [clauses [["status" "final"] ["value-quantity" "le2.1|kg/m2"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-0"
-                  [1 :id] := "id-1"))))
-
-          (testing "starts after"
-            (given (let [clauses [["status" "final"] ["value-quantity" "sa2.11|kg/m2"]]]
-                     (d/type-query (d/db node) "Observation" clauses))
-              ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `sa` in search parameter `value-quantity`."))
-
-          (testing "ends before"
-            (given (let [clauses [["status" "final"] ["value-quantity" "eb2.11|kg/m2"]]]
-                     (d/type-query (d/db node) "Observation" clauses))
-              ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `eb` in search parameter `value-quantity`."))
-
-          (testing "approximately"
-            (given (let [clauses [["status" "final"] ["value-quantity" "ap2.11|kg/m2"]]]
-                     (d/type-query (d/db node) "Observation" clauses))
-              ::anom/category := ::anom/unsupported
-              ::anom/message := "Unsupported prefix `ap` in search parameter `value-quantity`.")))
-
-        (testing "with more than one value"
-          (let [clauses [["status" "final"] ["value-quantity" "2.11|kg/m2" "1|kg/m2"]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 2
-              [0 :id] := "id-1"
-              [1 :id] := "id-2"))))
-
-      (testing "value-quantity and status"
-        (let [clauses [["value-quantity" "2.11|kg/m2"] ["status" "final"]]]
-          (given (pull-type-query node "Observation" clauses)
-            count := 1
-            [0 :id] := "id-2")
-
-          (testing "count query"
-            (is (= 1 (count-type-query node "Observation" clauses))))))
-
-      (testing "status and sort by _lastUpdated"
-        (let [clauses [[:sort "_lastUpdated" :asc] ["status" "final"]]]
-          (given (pull-type-query node "Observation" clauses)
-            count := 4)
-
-          (testing "count query"
-            (is (= 4 (count-type-query node "Observation" clauses))))))
-
-      (testing "three clauses"
-        (given (pull-type-query node "Observation" [["_profile:below" "profile-uri-091902"]
-                                                    ["status" "final"]
-                                                    ["date" "2021"]])
-          count := 2
-          [0 :id] := "id-0"
-          [1 :id] := "id-1"))))
-
   (testing "Observation"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Observation :id "id-0"
@@ -3042,527 +2308,6 @@
           (given (pull-type-query node "Observation" clauses)
             count := 1
             [0 :id] := "id-0")))))
-
-  (testing "Observation code-value-quantity"
-    (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Observation :id "id-0"
-               :status #fhir/code"final"
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"8480-6"}]}
-               :value
-               #fhir/Quantity
-                {:value 130M
-                 :code #fhir/code"mm[Hg]"
-                 :system #fhir/uri"http://unitsofmeasure.org"}}]
-        [:put {:fhir/type :fhir/Observation :id "id-1"
-               :status #fhir/code"final"
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"8480-6"}]}
-               :value
-               #fhir/Quantity
-                {:value 150M
-                 :code #fhir/code"mm[Hg]"
-                 :system #fhir/uri"http://unitsofmeasure.org"}}]
-        [:put {:fhir/type :fhir/Observation :id "id-2"
-               :status #fhir/code"final"
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"8462-4"}]}
-               :value
-               #fhir/Quantity
-                {:value 90M
-                 :code #fhir/code"mm[Hg]"
-                 :system #fhir/uri"http://unitsofmeasure.org"}}]
-        [:put {:fhir/type :fhir/Observation :id "id-3"
-               :status #fhir/code"final"
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"8462-4"}]}
-               :value
-               #fhir/Quantity
-                {:value 70M
-                 :code #fhir/code"mm[Hg]"
-                 :system #fhir/uri"http://unitsofmeasure.org"}}]]]
-
-      (testing "missing second value part"
-        (given (d/type-query (d/db node) "Observation" [["code-value-quantity" "8480-6"]])
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "Miss the second part is composite search value `8480-6`."))
-
-      (testing "as first clause"
-        (let [clauses [["code-value-quantity" "8480-6$ge140"]]]
-          (given (pull-type-query node "Observation" clauses)
-            count := 1
-            [0 :id] := "id-1")
-
-          (testing "count query"
-            (is (= 1 (count-type-query node "Observation" clauses)))))
-
-        (let [clauses [["code-value-quantity" "http://loinc.org|8462-4$ge90|mm[Hg]"]]]
-          (given (pull-type-query node "Observation" clauses)
-            count := 1
-            [0 :id] := "id-2")))
-
-      (testing "as second clause"
-        (let [clauses [["status" "final"]
-                       ["code-value-quantity" "http://loinc.org|8480-6$ge140|mm[Hg]"]]]
-          (given (pull-type-query node "Observation" clauses)
-            count := 1
-            [0 :id] := "id-1")))
-
-      (testing "with individual code and value-quantity clauses"
-        (let [clauses [["code" "http://loinc.org|8480-6"]
-                       ["value-quantity" "ge140|mm[Hg]"]]]
-          (given (pull-type-query node "Observation" clauses)
-            count := 1
-            [0 :id] := "id-1")))
-
-      (testing "resulting on more than one observation"
-        (testing "as first clause"
-          (testing "code as system|code"
-            (testing "value as value|unit"
-              (let [clauses [["code-value-quantity" "http://loinc.org|8480-6$ge130|mm[Hg]"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-0"
-                  [1 :id] := "id-1")))
-            (testing "value as value"
-              (let [clauses [["code-value-quantity" "http://loinc.org|8480-6$ge130"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-0"
-                  [1 :id] := "id-1"))))
-          (testing "code as code"
-            (testing "value as value|unit"
-              (let [clauses [["code-value-quantity" "8480-6$ge130|mm[Hg]"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-0"
-                  [1 :id] := "id-1")))
-            (testing "value as value"
-              (let [clauses [["code-value-quantity" "8480-6$ge130"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-0"
-                  [1 :id] := "id-1"))))
-
-          (testing "it is possible to start with the second observation"
-            (testing "code as system|code"
-              (testing "value as value|unit"
-                (let [clauses [["code-value-quantity" "http://loinc.org|8480-6$ge130|mm[Hg]"]]]
-                  (given (pull-type-query node "Observation" clauses "id-1")
-                    count := 1
-                    [0 :id] := "id-1")))
-              (testing "value as value"
-                (let [clauses [["code-value-quantity" "http://loinc.org|8480-6$ge130"]]]
-                  (given (pull-type-query node "Observation" clauses "id-1")
-                    count := 1
-                    [0 :id] := "id-1"))))
-            (testing "code as code"
-              (testing "value as value|unit"
-                (let [clauses [["code-value-quantity" "8480-6$ge130|mm[Hg]"]]]
-                  (given (pull-type-query node "Observation" clauses "id-1")
-                    count := 1
-                    [0 :id] := "id-1")))
-              (testing "value as value"
-                (let [clauses [["code-value-quantity" "8480-6$ge130"]]]
-                  (given (pull-type-query node "Observation" clauses "id-1")
-                    count := 1
-                    [0 :id] := "id-1"))))))
-
-        (testing "as second clause"
-          (testing "code as system|code"
-            (testing "value as value|unit"
-              (let [clauses [["status" "final"]
-                             ["code-value-quantity" "http://loinc.org|8480-6$ge130|mm[Hg]"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-0"
-                  [1 :id] := "id-1")))
-            (testing "value as value"
-              (let [clauses [["status" "final"]
-                             ["code-value-quantity" "http://loinc.org|8480-6$ge130"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-0"
-                  [1 :id] := "id-1"))))
-          (testing "code as code"
-            (testing "value as value|unit"
-              (let [clauses [["status" "final"]
-                             ["code-value-quantity" "8480-6$ge130|mm[Hg]"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-0"
-                  [1 :id] := "id-1")))
-            (testing "value as value"
-              (let [clauses [["status" "final"]
-                             ["code-value-quantity" "8480-6$ge130"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-0"
-                  [1 :id] := "id-1"))))
-
-          (testing "it is possible to start with the second observation"
-            (testing "code as system|code"
-              (testing "value as value|unit"
-                (let [clauses [["status" "final"]
-                               ["code-value-quantity" "http://loinc.org|8480-6$ge130|mm[Hg]"]]]
-                  (given (pull-type-query node "Observation" clauses "id-1")
-                    count := 1
-                    [0 :id] := "id-1")))
-              (testing "value as value"
-                (let [clauses [["status" "final"]
-                               ["code-value-quantity" "http://loinc.org|8480-6$ge130"]]]
-                  (given (pull-type-query node "Observation" clauses "id-1")
-                    count := 1
-                    [0 :id] := "id-1"))))
-            (testing "code as code"
-              (testing "value as value|unit"
-                (let [clauses [["status" "final"]
-                               ["code-value-quantity" "8480-6$ge130|mm[Hg]"]]]
-                  (given (pull-type-query node "Observation" clauses "id-1")
-                    count := 1
-                    [0 :id] := "id-1")))
-              (testing "value as value"
-                (let [clauses [["status" "final"]
-                               ["code-value-quantity" "8480-6$ge130"]]]
-                  (given (pull-type-query node "Observation" clauses "id-1")
-                    count := 1
-                    [0 :id] := "id-1"))))))
-
-        (testing "with individual code and value-quantity clauses"
-          (testing "code as system|code"
-            (testing "value as value|unit"
-              (let [clauses [["code" "http://loinc.org|8480-6"]
-                             ["value-quantity" "ge130|mm[Hg]"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-0"
-                  [1 :id] := "id-1")))
-            (testing "value as value"
-              (let [clauses [["code" "http://loinc.org|8480-6"]
-                             ["value-quantity" "ge130"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-0"
-                  [1 :id] := "id-1"))))
-          (testing "code as code"
-            (testing "value as value|unit"
-              (let [clauses [["code" "8480-6"]
-                             ["value-quantity" "ge130|mm[Hg]"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-0"
-                  [1 :id] := "id-1")))
-            (testing "value as value"
-              (let [clauses [["code" "8480-6"]
-                             ["value-quantity" "ge130"]]]
-                (given (pull-type-query node "Observation" clauses)
-                  count := 2
-                  [0 :id] := "id-0"
-                  [1 :id] := "id-1"))))
-
-          (testing "it is possible to start with the second observation"
-            (testing "code as system|code"
-              (testing "value as value|unit"
-                (let [clauses [["code" "http://loinc.org|8480-6"]
-                               ["value-quantity" "ge130|mm[Hg]"]]]
-                  (given (pull-type-query node "Observation" clauses "id-1")
-                    count := 1
-                    [0 :id] := "id-1")))
-              (testing "value as value"
-                (let [clauses [["code" "http://loinc.org|8480-6"]
-                               ["value-quantity" "ge130"]]]
-                  (given (pull-type-query node "Observation" clauses "id-1")
-                    count := 1
-                    [0 :id] := "id-1"))))
-            (testing "code as code"
-              (testing "value as value|unit"
-                (let [clauses [["code" "8480-6"]
-                               ["value-quantity" "ge130|mm[Hg]"]]]
-                  (given (pull-type-query node "Observation" clauses "id-1")
-                    count := 1
-                    [0 :id] := "id-1")))
-              (testing "value as value"
-                (let [clauses [["code" "8480-6"]
-                               ["value-quantity" "ge130"]]]
-                  (given (pull-type-query node "Observation" clauses "id-1")
-                    count := 1
-                    [0 :id] := "id-1")))))))))
-
-  (testing "Observation code-value-concept"
-    (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Observation :id "id-0"
-               :status #fhir/code"final"
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"94564-2"
-                    :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
-               :value
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"http://snomed.info/sct"
-                    :code #fhir/code"260373001"
-                    :display "Detected (qualifier value)"}]}}]
-        [:put {:fhir/type :fhir/Observation :id "id-1"
-               :status #fhir/code"final"
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"94564-2"
-                    :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
-               :value
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"http://snomed.info/sct"
-                    :code #fhir/code"260415000"
-                    :display "Not detected (qualifier value)"}]}}]
-        [:put {:fhir/type :fhir/Observation :id "id-2"
-               :status #fhir/code"final"
-               :code
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"http://loinc.org"
-                    :code #fhir/code"94564-2"
-                    :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
-               :value
-               #fhir/CodeableConcept
-                {:coding
-                 [#fhir/Coding
-                   {:system #fhir/uri"http://snomed.info/sct"
-                    :code #fhir/code"260373001"
-                    :display "Detected (qualifier value)"}]}}]]]
-
-      (testing "missing second value part"
-        (given (d/type-query (d/db node) "Observation" [["code-value-concept" "http://loinc.org|94564-2"]])
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "Miss the second part is composite search value `http://loinc.org|94564-2`."))
-
-      (testing "as first clause"
-        (testing "code as system|code"
-          (testing "value as system|code"
-            (let [clauses [["code-value-concept" "http://loinc.org|94564-2$http://snomed.info/sct|260373001"]]]
-              (given (pull-type-query node "Observation" clauses)
-                count := 2
-                [0 :id] := "id-0"
-                [1 :id] := "id-2")
-
-              (testing "count query"
-                (is (= 2 (count-type-query node "Observation" clauses))))))
-
-          (testing "value as code"
-            (let [clauses [["code-value-concept" "http://loinc.org|94564-2$260373001"]]]
-              (given (pull-type-query node "Observation" clauses)
-                count := 2
-                [0 :id] := "id-0"
-                [1 :id] := "id-2"))))
-
-        (testing "code as code"
-          (testing "value as system|code"
-            (let [clauses [["code-value-concept" "94564-2$http://snomed.info/sct|260373001"]]]
-              (given (pull-type-query node "Observation" clauses)
-                count := 2
-                [0 :id] := "id-0"
-                [1 :id] := "id-2")))
-
-          (testing "value as code"
-            (let [clauses [["code-value-concept" "94564-2$260373001"]]]
-              (given (pull-type-query node "Observation" clauses)
-                count := 2
-                [0 :id] := "id-0"
-                [1 :id] := "id-2"))))
-
-        (testing "it is possible to start with the second observation"
-          (testing "code as system|code"
-            (testing "value as system|code"
-              (let [clauses [["code-value-concept" "http://loinc.org|94564-2$http://snomed.info/sct|260373001"]]]
-                (given (pull-type-query node "Observation" clauses "id-2")
-                  count := 1
-                  [0 :id] := "id-2")))
-
-            (testing "value as code"
-              (let [clauses [["code-value-concept" "http://loinc.org|94564-2$260373001"]]]
-                (given (pull-type-query node "Observation" clauses "id-2")
-                  count := 1
-                  [0 :id] := "id-2"))))
-
-          (testing "code as code"
-            (testing "value as system|code"
-              (let [clauses [["code-value-concept" "94564-2$http://snomed.info/sct|260373001"]]]
-                (given (pull-type-query node "Observation" clauses "id-2")
-                  count := 1
-                  [0 :id] := "id-2")))
-
-            (testing "value as code"
-              (let [clauses [["code-value-concept" "94564-2$260373001"]]]
-                (given (pull-type-query node "Observation" clauses "id-2")
-                  count := 1
-                  [0 :id] := "id-2"))))))
-
-      (testing "as second clause"
-        (testing "code as system|code"
-          (testing "value as system|code"
-            (let [clauses [["status" "final"]
-                           ["code-value-concept" "http://loinc.org|94564-2$http://snomed.info/sct|260373001"]]]
-              (given (pull-type-query node "Observation" clauses)
-                count := 2
-                [0 :id] := "id-0"
-                [1 :id] := "id-2")))
-
-          (testing "value as code"
-            (let [clauses [["status" "final"]
-                           ["code-value-concept" "http://loinc.org|94564-2$260373001"]]]
-              (given (pull-type-query node "Observation" clauses)
-                count := 2
-                [0 :id] := "id-0"
-                [1 :id] := "id-2"))))
-
-        (testing "code as code"
-          (testing "value as system|code"
-            (let [clauses [["status" "final"]
-                           ["code-value-concept" "94564-2$http://snomed.info/sct|260373001"]]]
-              (given (pull-type-query node "Observation" clauses)
-                count := 2
-                [0 :id] := "id-0"
-                [1 :id] := "id-2")))
-
-          (testing "value as code"
-            (let [clauses [["status" "final"]
-                           ["code-value-concept" "94564-2$260373001"]]]
-              (given (pull-type-query node "Observation" clauses)
-                count := 2
-                [0 :id] := "id-0"
-                [1 :id] := "id-2")))))))
-
-  (testing "MeasureReport"
-    (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/MeasureReport
-               :id "id-144132"
-               :measure #fhir/canonical"measure-url-181106"}]]]
-
-      (testing "measure"
-        (let [clauses [["measure" "measure-url-181106"]]]
-          (given (pull-type-query node "MeasureReport" clauses)
-            count := 1
-            [0 :id] := "id-144132")))))
-
-  (testing "List"
-    (testing "item"
-      (testing "with no modifier"
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"}]
-            [:put {:fhir/type :fhir/Patient :id "1"}]]
-           [[:put {:fhir/type :fhir/List
-                   :id "id-150545"
-                   :entry
-                   [{:fhir/type :fhir.List/entry
-                     :item
-                     #fhir/Reference
-                      {:reference "Patient/0"}}]}]
-            [:put {:fhir/type :fhir/List
-                   :id "id-143814"
-                   :entry
-                   [{:fhir/type :fhir.List/entry
-                     :item
-                     #fhir/Reference
-                      {:reference "Patient/1"}}]}]]]
-
-          (let [clauses [["item" "Patient/1"]]]
-            (given (pull-type-query node "List" clauses)
-              count := 1
-              [0 :id] := "id-143814"))))
-
-      (testing "with identifier modifier"
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put {:fhir/type :fhir/List
-                   :id "id-123058"
-                   :entry
-                   [{:fhir/type :fhir.List/entry
-                     :item
-                     #fhir/Reference
-                      {:identifier
-                       #fhir/Identifier
-                        {:system #fhir/uri"system-122917"
-                         :value "value-122931"}}}]}]
-            [:put {:fhir/type :fhir/List
-                   :id "id-143814"
-                   :entry
-                   [{:fhir/type :fhir.List/entry
-                     :item
-                     #fhir/Reference
-                      {:identifier
-                       #fhir/Identifier
-                        {:system #fhir/uri"system-122917"
-                         :value "value-143818"}}}]}]]]
-
-          (let [clauses [["item:identifier" "system-122917|value-122931"]]]
-            (given (pull-type-query node "List" clauses)
-              count := 1
-              [0 :id] := "id-123058")))))
-
-    (testing "code and item"
-      (testing "with identifier modifier"
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put {:fhir/type :fhir/List
-                   :id "id-123058"
-                   :code
-                   #fhir/CodeableConcept
-                    {:coding
-                     [#fhir/Coding
-                       {:system #fhir/uri"system-152812"
-                        :code #fhir/code"code-152819"}]}
-                   :entry
-                   [{:fhir/type :fhir.List/entry
-                     :item
-                     #fhir/Reference
-                      {:identifier
-                       #fhir/Identifier
-                        {:system #fhir/uri"system-122917"
-                         :value "value-122931"}}}]}]
-            [:put {:fhir/type :fhir/List
-                   :id "id-143814"
-                   :code
-                   #fhir/CodeableConcept
-                    {:coding
-                     [#fhir/Coding
-                       {:system #fhir/uri"system-152812"
-                        :code #fhir/code"code-152819"}]}
-                   :entry
-                   [{:fhir/type :fhir.List/entry
-                     :item
-                     #fhir/Reference
-                      {:identifier
-                       #fhir/Identifier
-                        {:system #fhir/uri"system-122917"
-                         :value "value-143818"}}}]}]]]
-
-          (let [clauses [["code" "system-152812|code-152819"]
-                         ["item:identifier" "system-122917|value-143818"]]]
-            (given (pull-type-query node "List" clauses)
-              count := 1
-              [0 :id] := "id-143814"))))))
 
   (testing "Date order"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -3672,76 +2417,1350 @@
 
         (given (pull-type-query node "MolecularSequence" [["variant-start" "2"]])
           count := 1
-          [0 :id] := "id-1"))))
+          [0 :id] := "id-1")))))
 
-  (testing "Condition"
+(deftest type-query-search-param-list-test
+  (testing "Special Search Parameter _list"
+    (testing "a node with two patients, one observation and one list in one transaction"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Patient :id "1"}]
+          [:put {:fhir/type :fhir/Observation :id "0"}]
+          [:put {:fhir/type :fhir/List :id "0"
+                 :entry
+                 [{:fhir/type :fhir.List/entry
+                   :item #fhir/Reference {:reference "Patient/0"}}
+                  {:fhir/type :fhir.List/entry
+                   :item #fhir/Reference {:reference "Observation/0"}}]}]]]
+
+        (testing "returns only the patient referenced in the list"
+          (given (pull-type-query node "Patient" [["_list" "0"]])
+            count := 1
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0")
+
+          (testing "count query"
+            (is (= 1 (count-type-query node "Patient" [["_list" "0"]])))))
+
+        (testing "returns only the observation referenced in the list"
+          (given (pull-type-query node "Observation" [["_list" "0"]])
+            count := 1
+            [0 :fhir/type] := :fhir/Observation
+            [0 :id] := "0"))))
+
+    (testing "a node with four patients and one list in one transaction"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Patient :id "1"}]
+          [:put {:fhir/type :fhir/Patient :id "2"}]
+          [:put {:fhir/type :fhir/Patient :id "3"}]
+          [:put {:fhir/type :fhir/List :id "0"
+                 :entry
+                 [{:fhir/type :fhir.List/entry
+                   :item #fhir/Reference {:reference "Patient/0"}}
+                  {:fhir/type :fhir.List/entry
+                   :item #fhir/Reference {:reference "Patient/2"}}
+                  {:fhir/type :fhir.List/entry
+                   :item #fhir/Reference {:reference "Patient/3"}}]}]]]
+
+        (testing "it is possible to start with the second patient"
+          (given (pull-type-query node "Patient" [["_list" "0"]] "2")
+            count := 2
+            [0 :id] := "2"
+            [1 :id] := "3"))))
+
+    (testing "doesn't return the deleted patient"
+      (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :enforce-referential-integrity] false)]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Patient :id "1"}]
+          [:put {:fhir/type :fhir/Patient :id "2"}]
+          [:put {:fhir/type :fhir/Patient :id "3"}]
+          [:put {:fhir/type :fhir/List :id "0"
+                 :entry
+                 [{:fhir/type :fhir.List/entry
+                   :item #fhir/Reference {:reference "Patient/0"}}
+                  {:fhir/type :fhir.List/entry
+                   :item #fhir/Reference {:reference "Patient/2"}}
+                  {:fhir/type :fhir.List/entry
+                   :item #fhir/Reference {:reference "Patient/3"}}]}]]
+         [[:delete "Patient" "2"]]]
+
+        (testing "it is possible to start with the second patient"
+          (given (pull-type-query node "Patient" [["_list" "0"]])
+            count := 2
+            [0 :id] := "0"
+            [1 :id] := "3"))))))
+
+(deftest type-query-has-test
+  (testing "Special Search Parameter _has"
     (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Condition
-               :id "0"
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :active true}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :active false}]
+        [:put {:fhir/type :fhir/Patient :id "2"
+               :active false}]
+        [:put {:fhir/type :fhir/Patient :id "3"
+               :active false}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}
                :code
                #fhir/CodeableConcept
                 {:coding
-                 [#fhir/Coding{:code #fhir/code"foo"}
-                  #fhir/Coding{:code #fhir/code"bar"}]}
-               :subject #fhir/Reference{:reference "Patient/0"}}]
-        [:put {:fhir/type :fhir/Condition :id "1"
-               :subject #fhir/Reference{:reference "Patient/1"}}]
-        [:put {:fhir/type :fhir/Patient :id "0"
-               :gender #fhir/code"female"}]
-        [:put {:fhir/type :fhir/Patient :id "1"
-               :gender #fhir/code"male"}]]]
+                 [#fhir/Coding
+                   {:system #fhir/uri"http://loinc.org"
+                    :code #fhir/code"8480-6"}]}
+               :value
+               #fhir/Quantity
+                {:value 130M
+                 :code #fhir/code"mm[Hg]"
+                 :system #fhir/uri"http://unitsofmeasure.org"}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject #fhir/Reference{:reference "Patient/0"}
+               :code
+               #fhir/CodeableConcept
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri"http://loinc.org"
+                    :code #fhir/code"8480-6"}]}
+               :value
+               #fhir/Quantity
+                {:value 150M
+                 :code #fhir/code"mm[Hg]"
+                 :system #fhir/uri"http://unitsofmeasure.org"}}]
+        [:put {:fhir/type :fhir/Observation :id "2"
+               :subject #fhir/Reference{:reference "Patient/1"}
+               :code
+               #fhir/CodeableConcept
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri"http://loinc.org"
+                    :code #fhir/code"8480-6"}]}
+               :value
+               #fhir/Quantity
+                {:value 100M
+                 :code #fhir/code"mm[Hg]"
+                 :system #fhir/uri"http://unitsofmeasure.org"}}]
+        [:put {:fhir/type :fhir/Observation :id "3"
+               :subject #fhir/Reference{:reference "Patient/3"}
+               :code
+               #fhir/CodeableConcept
+                {:coding
+                 [#fhir/Coding
+                   {:system #fhir/uri"http://loinc.org"
+                    :code #fhir/code"8480-6"}]}
+               :value
+               #fhir/Quantity
+                {:value 10M
+                 :code #fhir/code"mm[Hg]"
+                 :system #fhir/uri"http://unitsofmeasure.org"}}]]]
 
-      (testing "duplicates are removed"
-        (given (pull-type-query node "Condition" [["code" "foo" "bar"]])
-          count := 1
-          [0 :id] := "0")
-
-        (testing "count query"
-          (is (= 1 (count-type-query node "Condition" [["code" "foo" "bar"]])))))
-
-      (testing "forward chaining to Patient"
-        (given (pull-type-query node "Condition" [["patient.gender" "male"]])
-          count := 1
-          [0 :fhir/type] := :fhir/Condition
-          [0 :id] := "1")
-
-        (testing "count query"
-          (is (= 1 (count-type-query node "Condition" [["patient.gender" "male"]])))))))
-
-  (testing "Encounter"
-    (testing "duplicates are removed"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:put {:fhir/type :fhir/Encounter
-                 :id "0"
-                 :diagnosis
-                 [{:fhir/type :fhir.Encounter/diagnosis
-                   :condition #fhir/Reference{:reference "Condition/0"}}
-                  {:fhir/type :fhir.Encounter/diagnosis
-                   :condition #fhir/Reference{:reference "Condition/1"}}]}]
-          [:put {:fhir/type :fhir/Encounter
-                 :id "1"
-                 :diagnosis
-                 [{:fhir/type :fhir.Encounter/diagnosis
-                   :condition #fhir/Reference{:reference "Condition/1"}}
-                  {:fhir/type :fhir.Encounter/diagnosis
-                   :condition #fhir/Reference{:reference "Condition/2"}}]}]
-          [:put {:fhir/type :fhir/Condition :id "0"}]
-          [:put {:fhir/type :fhir/Condition :id "1"}]
-          [:put {:fhir/type :fhir/Condition :id "2"}]]]
-
-        (testing "on pulling all resource handles"
-          (given (pull-type-query node "Encounter" [["diagnosis" "Condition/0" "Condition/1" "Condition/2"]])
-            count := 2
-            [0 :id] := "0"
-            [1 :id] := "1")
+      (testing "select the Patient with >= 130 mm[Hg]"
+        (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$ge130"]]]
+          (given (pull-type-query node "Patient" clauses)
+            count := 1
+            [0 :id] := "0")
 
           (testing "count query"
-            (is (= 2 (count-type-query node "Encounter" [["diagnosis" "Condition/0" "Condition/1" "Condition/2"]])))))
+            (is (= 1 (count-type-query node "Patient" clauses))))))
 
-        (testing "on pulling the second page"
-          (given (pull-type-query node "Encounter" [["diagnosis" "Condition/0" "Condition/1" "Condition/2"]] "1")
+      (testing "select the Patient with 100 mm[Hg]"
+        (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$100"]]]
+          (given (pull-type-query node "Patient" clauses)
             count := 1
-            [0 :id] := "1"))))))
+            [0 :id] := "1")))
+
+      (testing "select all Patients"
+        (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$ge100"]]]
+          (given (pull-type-query node "Patient" clauses)
+            count := 2
+            [0 :id] := "0"
+            [1 :id] := "1"))
+
+        (testing "it is possible to start with the second patient"
+          (let [clauses [["_has:Observation:patient:code-value-quantity" "8480-6$ge100"]]]
+            (given (pull-type-query node "Patient" clauses "1")
+              count := 1
+              [0 :id] := "1"))))
+
+      (testing "as second clause"
+        (testing "select the Patient with > 130 mm[Hg]"
+          (let [clauses [["active" "false"]
+                         ["_has:Observation:patient:code-value-quantity" "8480-6$10"]]]
+            (given (pull-type-query node "Patient" clauses)
+              count := 1
+              [0 :id] := "3")))))
+
+    (testing "errors"
+      (testing "missing modifier"
+        (with-system [{:blaze.db/keys [node]} config]
+          (given (d/type-query (d/db node) "Patient" [["_has" ""]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Missing modifier of _has search param.")))
+
+      (testing "missing type"
+        (with-system [{:blaze.db/keys [node]} config]
+          (given (d/type-query (d/db node) "Patient" [["_has:" ""]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Missing type in _has search param `_has:`.")))
+
+      (testing "missing chaining search param"
+        (with-system [{:blaze.db/keys [node]} config]
+          (given (d/type-query (d/db node) "Patient" [["_has:foo" ""]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Missing chaining search param in _has search param `_has:foo`.")))
+
+      (testing "missing search param"
+        (with-system [{:blaze.db/keys [node]} config]
+          (given (d/type-query (d/db node) "Patient" [["_has:foo:bar" ""]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Missing search param in _has search param `_has:foo:bar`.")))
+
+      (testing "main search param not found"
+        (with-system [{:blaze.db/keys [node]} config]
+          (given (d/type-query (d/db node) "Patient" [["_has:Observation:patient:foo" ""]])
+            ::anom/category := ::anom/not-found
+            ::anom/message := "The search-param with code `foo` and type `Observation` was not found.")))
+
+      (testing "chain search param not found"
+        (with-system [{:blaze.db/keys [node]} config]
+          (given (d/type-query (d/db node) "Patient" [["_has:Observation:foo:code" ""]])
+            ::anom/category := ::anom/not-found
+            ::anom/message := "The search-param with code `foo` and type `Observation` was not found."))))))
+
+(deftest type-query-condition-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient
+             :id "id-0"}]
+      [:put {:fhir/type :fhir/Condition :id "id-0"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://fhir.de/CodeSystem/dimdi/icd-10-gm"
+                  :code #fhir/code"C71.4"}]}
+             :subject #fhir/Reference{:reference "Patient/id-0"}
+             :onset
+             {:fhir/type :fhir/Age
+              :value 63M}}]
+      [:put {:fhir/type :fhir/Condition :id "id-1"}]]]
+
+    (testing "patient"
+      (given (pull-type-query node "Condition" [["patient" "id-0"]])
+        count := 1
+        [0 :id] := "id-0"))
+
+    (testing "code"
+      (testing "duplicate values have no effect (#293)"
+        (given (pull-type-query node "Condition" [["code" "C71.4" "C71.4"]])
+          count := 1
+          [0 :id] := "id-0")))
+
+    (testing "onset-age"
+      (given (pull-type-query node "Condition" [["onset-age" "63"]])
+        count := 1
+        [0 :id] := "id-0")))
+
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Condition :id "0"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:code #fhir/code"0"}]}}]
+      [:put {:fhir/type :fhir/Condition :id "3"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:code #fhir/code"0"}]}}]
+      [:put {:fhir/type :fhir/Condition :id "4"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:code #fhir/code"0"}]}}]
+      [:put {:fhir/type :fhir/Condition :id "1"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:code #fhir/code"1"}]}}]
+      [:put {:fhir/type :fhir/Condition :id "2"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:code #fhir/code"1"}]}}]]]
+
+    (testing "code"
+      (given (pull-type-query node "Condition" [["code" "0" "1"]])
+        count := 5
+        [0 :id] := "0"
+        [1 :id] := "3"
+        [2 :id] := "4"
+        [3 :id] := "1"
+        [4 :id] := "2")
+
+      (testing "count query"
+        (is (= 5 (count-type-query node "Condition" [["code" "0" "1"]]))))
+
+      (testing "starting with ID `1` does not return Conditions with ID `3`
+                  and `4` because they were already returned"
+        (given (pull-type-query node "Condition" [["code" "0" "1"]] "1")
+          count := 2
+          [0 :id] := "1"
+          [1 :id] := "2"))
+
+      (testing "starting with ID `4` does return Conditions with ID `1` and
+                  `2` even if they are smaller than `4`"
+        (given (pull-type-query node "Condition" [["code" "0" "1"]] "4")
+          count := 3
+          [0 :id] := "4"
+          [1 :id] := "1"
+          [2 :id] := "2"))))
+
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Condition
+             :id "0"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding{:code #fhir/code"foo"}
+                #fhir/Coding{:code #fhir/code"bar"}]}
+             :subject #fhir/Reference{:reference "Patient/0"}}]
+      [:put {:fhir/type :fhir/Condition :id "1"
+             :subject #fhir/Reference{:reference "Patient/1"}}]
+      [:put {:fhir/type :fhir/Patient :id "0"
+             :gender #fhir/code"female"}]
+      [:put {:fhir/type :fhir/Patient :id "1"
+             :gender #fhir/code"male"}]]]
+
+    (testing "duplicates are removed"
+      (given (pull-type-query node "Condition" [["code" "foo" "bar"]])
+        count := 1
+        [0 :id] := "0")
+
+      (testing "count query"
+        (is (= 1 (count-type-query node "Condition" [["code" "foo" "bar"]])))))
+
+    (testing "forward chaining to Patient"
+      (given (pull-type-query node "Condition" [["patient.gender" "male"]])
+        count := 1
+        [0 :fhir/type] := :fhir/Condition
+        [0 :id] := "1")
+
+      (testing "count query"
+        (is (= 1 (count-type-query node "Condition" [["patient.gender" "male"]])))))))
+
+(deftest type-query-measure-report-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/MeasureReport
+             :id "id-144132"
+             :measure #fhir/canonical"http://example.com/fhir/Measure/181106"}]]]
+
+    (testing "measure"
+      (let [clauses [["measure" "http://example.com/fhir/Measure/181106"]]]
+        (given (pull-type-query node "MeasureReport" clauses)
+          count := 1
+          [0 :id] := "id-144132")))))
+
+(deftest type-query-observation-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Observation :id "id-0"
+             :meta #fhir/Meta{:profile [#fhir/canonical"http://example.com/profile-uri-091902"]}
+             :status #fhir/code"final"
+             :effective
+             #fhir/Period
+              {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+               :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}
+             :value
+             #fhir/Quantity
+              {:value 0M
+               :unit #fhir/string"kg/m²"
+               :code #fhir/code"kg/m2"
+               :system #fhir/uri"http://unitsofmeasure.org"}}]
+      [:put {:fhir/type :fhir/Observation :id "id-1"
+             :meta #fhir/Meta{:profile [#fhir/canonical"http://example.com/profile-uri-091902|1.1.0"]}
+             :status #fhir/code"final"
+             :effective #fhir/dateTime"2021-02-25"
+             :value
+             #fhir/Quantity
+              {:value 1M
+               :unit #fhir/string"kg/m²"
+               :code #fhir/code"kg/m2"
+               :system #fhir/uri"http://unitsofmeasure.org"}}]
+      [:put {:fhir/type :fhir/Observation :id "id-2"
+             :meta #fhir/Meta{:profile [#fhir/canonical"http://example.com/profile-uri-091902|2.4.7"]}
+             :status #fhir/code"final"
+             :value
+             #fhir/Quantity
+              {:value 2.11M
+               :unit #fhir/string"kg/m²"
+               :code #fhir/code"kg/m2"
+               :system #fhir/uri"http://unitsofmeasure.org"}}]
+      [:put {:fhir/type :fhir/Observation :id "id-3"
+             :meta #fhir/Meta{:profile [#fhir/canonical"http://example.com/profile-uri-091902|2.3.9"]}
+             :status #fhir/code"final"
+             :value
+             #fhir/Quantity
+              {:value 3M
+               :unit #fhir/string"kg/m²"
+               :code #fhir/code"kg/m2"
+               :system #fhir/uri"http://unitsofmeasure.org"}}]]]
+
+    (testing "_profile"
+      (testing "full URL and version matching without modifier"
+        (given (pull-type-query node "Observation" [["_profile" "http://example.com/profile-uri-091902"]])
+          count := 1
+          [0 :id] := "id-0")
+        (given (pull-type-query node "Observation" [["_profile" "http://example.com/profile-uri-091902|2.4.7"]])
+          count := 1
+          [0 :id] := "id-2"))
+
+      (testing "below with URL only"
+        (given (pull-type-query node "Observation" [["_profile:below" "http://example.com/profile-uri-091902"]])
+          count := 4
+          [0 :id] := "id-0"
+          [1 :id] := "id-1"
+          [2 :id] := "id-2"
+          [3 :id] := "id-3")
+
+        (testing "it is possible to start with the second observation"
+          (given (pull-type-query node "Observation" [["_profile:below" "http://example.com/profile-uri-091902"]] "id-1")
+            count := 3
+            [0 :id] := "id-1"
+            [1 :id] := "id-2"
+            [2 :id] := "id-3"))
+
+        (testing "it is possible to start with the third observation"
+          (given (pull-type-query node "Observation" [["_profile:below" "http://example.com/profile-uri-091902"]] "id-2")
+            count := 2
+            [0 :id] := "id-2"
+            [1 :id] := "id-3")))
+
+      (testing "below with URL and major version 1"
+        (given (pull-type-query node "Observation" [["_profile:below" "http://example.com/profile-uri-091902|1"]])
+          count := 1
+          [0 :id] := "id-1"))
+
+      (testing "below with URL and major version 2"
+        (given (pull-type-query node "Observation" [["_profile:below" "http://example.com/profile-uri-091902|2"]])
+          count := 2
+          [0 :id] := "id-2"
+          [1 :id] := "id-3")
+
+        (testing "it is possible to start with the second observation"
+          (given (pull-type-query node "Observation" [["_profile:below" "http://example.com/profile-uri-091902"]] "id-2")
+            count := 2
+            [0 :id] := "id-2"
+            [1 :id] := "id-3")))
+
+      (testing "below with URL and minor version 2.4"
+        (given (pull-type-query node "Observation" [["_profile:below" "http://example.com/profile-uri-091902|2.4"]])
+          count := 1
+          [0 :id] := "id-2")))
+
+    (testing "date"
+      (testing "with year precision"
+        (given (pull-type-query node "Observation" [["date" "2021"]])
+          count := 2
+          [0 :id] := "id-0"
+          [1 :id] := "id-1"))
+
+      (testing "with day precision"
+        (testing "before the period"
+          (given (pull-type-query node "Observation" [["date" "2021-02-22"]])
+            count := 0))
+
+        (testing "within the period"
+          (given (pull-type-query node "Observation" [["date" "2021-02-23"]])
+            count := 1
+            [0 :id] := "id-0"))
+
+        (testing "after the period"
+          (given (pull-type-query node "Observation" [["date" "2021-02-24"]])
+            count := 0)))
+
+      (testing "with second precision"
+        (testing "before the start of the period"
+          (given (pull-type-query node "Observation" [["date" "ap2021-02-23T15:12:44+01:00"]])
+            count := 0))
+
+        (testing "at the start of the period"
+          (given (pull-type-query node "Observation" [["date" "ap2021-02-23T15:12:45+01:00"]])
+            count := 1
+            [0 :id] := "id-0"))
+
+        (testing "within the period"
+          (doseq [date ["ap2021-02-23T15:12:46+01:00"
+                        "ap2021-02-23T15:30:00+01:00"
+                        "ap2021-02-23T15:59:59+01:00"]]
+            (given (pull-type-query node "Observation" [["date" date]])
+              count := 1
+              [0 :id] := "id-0")))
+
+        (testing "at the end of the period"
+          (given (pull-type-query node "Observation" [["date" "ap2021-02-23T16:00:00+01:00"]])
+            count := 1
+            [0 :id] := "id-0"))
+
+        (testing "after the end of the period"
+          (given (pull-type-query node "Observation" [["date" "ap2021-02-23T16:00:01+01:00"]])
+            count := 0))))
+
+    (testing "value-quantity"
+      (testing "without unit"
+        (let [clauses [["value-quantity" "2.11"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 1
+            [0 :id] := "id-2")
+
+          (testing "count query"
+            (is (= 1 (count-type-query node "Observation" clauses))))))
+
+      (testing "with minimal unit"
+        (let [clauses [["value-quantity" "2.11|kg/m2"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 1
+            [0 :id] := "id-2")))
+
+      (testing "with human unit"
+        (let [clauses [["value-quantity" "2.11|kg/m²"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 1
+            [0 :id] := "id-2")))
+
+      (testing "with full unit"
+        (let [clauses [["value-quantity" "2.11|http://unitsofmeasure.org|kg/m2"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 1
+            [0 :id] := "id-2")))
+
+      (testing "with lesser precision"
+        (let [clauses [["value-quantity" "2.1"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 1
+            [0 :id] := "id-2")))
+
+      (testing "with even lesser precision"
+        (let [clauses [["value-quantity" "2"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 1
+            [0 :id] := "id-2")))
+
+      (testing "with two values"
+        (let [clauses [["value-quantity" "0" "3"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 2
+            [0 :id] := "id-0"
+            [1 :id] := "id-3")))
+
+      (testing "with prefix"
+        (testing "not equal"
+          (given (d/type-query (d/db node) "Observation" [["value-quantity" "ne2.11"]])
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`."))
+
+        (testing "greater than"
+          (let [clauses [["value-quantity" "gt2.11"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 1
+              [0 :id] := "id-3"))
+
+          (testing "with lesser precision"
+            (let [clauses [["value-quantity" "gt2.1"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-2"
+                [1 :id] := "id-3"))
+
+            (testing "it is possible to start with the second observation"
+              (let [clauses [["value-quantity" "gt2.1"]]]
+                (given (pull-type-query node "Observation" clauses "id-3")
+                  count := 1
+                  [0 :id] := "id-3"))))
+
+          (testing "with even lesser precision"
+            (let [clauses [["value-quantity" "gt2"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-2"
+                [1 :id] := "id-3"))))
+
+        (testing "less than"
+          (let [clauses [["value-quantity" "lt2.11"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "id-1"
+              [1 :id] := "id-0"))
+
+          (testing "it is possible to start with the second observation"
+            (let [clauses [["value-quantity" "lt2.11"]]]
+              (given (pull-type-query node "Observation" clauses "id-0")
+                count := 1
+                [0 :id] := "id-0")))
+
+          (testing "with lesser precision"
+            (let [clauses [["value-quantity" "lt2.1"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-1"
+                [1 :id] := "id-0")))
+
+          (testing "with even lesser precision"
+            (let [clauses [["value-quantity" "lt2"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-1"
+                [1 :id] := "id-0"))))
+
+        (testing "greater equal"
+          (let [clauses [["value-quantity" "ge2.11"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "id-2"
+              [1 :id] := "id-3"))
+
+          (testing "it is possible to start with the second observation"
+            (let [clauses [["value-quantity" "ge2.11"]]]
+              (given (pull-type-query node "Observation" clauses "id-3")
+                count := 1
+                [0 :id] := "id-3")))
+
+          (testing "with lesser precision"
+            (let [clauses [["value-quantity" "ge2.1"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-2"
+                [1 :id] := "id-3")))
+
+          (testing "with even lesser precision"
+            (let [clauses [["value-quantity" "ge2"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-2"
+                [1 :id] := "id-3"))))
+
+        (testing "less equal"
+          (let [clauses [["value-quantity" "le2.11"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 3
+              [0 :id] := "id-2"
+              [1 :id] := "id-1"
+              [2 :id] := "id-0"))
+
+          (testing "it is possible to start with the second observation"
+            (let [clauses [["value-quantity" "le2.11"]]]
+              (given (pull-type-query node "Observation" clauses "id-1")
+                count := 2
+                [0 :id] := "id-1"
+                [1 :id] := "id-0")))
+
+          (testing "with lesser precision"
+            (let [clauses [["value-quantity" "le2.1"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-1"
+                [1 :id] := "id-0")))
+
+          (testing "with even lesser precision"
+            (let [clauses [["value-quantity" "le2"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-1"
+                [1 :id] := "id-0"))))
+
+        (testing "starts after"
+          (given (d/type-query (d/db node) "Observation" [["value-quantity" "sa2.11"]])
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Unsupported prefix `sa` in search parameter `value-quantity`."))
+
+        (testing "ends before"
+          (given (d/type-query (d/db node) "Observation" [["value-quantity" "eb2.11"]])
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Unsupported prefix `eb` in search parameter `value-quantity`."))
+
+        (testing "approximately"
+          (given (d/type-query (d/db node) "Observation" [["value-quantity" "ap2.11"]])
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Unsupported prefix `ap` in search parameter `value-quantity`.")))
+
+      (testing "with more than one value"
+        (let [clauses [["value-quantity" "2.11|kg/m2" "1|kg/m2"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 2
+            [0 :id] := "id-2"
+            [1 :id] := "id-1")))
+
+      (testing "with invalid decimal value"
+        (given (d/type-query (d/db node) "Observation" [["value-quantity" "a"]])
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Invalid decimal value `a` in search parameter `value-quantity`.")))
+
+    (testing "status and value-quantity"
+      (let [clauses [["status" "final"] ["value-quantity" "2.11|kg/m2"]]]
+        (given (pull-type-query node "Observation" clauses)
+          count := 1
+          [0 :id] := "id-2"))
+
+      (testing "with lesser precision"
+        (let [clauses [["status" "final"] ["value-quantity" "2.1|kg/m2"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 1
+            [0 :id] := "id-2")))
+
+      (testing "with two values"
+        (let [clauses [["status" "final"] ["value-quantity" "0" "3"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 2
+            [0 :id] := "id-0"
+            [1 :id] := "id-3")))
+
+      (testing "with prefix"
+        (testing "not equal"
+          (given (let [clauses [["status" "final"] ["value-quantity" "ne2.11|kg/m2"]]]
+                   (d/type-query (d/db node) "Observation" clauses))
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Unsupported prefix `ne` in search parameter `value-quantity`."))
+
+        (testing "greater than"
+          (let [clauses [["status" "final"] ["value-quantity" "gt2.11|kg/m2"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 1
+              [0 :id] := "id-3"))
+
+          (testing "with lesser precision"
+            (let [clauses [["status" "final"] ["value-quantity" "gt2.1|kg/m2"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-2"
+                [1 :id] := "id-3"))))
+
+        (testing "less than"
+          (let [clauses [["status" "final"] ["value-quantity" "lt2.11|kg/m2"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "id-0"
+              [1 :id] := "id-1")))
+
+        (testing "greater equal"
+          (let [clauses [["status" "final"] ["value-quantity" "ge2.11|kg/m2"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "id-2"
+              [1 :id] := "id-3")
+
+            (testing "count query"
+              (is (= 2 (count-type-query node "Observation" clauses))))))
+
+        (testing "less equal"
+          (let [clauses [["status" "final"] ["value-quantity" "le2.11|kg/m2"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 3
+              [0 :id] := "id-0"
+              [1 :id] := "id-1"
+              [2 :id] := "id-2"))
+
+          (testing "with lesser precision"
+            (let [clauses [["status" "final"] ["value-quantity" "le2.1|kg/m2"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-1"))))
+
+        (testing "starts after"
+          (given (let [clauses [["status" "final"] ["value-quantity" "sa2.11|kg/m2"]]]
+                   (d/type-query (d/db node) "Observation" clauses))
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Unsupported prefix `sa` in search parameter `value-quantity`."))
+
+        (testing "ends before"
+          (given (let [clauses [["status" "final"] ["value-quantity" "eb2.11|kg/m2"]]]
+                   (d/type-query (d/db node) "Observation" clauses))
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Unsupported prefix `eb` in search parameter `value-quantity`."))
+
+        (testing "approximately"
+          (given (let [clauses [["status" "final"] ["value-quantity" "ap2.11|kg/m2"]]]
+                   (d/type-query (d/db node) "Observation" clauses))
+            ::anom/category := ::anom/unsupported
+            ::anom/message := "Unsupported prefix `ap` in search parameter `value-quantity`.")))
+
+      (testing "with more than one value"
+        (let [clauses [["status" "final"] ["value-quantity" "2.11|kg/m2" "1|kg/m2"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 2
+            [0 :id] := "id-1"
+            [1 :id] := "id-2"))))
+
+    (testing "value-quantity and status"
+      (let [clauses [["value-quantity" "2.11|kg/m2"] ["status" "final"]]]
+        (given (pull-type-query node "Observation" clauses)
+          count := 1
+          [0 :id] := "id-2")
+
+        (testing "count query"
+          (is (= 1 (count-type-query node "Observation" clauses))))))
+
+    (testing "status and sort by _lastUpdated"
+      (let [clauses [[:sort "_lastUpdated" :asc] ["status" "final"]]]
+        (given (pull-type-query node "Observation" clauses)
+          count := 4)
+
+        (testing "count query"
+          (is (= 4 (count-type-query node "Observation" clauses))))))
+
+    (testing "three clauses"
+      (given (pull-type-query node "Observation" [["_profile:below" "http://example.com/profile-uri-091902"]
+                                                  ["status" "final"]
+                                                  ["date" "2021"]])
+        count := 2
+        [0 :id] := "id-0"
+        [1 :id] := "id-1"))))
+
+(deftest type-query-observation-code-value-quantity-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Observation :id "id-0"
+             :status #fhir/code"final"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://loinc.org"
+                  :code #fhir/code"8480-6"}]}
+             :value
+             #fhir/Quantity
+              {:value 130M
+               :code #fhir/code"mm[Hg]"
+               :system #fhir/uri"http://unitsofmeasure.org"}}]
+      [:put {:fhir/type :fhir/Observation :id "id-1"
+             :status #fhir/code"final"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://loinc.org"
+                  :code #fhir/code"8480-6"}]}
+             :value
+             #fhir/Quantity
+              {:value 150M
+               :code #fhir/code"mm[Hg]"
+               :system #fhir/uri"http://unitsofmeasure.org"}}]
+      [:put {:fhir/type :fhir/Observation :id "id-2"
+             :status #fhir/code"final"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://loinc.org"
+                  :code #fhir/code"8462-4"}]}
+             :value
+             #fhir/Quantity
+              {:value 90M
+               :code #fhir/code"mm[Hg]"
+               :system #fhir/uri"http://unitsofmeasure.org"}}]
+      [:put {:fhir/type :fhir/Observation :id "id-3"
+             :status #fhir/code"final"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://loinc.org"
+                  :code #fhir/code"8462-4"}]}
+             :value
+             #fhir/Quantity
+              {:value 70M
+               :code #fhir/code"mm[Hg]"
+               :system #fhir/uri"http://unitsofmeasure.org"}}]]]
+
+    (testing "missing second value part"
+      (given (d/type-query (d/db node) "Observation" [["code-value-quantity" "8480-6"]])
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Miss the second part is composite search value `8480-6`."))
+
+    (testing "as first clause"
+      (let [clauses [["code-value-quantity" "8480-6$ge140"]]]
+        (given (pull-type-query node "Observation" clauses)
+          count := 1
+          [0 :id] := "id-1")
+
+        (testing "count query"
+          (is (= 1 (count-type-query node "Observation" clauses)))))
+
+      (let [clauses [["code-value-quantity" "http://loinc.org|8462-4$ge90|mm[Hg]"]]]
+        (given (pull-type-query node "Observation" clauses)
+          count := 1
+          [0 :id] := "id-2")))
+
+    (testing "as second clause"
+      (let [clauses [["status" "final"]
+                     ["code-value-quantity" "http://loinc.org|8480-6$ge140|mm[Hg]"]]]
+        (given (pull-type-query node "Observation" clauses)
+          count := 1
+          [0 :id] := "id-1")))
+
+    (testing "with individual code and value-quantity clauses"
+      (let [clauses [["code" "http://loinc.org|8480-6"]
+                     ["value-quantity" "ge140|mm[Hg]"]]]
+        (given (pull-type-query node "Observation" clauses)
+          count := 1
+          [0 :id] := "id-1")))
+
+    (testing "resulting on more than one observation"
+      (testing "as first clause"
+        (testing "code as system|code"
+          (testing "value as value|unit"
+            (let [clauses [["code-value-quantity" "http://loinc.org|8480-6$ge130|mm[Hg]"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-1")))
+          (testing "value as value"
+            (let [clauses [["code-value-quantity" "http://loinc.org|8480-6$ge130"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-1"))))
+        (testing "code as code"
+          (testing "value as value|unit"
+            (let [clauses [["code-value-quantity" "8480-6$ge130|mm[Hg]"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-1")))
+          (testing "value as value"
+            (let [clauses [["code-value-quantity" "8480-6$ge130"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-1"))))
+
+        (testing "it is possible to start with the second observation"
+          (testing "code as system|code"
+            (testing "value as value|unit"
+              (let [clauses [["code-value-quantity" "http://loinc.org|8480-6$ge130|mm[Hg]"]]]
+                (given (pull-type-query node "Observation" clauses "id-1")
+                  count := 1
+                  [0 :id] := "id-1")))
+            (testing "value as value"
+              (let [clauses [["code-value-quantity" "http://loinc.org|8480-6$ge130"]]]
+                (given (pull-type-query node "Observation" clauses "id-1")
+                  count := 1
+                  [0 :id] := "id-1"))))
+          (testing "code as code"
+            (testing "value as value|unit"
+              (let [clauses [["code-value-quantity" "8480-6$ge130|mm[Hg]"]]]
+                (given (pull-type-query node "Observation" clauses "id-1")
+                  count := 1
+                  [0 :id] := "id-1")))
+            (testing "value as value"
+              (let [clauses [["code-value-quantity" "8480-6$ge130"]]]
+                (given (pull-type-query node "Observation" clauses "id-1")
+                  count := 1
+                  [0 :id] := "id-1"))))))
+
+      (testing "as second clause"
+        (testing "code as system|code"
+          (testing "value as value|unit"
+            (let [clauses [["status" "final"]
+                           ["code-value-quantity" "http://loinc.org|8480-6$ge130|mm[Hg]"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-1")))
+          (testing "value as value"
+            (let [clauses [["status" "final"]
+                           ["code-value-quantity" "http://loinc.org|8480-6$ge130"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-1"))))
+        (testing "code as code"
+          (testing "value as value|unit"
+            (let [clauses [["status" "final"]
+                           ["code-value-quantity" "8480-6$ge130|mm[Hg]"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-1")))
+          (testing "value as value"
+            (let [clauses [["status" "final"]
+                           ["code-value-quantity" "8480-6$ge130"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-1"))))
+
+        (testing "it is possible to start with the second observation"
+          (testing "code as system|code"
+            (testing "value as value|unit"
+              (let [clauses [["status" "final"]
+                             ["code-value-quantity" "http://loinc.org|8480-6$ge130|mm[Hg]"]]]
+                (given (pull-type-query node "Observation" clauses "id-1")
+                  count := 1
+                  [0 :id] := "id-1")))
+            (testing "value as value"
+              (let [clauses [["status" "final"]
+                             ["code-value-quantity" "http://loinc.org|8480-6$ge130"]]]
+                (given (pull-type-query node "Observation" clauses "id-1")
+                  count := 1
+                  [0 :id] := "id-1"))))
+          (testing "code as code"
+            (testing "value as value|unit"
+              (let [clauses [["status" "final"]
+                             ["code-value-quantity" "8480-6$ge130|mm[Hg]"]]]
+                (given (pull-type-query node "Observation" clauses "id-1")
+                  count := 1
+                  [0 :id] := "id-1")))
+            (testing "value as value"
+              (let [clauses [["status" "final"]
+                             ["code-value-quantity" "8480-6$ge130"]]]
+                (given (pull-type-query node "Observation" clauses "id-1")
+                  count := 1
+                  [0 :id] := "id-1"))))))
+
+      (testing "with individual code and value-quantity clauses"
+        (testing "code as system|code"
+          (testing "value as value|unit"
+            (let [clauses [["code" "http://loinc.org|8480-6"]
+                           ["value-quantity" "ge130|mm[Hg]"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-1")))
+          (testing "value as value"
+            (let [clauses [["code" "http://loinc.org|8480-6"]
+                           ["value-quantity" "ge130"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-1"))))
+        (testing "code as code"
+          (testing "value as value|unit"
+            (let [clauses [["code" "8480-6"]
+                           ["value-quantity" "ge130|mm[Hg]"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-1")))
+          (testing "value as value"
+            (let [clauses [["code" "8480-6"]
+                           ["value-quantity" "ge130"]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "id-0"
+                [1 :id] := "id-1"))))
+
+        (testing "it is possible to start with the second observation"
+          (testing "code as system|code"
+            (testing "value as value|unit"
+              (let [clauses [["code" "http://loinc.org|8480-6"]
+                             ["value-quantity" "ge130|mm[Hg]"]]]
+                (given (pull-type-query node "Observation" clauses "id-1")
+                  count := 1
+                  [0 :id] := "id-1")))
+            (testing "value as value"
+              (let [clauses [["code" "http://loinc.org|8480-6"]
+                             ["value-quantity" "ge130"]]]
+                (given (pull-type-query node "Observation" clauses "id-1")
+                  count := 1
+                  [0 :id] := "id-1"))))
+          (testing "code as code"
+            (testing "value as value|unit"
+              (let [clauses [["code" "8480-6"]
+                             ["value-quantity" "ge130|mm[Hg]"]]]
+                (given (pull-type-query node "Observation" clauses "id-1")
+                  count := 1
+                  [0 :id] := "id-1")))
+            (testing "value as value"
+              (let [clauses [["code" "8480-6"]
+                             ["value-quantity" "ge130"]]]
+                (given (pull-type-query node "Observation" clauses "id-1")
+                  count := 1
+                  [0 :id] := "id-1")))))))))
+
+(deftest type-query-observation-code-value-concept-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Observation :id "id-0"
+             :status #fhir/code"final"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://loinc.org"
+                  :code #fhir/code"94564-2"
+                  :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+             :value
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://snomed.info/sct"
+                  :code #fhir/code"260373001"
+                  :display "Detected (qualifier value)"}]}}]
+      [:put {:fhir/type :fhir/Observation :id "id-1"
+             :status #fhir/code"final"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://loinc.org"
+                  :code #fhir/code"94564-2"
+                  :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+             :value
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://snomed.info/sct"
+                  :code #fhir/code"260415000"
+                  :display "Not detected (qualifier value)"}]}}]
+      [:put {:fhir/type :fhir/Observation :id "id-2"
+             :status #fhir/code"final"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://loinc.org"
+                  :code #fhir/code"94564-2"
+                  :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+             :value
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://snomed.info/sct"
+                  :code #fhir/code"260373001"
+                  :display "Detected (qualifier value)"}]}}]]]
+
+    (testing "missing second value part"
+      (given (d/type-query (d/db node) "Observation" [["code-value-concept" "http://loinc.org|94564-2"]])
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Miss the second part is composite search value `http://loinc.org|94564-2`."))
+
+    (testing "as first clause"
+      (testing "code as system|code"
+        (testing "value as system|code"
+          (let [clauses [["code-value-concept" "http://loinc.org|94564-2$http://snomed.info/sct|260373001"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "id-0"
+              [1 :id] := "id-2")
+
+            (testing "count query"
+              (is (= 2 (count-type-query node "Observation" clauses))))))
+
+        (testing "value as code"
+          (let [clauses [["code-value-concept" "http://loinc.org|94564-2$260373001"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "id-0"
+              [1 :id] := "id-2"))))
+
+      (testing "code as code"
+        (testing "value as system|code"
+          (let [clauses [["code-value-concept" "94564-2$http://snomed.info/sct|260373001"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "id-0"
+              [1 :id] := "id-2")))
+
+        (testing "value as code"
+          (let [clauses [["code-value-concept" "94564-2$260373001"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "id-0"
+              [1 :id] := "id-2"))))
+
+      (testing "it is possible to start with the second observation"
+        (testing "code as system|code"
+          (testing "value as system|code"
+            (let [clauses [["code-value-concept" "http://loinc.org|94564-2$http://snomed.info/sct|260373001"]]]
+              (given (pull-type-query node "Observation" clauses "id-2")
+                count := 1
+                [0 :id] := "id-2")))
+
+          (testing "value as code"
+            (let [clauses [["code-value-concept" "http://loinc.org|94564-2$260373001"]]]
+              (given (pull-type-query node "Observation" clauses "id-2")
+                count := 1
+                [0 :id] := "id-2"))))
+
+        (testing "code as code"
+          (testing "value as system|code"
+            (let [clauses [["code-value-concept" "94564-2$http://snomed.info/sct|260373001"]]]
+              (given (pull-type-query node "Observation" clauses "id-2")
+                count := 1
+                [0 :id] := "id-2")))
+
+          (testing "value as code"
+            (let [clauses [["code-value-concept" "94564-2$260373001"]]]
+              (given (pull-type-query node "Observation" clauses "id-2")
+                count := 1
+                [0 :id] := "id-2"))))))
+
+    (testing "as second clause"
+      (testing "code as system|code"
+        (testing "value as system|code"
+          (let [clauses [["status" "final"]
+                         ["code-value-concept" "http://loinc.org|94564-2$http://snomed.info/sct|260373001"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "id-0"
+              [1 :id] := "id-2")))
+
+        (testing "value as code"
+          (let [clauses [["status" "final"]
+                         ["code-value-concept" "http://loinc.org|94564-2$260373001"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "id-0"
+              [1 :id] := "id-2"))))
+
+      (testing "code as code"
+        (testing "value as system|code"
+          (let [clauses [["status" "final"]
+                         ["code-value-concept" "94564-2$http://snomed.info/sct|260373001"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "id-0"
+              [1 :id] := "id-2")))
+
+        (testing "value as code"
+          (let [clauses [["status" "final"]
+                         ["code-value-concept" "94564-2$260373001"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "id-0"
+              [1 :id] := "id-2")))))))
+
+(deftest type-query-list-test
+  (testing "item"
+    (testing "with no modifier"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Patient :id "1"}]]
+         [[:put {:fhir/type :fhir/List
+                 :id "id-150545"
+                 :entry
+                 [{:fhir/type :fhir.List/entry
+                   :item
+                   #fhir/Reference
+                    {:reference "Patient/0"}}]}]
+          [:put {:fhir/type :fhir/List
+                 :id "id-143814"
+                 :entry
+                 [{:fhir/type :fhir.List/entry
+                   :item
+                   #fhir/Reference
+                    {:reference "Patient/1"}}]}]]]
+
+        (given (pull-type-query node "List" [["item" "Patient/1"]])
+          count := 1
+          [0 :id] := "id-143814")))
+
+    (testing "with identifier modifier"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/List
+                 :id "id-123058"
+                 :entry
+                 [{:fhir/type :fhir.List/entry
+                   :item
+                   #fhir/Reference
+                    {:identifier
+                     #fhir/Identifier
+                      {:system #fhir/uri"system-122917"
+                       :value "value-122931"}}}]}]
+          [:put {:fhir/type :fhir/List
+                 :id "id-143814"
+                 :entry
+                 [{:fhir/type :fhir.List/entry
+                   :item
+                   #fhir/Reference
+                    {:identifier
+                     #fhir/Identifier
+                      {:system #fhir/uri"system-122917"
+                       :value "value-143818"}}}]}]]]
+
+        (let [clauses [["item:identifier" "system-122917|value-122931"]]]
+          (given (pull-type-query node "List" clauses)
+            count := 1
+            [0 :id] := "id-123058")))))
+
+  (testing "code and item"
+    (testing "with identifier modifier"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/List
+                 :id "id-123058"
+                 :code
+                 #fhir/CodeableConcept
+                  {:coding
+                   [#fhir/Coding
+                     {:system #fhir/uri"system-152812"
+                      :code #fhir/code"code-152819"}]}
+                 :entry
+                 [{:fhir/type :fhir.List/entry
+                   :item
+                   #fhir/Reference
+                    {:identifier
+                     #fhir/Identifier
+                      {:system #fhir/uri"system-122917"
+                       :value "value-122931"}}}]}]
+          [:put {:fhir/type :fhir/List
+                 :id "id-143814"
+                 :code
+                 #fhir/CodeableConcept
+                  {:coding
+                   [#fhir/Coding
+                     {:system #fhir/uri"system-152812"
+                      :code #fhir/code"code-152819"}]}
+                 :entry
+                 [{:fhir/type :fhir.List/entry
+                   :item
+                   #fhir/Reference
+                    {:identifier
+                     #fhir/Identifier
+                      {:system #fhir/uri"system-122917"
+                       :value "value-143818"}}}]}]]]
+
+        (let [clauses [["code" "system-152812|code-152819"]
+                       ["item:identifier" "system-122917|value-143818"]]]
+          (given (pull-type-query node "List" clauses)
+            count := 1
+            [0 :id] := "id-143814"))))))
+
+(deftest type-query-encounter-test
+  (testing "duplicates are removed"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Encounter
+               :id "0"
+               :diagnosis
+               [{:fhir/type :fhir.Encounter/diagnosis
+                 :condition #fhir/Reference{:reference "Condition/0"}}
+                {:fhir/type :fhir.Encounter/diagnosis
+                 :condition #fhir/Reference{:reference "Condition/1"}}]}]
+        [:put {:fhir/type :fhir/Encounter
+               :id "1"
+               :diagnosis
+               [{:fhir/type :fhir.Encounter/diagnosis
+                 :condition #fhir/Reference{:reference "Condition/1"}}
+                {:fhir/type :fhir.Encounter/diagnosis
+                 :condition #fhir/Reference{:reference "Condition/2"}}]}]
+        [:put {:fhir/type :fhir/Condition :id "0"}]
+        [:put {:fhir/type :fhir/Condition :id "1"}]
+        [:put {:fhir/type :fhir/Condition :id "2"}]]]
+
+      (testing "on pulling all resource handles"
+        (given (pull-type-query node "Encounter" [["diagnosis" "Condition/0" "Condition/1" "Condition/2"]])
+          count := 2
+          [0 :id] := "0"
+          [1 :id] := "1")
+
+        (testing "count query"
+          (is (= 2 (count-type-query node "Encounter" [["diagnosis" "Condition/0" "Condition/1" "Condition/2"]])))))
+
+      (testing "on pulling the second page"
+        (given (pull-type-query node "Encounter" [["diagnosis" "Condition/0" "Condition/1" "Condition/2"]] "1")
+          count := 1
+          [0 :id] := "1")))))
 
 (deftest type-query-date-equal-test
   (testing "with second precision"
@@ -4541,6 +4560,89 @@
           [4 :id] := "4"
           [5 :fhir/type] := :fhir/Observation
           [5 :id] := "5")))))
+
+(defn- patient-w-identifier [i]
+  {:fhir/type :fhir/Patient :id (str i)
+   :identifier [(type/map->Identifier {:value (str i)})]})
+
+(deftest type-query-identifier-non-matching-test
+  (st/unstrument)
+  (log/set-min-level! :info)
+  (testing "doesn't return non-matching resources"
+    (let [test-size 200000]
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [(mapv (fn [i] [:create (patient-w-identifier i)]) (range test-size))]
+
+        (let [db (d/db node)]
+          (is (every?
+               #(= 1 @(d/count-query db (d/compile-type-query node "Patient" [["identifier" (str %)]])))
+               (range test-size)))))))
+  (log/set-min-level! :trace))
+
+(deftest type-query-identifier-test
+  (testing "works with non-unique identifiers"
+    (doseq [system [nil #fhir/uri"foo"]]
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"
+                 :active true
+                 :identifier
+                 [(type/map->Identifier {:system system :value "0"})]}]
+          [:put {:fhir/type :fhir/Patient :id "1"
+                 :active true
+                 :identifier
+                 [(type/map->Identifier {:system system :value "0"})]}]
+          [:put {:fhir/type :fhir/Patient :id "2"
+                 :active true
+                 :identifier
+                 [(type/map->Identifier {:system system :value "0"})]}]]]
+
+        (doseq [value (if system ["0" "foo|0"] ["0" "|0"])]
+          (given (pull-type-query node "Patient" [["identifier" value]])
+            count := 3
+            [0 :id] := "0"
+            [1 :id] := "1"
+            [2 :id] := "2")
+
+          (testing "it is possible to start with the second patient"
+            (given (pull-type-query node "Patient" [["identifier" value]] "1")
+              count := 2
+              [0 :id] := "1"
+              [1 :id] := "2"))
+
+          (testing "as second clause"
+            (given (pull-type-query node "Patient" [["active" "true"]
+                                                    ["identifier" value]])
+              count := 3
+              [0 :id] := "0"
+              [1 :id] := "1"
+              [2 :id] := "2"))))))
+
+  (testing "system search"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :active true
+               :identifier
+               [#fhir/Identifier{:system #fhir/uri"system-115849"}]}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :active true
+               :identifier
+               [#fhir/Identifier{:system #fhir/uri"system-115849"}]}]]]
+
+      (given (pull-type-query node "Patient" [["identifier" "system-115849|"]])
+        count := 2
+        [0 :id] := "0"
+        [1 :id] := "1")
+
+      (testing "it is possible to start with the second patient"
+        (given (pull-type-query node "Patient" [["identifier" "system-115849|"]] "1")
+          count := 1
+          [0 :id] := "1"))
+
+      (testing "as second clause"
+        (given (pull-type-query node "Patient" [["active" "true"] ["identifier" "system-115849|"]])
+          count := 2
+          [0 :id] := "0"
+          [1 :id] := "1")))))
 
 (deftest compile-type-query-test
   (testing "a node with one patient"

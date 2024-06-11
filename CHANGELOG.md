@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.27.0
+
+### New Features
+
+* Support Asynchronous Interaction Request Pattern ([#1735](https://github.com/samply/blaze/issues/1735))
+
+### Bugfixes
+
+* Fix Delivering too Many Search Results in Some Cases ([#1685](https://github.com/samply/blaze/issues/1685))
+
+### Performance
+
+* Lower Memory Consumption while Evaluating Stratifiers ([#1723](https://github.com/samply/blaze/issues/1723))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/88?closed=1).
+
 ## v0.26.2
 
 ### Operation

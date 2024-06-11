@@ -8,5 +8,5 @@ make test-dev
 Run test in dev mode with UI:
 
 ```sh
-test-ui-dev
+make test-ui-dev
 ```

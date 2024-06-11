@@ -5,7 +5,7 @@
   {:local/root "../byte-buffer"}
 
   com.google.guava/guava
-  {:mvn/version "33.2.0-jre"
+  {:mvn/version "33.2.1-jre"
    :exclusions
    [com.google.code.findbugs/jsr305
     org.checkerframework/checker-qual
@@ -26,7 +26,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.89.1380"}}
+    {:mvn/version "1.91.1392"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

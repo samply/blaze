@@ -1,28 +1,26 @@
 (ns blaze.db.api-test-perf
   (:require
-    [blaze.db.api :as d]
-    [blaze.db.kv :as kv]
-    [blaze.db.kv.mem]
-    [blaze.db.node :as node]
-    [blaze.db.resource-store :as rs]
-    [blaze.db.resource-store.kv :as rs-kv]
-    [blaze.db.search-param-registry]
-    [blaze.db.tx-cache]
-    [blaze.db.tx-log :as tx-log]
-    [blaze.db.tx-log.local]
-    [blaze.fhir.spec.type :as type]
-    [blaze.fhir.test-util :refer [structure-definition-repo]]
-    [blaze.log]
-    [blaze.module.test-util :refer [with-system]]
-    [clojure.test :refer [deftest]]
-    [criterium.core :as criterium]
-    [integrant.core :as ig]
-    [java-time.api :as time]
-    [taoensso.timbre :as log]))
+   [blaze.db.api :as d]
+   [blaze.db.kv :as kv]
+   [blaze.db.kv.mem]
+   [blaze.db.node :as node]
+   [blaze.db.resource-store :as rs]
+   [blaze.db.resource-store.kv :as rs-kv]
+   [blaze.db.search-param-registry]
+   [blaze.db.tx-cache]
+   [blaze.db.tx-log :as tx-log]
+   [blaze.db.tx-log.local]
+   [blaze.fhir.spec.type :as type]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.log]
+   [blaze.module.test-util :refer [with-system]]
+   [clojure.test :refer [deftest]]
+   [criterium.core :as criterium]
+   [integrant.core :as ig]
+   [java-time.api :as time]
+   [taoensso.timbre :as log]))
 
-
-(log/set-level! :info)
-
+(log/set-min-level! :info)
 
 (def config
   {:blaze.db/node
@@ -83,7 +81,6 @@
    :blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}})
 
-
 (defmacro with-system-data
   "Runs `body` inside a system that is initialized from `config`, bound to
   `binding-form` and finally halted.
@@ -94,13 +91,11 @@
      (run! #(deref (d/transact (:blaze.db/node system#) %)) ~txs)
      (let [~binding-form system#] ~@body)))
 
-
 (deftest transact-test
   (with-system [{:blaze.db/keys [node]} config]
     ;;  58.8 µs / 1.76 µs - Macbook Pro M1 Pro, Oracle OpenJDK 17.0.2
     (criterium/bench
-      @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))))
-
+     @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"}]]))))
 
 (defn- observation-tx-data
   ([version]
@@ -111,12 +106,10 @@
           :method (type/codeable-concept {:text (type/string (str version))})
           :code
           #fhir/CodeableConcept
-                  {:coding
-                   [#fhir/Coding
-                           {:system #fhir/uri"system-191514"
-                            :code #fhir/code"code-191518"}]}}]))
-
-
+           {:coding
+            [#fhir/Coding
+              {:system #fhir/uri"system-191514"
+               :code #fhir/code"code-191518"}]}}]))
 
 (deftest type-test
   (with-system-data [{:blaze.db/keys [node]} config]
@@ -125,9 +118,9 @@
           (range 2))
 
     (let [query (d/compile-compartment-query
-                  node "Patient" "Observation"
-                  [["code" "system-191514|code-191518"]])]
+                 node "Patient" "Observation"
+                 [["code" "system-191514|code-191518"]])]
       ;; 5.75 µs / 120 ns - Macbook Pro M1 Pro, Oracle OpenJDK 17.0.2
       (with-open [db (d/new-batch-db (d/db node))]
         (criterium/bench
-          (count (d/execute-query db query "0")))))))
+         (count (d/execute-query db query "0")))))))

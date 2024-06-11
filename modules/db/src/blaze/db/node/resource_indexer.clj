@@ -96,7 +96,7 @@
      (search-params search-param-registry resource))))
 
 (defn- index-resource [context [hash resource]]
-  (log/trace "Index resource with hash" hash)
+  (log/trace "Index resource with hash" (str hash))
   (with-open [_ (prom/timer duration-seconds "index-resource")]
     (let [entries (index-resource* context hash resource)]
       (prom/observe! index-entries (name (:fhir/type resource)) (count entries))
@@ -135,7 +135,7 @@
            (partial index-resources* context))))))
 
 (defn- re-index-resource [search-param [hash resource]]
-  (log/trace "Re-index resource with hash" hash)
+  (log/trace "Re-index resource with hash" (str hash))
   (search-param-index-entries search-param nil hash resource))
 
 (defn async-re-index-resources [kv-store executor search-param resources]

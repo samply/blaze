@@ -9,8 +9,8 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
+   [blaze.handler.util :as handler-util]
    [blaze.interaction.history.util :as history-util]
-   [blaze.interaction.util :as iu]
    [blaze.module :as m]
    [blaze.spec]
    [blaze.util :refer [conj-vec]]
@@ -50,7 +50,7 @@
            (ring/response
             (cond->
              {:fhir/type :fhir/Bundle
-              :id (iu/luid context)
+              :id (handler-util/luid context)
               :type #fhir/code"history"
               :total (type/->UnsignedInt total)
               :link [(history-util/self-link context query-params)]

@@ -13,6 +13,7 @@
    [blaze.fhir.operation.evaluate-measure.spec]
    [blaze.fhir.response.create :as response]
    [blaze.handler.util :as handler-util]
+   [blaze.job.async-interaction.request :as req]
    [blaze.luid :as luid]
    [blaze.module :as m :refer [reg-collector]]
    [blaze.spec]
@@ -42,30 +43,36 @@
 
 (defn- handle
   [{:keys [node] :as context}
-   {:blaze/keys [base-url]
+   {:blaze/keys [base-url cancelled?]
     ::reitit/keys [router]
-    :keys [request-method]
+    :keys [request-method headers]
     ::keys [params]
     :as request}
    measure]
-  (let [context (assoc context :blaze/base-url base-url ::reitit/router router)]
-    (-> (measure/evaluate-measure context measure params)
-        (ac/then-compose
-         (fn process-result [result]
-           (cond
-             (= :get request-method)
-             (ac/completed-future (ring/response (:resource result)))
+  (if (handler-util/preference headers "respond-async")
+    (req/handle-async context request)
+    (let [context (cond-> (assoc context
+                                 :blaze/base-url base-url
+                                 ::reitit/router router)
+                    cancelled?
+                    (assoc :blaze/cancelled? cancelled?))]
+      (-> (measure/evaluate-measure context measure params)
+          (ac/then-compose
+           (fn process-result [result]
+             (cond
+               (= :get request-method)
+               (ac/completed-future (ring/response (:resource result)))
 
-             (= :post request-method)
-             (let [id (luid context)]
-               (-> (d/transact node (tx-ops result id))
-                   (ac/then-compose
-                    (fn [db-after]
-                      (response/build-response
-                       (response-context request db-after)
-                       nil
-                       nil
-                       (d/resource-handle db-after "MeasureReport" id))))))))))))
+               (= :post request-method)
+               (let [id (luid context)]
+                 (-> (d/transact node (tx-ops result id))
+                     (ac/then-compose
+                      (fn [db-after]
+                        (response/build-response
+                         (response-context request db-after)
+                         nil
+                         nil
+                         (d/resource-handle db-after "MeasureReport" id)))))))))))))
 
 (defn- measure-with-id-not-found-msg [id]
   (format "The Measure resource with id `%s` was not found." id))
@@ -114,7 +121,7 @@
 
 (defmethod m/pre-init-spec ::handler [_]
   (s/keys :req-un [:blaze.db/node ::executor :blaze/clock :blaze/rng-fn]
-          :opt-un [::timeout]))
+          :opt-un [::timeout :blaze/context-path]))
 
 (defmethod ig/init-key ::handler [_ context]
   (log/info "Init FHIR $evaluate-measure operation handler")

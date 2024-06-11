@@ -1,4 +1,5 @@
 (ns blaze.luid
+  (:refer-clojure :exclude [next])
   (:require
    [blaze.luid.impl :as impl])
   (:import
@@ -20,12 +21,27 @@
   [clock rng]
   (impl/luid (.millis ^Clock clock) (entropy rng)))
 
-(defn- successive-luids* [^long timestamp ^long entropy]
-  (cons (impl/luid timestamp entropy)
-        (lazy-seq
-         (if (= 0xFFFFFFFFF entropy)
-           (successive-luids* (inc timestamp) 0)
-           (successive-luids* timestamp (inc entropy))))))
+(defprotocol Generator
+  (-head [_])
+  (-next [_]))
 
-(defn successive-luids [clock rng]
-  (successive-luids* (.millis ^Clock clock) (entropy rng)))
+(defn generator? [x]
+  (satisfies? Generator x))
+
+(defn head [generator]
+  (-head generator))
+
+(defn next [generator]
+  (-next generator))
+
+(deftype LuidGenerator [^long timestamp ^long entropy]
+  Generator
+  (-head [_]
+    (impl/luid timestamp entropy))
+  (-next [_]
+    (if (= 0xFFFFFFFFF entropy)
+      (LuidGenerator. (inc timestamp) 0)
+      (LuidGenerator. timestamp (inc entropy)))))
+
+(defn generator [clock rng]
+  (->LuidGenerator (.millis ^Clock clock) (entropy rng)))

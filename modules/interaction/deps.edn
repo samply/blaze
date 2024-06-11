@@ -5,6 +5,9 @@
   blaze/luid
   {:local/root "../luid"}
 
+  blaze/job-async-interaction
+  {:local/root "../job-async-interaction"}
+
   blaze/module-base
   {:local/root "../module-base"}
 
@@ -28,7 +31,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.89.1380"}}
+    {:mvn/version "1.91.1392"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

@@ -1,7 +1,10 @@
 {:paths ["src" "resources" "target/classes"]
 
  :deps
- {blaze/coll
+ {blaze/byte-buffer
+  {:local/root "../byte-buffer"}
+
+  blaze/coll
   {:local/root "../coll"}
 
   blaze/module-base
@@ -42,13 +45,16 @@
   {:extra-paths ["test"]
 
    :extra-deps
-   {blaze/fhir-test-util
-    {:local/root "../fhir-test-util"}}}
+   {blaze/executor
+    {:local/root "../executor"}
+
+    blaze/test-util
+    {:local/root "../test-util"}}}
 
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.89.1380"}}
+    {:mvn/version "1.91.1392"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

@@ -1,0 +1,203 @@
+"Acquired coagulation disorder (disorder)",1
+"Acute Cholecystitis",3
+"Acute allergic reaction",12
+"Acute bacterial sinusitis (disorder)",70
+"Acute bronchitis (disorder)",527
+"Acute deep venous thrombosis (disorder)",9
+"Acute myeloid leukemia, disease (disorder)",103
+"Acute pulmonary embolism (disorder)",6
+"Acute respiratory distress syndrome (disorder)",2
+"Acute respiratory failure (disorder)",2
+"Acute viral pharyngitis (disorder)",598
+"Alcoholism",8
+"Alzheimer's disease (disorder)",50
+"Anemia (disorder)",382
+"Antepartum eclampsia",18
+"Appendicitis",54
+"Asthma",1
+"Atopic dermatitis",13
+"Atrial Fibrillation",95
+"Bacteremia (finding)",22
+"Bleeding from anus",1
+"Blighted ovum",16
+"Blindness due to type 2 diabetes mellitus (disorder)",1
+"Body mass index 30+ - obesity (finding)",528
+"Body mass index 40+ - severely obese (finding)",8
+"Brain damage - traumatic",10
+"Bullet wound",1
+"COVID-19",83
+"Carcinoma in situ of prostate (disorder)",29
+"Cardiac Arrest",44
+"Child attention deficit disorder",20
+"Childhood asthma",18
+"Chill (finding)",15
+"Cholelithiasis",3
+"Chronic congestive heart failure (disorder)",9
+"Chronic intractable migraine without aura",49
+"Chronic kidney disease stage 1 (disorder)",148
+"Chronic kidney disease stage 2 (disorder)",137
+"Chronic kidney disease stage 3 (disorder)",96
+"Chronic kidney disease stage 4 (disorder)",18
+"Chronic low back pain (finding)",199
+"Chronic neck pain (finding)",131
+"Chronic obstructive bronchitis (disorder)",12
+"Chronic pain",52
+"Chronic paralysis due to lesion of spinal cord",2
+"Chronic sinusitis (disorder)",257
+"Chronic type B viral hepatitis (disorder)",1
+"Closed fracture of hip",16
+"Concussion injury of brain",4
+"Concussion with loss of consciousness",14
+"Concussion with no loss of consciousness",49
+"Contact dermatitis",4
+"Coronary Heart Disease",90
+"Cough (finding)",52
+"Cystitis",21
+"Diabetes",96
+"Diabetic renal disease (disorder)",157
+"Diabetic retinopathy associated with type II diabetes mellitus (disorder)",25
+"Diarrhea symptom (finding)",3
+"Drug overdose",62
+"Dyspnea (finding)",24
+"Epilepsy",13
+"Escherichia coli urinary tract infection",25
+"Facial laceration",36
+"Familial Alzheimer's disease of early onset (disorder)",5
+"Fatigue (finding)",40
+"Febrile neutropenia (disorder)",79
+"Fetus with unknown complication",26
+"Fever (finding)",77
+"Fibromyalgia (disorder)",22
+"First degree burn",26
+"Fracture of ankle",32
+"Fracture of clavicle",39
+"Fracture of forearm",60
+"Fracture of rib",20
+"Fracture of vertebral column without spinal cord injury",2
+"Fracture subluxation of wrist",44
+"Full-time employment (finding)",20900
+"Gout",9
+"Has a criminal record (finding)",312
+"Headache (finding)",14
+"History of amputation of foot (situation)",1
+"History of appendectomy",54
+"History of cardiac arrest (situation)",44
+"History of disarticulation at wrist (situation)",1
+"History of lower limb amputation (situation)",2
+"History of myocardial infarction (situation)",5
+"History of single seizure (situation)",25
+"Homeless (finding)",7
+"Housing unsatisfactory (finding)",113
+"Human immunodeficiency virus infection (disorder)",2
+"Hyperglycemia (disorder)",42
+"Hyperlipidemia",158
+"Hypertension",466
+"Hypertriglyceridemia (disorder)",97
+"Hypoxemia (disorder)",15
+"Idiopathic atrophic hypothyroidism",13
+"Impacted molars",55
+"Injury of anterior cruciate ligament",3
+"Injury of medial collateral ligament of knee",16
+"Injury of tendon of the rotator cuff of shoulder",11
+"Joint pain (finding)",17
+"Laceration of foot",43
+"Laceration of forearm",28
+"Laceration of hand",20
+"Laceration of thigh",31
+"Lack of access to transportation (finding)",96
+"Limited social contact (finding)",1514
+"Localized, primary osteoarthritis of the hand",37
+"Loss of taste (finding)",43
+"Lupus erythematosus",1
+"Macular edema and retinopathy due to type 2 diabetes mellitus (disorder)",6
+"Major depression disorder",3
+"Malignant neoplasm of breast (disorder)",25
+"Malignant tumor of colon",3
+"Metabolic syndrome X (disorder)",244
+"Metastasis from malignant tumor of prostate (disorder)",2
+"Microalbuminuria due to type 2 diabetes mellitus (disorder)",138
+"Miscarriage in first trimester",220
+"Misuses drugs (finding)",60
+"Muscle pain (finding)",17
+"Myocardial Infarction",5
+"Nausea (finding)",5
+"Neoplasm of prostate",31
+"Neuropathy due to type 2 diabetes mellitus (disorder)",37
+"Neutropenia (disorder)",24
+"Nonproliferative diabetic retinopathy due to type 2 diabetes mellitus (disorder)",10
+"Normal pregnancy",370
+"Not in labor force (finding)",1513
+"Obstructive sleep apnea syndrome (disorder)",38
+"Only received primary school education (finding)",85
+"Opioid abuse (disorder)",11
+"Osteoarthritis of hip",30
+"Osteoarthritis of knee",58
+"Osteoporosis (disorder)",129
+"Otitis media",145
+"Overlapping malignant neoplasm of colon",5
+"Part-time employment (finding)",3496
+"Passive conjunctival congestion (finding)",3
+"Pathological fracture due to osteoporosis (disorder)",61
+"Perennial allergic rhinitis with seasonal variation",16
+"Perennial allergic rhinitis",17
+"Pneumonia (disorder)",15
+"Polyp of colon",101
+"Posttraumatic stress disorder",1
+"Prediabetes",444
+"Preeclampsia",19
+"Primary fibromyalgia syndrome",7
+"Primary malignant neoplasm of colon",4
+"Proliferative diabetic retinopathy due to type II diabetes mellitus (disorder)",4
+"Proteinuria due to type 2 diabetes mellitus (disorder)",96
+"Protracted diarrhea",1
+"Pulmonary emphysema (disorder)",9
+"Received certificate of high school equivalency (finding)",260
+"Received higher education (finding)",490
+"Recurrent rectal polyp",28
+"Recurrent urinary tract infection",13
+"Refugee (person)",53
+"Reports of violence in the environment (finding)",756
+"Respiratory distress (finding)",15
+"Rheumatoid arthritis",1
+"Risk activity involvement (finding)",333
+"Rupture of appendix",20
+"Rupture of patellar tendon",8
+"Seasonal allergic rhinitis",5
+"Second degree burn",16
+"Secondary malignant neoplasm of colon",1
+"Seizure disorder",25
+"Sepsis (disorder)",27
+"Sepsis caused by virus (disorder)",2
+"Septic shock (disorder)",2
+"Served in armed forces (finding)",52
+"Severe anxiety (panic) (finding",181
+"Shock (disorder)",1
+"Sinusitis (disorder)",64
+"Sleep apnea (disorder)",10
+"Sleep disorder (disorder)",48
+"Smokes tobacco daily",12
+"Social isolation (finding)",1677
+"Social migrant (finding)",2
+"Sore throat symptom (finding)",11
+"Sprain of ankle",109
+"Sprain of wrist",49
+"Sputum finding (finding)",27
+"Streptococcal sore throat (disorder)",161
+"Stress (finding)",7477
+"Stroke",110
+"Suspected COVID-19",84
+"Suspected lung cancer (situation)",1
+"Tear of meniscus of knee",6
+"Third degree burn",2
+"Toxoplasma gondii antibody positive (finding)",1
+"Transformed migraine (disorder)",14
+"Transport problems (finding)",95
+"Traumatic brain injury (disorder)",1
+"Tubal pregnancy",36
+"Unemployed (finding)",76
+"Unhealthy alcohol drinking behavior (finding)",169
+"Victim of intimate partner abuse (finding)",1184
+"Viral sinusitis (disorder)",1083
+"Vomiting symptom (finding)",5
+"Wheezing (finding)",24
+"Whiplash injury to neck",42

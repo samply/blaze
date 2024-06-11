@@ -1,10 +1,13 @@
 fmt:
-	cljfmt check
+	cljfmt check src test test-perf build.clj
 
 lint:
-	clj-kondo --lint src test test-perf deps.edn
+	clj-kondo --lint src test test-perf build.clj deps.edn
 
-prep:
+build:
+	clojure -T:build copy-profiles
+
+prep: build
 	clojure -X:deps prep
 
 test: prep

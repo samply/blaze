@@ -1,0 +1,20 @@
+{:paths ["resources"]
+
+ :deps
+ {blaze/job-scheduler
+  {:local/root "../job-scheduler"}
+
+  blaze/module-base
+  {:local/root "../module-base"}}
+
+ :deps/prep-lib
+ {:alias :build
+  :fn copy-profiles
+  :ensure "resources/blaze/job/compact"}
+
+ :aliases
+ {:build
+  {:deps
+   {io.github.clojure/tools.build
+    {:git/tag "v0.10.0" :git/sha "3a2c484"}}
+   :ns-default build}}}

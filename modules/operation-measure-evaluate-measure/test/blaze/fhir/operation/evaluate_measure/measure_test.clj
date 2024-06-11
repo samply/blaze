@@ -5,6 +5,7 @@
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.fhir.operation.evaluate-measure.measure :as measure]
    [blaze.fhir.operation.evaluate-measure.measure-spec]
+   [blaze.fhir.operation.evaluate-measure.measure.group-spec]
    [blaze.fhir.operation.evaluate-measure.measure.population-spec]
    [blaze.fhir.operation.evaluate-measure.measure.stratifier-spec]
    [blaze.fhir.operation.evaluate-measure.measure.util-spec]
@@ -28,7 +29,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -91,7 +92,7 @@
                     :blaze/base-url "" ::reitit/router router
                     :executor executor}
            measure @(d/pull node (d/resource-handle db "Measure" "0"))
-           period [#system/date"2000" #system/date"2020"]]
+           period [#system/date "2000" #system/date "2020"]]
        (try
          @(measure/evaluate-measure context measure
                                     {:period period :report-type report-type})
@@ -106,14 +107,16 @@
         :group first
         :population first)))
 
-(defn- first-stratifier-strata [result]
+(defn- first-stratifier [result]
   (if (::anom/category result)
     (prn result)
     (-> result
         :resource
         :group first
-        :stratifier first
-        :stratum)))
+        :stratifier first)))
+
+(defn- first-stratifier-strata [result]
+  (:stratum (first-stratifier result)))
 
 (defn- population-concept [code]
   (type/codeable-concept
@@ -215,7 +218,7 @@
                          :criteria (cql-expression "InInitialPopulation")}]}]}]
 
         (testing "population report"
-          (let [params {:period [#system/date"2000" #system/date"2100"]
+          (let [params {:period [#system/date "2000" #system/date "2100"]
                         :report-type "population"}]
             (given (:resource @(measure/evaluate-measure context measure params))
               :fhir/type := :fhir/MeasureReport
@@ -223,7 +226,7 @@
               [:group 0 :population 0 :count] := 3)))
 
         (testing "subject-list report"
-          (let [params {:period [#system/date"2000" #system/date"2100"]
+          (let [params {:period [#system/date "2000" #system/date "2100"]
                         :report-type "subject-list"}
                 {:keys [resource tx-ops]} @(measure/evaluate-measure context measure params)]
 
@@ -263,6 +266,7 @@
                      :library [#fhir/canonical"0"]
                      :group
                      [{:fhir/type :fhir.Measure/group
+                       :code #fhir/CodeableConcept{:text #fhir/string"group-1"}
                        :extension
                        [#fhir/Extension
                          {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
@@ -276,6 +280,7 @@
                          :code #fhir/CodeableConcept{:text #fhir/string"gender"}
                          :criteria (cql-expression "Gender")}]}
                       {:fhir/type :fhir.Measure/group
+                       :code #fhir/CodeableConcept{:text #fhir/string"group-2"}
                        :extension
                        [#fhir/Extension
                          {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
@@ -286,35 +291,40 @@
                          :criteria (cql-expression "AllEncounters")}]}]}]
 
         (testing "population report"
-          (let [params {:period [#system/date"2000" #system/date"2100"]
+          (let [params {:period [#system/date "2000" #system/date "2100"]
                         :report-type "population"}]
             (given (:resource @(measure/evaluate-measure context measure params))
               :fhir/type := :fhir/MeasureReport
+              [:group count] := 2
+              [:group 0 :code] := #fhir/CodeableConcept{:text #fhir/string"group-1"}
               [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
               [:group 0 :population 0 :count] := 4
+              [:group 1 :code] := #fhir/CodeableConcept{:text #fhir/string"group-2"}
               [:group 1 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
               [:group 1 :population 0 :count] := 6)))
 
         (testing "subject-list report"
-          (let [params {:period [#system/date"2000" #system/date"2100"]
+          (let [params {:period [#system/date "2000" #system/date "2100"]
                         :report-type "subject-list"}
                 {:keys [resource tx-ops]} @(measure/evaluate-measure context measure params)]
 
             (given resource
               :fhir/type := :fhir/MeasureReport
               [:group count] := 2
+              [:group 0 :code] := #fhir/CodeableConcept{:text #fhir/string"group-1"}
               [:group 0 :population count] := 1
               [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
               [:group 0 :population 0 :count] := 4
               [:group 0 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAA"
               [:group 0 :stratifier count] := 1
               [:group 0 :stratifier 0 :stratum count] := 2
-              [:group 0 :stratifier 0 :stratum 0 :value :text] := "female"
-              [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := 3
-              [:group 0 :stratifier 0 :stratum 0 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAC"
-              [:group 0 :stratifier 0 :stratum 1 :value :text] := "male"
-              [:group 0 :stratifier 0 :stratum 1 :population 0 :count] := 1
-              [:group 0 :stratifier 0 :stratum 1 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAB"
+              [:group 0 :stratifier 0 :stratum 0 :value :text] := "male"
+              [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := 1
+              [:group 0 :stratifier 0 :stratum 0 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAB"
+              [:group 0 :stratifier 0 :stratum 1 :value :text] := "female"
+              [:group 0 :stratifier 0 :stratum 1 :population 0 :count] := 3
+              [:group 0 :stratifier 0 :stratum 1 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAC"
+              [:group 1 :code] := #fhir/CodeableConcept{:text #fhir/string"group-2"}
               [:group 1 :population count] := 1
               [:group 1 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
               [:group 1 :population 0 :count] := 6
@@ -368,8 +378,9 @@
                        :population
                        [{:fhir/type :fhir.Measure.group/population
                          :code (population-concept "initial-population")}]}]}
-            params {:period [#system/date"2000" #system/date"2020"]
+            params {:period [#system/date "2000" #system/date "2020"]
                     :report-type "population"}]
+
         (given-failed-future (measure/evaluate-measure context measure params)
           ::anom/category := ::anom/incorrect
           ::anom/message := "Syntax error at <EOF>"
@@ -395,8 +406,9 @@
                        :population
                        [{:fhir/type :fhir.Measure.group/population
                          :code (population-concept "initial-population")}]}]}
-            params {:period [#system/date"2000" #system/date"2020"]
+            params {:period [#system/date "2000" #system/date "2020"]
                     :report-type "population"}]
+
         (given-failed-future (measure/evaluate-measure context measure params)
           ::anom/category := ::anom/incorrect
           ::anom/message := "Missing criteria."
@@ -425,12 +437,91 @@
                        [{:fhir/type :fhir.Measure.group/population
                          :code (population-concept "initial-population")
                          :criteria (cql-expression "InInitialPopulation")}]}]}
-            params {:period [#system/date"2000" #system/date"2020"]
-                    :report-type "population"}]
-        (given-failed-future (measure/evaluate-measure context measure params)
-          ::anom/category := ::anom/interrupted
-          ::anom/message := "Timeout of 0 millis eclipsed while evaluating."
-          :measure-id := measure-id))))
+            params {:period [#system/date "2000" #system/date "2020"]}]
+
+        (doseq [report-type ["population" "subject-list"]
+                :let [params (assoc params :report-type report-type)]]
+
+          (given-failed-future (measure/evaluate-measure context measure params)
+            ::anom/category := ::anom/interrupted
+            ::anom/message := "Timeout of 0 millis eclipsed while evaluating."
+            :measure-id := measure-id)))))
+
+  (testing "cancellation"
+    (with-system-data
+      [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+               :content [(library-content (library-gender true))]}]]]
+
+      (doseq [cancelled? [(ba/interrupted "The evaluation was cancelled.") nil]]
+        (let [db (d/db node)
+              context {:clock fixed-clock :rng-fn fixed-rng-fn
+                       :db db :blaze/cancelled? (constantly cancelled?)
+                       :executor executor
+                       :blaze/base-url "" ::reitit/router router}
+              measure-id "measure-id-132321"
+              measure {:fhir/type :fhir/Measure :id measure-id
+                       :library [#fhir/canonical"0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              params {:period [#system/date "2000" #system/date "2020"]}]
+
+          (doseq [report-type ["population" "subject-list"]
+                  :let [params (assoc params :report-type report-type)]]
+
+            (if cancelled?
+              (given-failed-future (measure/evaluate-measure context measure params)
+                ::anom/category := ::anom/interrupted
+                ::anom/message := "The evaluation was cancelled."
+                :measure-id := measure-id)
+
+              (given @(measure/evaluate-measure context measure params)
+                [:resource :fhir/type] := :fhir/MeasureReport))))))
+
+    (testing "Encounter population basis"
+      (with-system-data
+        [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Encounter :id "0-0" :subject #fhir/Reference{:reference "Patient/0"}}]
+          [:put {:fhir/type :fhir/Patient :id "1"}]
+          [:put {:fhir/type :fhir/Encounter :id "1-0" :subject #fhir/Reference{:reference "Patient/1"}}]
+          [:put {:fhir/type :fhir/Encounter :id "1-1" :subject #fhir/Reference{:reference "Patient/1"}}]
+          [:put {:fhir/type :fhir/Patient :id "2"}]]
+         [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+                 :content [(library-content library-encounter)]}]]]
+
+        (let [db (d/db node)
+              context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                       :blaze/cancelled?
+                       (constantly (ba/interrupted "msg-114556"))
+                       :executor executor
+                       :blaze/base-url "" ::reitit/router router}
+              measure {:fhir/type :fhir/Measure :id "0"
+                       :library [#fhir/canonical"0"]
+                       :group
+                       [{:fhir/type :fhir.Measure/group
+                         :extension
+                         [#fhir/Extension
+                           {:url "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-populationBasis"
+                            :value #fhir/code"Encounter"}]
+                         :population
+                         [{:fhir/type :fhir.Measure.group/population
+                           :code (population-concept "initial-population")
+                           :criteria (cql-expression "InInitialPopulation")}]}]}
+              params {:period [#system/date "2000" #system/date "2020"]}]
+
+          (doseq [report-type ["population" "subject-list"]
+                  :let [params (assoc params :report-type report-type)]]
+
+            (given-failed-future (measure/evaluate-measure context measure params)
+              ::anom/category := ::anom/interrupted
+              ::anom/message := "msg-114556"
+              :measure-id := "0"))))))
 
   (testing "single subject"
     (doseq [subject-ref ["0" ["Patient" "0"]]
@@ -454,18 +545,19 @@
                          [{:fhir/type :fhir.Measure.group/population
                            :code (population-concept "initial-population")
                            :criteria (cql-expression "InInitialPopulation")}]}]}
-              params {:period [#system/date"2000" #system/date"2020"]
+              params {:period [#system/date "2000" #system/date "2020"]
                       :report-type "subject"
                       :subject-ref subject-ref}]
+
           (given (:resource @(measure/evaluate-measure context measure params))
             :fhir/type := :fhir/MeasureReport
             :status := #fhir/code"complete"
             :type := #fhir/code"individual"
             :measure := #fhir/canonical"measure-155437"
             [:subject :reference] := "Patient/0"
-            :date := #system/date-time"1970-01-01T00:00Z"
-            :period := #fhir/Period{:start #system/date-time"2000"
-                                    :end #system/date-time"2020"}
+            :date := #system/date-time "1970-01-01T00:00Z"
+            :period := #fhir/Period{:start #system/date-time "2000"
+                                    :end #system/date-time "2020"}
             [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
             [:group 0 :population 0 :count] := count))))
 
@@ -494,22 +586,23 @@
                            [{:fhir/type :fhir.Measure.group/stratifier
                              :code #fhir/CodeableConcept{:text #fhir/string"gender"}
                              :criteria (cql-expression "Gender")}]}]}
-                params {:period [#system/date"2000" #system/date"2020"]
+                params {:period [#system/date "2000" #system/date "2020"]
                         :report-type "subject"
                         :subject-ref "0"}]
+
             (given (:resource @(measure/evaluate-measure context measure params))
               :fhir/type := :fhir/MeasureReport
               :status := #fhir/code"complete"
               :type := #fhir/code"individual"
               :measure := #fhir/canonical"measure-155502"
               [:subject :reference] := "Patient/0"
-              :date := #system/date-time"1970-01-01T00:00Z"
-              :period := #fhir/Period{:start #system/date-time"2000"
-                                      :end #system/date-time"2020"}
+              :date := #system/date-time "1970-01-01T00:00Z"
+              :period := #fhir/Period{:start #system/date-time "2000"
+                                      :end #system/date-time "2020"}
               [:group 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
               [:group 0 :population 0 :count] := count
-              [:group 0 :stratifier 0 :code 0 :text type/value] := "gender"
-              [:group 0 :stratifier 0 :stratum 0 :value :text type/value] := (when (= 1 count) "male")
+              [:group 0 :stratifier 0 :code 0 :text] := "gender"
+              [:group 0 :stratifier 0 :stratum 0 :value :text] := (when (= 1 count) "male")
               [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := (when (= 1 count) 1))))))
 
     (testing "invalid subject"
@@ -530,9 +623,10 @@
                          [{:fhir/type :fhir.Measure.group/population
                            :code (population-concept "initial-population")
                            :criteria (cql-expression "InInitialPopulation")}]}]}
-              params {:period [#system/date"2000" #system/date"2020"]
+              params {:period [#system/date "2000" #system/date "2020"]
                       :report-type "subject"
                       :subject-ref ["Observation" "0"]}]
+
           (given-failed-future (measure/evaluate-measure context measure params)
             ::anom/category := ::anom/incorrect
             ::anom/message := "Type mismatch between evaluation subject `Observation` and Measure subject `Patient`."))))
@@ -555,9 +649,10 @@
                          [{:fhir/type :fhir.Measure.group/population
                            :code (population-concept "initial-population")
                            :criteria (cql-expression "InInitialPopulation")}]}]}
-              params {:period [#system/date"2000" #system/date"2020"]
+              params {:period [#system/date "2000" #system/date "2020"]
                       :report-type "subject"
                       :subject-ref "0"}]
+
           (given-failed-future (measure/evaluate-measure context measure params)
             ::anom/category := ::anom/incorrect
             ::anom/message := "Subject with type `Patient` and id `0` was not found."))))
@@ -582,9 +677,10 @@
                          [{:fhir/type :fhir.Measure.group/population
                            :code (population-concept "initial-population")
                            :criteria (cql-expression "InInitialPopulation")}]}]}
-              params {:period [#system/date"2000" #system/date"2020"]
+              params {:period [#system/date "2000" #system/date "2020"]
                       :report-type "subject"
                       :subject-ref "0"}]
+
           (given-failed-future (measure/evaluate-measure context measure params)
             ::anom/category := ::anom/incorrect
             ::anom/message := "Subject with type `Patient` and id `0` was not found."))))))
@@ -682,8 +778,9 @@
       :fhir/type := :fhir/List
       :id := "AAAAAAAAAAAAAAAA"
       [:entry 0 :item :reference] := "Patient/0"
-      [:entry 1 :item :reference] := "Patient/3"))
+      [:entry 1 :item :reference] := "Patient/3")))
 
+(deftest stratifier-integration-test
   (let [result (evaluate "q19-stratifier-ageclass")]
     (testing "MeasureReport is valid"
       (is (s/valid? :blaze/resource (:resource result))))
@@ -691,13 +788,19 @@
     (testing "MeasureReport type is `summary`"
       (is (= #fhir/code"summary" (-> result :resource :type))))
 
+    (given (first-stratifier result)
+      keys := [:fhir/type :code :stratum]
+      :fhir/type := :fhir.MeasureReport.group/stratifier
+      [:code count] := #fhir/integer 1
+      [:code 0] := #fhir/CodeableConcept{:text "age-class"})
+
     (given (first-stratifier-strata result)
-      [0 :value :text type/value] := "10"
+      [0 :value :text] := "10"
       [0 :population 0 :code :coding 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
       [0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
-      [0 :population 0 :count] := 1
-      [1 :value :text type/value] := "70"
-      [1 :population 0 :count] := 2))
+      [0 :population 0 :count] := #fhir/integer 1
+      [1 :value :text] := "70"
+      [1 :population 0 :count] := #fhir/integer 2))
 
   (let [result (evaluate "q19-stratifier-ageclass" "subject-list")]
     (testing "MeasureReport is valid"
@@ -707,11 +810,11 @@
       (is (= #fhir/code"subject-list" (-> result :resource :type))))
 
     (given (first-stratifier-strata result)
-      [0 :value :text type/value] := "10"
-      [0 :population 0 :count] := 1
+      [0 :value :text] := "10"
+      [0 :population 0 :count] := #fhir/integer 1
       [0 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAB"
-      [1 :value :text type/value] := "70"
-      [1 :population 0 :count] := 2
+      [1 :value :text] := "70"
+      [1 :population 0 :count] := #fhir/integer 2
       [1 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAC")
 
     (given (:tx-ops result)
@@ -726,53 +829,64 @@
       [2 1 :entry 1 :item :reference] := "Patient/2"))
 
   (given (first-stratifier-strata (evaluate "q20-stratifier-city"))
-    [0 :value :text type/value] := "Jena"
-    [0 :population 0 :count] := 3
-    [1 :value :text type/value] := "Leipzig"
-    [1 :population 0 :count] := 1)
+    [0 :value :text] := "Jena"
+    [0 :population 0 :count] := #fhir/integer 3
+    [1 :value :text] := "Leipzig"
+    [1 :population 0 :count] := #fhir/integer 1)
 
   (given (first-stratifier-strata (evaluate "q21-stratifier-city-of-only-women"))
-    [0 :value :text type/value] := "Jena"
-    [0 :population 0 :count] := 2)
+    [0 :value :text] := "Jena"
+    [0 :population 0 :count] := #fhir/integer 2)
 
-  (is (ba/incorrect? (evaluate "q22-stratifier-multiple-cities-fail")))
+  (given (evaluate "q22-stratifier-multiple-cities-fail")
+    ::anom/category := ::anom/incorrect
+    ::anom/message := "CQL expression `City` returned more than one value for resource `Patient/0`.")
 
-  (given (first-stratifier-strata (evaluate "q23-stratifier-ageclass-and-gender"))
-    [0 :component 0 :code :text type/value] := "age-class"
-    [0 :component 0 :value :text type/value] := "10"
-    [0 :component 1 :code :text type/value] := "gender"
-    [0 :component 1 :value :text type/value] := "male"
-    [0 :population 0 :code :coding 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
-    [0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
-    [0 :population 0 :count] := 1
-    [1 :component 0 :value :text type/value] := "70"
-    [1 :component 1 :value :text type/value] := "female"
-    [1 :population 0 :count] := 2
-    [2 :component 0 :value :text type/value] := "70"
-    [2 :component 1 :value :text type/value] := "male"
-    [2 :population 0 :count] := 1)
+  (let [result (evaluate "q23-stratifier-ageclass-and-gender")]
+    (given (first-stratifier result)
+      keys := [:fhir/type :stratum]
+      :fhir/type := :fhir.MeasureReport.group/stratifier)
+
+    (given (first-stratifier-strata result)
+      count := 3
+      [0 keys] := [:fhir/type :component :population]
+      [0 :fhir/type] := :fhir.MeasureReport.group.stratifier/stratum
+      [0 :component 0 :code :text] := "age-class"
+      [0 :component 0 :value :text] := "10"
+      [0 :component 1 :code :text] := "gender"
+      [0 :component 1 :value :text] := "male"
+      [0 :population 0 :code :coding 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
+      [0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
+      [0 :population 0 :count] := #fhir/integer 1
+      [1 :component 0 :value :text] := "70"
+      [1 :component 1 :value :text] := "male"
+      [1 :population 0 :count] := #fhir/integer 1
+      [2 :component 0 :value :text] := "70"
+      [2 :component 1 :value :text] := "female"
+      [2 :population 0 :count] := #fhir/integer 2))
 
   (let [result (evaluate "q23-stratifier-ageclass-and-gender" "subject-list")]
     (testing "MeasureReport is valid"
       (is (s/valid? :blaze/resource (:resource result))))
 
     (given (first-stratifier-strata result)
-      [0 :component 0 :code :text type/value] := "age-class"
-      [0 :component 0 :value :text type/value] := "10"
-      [0 :component 1 :code :text type/value] := "gender"
-      [0 :component 1 :value :text type/value] := "male"
+      count := 3
+      [0 :component 0 :code :text] := "age-class"
+      [0 :component 0 :value :text] := "10"
+      [0 :component 1 :code :text] := "gender"
+      [0 :component 1 :value :text] := "male"
       [0 :population 0 :code :coding 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/measure-population"
       [0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
-      [0 :population 0 :count] := 1
+      [0 :population 0 :count] := #fhir/integer 1
       [0 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAB"
-      [1 :component 0 :value :text type/value] := "70"
-      [1 :component 1 :value :text type/value] := "female"
-      [1 :population 0 :count] := 2
-      [1 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAD"
-      [2 :component 0 :value :text type/value] := "70"
-      [2 :component 1 :value :text type/value] := "male"
-      [2 :population 0 :count] := 1
-      [2 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAC")
+      [1 :component 0 :value :text] := "70"
+      [1 :component 1 :value :text] := "male"
+      [1 :population 0 :count] := #fhir/integer 1
+      [1 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAC"
+      [2 :component 0 :value :text] := "70"
+      [2 :component 1 :value :text] := "female"
+      [2 :population 0 :count] := #fhir/integer 2
+      [2 :population 0 :subjectResults :reference] := "List/AAAAAAAAAAAAAAAD")
 
     (given (:tx-ops result)
       [1 1 :fhir/type] := :fhir/List
@@ -787,78 +901,124 @@
       [3 1 :entry 1 :item :reference] := "Patient/3"))
 
   (given (first-stratifier-strata (evaluate "q25-stratifier-collection"))
-    [0 :value :text type/value] := "Organization/collection-0"
-    [0 :population 0 :count] := 1
-    [1 :value :text type/value] := "Organization/collection-1"
-    [1 :population 0 :count] := 1)
+    [0 :value :text] := "Organization/collection-0"
+    [0 :population 0 :count] := #fhir/integer 1
+    [1 :value :text] := "Organization/collection-1"
+    [1 :population 0 :count] := #fhir/integer 1)
 
   (given (first-stratifier-strata (evaluate "q26-stratifier-bmi"))
-    [0 :value :text type/value] := "37"
-    [0 :population 0 :count] := 1
-    [1 :value :text type/value] := "null"
-    [1 :population 0 :count] := 2)
+    [0 :value :text] := "37"
+    [0 :population 0 :count] := #fhir/integer 1
+    [1 :value :text] := "null"
+    [1 :population 0 :count] := #fhir/integer 2)
 
   (given (first-stratifier-strata (evaluate "q27-stratifier-calculated-bmi"))
-    [0 :value :text type/value] := "26.8"
-    [0 :population 0 :count] := 1
-    [1 :value :text type/value] := "null"
-    [1 :population 0 :count] := 2)
+    [0 :value :text] := "26.8"
+    [0 :population 0 :count] := #fhir/integer 1
+    [1 :value :text] := "null"
+    [1 :population 0 :count] := #fhir/integer 2)
 
   (given (first-stratifier-strata (evaluate "q29-stratifier-sample-material-type"))
     count := 2
-    [0 :value :text type/value] := "liquid"
-    [0 :population 0 :count] := 1
-    [1 :value :text type/value] := "tissue"
-    [1 :population 0 :count] := 1)
+    [0 :value :text] := "liquid"
+    [0 :population 0 :count] := #fhir/integer 1
+    [1 :value :text] := "tissue"
+    [1 :population 0 :count] := #fhir/integer 1)
 
   (given (evaluate "q30-stratifier-with-missing-expression")
-    ::anom/category := ::anom/incorrect,
-    ::anom/message := "Missing expression with name `SampleMaterialTypeCategory`.",
+    ::anom/category := ::anom/incorrect
+
+    ::anom/message := "Missing expression with name `SampleMaterialTypeCategory`."
+
     :expression-name := "SampleMaterialTypeCategory"
     :measure-id := "0")
 
   (given (first-stratifier-strata (evaluate "q31-stratifier-storage-temperature"))
     count := 2
-    [0 :value :text type/value] := "temperature2to10"
-    [0 :population 0 :count] := 1
-    [1 :value :text type/value] := "temperatureGN"
-    [1 :population 0 :count] := 1)
+    [0 :value :text] := "temperature2to10"
+    [0 :population 0 :count] := #fhir/integer 1
+    [1 :value :text] := "temperatureGN"
+    [1 :population 0 :count] := #fhir/integer 1)
 
   (given (first-stratifier-strata (evaluate "q32-stratifier-underweight"))
     count := 2
-    [0 :value :text type/value] := "false"
-    [0 :population 0 :count] := 2
-    [1 :value :text type/value] := "true"
-    [1 :population 0 :count] := 1)
+    [0 :value :text] := "true"
+    [0 :population 0 :count] := #fhir/integer 1
+    [1 :value :text] := "false"
+    [1 :population 0 :count] := #fhir/integer 2)
 
   (given (first-stratifier-strata (evaluate "q40-specimen-stratifier"))
     count := 2
-    [0 :value :text type/value] := "blood-plasma"
-    [0 :population 0 :count] := 4
-    [1 :value :text type/value] := "peripheral-blood-cells-vital"
-    [1 :population 0 :count] := 3)
+    [0 :value :text] := "blood-plasma"
+    [0 :population 0 :count] := #fhir/integer 4
+    [1 :value :text] := "peripheral-blood-cells-vital"
+    [1 :population 0 :count] := #fhir/integer 3)
 
   (given (first-stratifier-strata (evaluate "q41-specimen-multi-stratifier"))
     count := 4
     [0 :component 0 :code :coding 0 :code type/value] := "sample-diagnosis"
-    [0 :component 0 :value :text type/value] := "C34.9"
+    [0 :component 0 :value :text] := "C34.9"
     [0 :component 1 :code :coding 0 :code type/value] := "sample-type"
-    [0 :component 1 :value :text type/value] := "blood-plasma"
-    [0 :population 0 :count] := 2
-    [1 :component 0 :value :text type/value] := "C34.9"
-    [1 :component 1 :value :text type/value] := "peripheral-blood-cells-vital"
-    [1 :population 0 :count] := 1
-    [2 :component 0 :value :text type/value] := "C50.9"
-    [2 :component 1 :value :text type/value] := "blood-plasma"
-    [2 :population 0 :count] := 2
-    [3 :component 0 :value :text type/value] := "C50.9"
-    [3 :component 1 :value :text type/value] := "peripheral-blood-cells-vital"
-    [3 :population 0 :count] := 2)
+    [0 :component 1 :value :text] := "blood-plasma"
+    [0 :population 0 :count] := #fhir/integer 2
+    [1 :component 0 :value :text] := "C34.9"
+    [1 :component 1 :value :text] := "peripheral-blood-cells-vital"
+    [1 :population 0 :count] := #fhir/integer 1
+    [2 :component 0 :value :text] := "C50.9"
+    [2 :component 1 :value :text] := "blood-plasma"
+    [2 :population 0 :count] := #fhir/integer 2
+    [3 :component 0 :value :text] := "C50.9"
+    [3 :component 1 :value :text] := "peripheral-blood-cells-vital"
+    [3 :population 0 :count] := #fhir/integer 2)
 
   (given (first-stratifier-strata (evaluate "q52-sort-with-missing-values"))
     count := 1
-    [0 :value :text type/value] := "Condition[id = 0, t = 1]"
-    [0 :population 0 :count] := 1))
+    [0 :value :text] := "Condition[id = 0, t = 1]"
+    [0 :population 0 :count] := #fhir/integer 1)
+
+  (given (first-stratifier-strata (evaluate "q54-stratifier-condition-code"))
+    count := 2
+    [0 :value :coding 0 :system] := #fhir/uri"http://hl7.org/fhir/sid/icd-10"
+    [0 :value :coding 0 :code] := #fhir/code"C41.9"
+    [0 :population 0 :count] := #fhir/integer 1
+    [1 :value :coding 0 :system] := #fhir/uri"http://hl7.org/fhir/sid/icd-10"
+    [1 :value :coding 0 :code] := #fhir/code"C41.6"
+    [1 :population 0 :count] := #fhir/integer 2)
+
+  (given (first-stratifier-strata (evaluate "q55-stratifier-bmi-observation"))
+    count := 1
+    [0 :value :text] := "36.6 kg/m2"
+    [0 :extension 0 :url] := "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.value"
+    [0 :extension 0 :value :value] := 36.6M
+    [0 :extension 0 :value :unit] := "kg/m2"
+    [0 :extension 0 :value :system] := #fhir/uri"http://unitsofmeasure.org"
+    [0 :extension 0 :value :code] := #fhir/code"kg/m2"
+    [0 :population 0 :count] := #fhir/integer 1)
+
+  (given (first-stratifier-strata (evaluate "q56-stratifier-observation-code-value"))
+    count := 2
+    [0 :component 0 :code :text] := "code"
+    [0 :component 0 :value :coding 0 :system] := #fhir/uri"http://loinc.org"
+    [0 :component 0 :value :coding 0 :code] := #fhir/code"39156-5"
+    [0 :component 1 :code :text] := "value"
+    [0 :component 1 :value :text] := "36.6 kg/m2"
+    [0 :component 1 :extension 0 :url] := "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.component.value"
+    [0 :component 1 :extension 0 :value :value] := 36.6M
+    [0 :component 1 :extension 0 :value :unit] := "kg/m2"
+    [0 :component 1 :extension 0 :value :system] := #fhir/uri"http://unitsofmeasure.org"
+    [0 :component 1 :extension 0 :value :code] := #fhir/code"kg/m2"
+    [0 :population 0 :count] := #fhir/integer 1
+    [1 :component 1 :extension 0 :url] := "http://hl7.org/fhir/5.0/StructureDefinition/extension-MeasureReport.group.stratifier.stratum.component.value"
+    [1 :component 0 :code :text] := "code"
+    [1 :component 0 :value :coding 0 :system] := #fhir/uri"http://loinc.org"
+    [1 :component 0 :value :coding 0 :code] := #fhir/code"8302-2"
+    [1 :component 1 :code :text] := "value"
+    [1 :component 1 :value :text] := "178 cm"
+    [1 :component 1 :extension 0 :value :value] := 178M
+    [1 :component 1 :extension 0 :value :unit] := "cm"
+    [1 :component 1 :extension 0 :value :system] := #fhir/uri"http://unitsofmeasure.org"
+    [1 :component 1 :extension 0 :value :code] := #fhir/code"cm"
+    [1 :population 0 :count] := #fhir/integer 1))
 
 (comment
   (log/set-level! :debug)

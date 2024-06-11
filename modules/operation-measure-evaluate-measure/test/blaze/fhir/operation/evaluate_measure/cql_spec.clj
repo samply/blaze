@@ -1,17 +1,22 @@
 (ns blaze.fhir.operation.evaluate-measure.cql-spec
   (:require
    [blaze.async.comp :as ac]
-   [blaze.db.spec]
+   [blaze.elm.compiler :as-alias c]
    [blaze.elm.compiler.external-data :as ed]
    [blaze.elm.compiler.external-data-spec]
-   [blaze.elm.compiler.library-spec]
-   [blaze.elm.expression-spec]
+   [blaze.elm.compiler.spec]
    [blaze.fhir.operation.evaluate-measure.cql :as cql]
    [blaze.fhir.operation.evaluate-measure.cql.spec]
-   [blaze.fhir.operation.evaluate-measure.measure :as-alias measure]
-   [blaze.fhir.operation.evaluate-measure.measure.spec]
    [blaze.fhir.spec]
-   [clojure.spec.alpha :as s]))
+   [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]))
+
+(s/fdef cql/evaluate-expression-1
+  :args (s/cat :context ::cql/context
+               :subject (s/nilable ed/resource?)
+               :name string?
+               :expression ::c/expression)
+  :ret (s/or :result any? :anomaly ::anom/anomaly))
 
 (s/fdef cql/evaluate-expression
   :args (s/cat :context ::cql/evaluate-expression-context :name string?
@@ -24,20 +29,12 @@
                :name string?)
   :ret ac/completable-future?)
 
-(s/fdef cql/calc-strata
-  :args (s/cat :context ::cql/context
-               :expression-name string?
-               :handles ::measure/handles)
-  :ret ac/completable-future?)
+(s/fdef cql/stratum-expression-evaluator
+  :args (s/cat :context ::cql/stratum-expression-evaluator-context
+               :name string?)
+  :ret (s/or :evaluator fn? :anomaly ::anom/anomaly))
 
-(s/fdef cql/calc-function-strata
-  :args (s/cat :context ::cql/context
-               :function-name string?
-               :handles ::measure/handles)
-  :ret ac/completable-future?)
-
-(s/fdef cql/calc-multi-component-strata
-  :args (s/cat :context ::cql/context
-               :expression-names (s/coll-of string?)
-               :handles ::measure/handles)
-  :ret ac/completable-future?)
+(s/fdef cql/stratum-expression-evaluators
+  :args (s/cat :context ::cql/stratum-expression-evaluator-context
+               :name (s/coll-of string?))
+  :ret (s/or :evaluators (s/coll-of fn?) :anomaly ::anom/anomaly))

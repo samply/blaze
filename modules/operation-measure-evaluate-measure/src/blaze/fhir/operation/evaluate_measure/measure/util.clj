@@ -1,9 +1,10 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.util
   (:require
    [blaze.anomaly :as ba]
-   [blaze.fhir.spec.type :as type]))
+   [blaze.fhir.spec.type :as type]
+   [blaze.luid :as luid]))
 
-(defn expression [population-path-fn criteria]
+(defn expression-name [population-path-fn criteria]
   (let [language (-> criteria :language type/value)
         expression (-> criteria :expression type/value)]
     (cond
@@ -28,13 +29,13 @@
       :else
       expression)))
 
-(defn- list-reference [list-id]
+(defn list-reference [list-id]
   (type/map->Reference {:reference (str "List/" list-id)}))
 
 (defn- resource-reference [{:keys [id] :as resource}]
   (type/map->Reference {:reference (str (name (type/type resource)) "/" id)}))
 
-(defn- population-tx-ops [list-id handles]
+(defn population-tx-ops [list-id handles]
   [[:create
     {:fhir/type :fhir/List
      :id list-id
@@ -47,45 +48,13 @@
          :item (resource-reference population-handle)})
       handles)}]])
 
-(defn population [{:keys [report-type luids]} fhir-type code handles]
-  (case report-type
-    ("population" "subject")
-    {:result
-     (cond->
-      {:fhir/type fhir-type
-       :count (count handles)}
-       code
-       (assoc :code code))
-     :luids luids}
-    "subject-list"
-    (let [list-id (first luids)]
-      {:result
-       (cond->
-        {:fhir/type fhir-type
-         :count (count handles)
-         :subjectResults (list-reference list-id)}
-         code
-         (assoc :code code))
-       :luids (next luids)
-       :tx-ops (population-tx-ops list-id handles)})))
-
-(defn population-count [{:keys [luids]} fhir-type code count]
-  {:result
-   (cond->
-    {:fhir/type fhir-type
-     :count count}
-     code
-     (assoc :code code))
-   :luids luids})
-
 (defn- merge-result*
   "Merges `result` into the return value of the reduction `ret`."
   {:arglists '([ret result])}
-  [ret {:keys [result handles luids tx-ops]}]
-  (cond-> (-> (update ret :result conj result)
-              (update :handles conj handles))
-    luids
-    (assoc :luids luids)
+  [ret {:keys [result tx-ops] ::luid/keys [generator]}]
+  (cond-> (update ret :result conj result)
+    generator
+    (assoc ::luid/generator generator)
     (seq tx-ops)
     (update :tx-ops into tx-ops)))
 

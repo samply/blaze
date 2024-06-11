@@ -27,7 +27,7 @@ Blaze should log something like this:
 2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:67] - JVM version: 17.0.7
 2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:68] - Maximum available memory: 1738 MiB
 2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:69] - Number of available processors: 2
-2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:70] - Successfully started 🔥 Blaze version 0.26.2 in 9.0 seconds
+2023-06-09T08:30:30.126Z b45689460ff3 main INFO [blaze.core:70] - Successfully started 🔥 Blaze version 0.27.0 in 9.0 seconds
 ```
 
 In order to test connectivity, query the health endpoint:
@@ -47,7 +47,7 @@ that should return:
 ```json
 {
   "name": "Blaze",
-  "version": "0.26.2"
+  "version": "0.27.0"
 }
 ```
 
@@ -73,7 +73,7 @@ volumes:
 
 ## Custom Search Parameters
 
-Per default, Blaze supports FHIR Search on all FHIR R4 search parameters. However Blaze can be configured to support custom search parameters by specifying the file name of a search parameter bundle in the environment variable `DB_SEARCH_PARAM_BUNDLE`. If such a bundle file name is specified, Blaze will index newly written resources using the search parameters defined in that file. Please be aware that Blaze will currently not reindex existing resources. So resources written before specifying a custom search parameter will not be indexed and so will not be found.
+Per default, Blaze supports FHIR Search on all FHIR R4 search parameters. However Blaze can be configured to support custom search parameters by specifying the file name of a search parameter bundle in the environment variable `DB_SEARCH_PARAM_BUNDLE`. If such a bundle file name is specified, Blaze will index newly written resources using the search parameters defined in that file. Existing ressources can be re-indexed. More information on re-indexing can be found in the [Frontend Docs](../frontend.md).
 
 ### Example Config
 

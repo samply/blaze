@@ -2,6 +2,7 @@
   (:require
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
+   [cognitect.anomalies :as anom]
    [java-time.api :as time])
   (:import
    [java.util Random]))
@@ -34,6 +35,9 @@
 
 (s/def :blaze/rng-fn
   fn?)
+
+(s/def :blaze/cancelled?
+  (s/fspec :args (s/cat) :ret (s/nilable ::anom/anomaly)))
 
 ;; ---- DB ------------------------------------------------------------------
 

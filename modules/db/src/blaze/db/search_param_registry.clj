@@ -117,8 +117,20 @@
   (log/trace (format "Read resource `%s` from filesystem." name))
   (read-json-resource name))
 
+(defn read-standard-entries []
+  (into
+   []
+   (remove
+    (comp
+     #{"http://hl7.org/fhir/SearchParameter/Bundle-message"
+       "http://hl7.org/fhir/SearchParameter/Bundle-composition"}
+     :fullUrl))
+   (:entry (read-classpath-json-resource "blaze/db/search-parameters.json"))))
+
 (defn- read-bundle-entries [extra-bundle-file]
-  (cond-> (:entry (read-classpath-json-resource "blaze/db/search-parameters.json"))
+  (cond-> (read-standard-entries)
+    true
+    (into (:entry (read-classpath-json-resource "blaze/db/Bundle-JobSearchParameterBundle.json")))
     extra-bundle-file
     (into (:entry (read-file-json-resource extra-bundle-file)))))
 

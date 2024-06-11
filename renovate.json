@@ -17,6 +17,10 @@
     {
       "matchPackagePatterns": ["info.cqframework"],
       "groupName": "cqframework"
+    },
+    {
+      "matchPackagePatterns": ["ca.uhn.hapi.fhir"],
+      "groupName": "hapi"
     }
   ],
   "baseBranches": ["develop"],

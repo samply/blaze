@@ -4,6 +4,7 @@
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.fhir.structure-definition-repo.spec]
    [blaze.module :as m]
+   [blaze.rest-api :as-alias rest-api]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [ring.util.response :as ring]
@@ -22,10 +23,10 @@
         (ac/completed-future (ring/response structure-def))
         (ac/completed-future (ring/not-found {}))))))
 
-(defmethod m/pre-init-spec :blaze.rest-api/metadata-handler [_]
+(defmethod m/pre-init-spec ::rest-api/metadata-handler [_]
   (s/keys :req-un [:blaze.fhir/structure-definition-repo]))
 
-(defmethod ig/init-key :blaze.rest-api/metadata-handler
+(defmethod ig/init-key ::rest-api/metadata-handler
   [_ {:keys [structure-definition-repo]}]
   (log/info "Init Metadata endpoint")
   (handler (into (sdr/resources structure-definition-repo)

@@ -3,6 +3,7 @@
    [blaze.anomaly-spec]
    [blaze.async.comp :as ac]
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
+   [blaze.db.node :refer [node?]]
    [blaze.db.resource-store :as rs]
    [blaze.executors :as ex]
    [blaze.fhir.operation.evaluate-measure :as evaluate-measure]
@@ -25,7 +26,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -79,6 +80,16 @@
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
+  (testing "invalid node"
+    (given-thrown (ig/init {::evaluate-measure/handler {:node ::invalid}})
+      :key := ::evaluate-measure/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :executor))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 3 :pred] := `node?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
+
   (testing "invalid executor"
     (given-thrown (ig/init {::evaluate-measure/handler {:executor ::invalid}})
       :key := ::evaluate-measure/handler
@@ -125,28 +136,39 @@
     (is (s/valid? :blaze.metrics/collector collector))))
 
 (def config
-  (assoc api-stub/mem-node-config
-         ::evaluate-measure/handler
-         {:node (ig/ref :blaze.db/node)
-          :executor (ig/ref :blaze.test/executor)
-          :clock (ig/ref :blaze.test/fixed-clock)
-          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-         :blaze.test/executor {}
-         :blaze.test/fixed-rng-fn {}))
+  (assoc
+   api-stub/mem-node-config
+   ::evaluate-measure/handler
+   {:node (ig/ref :blaze.db/node)
+    :executor (ig/ref :blaze.test/executor)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+   :blaze/job-scheduler
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+   :blaze.test/executor {}
+   :blaze.test/fixed-rng-fn {}))
 
-(defn wrap-defaults [handler]
+(defn- wrap-defaults [handler]
   (fn [request]
     (handler
      (assoc request
             :blaze/base-url base-url
             ::reitit/router router))))
 
+(defn- wrap-job-scheduler [handler job-scheduler]
+  (fn [request]
+    (handler (assoc request :blaze/job-scheduler job-scheduler))))
+
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
+                         job-scheduler# :blaze/job-scheduler
                          handler# ::evaluate-measure/handler} config]
        ~txs
        (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# 100)
+                                  (wrap-job-scheduler job-scheduler#)
                                   wrap-error)]
          ~@body))))
 
@@ -411,7 +433,8 @@
         (testing "cohort scoring"
           (doseq [library-ref [#fhir/canonical"library-url-094115"
                                #fhir/canonical"Library/0"
-                               #fhir/canonical"/Library/0"]]
+                               #fhir/canonical"/Library/0"]
+                  cancelled? [nil (constantly nil)]]
             (with-handler [handler]
               [[[:put
                  {:fhir/type :fhir/Measure :id "0"
@@ -442,7 +465,8 @@
                        :params
                        {"measure" "url-181501"
                         "periodStart" "2014"
-                        "periodEnd" "2015"}})]
+                        "periodEnd" "2015"}
+                       :blaze/cancelled? cancelled?})]
 
                 (is (= 200 status))
 
@@ -521,12 +545,12 @@
                 [:group 0 :stratifier 0 :code 0 :text] := #fhir/string"gender"
                 [:group 0 :stratifier 0 :stratum 0 :population 0 :code :coding 0 :system] := measure-population-uri
                 [:group 0 :stratifier 0 :stratum 0 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
-                [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := 2
-                [:group 0 :stratifier 0 :stratum 0 :value :text] := #fhir/string"female"
+                [:group 0 :stratifier 0 :stratum 0 :population 0 :count] := 1
+                [:group 0 :stratifier 0 :stratum 0 :value :text] := #fhir/string"male"
                 [:group 0 :stratifier 0 :stratum 1 :population 0 :code :coding 0 :system] := measure-population-uri
                 [:group 0 :stratifier 0 :stratum 1 :population 0 :code :coding 0 :code] := #fhir/code"initial-population"
-                [:group 0 :stratifier 0 :stratum 1 :population 0 :count] := 1
-                [:group 0 :stratifier 0 :stratum 1 :value :text] := #fhir/string"male")))))
+                [:group 0 :stratifier 0 :stratum 1 :population 0 :count] := 2
+                [:group 0 :stratifier 0 :stratum 1 :value :text] := #fhir/string"female")))))
 
       (testing "as POST request"
         (testing "with no Prefer header"
@@ -668,7 +692,49 @@
               :measure := #fhir/canonical"url-181501"
               :date := #fhir/dateTime"1970-01-01T00:00:00Z"
               [:period :start] := #fhir/dateTime"2014"
-              [:period :end] := #fhir/dateTime"2015")))))))
+              [:period :end] := #fhir/dateTime"2015"))))))
+
+  (testing "Async"
+    (with-handler [handler]
+      [[[:put
+         {:fhir/type :fhir/Measure :id "0"
+          :url #fhir/uri"url-181501"
+          :library [#fhir/canonical"Library/0"]
+          :scoring (scoring-concept "cohort")
+          :group
+          [{:fhir/type :fhir.Measure/group
+            :population
+            [{:fhir/type :fhir.Measure.group/population
+              :code (population-concept "initial-population")
+              :criteria (cql-expression "InInitialPopulation")}]}]}]
+        [:put
+         {:fhir/type :fhir/Library :id "0"
+          :url #fhir/uri"library-url-094115"
+          :content
+          [#fhir/Attachment
+            {:contentType #fhir/code"text/cql"
+             :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICBQYXRpZW50LmdlbmRlciA9ICdtYWxlJwo="}]}]
+        [:put
+         {:fhir/type :fhir/Patient
+          :id "0"
+          :gender #fhir/code"male"}]]]
+
+      (let [{:keys [status headers]}
+            @(handler
+              {:request-method :get
+               :uri "/Measure"
+               :query-string "measure=url-181501&periodStart=2014&periodEnd=2015"
+               :headers {"prefer" "respond-async"}
+               :params
+               {"measure" "url-181501"
+                "periodStart" "2014"
+                "periodEnd" "2015"}})]
+
+        (is (= 202 status))
+
+        (testing "the Content-Location header contains the status endpoint URL"
+          (is (= (get headers "Content-Location")
+                 (str base-url "/__async-status/AAAAAAAAAAAAAAAA"))))))))
 
 (deftest indexer-executor-shutdown-timeout-test
   (let [{::evaluate-measure/keys [executor] :as system}

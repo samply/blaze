@@ -1,0 +1,8 @@
+library: cql/stratifier-observation-laboratory-code.cql
+group:
+- type: Observation
+  population:
+  - expression: InInitialPopulation
+  stratifier:
+  - code: code
+    expression: Code

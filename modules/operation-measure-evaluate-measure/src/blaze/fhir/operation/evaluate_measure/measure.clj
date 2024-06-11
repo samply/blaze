@@ -1,7 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.measure
   (:require
-   [blaze.anomaly :as ba :refer [when-ok]]
-   [blaze.async.comp :as ac :refer [do-sync do-async]]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.async.comp :as ac :refer [do-async do-sync]]
    [blaze.coll.core :as coll]
    [blaze.cql-translator :as cql-translator]
    [blaze.db.api :as d]
@@ -9,8 +9,9 @@
    [blaze.elm.compiler.external-data :as ed]
    [blaze.elm.compiler.library :as library]
    [blaze.fhir.operation.evaluate-measure.cql :as cql]
-   [blaze.fhir.operation.evaluate-measure.measure.population :as population]
-   [blaze.fhir.operation.evaluate-measure.measure.stratifier :as stratifier]
+   [blaze.fhir.operation.evaluate-measure.measure.group :as group]
+   [blaze.fhir.operation.evaluate-measure.measure.population :as pop]
+   [blaze.fhir.operation.evaluate-measure.measure.stratifier :as strat]
    [blaze.fhir.operation.evaluate-measure.measure.util :as u]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
@@ -22,7 +23,7 @@
    [taoensso.timbre :as log])
   (:import
    [java.nio.charset StandardCharsets]
-   [java.time Clock OffsetDateTime]
+   [java.time Clock Duration OffsetDateTime]
    [java.util Base64]))
 
 (set! *warn-on-reflection* true)
@@ -148,28 +149,39 @@
 ;; ---- Evaluation ------------------------------------------------------------
 
 (defn- evaluate-population-futures [context populations]
-  (into [] (map-indexed (partial population/evaluate context)) populations))
+  (into [] (map-indexed (partial pop/evaluate context)) populations))
 
-(defn- evaluate-populations [context populations]
-  (let [futures (evaluate-population-futures context populations)]
+(defn- evaluate-group*
+  [{:group/keys [combine-op] :as context} {:keys [population]}]
+  (let [futures (evaluate-population-futures context population)]
     (do-sync [_ (ac/all-of futures)]
-      (transduce (map ac/join) (population/reduce-op context) futures))))
+      (transduce (map ac/join) combine-op futures))))
 
-(defn- evaluate-stratifiers
-  [{:keys [luids] :as context} evaluated-populations stratifiers]
-  (transduce
-   (map-indexed vector)
-   (completing
-    (fn [ret [idx stratifier]]
-      (ac/then-compose
-       ret
-       (fn [{:keys [luids] :as ret}]
-         (-> (stratifier/evaluate
-              (assoc context :luids luids :stratifier-idx idx)
-              evaluated-populations stratifier)
-             (ac/then-apply (partial u/merge-result ret)))))))
-   (ac/completed-future {:result [] :luids luids :tx-ops []})
-   stratifiers))
+(defn- stratifiers-reduce-op [context stratifiers]
+  (when-ok [reduce-ops
+            (into
+             []
+             (comp (map-indexed
+                    (fn [idx stratifier]
+                      (strat/reduce-op
+                       (assoc context :stratifier-idx idx)
+                       stratifier)))
+                   (halt-when ba/anomaly?))
+             stratifiers)]
+    (fn [db]
+      (let [reduce-ops (mapv #(% db) reduce-ops)]
+        (fn
+          ([] (mapv #(%) reduce-ops))
+          ([rets x]
+           (loop [[reduce-op & reduce-ops] reduce-ops
+                  [ret & rets] rets
+                  result []]
+             (if reduce-op
+               (let [ret (reduce-op ret x)]
+                 (if (reduced? ret)
+                   ret
+                   (recur reduce-ops rets (conj result ret))))
+               result))))))))
 
 (defn- population-basis [{:keys [extension]}]
   (some
@@ -180,49 +192,96 @@
            basis))))
    extension))
 
-(defn- evaluate-group
-  {:arglists '([context group])}
-  [{:keys [report-type] :as context}
-   {:keys [code population stratifier] :as group}]
-  (let [context (assoc context
-                       :population-basis (population-basis group)
-                       :return-handles? (or (= "subject-list" report-type)
-                                            (some? (seq stratifier))))]
-    (-> (evaluate-populations context population)
-        (ac/then-compose
-         (fn [{:keys [luids] :as evaluated-populations}]
-           (-> (evaluate-stratifiers (assoc context :luids luids)
-                                     evaluated-populations
-                                     stratifier)
-               (ac/then-apply
-                (fn [{:keys [luids] :as evaluated-stratifiers}]
-                  {:result
-                   (cond-> {:fhir/type :fhir.MeasureReport/group}
-                     code
-                     (assoc :code code)
+(defn- assoc-ops
+  [{:keys [report-type] luid-generator ::luid/generator :as context}
+   {:keys [code stratifier]}]
+  (if (= "subject-list" report-type)
+    (if (seq stratifier)
+      (when-ok [reduce-op (stratifiers-reduce-op context stratifier)]
+        (assoc
+         context
+         :reduce-op
+         (fn [db]
+           (let [reduce-op (reduce-op db)]
+             (fn
+               ([] {:handles [] :strata (reduce-op)})
+               ([ret] ret)
+               ([{:keys [handles strata]} handle]
+                (let [strata (reduce-op strata handle)]
+                  (if (reduced? strata)
+                    strata
+                    {:handles (conj handles handle)
+                     :strata strata}))))))
+         :combine-op
+         (fn
+           ([]
+            {:handles []
+             :strata (mapv (constantly {}) stratifier)})
+           ([{handles-a :handles strata-a :strata}
+             {handles-b :handles strata-b :strata}]
+            {:handles (into handles-a handles-b)
+             :strata (mapv (partial merge-with into) strata-a strata-b)}))
+         :group/combine-op
+         (group/combine-op-subject-list-stratifier luid-generator code stratifier)))
+      (assoc
+       context
+       :reduce-op (fn [_db] conj)
+       :combine-op into
+       :group/combine-op (group/combine-op-subject-list luid-generator code)))
+    (if (seq stratifier)
+      (when-ok [reduce-op (stratifiers-reduce-op context stratifier)]
+        (assoc
+         context
+         :reduce-op
+         (fn [db]
+           (let [reduce-op (reduce-op db)]
+             (fn
+               ([] {:count 0 :strata (reduce-op)})
+               ([ret] ret)
+               ([{:keys [count strata]} handles]
+                (let [strata (reduce-op strata handles)]
+                  (if (reduced? strata)
+                    strata
+                    {:count (inc count)
+                     :strata strata}))))))
+         :combine-op
+         (fn
+           ([]
+            {:count 0
+             :strata (mapv (constantly {}) stratifier)})
+           ([{count-a :count strata-a :strata} {count-b :count strata-b :strata}]
+            {:count (+ count-a count-b)
+             :strata (mapv (partial merge-with +) strata-a strata-b)}))
+         :group/combine-op
+         (group/combine-op-count-stratifier luid-generator code stratifier)))
+      (assoc
+       context
+       :reduce-op (fn [_db] ((map (constantly 1)) +))
+       :combine-op +
+       :group/combine-op (group/combine-op-count luid-generator code)))))
 
-                     (seq (:result evaluated-populations))
-                     (assoc :population (:result evaluated-populations))
+(defn- evaluate-group [context group]
+  (if-ok [context (-> (assoc context :population-basis (population-basis group))
+                      (assoc-ops group))]
+    (evaluate-group* context group)
+    ac/completed-future))
 
-                     (seq (:result evaluated-stratifiers))
-                     (assoc :stratifier (:result evaluated-stratifiers)))
-                   :luids luids
-                   :tx-ops
-                   (into (:tx-ops evaluated-populations)
-                         (:tx-ops evaluated-stratifiers))}))))))))
-
-(defn- evaluate-groups* [{:keys [luids] :as context} groups]
+(defn- evaluate-groups* [{::luid/keys [generator] :as context} groups]
   (transduce
    (map-indexed vector)
    (completing
     (fn [ret [idx group]]
       (ac/then-compose
        ret
-       (fn [{:keys [luids] :as ret}]
-         (-> (evaluate-group (assoc context :luids luids :group-idx idx) group)
+       (fn [{::luid/keys [generator] :as ret}]
+         (-> (evaluate-group (assoc context ::luid/generator generator :group-idx idx) group)
              (ac/then-apply (partial u/merge-result ret)))))))
-   (ac/completed-future {:result [] :luids luids :tx-ops []})
+   (ac/completed-future {:result [] ::luid/generator generator :tx-ops []})
    groups))
+
+(defn- cancelled-groups-msg [id subject-type duration]
+  (format "Evaluation of Measure with ID `%s` and subject type `%s` was cancelled after %.0f ms."
+          id subject-type (* duration 1e3)))
 
 (defn- evaluate-groups-msg [id subject-type duration]
   (format "Evaluated Measure with ID `%s` and subject type `%s` in %.0f ms."
@@ -232,10 +291,16 @@
   [{:keys [subject-type] :as context} {:keys [id] groups :group}]
   (log/debug (format "Start evaluating Measure with ID `%s`..." id))
   (let [timer (prom/timer evaluate-duration-seconds subject-type)]
-    (do-sync [groups (evaluate-groups* context groups)]
-      (let [duration (prom/observe-duration! timer)]
-        (log/debug (evaluate-groups-msg id subject-type duration))
-        [groups duration]))))
+    (-> (evaluate-groups* context groups)
+        (ac/handle
+         (fn [groups anom]
+           (let [duration (prom/observe-duration! timer)]
+             (if anom
+               (do (when (ba/interrupted? anom)
+                     (log/debug (cancelled-groups-msg id subject-type duration)))
+                   anom)
+               (do (log/debug (evaluate-groups-msg id subject-type duration))
+                   [groups duration]))))))))
 
 (defn- canonical [context {:keys [id url version]}]
   (if-let [url (type/value url)]
@@ -292,8 +357,8 @@
 (defn- now [clock]
   (OffsetDateTime/now ^Clock clock))
 
-(defn- successive-luids [{:keys [clock rng-fn]}]
-  (luid/successive-luids clock (rng-fn)))
+(defn- luid-generator [{:keys [clock rng-fn]}]
+  (luid/generator clock (rng-fn)))
 
 (defn- missing-subject-msg [type id]
   (format "Subject with type `%s` and id `%s` was not found." type id))
@@ -316,6 +381,10 @@
       (ba/incorrect (type-mismatch-msg subject-type (first subject-ref))))
     (subject-handle* db subject-type subject-ref)))
 
+(defn- timeout-eclipsed-msg [timeout]
+  (format "Timeout of %d millis eclipsed while evaluating."
+          (.toMillis ^Duration timeout)))
+
 (defn- eval-unfiltered-xf [context]
   (comp (filter (comp #{"Unfiltered"} :context val))
         (map
@@ -329,36 +398,47 @@
              (completing (fn [r [k v]] (assoc r k v)))
              expression-defs expression-defs))
 
+(defn timeout-eclipsed-fn [clock now timeout]
+  (let [timeout-instant (time/instant (time/plus now timeout))]
+    #(when-not (.isBefore (.instant ^Clock clock) timeout-instant)
+       (ba/interrupted
+        (timeout-eclipsed-msg timeout)
+        :timeout timeout))))
+
 (defn- enhance-context
   [{:keys [clock db timeout]
+    :blaze/keys [cancelled?]
     :or {timeout (time/hours 1)}
     :as context} measure
    {:keys [report-type subject-ref]}]
   (let [subject-type (subject-type measure)
         now (now clock)
-        timeout-instant (time/instant (time/plus now timeout))]
+        timeout-eclipsed? (timeout-eclipsed-fn clock now timeout)]
     (do-sync [{:keys [expression-defs function-defs parameter-default-values]}
               (compile-primary-library db measure {})]
       (when-ok [subject-handle (some->> subject-ref (subject-handle db subject-type))]
         (let [context
-              (assoc context
-                     :db db
-                     :now now
-                     :timeout-eclipsed? #(not (.isBefore (.instant ^Clock clock) timeout-instant))
-                     :timeout timeout
-                     :expression-defs expression-defs
-                     :function-defs function-defs
-                     :parameters parameter-default-values
-                     :subject-type subject-type
-                     :report-type report-type
-                     :luids (successive-luids context))]
+              (cond->
+               (assoc
+                context
+                :db db
+                :now now
+                ;; if a cancelled? function is available we don't use timeout
+                :interrupted? (if cancelled? cancelled? timeout-eclipsed?)
+                :expression-defs expression-defs
+                :parameters parameter-default-values
+                :subject-type subject-type
+                :report-type report-type
+                ::luid/generator (luid-generator context))
+                function-defs
+                (assoc :function-defs function-defs))]
           (when-ok [expression-defs (eval-unfiltered context expression-defs)]
             (cond-> (assoc context :expression-defs expression-defs)
               subject-handle
               (assoc :subject-handle (ed/mk-resource db subject-handle)))))))))
 
 (defn evaluate-measure
-  "Evaluates `measure` inside `period` in `db` with evaluation time of `now`.
+  "Evaluates `measure` inside `context` with `params`.
 
   Returns a CompletableFuture that will complete with an already completed
   MeasureReport under :resource which isn't persisted and optional :tx-ops or

@@ -7,18 +7,32 @@
   blaze/module-base
   {:local/root "../module-base"}}
 
+ :deps/prep-lib
+ {:alias :build
+  :fn copy-profiles
+  :ensure "resources/blaze/job/re_index"}
+
  :aliases
- {:test
+ {:build
+  {:deps
+   {io.github.clojure/tools.build
+    {:git/tag "v0.10.0" :git/sha "3a2c484"}}
+   :ns-default build}
+
+  :test
   {:extra-paths ["test"]
 
    :extra-deps
    {blaze/db-stub
-    {:local/root "../db-stub"}}}
+    {:local/root "../db-stub"}
+
+    blaze/job-test-util
+    {:local/root "../job-test-util"}}}
 
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.89.1380"}}
+    {:mvn/version "1.91.1392"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

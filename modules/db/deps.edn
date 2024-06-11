@@ -40,8 +40,19 @@
   commons-codec/commons-codec
   {:mvn/version "1.17.0"}}
 
+ :deps/prep-lib
+ {:alias :build
+  :fn copy-profiles
+  :ensure "resources/blaze/db/Bundle-JobSearchParameterBundle.json"}
+
  :aliases
- {:test
+ {:build
+  {:deps
+   {io.github.clojure/tools.build
+    {:git/tag "v0.10.0" :git/sha "3a2c484"}}
+   :ns-default build}
+
+  :test
   {:extra-paths ["test"]
 
    :extra-deps
@@ -51,7 +62,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.89.1380"}}
+    {:mvn/version "1.91.1392"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

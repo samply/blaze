@@ -4,9 +4,6 @@
  {blaze/spec
   {:local/root "../spec"}
 
-  com.cognitect/anomalies
-  {:mvn/version "0.1.12"}
-
   io.aviso/pretty
   {:mvn/version "1.4.4"}}
 
@@ -21,7 +18,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.89.1380"}}
+    {:mvn/version "1.91.1392"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

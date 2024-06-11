@@ -304,7 +304,7 @@
        (fn [publisher _state _ {:keys [t error-t]}]
          (when (< error-t t)
            (let [changed-handles (changed-handles node type t)]
-             (log/debug "Publish" (count changed-handles) "changed" type "resource handles")
+             (log/trace "Publish" (count changed-handles) "changed" type "resource handles")
              (flow/submit! publisher changed-handles)))))
       publisher))
 

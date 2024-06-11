@@ -10,6 +10,12 @@
   blaze/job-scheduler
   {:local/root "../job-scheduler"}
 
+  blaze/job-async-interaction
+  {:local/root "../job-async-interaction"}
+
+  blaze/job-compact
+  {:local/root "../job-compact"}
+
   blaze/job-re-index
   {:local/root "../job-re-index"}
 
@@ -33,7 +39,7 @@
    :exclusions [javax.xml.bind/jaxb-api]}
 
   ca.uhn.hapi.fhir/hapi-fhir-validation
-  {:mvn/version "7.0.2"
+  {:mvn/version "7.2.1"
    :exclusions
    [net.sf.saxon/Saxon-HE
     org.ogce/xpp3
@@ -44,15 +50,19 @@
     commons-beanutils/commons-beanutils
     org.apache.httpcomponents/httpclient]}
 
+  ;; CVE-2024-26308, we need at least 1.26.0
+  org.apache.commons/commons-compress
+  {:mvn/version "1.26.2"}
+
   ca.uhn.hapi.fhir/hapi-fhir-structures-r4
-  {:mvn/version "7.0.2"
+  {:mvn/version "7.2.1"
    :exclusions [com.google.code.findbugs/jsr305]}
 
   ca.uhn.hapi.fhir/hapi-fhir-validation-resources-r4
-  {:mvn/version "7.0.2"}
+  {:mvn/version "7.2.1"}
 
   ca.uhn.hapi.fhir/hapi-fhir-caching-caffeine
-  {:mvn/version "7.0.2"}
+  {:mvn/version "7.2.1"}
 
   org.fhir/ucum
   {:mvn/version "1.0.8"
@@ -72,7 +82,7 @@
   :kaocha
   {:extra-deps
    {lambdaisland/kaocha
-    {:mvn/version "1.89.1380"}}
+    {:mvn/version "1.91.1392"}}
 
    :main-opts ["-m" "kaocha.runner"]}
 

@@ -54,11 +54,8 @@
 (defn search-clauses [query-params]
   (into [] query-params->clauses-xf query-params))
 
-(defn luid [{:keys [clock rng-fn]}]
-  (luid/luid clock (rng-fn)))
-
-(defn successive-luids [{:keys [clock rng-fn]}]
-  (luid/successive-luids clock (rng-fn)))
+(defn luid-generator [{:keys [clock rng-fn]}]
+  (luid/generator clock (rng-fn)))
 
 (defn- prep-if-none-match [if-none-match]
   (if (= "*" if-none-match)
@@ -112,13 +109,6 @@
       parsed-if-match (update-tx-op-if-match db resource if-match parsed-if-match)
       if-none-match [:put resource [:if-none-match if-none-match]]
       :else (update-tx-op-no-preconditions db resource))))
-
-(defn subsetted?
-  "Checks whether `coding` is a SUBSETTED coding."
-  {:arglists '([coding])}
-  [{:keys [system code]}]
-  (and (= #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue" system)
-       (= #fhir/code"SUBSETTED" code)))
 
 (defn strip-meta
   "Strips :versionId :lastUpdated from :meta of `resource`."

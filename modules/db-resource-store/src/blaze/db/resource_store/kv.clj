@@ -37,32 +37,33 @@
   (take 16 (iterate #(* 2 %) 1e-6))
   "op")
 
-(defn- parse-msg [hash cause-msg]
+(defn- parse-msg [cause-msg hash]
   (format "Error while parsing resource content with hash `%s`: %s"
           hash cause-msg))
 
+(defn- parse-anom [e hash]
+  (-> (update e ::anom/message parse-msg hash)
+      (assoc :blaze.resource/hash hash)))
+
 (defn- parse-cbor [bytes hash]
-  (-> (fhir-spec/parse-cbor bytes)
-      (ba/exceptionally
-       #(assoc %
-               ::anom/message (parse-msg hash (::anom/message %))
-               :blaze.resource/hash hash))))
+  (with-open [_ (prom/timer duration-seconds "parse-resource")]
+    (-> (fhir-spec/parse-cbor bytes)
+        (ba/exceptionally #(parse-anom % hash)))))
 
 (defn- conform-msg [hash]
   (format "Error while conforming resource content with hash `%s`." hash))
 
+(defn- conform-anom [_e hash]
+  (ba/fault (conform-msg hash) :blaze.resource/hash hash))
+
 (defn- conform-cbor [x hash]
-  (-> (fhir-spec/conform-cbor x)
-      (ba/exceptionally
-       (fn [_]
-         (ba/fault
-          (conform-msg hash)
-          :blaze.resource/hash hash)))))
+  (with-open [_ (prom/timer duration-seconds "conform-resource")]
+    (-> (fhir-spec/conform-cbor x)
+        (ba/exceptionally #(conform-anom % hash)))))
 
 (defn- parse-and-conform-cbor [bytes hash]
-  (with-open [_ (prom/timer duration-seconds "parse-resource")]
-    (when-ok [x (parse-cbor bytes hash)]
-      (conform-cbor x hash))))
+  (when-ok [x (parse-cbor bytes hash)]
+    (conform-cbor x hash)))
 
 (def ^:private entry-freezer
   (map

@@ -4,10 +4,10 @@
    [blaze.luid-spec]
    [blaze.test-util :as tu]
    [clojure.math :as math]
+   [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
-   [java-time.api :as time]
-   [juxt.iota :refer [given]])
+   [java-time.api :as time])
   (:import
    [java.time Clock Instant ZoneId]
    [java.util Random]
@@ -21,7 +21,7 @@
 (deftest luid-test
   (testing "length is 16 chars"
     (dotimes [_ 1000]
-      (is (= 16 (count (luid/luid (Clock/systemUTC) (ThreadLocalRandom/current))))))))
+      (is (s/valid? :blaze/luid (luid/luid (time/system-clock) (ThreadLocalRandom/current)))))))
 
 (defn p [k bit]
   (/ (math/pow k 2.0) (* 2.0 (math/pow 2.0 bit))))
@@ -48,15 +48,13 @@
     (nextLong []
       n)))
 
-(deftest successive-luids-test
-  (testing "first 3 LUID's"
-    (given (take 3 (luid/successive-luids clock (fixed-random 0)))
-      0 := (luid/luid clock (fixed-random 0))
-      1 := (luid/luid clock (fixed-random 1))
-      2 := (luid/luid clock (fixed-random 2))))
+(deftest generator-test
+  (testing "first 2 LUID's"
+    (let [gen (luid/generator clock (fixed-random 0))]
+      (is (= (luid/head gen) (luid/luid clock (fixed-random 0))))
+      (is (= (luid/head (luid/next gen)) (luid/luid clock (fixed-random 1))))))
 
   (testing "increments timestamp on entropy exhaustion"
-    (given (take 3 (luid/successive-luids clock (fixed-random 0xFFFFFFFFF)))
-      0 := (luid/luid clock (fixed-random 0xFFFFFFFFF))
-      1 := (luid/luid (Clock/offset clock (time/millis 1)) (fixed-random 0))
-      2 := (luid/luid (Clock/offset clock (time/millis 1)) (fixed-random 1)))))
+    (let [gen (luid/generator clock (fixed-random 0xFFFFFFFFF))]
+      (is (= (luid/head gen) (luid/luid clock (fixed-random 0xFFFFFFFFF))))
+      (is (= (luid/head (luid/next gen)) (luid/luid (Clock/offset clock (time/millis 1)) (fixed-random 0)))))))

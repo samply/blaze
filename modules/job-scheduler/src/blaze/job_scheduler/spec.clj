@@ -2,19 +2,20 @@
   (:require
    [blaze.db.spec]
    [blaze.job-scheduler :as-alias js]
+   [blaze.job-scheduler.protocols :as p]
    [blaze.spec]
    [clojure.spec.alpha :as s])
   (:import
    [clojure.lang IAtom]))
 
-(s/def ::js/main-node
-  :blaze.db/node)
+(s/def :blaze.job/handler
+  #(satisfies? p/JobHandler %))
 
-(s/def ::js/admin-node
-  :blaze.db/node)
+(s/def ::js/handlers
+  (s/map-of keyword? :blaze.job/handler))
 
 (s/def ::js/context
-  (s/keys :req-un [::js/main-node ::js/admin-node :blaze/clock :blaze/rng-fn]))
+  (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn]))
 
 (s/def ::js/running-jobs
   #(instance? IAtom %))

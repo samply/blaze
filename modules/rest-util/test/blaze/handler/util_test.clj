@@ -3,19 +3,45 @@
    [blaze.async.comp-spec]
    [blaze.fhir.test-util :refer [given-failed-future]]
    [blaze.handler.util :as handler-util]
+   [blaze.luid.spec]
    [blaze.test-util :as tu]
+   [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest testing]]
+   [clojure.test :as test :refer [are deftest is testing]]
    [cognitect.anomalies :as anom]
-   [juxt.iota :refer [given]]))
+   [java-time.api :as time]
+   [juxt.iota :refer [given]])
+  (:import
+   [java.util.concurrent ThreadLocalRandom]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)
 
 (deftest preference-test
-  (are [headers res] (= res (handler-util/preference headers "return"))
-    {"prefer" "return=representation"} :blaze.preference.return/representation))
+  (testing "return"
+    (are [headers res] (= res (handler-util/preference headers "return"))
+      {"prefer" "return=representation"} :blaze.preference.return/representation
+      {"prefer" "return=minimal"} :blaze.preference.return/minimal
+      {"prefer" "return=OperationOutcome"} :blaze.preference.return/OperationOutcome
+      {"prefer" "handling=strict"} nil
+      {"prefer" ""} nil))
+
+  (testing "handling"
+    (are [headers res] (= res (handler-util/preference headers "handling"))
+      {"prefer" "handling=strict"} :blaze.preference.handling/strict
+      {"prefer" "handling=lenient"} :blaze.preference.handling/lenient))
+
+  (testing "respond-async"
+    (are [headers res] (= res (handler-util/preference headers "respond-async"))
+      {"prefer" "respond-async"} :blaze.preference/respond-async
+      {"prefer" "handling=strict,respond-async"} :blaze.preference/respond-async
+      {"prefer" "respond-async,handling=strict"} :blaze.preference/respond-async
+      {"prefer" "handling=strict"} nil
+      {"prefer" ""} nil
+      {} nil
+      nil nil)))
 
 (deftest operation-outcome-test
   (testing "fault anomaly"
@@ -83,3 +109,8 @@
     ::anom/message := "Method POST not allowed on `/Patient/0` endpoint."
     :http/status := 405
     :fhir/issue := "processing"))
+
+(deftest luid-test
+  (let [context {:clock (time/system-clock)
+                 :rng-fn #(ThreadLocalRandom/current)}]
+    (is (s/valid? :blaze/luid (handler-util/luid context)))))

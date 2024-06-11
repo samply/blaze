@@ -53,6 +53,6 @@ export const actions = {
 		}
 
 		const task: Task = await res.json();
-		redirect(303, `${base}/__admin/jobs/${task.id}`);
+		redirect(303, `${base}/__admin/jobs/re-index/${task.id}`);
 	}
 } satisfies Actions;
