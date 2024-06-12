@@ -51,8 +51,9 @@
   (testing "expression is dynamic"
     (are [elm] (false? (core/-static (ctu/dynamic-compile (elm/coalesce elm))))
       []
-      [{:type "Null"}]
-      [#elm/list []])))
+      [#elm/list []]))
+
+  (ctu/testing-binary-op elm/coalesce))
 
 ;; 14.3. IsFalse
 ;;
@@ -72,9 +73,7 @@
       #elm/parameter-ref "false" true?
       #elm/parameter-ref "nil" false?))
 
-  (ctu/testing-unary-dynamic elm/is-false)
-
-  (ctu/testing-unary-form elm/is-false))
+  (ctu/testing-unary-op elm/is-false))
 
 ;; 14.4. IsNull
 ;;
@@ -94,9 +93,7 @@
       #elm/parameter-ref "false" false?
       #elm/parameter-ref "nil" true?))
 
-  (ctu/testing-unary-dynamic elm/is-null)
-
-  (ctu/testing-unary-form elm/is-null))
+  (ctu/testing-unary-op elm/is-null))
 
 ;; 14.5. IsTrue
 ;;
@@ -116,6 +113,4 @@
       #elm/parameter-ref "false" false?
       #elm/parameter-ref "nil" false?))
 
-  (ctu/testing-unary-dynamic elm/is-true)
-
-  (ctu/testing-unary-form elm/is-true))
+  (ctu/testing-unary-op elm/is-true))

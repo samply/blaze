@@ -1,8 +1,11 @@
 (ns blaze.fhir.operation.evaluate-measure.measure-test
   (:require
-   [blaze.anomaly :as ba]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
+   [blaze.elm.expression :as-alias expr]
+   [blaze.elm.expression.cache :as ec]
+   [blaze.elm.expression.cache.bloom-filter :as-alias bloom-filter]
    [blaze.fhir.operation.evaluate-measure.measure :as measure]
    [blaze.fhir.operation.evaluate-measure.measure-spec]
    [blaze.fhir.operation.evaluate-measure.measure.group-spec]
@@ -19,6 +22,7 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]
    [reitit.core :as reitit]
@@ -75,6 +79,9 @@
 
 (def ^:private config
   (assoc mem-node-config
+         ::expr/cache
+         {:node (ig/ref :blaze.db/node)
+          :executor (ig/ref :blaze.test/executor)}
          :blaze.test/fixed-rng-fn {}
          :blaze.test/executor {}))
 
@@ -82,22 +89,30 @@
   ([name]
    (evaluate name "population"))
   ([name report-type]
+   (evaluate name report-type false))
+  ([name report-type twice-for-caching]
    (with-system-data
      [{:blaze.db/keys [node]
+       ::expr/keys [cache]
        :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
      [(tx-ops (:entry (read-data name)))]
 
      (let [db (d/db node)
            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
-                    :blaze/base-url "" ::reitit/router router
+                    ::expr/cache cache :blaze/base-url "" ::reitit/router router
                     :executor executor}
            measure @(d/pull node (d/resource-handle db "Measure" "0"))
-           period [#system/date "2000" #system/date "2020"]]
-       (try
-         @(measure/evaluate-measure context measure
-                                    {:period period :report-type report-type})
-         (catch Exception e
-           (ex-data (ex-cause e))))))))
+           period [#system/date "2000" #system/date "2020"]
+           params {:period period :report-type report-type}
+           eval #(try
+                   @(measure/evaluate-measure context measure params)
+                   (catch Exception e
+                     (ex-data (ex-cause e))))]
+       (if twice-for-caching
+         (when-ok [_ (eval)]
+           (Thread/sleep 200)
+           (eval))
+         (eval))))))
 
 (defn- first-population [result]
   (if (::anom/category result)
@@ -171,6 +186,35 @@
 
   define InInitialPopulation:
     [Encounter]")
+
+(def library-exists-condition
+  "library Retrieve
+  using FHIR version '4.0.0'
+  include FHIRHelpers version '4.0.0'
+
+  context Patient
+
+  define InInitialPopulation:
+    exists [Condition]")
+
+(def library-medication
+  "library Retrieve
+  using FHIR version '4.0.0'
+  include FHIRHelpers version '4.0.0'
+
+  codesystem atc: 'http://fhir.de/CodeSystem/dimdi/atc'
+
+  context Unfiltered
+
+  define \"Temozolomid Refs\":
+    [Medication: Code 'L01AX03' from atc] M return 'Medication/' + M.id
+
+  context Patient
+
+  define InInitialPopulation:
+    Patient.gender = 'female' and
+    exists from [MedicationStatement] M
+      where M.medication.reference in \"Temozolomid Refs\"")
 
 (def library-patient-encounter
   "library Retrieve
@@ -685,6 +729,122 @@
             ::anom/category := ::anom/incorrect
             ::anom/message := "Subject with type `Patient` and id `0` was not found."))))))
 
+(def ^:private ^:const bloom-filter-ratio-url
+  "https://samply.github.io/blaze/fhir/StructureDefinition/bloom-filter-ratio")
+
+(defn- bloom-filter-ratio [extensions]
+  (some #(when (= bloom-filter-ratio-url (:url %)) %) extensions))
+
+(defn- patient-condition-tx-ops [id]
+  (cond-> [[:put {:fhir/type :fhir/Patient :id (str id)}]]
+    (even? id)
+    (conj [:put {:fhir/type :fhir/Condition :id (str id)
+                 :subject (type/reference {:reference (str "Patient/" id)})}])))
+
+(defn- patient-medication-tx-ops [id]
+  (cond-> [[:put {:fhir/type :fhir/Patient :id (str id)
+                  :gender (if (even? id) #fhir/code"female" #fhir/code"male")}]]
+    (zero? (rem id 4))
+    (conj [:put {:fhir/type :fhir/MedicationStatement :id (str id)
+                 :medication #fhir/Reference{:reference "Medication/0"}
+                 :subject (type/reference {:reference (str "Patient/" id)})}])))
+
+(deftest evaluate-measure-cache-test
+  (testing "Condition"
+    (with-system-data
+      [{:blaze.db/keys [node]
+        ::expr/keys [cache]
+        :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+      [(into [] (mapcat patient-condition-tx-ops) (range 2000))
+       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+               :content [(library-content library-exists-condition)]}]]]
+
+      (let [db (d/db node)
+            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                     ::expr/cache cache
+                     :executor executor :blaze/base-url "" ::reitit/router router}
+            measure {:fhir/type :fhir/Measure :id "0"
+                     :library [#fhir/canonical"0"]
+                     :group
+                     [{:fhir/type :fhir.Measure/group
+                       :population
+                       [{:fhir/type :fhir.Measure.group/population
+                         :code (population-concept "initial-population")
+                         :criteria (cql-expression "InInitialPopulation")}]}]}]
+
+        (testing "without bloom filter because it's not available yet"
+          (let [params {:period [#system/date "2000" #system/date "2100"]
+                        :report-type "population"}]
+            (given (:resource @(measure/evaluate-measure context measure params))
+              :fhir/type := :fhir/MeasureReport
+              [:extension bloom-filter-ratio :value :numerator :value] := 0M
+              [:extension bloom-filter-ratio :value :denominator :value] := 1M
+              [:group 0 :population 0 :count] := 1000)))
+
+        (Thread/sleep 1000)
+
+        (testing "with bloom filter"
+          (let [params {:period [#system/date "2000" #system/date "2100"]
+                        :report-type "population"}]
+            (given (:resource @(measure/evaluate-measure context measure params))
+              :fhir/type := :fhir/MeasureReport
+              [:extension bloom-filter-ratio :value :numerator :value] := 1M
+              [:extension bloom-filter-ratio :value :denominator :value] := 1M
+              [:group 0 :population 0 :count] := 1000))
+
+          (given (into [] (ec/list-by-t cache))
+            count := 1
+            [0 ::bloom-filter/expr-form] := "(exists (retrieve \"Condition\"))")))))
+
+  (testing "Medication"
+    (log/set-min-level! :info)
+    (with-system-data
+      [{:blaze.db/keys [node]
+        ::expr/keys [cache]
+        :blaze.test/keys [fixed-clock fixed-rng-fn executor]} config]
+      [[[:put {:fhir/type :fhir/Medication :id "0"
+               :code #fhir/CodeableConcept{:coding [#fhir/Coding{:system #fhir/uri"http://fhir.de/CodeSystem/dimdi/atc" :code #fhir/code"L01AX03"}]}}]]
+       (into [] (mapcat patient-medication-tx-ops) (range 2000))
+       [[:put {:fhir/type :fhir/Library :id "0" :url #fhir/uri"0"
+               :content [(library-content library-medication)]}]]]
+
+      (let [db (d/db node)
+            context {:clock fixed-clock :rng-fn fixed-rng-fn :db db
+                     ::expr/cache cache
+                     :executor executor :blaze/base-url "" ::reitit/router router}
+            measure {:fhir/type :fhir/Measure :id "0"
+                     :library [#fhir/canonical"0"]
+                     :group
+                     [{:fhir/type :fhir.Measure/group
+                       :population
+                       [{:fhir/type :fhir.Measure.group/population
+                         :code (population-concept "initial-population")
+                         :criteria (cql-expression "InInitialPopulation")}]}]}]
+
+        (testing "without bloom filter because it's not available yet"
+          (let [params {:period [#system/date "2000" #system/date "2100"]
+                        :report-type "population"}]
+            (given (:resource @(measure/evaluate-measure context measure params))
+              :fhir/type := :fhir/MeasureReport
+              [:extension bloom-filter-ratio :value :numerator :value] := 0M
+              [:extension bloom-filter-ratio :value :denominator :value] := 1M
+              [:group 0 :population 0 :count] := 500)))
+
+        (Thread/sleep 1000)
+
+        (testing "with bloom filter"
+          (let [params {:period [#system/date "2000" #system/date "2100"]
+                        :report-type "population"}]
+            (given (:resource @(measure/evaluate-measure context measure params))
+              :fhir/type := :fhir/MeasureReport
+              [:extension bloom-filter-ratio :value :numerator :value] := 1M
+              [:extension bloom-filter-ratio :value :denominator :value] := 1M
+              [:group 0 :population 0 :count] := 500))
+
+          (given (into [] (ec/list-by-t cache))
+            count := 1
+            [0 ::bloom-filter/expr-form] := "(exists (eduction-query (comp (filter (fn [M] (contains [\"Medication/0\"] (call \"ToString\" (:reference (:medication M)))))) distinct) (retrieve \"MedicationStatement\")))"))))))
+
 (defmacro testing-query [name count]
   `(testing ~name
      (is (= ~count (:count (first-population (evaluate ~name)))))))
@@ -765,6 +925,12 @@
   (testing-query "q51-specimen-condition-reference-2" 1)
 
   (testing-query "q53-population-basis-boolean" 2)
+
+  (testing "q57-mii-specimen-reference"
+    (given (evaluate "q57-mii-specimen-reference" "population" true)
+      [:resource :extension bloom-filter-ratio :value :numerator :value] := 6M
+      [:resource :extension bloom-filter-ratio :value :denominator :value] := 6M
+      [first-population :count] := 1))
 
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
@@ -973,7 +1139,7 @@
 
   (given (first-stratifier-strata (evaluate "q52-sort-with-missing-values"))
     count := 1
-    [0 :value :text] := "Condition[id = 0, t = 1]"
+    [0 :value :text] := "Condition[id = 0, t = 1, last-change-t = 1]"
     [0 :population 0 :count] := #fhir/integer 1)
 
   (given (first-stratifier-strata (evaluate "q54-stratifier-condition-code"))
@@ -1020,6 +1186,12 @@
     [1 :component 1 :extension 0 :value :code] := #fhir/code"cm"
     [1 :population 0 :count] := #fhir/integer 1))
 
+(deftest queries-with-errors-test
+  (testing "overly large non-parsable query"
+    (given (evaluate "q58-overly-large-nonparsable-query")
+      ::anom/category := ::anom/fault
+      ::anom/message := "Error while parsing the ELM representation of a CQL library: Could not convert library to JSON using JAXB serializer.")))
+
 (comment
   (log/set-level! :debug)
-  (evaluate "q53-population-basis-boolean"))
+  (evaluate "q58-overly-large-nonparsable-query"))

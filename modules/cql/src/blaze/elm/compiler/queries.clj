@@ -7,7 +7,7 @@
   (:require
    [blaze.coll.core :as coll]
    [blaze.elm.compiler.core :as core]
-   [blaze.elm.compiler.structured-values :as structured-values]
+   [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.protocols :as p]
    [blaze.fhir.spec])
   (:import
@@ -18,12 +18,18 @@
 (defprotocol XformFactory
   (-create [_ context resource scope]
     "Creates a xform which filters and/or shapes query sources.")
+  (-resolve-refs [_ expression-defs])
+  (-resolve-params [_ parameters])
   (-form [_]))
 
 (defn- where-xform-factory [alias expr]
   (reify XformFactory
     (-create [_ context resource scope]
       (filter #(core/-eval expr context resource (assoc scope alias %))))
+    (-resolve-refs [_ expression-defs]
+      (where-xform-factory alias (core/-resolve-refs expr expression-defs)))
+    (-resolve-params [_ parameters]
+      (where-xform-factory alias (core/-resolve-params expr parameters)))
     (-form [_]
       `(~'filter (~'fn [~(symbol alias)] ~(core/-form expr))))))
 
@@ -31,6 +37,10 @@
   (reify XformFactory
     (-create [_ context resource scope]
       (map #(core/-eval expr context resource (assoc scope alias %))))
+    (-resolve-refs [_ expression-defs]
+      (return-xform-factory* alias (core/-resolve-refs expr expression-defs)))
+    (-resolve-params [_ parameters]
+      (return-xform-factory* alias (core/-resolve-params expr parameters)))
     (-form [_]
       `(~'map (~'fn [~(symbol alias)] ~(core/-form expr))))))
 
@@ -38,6 +48,10 @@
   (reify XformFactory
     (-create [_ _ _ _]
       (distinct))
+    (-resolve-refs [this _]
+      this)
+    (-resolve-params [this _]
+      this)
     (-form [_]
       'distinct)))
 
@@ -47,6 +61,10 @@
       (comp
        (-create xform-factory context resource scope)
        (distinct)))
+    (-resolve-refs [_ expression-defs]
+      (composed-distinct-xform-factory (-resolve-refs xform-factory expression-defs)))
+    (-resolve-params [_ parameters]
+      (composed-distinct-xform-factory (-resolve-params xform-factory parameters)))
     (-form [_]
       `(~'comp ~(-form xform-factory) ~'distinct))))
 
@@ -60,6 +78,10 @@
   (reify XformFactory
     (-create [_ context resource scope]
       (transduce (map #(-create % context resource scope)) comp factories))
+    (-resolve-refs [_ expression-defs]
+      (composed-xform-factory (mapv #(-resolve-refs % expression-defs) factories)))
+    (-resolve-params [_ parameters]
+      (composed-xform-factory (mapv #(-resolve-params % parameters) factories)))
     (-form [_]
       `(~'comp ~@(map -form factories)))))
 
@@ -77,9 +99,13 @@
       return-xform-factory)))
 
 (defn- eduction-expr [xform-factory source]
-  (reify core/Expression
-    (-static [_]
-      false)
+  (reify-expr core/Expression
+    (-resolve-refs [_ expression-defs]
+      (eduction-expr (-resolve-refs xform-factory expression-defs)
+                     (core/-resolve-refs source expression-defs)))
+    (-resolve-params [_ parameters]
+      (eduction-expr (-resolve-params xform-factory parameters)
+                     (core/-resolve-params source parameters)))
     (-eval [_ context resource scope]
       (coll/eduction
        (-create xform-factory context resource scope)
@@ -88,9 +114,13 @@
       `(~'eduction-query ~(-form xform-factory) ~(core/-form source)))))
 
 (defn- into-vector-expr [xform-factory source]
-  (reify core/Expression
-    (-static [_]
-      false)
+  (reify-expr core/Expression
+    (-resolve-refs [_ expression-defs]
+      (into-vector-expr (-resolve-refs xform-factory expression-defs)
+                        (core/-resolve-refs source expression-defs)))
+    (-resolve-params [_ parameters]
+      (into-vector-expr (-resolve-params xform-factory parameters)
+                        (core/-resolve-params source parameters)))
     (-eval [_ context resource scope]
       (into
        []
@@ -134,9 +164,15 @@
     (symbol (:direction sort-by-item))))
 
 (defn- xform-sort-expr [xform-factory source sort-by-item]
-  (reify core/Expression
-    (-static [_]
-      false)
+  (reify-expr core/Expression
+    (-resolve-refs [_ expression-defs]
+      (xform-sort-expr (-resolve-refs xform-factory expression-defs)
+                       (core/-resolve-refs source expression-defs)
+                       (update sort-by-item :expression core/-resolve-refs expression-defs)))
+    (-resolve-params [_ parameters]
+      (xform-sort-expr (-resolve-params xform-factory parameters)
+                       (core/-resolve-params source parameters)
+                       (update sort-by-item :expression core/-resolve-params parameters)))
     (-eval [_ context resource scope]
       ;; TODO: build a comparator of all sort by items
       (->> (into
@@ -192,26 +228,51 @@
     (throw (Exception. (str "Unsupported number of " (count sources) " sources in query.")))))
 
 ;; 10.3. AliasRef
-(defrecord AliasRefExpression [key]
-  core/Expression
-  (-static [_]
-    false)
-  (-eval [_ _ _ scopes]
-    (get scopes key))
-  (-form [_]
-    `(~'alias-ref ~(symbol key))))
-
 (defmethod core/compile* :elm.compiler.type/alias-ref
   [_ {:keys [name]}]
-  (->AliasRefExpression name))
+  (reify-expr core/Expression
+    (-eval [_ _ _ scopes]
+      (get scopes name))
+    (-form [_]
+      `(~'alias-ref ~(symbol name)))))
 
 ;; 10.7 IdentifierRef
 (defmethod core/compile* :elm.compiler.type/identifier-ref
   [_ {:keys [name]}]
-  (structured-values/->SingleScopePropertyExpression (keyword name)))
+  (let [key (keyword name)]
+    (reify-expr core/Expression
+      (-eval [_ _ _ value]
+        (p/get value key))
+      (-form [_]
+        `(~key ~'default)))))
 
 ;; 10.14. With
 ;; 10.15. Without
+(defn- relationship-clause-xform-factory [lhs-alias rhs-alias rhs such-that exists-fn form-sym]
+  (reify XformFactory
+    (-create [_ context resource scope]
+      (filter
+       (fn [lhs-item]
+         (let [scope (assoc scope lhs-alias lhs-item)]
+           (exists-fn
+            #(core/-eval such-that context resource (assoc scope rhs-alias %))
+            (core/-eval rhs context resource scope))))))
+    (-resolve-refs [_ expression-defs]
+      (relationship-clause-xform-factory
+       lhs-alias rhs-alias (core/-resolve-refs rhs expression-defs)
+       (core/-resolve-refs such-that expression-defs) exists-fn form-sym))
+    (-resolve-params [_ parameters]
+      (relationship-clause-xform-factory
+       lhs-alias rhs-alias (core/-resolve-params rhs parameters)
+       (core/-resolve-params such-that parameters) exists-fn form-sym))
+    (-form [_]
+      `(~'filter
+        (~'fn [~(symbol lhs-alias)]
+              (~form-sym
+               (~'fn [~(symbol rhs-alias)]
+                     ~(core/-form such-that))
+               ~(core/-form rhs)))))))
+
 (defn compile-relationship-clause
   "We use the terms `lhs` and `rhs` for left-hand-side and right-hand-side of
   the semi-join here.
@@ -223,18 +284,4 @@
         such-that (core/compile* context such-that)
         exists-fn (if (= "With" type) coll/some (comp not coll/some))
         form-sym (if (= "With" type) 'exists 'not-exists)]
-    (reify XformFactory
-      (-create [_ context resource scope]
-        (filter
-         (fn [lhs-item]
-           (let [scope (assoc scope lhs-alias lhs-item)]
-             (exists-fn
-              #(core/-eval such-that context resource (assoc scope rhs-alias %))
-              (core/-eval rhs context resource scope))))))
-      (-form [_]
-        `(~'filter
-          (~'fn [~(symbol lhs-alias)]
-                (~form-sym
-                 (~'fn [~(symbol rhs-alias)]
-                       ~(core/-form such-that))
-                 ~(core/-form rhs))))))))
+    (relationship-clause-xform-factory lhs-alias rhs-alias rhs such-that exists-fn form-sym)))

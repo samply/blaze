@@ -12,4 +12,4 @@ context Patient
 define InInitialPopulation:
     exists [Specimen: "Serum Specimen"] S
       with [Condition: "Diabetes mellitus"] C
-      such that (S.extension.where(url='https://www.medizininformatik-initiative.de/fhir/ext/modul-biobank/StructureDefinition/Diagnose').first().value as Reference).reference = 'Condition/' + C.id
+        such that (S.extension.where(url='https://www.medizininformatik-initiative.de/fhir/ext/modul-biobank/StructureDefinition/Diagnose').first().value as Reference).reference = 'Condition/' + C.id

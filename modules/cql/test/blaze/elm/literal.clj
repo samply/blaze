@@ -394,10 +394,25 @@
   {:type "ReplaceMatches"
    :operand ops})
 
+;; 17.14. Split
+(defn split [[s separator]]
+  {:type "Split"
+   :stringToSplit s
+   :separator separator})
+
 ;; 17.16. StartsWith
 (defn starts-with [ops]
   {:type "StartsWith"
    :operand ops})
+
+;; 17.17. Substring
+(defn substring [[s start-index length]]
+  (cond->
+   {:type "Substring"
+    :stringToSub s
+    :startIndex start-index}
+    length
+    (assoc :length length)))
 
 ;; 17.18. Upper
 (defn upper [x]
@@ -670,6 +685,10 @@
 ;; 20.25. SingletonFrom
 (defn singleton-from [list]
   {:type "SingletonFrom" :operand list})
+
+;; 20.26. Slice
+(defn slice [[source start-index end-index]]
+  {:type "Slice" :source source :startIndex start-index :endIndex end-index})
 
 ;; 20.28. Times
 (defn times [lists]

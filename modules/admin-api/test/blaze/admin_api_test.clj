@@ -4,12 +4,16 @@
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.db.api-stub]
+   [blaze.db.impl.index.patient-last-change :as plc]
    [blaze.db.kv :as-alias kv]
    [blaze.db.kv.rocksdb :as rocksdb]
    [blaze.db.node :as node :refer [node?]]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.kv :as rs-kv]
    [blaze.db.tx-log :as tx-log]
+   [blaze.elm.compiler :as c]
+   [blaze.elm.expression :as-alias expr]
+   [blaze.elm.expression.cache :as ec]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
@@ -50,6 +54,7 @@
     :kv-store (ig/ref :blaze.db.main/index-kv-store)
     :resource-indexer (ig/ref :blaze.db.node.main/resource-indexer)
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :scheduler (ig/ref :blaze/scheduler)
     :poll-timeout (time/millis 10)}
 
    [:blaze.db/node :blaze.db.admin/node]
@@ -60,6 +65,7 @@
     :kv-store (ig/ref :blaze.db.admin/index-kv-store)
     :resource-indexer (ig/ref :blaze.db.node.admin/resource-indexer)
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :scheduler (ig/ref :blaze/scheduler)
     :poll-timeout (time/millis 10)}
 
    [::tx-log/local :blaze.db.main/tx-log]
@@ -116,7 +122,9 @@
       :max-bytes-for-level-base-in-mb 1
       :target-file-size-base-in-mb 1}
      :type-stats-index nil
-     :system-stats-index nil}}
+     :system-stats-index nil
+     :cql-bloom-filter nil
+     :cql-bloom-filter-by-t nil}}
 
    [::kv/mem :blaze.db.admin/index-kv-store]
    {:column-families
@@ -198,6 +206,8 @@
 
    :blaze.page-store/local
    {:secure-rng (ig/ref :blaze.test/fixed-rng)}
+
+   :blaze/scheduler {}
 
    :blaze.test/fixed-rng {}
    :blaze.test/fixed-rng-fn {}})
@@ -418,7 +428,20 @@
                   ["content" "application/json" "schema" "type"] := "array"
                   ["content" "application/json" "schema" "items" "type"] := "object"
                   ["content" "application/json" "schema" "items" "properties" "dataSize" "type"] := "number"
-                  ["content" "application/json" "schema" "items" "properties" "totalRawKeySize" "type"] := "number")))))))))
+                  ["content" "application/json" "schema" "items" "properties" "totalRawKeySize" "type"] := "number")))))
+
+        (testing "cql-bloom-filters"
+          (let [op (get-in body ["paths" "/fhir/__admin/cql/bloom-filters" "get"])]
+            (given op
+              "operationId" := "cql-bloom-filters"
+              "summary" := "Fetch the list of all CQL Bloom filters.")
+
+            (testing "responses"
+              (testing "200"
+                (given (get-in op ["responses" "200"])
+                  "description" := "A list of CQL Bloom filters."
+                  ["content" "application/json" "schema" "type"] := "array"
+                  ["content" "application/json" "schema" "items" "$ref"] := "#/components/schemas/BloomFilter")))))))))
 
 (deftest root-test
   (testing "without settings and features"
@@ -454,7 +477,8 @@
     (with-handler [handler]
       (assoc-in (config (new-temp-dir!))
                 [:blaze/admin-api :features]
-                [{:name "OpenID Authentication"
+                [{:key "open-id-authentication"
+                  :name "OpenID Authentication"
                   :toggle "OPENID_PROVIDER_URL"
                   :enabled true}])
       []
@@ -465,6 +489,8 @@
           :status := 200
           [:body "settings" count] := 0
           [:body "features" count] := 1
+          [:body "features" 0 count] := 4
+          [:body "features" 0 "key"] := "open-id-authentication"
           [:body "features" 0 "name"] := "OpenID Authentication"
           [:body "features" 0 "toggle"] := "OPENID_PROVIDER_URL"
           [:body "features" 0 "enabled"] := true)))))
@@ -544,6 +570,23 @@
           [:body 0 "estimateLiveDataSize"] := 0
           [:body 0 "liveSstFilesSize"] := 0
           [:body 0 "sizeAllMemTables"] := 2048)))))
+
+(deftest column-family-state-test
+  (with-handler [handler] (config (new-temp-dir!)) []
+    (testing "patient-last-change-index"
+      (with-redefs [plc/state (fn [_] {:type :current})]
+        (given @(handler
+                 {:request-method :get
+                  :uri "/fhir/__admin/dbs/index/column-families/patient-last-change-index/state"})
+          :status := 200
+          :body := {"type" "current"})))
+
+    (testing "other column-family"
+      (given @(handler
+               {:request-method :get
+                :uri "/fhir/__admin/dbs/index/column-families/default/state"})
+        :status := 404
+        [:body "msg"] := "The state of the column family `default` in database `index` was not found."))))
 
 (deftest column-family-metadata-test
   (with-handler [handler] (config (new-temp-dir!)) []
@@ -945,3 +988,41 @@
         (given body
           "resourceType" := "Task"
           "status" := "cancelled")))))
+
+(defn- with-cql-expr-cache [config]
+  (-> (assoc config
+             ::expr/cache
+             {:node (ig/ref :blaze.db.main/node)
+              :executor (ig/ref :blaze.test/executor)}
+             :blaze.test/executor {})
+      (assoc-in [:blaze/admin-api ::expr/cache] (ig/ref ::expr/cache))))
+
+(deftest cql-bloom-filters-test
+  (testing "without expression cache"
+    (with-handler [handler] (config (new-temp-dir!)) []
+      (testing "not-found"
+        (given @(handler
+                 {:request-method :get
+                  :uri "/fhir/__admin/cql/bloom-filters"})
+          :status := 404
+          [:body "msg"] := "The feature \"CQL Expression Cache\" is disabled."))))
+
+  (with-handler [handler {::expr/keys [cache]}] (with-cql-expr-cache (config (new-temp-dir!))) []
+    (let [elm {:type "Exists"
+               :operand {:type "Retrieve" :dataType "{http://hl7.org/fhir}Observation"}}
+          expr (c/compile {:eval-context "Patient"} elm)]
+      (ec/get cache expr))
+
+    (Thread/sleep 100)
+
+    (testing "success"
+      (given @(handler
+               {:request-method :get
+                :uri "/fhir/__admin/cql/bloom-filters"})
+        :status := 200
+        [:body count] := 1
+        [:body 0 "hash"] := "78c3f9b9e187480870ce815ad6d324713dfa2cbd12968c5b14727fef7377b985"
+        [:body 0 "t"] := 0
+        [:body 0 "exprForm"] := "(exists (retrieve \"Observation\"))"
+        [:body 0 "patientCount"] := 0
+        [:body 0 "memSize"] := 11981))))

@@ -203,13 +203,13 @@
 (def ^:private bloom-filter-full-positive-total
   (counter-metric
    "blaze_rocksdb_bloom_filter_full_positive_total"
-   "Number of times bloom FullFilter has not avoided the reads."
+   "Number of times Bloom FullFilter has not avoided the reads."
    TickerType/BLOOM_FILTER_FULL_POSITIVE))
 
 (def ^:private bloom-filter-full-true-positive-total
   (counter-metric
    "blaze_rocksdb_bloom_filter_full_true_positive_total"
-   "Number of times bloom FullFilter has not avoided the reads and data actually exist."
+   "Number of times Bloom FullFilter has not avoided the reads and data actually exist."
    TickerType/BLOOM_FILTER_FULL_TRUE_POSITIVE))
 
 (def ^:private blocks-compressed-total

@@ -5,7 +5,8 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
    [blaze.anomaly :as ba :refer [throw-anom]]
-   [blaze.elm.compiler.core :as core]))
+   [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.macros :refer [reify-expr]]))
 
 ;; 7.1. ParameterDef
 ;;
@@ -17,17 +18,20 @@
    (format "Value of parameter `%s` not found." name)
    :context context))
 
-(defrecord ParameterRef [name]
-  core/Expression
-  (-static [_]
-    false)
-  (-eval [_ {:keys [parameters] :as context} _ _]
-    (let [value (get parameters name ::not-found)]
-      (if (identical? ::not-found value)
-        (throw-anom (parameter-value-not-found-anom context name))
-        value)))
-  (-form [_]
-    `(~'param-ref ~name)))
+(defn- param-ref [name]
+  (reify-expr core/Expression
+    (-resolve-params [expr parameters]
+      (let [value (get parameters name ::not-found)]
+        (if (identical? ::not-found value)
+          expr
+          value)))
+    (-eval [_ {:keys [parameters] :as context} _ _]
+      (let [value (get parameters name ::not-found)]
+        (if (identical? ::not-found value)
+          (throw-anom (parameter-value-not-found-anom context name))
+          value)))
+    (-form [_]
+      `(~'param-ref ~name))))
 
 (defn- find-parameter-def
   "Returns the parameter-def with `name` from `library` or nil if not found."
@@ -44,5 +48,5 @@
   [{:keys [library] :as context} {:keys [name]}]
   ;; TODO: look into other libraries (:libraryName)
   (if-let [{:keys [name]} (find-parameter-def library name)]
-    (->ParameterRef name)
+    (param-ref name)
     (throw-anom (parameter-def-not-found-anom context name))))

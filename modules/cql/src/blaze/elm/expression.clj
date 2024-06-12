@@ -1,5 +1,5 @@
 (ns blaze.elm.expression
-  (:refer-clojure :exclude [eval])
+  (:refer-clojure :exclude [eval hash])
   (:require
    [blaze.elm.compiler.core :as core]))
 

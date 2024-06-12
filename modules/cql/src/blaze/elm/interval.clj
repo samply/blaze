@@ -1,6 +1,7 @@
 (ns blaze.elm.interval
   "Implementation of the interval type."
   (:require
+   [blaze.elm.compiler.core :as core]
    [blaze.elm.date-time :refer [temporal?]]
    [blaze.elm.protocols :as p]))
 
@@ -99,7 +100,23 @@
   (union [a b]
     (let [[left right] (if (p/less (:start a) (:start b)) [a b] [b a])]
       (when (p/greater-or-equal (:end left) (p/predecessor (:start right)))
-        (->Interval (:start left) (:end right))))))
+        (->Interval (:start left) (:end right)))))
+
+  core/Expression
+  (-static [_]
+    true)
+  (-attach-cache [expr _]
+    [(fn [] [expr])])
+  (-patient-count [_]
+    nil)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr _]
+    expr)
+  (-eval [this _ _ _]
+    this)
+  (-form [_]
+    (list 'interval (core/-form start) (core/-form end))))
 
 (defn interval
   "Returns an interval with the given `start` and `end` bounds."

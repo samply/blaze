@@ -37,6 +37,9 @@
 (s/def :fhir/Task
   #(s2/valid? :fhir/Task %))
 
+(s/def :fhir/Measure
+  #(s2/valid? :fhir/Measure %))
+
 (s/def :fhir.Measure/group
   #(s2/valid? :fhir.Measure/group %))
 

@@ -9,6 +9,7 @@
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.string-operators]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
@@ -79,7 +80,7 @@
 ;;
 ;; If any argument is null, the result is null.
 (deftest compile-concatenate-test
-  (are [args res] (= res (core/-eval (c/compile {} {:type "Concatenate" :operand args}) {} nil nil))
+  (are [args res] (= res (core/-eval (c/compile {} (elm/concatenate args)) {} nil nil))
     [#elm/string "a"] "a"
     [#elm/string "a" #elm/string "b"] "ab"
 
@@ -87,16 +88,18 @@
     [{:type "Null"}] nil)
 
   (testing "form"
-    (are [args form] (= form (c/form (c/compile {} {:type "Concatenate" :operand args})))
+    (are [args form] (= form (c/form (c/compile {} (elm/concatenate args))))
       [#elm/string "a"] '(concatenate "a")
       [#elm/string "a" #elm/string "b"] '(concatenate "a" "b")
       [#elm/string "a" {:type "Null"}] '(concatenate "a" nil)))
 
-  (testing "static"
-    (are [args] (false? (core/-static (c/compile {} {:type "Concatenate" :operand args})))
+  (testing "Static"
+    (are [args] (false? (core/-static (c/compile {} (elm/concatenate args))))
       [#elm/string "a"]
       [#elm/string "a" #elm/string "b"]
-      [#elm/string "a" {:type "Null"}])))
+      [#elm/string "a" {:type "Null"}]))
+
+  (ctu/testing-binary-op elm/concatenate))
 
 ;; 17.3. EndsWith
 ;;
@@ -107,7 +110,7 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-ends-with-test
-  (testing "static"
+  (testing "Static"
     (are [s suffix pred] (pred (c/compile {} (elm/ends-with [s suffix])))
       #elm/string "a" #elm/string "a" true?
       #elm/string "ab" #elm/string "b" true?
@@ -125,9 +128,7 @@
 
   (ctu/testing-binary-null elm/ends-with #elm/string "a")
 
-  (ctu/testing-binary-dynamic elm/ends-with)
-
-  (ctu/testing-binary-form elm/ends-with))
+  (ctu/testing-binary-op elm/ends-with))
 
 ;; 17.4. Equal
 ;;
@@ -168,9 +169,7 @@
 
     (ctu/testing-binary-null elm/indexer #elm/list [] #elm/integer "0"))
 
-  (ctu/testing-binary-dynamic elm/indexer)
-
-  (ctu/testing-binary-form elm/indexer))
+  (ctu/testing-binary-op elm/indexer))
 
 ;; 17.7. LastPositionOf
 ;;
@@ -189,9 +188,7 @@
 
   (ctu/testing-binary-dynamic-null elm/last-position-of #elm/string "a" #elm/string "a")
 
-  (ctu/testing-binary-dynamic elm/last-position-of)
-
-  (ctu/testing-binary-form elm/last-position-of))
+  (ctu/testing-binary-op elm/last-position-of))
 
 ;; 17.8. Length
 ;;
@@ -205,7 +202,7 @@
 (deftest compile-length-test
   ;; It's important to use identical? here because we like to test that length
   ;; returns a long instead of an integer.
-  (testing "static"
+  (testing "Static"
     (are [x res] (identical? res (c/compile {} (elm/length x)))
       #elm/string "" 0
       #elm/string "a" 1
@@ -239,9 +236,7 @@
 
           (is (identical? count (core/-eval expr {:db db} patient nil)))))))
 
-  (ctu/testing-unary-dynamic elm/length)
-
-  (ctu/testing-unary-form elm/length))
+  (ctu/testing-unary-op elm/length))
 
 ;; 17.9. Lower
 ;;
@@ -255,7 +250,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-lower-test
-  (testing "static"
+  (testing "Static"
     (are [s res] (= res (c/compile {} (elm/lower s)))
       #elm/string "" ""
       #elm/string "A" "a"))
@@ -267,9 +262,7 @@
 
   (ctu/testing-unary-null elm/lower)
 
-  (ctu/testing-unary-dynamic elm/lower)
-
-  (ctu/testing-unary-form elm/lower))
+  (ctu/testing-unary-op elm/lower))
 
 ;; 17.10. Matches
 ;;
@@ -292,9 +285,7 @@
 
   (ctu/testing-binary-null elm/matches #elm/string "a")
 
-  (ctu/testing-binary-dynamic elm/matches)
-
-  (ctu/testing-binary-form elm/matches))
+  (ctu/testing-binary-op elm/matches))
 
 ;; 17.11. NotEqual
 ;;
@@ -317,9 +308,7 @@
 
   (ctu/testing-binary-dynamic-null elm/position-of #elm/string "a" #elm/string "a")
 
-  (ctu/testing-binary-dynamic elm/position-of)
-
-  (ctu/testing-binary-form elm/position-of))
+  (ctu/testing-binary-op elm/position-of))
 
 ;; 17.13. ReplaceMatches
 ;;
@@ -337,14 +326,12 @@
 ;; such, CQL does not prescribe a particular dialect, but recommends the use of
 ;; the PCRE dialect.
 (deftest compile-replace-matches-test
-  (are [s pattern substitution res] (= res (core/-eval (c/compile {} (elm/replace-matches [s pattern substitution])) {} nil nil))
+  (are [s pattern substitution res] (= res (c/compile {} (elm/replace-matches [s pattern substitution])))
     #elm/string "a" #elm/string "a" #elm/string "b" "b")
 
   (ctu/testing-ternary-dynamic-null elm/replace-matches #elm/string "a" #elm/string "a" #elm/string "a")
 
-  (ctu/testing-ternary-dynamic elm/replace-matches)
-
-  (ctu/testing-ternary-form elm/replace-matches))
+  (ctu/testing-ternary-op elm/replace-matches))
 
 ;; 17.14. Split
 ;;
@@ -356,39 +343,17 @@
 ;; separator, the result is a list of strings containing one element that is the
 ;; value of the stringToSplit argument.
 (deftest compile-split-test
-  (testing "Without separator"
-    (are [s res] (= res (core/-eval (c/compile {} {:type "Split" :stringToSplit s}) {} nil nil))
-      #elm/string "" [""]
-      #elm/string "a" ["a"]
+  (testing "Dynamic"
+    (are [s separator res] (= res (ctu/dynamic-compile-eval (elm/split [s separator])))
+      #elm/parameter-ref "empty-string" #elm/string "," [""]
+      #elm/parameter-ref "a,b" #elm/string "," ["a" "b"]
+      #elm/parameter-ref "a,,b" #elm/string "," ["a" "" "b"]
 
-      {:type "Null"} nil)
+      #elm/parameter-ref "nil" #elm/string "," nil
+      #elm/parameter-ref "a" {:type "Null"} ["a"]
+      #elm/parameter-ref "nil" {:type "Null"} nil))
 
-    (testing "form and static"
-      (let [expr (ctu/dynamic-compile {:type "Split"
-                                       :stringToSplit #elm/parameter-ref "x"})]
-
-        (has-form expr '(split (param-ref "x")))
-
-        (is (false? (core/-static expr))))))
-
-  (testing "With separator"
-    (are [s separator res] (= res (core/-eval (c/compile {} {:type "Split" :stringToSplit s :separator separator}) {} nil nil))
-      #elm/string "" #elm/string "," [""]
-      #elm/string "a,b" #elm/string "," ["a" "b"]
-      #elm/string "a,,b" #elm/string "," ["a" "" "b"]
-
-      {:type "Null"} #elm/string "," nil
-      #elm/string "a" {:type "Null"} ["a"]
-      {:type "Null"} {:type "Null"} nil)
-
-    (testing "form and static"
-      (let [expr (ctu/dynamic-compile {:type "Split"
-                                       :stringToSplit #elm/parameter-ref "x"
-                                       :separator #elm/parameter-ref "y"})]
-
-        (has-form expr '(split (param-ref "x") (param-ref "y")))
-
-        (is (false? (core/-static expr)))))))
+  (ctu/testing-binary-op elm/split))
 
 ;; 17.15. SplitOnMatches
 ;;
@@ -413,7 +378,7 @@
 ;;
 ;; If either argument is null, the result is null.
 (deftest compile-starts-with-test
-  (testing "static"
+  (testing "Static"
     (are [s prefix pred] (pred (c/compile {} (elm/starts-with [s prefix])))
       #elm/string "a" #elm/string "a" true?
       #elm/string "ba" #elm/string "b" true?
@@ -431,9 +396,7 @@
 
   (ctu/testing-binary-null elm/starts-with #elm/string "a")
 
-  (ctu/testing-binary-dynamic elm/starts-with)
-
-  (ctu/testing-binary-form elm/starts-with))
+  (ctu/testing-binary-op elm/starts-with))
 
 ;; 17.17. Substring
 ;;
@@ -449,7 +412,7 @@
 ;; TODO: what todo if the length is out of range?
 (deftest compile-substring-test
   (testing "Without length"
-    (are [s start-index res] (= res (core/-eval (c/compile {} {:type "Substring" :stringToSub s :startIndex start-index}) {} nil nil))
+    (are [s start-index res] (= res (core/-eval (c/compile {} (elm/substring [s start-index])) {} nil nil))
       #elm/string "ab" #elm/integer "1" "b"
 
       #elm/string "a" #elm/integer "-1" nil
@@ -468,7 +431,7 @@
         (is (false? (core/-static expr))))))
 
   (testing "With length"
-    (are [s start-index length res] (= res (core/-eval (c/compile {} {:type "Substring" :stringToSub s :startIndex start-index :length length}) {} nil nil))
+    (are [s start-index length res] (= res (core/-eval (c/compile {} (elm/substring [s start-index length])) {} nil nil))
       #elm/string "a" #elm/integer "0" #elm/integer "1" "a"
       #elm/string "a" #elm/integer "0" #elm/integer "2" "a"
       #elm/string "abc" #elm/integer "1" #elm/integer "1" "b"
@@ -487,7 +450,11 @@
 
         (has-form expr '(substring (param-ref "x") (param-ref "y") (param-ref "z")))
 
-        (is (false? (core/-static expr)))))))
+        (is (false? (core/-static expr))))))
+
+  (ctu/testing-binary-op elm/substring)
+
+  (ctu/testing-ternary-op elm/substring))
 
 ;; 17.18. Upper
 ;;
@@ -501,7 +468,7 @@
 ;;
 ;; If the argument is null, the result is null.
 (deftest compile-upper-test
-  (testing "static"
+  (testing "Static"
     (are [s res] (= res (c/compile {} (elm/upper s)))
       #elm/string "" ""
       #elm/string "a" "A"))
@@ -511,8 +478,4 @@
       #elm/parameter-ref "empty-string" ""
       #elm/parameter-ref "a" "A"))
 
-  (ctu/testing-unary-null elm/upper)
-
-  (ctu/testing-unary-dynamic elm/upper)
-
-  (ctu/testing-unary-form elm/upper))
+  (ctu/testing-unary-op elm/upper))

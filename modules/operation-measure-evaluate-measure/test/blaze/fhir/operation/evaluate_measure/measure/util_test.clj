@@ -5,7 +5,7 @@
    [blaze.fhir.operation.evaluate-measure.measure.util-spec]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest testing]]
+   [clojure.test :as test :refer [are deftest testing]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [cognitect.anomalies :as anom]
@@ -56,3 +56,43 @@
                                          {:fhir/type :fhir/Expression
                                           :language #fhir/code"text/cql"
                                           :expression expression}))))))
+
+(defn- cql-expression [expr]
+  {:fhir/type :fhir/Expression
+   :language #fhir/code"text/cql-identifier"
+   :expression expr})
+
+(deftest cql-definition-names-test
+  (are [measure names] (= names (u/expression-names measure))
+    {:fhir/type :fhir/Measure :id "0"
+     :url #fhir/uri"measure-155502"
+     :library [#fhir/canonical"0"]
+     :group
+     [{:fhir/type :fhir.Measure/group
+       :population
+       [{:fhir/type :fhir.Measure.group/population
+         :criteria (cql-expression "InInitialPopulation")}]
+       :stratifier
+       [{:fhir/type :fhir.Measure.group/stratifier
+         :criteria (cql-expression "Gender")}]}]}
+    #{"InInitialPopulation"
+      "Gender"}
+
+    {:fhir/type :fhir/Measure :id "0"
+     :url #fhir/uri"measure-155502"
+     :library [#fhir/canonical"0"]
+     :group
+     [{:fhir/type :fhir.Measure/group
+       :population
+       [{:fhir/type :fhir.Measure.group/population
+         :criteria (cql-expression "InInitialPopulation")}]
+       :stratifier
+       [{:fhir/type :fhir.Measure.group/stratifier
+         :component
+         [{:fhir/type :fhir.Measure.group.stratifier/component
+           :criteria (cql-expression "AgeClass")}
+          {:fhir/type :fhir.Measure.group.stratifier/component
+           :criteria (cql-expression "Gender")}]}]}]}
+    #{"InInitialPopulation"
+      "AgeClass"
+      "Gender"}))

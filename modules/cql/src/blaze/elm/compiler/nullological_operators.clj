@@ -5,7 +5,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
    [blaze.elm.compiler.core :as core]
-   [blaze.elm.compiler.macros :refer [defunop]]))
+   [blaze.elm.compiler.macros :refer [defunop reify-expr]]))
 
 ;; 14.1. Null
 (defmethod core/compile* :elm.compiler.type/null
@@ -19,41 +19,50 @@
 ;; subsequent arguments must be of that same type.
 ;;
 ;; TODO: The list type argument is missing in the doc.
+(defn- coalesce-op [operands]
+  (reify-expr core/Expression
+    (-attach-cache [_ cache]
+      (core/attach-cache-helper-list coalesce-op cache operands))
+    (-resolve-refs [_ expression-defs]
+      (coalesce-op (mapv #(core/-resolve-refs % expression-defs) operands)))
+    (-resolve-params [_ parameters]
+      (coalesce-op (mapv #(core/-resolve-params % parameters) operands)))
+    (-eval [_ context resource scope]
+      (reduce
+       (fn [_ operand]
+         (let [operand (core/-eval operand context resource scope)]
+           (when (some? operand)
+             (reduced operand))))
+       nil
+       operands))
+    (-form [_]
+      `(~'coalesce ~@(map core/-form operands)))))
+
+(defn coalesce-list-op [list]
+  (reify-expr core/Expression
+    (-attach-cache [_ cache]
+      (core/attach-cache-helper coalesce-op cache list))
+    (-resolve-refs [_ expression-defs]
+      (coalesce-op (core/-resolve-refs list expression-defs)))
+    (-resolve-params [_ parameters]
+      (coalesce-op (core/-resolve-params list parameters)))
+    (-eval [_ context resource scope]
+      (reduce
+       (fn [_ elem]
+         (let [elem (core/-eval elem context resource scope)]
+           (when (some? elem)
+             (reduced elem))))
+       nil
+       (core/-eval list context resource scope)))))
+
 (defmethod core/compile* :elm.compiler.type/coalesce
   [context {operands :operand}]
   (if (= 1 (count operands))
     (let [operand (first operands)]
-      (if (= "List" (:type operand))
-        (let [operand (core/compile* context operand)]
-          (reify core/Expression
-            (-static [_]
-              false)
-            (-eval [_ context resource scope]
-              (reduce
-               (fn [_ elem]
-                 (let [elem (core/-eval elem context resource scope)]
-                   (when (some? elem)
-                     (reduced elem))))
-               nil
-               (core/-eval operand context resource scope)))))
-        (let [operand (core/compile* context operand)]
-          (reify core/Expression
-            (-static [_]
-              false)
-            (-eval [_ context resource scope]
-              (core/-eval operand context resource scope))))))
-    (let [operands (mapv #(core/compile* context %) operands)]
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scope]
-          (reduce
-           (fn [_ operand]
-             (let [operand (core/-eval operand context resource scope)]
-               (when (some? operand)
-                 (reduced operand))))
-           nil
-           operands))))))
+      (cond-> (core/compile* context operand)
+        (= "List" (:type operand))
+        coalesce-list-op))
+    (coalesce-op (mapv #(core/compile* context %) operands))))
 
 ;; 14.3. IsFalse
 (defunop is-false [operand]

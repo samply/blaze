@@ -1,4 +1,4 @@
-import type { PageLoad } from './$types';
+import type { LayoutLoad } from './$types';
 
 import { base } from '$app/paths';
 import { error, type NumericRange } from '@sveltejs/kit';
@@ -10,6 +10,7 @@ export interface Setting {
 }
 
 export interface Feature {
+	key: string;
 	name: string;
 	toggle: string;
 	enabled: boolean;
@@ -20,7 +21,7 @@ export interface Data {
 	features: Feature[];
 }
 
-export const load: PageLoad = async ({ fetch }) => {
+export const load: LayoutLoad = async ({ fetch }) => {
 	const res = await fetch(`${base}/__admin`, {
 		headers: { Accept: 'application/json' }
 	});

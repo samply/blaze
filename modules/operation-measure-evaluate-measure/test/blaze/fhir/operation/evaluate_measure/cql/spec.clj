@@ -1,10 +1,10 @@
 (ns blaze.fhir.operation.evaluate-measure.cql.spec
   (:require
    [blaze.elm.compiler :as-alias c]
-   [blaze.elm.compiler.external-data :as ed]
    [blaze.elm.compiler.library.spec]
    [blaze.elm.expression :as-alias expr]
    [blaze.elm.expression.spec]
+   [blaze.elm.resource :as cr]
    [blaze.fhir.operation.evaluate-measure :as-alias evaluate-measure]
    [blaze.fhir.operation.evaluate-measure.cql :as-alias cql]
    [blaze.fhir.operation.evaluate-measure.spec]
@@ -35,10 +35,10 @@
            :opt-un [::cql/population-basis])))
 
 (s/def ::cql/subject-handle
-  ed/resource?)
+  cr/resource?)
 
 (s/def ::cql/population-handle
-  ed/resource?)
+  cr/resource?)
 
 (s/def ::cql/handle
   (s/keys :req-un [::cql/subject-handle ::cql/population-handle]))

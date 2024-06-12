@@ -11,10 +11,11 @@
    [blaze.elm.compiler.core-spec]
    [blaze.elm.compiler.function :as function]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.expression.cache :as ec]
    [blaze.elm.interval :as interval]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
-   [blaze.elm.quantity :as quantity]
+   [blaze.elm.quantity :refer [quantity]]
    [blaze.fhir.spec.type.system :as system]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
@@ -70,6 +71,27 @@
 ;;
 ;; The FunctionRef type defines an expression that invokes a previously defined
 ;; function. The result of evaluating each operand is passed to the function.
+(defmacro testing-function-ref-attach-cache [name]
+  `(testing "attach cache"
+     (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
+       (let [elm# #elm/function-ref [~name #elm/exists #elm/retrieve{:type "Observation"}]
+             ctx# {:eval-context "Patient"}
+             expr# (c/compile ctx# elm#)]
+         (given (st/with-instrument-disabled (c/attach-cache expr# ::cache))
+           count := 2
+           [0] := expr#
+           [1 count] := 1
+           [1 0] := '(~'exists (~'retrieve "Observation")))))))
+
+(defmacro testing-function-ref-resolve-refs [name]
+  `(testing "resolve expression references"
+     (let [elm# #elm/function-ref [~name #elm/expression-ref "x"]
+           expr-def# {:type "ExpressionDef" :name "x" :expression "y"
+                      :context "Unfiltered"}
+           ctx# {:library {:statements {:def [expr-def#]}}}
+           expr# (c/resolve-refs (c/compile ctx# elm#) {"x" expr-def#})]
+       (has-form expr# '(~'call ~name "y")))))
+
 (deftest compile-function-ref-test
   (testing "Throws error on missing function"
     (given (ba/try-anomaly (c/compile {} #elm/function-ref ["name-175844"]))
@@ -87,8 +109,22 @@
       (testing "eval"
         (is (= 1 (core/-eval expr {} nil nil))))
 
-      (testing "static"
+      (testing "expression is dynamic"
         (is (false? (core/-static expr))))
+
+      (testing "attach cache"
+        (is (= [expr []] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+      (testing "patient count"
+        (is (nil? (core/-patient-count expr))))
+
+      (testing "resolve expression references"
+        (let [expr (c/resolve-refs expr {})]
+          (has-form expr (list 'call function-name))))
+
+      (testing "resolve parameters"
+        (has-form (core/-resolve-params expr {})
+          (list 'call function-name)))
 
       (testing "form"
         (has-form expr (list 'call function-name)))))
@@ -97,6 +133,7 @@
     (let [function-name "name-180815"
           fn-expr (c/compile {} #elm/negate #elm/operand-ref"x")
           compile-ctx {:library {:parameters {:def [{:name "a"}]}}
+                       :eval-context "Patient"
                        :function-defs {function-name {:function (partial function/arity-n function-name fn-expr ["x"])}}}
           elm (elm/function-ref [function-name #elm/parameter-ref "a"])
           expr (c/compile compile-ctx elm)]
@@ -107,8 +144,36 @@
           -1 1
           0 0))
 
-      (testing "static"
+      (testing "expression is dynamic"
         (is (false? (core/-static expr))))
+
+      (testing "attach cache"
+        (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
+          (let [elm (elm/function-ref [function-name #elm/exists #elm/retrieve{:type "Observation"}])
+                expr (c/compile compile-ctx elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0] := expr
+              [1 count] := 1
+              [1 0] := '(exists (retrieve "Observation"))))))
+
+      (testing "patient count"
+        (is (nil? (core/-patient-count expr))))
+
+      (testing "resolve expression references"
+        (let [elm (elm/function-ref [function-name #elm/expression-ref "x"])
+              expr-def {:type "ExpressionDef" :name "x" :expression "a"
+                        :context "Unfiltered"}
+              ctx (assoc compile-ctx :library {:statements {:def [expr-def]}})
+              expr (c/resolve-refs (c/compile ctx elm) {"x" expr-def})]
+          (has-form expr (list 'call function-name "a"))))
+
+      (testing "resolve parameters"
+        (has-form (core/-resolve-params expr {"a" 1})
+          (list 'call function-name 1))
+
+        (has-form (core/-resolve-params expr {})
+          (list 'call function-name '(param-ref "a"))))
 
       (testing "form"
         (has-form expr (list 'call function-name '(param-ref "a"))))))
@@ -117,6 +182,7 @@
     (let [function-name "name-184652"
           fn-expr (c/compile {} #elm/add [#elm/operand-ref"x" #elm/operand-ref"y"])
           compile-ctx {:library {:parameters {:def [{:name "a"} {:name "b"}]}}
+                       :eval-context "Patient"
                        :function-defs {function-name {:function (partial function/arity-n function-name fn-expr ["x" "y"])}}}
           elm (elm/function-ref [function-name #elm/parameter-ref "a" #elm/parameter-ref "b"])
           expr (c/compile compile-ctx elm)]
@@ -127,8 +193,43 @@
           1 0 1
           0 1 1))
 
-      (testing "static"
+      (testing "expression is dynamic"
         (is (false? (core/-static expr))))
+
+      (testing "attach cache"
+        (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
+          (let [elm (elm/function-ref [function-name
+                                       #elm/exists #elm/retrieve{:type "Observation"}
+                                       #elm/exists #elm/retrieve{:type "Condition"}])
+                expr (c/compile compile-ctx elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0] := expr
+              [1 count] := 2
+              [1 0] := '(exists (retrieve "Observation"))
+              [1 1] := '(exists (retrieve "Condition"))))))
+
+      (testing "patient count"
+        (is (nil? (core/-patient-count expr))))
+
+      (testing "resolve expression references"
+        (let [elm (elm/function-ref [function-name
+                                     #elm/expression-ref "x"
+                                     #elm/expression-ref "y"])
+              expr-defs [{:type "ExpressionDef" :name "x" :expression "a"
+                          :context "Unfiltered"}
+                         {:type "ExpressionDef" :name "y" :expression "b"
+                          :context "Unfiltered"}]
+              ctx (assoc compile-ctx :library {:statements {:def expr-defs}})
+              expr (c/resolve-refs (c/compile ctx elm) (zipmap ["x" "y"] expr-defs))]
+          (has-form expr (list 'call function-name "a" "b"))))
+
+      (testing "resolve parameters"
+        (has-form (core/-resolve-params expr {"a" 1 "b" 2})
+          (list 'call function-name 1 2))
+
+        (has-form (core/-resolve-params expr {})
+          (list 'call function-name '(param-ref "a") '(param-ref "b"))))
 
       (testing "form"
         (has-form expr (list 'call function-name '(param-ref "a") '(param-ref "b"))))))
@@ -140,12 +241,20 @@
 
       (testing "eval"
         (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
-          {:value 23M :code "kg"} (quantity/quantity 23M "kg")
-          {:value 42M} (quantity/quantity 42M "1")
+          {:value 23M :code "kg"} (quantity 23M "kg")
+          {:value 42M} (quantity 42M "1")
           {} nil))
 
-      (testing "static"
+      (testing "expression is dynamic"
         (is (false? (core/-static expr))))
+
+      (testing-function-ref-attach-cache "ToQuantity")
+
+      (testing-function-ref-resolve-refs "ToQuantity")
+
+      (testing "resolve parameters"
+        (has-form (core/-resolve-params expr {})
+          '(call "ToQuantity" (param-ref "x"))))
 
       (testing "form"
         (has-form expr '(call "ToQuantity" (param-ref "x"))))))
@@ -164,8 +273,16 @@
           #fhir/date"2023-05" #system/date"2023-05"
           #fhir/date"2023-05-07" #system/date"2023-05-07"))
 
-      (testing "static"
+      (testing "expression is dynamic"
         (is (false? (core/-static expr))))
+
+      (testing-function-ref-attach-cache "ToDate")
+
+      (testing-function-ref-resolve-refs "ToDate")
+
+      (testing "resolve parameters"
+        (has-form (core/-resolve-params expr {})
+          '(call "ToDate" (param-ref "x"))))
 
       (testing "form"
         (has-form expr '(call "ToDate" (param-ref "x"))))))
@@ -190,8 +307,19 @@
           #fhir/instant"2021-02-23T15:12:45Z" #system/date-time"2021-02-23T15:12:45"
           #fhir/instant"2021-02-23T15:12:45+01:00" #system/date-time"2021-02-23T14:12:45"))
 
-      (testing "static"
+      (testing "expression is dynamic"
         (is (false? (core/-static expr))))
+
+      (testing-function-ref-attach-cache "ToDateTime")
+
+      (testing-function-ref-resolve-refs "ToDateTime")
+
+      (testing "resolve parameters"
+        (has-form (core/-resolve-params expr {"x" #fhir/dateTime"2022-02"})
+          '(call "ToDateTime" #fhir/dateTime"2022-02"))
+
+        (has-form (core/-resolve-params expr {})
+          '(call "ToDateTime" (param-ref "x"))))
 
       (testing "form"
         (has-form expr '(call "ToDateTime" (param-ref "x"))))))
@@ -208,8 +336,16 @@
           #fhir/code{:id "foo" :value "code-211914"} "code-211914"
           #fhir/code{:id "foo"} nil))
 
-      (testing "static"
+      (testing "expression is dynamic"
         (is (false? (core/-static expr))))
+
+      (testing-function-ref-attach-cache "ToString")
+
+      (testing-function-ref-resolve-refs "ToString")
+
+      (testing "resolve parameters"
+        (has-form (core/-resolve-params expr {})
+          '(call "ToString" (param-ref "x"))))
 
       (testing "form"
         (has-form expr '(call "ToString" (param-ref "x"))))))
@@ -226,8 +362,16 @@
            :code "code-140828"}
           (code/to-code "system-140820" "version-140924" "code-140828")))
 
-      (testing "static"
+      (testing "expression is dynamic"
         (is (false? (core/-static expr))))
+
+      (testing-function-ref-attach-cache "ToCode")
+
+      (testing-function-ref-resolve-refs "ToCode")
+
+      (testing "resolve parameters"
+        (has-form (core/-resolve-params expr {})
+          '(call "ToCode" (param-ref "x"))))
 
       (testing "form"
         (has-form expr '(call "ToCode" (param-ref "x"))))))
@@ -259,8 +403,23 @@
            (system/date-time 2021 2 23 14 12 45)
            nil)))
 
-      (testing "static"
+      (testing "expression is dynamic"
         (is (false? (core/-static expr))))
+
+      (testing-function-ref-attach-cache "ToInterval")
+
+      (testing-function-ref-resolve-refs "ToInterval")
+
+      (testing "resolve parameters"
+        (has-form (core/-resolve-params expr {"x" #fhir/Period
+                                                   {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+                                                    :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}})
+          '(call "ToInterval" #fhir/Period
+                               {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
+                                :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}))
+
+        (has-form (core/-resolve-params expr {})
+          '(call "ToInterval" (param-ref "x"))))
 
       (testing "form"
         (has-form expr '(call "ToInterval" (param-ref "x")))))))

@@ -6,7 +6,7 @@
   (:require
    [blaze.elm.compiler.arithmetic-operators :as ao]
    [blaze.elm.compiler.core :as core]
-   [blaze.elm.compiler.macros :refer [defbinop defbinopp defunop]]
+   [blaze.elm.compiler.macros :refer [defbinop defbinopp defunop reify-expr]]
    [blaze.elm.interval :refer [interval]]
    [blaze.elm.protocols :as p]))
 
@@ -16,34 +16,49 @@
       asType
       (when (= "ToDateTime" type) "{urn:hl7-org:elm-types:r1}DateTime")))
 
-(defrecord IntervalExpression
-           [type low high low-closed-expression high-closed-expression low-closed
-            high-closed]
-  core/Expression
-  (-static [_]
-    false)
-  (-eval [_ context resource scope]
-    (let [low (core/-eval low context resource scope)
-          high (core/-eval high context resource scope)
-          low-closed (or (core/-eval low-closed-expression context resource
-                                     scope)
-                         low-closed)
-          high-closed (or (core/-eval high-closed-expression context resource
-                                      scope)
-                          high-closed)]
-      (interval
-       (if low-closed
-         (if (nil? low)
-           (ao/min-value type)
-           low)
-         (p/successor low))
-       (if high-closed
-         (if (nil? high)
-           (ao/max-value type)
-           high)
-         (p/predecessor high)))))
-  (-form [_]
-    (list 'interval (core/-form low) (core/-form high))))
+(defn- interval-expr [type low high low-closed-expression
+                      high-closed-expression low-closed high-closed]
+  (reify-expr core/Expression
+    (-resolve-refs [_ expression-defs]
+      (interval-expr
+       type
+       (core/-resolve-refs low expression-defs)
+       (core/-resolve-refs high expression-defs)
+       (core/-resolve-refs low-closed-expression expression-defs)
+       (core/-resolve-refs high-closed-expression expression-defs)
+       low-closed
+       high-closed))
+    (-resolve-params [_ parameters]
+      (interval-expr
+       type
+       (core/-resolve-params low parameters)
+       (core/-resolve-params high parameters)
+       (core/-resolve-params low-closed-expression parameters)
+       (core/-resolve-params high-closed-expression parameters)
+       low-closed
+       high-closed))
+    (-eval [_ context resource scope]
+      (let [low (core/-eval low context resource scope)
+            high (core/-eval high context resource scope)
+            low-closed (or (core/-eval low-closed-expression context resource
+                                       scope)
+                           low-closed)
+            high-closed (or (core/-eval high-closed-expression context resource
+                                        scope)
+                            high-closed)]
+        (interval
+         (if low-closed
+           (if (nil? low)
+             (ao/min-value type)
+             low)
+           (p/successor low))
+         (if high-closed
+           (if (nil? high)
+             (ao/max-value type)
+             high)
+           (p/predecessor high)))))
+    (-form [_]
+      (list 'interval (core/-form low) (core/-form high)))))
 
 (defmethod core/compile* :elm.compiler.type/interval
   [context {:keys [low high]
@@ -77,8 +92,8 @@
              (ao/max-value type)
              high)
            (p/predecessor high))))
-      (->IntervalExpression type low high low-closed-expression
-                            high-closed-expression low-closed high-closed))))
+      (interval-expr type low high low-closed-expression
+                     high-closed-expression low-closed high-closed))))
 
 ;; 19.2. After
 (defbinopp after [operand-1 operand-2 precision]

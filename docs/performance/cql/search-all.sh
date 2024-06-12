@@ -65,12 +65,12 @@ cql/search.sh condition-ten-rare
 #cql/search.sh condition-50-rare
 #cql/search.sh condition-50-rare
 
-#restart "$COMPOSE_FILE"
-#cql/search.sh condition-all
-#cql/search.sh condition-all
-#cql/search.sh condition-all
+restart "$COMPOSE_FILE"
+cql/search.sh condition-all
+cql/search.sh condition-all
+cql/search.sh condition-all
 
-#restart "$COMPOSE_FILE"
-#cql/search.sh inpatient-stress
-#cql/search.sh inpatient-stress
-#cql/search.sh inpatient-stress
+restart "$COMPOSE_FILE"
+cql/search.sh inpatient-stress
+cql/search.sh inpatient-stress
+cql/search.sh inpatient-stress

@@ -1,16 +1,16 @@
-(ns blaze.elm.compiler.external-data-spec
+(ns blaze.elm.resource-spec
   (:require
    [blaze.db.spec]
-   [blaze.elm.compiler.external-data :as ed]
+   [blaze.elm.resource :as cr]
    [clojure.spec.alpha :as s]))
 
-(s/fdef ed/resource?
+(s/fdef cr/resource?
   :args (s/cat :x any?)
   :ret boolean?)
 
-(s/fdef ed/mk-resource
+(s/fdef cr/mk-resource
   :args (s/cat :db :blaze.db/db :handle :blaze.db/resource-handle)
-  :ret ed/resource?)
+  :ret cr/resource?)
 
-(s/fdef ed/resource-mapper
+(s/fdef cr/resource-mapper
   :args (s/cat :db :blaze.db/db))

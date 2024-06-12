@@ -9,12 +9,12 @@
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
-   [blaze.elm.compiler.parameters :refer [->ParameterRef]]
+   [blaze.elm.compiler.parameters]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.literal]
    [blaze.elm.literal-spec]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest is testing]]
+   [clojure.test :as test :refer [deftest testing]]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]))
 
@@ -41,7 +41,6 @@
             {:def
              [{:name "parameter-def-101820"}]}}}
           expr (c/compile context #elm/parameter-ref "parameter-def-101820")]
-      (is (= (->ParameterRef "parameter-def-101820") expr))
 
       (testing "form"
         (has-form expr '(param-ref "parameter-def-101820")))))

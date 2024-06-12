@@ -189,6 +189,11 @@
   {:job-scheduler #blaze/ref :blaze/job-scheduler}
 
   ;;
+  ;; CQL Evaluation Engine
+  ;;
+  :blaze.cql/retrieve-total {}
+
+  ;;
   ;; FHIR Operation Evaluate Measure
   ;;
   ;; Special operation which enables Blaze to evaluate Measure resources,
@@ -276,6 +281,7 @@
    :kv-store #blaze/ref :blaze.db.main/index-kv-store
    :resource-indexer #blaze/ref :blaze.db.node.main/resource-indexer
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
+   :scheduler #blaze/ref :blaze/scheduler
    :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]}
 
   [:blaze.db.node/indexer-executor :blaze.db.node.main/indexer-executor] {}
@@ -291,7 +297,8 @@
    :resource-store #blaze/ref :blaze.db/resource-cache
    :kv-store #blaze/ref :blaze.db.admin/index-kv-store
    :resource-indexer #blaze/ref :blaze.db.node.admin/resource-indexer
-   :search-param-registry #blaze/ref :blaze.db/search-param-registry}
+   :search-param-registry #blaze/ref :blaze.db/search-param-registry
+   :scheduler #blaze/ref :blaze/scheduler}
 
   [:blaze.db.node/indexer-executor :blaze.db.node.admin/indexer-executor] {}
 
@@ -403,7 +410,10 @@
   :blaze.job/re-index
   {:main-node #blaze/ref :blaze.db.main/node
    :admin-node #blaze/ref :blaze.db.admin/node
-   :clock #blaze/ref :blaze/clock}}
+   :clock #blaze/ref :blaze/clock
+   :extra-bundle-file #blaze/cfg ["DB_SEARCH_PARAM_BUNDLE" string?]}
+
+  :blaze/scheduler {}}
 
  :storage
  {:in-memory
@@ -427,8 +437,11 @@
      :resource-as-of-index nil
      :type-as-of-index nil
      :system-as-of-index nil
+     :patient-last-change-index nil
      :type-stats-index nil
-     :system-stats-index nil}}
+     :system-stats-index nil
+     :cql-bloom-filter nil
+     :cql-bloom-filter-by-t nil}}
 
    ;;
    ;; Admin In-Memory, Volatile Index Store
@@ -449,8 +462,11 @@
      :resource-as-of-index nil
      :type-as-of-index nil
      :system-as-of-index nil
+     :patient-last-change-index nil
      :type-stats-index nil
-     :system-stats-index nil}}
+     :system-stats-index nil
+     :cql-bloom-filter nil
+     :cql-bloom-filter-by-t nil}}
 
    ;;
    ;; Main Local Transaction Log for Single Node Deployments
@@ -614,6 +630,12 @@
       :target-file-size-base-in-mb 8
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
+     :patient-last-change-index
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 8
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
      :type-stats-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
@@ -624,7 +646,22 @@
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :cql-bloom-filter
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :enable-blob-files? true
+      :min-blob-size 512}
+
+     :cql-bloom-filter-by-t
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :reverse-comparator? true}}}
 
    [:blaze.db.kv.rocksdb/stats :blaze.db.index-kv-store.main/stats] {}
 
@@ -699,6 +736,12 @@
       :target-file-size-base-in-mb 8
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
+     :patient-last-change-index
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 8
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
      :type-stats-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
@@ -709,7 +752,22 @@
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :cql-bloom-filter
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :enable-blob-files? true
+      :min-blob-size 512}
+
+     :cql-bloom-filter-by-t
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :reverse-comparator? true}}}
 
    ;;
    ;; Main Local Transaction Log for Single Node Deployments
@@ -926,6 +984,12 @@
       :target-file-size-base-in-mb 8
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
+     :patient-last-change-index
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 8
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
      :type-stats-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
@@ -936,7 +1000,22 @@
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :cql-bloom-filter
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :enable-blob-files? true
+      :min-blob-size 512}
+
+     :cql-bloom-filter-by-t
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :reverse-comparator? true}}}
 
    [:blaze.db.kv.rocksdb/stats :blaze.db.index-kv-store.main/stats] {}
 
@@ -1011,6 +1090,12 @@
       :target-file-size-base-in-mb 8
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
+     :patient-last-change-index
+     {:write-buffer-size-in-mb 8
+      :max-bytes-for-level-base-in-mb 32
+      :target-file-size-base-in-mb 8
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
      :type-stats-index
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
@@ -1021,7 +1106,22 @@
      {:write-buffer-size-in-mb 2
       :max-bytes-for-level-base-in-mb 8
       :target-file-size-base-in-mb 2
-      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
+
+     :cql-bloom-filter
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :enable-blob-files? true
+      :min-blob-size 512}
+
+     :cql-bloom-filter-by-t
+     {:write-buffer-size-in-mb 2
+      :max-bytes-for-level-base-in-mb 8
+      :target-file-size-base-in-mb 2
+      :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]
+      :reverse-comparator? true}}}
 
    :blaze.db.kv.rocksdb/block-cache
    {:size-in-mb #blaze/cfg ["DB_BLOCK_CACHE_SIZE" int? 128]}
@@ -1155,6 +1255,33 @@
 
     [:blaze/http-client :blaze.openid-auth/http-client]
     {:trust-store #blaze/cfg ["OPENID_CLIENT_TRUST_STORE" string?]
-     :trust-store-pass #blaze/cfg ["OPENID_CLIENT_TRUST_STORE_PASS" string?]}
+     :trust-store-pass #blaze/cfg ["OPENID_CLIENT_TRUST_STORE_PASS" string?]}}}
 
-    :blaze/scheduler {}}}]}
+  {:key :cql-expression-cache
+   :name "CQL Expression Cache"
+   :toggle "CQL_EXPR_CACHE_SIZE"
+   :config
+   {:blaze.fhir.operation.evaluate-measure/handler
+    {:blaze.elm.expression/cache #blaze/ref :blaze.elm.expression/cache}
+
+    :blaze.elm.expression/cache
+    {:node #blaze/ref :blaze.db.main/node
+     :max-size-in-mb #blaze/cfg ["CQL_EXPR_CACHE_SIZE" nat-int?]
+     :refresh #blaze/cfg ["CQL_EXPR_CACHE_REFRESH" java-time.api/duration? "PT24H"]
+     :executor #blaze/ref :blaze.elm.expression.cache/executor}
+
+    :blaze.elm.expression.cache/executor
+    {:num-threads #blaze/cfg ["CQL_EXPR_CACHE_THREADS" pos-int? 4]}
+
+    :blaze.elm.expression.cache/bloom-filter-creation-duration-seconds {}
+    :blaze.elm.expression.cache/bloom-filter-useful-total {}
+    :blaze.elm.expression.cache/bloom-filter-not-useful-total {}
+    :blaze.elm.expression.cache/bloom-filter-false-positive-total {}
+    :blaze.elm.expression.cache/bloom-filter-bytes {}
+
+    :blaze/cache-collector
+    {:caches
+     {"cql-expr-cache" #blaze/ref :blaze.elm.expression/cache}}
+
+    :blaze/admin-api
+    {:blaze.elm.expression/cache #blaze/ref :blaze.elm.expression/cache}}}]}

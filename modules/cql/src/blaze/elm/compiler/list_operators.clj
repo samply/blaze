@@ -7,7 +7,7 @@
    [blaze.anomaly :as ba]
    [blaze.coll.core :as coll]
    [blaze.elm.compiler.core :as core]
-   [blaze.elm.compiler.macros :refer [defbinop defunop]]
+   [blaze.elm.compiler.macros :refer [defbinop defunop reify-expr]]
    [blaze.elm.compiler.queries :as queries]
    [blaze.elm.protocols :as p]
    [blaze.util :refer [conj-vec]]
@@ -19,9 +19,13 @@
 
 ;; 20.1. List
 (defn list-op [elements]
-  (reify core/Expression
-    (-static [_]
-      false)
+  (reify-expr core/Expression
+    (-attach-cache [_ cache]
+      (core/attach-cache-helper-list list-op cache elements))
+    (-resolve-refs [_ expression-defs]
+      (list-op (mapv #(core/-resolve-refs % expression-defs) elements)))
+    (-resolve-params [_ parameters]
+      (list-op (mapv #(core/-resolve-params % parameters) elements)))
     (-eval [_ context resource scope]
       (mapv #(core/-eval % context resource scope) elements))
     (-form [_]
@@ -36,16 +40,12 @@
 (defmethod core/compile* :elm.compiler.type/current
   [_ {:keys [scope]}]
   (if scope
-    (reify core/Expression
-      (-static [_]
-        false)
+    (reify-expr core/Expression
       (-eval [_ _ _ scopes]
         (get scopes scope))
       (-form [_]
         (list 'current scope)))
-    (reify core/Expression
-      (-static [_]
-        false)
+    (reify-expr core/Expression
       (-eval [_ _ _ scope]
         scope)
       (-form [_]
@@ -66,51 +66,63 @@
 
 ;; 20.8. Exists
 (defunop exists
-  {:optimizations #{:first :non-distinct}}
+  {:optimizations #{:first :non-distinct}
+   :cache true}
   [list]
   (not (coll/empty? list)))
 
 ;; 20.9. Filter
+(defn- scoped-filter-op [source condition scope]
+  (reify-expr core/Expression
+    (-resolve-refs [_ expression-defs]
+      (scoped-filter-op
+       (core/-resolve-refs source expression-defs)
+       (core/-resolve-refs condition expression-defs)
+       scope))
+    (-resolve-params [_ parameters]
+      (scoped-filter-op
+       (core/-resolve-params source parameters)
+       (core/-resolve-params condition parameters)
+       scope))
+    (-eval [_ context resource scopes]
+      (when-let [source (core/-eval source context resource scopes)]
+        (filterv
+         (fn [x]
+           (core/-eval condition context resource (assoc scopes scope x)))
+         source)))
+    (-form [_]
+      (list 'filter (core/-form source) (core/-form condition) scope))))
+
+(defn- filter-op [source condition]
+  (reify-expr core/Expression
+    (-resolve-refs [_ expression-defs]
+      (filter-op
+       (core/-resolve-refs source expression-defs)
+       (core/-resolve-refs condition expression-defs)))
+    (-resolve-params [_ parameters]
+      (core/resolve-params-helper filter-op parameters source condition))
+    (-eval [_ context resource scopes]
+      (when-let [source (core/-eval source context resource scopes)]
+        (filterv (partial core/-eval condition context resource) source)))
+    (-form [_]
+      (list 'filter (core/-form source) (core/-form condition)))))
+
 (defmethod core/compile* :elm.compiler.type/filter
   [context {:keys [source condition scope]}]
   (let [source (core/compile* context source)
         condition (core/compile* context condition)]
     (if scope
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scopes]
-          (when-let [source (core/-eval source context resource scopes)]
-            (filterv
-             (fn [x]
-               (core/-eval condition context resource (assoc scopes scope x)))
-             source)))
-        (-form [_]
-          (list 'filter (core/-form source) (core/-form condition) scope)))
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scopes]
-          (when-let [source (core/-eval source context resource scopes)]
-            (filterv (partial core/-eval condition context resource) source)))
-        (-form [_]
-          (list 'filter (core/-form source) (core/-form condition)))))))
+      (scoped-filter-op source condition scope)
+      (filter-op source condition))))
 
 ;; 20.10. First
 ;;
 ;; TODO: orderBy
-(defmethod core/compile* :elm.compiler.type/first
-  [context {:keys [source]}]
-  (let [source (core/compile* (assoc context :optimizations #{:first :non-distinct}) source)]
-    (if (core/static? source)
-      (first source)
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scopes]
-          (coll/first (core/-eval source context resource scopes)))
-        (-form [_]
-          (list 'first (core/-form source)))))))
+(defunop first
+  {:optimizations #{:first :non-distinct}
+   :operand-key :source}
+  [source]
+  (coll/first source))
 
 ;; 20.11. Flatten
 (defunop flatten [list]
@@ -126,69 +138,89 @@
       (flatten [] list))))
 
 ;; 20.12. ForEach
+(defn- scoped-for-each [source element scope]
+  (reify-expr core/Expression
+    (-resolve-refs [_ expression-defs]
+      (scoped-for-each
+       (core/-resolve-refs source expression-defs)
+       (core/-resolve-refs element expression-defs)
+       scope))
+    (-resolve-params [_ parameters]
+      (scoped-for-each
+       (core/-resolve-params source parameters)
+       (core/-resolve-params element parameters)
+       scope))
+    (-eval [_ context resource scopes]
+      (when-let [source (core/-eval source context resource scopes)]
+        (mapv
+         (fn [x]
+           (core/-eval element context resource (assoc scopes scope x)))
+         source)))
+    (-form [_]
+      (list 'for-each (core/-form source) (core/-form element) scope))))
+
+(defn- for-each [source element]
+  (reify-expr core/Expression
+    (-resolve-refs [_ expression-defs]
+      (for-each
+       (core/-resolve-refs source expression-defs)
+       (core/-resolve-refs element expression-defs)))
+    (-resolve-params [_ parameters]
+      (for-each
+       (core/-resolve-params source parameters)
+       (core/-resolve-params element parameters)))
+    (-eval [_ context resource scopes]
+      (when-let [source (core/-eval source context resource scopes)]
+        (mapv (partial core/-eval element context resource) source)))
+    (-form [_]
+      (list 'for-each (core/-form source) (core/-form element)))))
+
 (defmethod core/compile* :elm.compiler.type/for-each
   [context {:keys [source element scope]}]
   (let [source (core/compile* context source)
         element (core/compile* context element)]
     (if scope
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scopes]
-          (when-let [source (core/-eval source context resource scopes)]
-            (mapv
-             (fn [x]
-               (core/-eval element context resource (assoc scopes scope x)))
-             source)))
-        (-form [_]
-          (list 'for-each (core/-form source) (core/-form element) scope)))
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scopes]
-          (when-let [source (core/-eval source context resource scopes)]
-            (mapv (partial core/-eval element context resource) source)))
-        (-form [_]
-          (list 'for-each (core/-form source) (core/-form element)))))))
+      (scoped-for-each source element scope)
+      (for-each source element))))
 
 ;; 20.16. IndexOf
+(defn- index-of-op [source element]
+  (reify-expr core/Expression
+    (-attach-cache [_ cache]
+      (core/attach-cache-helper index-of-op cache source element))
+    (-resolve-refs [_ expression-defs]
+      (index-of-op (core/-resolve-refs source expression-defs)
+                   (core/-resolve-refs element expression-defs)))
+    (-resolve-params [_ parameters]
+      (core/resolve-params-helper index-of-op parameters source element))
+    (-eval [_ context resource scopes]
+      (when-let [source (core/-eval source context resource scopes)]
+        (when-let [element (core/-eval element context resource scopes)]
+          (or
+           (first
+            (keep-indexed
+             (fn [idx x]
+               (when
+                (p/equal element x)
+                 idx))
+             source))
+           -1))))
+    (-form [_]
+      (list 'index-of (core/-form source) (core/-form element)))))
+
 (defmethod core/compile* :elm.compiler.type/index-of
   [context {:keys [source element]}]
   (let [source (core/compile* context source)
         element (core/compile* context element)]
-    (reify core/Expression
-      (-static [_]
-        false)
-      (-eval [_ context resource scopes]
-        (when-let [source (core/-eval source context resource scopes)]
-          (when-let [element (core/-eval element context resource scopes)]
-            (or
-             (first
-              (keep-indexed
-               (fn [idx x]
-                 (when
-                  (p/equal element x)
-                   idx))
-               source))
-             -1))))
-      (-form [_]
-        (list 'index-of (core/-form source) (core/-form element))))))
+    (index-of-op source element)))
 
 ;; 20.18. Last
 ;;
 ;; TODO: orderBy
-(defmethod core/compile* :elm.compiler.type/last
-  [context {:keys [source]}]
-  (let [source (core/compile* context source)]
-    (if (core/static? source)
-      (peek source)
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scopes]
-          (peek (core/-eval source context resource scopes)))
-        (-form [_]
-          (list 'last (core/-form source)))))))
+(defunop last
+  {:operand-key :source}
+  [source]
+  (peek source))
 
 ;; 20.24. Repeat
 ;;
@@ -204,23 +236,32 @@
         (throw e)))))
 
 ;; 20.26. Slice
+(defn- slice-op [source start-index end-index]
+  (reify-expr core/Expression
+    (-attach-cache [_ cache]
+      (core/attach-cache-helper slice-op cache source start-index end-index))
+    (-resolve-refs [_ expression-defs]
+      (slice-op (core/-resolve-refs source expression-defs)
+                (core/-resolve-refs start-index expression-defs)
+                (core/-resolve-refs end-index expression-defs)))
+    (-resolve-params [_ parameters]
+      (core/resolve-params-helper slice-op parameters source start-index end-index))
+    (-eval [_ context resource scopes]
+      (when-let [source (core/-eval source context resource scopes)]
+        (let [start-index (or (core/-eval start-index context resource scopes) 0)
+              end-index (or (core/-eval end-index context resource scopes) (count source))]
+          (if (or (neg? start-index) (< end-index start-index))
+            []
+            (subvec source start-index end-index)))))
+    (-form [_]
+      (list 'slice (core/-form source) (core/-form start-index) (core/-form end-index)))))
+
 (defmethod core/compile* :elm.compiler.type/slice
   [context {:keys [source] start-index :startIndex end-index :endIndex}]
   (let [source (core/compile* context source)
         start-index (core/compile* context start-index)
         end-index (core/compile* context end-index)]
-    (reify core/Expression
-      (-static [_]
-        false)
-      (-eval [_ context resource scopes]
-        (when-let [source (core/-eval source context resource scopes)]
-          (let [start-index (or (core/-eval start-index context resource scopes) 0)
-                end-index (or (core/-eval end-index context resource scopes) (count source))]
-            (if (or (neg? start-index) (< end-index start-index))
-              []
-              (subvec source start-index end-index)))))
-      (-form [_]
-        (list 'slice (core/-form source) (core/-form start-index) (core/-form end-index))))))
+    (slice-op source start-index end-index)))
 
 ;; 20.27. Sort
 (defmethod core/compile* :elm.compiler.type/sort
@@ -233,9 +274,8 @@
        (case type
          "ByDirection"
          (let [comp (queries/comparator direction)]
-           (reify core/Expression
-             (-static [_]
-               false)
+           (reify-expr core/Expression
+             ;; TODO: other methods
              (-eval [_ context resource scopes]
                (when-let [source (core/-eval source context resource scopes)]
                  (sort-by identity comp source)))

@@ -10,13 +10,11 @@
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
-   [blaze.elm.compiler.external-data :as ed]
-   [blaze.elm.compiler.external-data-spec]
+   [blaze.elm.compiler.external-data]
    [blaze.elm.compiler.library :as library]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.expression :as expr]
    [blaze.elm.expression-spec]
-   [blaze.elm.expression.cache :as-alias expr-cache]
    [blaze.elm.util-spec]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type]
@@ -42,16 +40,6 @@
 
 (defn- eval-context [db]
   {:db db :now (OffsetDateTime/now)})
-
-(defn- resource [db type id]
-  (ed/mk-resource db (d/resource-handle db type id)))
-
-(deftest resource-test
-  (testing "toString"
-    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
-
-      (is (= "Patient[id = 0, t = 1]" (str (ctu/resource (d/db node) "Patient" "0")))))))
 
 ;; 11.1. Retrieve
 ;;
@@ -99,6 +87,18 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
+          (testing "attach-cache"
+            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+          (testing "patient count"
+            (is (nil? (core/-patient-count expr))))
+
+          (testing "resolve expression references"
+            (has-form (c/resolve-refs expr {}) '(retrieve-resource)))
+
+          (testing "resolve parameters"
+            (has-form (c/resolve-params expr {}) '(retrieve-resource)))
+
           (testing "form"
             (has-form expr '(retrieve-resource))))))
 
@@ -123,6 +123,18 @@
 
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
+
+          (testing "attach-cache"
+            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+          (testing "patient count"
+            (is (nil? (core/-patient-count expr))))
+
+          (testing "resolve expression references"
+            (has-form (c/resolve-refs expr {}) '(retrieve "Observation")))
+
+          (testing "resolve parameters"
+            (has-form (c/resolve-params expr {}) '(retrieve "Observation")))
 
           (testing "form"
             (has-form expr '(retrieve "Observation")))))
@@ -165,6 +177,20 @@
 
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
+
+            (testing "attach-cache"
+              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+            (testing "patient count"
+              (is (nil? (core/-patient-count expr))))
+
+            (testing "resolve expression references"
+              (has-form (c/resolve-refs expr {})
+                '(retrieve "Observation" [["code" "system-192253|code-192300"]])))
+
+            (testing "resolve parameters"
+              (has-form (c/resolve-params expr {})
+                '(retrieve "Observation" [["code" "system-192253|code-192300"]])))
 
             (testing "form"
               (has-form expr
@@ -219,6 +245,28 @@
 
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
+
+            (testing "attach-cache"
+              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+            (testing "patient count"
+              (is (nil? (core/-patient-count expr))))
+
+            (testing "resolve expression references"
+              (has-form (c/resolve-refs expr {})
+                '(retrieve
+                  "Observation"
+                  [["code"
+                    "system-192253|code-192300"
+                    "system-192253|code-140541"]])))
+
+            (testing "resolve parameters"
+              (has-form (c/resolve-params expr {})
+                '(retrieve
+                  "Observation"
+                  [["code"
+                    "system-192253|code-192300"
+                    "system-192253|code-140541"]])))
 
             (testing "form"
               (has-form expr
@@ -281,6 +329,28 @@
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
 
+            (testing "attach-cache"
+              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+            (testing "patient count"
+              (is (nil? (core/-patient-count expr))))
+
+            (testing "resolve expression references"
+              (has-form (c/resolve-refs expr {})
+                '(retrieve
+                  "Observation"
+                  [["code"
+                    "system-192253|code-192300"
+                    "system-192253|code-140541"]])))
+
+            (testing "resolve parameters"
+              (has-form (c/resolve-params expr {})
+                '(retrieve
+                  "Observation"
+                  [["code"
+                    "system-192253|code-192300"
+                    "system-192253|code-140541"]])))
+
             (testing "form"
               (has-form expr
                 '(retrieve
@@ -312,6 +382,20 @@
 
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
+
+          (testing "attach-cache"
+            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+          (testing "patient count"
+            (is (nil? (core/-patient-count expr))))
+
+          (testing "resolve expression references"
+            (has-form (c/resolve-refs expr {})
+              '(retrieve (Specimen) "Patient")))
+
+          (testing "resolve parameters"
+            (has-form (c/resolve-params expr {})
+              '(retrieve (Specimen) "Patient")))
 
           (testing "form"
             (has-form expr
@@ -351,6 +435,20 @@
 
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
+
+          (testing "attach-cache"
+            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+          (testing "patient count"
+            (is (nil? (core/-patient-count expr))))
+
+          (testing "resolve expression references"
+            (has-form (c/resolve-refs expr {})
+              '(retrieve "Medication" [["code" "system-225806|code-225809"]])))
+
+          (testing "resolve parameters"
+            (has-form (c/resolve-params expr {})
+              '(retrieve "Medication" [["code" "system-225806|code-225809"]])))
 
           (testing "form"
             (has-form expr
@@ -396,9 +494,7 @@
                         define InInitialPopulation:
                           [\"name-133756\" -> Observation]
                         ")
-              compile-context {::expr-cache/enabled? false}
-              {:keys [expression-defs]} (library/compile-library
-                                         node library compile-context)
+              {:keys [expression-defs]} (library/compile-library node library {})
               db (d/db node)
               patient (ctu/resource db "Patient" "0")
               eval-context (assoc (eval-context db) :expression-defs expression-defs)
@@ -413,8 +509,23 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
+          (testing "attach-cache"
+            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+          (testing "patient count"
+            (is (nil? (core/-patient-count expr))))
+
+          (testing "resolve expression references"
+            (has-form (c/resolve-refs expr {})
+              '(retrieve (singleton-from (retrieve-resource)) "Observation")))
+
+          (testing "resolve parameters"
+            (has-form (c/resolve-params expr {})
+              '(retrieve (singleton-from (retrieve-resource)) "Observation")))
+
           (testing "form"
-            (has-form expr '(retrieve (expr-ref "name-133756") "Observation"))))))
+            (has-form expr
+              '(retrieve (singleton-from (retrieve-resource)) "Observation"))))))
 
     (testing "with pre-compiled database query"
       (with-system-data [{:blaze.db/keys [node]} mem-node-config]
@@ -443,9 +554,7 @@
                         define InInitialPopulation:
                           [\"name-133730\" -> Observation: Code 'code-133657' from sys]
                         ")
-              compile-context {::expr-cache/enabled? false}
-              {:keys [expression-defs]} (library/compile-library
-                                         node library compile-context)
+              {:keys [expression-defs]} (library/compile-library node library {})
               db (d/db node)
               patient (ctu/resource db "Patient" "0")
               eval-context (assoc (eval-context db) :expression-defs expression-defs)
@@ -460,9 +569,25 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
+          (testing "attach-cache"
+            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+          (testing "patient count"
+            (is (nil? (core/-patient-count expr))))
+
+          (testing "resolve expression references"
+            (has-form (c/resolve-refs expr {})
+              '(retrieve (singleton-from (retrieve-resource)) "Observation"
+                         [["code" "system-133620|code-133657"]])))
+
+          (testing "resolve parameters"
+            (has-form (c/resolve-params expr {})
+              '(retrieve (singleton-from (retrieve-resource)) "Observation"
+                         [["code" "system-133620|code-133657"]])))
+
           (testing "form"
             (has-form expr
-              '(retrieve (expr-ref "name-133730") "Observation"
+              '(retrieve (singleton-from (retrieve-resource)) "Observation"
                          [["code" "system-133620|code-133657"]]))))))
 
     (testing "unknown code property"

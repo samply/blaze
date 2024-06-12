@@ -16,7 +16,7 @@
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
    [blaze.elm.protocols :as p]
-   [blaze.elm.quantity :as quantity]
+   [blaze.elm.quantity :refer [quantity]]
    [blaze.elm.util-spec]
    [blaze.fhir.spec.type.system :as system]
    [blaze.test-util :refer [satisfies-prop]]
@@ -68,21 +68,21 @@
 
     (testing "Quantity"
       (are [x res] (= res (ctu/compile-unop elm/abs elm/quantity x))
-        [-1] (quantity/quantity 1 "1")
-        [0] (quantity/quantity 0 "1")
-        [1] (quantity/quantity 1 "1")
+        [-1] (quantity 1 "1")
+        [0] (quantity 0 "1")
+        [1] (quantity 1 "1")
 
-        [-1M] (quantity/quantity 1M "1")
-        [0M] (quantity/quantity 0M "1")
-        [1M] (quantity/quantity 1M "1")
+        [-1M] (quantity 1M "1")
+        [0M] (quantity 0M "1")
+        [1M] (quantity 1M "1")
 
-        [-1 "m"] (quantity/quantity 1 "m")
-        [0 "m"] (quantity/quantity 0 "m")
-        [1 "m"] (quantity/quantity 1 "m")
+        [-1 "m"] (quantity 1 "m")
+        [0 "m"] (quantity 0 "m")
+        [1 "m"] (quantity 1 "m")
 
-        [-1M "m"] (quantity/quantity 1M "m")
-        [0M "m"] (quantity/quantity 0M "m")
-        [1M "m"] (quantity/quantity 1M "m"))))
+        [-1M "m"] (quantity 1M "m")
+        [0M "m"] (quantity 0M "m")
+        [1M "m"] (quantity 1M "m"))))
 
   (testing "Dynamic"
     (are [elm res] (= res (ctu/dynamic-compile-eval (elm/abs elm)))
@@ -91,9 +91,7 @@
 
   (ctu/testing-unary-null elm/abs)
 
-  (ctu/testing-unary-dynamic elm/abs)
-
-  (ctu/testing-unary-form elm/abs))
+  (ctu/testing-unary-op elm/abs))
 
 ;; 16.2. Add
 ;;
@@ -231,8 +229,8 @@
 
   (testing "UCUM quantity"
     (are [x y res] (p/equal res (ctu/compile-binop elm/add elm/quantity x y))
-      [1 "m"] [1 "m"] (quantity/quantity 2 "m")
-      [1 "m"] [1 "cm"] (quantity/quantity 1.01M "m")))
+      [1 "m"] [1 "m"] (quantity 2 "m")
+      [1 "m"] [1 "cm"] (quantity 1.01M "m")))
 
   (testing "Incompatible UCUM Quantity Subtractions"
     (are [x y] (thrown? UnconvertibleException (ctu/compile-binop elm/add elm/quantity x y))
@@ -364,9 +362,7 @@
       #elm/time "00:00:00" #elm/quantity [1 "minute"] (date-time/local-time 0 1 0)
       #elm/time "00:00:00" #elm/quantity [1 "second"] (date-time/local-time 0 0 1)))
 
-  (ctu/testing-binary-dynamic elm/add)
-
-  (ctu/testing-binary-form elm/add))
+  (ctu/testing-binary-op elm/add))
 
 ;; 16.3. Ceiling
 ;;
@@ -381,9 +377,7 @@
 
   (ctu/testing-unary-null elm/ceiling)
 
-  (ctu/testing-unary-dynamic elm/ceiling)
-
-  (ctu/testing-unary-form elm/ceiling))
+  (ctu/testing-unary-op elm/ceiling))
 
 ;; 16.4. Divide
 ;;
@@ -445,24 +439,24 @@
   (testing "Quantity"
     (testing "Static"
       (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity x y))
-        [1 "m"] [1 "s"] (quantity/quantity 1 "m/s")
-        [1M "m"] [1M "s"] (quantity/quantity 1M "m/s")
+        [1 "m"] [1 "s"] (quantity 1 "m/s")
+        [1M "m"] [1M "s"] (quantity 1M "m/s")
 
-        [12 "cm2"] [3 "cm"] (quantity/quantity 4 "cm")))
+        [12 "cm2"] [3 "cm"] (quantity 4 "cm")))
 
     (ctu/testing-binary-null elm/divide #elm/quantity [1]))
 
   (testing "Quantity/Integer"
     (testing "Static"
       (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity elm/integer x y))
-        [1M "m"] "2" (quantity/quantity 0.5M "m")))
+        [1M "m"] "2" (quantity 0.5M "m")))
 
     (ctu/testing-binary-null elm/divide #elm/quantity [1] #elm/integer "1"))
 
   (testing "Quantity/Decimal"
     (testing "Static"
       (are [x y res] (p/equal res (ctu/compile-binop elm/divide elm/quantity elm/decimal x y))
-        [2.5M "m"] "2.5" (quantity/quantity 1M "m")))
+        [2.5M "m"] "2.5" (quantity 1M "m")))
 
     (ctu/testing-binary-null elm/divide #elm/quantity [1] #elm/decimal "1.1"))
 
@@ -472,9 +466,7 @@
         (let [elm (elm/equal [(elm/multiply [(elm/divide [decimal decimal]) decimal]) decimal])]
           (true? (core/-eval (c/compile {} elm) {} nil nil))))))
 
-  (ctu/testing-binary-dynamic elm/divide)
-
-  (ctu/testing-binary-form elm/divide))
+  (ctu/testing-binary-op elm/divide))
 
 ;; 16.5. Exp
 ;;
@@ -488,9 +480,7 @@
 
   (ctu/testing-unary-null elm/exp)
 
-  (ctu/testing-unary-dynamic elm/exp)
-
-  (ctu/testing-unary-form elm/exp))
+  (ctu/testing-unary-op elm/exp))
 
 ;; 16.6. Floor
 ;;
@@ -505,9 +495,7 @@
 
   (ctu/testing-unary-null elm/floor)
 
-  (ctu/testing-unary-dynamic elm/floor)
-
-  (ctu/testing-unary-form elm/floor))
+  (ctu/testing-unary-op elm/floor))
 
 ;; 16.7. HighBoundary
 ;;
@@ -549,9 +537,7 @@
 
     (ctu/testing-binary-null elm/log #elm/decimal "1.1"))
 
-  (ctu/testing-binary-dynamic elm/log)
-
-  (ctu/testing-binary-form elm/log))
+  (ctu/testing-binary-op elm/log))
 
 ;; 16.9. LowBoundary
 ;;
@@ -593,9 +579,7 @@
 
   (ctu/testing-unary-null elm/ln)
 
-  (ctu/testing-unary-dynamic elm/ln)
-
-  (ctu/testing-unary-form elm/ln))
+  (ctu/testing-unary-op elm/ln))
 
 ;; 16.11. MaxValue
 ;;
@@ -719,9 +703,7 @@
       #elm/integer "1" #elm/integer "0" nil
       #elm/decimal "1" #elm/decimal "0" nil))
 
-  (ctu/testing-binary-dynamic elm/modulo)
-
-  (ctu/testing-binary-form elm/modulo))
+  (ctu/testing-binary-op elm/modulo))
 
 ;; 16.14. Multiply
 ;;
@@ -758,14 +740,12 @@
 
   (testing "Quantity"
     (are [x y res] (p/equal res (core/-eval (c/compile {} (elm/multiply [x y])) {} nil nil))
-      #elm/quantity [1 "m"] #elm/integer "2" (quantity/quantity 2 "m")
-      #elm/quantity [1 "m"] #elm/quantity [2 "m"] (quantity/quantity 2 "m2"))
+      #elm/quantity [1 "m"] #elm/integer "2" (quantity 2 "m")
+      #elm/quantity [1 "m"] #elm/quantity [2 "m"] (quantity 2 "m2"))
 
     (ctu/testing-binary-null elm/multiply #elm/quantity [1]))
 
-  (ctu/testing-binary-dynamic elm/multiply)
-
-  (ctu/testing-binary-form elm/multiply))
+  (ctu/testing-binary-op elm/multiply))
 
 ;; 16.15. Negate
 ;;
@@ -787,16 +767,14 @@
 
   (testing "Quantity"
     (are [x res] (= res (c/compile {} (elm/negate x)))
-      #elm/quantity [1] (quantity/quantity -1 "1")
-      #elm/quantity [1M] (quantity/quantity -1M "1")
-      #elm/quantity [1 "m"] (quantity/quantity -1 "m")
-      #elm/quantity [1M "m"] (quantity/quantity -1M "m")))
+      #elm/quantity [1] (quantity -1 "1")
+      #elm/quantity [1M] (quantity -1M "1")
+      #elm/quantity [1 "m"] (quantity -1 "m")
+      #elm/quantity [1M "m"] (quantity -1M "m")))
 
   (ctu/testing-unary-null elm/negate)
 
-  (ctu/testing-unary-dynamic elm/negate)
-
-  (ctu/testing-unary-form elm/negate))
+  (ctu/testing-unary-op elm/negate))
 
 ;; 16.16. Power
 ;;
@@ -829,9 +807,7 @@
       #elm/decimal "10" #elm/integer "2" 100M
       #elm/decimal "10" #elm/integer "2" 100M))
 
-  (ctu/testing-binary-dynamic elm/power)
-
-  (ctu/testing-binary-form elm/power))
+  (ctu/testing-binary-op elm/power))
 
 ;; 16.17. Precision
 ;;
@@ -908,14 +884,12 @@
   (testing "Quantity"
     (are [x res] (= res (c/compile {} (elm/predecessor x)))
       (elm/quantity [decimal/min]) nil
-      #_#_#elm/quantity [0 "m"] (quantity/quantity -1 "m")  ; TODO: implement
-      #elm/quantity [0M "m"] (quantity/quantity -1E-8M "m")))
+      #_#_#elm/quantity [0 "m"] (quantity -1 "m")  ; TODO: implement
+      #elm/quantity [0M "m"] (quantity -1E-8M "m")))
 
   (ctu/testing-unary-null elm/predecessor)
 
-  (ctu/testing-unary-dynamic elm/predecessor)
-
-  (ctu/testing-unary-form elm/predecessor))
+  (ctu/testing-unary-op elm/predecessor))
 
 ;; 16.19. Round
 ;;
@@ -929,7 +903,7 @@
 ;; precision is not specified or null, 0 is assumed.
 (deftest compile-round-test
   (testing "without precision"
-    (testing "static"
+    (testing "Static"
       (are [x res] (= res (c/compile {} (elm/round [x])))
         #elm/integer "1" 1M
         #elm/decimal "1" 1M
@@ -965,13 +939,7 @@
 
   (ctu/testing-unary-null elm/round)
 
-  (ctu/testing-unary-dynamic elm/round)
-
-  (ctu/testing-unary-form elm/round)
-
-  (ctu/testing-binary-dynamic elm/round)
-
-  (ctu/testing-binary-form elm/round))
+  (ctu/testing-unary-op elm/round))
 
 ;; 16.20. Subtract
 ;;
@@ -1079,8 +1047,8 @@
 
   (testing "UCUM quantity"
     (are [x y res] (p/equal res (core/-eval (c/compile {} (elm/subtract [x y])) {} nil nil))
-      #elm/quantity [1 "m"] #elm/quantity [1 "m"] (quantity/quantity 0 "m")
-      #elm/quantity [1 "m"] #elm/quantity [1 "cm"] (quantity/quantity 0.99 "m")))
+      #elm/quantity [1 "m"] #elm/quantity [1 "m"] (quantity 0 "m")
+      #elm/quantity [1 "m"] #elm/quantity [1 "cm"] (quantity 0.99 "m")))
 
   (testing "Incompatible UCUM Quantity Subtractions"
     (are [x y] (thrown? UnconvertibleException (core/-eval (c/compile {} (elm/subtract [x y])) {} nil nil))
@@ -1189,9 +1157,7 @@
       #elm/time "00:00:00" #elm/quantity [1 "minute"] (date-time/local-time 23 59 0)
       #elm/time "00:00:00" #elm/quantity [1 "second"] (date-time/local-time 23 59 59)))
 
-  (ctu/testing-binary-dynamic elm/subtract)
-
-  (ctu/testing-binary-form elm/subtract))
+  (ctu/testing-binary-op elm/subtract))
 
 ;; 16.21. Successor
 ;;
@@ -1256,14 +1222,12 @@
   (testing "Quantity"
     (are [x res] (= res (c/compile {} (elm/successor x)))
       (elm/quantity [decimal/max]) nil
-      #_#_#elm/quantity [0 "m"] (quantity/quantity 1 "m")   ; TODO: implement
-      #elm/quantity [0M "m"] (quantity/quantity 1E-8M "m")))
+      #_#_#elm/quantity [0 "m"] (quantity 1 "m")   ; TODO: implement
+      #elm/quantity [0M "m"] (quantity 1E-8M "m")))
 
   (ctu/testing-unary-null elm/successor)
 
-  (ctu/testing-unary-dynamic elm/successor)
-
-  (ctu/testing-unary-form elm/successor))
+  (ctu/testing-unary-op elm/successor))
 
 ;; 16.22. Truncate
 ;;
@@ -1278,9 +1242,7 @@
 
   (ctu/testing-unary-null elm/truncate)
 
-  (ctu/testing-unary-dynamic elm/truncate)
-
-  (ctu/testing-unary-form elm/truncate))
+  (ctu/testing-unary-op elm/truncate))
 
 ;; 16.23. TruncatedDivide
 ;;
@@ -1340,6 +1302,4 @@
     (ctu/testing-binary-null elm/truncated-divide #elm/integer "1"
                              #elm/decimal "1.1"))
 
-  (ctu/testing-binary-dynamic elm/truncated-divide)
-
-  (ctu/testing-binary-form elm/truncated-divide))
+  (ctu/testing-binary-op elm/truncated-divide))

@@ -4,14 +4,19 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+   [blaze.anomaly :as ba]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
-   [blaze.elm.compiler.logical-operators]
+   [blaze.elm.compiler.logical-operators :as ops]
+   [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.compiler.test-util :as ctu]
+   [blaze.elm.expression.cache :as ec]
+   [blaze.elm.expression.cache.bloom-filter :as bloom-filter]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest testing]]))
+   [clojure.test :as test :refer [are deftest is testing]]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 (ctu/instrument-compile)
@@ -90,7 +95,7 @@
       #elm/parameter-ref "a" {:type "Null"} '(and nil (param-ref "a"))
       #elm/parameter-ref "a" #elm/parameter-ref "b" '(and (param-ref "a") (param-ref "b"))))
 
-  (testing "static"
+  (testing "Static"
     (are [x y pred] (pred (core/-static (ctu/dynamic-compile (elm/and [x y]))))
       #elm/boolean "true" #elm/boolean "true" true?
       #elm/boolean "true" #elm/boolean "false" true?
@@ -110,7 +115,174 @@
       #elm/parameter-ref "a" #elm/boolean "true" false?
       #elm/parameter-ref "a" #elm/boolean "false" true?
       #elm/parameter-ref "a" {:type "Null"} false?
-      #elm/parameter-ref "a" #elm/parameter-ref "b" false?)))
+      #elm/parameter-ref "a" #elm/parameter-ref "b" false?))
+
+  (testing "attach cache"
+    (testing "only one bloom filter available"
+      (with-redefs [ec/get (fn [cache expr]
+                             (assert (= ::cache cache))
+                             (when-not (= '(exists (retrieve "Observation")) (c/form expr))
+                               (bloom-filter/build-bloom-filter expr 0 nil)))]
+        (let [elm #elm/and [#elm/exists #elm/retrieve{:type "Observation"}
+                            #elm/exists #elm/retrieve{:type "Condition"}]
+              ctx {:eval-context "Patient"}
+              expr (c/compile ctx elm)]
+          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+            count := 2
+            [0 c/form] := '(and (exists (retrieve "Condition"))
+                                (exists (retrieve "Observation")))
+            [1 count] := 2
+            [1 0 ::bloom-filter/expr-form] := "(exists (retrieve \"Condition\"))"
+            [1 1] := (ba/unavailable "No Bloom filter available.")))))
+
+    (testing "both bloom filters available with first having more patients"
+      (with-redefs [ec/get (fn [cache expr]
+                             (assert (= ::cache cache))
+                             (cond
+                               (= (c/form expr) '(exists (retrieve "Observation")))
+                               (bloom-filter/build-bloom-filter expr 0 ["0" "1"])
+                               (= (c/form expr) '(exists (retrieve "Condition")))
+                               (bloom-filter/build-bloom-filter expr 0 ["0"])))]
+        (let [elm #elm/and [#elm/exists #elm/retrieve{:type "Condition"}
+                            #elm/exists #elm/retrieve{:type "Observation"}]
+              ctx {:eval-context "Patient"}
+              expr (c/compile ctx elm)]
+          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+            count := 2
+            [0 c/form] := '(and (exists (retrieve "Condition"))
+                                (exists (retrieve "Observation")))
+            [1 count] := 2
+            [1 0 ::bloom-filter/patient-count] := 1
+            [1 1 ::bloom-filter/patient-count] := 2))))
+
+    (testing "with three expressions"
+      (with-redefs [ec/get (fn [cache expr]
+                             (assert (= ::cache cache))
+                             (condp = (c/form expr)
+                               '(exists (retrieve "Observation"))
+                               (bloom-filter/build-bloom-filter expr 0 ["0" "1"])
+                               '(exists (retrieve "Condition"))
+                               (bloom-filter/build-bloom-filter expr 0 ["0"])
+                               '(exists (retrieve "Specimen"))
+                               nil))]
+        (let [elm #elm/and [#elm/exists #elm/retrieve{:type "Observation"}
+                            #elm/and [#elm/exists #elm/retrieve{:type "Condition"}
+                                      #elm/exists #elm/retrieve{:type "Specimen"}]]
+              ctx {:eval-context "Patient"}
+              expr (c/compile ctx elm)]
+          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+            count := 2
+            [0 c/form] := '(and (exists (retrieve "Condition"))
+                                (exists (retrieve "Observation"))
+                                (exists (retrieve "Specimen")))
+            [1 count] := 3
+            [1 0 ::bloom-filter/patient-count] := 1
+            [1 1 ::bloom-filter/patient-count] := 2
+            [1 2 ::bloom-filter/patient-count] := nil))))
+
+    (testing "with four expressions"
+      (with-redefs [ec/get (fn [cache expr]
+                             (assert (= ::cache cache))
+                             (condp = (c/form expr)
+                               '(exists (retrieve "Observation"))
+                               nil
+                               '(exists (retrieve "Condition"))
+                               (bloom-filter/build-bloom-filter expr 0 ["0" "1" "2"])
+                               '(exists (retrieve "Specimen"))
+                               (bloom-filter/build-bloom-filter expr 0 ["0" "1"])
+                               '(exists (retrieve "MedicationAdministration"))
+                               (bloom-filter/build-bloom-filter expr 0 ["0"])))]
+        (let [elm #elm/and [#elm/and [#elm/exists #elm/retrieve{:type "MedicationAdministration"}
+                                      #elm/exists #elm/retrieve{:type "Specimen"}]
+                            #elm/and [#elm/exists #elm/retrieve{:type "Condition"}
+                                      #elm/exists #elm/retrieve{:type "Observation"}]]
+              ctx {:eval-context "Patient"}
+              expr (c/compile ctx elm)]
+          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+            count := 2
+            [0 c/form] := '(and (exists (retrieve "MedicationAdministration"))
+                                (exists (retrieve "Specimen"))
+                                (exists (retrieve "Condition"))
+                                (exists (retrieve "Observation")))
+            [1 count] := 4
+            [1 0 ::bloom-filter/patient-count] := 1
+            [1 1 ::bloom-filter/patient-count] := 2
+            [1 2 ::bloom-filter/patient-count] := 3
+            [1 3 ::bloom-filter/patient-count] := nil))))
+
+    (testing "with five expressions"
+      (with-redefs [ec/get (fn [cache expr]
+                             (assert (= ::cache cache))
+                             (condp = (c/form expr)
+                               '(exists (retrieve "Observation"))
+                               nil
+                               '(exists (retrieve "Condition"))
+                               (bloom-filter/build-bloom-filter expr 0 ["0" "1" "2"])
+                               '(exists (retrieve "Specimen"))
+                               (bloom-filter/build-bloom-filter expr 0 ["0" "1"])
+                               '(exists (retrieve "MedicationAdministration"))
+                               (bloom-filter/build-bloom-filter expr 0 ["0"])
+                               '(exists (retrieve "Procedure"))
+                               nil))]
+        (let [elm #elm/and [#elm/and [#elm/exists #elm/retrieve{:type "MedicationAdministration"}
+                                      #elm/and [#elm/exists #elm/retrieve{:type "Procedure"}
+                                                #elm/exists #elm/retrieve{:type "Specimen"}]]
+                            #elm/and [#elm/exists #elm/retrieve{:type "Condition"}
+                                      #elm/exists #elm/retrieve{:type "Observation"}]]
+              ctx {:eval-context "Patient"}
+              expr (c/compile ctx elm)]
+          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+            count := 2
+            [0 c/form] := '(and (exists (retrieve "MedicationAdministration"))
+                                (exists (retrieve "Specimen"))
+                                (exists (retrieve "Condition"))
+                                (exists (retrieve "Procedure"))
+                                (exists (retrieve "Observation")))
+            [1 count] := 5
+            [1 0 ::bloom-filter/patient-count] := 1
+            [1 1 ::bloom-filter/patient-count] := 2
+            [1 2 ::bloom-filter/patient-count] := 3
+            [1 3 ::bloom-filter/patient-count] := nil
+            [1 4 ::bloom-filter/patient-count] := nil)))))
+
+  (ctu/testing-binary-op elm/and))
+
+(deftest and-op-patient-count-test
+  (testing "both nil"
+    (let [op (ops/and-op
+              (reify-expr core/Expression)
+              (reify-expr core/Expression))]
+      (is (nil? (core/-patient-count op)))))
+
+  (testing "first nil"
+    (let [op (ops/and-op
+              (reify-expr core/Expression)
+              (reify-expr core/Expression
+                (-patient-count [_] 0)))]
+      (is (nil? (core/-patient-count op)))))
+
+  (testing "second nil"
+    (let [op (ops/and-op
+              (reify-expr core/Expression
+                (-patient-count [_] 0))
+              (reify-expr core/Expression))]
+      (is (nil? (core/-patient-count op)))))
+
+  (testing "first smaller"
+    (let [op (ops/and-op
+              (reify-expr core/Expression
+                (-patient-count [_] 1))
+              (reify-expr core/Expression
+                (-patient-count [_] 2)))]
+      (is (= 1 (core/-patient-count op)))))
+
+  (testing "second smaller"
+    (let [op (ops/and-op
+              (reify-expr core/Expression
+                (-patient-count [_] 2))
+              (reify-expr core/Expression
+                (-patient-count [_] 1)))]
+      (is (= 1 (core/-patient-count op))))))
 
 ;; 13.2. Implies
 ;;
@@ -136,9 +308,7 @@
 
   (ctu/testing-unary-null elm/not)
 
-  (ctu/testing-unary-dynamic elm/not)
-
-  (ctu/testing-unary-form elm/not))
+  (ctu/testing-unary-op elm/not))
 
 ;; 13.4. Or
 ;;
@@ -204,7 +374,7 @@
       #elm/parameter-ref "a" {:type "Null"} '(or nil (param-ref "a"))
       #elm/parameter-ref "a" #elm/parameter-ref "b" '(or (param-ref "a") (param-ref "b"))))
 
-  (testing "static"
+  (testing "Static"
     (are [x y pred] (pred (core/-static (ctu/dynamic-compile (elm/or [x y]))))
       #elm/boolean "true" #elm/boolean "true" true?
       #elm/boolean "true" #elm/boolean "false" true?
@@ -224,7 +394,181 @@
       #elm/parameter-ref "a" #elm/boolean "true" true?
       #elm/parameter-ref "a" #elm/boolean "false" false?
       #elm/parameter-ref "a" {:type "Null"} false?
-      #elm/parameter-ref "a" #elm/parameter-ref "b" false?)))
+      #elm/parameter-ref "a" #elm/parameter-ref "b" false?))
+
+  (ctu/testing-binary-dynamic elm/or)
+
+  (testing "attach cache"
+    (testing "only one bloom filter available"
+      (with-redefs [ec/get (fn [cache expr]
+                             (assert (= ::cache cache))
+                             (when-not (= '(exists (retrieve "Observation")) (c/form expr))
+                               (bloom-filter/build-bloom-filter expr 0 nil)))]
+        (let [elm #elm/or [#elm/exists #elm/retrieve{:type "Observation"}
+                           #elm/exists #elm/retrieve{:type "Condition"}]
+              ctx {:eval-context "Patient"}
+              expr (c/compile ctx elm)]
+          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+            count := 2
+            [0] := expr
+            [1 count] := 2
+            [1 0] := (ba/unavailable "No Bloom filter available.")
+            [1 1 ::bloom-filter/expr-form] := "(exists (retrieve \"Condition\"))"))))
+
+    (testing "both bloom filters available with second having more patients"
+      (with-redefs [ec/get (fn [cache expr]
+                             (assert (= ::cache cache))
+                             (cond
+                               (= (c/form expr) '(exists (retrieve "Observation")))
+                               (bloom-filter/build-bloom-filter expr 0 ["0"])
+                               (= (c/form expr) '(exists (retrieve "Condition")))
+                               (bloom-filter/build-bloom-filter expr 0 ["0" "1"])))]
+        (let [elm #elm/or [#elm/exists #elm/retrieve{:type "Observation"}
+                           #elm/exists #elm/retrieve{:type "Condition"}]
+              ctx {:eval-context "Patient"}
+              expr (c/compile ctx elm)]
+          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+            count := 2
+            [0 c/form] := '(or (exists (retrieve "Condition"))
+                               (exists (retrieve "Observation")))
+            [1 count] := 2
+            [1 0 ::bloom-filter/patient-count] := 2
+            [1 1 ::bloom-filter/patient-count] := 1))))
+
+    (testing "with three expressions"
+      (with-redefs [ec/get (fn [cache expr]
+                             (assert (= ::cache cache))
+                             (condp = (c/form expr)
+                               '(exists (retrieve "Observation"))
+                               (bloom-filter/build-bloom-filter expr 0 ["0" "1"])
+                               '(exists (retrieve "Condition"))
+                               (bloom-filter/build-bloom-filter expr 0 ["0"])
+                               '(exists (retrieve "Specimen"))
+                               nil))]
+        (let [elm #elm/or [#elm/exists #elm/retrieve{:type "Observation"}
+                           #elm/or [#elm/exists #elm/retrieve{:type "Condition"}
+                                    #elm/exists #elm/retrieve{:type "Specimen"}]]
+              ctx {:eval-context "Patient"}
+              expr (c/compile ctx elm)]
+          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+            count := 2
+            [0 c/form] := '(or (exists (retrieve "Specimen"))
+                               (exists (retrieve "Observation"))
+                               (exists (retrieve "Condition")))
+            [1 count] := 3
+            [1 0 ::bloom-filter/patient-count] := nil
+            [1 1 ::bloom-filter/patient-count] := 2
+            [1 2 ::bloom-filter/patient-count] := 1))))
+
+    (testing "with four expressions"
+      (with-redefs [ec/get (fn [cache expr]
+                             (assert (= ::cache cache))
+                             (condp = (c/form expr)
+                               '(exists (retrieve "Observation"))
+                               (bloom-filter/build-bloom-filter expr 0 ["0" "1" "2" "3"])
+                               '(exists (retrieve "Condition"))
+                               (bloom-filter/build-bloom-filter expr 0 ["0" "1" "2"])
+                               '(exists (retrieve "Specimen"))
+                               nil
+                               '(exists (retrieve "MedicationAdministration"))
+                               (bloom-filter/build-bloom-filter expr 0 ["0"])))]
+        (let [elm #elm/or [#elm/or [#elm/exists #elm/retrieve{:type "MedicationAdministration"}
+                                    #elm/exists #elm/retrieve{:type "Specimen"}]
+                           #elm/or [#elm/exists #elm/retrieve{:type "Condition"}
+                                    #elm/exists #elm/retrieve{:type "Observation"}]]
+              ctx {:eval-context "Patient"}
+              expr (c/compile ctx elm)]
+          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+            count := 2
+            [0 c/form] := '(or (exists (retrieve "Specimen"))
+                               (exists (retrieve "Observation"))
+                               (exists (retrieve "Condition"))
+                               (exists (retrieve "MedicationAdministration")))
+            [1 count] := 4
+            [1 0 ::bloom-filter/patient-count] := nil
+            [1 1 ::bloom-filter/patient-count] := 4
+            [1 2 ::bloom-filter/patient-count] := 3
+            [1 3 ::bloom-filter/patient-count] := 1))))
+
+    (testing "with five expressions"
+      (with-redefs [ec/get (fn [cache expr]
+                             (assert (= ::cache cache))
+                             (condp = (c/form expr)
+                               '(exists (retrieve "Observation"))
+                               (bloom-filter/build-bloom-filter expr 0 ["0" "1" "2" "3"])
+                               '(exists (retrieve "Condition"))
+                               (bloom-filter/build-bloom-filter expr 0 ["0" "1" "2"])
+                               '(exists (retrieve "Specimen"))
+                               nil
+                               '(exists (retrieve "Procedure"))
+                               nil
+                               '(exists (retrieve "MedicationAdministration"))
+                               (bloom-filter/build-bloom-filter expr 0 ["0"])))]
+        (let [elm #elm/or [#elm/or [#elm/exists #elm/retrieve{:type "MedicationAdministration"}
+                                    #elm/exists #elm/retrieve{:type "Specimen"}]
+                           #elm/or [#elm/exists #elm/retrieve{:type "Condition"}
+                                    #elm/or [#elm/exists #elm/retrieve{:type "Observation"}
+                                             #elm/exists #elm/retrieve{:type "Procedure"}]]]
+              ctx {:eval-context "Patient"}
+              expr (c/compile ctx elm)]
+          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+            count := 2
+            [0 c/form] := '(or (exists (retrieve "Specimen"))
+                               (exists (retrieve "Procedure"))
+                               (exists (retrieve "Observation"))
+                               (exists (retrieve "Condition"))
+                               (exists (retrieve "MedicationAdministration")))
+            [1 count] := 5
+            [1 0 ::bloom-filter/patient-count] := nil
+            [1 1 ::bloom-filter/patient-count] := nil
+            [1 2 ::bloom-filter/patient-count] := 4
+            [1 3 ::bloom-filter/patient-count] := 3
+            [1 4 ::bloom-filter/patient-count] := 1)))))
+
+  (ctu/testing-binary-resolve-refs elm/or)
+
+  (ctu/testing-binary-resolve-params elm/or)
+
+  (ctu/testing-binary-equals-hash-code elm/or)
+
+  (ctu/testing-binary-form elm/or))
+
+(deftest or-op-patient-count-test
+  (testing "both nil"
+    (let [op (ops/or-op
+              (reify-expr core/Expression)
+              (reify-expr core/Expression))]
+      (is (nil? (core/-patient-count op)))))
+
+  (testing "first nil"
+    (let [op (ops/or-op
+              (reify-expr core/Expression)
+              (reify-expr core/Expression
+                (-patient-count [_] 0)))]
+      (is (nil? (core/-patient-count op)))))
+
+  (testing "second nil"
+    (let [op (ops/or-op
+              (reify-expr core/Expression
+                (-patient-count [_] 0))
+              (reify-expr core/Expression))]
+      (is (nil? (core/-patient-count op)))))
+
+  (testing "first larger"
+    (let [op (ops/or-op
+              (reify-expr core/Expression
+                (-patient-count [_] 2))
+              (reify-expr core/Expression
+                (-patient-count [_] 1)))]
+      (is (= 2 (core/-patient-count op)))))
+
+  (testing "second larger"
+    (let [op (ops/or-op
+              (reify-expr core/Expression
+                (-patient-count [_] 1))
+              (reify-expr core/Expression
+                (-patient-count [_] 2)))]
+      (is (= 2 (core/-patient-count op))))))
 
 ;; 13.5. Xor
 ;;
@@ -293,7 +637,7 @@
       #elm/parameter-ref "a" {:type "Null"} nil
       #elm/parameter-ref "a" #elm/parameter-ref "b" '(xor (param-ref "a") (param-ref "b"))))
 
-  (testing "static"
+  (testing "Static"
     (are [x y pred] (pred (core/-static (ctu/dynamic-compile (elm/xor [x y]))))
       #elm/boolean "true" #elm/boolean "true" true?
       #elm/boolean "true" #elm/boolean "false" true?
@@ -313,4 +657,6 @@
       #elm/parameter-ref "a" #elm/boolean "true" false?
       #elm/parameter-ref "a" #elm/boolean "false" false?
       #elm/parameter-ref "a" {:type "Null"} true?
-      #elm/parameter-ref "a" #elm/parameter-ref "b" false?)))
+      #elm/parameter-ref "a" #elm/parameter-ref "b" false?))
+
+  (ctu/testing-binary-op elm/xor))

@@ -29,6 +29,7 @@
  elm/not blaze.elm.literal/not
  elm/or blaze.elm.literal/or
  elm/xor blaze.elm.literal/xor
+ elm/coalesce blaze.elm.literal/coalesce
  elm/is-false blaze.elm.literal/is-false
  elm/is-null blaze.elm.literal/is-null
  elm/is-true blaze.elm.literal/is-true
@@ -42,6 +43,7 @@
  elm/lower blaze.elm.literal/lower
  elm/matches blaze.elm.literal/matches
  elm/starts-with blaze.elm.literal/starts-with
+ elm/substring blaze.elm.literal/substring
  elm/upper blaze.elm.literal/upper
  elm/add blaze.elm.literal/add
  elm/ceiling blaze.elm.literal/ceiling
@@ -76,8 +78,11 @@
  elm/distinct blaze.elm.literal/distinct
  elm/exists blaze.elm.literal/exists
  elm/first blaze.elm.literal/first
+ elm/flatten blaze.elm.literal/flatten
+ elm/index-of blaze.elm.literal/index-of
  elm/last blaze.elm.literal/last
  elm/singleton-from blaze.elm.literal/singleton-from
+ elm/slice blaze.elm.literal/slice
  elm/all-true blaze.elm.literal/all-true
  elm/any-true blaze.elm.literal/any-true
  elm/avg blaze.elm.literal/avg

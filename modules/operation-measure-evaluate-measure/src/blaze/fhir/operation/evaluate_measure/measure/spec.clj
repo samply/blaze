@@ -1,7 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.measure.spec
   (:require
    [blaze.db.spec]
-   [blaze.elm.compiler.external-data :as ed]
+   [blaze.elm.resource :as cr]
    [blaze.fhir.operation.evaluate-measure.measure :as-alias measure]
    [blaze.fhir.spec.spec]
    [clojure.spec.alpha :as s]))
@@ -14,10 +14,10 @@
         :local-ref :blaze.fhir/literal-ref-tuple))
 
 (s/def ::measure/population-handle
-  ed/resource?)
+  cr/resource?)
 
 (s/def ::measure/subject-handle
-  ed/resource?)
+  cr/resource?)
 
 (s/def ::measure/handle
   (s/keys :req-un [::measure/population-handle ::measure/subject-handle]))

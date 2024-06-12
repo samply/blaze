@@ -4,23 +4,39 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+   [blaze.anomaly :as ba]
    [blaze.anomaly-spec]
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler-spec]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
-   [blaze.elm.compiler.list-operators]
+   [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.expression :as expr]
    [blaze.elm.expression-spec]
+   [blaze.elm.expression.cache :as ec]
+   [blaze.elm.expression.cache-spec]
+   [blaze.elm.expression.cache.bloom-filter :as bloom-filter]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
-   [blaze.elm.quantity :as quantity]
-   [blaze.test-util :refer [satisfies-prop]]
+   [blaze.elm.quantity :refer [quantity]]
+   [blaze.elm.resource :as cr]
+   [blaze.elm.spec :as elm-spec]
+   [blaze.fhir.test-util]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :refer [given-thrown satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
-   [clojure.test.check.properties :as prop]))
+   [clojure.test.check.properties :as prop]
+   [integrant.core :as ig]
+   [juxt.iota :refer [given]])
+  (:import
+   [java.time OffsetDateTime]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (ctu/instrument-compile)
 
@@ -64,9 +80,53 @@
       #elm/list [#elm/parameter-ref "1" #elm/parameter-ref "nil"] [1 nil]
       #elm/list [#elm/parameter-ref "1" #elm/parameter-ref "2"] [1 2])
 
-    (testing "form"
-      (let [expr (ctu/dynamic-compile #elm/list [#elm/parameter-ref "x"])]
-        (has-form expr '(list (param-ref "x")))))))
+    (let [expr (ctu/dynamic-compile #elm/list [#elm/parameter-ref "x"])]
+
+      (testing "expression is dynamic"
+        (is (false? (core/-static expr))))
+
+      (testing "patient count"
+        (is (nil? (core/-patient-count expr))))
+
+      (testing "resolve parameters"
+        (has-form (c/resolve-params expr {"x" 1}) '(list 1)))
+
+      (testing "form"
+        (has-form expr '(list (param-ref "x"))))))
+
+  (testing "attach cache"
+    (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
+      (testing "with one element"
+        (let [elm (elm/list [#elm/exists #elm/retrieve{:type "Observation"}])
+              ctx {:eval-context "Patient"}
+              expr (c/compile ctx elm)]
+          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+            count := 2
+            [0] := expr
+            [1 count] := 1
+            [1 0] := '(exists (retrieve "Observation")))))
+
+      (testing "with two elements"
+        (let [elm (elm/list [#elm/exists #elm/retrieve{:type "Observation"}
+                             #elm/exists #elm/retrieve{:type "Condition"}])
+              ctx {:eval-context "Patient"}
+              expr (c/compile ctx elm)]
+          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+            count := 2
+            [0] := expr
+            [1 count] := 2
+            [1 0] := '(exists (retrieve "Observation"))
+            [1 1] := '(exists (retrieve "Condition")))))))
+
+  (testing "resolve expression references"
+    (let [elm #elm/list [#elm/expression-ref "x"]
+          expr-def {:type "ExpressionDef" :name "x" :expression 1
+                    :context "Patient"}
+          ctx {:library {:statements {:def [expr-def]}}}
+          expr (c/resolve-refs (c/compile ctx elm) {"x" expr-def})]
+      (has-form expr '(list 1))))
+
+  (ctu/testing-equals-hash-code #elm/list [#elm/parameter-ref "1"]))
 
 ;; 20.2. Contains
 ;;
@@ -86,9 +146,24 @@
       (prop/for-all [x (s/gen int?)]
         (= x (core/-eval (c/compile {} #elm/current nil) {} nil x))))
 
-    (testing "form"
-      (let [expr (c/compile {} #elm/current nil)]
-        (has-form expr 'current))))
+    (let [expr (c/compile {} #elm/current nil)]
+
+      (testing "expression is dynamic"
+        (is (false? (core/-static expr))))
+
+      (testing "patient count"
+        (is (nil? (core/-patient-count expr))))
+
+      (testing "resolve expression references"
+        (has-form (c/resolve-refs expr {}) 'current))
+
+      (testing "resolve parameters"
+        (has-form (c/resolve-params expr {}) 'current))
+
+      (testing "form"
+        (has-form expr 'current)))
+
+    (ctu/testing-equals-hash-code #elm/current nil))
 
   (testing "named scope"
     (satisfies-prop 100
@@ -97,9 +172,24 @@
         (let [expr (c/compile {} (elm/current scope))]
           (= x (core/-eval expr {} nil {scope x})))))
 
-    (testing "form"
-      (let [expr (c/compile {} #elm/current "x")]
-        (has-form expr '(current "x"))))))
+    (let [expr (c/compile {} #elm/current "x")]
+
+      (testing "expression is dynamic"
+        (is (false? (core/-static expr))))
+
+      (testing "patient count"
+        (is (nil? (core/-patient-count expr))))
+
+      (testing "resolve expression references"
+        (has-form (c/resolve-refs expr {}) '(current "x")))
+
+      (testing "resolve parameters"
+        (has-form (c/resolve-params expr {}) '(current "x")))
+
+      (testing "form"
+        (has-form expr '(current "x"))))
+
+    (ctu/testing-equals-hash-code #elm/current "x")))
 
 ;; 20.4. Distinct
 ;;
@@ -121,14 +211,12 @@
     #elm/list [{:type "Null"}] [nil]
     #elm/list [{:type "Null"} {:type "Null"}] [nil nil]
     #elm/list [{:type "Null"} {:type "Null"} {:type "Null"}] [nil nil nil]
-    #elm/list [#elm/quantity [100 "cm"] #elm/quantity [1 "m"]] [(quantity/quantity 100 "cm")]
-    #elm/list [#elm/quantity [1 "m"] #elm/quantity [100 "cm"]] [(quantity/quantity 1 "m")])
+    #elm/list [#elm/quantity [100 "cm"] #elm/quantity [1 "m"]] [(quantity 100 "cm")]
+    #elm/list [#elm/quantity [1 "m"] #elm/quantity [100 "cm"]] [(quantity 1 "m")])
 
   (ctu/testing-unary-null elm/distinct)
 
-  (ctu/testing-unary-dynamic elm/distinct)
-
-  (ctu/testing-unary-form elm/distinct))
+  (ctu/testing-unary-op elm/distinct))
 
 ;; 20.5. Equal
 ;;
@@ -144,9 +232,29 @@
 
 ;; 20.8. Exists
 ;;
-;; The Exists operator returns true if the list contains any elements.
+;; The Exists operator returns true if the list contains any non-null elements.
 ;;
 ;; If the argument is null, the result is false.
+(def ^:private exists-config
+  (assoc mem-node-config
+         ::expr/cache
+         {:node (ig/ref :blaze.db/node)
+          :executor (ig/ref :blaze.test/executor)}
+         :blaze.test/executor {}))
+
+(defmethod elm-spec/expression :elm.spec.type/exists-test [_]
+  map?)
+
+(defmethod core/compile* :elm.compiler.type/exists-test
+  [_ _]
+  (reify-expr core/Expression
+    (-attach-cache [_ _]
+      [(reify-expr core/Expression
+         (-form [_]
+           'exists-test-with-cache))])
+    (-form [_]
+      'exists-test)))
+
 (deftest compile-exists-test
   (testing "Static"
     (are [list res] (= res (c/compile {} (elm/exists list)))
@@ -166,7 +274,109 @@
 
       {:type "Null"} false)
 
-    (ctu/testing-unary-form elm/exists)))
+    (testing "doesn't attach the cache downstream because there is no need for double caching"
+      (with-system [{::expr/keys [cache]} exists-config]
+        (let [elm #elm/exists {:type "ExistsTest"}
+              expr (c/compile {:eval-context "Patient"} elm)
+              ;; ensure Bloom filter is available
+              _ (do (c/attach-cache expr cache) (Thread/sleep 100))
+              expr (first (c/attach-cache expr cache))]
+
+          (has-form expr '(exists exists-test))
+
+          (testing "also not at a second cache attachment"
+            (has-form (first (c/attach-cache expr cache)) '(exists exists-test))))))
+
+    (testing "with caching expressions"
+      (with-system-data [{:blaze.db/keys [node] ::expr/keys [cache]} exists-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [db (d/db node)
+              patient (cr/mk-resource db (d/resource-handle db "Patient" "0"))
+              elm #elm/exists #elm/retrieve{:type "Observation"}
+              compile-context
+              {:node node
+               :eval-context "Patient"
+               :library {}}
+              expr (c/compile compile-context elm)
+              eval-context
+              {:db db
+               :now (OffsetDateTime/now)}]
+
+          (testing "has no Observation at the beginning"
+            (let [[expr bloom-filters] (c/attach-cache expr cache)]
+              (is (every? ba/unavailable? bloom-filters))
+              (is (false? (expr/eval eval-context expr patient)))))
+
+          (Thread/sleep 100)
+
+          (testing "has still no Observation after the Bloom filter is filled"
+            (let [[expr bloom-filters] (c/attach-cache expr cache)]
+              (given bloom-filters
+                count := 1
+                [0 ::bloom-filter/expr-form] := (pr-str '(exists (retrieve "Observation")))
+                [0 ::bloom-filter/patient-count] := 0)
+              (is (false? (expr/eval eval-context expr patient)))))
+
+          (let [tx-op [:put {:fhir/type :fhir/Observation :id "0"
+                             :subject #fhir/Reference{:reference "Patient/0"}}]
+                db-after @(d/transact node [tx-op])]
+
+            (testing "has an Observation after transaction"
+              (let [[expr bloom-filters] (c/attach-cache expr cache)
+                    patient (cr/mk-resource db-after (d/resource-handle db "Patient" "0"))]
+                (testing "even so the bloom filter is still the old one"
+                  (given bloom-filters
+                    count := 1
+                    [0 ::bloom-filter/expr-form] := (pr-str '(exists (retrieve "Observation")))
+                    [0 ::bloom-filter/patient-count] := 0))
+                (is (true? (expr/eval (assoc eval-context :db db-after) expr patient)))))
+
+            (testing "has still no Observation at the old database"
+              (let [[expr] (c/attach-cache expr cache)]
+                (is (false? (expr/eval eval-context expr patient)))))))))
+
+    (testing "without caching expressions"
+      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (let [db (d/db node)
+              patient (cr/mk-resource db (d/resource-handle db "Patient" "0"))
+              elm #elm/exists #elm/retrieve{:type "Observation"}
+              compile-context
+              {:node node
+               :eval-context "Patient"
+               :library {}}
+              expr (c/compile compile-context elm)
+              eval-context
+              {:db db
+               :now (OffsetDateTime/now)}]
+
+          (testing "has no Observation at the beginning"
+            (is (false? (expr/eval eval-context expr patient))))
+
+          (let [tx-op [:put {:fhir/type :fhir/Observation :id "0"
+                             :subject #fhir/Reference{:reference "Patient/0"}}]
+                db-after @(d/transact node [tx-op])]
+
+            (testing "has an Observation after transaction"
+              (let [patient (cr/mk-resource db-after (d/resource-handle db "Patient" "0"))]
+                (is (true? (expr/eval (assoc eval-context :db db-after) expr patient)))))
+
+            (testing "has still no Observation at the old database"
+              (is (false? (expr/eval eval-context expr patient)))))))))
+
+  (ctu/testing-unary-dynamic elm/exists)
+
+  (ctu/testing-unary-patient-count elm/exists)
+
+  (ctu/testing-unary-resolve-refs elm/exists)
+
+  (ctu/testing-unary-resolve-params elm/exists)
+
+  (ctu/testing-unary-equals-hash-code elm/exists)
+
+  (ctu/testing-unary-form elm/exists))
 
 ;; 20.9. Filter
 ;;
@@ -196,25 +406,82 @@
 
           {:type "Null"} #elm/boolean "true" nil))))
 
-  (testing "form and static"
-    (testing "with scope"
-      (let [expr (ctu/dynamic-compile {:type "Filter"
-                                       :source #elm/parameter-ref "x"
-                                       :condition #elm/parameter-ref "y"
-                                       :scope "A"})]
+  (testing "with scope"
+    (let [expr (ctu/dynamic-compile {:type "Filter"
+                                     :source #elm/parameter-ref "x"
+                                     :condition #elm/parameter-ref "y"
+                                     :scope "A"})]
 
-        (has-form expr '(filter (param-ref "x") (param-ref "y") "A"))
+      (testing "expression is dynamic"
+        (is (false? (core/-static expr))))
 
-        (is (false? (core/-static expr)))))
+      (testing "attach-cache"
+        (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
 
-    (testing "without scope"
-      (let [expr (ctu/dynamic-compile {:type "Filter"
-                                       :source #elm/parameter-ref "x"
-                                       :condition #elm/parameter-ref "y"})]
+      (testing "patient count"
+        (is (nil? (core/-patient-count expr))))
 
-        (has-form expr '(filter (param-ref "x") (param-ref "y")))
+      (testing "resolve expression references"
+        (let [elm {:type "Filter"
+                   :source #elm/expression-ref "x"
+                   :condition #elm/expression-ref "y"
+                   :scope "A"}
+              source-def {:type "ExpressionDef" :name "x" :expression [1]
+                          :context "Patient"}
+              condition-def {:type "ExpressionDef" :name "y" :expression true
+                             :context "Patient"}
+              ctx {:library {:statements {:def [source-def condition-def]}}}
+              expr (c/resolve-refs (c/compile ctx elm) {"x" source-def "y" condition-def})]
+          (has-form expr '(filter [1] true "A"))))
 
-        (is (false? (core/-static expr)))))))
+      (testing "resolve parameters"
+        (has-form (c/resolve-params expr {"x" [1]})
+          '(filter [1] (param-ref "y") "A")))
+
+      (testing "form"
+        (has-form expr '(filter (param-ref "x") (param-ref "y") "A")))
+
+      (ctu/testing-equals-hash-code {:type "Filter"
+                                     :source #elm/parameter-ref "x"
+                                     :condition #elm/parameter-ref "y"
+                                     :scope "A"})))
+
+  (testing "without scope"
+    (let [expr (ctu/dynamic-compile {:type "Filter"
+                                     :source #elm/parameter-ref "x"
+                                     :condition #elm/parameter-ref "y"})]
+
+      (testing "expression is dynamic"
+        (is (false? (core/-static expr))))
+
+      (testing "attach-cache"
+        (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+      (testing "patient count"
+        (is (nil? (core/-patient-count expr))))
+
+      (testing "resolve expression references"
+        (let [elm {:type "Filter"
+                   :source #elm/expression-ref "x"
+                   :condition #elm/expression-ref "y"}
+              source-def {:type "ExpressionDef" :name "x" :expression [1]
+                          :context "Patient"}
+              condition-def {:type "ExpressionDef" :name "y" :expression true
+                             :context "Patient"}
+              ctx {:library {:statements {:def [source-def condition-def]}}}
+              expr (c/resolve-refs (c/compile ctx elm) {"x" source-def "y" condition-def})]
+          (has-form expr '(filter [1] true))))
+
+      (testing "resolve parameters"
+        (has-form (c/resolve-params expr {"x" [1]})
+          '(filter [1] (param-ref "y"))))
+
+      (testing "form"
+        (has-form expr '(filter (param-ref "x") (param-ref "y"))))
+
+      (ctu/testing-equals-hash-code {:type "Filter"
+                                     :source #elm/parameter-ref "x"
+                                     :condition #elm/parameter-ref "y"}))))
 
 ;; 20.10. First
 ;;
@@ -236,9 +503,7 @@
 
   (ctu/testing-unary-null elm/first)
 
-  (ctu/testing-unary-dynamic elm/first)
-
-  (ctu/testing-unary-form elm/first))
+  (ctu/testing-unary-op elm/first))
 
 ;; 20.11. Flatten
 ;;
@@ -256,9 +521,7 @@
 
   (ctu/testing-unary-null elm/flatten)
 
-  (ctu/testing-unary-dynamic elm/flatten)
-
-  (ctu/testing-unary-form elm/flatten))
+  (ctu/testing-unary-op elm/flatten))
 
 ;; 20.12. ForEach
 ;;
@@ -293,25 +556,78 @@
 
           {:type "Null"} {:type "Null"} nil))))
 
-  (testing "form and static"
-    (testing "with scope"
-      (let [expr (ctu/dynamic-compile {:type "ForEach"
-                                       :source #elm/parameter-ref "x"
-                                       :element #elm/parameter-ref "y"
-                                       :scope "A"})]
+  (testing "with scope"
+    (let [expr (ctu/dynamic-compile {:type "ForEach"
+                                     :source #elm/parameter-ref "x"
+                                     :element #elm/parameter-ref "y"
+                                     :scope "A"})]
 
-        (has-form expr '(for-each (param-ref "x") (param-ref "y") "A"))
+      (testing "expression is dynamic"
+        (is (false? (core/-static expr))))
 
-        (is (false? (core/-static expr)))))
+      (testing "attach-cache"
+        (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
 
-    (testing "without scope"
-      (let [expr (ctu/dynamic-compile {:type "ForEach"
-                                       :source #elm/parameter-ref "x"
-                                       :element #elm/parameter-ref "y"})]
+      (testing "patient count"
+        (is (nil? (core/-patient-count expr))))
 
-        (has-form expr '(for-each (param-ref "x") (param-ref "y")))
+      (testing "resolve expression references"
+        (let [elm {:type "ForEach"
+                   :source #elm/expression-ref "x"
+                   :element #elm/current "A"
+                   :scope "A"}
+              expr-def {:type "ExpressionDef" :name "x" :expression [1]
+                        :context "Patient"}
+              ctx {:library {:statements {:def [expr-def]}}}
+              expr (c/resolve-refs (c/compile ctx elm) {"x" expr-def})]
+          (has-form expr '(for-each [1] (current "A") "A"))))
 
-        (is (false? (core/-static expr)))))))
+      (testing "resolve parameters"
+        (has-form (c/resolve-params expr {"x" [1]})
+          '(for-each [1] (param-ref "y") "A")))
+
+      (testing "form"
+        (has-form expr '(for-each (param-ref "x") (param-ref "y") "A")))
+
+      (ctu/testing-equals-hash-code {:type "ForEach"
+                                     :source #elm/parameter-ref "x"
+                                     :element #elm/parameter-ref "y"
+                                     :scope "A"})))
+
+  (testing "without scope"
+    (let [expr (ctu/dynamic-compile {:type "ForEach"
+                                     :source #elm/parameter-ref "x"
+                                     :element #elm/parameter-ref "y"})]
+
+      (testing "expression is dynamic"
+        (is (false? (core/-static expr))))
+
+      (testing "attach-cache"
+        (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+      (testing "patient count"
+        (is (nil? (core/-patient-count expr))))
+
+      (testing "resolve expression references"
+        (let [elm {:type "ForEach"
+                   :source #elm/expression-ref "x"
+                   :element #elm/current nil}
+              expr-defs {:type "ExpressionDef" :name "x" :expression [1]
+                         :context "Patient"}
+              ctx {:library {:statements {:def [expr-defs]}}}
+              expr (c/resolve-refs (c/compile ctx elm) {"x" expr-defs})]
+          (has-form expr '(for-each [1] current))))
+
+      (testing "resolve parameters"
+        (has-form (c/resolve-params expr {"x" [1]})
+          '(for-each [1] (param-ref "y"))))
+
+      (testing "form"
+        (has-form expr '(for-each (param-ref "x") (param-ref "y"))))
+
+      (ctu/testing-equals-hash-code {:type "ForEach"
+                                     :source #elm/parameter-ref "x"
+                                     :element #elm/parameter-ref "y"}))))
 
 ;; 20.13. In
 ;;
@@ -350,9 +666,7 @@
 
   (ctu/testing-binary-dynamic-null elm/index-of #elm/list [] #elm/integer "1")
 
-  (ctu/testing-binary-dynamic elm/index-of)
-
-  (ctu/testing-binary-form elm/index-of))
+  (ctu/testing-binary-op elm/index-of))
 
 ;; 20.17. Intersect
 ;;
@@ -378,9 +692,7 @@
 
   (ctu/testing-unary-null elm/last)
 
-  (ctu/testing-unary-dynamic elm/last)
-
-  (ctu/testing-unary-form elm/last))
+  (ctu/testing-unary-op elm/last))
 
 ;; 20.19. Not Equal
 ;;
@@ -430,14 +742,15 @@
     #elm/list [#elm/integer "1"] 1
     {:type "Null"} nil)
 
-  (are [list] (thrown? Exception (core/-eval (c/compile {} (elm/singleton-from list)) {} nil nil))
-    #elm/list [#elm/integer "1" #elm/integer "1"])
+  (let [expr #elm/singleton-from #elm/list [#elm/integer "1" #elm/integer "1"]]
+    (given-thrown (core/-eval (c/compile {} expr) {} nil nil)
+      :message := "More than one element in `SingletonFrom` expression."
+      [:expression :type] := "SingletonFrom"
+      [:expression :operand :type] := "List"))
 
   (ctu/testing-unary-null elm/singleton-from)
 
-  (ctu/testing-unary-dynamic elm/singleton-from)
-
-  (ctu/testing-unary-form elm/singleton-from))
+  (ctu/testing-unary-op elm/singleton-from))
 
 ;; 20.26. Slice
 ;;
@@ -466,17 +779,7 @@
     {:type "Null"} #elm/integer "0" #elm/integer "0" nil
     {:type "Null"} {:type "Null"} {:type "Null"} nil)
 
-  (let [expr (ctu/dynamic-compile {:type "Slice"
-                                   :source #elm/parameter-ref "x"
-                                   :startIndex #elm/parameter-ref "y"
-                                   :endIndex #elm/parameter-ref "z"})]
-
-    (testing "expression is dynamic"
-      (is (false? (core/-static expr))))
-
-    (testing "form"
-      (is (= '(slice (param-ref "x") (param-ref "y") (param-ref "z"))
-             (core/-form expr))))))
+  (ctu/testing-ternary-op elm/slice))
 
 ;; 20.27. Sort
 ;;
@@ -506,7 +809,7 @@
       (is (false? (core/-static expr))))
 
     (testing "form"
-      (is (= '(sort (param-ref "x") :asc) (core/-form expr))))))
+      (has-form expr '(sort (param-ref "x") :asc)))))
 
 ;; 20.28. Times
 ;;
@@ -565,9 +868,7 @@
 
   (ctu/testing-binary-null elm/times #elm/list[#elm/tuple{"name" #elm/string "hans"}])
 
-  (ctu/testing-binary-dynamic elm/times)
-
-  (ctu/testing-binary-form elm/times))
+  (ctu/testing-binary-op elm/times))
 
 ;; 20.29. Union
 ;;

@@ -1,17 +1,21 @@
 (ns blaze.elm.compiler.test-util
   (:require
+   [blaze.anomaly :as ba]
    [blaze.db.api :as d]
    [blaze.elm.compiler :as c]
+   [blaze.elm.compiler-spec]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
-   [blaze.elm.compiler.external-data :as ed]
+   [blaze.elm.expression.cache :as ec]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
+   [blaze.elm.resource :as cr]
    [blaze.elm.spec]
    [blaze.fhir.spec.type.system :as system]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :refer [is testing]])
+   [clojure.test :refer [is testing]]
+   [juxt.iota :refer [given]])
   (:import
    [java.time OffsetDateTime ZoneOffset]))
 
@@ -43,7 +47,8 @@
 (def now (OffsetDateTime/now (ZoneOffset/ofHours 0)))
 
 (def dynamic-compile-ctx
-  {:library
+  {:eval-context "Patient"
+   :library
    {:parameters
     {:def
      [{:name "true"}
@@ -62,6 +67,8 @@
       {:name "ab"}
       {:name "b"}
       {:name "ba"}
+      {:name "a,b"}
+      {:name "a,,b"}
       {:name "A"}
       {:name "2019"}
       {:name "2020"}
@@ -75,7 +82,8 @@
 (def dynamic-eval-ctx
   {:parameters
    {"true" true "false" false "nil" nil "-1" -1 "1" 1 "2" 2 "3" 3 "4" 4
-    "empty-string" "" "x" "x" "y" "y" "z" "z" "a" "a" "ab" "ab" "b" "b" "ba" "ba" "A" "A"
+    "empty-string" "" "x" "x" "y" "y" "z" "z"
+    "a" "a" "ab" "ab" "b" "b" "ba" "ba" "a,b" "a,b" "a,,b" "a,,b" "A" "A"
     "2019" (system/date 2019)
     "2020" (system/date 2020)
     "2021" (system/date 2021)
@@ -190,6 +198,128 @@
        (let [expr# (dynamic-compile ~elm-constructor)]
          (has-form expr# (quote ~form-name))))))
 
+(defmacro testing-unary-dynamic [elm-constructor]
+  `(testing "expression is dynamic"
+     (is (false? (core/-static (dynamic-compile (~elm-constructor
+                                                 #elm/parameter-ref "x")))))))
+
+(defmacro testing-unary-precision-dynamic
+  [elm-constructor & precisions]
+  `(testing "expression is dynamic"
+     (doseq [precision# ~(vec precisions)]
+       (is (false? (core/-static (dynamic-compile (~elm-constructor
+                                                   [#elm/parameter-ref "x"
+                                                    precision#]))))))))
+
+(defmacro testing-unary-attach-cache
+  "Works with unary and aggregate operators."
+  [elm-constructor]
+  `(testing "attach cache"
+     (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
+       (let [elm# (~elm-constructor #elm/exists #elm/retrieve{:type "Observation"})
+             ctx# {:eval-context "Patient"}
+             expr# (c/compile ctx# elm#)]
+         (given (st/with-instrument-disabled (c/attach-cache expr# ::cache))
+           count := 2
+           [0] := expr#
+           [1 count] := 1
+           [1 0] := '(~'exists (~'retrieve "Observation")))))))
+
+(defmacro testing-unary-precision-attach-cache
+  [elm-constructor & precisions]
+  `(testing "attach cache"
+     (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
+       (doseq [precision# ~(vec precisions)]
+         (let [elm# (~elm-constructor [#elm/exists #elm/retrieve{:type "Observation"} precision#])
+               ctx# {:eval-context "Patient"}
+               expr# (c/compile ctx# elm#)]
+           (given (st/with-instrument-disabled (c/attach-cache expr# ::cache))
+             count := 2
+             [0] := expr#
+             [1 count] := 1
+             [1 0] := '(~'exists (~'retrieve "Observation"))))))))
+
+(defmacro testing-unary-patient-count [elm-constructor]
+  `(testing "patient count"
+     (let [expr# (dynamic-compile (~elm-constructor #elm/parameter-ref "x"))]
+       (is (nil? (core/-patient-count expr#))))))
+
+(defmacro testing-unary-precision-patient-count [elm-constructor & precisions]
+  `(testing "patient count"
+     (doseq [precision# ~(vec precisions)]
+       (let [expr# (dynamic-compile (~elm-constructor [#elm/parameter-ref "x"
+                                                       precision#]))]
+         (is (nil? (core/-patient-count expr#)))))))
+
+(defmacro testing-unary-resolve-refs
+  "Works with unary and aggregate operators."
+  [elm-constructor]
+  (let [form-name (symbol (name elm-constructor))]
+    `(testing "resolve expression references"
+       (let [elm# (~elm-constructor #elm/expression-ref "x")
+             expr-def# {:type "ExpressionDef" :name "x" :expression "y"
+                        :context "Unfiltered"}
+             ctx# {:library {:statements {:def [expr-def#]}}}
+             expr# (c/resolve-refs (c/compile ctx# elm#) {"x" expr-def#})]
+         (has-form expr# '(~form-name "y"))))))
+
+(defmacro testing-unary-precision-resolve-refs
+  "Works with unary and aggregate operators."
+  [elm-constructor & precisions]
+  (let [form-name (symbol (name elm-constructor))]
+    `(testing "resolve expression references"
+       (doseq [precision# ~(vec precisions)]
+         (let [elm# (~elm-constructor [#elm/expression-ref "x" precision#])
+               expr-def# {:type "ExpressionDef" :name "x" :expression "y"
+                          :context "Unfiltered"}
+               ctx# {:library {:statements {:def [expr-def#]}}}
+               expr# (c/resolve-refs (c/compile ctx# elm#) {"x" expr-def#})]
+           (has-form expr# (list '~form-name "y" precision#)))))))
+
+(defmacro testing-unary-resolve-params
+  "Works with unary and aggregate operators."
+  [elm-constructor]
+  (let [form-name (symbol (name elm-constructor))]
+    `(testing "resolve parameters"
+       (let [elm# (~elm-constructor #elm/parameter-ref "x")
+             ctx# {:library {:parameters {:def [{:name "x"}]}}}
+             expr# (c/resolve-params (c/compile ctx# elm#) {"x" "y"})]
+         (has-form expr# '(~form-name "y"))))))
+
+(defmacro testing-unary-precision-resolve-params
+  "Works with unary and aggregate operators."
+  [elm-constructor & precisions]
+  (let [form-name (symbol (name elm-constructor))]
+    `(testing "resolve parameters"
+       (doseq [precision# ~(vec precisions)]
+         (let [elm# (~elm-constructor [#elm/parameter-ref "x" precision#])
+               ctx# {:library {:parameters {:def [{:name "x"}]}}}
+               expr# (c/resolve-params (c/compile ctx# elm#) {"x" "y"})]
+           (has-form expr# (list '~form-name "y" precision#)))))))
+
+(defmacro testing-unary-equals-hash-code
+  [elm-constructor]
+  `(testing "equals/hashCode"
+     (let [elm# (~elm-constructor #elm/parameter-ref "x")
+           ctx# {:library {:parameters {:def [{:name "x"}]}}}
+           expr-1# (c/compile ctx# elm#)
+           expr-2# (c/compile ctx# elm#)]
+       (is (and (.equals ^Object expr-1# expr-2#)
+                (= (.hashCode ^Object expr-1#)
+                   (.hashCode ^Object expr-2#)))))))
+
+(defmacro testing-unary-precision-equals-hash-code
+  [elm-constructor & precisions]
+  `(testing "equals/hashCode"
+     (doseq [precision# ~(vec precisions)]
+       (let [elm# (~elm-constructor [#elm/parameter-ref "x" precision#])
+             ctx# {:library {:parameters {:def [{:name "x"}]}}}
+             expr-1# (c/compile ctx# elm#)
+             expr-2# (c/compile ctx# elm#)]
+         (is (and (.equals ^Object expr-1# expr-2#)
+                  (= (.hashCode ^Object expr-1#)
+                     (.hashCode ^Object expr-2#))))))))
+
 (defmacro testing-unary-form
   "Works with unary and aggregate operators."
   [elm-constructor]
@@ -210,6 +340,43 @@
                 expr# (dynamic-compile elm#)]
             (has-form expr#
               (list '~form-name '(~'param-ref "x") precision#))))))))
+
+(defmacro testing-binary-equals-hash-code
+  [elm-constructor]
+  `(testing "equals/hashCode"
+     (let [elm# (~elm-constructor [#elm/parameter-ref "x" #elm/parameter-ref "y"])
+           ctx# {:library {:parameters {:def [{:name "x"} {:name "y"}]}}}
+           expr-1# (c/compile ctx# elm#)
+           expr-2# (c/compile ctx# elm#)]
+       (is (and (.equals ^Object expr-1# expr-2#)
+                (= (.hashCode ^Object expr-1#)
+                   (.hashCode ^Object expr-2#)))))))
+
+(defmacro testing-binary-precision-equals-hash-code
+  ([elm-constructor]
+   `(testing-binary-precision-equals-hash-code ~elm-constructor "year" "month"))
+  ([elm-constructor & precisions]
+   `(testing "equals/hashCode"
+      (doseq [precision# ~(vec precisions)]
+        (let [elm# (~elm-constructor [#elm/parameter-ref "x" #elm/parameter-ref "y" precision#])
+              ctx# {:library {:parameters {:def [{:name "x"} {:name "y"}]}}}
+              expr-1# (c/compile ctx# elm#)
+              expr-2# (c/compile ctx# elm#)]
+          (is (and (.equals ^Object expr-1# expr-2#)
+                   (= (.hashCode ^Object expr-1#)
+                      (.hashCode ^Object expr-2#)))))))))
+
+(defmacro testing-ternary-equals-hash-code
+  [elm-constructor]
+  `(testing "equals/hashCode"
+     (let [elm# (~elm-constructor [#elm/parameter-ref "x" #elm/parameter-ref "y"
+                                   #elm/parameter-ref "z"])
+           ctx# {:library {:parameters {:def [{:name "x"} {:name "y"} {:name "z"}]}}}
+           expr-1# (c/compile ctx# elm#)
+           expr-2# (c/compile ctx# elm#)]
+       (is (and (.equals ^Object expr-1# expr-2#)
+                (= (.hashCode ^Object expr-1#)
+                   (.hashCode ^Object expr-2#)))))))
 
 (defmacro testing-binary-form [elm-constructor]
   (let [form-name (symbol (name elm-constructor))]
@@ -250,24 +417,143 @@
   `(testing "expression is dynamic"
      (is (false? (core/-static (dynamic-compile ~elm-constructor))))))
 
-(defmacro testing-unary-dynamic [elm-constructor]
-  `(testing "expression is dynamic"
-     (is (false? (core/-static (dynamic-compile (~elm-constructor
-                                                 #elm/parameter-ref "x")))))))
-
-(defmacro testing-unary-precision-dynamic
-  [elm-constructor & precisions]
-  `(testing "expression is dynamic"
-     (doseq [precision# ~(vec precisions)]
-       (is (false? (core/-static (dynamic-compile (~elm-constructor
-                                                   [#elm/parameter-ref "x"
-                                                    precision#]))))))))
-
 (defmacro testing-binary-dynamic [elm-constructor]
   `(testing "expression is dynamic"
      (is (false? (core/-static (dynamic-compile (~elm-constructor
                                                  [#elm/parameter-ref "x"
                                                   #elm/parameter-ref "y"])))))))
+
+(defn mock-cache-get [cache expr]
+  (assert (= ::cache cache))
+  (when (= '(exists (retrieve "Observation")) (c/form expr))
+    (c/form expr)))
+
+(defmacro testing-binary-attach-cache
+  [elm-constructor]
+  `(testing "attach cache"
+     (with-redefs [ec/get mock-cache-get]
+       (let [elm# (~elm-constructor
+                   [#elm/exists #elm/retrieve{:type "Observation"}
+                    #elm/exists #elm/retrieve{:type "Condition"}])
+             ctx# {:eval-context "Patient"}
+             expr# (c/compile ctx# elm#)]
+         (given (st/with-instrument-disabled (c/attach-cache expr# ::cache))
+           count := 2
+           [0] := expr#
+           [1 count] := 2
+           [1 0] := '(~'exists (~'retrieve "Observation"))
+           [1 1] := (ba/unavailable "No Bloom filter available."))))))
+
+(defmacro testing-ternary-attach-cache
+  [elm-constructor]
+  `(testing "attach cache"
+     (with-redefs [ec/get mock-cache-get]
+       (let [elm# (~elm-constructor
+                   [#elm/exists #elm/retrieve{:type "Observation"}
+                    #elm/exists #elm/retrieve{:type "Condition"}
+                    #elm/exists #elm/retrieve{:type "Specimen"}])
+             ctx# {:eval-context "Patient"}
+             expr# (c/compile ctx# elm#)]
+         (given (st/with-instrument-disabled (c/attach-cache expr# ::cache))
+           count := 2
+           [0] := expr#
+           [1 count] := 3
+           [1 0] := '(~'exists (~'retrieve "Observation"))
+           [1 1] := (ba/unavailable "No Bloom filter available.")
+           [1 2] := (ba/unavailable "No Bloom filter available."))))))
+
+(defmacro testing-binary-precision-attach-cache
+  ([elm-constructor]
+   `(testing-binary-precision-attach-cache ~elm-constructor "year" "month"))
+  ([elm-constructor & precisions]
+   `(testing "attach cache"
+      (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
+        (doseq [precision# ~(vec precisions)]
+          (let [elm# (~elm-constructor
+                      [#elm/exists #elm/retrieve{:type "Observation"}
+                       #elm/exists #elm/retrieve{:type "Condition"}
+                       precision#])
+                ctx# {:eval-context "Patient"}
+                expr# (c/compile ctx# elm#)]
+            (given (st/with-instrument-disabled (c/attach-cache expr# ::cache))
+              count := 2
+              [0] := expr#
+              [1 count] := 2
+              [1 0] := '(~'exists (~'retrieve "Observation"))
+              [1 1] := '(~'exists (~'retrieve "Condition")))))))))
+
+(defmacro testing-binary-patient-count [elm-constructor]
+  `(testing "patient count"
+     (is (nil? (core/-patient-count (dynamic-compile (~elm-constructor
+                                                      [#elm/parameter-ref "x"
+                                                       #elm/parameter-ref "y"])))))))
+
+(defmacro testing-binary-precision-patient-count
+  ([elm-constructor]
+   `(testing-binary-precision-patient-count ~elm-constructor "year" "month"))
+  ([elm-constructor  & precisions]
+   `(testing "patient count"
+      (doseq [precision# ~(vec precisions)]
+        (is (nil? (core/-patient-count (dynamic-compile (~elm-constructor
+                                                         [#elm/parameter-ref "x"
+                                                          #elm/parameter-ref "y"
+                                                          precision#])))))))))
+
+(defmacro testing-ternary-patient-count [elm-constructor]
+  `(testing "patient count"
+     (is (nil? (core/-patient-count (dynamic-compile (~elm-constructor
+                                                      [#elm/parameter-ref "x"
+                                                       #elm/parameter-ref "y"
+                                                       #elm/parameter-ref "z"])))))))
+
+(defmacro testing-binary-resolve-refs
+  [elm-constructor]
+  (let [form-name (symbol (name elm-constructor))]
+    `(testing "resolve expression references"
+       (let [elm# (~elm-constructor
+                   [#elm/expression-ref "x"
+                    #elm/expression-ref "y"])
+             expr-defs# [{:type "ExpressionDef" :name "x" :expression "a"
+                          :context "Unfiltered"}
+                         {:type "ExpressionDef" :name "y" :expression "b"
+                          :context "Unfiltered"}]
+             ctx# {:library {:statements {:def expr-defs#}}}
+             expr# (c/resolve-refs (c/compile ctx# elm#) (zipmap ["x" "y"] expr-defs#))]
+         (has-form expr# '(~form-name "a" "b"))))))
+
+(defmacro testing-ternary-resolve-refs [elm-constructor]
+  (let [form-name (symbol (name elm-constructor))]
+    `(testing "resolve expression references"
+       (let [elm# (~elm-constructor
+                   [#elm/expression-ref "x"
+                    #elm/expression-ref "y"
+                    #elm/expression-ref "z"])
+             expr-defs# [{:type "ExpressionDef" :name "x" :expression "a"
+                          :context "Unfiltered"}
+                         {:type "ExpressionDef" :name "y" :expression "b"
+                          :context "Unfiltered"}
+                         {:type "ExpressionDef" :name "z" :expression "c"
+                          :context "Unfiltered"}]
+             ctx# {:library {:statements {:def expr-defs#}}}
+             expr# (c/resolve-refs (c/compile ctx# elm#) (zipmap ["x" "y" "z"] expr-defs#))]
+         (has-form expr# '(~form-name "a" "b" "c"))))))
+
+(defmacro testing-binary-resolve-params [elm-constructor]
+  (let [form-name (symbol (name elm-constructor))]
+    `(testing "resolve parameters"
+       (let [elm# (~elm-constructor [#elm/parameter-ref "x" #elm/parameter-ref "y"])
+             ctx# {:library {:parameters {:def [{:name "x"} {:name "y"}]}}}
+             expr# (c/resolve-params (c/compile ctx# elm#) {"x" "a" "y" "b"})]
+         (has-form expr# '(~form-name "a" "b"))))))
+
+(defmacro testing-ternary-resolve-params [elm-constructor]
+  (let [form-name (symbol (name elm-constructor))]
+    `(testing "resolve parameters"
+       (let [elm# (~elm-constructor [#elm/parameter-ref "x" #elm/parameter-ref "y"
+                                     #elm/parameter-ref "z"])
+             ctx# {:library {:parameters {:def [{:name "x"} {:name "y"} {:name "z"}]}}}
+             expr# (c/resolve-params (c/compile ctx# elm#) {"x" "a" "y" "b" "z" "c"})]
+         (has-form expr# '(~form-name "a" "b" "c"))))))
 
 (defmacro testing-binary-precision-dynamic
   ([elm-constructor]
@@ -280,6 +566,41 @@
                                                      #elm/parameter-ref "y"
                                                      precision#])))))))))
 
+(defmacro testing-binary-precision-resolve-refs
+  ([elm-constructor]
+   `(testing-binary-precision-resolve-refs ~elm-constructor "year" "month"))
+  ([elm-constructor & precisions]
+   (let [form-name (symbol (name elm-constructor))]
+     `(testing "resolve expression references"
+        (doseq [precision# ~(vec precisions)]
+          (let [elm# (~elm-constructor
+                      [#elm/expression-ref "x"
+                       #elm/expression-ref "y"
+                       precision#])
+                expr-def-x# {:type "ExpressionDef" :name "x" :expression "a"
+                             :context "Unfiltered"}
+                expr-def-y# {:type "ExpressionDef" :name "y" :expression "b"
+                             :context "Unfiltered"}
+                ctx# {:library {:statements {:def [expr-def-x# expr-def-y#]}}}
+                expr# (c/resolve-refs (c/compile ctx# elm#) {"x" expr-def-x#
+                                                             "y" expr-def-y#})]
+            (has-form expr# (list (quote ~form-name) "a" "b" precision#))))))))
+
+(defmacro testing-binary-precision-resolve-params
+  ([elm-constructor]
+   `(testing-binary-precision-resolve-params ~elm-constructor "year" "month"))
+  ([elm-constructor & precisions]
+   (let [form-name (symbol (name elm-constructor))]
+     `(testing "resolve parameters"
+        (doseq [precision# ~(vec precisions)]
+          (let [elm# (~elm-constructor
+                      [#elm/parameter-ref "x"
+                       #elm/parameter-ref "y"
+                       precision#])
+                ctx# {:library {:parameters {:def [{:name "x"} {:name "y"}]}}}
+                expr# (c/resolve-params (c/compile ctx# elm#) {"x" "a" "y" "b"})]
+            (has-form expr# (list (quote ~form-name) "a" "b" precision#))))))))
+
 (defmacro testing-ternary-dynamic [elm-constructor]
   `(testing "expression is dynamic"
      (is (false? (core/-static (dynamic-compile (~elm-constructor
@@ -287,8 +608,124 @@
                                                   #elm/parameter-ref "y"
                                                   #elm/parameter-ref "z"])))))))
 
+(defmacro testing-unary-op [elm-constructor]
+  `(do
+     (testing-unary-dynamic ~elm-constructor)
+
+     (testing-unary-attach-cache ~elm-constructor)
+
+     (testing-unary-patient-count ~elm-constructor)
+
+     (testing-unary-resolve-refs ~elm-constructor)
+
+     (testing-unary-resolve-params ~elm-constructor)
+
+     (testing-unary-equals-hash-code ~elm-constructor)
+
+     (testing-unary-form ~elm-constructor)))
+
+(defmacro testing-unary-precision-op [elm-constructor & precisions]
+  `(do
+     (testing-unary-precision-dynamic ~elm-constructor ~@precisions)
+
+     (testing-unary-precision-attach-cache ~elm-constructor ~@precisions)
+
+     (testing-unary-precision-patient-count ~elm-constructor ~@precisions)
+
+     (testing-unary-precision-resolve-refs ~elm-constructor ~@precisions)
+
+     (testing-unary-precision-resolve-params ~elm-constructor ~@precisions)
+
+     (testing-unary-precision-equals-hash-code ~elm-constructor ~@precisions)
+
+     (testing-unary-precision-form ~elm-constructor ~@precisions)))
+
+(defmacro testing-binary-op [elm-constructor]
+  `(do
+     (testing-binary-dynamic ~elm-constructor)
+
+     (testing-binary-attach-cache ~elm-constructor)
+
+     (testing-binary-patient-count ~elm-constructor)
+
+     (testing-binary-resolve-refs ~elm-constructor)
+
+     (testing-binary-resolve-params ~elm-constructor)
+
+     (testing-binary-equals-hash-code ~elm-constructor)
+
+     (testing-binary-form ~elm-constructor)))
+
+(defmacro testing-binary-precision-op [elm-constructor]
+  `(do
+     (testing-binary-dynamic ~elm-constructor)
+
+     (testing-binary-precision-dynamic ~elm-constructor)
+
+     (testing-binary-attach-cache ~elm-constructor)
+
+     (testing-binary-precision-attach-cache ~elm-constructor)
+
+     (testing-binary-patient-count ~elm-constructor)
+
+     (testing-binary-precision-patient-count ~elm-constructor)
+
+     (testing-binary-resolve-refs ~elm-constructor)
+
+     (testing-binary-precision-resolve-refs ~elm-constructor)
+
+     (testing-binary-resolve-params ~elm-constructor)
+
+     (testing-binary-precision-resolve-params ~elm-constructor)
+
+     (testing-binary-equals-hash-code ~elm-constructor)
+
+     (testing-binary-precision-equals-hash-code ~elm-constructor)
+
+     (testing-binary-form ~elm-constructor)
+
+     (testing-binary-precision-form ~elm-constructor)))
+
+(defmacro testing-binary-precision-only-op [elm-constructor & precisions]
+  `(do
+     (testing-binary-precision-dynamic ~elm-constructor ~@precisions)
+
+     (testing-binary-precision-attach-cache ~elm-constructor ~@precisions)
+
+     (testing-binary-precision-patient-count ~elm-constructor ~@precisions)
+
+     (testing-binary-precision-resolve-refs ~elm-constructor ~@precisions)
+
+     (testing-binary-precision-resolve-params ~elm-constructor ~@precisions)
+
+     (testing-binary-precision-equals-hash-code ~elm-constructor ~@precisions)
+
+     (testing-binary-precision-form ~elm-constructor ~@precisions)))
+
+(defmacro testing-ternary-op [elm-constructor]
+  `(do
+     (testing-ternary-dynamic ~elm-constructor)
+
+     (testing-ternary-attach-cache ~elm-constructor)
+
+     (testing-ternary-patient-count ~elm-constructor)
+
+     (testing-ternary-resolve-refs ~elm-constructor)
+
+     (testing-ternary-resolve-params ~elm-constructor)
+
+     (testing-ternary-equals-hash-code ~elm-constructor)
+
+     (testing-ternary-form ~elm-constructor)))
+
+(defmacro testing-equals-hash-code [elm]
+  `(testing "equals/hashCode"
+     (let [expr-1# (dynamic-compile ~elm)
+           expr-2# (dynamic-compile ~elm)]
+       (is (= 1 (count (set [expr-1# expr-2#])))))))
+
 (defn resource [db type id]
-  (ed/mk-resource db (d/resource-handle db type id)))
+  (cr/mk-resource db (d/resource-handle db type id)))
 
 (defn eval-unfiltered [elm]
   (core/-eval (c/compile {:eval-context "Unfiltered"} elm) {} nil nil))

@@ -6,7 +6,7 @@
   (:require
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.elm.compiler.core :as core]
-   [blaze.elm.compiler.macros :refer [defbinop defunop]]
+   [blaze.elm.compiler.macros :refer [defbinop defunop reify-expr]]
    [blaze.elm.date-time :as date-time]
    [blaze.elm.decimal :as decimal]
    [blaze.elm.protocols :as p]
@@ -115,22 +115,30 @@
   (p/predecessor x))
 
 ;; 16.19. Round
+(defn- round-op [operand precision]
+  (reify-expr core/Expression
+    (-attach-cache [_ cache]
+      (core/attach-cache-helper round-op cache operand precision))
+    (-resolve-refs [_ expression-defs]
+      (round-op (core/-resolve-refs operand expression-defs)
+                (core/-resolve-refs precision expression-defs)))
+    (-resolve-params [_ parameters]
+      (core/resolve-params-helper round-op parameters operand precision))
+    (-eval [_ context resource scope]
+      (p/round (core/-eval operand context resource scope)
+               (core/-eval precision context resource scope)))
+    (-form [_]
+      (->> (some-> (core/-form precision) list)
+           (cons (core/-form operand))
+           (cons 'round)))))
+
 (defmethod core/compile* :elm.compiler.type/round
   [context {:keys [operand precision]}]
   (let [operand (core/compile* context operand)
         precision (some->> precision (core/compile* context))]
     (if (and (core/static? operand) (core/static? precision))
       (p/round operand precision)
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scope]
-          (p/round (core/-eval operand context resource scope)
-                   (core/-eval precision context resource scope)))
-        (-form [_]
-          (->> (some-> (core/-form precision) list)
-               (cons (core/-form operand))
-               (cons 'round)))))))
+      (round-op operand precision))))
 
 ;; 16.20. Subtract
 (defbinop subtract [x y]

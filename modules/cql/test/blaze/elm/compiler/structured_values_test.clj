@@ -9,6 +9,7 @@
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.structured-values]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.literal]
    [blaze.elm.literal-spec]
@@ -54,12 +55,12 @@
       #elm/tuple{"id" #elm/parameter-ref "1" "name" #elm/parameter-ref "a"}
       {:id 1 :name "a"})
 
-    (testing "static"
+    (testing "Static"
       (is (false? (core/-static (ctu/dynamic-compile #elm/tuple{"id" #elm/parameter-ref "1"})))))
 
     (testing "form"
-      (is (= '{:id (param-ref "x")}
-             (core/-form (ctu/dynamic-compile #elm/tuple{"id" #elm/parameter-ref "x"})))))))
+      (let [expr (ctu/dynamic-compile #elm/tuple{"id" #elm/parameter-ref "x"})]
+        (has-form expr '{:id (param-ref "x")})))))
 
 ;; 2.2. Instance
 ;;
@@ -109,16 +110,26 @@
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :identifier [identifier]}
-                expr
-                (c/compile
-                 {:eval-context "Patient"}
-                 #elm/scope-property ["R" "identifier"])]
+                elm #elm/scope-property ["R" "identifier"]
+                expr (c/compile {:eval-context "Patient"} elm)]
 
             (testing "eval"
               (is (= identifier (coll/first (core/-eval expr nil nil {"R" entity})))))
 
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
+
+            (testing "attach-cache"
+              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+            (testing "patient count"
+              (is (nil? (core/-patient-count expr))))
+
+            (testing "resolve parameters"
+              (let [expr (c/resolve-params expr {})]
+                (has-form expr '(:identifier R))))
+
+            (ctu/testing-equals-hash-code elm)
 
             (testing "form"
               (has-form expr '(:identifier R)))))
@@ -131,16 +142,26 @@
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :identifier [identifier]}
-                expr
-                (c/compile
-                 {:eval-context "Patient"}
-                 #elm/scope-property ["R" "identifier"])]
+                elm #elm/scope-property ["R" "identifier"]
+                expr (c/compile {:eval-context "Patient"} elm)]
 
             (testing "eval"
               (is (= identifier (coll/first (core/-eval expr nil nil {"R" entity})))))
 
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
+
+            (testing "attach-cache"
+              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+            (testing "patient count"
+              (is (nil? (core/-patient-count expr))))
+
+            (testing "resolve parameters"
+              (let [expr (c/resolve-params expr {})]
+                (has-form expr '(:identifier R))))
+
+            (ctu/testing-equals-hash-code elm)
 
             (testing "form"
               (has-form expr '(:identifier R))))))
@@ -154,16 +175,26 @@
                 entity
                 {:fhir/type :fhir/Patient :id "0"
                  :extension [extension]}
-                expr
-                (c/compile
-                 {:eval-context "Patient"}
-                 #elm/scope-property ["R" "extension"])]
+                elm #elm/scope-property ["R" "extension"]
+                expr (c/compile {:eval-context "Patient"} elm)]
 
             (testing "eval"
               (is (= extension (coll/first (core/-eval expr nil nil {"R" entity})))))
 
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
+
+            (testing "attach-cache"
+              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+            (testing "patient count"
+              (is (nil? (core/-patient-count expr))))
+
+            (testing "resolve parameters"
+              (let [expr (c/resolve-params expr {})]
+                (has-form expr '(:extension R))))
+
+            (ctu/testing-equals-hash-code elm)
 
             (testing "form"
               (has-form expr '(:extension R))))))
@@ -173,16 +204,26 @@
           (let [entity
                 {:fhir/type :fhir/Patient :id "0"
                  :gender #fhir/code"male"}
-                expr
-                (c/compile
-                 {:eval-context "Patient"}
-                 #elm/scope-property ["R" "gender"])]
+                elm #elm/scope-property ["R" "gender"]
+                expr (c/compile {:eval-context "Patient"} elm)]
 
             (testing "eval"
               (is (= #fhir/code"male" (core/-eval expr nil nil {"R" entity}))))
 
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
+
+            (testing "attach-cache"
+              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+            (testing "patient count"
+              (is (nil? (core/-patient-count expr))))
+
+            (testing "resolve parameters"
+              (let [expr (c/resolve-params expr {})]
+                (has-form expr '(:gender R))))
+
+            (ctu/testing-equals-hash-code elm)
 
             (testing "form"
               (has-form expr '(:gender R)))))
@@ -191,16 +232,26 @@
           (let [entity
                 {:fhir/type :fhir/Patient :id "0"
                  :gender #fhir/code"male"}
-                expr
-                (c/compile
-                 {:eval-context "Patient"}
-                 #elm/scope-property ["R" "gender"])]
+                elm #elm/scope-property ["R" "gender"]
+                expr (c/compile {:eval-context "Patient"} elm)]
 
             (testing "eval"
               (is (= #fhir/code"male" (core/-eval expr nil nil {"R" entity}))))
 
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
+
+            (testing "attach-cache"
+              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+            (testing "patient count"
+              (is (nil? (core/-patient-count expr))))
+
+            (testing "resolve parameters"
+              (let [expr (c/resolve-params expr {})]
+                (has-form expr '(:gender R))))
+
+            (ctu/testing-equals-hash-code elm)
 
             (testing "form"
               (has-form expr '(:gender R))))))
@@ -210,10 +261,8 @@
               (fn [x]
                 {:fhir/type :fhir/Patient :id "0"
                  :birthDate x})
-              expr
-              (c/compile
-               {:eval-context "Patient"}
-               #elm/scope-property ["R" "birthDate.value"])]
+              elm #elm/scope-property ["R" "birthDate.value"]
+              expr (c/compile {:eval-context "Patient"} elm)]
 
           (testing "eval"
             (are [birth-date res] (= res (core/-eval expr nil nil {"R" (entity birth-date)}))
@@ -225,6 +274,18 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
+          (testing "attach-cache"
+            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+          (testing "patient count"
+            (is (nil? (core/-patient-count expr))))
+
+          (testing "resolve parameters"
+            (let [expr (c/resolve-params expr {})]
+              (has-form expr '(:value (:birthDate R)))))
+
+          (ctu/testing-equals-hash-code elm)
+
           (testing "form"
             (has-form expr '(:value (:birthDate R))))))
 
@@ -233,16 +294,26 @@
           (let [entity
                 {:fhir/type :fhir/Observation :id "0"
                  :value "value-114318"}
-                expr
-                (c/compile
-                 {:eval-context "Patient"}
-                 #elm/scope-property ["R" "value"])]
+                elm #elm/scope-property ["R" "value"]
+                expr (c/compile {:eval-context "Patient"} elm)]
 
             (testing "eval"
               (is (= "value-114318" (core/-eval expr nil nil {"R" entity}))))
 
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
+
+            (testing "attach-cache"
+              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+            (testing "patient count"
+              (is (nil? (core/-patient-count expr))))
+
+            (testing "resolve parameters"
+              (let [expr (c/resolve-params expr {})]
+                (has-form expr '(:value R))))
+
+            (ctu/testing-equals-hash-code elm)
 
             (testing "form"
               (has-form expr '(:value R)))))
@@ -251,16 +322,26 @@
           (let [entity
                 {:fhir/type :fhir/Observation :id "0"
                  :value "value-114318"}
-                expr
-                (c/compile
-                 {:eval-context "Patient"}
-                 #elm/scope-property ["R" "value"])]
+                elm #elm/scope-property ["R" "value"]
+                expr (c/compile {:eval-context "Patient"} elm)]
 
             (testing "eval"
               (is (= "value-114318" (core/-eval expr nil nil {"R" entity}))))
 
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
+
+            (testing "attach-cache"
+              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+            (testing "patient count"
+              (is (nil? (core/-patient-count expr))))
+
+            (testing "resolve parameters"
+              (let [expr (c/resolve-params expr {})]
+                (has-form expr '(:value R))))
+
+            (ctu/testing-equals-hash-code elm)
 
             (testing "form"
               (has-form expr '(:value R))))))))
@@ -279,13 +360,31 @@
               source
               {:fhir/type :fhir/Patient :id "0"
                :identifier [identifier]}
-              expr (c/compile {:library library :eval-context "Patient"} elm)]
+              expr (c/compile {:library library :eval-context "Patient"} elm)
+              expr-def {:type "ExpressionDef"
+                        :context "Patient"
+                        :name "Patient"
+                        :expression source}]
 
           (testing "eval"
-            (is (= identifier (coll/first (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil)))))
+            (is (= identifier (coll/first (core/-eval expr {:expression-defs {"Patient" expr-def}} nil nil)))))
 
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
+
+          (testing "attach-cache"
+            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+          (testing "patient count"
+            (is (nil? (core/-patient-count expr))))
+
+          (testing "resolve expression references"
+            (let [expr (c/resolve-refs expr {"Patient" expr-def})]
+              (has-form expr (list :identifier source))))
+
+          (testing "resolve parameters"
+            (let [expr (c/resolve-params expr {})]
+              (has-form expr '(:identifier (expr-ref "Patient")))))
 
           (testing "form"
             (has-form expr '(:identifier (expr-ref "Patient"))))))
@@ -302,13 +401,31 @@
               source
               {:fhir/type :fhir/Patient :id "0"
                :identifier [identifier]}
-              expr (c/compile {:library library :eval-context "Patient"} elm)]
+              expr (c/compile {:library library :eval-context "Patient"} elm)
+              expr-def {:type "ExpressionDef"
+                        :context "Patient"
+                        :name "Patient"
+                        :expression source}]
 
           (testing "eval"
-            (is (= identifier (coll/first (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil)))))
+            (is (= identifier (coll/first (core/-eval expr {:expression-defs {"Patient" expr-def}} nil nil)))))
 
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
+
+          (testing "attach-cache"
+            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+          (testing "patient count"
+            (is (nil? (core/-patient-count expr))))
+
+          (testing "resolve expression references"
+            (let [expr (c/resolve-refs expr {"Patient" expr-def})]
+              (has-form expr (list :identifier source))))
+
+          (testing "resolve parameters"
+            (let [expr (c/resolve-params expr {})]
+              (has-form expr '(:identifier (expr-ref "Patient")))))
 
           (testing "form"
             (has-form expr '(:identifier (expr-ref "Patient")))))))
@@ -322,13 +439,31 @@
               source
               {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code"male"}
-              expr (c/compile {:library library :eval-context "Patient"} elm)]
+              expr (c/compile {:library library :eval-context "Patient"} elm)
+              expr-def {:type "ExpressionDef"
+                        :context "Patient"
+                        :name "Patient"
+                        :expression source}]
 
           (testing "eval"
-            (is (= #fhir/code"male" (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil))))
+            (is (= #fhir/code"male" (core/-eval expr {:expression-defs {"Patient" expr-def}} nil nil))))
 
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
+
+          (testing "attach-cache"
+            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+          (testing "patient count"
+            (is (nil? (core/-patient-count expr))))
+
+          (testing "resolve expression references"
+            (let [expr (c/resolve-refs expr {"Patient" expr-def})]
+              (has-form expr (list :gender source))))
+
+          (testing "resolve parameters"
+            (let [expr (c/resolve-params expr {})]
+              (has-form expr '(:gender (expr-ref "Patient")))))
 
           (testing "form"
             (has-form expr '(:gender (expr-ref "Patient"))))))
@@ -341,13 +476,31 @@
               source
               {:fhir/type :fhir/Patient :id "0"
                :gender #fhir/code"male"}
-              expr (c/compile {:library library :eval-context "Patient"} elm)]
+              expr (c/compile {:library library :eval-context "Patient"} elm)
+              expr-def {:type "ExpressionDef"
+                        :context "Patient"
+                        :name "Patient"
+                        :expression source}]
 
           (testing "eval"
-            (is (= #fhir/code"male" (core/-eval expr {:expression-defs {"Patient" {:expression source}}} nil nil))))
+            (is (= #fhir/code"male" (core/-eval expr {:expression-defs {"Patient" expr-def}} nil nil))))
 
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
+
+          (testing "attach-cache"
+            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+          (testing "patient count"
+            (is (nil? (core/-patient-count expr))))
+
+          (testing "resolve expression references"
+            (let [expr (c/resolve-refs expr {"Patient" expr-def})]
+              (has-form expr (list :gender source))))
+
+          (testing "resolve parameters"
+            (let [expr (c/resolve-params expr {})]
+              (has-form expr '(:gender (expr-ref "Patient")))))
 
           (testing "form"
             (has-form expr '(:gender (expr-ref "Patient")))))))
@@ -373,6 +526,24 @@
         (testing "expression is dynamic"
           (is (false? (core/-static expr))))
 
+        (testing "attach-cache"
+          (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+        (testing "patient count"
+          (is (nil? (core/-patient-count expr))))
+
+        (testing "resolve expression references"
+          (let [expr-def {:type "ExpressionDef"
+                          :context "Patient"
+                          :name "Patient"
+                          :expression (source #fhir/date"2023-05-07")}
+                expr (c/resolve-refs expr {"Patient" expr-def})]
+            (has-form expr (list :value (list :birthDate (source #fhir/date"2023-05-07"))))))
+
+        (testing "resolve parameters"
+          (let [expr (c/resolve-params expr {})]
+            (has-form expr '(:value (:birthDate (expr-ref "Patient"))))))
+
         (testing "form"
           (has-form expr '(:value (:birthDate (expr-ref "Patient")))))))
 
@@ -385,13 +556,31 @@
               source
               {:fhir/type :fhir/Observation :id "0"
                :value "value-114318"}
-              expr (c/compile {:library library :eval-context "Patient"} elm)]
+              expr (c/compile {:library library :eval-context "Patient"} elm)
+              expr-def {:type "ExpressionDef"
+                        :context "Patient"
+                        :name "Observation"
+                        :expression source}]
 
           (testing "eval"
-            (is (= "value-114318" (core/-eval expr {:expression-defs {"Observation" {:expression source}}} nil nil))))
+            (is (= "value-114318" (core/-eval expr {:expression-defs {"Observation" expr-def}} nil nil))))
 
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
+
+          (testing "attach-cache"
+            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+          (testing "patient count"
+            (is (nil? (core/-patient-count expr))))
+
+          (testing "resolve expression references"
+            (let [expr (c/resolve-refs expr {"Observation" expr-def})]
+              (has-form expr (list :value source))))
+
+          (testing "resolve parameters"
+            (let [expr (c/resolve-params expr {})]
+              (has-form expr '(:value (expr-ref "Observation")))))
 
           (testing "form"
             (has-form expr '(:value (expr-ref "Observation"))))))
@@ -404,13 +593,31 @@
               source
               {:fhir/type :fhir/Observation :id "0"
                :value "value-114318"}
-              expr (c/compile {:library library :eval-context "Patient"} elm)]
+              expr (c/compile {:library library :eval-context "Patient"} elm)
+              expr-def {:type "ExpressionDef"
+                        :context "Patient"
+                        :name "Observation"
+                        :expression source}]
 
           (testing "eval"
-            (is (= "value-114318" (core/-eval expr {:expression-defs {"Observation" {:expression source}}} nil nil))))
+            (is (= "value-114318" (core/-eval expr {:expression-defs {"Observation" expr-def}} nil nil))))
 
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
+
+          (testing "attach-cache"
+            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+          (testing "patient count"
+            (is (nil? (core/-patient-count expr))))
+
+          (testing "resolve expression references"
+            (let [expr (c/resolve-refs expr {"Observation" expr-def})]
+              (has-form expr (list :value source))))
+
+          (testing "resolve parameters"
+            (let [expr (c/resolve-params expr {})]
+              (has-form expr '(:value (expr-ref "Observation")))))
 
           (testing "form"
             (has-form expr '(:value (expr-ref "Observation")))))))

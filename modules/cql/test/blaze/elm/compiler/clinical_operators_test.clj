@@ -52,26 +52,36 @@
 (deftest compile-calculate-age-at-test
   (testing "Static"
     (are [elm res] (= res (core/-eval (c/compile {} elm) {:now ctu/now} nil nil))
-      #elm/calculate-age-at [#elm/date "2018" #elm/date "2019" "year"] 1
-      #elm/calculate-age-at [#elm/date "2018" #elm/date "2018" "year"] 0
-      #elm/calculate-age-at [#elm/date "2018" #elm/date "2019" "month"] nil
+      #elm/calculate-age-at [#elm/date"2018" #elm/date"2019" "year"] 1
+      #elm/calculate-age-at [#elm/date"2018" #elm/date"2018" "year"] 0
+      #elm/calculate-age-at [#elm/date"2018" #elm/date"2019" "month"] nil
 
-      #elm/calculate-age-at [#elm/date "2018-01" #elm/date "2019-02" "year"] 1
-      #elm/calculate-age-at [#elm/date "2018-01" #elm/date "2018-12" "year"] 0
-      #elm/calculate-age-at [#elm/date "2018-01" #elm/date "2018-12" "month"] 11
-      #elm/calculate-age-at [#elm/date "2018-01" #elm/date "2018-12" "day"] nil
+      #elm/calculate-age-at [#elm/date"2018-01" #elm/date"2019-02" "year"] 1
+      #elm/calculate-age-at [#elm/date"2018-01" #elm/date"2018-12" "year"] 0
+      #elm/calculate-age-at [#elm/date"2018-01" #elm/date"2018-12" "month"] 11
+      #elm/calculate-age-at [#elm/date"2018-01" #elm/date"2018-12" "day"] nil
 
-      #elm/calculate-age-at [#elm/date "2018-01-01" #elm/date "2019-02-02" "year"] 1
-      #elm/calculate-age-at [#elm/date "2018-01" #elm/date "2018-12-15" "year"] 0
-      #elm/calculate-age-at [#elm/date "2018-01-01" #elm/date "2018-12-02" "month"] 11
-      #elm/calculate-age-at [#elm/date "2018-01-01" #elm/date "2018-02-01" "day"] 31
+      #elm/calculate-age-at [#elm/date"2018-01-01" #elm/date"2019-02-02" "year"] 1
+      #elm/calculate-age-at [#elm/date"2018-01" #elm/date"2018-12-15" "year"] 0
+      #elm/calculate-age-at [#elm/date"2018-01-01" #elm/date"2018-12-02" "month"] 11
+      #elm/calculate-age-at [#elm/date"2018-01-01" #elm/date"2018-02-01" "day"] 31
 
       #elm/calculate-age-at [#elm/date-time"2018-01-01" #elm/date-time"2018-02-01" "day"] 31))
 
-  (ctu/testing-binary-null elm/calculate-age-at #elm/date "2018")
+  (ctu/testing-binary-null elm/calculate-age-at #elm/date"2018")
   (ctu/testing-binary-null elm/calculate-age-at #elm/date-time"2018-01-01")
 
-  (ctu/testing-binary-dynamic elm/calculate-age-at)
+  (ctu/testing-binary-precision-dynamic elm/calculate-age-at "year" "month" "day")
+
+  (ctu/testing-binary-precision-attach-cache elm/calculate-age-at "year" "month" "day")
+
+  (ctu/testing-binary-precision-patient-count elm/calculate-age-at "year" "month" "day")
+
+  (ctu/testing-binary-precision-resolve-refs elm/calculate-age-at "year" "month" "day")
+
+  (ctu/testing-binary-precision-resolve-params elm/calculate-age-at "year" "month" "day")
+
+  (ctu/testing-binary-precision-equals-hash-code elm/calculate-age-at "year" "month" "day")
 
   (ctu/testing-binary-precision-form elm/calculate-age-at "year" "month" "day"))
 

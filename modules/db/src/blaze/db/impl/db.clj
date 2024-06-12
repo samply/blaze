@@ -2,28 +2,18 @@
   "Primary Database Implementation"
   (:require
    [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.coll.core :refer [with-open-coll]]
    [blaze.db.impl.batch-db :as batch-db]
+   [blaze.db.impl.index.patient-last-change :as plc]
    [blaze.db.impl.index.system-stats :as system-stats]
    [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
    [blaze.db.kv :as kv])
   (:import
-   [clojure.lang IReduceInit Sequential]
    [java.io Writer]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
-
-(defmacro with-open-coll
-  "Like `clojure.core/with-open` but opens and closes the resources on every
-  reduce call to `coll`."
-  [bindings coll]
-  `(reify
-     Sequential
-     IReduceInit
-     (reduce [_ rf# init#]
-       (with-open ~bindings
-         (reduce rf# init# ~coll)))))
 
 (deftype Db [node kv-store basis-t t]
   p/Db
@@ -83,6 +73,13 @@
   (-compartment-resource-handles [_ compartment tid start-id]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-compartment-resource-handles batch-db compartment tid start-id)))
+
+  ;; ---- Patient-Compartment-Level Functions ---------------------------------
+
+  (-patient-compartment-last-change-t [_ patient-id]
+    (with-open [snapshot (kv/new-snapshot kv-store)
+                plci (kv/new-iterator snapshot :patient-last-change-index)]
+      (plc/last-change-t plci patient-id t)))
 
   ;; ---- Common Query Functions ----------------------------------------------
 

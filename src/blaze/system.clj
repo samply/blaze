@@ -163,9 +163,10 @@
     (-> (assoc-in config [:base-config :blaze.db/storage] (keyword key))
         (update :base-config (partial merge-with merge) (get storage (keyword key))))))
 
-(defn- conj-feature [config {:keys [name toggle]} enabled?]
+(defn- conj-feature [config {:keys [key name toggle]} enabled?]
   (update-in config [:blaze/admin-api :features] (fnil conj [])
-             {:name name :toggle toggle :enabled enabled?}))
+             {:key (clojure.core/name key) :name name :toggle toggle
+              :enabled enabled?}))
 
 (defn- merge-features
   "Merges feature config portions of enabled features into `base-config`."
@@ -185,7 +186,7 @@
 (defn init!
   [{level "LOG_LEVEL" :or {level "info"} :as env}]
   (log/info "Set log level to:" (str/lower-case level))
-  (log/set-level! (keyword (str/lower-case level)))
+  (log/set-min-level! (keyword (str/lower-case level)))
   (let [config (-> (read-blaze-edn)
                    (merge-storage env)
                    (merge-features env))

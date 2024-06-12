@@ -68,10 +68,18 @@
   Quantity
   (-static [_]
     true)
+  (-attach-cache [quantity _]
+    [quantity])
+  (-patient-count [_]
+    nil)
+  (-resolve-refs [quantity _]
+    quantity)
+  (-resolve-params [quantity _]
+    quantity)
   (-eval [quantity _ _ _]
     quantity)
   (-form [quantity]
-    `(~'quantity ~(.getValue quantity) ~(format-unit (.getUnit quantity)))))
+    `(~'quantity ~(p/to-decimal (.getValue quantity)) ~(format-unit (.getUnit quantity)))))
 
 (defprotocol QuantityDivide
   (quantity-divide [divisor quantity]))

@@ -2,9 +2,8 @@
   (:require
    [blaze.async.comp :as ac]
    [blaze.elm.compiler :as-alias c]
-   [blaze.elm.compiler.external-data :as ed]
-   [blaze.elm.compiler.external-data-spec]
    [blaze.elm.compiler.spec]
+   [blaze.elm.resource :as cr]
    [blaze.fhir.operation.evaluate-measure.cql :as cql]
    [blaze.fhir.operation.evaluate-measure.cql.spec]
    [blaze.fhir.spec]
@@ -13,7 +12,7 @@
 
 (s/fdef cql/evaluate-expression-1
   :args (s/cat :context ::cql/context
-               :subject (s/nilable ed/resource?)
+               :subject (s/nilable cr/resource?)
                :name string?
                :expression ::c/expression)
   :ret (s/or :result any? :anomaly ::anom/anomaly))
@@ -25,7 +24,7 @@
 
 (s/fdef cql/evaluate-individual-expression
   :args (s/cat :context ::cql/evaluate-expression-context
-               :subject ed/resource?
+               :subject cr/resource?
                :name string?)
   :ret ac/completable-future?)
 

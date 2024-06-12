@@ -8,6 +8,7 @@
    [blaze.coll.core :as coll]
    [blaze.elm.code :as code]
    [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.protocols :as p]
    [blaze.fhir.spec.type :as type]
    [clojure.string :as str])
@@ -41,26 +42,39 @@
    {}
    elements))
 
+(defn tuple [elements]
+  (reify-expr core/Expression
+    (-resolve-refs [_ expression-defs]
+      (tuple
+       (reduce-kv
+        (fn [r key value]
+          (assoc r key (core/-resolve-refs value expression-defs)))
+        {}
+        elements)))
+    (-resolve-params [_ parameters]
+      (tuple
+       (reduce-kv
+        (fn [r key value]
+          (assoc r key (core/-resolve-params value parameters)))
+        {}
+        elements)))
+    (-eval [_ context resource scope]
+      (reduce-kv
+       (fn [r key value]
+         (assoc r key (core/-eval value context resource scope)))
+       {}
+       elements))
+    (-form [_]
+      (reduce-kv
+       (fn [r key value]
+         (assoc r key (core/-form value)))
+       {}
+       elements))))
+
 (defmethod core/compile* :elm.compiler.type/tuple
   [context {elements :element}]
   (let [elements (compile-elements context elements)]
-    (if (every? core/static? (vals elements))
-      elements
-      (reify core/Expression
-        (-static [_]
-          false)
-        (-eval [_ context resource scope]
-          (reduce-kv
-           (fn [r key value]
-             (assoc r key (core/-eval value context resource scope)))
-           {}
-           elements))
-        (-form [_]
-          (reduce-kv
-           (fn [r key value]
-             (assoc r key (core/-form value)))
-           {}
-           elements))))))
+    (cond-> elements (some (comp not core/static?) (vals elements)) tuple)))
 
 ;; 2.2. Instance
 (defmethod core/compile* :elm.compiler.type/instance
@@ -77,46 +91,43 @@
   core/Expression
   (-static [_]
     false)
+  (-attach-cache [expr _]
+    [(fn [] [expr])])
+  (-patient-count [_]
+    nil)
+  (-resolve-refs [_ expression-defs]
+    (->SourcePropertyExpression (core/-resolve-refs source expression-defs) key))
+  (-resolve-params [_ parameters]
+    (->SourcePropertyExpression (core/-resolve-params source parameters) key))
   (-eval [_ context resource scope]
     (p/get (core/-eval source context resource scope) key))
   (-form [_]
     `(~key ~(core/-form source))))
 
-(defrecord SourcePropertyValueExpression [source key]
-  core/Expression
-  (-static [_]
-    false)
-  (-eval [_ context resource scope]
-    (type/value (p/get (core/-eval source context resource scope) key)))
-  (-form [_]
-    `(:value (~key ~(core/-form source)))))
+(defn- source-property-value-expr [source key]
+  (reify-expr core/Expression
+    (-resolve-refs [_ expression-defs]
+      (source-property-value-expr (core/-resolve-refs source expression-defs) key))
+    (-resolve-params [_ parameters]
+      (source-property-value-expr (core/-resolve-params source parameters) key))
+    (-eval [_ context resource scope]
+      (type/value (p/get (core/-eval source context resource scope) key)))
+    (-form [_]
+      `(:value (~key ~(core/-form source))))))
 
-(defrecord SingleScopePropertyExpression [key]
-  core/Expression
-  (-static [_]
-    false)
-  (-eval [_ _ _ value]
-    (p/get value key))
-  (-form [_]
-    `(~key ~'default)))
+(defn- scope-property-expr [scope-key key]
+  (reify-expr core/Expression
+    (-eval [_ _ _ scope]
+      (p/get (get scope scope-key) key))
+    (-form [_]
+      `(~key ~(symbol (name scope-key))))))
 
-(defrecord ScopePropertyExpression [scope-key key]
-  core/Expression
-  (-static [_]
-    false)
-  (-eval [_ _ _ scope]
-    (p/get (get scope scope-key) key))
-  (-form [_]
-    `(~key ~(symbol (name scope-key)))))
-
-(defrecord ScopePropertyValueExpression [scope-key key]
-  core/Expression
-  (-static [_]
-    false)
-  (-eval [_ _ _ scope]
-    (type/value (p/get (get scope scope-key) key)))
-  (-form [_]
-    `(:value (~key ~(symbol (name scope-key))))))
+(defn- scope-property-value-expr [scope-key key]
+  (reify-expr core/Expression
+    (-eval [_ _ _ scope]
+      (type/value (p/get (get scope scope-key) key)))
+    (-form [_]
+      `(:value (~key ~(symbol (name scope-key)))))))
 
 (defn- path->key [path]
   (let [[first-part more] (str/split path #"\." 2)]
@@ -132,10 +143,10 @@
     (cond
       source
       (if value?
-        (->SourcePropertyValueExpression (core/compile* context source) key)
+        (source-property-value-expr (core/compile* context source) key)
         (->SourcePropertyExpression (core/compile* context source) key))
 
       scope
       (if value?
-        (->ScopePropertyValueExpression scope key)
-        (->ScopePropertyExpression scope key)))))
+        (scope-property-value-expr scope key)
+        (scope-property-expr scope key)))))
