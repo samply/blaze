@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.27.1
+
+### Enhancements
+
+* Enable FHIR Search by _tag ([#1801](https://github.com/samply/blaze/issues/1801))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/92?closed=1).
+
 ## v0.27.0
 
 ### New Features
