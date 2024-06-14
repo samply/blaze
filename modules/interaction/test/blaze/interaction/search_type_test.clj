@@ -1445,6 +1445,43 @@
               [:meta :profile 0] := #fhir/canonical"profile-uri-151511"
               :id := "1"))))))
 
+  (testing "_tag search"
+    (with-handler [handler]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put
+         {:fhir/type :fhir/Patient :id "1"
+          :meta #fhir/Meta{:tag [#fhir/Coding{:code #fhir/code"code-085510"}]}}]]]
+
+      (doseq [handling ["strict" "lenient"]]
+        (let [{:keys [status] {[first-entry] :entry :as body} :body}
+              @(handler
+                {:headers {"prefer" (str "handling=" handling)}
+                 :params {"_tag" "code-085510"}})]
+
+          (is (= 200 status))
+
+          (testing "the body contains a bundle"
+            (is (= :fhir/Bundle (:fhir/type body))))
+
+          (testing "the bundle type is searchset"
+            (is (= #fhir/code"searchset" (:type body))))
+
+          (testing "the total count is 1"
+            (is (= #fhir/unsignedInt 1 (:total body))))
+
+          (testing "the bundle contains one entry"
+            (is (= 1 (count (:entry body)))))
+
+          (testing "the entry has the right fullUrl"
+            (is (= (str base-url context-path "/Patient/1")
+                   (:fullUrl first-entry))))
+
+          (testing "the entry has the right resource"
+            (given (:resource first-entry)
+              :fhir/type := :fhir/Patient
+              [:meta :tag 0] := #fhir/Coding{:code #fhir/code"code-085510"}
+              :id := "1"))))))
+
   (testing "_profile:below search"
     (with-handler [handler]
       [[[:put
