@@ -15,7 +15,7 @@
 (defn- remove-query-param? [[param-key]]
   (let [[code] (str/split param-key #":" 2)]
     (and (str/starts-with? code "_")
-         (not (#{"_id" "_list" "_profile" "_lastUpdated" "_has"} code)))))
+         (not (#{"_id" "_list" "_profile" "_tag" "_lastUpdated" "_has"} code)))))
 
 (defn- query-param->clauses
   "Takes a query param with possible multiple values and returns possible

@@ -832,6 +832,9 @@ jobs:
     - name: Cancel Async Query
       run: .github/scripts/cancel-async.sh
 
+    - name: Search _tag
+      run: .github/scripts/search-tag.sh
+
     - name: Prometheus Metrics
       run: .github/scripts/test-metrics.sh
       if: ${{ matrix.variant == 'standalone' }}
