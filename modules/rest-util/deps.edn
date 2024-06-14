@@ -23,7 +23,7 @@
    :exclusions [com.cognitect/transit-clj]}
 
   ring/ring-core
-  {:mvn/version "1.12.1"
+  {:mvn/version "1.12.2"
    :exclusions
    [org.apache.commons/commons-fileupload2-core
     crypto-equality/crypto-equality
