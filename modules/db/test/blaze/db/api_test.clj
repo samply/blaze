@@ -4644,6 +4644,22 @@
           [0 :id] := "0"
           [1 :id] := "1")))))
 
+(deftest type-query-tag-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"
+             :meta #fhir/Meta{:tag [#fhir/Coding{:code #fhir/code"code-084033"}]}}]
+      [:put {:fhir/type :fhir/Patient :id "1"}]
+      [:put {:fhir/type :fhir/Patient :id "2"
+             :meta #fhir/Meta{:tag [#fhir/Coding{:code #fhir/code"code-084517"}]}}]]]
+
+    (given (pull-type-query node "Patient" [["_tag" "code-084033"]])
+      count := 1
+      [0 :id] := "0")
+
+    (given (pull-type-query node "Patient" [["_tag" "code-084517"]])
+      count := 1
+      [0 :id] := "2")))
+
 (deftest compile-type-query-test
   (testing "a node with one patient"
     (with-system-data [{:blaze.db/keys [node]} config]
