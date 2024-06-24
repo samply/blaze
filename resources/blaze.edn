@@ -327,7 +327,7 @@
 
   :blaze.db.node.tx-indexer/duration-seconds {}
 
-  :blaze.db/cache-collector
+  :blaze/cache-collector
   {:caches
    {"tx-cache" #blaze/ref :blaze.db.main/tx-cache
     "resource-cache" #blaze/ref :blaze.db/resource-cache}}

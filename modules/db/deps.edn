@@ -10,6 +10,9 @@
   blaze/byte-string
   {:local/root "../byte-string"}
 
+  blaze/cache-collector
+  {:local/root "../cache-collector"}
+
   blaze/coll
   {:local/root "../coll"}
 

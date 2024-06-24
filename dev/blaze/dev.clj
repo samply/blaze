@@ -3,7 +3,7 @@
     [blaze.byte-string :as bs]
     [blaze.db.api :as d]
     [blaze.db.api-spec]
-    [blaze.db.cache-collector.protocols :as ccp]
+    [blaze.cache-collector.protocols :as ccp]
     [blaze.db.resource-cache :as resource-cache]
     [blaze.db.resource-store :as rs]
     [blaze.db.tx-log :as tx-log]
