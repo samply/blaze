@@ -2,7 +2,7 @@
   "Profiling namespace without test dependencies."
   (:require
     [blaze.system :as system]
-    [blaze.db.cache-collector :as cc]
+    [blaze.cache-collector :as cc]
     [blaze.db.kv.rocksdb :as rocksdb]
     [blaze.db.resource-cache :as resource-cache]
     [clojure.tools.namespace.repl :refer [refresh]]
