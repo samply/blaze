@@ -27,7 +27,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -623,6 +623,19 @@
     (testing "delete"
       (kv/write! db [[:delete :default (ba 0x00)]])
       (is (nil? (kv/get db :default (ba 0x00)))))))
+
+(deftest estimate-num-keys-test
+  (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
+    (is (zero? (kv/estimate-num-keys db :default)))
+
+    (given (kv/estimate-num-keys db :foo)
+      ::anom/category := ::anom/not-found
+      ::anom/message := "Column family `foo` not found."))
+
+  (with-system-data [{db ::kv/rocksdb} (config (new-temp-dir!))]
+    [[:default (ba 0x00) (ba 0x10)]]
+
+    (is (= 1 (kv/estimate-num-keys db :default)))))
 
 (deftest path-test
   (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]

@@ -15,13 +15,14 @@
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
+   [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
    [java.lang AutoCloseable]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -575,6 +576,19 @@
     (testing "delete"
       (kv/write! kv-store [[:delete :default (ba 0x00)]])
       (is (nil? (kv/get kv-store :default (ba 0x00)))))))
+
+(deftest estimate-num-keys-test
+  (with-system [{kv-store ::kv/mem} config]
+    (is (zero? (kv/estimate-num-keys kv-store :default)))
+
+    (given (kv/estimate-num-keys kv-store :foo)
+      ::anom/category := ::anom/not-found
+      ::anom/message := "Column family `foo` not found."))
+
+  (with-system-data [{kv-store ::kv/mem} config]
+    [[:default (ba 0x00) (ba 0x10)]]
+
+    (is (= 1 (kv/estimate-num-keys kv-store :default)))))
 
 (deftest init-component-test
   (is (kv/store? (ig/init-key ::kv/mem {}))))

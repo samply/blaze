@@ -4,7 +4,8 @@
    [blaze.coll.spec :as cs]
    [blaze.db.kv :as kv]
    [blaze.db.kv.spec]
-   [clojure.spec.alpha :as s]))
+   [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]))
 
 (s/fdef kv/valid?
   :args (s/cat :iter ::kv/iterator)
@@ -79,3 +80,7 @@
 (s/fdef kv/write!
   :args (s/cat :kv-store :blaze.db/kv-store
                :entries (cs/coll-of ::kv/write-entry)))
+
+(s/fdef kv/estimate-num-keys
+  :args (s/cat :kv-store :blaze.db/kv-store :column-family simple-keyword?)
+  :ret (s/or :estimate-num-keys nat-int? :anomaly ::anom/anomaly))

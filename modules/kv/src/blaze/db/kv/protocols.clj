@@ -43,4 +43,6 @@
 
   (-delete [store entries])
 
-  (-write [store entries]))
+  (-write [store entries])
+
+  (-estimate-num-keys [store column-family]))
