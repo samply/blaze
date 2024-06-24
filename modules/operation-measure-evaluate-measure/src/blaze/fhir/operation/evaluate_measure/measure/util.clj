@@ -30,10 +30,10 @@
       expression)))
 
 (defn list-reference [list-id]
-  (type/map->Reference {:reference (str "List/" list-id)}))
+  (type/reference {:reference (str "List/" list-id)}))
 
 (defn- resource-reference [{:keys [id] :as resource}]
-  (type/map->Reference {:reference (str (name (type/type resource)) "/" id)}))
+  (type/reference {:reference (str (name (type/type resource)) "/" id)}))
 
 (defn population-tx-ops [list-id handles]
   [[:create

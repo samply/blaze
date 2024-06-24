@@ -26,8 +26,8 @@
               [{:fhir/type :fhir.Bundle/entry
                 :resource
                 {:fhir/type :fhir/Patient :id "id-220129"
-                 :meta (type/map->Meta {:versionId #fhir/id"1"
-                                        :lastUpdated Instant/EPOCH})}
+                 :meta (type/meta {:versionId #fhir/id"1"
+                                   :lastUpdated Instant/EPOCH})}
                 :request
                 {:fhir/type :fhir.Bundle.entry/request
                  :method #fhir/code"POST"
@@ -41,8 +41,8 @@
               [{:fhir/type :fhir.Bundle/entry
                 :resource
                 {:fhir/type :fhir/Patient :id "id-220200"
-                 :meta (type/map->Meta {:versionId #fhir/id"1"
-                                        :lastUpdated Instant/EPOCH})}
+                 :meta (type/meta {:versionId #fhir/id"1"
+                                   :lastUpdated Instant/EPOCH})}
                 :request
                 {:fhir/type :fhir.Bundle.entry/request
                  :method #fhir/code"POST"
@@ -59,8 +59,8 @@
                 [{:fhir/type :fhir.Bundle/entry
                   :resource
                   {:fhir/type :fhir/Patient :id "id-220200"
-                   :meta (type/map->Meta {:versionId #fhir/id"1"
-                                          :lastUpdated Instant/EPOCH})}
+                   :meta (type/meta {:versionId #fhir/id"1"
+                                     :lastUpdated Instant/EPOCH})}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
                    :method #fhir/code"POST"
@@ -75,8 +75,8 @@
                 [{:fhir/type :fhir.Bundle/entry
                   :resource
                   {:fhir/type :fhir/Patient :id "id-220200"
-                   :meta (type/map->Meta {:versionId #fhir/id"1"
-                                          :lastUpdated Instant/EPOCH})}
+                   :meta (type/meta {:versionId #fhir/id"1"
+                                     :lastUpdated Instant/EPOCH})}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
                    :method #fhir/code"POST"
@@ -91,8 +91,8 @@
               [{:fhir/type :fhir.Bundle/entry
                 :resource
                 {:fhir/type :fhir/Patient :id "id-214728"
-                 :meta (type/map->Meta {:versionId #fhir/id"1"
-                                        :lastUpdated Instant/EPOCH})}
+                 :meta (type/meta {:versionId #fhir/id"1"
+                                   :lastUpdated Instant/EPOCH})}
                 :request
                 {:fhir/type :fhir.Bundle.entry/request
                  :method #fhir/code"PUT"
@@ -106,8 +106,8 @@
                 [{:fhir/type :fhir.Bundle/entry
                   :resource
                   {:fhir/type :fhir/Patient :id "id-214728"
-                   :meta (type/map->Meta {:versionId #fhir/id"1"
-                                          :lastUpdated Instant/EPOCH})}
+                   :meta (type/meta {:versionId #fhir/id"1"
+                                     :lastUpdated Instant/EPOCH})}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request
                    :method #fhir/code"PUT"
@@ -124,8 +124,8 @@
               [{:fhir/type :fhir.Bundle/entry
                 :resource
                 {:fhir/type :fhir/Patient :id "id-214728"
-                 :meta (type/map->Meta {:versionId #fhir/id"1"
-                                        :lastUpdated Instant/EPOCH})}
+                 :meta (type/meta {:versionId #fhir/id"1"
+                                   :lastUpdated Instant/EPOCH})}
                 :request
                 {:fhir/type :fhir.Bundle.entry/request
                  :method #fhir/code"PUT"
@@ -158,8 +158,8 @@
                 [{:fhir/type :fhir.Bundle/entry
                   :resource
                   {:fhir/type :fhir/Patient :id "0"
-                   :meta (type/map->Meta {:versionId #fhir/id"1"
-                                          :lastUpdated Instant/EPOCH})
+                   :meta (type/meta {:versionId #fhir/id"1"
+                                     :lastUpdated Instant/EPOCH})
                    :gender #fhir/code"male"}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request

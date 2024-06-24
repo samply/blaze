@@ -3532,7 +3532,7 @@
         #fhir/Quantity{}
 
         {:value 1M}
-        #fhir/Quantity{:value 1M}
+        #fhir/Quantity{:value #fhir/decimal 1M}
 
         {:value "1"}
         ::s2/invalid)))
@@ -3552,7 +3552,7 @@
         #fhir/Quantity{:extension [#fhir/Extension{} #fhir/Extension{}]}
         {:extension [{} {}]}
 
-        #fhir/Quantity{:value 1M}
+        #fhir/Quantity{:value #fhir/decimal 1M}
         {:value 1}
 
         #fhir/Quantity{:comparator #fhir/code"code-153342"}
@@ -3566,6 +3566,83 @@
 
         #fhir/Quantity{:code #fhir/code"code-153427"}
         {:code "code-153427"}))))
+
+(deftest ratio-test
+  (testing "FHIR spec"
+    (testing "valid"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/ratio)]
+          (s2/valid? :fhir/Ratio x))))
+
+    (testing "invalid"
+      (are [x] (not (s2/valid? :fhir/Ratio x))
+        #fhir/Ratio{:numerator "1"})))
+
+  (testing "transforming"
+    (testing "JSON"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/ratio)]
+          (= (->> x
+                  fhir-spec/unform-json
+                  fhir-spec/parse-json
+                  (s2/conform :fhir.json/Ratio))
+             x))))
+
+    (testing "XML"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/ratio)]
+          (= (->> x
+                  fhir-spec/unform-xml
+                  (s2/conform :fhir.xml/Ratio))
+             x))))
+
+    (testing "CBOR"
+      (satisfies-prop 1000
+        (prop/for-all [x (fg/ratio)]
+          (= (->> x
+                  fhir-spec/unform-cbor
+                  fhir-spec/parse-cbor
+                  (s2/conform :fhir.cbor/Ratio))
+             x)))))
+
+  (testing "conforming"
+    (testing "JSON"
+      (are [json fhir] (= fhir (s2/conform :fhir.json/Ratio json))
+        {}
+        #fhir/Ratio{}
+
+        {:id "id-151304"}
+        #fhir/Ratio{:id "id-151304"}
+
+        {:extension [{}]}
+        #fhir/Ratio{:extension [#fhir/Extension{}]}
+
+        {:numerator {:value 1M}}
+        #fhir/Ratio{:numerator #fhir/Quantity{:value #fhir/decimal 1M}}
+
+        {:numerator "foo"}
+        ::s2/invalid)))
+
+  (testing "unforming"
+    (testing "JSON"
+      (are [fhir json] (= json (fhir-spec/parse-json (fhir-spec/unform-json fhir)))
+        #fhir/Ratio{}
+        {}
+
+        #fhir/Ratio{:id "id-134428"}
+        {:id "id-134428"}
+
+        #fhir/Ratio{:extension [#fhir/Extension{}]}
+        {:extension [{}]}
+
+        #fhir/Ratio{:extension [#fhir/Extension{} #fhir/Extension{}]}
+        {:extension [{} {}]}
+
+        #fhir/Ratio{:numerator #fhir/Quantity{:value #fhir/decimal 1M}}
+        {:numerator {:value 1}}
+
+        #fhir/Ratio{:denominator #fhir/Quantity{:value #fhir/decimal 1M}}
+        {:denominator {:value 1}}))))
 
 (deftest period-test
   (testing "FHIR spec"

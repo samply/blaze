@@ -581,7 +581,7 @@
                            [#fhir/Coding
                              {:system #fhir/uri"system-192253"
                               :code #fhir/code"code-192300"}]}
-                         :subject (type/map->Reference {:reference (str "Patient/" pat-id)})}]))
+                         :subject (type/reference {:reference (str "Patient/" pat-id)})}]))
            (range 120)))
         (mapv (range 100)))
 

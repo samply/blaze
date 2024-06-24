@@ -60,7 +60,7 @@
     :id "1"
     :url #fhir/uri"0"
     :content
-    [(type/map->Attachment
+    [(type/attachment
       {:contentType #fhir/code"text/cql"
        :data (type/->Base64Binary (b64-encode query))})]}
    :request

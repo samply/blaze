@@ -22,16 +22,16 @@
   "https://samply.github.io/blaze/fhir/CodeSystem/JobOutput")
 
 (defn- mk-status-reason [reason]
-  (type/map->CodeableConcept
+  (type/codeable-concept
    {:coding
-    [(type/map->Coding
+    [(type/coding
       {:system (type/uri status-reason-url)
        :code (type/code reason)})]}))
 
 (defn- mk-sub-status [system-url code]
-  (type/map->CodeableConcept
+  (type/codeable-concept
    {:coding
-    [(type/map->Coding
+    [(type/coding
       {:system (type/uri system-url)
        :code (type/code code)})]}))
 
@@ -111,9 +111,9 @@
 
 (defn task-output [system code value]
   {:fhir/type :fhir.Task/output
-   :type (type/map->CodeableConcept
+   :type (type/codeable-concept
           {:coding
-           [(type/map->Coding
+           [(type/coding
              {:system (type/uri system)
               :code (type/code code)})]})
    :value value})

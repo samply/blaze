@@ -438,8 +438,8 @@
                 [{:fhir/type :fhir.Bundle/entry
                   :resource
                   {:fhir/type :fhir/Patient :id "0"
-                   :meta (type/map->Meta {:versionId #fhir/id"1"
-                                          :lastUpdated Instant/EPOCH})
+                   :meta (type/meta {:versionId #fhir/id"1"
+                                     :lastUpdated Instant/EPOCH})
                    :gender #fhir/code"female"}
                   :request
                   {:fhir/type :fhir.Bundle.entry/request

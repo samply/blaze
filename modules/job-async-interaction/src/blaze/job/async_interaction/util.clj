@@ -15,15 +15,15 @@
 
 (defn request-bundle-input [reference]
   {:fhir/type :fhir.Task/input
-   :type (type/map->CodeableConcept
+   :type (type/codeable-concept
           {:coding
-           [(type/map->Coding
+           [(type/coding
              {:system (type/uri parameter-uri)
               :code #fhir/code"bundle"})]})
-   :value (type/map->Reference {:reference reference})})
+   :value (type/reference {:reference reference})})
 
 (defn processing-duration [start]
-  (type/map->Quantity
+  (type/quantity
    {:value (type/decimal (BigDecimal/valueOf (- (System/currentTimeMillis) start) 3))
     :unit #fhir/string"s"
     :system #fhir/uri"http://unitsofmeasure.org"

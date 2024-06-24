@@ -175,6 +175,34 @@
       nil
       #system/date-time"2020"))
 
+  (testing "date"
+    (testing "year"
+      (are [year date] (= date (system/date year))
+        1000 #system/date"1000"
+        2024 #system/date"2024"
+        9999 #system/date"9999")
+
+      (given-thrown (system/date -1)
+        :message := "Invalid value for Year (valid values 1 - 9999): -1"))
+
+    (testing "year-month"
+      (are [year month date] (= date (system/date year month))
+        1000 1 #system/date"1000-01"
+        2024 6 #system/date"2024-06"
+        9999 12 #system/date"9999-12")
+
+      (given-thrown (system/date 2024 0)
+        :message := "Invalid value for MonthOfYear (valid values 1 - 12): 0"))
+
+    (testing "year-month-day"
+      (are [year month day date] (= date (system/date year month day))
+        1000 1 1 #system/date"1000-01-01"
+        2024 6 15 #system/date"2024-06-15"
+        9999 12 31 #system/date"9999-12-31")
+
+      (given-thrown (system/date 2023 2 29)
+        :message := "Invalid date 'February 29' as '2023' is not a leap year")))
+
   (testing "system equals"
     (testing "same precision"
       (testing "within date"
