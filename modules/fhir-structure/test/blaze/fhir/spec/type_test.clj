@@ -1986,6 +1986,10 @@
       #fhir/Attachment{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
       #fhir/Attachment{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}))
 
+  (testing "primary/secondary content"
+    (is (true? (p/-has-primary-content #fhir/Attachment{})))
+    (is (false? (p/-has-secondary-content #fhir/Attachment{}))))
+
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
       #fhir/Attachment{}
@@ -2062,6 +2066,10 @@
         #fhir/Extension{:url "foo" :value "bar"}
         #fhir/Extension{:url "foo" :value "bar"})))
 
+  (testing "primary/secondary content"
+    (is (true? (p/-has-primary-content #fhir/Extension{})))
+    (is (false? (p/-has-secondary-content #fhir/Extension{}))))
+
   (testing "to-json"
     (are [code json] (= json (gen-json-string code))
       #fhir/Extension{} "{}"
@@ -2125,6 +2133,10 @@
         (prop/for-all [x (fg/coding :extension (gen/vector string-extension-gen 1))]
           (not-interned? x (recreate type/coding x))))))
 
+  (testing "primary/secondary content"
+    (is (true? (p/-has-primary-content #fhir/Coding{})))
+    (is (false? (p/-has-secondary-content #fhir/Coding{}))))
+
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
       #fhir/Coding{}
@@ -2176,6 +2188,10 @@
       (satisfies-prop 100
         (prop/for-all [x (fg/codeable-concept :extension (gen/vector string-extension-gen 1))]
           (not-interned? x (recreate type/codeable-concept x))))))
+
+  (testing "primary/secondary content"
+    (is (true? (p/-has-primary-content #fhir/CodeableConcept{})))
+    (is (false? (p/-has-secondary-content #fhir/CodeableConcept{}))))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -2235,6 +2251,10 @@
       #fhir/Quantity{:code #fhir/code"foo"}
       #fhir/Quantity{:code #fhir/code"foo"}))
 
+  (testing "primary/secondary content"
+    (is (true? (p/-has-primary-content #fhir/Quantity{})))
+    (is (false? (p/-has-secondary-content #fhir/Quantity{}))))
+
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
       #fhir/Quantity{}
@@ -2246,7 +2266,7 @@
       #fhir/Quantity{:extension [#fhir/Extension{}]}
       "4f5028ac"
 
-      #fhir/Quantity{:value 1M}
+      #fhir/Quantity{:value #fhir/decimal 1M}
       "4adf97ab"
 
       #fhir/Quantity{:comparator #fhir/code"comparator-153342"}
@@ -2271,9 +2291,87 @@
       #fhir/Quantity{} "#fhir/Quantity{}"
       #fhir/Quantity{:id "212329"} "#fhir/Quantity{:id \"212329\"}")))
 
+(deftest ratio-test
+  (testing "type"
+    (is (= :fhir/Ratio (type/type #fhir/Ratio{}))))
+
+  (testing "interned"
+    (are [x y] (not-interned? x y)
+      #fhir/Ratio{:id "foo"}
+      #fhir/Ratio{:id "foo"}
+
+      #fhir/Ratio{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/Ratio{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+
+      #fhir/Ratio{:numerator #fhir/Quantity{:value #fhir/decimal 1M}}
+      #fhir/Ratio{:numerator #fhir/Quantity{:value #fhir/decimal 1M}}
+
+      #fhir/Ratio{:denominator #fhir/Quantity{:value #fhir/decimal 1M}}
+      #fhir/Ratio{:denominator #fhir/Quantity{:value #fhir/decimal 1M}})
+
+    (are [x y] (interned? x y)
+      #fhir/Ratio{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/Ratio{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+
+      #fhir/Ratio{:numerator #fhir/Quantity{:code #fhir/code"foo"}}
+      #fhir/Ratio{:numerator #fhir/Quantity{:code #fhir/code"foo"}}
+
+      #fhir/Ratio{:denominator #fhir/Quantity{:code #fhir/code"foo"}}
+      #fhir/Ratio{:denominator #fhir/Quantity{:code #fhir/code"foo"}}))
+
+  (testing "primary/secondary content"
+    (is (true? (p/-has-primary-content #fhir/Ratio{})))
+    (is (false? (p/-has-secondary-content #fhir/Ratio{}))))
+
+  (testing "hash-into"
+    (are [x hex] (= hex (murmur3 x))
+      #fhir/Ratio{}
+      "d271c07f"
+
+      #fhir/Ratio{:id "id-130710"}
+      "e3c0ee3c"
+
+      #fhir/Ratio{:extension [#fhir/Extension{}]}
+      "23473d24"
+
+      #fhir/Ratio{:numerator #fhir/Quantity{:value #fhir/decimal 1M}}
+      "fbf83a67"
+
+      #fhir/Ratio{:denominator #fhir/Quantity{:value #fhir/decimal 1M}}
+      "7f2075fb"))
+
+  (testing "references"
+    (are [x refs] (= refs (type/references x))
+      #fhir/Ratio{}
+      []))
+
+  (testing "print"
+    (are [v s] (= s (pr-str v))
+      #fhir/Ratio{} "#fhir/Ratio{}"
+      #fhir/Ratio{:id "212329"} "#fhir/Ratio{:id \"212329\"}")))
+
 (deftest period-test
   (testing "type"
     (is (= :fhir/Period (type/type #fhir/Period{}))))
+
+  (testing "interned"
+    (are [x y] (not-interned? x y)
+      #fhir/Period{:id "foo"}
+      #fhir/Period{:id "foo"}
+
+      #fhir/Period{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+      #fhir/Period{:extension [#fhir/Extension{:url "foo" :value "bar"}]}
+
+      #fhir/Period{:start #fhir/dateTime"2020"}
+      #fhir/Period{:start #fhir/dateTime"2020"})
+
+    (are [x y] (interned? x y)
+      #fhir/Period{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}
+      #fhir/Period{:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]}))
+
+  (testing "primary/secondary content"
+    (is (true? (p/-has-primary-content #fhir/Period{})))
+    (is (false? (p/-has-secondary-content #fhir/Period{}))))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -2323,6 +2421,10 @@
 
       #fhir/Identifier{:use #fhir/code"foo"}
       #fhir/Identifier{:use #fhir/code"foo"}))
+
+  (testing "primary/secondary content"
+    (is (true? (p/-has-primary-content #fhir/Identifier{})))
+    (is (false? (p/-has-secondary-content #fhir/Identifier{}))))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -2387,6 +2489,10 @@
 
       #fhir/HumanName{:use #fhir/code"foo"}
       #fhir/HumanName{:use #fhir/code"foo"}))
+
+  (testing "primary/secondary content"
+    (is (true? (p/-has-primary-content #fhir/HumanName{})))
+    (is (false? (p/-has-secondary-content #fhir/HumanName{}))))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -2463,6 +2569,10 @@
 
       #fhir/Address{:type #fhir/code"foo"}
       #fhir/Address{:type #fhir/code"foo"}))
+
+  (testing "primary/secondary content"
+    (is (true? (p/-has-primary-content #fhir/Address{})))
+    (is (false? (p/-has-secondary-content #fhir/Address{}))))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -2545,6 +2655,10 @@
 
       #fhir/Reference{:type #fhir/code"foo"}
       #fhir/Reference{:type #fhir/code"foo"}))
+
+  (testing "primary/secondary content"
+    (is (true? (p/-has-primary-content #fhir/Reference{})))
+    (is (false? (p/-has-secondary-content #fhir/Reference{}))))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
@@ -2649,6 +2763,10 @@
       #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}]}
       #fhir/Meta{:tag [#fhir/Coding{:system #fhir/uri"foo" :code #fhir/code"bar"}]}))
 
+  (testing "primary/secondary content"
+    (is (true? (p/-has-primary-content #fhir/Meta{})))
+    (is (false? (p/-has-secondary-content #fhir/Meta{}))))
+
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))
       #fhir/Meta{}
@@ -2717,6 +2835,10 @@
 
       #fhir/BundleEntrySearch{:mode #fhir/code"match"}
       #fhir/BundleEntrySearch{:mode #fhir/code"match"}))
+
+  (testing "primary/secondary content"
+    (is (true? (p/-has-primary-content #fhir/BundleEntrySearch{})))
+    (is (false? (p/-has-secondary-content #fhir/BundleEntrySearch{}))))
 
   (testing "hash-into"
     (are [x hex] (= hex (murmur3 x))

@@ -61,7 +61,7 @@
   @(-> (fhir-client/update
         base-uri
         {:fhir/type :fhir/Observation :id "0"
-         :subject (type/map->Reference {:reference (str "Patient/" (random-uuid))})}
+         :subject (type/reference {:reference (str "Patient/" (random-uuid))})}
         context)
        (ac/exceptionally (constantly nil))))
 

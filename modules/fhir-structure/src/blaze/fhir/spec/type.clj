@@ -1045,6 +1045,11 @@
   :hash-num 40
   :interned (and (nil? id) (p/-interned extension) (nil? value)))
 
+(declare ratio)
+
+(def-complex-type Ratio [^String id extension numerator denominator]
+  :hash-num 48)
+
 (declare period)
 
 (def-complex-type Period [^String id extension ^:primitive start ^:primitive end]

@@ -499,8 +499,8 @@
                  ::reitit/match patient-match
                  :headers {"if-match" if-match}
                  :body {:fhir/type :fhir/Patient :id "0"
-                        :meta (type/map->Meta {:versionId #fhir/id"1"
-                                               :lastUpdated Instant/EPOCH})
+                        :meta (type/meta {:versionId #fhir/id"1"
+                                          :lastUpdated Instant/EPOCH})
                         :birthDate #fhir/date"2020"}})]
 
           (testing "Returns 200"
@@ -541,8 +541,8 @@
                      ::reitit/match patient-match
                      :headers {"if-match" if-match}
                      :body {:fhir/type :fhir/Patient :id "0"
-                            :meta (type/map->Meta {:versionId #fhir/id"1"
-                                                   :lastUpdated Instant/EPOCH})
+                            :meta (type/meta {:versionId #fhir/id"1"
+                                              :lastUpdated Instant/EPOCH})
                             :birthDate #fhir/date"2020"}})]
 
               (testing "Returns 200"

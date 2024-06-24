@@ -143,7 +143,7 @@
   (comp type/integer inc type/value))
 
 (defn- job-number-identifier [job-number]
-  (type/map->Identifier
+  (type/identifier
    {:use #fhir/code"official"
     :system (type/uri job-util/job-number-url)
     :value (str job-number)}))

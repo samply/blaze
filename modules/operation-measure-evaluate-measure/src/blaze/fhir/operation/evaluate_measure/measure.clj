@@ -320,7 +320,7 @@
   (type/extension
    {:url "https://samply.github.io/blaze/fhir/StructureDefinition/eval-duration"
     :value
-    (type/map->Quantity
+    (type/quantity
      {:code #fhir/code"s"
       :system #fhir/uri"http://unitsofmeasure.org"
       :unit #fhir/string"s"
@@ -344,12 +344,12 @@
     :measure (type/canonical (canonical context measure))
     :date now
     :period
-    (type/map->Period
+    (type/period
      {:start (type/dateTime (str start))
       :end (type/dateTime (str end))})}
 
     subject-handle
-    (assoc :subject (type/map->Reference {:reference (local-ref subject-handle)}))
+    (assoc :subject (type/reference {:reference (local-ref subject-handle)}))
 
     (seq result)
     (assoc :group result)))

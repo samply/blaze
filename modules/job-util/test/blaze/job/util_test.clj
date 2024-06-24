@@ -26,9 +26,9 @@
    (ig/init {:blaze.fhir/structure-definition-repo {}})))
 
 (defn- codeable-concept [system code]
-  (type/map->CodeableConcept
+  (type/codeable-concept
    {:coding
-    [(type/map->Coding {:system (type/uri system) :code (type/code code)})]}))
+    [(type/coding {:system (type/uri system) :code (type/code code)})]}))
 
 (deftest job-number-test
   (is (= (job-util/job-number

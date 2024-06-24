@@ -117,7 +117,7 @@
   (let [meta (into {} (keep (fn [[k v]] (when (and v (not (#{:versionId :lastUpdated} k))) [k v]))) meta)]
     (if (empty? meta)
       (dissoc resource :meta)
-      (assoc resource :meta (type/map->Meta meta)))))
+      (assoc resource :meta (type/meta meta)))))
 
 (defn keep?
   "Determines whether `tx-op` is a keep operator."

@@ -38,9 +38,9 @@
    :input
    [(u/request-bundle-input (str "Bundle/" bundle-id))
     {:fhir/type :fhir.Task/input
-     :type (type/map->CodeableConcept
+     :type (type/codeable-concept
             {:coding
-             [(type/map->Coding
+             [(type/coding
                {:system (type/uri u/parameter-uri)
                 :code #fhir/code"t"})]})
      :value (type/unsignedInt t)}]})
@@ -91,7 +91,7 @@
              (response-bundle context entries)))))))
 
 (defn add-response-bundle-reference [job response-bundle-id]
-  (->> (type/map->Reference {:reference (str "Bundle/" response-bundle-id)})
+  (->> (type/reference {:reference (str "Bundle/" response-bundle-id)})
        (job-util/add-output job output-uri "bundle")))
 
 (defn- add-processing-duration [job start]

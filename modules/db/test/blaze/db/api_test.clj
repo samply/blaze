@@ -1400,7 +1400,7 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
                :active true
-               :name [(type/map->HumanName {:family (apply str (repeat 1000 "a"))})]}]]]
+               :name [(type/human-name {:family (apply str (repeat 1000 "a"))})]}]]]
 
       (testing "as first clause"
         (given (pull-type-query node "Patient" [["family" (apply str (repeat 1000 "a"))]])
@@ -1419,7 +1419,7 @@
         (with-system-data [{:blaze.db/keys [node]} config]
           [[[:put {:fhir/type :fhir/Patient :id "0"
                    :active true
-                   :name [(type/map->HumanName {:family name})]}]]]
+                   :name [(type/human-name {:family name})]}]]]
 
           (testing "as first clause"
             (given (pull-type-query node "Patient" [["family" name]])
@@ -4563,7 +4563,7 @@
 
 (defn- patient-w-identifier [i]
   {:fhir/type :fhir/Patient :id (str i)
-   :identifier [(type/map->Identifier {:value (str i)})]})
+   :identifier [(type/identifier {:value (str i)})]})
 
 (deftest type-query-identifier-non-matching-test
   (st/unstrument)
@@ -4586,15 +4586,15 @@
         [[[:put {:fhir/type :fhir/Patient :id "0"
                  :active true
                  :identifier
-                 [(type/map->Identifier {:system system :value "0"})]}]
+                 [(type/identifier {:system system :value "0"})]}]
           [:put {:fhir/type :fhir/Patient :id "1"
                  :active true
                  :identifier
-                 [(type/map->Identifier {:system system :value "0"})]}]
+                 [(type/identifier {:system system :value "0"})]}]
           [:put {:fhir/type :fhir/Patient :id "2"
                  :active true
                  :identifier
-                 [(type/map->Identifier {:system system :value "0"})]}]]]
+                 [(type/identifier {:system system :value "0"})]}]]]
 
         (doseq [value (if system ["0" "foo|0"] ["0" "|0"])]
           (given (pull-type-query node "Patient" [["identifier" value]])
@@ -6356,9 +6356,9 @@
 (defn- observation-create-op [id]
   [:create {:fhir/type :fhir/Observation :id (format "%05d" id)
             :category
-            [(type/map->CodeableConcept
+            [(type/codeable-concept
               {:coding
-               [(type/map->Coding
+               [(type/coding
                  {:system #fhir/uri"system-141902"
                   :code (type/code (format "%05d" id))})]})]}])
 

@@ -265,7 +265,15 @@
 
 ;; TODO: Range
 
-;; TODO: Ratio
+(defn ratio
+  [& {:keys [id extension numerator denominator]
+      :or {id (gen/return nil)
+           extension (extensions)
+           numerator (nilable (quantity))
+           denominator (nilable (quantity))}}]
+  (->> (gen/tuple id extension numerator denominator)
+       (to-map [:id :extension :numerator :denominator])
+       (gen/fmap type/ratio)))
 
 ;; TODO: RatioRange
 
