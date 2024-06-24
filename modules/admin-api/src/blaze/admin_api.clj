@@ -4,6 +4,7 @@
    [blaze.admin-api.validation]
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.db.kv :as kv]
    [blaze.db.kv.rocksdb :as rocksdb]
    [blaze.elm.expression :as-alias expr]
    [blaze.fhir.response.create :as create-response]
@@ -86,7 +87,7 @@
 (defn- column-family-data [db column-family]
   (let [long-property (partial rocksdb/long-property db column-family)]
     {:name (name column-family)
-     :estimate-num-keys (long-property "rocksdb.estimate-num-keys")
+     :estimate-num-keys (kv/estimate-num-keys db column-family)
      :estimate-live-data-size (long-property "rocksdb.estimate-live-data-size")
      :live-sst-files-size (long-property "rocksdb.live-sst-files-size")
      :size-all-mem-tables (long-property "rocksdb.size-all-mem-tables")}))

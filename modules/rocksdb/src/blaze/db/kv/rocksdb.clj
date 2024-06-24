@@ -206,6 +206,9 @@
       (impl/write-wb! cfhs wb entries)
       (.write db write-opts wb)))
 
+  (-estimate-num-keys [store column-family]
+    (p/-long-property store column-family "rocksdb.estimate-num-keys"))
+
   p/Rocks
   (-path [_]
     path)
