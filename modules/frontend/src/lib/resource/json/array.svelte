@@ -10,4 +10,4 @@
 		indent={indent + 4}
 		insideArray={true}
 		{value}
-	/>{index < values.length - 1 ? ', ' : ''}{/each}<span>{' '.repeat(indent)}{']'}</span>
+	/>{index < values.length - 1 ? ',\n' : '\n'}{/each}<span>{' '.repeat(indent)}{']'}</span>
