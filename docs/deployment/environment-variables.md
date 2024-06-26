@@ -110,7 +110,7 @@ More information about distributed deployment are available [here](distributed-b
 | DB_SYNC_TIMEOUT                         | 10000                      | v0.15  | —       | Timeout in milliseconds for all reading FHIR interactions acquiring the newest database state. |
 | DB_SEARCH_PARAM_BUNDLE                  | —                          | v0.21  | —       | Name of a custom search parameter bundle file.                                                 |
 | ENABLE_ADMIN_API                        | —                          | v0.26  | —       | Set to `true` if the optional Admin API should be enabled. Needed by the frontend.             |
-| CQL_EXPR_CACHE_SIZE                     | 128 (128 MiB)              | v0.28  | —       | Size of the CQL expression cache. Will be disabled if not given.                               |
+| CQL_EXPR_CACHE_SIZE                     | —                          | v0.28  | —       | Size of the CQL expression cache in MiB. Will be disabled if not given.                        |
 | CQL_EXPR_CACHE_REFRESH                  | PT24H                      | v0.28  | —       | The duration after which a Bloom filter of the CQL expression cache will be refreshed.         |
 | CQL_EXPR_CACHE_THREADS                  | 4                          | v0.28  | —       | The maximum number of parallel Bloom filter calculations for the CQL expression cache.         |
 
