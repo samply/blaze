@@ -92,9 +92,9 @@
     (log/info "Loaded the following namespaces:" (str/join ", " loaded-ns))))
 
 (def ^:private root-config
-  {:blaze/version "0.27.1"
+  {:blaze/version "0.28.0-rc.1"
 
-   :blaze/release-date "2024-06-14"
+   :blaze/release-date "2024-06-26"
 
    :blaze/clock {}
 

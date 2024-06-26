@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.28.0-rc.1
+
+### New Features
+
+* Cache Results of the Exists CQL Expression ([#1051](https://github.com/samply/blaze/issues/1051))
+
+### Bugfixes
+
+* Fix JSON Rendering in UI ([#1813](https://github.com/samply/blaze/issues/1813))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/91?closed=1).
+
 ## v0.27.1
 
 ### Enhancements
