@@ -5,6 +5,8 @@
    [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
+   [blaze.elm.expression :as-alias expr]
+   [blaze.elm.expression.spec]
    [blaze.executors :as ex]
    [blaze.fhir.operation.evaluate-measure.measure :as measure]
    [blaze.fhir.operation.evaluate-measure.measure.spec]
@@ -121,6 +123,7 @@
 
 (defmethod m/pre-init-spec ::handler [_]
   (s/keys :req-un [:blaze.db/node ::executor :blaze/clock :blaze/rng-fn]
+          :opt [::expr/cache]
           :opt-un [::timeout :blaze/context-path]))
 
 (defmethod ig/init-key ::handler [_ context]

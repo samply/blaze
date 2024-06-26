@@ -16,7 +16,7 @@
   [x]
   (if (or (nil? x) (sequential? x)) x [x]))
 
-(defn strip-leading-slash
-  "Strips a possible leading slash from `s`."
+(defn strip-leading-slashes
+  "Strips all possible leading slashes from `s`."
   [s]
-  (if (str/starts-with? s "/") (subs s 1) s))
+  (if (str/starts-with? s "/") (recur (subs s 1)) s))

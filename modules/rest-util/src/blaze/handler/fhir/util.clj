@@ -201,7 +201,7 @@
      if-match :ifMatch
      if-none-exist :ifNoneExist}
     :request :keys [resource]}]
-  (let [url (-> url type/value u/strip-leading-slash)
+  (let [url (-> url type/value u/strip-leading-slashes)
         [url query-string] (str/split url #"\?")
         method (keyword (str/lower-case (type/value method)))
         return-preference (or return-preference
@@ -415,7 +415,7 @@
   {:arglists '([idx entry])}
   [idx {:keys [request resource] :as entry}]
   (let [method (some-> request :method type/value)
-        [url] (some-> request :url type/value u/strip-leading-slash (str/split #"\?"))
+        [url] (some-> request :url type/value u/strip-leading-slashes (str/split #"\?"))
         {:keys [type id kind]} (some-> url match-url)]
     (cond
       (nil? request)

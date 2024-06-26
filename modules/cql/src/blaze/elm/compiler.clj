@@ -42,5 +42,25 @@
   [context expression]
   (core/compile* context expression))
 
+(defn attach-cache
+  "Attaches expression `cache` to `expression` returning a tuple of expression
+  that uses `cache` in order to improve evaluation performance and list of
+  attached Bloom filters.
+
+  Otherwise the semantics of the returned expression have to be the same as that
+  of `expression`."
+  [expression cache]
+  ((first (core/-attach-cache expression cache))))
+
+(defn resolve-refs
+  "Resolves expressions defined in `expression-defs` in `expression`."
+  [expression expression-defs]
+  (core/-resolve-refs expression expression-defs))
+
+(defn resolve-params
+  "Resolves `parameters` in `expression`."
+  [expression parameters]
+  (core/-resolve-params expression parameters))
+
 (defn form [expression]
   (core/-form expression))

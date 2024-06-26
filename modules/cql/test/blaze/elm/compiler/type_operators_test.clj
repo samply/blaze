@@ -9,16 +9,16 @@
    [blaze.elm.compiler.clinical-operators]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
-   [blaze.elm.compiler.test-util :as ctu]
+   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.compiler.type-operators]
    [blaze.elm.concept :as concept]
    [blaze.elm.decimal :as decimal]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
    [blaze.elm.protocols :as p]
-   [blaze.elm.quantity :as quantity]
+   [blaze.elm.quantity :refer [quantity]]
    [blaze.elm.quantity-spec]
-   [blaze.elm.ratio :as ratio]
+   [blaze.elm.ratio :refer [ratio]]
    [blaze.elm.util-spec]
    [blaze.fhir.spec.type.system :as system]
    [clojure.spec.test.alpha :as st]
@@ -100,10 +100,33 @@
       #elm/as ["{urn:hl7-org:elm-types:r1}DateTime" #elm/date-time"2019-09-04"]
       (system/date-time 2019 9 4)))
 
-  (testing "expression is dynamic"
-    (is (false? (core/-static (ctu/dynamic-compile
-                               #elm/as["{urn:hl7-org:elm-types:r1}Integer"
-                                       #elm/parameter-ref "x"])))))
+  (let [expr (ctu/dynamic-compile #elm/as["{urn:hl7-org:elm-types:r1}Integer"
+                                          #elm/parameter-ref "x"])]
+
+    (testing "expression is dynamic"
+      (is (false? (core/-static expr))))
+
+    (testing "attach-cache"
+      (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+    (testing "patient count"
+      (is (nil? (core/-patient-count expr))))
+
+    (testing "resolve expression references"
+      (let [elm #elm/as["{urn:hl7-org:elm-types:r1}Integer"
+                        #elm/expression-ref "x"]
+            expr-def {:type "ExpressionDef" :name "x" :expression "y"
+                      :context "Patient"}
+            ctx {:library {:statements {:def [expr-def]}}}
+            expr (c/resolve-refs (c/compile ctx elm) {"x" expr-def})]
+        (has-form expr '(as elm/integer "y"))))
+
+    (testing "resolve parameters"
+      (let [expr (c/resolve-params expr {"x" "y"})]
+        (has-form expr '(as elm/integer "y")))))
+
+  (ctu/testing-equals-hash-code #elm/as["{urn:hl7-org:elm-types:r1}Integer"
+                                        #elm/parameter-ref "x"])
 
   (testing "form"
     (are [elm form] (= form (c/form (c/compile {} elm)))
@@ -176,9 +199,7 @@
   (ctu/testing-binary-null elm/can-convert-quantity #elm/quantity [1 "m"]
                            #elm/string "m")
 
-  (ctu/testing-binary-dynamic elm/can-convert-quantity)
-
-  (ctu/testing-binary-form elm/can-convert-quantity))
+  (ctu/testing-binary-op elm/can-convert-quantity))
 
 ;; 22.4. Children
 ;;
@@ -201,9 +222,7 @@
 
   (ctu/testing-unary-null elm/children)
 
-  (ctu/testing-unary-dynamic elm/children)
-
-  (ctu/testing-unary-form elm/children))
+  (ctu/testing-unary-op elm/children))
 
 ;; TODO 22.5. Convert
 ;;
@@ -249,16 +268,14 @@
 ;; If either argument is null, the result is null.
 (deftest compile-convert-quantity-test
   (are [argument unit res] (p/equal res (core/-eval (c/compile {} (elm/convert-quantity [argument unit])) {} nil nil))
-    #elm/quantity [5 "mg"] #elm/string "g" (quantity/quantity 0.005 "g"))
+    #elm/quantity [5 "mg"] #elm/string "g" (quantity 0.005M "g"))
 
   (are [argument unit] (nil? (core/-eval (c/compile {} (elm/convert-quantity [argument unit])) {} nil nil))
     #elm/quantity [5 "mg"] #elm/string "m")
 
   (ctu/testing-binary-null elm/convert-quantity #elm/quantity [5 "mg"] #elm/string "m")
 
-  (ctu/testing-binary-dynamic elm/convert-quantity)
-
-  (ctu/testing-binary-form elm/convert-quantity))
+  (ctu/testing-binary-op elm/convert-quantity))
 
 ;; 22.7. ConvertsToBoolean
 ;;
@@ -356,9 +373,7 @@
 
   (ctu/testing-unary-null elm/converts-to-boolean)
 
-  (ctu/testing-unary-dynamic elm/converts-to-boolean)
-
-  (ctu/testing-unary-form elm/converts-to-boolean))
+  (ctu/testing-unary-op elm/converts-to-boolean))
 
 ;; 22.8. ConvertsToDate
 ;;
@@ -412,9 +427,7 @@
 
   (ctu/testing-unary-null elm/converts-to-date)
 
-  (ctu/testing-unary-dynamic elm/converts-to-date)
-
-  (ctu/testing-unary-form elm/converts-to-date))
+  (ctu/testing-unary-op elm/converts-to-date))
 
 ;; 22.9. ConvertsToDateTime
 ;;
@@ -465,9 +478,7 @@
 
   (ctu/testing-unary-null elm/converts-to-date-time)
 
-  (ctu/testing-unary-dynamic elm/converts-to-date-time)
-
-  (ctu/testing-unary-form elm/converts-to-date-time))
+  (ctu/testing-unary-op elm/converts-to-date-time))
 
 ;; 22.10. ConvertsToDecimal
 ;;
@@ -525,9 +536,7 @@
 
   (ctu/testing-unary-null elm/converts-to-decimal)
 
-  (ctu/testing-unary-dynamic elm/converts-to-decimal)
-
-  (ctu/testing-unary-form elm/converts-to-decimal))
+  (ctu/testing-unary-op elm/converts-to-decimal))
 
 ;; 22.11. ConvertsToLong
 ;;
@@ -582,9 +591,7 @@
 
   (ctu/testing-unary-null elm/converts-to-long)
 
-  (ctu/testing-unary-dynamic elm/converts-to-long)
-
-  (ctu/testing-unary-form elm/converts-to-long))
+  (ctu/testing-unary-op elm/converts-to-long))
 
 ;; 22.12. ConvertsToInteger
 ;;
@@ -638,9 +645,7 @@
 
   (ctu/testing-unary-null elm/converts-to-integer)
 
-  (ctu/testing-unary-dynamic elm/converts-to-integer)
-
-  (ctu/testing-unary-form elm/converts-to-integer))
+  (ctu/testing-unary-op elm/converts-to-integer))
 
 ;; 22.13. ConvertsToQuantity
 ;;
@@ -710,9 +715,7 @@
 
   (ctu/testing-unary-null elm/converts-to-quantity)
 
-  (ctu/testing-unary-dynamic elm/converts-to-quantity)
-
-  (ctu/testing-unary-form elm/converts-to-quantity))
+  (ctu/testing-unary-op elm/converts-to-quantity))
 
 ;; 22.14. ConvertsToRatio
 ;;
@@ -748,9 +751,7 @@
 
   (ctu/testing-unary-null elm/converts-to-ratio)
 
-  (ctu/testing-unary-dynamic elm/converts-to-ratio)
-
-  (ctu/testing-unary-form elm/converts-to-ratio))
+  (ctu/testing-unary-op elm/converts-to-ratio))
 
 ;; 22.15. ConvertsToString
 ;;
@@ -822,9 +823,7 @@
 
   (ctu/testing-unary-null elm/converts-to-string)
 
-  (ctu/testing-unary-dynamic elm/converts-to-string)
-
-  (ctu/testing-unary-form elm/converts-to-string))
+  (ctu/testing-unary-op elm/converts-to-string))
 
 ;; 22.16. ConvertsToTime
 ;;
@@ -891,9 +890,7 @@
 
   (ctu/testing-unary-null elm/converts-to-time)
 
-  (ctu/testing-unary-dynamic elm/converts-to-time)
-
-  (ctu/testing-unary-form elm/converts-to-time))
+  (ctu/testing-unary-op elm/converts-to-time))
 
 ;; 22.17. Descendents
 ;;
@@ -907,11 +904,7 @@
 ;; If the source is null, the result is null.
 (deftest compile-to-descendents-test
   (testing "Code"
-    (testing "expression is dynamic"
-      (is (not (core/static? (c/compile {} (elm/descendents (ctu/code "system-134534" "code-134551")))))))
-
-    (are [x res] (= res (core/-eval (c/compile {} (elm/descendents x))
-                                    {:now ctu/now} nil nil))
+    (are [x res] (= res (c/compile {} (elm/descendents x)))
       (ctu/code "system-134534" "code-134551")
       ["code-134551" nil "system-134534" nil]))
 
@@ -919,9 +912,7 @@
 
   (ctu/testing-unary-null elm/descendents)
 
-  (ctu/testing-unary-dynamic elm/descendents)
-
-  (ctu/testing-unary-form elm/descendents))
+  (ctu/testing-unary-op elm/descendents))
 
 ;; 22.18. Is
 ;;
@@ -1036,10 +1027,33 @@
       #elm/is ["{urn:hl7-org:elm-types:r1}DateTime" #elm/string "2019-09-04"]
       #elm/is ["{urn:hl7-org:elm-types:r1}DateTime" {:type "Null"}]))
 
-  (testing "expression is dynamic"
-    (is (false? (core/-static (ctu/dynamic-compile
-                               #elm/is["{urn:hl7-org:elm-types:r1}Integer"
-                                       #elm/parameter-ref "x"])))))
+  (let [expr (ctu/dynamic-compile #elm/is["{urn:hl7-org:elm-types:r1}Integer"
+                                          #elm/parameter-ref "x"])]
+
+    (testing "expression is dynamic"
+      (is (false? (core/-static expr))))
+
+    (testing "attach-cache"
+      (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+
+    (testing "patient count"
+      (is (nil? (core/-patient-count expr))))
+
+    (testing "resolve expression references"
+      (let [elm #elm/is["{urn:hl7-org:elm-types:r1}Integer"
+                        #elm/expression-ref "x"]
+            expr-def {:type "ExpressionDef" :name "x" :expression "y"
+                      :context "Patient"}
+            ctx {:library {:statements {:def [expr-def]}}}
+            expr (c/resolve-refs (c/compile ctx elm) {"x" expr-def})]
+        (has-form expr '(is elm/integer "y"))))
+
+    (testing "resolve parameters"
+      (let [expr (c/resolve-params expr {"x" "y"})]
+        (has-form expr '(is elm/integer "y")))))
+
+  (ctu/testing-equals-hash-code #elm/is["{urn:hl7-org:elm-types:r1}Integer"
+                                        #elm/parameter-ref "x"])
 
   (testing "form"
     (are [elm form] (= form (c/form (c/compile {} elm)))
@@ -1160,9 +1174,7 @@
 
   (ctu/testing-unary-null elm/to-boolean)
 
-  (ctu/testing-unary-dynamic elm/to-boolean)
-
-  (ctu/testing-unary-form elm/to-boolean))
+  (ctu/testing-unary-op elm/to-boolean))
 
 ;; 22.20. ToChars
 ;;
@@ -1190,9 +1202,7 @@
 
   (ctu/testing-unary-null elm/to-chars)
 
-  (ctu/testing-unary-dynamic elm/to-chars)
-
-  (ctu/testing-unary-form elm/to-chars))
+  (ctu/testing-unary-op elm/to-chars))
 
 ;; 22.21. ToConcept
 ;;
@@ -1219,9 +1229,7 @@
 
   (ctu/testing-unary-null elm/to-concept)
 
-  (ctu/testing-unary-dynamic elm/to-concept)
-
-  (ctu/testing-unary-form elm/to-concept))
+  (ctu/testing-unary-op elm/to-concept))
 
 ;; 22.22. ToDate
 ;;
@@ -1297,9 +1305,7 @@
 
   (ctu/testing-unary-null elm/to-date)
 
-  (ctu/testing-unary-dynamic elm/to-date)
-
-  (ctu/testing-unary-form elm/to-date))
+  (ctu/testing-unary-op elm/to-date))
 
 ;; 22.23. ToDateTime
 ;;
@@ -1363,9 +1369,7 @@
 
   (ctu/testing-unary-null elm/to-date-time)
 
-  (ctu/testing-unary-dynamic elm/to-date-time)
-
-  (ctu/testing-unary-form elm/to-date-time))
+  (ctu/testing-unary-op elm/to-date-time))
 
 ;; 22.24. ToDecimal
 ;;
@@ -1413,9 +1417,7 @@
 
   (ctu/testing-unary-null elm/to-decimal)
 
-  (ctu/testing-unary-dynamic elm/to-decimal)
-
-  (ctu/testing-unary-form elm/to-decimal))
+  (ctu/testing-unary-op elm/to-decimal))
 
 ;; 22.25. ToInteger
 ;;
@@ -1456,9 +1458,7 @@
 
   (ctu/testing-unary-null elm/to-integer)
 
-  (ctu/testing-unary-dynamic elm/to-integer)
-
-  (ctu/testing-unary-form elm/to-integer))
+  (ctu/testing-unary-op elm/to-integer))
 
 ;; 22.26. ToList
 ;;
@@ -1490,9 +1490,7 @@
       #elm/parameter-ref "nil" []
       #elm/parameter-ref "a" ["a"]))
 
-  (ctu/testing-unary-dynamic elm/to-list)
-
-  (ctu/testing-unary-form elm/to-list))
+  (ctu/testing-unary-op elm/to-list))
 
 ;; 22.27. ToLong
 ;;
@@ -1537,9 +1535,7 @@
 
   (ctu/testing-unary-null elm/to-long)
 
-  (ctu/testing-unary-dynamic elm/to-long)
-
-  (ctu/testing-unary-form elm/to-long))
+  (ctu/testing-unary-op elm/to-long))
 
 ;; 22.28. ToQuantity
 ;;
@@ -1574,16 +1570,16 @@
 (deftest compile-to-quantity-test
   (testing "String"
     (are [x res] (p/equal res (ctu/compile-unop elm/to-quantity elm/string x))
-      "-1" (quantity/quantity -1 "1")
-      "1" (quantity/quantity 1 "1")
+      "-1" (quantity -1 "1")
+      "1" (quantity 1 "1")
 
-      "1'm'" (quantity/quantity 1 "m")
-      "1 'm'" (quantity/quantity 1 "m")
-      "1  'm'" (quantity/quantity 1 "m")
+      "1'm'" (quantity 1 "m")
+      "1 'm'" (quantity 1 "m")
+      "1  'm'" (quantity 1 "m")
 
-      "10 'm'" (quantity/quantity 10 "m")
+      "10 'm'" (quantity 10 "m")
 
-      "1.1 'm'" (quantity/quantity 1.1M "m"))
+      "1.1 'm'" (quantity 1.1M "m"))
 
     (are [x] (nil? (ctu/compile-unop elm/to-quantity elm/string x))
       (str (- decimal/min 1e-8M))
@@ -1595,30 +1591,28 @@
 
   (testing "Integer"
     (are [x res] (= res (ctu/compile-unop elm/to-quantity elm/integer x))
-      "1" (quantity/quantity 1 "1")))
+      "1" (quantity 1 "1")))
 
   (testing "Decimal"
     (are [x res] (p/equal res (ctu/compile-unop elm/to-quantity elm/decimal x))
-      "1" (quantity/quantity 1 "1")
-      "1.1" (quantity/quantity 1.1M "1")))
+      "1" (quantity 1 "1")
+      "1.1" (quantity 1.1M "1")))
 
   (testing "Ratio"
     (are [x res] (p/equal res (ctu/compile-unop elm/to-quantity elm/ratio x))
-      [[1] [1]] (quantity/quantity 1 "1")
-      [[-1] [1]] (quantity/quantity -1 "1")
+      [[1] [1]] (quantity 1 "1")
+      [[-1] [1]] (quantity -1 "1")
 
-      [[1 "s"] [1 "s"]] (quantity/quantity 1 "1")
-      [[1 "s"] [2 "s"]] (quantity/quantity 2 "1")
+      [[1 "s"] [1 "s"]] (quantity 1 "1")
+      [[1 "s"] [2 "s"]] (quantity 2 "1")
 
-      [[1 "m"] [1 "s"]] (quantity/quantity 1 "s/m")
-      [[1 "s"] [1 "m"]] (quantity/quantity 1 "m/s")
-      [[100 "cm"] [1 "m"]] (quantity/quantity 1 "1")))
+      [[1 "m"] [1 "s"]] (quantity 1 "s/m")
+      [[1 "s"] [1 "m"]] (quantity 1 "m/s")
+      [[100 "cm"] [1 "m"]] (quantity 1 "1")))
 
   (ctu/testing-unary-null elm/to-quantity)
 
-  (ctu/testing-unary-dynamic elm/to-quantity)
-
-  (ctu/testing-unary-form elm/to-quantity))
+  (ctu/testing-unary-op elm/to-quantity))
 
 ;; 22.29. ToRatio
 ;;
@@ -1638,24 +1632,24 @@
 (deftest compile-to-ratio-test
   (testing "String"
     (are [x res] (p/equal res (ctu/compile-unop elm/to-ratio elm/string x))
-      "-1:-1" (ratio/ratio (quantity/quantity -1 "1") (quantity/quantity -1 "1"))
-      "1:1" (ratio/ratio (quantity/quantity 1 "1") (quantity/quantity 1 "1"))
-      "1:100" (ratio/ratio (quantity/quantity 1 "1") (quantity/quantity 100 "1"))
-      "100:1" (ratio/ratio (quantity/quantity 100 "1") (quantity/quantity 1 "1"))
+      "-1:-1" (ratio (quantity -1 "1") (quantity -1 "1"))
+      "1:1" (ratio (quantity 1 "1") (quantity 1 "1"))
+      "1:100" (ratio (quantity 1 "1") (quantity 100 "1"))
+      "100:1" (ratio (quantity 100 "1") (quantity 1 "1"))
 
-      "1'm':1'm'" (ratio/ratio (quantity/quantity 1 "m") (quantity/quantity 1 "m"))
-      "1 'm':1 'm'" (ratio/ratio (quantity/quantity 1 "m") (quantity/quantity 1 "m"))
-      "1  'm':1  'm'" (ratio/ratio (quantity/quantity 1 "m") (quantity/quantity 1 "m"))
+      "1'm':1'm'" (ratio (quantity 1 "m") (quantity 1 "m"))
+      "1 'm':1 'm'" (ratio (quantity 1 "m") (quantity 1 "m"))
+      "1  'm':1  'm'" (ratio (quantity 1 "m") (quantity 1 "m"))
 
-      "2'm':1'm'" (ratio/ratio (quantity/quantity 2 "m") (quantity/quantity 1 "m"))
-      "1'm':2'm'" (ratio/ratio (quantity/quantity 1 "m") (quantity/quantity 2 "m"))
+      "2'm':1'm'" (ratio (quantity 2 "m") (quantity 1 "m"))
+      "1'm':2'm'" (ratio (quantity 1 "m") (quantity 2 "m"))
 
-      "1'cm':1'm'" (ratio/ratio (quantity/quantity 1 "cm") (quantity/quantity 1 "m"))
-      "1'm':1'cm'" (ratio/ratio (quantity/quantity 1 "m") (quantity/quantity 1 "cm"))
+      "1'cm':1'm'" (ratio (quantity 1 "cm") (quantity 1 "m"))
+      "1'm':1'cm'" (ratio (quantity 1 "m") (quantity 1 "cm"))
 
-      "10 'm':10 'm'" (ratio/ratio (quantity/quantity 10 "m") (quantity/quantity 10 "m"))
+      "10 'm':10 'm'" (ratio (quantity 10 "m") (quantity 10 "m"))
 
-      "1.1 'm':1.1 'm'" (ratio/ratio (quantity/quantity 1.1M "m") (quantity/quantity 1.1M "m"))))
+      "1.1 'm':1.1 'm'" (ratio (quantity 1.1M "m") (quantity 1.1M "m"))))
 
   (are [x] (nil? (ctu/compile-unop elm/to-ratio elm/string x))
     ":"
@@ -1667,9 +1661,7 @@
 
   (ctu/testing-unary-null elm/to-ratio)
 
-  (ctu/testing-unary-dynamic elm/to-ratio)
-
-  (ctu/testing-unary-form elm/to-ratio))
+  (ctu/testing-unary-op elm/to-ratio))
 
 ;; 22.30. ToString
 ;;
@@ -1746,9 +1738,7 @@
 
   (ctu/testing-unary-null elm/to-string)
 
-  (ctu/testing-unary-dynamic elm/to-string)
-
-  (ctu/testing-unary-form elm/to-string))
+  (ctu/testing-unary-op elm/to-string))
 
 ;; 22.31. ToTime
 ;;
@@ -1805,6 +1795,4 @@
 
   (ctu/testing-unary-null elm/to-time)
 
-  (ctu/testing-unary-dynamic elm/to-time)
-
-  (ctu/testing-unary-form elm/to-time))
+  (ctu/testing-unary-op elm/to-time))

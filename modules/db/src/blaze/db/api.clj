@@ -264,6 +264,14 @@
   [node-or-db code type clauses]
   (p/-compile-compartment-query-lenient node-or-db code type clauses))
 
+;; ---- Patient-Compartment-Level Functions -----------------------------------
+
+(defn patient-compartment-last-change-t
+  "Returns the `t` of last change of any resource in the patient compartment or
+  nil if the patient has no resources."
+  [db patient-id]
+  (p/-patient-compartment-last-change-t db (codec/id-byte-string patient-id)))
+
 ;; ---- Common Query Functions ------------------------------------------------
 
 (defn count-query

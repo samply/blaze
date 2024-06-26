@@ -4,7 +4,7 @@ $(MODULES):
 	$(MAKE) -C $@ $(MAKECMDGOALS)
 
 fmt-root:
-	cljfmt check
+	cljfmt check resources src test deps.edn
 
 fmt: $(MODULES) fmt-root
 

@@ -17,7 +17,7 @@
    [taoensso.timbre :as log]))
 
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -219,10 +219,15 @@
 (deftest compartment-resources-test
   (testing "Patient"
     (with-system [{:blaze.db/keys [search-param-registry]} config]
-      (given (sr/compartment-resources search-param-registry "Patient")
-        count := 66
-        [0] := ["Account" ["subject"]]
-        [1] := ["AdverseEvent" ["subject"]]
-        [2] := ["AllergyIntolerance" ["patient" "recorder" "asserter"]]
-        [3] := ["Appointment" ["actor"]]
-        [65] := ["VisionPrescription" ["patient"]]))))
+      (testing "all resource types"
+        (given (sr/compartment-resources search-param-registry "Patient")
+          count := 66
+          [0] := ["Account" ["subject"]]
+          [1] := ["AdverseEvent" ["subject"]]
+          [2] := ["AllergyIntolerance" ["patient" "recorder" "asserter"]]
+          [3] := ["Appointment" ["actor"]]
+          [65] := ["VisionPrescription" ["patient"]]))
+
+      (testing "only Observation codes"
+        (is (= (sr/compartment-resources search-param-registry "Patient" "Observation")
+               ["subject" "performer"]))))))

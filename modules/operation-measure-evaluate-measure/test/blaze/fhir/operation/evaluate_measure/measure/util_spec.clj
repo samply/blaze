@@ -8,3 +8,7 @@
 (s/fdef u/expression-name
   :args (s/cat :population-path-fn fn? :criteria (s/nilable :fhir/Expression))
   :ret (s/or :expression-name string? :anomaly ::anom/anomaly))
+
+(s/fdef u/expression-names
+  :args (s/cat :measure :fhir/Measure)
+  :ret (s/coll-of string?))

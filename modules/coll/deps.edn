@@ -1,4 +1,6 @@
-{:aliases
+{:paths ["src" "resources"]
+
+ :aliases
  {:test
   {:extra-paths ["test"]
 

@@ -15,8 +15,8 @@
    [blaze.elm.date-time :as date-time]
    [blaze.elm.literal]
    [blaze.elm.literal-spec]
-   [blaze.elm.quantity :as quantity]
-   [blaze.elm.ratio :as ratio]
+   [blaze.elm.quantity :refer [quantity]]
+   [blaze.elm.ratio :refer [ratio]]
    [blaze.test-util :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -279,7 +279,7 @@
   (testing "Examples"
     (are [elm res] (= res (c/compile {} elm))
       {:type "Quantity"} nil
-      #elm/quantity [1] (quantity/quantity 1 "")
+      #elm/quantity [1] (quantity 1 "")
       #elm/quantity [1 "year"] (date-time/period 1 0 0)
       #elm/quantity [2 "years"] (date-time/period 2 0 0)
       #elm/quantity [1 "month"] (date-time/period 0 1 0)
@@ -296,14 +296,14 @@
       #elm/quantity [2 "seconds"] (date-time/period 0 0 2000)
       #elm/quantity [1 "millisecond"] (date-time/period 0 0 1)
       #elm/quantity [2 "milliseconds"] (date-time/period 0 0 2)
-      #elm/quantity [1 "s"] (quantity/quantity 1 "s")
-      #elm/quantity [1 "cm2"] (quantity/quantity 1 "cm2")))
+      #elm/quantity [1 "s"] (quantity 1 "s")
+      #elm/quantity [1 "cm2"] (quantity 1 "cm2")))
 
   (testing "form"
     (are [elm res] (= res (c/form (c/compile {} elm)))
-      #elm/quantity [1] '(quantity 1 "1")
-      #elm/quantity [1 "s"] '(quantity 1 "s")
-      #elm/quantity [2 "cm2"] '(quantity 2 "cm2")))
+      #elm/quantity [1] '(quantity 1M "1")
+      #elm/quantity [1 "s"] '(quantity 1M "s")
+      #elm/quantity [2 "cm2"] '(quantity 2M "cm2")))
 
   (testing "Periods"
     (satisfies-prop 100
@@ -318,12 +318,17 @@
 (deftest compile-ratio-test
   (testing "Examples"
     (are [elm res] (= res (c/compile {} elm))
-      #elm/ratio [[1 "s"] [1 "s"]] (ratio/ratio (quantity/quantity 1 "s") (quantity/quantity 1 "s"))
-      #elm/ratio [[1 ""] [128 ""]] (ratio/ratio (quantity/quantity 1 "") (quantity/quantity 128 ""))
-      #elm/ratio [[1 "s"] [1 ""]] (ratio/ratio (quantity/quantity 1 "s") (quantity/quantity 1 ""))
-      #elm/ratio [[1 ""] [1 "s"]] (ratio/ratio (quantity/quantity 1 "") (quantity/quantity 1 "s"))
-      #elm/ratio [[1 "cm2"] [1 "s"]] (ratio/ratio (quantity/quantity 1 "cm2") (quantity/quantity 1 "s"))
-      #elm/ratio [[1] [1]] (ratio/ratio (quantity/quantity 1 "") (quantity/quantity 1 ""))
-      #elm/ratio [[1] [1 "s"]] (ratio/ratio (quantity/quantity 1 "") (quantity/quantity 1 "s"))
-      #elm/ratio [[1 "s"] [1]] (ratio/ratio (quantity/quantity 1 "s") (quantity/quantity 1 ""))
-      #elm/ratio [[5 "mg"] [10 "g"]] (ratio/ratio (quantity/quantity 5 "mg") (quantity/quantity 10 "g")))))
+      #elm/ratio [[1 "s"] [1 "s"]] (ratio (quantity 1 "s") (quantity 1 "s"))
+      #elm/ratio [[1 ""] [128 ""]] (ratio (quantity 1 "") (quantity 128 ""))
+      #elm/ratio [[1 "s"] [1 ""]] (ratio (quantity 1 "s") (quantity 1 ""))
+      #elm/ratio [[1 ""] [1 "s"]] (ratio (quantity 1 "") (quantity 1 "s"))
+      #elm/ratio [[1 "cm2"] [1 "s"]] (ratio (quantity 1 "cm2") (quantity 1 "s"))
+      #elm/ratio [[1] [1]] (ratio (quantity 1 "") (quantity 1 ""))
+      #elm/ratio [[1] [1 "s"]] (ratio (quantity 1 "") (quantity 1 "s"))
+      #elm/ratio [[1 "s"] [1]] (ratio (quantity 1 "s") (quantity 1 ""))
+      #elm/ratio [[5 "mg"] [10 "g"]] (ratio (quantity 5 "mg") (quantity 10 "g"))))
+
+  (testing "form"
+    (has-form
+     (ratio (quantity 3 "m") (quantity 1 "s"))
+      '(ratio (quantity 3M "m") (quantity 1M "s")))))

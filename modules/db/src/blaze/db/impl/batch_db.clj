@@ -13,6 +13,7 @@
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index :as index]
    [blaze.db.impl.index.compartment.resource :as cr]
+   [blaze.db.impl.index.patient-last-change :as plc]
    [blaze.db.impl.index.resource-as-of :as rao]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.search-param-value-resource :as sp-vr]
@@ -107,6 +108,12 @@
 
   (-compartment-resource-handles [db compartment tid start-id]
     (cr/resource-handles db compartment tid start-id))
+
+  ;; ---- Patient-Compartment-Level Functions ---------------------------------
+
+  (-patient-compartment-last-change-t [_ patient-id]
+    (with-open [plci (kv/new-iterator snapshot :patient-last-change-index)]
+      (plc/last-change-t plci patient-id t)))
 
   ;; ---- Common Query Functions ----------------------------------------------
 

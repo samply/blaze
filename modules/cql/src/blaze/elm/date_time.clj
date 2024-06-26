@@ -9,7 +9,9 @@
    [blaze.fhir.spec.type.system :as system]
    [java-time.api :as time])
   (:import
-   [blaze.fhir.spec.type.system Date DateDate DateTime DateTimeDate DateTimeYear DateTimeYearMonth DateYear DateYearMonth]
+   [blaze.fhir.spec.type.system
+    Date DateDate DateTime DateTimeDate DateTimeYear DateTimeYearMonth DateYear
+    DateYearMonth]
    [java.time DateTimeException LocalDateTime LocalTime OffsetDateTime]
    [java.time.temporal ChronoField ChronoUnit Temporal TemporalAccessor]))
 

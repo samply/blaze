@@ -5,8 +5,8 @@
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.elm.compiler :as c]
-   [blaze.elm.compiler.external-data :as ed]
    [blaze.elm.expression :as expr]
+   [blaze.elm.resource :as cr]
    [blaze.elm.util :as elm-util]
    [blaze.fhir.spec :as fhir-spec]
    [taoensso.timbre :as log]))
@@ -77,7 +77,7 @@
   [{:keys [db] :as context} {:keys [name expression]} subject-handles]
   (with-open [db (d/new-batch-db db)]
     (transduce
-     (comp (map (partial ed/mk-resource db))
+     (comp (map (partial cr/mk-resource db))
            (result-xf (assoc context :db db) name expression)
            (halt-when ba/anomaly?))
      ((:reduce-op context) db) subject-handles)))

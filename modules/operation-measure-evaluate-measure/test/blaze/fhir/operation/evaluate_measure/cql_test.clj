@@ -18,6 +18,7 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
@@ -90,17 +91,25 @@
   (fn [_ _ _] (throw (Exception. ^String msg))))
 
 (defn- context
-  [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock executor]} library]
+  [{:blaze.db/keys [node]
+    ::expr/keys [cache]
+    :blaze.test/keys [fixed-clock executor]}
+   library]
   (let [{:keys [expression-defs function-defs]} (compile-library node library)]
     {:db (d/db node)
      :now (now fixed-clock)
+     ::expr/cache cache
      :interrupted? (constantly nil)
      :expression-defs expression-defs
      :function-defs function-defs
      :executor executor}))
 
 (def ^:private config
-  (assoc mem-node-config :blaze.test/executor {}))
+  (assoc mem-node-config
+         ::expr/cache
+         {:node (ig/ref :blaze.db/node)
+          :executor (ig/ref :blaze.test/executor)}
+         :blaze.test/executor {}))
 
 (def ^:private conj-reduce-op
   (fn [_db] conj))

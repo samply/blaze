@@ -57,3 +57,14 @@
    (.nth ^Indexed coll i))
   ([coll i not-found]
    (.nth ^Indexed coll i not-found)))
+
+(defmacro with-open-coll
+  "Like `clojure.core/with-open` but opens and closes the resources on every
+  reduce call to `coll`."
+  [bindings coll]
+  `(reify
+     Sequential
+     IReduceInit
+     (reduce [_ rf# init#]
+       (with-open ~bindings
+         (reduce rf# init# ~coll)))))

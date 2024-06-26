@@ -12,4 +12,5 @@
   deftests [[:block 1]]
   satisfies-prop [[:block 1]]
   clojure.test.check.properties/for-all [[:block 1]]
-  blaze.metrics.core/collector [[:block 0]]}}
+  blaze.metrics.core/collector [[:block 0]]
+  reify-expr [[:inner 0] [:inner 1]]}}

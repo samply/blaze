@@ -7,48 +7,24 @@
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
-   [blaze.db.impl.index.resource-handle :as rh]
    [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.compiler.structured-values]
+   [blaze.elm.resource :as cr]
    [blaze.elm.spec]
    [blaze.elm.util :as elm-util]
-   [blaze.fhir.spec.type.protocols :as p]
-   [clojure.string :as str])
+   [blaze.fhir.spec.references :as fsr]
+   [prometheus.alpha :as prom :refer [defcounter]])
   (:import
    [blaze.elm.compiler.structured_values SourcePropertyExpression]
-   [clojure.lang ILookup]
    [java.util List]))
 
 (set! *warn-on-reflection* true)
 
-;; A resource that is a wrapper of a resource-handle that will lazily pull the
-;; resource content if some property other than :id is accessed.
-(deftype Resource [db handle content]
-  p/FhirType
-  (-type [_]
-    (p/-type handle))
-
-  ILookup
-  (valAt [r key]
-    (.valAt r key nil))
-  (valAt [_ key not-found]
-    (case key
-      :id (rh/id handle)
-      (-> (or @content (vreset! content @(d/pull-content db handle)))
-          (get key not-found))))
-
-  Object
-  (toString [_]
-    (.toString handle)))
-
-(defn resource? [x]
-  (instance? Resource x))
-
-(defn mk-resource [db handle]
-  (Resource. db handle (volatile! nil)))
-
-(defn resource-mapper [db]
-  (map (partial mk-resource db)))
+(defcounter retrieve-total
+  "Number of times a retrieve expression was evaluated."
+  {:namespace "blaze"
+   :subsystem "cql"})
 
 (defn- code->clause-value [{:keys [system code]}]
   (str system "|" code))
@@ -79,36 +55,27 @@
   [node context data-type property codes]
   (let [clauses (-to-clauses codes property)
         query (d/compile-compartment-query node context data-type clauses)]
-    (reify core/Expression
-      (-static [_]
-        false)
+    (reify-expr core/Expression
       (-eval [_ {:keys [db]} {:keys [id]} _]
-        (coll/eduction (resource-mapper db) (d/execute-query db query id)))
+        (prom/inc! retrieve-total)
+        (coll/eduction (cr/resource-mapper db) (d/execute-query db query id)))
       (-form [_]
         `(~'retrieve ~data-type ~(d/query-clauses query))))))
 
-(defn- split-reference [s]
-  (when-let [idx (str/index-of s \/)]
-    [(subs s 0 idx) (subs s (inc idx))]))
-
 ;; TODO: find a better solution than hard coding this case
-(defrecord SpecimenPatientExpression []
-  core/Expression
-  (-static [_]
-    false)
-  (-eval [_ {:keys [db]} resource _]
-    (let [{{:keys [reference]} :subject} resource]
-      (when reference
-        (when-let [[type id] (split-reference reference)]
-          (when (and (= "Patient" type) (string? id))
-            (let [{:keys [op] :as handle} (d/resource-handle db "Patient" id)]
-              (when-not (identical? :delete op)
-                [(mk-resource db handle)])))))))
-  (-form [_]
-    '(retrieve (Specimen) "Patient")))
-
 (def ^:private specimen-patient-expr
-  (->SpecimenPatientExpression))
+  (reify-expr core/Expression
+    (-eval [_ {:keys [db]} resource _]
+      (prom/inc! retrieve-total)
+      (let [{{:keys [reference]} :subject} resource]
+        (when reference
+          (when-let [[type id] (fsr/split-literal-ref reference)]
+            (when (and (= "Patient" type) (string? id))
+              (let [{:keys [op] :as handle} (d/resource-handle db "Patient" id)]
+                (when-not (identical? :delete op)
+                  [(cr/mk-resource db handle)])))))))
+    (-form [_]
+      '(retrieve (Specimen) "Patient"))))
 
 (defn- context-expr
   "Returns an expression which, when evaluated, returns all resources of type
@@ -119,20 +86,17 @@
     (case data-type
       "Patient"
       specimen-patient-expr)
-    (reify core/Expression
-      (-static [_]
-        false)
+    (reify-expr core/Expression
       (-eval [_ {:keys [db]} {:keys [id]} _]
+        (prom/inc! retrieve-total)
         (coll/eduction
-         (resource-mapper db)
+         (cr/resource-mapper db)
          (d/list-compartment-resource-handles db context id data-type)))
       (-form [_]
         `(~'retrieve ~data-type)))))
 
 (def ^:private resource-expr
-  (reify core/Expression
-    (-static [_]
-      false)
+  (reify-expr core/Expression
     (-eval [_ _ resource _]
       [resource])
     (-form [_]
@@ -145,10 +109,12 @@
   (ba/unsupported "Unsupported related context retrieve expression without result type."))
 
 (defn- related-context-expr-without-codes [related-context-expr data-type]
-  (reify core/Expression
-    (-static [_]
-      false)
+  (reify-expr core/Expression
+    (-resolve-refs [_ expression-defs]
+      (related-context-expr-without-codes
+       (core/-resolve-refs related-context-expr expression-defs) data-type))
     (-eval [_ context resource scope]
+      (prom/inc! retrieve-total)
       (when-let [context-resource (core/-eval related-context-expr context resource scope)]
         (core/-eval
          (context-expr (-> context-resource :fhir/type name) data-type)
@@ -158,6 +124,21 @@
     (-form [_]
       (list 'retrieve (core/-form related-context-expr) data-type))))
 
+(defn- related-context-expr-with-codes [related-context-expr data-type query]
+  (reify-expr core/Expression
+    (-resolve-refs [_ expression-defs]
+      (related-context-expr-with-codes
+       (core/-resolve-refs related-context-expr expression-defs) data-type query))
+    (-eval [_ {:keys [db] :as context} resource scope]
+      (prom/inc! retrieve-total)
+      (when-let [{:keys [id]} (core/-eval related-context-expr context resource scope)]
+        (when (string? id)
+          (coll/eduction
+           (cr/resource-mapper db)
+           (d/execute-query db query id)))))
+    (-form [_]
+      (list 'retrieve (core/-form related-context-expr) data-type (d/query-clauses query)))))
+
 (defn- related-context-expr
   [node context-expr data-type code-property codes]
   (if (seq codes)
@@ -166,17 +147,7 @@
         (if (= "http://hl7.org/fhir" value-type-ns)
           (let [clauses [(into [code-property] (map code->clause-value) codes)]]
             (if-ok [query (d/compile-compartment-query node context-type data-type clauses)]
-              (reify core/Expression
-                (-static [_]
-                  false)
-                (-eval [_ {:keys [db] :as context} resource scope]
-                  (when-let [{:keys [id]} (core/-eval context-expr context resource scope)]
-                    (when (string? id)
-                      (coll/eduction
-                       (resource-mapper db)
-                       (d/execute-query db query id)))))
-                (-form [_]
-                  (list 'retrieve (core/-form context-expr) data-type (d/query-clauses query))))
+              (related-context-expr-with-codes context-expr data-type query)
               ba/throw-anom))
           (ba/throw-anom (unsupported-type-ns-anom value-type-ns))))
       (ba/throw-anom unsupported-related-context-expr-without-type-anom))
@@ -184,20 +155,18 @@
 
 (defn- unfiltered-context-expr [node data-type code-property codes]
   (if (empty? codes)
-    (reify core/Expression
-      (-static [_]
-        false)
+    (reify-expr core/Expression
       (-eval [_ {:keys [db]} _ _]
-        (coll/eduction (resource-mapper db) (d/type-list db data-type)))
+        (prom/inc! retrieve-total)
+        (coll/eduction (cr/resource-mapper db) (d/type-list db data-type)))
       (-form [_]
         `(~'retrieve ~data-type)))
     (let [clauses [(into [code-property] (map code->clause-value) codes)]]
       (if-ok [query (d/compile-type-query node data-type clauses)]
-        (reify core/Expression
-          (-static [_]
-            false)
+        (reify-expr core/Expression
           (-eval [_ {:keys [db]} _ _]
-            (coll/eduction (resource-mapper db) (d/execute-query db query)))
+            (prom/inc! retrieve-total)
+            (coll/eduction (cr/resource-mapper db) (d/execute-query db query)))
           (-form [_]
             `(~'retrieve ~data-type ~(d/query-clauses query))))
         ba/throw-anom))))

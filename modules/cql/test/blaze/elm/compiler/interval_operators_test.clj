@@ -68,19 +68,35 @@
   (testing "Static"
     (testing "Integer"
       (are [s e res] (= res (ctu/compile-binop elm/interval elm/integer s e))
-        "1" "2" (interval 1 2)))
+        "1" "2" (interval 1 2))
+
+      (testing "form"
+        (has-form (interval 1 2) '(interval 1 2))))
 
     (testing "Decimal"
       (are [s e res] (= res (ctu/compile-binop elm/interval elm/decimal s e))
-        "1" "2" (interval 1M 2M)))
+        "1" "2" (interval 1M 2M))
+
+      (testing "form"
+        (has-form (interval 1M 2M) '(interval 1M 2M))))
 
     (testing "Date"
       (are [s e res] (= res (ctu/compile-binop elm/interval elm/date s e))
-        "2020" "2021" (interval #system/date"2020" #system/date"2021")))
+        "2020" "2021" (interval #system/date"2020" #system/date"2021"))
+
+      (testing "form"
+        (has-form
+         (interval #system/date"2020" #system/date"2021")
+          '(interval #system/date"2020" #system/date"2021"))))
 
     (testing "DateTime"
       (are [s e res] (= res (ctu/compile-binop elm/interval elm/date-time s e))
         "2020" "2021" (interval #system/date-time"2020" #system/date-time"2021"))
+
+      (testing "form"
+        (has-form
+         (interval #system/date-time"2020" #system/date-time"2021")
+          '(interval #system/date-time"2020" #system/date-time"2021")))
 
       (testing "with ToDateTime"
         (are [s e res] (= res (c/compile {} (elm/interval [(elm/to-date-time (elm/date s)) (elm/date-time e)])))
@@ -112,6 +128,10 @@
   (testing "Invalid interval"
     (are [elm] (thrown? Exception (core/-eval (c/compile {} elm) {} nil nil))
       #elm/interval [#elm/integer "5" #elm/integer "3"]))
+
+  (testing "attach-cache"
+    (let [interval (interval 1 1)]
+      (is (= [interval] (st/with-instrument-disabled (c/attach-cache interval ::cache))))))
 
   (testing "form"
     (let [elm# (elm/interval [(elm/as ["{urn:hl7-org:elm-types:r1}Integer" #elm/parameter-ref "x"])
@@ -211,9 +231,9 @@
       "2019-04-17" "2019-04-17" false?
       "2019-04-17" "2019-04-18" false?)
 
-    (ctu/testing-binary-null elm/after #elm/date "2019")
-    (ctu/testing-binary-null elm/after #elm/date "2019-04")
-    (ctu/testing-binary-null elm/after #elm/date "2019-04-17")
+    (ctu/testing-binary-null elm/after #elm/date"2019")
+    (ctu/testing-binary-null elm/after #elm/date"2019-04")
+    (ctu/testing-binary-null elm/after #elm/date"2019-04-17")
 
     (testing "with year precision"
       (are [x y pred] (pred (ctu/compile-binop-precision elm/after elm/date x y "year"))
@@ -254,15 +274,9 @@
         "2019-04" "2019-05" false?
         "2019-04-17" "2019-04-16" false?
         "2019-04-17" "2019-04-17" false?
-        "2019-04-17" "2019-04-18" false?)))
+        "2019-04-17" "2019-04-18" false?))
 
-  (ctu/testing-binary-dynamic elm/after)
-
-  (ctu/testing-binary-precision-dynamic elm/after)
-
-  (ctu/testing-binary-form elm/after)
-
-  (ctu/testing-binary-precision-form elm/after))
+    (ctu/testing-binary-precision-op elm/after)))
 
 ;; 19.3. Before
 ;;
@@ -352,9 +366,9 @@
       "2019-04-17" "2019-04-17" false?
       "2019-04-17" "2019-04-16" false?)
 
-    (ctu/testing-binary-null elm/before #elm/date "2019")
-    (ctu/testing-binary-null elm/before #elm/date "2019-04")
-    (ctu/testing-binary-null elm/before #elm/date "2019-04-17")
+    (ctu/testing-binary-null elm/before #elm/date"2019")
+    (ctu/testing-binary-null elm/before #elm/date"2019-04")
+    (ctu/testing-binary-null elm/before #elm/date"2019-04-17")
 
     (testing "with year precision"
       (are [x y pred] (pred (ctu/compile-binop-precision elm/before elm/date x y
@@ -398,13 +412,7 @@
         "2019-04-17" "2019-04-17" false?
         "2019-04-17" "2019-04-16" false?)))
 
-  (ctu/testing-binary-dynamic elm/before)
-
-  (ctu/testing-binary-precision-dynamic elm/before)
-
-  (ctu/testing-binary-form elm/before)
-
-  (ctu/testing-binary-precision-form elm/before))
+  (ctu/testing-binary-precision-op elm/before))
 
 ;; 19.4. Collapse
 ;;
@@ -461,9 +469,7 @@
       {:type "Null"}
       [(interval #system/date-time"2012-01-01" #system/date-time"2012-05-25")]))
 
-  (ctu/testing-binary-dynamic elm/collapse)
-
-  (ctu/testing-binary-form elm/collapse))
+  (ctu/testing-binary-op elm/collapse))
 
 ;; 19.5. Contains
 ;;
@@ -530,13 +536,7 @@
 
       #elm/list [] {:type "Null"} nil?))
 
-  (ctu/testing-binary-dynamic elm/contains)
-
-  (ctu/testing-binary-precision-dynamic elm/contains)
-
-  (ctu/testing-binary-form elm/contains)
-
-  (ctu/testing-binary-precision-form elm/contains))
+  (ctu/testing-binary-precision-op elm/contains))
 
 ;; 19.6. End
 ;;
@@ -573,9 +573,7 @@
 
   (ctu/testing-unary-null elm/end)
 
-  (ctu/testing-unary-dynamic elm/end)
-
-  (ctu/testing-unary-form elm/end))
+  (ctu/testing-unary-op elm/end))
 
 ;; 19.7. Ends
 ;;
@@ -608,13 +606,7 @@
 
   (ctu/testing-binary-null elm/ends interval-zero)
 
-  (ctu/testing-binary-dynamic elm/ends)
-
-  (ctu/testing-binary-precision-dynamic elm/ends)
-
-  (ctu/testing-binary-form elm/ends)
-
-  (ctu/testing-binary-precision-form elm/ends))
+  (ctu/testing-binary-precision-op elm/ends))
 
 ;; 19.8. Equal
 ;;
@@ -663,9 +655,7 @@
 
     (ctu/testing-binary-null elm/except interval-zero))
 
-  (ctu/testing-binary-dynamic elm/except)
-
-  (ctu/testing-binary-form elm/except))
+  (ctu/testing-binary-op elm/except))
 
 ;; 19.11. Expand
 ;;
@@ -755,13 +745,7 @@
 
     (ctu/testing-binary-null elm/includes interval-zero))
 
-  (ctu/testing-binary-dynamic elm/includes)
-
-  (ctu/testing-binary-precision-dynamic elm/includes)
-
-  (ctu/testing-binary-form elm/includes)
-
-  (ctu/testing-binary-precision-form elm/includes))
+  (ctu/testing-binary-precision-op elm/includes))
 
 ;; 19.14. IncludedIn
 ;;
@@ -824,9 +808,7 @@
 
     (ctu/testing-binary-null elm/intersect interval-zero))
 
-  (ctu/testing-binary-dynamic elm/intersect)
-
-  (ctu/testing-binary-form elm/intersect))
+  (ctu/testing-binary-op elm/intersect))
 
 ;; 19.16. Meets
 ;;
@@ -857,13 +839,7 @@
 
   (ctu/testing-binary-null elm/meets-before interval-zero)
 
-  (ctu/testing-binary-dynamic elm/meets-before)
-
-  (ctu/testing-binary-precision-dynamic elm/meets-before)
-
-  (ctu/testing-binary-form elm/meets-before)
-
-  (ctu/testing-binary-precision-form elm/meets-before))
+  (ctu/testing-binary-precision-op elm/meets-before))
 
 ;; 19.18. MeetsAfter
 ;;
@@ -887,13 +863,7 @@
 
   (ctu/testing-binary-null elm/meets-after interval-zero)
 
-  (ctu/testing-binary-dynamic elm/meets-after)
-
-  (ctu/testing-binary-precision-dynamic elm/meets-after)
-
-  (ctu/testing-binary-form elm/meets-after)
-
-  (ctu/testing-binary-precision-form elm/meets-after))
+  (ctu/testing-binary-precision-op elm/meets-after))
 
 ;; 19.20. Overlaps
 ;;
@@ -947,13 +917,7 @@
 
   (ctu/testing-binary-null elm/overlaps interval-zero)
 
-  (ctu/testing-binary-dynamic elm/overlaps)
-
-  (ctu/testing-binary-precision-dynamic elm/overlaps)
-
-  (ctu/testing-binary-form elm/overlaps)
-
-  (ctu/testing-binary-precision-form elm/overlaps))
+  (ctu/testing-binary-precision-op elm/overlaps))
 
 ;; 19.21. OverlapsBefore
 ;;
@@ -1004,9 +968,7 @@
 
   (ctu/testing-unary-null elm/point-from)
 
-  (ctu/testing-unary-dynamic elm/point-from)
-
-  (ctu/testing-unary-form elm/point-from))
+  (ctu/testing-unary-op elm/point-from))
 
 ;; 19.24. ProperContains
 ;;
@@ -1047,15 +1009,11 @@
         #elm/list [#elm/integer "1"] #elm/integer "2" false?
 
         #elm/list [#elm/integer "1" #elm/integer "2"] #elm/integer "1" true?
-        #elm/list [#elm/integer "1" #elm/integer "2"] #elm/integer "2" true?)))
+        #elm/list [#elm/integer "1" #elm/integer "2"] #elm/integer "2" true?))
 
-  (ctu/testing-binary-dynamic elm/proper-contains)
+    (ctu/testing-binary-null elm/proper-contains #elm/list []))
 
-  (ctu/testing-binary-precision-dynamic elm/proper-contains)
-
-  (ctu/testing-binary-form elm/proper-contains)
-
-  (ctu/testing-binary-precision-form elm/proper-contains))
+  (ctu/testing-binary-precision-op elm/proper-contains))
 
 ;; 19.25. ProperIn
 ;;
@@ -1094,13 +1052,7 @@
 
     (ctu/testing-binary-null elm/proper-includes interval-zero))
 
-  (ctu/testing-binary-dynamic elm/proper-includes)
-
-  (ctu/testing-binary-precision-dynamic elm/proper-includes)
-
-  (ctu/testing-binary-form elm/proper-includes)
-
-  (ctu/testing-binary-precision-form elm/proper-includes))
+  (ctu/testing-binary-precision-op elm/proper-includes))
 
 ;; 19.27. ProperIncludedIn
 ;;
@@ -1151,9 +1103,7 @@
 
   (ctu/testing-unary-null elm/start)
 
-  (ctu/testing-unary-dynamic elm/start)
-
-  (ctu/testing-unary-form elm/start))
+  (ctu/testing-unary-op elm/start))
 
 ;; 19.30. Starts
 ;;
@@ -1179,13 +1129,7 @@
 
   (ctu/testing-binary-null elm/starts interval-zero)
 
-  (ctu/testing-binary-dynamic elm/starts)
-
-  (ctu/testing-binary-precision-dynamic elm/starts)
-
-  (ctu/testing-binary-form elm/starts)
-
-  (ctu/testing-binary-precision-form elm/starts))
+  (ctu/testing-binary-precision-op elm/starts))
 
 ;; 19.31. Union
 ;;
@@ -1220,9 +1164,7 @@
 
     (ctu/testing-binary-null elm/union interval-zero))
 
-  (ctu/testing-binary-dynamic elm/union)
-
-  (ctu/testing-binary-form elm/union))
+  (ctu/testing-binary-op elm/union))
 
 ;; 19.32. Width
 ;;
@@ -1240,6 +1182,4 @@
 
   (ctu/testing-unary-null elm/width)
 
-  (ctu/testing-unary-dynamic elm/width)
-
-  (ctu/testing-unary-form elm/width))
+  (ctu/testing-unary-op elm/width))

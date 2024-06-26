@@ -2,7 +2,6 @@
   (:require
    [blaze.anomaly-spec]
    [blaze.elm.compiler :as-alias c]
-   [blaze.elm.compiler-spec]
    [blaze.elm.compiler.expression-def :as-alias expression-def]
    [blaze.elm.compiler.function-def :as-alias function-def]
    [blaze.elm.compiler.spec]
@@ -36,5 +35,11 @@
 (s/def ::c/parameter-default-values
   (s/map-of :elm/name ::c/expression))
 
+(s/def ::c/parameters
+  (s/map-of :elm/name ::c/expression))
+
 (s/def ::c/library
   (s/keys :req-un [::c/expression-defs ::c/function-defs ::c/parameter-default-values]))
+
+(s/def ::c/options
+  map?)

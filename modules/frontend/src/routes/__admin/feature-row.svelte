@@ -1,15 +1,15 @@
 <script lang="ts">
-	export let name: string;
-	export let toggle: string;
-	export let enabled: boolean;
+	import type { Feature } from './+layout';
+
+	export let feature: Feature;
 </script>
 
 <tr>
-	<td class="whitespace-nowrap py-2 pl-4 pr-3 text-sm text-gray-500 sm:pl-0">{name}</td>
-	<td class="whitespace-nowrap py-2 pl-4 pr-3 text-sm text-gray-500 sm:pl-0">{toggle}</td>
+	<td class="whitespace-nowrap py-2 pl-4 pr-3 text-sm text-gray-500 sm:pl-0">{feature.name}</td>
+	<td class="whitespace-nowrap py-2 pl-4 pr-3 text-sm text-gray-500 sm:pl-0">{feature.toggle}</td>
 	<td
 		class="whitespace-nowrap py-2 pl-4 pr-3 text-sm text-gray-500 sm:pl-0"
-		class:font-medium={enabled}
-		class:text-gray-900={enabled}>{enabled}</td
+		class:font-medium={feature.enabled}
+		class:text-gray-900={feature.enabled}>{feature.enabled}</td
 	>
 </tr>

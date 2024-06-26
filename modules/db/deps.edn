@@ -37,6 +37,9 @@
   blaze/db-resource-store
   {:local/root "../db-resource-store"}
 
+  blaze/scheduler
+  {:local/root "../scheduler"}
+
   blaze/spec
   {:local/root "../spec"}
 

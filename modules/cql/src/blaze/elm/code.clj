@@ -26,6 +26,14 @@
   core/Expression
   (-static [_]
     true)
+  (-attach-cache [expr _]
+    [(fn [] [expr])])
+  (-patient-count [_]
+    nil)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr _]
+    expr)
   (-eval [this _ _ _]
     this)
   (-form [_]

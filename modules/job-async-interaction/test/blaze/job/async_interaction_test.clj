@@ -130,6 +130,7 @@
     :kv-store (ig/ref :blaze.db.main/index-kv-store)
     :resource-indexer (ig/ref :blaze.db.node.main/resource-indexer)
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :scheduler (ig/ref :blaze/scheduler)
     :poll-timeout (time/millis 10)}
 
    :blaze.db.admin/node
@@ -140,6 +141,7 @@
     :kv-store (ig/ref :blaze.db.admin/index-kv-store)
     :resource-indexer (ig/ref :blaze.db.node.admin/resource-indexer)
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :scheduler (ig/ref :blaze/scheduler)
     :poll-timeout (time/millis 10)}
 
    [::tx-log/local :blaze.db.main/tx-log]
@@ -229,6 +231,8 @@
 
    :blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}
+
+   :blaze/scheduler {}
 
    :blaze.test/fixed-clock {}
    :blaze.test/fixed-rng-fn {}})

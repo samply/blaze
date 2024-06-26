@@ -7,7 +7,8 @@
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
-   [blaze.elm.compiler.test-util :as ctu]
+   [blaze.elm.compiler.date-time-operators]
+   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.date-time :as date-time]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
@@ -183,7 +184,7 @@
         (let [elm #elm/date [#elm/parameter-ref "year"]
               expr (c/compile compile-ctx elm)]
 
-          (is (= '(date (param-ref "year")) (core/-form expr)))
+          (has-form expr '(date (param-ref "year")))
 
           (is (false? (core/-static expr)))))
 
@@ -192,8 +193,7 @@
                              #elm/parameter-ref "month"]
               expr (c/compile compile-ctx elm)]
 
-          (is (= '(date (param-ref "year") (param-ref "month"))
-                 (core/-form expr)))
+          (has-form expr '(date (param-ref "year") (param-ref "month")))
 
           (is (false? (core/-static expr)))))
 
@@ -203,10 +203,55 @@
                              #elm/parameter-ref "day"]
               expr (c/compile compile-ctx elm)]
 
-          (is (= '(date (param-ref "year") (param-ref "month") (param-ref "day"))
-                 (core/-form expr)))
+          (has-form expr '(date (param-ref "year") (param-ref "month") (param-ref "day")))
 
-          (is (false? (core/-static expr))))))))
+          (is (false? (core/-static expr)))))))
+
+  (testing "resolve parameters"
+    (let [compile-ctx {:library
+                       {:parameters
+                        {:def
+                         [{:name "year"}
+                          {:name "month"}
+                          {:name "day"}
+                          {:name "x"}]}}}]
+
+      (testing "year"
+        (testing "with parameter-ref in expression with unresolved parameter-ref"
+          (let [elm #elm/date [#elm/add [#elm/parameter-ref "year" #elm/parameter-ref "x"]]
+                expr (c/resolve-params (c/compile compile-ctx elm) {"year" 2024})]
+            (has-form expr '(date (add 2024 (param-ref "x")))))))
+
+      (testing "year-month"
+        (let [elm #elm/date [#elm/parameter-ref "year" #elm/parameter-ref "month"]]
+
+          (testing "with only the year parameter-ref resolved"
+            (let [expr (c/resolve-params (c/compile compile-ctx elm) {"year" 2024})]
+              (has-form expr '(date 2024 (param-ref "month")))))
+
+          (testing "with only the month parameter-ref resolved"
+            (let [expr (c/resolve-params (c/compile compile-ctx elm) {"month" 6})]
+              (has-form expr '(date (param-ref "year") 6))))))
+
+      (testing "date"
+        (let [elm #elm/date [#elm/parameter-ref "year"
+                             #elm/parameter-ref "month"
+                             #elm/parameter-ref "day"]]
+
+          (testing "with only the year parameter-ref resolved"
+            (let [expr (c/resolve-params (c/compile compile-ctx elm) {"year" 2024})]
+              (has-form expr '(date 2024 (param-ref "month") (param-ref "day")))))
+
+          (testing "with only the month parameter-ref resolved"
+            (let [expr (c/resolve-params (c/compile compile-ctx elm) {"month" 6})]
+              (has-form expr '(date (param-ref "year") 6 (param-ref "day")))))
+
+          (testing "with only the day parameter-ref resolved"
+            (let [expr (c/resolve-params (c/compile compile-ctx elm) {"day" 15})]
+              (has-form expr '(date (param-ref "year") (param-ref "month") 15))))))))
+
+  (ctu/testing-binary-op elm/date)
+  (ctu/testing-ternary-op elm/date))
 
 ;; 18.7. DateFrom
 ;;
@@ -226,9 +271,7 @@
 
   (ctu/testing-unary-null elm/date-from)
 
-  (ctu/testing-unary-dynamic elm/date-from)
-
-  (ctu/testing-unary-form elm/date-from))
+  (ctu/testing-unary-op elm/date-from))
 
 ;; 18.8. DateTime
 ;;
@@ -417,7 +460,7 @@
         (let [elm #elm/date-time [#elm/parameter-ref "year"]
               expr (c/compile compile-ctx elm)]
 
-          (is (= '(date-time (param-ref "year")) (core/-form expr)))
+          (has-form expr '(date-time (param-ref "year")))
 
           (is (false? (core/-static expr)))))
 
@@ -426,8 +469,7 @@
                                   #elm/parameter-ref "month"]
               expr (c/compile compile-ctx elm)]
 
-          (is (= '(date-time (param-ref "year") (param-ref "month"))
-                 (core/-form expr)))
+          (has-form expr '(date-time (param-ref "year") (param-ref "month")))
 
           (is (false? (core/-static expr)))))
 
@@ -437,9 +479,8 @@
                                   #elm/parameter-ref "day"]
               expr (c/compile compile-ctx elm)]
 
-          (is (= '(date-time (param-ref "year") (param-ref "month")
-                             (param-ref "day"))
-                 (core/-form expr)))
+          (has-form expr '(date-time (param-ref "year") (param-ref "month")
+                                     (param-ref "day")))
 
           (is (false? (core/-static expr)))))
 
@@ -455,7 +496,7 @@
                                     #elm/integer "8"]
                 expr (c/compile compile-ctx elm)]
 
-            (is (= '(date-time 1 2 3 4 5 6 7 8) (core/-form expr)))
+            (has-form expr '(date-time 1 2 3 4 5 6 7 8))
 
             (is (false? (core/-static expr)))))
 
@@ -470,11 +511,10 @@
                                     #elm/integer "1"]
                 expr (c/compile compile-ctx elm)]
 
-            (is (= '(date-time (param-ref "year") (param-ref "month")
-                               (param-ref "day") (param-ref "hour")
-                               (param-ref "minute") (param-ref "second")
-                               (param-ref "millisecond") 1)
-                   (core/-form expr)))
+            (has-form expr '(date-time (param-ref "year") (param-ref "month")
+                                       (param-ref "day") (param-ref "hour")
+                                       (param-ref "minute") (param-ref "second")
+                                       (param-ref "millisecond") 1))
 
             (is (false? (core/-static expr)))))
 
@@ -489,12 +529,11 @@
                                     #elm/parameter-ref "timezone-offset"]
                 expr (c/compile compile-ctx elm)]
 
-            (is (= '(date-time (param-ref "year") (param-ref "month")
-                               (param-ref "day") (param-ref "hour")
-                               (param-ref "minute") (param-ref "second")
-                               (param-ref "millisecond")
-                               (param-ref "timezone-offset"))
-                   (core/-form expr)))
+            (has-form expr '(date-time (param-ref "year") (param-ref "month")
+                                       (param-ref "day") (param-ref "hour")
+                                       (param-ref "minute") (param-ref "second")
+                                       (param-ref "millisecond")
+                                       (param-ref "timezone-offset")))
 
             (is (false? (core/-static expr))))))
 
@@ -506,9 +545,9 @@
                                     #elm/parameter-ref "hour"]
                 expr (c/compile compile-ctx elm)]
 
-            (is (= '(date-time (param-ref "year") (param-ref "month")
-                               (param-ref "day") (param-ref "hour") 0 0 0)
-                   (core/-form expr)))
+            (has-form expr '(date-time (param-ref "year") (param-ref "month")
+                                       (param-ref "day") (param-ref "hour")
+                                       0 0 0))
 
             (is (false? (core/-static expr)))))
 
@@ -520,10 +559,9 @@
                                     #elm/parameter-ref "minute"]
                 expr (c/compile compile-ctx elm)]
 
-            (is (= '(date-time (param-ref "year") (param-ref "month")
-                               (param-ref "day") (param-ref "hour")
-                               (param-ref "minute") 0 0)
-                   (core/-form expr)))
+            (has-form expr '(date-time (param-ref "year") (param-ref "month")
+                                       (param-ref "day") (param-ref "hour")
+                                       (param-ref "minute") 0 0))
 
             (is (false? (core/-static expr)))))
 
@@ -536,10 +574,9 @@
                                     #elm/parameter-ref "second"]
                 expr (c/compile compile-ctx elm)]
 
-            (is (= '(date-time (param-ref "year") (param-ref "month")
-                               (param-ref "day") (param-ref "hour")
-                               (param-ref "minute") (param-ref "second") 0)
-                   (core/-form expr)))
+            (has-form expr '(date-time (param-ref "year") (param-ref "month")
+                                       (param-ref "day") (param-ref "hour")
+                                       (param-ref "minute") (param-ref "second") 0))
 
             (is (false? (core/-static expr)))))
 
@@ -553,13 +590,101 @@
                                     #elm/parameter-ref "millisecond"]
                 expr (c/compile compile-ctx elm)]
 
-            (is (= '(date-time (param-ref "year") (param-ref "month")
-                               (param-ref "day") (param-ref "hour")
-                               (param-ref "minute") (param-ref "second")
-                               (param-ref "millisecond"))
-                   (core/-form expr)))
+            (has-form expr '(date-time (param-ref "year") (param-ref "month")
+                                       (param-ref "day") (param-ref "hour")
+                                       (param-ref "minute") (param-ref "second")
+                                       (param-ref "millisecond")))
 
-            (is (false? (core/-static expr)))))))))
+            (is (false? (core/-static expr))))))))
+
+  (testing "resolve parameters"
+    (let [compile-ctx {:library
+                       {:parameters
+                        {:def
+                         [{:name "year"}
+                          {:name "month"}
+                          {:name "day"}
+                          {:name "hour"}
+                          {:name "minute"}
+                          {:name "second"}
+                          {:name "millisecond"}
+                          {:name "timezone-offset"}
+                          {:name "x"}]}}}]
+
+      (testing "year"
+        (testing "with parameter-ref in expression with unresolved parameter-ref"
+          (let [elm #elm/date-time [#elm/add [#elm/parameter-ref "year" #elm/parameter-ref "x"]]
+                expr (c/resolve-params (c/compile compile-ctx elm) {"year" 2024})]
+            (has-form expr '(date-time (add 2024 (param-ref "x")))))))
+
+      (testing "year-month"
+        (let [elm #elm/date-time [#elm/parameter-ref "year" #elm/parameter-ref "month"]]
+
+          (testing "with only the year parameter-ref resolved"
+            (let [expr (c/resolve-params (c/compile compile-ctx elm) {"year" 2024})]
+              (has-form expr '(date-time 2024 (param-ref "month")))))
+
+          (testing "with only the month parameter-ref resolved"
+            (let [expr (c/resolve-params (c/compile compile-ctx elm) {"month" 6})]
+              (has-form expr '(date-time (param-ref "year") 6))))))
+
+      (testing "date"
+        (let [elm #elm/date-time [#elm/parameter-ref "year"
+                                  #elm/parameter-ref "month"
+                                  #elm/parameter-ref "day"]]
+
+          (testing "with only the year parameter-ref resolved"
+            (let [expr (c/resolve-params (c/compile compile-ctx elm) {"year" 2024})]
+              (has-form expr '(date-time 2024 (param-ref "month") (param-ref "day")))))
+
+          (testing "with only the month parameter-ref resolved"
+            (let [expr (c/resolve-params (c/compile compile-ctx elm) {"month" 6})]
+              (has-form expr '(date-time (param-ref "year") 6 (param-ref "day")))))
+
+          (testing "with only the day parameter-ref resolved"
+            (let [expr (c/resolve-params (c/compile compile-ctx elm) {"day" 15})]
+              (has-form expr '(date-time (param-ref "year") (param-ref "month") 15))))))
+
+      (testing "with timezone offset"
+        (let [elm #elm/date-time [#elm/parameter-ref "year"
+                                  #elm/parameter-ref "month"
+                                  #elm/parameter-ref "day"
+                                  #elm/parameter-ref "hour"
+                                  #elm/parameter-ref "minute"
+                                  #elm/parameter-ref "second"
+                                  #elm/parameter-ref "millisecond"
+                                  #elm/parameter-ref "timezone-offset"]]
+
+          (testing "with all parameter-refs resolved"
+            (let [params {"year" 2024 "month" 6 "day" 15 "hour" 16
+                          "minute" 50 "second" 23 "millisecond" 42
+                          "timezone-offset" 1.5M}
+                  expr (c/resolve-params (c/compile compile-ctx elm) params)]
+              (has-form expr '(date-time 2024 6 15 16 50 23 42 1.5M))))
+
+          (testing "with only the year parameter-ref resolved"
+            (let [expr (c/resolve-params (c/compile compile-ctx elm) {"year" 2024})]
+              (has-form expr '(date-time 2024 (param-ref "month") (param-ref "day")
+                                         (param-ref "hour") (param-ref "minute")
+                                         (param-ref "second") (param-ref "millisecond")
+                                         (param-ref "timezone-offset")))))
+
+          (testing "with only the month parameter-ref resolved"
+            (let [expr (c/resolve-params (c/compile compile-ctx elm) {"month" 6})]
+              (has-form expr '(date-time (param-ref "year") 6 (param-ref "day")
+                                         (param-ref "hour") (param-ref "minute")
+                                         (param-ref "second") (param-ref "millisecond")
+                                         (param-ref "timezone-offset")))))
+
+          (testing "with only the day parameter-ref resolved"
+            (let [expr (c/resolve-params (c/compile compile-ctx elm) {"day" 15})]
+              (has-form expr '(date-time (param-ref "year") (param-ref "month") 15
+                                         (param-ref "hour") (param-ref "minute")
+                                         (param-ref "second") (param-ref "millisecond")
+                                         (param-ref "timezone-offset")))))))))
+
+  (ctu/testing-binary-op elm/date-time)
+  (ctu/testing-ternary-op elm/date-time))
 
 ;; 18.9. DateTimeComponentFrom
 ;;
@@ -590,11 +715,8 @@
     (are [x precision res] (= res (eval (compile elm/date-time x precision)))
       "2019-04-17T12:48" "Hour" 12))
 
-  (ctu/testing-unary-precision-dynamic elm/date-time-component-from "Year" "Month"
-                                       "Day" "Hour" "Minute" "Second" "Millisecond")
-
-  (ctu/testing-unary-precision-form elm/date-time-component-from "Year" "Month"
-                                    "Day" "Hour" "Minute" "Second" "Millisecond"))
+  (ctu/testing-unary-precision-op elm/date-time-component-from "Year" "Month"
+                                  "Day" "Hour" "Minute" "Second" "Millisecond"))
 
 ;; 18.10. DifferenceBetween
 ;;
@@ -662,9 +784,7 @@
           "2018-01" "2018-01" "Day"
           "2018-01-01" "2018-01-01" "Hour"))))
 
-  (ctu/testing-binary-precision-dynamic elm/difference-between "Year" "Month" "Day")
-
-  (ctu/testing-binary-precision-form elm/difference-between "Year" "Month" "Day"))
+  (ctu/testing-binary-precision-only-op elm/difference-between "Year" "Month" "Day"))
 
 ;; 18.11. DurationBetween
 ;;
@@ -731,9 +851,7 @@
           "2018-01" "2018-01" "Day"
           "2018-01-01" "2018-01-01" "Hour"))))
 
-  (ctu/testing-binary-precision-dynamic elm/duration-between "Year" "Month" "Day")
-
-  (ctu/testing-binary-precision-form elm/duration-between "Year" "Month" "Day"))
+  (ctu/testing-binary-precision-only-op elm/duration-between "Year" "Month" "Day"))
 
 ;; 18.12. Not Equal
 ;;
@@ -802,9 +920,9 @@
       "2019-04-17" "2019-04-17" true?
       "2019-04-17" "2019-04-18" false?)
 
-    (ctu/testing-binary-null elm/same-as #elm/date "2019")
-    (ctu/testing-binary-null elm/same-as #elm/date "2019-04")
-    (ctu/testing-binary-null elm/same-as #elm/date "2019-04-17")
+    (ctu/testing-binary-null elm/same-as #elm/date"2019")
+    (ctu/testing-binary-null elm/same-as #elm/date"2019-04")
+    (ctu/testing-binary-null elm/same-as #elm/date"2019-04-17")
 
     (testing "with year precision"
       (are [x y pred] (pred (ctu/compile-binop-precision elm/same-as elm/date x y "year"))
@@ -837,13 +955,7 @@
         "2019-04-17" "2019-04-17" true?
         "2019-04-17" "2019-04-18" true?)))
 
-  (ctu/testing-binary-dynamic elm/same-as)
-
-  (ctu/testing-binary-precision-dynamic elm/same-as)
-
-  (ctu/testing-binary-form elm/same-as)
-
-  (ctu/testing-binary-precision-form elm/same-as))
+  (ctu/testing-binary-precision-op elm/same-as))
 
 ;; 18.15. SameOrBefore
 ;;
@@ -906,9 +1018,9 @@
       "2019-04-17" "2019-04-17" true?
       "2019-04-17" "2019-04-16" false?)
 
-    (ctu/testing-binary-null elm/same-or-before #elm/date "2019")
-    (ctu/testing-binary-null elm/same-or-before #elm/date "2019-04")
-    (ctu/testing-binary-null elm/same-or-before #elm/date "2019-04-17")
+    (ctu/testing-binary-null elm/same-or-before #elm/date"2019")
+    (ctu/testing-binary-null elm/same-or-before #elm/date"2019-04")
+    (ctu/testing-binary-null elm/same-or-before #elm/date"2019-04-17")
 
     (testing "with year precision"
       (are [x y pred] (pred (ctu/compile-binop-precision elm/same-or-before elm/date x y "year"))
@@ -944,13 +1056,7 @@
         "2019-04" "2019-04" true?
         "2019-04" "2019-03" true?)))
 
-  (ctu/testing-binary-dynamic elm/same-or-before)
-
-  (ctu/testing-binary-precision-dynamic elm/same-or-before)
-
-  (ctu/testing-binary-form elm/same-or-before)
-
-  (ctu/testing-binary-precision-form elm/same-or-before))
+  (ctu/testing-binary-precision-op elm/same-or-before))
 
 ;; 18.15. SameOrAfter
 ;;
@@ -1013,9 +1119,9 @@
       "2019-04-17" "2019-04-17" true?
       "2019-04-17" "2019-04-18" false?)
 
-    (ctu/testing-binary-null elm/same-or-after #elm/date "2019")
-    (ctu/testing-binary-null elm/same-or-after #elm/date "2019-04")
-    (ctu/testing-binary-null elm/same-or-after #elm/date "2019-04-17")
+    (ctu/testing-binary-null elm/same-or-after #elm/date"2019")
+    (ctu/testing-binary-null elm/same-or-after #elm/date"2019-04")
+    (ctu/testing-binary-null elm/same-or-after #elm/date"2019-04-17")
 
     (testing "with year precision"
       (are [x y pred] (pred (ctu/compile-binop-precision elm/same-or-after elm/date x y "year"))
@@ -1051,13 +1157,7 @@
         "2019-04" "2019-04" true?
         "2019-04" "2019-05" true?)))
 
-  (ctu/testing-binary-dynamic elm/same-or-after)
-
-  (ctu/testing-binary-precision-dynamic elm/same-or-after)
-
-  (ctu/testing-binary-form elm/same-or-after)
-
-  (ctu/testing-binary-precision-form elm/same-or-after))
+  (ctu/testing-binary-precision-op elm/same-or-after))
 
 ;; 18.18. Time
 ;;
@@ -1144,7 +1244,7 @@
         (let [elm #elm/time [#elm/parameter-ref "hour"]
               expr (c/compile compile-ctx elm)]
 
-          (is (= '(time (param-ref "hour")) (core/-form expr)))
+          (has-form expr '(time (param-ref "hour")))
 
           (is (false? (core/-static expr)))))
 
@@ -1153,8 +1253,7 @@
                              #elm/parameter-ref "minute"]
               expr (c/compile compile-ctx elm)]
 
-          (is (= '(time (param-ref "hour") (param-ref "minute"))
-                 (core/-form expr)))
+          (has-form expr '(time (param-ref "hour") (param-ref "minute")))
 
           (is (false? (core/-static expr)))))
 
@@ -1164,9 +1263,8 @@
                              #elm/parameter-ref "second"]
               expr (c/compile compile-ctx elm)]
 
-          (is (= '(time (param-ref "hour") (param-ref "minute")
-                        (param-ref "second"))
-                 (core/-form expr)))
+          (has-form expr '(time (param-ref "hour") (param-ref "minute")
+                                (param-ref "second")))
 
           (is (false? (core/-static expr)))))
 
@@ -1177,9 +1275,8 @@
                              #elm/parameter-ref "millisecond"]
               expr (c/compile compile-ctx elm)]
 
-          (is (= '(time (param-ref "hour") (param-ref "minute")
-                        (param-ref "second") (param-ref "millisecond"))
-                 (core/-form expr)))
+          (has-form expr '(time (param-ref "hour") (param-ref "minute")
+                                (param-ref "second") (param-ref "millisecond")))
 
           (is (false? (core/-static expr))))))))
 

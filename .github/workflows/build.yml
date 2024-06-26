@@ -8,7 +8,7 @@ on:
     - master
     - develop
     tags:
-      - 'v*.*.*'
+    - 'v*.*.*'
   pull_request:
     branches:
     - master
@@ -83,6 +83,7 @@ jobs:
         - async
         - byte-buffer
         - byte-string
+        - cache-collector
         - cassandra
         - coll
         - cql
@@ -332,6 +333,158 @@ jobs:
       uses: github/codeql-action/upload-sarif@23acc5c183826b7a8a97bce3cecc52db901f8251 # v3
       with:
         sarif_file: trivy-results.sarif
+
+  cql-expr-cache-test:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -e CQL_EXPR_CACHE_SIZE=1000 -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data blaze:latest
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Docker Logs
+      run: docker logs blaze
+
+    - name: Check Capability Statement
+      run: .github/scripts/check-capability-statement.sh
+
+    - name: Ensure that the State of PatientLastChange Index is Current
+      run: .github/scripts/check-patient-last-change-index-state.sh current
+
+    - name: Load Data
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+
+    - name: Prometheus Metrics
+      run: .github/scripts/test-cql-expr-cache-metrics.sh
+
+    - name: Check Total-Number of Resources are 92114
+      run: .github/scripts/check-total-number-of-resources.sh 92114
+
+    - name: Evaluate CQL Query 1
+      run: .github/scripts/evaluate-measure.sh q1 56
+
+    - name: Evaluate CQL Query 1 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q1 56
+
+    - name: Evaluate CQL Query 1 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q1 56
+
+    - name: Evaluate CQL Query 1 on Individual Patients
+      run: .github/scripts/evaluate-patient-q1-measure.sh
+
+    - name: Evaluate CQL Query 2
+      run: .github/scripts/evaluate-measure.sh q2 42
+
+    - name: Evaluate CQL Query 2 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q2 42
+
+    - name: Evaluate CQL Query 2 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q2 42
+
+    - name: Evaluate CQL Query 4
+      run: .github/scripts/evaluate-measure.sh q4 0
+
+    - name: Check Bloom Filter
+      run: .github/scripts/check-bloom-filter.sh 484cc96511a406d40ee8eeb4de6a49b05b3766ddef8eb05ac57c6139d774eddc 0
+
+    - name: Evaluate CQL Query 4 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q4 0
+
+    - name: Evaluate CQL Query 4 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q4 0
+
+    - name: Evaluate CQL Query 7
+      run: .github/scripts/evaluate-measure.sh q7 81
+
+    - name: Evaluate CQL Query 7 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q7 81
+
+    - name: Evaluate CQL Query 7 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q7 81
+
+    - name: Evaluate CQL Query 14
+      run: .github/scripts/evaluate-measure.sh q14 96
+
+    - name: Check Bloom Filter
+      run: .github/scripts/check-bloom-filter.sh fab7fc40f75f294787d8b2090788a291cdaf71640d6dcfe5441c00403225a256 96
+
+    - name: Evaluate CQL Query 14 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q14 96
+
+    - name: Evaluate CQL Query 14 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q14 96
+
+    - name: Evaluate CQL Query 17
+      run: .github/scripts/evaluate-measure.sh q17 120
+
+    - name: Evaluate CQL Query 17 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q17 120
+
+    - name: Evaluate CQL Query 17 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q17 120
+
+    - name: Evaluate CQL Query 20 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q20-stratifier-city 120
+
+    - name: Evaluate CQL Query 21 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q21-stratifier-city-of-only-women 64
+
+    - name: Evaluate CQL Query 26 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q26-stratifier-bmi 120
+
+    - name: Evaluate CQL Query 27 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q27-stratifier-calculated-bmi 120
+
+    - name: Evaluate CQL Query 32 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q32-stratifier-underweight 120
+
+    - name: Evaluate CQL Query 36
+      run: .github/scripts/evaluate-measure.sh q36-parameter 86
+
+    - name: Check Bloom Filter
+      run: .github/scripts/check-bloom-filter.sh d4fc6cde1636852f9e362a68ca7be027a66bf7cb38ebff9c256c3eb2179c2639 86
+
+    - name: Evaluate CQL Query 36 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q36-parameter 86
+
+    - name: Evaluate CQL Query 37
+      run: .github/scripts/evaluate-measure.sh q37-overlaps 24
+
+    - name: Check Bloom Filter
+      run: .github/scripts/check-bloom-filter.sh 8a572962e0540de1bb4f4bf5c0101ff06be3ae69f4cd489509a6cf8d1646d1e1 24
+
+    - name: Evaluate CQL Query 37 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q37-overlaps 24
+
+    - name: Evaluate CQL Query 37 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q37-overlaps 24
+
+    - name: Evaluate CQL Query 46
+      run: .github/scripts/evaluate-measure.sh q46-between-date 19
+
+    - name: Check Bloom Filter
+      run: .github/scripts/check-bloom-filter.sh 5a1fe6d1b996aed4783f0ee04e6e74927d7ddccc407b0818a8a800769458020b 19
+
+    - name: Evaluate CQL Query 46 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q46-between-date 19
 
   integration-test:
     needs: build
@@ -736,7 +889,7 @@ jobs:
     - name: Delete
       run: .github/scripts/delete.sh
 
-    - name: Delete Violating Referential Integrity 
+    - name: Delete Violating Referential Integrity
       run: .github/scripts/check-referential-integrity-for-delete.sh 409
 
     - name: Batch
@@ -751,7 +904,7 @@ jobs:
     - name: Transaction Read/Write
       run: .github/scripts/transaction-rw.sh
 
-    - name: Transactional Delete Preserving Referential Integrity 
+    - name: Transactional Delete Preserving Referential Integrity
       run: .github/scripts/transactional-delete.sh
 
     - name: Transaction with Invalid (Null) Resource
@@ -1548,6 +1701,50 @@ jobs:
     - name: Fetch Patient Expecting an Error
       run: .github/scripts/fetch-resource-0-with-missing-resource-content.sh
 
+  build-patient-last-change-index-test:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Blaze v0.27
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.27
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Load Data
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+
+    - name: Ensure that the PatientLastChange Index does not exist
+      run: .github/scripts/check-patient-last-change-index-missing.sh
+
+    - name: Shut down Blaze
+      run: docker stop blaze && docker rm blaze
+
+    - name: Run Latest Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -e LOG_LEVEL=debug -p 8080:8080 -v blaze-data:/app/data blaze:latest
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Ensure that the State of PatientLastChange Index is Current
+      run: .github/scripts/check-patient-last-change-index-state.sh current
+
   jepsen-distributed-test:
     needs: build
     runs-on: ubuntu-22.04
@@ -1628,6 +1825,7 @@ jobs:
     if: github.event_name != 'pull_request' || (github.event.pull_request.base.repo.full_name == github.event.pull_request.head.repo.full_name)
     needs:
     - image-scan
+    - cql-expr-cache-test
     - integration-test
     - integration-test-synthea-1000
     - not-enforcing-referential-integrity-test
@@ -1646,6 +1844,7 @@ jobs:
     - frontend-test
     - missing-resource-content-test
     - custom-search-parameters-test
+    - build-patient-last-change-index-test
     runs-on: ubuntu-22.04
     permissions:
       packages: write

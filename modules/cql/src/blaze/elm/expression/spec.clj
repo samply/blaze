@@ -3,12 +3,16 @@
    [blaze.db.api-spec]
    [blaze.elm.compiler :as-alias c]
    [blaze.elm.expression :as-alias expr]
+   [blaze.elm.expression.cache.protocols :as p]
    [blaze.elm.spec]
    [clojure.spec.alpha :as s]
    [java-time.api :as time]))
 
 (s/def ::now
   time/offset-date-time?)
+
+(s/def ::expr/cache
+  #(satisfies? p/Cache %))
 
 (s/def ::parameters
   (s/map-of :elm/name ::c/expression))

@@ -47,9 +47,7 @@
       #elm/list [] true
       {:type "Null"} true))
 
-  (ctu/testing-unary-dynamic elm/all-true)
-
-  (ctu/testing-unary-form elm/all-true))
+  (ctu/testing-unary-op elm/all-true))
 
 ;; 21.2. AnyTrue
 ;;
@@ -72,9 +70,7 @@
       #elm/list [] false
       {:type "Null"} false))
 
-  (ctu/testing-unary-dynamic elm/any-true)
-
-  (ctu/testing-unary-form elm/any-true))
+  (ctu/testing-unary-op elm/any-true))
 
 ;; 21.3. Avg
 ;;
@@ -97,9 +93,7 @@
       #elm/list [] nil
       {:type "Null"} nil))
 
-  (ctu/testing-unary-dynamic elm/avg)
-
-  (ctu/testing-unary-form elm/avg))
+  (ctu/testing-unary-op elm/avg))
 
 ;; 21.4. Count
 ;;
@@ -124,9 +118,7 @@
       #elm/list [] 0
       {:type "Null"} 0))
 
-  (ctu/testing-unary-dynamic elm/count)
-
-  (ctu/testing-unary-form elm/count))
+  (ctu/testing-unary-op elm/count))
 
 ;; 21.5. GeometricMean
 ;;
@@ -150,9 +142,7 @@
       #elm/list [] nil
       {:type "Null"} nil))
 
-  (ctu/testing-unary-dynamic elm/geometric-mean)
-
-  (ctu/testing-unary-form elm/geometric-mean))
+  (ctu/testing-unary-op elm/geometric-mean))
 
 ;; 21.6. Product
 ;;
@@ -176,9 +166,7 @@
       #elm/list [] nil
       {:type "Null"} nil))
 
-  (ctu/testing-unary-dynamic elm/product)
-
-  (ctu/testing-unary-form elm/product))
+  (ctu/testing-unary-op elm/product))
 
 ;; 21.7. Max
 ;;
@@ -203,9 +191,7 @@
       #elm/list [] nil
       {:type "Null"} nil))
 
-  (ctu/testing-unary-dynamic elm/max)
-
-  (ctu/testing-unary-form elm/max))
+  (ctu/testing-unary-op elm/max))
 
 ;; 21.8. Median
 ;;
@@ -229,9 +215,7 @@
       #elm/list [] nil
       {:type "Null"} nil))
 
-  (ctu/testing-unary-dynamic elm/median)
-
-  (ctu/testing-unary-form elm/median))
+  (ctu/testing-unary-op elm/median))
 
 ;; 21.9. Min
 ;;
@@ -256,9 +240,7 @@
       #elm/list [] nil
       {:type "Null"} nil))
 
-  (ctu/testing-unary-dynamic elm/min)
-
-  (ctu/testing-unary-form elm/min))
+  (ctu/testing-unary-op elm/min))
 
 ;; 21.10. Mode
 ;;
@@ -282,9 +264,7 @@
       #elm/list [] nil
       {:type "Null"} nil))
 
-  (ctu/testing-unary-dynamic elm/mode)
-
-  (ctu/testing-unary-form elm/mode))
+  (ctu/testing-unary-op elm/mode))
 
 ;; 21.11. PopulationVariance
 ;;
@@ -306,9 +286,7 @@
       #elm/list [] nil
       {:type "Null"} nil))
 
-  (ctu/testing-unary-dynamic elm/population-variance)
-
-  (ctu/testing-unary-form elm/population-variance))
+  (ctu/testing-unary-op elm/population-variance))
 
 ;; 21.12. PopulationStdDev
 ;;
@@ -330,9 +308,7 @@
       #elm/list [] nil
       {:type "Null"} nil))
 
-  (ctu/testing-unary-dynamic elm/population-std-dev)
-
-  (ctu/testing-unary-form elm/population-std-dev))
+  (ctu/testing-unary-op elm/population-std-dev))
 
 ;; 21.13. Sum
 ;;
@@ -355,9 +331,7 @@
       #elm/list [] nil
       {:type "Null"} nil))
 
-  (ctu/testing-unary-dynamic elm/sum)
-
-  (ctu/testing-unary-form elm/sum))
+  (ctu/testing-unary-op elm/sum))
 
 ;; 21.14. StdDev
 ;;
@@ -379,9 +353,7 @@
       #elm/list [] nil
       {:type "Null"} nil))
 
-  (ctu/testing-unary-dynamic elm/std-dev)
-
-  (ctu/testing-unary-form elm/std-dev))
+  (ctu/testing-unary-op elm/std-dev))
 
 ;; 21.15. Variance
 ;;
@@ -403,6 +375,4 @@
       #elm/list [] nil
       {:type "Null"} nil))
 
-  (ctu/testing-unary-dynamic elm/variance)
-
-  (ctu/testing-unary-form elm/variance))
+  (ctu/testing-unary-op elm/variance))
