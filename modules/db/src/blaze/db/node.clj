@@ -392,9 +392,9 @@
    :error-t 0})
 
 (defn- init-msg
-  [{:keys [enforce-referential-integrity]
-    :or {enforce-referential-integrity true}}]
-  (log/info "Open local database node with"
+  [key {:keys [enforce-referential-integrity]
+        :or {enforce-referential-integrity true}}]
+  (log/info "Open" (node-util/component-name key "local database node") "with"
             (if enforce-referential-integrity "enabled" "disabled")
             "referential integrity checks"))
 
@@ -453,24 +453,26 @@
         (poll-tx-queue! queue poll-timeout)))
 
 (defn build-patient-last-change-index
-  [{:keys [tx-log kv-store run? state poll-timeout] :as node}]
+  [key {:keys [tx-log kv-store run? state poll-timeout] :as node}]
   (let [{:keys [type t]} (plc/state kv-store)]
     (when (identical? :building type)
       (let [start-t (inc t)
             end-t (:t @state)
             current-t (volatile! start-t)]
-        (log/info "Building PatientLastChange index starting at t =" start-t)
+        (log/info "Building PatientLastChange index of" (node-util/component-name key "node") "starting at t =" start-t)
         (with-open [queue (tx-log/new-queue tx-log start-t)]
           (while (and @run? (< @current-t end-t))
             (try
               (poll-and-index-patient-last-change-index! node queue current-t poll-timeout)
               (catch Exception e
-                (log/error "Error while building the PatientLastChange index." e)))))
+                (log/error (format "Error while building the PatientLastChange index of %s."
+                                   (node-util/component-name key "node")) e)))))
         (if (>= @current-t end-t)
           (do
             (store-tx-entries! kv-store [(plc/state-index-entry {:type :current})])
-            (log/info "Finished building PatientLastChange index."))
-          (log/info "Partially build PatientLastChange index up to t =" @current-t
+            (log/info (format "Finished building PatientLastChange index of %s." (node-util/component-name key "node"))))
+          (log/info (format "Partially build PatientLastChange index of %s up to t ="
+                            (node-util/component-name key "node")) @current-t
                     "at a goal of t =" end-t "Will continue at next start."))))))
 
 (defmethod m/pre-init-spec :blaze.db/node [_]
@@ -488,11 +490,11 @@
    [:blaze.db/enforce-referential-integrity]))
 
 (defmethod ig/init-key :blaze.db/node
-  [_ {:keys [storage tx-log tx-cache indexer-executor kv-store resource-indexer
-             resource-store search-param-registry scheduler poll-timeout]
-      :or {poll-timeout (time/seconds 1)}
-      :as config}]
-  (init-msg config)
+  [key {:keys [storage tx-log tx-cache indexer-executor kv-store resource-indexer
+               resource-store search-param-registry scheduler poll-timeout]
+        :or {poll-timeout (time/seconds 1)}
+        :as config}]
+  (init-msg key config)
   (check-version! kv-store)
   (let [node (->Node (ctx config) tx-log tx-cache kv-store resource-store
                      (sync-fn storage) search-param-registry resource-indexer
@@ -501,13 +503,13 @@
                      poll-timeout
                      (ac/future))]
     (when (= :building (:type (plc/state kv-store)))
-      (sched/submit scheduler #(build-patient-last-change-index node)))
+      (sched/submit scheduler #(build-patient-last-change-index key node)))
     (execute node indexer-executor)
     node))
 
 (defmethod ig/halt-key! :blaze.db/node
   [_ node]
-  (log/info "Close local database node")
+  (log/info "Close" (node-util/component-name key "local database node"))
   (.close ^AutoCloseable node))
 
 (defmethod ig/init-key ::indexer-executor
@@ -517,11 +519,11 @@
 
 (defmethod ig/halt-key! ::indexer-executor
   [_ executor]
-  (log/info "Stopping indexer executor...")
+  (log/info "Stopping" (node-util/component-name key "indexer executor..."))
   (ex/shutdown! executor)
   (if (ex/await-termination executor 10 TimeUnit/SECONDS)
     (log/info "Indexer executor was stopped successfully")
-    (log/warn "Got timeout while stopping the indexer executor")))
+    (log/warn "Got timeout while stopping the" (node-util/component-name key "indexer executor"))))
 
 (reg-collector ::duration-seconds
   duration-seconds)

@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.28.0
+
+**!!! IMPORTANT !!!**
+
+This release contains database schema additions, so that the database can't be opened with older versions of Blaze. Downgrades are not possible.
+
+### Notes
+
+A new index called `PatientLastChange` which will be automatically created and filled at the startup of Blaze. The index is used for the new CQL cache feature ([#1051](https://github.com/samply/blaze/issues/1051)). Except for the caching, Blaze will work fully during index buildup. The index will be ready once the log message "Finished building PatientLastChange index of main node." appears.
+
+After the index buildup, the CQL Cache can be activated by setting `CQL_EXPR_CACHE_SIZE` to a size of heap memory in MiB and restarting Blaze. 
+
+### New Features
+
+* Cache Results of the Exists CQL Expression ([#1051](https://github.com/samply/blaze/issues/1051))
+
+### Bugfixes
+
+* Fix JSON Rendering in UI ([#1813](https://github.com/samply/blaze/issues/1813))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/91?closed=1).
+
 ## v0.28.0-rc.1
 
 ### New Features

@@ -1701,6 +1701,8 @@ jobs:
     - name: Fetch Patient Expecting an Error
       run: .github/scripts/fetch-resource-0-with-missing-resource-content.sh
 
+  # This test ensures that older versions of Blaze will migrate successfully to
+  # the new database schema especially building the PatientLastChange index.
   build-patient-last-change-index-test:
     needs: build
     runs-on: ubuntu-22.04
@@ -1721,8 +1723,8 @@ jobs:
     - name: Load Blaze Image
       run: docker load --input /tmp/blaze.tar
 
-    - name: Run Blaze v0.27
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.27
+    - name: Run Blaze in the Version 0.27 before Introduction of the PatientLastChange Index
+      run: docker run --name blaze --rm -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.27
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
@@ -1734,9 +1736,9 @@ jobs:
       run: .github/scripts/check-patient-last-change-index-missing.sh
 
     - name: Shut down Blaze
-      run: docker stop blaze && docker rm blaze
+      run: docker stop blaze
 
-    - name: Run Latest Blaze
+    - name: Run Latest Blaze with the PatientLastChange Index
       run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -e LOG_LEVEL=debug -p 8080:8080 -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
