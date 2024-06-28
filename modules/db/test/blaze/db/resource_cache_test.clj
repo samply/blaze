@@ -1,6 +1,6 @@
 (ns blaze.db.resource-cache-test
   (:require
-   [blaze.db.cache-collector.protocols :as ccp]
+   [blaze.cache-collector.protocols :as ccp]
    [blaze.db.kv :as kv]
    [blaze.db.kv.mem]
    [blaze.db.resource-cache :as resource-cache]
@@ -23,7 +23,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 

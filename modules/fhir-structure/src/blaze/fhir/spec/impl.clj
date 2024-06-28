@@ -311,6 +311,7 @@
         :fhir/Coding
         :fhir/CodeableConcept
         :fhir/Quantity
+        :fhir/Ratio
         :fhir/Period
         :fhir/Identifier
         :fhir/HumanName
@@ -425,6 +426,7 @@
         :fhir.json/Meta
         :fhir.json/Attachment
         :fhir.json/Quantity
+        :fhir.json/Ratio
         :fhir.json/Period
         :fhir.json/Identifier
         :fhir.json/HumanName
@@ -549,6 +551,7 @@
         :fhir.xml/Coding
         :fhir.xml/CodeableConcept
         :fhir.xml/Quantity
+        :fhir.xml/Ratio
         :fhir.xml/Period
         :fhir.xml/Identifier
         :fhir.xml/HumanName
@@ -590,6 +593,7 @@
         :fhir.cbor/Meta
         :fhir.cbor/Attachment
         :fhir.cbor/Quantity
+        :fhir.cbor/Ratio
         :fhir.cbor/Period
         :fhir.cbor/Identifier
         :fhir.cbor/HumanName

@@ -8,6 +8,7 @@
    [blaze.db.api :as d]
    [blaze.elm.code :as code]
    [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.interval :as interval]
    [blaze.elm.protocols :as p]
    [blaze.elm.quantity :as quantity]
@@ -26,16 +27,16 @@
 (defn- expression-not-found-anom [context name]
   (ba/incorrect (format "Expression `%s` not found." name) :context context))
 
-(defrecord ExpressionRef [name]
-  core/Expression
-  (-static [_]
-    false)
-  (-eval [_ {:keys [expression-defs] :as context} resource _]
-    (if-let [{:keys [expression]} (get expression-defs name)]
-      (core/-eval expression context resource nil)
-      (throw-anom (expression-not-found-anom context name))))
-  (-form [_]
-    `(~'expr-ref ~name)))
+(defn- expr-ref [name]
+  (reify-expr core/Expression
+    (-resolve-refs [expr expression-defs]
+      (or (:expression (get expression-defs name)) expr))
+    (-eval [_ {:keys [expression-defs] :as context} resource _]
+      (if-let [{:keys [expression]} (get expression-defs name)]
+        (core/-eval expression context resource nil)
+        (throw-anom (expression-not-found-anom context name))))
+    (-form [_]
+      (list 'expr-ref name))))
 
 (defn- find-def
   "Returns the def with `name` from `library` or nil if not found."
@@ -64,9 +65,7 @@
         ;; The referenced expression has a concrete context but we are in the
         ;; Unfiltered context. So we map the referenced expression over all
         ;; concrete resources.
-        (reify core/Expression
-          (-static [_]
-            false)
+        (reify-expr core/Expression
           (-eval [_ {:keys [db expression-defs] :as context} _ _]
             (if-some [{:keys [expression]} (get expression-defs name)]
               (mapv
@@ -76,8 +75,8 @@
 
         :else
         (if-let [result-type-name (:resultTypeName def)]
-          (vary-meta (->ExpressionRef name) assoc :result-type-name result-type-name)
-          (->ExpressionRef name)))
+          (vary-meta (expr-ref name) assoc :result-type-name result-type-name)
+          (expr-ref name)))
       (throw-anom (expression-def-not-found-anom context name)))))
 
 (defprotocol ToQuantity
@@ -96,51 +95,71 @@
   nil
   (-to-quantity [_]))
 
-(defrecord ToQuantityFunctionExpression [operand]
-  core/Expression
-  (-static [_]
-    false)
-  (-eval [_ context resource scope]
-    (-to-quantity (core/-eval operand context resource scope)))
-  (-form [_]
-    `(~'call "ToQuantity" ~(core/-form operand))))
+(defn- to-quantity-function-expr [operand]
+  (reify-expr core/Expression
+    (-attach-cache [_ cache]
+      (core/attach-cache-helper to-quantity-function-expr cache operand))
+    (-resolve-refs [_ expression-defs]
+      (to-quantity-function-expr (core/-resolve-refs operand expression-defs)))
+    (-resolve-params [_ parameters]
+      (core/resolve-params-helper to-quantity-function-expr parameters operand))
+    (-eval [_ context resource scope]
+      (-to-quantity (core/-eval operand context resource scope)))
+    (-form [_]
+      `(~'call "ToQuantity" ~(core/-form operand)))))
 
-(defrecord ToCodeFunctionExpression [operand]
-  core/Expression
-  (-static [_]
-    false)
-  (-eval [_ context resource scope]
-    (let [{:keys [system version code]} (core/-eval operand context resource scope)]
-      (code/to-code (type/value system) (type/value version) (type/value code))))
-  (-form [_]
-    `(~'call "ToCode" ~(core/-form operand))))
+(defn- to-code-function-expr [operand]
+  (reify-expr core/Expression
+    (-attach-cache [_ cache]
+      (core/attach-cache-helper to-code-function-expr cache operand))
+    (-resolve-refs [_ expression-defs]
+      (to-code-function-expr (core/-resolve-refs operand expression-defs)))
+    (-resolve-params [_ parameters]
+      (core/resolve-params-helper to-code-function-expr parameters operand))
+    (-eval [_ context resource scope]
+      (let [{:keys [system version code]} (core/-eval operand context resource scope)]
+        (code/to-code (type/value system) (type/value version) (type/value code))))
+    (-form [_]
+      `(~'call "ToCode" ~(core/-form operand)))))
 
-(defrecord ToDateFunctionExpression [operand]
-  core/Expression
-  (-static [_]
-    false)
-  (-eval [_ context resource scope]
-    (type/value (core/-eval operand context resource scope)))
-  (-form [_]
-    `(~'call "ToDate" ~(core/-form operand))))
+(defn- to-date-function-expr [operand]
+  (reify-expr core/Expression
+    (-attach-cache [_ cache]
+      (core/attach-cache-helper to-date-function-expr cache operand))
+    (-resolve-refs [_ expression-defs]
+      (to-date-function-expr (core/-resolve-refs operand expression-defs)))
+    (-resolve-params [_ parameters]
+      (core/resolve-params-helper to-date-function-expr parameters operand))
+    (-eval [_ context resource scope]
+      (type/value (core/-eval operand context resource scope)))
+    (-form [_]
+      `(~'call "ToDate" ~(core/-form operand)))))
 
-(defrecord ToDateTimeFunctionExpression [operand]
-  core/Expression
-  (-static [_]
-    false)
-  (-eval [_ {:keys [now] :as context} resource scope]
-    (p/to-date-time (type/value (core/-eval operand context resource scope)) now))
-  (-form [_]
-    `(~'call "ToDateTime" ~(core/-form operand))))
+(defn- to-date-time-function-expr [operand]
+  (reify-expr core/Expression
+    (-attach-cache [_ cache]
+      (core/attach-cache-helper to-date-time-function-expr cache operand))
+    (-resolve-refs [_ expression-defs]
+      (to-date-time-function-expr (core/-resolve-refs operand expression-defs)))
+    (-resolve-params [_ parameters]
+      (to-date-time-function-expr (core/-resolve-params operand parameters)))
+    (-eval [_ {:keys [now] :as context} resource scope]
+      (p/to-date-time (type/value (core/-eval operand context resource scope)) now))
+    (-form [_]
+      `(~'call "ToDateTime" ~(core/-form operand)))))
 
-(defrecord ToStringFunctionExpression [operand]
-  core/Expression
-  (-static [_]
-    false)
-  (-eval [_ context resource scope]
-    (some-> (type/value (core/-eval operand context resource scope)) str))
-  (-form [_]
-    `(~'call "ToString" ~(core/-form operand))))
+(defn- to-string-function-expr [operand]
+  (reify-expr core/Expression
+    (-attach-cache [_ cache]
+      (core/attach-cache-helper to-string-function-expr cache operand))
+    (-resolve-refs [_ expression-defs]
+      (to-string-function-expr (core/-resolve-refs operand expression-defs)))
+    (-resolve-params [_ parameters]
+      (core/resolve-params-helper to-string-function-expr parameters operand))
+    (-eval [_ context resource scope]
+      (some-> (type/value (core/-eval operand context resource scope)) str))
+    (-form [_]
+      `(~'call "ToString" ~(core/-form operand)))))
 
 (defprotocol ToInterval
   (-to-interval [x context]))
@@ -155,14 +174,18 @@
   nil
   (-to-interval [_ _]))
 
-(defrecord ToIntervalFunctionExpression [operand]
-  core/Expression
-  (-static [_]
-    false)
-  (-eval [_ context resource scope]
-    (-to-interval (core/-eval operand context resource scope) context))
-  (-form [_]
-    `(~'call "ToInterval" ~(core/-form operand))))
+(defn- to-interval-function-expr [operand]
+  (reify-expr core/Expression
+    (-attach-cache [_ cache]
+      (core/attach-cache-helper to-interval-function-expr cache operand))
+    (-resolve-refs [_ expression-defs]
+      (to-interval-function-expr (core/-resolve-refs operand expression-defs)))
+    (-resolve-params [_ parameters]
+      (to-interval-function-expr (core/-resolve-params operand parameters)))
+    (-eval [_ context resource scope]
+      (-to-interval (core/-eval operand context resource scope) context))
+    (-form [_]
+      `(~'call "ToInterval" ~(core/-form operand)))))
 
 (defn- function-def-not-found-anom [context name]
   (ba/incorrect
@@ -181,34 +204,32 @@
   (let [operands (map #(core/compile* context %) operands)]
     (case name
       "ToQuantity"
-      (->ToQuantityFunctionExpression (first operands))
+      (to-quantity-function-expr (first operands))
 
       "ToDate"
-      (->ToDateFunctionExpression (first operands))
+      (to-date-function-expr (first operands))
 
       "ToDateTime"
-      (->ToDateTimeFunctionExpression (first operands))
+      (to-date-time-function-expr (first operands))
 
       "ToString"
-      (->ToStringFunctionExpression (first operands))
+      (to-string-function-expr (first operands))
 
       "ToCode"
-      (->ToCodeFunctionExpression (first operands))
+      (to-code-function-expr (first operands))
 
       "ToDecimal"
       (first operands)
 
       "ToInterval"
-      (->ToIntervalFunctionExpression (first operands))
+      (to-interval-function-expr (first operands))
 
       (compile-function context name operands))))
 
 ;; 9.5 OperandRef
 (defmethod core/compile* :elm.compiler.type/operand-ref
   [_ {:keys [name]}]
-  (reify core/Expression
-    (-static [_]
-      false)
+  (reify-expr core/Expression
     (-eval [_ _ _ scope]
       (scope name))
     (-form [_]

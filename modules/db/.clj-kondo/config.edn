@@ -2,12 +2,12 @@
  ["../../../.clj-kondo/root"
   "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"
   "../../async/resources/clj-kondo.exports/blaze/async"
+  "../../coll/resources/clj-kondo.exports/blaze/coll"
   "../../module-base/resources/clj-kondo.exports/prom-metrics/prom-metrics"
   "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
 
  :lint-as
  {blaze.db.api-test-perf/with-system-data clojure.core/with-open
-  blaze.db.impl.db/with-open-coll clojure.core/with-open
   blaze.db.test-util/with-system-data clojure.core/with-open}
 
  :linters

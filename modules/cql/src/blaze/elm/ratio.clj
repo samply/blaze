@@ -3,6 +3,7 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+   [blaze.elm.compiler.core :as core]
    [blaze.elm.protocols :as p]
    [clojure.string :as str]))
 
@@ -19,7 +20,23 @@
     (if other
       (p/equivalent (p/divide numerator denominator)
                     (p/divide (:numerator other) (:denominator other)))
-      false)))
+      false))
+
+  core/Expression
+  (-static [_]
+    true)
+  (-attach-cache [expr _]
+    [(fn [] [expr])])
+  (-patient-count [_]
+    nil)
+  (-resolve-refs [expr _]
+    expr)
+  (-resolve-params [expr _]
+    expr)
+  (-eval [this _ _ _]
+    this)
+  (-form [_]
+    (list 'ratio (core/-form numerator) (core/-form denominator))))
 
 (defn ratio
   "Creates a ratio between two quantities."

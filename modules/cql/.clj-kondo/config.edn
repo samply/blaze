@@ -2,17 +2,21 @@
  ["../../../.clj-kondo/root"
   "../../anomaly/resources/clj-kondo.exports/blaze/anomaly"
   "../../async/resources/clj-kondo.exports/blaze/async"
+  "../../coll/resources/clj-kondo.exports/blaze/coll"
   "../../db-stub/resources/clj-kondo.exports/blaze/db-stub"
+  "../../module-base/resources/clj-kondo.exports/prom-metrics/prom-metrics"
   "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
 
  :lint-as
- {blaze.elm.compiler.macros/defunop clojure.core/defn
+ {blaze.db.impl.macros/with-open-coll clojure.core/with-open
+  blaze.elm.compiler.macros/defunop clojure.core/defn
   blaze.elm.compiler.macros/defbinop clojure.core/defn
   blaze.elm.compiler.macros/defternop clojure.core/defn
   blaze.elm.compiler.macros/defnaryop clojure.core/defn
   blaze.elm.compiler.macros/defaggop clojure.core/defn
   blaze.elm.compiler.macros/defbinopp clojure.core/defn
-  blaze.elm.compiler.macros/defunopp clojure.core/defn}
+  blaze.elm.compiler.macros/defunopp clojure.core/defn
+  blaze.elm.compiler.macros/reify-expr clojure.core/reify}
 
  :linters
  {;; because of macros in modules/cql/src/blaze/elm/compiler.clj

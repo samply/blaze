@@ -9,12 +9,14 @@
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.db :as db]
    [blaze.db.impl.index :as index]
+   [blaze.db.impl.index.patient-last-change :as plc]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.t-by-instant :as t-by-instant]
    [blaze.db.impl.index.tx-error :as tx-error]
    [blaze.db.impl.index.tx-success :as tx-success]
    [blaze.db.impl.protocols :as p]
    [blaze.db.kv :as kv]
+   [blaze.db.node.patient-last-change-index :as node-plc]
    [blaze.db.node.protocols :as np]
    [blaze.db.node.resource-indexer :as resource-indexer]
    [blaze.db.node.resource-indexer.spec]
@@ -33,6 +35,7 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.module :as m :refer [reg-collector]]
+   [blaze.scheduler :as sched]
    [blaze.spec]
    [blaze.util :refer [conj-vec]]
    [clojure.spec.alpha :as s]
@@ -103,9 +106,9 @@
          (remove-watch state future))))
     future))
 
-(defn- index-tx [db-before tx-data]
+(defn- index-tx [search-param-registry db-before tx-data]
   (with-open [_ (prom/timer duration-seconds "index-transactions")]
-    (tx-indexer/index-tx db-before tx-data)))
+    (tx-indexer/index-tx search-param-registry db-before tx-data)))
 
 (defn- advance-t! [state t]
   (log/trace "advance state to t =" t)
@@ -150,13 +153,13 @@
   "This is the main transaction handling function.
 
   If indexes resources and transaction data and commits either success or error."
-  [{:keys [resource-indexer kv-store] :as node}
+  [{:keys [resource-indexer search-param-registry kv-store] :as node}
    {:keys [t instant tx-cmds] :as tx-data}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
   (prom/observe! transaction-sizes (count tx-cmds))
   (let [timer (prom/timer duration-seconds "index-resources")
         future (resource-indexer/index-resources resource-indexer tx-data)
-        result (index-tx (np/-db node) tx-data)]
+        result (index-tx search-param-registry (np/-db node) tx-data)]
     (if (ba/anomaly? result)
       (commit-error! node t result)
       (do
@@ -389,9 +392,9 @@
    :error-t 0})
 
 (defn- init-msg
-  [{:keys [enforce-referential-integrity]
-    :or {enforce-referential-integrity true}}]
-  (log/info "Open local database node with"
+  [key {:keys [enforce-referential-integrity]
+        :or {enforce-referential-integrity true}}]
+  (log/info "Open" (node-util/component-name key "local database node") "with"
             (if enforce-referential-integrity "enabled" "disabled")
             "referential integrity checks"))
 
@@ -399,19 +402,6 @@
   [{:keys [enforce-referential-integrity]
     :or {enforce-referential-integrity true}}]
   {:blaze.db/enforce-referential-integrity enforce-referential-integrity})
-
-(defmethod m/pre-init-spec :blaze.db/node [_]
-  (s/keys
-   :req-un
-   [:blaze.db/tx-log
-    :blaze.db/tx-cache
-    ::indexer-executor
-    :blaze.db/kv-store
-    ::resource-indexer
-    :blaze.db/resource-store
-    :blaze.db/search-param-registry]
-   :opt-un
-   [:blaze.db/enforce-referential-integrity]))
 
 (def ^:private expected-kv-store-version 0)
 
@@ -450,12 +440,61 @@
     (fn sync-standalone [^Node node]
       (ac/completed-future (db/db node (:t @(.-state node)))))))
 
+(defn- index-patient-last-change-index!
+  [{:keys [kv-store] :as node} current-t {:keys [t] :as tx-data}]
+  (log/trace "Build PatientLastChange index with t =" t)
+  (when-ok [entries (node-plc/index-entries node tx-data)]
+    (store-tx-entries! kv-store entries))
+  (vreset! current-t t))
+
+(defn- poll-and-index-patient-last-change-index!
+  [node queue current-t poll-timeout]
+  (run! (partial index-patient-last-change-index! node current-t)
+        (poll-tx-queue! queue poll-timeout)))
+
+(defn build-patient-last-change-index
+  [key {:keys [tx-log kv-store run? state poll-timeout] :as node}]
+  (let [{:keys [type t]} (plc/state kv-store)]
+    (when (identical? :building type)
+      (let [start-t (inc t)
+            end-t (:t @state)
+            current-t (volatile! start-t)]
+        (log/info "Building PatientLastChange index of" (node-util/component-name key "node") "starting at t =" start-t)
+        (with-open [queue (tx-log/new-queue tx-log start-t)]
+          (while (and @run? (< @current-t end-t))
+            (try
+              (poll-and-index-patient-last-change-index! node queue current-t poll-timeout)
+              (catch Exception e
+                (log/error (format "Error while building the PatientLastChange index of %s."
+                                   (node-util/component-name key "node")) e)))))
+        (if (>= @current-t end-t)
+          (do
+            (store-tx-entries! kv-store [(plc/state-index-entry {:type :current})])
+            (log/info (format "Finished building PatientLastChange index of %s." (node-util/component-name key "node"))))
+          (log/info (format "Partially build PatientLastChange index of %s up to t ="
+                            (node-util/component-name key "node")) @current-t
+                    "at a goal of t =" end-t "Will continue at next start."))))))
+
+(defmethod m/pre-init-spec :blaze.db/node [_]
+  (s/keys
+   :req-un
+   [:blaze.db/tx-log
+    :blaze.db/tx-cache
+    ::indexer-executor
+    :blaze.db/kv-store
+    ::resource-indexer
+    :blaze.db/resource-store
+    :blaze.db/search-param-registry
+    :blaze/scheduler]
+   :opt-un
+   [:blaze.db/enforce-referential-integrity]))
+
 (defmethod ig/init-key :blaze.db/node
-  [_ {:keys [storage tx-log tx-cache indexer-executor kv-store resource-indexer
-             resource-store search-param-registry poll-timeout]
-      :or {poll-timeout (time/seconds 1)}
-      :as config}]
-  (init-msg config)
+  [key {:keys [storage tx-log tx-cache indexer-executor kv-store resource-indexer
+               resource-store search-param-registry scheduler poll-timeout]
+        :or {poll-timeout (time/seconds 1)}
+        :as config}]
+  (init-msg key config)
   (check-version! kv-store)
   (let [node (->Node (ctx config) tx-log tx-cache kv-store resource-store
                      (sync-fn storage) search-param-registry resource-indexer
@@ -463,12 +502,14 @@
                      (volatile! true)
                      poll-timeout
                      (ac/future))]
+    (when (= :building (:type (plc/state kv-store)))
+      (sched/submit scheduler #(build-patient-last-change-index key node)))
     (execute node indexer-executor)
     node))
 
 (defmethod ig/halt-key! :blaze.db/node
   [_ node]
-  (log/info "Close local database node")
+  (log/info "Close" (node-util/component-name key "local database node"))
   (.close ^AutoCloseable node))
 
 (defmethod ig/init-key ::indexer-executor
@@ -478,11 +519,11 @@
 
 (defmethod ig/halt-key! ::indexer-executor
   [_ executor]
-  (log/info "Stopping indexer executor...")
+  (log/info "Stopping" (node-util/component-name key "indexer executor..."))
   (ex/shutdown! executor)
   (if (ex/await-termination executor 10 TimeUnit/SECONDS)
     (log/info "Indexer executor was stopped successfully")
-    (log/warn "Got timeout while stopping the indexer executor")))
+    (log/warn "Got timeout while stopping the" (node-util/component-name key "indexer executor"))))
 
 (reg-collector ::duration-seconds
   duration-seconds)

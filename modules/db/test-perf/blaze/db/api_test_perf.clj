@@ -58,6 +58,7 @@
      :resource-as-of-index nil
      :type-as-of-index nil
      :system-as-of-index nil
+     :patient-last-change-index nil
      :type-stats-index nil
      :system-stats-index nil}}
 

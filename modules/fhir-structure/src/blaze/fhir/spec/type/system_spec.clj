@@ -33,6 +33,10 @@
   :args (s/cat :x any?)
   :ret boolean?)
 
+(s/fdef system/date
+  :args (s/cat :year int? :month (s/? int?) :day (s/? int?))
+  :ret system/date?)
+
 ;; ---- System.DateTime -------------------------------------------------------
 
 (s/fdef system/date-time?

@@ -3,8 +3,10 @@
    [blaze.cql-translator :as t]
    [blaze.db.api-stub :refer [mem-node-config]]
    [blaze.elm.compiler :as c]
+   [blaze.elm.compiler-spec]
    [blaze.elm.compiler.library :as library]
    [blaze.elm.compiler.library-spec]
+   [blaze.elm.expression.cache :as ec]
    [blaze.fhir.spec.type.system]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu]
@@ -17,7 +19,9 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def default-opts {})
+(def ^:private default-opts {})
+
+(def ^:private expr-form (comp c/form :expression))
 
 ;; 5.1. Library
 ;;
@@ -65,9 +69,10 @@
   (testing "one static expression"
     (let [library (t/translate "library Test define Foo: true")]
       (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (given (library/compile-library node library default-opts)
-          [:expression-defs "Foo" :context] := "Patient"
-          [:expression-defs "Foo" :expression] := true))))
+        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+          (given expression-defs
+            ["Foo" :context] := "Patient"
+            ["Foo" :expression] := true)))))
 
   (testing "one dynamic expression"
     (let [library (t/translate "library Test
@@ -75,11 +80,10 @@
         context Patient
         define Gender: Patient.gender")]
       (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (given (library/compile-library node library default-opts)
-          [:expression-defs "Patient" :context] := "Patient"
-          [:expression-defs "Patient" :expression c/form] := '(singleton-from (retrieve-resource))
-          [:expression-defs "Gender" :context] := "Patient"
-          [:expression-defs "Gender" :expression c/form] := '(:gender (expr-ref "Patient"))))))
+        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+          (given expression-defs
+            ["Gender" :context] := "Patient"
+            ["Gender" expr-form] := '(:gender (singleton-from (retrieve-resource))))))))
 
   (testing "one function"
     (let [library (t/translate "library Test
@@ -88,13 +92,16 @@
         define function Gender(P Patient): P.gender
         define InInitialPopulation: Gender(Patient)")]
       (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (given (library/compile-library node library default-opts)
-          [:expression-defs "InInitialPopulation" :context] := "Patient"
-          [:expression-defs "InInitialPopulation" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
-          [:expression-defs "InInitialPopulation" :expression c/form] := '(call "Gender" (expr-ref "Patient"))
-          [:function-defs "Gender" :context] := "Patient"
-          [:function-defs "Gender" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
-          [:function-defs "Gender" :function] :? fn?))))
+        (let [{:keys [expression-defs function-defs]} (library/compile-library node library default-opts)]
+          (given expression-defs
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
+            ["InInitialPopulation" expr-form] := '(call "Gender" (singleton-from (retrieve-resource))))
+
+          (given function-defs
+            ["Gender" :context] := "Patient"
+            ["Gender" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
+            ["Gender" :function] :? fn?)))))
 
   (testing "two functions, one calling the other"
     (let [library (t/translate "library Test
@@ -104,31 +111,146 @@
         define function Inc2(i System.Integer): Inc(i) + 1
         define InInitialPopulation: Inc2(1)")]
       (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (given (library/compile-library node library default-opts)
-          [:expression-defs "InInitialPopulation" :context] := "Patient"
-          [:expression-defs "InInitialPopulation" :expression c/form] := '(call "Inc2" 1)))))
+        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+          (given expression-defs
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] := '(call "Inc2" 1))))))
+
+  (testing "expressions from Patient context are resolved"
+    (let [library (t/translate "library Test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        context Patient
+
+        define Female:
+          Patient.gender = 'female'
+
+        define HasObservation:
+          exists [Observation]
+
+        define HasCondition:
+          exists [Condition]
+
+        define Inclusion:
+          Female and
+          HasObservation
+
+        define Exclusion:
+          HasCondition
+
+        define InInitialPopulation:
+          Inclusion and
+          not Exclusion")]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+          (given expression-defs
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] :=
+            '(and
+              (and
+               (equal
+                (call
+                 "ToString"
+                 (:gender
+                  (singleton-from (retrieve-resource))))
+                "female")
+               (exists
+                (retrieve
+                 "Observation")))
+              (not
+               (exists
+                (retrieve
+                 "Condition")))))))))
 
   (testing "expressions from Unfiltered context are not resolved"
     (let [library (t/translate "library Test
-      using FHIR version '4.0.0'
-      include FHIRHelpers version '4.0.0'
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
 
-      codesystem atc: 'http://fhir.de/CodeSystem/dimdi/atc'
+        codesystem atc: 'http://fhir.de/CodeSystem/dimdi/atc'
 
-      context Unfiltered
+        context Unfiltered
 
-      define TemozolomidRefs:
-        [Medication: Code 'L01AX03' from atc] M return 'Medication/' + M.id
+        define TemozolomidRefs:
+          [Medication: Code 'L01AX03' from atc] M return 'Medication/' + M.id
 
-      context Patient
+        context Patient
 
-      define InInitialPopulation:
-        exists from [MedicationStatement] M
-          where M.medication.reference in TemozolomidRefs")]
+        define InInitialPopulation:
+          Patient.gender = 'female' and
+          exists from [MedicationStatement] M
+            where M.medication.reference in TemozolomidRefs")]
       (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (given (library/compile-library node library default-opts)
-          [:expression-defs "InInitialPopulation" :context] := "Patient"
-          [:expression-defs "InInitialPopulation" :expression c/form] := '(exists (eduction-query (comp (filter (fn [M] (contains (expr-ref "TemozolomidRefs") (call "ToString" (:reference (:medication M)))))) distinct) (retrieve "MedicationStatement")))))))
+        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+          (given expression-defs
+            ["TemozolomidRefs" :context] := "Unfiltered"
+            ["TemozolomidRefs" expr-form] :=
+            '(vector-query
+              (comp
+               (map
+                (fn [M]
+                  (concatenate "Medication/" (call "ToString" (:id M)))))
+               distinct)
+              (retrieve
+               "Medication"
+               [["code"
+                 "http://fhir.de/CodeSystem/dimdi/atc|L01AX03"]]))
+
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] :=
+            '(and
+              (equal
+               (call
+                "ToString"
+                (:gender
+                 (singleton-from
+                  (retrieve-resource))))
+               "female")
+              (exists
+               (eduction-query
+                (comp
+                 (filter
+                  (fn
+                    [M]
+                    (contains
+                     (expr-ref
+                      "TemozolomidRefs")
+                     (call
+                      "ToString"
+                      (:reference
+                       (:medication
+                        M))))))
+                 distinct)
+                (retrieve
+                 "MedicationStatement")))))))))
+
+  (testing "expressions without refs are preserved"
+    (let [library (t/translate "library Retrieve
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        context Patient
+
+        define InInitialPopulation:
+          true
+
+        define AllEncounters:
+          [Encounter]
+
+        define Gender:
+          Patient.gender")]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+          (given expression-defs
+            ["Patient" :context] := "Patient"
+            ["Patient" expr-form] := '(singleton-from (retrieve-resource))
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] := true
+            ["AllEncounters" :context] := "Patient"
+            ["AllEncounters" expr-form] := '(retrieve "Encounter")
+            ["Gender" :context] := "Patient"
+            ["Gender" expr-form] := '(:gender (singleton-from (retrieve-resource))))))))
 
   (testing "with compile-time error"
     (testing "function"
@@ -177,7 +299,7 @@
       (with-system [{:blaze.db/keys [node]} mem-node-config]
         (given (library/compile-library node library {})
           [:expression-defs "InInitialPopulation" :context] := "Patient"
-          [:expression-defs "InInitialPopulation" :expression c/form] :=
+          [:expression-defs "InInitialPopulation" expr-form] :=
           '(exists
             (eduction-query
              (comp
@@ -204,4 +326,280 @@
               distinct)
              (retrieve
               "Observation")))
-          [:function-defs "hasDiagnosis" :function] := nil)))))
+          [:function-defs "hasDiagnosis" :function] := nil))))
+
+  (testing "with related context"
+    (let [library (t/translate "library test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        context Patient
+
+        define \"name-133756\":
+          singleton from ([Patient])
+
+        define InInitialPopulation:
+          [\"name-133756\" -> Observation]")]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (given (library/compile-library node library {})
+          [:expression-defs "InInitialPopulation" :context] := "Patient"
+          [:expression-defs "InInitialPopulation" expr-form] :=
+          '(retrieve
+            (singleton-from
+             (retrieve-resource))
+            "Observation")))))
+
+  (testing "and expression"
+    (let [library (t/translate "library test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        context Patient
+
+        define InInitialPopulation:
+          exists [Observation] and
+          exists [Condition] and
+          exists [Encounter] and
+          exists [Specimen]")]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (given (library/compile-library node library {})
+          [:expression-defs "InInitialPopulation" :context] := "Patient"
+          [:expression-defs "InInitialPopulation" expr-form] :=
+          '(and
+            (and
+             (and
+              (exists
+               (retrieve
+                "Observation"))
+              (exists
+               (retrieve
+                "Condition")))
+             (exists
+              (retrieve
+               "Encounter")))
+            (exists
+             (retrieve
+              "Specimen")))))))
+
+  (testing "and expression with named expressions"
+    (let [library (t/translate "library test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        context Patient
+
+        define Criterion_1:
+          exists [Observation] and
+          exists [Condition]
+
+        define Criterion_2:
+          exists [Encounter] and
+          exists [Specimen]
+
+        define InInitialPopulation:
+          Criterion_1 and
+          Criterion_2")]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)
+              in-initial-population (get expression-defs "InInitialPopulation")]
+
+          (testing "after compilation the named expressions are resolved
+                    the structure however is retained
+                    so the and-expressions are still binary"
+            (given in-initial-population
+              :context := "Patient"
+              expr-form :=
+              '(and
+                (and
+                 (exists
+                  (retrieve
+                   "Observation"))
+                 (exists
+                  (retrieve
+                   "Condition")))
+                (and
+                 (exists
+                  (retrieve
+                   "Encounter"))
+                 (exists
+                  (retrieve
+                   "Specimen"))))))
+
+          (testing "after attaching the cache we get one single, flat and-expression"
+            (with-redefs [ec/get (fn [_ _])]
+              (let [{:keys [expression]} in-initial-population]
+                (given (st/with-instrument-disabled (c/attach-cache expression ::cache))
+                  [0 c/form] :=
+                  '(and
+                    (exists
+                     (retrieve
+                      "Observation"))
+                    (exists
+                     (retrieve
+                      "Condition"))
+                    (exists
+                     (retrieve
+                      "Encounter"))
+                    (exists
+                     (retrieve
+                      "Specimen")))))))))))
+
+  (testing "or expression"
+    (let [library (t/translate "library test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        context Patient
+
+        define InInitialPopulation:
+          exists [Observation] or
+          exists [Condition] or
+          exists [Encounter] or
+          exists [Specimen]")]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (given (library/compile-library node library {})
+          [:expression-defs "InInitialPopulation" :context] := "Patient"
+          [:expression-defs "InInitialPopulation" expr-form] :=
+          '(or
+            (or
+             (or
+              (exists
+               (retrieve
+                "Observation"))
+              (exists
+               (retrieve
+                "Condition")))
+             (exists
+              (retrieve
+               "Encounter")))
+            (exists
+             (retrieve
+              "Specimen")))))))
+
+  (testing "or expression with named expressions"
+    (let [library (t/translate "library test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        context Patient
+
+        define Criterion_1:
+          exists [Observation] or
+          exists [Condition]
+
+        define Criterion_2:
+          exists [Encounter] or
+          exists [Specimen]
+
+        define InInitialPopulation:
+          Criterion_1 or
+          Criterion_2")]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)
+              in-initial-population (get expression-defs "InInitialPopulation")]
+
+          (testing "after compilation the named expressions are resolved
+                    the structure however is retained
+                    so the or-expressions are still binary"
+            (given in-initial-population
+              :context := "Patient"
+              expr-form :=
+              '(or
+                (or
+                 (exists
+                  (retrieve
+                   "Observation"))
+                 (exists
+                  (retrieve
+                   "Condition")))
+                (or
+                 (exists
+                  (retrieve
+                   "Encounter"))
+                 (exists
+                  (retrieve
+                   "Specimen"))))))
+
+          (testing "after attaching the cache we get one single, flat or-expression"
+            (with-redefs [ec/get (fn [_ _])]
+              (let [{:keys [expression]} in-initial-population]
+                (given (st/with-instrument-disabled (c/attach-cache expression ::cache))
+                  [0 c/form] :=
+                  '(or
+                    (exists
+                     (retrieve
+                      "Observation"))
+                    (exists
+                     (retrieve
+                      "Condition"))
+                    (exists
+                     (retrieve
+                      "Encounter"))
+                    (exists
+                     (retrieve
+                      "Specimen")))))))))))
+
+  (testing "mixed and and or expressions"
+    (let [library (t/translate "library test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        context Patient
+
+        define Criterion_1:
+          exists [Observation] or
+          exists [Condition]
+
+        define Criterion_2:
+          exists [Encounter] or
+          exists [Specimen]
+
+        define InInitialPopulation:
+          Criterion_1 and
+          Criterion_2")]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)
+              in-initial-population (get expression-defs "InInitialPopulation")]
+
+          (testing "after compilation the named expressions are resolved
+                    the structure however is retained
+                    so the or-expressions are still binary"
+            (given in-initial-population
+              :context := "Patient"
+              expr-form :=
+              '(and
+                (or
+                 (exists
+                  (retrieve
+                   "Observation"))
+                 (exists
+                  (retrieve
+                   "Condition")))
+                (or
+                 (exists
+                  (retrieve
+                   "Encounter"))
+                 (exists
+                  (retrieve
+                   "Specimen"))))))
+
+          (testing "after attaching the cache the expressions don't change"
+            (with-redefs [ec/get (fn [_ _])]
+              (let [{:keys [expression]} in-initial-population]
+                (given (st/with-instrument-disabled (c/attach-cache expression ::cache))
+                  [0 c/form] :=
+                  '(and
+                    (or
+                     (exists
+                      (retrieve
+                       "Observation"))
+                     (exists
+                      (retrieve
+                       "Condition")))
+                    (or
+                     (exists
+                      (retrieve
+                       "Encounter"))
+                     (exists
+                      (retrieve
+                       "Specimen")))))))))))))

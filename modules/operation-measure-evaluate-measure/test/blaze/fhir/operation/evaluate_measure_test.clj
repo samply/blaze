@@ -5,6 +5,7 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.node :refer [node?]]
    [blaze.db.resource-store :as rs]
+   [blaze.elm.expression :as-alias expr]
    [blaze.executors :as ex]
    [blaze.fhir.operation.evaluate-measure :as evaluate-measure]
    [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
@@ -140,6 +141,7 @@
    api-stub/mem-node-config
    ::evaluate-measure/handler
    {:node (ig/ref :blaze.db/node)
+    ::expr/cache (ig/ref ::expr/cache)
     :executor (ig/ref :blaze.test/executor)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
@@ -147,6 +149,9 @@
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+   ::expr/cache
+   {:node (ig/ref :blaze.db/node)
+    :executor (ig/ref :blaze.test/executor)}
    :blaze.test/executor {}
    :blaze.test/fixed-rng-fn {}))
 

@@ -11,6 +11,13 @@
 
 (set! *warn-on-reflection* true)
 
+(defn submit
+  "Submits the function `f` to be called later.
+
+  Returns a future that can be used in `cancel`."
+  [scheduler f]
+  (p/-submit scheduler f))
+
 (defn schedule-at-fixed-rate
   "Schedules the function `f` to be called at a rate of `period` with an
   `initial-delay`.
@@ -24,6 +31,9 @@
 
 (extend-protocol p/Scheduler
   ScheduledExecutorService
+  (-submit [scheduler f]
+    (.submit scheduler ^Runnable f))
+
   (-schedule-at-fixed-rate [scheduler f initial-delay period]
     (.scheduleAtFixedRate
      scheduler

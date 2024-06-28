@@ -1,6 +1,8 @@
 <script lang="ts">
 	import NavItem from './nav-item.svelte';
 	import { page } from '$app/stores';
+
+	export let data;
 </script>
 
 <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
@@ -17,6 +19,13 @@
 				id="/__admin/jobs"
 				label="Jobs"
 			/>
+			{#if data.features.find((f) => f.key === 'cql-expression-cache')?.enabled}
+				<NavItem
+					active={$page.route.id?.startsWith('/__admin/cql')}
+					id="/__admin/cql"
+					label="CQL"
+				/>
+			{/if}
 		</nav>
 	</div>
 </div>

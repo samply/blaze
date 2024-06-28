@@ -5,6 +5,7 @@
    [blaze.db.impl.codec-spec]
    [blaze.db.impl.db :as db]
    [blaze.db.impl.index-spec]
+   [blaze.db.impl.index.patient-last-change-spec]
    [blaze.db.impl.index.system-stats-spec]
    [blaze.db.impl.index.type-stats-spec]
    [blaze.db.impl.search-param-spec]

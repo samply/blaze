@@ -3,6 +3,7 @@
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.function :as function]
+   [blaze.elm.compiler.library.resolve-refs :refer [resolve-refs]]
    [blaze.elm.normalizer :as normalizer]))
 
 (defn- compile-expression-def
@@ -53,11 +54,12 @@
   itself is returned.
 
   Returns an anomaly on errors."
-  {:arglists '([context expression-def])}
+  {:arglists '([context parameter-def])}
   [context {:keys [default] :as parameter-def}]
   (if (some? default)
     (-> (ba/try-anomaly
-         (assoc parameter-def :default (c/compile context default)))
+         (let [context (assoc context :eval-context "Unfiltered")]
+           (assoc parameter-def :default (c/compile context default))))
         (ba/exceptionally
          #(assoc % :context context :elm/expression default)))
     parameter-def))
@@ -72,6 +74,23 @@
    {}
    (-> library :parameters :def)))
 
+(defn resolve-all-refs [expression-defs]
+  (resolve-refs #{} expression-defs))
+
+(defn- unfiltered-expr-names [expression-defs]
+  (into
+   #{}
+   (keep (fn [[name {:keys [context]}]] (when (= "Unfiltered" context) name)))
+   expression-defs))
+
+(defn- resolve-param-refs-xf [parameters]
+  (map
+   (fn [[name expr-def]]
+     [name (update expr-def :expression c/resolve-params parameters)])))
+
+(defn resolve-param-refs [expression-defs parameters]
+  (into {} (resolve-param-refs-xf parameters) expression-defs))
+
 (defn compile-library
   "Compiles `library` using `node`.
 
@@ -81,6 +100,7 @@
         context (assoc opts :node node :library library)]
     (when-ok [{:keys [function-defs] :as context} (compile-function-defs context library)
               expression-defs (expression-defs context library)
+              expression-defs (resolve-refs (unfiltered-expr-names expression-defs) expression-defs)
               parameter-default-values (parameter-default-values context library)]
       {:expression-defs expression-defs
        :function-defs function-defs

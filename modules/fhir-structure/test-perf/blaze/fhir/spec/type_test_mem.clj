@@ -83,6 +83,8 @@
 
     #fhir/Quantity{} 56
 
+    #fhir/Ratio{} 48
+
     #fhir/Period{} 48
 
     #fhir/Identifier{} 64

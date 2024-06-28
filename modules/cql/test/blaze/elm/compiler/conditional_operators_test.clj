@@ -7,9 +7,11 @@
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.expression.cache :as ec]
    [blaze.elm.literal-spec]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest is testing]]))
+   [clojure.test :as test :refer [are deftest is testing]]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 (ctu/instrument-compile)
@@ -21,6 +23,17 @@
   (st/unstrument))
 
 (test/use-fixtures :each fixture)
+
+(defn- from-names [names]
+  (mapv
+   (fn [n]
+     {:type "ExpressionDef" :name n
+      :expression n
+      :context "Unfiltered"})
+   names))
+
+(defn- index-by-name [expr-defs]
+  (into {} (map (fn [{:keys [name] :as expr-def}] [name expr-def])) expr-defs))
 
 ;; 15.1. Case
 ;;
@@ -119,7 +132,116 @@
                                                       :caseItem
                                                       [{:when #elm/parameter-ref "b"
                                                         :then #elm/parameter-ref "1"}]
-                                                      :else #elm/parameter-ref "2"})))))))
+                                                      :else #elm/parameter-ref "2"}))))))
+
+  (testing "attach cache"
+    (testing "multi-conditional"
+      (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
+        (let [elm {:type "Case"
+                   :caseItem
+                   [{:when #elm/exists #elm/retrieve{:type "Encounter"}
+                     :then #elm/exists #elm/retrieve{:type "Observation"}}]
+                   :else #elm/exists #elm/retrieve{:type "Condition"}}
+              ctx {:eval-context "Patient"}
+              expr (c/compile ctx elm)]
+
+          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+            count := 2
+            [0] := expr
+            [1 count] := 3
+            [1 0] := '(exists (retrieve "Encounter"))
+            [1 1] := '(exists (retrieve "Observation"))
+            [1 2] := '(exists (retrieve "Condition"))))))
+
+    (testing "comparand-based"
+      (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
+        (let [elm {:type "Case"
+                   :comparand #elm/exists #elm/retrieve{:type "Encounter"}
+                   :caseItem
+                   [{:when #elm/exists #elm/retrieve{:type "Observation"}
+                     :then #elm/exists #elm/retrieve{:type "Condition"}}]
+                   :else #elm/exists #elm/retrieve{:type "MedicationAdministration"}}
+              ctx {:eval-context "Patient"}
+              expr (c/compile ctx elm)]
+
+          (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+            count := 2
+            [0] := expr
+            [1 count] := 4
+            [1 0] := '(exists (retrieve "Encounter"))
+            [1 1] := '(exists (retrieve "Observation"))
+            [1 2] := '(exists (retrieve "Condition"))
+            [1 3] := '(exists (retrieve "MedicationAdministration")))))))
+
+  (testing "resolve expression references"
+    (testing "multi-conditional"
+      (let [elm {:type "Case"
+                 :caseItem
+                 [{:when #elm/expression-ref "w"
+                   :then #elm/expression-ref "t"}]
+                 :else #elm/expression-ref "e"}
+            expr-defs (from-names ["w" "t" "e"])
+            ctx {:library {:statements {:def expr-defs}}}
+            expr (c/resolve-refs (c/compile ctx elm) (index-by-name expr-defs))]
+        (has-form expr '(case "w" "t" "e"))))
+
+    (testing "comparand-based"
+      (let [elm {:type "Case"
+                 :comparand #elm/expression-ref "c"
+                 :caseItem
+                 [{:when #elm/expression-ref "w"
+                   :then #elm/expression-ref "t"}]
+                 :else #elm/expression-ref "e"}
+            expr-defs (from-names ["c" "w" "t" "e"])
+            ctx {:library {:statements {:def expr-defs}}}
+            expr (c/resolve-refs (c/compile ctx elm) (index-by-name expr-defs))]
+        (has-form expr '(case "c" "w" "t" "e")))))
+
+  (testing "resolve parameters"
+    (testing "multi-conditional"
+      (let [elm {:type "Case"
+                 :caseItem
+                 [{:when #elm/parameter-ref "w"
+                   :then #elm/parameter-ref "t"}]
+                 :else #elm/parameter-ref "e"}
+            ctx {:library {:parameters {:def [{:name "w"} {:name "t"} {:name "e"}]}}}
+            expr (c/resolve-params (c/compile ctx elm) {"w" "w" "t" "t" "e" "e"})]
+        (has-form expr '(case "w" "t" "e"))))
+
+    (testing "comparand-based"
+      (let [elm {:type "Case"
+                 :comparand #elm/parameter-ref "c"
+                 :caseItem
+                 [{:when #elm/parameter-ref "w"
+                   :then #elm/parameter-ref "t"}]
+                 :else #elm/parameter-ref "e"}
+            ctx {:library {:parameters {:def [{:name "c"} {:name "w"} {:name "t"} {:name "e"}]}}}
+            expr (c/resolve-params (c/compile ctx elm) {"c" "c" "w" "w" "t" "t" "e" "e"})]
+        (has-form expr '(case "c" "w" "t" "e")))))
+
+  (testing "equals/hashCode"
+    (testing "multi-conditional"
+      (let [elm {:type "Case"
+                 :caseItem
+                 [{:when #elm/parameter-ref "w"
+                   :then #elm/parameter-ref "t"}]
+                 :else #elm/parameter-ref "e"}
+            ctx {:library {:parameters {:def [{:name "w"} {:name "t"} {:name "e"}]}}}
+            expr-1 (c/compile ctx elm)
+            expr-2 (c/compile ctx elm)]
+        (is (= 1 (count (set [expr-1 expr-2]))))))
+
+    (testing "comparand-based"
+      (let [elm {:type "Case"
+                 :comparand #elm/parameter-ref "c"
+                 :caseItem
+                 [{:when #elm/parameter-ref "w"
+                   :then #elm/parameter-ref "t"}]
+                 :else #elm/parameter-ref "e"}
+            ctx {:library {:parameters {:def [{:name "c"} {:name "w"} {:name "t"} {:name "e"}]}}}
+            expr-1 (c/compile ctx elm)
+            expr-2 (c/compile ctx elm)]
+        (is (= 1 (count (set [expr-1 expr-2]))))))))
 
 ;; 15.2. If
 ;;
@@ -156,4 +278,40 @@
     (let [expr (ctu/dynamic-compile #elm/if [#elm/parameter-ref "x"
                                              #elm/parameter-ref "y"
                                              #elm/parameter-ref "z"])]
-      (has-form expr '(if (param-ref "x") (param-ref "y") (param-ref "z"))))))
+      (has-form expr '(if (param-ref "x") (param-ref "y") (param-ref "z")))))
+
+  (testing "attach cache"
+    (with-redefs [ec/get #(do (assert (= ::cache %1)) %2)]
+      (let [elm #elm/if [#elm/exists #elm/retrieve{:type "Encounter"}
+                         #elm/exists #elm/retrieve{:type "Observation"}
+                         #elm/exists #elm/retrieve{:type "Condition"}]
+            ctx {:eval-context "Patient"}
+            expr (c/compile ctx elm)]
+        (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+          count := 2
+          [0] := expr
+          [1 count] := 3
+          [1 0 c/form] := '(exists (retrieve "Encounter"))
+          [1 1 c/form] := '(exists (retrieve "Observation"))
+          [1 2 c/form] := '(exists (retrieve "Condition"))))))
+
+  (testing "resolve expression references"
+    (let [elm #elm/if [#elm/expression-ref "c"
+                       #elm/expression-ref "t"
+                       #elm/expression-ref "e"]
+          expr-defs (from-names ["c" "t" "e"])
+          ctx {:library {:statements {:def expr-defs}}}
+          expr (c/resolve-refs (c/compile ctx elm) (index-by-name expr-defs))]
+      (has-form expr '(if "c" "t" "e"))))
+
+  (testing "resolve parameters"
+    (let [elm #elm/if [#elm/parameter-ref "c"
+                       #elm/parameter-ref "t"
+                       #elm/parameter-ref "e"]
+          ctx {:library {:parameters {:def [{:name "c"} {:name "t"} {:name "e"}]}}}
+          expr (c/resolve-params (c/compile ctx elm) {"c" "c" "t" "t" "e" "e"})]
+      (has-form expr '(if "c" "t" "e"))))
+
+  (ctu/testing-equals-hash-code #elm/if [#elm/parameter-ref "x"
+                                         #elm/parameter-ref "y"
+                                         #elm/parameter-ref "z"]))

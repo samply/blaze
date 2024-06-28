@@ -17,7 +17,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -86,7 +86,7 @@
         [6 :samples 0 :value] := 0.0))
 
     (testing "one active thread"
-      (ex/execute! pool #(Thread/sleep 1000))
+      (ex/execute! pool #(Thread/sleep 2000))
       (given (metrics/collect collector)
         [0 :name] := "thread_pool_executor_active_count"
         [0 :samples 0 :value] := 1.0

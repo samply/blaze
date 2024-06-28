@@ -27,6 +27,6 @@
     (is (= [1] (u/to-seq [1])))))
 
 (deftest strip-leading-slash-test
-  (satisfies-prop 1000
+  (satisfies-prop 10000
     (prop/for-all [s gen/string]
-      (not (str/starts-with? (u/strip-leading-slash s) "/")))))
+      (not (str/starts-with? (u/strip-leading-slashes s) "/")))))

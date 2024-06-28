@@ -54,7 +54,7 @@
 		</tr>
 
 		{#each data.features as feature}
-			<FeatureRow {...feature} />
+			<FeatureRow {feature} />
 		{/each}
 	</Table>
 </main>

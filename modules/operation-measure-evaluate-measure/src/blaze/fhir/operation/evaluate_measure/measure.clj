@@ -5,9 +5,11 @@
    [blaze.coll.core :as coll]
    [blaze.cql-translator :as cql-translator]
    [blaze.db.api :as d]
+   [blaze.elm.compiler :as c]
    [blaze.elm.compiler-spec]
-   [blaze.elm.compiler.external-data :as ed]
    [blaze.elm.compiler.library :as library]
+   [blaze.elm.expression :as-alias expr]
+   [blaze.elm.resource :as cr]
    [blaze.fhir.operation.evaluate-measure.cql :as cql]
    [blaze.fhir.operation.evaluate-measure.measure.group :as group]
    [blaze.fhir.operation.evaluate-measure.measure.population :as pop]
@@ -126,6 +128,9 @@
       (format "The Library resource with canonical URI `%s` was not found." library-ref)
       :fhir/issue "value"
       :fhir.issue/expression "Measure.library"))))
+
+(defn- remove-unused-defs [expression-defs measure]
+  (into {} (filter (comp (u/expression-names measure) key)) expression-defs))
 
 (defn- compile-primary-library
   "Compiles the CQL code from the first library resource which is referenced
@@ -320,21 +325,36 @@
   (type/extension
    {:url "https://samply.github.io/blaze/fhir/StructureDefinition/eval-duration"
     :value
-    (type/map->Quantity
+    (type/quantity
      {:code #fhir/code"s"
       :system #fhir/uri"http://unitsofmeasure.org"
       :unit #fhir/string"s"
       :value (bigdec duration)})}))
 
+(defn- bloom-filter-ratio
+  "Creates an extension with a number of available Bloom filters over the total
+  number of requested Bloom filters."
+  [bloom-filters]
+  (type/extension
+   {:url "https://samply.github.io/blaze/fhir/StructureDefinition/bloom-filter-ratio"
+    :value
+    (type/ratio
+     {:numerator
+      (type/quantity {:value (bigdec (count (coll/eduction (remove ba/anomaly?) bloom-filters)))})
+      :denominator
+      (type/quantity {:value (bigdec (count bloom-filters))})})}))
+
 (defn- local-ref [handle]
   (str (name (fhir-spec/fhir-type handle)) "/" (:id handle)))
 
 (defn- measure-report
-  [{:keys [now report-type subject-handle] :as context} measure
+  [{:keys [now report-type subject-handle bloom-filters] :as context} measure
    {[start end] :period} [{:keys [result]} duration]]
   (cond->
    {:fhir/type :fhir/MeasureReport
-    :extension [(eval-duration duration)]
+    :extension
+    [(eval-duration duration)
+     (bloom-filter-ratio bloom-filters)]
     :status #fhir/code"complete"
     :type
     (case report-type
@@ -344,12 +364,12 @@
     :measure (type/canonical (canonical context measure))
     :date now
     :period
-    (type/map->Period
+    (type/period
      {:start (type/dateTime (str start))
       :end (type/dateTime (str end))})}
 
     subject-handle
-    (assoc :subject (type/map->Reference {:reference (local-ref subject-handle)}))
+    (assoc :subject (type/reference {:reference (local-ref subject-handle)}))
 
     (seq result)
     (assoc :group result)))
@@ -385,6 +405,18 @@
   (format "Timeout of %d millis eclipsed while evaluating."
           (.toMillis ^Duration timeout)))
 
+(defn- attach-cache* [cache context [name {:keys [expression] :as expr}]]
+  [name (c/form expression)]
+  (let [[expression bloom-filters] (c/attach-cache expression cache)]
+    (-> (assoc-in context [:expression-defs name] (assoc expr :expression expression))
+        (update :bloom-filters into bloom-filters))))
+
+(defn- attach-cache [{:keys [expression-defs] :as context} cache]
+  (reduce
+   (partial attach-cache* cache)
+   (assoc context :bloom-filters [])
+   expression-defs))
+
 (defn- eval-unfiltered-xf [context]
   (comp (filter (comp #{"Unfiltered"} :context val))
         (map
@@ -408,6 +440,7 @@
 (defn- enhance-context
   [{:keys [clock db timeout]
     :blaze/keys [cancelled?]
+    ::expr/keys [cache]
     :or {timeout (time/hours 1)}
     :as context} measure
    {:keys [report-type subject-ref]}]
@@ -432,10 +465,16 @@
                 ::luid/generator (luid-generator context))
                 function-defs
                 (assoc :function-defs function-defs))]
-          (when-ok [expression-defs (eval-unfiltered context expression-defs)]
-            (cond-> (assoc context :expression-defs expression-defs)
+          (when-ok [expression-defs (eval-unfiltered context expression-defs)
+                    expression-defs (library/resolve-all-refs expression-defs)]
+            (cond-> (assoc
+                     context
+                     :expression-defs
+                     (-> (remove-unused-defs expression-defs measure)
+                         (library/resolve-param-refs parameter-default-values)))
+              cache (attach-cache cache)
               subject-handle
-              (assoc :subject-handle (ed/mk-resource db subject-handle)))))))))
+              (assoc :subject-handle (cr/mk-resource db subject-handle)))))))))
 
 (defn evaluate-measure
   "Evaluates `measure` inside `context` with `params`.

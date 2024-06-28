@@ -3,11 +3,13 @@
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.db.api :as d]
    [blaze.db.impl.codec :as codec]
+   [blaze.db.impl.index.patient-last-change :as plc]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.impl.index.rts-as-of :as rts]
    [blaze.db.impl.index.system-stats :as system-stats]
    [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.kv.spec]
+   [blaze.db.search-param-registry :as sr]
    [blaze.fhir.hash :as hash]
    [blaze.util :as u]
    [clojure.string :as str]
@@ -98,8 +100,8 @@
   statistics of the transaction outcome.
 
   Throws an anomaly on conflicts."
-  {:arglists '([db-before t res cmd])}
-  (fn [_db-before _t _res {:keys [op]}] op))
+  {:arglists '([search-param-registry db-before t res cmd])}
+  (fn [_search-param-registry _db-before _t _res {:keys [op]}] op))
 
 (defn- verify-tx-cmd-create-msg [type id]
   (format "verify-tx-cmd :create %s/%s" type id))
@@ -111,18 +113,29 @@
   (when (d/resource-handle db type id)
     (throw-anom (ba/conflict (id-collision-msg type id (d/t db))))))
 
-(defn- index-entries [tid id t hash num-changes op]
-  (rts/index-entries tid (codec/id-byte-string id) t hash num-changes op))
+(defn- index-entries
+  "Creates index entries for the resource with `tid` and `id`.
+
+  `refs` are used to update the PatientLastChange index in case a Patient is
+  referenced."
+  [tid id t hash num-changes op refs]
+  (let [id (codec/id-byte-string id)]
+    (into
+     (rts/index-entries tid id t hash num-changes op)
+     (keep (fn [[ref-type ref-id]]
+             (when (= "Patient" ref-type)
+               (plc/index-entry (codec/id-byte-string ref-id) t))))
+     refs)))
 
 (def ^:private inc-0 (fnil inc 0))
 
 (defmethod verify-tx-cmd "create"
-  [db-before t res {:keys [type id hash]}]
+  [_search-param-registry db-before t res {:keys [type id hash refs]}]
   (log/trace (verify-tx-cmd-create-msg type id))
   (with-open [_ (prom/timer duration-seconds "verify-create")]
     (check-id-collision! db-before type id)
     (let [tid (codec/tid type)]
-      (-> (update res :entries into (index-entries tid id t hash 1 :create))
+      (-> (update res :entries into (index-entries tid id t hash 1 :create refs))
           (update :new-resources conj [type id])
           (update-in [:stats tid :num-changes] inc-0)
           (update-in [:stats tid :total] inc-0)))))
@@ -159,7 +172,8 @@
   (ba/conflict (precondition-version-failed-msg type id if-none-match) :http/status 412))
 
 (defmethod verify-tx-cmd "put"
-  [db-before t res {:keys [type id hash if-match if-none-match] :as tx-cmd}]
+  [_search-param-registry db-before t res
+   {:keys [type id hash if-match if-none-match refs] :as tx-cmd}]
   (log/trace (verify-tx-cmd-put-msg type id (u/to-seq if-match) if-none-match))
   (with-open [_ (prom/timer duration-seconds "verify-put")]
     (let [tid (codec/tid type)
@@ -181,7 +195,7 @@
 
         :else
         (cond->
-         (-> (update res :entries into (index-entries tid id t hash (inc num-changes) :put))
+         (-> (update res :entries into (index-entries tid id t hash (inc num-changes) :put refs))
              (update :new-resources conj [type id])
              (update-in [:stats tid :num-changes] inc-0))
           (or (nil? old-t) (identical? :delete op))
@@ -193,7 +207,7 @@
     (format "verify-tx-cmd :keep %s/%s" type id)))
 
 (defmethod verify-tx-cmd "keep"
-  [db-before _ res {:keys [type id hash if-match] :as tx-cmd}]
+  [_search-param-registry db-before _ res {:keys [type id hash if-match] :as tx-cmd}]
   (log/trace (verify-tx-cmd-keep-msg type id (u/to-seq if-match)))
   (with-open [_ (prom/timer duration-seconds "verify-keep")]
     (let [if-match (u/to-seq if-match)
@@ -210,27 +224,37 @@
         :else
         res))))
 
+(defn- patient-refs
+  "Returns references from `resource-handle` to Patient resources."
+  [search-param-registry db type resource-handle]
+  (into
+   []
+   (comp (mapcat #(d/include db resource-handle % "Patient"))
+         (map (fn [{:keys [id]}] ["Patient" id])))
+   (sr/compartment-resources search-param-registry "Patient" type)))
+
 (defmethod verify-tx-cmd "delete"
-  [db-before t res {:keys [type id]}]
+  [search-param-registry db-before t res {:keys [type id]}]
   (log/trace "verify-tx-cmd :delete" (str type "/" id))
   (with-open [_ (prom/timer duration-seconds "verify-delete")]
     (let [tid (codec/tid type)
-          {:keys [num-changes op] :or {num-changes 0}}
-          (d/resource-handle db-before type id)]
+          {:keys [num-changes op] :or {num-changes 0} :as old-resource-handle}
+          (d/resource-handle db-before type id)
+          refs (some->> old-resource-handle (patient-refs search-param-registry db-before type))]
       (cond->
-       (-> (update res :entries into (index-entries tid id t hash/deleted-hash (inc num-changes) :delete))
+       (-> (update res :entries into (index-entries tid id t hash/deleted-hash (inc num-changes) :delete refs))
            (update :del-resources conj [type id])
            (update-in [:stats tid :num-changes] inc-0))
         (and op (not (identical? :delete op)))
         (update-in [:stats tid :total] (fnil dec 0))))))
 
 (defmethod verify-tx-cmd :default
-  [_db-before _t res _tx-cmd]
+  [_search-param-registry _db-before _t res _tx-cmd]
   res)
 
-(defn- verify-tx-cmds** [db-before t tx-cmds]
+(defn- verify-tx-cmds** [search-param-registry db-before t tx-cmds]
   (reduce
-   (partial verify-tx-cmd db-before t)
+   (partial verify-tx-cmd search-param-registry db-before t)
    {:entries []
     :new-resources #{}
     :del-resources #{}}
@@ -309,11 +333,11 @@
           db new-resources del-resources type id refs))))
    cmds))
 
-(defn- verify-tx-cmds* [db-before t cmds]
+(defn- verify-tx-cmds* [search-param-registry db-before t cmds]
   (ba/try-anomaly
    (let [cmds (resolve-ids db-before cmds)]
      (detect-duplicate-commands! cmds)
-     (let [res (verify-tx-cmds** db-before t cmds)]
+     (let [res (verify-tx-cmds** search-param-registry db-before t cmds)]
        (check-referential-integrity! db-before res cmds)
        (post-process-res db-before t res)))))
 
@@ -322,7 +346,7 @@
   outcome if it is successful or an anomaly if it fails.
 
   The `t` is for the new transaction to commit."
-  [db-before t cmds]
+  [search-param-registry db-before t cmds]
   (with-open [_ (prom/timer duration-seconds "verify-tx-cmds")
               batch-db-before (d/new-batch-db db-before)]
-    (verify-tx-cmds* batch-db-before t cmds)))
+    (verify-tx-cmds* search-param-registry batch-db-before t cmds)))

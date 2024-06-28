@@ -12,4 +12,4 @@
 <!-- eslint-disable -->
 {#if isPrimitive(value.type)}{insideArray ? ' '.repeat(indent) : ''}<PrimitiveValue
 		{value}
-	/>{:else}<Object {indent} {insideArray} object={value} />{/if}{insideArray ? '\n' : ''}
+	/>{:else}<Object {indent} {insideArray} object={value} />{/if}

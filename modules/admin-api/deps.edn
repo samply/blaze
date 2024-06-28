@@ -4,6 +4,9 @@
  {blaze/async
   {:local/root "../async"}
 
+  blaze/cql
+  {:local/root "../cql"}
+
   blaze/interaction
   {:local/root "../interaction"}
 

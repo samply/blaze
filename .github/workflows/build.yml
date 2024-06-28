@@ -8,7 +8,7 @@ on:
     - master
     - develop
     tags:
-      - 'v*.*.*'
+    - 'v*.*.*'
   pull_request:
     branches:
     - master
@@ -25,7 +25,7 @@ jobs:
         cljfmt: 0.12.0
 
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Check Formatting
       run: make fmt
@@ -40,7 +40,7 @@ jobs:
         clj-kondo: '2024.03.13'
 
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Lint
       run: make lint
@@ -58,7 +58,7 @@ jobs:
       run: npm install -g fsh-sushi
 
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Build
       working-directory: job-ig
@@ -83,6 +83,7 @@ jobs:
         - async
         - byte-buffer
         - byte-string
+        - cache-collector
         - cassandra
         - coll
         - cql
@@ -148,7 +149,7 @@ jobs:
         cli: '1.11.2.1446'
 
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Cache Local Maven Repo
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
@@ -189,7 +190,7 @@ jobs:
         cli: '1.11.2.1446'
 
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Cache Local Maven Repo
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
@@ -223,7 +224,7 @@ jobs:
         cli: '1.11.2.1446'
 
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Cache Local Maven Repo
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
@@ -250,7 +251,7 @@ jobs:
       uses: docker/setup-buildx-action@d70bba72b1f3fd22344832f00baa16ece964efeb # v3
 
     - name: Build and Export to Docker
-      uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+      uses: docker/build-push-action@15560696de535e4014efeff63c48f16952e52dd1 # v6
       with:
         context: .
         tags: blaze:latest
@@ -268,7 +269,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Setup Node
       uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4
@@ -282,7 +283,7 @@ jobs:
       uses: docker/setup-buildx-action@d70bba72b1f3fd22344832f00baa16ece964efeb # v3
 
     - name: Build and Export to Docker
-      uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+      uses: docker/build-push-action@15560696de535e4014efeff63c48f16952e52dd1 # v6
       with:
         context: modules/frontend
         tags: blaze-frontend:latest
@@ -316,7 +317,7 @@ jobs:
       run: docker load --input /tmp/${{ matrix.image }}.tar
 
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Run Trivy Vulnerability Scanner
       uses: aquasecurity/trivy-action@master
@@ -333,6 +334,158 @@ jobs:
       with:
         sarif_file: trivy-results.sarif
 
+  cql-expr-cache-test:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -e CQL_EXPR_CACHE_SIZE=1000 -p 8080:8080 -p 8081:8081 -v blaze-data:/app/data blaze:latest
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Docker Logs
+      run: docker logs blaze
+
+    - name: Check Capability Statement
+      run: .github/scripts/check-capability-statement.sh
+
+    - name: Ensure that the State of PatientLastChange Index is Current
+      run: .github/scripts/check-patient-last-change-index-state.sh current
+
+    - name: Load Data
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+
+    - name: Prometheus Metrics
+      run: .github/scripts/test-cql-expr-cache-metrics.sh
+
+    - name: Check Total-Number of Resources are 92114
+      run: .github/scripts/check-total-number-of-resources.sh 92114
+
+    - name: Evaluate CQL Query 1
+      run: .github/scripts/evaluate-measure.sh q1 56
+
+    - name: Evaluate CQL Query 1 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q1 56
+
+    - name: Evaluate CQL Query 1 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q1 56
+
+    - name: Evaluate CQL Query 1 on Individual Patients
+      run: .github/scripts/evaluate-patient-q1-measure.sh
+
+    - name: Evaluate CQL Query 2
+      run: .github/scripts/evaluate-measure.sh q2 42
+
+    - name: Evaluate CQL Query 2 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q2 42
+
+    - name: Evaluate CQL Query 2 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q2 42
+
+    - name: Evaluate CQL Query 4
+      run: .github/scripts/evaluate-measure.sh q4 0
+
+    - name: Check Bloom Filter
+      run: .github/scripts/check-bloom-filter.sh 484cc96511a406d40ee8eeb4de6a49b05b3766ddef8eb05ac57c6139d774eddc 0
+
+    - name: Evaluate CQL Query 4 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q4 0
+
+    - name: Evaluate CQL Query 4 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q4 0
+
+    - name: Evaluate CQL Query 7
+      run: .github/scripts/evaluate-measure.sh q7 81
+
+    - name: Evaluate CQL Query 7 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q7 81
+
+    - name: Evaluate CQL Query 7 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q7 81
+
+    - name: Evaluate CQL Query 14
+      run: .github/scripts/evaluate-measure.sh q14 96
+
+    - name: Check Bloom Filter
+      run: .github/scripts/check-bloom-filter.sh fab7fc40f75f294787d8b2090788a291cdaf71640d6dcfe5441c00403225a256 96
+
+    - name: Evaluate CQL Query 14 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q14 96
+
+    - name: Evaluate CQL Query 14 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q14 96
+
+    - name: Evaluate CQL Query 17
+      run: .github/scripts/evaluate-measure.sh q17 120
+
+    - name: Evaluate CQL Query 17 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q17 120
+
+    - name: Evaluate CQL Query 17 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q17 120
+
+    - name: Evaluate CQL Query 20 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q20-stratifier-city 120
+
+    - name: Evaluate CQL Query 21 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q21-stratifier-city-of-only-women 64
+
+    - name: Evaluate CQL Query 26 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q26-stratifier-bmi 120
+
+    - name: Evaluate CQL Query 27 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q27-stratifier-calculated-bmi 120
+
+    - name: Evaluate CQL Query 32 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl-stratifier.sh q32-stratifier-underweight 120
+
+    - name: Evaluate CQL Query 36
+      run: .github/scripts/evaluate-measure.sh q36-parameter 86
+
+    - name: Check Bloom Filter
+      run: .github/scripts/check-bloom-filter.sh d4fc6cde1636852f9e362a68ca7be027a66bf7cb38ebff9c256c3eb2179c2639 86
+
+    - name: Evaluate CQL Query 36 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q36-parameter 86
+
+    - name: Evaluate CQL Query 37
+      run: .github/scripts/evaluate-measure.sh q37-overlaps 24
+
+    - name: Check Bloom Filter
+      run: .github/scripts/check-bloom-filter.sh 8a572962e0540de1bb4f4bf5c0101ff06be3ae69f4cd489509a6cf8d1646d1e1 24
+
+    - name: Evaluate CQL Query 37 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q37-overlaps 24
+
+    - name: Evaluate CQL Query 37 - Subject List
+      run: .github/scripts/evaluate-measure-subject-list.sh q37-overlaps 24
+
+    - name: Evaluate CQL Query 46
+      run: .github/scripts/evaluate-measure.sh q46-between-date 19
+
+    - name: Check Bloom Filter
+      run: .github/scripts/check-bloom-filter.sh 5a1fe6d1b996aed4783f0ee04e6e74927d7ddccc407b0818a8a800769458020b 19
+
+    - name: Evaluate CQL Query 46 using Blazectl
+      run: .github/scripts/evaluate-measure-blazectl.sh q46-between-date 19
+
   integration-test:
     needs: build
     runs-on: ubuntu-22.04
@@ -345,7 +498,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -736,7 +889,7 @@ jobs:
     - name: Delete
       run: .github/scripts/delete.sh
 
-    - name: Delete Violating Referential Integrity 
+    - name: Delete Violating Referential Integrity
       run: .github/scripts/check-referential-integrity-for-delete.sh 409
 
     - name: Batch
@@ -751,7 +904,7 @@ jobs:
     - name: Transaction Read/Write
       run: .github/scripts/transaction-rw.sh
 
-    - name: Transactional Delete Preserving Referential Integrity 
+    - name: Transactional Delete Preserving Referential Integrity
       run: .github/scripts/transactional-delete.sh
 
     - name: Transaction with Invalid (Null) Resource
@@ -856,7 +1009,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -924,7 +1077,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -968,7 +1121,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -1007,7 +1160,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -1048,7 +1201,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -1083,7 +1236,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -1121,7 +1274,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Download Blaze Image
       uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4
@@ -1150,7 +1303,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Download Blaze Image
       uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4
@@ -1181,7 +1334,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -1224,7 +1377,7 @@ jobs:
         cli: '1.11.2.1446'
 
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Cache Local Maven Repo
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
@@ -1268,7 +1421,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Download Blaze Image
       uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4
@@ -1309,7 +1462,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Download Blaze Image
       uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4
@@ -1341,7 +1494,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -1385,7 +1538,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Download Blaze Image
       uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4
@@ -1423,7 +1576,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Setup Node
       uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4
@@ -1507,7 +1660,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Download Blaze Image
       uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4
@@ -1548,6 +1701,52 @@ jobs:
     - name: Fetch Patient Expecting an Error
       run: .github/scripts/fetch-resource-0-with-missing-resource-content.sh
 
+  # This test ensures that older versions of Blaze will migrate successfully to
+  # the new database schema especially building the PatientLastChange index.
+  build-patient-last-change-index-test:
+    needs: build
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Blaze in the Version 0.27 before Introduction of the PatientLastChange Index
+      run: docker run --name blaze --rm -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -p 8080:8080 -v blaze-data:/app/data samply/blaze:0.27
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Load Data
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+
+    - name: Ensure that the PatientLastChange Index does not exist
+      run: .github/scripts/check-patient-last-change-index-missing.sh
+
+    - name: Shut down Blaze
+      run: docker stop blaze
+
+    - name: Run Latest Blaze with the PatientLastChange Index
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_ADMIN_API=true -e LOG_LEVEL=debug -p 8080:8080 -v blaze-data:/app/data blaze:latest
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh  http://localhost:8080/health
+
+    - name: Ensure that the State of PatientLastChange Index is Current
+      run: .github/scripts/check-patient-last-change-index-state.sh current
+
   jepsen-distributed-test:
     needs: build
     runs-on: ubuntu-22.04
@@ -1565,7 +1764,7 @@ jobs:
         cli: '1.11.2.1446'
 
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Cache Local Maven Repo
       uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
@@ -1628,6 +1827,7 @@ jobs:
     if: github.event_name != 'pull_request' || (github.event.pull_request.base.repo.full_name == github.event.pull_request.head.repo.full_name)
     needs:
     - image-scan
+    - cql-expr-cache-test
     - integration-test
     - integration-test-synthea-1000
     - not-enforcing-referential-integrity-test
@@ -1646,6 +1846,7 @@ jobs:
     - frontend-test
     - missing-resource-content-test
     - custom-search-parameters-test
+    - build-patient-last-change-index-test
     runs-on: ubuntu-22.04
     permissions:
       packages: write
@@ -1662,7 +1863,7 @@ jobs:
 
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Download Blaze Uberjar
       if: ${{ matrix.image.context == '.' }}
@@ -1717,7 +1918,7 @@ jobs:
           type=semver,pattern={{major}}.{{minor}}
 
     - name: Build and push to GHCR
-      uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+      uses: docker/build-push-action@15560696de535e4014efeff63c48f16952e52dd1 # v6
       with:
         context: ${{ matrix.image.context }}
         platforms: linux/amd64,linux/arm64
@@ -1748,7 +1949,7 @@ jobs:
 
     - name: Build and push to DockerHub
       if: ${{ env.dockerhub_username != '' }}
-      uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
+      uses: docker/build-push-action@15560696de535e4014efeff63c48f16952e52dd1 # v6
       with:
         context: ${{ matrix.image.context }}
         platforms: linux/amd64,linux/arm64
@@ -1767,7 +1968,7 @@ jobs:
 
     steps:
     - name: Release
-      uses: softprops/action-gh-release@69320dbe05506a9a39fc8ae11030b214ec2d1f87 # v2
+      uses: softprops/action-gh-release@a74c6b72af54cfa997e81df42d94703d6313a2d0 # v2
       with:
         files: target/blaze-*-standalone.jar
 
@@ -1775,7 +1976,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: Check out Git repository
-      uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 
     - name: Setup Node
       uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4

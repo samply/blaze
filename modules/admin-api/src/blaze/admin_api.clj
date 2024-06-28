@@ -4,8 +4,13 @@
    [blaze.admin-api.validation]
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.db.impl.index.patient-last-change :as plc]
+   [blaze.db.kv :as kv]
    [blaze.db.kv.rocksdb :as rocksdb]
    [blaze.elm.expression :as-alias expr]
+   [blaze.elm.expression.cache :as ec]
+   [blaze.elm.expression.cache.bloom-filter :as-alias bloom-filter]
+   [blaze.elm.expression.spec]
    [blaze.fhir.response.create :as create-response]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.handler.fhir.util :as fhir-util]
@@ -86,7 +91,7 @@
 (defn- column-family-data [db column-family]
   (let [long-property (partial rocksdb/long-property db column-family)]
     {:name (name column-family)
-     :estimate-num-keys (long-property "rocksdb.estimate-num-keys")
+     :estimate-num-keys (kv/estimate-num-keys db column-family)
      :estimate-live-data-size (long-property "rocksdb.estimate-live-data-size")
      :live-sst-files-size (long-property "rocksdb.live-sst-files-size")
      :size-all-mem-tables (long-property "rocksdb.size-all-mem-tables")}))
@@ -95,6 +100,19 @@
   (fn [{:keys [db]}]
     (-> (mapv (partial column-family-data db) (rocksdb/column-families db))
         (ring/response)
+        (ac/completed-future))))
+
+(defn- column-family-state-not-found-msg [db-name column-family]
+  (format "The state of the column family `%s` in database `%s` was not found." column-family db-name))
+
+(defn- column-family-state-not-found [db-name column-family]
+  (ring/not-found {:msg (column-family-state-not-found-msg db-name column-family)}))
+
+(def ^:private cf-state-handler
+  (fn [{:keys [db] {db-name :db :keys [column-family]} :path-params}]
+    (-> (if (and (= "index" db-name) (= "patient-last-change-index" column-family))
+          (ring/response (plc/state db))
+          (column-family-state-not-found db-name column-family))
         (ac/completed-future))))
 
 (defn- column-family-not-found-msg [db-name column-family]
@@ -216,7 +234,8 @@
 (defn- router
   [{:keys [context-path admin-node validator db-sync-timeout dbs
            create-job-handler read-job-handler search-type-job-handler
-           pause-job-handler resume-job-handler cancel-job-handler]
+           pause-job-handler resume-job-handler cancel-job-handler
+           cql-cache-stats-handler cql-bloom-filters-handler]
     :or {context-path ""
          db-sync-timeout 10000}
     :as context}]
@@ -323,6 +342,10 @@
                {:type "array"}}}}}}}}]
        ["/{column-family}"
         {}
+        ["/state"
+         {:get
+          {:handler cf-state-handler
+           :summary "Fetch the state of a column family of a database."}}]
         ["/metadata"
          {:get
           {:handler cf-metadata-handler
@@ -385,7 +408,36 @@
         {:handler resume-job-handler}}]
       ["/$cancel"
        {:post
-        {:handler cancel-job-handler}}]]]]
+        {:handler cancel-job-handler}}]]]
+    ["/cql"
+     {}
+     ["/cache-stats"
+      {:get
+       {:handler cql-cache-stats-handler
+        :summary "Fetch CQL cache stats."
+        :openapi
+        {:operation-id "cql-cache-stats"
+         :responses
+         {200
+          {:description "CQL cache stats."
+           :content
+           {"application/json"
+            {:schema
+             {:type "object"}}}}}}}}]
+     ["/bloom-filters"
+      {:get
+       {:handler cql-bloom-filters-handler
+        :summary "Fetch the list of all CQL Bloom filters."
+        :openapi
+        {:operation-id "cql-bloom-filters"
+         :responses
+         {200
+          {:description "A list of CQL Bloom filters."
+           :content
+           {"application/json"
+            {:schema
+             {:type "array"
+              :items {"$ref" "#/components/schemas/BloomFilter"}}}}}}}}}]]]
    {:path (str context-path "/__admin")
     :syntax :bracket}))
 
@@ -453,6 +505,32 @@
             (ring/header "Last-Modified" (fhir-util/last-modified tx))
             (ring/header "ETag" (fhir-util/etag tx)))))))
 
+(def ^:private bloom-filter-xf
+  (comp
+   (take 100)
+   (map
+    #(select-keys % [::bloom-filter/hash ::bloom-filter/t ::bloom-filter/expr-form
+                     ::bloom-filter/patient-count ::bloom-filter/mem-size]))
+   (map #(update % ::bloom-filter/hash str))))
+
+(defn- cql-cache-stats-handler [{::expr/keys [cache]}]
+  (if cache
+    (fn [_]
+      (-> (ring/response {:total (ec/total cache)})
+          (ac/completed-future)))
+    (fn [_]
+      (-> (ring/not-found {:msg "The feature \"CQL Expression Cache\" is disabled."})
+          (ac/completed-future)))))
+
+(defn- cql-bloom-filters-handler [{::expr/keys [cache]}]
+  (if cache
+    (fn [_]
+      (-> (ring/response (into [] bloom-filter-xf (ec/list-by-t cache)))
+          (ac/completed-future)))
+    (fn [_]
+      (-> (ring/not-found {:msg "The feature \"CQL Expression Cache\" is disabled."})
+          (ac/completed-future)))))
+
 (defmethod m/pre-init-spec :blaze/admin-api [_]
   (s/keys :req-un [:blaze/context-path ::admin-node :blaze/job-scheduler
                    ::read-job-handler ::search-type-job-handler
@@ -467,7 +545,9 @@
                   :create-job-handler (create-job-handler job-scheduler)
                   :pause-job-handler (job-action-handler job-scheduler js/pause-job)
                   :resume-job-handler (job-action-handler job-scheduler js/resume-job)
-                  :cancel-job-handler (job-action-handler job-scheduler js/cancel-job)))
+                  :cancel-job-handler (job-action-handler job-scheduler js/cancel-job)
+                  :cql-cache-stats-handler (cql-cache-stats-handler context)
+                  :cql-bloom-filters-handler (cql-bloom-filters-handler context)))
    ((wrap-json-output {})
     (fn [{:keys [uri]}]
       (-> (ring/not-found {"uri" uri})

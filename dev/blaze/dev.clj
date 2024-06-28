@@ -1,20 +1,22 @@
 (ns blaze.dev
   (:require
-    [blaze.byte-string :as bs]
-    [blaze.db.api :as d]
-    [blaze.db.api-spec]
-    [blaze.db.cache-collector.protocols :as ccp]
-    [blaze.db.resource-cache :as resource-cache]
-    [blaze.db.resource-store :as rs]
-    [blaze.db.tx-log :as tx-log]
-    [blaze.spec]
-    [blaze.system :as system]
-    [blaze.system-spec]
-    [clojure.repl :refer [pst]]
-    [clojure.spec.test.alpha :as st]
-    [clojure.tools.namespace.repl :refer [refresh]]
-    [java-time.api :as time]
-    [taoensso.timbre :as log]))
+   [blaze.byte-string :as bs]
+   [blaze.cache-collector.protocols :as ccp]
+   [blaze.cache-collector.protocols :as ccp]
+   [blaze.db.api :as d]
+   [blaze.db.api-spec]
+   [blaze.db.resource-cache :as resource-cache]
+   [blaze.db.resource-store :as rs]
+   [blaze.db.tx-log :as tx-log]
+   [blaze.elm.expression :as-alias expr]
+   [blaze.spec]
+   [blaze.system :as system]
+   [blaze.system-spec]
+   [clojure.repl :refer [pst]]
+   [clojure.spec.test.alpha :as st]
+   [clojure.tools.namespace.repl :refer [refresh]]
+   [java-time.api :as time]
+   [taoensso.timbre :as log]))
 
 (defonce system nil)
 
@@ -56,6 +58,11 @@
   (str (ccp/-stats (:blaze.db/resource-cache system)))
   (ccp/-estimated-size (:blaze.db/resource-cache system))
   (resource-cache/invalidate-all! (:blaze.db/resource-cache system))
+  )
+
+;; CQL Expression Cache
+(comment
+  (str (ccp/-stats (::expr/cache system)))
   )
 
 ;; RocksDB Stats

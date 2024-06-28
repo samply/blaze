@@ -15,7 +15,7 @@ set title "Simple Code Search - Dataset 100k-fh"
 set xlabel 'System'
 set ylabel 'Patients/s'
 set format y "%.0f k"
-set yrange [0:1800]
+set yrange [0:2000]
 
 # Define grid
 set grid ytics

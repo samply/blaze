@@ -13,7 +13,8 @@
    [blaze.elm.protocols :as p]
    [clojure.math :as math])
   (:import
-   [java.math RoundingMode]))
+   [java.math RoundingMode]
+   [tech.units.indriya.function RationalNumber]))
 
 (set! *warn-on-reflection* true)
 
@@ -242,7 +243,10 @@
 (extend-protocol p/ToDecimal
   BigDecimal
   (to-decimal [x]
-    (-> x constrain-scale check-overflow)))
+    (-> x constrain-scale check-overflow))
+  RationalNumber
+  (to-decimal [x]
+    (.bigDecimalValue x)))
 
 (defn from-literal [s]
   (if-let [d (p/to-decimal s)]

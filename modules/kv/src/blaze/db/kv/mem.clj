@@ -110,14 +110,17 @@
     (set! closed? true)))
 
 (defn- column-family-not-found-msg [column-family]
-  (format "column family `%s` not found" (name column-family)))
+  (format "Column family `%s` not found." (name column-family)))
+
+(defn- column-family-not-found-anom [column-family]
+  (ba/not-found (column-family-not-found-msg column-family)))
 
 (deftype MemKvSnapshot [db]
   p/KvSnapshot
   (-new-iterator [_ column-family]
     (if-let [db (get db column-family)]
       (->MemKvIterator db (atom {:rest (seq db)}) false)
-      (throw-anom (ba/not-found (column-family-not-found-msg column-family)))))
+      (throw-anom (column-family-not-found-anom column-family))))
 
   (-snapshot-get [_ column-family k]
     (some-> (get-in db [column-family k]) (copy)))
@@ -127,7 +130,7 @@
 
 (defn- assoc-copy [m column-family k v]
   (when (nil? m)
-    (throw-anom (ba/not-found (column-family-not-found-msg column-family))))
+    (throw-anom (column-family-not-found-anom column-family)))
   (assoc m (copy k) (copy v)))
 
 (defn- put-entries [db entries]
@@ -172,7 +175,12 @@
 
   (-write [_ entries]
     (swap! db write-entries entries)
-    nil))
+    nil)
+
+  (-estimate-num-keys [_ column-family]
+    (if-let [m (get @db column-family)]
+      (count m)
+      (column-family-not-found-anom column-family))))
 
 (def ^:private bytes-cmp
   (reify Comparator

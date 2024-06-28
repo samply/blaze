@@ -183,3 +183,10 @@
   Writes are atomic. Blocks."
   [store entries]
   (p/-write store entries))
+
+(defn estimate-num-keys
+  "Returns the estimated number of keys in `column-family` of `store`.
+
+  Returns an anomaly if the column-family was not found."
+  [store column-family]
+  (p/-estimate-num-keys store column-family))

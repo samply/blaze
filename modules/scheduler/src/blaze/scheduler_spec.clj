@@ -5,6 +5,10 @@
    [clojure.spec.alpha :as s]
    [java-time.api :as time]))
 
+(s/fdef sched/submit
+  :args (s/cat :scheduler :blaze/scheduler :f fn?)
+  :ret :blaze.scheduler/future)
+
 (s/fdef sched/schedule-at-fixed-rate
   :args (s/cat :scheduler :blaze/scheduler :f fn?
                :initial-delay time/duration? :period time/duration?)

@@ -14,7 +14,7 @@
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.literal]
    [blaze.elm.literal-spec]
-   [blaze.elm.quantity :as quantity]
+   [blaze.elm.quantity :refer [quantity]]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type]
    [clojure.spec.test.alpha :as st]
@@ -75,13 +75,13 @@
               expr (c/compile {} elm)]
 
           (testing "eval"
-            (is (= [(quantity/quantity 1 "m") (quantity/quantity 2 "m")] (core/-eval expr {} nil nil))))
+            (is (= [(quantity 1 "m") (quantity 2 "m")] (core/-eval expr {} nil nil))))
 
           (testing "form"
             (has-form expr '(sorted-vector-query distinct
-                                                 [(quantity 2 "m")
-                                                  (quantity 1 "m")
-                                                  (quantity 1 "m")]
+                                                 [(quantity 2M "m")
+                                                  (quantity 1M "m")
+                                                  (quantity 1M "m")]
                                                  [asc (:value S)]))))
 
         (testing "with IdentifierRef"

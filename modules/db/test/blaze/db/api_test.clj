@@ -1400,7 +1400,7 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"
                :active true
-               :name [(type/map->HumanName {:family (apply str (repeat 1000 "a"))})]}]]]
+               :name [(type/human-name {:family (apply str (repeat 1000 "a"))})]}]]]
 
       (testing "as first clause"
         (given (pull-type-query node "Patient" [["family" (apply str (repeat 1000 "a"))]])
@@ -1419,7 +1419,7 @@
         (with-system-data [{:blaze.db/keys [node]} config]
           [[[:put {:fhir/type :fhir/Patient :id "0"
                    :active true
-                   :name [(type/map->HumanName {:family name})]}]]]
+                   :name [(type/human-name {:family name})]}]]]
 
           (testing "as first clause"
             (given (pull-type-query node "Patient" [["family" name]])
@@ -4563,7 +4563,7 @@
 
 (defn- patient-w-identifier [i]
   {:fhir/type :fhir/Patient :id (str i)
-   :identifier [(type/map->Identifier {:value (str i)})]})
+   :identifier [(type/identifier {:value (str i)})]})
 
 (deftest type-query-identifier-non-matching-test
   (st/unstrument)
@@ -4586,15 +4586,15 @@
         [[[:put {:fhir/type :fhir/Patient :id "0"
                  :active true
                  :identifier
-                 [(type/map->Identifier {:system system :value "0"})]}]
+                 [(type/identifier {:system system :value "0"})]}]
           [:put {:fhir/type :fhir/Patient :id "1"
                  :active true
                  :identifier
-                 [(type/map->Identifier {:system system :value "0"})]}]
+                 [(type/identifier {:system system :value "0"})]}]
           [:put {:fhir/type :fhir/Patient :id "2"
                  :active true
                  :identifier
-                 [(type/map->Identifier {:system system :value "0"})]}]]]
+                 [(type/identifier {:system system :value "0"})]}]]]
 
         (doseq [value (if system ["0" "foo|0"] ["0" "|0"])]
           (given (pull-type-query node "Patient" [["identifier" value]])
@@ -5229,6 +5229,49 @@
           count := 1
           [0 :fhir/type] := :fhir/Observation
           [0 :id] := "0")))))
+
+(deftest patient-compartment-last-change-t-test
+  (testing "non-existing patient"
+    (with-system [{:blaze.db/keys [node]} config]
+
+      (testing "just returns nil"
+        (is (nil? (d/patient-compartment-last-change-t (d/db node) "0"))))))
+
+  (testing "single patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (testing "has no resources in its compartment"
+        (is (nil? (d/patient-compartment-last-change-t (d/db node) "0"))))))
+
+  (testing "observation created in same transaction as patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+      (is (= 1 (d/patient-compartment-last-change-t (d/db node) "0")))))
+
+  (testing "observation created after the patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+      (testing "the last change comes from the second transaction"
+        (is (= 2 (d/patient-compartment-last-change-t (d/db node) "0"))))
+
+      (testing "at t=1 there was no change"
+        (is (nil? (d/patient-compartment-last-change-t (d/as-of (d/db node) 1) "0"))))))
+
+  (testing "patient with last change in t=1 isn't affected by later patient added in t=2"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
+       [[:put {:fhir/type :fhir/Patient :id "1"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/1"}}]]]
+
+      (is (nil? (d/patient-compartment-last-change-t (d/db node) "0"))))))
 
 (defmethod ig/init-key ::defective-resource-store [_ {:keys [hashes-to-store]}]
   (let [store (atom {})]
@@ -6356,9 +6399,9 @@
 (defn- observation-create-op [id]
   [:create {:fhir/type :fhir/Observation :id (format "%05d" id)
             :category
-            [(type/map->CodeableConcept
+            [(type/codeable-concept
               {:coding
-               [(type/map->Coding
+               [(type/coding
                  {:system #fhir/uri"system-141902"
                   :code (type/code (format "%05d" id))})]})]}])
 

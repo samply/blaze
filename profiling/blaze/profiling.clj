@@ -2,9 +2,13 @@
   "Profiling namespace without test dependencies."
   (:require
     [blaze.system :as system]
-    [blaze.db.cache-collector :as cc]
+    [blaze.cache-collector :as cc]
+    [blaze.cache-collector.protocols :as ccp]
     [blaze.db.kv.rocksdb :as rocksdb]
     [blaze.db.resource-cache :as resource-cache]
+    [blaze.elm.expression :as-alias expr]
+    [blaze.elm.expression.cache :as ec]
+    [blaze.system :as system]
     [clojure.tools.namespace.repl :refer [refresh]]
     [taoensso.timbre :as log]))
 
@@ -43,14 +47,20 @@
 
 ;; Transaction Cache
 (comment
-  (str (cc/-stats (:blaze.db/tx-cache system)))
+  (str (ccp/-stats (:blaze.db/tx-cache system)))
   (resource-cache/invalidate-all! (:blaze.db/tx-cache system))
   )
 
 ;; Resource Cache
 (comment
-  (str (cc/-stats (:blaze.db/resource-cache system)))
+  (str (ccp/-stats (:blaze.db/resource-cache system)))
   (resource-cache/invalidate-all! (:blaze.db/resource-cache system))
+  )
+
+;; CQL Expression Cache
+(comment
+  (into [] (ec/list-by-t (::expr/cache system)))
+  (str (ccp/-stats (::expr/cache system)))
   )
 
 ;; DB
@@ -69,6 +79,7 @@
   (rocksdb/property index-db :resource-as-of-index "rocksdb.stats")
   (rocksdb/property index-db :type-as-of-index "rocksdb.stats")
   (rocksdb/property index-db :system-as-of-index "rocksdb.stats")
+  (rocksdb/property index-db :patient-last-change-index "rocksdb.stats")
   (rocksdb/property index-db :type-stats-index "rocksdb.stats")
   (rocksdb/property index-db :system-stats-index "rocksdb.stats")
 
