@@ -5,14 +5,13 @@ on:
   - cron: '0 10 * * *' # every day at 10am
   push:
     branches:
-    - master
-    - develop
+    - main
     tags:
     - 'v*.*.*'
   pull_request:
     branches:
-    - master
-    - develop
+    - main
+  merge_group:
 
 jobs:
   fmt:

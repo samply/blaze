@@ -4,8 +4,10 @@ on:
   # https://github.com/ossf/scorecard/blob/main/docs/checks.md#maintained
   schedule:
   - cron: '34 3 * * 3'
-  push:
-    branches: [ "master" ]
+  pull_request:
+    branches:
+    - main
+  merge_group:
 
 # Declare default permissions as read only.
 permissions: read-all

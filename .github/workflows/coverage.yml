@@ -1,9 +1,13 @@
 name: Coverage
 
 on:
+  push:
+    branches:
+    - main
   pull_request:
     branches:
-    - develop
+    - main
+  merge_group:
 
 jobs:
   test-coverage:
