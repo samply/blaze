@@ -53,9 +53,6 @@ jobs:
       with:
         node-version: 21
 
-    - name: Install SUSHI
-      run: npm install -g fsh-sushi
-
     - name: Check out Git repository
       uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
 

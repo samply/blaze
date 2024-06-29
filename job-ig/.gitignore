@@ -3,4 +3,5 @@
 /output
 /temp
 /template
+/node_modules
 validator_cli.jar
