@@ -23,7 +23,6 @@
       "groupName": "hapi"
     }
   ],
-  "baseBranches": ["develop"],
   "ignorePaths": ["docker-compose.yml"],
   "prConcurrentLimit": 3
 }
