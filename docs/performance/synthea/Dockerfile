@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:17.0.11_9-jre@sha256:ae0f248b921eee1006d349bef8c784f4f6a4f6d87305a98235f5492e0dc78842
 
 
 ADD https://github.com/synthetichealth/synthea/releases/download/v3.1.1/synthea-with-dependencies.jar /gen/synthea.jar
