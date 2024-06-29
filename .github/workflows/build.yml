@@ -21,7 +21,7 @@ jobs:
 
     steps:
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@master
+      uses: DeLaGuardo/setup-clojure@12.5
       with:
         cljfmt: 0.12.0
 
@@ -36,7 +36,7 @@ jobs:
 
     steps:
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@master
+      uses: DeLaGuardo/setup-clojure@12.5
       with:
         clj-kondo: '2024.03.13'
 
@@ -145,7 +145,7 @@ jobs:
         java-version: ${{ matrix.java-version }}
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@master
+      uses: DeLaGuardo/setup-clojure@12.5
       with:
         cli: '1.11.2.1446'
 
@@ -186,7 +186,7 @@ jobs:
         java-version: ${{ matrix.java-version }}
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@master
+      uses: DeLaGuardo/setup-clojure@12.5
       with:
         cli: '1.11.2.1446'
 
@@ -220,7 +220,7 @@ jobs:
         java-version: '17'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@master
+      uses: DeLaGuardo/setup-clojure@12.5
       with:
         cli: '1.11.2.1446'
 
@@ -1373,7 +1373,7 @@ jobs:
         java-version: '21'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@master
+      uses: DeLaGuardo/setup-clojure@12.5
       with:
         cli: '1.11.2.1446'
 
@@ -1760,7 +1760,7 @@ jobs:
         java-version: '21'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@master
+      uses: DeLaGuardo/setup-clojure@12.5
       with:
         cli: '1.11.2.1446'
 
