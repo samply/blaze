@@ -15,7 +15,7 @@
   {:mvn/version "6.5.0"}
 
   hato/hato
-  {:mvn/version "0.9.0"}}
+  {:mvn/version "1.0.0"}}
 
  :aliases
  {:test

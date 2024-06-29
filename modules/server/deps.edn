@@ -24,7 +24,7 @@
     {:local/root "../module-test-util"}
 
     hato/hato
-    {:mvn/version "0.9.0"}}}
+    {:mvn/version "1.0.0"}}}
 
   :kaocha
   {:extra-deps
