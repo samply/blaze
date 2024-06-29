@@ -13,6 +13,8 @@ on:
     - main
   merge_group:
 
+permissions: read-all
+
 jobs:
   fmt:
     runs-on: ubuntu-22.04
@@ -1849,7 +1851,6 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       packages: write
-      contents: write
     strategy:
       matrix:
         image:
@@ -1962,7 +1963,6 @@ jobs:
     - push-image
     runs-on: ubuntu-22.04
     permissions:
-      packages: write
       contents: write
 
     steps:

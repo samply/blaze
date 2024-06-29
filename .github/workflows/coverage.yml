@@ -6,6 +6,8 @@ on:
     - main
   merge_group:
 
+permissions: read-all
+
 jobs:
   test-coverage:
     runs-on: ubuntu-22.04
