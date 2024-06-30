@@ -15,29 +15,36 @@ count() {
 
 test "count size" "$(count)" "$EXPECTED_SIZE"
 
-blazectl --no-progress --server "$BASE" download "$TYPE" -q "$QUERY" -o "$FILE_NAME_PREFIX-get".ndjson
+blazectl --no-progress --server "$BASE" download "$TYPE" -q "$QUERY" -o "$FILE_NAME_PREFIX-get.ndjson"
 
-SIZE=$(wc -l "$FILE_NAME_PREFIX-get".ndjson | xargs | cut -d ' ' -f1)
+SIZE=$(wc -l "$FILE_NAME_PREFIX-get.ndjson" | xargs | cut -d ' ' -f1)
 if [ "$EXPECTED_SIZE" = "$SIZE" ]; then
   echo "OK 👍: download size matches for GET request"
 else
   echo "Fail 😞: download size was ${SIZE} but should be ${EXPECTED_SIZE} for GET request"
+  rm "$FILE_NAME_PREFIX-get.ndjson"
   exit 1
 fi
 
-blazectl --server "$BASE" download "$TYPE" -p -q "$QUERY" -o "$FILE_NAME_PREFIX-post".ndjson
+blazectl --server "$BASE" download "$TYPE" -p -q "$QUERY" -o "$FILE_NAME_PREFIX-post.ndjson"
 
-SIZE=$(wc -l "$FILE_NAME_PREFIX-post".ndjson | xargs | cut -d ' ' -f1)
+SIZE=$(wc -l "$FILE_NAME_PREFIX-post.ndjson" | xargs | cut -d ' ' -f1)
 if [ "$EXPECTED_SIZE" = "$SIZE" ]; then
   echo "OK 👍: download size matches for POST request"
 else
   echo "Fail 😞: download size was ${SIZE} but should be ${EXPECTED_SIZE} for POST request"
+  rm "$FILE_NAME_PREFIX-get.ndjson"
+  rm "$FILE_NAME_PREFIX-post.ndjson"
   exit 1
 fi
 
 if [ "$(diff "$FILE_NAME_PREFIX-get.ndjson" "$FILE_NAME_PREFIX-post.ndjson")" = "" ]; then
   echo "OK 👍: both downloads are identical"
+  rm "$FILE_NAME_PREFIX-get.ndjson"
+  rm "$FILE_NAME_PREFIX-post.ndjson"
 else
   echo "Fail 😞: the GET and the POST download differ"
+  rm "$FILE_NAME_PREFIX-get.ndjson"
+  rm "$FILE_NAME_PREFIX-post.ndjson"
   exit 1
 fi
