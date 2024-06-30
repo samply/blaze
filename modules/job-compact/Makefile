@@ -1,5 +1,5 @@
 fmt:
-	cljfmt check build.clj
+	cljfmt check build.clj deps.edn
 
 lint:
 	clj-kondo --lint build.clj deps.edn

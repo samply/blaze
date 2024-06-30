@@ -1,5 +1,5 @@
 fmt:
-	cljfmt check src test test-perf build.clj
+	cljfmt check resources src test test-perf build.clj deps.edn tests.edn
 
 lint:
 	clj-kondo --lint src test test-perf build.clj deps.edn
