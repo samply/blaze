@@ -7,30 +7,36 @@ SORT=$3
 EXPECTED_SIZE=$4
 FILE_NAME_PREFIX="$(uuidgen)"
 
-blazectl --no-progress --server "$BASE" download "$TYPE" -q "_sort=$SORT&$QUERY" -o "$FILE_NAME_PREFIX-get".ndjson
+blazectl --no-progress --server "$BASE" download "$TYPE" -q "_sort=$SORT&$QUERY" -o "$FILE_NAME_PREFIX-get.ndjson"
 
-SIZE=$(wc -l "$FILE_NAME_PREFIX-get".ndjson | xargs | cut -d ' ' -f1)
+SIZE=$(wc -l "$FILE_NAME_PREFIX-get.ndjson" | xargs | cut -d ' ' -f1)
 if [ "$EXPECTED_SIZE" = "$SIZE" ]; then
   echo "OK 👍: download size matches for GET request"
 else
   echo "Fail 😞: download size was ${SIZE} but should be ${EXPECTED_SIZE} for GET request"
+  rm "$FILE_NAME_PREFIX-get.ndjson"
   exit 1
 fi
 
-blazectl --server "$BASE" download "$TYPE" -p -q "_sort=$SORT&$QUERY" -o "$FILE_NAME_PREFIX-post".ndjson
+blazectl --server "$BASE" download "$TYPE" -p -q "_sort=$SORT&$QUERY" -o "$FILE_NAME_PREFIX-post.ndjson"
 
-SIZE=$(wc -l "$FILE_NAME_PREFIX-post".ndjson | xargs | cut -d ' ' -f1)
+SIZE=$(wc -l "$FILE_NAME_PREFIX-post.ndjson" | xargs | cut -d ' ' -f1)
 if [ "$EXPECTED_SIZE" = "$SIZE" ]; then
   echo "OK 👍: download size matches for POST request"
 else
   echo "Fail 😞: download size was ${SIZE} but should be ${EXPECTED_SIZE} for POST request"
+  rm "$FILE_NAME_PREFIX-get.ndjson"
+  rm "$FILE_NAME_PREFIX-post.ndjson"
   exit 1
 fi
 
 if [ "$(diff "$FILE_NAME_PREFIX-get.ndjson" "$FILE_NAME_PREFIX-post.ndjson")" = "" ]; then
   echo "OK 👍: both downloads are identical"
+  rm "$FILE_NAME_PREFIX-post.ndjson"
 else
   echo "Fail 😞: the GET and the POST download differ"
+  rm "$FILE_NAME_PREFIX-get.ndjson"
+  rm "$FILE_NAME_PREFIX-post.ndjson"
   exit 1
 fi
 
@@ -49,6 +55,8 @@ elif [[ "$SORT" == "_lastUpdated" || "$SORT" == "-_lastUpdated" ]]; then
 
   # test sorting, ignoring the milliseconds because Blaze strips them in the index
   LAST_UPDATED=$(cat "$FILE_NAME_PREFIX-get.ndjson" | jq -r '.meta.lastUpdated' | cut -d'.' -f1 | uniq)
+  rm "$FILE_NAME_PREFIX-get.ndjson"
+
   if [[ "$SORT" == -* ]]; then
     LAST_UPDATED_SORT=$(echo "$LAST_UPDATED" | sort -r)
   else
@@ -58,6 +66,7 @@ elif [[ "$SORT" == "_lastUpdated" || "$SORT" == "-_lastUpdated" ]]; then
     echo "OK 👍: resources are sorted by lastUpdated"
   else
     echo "Fail 😞: resources are not sorted by lastUpdated"
+    echo "$LAST_UPDATED"
     exit 1
   fi
 fi
