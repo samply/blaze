@@ -1,5 +1,5 @@
 fmt:
-	cljfmt check
+	cljfmt check src test deps.edn tests.edn
 
 lint:
 	clj-kondo --lint src deps.edn
