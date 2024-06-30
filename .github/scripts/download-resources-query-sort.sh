@@ -54,7 +54,7 @@ if [[ "$SORT" == "_id" ]]; then
 elif [[ "$SORT" == "_lastUpdated" || "$SORT" == "-_lastUpdated" ]]; then
 
   # test sorting, ignoring the milliseconds because Blaze strips them in the index
-  LAST_UPDATED=$(cat "$FILE_NAME_PREFIX-get.ndjson" | jq -r '.meta.lastUpdated' | cut -d'.' -f1 | uniq)
+  LAST_UPDATED=$(cat "$FILE_NAME_PREFIX-get.ndjson" | jq -r '.meta.lastUpdated' | cut -d'.' -f1 | cut -d'Z' -f1 | uniq)
   rm "$FILE_NAME_PREFIX-get.ndjson"
 
   if [[ "$SORT" == -* ]]; then
