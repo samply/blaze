@@ -4,6 +4,9 @@ on:
   # https://github.com/ossf/scorecard/blob/main/docs/checks.md#maintained
   schedule:
   - cron: '34 3 * * 3'
+  push:
+    branches:
+    - main
   pull_request:
     branches:
     - main
