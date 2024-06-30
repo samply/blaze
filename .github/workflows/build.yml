@@ -1979,15 +1979,11 @@ jobs:
         cache: npm
         cache-dependency-path: 'docs/package-lock.json'
 
-    - name: Install dependencies
-      working-directory: docs
-      run: npm install
-
     - name: Build
       working-directory: docs
       env:
         DOCS_BASE: "/${{ github.event.repository.name }}/"
-      run: npm run docs:build
+      run: make build
 
     - name: Setup Pages
       uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
