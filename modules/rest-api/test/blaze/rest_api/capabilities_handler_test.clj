@@ -107,7 +107,7 @@
       (is (= 200 status))
 
       (testing "ETag header"
-        (is (= "W/\"518da6fc\"" (get headers "ETag"))))
+        (is (= "W/\"66d24e11\"" (get headers "ETag"))))
 
       (given body
         :fhir/type := :fhir/CapabilityStatement
@@ -158,7 +158,8 @@
         [:rest 0 :searchParam 12 :documentation] := "Only `_id`, `_lastUpdated` and `-_lastUpdated` are supported at the moment."
         [:rest 0 :searchParam 13 :name] := "_summary"
         [:rest 0 :searchParam 13 :type] := "token"
-        [:rest 0 :searchParam 13 :documentation] := "Only `count` is supported at the moment."))
+        [:rest 0 :searchParam 13 :documentation] := "Only `count` is supported at the moment."
+        [:rest 0 :compartment] := ["http://hl7.org/fhir/CompartmentDefinition/patient"]))
 
     (testing "filtering by _elements"
       (tu/satisfies-prop 100
@@ -171,7 +172,7 @@
                 (= (set (conj ks :fhir/type)) (set (keys body))))))))
 
     (testing "cache validation"
-      (doseq [if-none-match ["W/\"518da6fc\"" "W/\"518da6fc\", \"foo\""]]
+      (doseq [if-none-match ["W/\"66d24e11\"" "W/\"66d24e11\", \"foo\""]]
         (let [{:keys [status headers]}
               @(handler
                 {:headers {"if-none-match" if-none-match}
@@ -180,7 +181,7 @@
           (is (= 304 status))
 
           (testing "ETag header"
-            (is (= "W/\"518da6fc\"" (get headers "ETag")))))))))
+            (is (= "W/\"66d24e11\"" (get headers "ETag")))))))))
 
 (def ^:private minimal-search-system-config
   (assoc-in minimal-config [::rest-api/capabilities-handler :search-system-handler]
@@ -191,7 +192,7 @@
     (let [{:keys [headers body]} @(handler {})]
 
       (testing "ETag header"
-        (is (= "W/\"eab92abb\"" (get headers "ETag"))))
+        (is (= "W/\"f30d459a\"" (get headers "ETag"))))
 
       (given body
         :fhir/type := :fhir/CapabilityStatement
@@ -206,7 +207,7 @@
     (let [{:keys [headers body]} @(handler {})]
 
       (testing "ETag header"
-        (is (= "W/\"7f403ad5\"" (get headers "ETag"))))
+        (is (= "W/\"fdf85726\"" (get headers "ETag"))))
 
       (given body
         :fhir/type := :fhir/CapabilityStatement
