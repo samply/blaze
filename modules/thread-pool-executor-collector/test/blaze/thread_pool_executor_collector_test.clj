@@ -86,7 +86,8 @@
         [6 :samples 0 :value] := 0.0))
 
     (testing "one active thread"
-      (ex/execute! pool #(Thread/sleep 2000))
+      (ex/execute! pool #(Thread/sleep 500))
+      (Thread/sleep 100)
       (given (metrics/collect collector)
         [0 :name] := "thread_pool_executor_active_count"
         [0 :samples 0 :value] := 1.0
