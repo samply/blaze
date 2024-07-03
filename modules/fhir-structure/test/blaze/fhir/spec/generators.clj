@@ -114,7 +114,8 @@
 
 (def id-value
   (gen/such-that (partial re-matches #"[A-Za-z0-9\-\.]{1,64}")
-                 (gen/fmap str/join (gen/vector gen/char-alphanumeric 1 64))))
+                 (gen/fmap str/join (gen/vector gen/char-alphanumeric 1 64))
+                 1000))
 
 (def markdown-value
   (gen/such-that (partial re-matches #"[\r\n\t\u0020-\uFFFF]+") gen/string 1000))

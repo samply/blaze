@@ -201,7 +201,8 @@
        :documentation "Only `_id`, `_lastUpdated` and `-_lastUpdated` are supported at the moment."}
       {:name "_summary"
        :type "token"
-       :documentation "Only `count` is supported at the moment."}]}]})
+       :documentation "Only `count` is supported at the moment."}]
+     :compartment ["http://hl7.org/fhir/CompartmentDefinition/patient"]}]})
 
 (defn- final-capability-statement
   [capability-statement base-url context-path elements]
