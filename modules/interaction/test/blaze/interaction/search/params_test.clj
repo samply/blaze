@@ -6,6 +6,7 @@
    [blaze.interaction.search.params :as params]
    [blaze.interaction.search.params-spec]
    [blaze.page-store.protocols :as p]
+   [blaze.preference.handling :as-alias handling]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
@@ -23,21 +24,18 @@
 (deftest decode-test
   (testing "unsupported sort parameter"
     (given-failed-future (params/decode page-store
-                                        :blaze.preference.handling/lenient
+                                        ::handling/lenient
                                         {"_sort" "a,b"})
       ::anom/category := ::anom/unsupported))
 
   (testing "invalid include parameter"
     (given-failed-future (params/decode page-store
-                                        :blaze.preference.handling/strict
+                                        ::handling/strict
                                         {"_include" "Observation"})
       ::anom/category := ::anom/incorrect))
 
   (testing "decoding clauses from query params"
-    (given @(params/decode
-             page-store
-             :blaze.preference.handling/strict
-             {"foo" "bar"})
+    (given @(params/decode page-store ::handling/strict {"foo" "bar"})
       :clauses := [["foo" "bar"]]
       :token := nil))
 
@@ -47,7 +45,7 @@
                (-get [_ token]
                  (assert (= (str/join (repeat 32 "A")) token))
                  (ac/completed-future [["foo" "bar"]])))
-             :blaze.preference.handling/strict
+             ::handling/strict
              {"__token" (str/join (repeat 32 "A"))})
       :clauses := [["foo" "bar"]]
       :token := (str/join (repeat 32 "A"))))
@@ -59,38 +57,97 @@
         (-get [_ token]
           (assert (= (str/join (repeat 32 "A")) token))
           (ac/completed-future (ba/not-found "Not Found"))))
-      :blaze.preference.handling/strict
+      ::handling/strict
       {"__token" (str/join (repeat 32 "A"))})
       ::anom/category := ::anom/not-found
       :http/status := nil))
 
   (testing "decoding _elements"
     (testing "one element"
-      (given @(params/decode page-store :blaze.preference.handling/strict
-                             {"_elements" "a"})
-        :elements := [:a]))
+      (doseq [handling [::handling/strict ::handling/lenient nil]]
+        (given @(params/decode page-store handling {"_elements" "a"})
+          :elements := [:a])))
 
     (testing "two elements"
-      (given @(params/decode page-store :blaze.preference.handling/strict
-                             {"_elements" "a,b"})
-        :elements := [:a :b]))
+      (doseq [handling [::handling/strict ::handling/lenient nil]]
+        (given @(params/decode page-store handling
+                               {"_elements" "a,b"})
+          :elements := [:a :b])))
 
     (testing "two elements with space after comma"
-      (given @(params/decode page-store :blaze.preference.handling/strict
-                             {"_elements" "a, b"})
-        :elements := [:a :b]))
+      (doseq [handling [::handling/strict ::handling/lenient nil]]
+        (given @(params/decode page-store handling
+                               {"_elements" "a, b"})
+          :elements := [:a :b])))
 
     (testing "two elements with space before comma"
-      (given @(params/decode page-store :blaze.preference.handling/strict
-                             {"_elements" "a ,b"})
-        :elements := [:a :b]))
+      (doseq [handling [::handling/strict ::handling/lenient nil]]
+        (given @(params/decode page-store handling
+                               {"_elements" "a ,b"})
+          :elements := [:a :b])))
 
     (testing "two elements with space before and after comma"
-      (given @(params/decode page-store :blaze.preference.handling/strict
-                             {"_elements" "a , b"})
-        :elements := [:a :b]))
+      (doseq [handling [::handling/strict ::handling/lenient nil]]
+        (given @(params/decode page-store handling
+                               {"_elements" "a , b"})
+          :elements := [:a :b])))
 
     (testing "three elements"
-      (given @(params/decode page-store :blaze.preference.handling/strict
-                             {"_elements" "a,b,c"})
-        :elements := [:a :b :c]))))
+      (doseq [handling [::handling/strict ::handling/lenient nil]]
+        (given @(params/decode page-store handling
+                               {"_elements" "a,b,c"})
+          :elements := [:a :b :c])))
+
+    (testing "two elements parameters"
+      (doseq [handling [::handling/strict ::handling/lenient nil]]
+        (given @(params/decode page-store handling
+                               {"_elements" ["a" "b"]})
+          :elements := [:a :b]))))
+
+  (testing "decoding _summary"
+    (testing "count"
+      (doseq [handling [::handling/strict ::handling/lenient nil]]
+        (given @(params/decode page-store handling {"_summary" "count"})
+          :summary? := true
+          :summary := "count")))
+
+    (testing "invalid counts"
+      (doseq [handling [::handling/lenient nil]]
+        (given @(params/decode page-store handling {"_summary" "counts"})
+          :summary? := false
+          :summary := nil))
+
+      (given-failed-future (params/decode page-store ::handling/strict
+                                          {"_summary" "counts"})
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported _summary search param with value(s): counts"))
+
+    (testing "count and invalid counts"
+      (doseq [handling [::handling/strict ::handling/lenient nil]]
+        (given @(params/decode page-store handling
+                               {"_summary" ["count" "counts"]})
+          :summary? := true
+          :summary := "count")))
+
+    (testing "unsupported true"
+      (doseq [handling [::handling/lenient nil]]
+        (given @(params/decode page-store handling {"_summary" "true"})
+          :summary? := false
+          :summary := nil))
+
+      (given-failed-future (params/decode page-store ::handling/strict
+                                          {"_summary" "true"})
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported _summary search param with value(s): true"))
+
+    (testing "unsupported true and text"
+      (doseq [handling [::handling/lenient nil]]
+        (given @(params/decode page-store handling
+                               {"_summary" ["true" "text"]})
+          :summary? := false
+          :summary := nil))
+
+      (given-failed-future (params/decode page-store ::handling/strict
+                                          {"_summary" ["true" "text"]})
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported _summary search param with value(s): true, text"))))

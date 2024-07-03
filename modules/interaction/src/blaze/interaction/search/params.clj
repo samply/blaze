@@ -7,7 +7,9 @@
    [blaze.interaction.util :as iu]
    [blaze.page-store :as page-store]
    [blaze.page-store.spec]
-   [clojure.spec.alpha :as s]))
+   [blaze.util :as u]
+   [clojure.spec.alpha :as s]
+   [clojure.string :as str]))
 
 (defn- clauses [page-store {token "__token" :as query-params}]
   (cond
@@ -27,9 +29,19 @@
      (when-ok [clauses (iu/clauses query-params)]
        {:clauses clauses}))))
 
+(defn- summary
+  "Returns true if a summary result is requested."
+  [handling {summary "_summary"}]
+  (let [value (some #{"count"} (u/to-seq summary))]
+    (if (and (nil? value)
+             (identical? :blaze.preference.handling/strict handling)
+             (seq (u/to-seq summary)))
+      (ba/unsupported (str "Unsupported _summary search param with value(s): " (str/join ", " (u/to-seq summary))))
+      value)))
+
 (defn- summary?
   "Returns true if a summary result is requested."
-  [{summary "_summary" :as query-params}]
+  [summary query-params]
   (or (zero? (fhir-util/page-size query-params)) (= "count" summary)))
 
 (defn decode
@@ -41,12 +53,13 @@
    :token - possibly a token encoding the query clauses"
   [page-store handling query-params]
   (do-sync [{:keys [clauses token]} (clauses page-store query-params)]
-    (when-ok [include-defs (include/include-defs handling query-params)]
+    (when-ok [include-defs (include/include-defs handling query-params)
+              summary (summary handling query-params)]
       (cond->
        {:clauses clauses
         :include-defs include-defs
-        :summary? (summary? query-params)
-        :summary (get query-params "_summary")
+        :summary? (summary? summary query-params)
+        :summary summary
         :elements (fhir-util/elements query-params)
         :page-size (fhir-util/page-size query-params)
         :page-type (fhir-util/page-type query-params)

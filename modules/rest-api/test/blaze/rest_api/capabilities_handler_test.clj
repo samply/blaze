@@ -6,6 +6,7 @@
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.module.test-util :refer [with-system]]
    [blaze.rest-api :as-alias rest-api]
+   [blaze.rest-api.capabilities-handler]
    [blaze.rest-api.header-spec]
    [blaze.rest-api.spec]
    [blaze.test-util :as tu :refer [given-thrown]]
@@ -166,7 +167,8 @@
                 @(handler
                   {:query-params {"_elements" (str/join "," (map name ks))}
                    :blaze/base-url "base-url-131713"})]
-            (= (set (conj ks :fhir/type)) (set (keys body)))))))
+            (or (empty? ks)
+                (= (set (conj ks :fhir/type)) (set (keys body))))))))
 
     (testing "cache validation"
       (doseq [if-none-match ["W/\"518da6fc\"" "W/\"518da6fc\", \"foo\""]]
