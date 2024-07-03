@@ -12,7 +12,7 @@
   {:local/root "../job-scheduler"}
 
   org.apache.httpcomponents.core5/httpcore5
-  {:mvn/version "5.2.4"}
+  {:mvn/version "5.2.5"}
 
   metosin/reitit-ring
   {:mvn/version "0.7.1"
