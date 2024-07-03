@@ -81,10 +81,10 @@
 
 (defn elements
   "Returns a vector of keywords created from the comma separated values of 
-   the first valid `_elements` query param or `[]` otherwise."
+   all `_elements` query params."
   {:arglists '([query-params])}
   [{v "_elements"}]
-  (mapv keyword (some-> v (str/split #"\s*,\s*"))))
+  (into [] (comp (mapcat #(str/split % #"\s*,\s*")) (remove str/blank?) (map keyword)) (u/to-seq v)))
 
 (defn- incorrect-date-msg [name value]
   (format "The value `%s` of the query param `%s` is no valid date." value name))

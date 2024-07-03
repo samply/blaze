@@ -31,7 +31,10 @@
   (testing "handling"
     (are [headers res] (= res (handler-util/preference headers "handling"))
       {"prefer" "handling=strict"} :blaze.preference.handling/strict
-      {"prefer" "handling=lenient"} :blaze.preference.handling/lenient))
+      {"prefer" "handling=lenient"} :blaze.preference.handling/lenient
+      {"prefer" ""} nil
+      {} nil
+      nil nil))
 
   (testing "respond-async"
     (are [headers res] (= res (handler-util/preference headers "respond-async"))

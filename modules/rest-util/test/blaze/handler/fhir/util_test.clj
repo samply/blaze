@@ -11,6 +11,7 @@
    [blaze.handler.fhir.util-spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu :refer [satisfies-prop]]
+   [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
@@ -142,11 +143,16 @@
       {}))
 
   (testing "_elements is present"
-    (tu/satisfies-prop 1000
-      (prop/for-all [fields fields-gen]
-        (let [query-params {"_elements" (fields :string)}]
+    (tu/satisfies-prop 100
+      (prop/for-all [fields (gen/vector fields-gen)]
+        (let [values (mapv :string fields)
+              values (cond
+                       (< 1 (count values)) values
+                       (empty? values) ""
+                       :else (first values))
+              query-params {"_elements" values}]
           (= (set (fhir-util/elements query-params))
-             (set (fields :vector))))))))
+             (apply set/union (map (comp set :vector) fields))))))))
 
 (deftest date-test
   (testing "missing"
