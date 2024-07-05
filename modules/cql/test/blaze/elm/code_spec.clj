@@ -8,6 +8,6 @@
 (defn code? [x]
   (instance? Code x))
 
-(s/fdef code/to-code
+(s/fdef code/code
   :args (s/cat :system string? :version (s/nilable string?) :code string?)
   :ret code?)

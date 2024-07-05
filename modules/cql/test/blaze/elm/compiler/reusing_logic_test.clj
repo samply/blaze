@@ -11,6 +11,7 @@
    [blaze.elm.compiler.core-spec]
    [blaze.elm.compiler.function :as function]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.concept :refer [concept]]
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.interval :as interval]
    [blaze.elm.literal :as elm]
@@ -115,8 +116,7 @@
       (testing "attach cache"
         (is (= [expr []] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
 
-      (testing "patient count"
-        (is (nil? (core/-patient-count expr))))
+      (ctu/testing-constant-patient-count expr)
 
       (testing "resolve expression references"
         (let [expr (c/resolve-refs expr {})]
@@ -157,8 +157,7 @@
               [1 count] := 1
               [1 0] := '(exists (retrieve "Observation"))))))
 
-      (testing "patient count"
-        (is (nil? (core/-patient-count expr))))
+      (ctu/testing-constant-patient-count expr)
 
       (testing "resolve expression references"
         (let [elm (elm/function-ref [function-name #elm/expression-ref "x"])
@@ -209,8 +208,7 @@
               [1 0] := '(exists (retrieve "Observation"))
               [1 1] := '(exists (retrieve "Condition"))))))
 
-      (testing "patient count"
-        (is (nil? (core/-patient-count expr))))
+      (ctu/testing-constant-patient-count expr)
 
       (testing "resolve expression references"
         (let [elm (elm/function-ref [function-name
@@ -357,10 +355,12 @@
 
       (testing "eval"
         (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
-          {:system "system-140820"
-           :version "version-140924"
-           :code "code-140828"}
-          (code/to-code "system-140820" "version-140924" "code-140828")))
+          nil
+          nil
+          #fhir/Coding{:system "system-140820"
+                       :version "version-140924"
+                       :code "code-140828"}
+          (code/code "system-140820" "version-140924" "code-140828")))
 
       (testing "expression is dynamic"
         (is (false? (core/-static expr))))
@@ -422,7 +422,50 @@
           '(call "ToInterval" (param-ref "x"))))
 
       (testing "form"
-        (has-form expr '(call "ToInterval" (param-ref "x")))))))
+        (has-form expr '(call "ToInterval" (param-ref "x"))))))
+
+  (testing "ToConcept"
+    (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}
+          elm #elm/function-ref ["ToConcept" #elm/parameter-ref "x"]
+          expr (c/compile compile-ctx elm)
+          eval-ctx (fn [x] {:now ctu/now :parameters {"x" x}})]
+
+      (testing "eval"
+        (are [x res] (= res (core/-eval expr (eval-ctx x) nil nil))
+          nil
+          nil
+          #fhir/CodeableConcept
+           {:coding
+            [#fhir/Coding{:system "system-172740"
+                          :version "version-172819"
+                          :code "code-172745"}]}
+          (concept
+           [(code/code "system-172740" "version-172819" "code-172745")])))
+
+      (testing "expression is dynamic"
+        (is (false? (core/-static expr))))
+
+      (testing-function-ref-attach-cache "ToConcept")
+
+      (testing-function-ref-resolve-refs "ToConcept")
+
+      (testing "resolve parameters"
+        (has-form (core/-resolve-params expr {"x" #fhir/CodeableConcept
+                                                   {:coding
+                                                    [#fhir/Coding{:system "system-172740"
+                                                                  :version "version-172819"
+                                                                  :code "code-172745"}]}})
+          '(call "ToConcept" #fhir/CodeableConcept
+                              {:coding
+                               [#fhir/Coding{:system "system-172740"
+                                             :version "version-172819"
+                                             :code "code-172745"}]}))
+
+        (has-form (core/-resolve-params expr {})
+          '(call "ToConcept" (param-ref "x"))))
+
+      (testing "form"
+        (has-form expr '(call "ToConcept" (param-ref "x")))))))
 
 ;; 9.5 OperandRef
 ;;

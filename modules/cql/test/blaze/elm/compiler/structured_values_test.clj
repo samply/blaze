@@ -119,15 +119,13 @@
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
 
-            (testing "attach-cache"
-              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+            (ctu/testing-constant-attach-cache expr)
 
-            (testing "patient count"
-              (is (nil? (core/-patient-count expr))))
+            (ctu/testing-constant-patient-count expr)
 
-            (testing "resolve parameters"
-              (let [expr (c/resolve-params expr {})]
-                (has-form expr '(:identifier R))))
+            (ctu/testing-constant-resolve-refs expr)
+
+            (ctu/testing-constant-resolve-params expr)
 
             (ctu/testing-equals-hash-code elm)
 
@@ -151,15 +149,13 @@
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
 
-            (testing "attach-cache"
-              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+            (ctu/testing-constant-attach-cache expr)
 
-            (testing "patient count"
-              (is (nil? (core/-patient-count expr))))
+            (ctu/testing-constant-patient-count expr)
 
-            (testing "resolve parameters"
-              (let [expr (c/resolve-params expr {})]
-                (has-form expr '(:identifier R))))
+            (ctu/testing-constant-resolve-refs expr)
+
+            (ctu/testing-constant-resolve-params expr)
 
             (ctu/testing-equals-hash-code elm)
 
@@ -184,15 +180,13 @@
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
 
-            (testing "attach-cache"
-              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+            (ctu/testing-constant-attach-cache expr)
 
-            (testing "patient count"
-              (is (nil? (core/-patient-count expr))))
+            (ctu/testing-constant-patient-count expr)
 
-            (testing "resolve parameters"
-              (let [expr (c/resolve-params expr {})]
-                (has-form expr '(:extension R))))
+            (ctu/testing-constant-resolve-refs expr)
+
+            (ctu/testing-constant-resolve-params expr)
 
             (ctu/testing-equals-hash-code elm)
 
@@ -213,15 +207,13 @@
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
 
-            (testing "attach-cache"
-              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+            (ctu/testing-constant-attach-cache expr)
 
-            (testing "patient count"
-              (is (nil? (core/-patient-count expr))))
+            (ctu/testing-constant-patient-count expr)
 
-            (testing "resolve parameters"
-              (let [expr (c/resolve-params expr {})]
-                (has-form expr '(:gender R))))
+            (ctu/testing-constant-resolve-refs expr)
+
+            (ctu/testing-constant-resolve-params expr)
 
             (ctu/testing-equals-hash-code elm)
 
@@ -241,15 +233,13 @@
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
 
-            (testing "attach-cache"
-              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+            (ctu/testing-constant-attach-cache expr)
 
-            (testing "patient count"
-              (is (nil? (core/-patient-count expr))))
+            (ctu/testing-constant-patient-count expr)
 
-            (testing "resolve parameters"
-              (let [expr (c/resolve-params expr {})]
-                (has-form expr '(:gender R))))
+            (ctu/testing-constant-resolve-refs expr)
+
+            (ctu/testing-constant-resolve-params expr)
 
             (ctu/testing-equals-hash-code elm)
 
@@ -274,15 +264,13 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
-          (testing "attach-cache"
-            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+          (ctu/testing-constant-attach-cache expr)
 
-          (testing "patient count"
-            (is (nil? (core/-patient-count expr))))
+          (ctu/testing-constant-patient-count expr)
 
-          (testing "resolve parameters"
-            (let [expr (c/resolve-params expr {})]
-              (has-form expr '(:value (:birthDate R)))))
+          (ctu/testing-constant-resolve-refs expr)
+
+          (ctu/testing-constant-resolve-params expr)
 
           (ctu/testing-equals-hash-code elm)
 
@@ -303,15 +291,13 @@
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
 
-            (testing "attach-cache"
-              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+            (ctu/testing-constant-attach-cache expr)
 
-            (testing "patient count"
-              (is (nil? (core/-patient-count expr))))
+            (ctu/testing-constant-patient-count expr)
 
-            (testing "resolve parameters"
-              (let [expr (c/resolve-params expr {})]
-                (has-form expr '(:value R))))
+            (ctu/testing-constant-resolve-refs expr)
+
+            (ctu/testing-constant-resolve-params expr)
 
             (ctu/testing-equals-hash-code elm)
 
@@ -331,15 +317,13 @@
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
 
-            (testing "attach-cache"
-              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+            (ctu/testing-constant-attach-cache expr)
 
-            (testing "patient count"
-              (is (nil? (core/-patient-count expr))))
+            (ctu/testing-constant-patient-count expr)
 
-            (testing "resolve parameters"
-              (let [expr (c/resolve-params expr {})]
-                (has-form expr '(:value R))))
+            (ctu/testing-constant-resolve-refs expr)
+
+            (ctu/testing-constant-resolve-params expr)
 
             (ctu/testing-equals-hash-code elm)
 
@@ -372,11 +356,9 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
-          (testing "attach-cache"
-            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+          (ctu/testing-constant-attach-cache expr)
 
-          (testing "patient count"
-            (is (nil? (core/-patient-count expr))))
+          (ctu/testing-constant-patient-count expr)
 
           (testing "resolve expression references"
             (let [expr (c/resolve-refs expr {"Patient" expr-def})]
@@ -413,11 +395,9 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
-          (testing "attach-cache"
-            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+          (ctu/testing-constant-attach-cache expr)
 
-          (testing "patient count"
-            (is (nil? (core/-patient-count expr))))
+          (ctu/testing-constant-patient-count expr)
 
           (testing "resolve expression references"
             (let [expr (c/resolve-refs expr {"Patient" expr-def})]
@@ -451,11 +431,9 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
-          (testing "attach-cache"
-            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+          (ctu/testing-constant-attach-cache expr)
 
-          (testing "patient count"
-            (is (nil? (core/-patient-count expr))))
+          (ctu/testing-constant-patient-count expr)
 
           (testing "resolve expression references"
             (let [expr (c/resolve-refs expr {"Patient" expr-def})]
@@ -488,11 +466,9 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
-          (testing "attach-cache"
-            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+          (ctu/testing-constant-attach-cache expr)
 
-          (testing "patient count"
-            (is (nil? (core/-patient-count expr))))
+          (ctu/testing-constant-patient-count expr)
 
           (testing "resolve expression references"
             (let [expr (c/resolve-refs expr {"Patient" expr-def})]
@@ -526,11 +502,9 @@
         (testing "expression is dynamic"
           (is (false? (core/-static expr))))
 
-        (testing "attach-cache"
-          (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+        (ctu/testing-constant-attach-cache expr)
 
-        (testing "patient count"
-          (is (nil? (core/-patient-count expr))))
+        (ctu/testing-constant-patient-count expr)
 
         (testing "resolve expression references"
           (let [expr-def {:type "ExpressionDef"
@@ -568,11 +542,9 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
-          (testing "attach-cache"
-            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+          (ctu/testing-constant-attach-cache expr)
 
-          (testing "patient count"
-            (is (nil? (core/-patient-count expr))))
+          (ctu/testing-constant-patient-count expr)
 
           (testing "resolve expression references"
             (let [expr (c/resolve-refs expr {"Observation" expr-def})]
@@ -605,11 +577,9 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
-          (testing "attach-cache"
-            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+          (ctu/testing-constant-attach-cache expr)
 
-          (testing "patient count"
-            (is (nil? (core/-patient-count expr))))
+          (ctu/testing-constant-patient-count expr)
 
           (testing "resolve expression references"
             (let [expr (c/resolve-refs expr {"Observation" expr-def})]

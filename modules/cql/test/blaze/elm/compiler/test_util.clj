@@ -198,6 +198,41 @@
        (let [expr# (dynamic-compile ~elm-constructor)]
          (has-form expr# (quote ~form-name))))))
 
+(defmacro testing-constant-attach-cache [expr]
+  `(testing "attach-cache"
+     (is (= [~expr] (st/with-instrument-disabled (c/attach-cache ~expr ::cache))))))
+
+(defmacro testing-constant-patient-count [expr]
+  `(testing "patient count"
+     (is (nil? (core/-patient-count ~expr)))))
+
+(defmacro testing-constant-resolve-refs [expr]
+  `(testing "resolve expression references"
+     (is (= ~expr (c/resolve-refs ~expr {})))))
+
+(defmacro testing-constant-resolve-params [expr]
+  `(testing "resolve parameters"
+     (is (= ~expr (c/resolve-params ~expr {})))))
+
+(defmacro testing-constant-eval [expr]
+  `(testing "eval"
+     (is (= ~expr (core/-eval ~expr {} nil nil)))))
+
+(defmacro testing-constant [expr]
+  `(do
+     (testing "expression is static"
+       (is (true? (core/-static ~expr))))
+
+     (testing-constant-attach-cache ~expr)
+
+     (testing-constant-patient-count ~expr)
+
+     (testing-constant-resolve-refs ~expr)
+
+     (testing-constant-resolve-params ~expr)
+
+     (testing-constant-eval ~expr)))
+
 (defmacro testing-unary-dynamic [elm-constructor]
   `(testing "expression is dynamic"
      (is (false? (core/-static (dynamic-compile (~elm-constructor

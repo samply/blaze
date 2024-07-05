@@ -2,7 +2,7 @@
   "Implementation of the code type."
   (:require
    [blaze.elm.compiler.core :as core]
-   [blaze.elm.concept :as concept]
+   [blaze.elm.concept :refer [concept]]
    [blaze.elm.protocols :as p]))
 
 (defrecord Code [system version code]
@@ -39,7 +39,7 @@
   (-form [_]
     `(~'code ~system ~version ~code)))
 
-(defn to-code
+(defn code
   "Returns a CQL code with isn't the same as a FHIR code from the database."
   [system version code]
   (->Code system version code))
@@ -48,4 +48,4 @@
 (extend-protocol p/ToConcept
   Code
   (to-concept [x]
-    (concept/to-concept [x])))
+    (concept [x])))

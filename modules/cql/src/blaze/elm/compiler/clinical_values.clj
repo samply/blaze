@@ -7,10 +7,10 @@
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.elm.code :as code]
    [blaze.elm.compiler.core :as core]
-   [blaze.elm.concept :as concept]
+   [blaze.elm.concept :refer [concept]]
    [blaze.elm.date-time :as date-time]
-   [blaze.elm.quantity :as quantity]
-   [blaze.elm.ratio :as ratio]))
+   [blaze.elm.quantity :refer [quantity]]
+   [blaze.elm.ratio :refer [ratio]]))
 
 (defn- find-code-system-def
   "Returns the code-system-def with `name` from `library` or nil if not found."
@@ -30,7 +30,7 @@
    {{system-name :name} :system :keys [code] :as expression}]
   ;; TODO: look into other libraries (:libraryName)
   (if-let [{system :id :keys [version]} (find-code-system-def library system-name)]
-    (code/to-code system version code)
+    (code/code system version code)
     (throw-anom (code-system-not-found-anom system-name context expression))))
 
 ;; 3.2. CodeDef
@@ -51,7 +51,7 @@
              (find-code-def library name)]
     (when code-system-ref
       (when-let [{system :id :keys [version]} (core/compile* context (assoc code-system-ref :type "CodeSystemRef"))]
-        (code/to-code system version code)))))
+        (code/code system version code)))))
 
 ;; 3.4. CodeSystemDef
 ;;
@@ -69,7 +69,7 @@
 
 (defmethod core/compile* :elm.compiler.type/concept
   [context {:keys [codes]}]
-  (concept/to-concept (compile-codes context codes)))
+  (concept (compile-codes context codes)))
 
 ;; 3.7. ConceptDef
 ;;
@@ -85,8 +85,7 @@
 (defmethod core/compile* :elm.compiler.type/concept-ref
   [{:keys [library] :as context} {:keys [name]}]
   (when-let [{codes-refs :code} (find-concept-def library name)]
-    (->> (map #(core/compile* context (assoc % :type "CodeRef")) codes-refs)
-         (concept/to-concept))))
+    (concept (mapv #(core/compile* context (assoc % :type "CodeRef")) codes-refs))))
 
 ;; 3.9. Quantity
 (defmethod core/compile* :elm.compiler.type/quantity
@@ -101,15 +100,13 @@
       ("minute" "minutes") (date-time/period 0 0 (* value 60000))
       ("second" "seconds") (date-time/period 0 0 (* value 1000))
       ("millisecond" "milliseconds") (date-time/period 0 0 value)
-      (quantity/quantity value unit))))
+      (quantity value unit))))
 
 ;; 3.10. Ratio
 (defmethod core/compile* :elm.compiler.type/ratio
   [_ {:keys [numerator denominator]}]
-  (ratio/ratio (quantity/quantity (:value numerator) (or (:unit numerator)
-                                                         "1"))
-               (quantity/quantity (:value denominator) (or (:unit denominator)
-                                                           "1"))))
+  (ratio (quantity (:value numerator) (or (:unit numerator) "1"))
+         (quantity (:value denominator) (or (:unit denominator) "1"))))
 
 ;; 3.11. ValueSetDef
 ;;

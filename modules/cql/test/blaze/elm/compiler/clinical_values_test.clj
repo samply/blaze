@@ -51,10 +51,13 @@
             {:def [{:name "sys-def-115852" :id "system-115910"}]}}}
           expr (c/compile context #elm/code ["sys-def-115852" "code-115927"])]
 
-      (given expr
-        type := Code
-        :system := "system-115910"
-        :code := "code-115927")
+      (testing "record"
+        (given expr
+          type := Code
+          :system := "system-115910"
+          :code := "code-115927"))
+
+      (ctu/testing-constant expr)
 
       (testing "form"
         (has-form expr '(code "system-115910" nil "code-115927")))))
@@ -69,11 +72,14 @@
                :version "version-120408"}]}}}
           expr (c/compile context #elm/code ["sys-def-120434" "code-120416"])]
 
-      (given expr
-        type := Code
-        :system := "system-120411"
-        :version := "version-120408"
-        :code := "code-120416")
+      (testing "record"
+        (given expr
+          type := Code
+          :system := "system-120411"
+          :version := "version-120408"
+          :code := "code-120416"))
+
+      (ctu/testing-constant expr)
 
       (testing "form"
         (has-form expr '(code "system-120411" "version-120408" "code-120416")))))
@@ -146,12 +152,22 @@
           {:library
            {:codeSystems
             {:def [{:name "sys-def-115852" :id "system-115910"}]}}}
-          elm #elm/concept [[#elm/code ["sys-def-115852" "code-115927"]]]]
-      (given (c/compile context elm)
-        type := Concept
-        [:codes 0 type] := Code
-        [:codes 0 :system] := "system-115910"
-        [:codes 0 :code] := "code-115927")))
+          elm #elm/concept [[#elm/code ["sys-def-115852" "code-115927"]]]
+          expr (c/compile context elm)]
+
+      (testing "record"
+        (given expr
+          type := Concept
+          [:codes count] := 1
+          [:codes 0 type] := Code
+          [:codes 0 :system] := "system-115910"
+          [:codes 0 :version] := nil
+          [:codes 0 :code] := "code-115927"))
+
+      (ctu/testing-constant expr)
+
+      (testing "form"
+        (has-form expr '(concept (code "system-115910" nil "code-115927"))))))
 
   (testing "without version and two codes"
     (let [context
@@ -160,15 +176,27 @@
             {:def [{:name "sys-def-115852" :id "system-115910"}
                    {:name "sys-def-115853" :id "system-115911"}]}}}
           elm #elm/concept [[#elm/code ["sys-def-115852" "code-115927"]
-                             #elm/code ["sys-def-115853" "code-115928"]]]]
-      (given (c/compile context elm)
-        type := Concept
-        [:codes 0 type] := Code
-        [:codes 0 :system] := "system-115910"
-        [:codes 0 :code] := "code-115927"
-        [:codes 1 type] := Code
-        [:codes 1 :system] := "system-115911"
-        [:codes 1 :code] := "code-115928")))
+                             #elm/code ["sys-def-115853" "code-115928"]]]
+          expr (c/compile context elm)]
+
+      (testing "record"
+        (given expr
+          type := Concept
+          [:codes count] := 2
+          [:codes 0 type] := Code
+          [:codes 0 :system] := "system-115910"
+          [:codes 0 :version] := nil
+          [:codes 0 :code] := "code-115927"
+          [:codes 1 type] := Code
+          [:codes 1 :system] := "system-115911"
+          [:codes 1 :version] := nil
+          [:codes 1 :code] := "code-115928"))
+
+      (ctu/testing-constant expr)
+
+      (testing "form"
+        (has-form expr '(concept (code "system-115910" nil "code-115927")
+                                 (code "system-115911" nil "code-115928"))))))
 
   (testing "with version and one code"
     (let [context
@@ -178,13 +206,23 @@
              [{:name "sys-def-120434"
                :id "system-120411"
                :version "version-120408"}]}}}
-          elm #elm/concept [[#elm/code ["sys-def-120434" "code-115927"]]]]
-      (given (c/compile context elm)
-        type := Concept
-        [:codes 0 type] := Code
-        [:codes 0 :system] := "system-120411"
-        [:codes 0 :version] := "version-120408"
-        [:codes 0 :code] := "code-115927")))
+          elm #elm/concept [[#elm/code ["sys-def-120434" "code-115927"]]]
+          expr (c/compile context elm)]
+
+      (testing "record"
+        (given expr
+          type := Concept
+          [:codes count] := 1
+          [:codes 0 type] := Code
+          [:codes 0 :system] := "system-120411"
+          [:codes 0 :version] := "version-120408"
+          [:codes 0 :code] := "code-115927"))
+
+      (ctu/testing-constant expr)
+
+      (testing "form"
+        (has-form expr '(concept (code "system-120411" "version-120408"
+                                       "code-115927"))))))
 
   (testing "with version and two codes"
     (let [context
@@ -198,17 +236,29 @@
                :id "system-115911"
                :version "version-115909"}]}}}
           elm #elm/concept [[#elm/code ["sys-def-120434" "code-115927"]
-                             #elm/code ["sys-def-115853" "code-115928"]]]]
-      (given (c/compile context elm)
-        type := Concept
-        [:codes 0 type] := Code
-        [:codes 0 :system] := "system-120411"
-        [:codes 0 :version] := "version-120408"
-        [:codes 0 :code] := "code-115927"
-        [:codes 1 type] := Code
-        [:codes 1 :system] := "system-115911"
-        [:codes 1 :version] := "version-115909"
-        [:codes 1 :code] := "code-115928"))))
+                             #elm/code ["sys-def-115853" "code-115928"]]]
+          expr (c/compile context elm)]
+
+      (testing "record"
+        (given expr
+          type := Concept
+          [:codes count] := 2
+          [:codes 0 type] := Code
+          [:codes 0 :system] := "system-120411"
+          [:codes 0 :version] := "version-120408"
+          [:codes 0 :code] := "code-115927"
+          [:codes 1 type] := Code
+          [:codes 1 :system] := "system-115911"
+          [:codes 1 :version] := "version-115909"
+          [:codes 1 :code] := "code-115928"))
+
+      (ctu/testing-constant expr)
+
+      (testing "form"
+        (has-form expr '(concept (code "system-120411" "version-120408"
+                                       "code-115927")
+                                 (code "system-115911" "version-115909"
+                                       "code-115928")))))))
 
 ;; 3.8. ConceptRef
 ;;
@@ -299,11 +349,12 @@
       #elm/quantity [1 "s"] (quantity 1 "s")
       #elm/quantity [1 "cm2"] (quantity 1 "cm2")))
 
-  (testing "form"
-    (are [elm res] (= res (c/form (c/compile {} elm)))
-      #elm/quantity [1] '(quantity 1M "1")
-      #elm/quantity [1 "s"] '(quantity 1M "s")
-      #elm/quantity [2 "cm2"] '(quantity 2M "cm2")))
+  (let [expr (c/compile {} #elm/quantity [1 "s"])]
+
+    (ctu/testing-constant expr)
+
+    (testing "form"
+      (has-form expr '(quantity 1M "s"))))
 
   (testing "Periods"
     (satisfies-prop 100
@@ -326,9 +377,12 @@
       #elm/ratio [[1] [1]] (ratio (quantity 1 "") (quantity 1 ""))
       #elm/ratio [[1] [1 "s"]] (ratio (quantity 1 "") (quantity 1 "s"))
       #elm/ratio [[1 "s"] [1]] (ratio (quantity 1 "s") (quantity 1 ""))
-      #elm/ratio [[5 "mg"] [10 "g"]] (ratio (quantity 5 "mg") (quantity 10 "g"))))
+      #elm/ratio [[5 "mg"] [10 "g"]] (ratio (quantity 5 "mg") (quantity 10 "g"))
+      #elm/ratio [[3 "m"] [1 "s"]] (ratio (quantity 3 "m") (quantity 1 "s"))))
 
-  (testing "form"
-    (has-form
-     (ratio (quantity 3 "m") (quantity 1 "s"))
-      '(ratio (quantity 3M "m") (quantity 1M "s")))))
+  (let [expr (c/compile {} #elm/ratio [[3 "m"] [1 "s"]])]
+
+    (ctu/testing-constant expr)
+
+    (testing "form"
+      (has-form expr '(ratio (quantity 3M "m") (quantity 1M "s"))))))

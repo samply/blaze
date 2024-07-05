@@ -9,6 +9,7 @@
    [blaze.elm.code :as code]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.macros :refer [reify-expr]]
+   [blaze.elm.concept :refer [concept]]
    [blaze.elm.interval :as interval]
    [blaze.elm.protocols :as p]
    [blaze.elm.quantity :as quantity]
@@ -108,6 +109,9 @@
     (-form [_]
       `(~'call "ToQuantity" ~(core/-form operand)))))
 
+(defn- to-code [{:keys [system version code]}]
+  (code/code (type/value system) (type/value version) (type/value code)))
+
 (defn- to-code-function-expr [operand]
   (reify-expr core/Expression
     (-attach-cache [_ cache]
@@ -117,8 +121,7 @@
     (-resolve-params [_ parameters]
       (core/resolve-params-helper to-code-function-expr parameters operand))
     (-eval [_ context resource scope]
-      (let [{:keys [system version code]} (core/-eval operand context resource scope)]
-        (code/to-code (type/value system) (type/value version) (type/value code))))
+      (some-> (core/-eval operand context resource scope) to-code))
     (-form [_]
       `(~'call "ToCode" ~(core/-form operand)))))
 
@@ -187,6 +190,20 @@
     (-form [_]
       `(~'call "ToInterval" ~(core/-form operand)))))
 
+(defn- to-concept-function-expr [operand]
+  (reify-expr core/Expression
+    (-attach-cache [_ cache]
+      (core/attach-cache-helper to-concept-function-expr cache operand))
+    (-resolve-refs [_ expression-defs]
+      (to-concept-function-expr (core/-resolve-refs operand expression-defs)))
+    (-resolve-params [_ parameters]
+      (to-concept-function-expr (core/-resolve-params operand parameters)))
+    (-eval [_ context resource scope]
+      (when-let [{:keys [coding]} (core/-eval operand context resource scope)]
+        (concept (mapv to-code coding))))
+    (-form [_]
+      `(~'call "ToConcept" ~(core/-form operand)))))
+
 (defn- function-def-not-found-anom [context name]
   (ba/incorrect
    (format "Function definition `%s` not found." name)
@@ -223,6 +240,9 @@
 
       "ToInterval"
       (to-interval-function-expr (first operands))
+
+      "ToConcept"
+      (to-concept-function-expr (first operands))
 
       (compile-function context name operands))))
 

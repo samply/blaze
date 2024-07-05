@@ -87,17 +87,13 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
-          (testing "attach-cache"
-            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+          (ctu/testing-constant-attach-cache expr)
 
-          (testing "patient count"
-            (is (nil? (core/-patient-count expr))))
+          (ctu/testing-constant-patient-count expr)
 
-          (testing "resolve expression references"
-            (has-form (c/resolve-refs expr {}) '(retrieve-resource)))
+          (ctu/testing-constant-resolve-refs expr)
 
-          (testing "resolve parameters"
-            (has-form (c/resolve-params expr {}) '(retrieve-resource)))
+          (ctu/testing-constant-resolve-params expr)
 
           (testing "form"
             (has-form expr '(retrieve-resource))))))
@@ -124,17 +120,13 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
-          (testing "attach-cache"
-            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+          (ctu/testing-constant-attach-cache expr)
 
-          (testing "patient count"
-            (is (nil? (core/-patient-count expr))))
+          (ctu/testing-constant-patient-count expr)
 
-          (testing "resolve expression references"
-            (has-form (c/resolve-refs expr {}) '(retrieve "Observation")))
+          (ctu/testing-constant-resolve-refs expr)
 
-          (testing "resolve parameters"
-            (has-form (c/resolve-params expr {}) '(retrieve "Observation")))
+          (ctu/testing-constant-resolve-params expr)
 
           (testing "form"
             (has-form expr '(retrieve "Observation")))))
@@ -178,19 +170,13 @@
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
 
-            (testing "attach-cache"
-              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+            (ctu/testing-constant-attach-cache expr)
 
-            (testing "patient count"
-              (is (nil? (core/-patient-count expr))))
+            (ctu/testing-constant-patient-count expr)
 
-            (testing "resolve expression references"
-              (has-form (c/resolve-refs expr {})
-                '(retrieve "Observation" [["code" "system-192253|code-192300"]])))
+            (ctu/testing-constant-resolve-refs expr)
 
-            (testing "resolve parameters"
-              (has-form (c/resolve-params expr {})
-                '(retrieve "Observation" [["code" "system-192253|code-192300"]])))
+            (ctu/testing-constant-resolve-params expr)
 
             (testing "form"
               (has-form expr
@@ -246,27 +232,13 @@
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
 
-            (testing "attach-cache"
-              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+            (ctu/testing-constant-attach-cache expr)
 
-            (testing "patient count"
-              (is (nil? (core/-patient-count expr))))
+            (ctu/testing-constant-patient-count expr)
 
-            (testing "resolve expression references"
-              (has-form (c/resolve-refs expr {})
-                '(retrieve
-                  "Observation"
-                  [["code"
-                    "system-192253|code-192300"
-                    "system-192253|code-140541"]])))
+            (ctu/testing-constant-resolve-refs expr)
 
-            (testing "resolve parameters"
-              (has-form (c/resolve-params expr {})
-                '(retrieve
-                  "Observation"
-                  [["code"
-                    "system-192253|code-192300"
-                    "system-192253|code-140541"]])))
+            (ctu/testing-constant-resolve-params expr)
 
             (testing "form"
               (has-form expr
@@ -329,27 +301,13 @@
             (testing "expression is dynamic"
               (is (false? (core/-static expr))))
 
-            (testing "attach-cache"
-              (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+            (ctu/testing-constant-attach-cache expr)
 
-            (testing "patient count"
-              (is (nil? (core/-patient-count expr))))
+            (ctu/testing-constant-patient-count expr)
 
-            (testing "resolve expression references"
-              (has-form (c/resolve-refs expr {})
-                '(retrieve
-                  "Observation"
-                  [["code"
-                    "system-192253|code-192300"
-                    "system-192253|code-140541"]])))
+            (ctu/testing-constant-resolve-refs expr)
 
-            (testing "resolve parameters"
-              (has-form (c/resolve-params expr {})
-                '(retrieve
-                  "Observation"
-                  [["code"
-                    "system-192253|code-192300"
-                    "system-192253|code-140541"]])))
+            (ctu/testing-constant-resolve-params expr)
 
             (testing "form"
               (has-form expr
@@ -383,19 +341,13 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
-          (testing "attach-cache"
-            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+          (ctu/testing-constant-attach-cache expr)
 
-          (testing "patient count"
-            (is (nil? (core/-patient-count expr))))
+          (ctu/testing-constant-patient-count expr)
 
-          (testing "resolve expression references"
-            (has-form (c/resolve-refs expr {})
-              '(retrieve (Specimen) "Patient")))
+          (ctu/testing-constant-resolve-refs expr)
 
-          (testing "resolve parameters"
-            (has-form (c/resolve-params expr {})
-              '(retrieve (Specimen) "Patient")))
+          (ctu/testing-constant-resolve-params expr)
 
           (testing "form"
             (has-form expr
@@ -436,19 +388,13 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
-          (testing "attach-cache"
-            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+          (ctu/testing-constant-attach-cache expr)
 
-          (testing "patient count"
-            (is (nil? (core/-patient-count expr))))
+          (ctu/testing-constant-patient-count expr)
 
-          (testing "resolve expression references"
-            (has-form (c/resolve-refs expr {})
-              '(retrieve "Medication" [["code" "system-225806|code-225809"]])))
+          (ctu/testing-constant-resolve-refs expr)
 
-          (testing "resolve parameters"
-            (has-form (c/resolve-params expr {})
-              '(retrieve "Medication" [["code" "system-225806|code-225809"]])))
+          (ctu/testing-constant-resolve-params expr)
 
           (testing "form"
             (has-form expr
@@ -509,19 +455,13 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
-          (testing "attach-cache"
-            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+          (ctu/testing-constant-attach-cache expr)
 
-          (testing "patient count"
-            (is (nil? (core/-patient-count expr))))
+          (ctu/testing-constant-patient-count expr)
 
-          (testing "resolve expression references"
-            (has-form (c/resolve-refs expr {})
-              '(retrieve (singleton-from (retrieve-resource)) "Observation")))
+          (ctu/testing-constant-resolve-refs expr)
 
-          (testing "resolve parameters"
-            (has-form (c/resolve-params expr {})
-              '(retrieve (singleton-from (retrieve-resource)) "Observation")))
+          (ctu/testing-constant-resolve-params expr)
 
           (testing "form"
             (has-form expr
@@ -569,21 +509,13 @@
           (testing "expression is dynamic"
             (is (false? (core/-static expr))))
 
-          (testing "attach-cache"
-            (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+          (ctu/testing-constant-attach-cache expr)
 
-          (testing "patient count"
-            (is (nil? (core/-patient-count expr))))
+          (ctu/testing-constant-patient-count expr)
 
-          (testing "resolve expression references"
-            (has-form (c/resolve-refs expr {})
-              '(retrieve (singleton-from (retrieve-resource)) "Observation"
-                         [["code" "system-133620|code-133657"]])))
+          (ctu/testing-constant-resolve-refs expr)
 
-          (testing "resolve parameters"
-            (has-form (c/resolve-params expr {})
-              '(retrieve (singleton-from (retrieve-resource)) "Observation"
-                         [["code" "system-133620|code-133657"]])))
+          (ctu/testing-constant-resolve-params expr)
 
           (testing "form"
             (has-form expr
