@@ -106,11 +106,9 @@
     (testing "expression is dynamic"
       (is (false? (core/-static expr))))
 
-    (testing "attach-cache"
-      (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+    (ctu/testing-constant-attach-cache expr)
 
-    (testing "patient count"
-      (is (nil? (core/-patient-count expr))))
+    (ctu/testing-constant-patient-count expr)
 
     (testing "resolve expression references"
       (let [elm #elm/as["{urn:hl7-org:elm-types:r1}Integer"
@@ -1033,8 +1031,7 @@
     (testing "expression is dynamic"
       (is (false? (core/-static expr))))
 
-    (testing "attach-cache"
-      (is (= [expr] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+    (ctu/testing-constant-attach-cache expr)
 
     (testing "patient count"
       (is (nil? (core/-patient-count expr))))
@@ -1220,12 +1217,12 @@
                                     {:now ctu/now} nil nil))
 
       (ctu/code "system-134534" "code-134551")
-      (concept/to-concept [(code/to-code "system-134534" nil "code-134551")])
+      (concept/concept [(code/code "system-134534" nil "code-134551")])
 
       (elm/list [(ctu/code "system-134534" "code-134551")
                  (ctu/code "system-134535" "code-134552")])
-      (concept/to-concept [(code/to-code "system-134534" nil "code-134551")
-                           (code/to-code "system-134535" nil "code-134552")])))
+      (concept/concept [(code/code "system-134534" nil "code-134551")
+                        (code/code "system-134535" nil "code-134552")])))
 
   (ctu/testing-unary-null elm/to-concept)
 

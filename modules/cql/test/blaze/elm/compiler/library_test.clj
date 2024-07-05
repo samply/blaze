@@ -602,4 +602,38 @@
                        "Encounter"))
                      (exists
                       (retrieve
-                       "Specimen")))))))))))))
+                       "Specimen"))))))))))))
+
+  (let [library (t/translate "library test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        codesystem IdentifierType: 'http://fhir.de/CodeSystem/identifier-type-de-basis'
+
+        context Patient
+
+        define InInitialPopulation:
+          Patient.identifier.where(type ~ Code 'GKV' from IdentifierType).exists()")]
+    (with-system [{:blaze.db/keys [node]} mem-node-config]
+      (given (library/compile-library node library {})
+        [:expression-defs "InInitialPopulation" :context] := "Patient"
+        [:expression-defs "InInitialPopulation" expr-form] :=
+        '(exists
+          (eduction-query
+           (comp
+            (filter
+             (fn [$this]
+               (equivalent
+                (call
+                 "ToConcept"
+                 (:type
+                  $this))
+                (concept
+                 (code
+                  "http://fhir.de/CodeSystem/identifier-type-de-basis"
+                  nil
+                  "GKV")))))
+            distinct)
+           (:identifier
+            (singleton-from
+             (retrieve-resource)))))))))

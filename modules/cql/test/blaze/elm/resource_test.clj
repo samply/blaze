@@ -2,7 +2,7 @@
   (:require
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
-   [blaze.elm.compiler :as c]
+   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.expression-spec]
    [blaze.elm.resource :as cr]
    [blaze.elm.resource-spec]
@@ -23,8 +23,11 @@
     [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
     (let [resource (resource (d/db node) "Patient" "0")]
-      (testing "attach-cache"
-        (is (= [resource] (st/with-instrument-disabled (c/attach-cache resource ::cache)))))
+
+      (ctu/testing-constant resource)
+
+      (testing "form"
+        (has-form resource '(resource "Patient" "0" 1)))
 
       (testing "toString"
         (is (= "Patient[id = 0, t = 1, last-change-t = 1]" (str resource)))))))

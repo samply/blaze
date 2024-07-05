@@ -439,6 +439,25 @@
       {:type "Null"} (ctu/code "a" "0") false?
       (ctu/code "a" "0") {:type "Null"} false?))
 
+  (testing "Concept"
+    (let [context
+          {:library
+           {:codeSystems
+            {:def [{:name "a" :id "a"}]}}}]
+      (are [x y pred] (pred (core/-eval (c/compile context (elm/equivalent [x y])) {} nil nil))
+        #elm/concept [[#elm/code ["a" "0"]]] #elm/concept [[#elm/code ["a" "0"]]] true?
+        #elm/concept [[#elm/code ["a" "0"]]] #elm/concept [[#elm/code ["a" "1"]]] false?
+
+        #elm/concept [[#elm/code ["a" "0"]]] #elm/concept [[#elm/code ["a" "0"] #elm/code ["a" "1"]]] true?
+
+        #elm/concept [[#elm/code ["a" "0"] #elm/code ["a" "1"]]] #elm/concept [[#elm/code ["a" "0"]]] true?
+        #elm/concept [[#elm/code ["a" "0"] #elm/code ["a" "1"]]] #elm/concept [[#elm/code ["a" "0"] #elm/code ["a" "1"]]] true?
+
+        #elm/concept [[#elm/code ["a" "0"] #elm/code ["a" "2"]]] #elm/concept [[#elm/code ["a" "1"] #elm/code ["a" "3"]]] false?
+
+        {:type "Null"} #elm/concept [[#elm/code ["a" "0"]]] false?
+        #elm/concept [[#elm/code ["a" "0"]]] {:type "Null"} false?)))
+
   (ctu/testing-binary-op elm/equivalent))
 
 ;; 12.3. Greater

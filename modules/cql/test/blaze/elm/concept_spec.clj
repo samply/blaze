@@ -9,6 +9,6 @@
 (defn concept? [x]
   (instance? Concept x))
 
-(s/fdef concept/to-concept
+(s/fdef concept/concept
   :args (s/cat :codes (s/coll-of code-spec/code?))
   :ret concept?)

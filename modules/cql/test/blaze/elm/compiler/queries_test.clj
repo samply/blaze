@@ -101,8 +101,8 @@
                 :expression
                 {:type "IdentifierRef"
                  :name "system"}}]}}
-            [(code/to-code "bar" nil "c")
-             (code/to-code "foo" nil "c")]))))
+            [(code/code "bar" nil "c")
+             (code/code "foo" nil "c")]))))
 
     (testing "Return non-distinct"
       (let [elm {:type "Query"

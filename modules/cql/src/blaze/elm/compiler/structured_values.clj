@@ -84,7 +84,7 @@
       (case type
         "{urn:hl7-org:elm-types:r1}Code"
         (let [{:keys [system version code]} elements]
-          (code/to-code system version code))))))
+          (code/code system version code))))))
 
 ;; 2.3. Property
 (defrecord SourcePropertyExpression [source key]

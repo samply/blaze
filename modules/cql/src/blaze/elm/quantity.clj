@@ -69,7 +69,7 @@
   (-static [_]
     true)
   (-attach-cache [quantity _]
-    [quantity])
+    [(fn [] [quantity])])
   (-patient-count [_]
     nil)
   (-resolve-refs [quantity _]

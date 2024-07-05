@@ -10,4 +10,4 @@ context Patient
 define InInitialPopulation:
   exists
     from [Observation: Code '21908-9' from loinc] O
-    where O.component.where(code.coding contains Code '21905-5' from loinc).value.coding contains Code '0' from tnmt
+    where O.component.where(code ~ Code '21905-5' from loinc and value ~ Code '0' from tnmt).exists()

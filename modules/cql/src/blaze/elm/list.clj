@@ -2,7 +2,7 @@
   "Implementation of the list type."
   (:require
    [blaze.anomaly :as ba :refer [throw-anom]]
-   [blaze.elm.concept :as concept]
+   [blaze.elm.concept :refer [concept]]
    [blaze.elm.protocols :as p])
   (:import
    [clojure.lang IReduceInit PersistentVector]))
@@ -175,4 +175,4 @@
 (extend-protocol p/ToConcept
   PersistentVector
   (to-concept [x]
-    (concept/to-concept x)))
+    (concept x)))
