@@ -72,7 +72,7 @@
    :exclusions [xpp3/xpp3 xpp3/xpp3_xpath]}
 
   com.fasterxml.jackson.datatype/jackson-datatype-jsr310
-  {:mvn/version "2.17.1"}}
+  {:mvn/version "2.17.2"}}
 
  :aliases
  {:test
