@@ -420,7 +420,7 @@ jobs:
       run: .github/scripts/evaluate-measure.sh q14 96
 
     - name: Check Bloom Filter
-      run: .github/scripts/check-bloom-filter.sh fab7fc40f75f294787d8b2090788a291cdaf71640d6dcfe5441c00403225a256 96
+      run: .github/scripts/check-bloom-filter.sh a08d0235112a8033c36c5d33564aaa00f4190281e4db8f7ec1d8d55cd7f4c56f 96
 
     - name: Evaluate CQL Query 14 using Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q14 96
@@ -456,7 +456,7 @@ jobs:
       run: .github/scripts/evaluate-measure.sh q36-parameter 86
 
     - name: Check Bloom Filter
-      run: .github/scripts/check-bloom-filter.sh d4fc6cde1636852f9e362a68ca7be027a66bf7cb38ebff9c256c3eb2179c2639 86
+      run: .github/scripts/check-bloom-filter.sh fbb79d85457069c8e1926c949690deecd60d751942d5b0cd0b61c08e6029224c 86
 
     - name: Evaluate CQL Query 36 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q36-parameter 86
@@ -465,7 +465,7 @@ jobs:
       run: .github/scripts/evaluate-measure.sh q37-overlaps 24
 
     - name: Check Bloom Filter
-      run: .github/scripts/check-bloom-filter.sh 8a572962e0540de1bb4f4bf5c0101ff06be3ae69f4cd489509a6cf8d1646d1e1 24
+      run: .github/scripts/check-bloom-filter.sh 9fe779d821d7647831331b490939aa0cdf314d76c9b2a9518ffaf559353db043 24
 
     - name: Evaluate CQL Query 37 using Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q37-overlaps 24
@@ -477,7 +477,7 @@ jobs:
       run: .github/scripts/evaluate-measure.sh q46-between-date 19
 
     - name: Check Bloom Filter
-      run: .github/scripts/check-bloom-filter.sh 5a1fe6d1b996aed4783f0ee04e6e74927d7ddccc407b0818a8a800769458020b 19
+      run: .github/scripts/check-bloom-filter.sh 237bcfac3e879272f508e143095e4a0025e1b54505bbb2cf36fbda83dec237f2 19
 
     - name: Evaluate CQL Query 46 using Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q46-between-date 19

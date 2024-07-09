@@ -209,19 +209,17 @@
                "female")
               (exists
                (eduction-query
-                (comp
-                 (filter
-                  (fn
-                    [M]
-                    (contains
-                     (expr-ref
-                      "TemozolomidRefs")
-                     (call
-                      "ToString"
-                      (:reference
-                       (:medication
-                        M))))))
-                 distinct)
+                (filter
+                 (fn
+                   [M]
+                   (contains
+                    (expr-ref
+                     "TemozolomidRefs")
+                    (call
+                     "ToString"
+                     (:reference
+                      (:medication
+                       M))))))
                 (retrieve
                  "MedicationStatement")))))))))
 
@@ -302,28 +300,26 @@
           [:expression-defs "InInitialPopulation" expr-form] :=
           '(exists
             (eduction-query
-             (comp
-              (filter
-               (fn
-                 [O]
-                 (exists
-                  (fn
-                    [E]
-                    (equal
+             (filter
+              (fn
+                [O]
+                (exists
+                 (fn
+                   [E]
+                   (equal
+                    (call
+                     "ToString"
+                     (:reference
+                      (:encounter
+                       O)))
+                    (concatenate
+                     "Encounter/"
                      (call
                       "ToString"
-                      (:reference
-                       (:encounter
-                        O)))
-                     (concatenate
-                      "Encounter/"
-                      (call
-                       "ToString"
-                       (:id
-                        E)))))
-                  (retrieve
-                   "Encounter"))))
-              distinct)
+                      (:id
+                       E)))))
+                 (retrieve
+                  "Encounter"))))
              (retrieve
               "Observation")))
           [:function-defs "hasDiagnosis" :function] := nil))))
@@ -620,20 +616,18 @@
         [:expression-defs "InInitialPopulation" expr-form] :=
         '(exists
           (eduction-query
-           (comp
-            (filter
-             (fn [$this]
-               (equivalent
-                (call
-                 "ToConcept"
-                 (:type
-                  $this))
-                (concept
-                 (code
-                  "http://fhir.de/CodeSystem/identifier-type-de-basis"
-                  nil
-                  "GKV")))))
-            distinct)
+           (filter
+            (fn [$this]
+              (equivalent
+               (call
+                "ToConcept"
+                (:type
+                 $this))
+               (concept
+                (code
+                 "http://fhir.de/CodeSystem/identifier-type-de-basis"
+                 nil
+                 "GKV")))))
            (:identifier
             (singleton-from
              (retrieve-resource)))))))))
