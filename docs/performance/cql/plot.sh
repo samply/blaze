@@ -8,7 +8,6 @@ gnuplot -e 'system="LEA47"' simple-code-search-all-datasets.gnuplot
 gnuplot -e 'system="LEA36"' simple-code-search-all-datasets.gnuplot
 gnuplot -e 'system="LEA25"' simple-code-search-all-datasets.gnuplot
 gnuplot code-value-search-100k.gnuplot
-gnuplot code-value-search-100k-fh.gnuplot
 gnuplot code-value-search-1M.gnuplot
 gnuplot -e 'system="LEA58"' code-value-search-all-datasets.gnuplot
 gnuplot -e 'system="LEA47"' code-value-search-all-datasets.gnuplot
@@ -23,3 +22,9 @@ gnuplot -e 'system="LEA58"' ten-code-search-all-datasets.gnuplot
 gnuplot -e 'system="LEA47"' ten-code-search-all-datasets.gnuplot
 gnuplot -e 'system="LEA36"' ten-code-search-all-datasets.gnuplot
 gnuplot -e 'system="LEA25"' ten-code-search-all-datasets.gnuplot
+gnuplot all-code-search-100k.gnuplot
+gnuplot all-code-search-100k-fh.gnuplot
+gnuplot all-code-search-1M.gnuplot
+gnuplot inpatient-stress-search-100k.gnuplot
+gnuplot inpatient-stress-search-100k-fh.gnuplot
+gnuplot inpatient-stress-search-1M.gnuplot

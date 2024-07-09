@@ -1,3 +1,4 @@
+url: https://samply.github.io/blaze/fhir/Measure/observation-788-0
 library: cql/observation-788-0.cql
 group:
 - type: Patient

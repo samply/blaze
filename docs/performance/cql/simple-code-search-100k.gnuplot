@@ -26,6 +26,6 @@ set style line 2 lc rgb '#2E75B6'
 set style line 3 lc rgb '#1F4C7A'
 
 # Plot the data
-plot 'simple-code-search-100k.txt' using 8:xtic(3) every 3 ls 1 title '2 k hits', \
-     'simple-code-search-100k.txt' using 8:xtic(3) every 3::1 ls 2 title '60 k hits', \
-     'simple-code-search-100k.txt' using 8:xtic(3) every 3::2 ls 3 title '100 k hits'
+plot 'simple-code-search-100k.txt' using 8:xtic(3) every 3 ls 1 title '2 % hits', \
+     'simple-code-search-100k.txt' using 8:xtic(3) every 3::1 ls 2 title '60 % hits', \
+     'simple-code-search-100k.txt' using 8:xtic(3) every 3::2 ls 3 title '100 % hits'

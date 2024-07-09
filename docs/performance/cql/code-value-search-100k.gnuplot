@@ -15,6 +15,7 @@ set title "Code Value Search - Dataset 100k"
 set xlabel 'System'
 set ylabel 'Patients/s'
 set format y "%.0f k"
+set yrange [0:1800]
 
 # Define grid
 set grid ytics
@@ -25,6 +26,6 @@ set style line 2 lc rgb '#2E75B6'
 set style line 3 lc rgb '#1F4C7A'
 
 # Plot the data
-plot 'code-value-search-100k.txt' using 9:xtic(3) every 3 ls 1 title '10 k hits', \
-     'code-value-search-100k.txt' using 9:xtic(3) every 3::1 ls 2 title '50 k hits', \
-     'code-value-search-100k.txt' using 9:xtic(3) every 3::2 ls 3 title '100 k hits'
+plot 'code-value-search-100k.txt' using 9:xtic(3) every 3 ls 1 title '10 % hits', \
+     'code-value-search-100k.txt' using 9:xtic(3) every 3::1 ls 2 title '50 % hits', \
+     'code-value-search-100k.txt' using 9:xtic(3) every 3::2 ls 3 title '100 % hits'

@@ -8,14 +8,14 @@ set style data histograms
 set style histogram clustered
 set style fill solid border -1
 set boxwidth 0.8
-set key left top reverse
+set key right top reverse
 
 # Define x-axis and y-axis labels
 set title "Simple Code Search - Dataset 1M"
 set xlabel 'System'
 set ylabel 'Patients/s'
 set format y "%.0f k"
-set yrange [0:2300]
+set yrange [0:2400]
 
 # Define grid
 set grid ytics
@@ -26,6 +26,6 @@ set style line 2 lc rgb '#2E75B6'
 set style line 3 lc rgb '#1F4C7A'
 
 # Plot the data
-plot 'simple-code-search-1M.txt' using 8:xtic(3) every 3 ls 1 title '25 k hits', \
-     'simple-code-search-1M.txt' using 8:xtic(3) every 3::1 ls 2 title '603 k hits', \
-     'simple-code-search-1M.txt' using 8:xtic(3) every 3::2 ls 3 title '998 k hits'
+plot 'simple-code-search-1M.txt' using 8:xtic(3) every 3 ls 1 title '2.5 % hits', \
+     'simple-code-search-1M.txt' using 8:xtic(3) every 3::1 ls 2 title '60 % hits', \
+     'simple-code-search-1M.txt' using 8:xtic(3) every 3::2 ls 3 title '100 % hits'
