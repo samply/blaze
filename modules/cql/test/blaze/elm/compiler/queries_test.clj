@@ -11,6 +11,7 @@
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.queries]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.literal]
    [blaze.elm.literal-spec]
@@ -71,18 +72,30 @@
                       {:type "Property"
                        :path "value"
                        :scope "S"
-                       :resultTypeName "{urn:hl7-org:elm-types:r1}decimal"}}]}}
-              expr (c/compile {} elm)]
+                       :resultTypeName "{urn:hl7-org:elm-types:r1}decimal"}}]}}]
 
-          (testing "eval"
-            (is (= [(quantity 1 "m") (quantity 2 "m")] (core/-eval expr {} nil nil))))
+          (let [expr (c/compile {} elm)]
+            (testing "eval"
+              (is (= [(quantity 1 "m") (quantity 2 "m")] (core/-eval expr {} nil nil))))
 
-          (testing "form"
-            (has-form expr '(sorted-vector-query distinct
-                                                 [(quantity 2M "m")
-                                                  (quantity 1M "m")
-                                                  (quantity 1M "m")]
-                                                 [asc (:value S)]))))
+            (testing "form"
+              (has-form expr '(sorted-vector-query distinct
+                                                   [(quantity 2M "m")
+                                                    (quantity 1M "m")
+                                                    (quantity 1M "m")]
+                                                   [asc (:value S)]))))
+
+          (testing "with query hint optimize non-distinct"
+            (let [expr (c/compile {:optimizations #{:non-distinct}} elm)]
+              (testing "eval"
+                (is (= [(quantity 1 "m") (quantity 2 "m")] (core/-eval expr {} nil nil))))
+
+              (testing "form"
+                (has-form expr '(sorted-vector-query distinct
+                                                     [(quantity 2M "m")
+                                                      (quantity 1M "m")
+                                                      (quantity 1M "m")]
+                                                     [asc (:value S)]))))))
 
         (testing "with IdentifierRef"
           (are [query res] (= res (core/-eval (c/compile {} query) {} nil nil))
@@ -127,7 +140,20 @@
           (is (= [1] (into [] (core/-eval expr {} nil nil)))))
 
         (testing "form"
-          (has-form expr '(eduction-query distinct [1 1]))))))
+          (has-form expr '(eduction-query distinct [1 1])))))
+
+    (testing "with query hint optimize non-distinct"
+      (let [elm {:type "Query"
+                 :source [#elm/aliased-query-source [#elm/list [#elm/integer "1"
+                                                                #elm/integer "1"]
+                                                     "S"]]}
+            expr (c/compile {:optimizations #{:non-distinct}} elm)]
+
+        (testing "eval"
+          (is (= [1 1] (into [] (core/-eval expr {} nil nil)))))
+
+        (testing "form"
+          (has-form expr [1 1])))))
 
   (testing "Retrieve queries"
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
@@ -184,7 +210,31 @@
                     (fn [P]
                       (equal (call "ToString" (:gender P)) "female")))
                    distinct)
-                  (retrieve "Patient"))))))
+                  (retrieve "Patient")))))
+
+          (testing "with query hint optimize non-distinct"
+            (let [elm {:type "Query"
+                       :source
+                       [{:expression retrieve
+                         :alias "P"}]
+                       :where where}
+                  ctx {:node node :eval-context "Unfiltered"
+                       :optimizations #{:non-distinct}}
+                  expr (c/compile ctx elm)]
+
+              (testing "eval"
+                (given (core/-eval expr {:db db} nil nil)
+                  count := 1
+                  [0 fhir-spec/fhir-type] := :fhir/Patient
+                  [0 :id] := "0"))
+
+              (testing "form"
+                (has-form expr
+                  '(vector-query
+                    (filter
+                     (fn [P]
+                       (equal (call "ToString" (:gender P)) "female")))
+                    (retrieve "Patient")))))))
 
         (testing "with return clause"
           (let [elm {:type "Query"
@@ -206,7 +256,29 @@
                   (comp
                    (map (fn [P] (:gender P)))
                    distinct)
-                  (retrieve "Patient"))))))
+                  (retrieve "Patient")))))
+
+          (testing "with query hint optimize non-distinct"
+            (let [elm {:type "Query"
+                       :source
+                       [{:expression retrieve
+                         :alias "P"}]
+                       :return {:expression return}}
+                  ctx {:node node :eval-context "Unfiltered"
+                       :optimizations #{:non-distinct}}
+                  expr (c/compile ctx elm)]
+
+              (testing "eval"
+                (given (core/-eval expr {:db db} nil nil)
+                  count := 2
+                  [0] := #fhir/code"female"
+                  [1] := #fhir/code"male"))
+
+              (testing "form"
+                (has-form expr
+                  '(vector-query
+                    (map (fn [P] (:gender P)))
+                    (retrieve "Patient")))))))
 
         (testing "with where and return clauses"
           (let [elm {:type "Query"
@@ -233,16 +305,46 @@
                     (map
                      (fn [P] (:gender P)))
                     distinct))
-                  (retrieve "Patient")))))))))
+                  (retrieve "Patient")))))
+
+          (testing "with query hint optimize non-distinct"
+            (let [elm {:type "Query"
+                       :source
+                       [{:expression retrieve
+                         :alias "P"}]
+                       :where where
+                       :return {:expression return}}
+                  ctx {:node node :eval-context "Unfiltered"
+                       :optimizations #{:non-distinct}}
+                  expr (c/compile ctx elm)]
+
+              (testing "eval"
+                (given (core/-eval expr {:db db} nil nil)
+                  count := 1
+                  [0] := #fhir/code"female"))
+
+              (testing "form"
+                (has-form expr
+                  '(vector-query
+                    (comp
+                     (filter
+                      (fn [P]
+                        (equal (call "ToString" (:gender P)) "female")))
+                     (map
+                      (fn [P] (:gender P))))
+                    (retrieve "Patient"))))))))))
 
   (testing "With clause"
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Encounter :id "0"
                :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Specimen :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]
         [:put {:fhir/type :fhir/Observation :id "0"
                :subject #fhir/Reference{:reference "Patient/0"}
-               :encounter #fhir/Reference{:reference "Encounter/0"}}]
+               :encounter #fhir/Reference{:reference "Encounter/0"}
+               :specimen #fhir/Reference{:reference "Specimen/0"}}]
         [:put {:fhir/type :fhir/Observation :id "1"
                :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
@@ -256,46 +358,14 @@
                      :expression #elm/retrieve{:type "Encounter"}
                      :alias "E"
                      :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
-                                           #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]}
-              expr (c/compile {:node node :eval-context "Patient"} elm)]
+                                           #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]}]
 
-          (testing "eval"
-            (given (core/-eval expr {:db db} patient nil)
-              count := 1
-              [0 fhir-spec/fhir-type] := :fhir/Observation
-              [0 :id] := "0"))
-
-          (testing "form"
-            (has-form expr
-              '(vector-query
-                (comp
-                 (filter
-                  (fn [O]
-                    (exists
-                     (fn [E]
-                       (equal
-                        (:reference (:encounter O))
-                        (concatenate "Encounter/" (:id E))))
-                     (retrieve "Encounter"))))
-                 distinct)
-                (retrieve "Observation")))))
-
-        (testing "including return clause"
-          (let [elm {:type "Query"
-                     :source [#elm/aliased-query-source [#elm/retrieve{:type "Observation"} "O"]]
-                     :relationship
-                     [{:type "With"
-                       :expression #elm/retrieve{:type "Encounter"}
-                       :alias "E"
-                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
-                                             #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]
-                     :return {:expression #elm/scope-property ["O" "id"]}}
-                expr (c/compile {:node node :eval-context "Patient"} elm)]
-
+          (let [expr (c/compile {:node node :eval-context "Patient"} elm)]
             (testing "eval"
               (given (core/-eval expr {:db db} patient nil)
                 count := 1
-                [0] := "0"))
+                [0 fhir-spec/fhir-type] := :fhir/Observation
+                [0 :id] := "0"))
 
             (testing "form"
               (has-form expr
@@ -309,11 +379,91 @@
                           (:reference (:encounter O))
                           (concatenate "Encounter/" (:id E))))
                        (retrieve "Encounter"))))
-                   (comp
-                    (map
-                     (fn [O] (:id O)))
-                    distinct))
-                  (retrieve "Observation"))))))
+                   distinct)
+                  (retrieve "Observation")))))
+
+          (testing "with query hint optimize non-distinct"
+            (let [ctx {:node node :eval-context "Patient"
+                       :optimizations #{:non-distinct}}
+                  expr (c/compile ctx elm)]
+              (testing "eval"
+                (given (core/-eval expr {:db db} patient nil)
+                  count := 1
+                  [0 fhir-spec/fhir-type] := :fhir/Observation
+                  [0 :id] := "0"))
+
+              (testing "form"
+                (has-form expr
+                  '(vector-query
+                    (filter
+                     (fn [O]
+                       (exists
+                        (fn [E]
+                          (equal
+                           (:reference (:encounter O))
+                           (concatenate "Encounter/" (:id E))))
+                        (retrieve "Encounter"))))
+                    (retrieve "Observation")))))))
+
+        (testing "including return clause"
+          (let [elm {:type "Query"
+                     :source [#elm/aliased-query-source [#elm/retrieve{:type "Observation"} "O"]]
+                     :relationship
+                     [{:type "With"
+                       :expression #elm/retrieve{:type "Encounter"}
+                       :alias "E"
+                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                                             #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]
+                     :return {:expression #elm/scope-property ["O" "id"]}}]
+
+            (let [expr (c/compile {:node node :eval-context "Patient"} elm)]
+              (testing "eval"
+                (given (core/-eval expr {:db db} patient nil)
+                  count := 1
+                  [0] := "0"))
+
+              (testing "form"
+                (has-form expr
+                  '(vector-query
+                    (comp
+                     (filter
+                      (fn [O]
+                        (exists
+                         (fn [E]
+                           (equal
+                            (:reference (:encounter O))
+                            (concatenate "Encounter/" (:id E))))
+                         (retrieve "Encounter"))))
+                     (comp
+                      (map
+                       (fn [O] (:id O)))
+                      distinct))
+                    (retrieve "Observation")))))
+
+            (testing "with query hint optimize non-distinct"
+              (let [ctx {:node node :eval-context "Patient"
+                         :optimizations #{:non-distinct}}
+                    expr (c/compile ctx elm)]
+                (testing "eval"
+                  (given (core/-eval expr {:db db} patient nil)
+                    count := 1
+                    [0] := "0"))
+
+                (testing "form"
+                  (has-form expr
+                    '(vector-query
+                      (comp
+                       (filter
+                        (fn [O]
+                          (exists
+                           (fn [E]
+                             (equal
+                              (:reference (:encounter O))
+                              (concatenate "Encounter/" (:id E))))
+                           (retrieve "Encounter"))))
+                       (map
+                        (fn [O] (:id O))))
+                      (retrieve "Observation"))))))))
 
         (testing "including non-distinct return clause"
           (let [elm {:type "Query"
@@ -357,28 +507,128 @@
                        :alias "E"
                        :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
                                              #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}]
-                     :where #elm/equal [#elm/string "1" #elm/scope-property ["O" "id"]]}
-                expr (c/compile {:node node :eval-context "Patient"} elm)]
+                     :where #elm/equal [#elm/string "1" #elm/scope-property ["O" "id"]]}]
 
-            (testing "eval"
-              (is (empty? (core/-eval expr {:db db} patient nil))))
+            (let [expr (c/compile {:node node :eval-context "Patient"} elm)]
+              (testing "eval"
+                (is (empty? (core/-eval expr {:db db} patient nil))))
 
-            (testing "form"
-              (has-form expr
-                '(vector-query
-                  (comp
-                   (filter
-                    (fn [O] (equal "1" (:id O))))
-                   (filter
-                    (fn [O]
-                      (exists
-                       (fn [E]
-                         (equal
-                          (:reference (:encounter O))
-                          (concatenate "Encounter/" (:id E))))
-                       (retrieve "Encounter"))))
-                   distinct)
-                  (retrieve "Observation")))))))))
+              (testing "form"
+                (has-form expr
+                  '(vector-query
+                    (comp
+                     (filter
+                      (fn [O] (equal "1" (:id O))))
+                     (filter
+                      (fn [O]
+                        (exists
+                         (fn [E]
+                           (equal
+                            (:reference (:encounter O))
+                            (concatenate "Encounter/" (:id E))))
+                         (retrieve "Encounter"))))
+                     distinct)
+                    (retrieve "Observation")))))
+
+            (testing "with query hint optimize non-distinct"
+              (let [ctx {:node node :eval-context "Patient"
+                         :optimizations #{:non-distinct}}
+                    expr (c/compile ctx elm)]
+                (testing "eval"
+                  (is (empty? (core/-eval expr {:db db} patient nil))))
+
+                (testing "form"
+                  (has-form expr
+                    '(vector-query
+                      (comp
+                       (filter
+                        (fn [O] (equal "1" (:id O))))
+                       (filter
+                        (fn [O]
+                          (exists
+                           (fn [E]
+                             (equal
+                              (:reference (:encounter O))
+                              (concatenate "Encounter/" (:id E))))
+                           (retrieve "Encounter")))))
+                      (retrieve "Observation"))))))))
+
+        (testing "two with clauses"
+          (let [elm {:type "Query"
+                     :source [#elm/aliased-query-source [#elm/retrieve{:type "Observation"} "O"]]
+                     :relationship
+                     [{:type "With"
+                       :expression #elm/retrieve{:type "Encounter"}
+                       :alias "E"
+                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "encounter"] "reference"]
+                                             #elm/concatenate [#elm/string "Encounter/" #elm/scope-property ["E" "id"]]]}
+                      {:type "With"
+                       :expression #elm/retrieve{:type "Specimen"}
+                       :alias "S"
+                       :suchThat #elm/equal [#elm/source-property [#elm/scope-property ["O" "specimen"] "reference"]
+                                             #elm/concatenate [#elm/string "Specimen/" #elm/scope-property ["S" "id"]]]}]}]
+
+            (let [expr (c/compile {:node node :eval-context "Patient"} elm)]
+              (testing "eval"
+                (given (core/-eval expr {:db db} patient nil)
+                  count := 1
+                  [0 fhir-spec/fhir-type] := :fhir/Observation
+                  [0 :id] := "0"))
+
+              (testing "form"
+                (has-form expr
+                  '(vector-query
+                    (comp
+                     (filter
+                      (fn [O]
+                        (exists
+                         (fn [E]
+                           (equal
+                            (:reference (:encounter O))
+                            (concatenate "Encounter/" (:id E))))
+                         (retrieve "Encounter"))))
+                     (filter
+                      (fn [O]
+                        (exists
+                         (fn [S]
+                           (equal
+                            (:reference (:specimen O))
+                            (concatenate "Specimen/" (:id S))))
+                         (retrieve "Specimen"))))
+                     distinct)
+                    (retrieve "Observation")))))
+
+            (testing "with query hint optimize non-distinct"
+              (let [ctx {:node node :eval-context "Patient"
+                         :optimizations #{:non-distinct}}
+                    expr (c/compile ctx elm)]
+                (testing "eval"
+                  (given (core/-eval expr {:db db} patient nil)
+                    count := 1
+                    [0 fhir-spec/fhir-type] := :fhir/Observation
+                    [0 :id] := "0"))
+
+                (testing "form"
+                  (has-form expr
+                    '(vector-query
+                      (comp
+                       (filter
+                        (fn [O]
+                          (exists
+                           (fn [E]
+                             (equal
+                              (:reference (:encounter O))
+                              (concatenate "Encounter/" (:id E))))
+                           (retrieve "Encounter"))))
+                       (filter
+                        (fn [O]
+                          (exists
+                           (fn [S]
+                             (equal
+                              (:reference (:specimen O))
+                              (concatenate "Specimen/" (:id S))))
+                           (retrieve "Specimen")))))
+                      (retrieve "Observation")))))))))))
 
   (testing "Without clause"
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]

@@ -86,17 +86,28 @@
       `(~'comp ~@(map -form factories)))))
 
 (defn- xform-factory
-  [relationship-xform-factories where-xform-factory return-xform-factory]
-  (if (some? where-xform-factory)
-    (if (seq relationship-xform-factories)
-      (composed-xform-factory
-       (conj
-        (into [where-xform-factory] relationship-xform-factories)
-        return-xform-factory))
-      (composed-xform-factory [where-xform-factory return-xform-factory]))
-    (if (seq relationship-xform-factories)
-      (composed-xform-factory (conj relationship-xform-factories return-xform-factory))
-      return-xform-factory)))
+  ([relationship-xform-factories where-xform-factory]
+   (if (some? where-xform-factory)
+     (if (seq relationship-xform-factories)
+       (composed-xform-factory
+        (into [where-xform-factory] relationship-xform-factories))
+       where-xform-factory)
+     (cond
+       (< 1 (count relationship-xform-factories))
+       (composed-xform-factory relationship-xform-factories)
+       (seq relationship-xform-factories)
+       (first relationship-xform-factories))))
+  ([relationship-xform-factories where-xform-factory return-xform-factory]
+   (if (some? where-xform-factory)
+     (if (seq relationship-xform-factories)
+       (composed-xform-factory
+        (conj
+         (into [where-xform-factory] relationship-xform-factories)
+         return-xform-factory))
+       (composed-xform-factory [where-xform-factory return-xform-factory]))
+     (if (seq relationship-xform-factories)
+       (composed-xform-factory (conj relationship-xform-factories return-xform-factory))
+       return-xform-factory))))
 
 (defn- eduction-expr [xform-factory source]
   (reify-expr core/Expression
@@ -217,14 +228,18 @@
           where-xform-factory (some->> where (core/compile* context) (where-xform-factory alias))
           distinct (if (contains? optimizations :non-distinct) false distinct)
           return-xform-factory (or (some->> return (core/compile* context) (return-xform-factory alias distinct))
-                                   (distinct-xform-factory))
-          xform-factory (xform-factory relationship-xform-factories where-xform-factory return-xform-factory)
+                                   (when distinct (distinct-xform-factory)))
+          xform-factory (if return-xform-factory
+                          (xform-factory relationship-xform-factories where-xform-factory return-xform-factory)
+                          (xform-factory relationship-xform-factories where-xform-factory))
           sort-by-items (mapv #(compile-sort-by-item context %) sort-by-items)]
       (if (empty? sort-by-items)
-        (if (contains? optimizations :first)
-          (eduction-expr xform-factory source)
-          (into-vector-expr xform-factory source))
-        (xform-sort-expr xform-factory source (first sort-by-items))))
+        (if xform-factory
+          (if (contains? optimizations :first)
+            (eduction-expr xform-factory source)
+            (into-vector-expr xform-factory source))
+          source)
+        (xform-sort-expr (or xform-factory (distinct-xform-factory)) source (first sort-by-items))))
     (throw (Exception. (str "Unsupported number of " (count sources) " sources in query.")))))
 
 ;; 10.3. AliasRef
