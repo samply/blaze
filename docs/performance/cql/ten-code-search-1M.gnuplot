@@ -25,5 +25,5 @@ set style line 1 lc rgb '#4DA8DA'
 set style line 2 lc rgb '#2E75B6'
 
 # Plot the data
-plot 'ten-code-search-1M.txt' using 7:xtic(3) every 2 ls 1 title '4 k hits', \
-     'ten-code-search-1M.txt' using 7:xtic(3) every 2::1 ls 2 title '954 k hits'
+plot 'ten-code-search-1M.txt' using 7:xtic(3) every 2 ls 1 title '0.4 % hits', \
+     'ten-code-search-1M.txt' using 7:xtic(3) every 2::1 ls 2 title '95 % hits'

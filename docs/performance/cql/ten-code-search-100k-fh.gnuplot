@@ -15,7 +15,7 @@ set title "Ten Code Search - Dataset 100k-fh"
 set xlabel 'System'
 set ylabel 'Patients/s'
 set format y "%.0f k"
-set yrange [0:]
+set yrange [0:1900]
 
 # Define grid
 set grid ytics
@@ -25,5 +25,5 @@ set style line 1 lc rgb '#4DA8DA'
 set style line 2 lc rgb '#2E75B6'
 
 # Plot the data
-plot 'ten-code-search-100k-fh.txt' using 7:xtic(3) every 2 ls 1 title '2 k hits', \
-     'ten-code-search-100k-fh.txt' using 7:xtic(3) every 2::1 ls 2 title '98 k hits'
+plot 'ten-code-search-100k-fh.txt' using 7:xtic(3) every 2 ls 1 title '2 % hits', \
+     'ten-code-search-100k-fh.txt' using 7:xtic(3) every 2::1 ls 2 title '98 % hits'

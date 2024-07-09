@@ -13,8 +13,7 @@ calc-avg() {
 }
 
 restart() {
-  docker-compose -f "$1" down
-  docker-compose -f "$1" up -d
+  docker compose -f "$1" restart
   sleep 30
 }
 
