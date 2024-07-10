@@ -18,6 +18,15 @@ test-le() {
   fi
 }
 
+test_empty() {
+  if [ -z "$2" ]; then
+    echo "OK 👍: the $1 is empty"
+  else
+    echo "Fail 😞: the $1 is $2, should be empty"
+    exit 1
+  fi
+}
+
 create() {
   curl -s -H 'Accept: application/fhir+json' -H "Content-Type: application/fhir+json" -d @- "$1"
 }

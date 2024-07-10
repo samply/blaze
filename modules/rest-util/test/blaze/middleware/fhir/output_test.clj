@@ -17,7 +17,7 @@
 (set! *warn-on-reflection* true)
 
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -52,7 +52,7 @@
       (testing "not modified"
         (given (call resource-handler-304 {})
           :status := 304
-          [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
+          [:headers "Content-Type"] := nil
           :body := nil)))
 
     (testing "with accept header"
@@ -197,7 +197,7 @@
 
   (testing "not modified"
     (given (call resource-handler-304 {:headers {"accept" "application/fhir+xml"}})
-      [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
+      [:headers "Content-Type"] := nil
       :body := nil))
 
   (testing "failing XML emit"
