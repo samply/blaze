@@ -46,12 +46,12 @@
     (generate-xml* body)))
 
 (defn- encode-response-json [{:keys [body] :as response} content-type]
-  (-> (cond-> response body (update :body generate-json))
-      (ring/content-type content-type)))
+  (cond-> response body (-> (update :body generate-json)
+                            (ring/content-type content-type))))
 
 (defn- encode-response-xml [{:keys [body] :as response} content-type]
-  (-> (cond-> response body (update :body generate-xml))
-      (ring/content-type content-type)))
+  (cond-> response body (-> (update :body generate-xml)
+                            (ring/content-type content-type))))
 
 (defn- format-key [format]
   (condp = format

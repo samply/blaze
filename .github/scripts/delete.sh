@@ -1,8 +1,13 @@
 #!/bin/bash -e
 
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+. "$SCRIPT_DIR/util.sh"
+
 BASE="http://localhost:8080/fhir"
 PATIENT_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
-curl -sfXDELETE "$BASE/Patient/$PATIENT_ID"
+HEADERS=$(curl -sfXDELETE -D - "$BASE/Patient/$PATIENT_ID")
+
+test_empty "content type header" "$(echo "$HEADERS" | grep -i content-type | tr -d '\r')"
 
 PATIENT_HISTORY=$(curl -s "$BASE/Patient/$PATIENT_ID/_history")
 
