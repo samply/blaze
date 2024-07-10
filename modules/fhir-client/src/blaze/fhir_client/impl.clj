@@ -24,7 +24,7 @@
 
 (defn- category [status]
   (cond
-    nil ::anom/fault
+    (nil? status) ::anom/fault
     (= 404 status) ::anom/not-found
     (#{409 412} status) ::anom/conflict
     (#{401 403} status) ::anom/forbidden
@@ -92,6 +92,20 @@
 (defn- if-match [etag]
   {"if-match" etag})
 
+(defn create [uri resource opts]
+  (log/trace "Create" uri)
+  (hc/post
+   uri
+   (merge
+    {:accept :fhir+json
+     :content-type :fhir+json
+     :body (generate-body resource)
+     :as :fhir
+     :async? true}
+    opts)
+   #(get (:headers %) "location")
+   handle-error))
+
 (defn update [uri resource opts]
   (log/trace "Update" uri)
   (hc/put
@@ -105,6 +119,20 @@
      :async? true}
     opts)
    :body
+   handle-error))
+
+(defn delete [uri opts]
+  (log/trace "Delete" uri)
+  (hc/delete
+   uri
+   (merge
+    {:accept :fhir+json
+     :as :fhir
+     :async? true}
+    opts)
+   (fn [{:keys [status body]}]
+     (when-not (= 204 status)
+       body))
    handle-error))
 
 (defn transact [uri bundle opts]
