@@ -24,6 +24,12 @@ The list of all environment variables can be found in the [Environment Variables
 | DB_RESOURCE_CACHE_SIZE | Resource Cache | 100000  | eg. 50000, 100000, 2500000, 5000000, 10000000 or 20000000 |
 | CQL_EXPR_CACHE_SIZE    | Resource Cache | —       | eg. 128, 512, 1024                                        |
 
+### Other Tuning Options
+
+#### Number of Threads used for Reading and Writing Resources
+
+The env var `DB_RESOURCE_STORE_KV_THREADS` is set to 4 by default in order to not overwhelm disks. However it can be set much higher. Either at least to the number of cores available or even double that.
+
 ### Performance Metrics
 
 Performance metrics using the systems of recommended sizes can be found for [CQL](performance/cql.md), [FHIR Search](performance/fhir-search.md) and [Import](performance/import.md). 

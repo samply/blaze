@@ -46,7 +46,7 @@ The three database directories must not exist on the first start of Blaze and wi
 | DB_MAX_BACKGROUND_JOBS         | 4             | v0.8  |        | The maximum number of the [background jobs][3] used for DB compactions.                                                                          |
 | DB_RESOURCE_INDEXER_THREADS    | 4             | v0.8  |        | The number threads used for indexing resources. Try 8 or 16 depending on your hardware.                                                          |
 | DB_RESOURCE_INDEXER_BATCH_SIZE | 1             | v0.8  | v0.11  | The number of resources which are indexed in a batch. (Deprecated)                                                                               |
-| DB_RESOURCE_STORE_KV_THREADS   | 4             | v0.17 |        | The number threads used for reading and writing resources.                                                                                       |
+| DB_RESOURCE_STORE_KV_THREADS   | 4             | v0.17 |        | The number of threads used for reading and writing resources.                                                                                    |
 
 ¹ Deprecated, ² In the JAR variant. The Docker image uses a directory below the `/app/data` directory.
 
