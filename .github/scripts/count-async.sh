@@ -1,5 +1,8 @@
 #!/bin/bash -e
 
+# Takes a LOINC `code` and `count` and issues am async _summary=count request.
+# Tests that the total value in result bundle equals to `count`.
+
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 . "$SCRIPT_DIR/util.sh"
 
