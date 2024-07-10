@@ -24,11 +24,24 @@
   [base-uri type id & [opts]]
   (impl/fetch (str base-uri "/" type "/" id) opts))
 
+(defn create
+  "Returns a CompletableFuture that will complete with `resource` created."
+  {:arglists '([base-uri resource & [opts]])}
+  [base-uri {:fhir/keys [type] :as resource} & [opts]]
+  (impl/create (str base-uri "/" (name type)) resource opts))
+
 (defn update
   "Returns a CompletableFuture that will complete with `resource` updated."
   {:arglists '([base-uri resource & [opts]])}
   [base-uri {:fhir/keys [type] :keys [id] :as resource} & [opts]]
   (impl/update (str base-uri "/" (name type) "/" id) resource opts))
+
+(defn delete
+  "Returns a CompletableFuture that will complete with resource of `type` and
+  `id` deleted."
+  {:arglists '([base-uri type id & [opts]])}
+  [base-uri type id & [opts]]
+  (impl/delete (str base-uri "/" (name type) "/" id) opts))
 
 (defn transact
   "Returns a CompletableFuture that will complete with `bundle` transacted."

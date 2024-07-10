@@ -17,7 +17,7 @@
    [java.nio.file.attribute FileAttribute]))
 
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -121,12 +121,37 @@
       (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
                                              "Patient" "0"
                                              {:http-client http-client})
-        ::anom/category := ::anom/busy))))
+        ::anom/category := ::anom/busy)))
+
+  (testing "Zero Response Code"
+    (let [http-client (HttpClientMock.)]
+
+      (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0")
+          (.doReturnStatus 0))
+
+      (given-failed-future (fhir-client/read "http://localhost:8080/fhir"
+                                             "Patient" "0"
+                                             {:http-client http-client})
+        ::anom/category := ::anom/fault
+        ::anom/message := "Unexpected response status 0."))))
 
 (defn- empty-header-condition [name]
   (reify Condition
     (matches [_ request]
       (.isEmpty (.firstValue (.headers request) name)))))
+
+(deftest create-test
+  (testing "return location header value"
+    (let [http-client (HttpClientMock.)
+          resource {:fhir/type :fhir/Patient}]
+
+      (-> (.onPost http-client "http://localhost:8080/fhir/Patient")
+          (.doReturnStatus 201)
+          (.withHeader "location" "http://localhost:8080/fhir/Patient/0"))
+
+      (is (= @(fhir-client/create "http://localhost:8080/fhir" resource
+                                  {:http-client http-client})
+             "http://localhost:8080/fhir/Patient/0")))))
 
 (deftest update-test
   (testing "without meta versionId"
@@ -178,6 +203,27 @@
                                                {:http-client http-client})
         ::anom/category := ::anom/conflict
         [:fhir/issues 0 :severity] := #fhir/code"error"))))
+
+(deftest delete-test
+  (testing "204 No Content"
+    (let [http-client (HttpClientMock.)]
+
+      (-> (.onDelete http-client "http://localhost:8080/fhir/Patient/0")
+          (.doReturnStatus 204))
+
+      (is (nil? @(fhir-client/delete "http://localhost:8080/fhir" "Patient" "0"
+                                     {:http-client http-client})))))
+
+  (testing "200 with OperationOutcome"
+    (let [http-client (HttpClientMock.)]
+
+      (-> (.onDelete http-client "http://localhost:8080/fhir/Patient/0")
+          (.doReturn (j/write-value-as-string {:resourceType "OperationOutcome"}))
+          (.withHeader "content-type" "application/fhir+json"))
+
+      (given @(fhir-client/delete "http://localhost:8080/fhir" "Patient" "0"
+                                  {:http-client http-client})
+        :fhir/type := :fhir/OperationOutcome))))
 
 (deftest transact-test
   (let [http-client (HttpClientMock.)

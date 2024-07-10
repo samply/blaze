@@ -20,8 +20,18 @@
                :opts (s/? :blaze.fhir-client/options))
   :ret ac/completable-future?)
 
+(s/fdef fhir-client/create
+  :args (s/cat :base-uri string? :resource :blaze/resource
+               :opts (s/? :blaze.fhir-client/options))
+  :ret ac/completable-future?)
+
 (s/fdef fhir-client/update
   :args (s/cat :base-uri string? :resource :blaze/resource
+               :opts (s/? :blaze.fhir-client/options))
+  :ret ac/completable-future?)
+
+(s/fdef fhir-client/delete
+  :args (s/cat :base-uri string? :type :fhir.resource/type :id :blaze.resource/id
                :opts (s/? :blaze.fhir-client/options))
   :ret ac/completable-future?)
 
