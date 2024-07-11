@@ -28,7 +28,7 @@ scrape_configs:
 
 ## Import the Blaze Dashboard
 
-In order to import the Blaze dashboard into your Grafana instance, please copy the contents of [blaze.json](monitoring/blaze.json) and pate it into the import dialog on the Import dashboard site:
+In order to import the Blaze dashboard into your Grafana instance, please copy the contents of [blaze.json](monitoring/blaze.json) and paste it into the import dialog on the Import dashboard site:
 
 ![](monitoring/import-dashboard-1.png)
 
