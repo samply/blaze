@@ -567,19 +567,19 @@
     :column-families
     {:search-param-value-index
      {:write-buffer-size-in-mb 64
-      :max-bytes-for-level-base-in-mb 512
+      :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :resource-value-index
      {:write-buffer-size-in-mb 64
-      :max-bytes-for-level-base-in-mb 512
+      :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :compartment-search-param-value-index
      {:write-buffer-size-in-mb 64
-      :max-bytes-for-level-base-in-mb 512
+      :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
@@ -673,19 +673,19 @@
     :column-families
     {:search-param-value-index
      {:write-buffer-size-in-mb 64
-      :max-bytes-for-level-base-in-mb 512
+      :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :resource-value-index
      {:write-buffer-size-in-mb 64
-      :max-bytes-for-level-base-in-mb 512
+      :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :compartment-search-param-value-index
      {:write-buffer-size-in-mb 64
-      :max-bytes-for-level-base-in-mb 512
+      :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
@@ -804,7 +804,7 @@
     {:default
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
-      :target-file-size-base-in-mb 3
+      :target-file-size-base-in-mb 8
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
 
    [:blaze.db.kv.rocksdb/stats :blaze.db.transaction-kv-store.main/stats] {}
@@ -818,7 +818,7 @@
     {:default
      {:write-buffer-size-in-mb 8
       :max-bytes-for-level-base-in-mb 32
-      :target-file-size-base-in-mb 3
+      :target-file-size-base-in-mb 8
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}}}
 
    ;;
@@ -850,7 +850,7 @@
     {:default
      {:write-buffer-size-in-mb 64
       :max-bytes-for-level-base-in-mb 256
-      :target-file-size-base-in-mb 26
+      :target-file-size-base-in-mb 64
       ;; According to Synthea test data, a resource has an average size of
       ;; 1300 bytes. So a block with a size of 16 kb will hold about 10
       ;; resources in average.
@@ -921,19 +921,19 @@
     :column-families
     {:search-param-value-index
      {:write-buffer-size-in-mb 64
-      :max-bytes-for-level-base-in-mb 512
+      :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :resource-value-index
      {:write-buffer-size-in-mb 64
-      :max-bytes-for-level-base-in-mb 512
+      :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :compartment-search-param-value-index
      {:write-buffer-size-in-mb 64
-      :max-bytes-for-level-base-in-mb 512
+      :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
@@ -1027,19 +1027,19 @@
     :column-families
     {:search-param-value-index
      {:write-buffer-size-in-mb 64
-      :max-bytes-for-level-base-in-mb 512
+      :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :resource-value-index
      {:write-buffer-size-in-mb 64
-      :max-bytes-for-level-base-in-mb 512
+      :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
      :compartment-search-param-value-index
      {:write-buffer-size-in-mb 64
-      :max-bytes-for-level-base-in-mb 512
+      :max-bytes-for-level-base-in-mb 256
       :target-file-size-base-in-mb 64
       :block-size #blaze/cfg ["DB_BLOCK_SIZE" int? 16384]}
 
