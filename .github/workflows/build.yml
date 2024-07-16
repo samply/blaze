@@ -888,6 +888,9 @@ jobs:
     - name: Delete Violating Referential Integrity
       run: .github/scripts/check-referential-integrity-for-delete.sh 409
 
+    - name: Delete After Referring Resource is Deleted Succeeds
+      run: .github/scripts/check-delete-succeeds-after-referring-resource-is-deleted.sh
+
     - name: Batch
       run: .github/scripts/batch.sh
 
