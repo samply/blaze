@@ -16,7 +16,7 @@
 
   metosin/reitit-ring
   {:mvn/version "0.7.1"
-   :exclusions [org.apache.commons/commons-fileupload2-core]}
+   :exclusions [ring/ring-core]}
 
   metosin/muuntaja
   {:mvn/version "0.6.10"
