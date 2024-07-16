@@ -155,13 +155,9 @@
                  (:gender
                   (singleton-from (retrieve-resource))))
                 "female")
-               (exists
-                (retrieve
-                 "Observation")))
+               (exists (retrieve "Observation")))
               (not
-               (exists
-                (retrieve
-                 "Condition")))))))))
+               (exists (retrieve "Condition")))))))))
 
   (testing "expressions from Unfiltered context are not resolved"
     (let [library (t/translate "library Test
@@ -194,8 +190,7 @@
                distinct)
               (retrieve
                "Medication"
-               [["code"
-                 "http://fhir.de/CodeSystem/dimdi/atc|L01AX03"]]))
+               [["code" "http://fhir.de/CodeSystem/dimdi/atc|L01AX03"]]))
 
             ["InInitialPopulation" :context] := "Patient"
             ["InInitialPopulation" expr-form] :=
@@ -220,8 +215,7 @@
                      (:reference
                       (:medication
                        M))))))
-                (retrieve
-                 "MedicationStatement")))))))))
+                (retrieve "MedicationStatement")))))))))
 
   (testing "expressions without refs are preserved"
     (let [library (t/translate "library Retrieve
@@ -301,11 +295,9 @@
           '(exists
             (eduction-query
              (filter
-              (fn
-                [O]
+              (fn [O]
                 (exists
-                 (fn
-                   [E]
+                 (fn [E]
                    (equal
                     (call
                      "ToString"
@@ -314,14 +306,9 @@
                        O)))
                     (concatenate
                      "Encounter/"
-                     (call
-                      "ToString"
-                      (:id
-                       E)))))
-                 (retrieve
-                  "Encounter"))))
-             (retrieve
-              "Observation")))
+                     (call "ToString" (:id E)))))
+                 (retrieve "Encounter"))))
+             (retrieve "Observation")))
           [:function-defs "hasDiagnosis" :function] := nil))))
 
   (testing "with related context"
@@ -345,6 +332,32 @@
              (retrieve-resource))
             "Observation")))))
 
+  (testing "retrieve with static concept"
+    (let [library (t/translate "library test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        codesystem icd10: 'http://hl7.org/fhir/sid/icd-10'
+        codesystem sct: 'http://snomed.info/sct'
+
+        code \"ICD-10: C61\": 'C61' from icd10
+        code \"SNOMED: 254900004\": '254900004' from sct
+
+        concept prostata: {\"ICD-10: C61\", \"SNOMED: 254900004\"}
+
+        define InInitialPopulation:
+          exists [Condition: prostata]")]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (given (library/compile-library node library {})
+          [:expression-defs "InInitialPopulation" :context] := "Patient"
+          [:expression-defs "InInitialPopulation" expr-form] :=
+          '(exists
+            (retrieve
+             "Condition"
+             [["code"
+               "http://hl7.org/fhir/sid/icd-10|C61"
+               "http://snomed.info/sct|254900004"]]))))))
+
   (testing "and expression"
     (let [library (t/translate "library test
         using FHIR version '4.0.0'
@@ -364,18 +377,10 @@
           '(and
             (and
              (and
-              (exists
-               (retrieve
-                "Observation"))
-              (exists
-               (retrieve
-                "Condition")))
-             (exists
-              (retrieve
-               "Encounter")))
-            (exists
-             (retrieve
-              "Specimen")))))))
+              (exists (retrieve "Observation"))
+              (exists (retrieve "Condition")))
+             (exists (retrieve "Encounter")))
+            (exists (retrieve "Specimen")))))))
 
   (testing "and expression with named expressions"
     (let [library (t/translate "library test
@@ -407,19 +412,11 @@
               expr-form :=
               '(and
                 (and
-                 (exists
-                  (retrieve
-                   "Observation"))
-                 (exists
-                  (retrieve
-                   "Condition")))
+                 (exists (retrieve "Observation"))
+                 (exists (retrieve "Condition")))
                 (and
-                 (exists
-                  (retrieve
-                   "Encounter"))
-                 (exists
-                  (retrieve
-                   "Specimen"))))))
+                 (exists (retrieve "Encounter"))
+                 (exists (retrieve "Specimen"))))))
 
           (testing "after attaching the cache we get one single, flat and-expression"
             (with-redefs [ec/get (fn [_ _])]
@@ -427,18 +424,10 @@
                 (given (st/with-instrument-disabled (c/attach-cache expression ::cache))
                   [0 c/form] :=
                   '(and
-                    (exists
-                     (retrieve
-                      "Observation"))
-                    (exists
-                     (retrieve
-                      "Condition"))
-                    (exists
-                     (retrieve
-                      "Encounter"))
-                    (exists
-                     (retrieve
-                      "Specimen")))))))))))
+                    (exists (retrieve "Observation"))
+                    (exists (retrieve "Condition"))
+                    (exists (retrieve "Encounter"))
+                    (exists (retrieve "Specimen")))))))))))
 
   (testing "or expression"
     (let [library (t/translate "library test
@@ -459,18 +448,10 @@
           '(or
             (or
              (or
-              (exists
-               (retrieve
-                "Observation"))
-              (exists
-               (retrieve
-                "Condition")))
-             (exists
-              (retrieve
-               "Encounter")))
-            (exists
-             (retrieve
-              "Specimen")))))))
+              (exists (retrieve "Observation"))
+              (exists (retrieve "Condition")))
+             (exists (retrieve "Encounter")))
+            (exists (retrieve "Specimen")))))))
 
   (testing "or expression with named expressions"
     (let [library (t/translate "library test
@@ -502,19 +483,11 @@
               expr-form :=
               '(or
                 (or
-                 (exists
-                  (retrieve
-                   "Observation"))
-                 (exists
-                  (retrieve
-                   "Condition")))
+                 (exists (retrieve "Observation"))
+                 (exists (retrieve "Condition")))
                 (or
-                 (exists
-                  (retrieve
-                   "Encounter"))
-                 (exists
-                  (retrieve
-                   "Specimen"))))))
+                 (exists (retrieve "Encounter"))
+                 (exists (retrieve "Specimen"))))))
 
           (testing "after attaching the cache we get one single, flat or-expression"
             (with-redefs [ec/get (fn [_ _])]
@@ -522,18 +495,10 @@
                 (given (st/with-instrument-disabled (c/attach-cache expression ::cache))
                   [0 c/form] :=
                   '(or
-                    (exists
-                     (retrieve
-                      "Observation"))
-                    (exists
-                     (retrieve
-                      "Condition"))
-                    (exists
-                     (retrieve
-                      "Encounter"))
-                    (exists
-                     (retrieve
-                      "Specimen")))))))))))
+                    (exists (retrieve "Observation"))
+                    (exists (retrieve "Condition"))
+                    (exists (retrieve "Encounter"))
+                    (exists (retrieve "Specimen")))))))))))
 
   (testing "mixed and and or expressions"
     (let [library (t/translate "library test
@@ -565,19 +530,11 @@
               expr-form :=
               '(and
                 (or
-                 (exists
-                  (retrieve
-                   "Observation"))
-                 (exists
-                  (retrieve
-                   "Condition")))
+                 (exists (retrieve "Observation"))
+                 (exists (retrieve "Condition")))
                 (or
-                 (exists
-                  (retrieve
-                   "Encounter"))
-                 (exists
-                  (retrieve
-                   "Specimen"))))))
+                 (exists (retrieve "Encounter"))
+                 (exists (retrieve "Specimen"))))))
 
           (testing "after attaching the cache the expressions don't change"
             (with-redefs [ec/get (fn [_ _])]
@@ -586,19 +543,11 @@
                   [0 c/form] :=
                   '(and
                     (or
-                     (exists
-                      (retrieve
-                       "Observation"))
-                     (exists
-                      (retrieve
-                       "Condition")))
+                     (exists (retrieve "Observation"))
+                     (exists (retrieve "Condition")))
                     (or
-                     (exists
-                      (retrieve
-                       "Encounter"))
-                     (exists
-                      (retrieve
-                       "Specimen"))))))))))))
+                     (exists (retrieve "Encounter"))
+                     (exists (retrieve "Specimen"))))))))))))
 
   (let [library (t/translate "library test
         using FHIR version '4.0.0'

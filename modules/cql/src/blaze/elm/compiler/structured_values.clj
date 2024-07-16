@@ -87,22 +87,16 @@
           (code/code system version code))))))
 
 ;; 2.3. Property
-(defrecord SourcePropertyExpression [source key]
-  core/Expression
-  (-static [_]
-    false)
-  (-attach-cache [expr _]
-    [(fn [] [expr])])
-  (-patient-count [_]
-    nil)
-  (-resolve-refs [_ expression-defs]
-    (->SourcePropertyExpression (core/-resolve-refs source expression-defs) key))
-  (-resolve-params [_ parameters]
-    (->SourcePropertyExpression (core/-resolve-params source parameters) key))
-  (-eval [_ context resource scope]
-    (p/get (core/-eval source context resource scope) key))
-  (-form [_]
-    `(~key ~(core/-form source))))
+(defn- source-property-expr [source key]
+  (reify-expr core/Expression
+    (-resolve-refs [_ expression-defs]
+      (source-property-expr (core/-resolve-refs source expression-defs) key))
+    (-resolve-params [_ parameters]
+      (source-property-expr (core/-resolve-params source parameters) key))
+    (-eval [_ context resource scope]
+      (p/get (core/-eval source context resource scope) key))
+    (-form [_]
+      `(~key ~(core/-form source)))))
 
 (defn- source-property-value-expr [source key]
   (reify-expr core/Expression
@@ -144,7 +138,10 @@
       source
       (if value?
         (source-property-value-expr (core/compile* context source) key)
-        (->SourcePropertyExpression (core/compile* context source) key))
+        (let [source (core/compile* context source)]
+          (if (core/static? source)
+            (p/get source key)
+            (source-property-expr source key))))
 
       scope
       (if value?

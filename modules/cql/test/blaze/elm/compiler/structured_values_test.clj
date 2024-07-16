@@ -5,6 +5,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
    [blaze.coll.core :as coll]
+   [blaze.elm.code :refer [code]]
    [blaze.elm.code-spec]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
@@ -593,35 +594,38 @@
             (has-form expr '(:value (expr-ref "Observation")))))))
 
     (testing "Tuple"
-      (are [elm result] (= result (ctu/eval-unfiltered elm))
-        {:resultTypeName "{urn:hl7-org:elm-types:r1}Integer"
-         :path "id"
-         :type "Property"
-         :source
-         {:type "Tuple"
-          :resultTypeSpecifier
-          {:type "TupleTypeSpecifier"
-           :element
-           [{:name "id"
-             :type {:name "{urn:hl7-org:elm-types:r1}Integer" :type "NamedTypeSpecifier"}}
-            {:name "name"
-             :type {:name "{urn:hl7-org:elm-types:r1}String" :type "NamedTypeSpecifier"}}]}
-          :element
-          [{:name "id" :value #elm/integer "1"}]}}
-        1))
+      (are [elm result] (= result (c/compile {} elm))
+        #elm/source-property[#elm/tuple {"id" #elm/integer "1"} "id"] 1
+        #elm/source-property[#elm/tuple {"id" #elm/integer "2"} "id"] 2
+        #elm/source-property[#elm/tuple {"x" #elm/integer "3"} "x"] 3))
+
+    (testing "Concept"
+      (let [context {:library
+                     {:codeSystems
+                      {:def
+                       [{:name "sys-def-131750"
+                         :id "system-192253"}]}}}]
+        (are [elm result] (= result (c/compile context elm))
+          #elm/source-property
+           [#elm/concept
+             [[#elm/code ["sys-def-131750" "code-192300"]
+               #elm/code ["sys-def-131750" "code-140541"]]]
+            "codes"]
+          [(code "system-192253" nil "code-192300")
+           (code "system-192253" nil "code-140541")])))
 
     (testing "Quantity"
       (testing "value"
-        (are [elm result] (= result (ctu/eval-unfiltered elm))
+        (are [elm result] (= result (c/compile {} elm))
           #elm/source-property [#elm/quantity [42 "m"] "value"]
           42M))
 
       (testing "unit"
-        (are [elm result] (= result (ctu/eval-unfiltered elm))
+        (are [elm result] (= result (c/compile {} elm))
           #elm/source-property [#elm/quantity [42 "m"] "unit"]
           "m")))
 
     (testing "nil"
-      (are [elm result] (= result (ctu/eval-unfiltered elm))
+      (are [elm result] (= result (c/compile {} elm))
         #elm/source-property [{:type "Null"} "value"]
         nil))))

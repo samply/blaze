@@ -7,6 +7,7 @@
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
+   [blaze.elm.code :refer [code?]]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.compiler.structured-values]
@@ -14,10 +15,7 @@
    [blaze.elm.spec]
    [blaze.elm.util :as elm-util]
    [blaze.fhir.spec.references :as fsr]
-   [prometheus.alpha :as prom :refer [defcounter]])
-  (:import
-   [blaze.elm.compiler.structured_values SourcePropertyExpression]
-   [java.util List]))
+   [prometheus.alpha :as prom :refer [defcounter]]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,31 +27,17 @@
 (defn- code->clause-value [{:keys [system code]}]
   (str system "|" code))
 
-(defprotocol ToClauses
-  (-to-clauses [x property]))
-
-(extend-protocol ToClauses
-  List
-  (-to-clauses [codes property]
-    [(into [property] (map code->clause-value) codes)])
-
-  SourcePropertyExpression
-  (-to-clauses [codes property]
-    (-to-clauses (core/-eval codes nil nil nil) property)))
-
 (defn- code-expr
   "Returns an expression which, when evaluated, returns all resources of type
   `data-type` which have a code equivalent to `code` at `property` and are
   reachable through `context`.
 
-  Uses special index attributes like :Patient.Observation.code/system|code.
-
   Example:
   * data-type - \"Observation\"
   * property - \"code\"
-  * codes - [(code/to-code \"http://loinc.org\" nil \"39156-5\")]"
+  * codes - [(code \"http://loinc.org\" nil \"39156-5\")]"
   [node context data-type property codes]
-  (let [clauses (-to-clauses codes property)
+  (let [clauses [(into [property] (map code->clause-value) codes)]
         query (d/compile-compartment-query node context data-type clauses)]
     (reify-expr core/Expression
       (-eval [_ {:keys [db]} {:keys [id]} _]
@@ -191,10 +175,21 @@
     :else
     (expr* node eval-context data-type code-property codes)))
 
+(defn- unsupported-dynamic-codes-expr-anom [codes-expr]
+  (ba/unsupported
+   (format "Unsupported dynamic codes expression `%s` in Retrieve expression."
+           (core/-form codes-expr))))
+
 (defn- unsupported-type-namespace-anom [type-ns]
   (ba/unsupported
    (format "Unsupported type namespace `%s` in Retrieve expression." type-ns)
    :type-ns type-ns))
+
+(defn- compile-codes-expr [context codes-expr]
+  (let [codes-expr (core/compile* context codes-expr)]
+    (if (and (sequential? codes-expr) (every? code? codes-expr))
+      codes-expr
+      (ba/throw-anom (unsupported-dynamic-codes-expr-anom codes-expr)))))
 
 (defmethod core/compile* :elm.compiler.type/retrieve
   [context
@@ -210,5 +205,5 @@
        (some->> context-expr (core/compile* context))
        data-type
        code-property
-       (some->> codes-expr (core/compile* context)))
+       (some->> codes-expr (compile-codes-expr context)))
       (ba/throw-anom (unsupported-type-namespace-anom type-ns)))))

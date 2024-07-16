@@ -15,6 +15,7 @@
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.expression :as expr]
    [blaze.elm.expression-spec]
+   [blaze.elm.literal :as elm]
    [blaze.elm.util-spec]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type]
@@ -418,7 +419,12 @@
 
           (given (ba/try-anomaly (c/compile context elm))
             ::anom/category := ::anom/not-found
-            ::anom/message := "The search-param with code `foo` and type `Medication` was not found.")))))
+            ::anom/message := "The search-param with code `foo` and type `Medication` was not found."))))
+
+    (testing "dynamic codes expression"
+      (given (ba/try-anomaly (c/compile {} #elm/retrieve{:type "Medication" :codes elm/today}))
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Unsupported dynamic codes expression `today` in Retrieve expression.")))
 
   (testing "with related context"
     (testing "without code"
