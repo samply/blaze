@@ -1,13 +1,12 @@
 (ns blaze.elm.code-spec
   (:require
    [blaze.elm.code :as code]
-   [clojure.spec.alpha :as s])
-  (:import
-   [blaze.elm.code Code]))
+   [clojure.spec.alpha :as s]))
 
-(defn code? [x]
-  (instance? Code x))
+(s/fdef code/code?
+  :args (s/cat :x any?)
+  :ret boolean?)
 
 (s/fdef code/code
   :args (s/cat :system string? :version (s/nilable string?) :code string?)
-  :ret code?)
+  :ret code/code?)

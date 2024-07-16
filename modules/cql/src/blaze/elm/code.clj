@@ -39,6 +39,9 @@
   (-form [_]
     `(~'code ~system ~version ~code)))
 
+(defn code? [x]
+  (instance? Code x))
+
 (defn code
   "Returns a CQL code with isn't the same as a FHIR code from the database."
   [system version code]

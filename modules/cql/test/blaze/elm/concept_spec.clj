@@ -1,6 +1,6 @@
 (ns blaze.elm.concept-spec
   (:require
-   [blaze.elm.code-spec :as code-spec]
+   [blaze.elm.code :as code]
    [blaze.elm.concept :as concept]
    [clojure.spec.alpha :as s])
   (:import
@@ -10,5 +10,5 @@
   (instance? Concept x))
 
 (s/fdef concept/concept
-  :args (s/cat :codes (s/coll-of code-spec/code?))
+  :args (s/cat :codes (s/coll-of code/code?))
   :ret concept?)
