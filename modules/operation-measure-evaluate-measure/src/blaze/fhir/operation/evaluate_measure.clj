@@ -126,8 +126,11 @@
           :opt [::expr/cache]
           :opt-un [::timeout :blaze/context-path]))
 
-(defmethod ig/init-key ::handler [_ context]
-  (log/info "Init FHIR $evaluate-measure operation handler")
+(defmethod ig/init-key ::handler [_ {:keys [timeout] :as context}]
+  (log/info
+   (cond-> "Init FHIR $evaluate-measure operation handler"
+     timeout
+     (str " with a timeout of " timeout)))
   (wrap-coerce-params (handler context)))
 
 (defmethod m/pre-init-spec ::timeout [_]

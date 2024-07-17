@@ -65,6 +65,25 @@
    {:contentType #fhir/code"text/cql"
     :data #fhir/base64Binary"bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICB0cnVlCgpkZWZpbmUgR2VuZGVyOgogIFBhdGllbnQuZ2VuZGVyCg=="})
 
+(def config
+  (assoc
+   api-stub/mem-node-config
+   ::evaluate-measure/handler
+   {:node (ig/ref :blaze.db/node)
+    ::expr/cache (ig/ref ::expr/cache)
+    :executor (ig/ref :blaze.test/executor)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+   :blaze/job-scheduler
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+   ::expr/cache
+   {:node (ig/ref :blaze.db/node)
+    :executor (ig/ref :blaze.test/executor)}
+   :blaze.test/executor {}
+   :blaze.test/fixed-rng-fn {}))
+
 (deftest init-test
   (testing "nil config"
     (given-thrown (ig/init {::evaluate-measure/handler nil})
@@ -99,7 +118,16 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:cause-data ::s/problems 3 :pred] := `ex/executor?
-      [:cause-data ::s/problems 3 :val] := ::invalid)))
+      [:cause-data ::s/problems 3 :val] := ::invalid))
+
+  (testing "init"
+    (with-system [{::evaluate-measure/keys [handler]} config]
+      (is (fn? handler)))
+
+    (testing "with timeout"
+      (with-system [{::evaluate-measure/keys [handler]}
+                    (assoc-in config [::evaluate-measure/handler :timeout] (time/seconds 1))]
+        (is (fn? handler))))))
 
 (deftest timeout-init-test
   (testing "nil config"
@@ -135,25 +163,6 @@
   (with-system [{collector ::evaluate-measure/evaluate-duration-seconds}
                 {::evaluate-measure/evaluate-duration-seconds nil}]
     (is (s/valid? :blaze.metrics/collector collector))))
-
-(def config
-  (assoc
-   api-stub/mem-node-config
-   ::evaluate-measure/handler
-   {:node (ig/ref :blaze.db/node)
-    ::expr/cache (ig/ref ::expr/cache)
-    :executor (ig/ref :blaze.test/executor)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-   :blaze/job-scheduler
-   {:node (ig/ref :blaze.db/node)
-    :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-   ::expr/cache
-   {:node (ig/ref :blaze.db/node)
-    :executor (ig/ref :blaze.test/executor)}
-   :blaze.test/executor {}
-   :blaze.test/fixed-rng-fn {}))
 
 (defn- wrap-defaults [handler]
   (fn [request]
