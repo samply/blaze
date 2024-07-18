@@ -103,149 +103,90 @@
   (testing "with scope"
     (testing "with entity supplied over query context"
       (testing "Patient.identifier"
-        (testing "with source-type"
-          (let [identifier
-                #fhir/Identifier
-                 {:system #fhir/uri"foo"
-                  :value "bar"}
-                entity
-                {:fhir/type :fhir/Patient :id "0"
-                 :identifier [identifier]}
-                elm #elm/scope-property ["R" "identifier"]
-                expr (c/compile {:eval-context "Patient"} elm)]
+        (let [identifier
+              #fhir/Identifier
+               {:system #fhir/uri"foo"
+                :value "bar"}
+              entity
+              {:fhir/type :fhir/Patient :id "0"
+               :identifier [identifier]}
+              elm #elm/scope-property ["R" "identifier"]
+              expr (c/compile {:eval-context "Patient"} elm)]
 
-            (testing "eval"
-              (is (= identifier (coll/first (core/-eval expr nil nil {"R" entity})))))
+          (testing "eval"
+            (is (= identifier (coll/first (core/-eval expr nil nil {"R" entity})))))
 
-            (testing "expression is dynamic"
-              (is (false? (core/-static expr))))
+          (testing "expression is dynamic"
+            (is (false? (core/-static expr))))
 
-            (ctu/testing-constant-attach-cache expr)
+          (ctu/testing-constant-attach-cache expr)
 
-            (ctu/testing-constant-patient-count expr)
+          (ctu/testing-constant-patient-count expr)
 
-            (ctu/testing-constant-resolve-refs expr)
+          (ctu/testing-constant-resolve-refs expr)
 
-            (ctu/testing-constant-resolve-params expr)
+          (ctu/testing-constant-resolve-params expr)
 
-            (ctu/testing-equals-hash-code elm)
+          (ctu/testing-equals-hash-code elm)
 
-            (testing "form"
-              (has-form expr '(:identifier R)))))
-
-        (testing "without source-type"
-          (let [identifier
-                #fhir/Identifier
-                 {:system #fhir/uri"foo"
-                  :value "bar"}
-                entity
-                {:fhir/type :fhir/Patient :id "0"
-                 :identifier [identifier]}
-                elm #elm/scope-property ["R" "identifier"]
-                expr (c/compile {:eval-context "Patient"} elm)]
-
-            (testing "eval"
-              (is (= identifier (coll/first (core/-eval expr nil nil {"R" entity})))))
-
-            (testing "expression is dynamic"
-              (is (false? (core/-static expr))))
-
-            (ctu/testing-constant-attach-cache expr)
-
-            (ctu/testing-constant-patient-count expr)
-
-            (ctu/testing-constant-resolve-refs expr)
-
-            (ctu/testing-constant-resolve-params expr)
-
-            (ctu/testing-equals-hash-code elm)
-
-            (testing "form"
-              (has-form expr '(:identifier R))))))
+          (testing "form"
+            (has-form expr '(:identifier R)))))
 
       (testing "Patient.extension"
-        (testing "without source-type"
-          (let [extension
-                #fhir/Extension
-                 {:url "foo"
-                  :valueString "bar"}
-                entity
-                {:fhir/type :fhir/Patient :id "0"
-                 :extension [extension]}
-                elm #elm/scope-property ["R" "extension"]
-                expr (c/compile {:eval-context "Patient"} elm)]
+        (let [extension
+              #fhir/Extension
+               {:url "foo"
+                :valueString "bar"}
+              entity
+              {:fhir/type :fhir/Patient :id "0"
+               :extension [extension]}
+              elm #elm/scope-property ["R" "extension"]
+              expr (c/compile {:eval-context "Patient"} elm)]
 
-            (testing "eval"
-              (is (= extension (coll/first (core/-eval expr nil nil {"R" entity})))))
+          (testing "eval"
+            (is (= extension (coll/first (core/-eval expr nil nil {"R" entity})))))
 
-            (testing "expression is dynamic"
-              (is (false? (core/-static expr))))
+          (testing "expression is dynamic"
+            (is (false? (core/-static expr))))
 
-            (ctu/testing-constant-attach-cache expr)
+          (ctu/testing-constant-attach-cache expr)
 
-            (ctu/testing-constant-patient-count expr)
+          (ctu/testing-constant-patient-count expr)
 
-            (ctu/testing-constant-resolve-refs expr)
+          (ctu/testing-constant-resolve-refs expr)
 
-            (ctu/testing-constant-resolve-params expr)
+          (ctu/testing-constant-resolve-params expr)
 
-            (ctu/testing-equals-hash-code elm)
+          (ctu/testing-equals-hash-code elm)
 
-            (testing "form"
-              (has-form expr '(:extension R))))))
+          (testing "form"
+            (has-form expr '(:extension R)))))
 
       (testing "Patient.gender"
-        (testing "with source-type"
-          (let [entity
-                {:fhir/type :fhir/Patient :id "0"
-                 :gender #fhir/code"male"}
-                elm #elm/scope-property ["R" "gender"]
-                expr (c/compile {:eval-context "Patient"} elm)]
+        (let [entity
+              {:fhir/type :fhir/Patient :id "0"
+               :gender #fhir/code"male"}
+              elm #elm/scope-property ["R" "gender"]
+              expr (c/compile {:eval-context "Patient"} elm)]
 
-            (testing "eval"
-              (is (= #fhir/code"male" (core/-eval expr nil nil {"R" entity}))))
+          (testing "eval"
+            (is (= #fhir/code"male" (core/-eval expr nil nil {"R" entity}))))
 
-            (testing "expression is dynamic"
-              (is (false? (core/-static expr))))
+          (testing "expression is dynamic"
+            (is (false? (core/-static expr))))
 
-            (ctu/testing-constant-attach-cache expr)
+          (ctu/testing-constant-attach-cache expr)
 
-            (ctu/testing-constant-patient-count expr)
+          (ctu/testing-constant-patient-count expr)
 
-            (ctu/testing-constant-resolve-refs expr)
+          (ctu/testing-constant-resolve-refs expr)
 
-            (ctu/testing-constant-resolve-params expr)
+          (ctu/testing-constant-resolve-params expr)
 
-            (ctu/testing-equals-hash-code elm)
+          (ctu/testing-equals-hash-code elm)
 
-            (testing "form"
-              (has-form expr '(:gender R)))))
-
-        (testing "without source-type"
-          (let [entity
-                {:fhir/type :fhir/Patient :id "0"
-                 :gender #fhir/code"male"}
-                elm #elm/scope-property ["R" "gender"]
-                expr (c/compile {:eval-context "Patient"} elm)]
-
-            (testing "eval"
-              (is (= #fhir/code"male" (core/-eval expr nil nil {"R" entity}))))
-
-            (testing "expression is dynamic"
-              (is (false? (core/-static expr))))
-
-            (ctu/testing-constant-attach-cache expr)
-
-            (ctu/testing-constant-patient-count expr)
-
-            (ctu/testing-constant-resolve-refs expr)
-
-            (ctu/testing-constant-resolve-params expr)
-
-            (ctu/testing-equals-hash-code elm)
-
-            (testing "form"
-              (has-form expr '(:gender R))))))
+          (testing "form"
+            (has-form expr '(:gender R)))))
 
       (testing "Patient.birthDate.value"
         (let [entity
@@ -279,208 +220,105 @@
             (has-form expr '(:value (:birthDate R))))))
 
       (testing "Observation.value"
-        (testing "with source-type"
-          (let [entity
-                {:fhir/type :fhir/Observation :id "0"
-                 :value "value-114318"}
-                elm #elm/scope-property ["R" "value"]
-                expr (c/compile {:eval-context "Patient"} elm)]
+        (let [entity
+              {:fhir/type :fhir/Observation :id "0"
+               :value "value-114318"}
+              elm #elm/scope-property ["R" "value"]
+              expr (c/compile {:eval-context "Patient"} elm)]
 
-            (testing "eval"
-              (is (= "value-114318" (core/-eval expr nil nil {"R" entity}))))
+          (testing "eval"
+            (is (= "value-114318" (core/-eval expr nil nil {"R" entity}))))
 
-            (testing "expression is dynamic"
-              (is (false? (core/-static expr))))
+          (testing "expression is dynamic"
+            (is (false? (core/-static expr))))
 
-            (ctu/testing-constant-attach-cache expr)
+          (ctu/testing-constant-attach-cache expr)
 
-            (ctu/testing-constant-patient-count expr)
+          (ctu/testing-constant-patient-count expr)
 
-            (ctu/testing-constant-resolve-refs expr)
+          (ctu/testing-constant-resolve-refs expr)
 
-            (ctu/testing-constant-resolve-params expr)
+          (ctu/testing-constant-resolve-params expr)
 
-            (ctu/testing-equals-hash-code elm)
+          (ctu/testing-equals-hash-code elm)
 
-            (testing "form"
-              (has-form expr '(:value R)))))
-
-        (testing "without source-type"
-          (let [entity
-                {:fhir/type :fhir/Observation :id "0"
-                 :value "value-114318"}
-                elm #elm/scope-property ["R" "value"]
-                expr (c/compile {:eval-context "Patient"} elm)]
-
-            (testing "eval"
-              (is (= "value-114318" (core/-eval expr nil nil {"R" entity}))))
-
-            (testing "expression is dynamic"
-              (is (false? (core/-static expr))))
-
-            (ctu/testing-constant-attach-cache expr)
-
-            (ctu/testing-constant-patient-count expr)
-
-            (ctu/testing-constant-resolve-refs expr)
-
-            (ctu/testing-constant-resolve-params expr)
-
-            (ctu/testing-equals-hash-code elm)
-
-            (testing "form"
-              (has-form expr '(:value R))))))))
+          (testing "form"
+            (has-form expr '(:value R)))))))
 
   (testing "with source"
     (testing "Patient.identifier"
-      (testing "with source-type"
-        (let [library {:statements {:def [{:type "ExpressionDef"
-                                           :name "Patient"}]}}
-              elm
-              #elm/source-property [#elm/expression-ref "Patient" "identifier"]
-              identifier
-              #fhir/Identifier
-               {:system #fhir/uri"foo"
-                :value "bar"}
-              source
-              {:fhir/type :fhir/Patient :id "0"
-               :identifier [identifier]}
-              expr (c/compile {:library library :eval-context "Patient"} elm)
-              expr-def {:type "ExpressionDef"
-                        :context "Patient"
-                        :name "Patient"
-                        :expression source}]
+      (let [library {:statements {:def [{:type "ExpressionDef"
+                                         :name "Patient"}]}}
+            elm
+            #elm/source-property [#elm/expression-ref "Patient" "identifier"]
+            identifier
+            #fhir/Identifier
+             {:system #fhir/uri"foo"
+              :value "bar"}
+            source
+            {:fhir/type :fhir/Patient :id "0"
+             :identifier [identifier]}
+            expr (c/compile {:library library :eval-context "Patient"} elm)
+            expr-def {:type "ExpressionDef"
+                      :context "Patient"
+                      :name "Patient"
+                      :expression source}]
 
-          (testing "eval"
-            (is (= identifier (coll/first (core/-eval expr {:expression-defs {"Patient" expr-def}} nil nil)))))
+        (testing "eval"
+          (is (= identifier (coll/first (core/-eval expr {:expression-defs {"Patient" expr-def}} nil nil)))))
 
-          (testing "expression is dynamic"
-            (is (false? (core/-static expr))))
+        (testing "expression is dynamic"
+          (is (false? (core/-static expr))))
 
-          (ctu/testing-constant-attach-cache expr)
+        (ctu/testing-constant-attach-cache expr)
 
-          (ctu/testing-constant-patient-count expr)
+        (ctu/testing-constant-patient-count expr)
 
-          (testing "resolve expression references"
-            (let [expr (c/resolve-refs expr {"Patient" expr-def})]
-              (has-form expr (list :identifier source))))
+        (testing "resolve expression references"
+          (let [expr (c/resolve-refs expr {"Patient" expr-def})]
+            (has-form expr (list :identifier source))))
 
-          (testing "resolve parameters"
-            (let [expr (c/resolve-params expr {})]
-              (has-form expr '(:identifier (expr-ref "Patient")))))
+        (testing "resolve parameters"
+          (let [expr (c/resolve-params expr {})]
+            (has-form expr '(:identifier (expr-ref "Patient")))))
 
-          (testing "form"
-            (has-form expr '(:identifier (expr-ref "Patient"))))))
-
-      (testing "without source-type"
-        (let [library {:statements {:def [{:type "ExpressionDef"
-                                           :name "Patient"}]}}
-              elm
-              #elm/source-property [#elm/expression-ref "Patient" "identifier"]
-              identifier
-              #fhir/Identifier
-               {:system #fhir/uri"foo"
-                :value "bar"}
-              source
-              {:fhir/type :fhir/Patient :id "0"
-               :identifier [identifier]}
-              expr (c/compile {:library library :eval-context "Patient"} elm)
-              expr-def {:type "ExpressionDef"
-                        :context "Patient"
-                        :name "Patient"
-                        :expression source}]
-
-          (testing "eval"
-            (is (= identifier (coll/first (core/-eval expr {:expression-defs {"Patient" expr-def}} nil nil)))))
-
-          (testing "expression is dynamic"
-            (is (false? (core/-static expr))))
-
-          (ctu/testing-constant-attach-cache expr)
-
-          (ctu/testing-constant-patient-count expr)
-
-          (testing "resolve expression references"
-            (let [expr (c/resolve-refs expr {"Patient" expr-def})]
-              (has-form expr (list :identifier source))))
-
-          (testing "resolve parameters"
-            (let [expr (c/resolve-params expr {})]
-              (has-form expr '(:identifier (expr-ref "Patient")))))
-
-          (testing "form"
-            (has-form expr '(:identifier (expr-ref "Patient")))))))
+        (testing "form"
+          (has-form expr '(:identifier (expr-ref "Patient"))))))
 
     (testing "Patient.gender"
-      (testing "with source-type"
-        (let [library {:statements {:def [{:type "ExpressionDef"
-                                           :name "Patient"}]}}
-              elm
-              #elm/source-property [#elm/expression-ref "Patient" "gender"]
-              source
-              {:fhir/type :fhir/Patient :id "0"
-               :gender #fhir/code"male"}
-              expr (c/compile {:library library :eval-context "Patient"} elm)
-              expr-def {:type "ExpressionDef"
-                        :context "Patient"
-                        :name "Patient"
-                        :expression source}]
+      (let [library {:statements {:def [{:type "ExpressionDef"
+                                         :name "Patient"}]}}
+            elm
+            #elm/source-property [#elm/expression-ref "Patient" "gender"]
+            source
+            {:fhir/type :fhir/Patient :id "0"
+             :gender #fhir/code"male"}
+            expr (c/compile {:library library :eval-context "Patient"} elm)
+            expr-def {:type "ExpressionDef"
+                      :context "Patient"
+                      :name "Patient"
+                      :expression source}]
 
-          (testing "eval"
-            (is (= #fhir/code"male" (core/-eval expr {:expression-defs {"Patient" expr-def}} nil nil))))
+        (testing "eval"
+          (is (= #fhir/code"male" (core/-eval expr {:expression-defs {"Patient" expr-def}} nil nil))))
 
-          (testing "expression is dynamic"
-            (is (false? (core/-static expr))))
+        (testing "expression is dynamic"
+          (is (false? (core/-static expr))))
 
-          (ctu/testing-constant-attach-cache expr)
+        (ctu/testing-constant-attach-cache expr)
 
-          (ctu/testing-constant-patient-count expr)
+        (ctu/testing-constant-patient-count expr)
 
-          (testing "resolve expression references"
-            (let [expr (c/resolve-refs expr {"Patient" expr-def})]
-              (has-form expr (list :gender source))))
+        (testing "resolve expression references"
+          (let [expr (c/resolve-refs expr {"Patient" expr-def})]
+            (has-form expr (list :gender source))))
 
-          (testing "resolve parameters"
-            (let [expr (c/resolve-params expr {})]
-              (has-form expr '(:gender (expr-ref "Patient")))))
+        (testing "resolve parameters"
+          (let [expr (c/resolve-params expr {})]
+            (has-form expr '(:gender (expr-ref "Patient")))))
 
-          (testing "form"
-            (has-form expr '(:gender (expr-ref "Patient"))))))
-
-      (testing "without source-type"
-        (let [library {:statements {:def [{:type "ExpressionDef"
-                                           :name "Patient"}]}}
-              elm
-              #elm/source-property [#elm/expression-ref "Patient" "gender"]
-              source
-              {:fhir/type :fhir/Patient :id "0"
-               :gender #fhir/code"male"}
-              expr (c/compile {:library library :eval-context "Patient"} elm)
-              expr-def {:type "ExpressionDef"
-                        :context "Patient"
-                        :name "Patient"
-                        :expression source}]
-
-          (testing "eval"
-            (is (= #fhir/code"male" (core/-eval expr {:expression-defs {"Patient" expr-def}} nil nil))))
-
-          (testing "expression is dynamic"
-            (is (false? (core/-static expr))))
-
-          (ctu/testing-constant-attach-cache expr)
-
-          (ctu/testing-constant-patient-count expr)
-
-          (testing "resolve expression references"
-            (let [expr (c/resolve-refs expr {"Patient" expr-def})]
-              (has-form expr (list :gender source))))
-
-          (testing "resolve parameters"
-            (let [expr (c/resolve-params expr {})]
-              (has-form expr '(:gender (expr-ref "Patient")))))
-
-          (testing "form"
-            (has-form expr '(:gender (expr-ref "Patient")))))))
+        (testing "form"
+          (has-form expr '(:gender (expr-ref "Patient"))))))
 
     (testing "Patient.birthDate.value"
       (let [library {:statements {:def [{:type "ExpressionDef"
@@ -523,75 +361,39 @@
           (has-form expr '(:value (:birthDate (expr-ref "Patient")))))))
 
     (testing "Observation.value"
-      (testing "with source-type"
-        (let [library {:statements {:def [{:type "ExpressionDef"
-                                           :name "Observation"}]}}
-              elm
-              #elm/source-property [#elm/expression-ref "Observation" "value"]
-              source
-              {:fhir/type :fhir/Observation :id "0"
-               :value "value-114318"}
-              expr (c/compile {:library library :eval-context "Patient"} elm)
-              expr-def {:type "ExpressionDef"
-                        :context "Patient"
-                        :name "Observation"
-                        :expression source}]
+      (let [library {:statements {:def [{:type "ExpressionDef"
+                                         :name "Observation"}]}}
+            elm
+            #elm/source-property [#elm/expression-ref "Observation" "value"]
+            source
+            {:fhir/type :fhir/Observation :id "0"
+             :value "value-114318"}
+            expr (c/compile {:library library :eval-context "Patient"} elm)
+            expr-def {:type "ExpressionDef"
+                      :context "Patient"
+                      :name "Observation"
+                      :expression source}]
 
-          (testing "eval"
-            (is (= "value-114318" (core/-eval expr {:expression-defs {"Observation" expr-def}} nil nil))))
+        (testing "eval"
+          (is (= "value-114318" (core/-eval expr {:expression-defs {"Observation" expr-def}} nil nil))))
 
-          (testing "expression is dynamic"
-            (is (false? (core/-static expr))))
+        (testing "expression is dynamic"
+          (is (false? (core/-static expr))))
 
-          (ctu/testing-constant-attach-cache expr)
+        (ctu/testing-constant-attach-cache expr)
 
-          (ctu/testing-constant-patient-count expr)
+        (ctu/testing-constant-patient-count expr)
 
-          (testing "resolve expression references"
-            (let [expr (c/resolve-refs expr {"Observation" expr-def})]
-              (has-form expr (list :value source))))
+        (testing "resolve expression references"
+          (let [expr (c/resolve-refs expr {"Observation" expr-def})]
+            (has-form expr (list :value source))))
 
-          (testing "resolve parameters"
-            (let [expr (c/resolve-params expr {})]
-              (has-form expr '(:value (expr-ref "Observation")))))
+        (testing "resolve parameters"
+          (let [expr (c/resolve-params expr {})]
+            (has-form expr '(:value (expr-ref "Observation")))))
 
-          (testing "form"
-            (has-form expr '(:value (expr-ref "Observation"))))))
-
-      (testing "without source-type"
-        (let [library {:statements {:def [{:type "ExpressionDef"
-                                           :name "Observation"}]}}
-              elm
-              #elm/source-property [#elm/expression-ref "Observation" "value"]
-              source
-              {:fhir/type :fhir/Observation :id "0"
-               :value "value-114318"}
-              expr (c/compile {:library library :eval-context "Patient"} elm)
-              expr-def {:type "ExpressionDef"
-                        :context "Patient"
-                        :name "Observation"
-                        :expression source}]
-
-          (testing "eval"
-            (is (= "value-114318" (core/-eval expr {:expression-defs {"Observation" expr-def}} nil nil))))
-
-          (testing "expression is dynamic"
-            (is (false? (core/-static expr))))
-
-          (ctu/testing-constant-attach-cache expr)
-
-          (ctu/testing-constant-patient-count expr)
-
-          (testing "resolve expression references"
-            (let [expr (c/resolve-refs expr {"Observation" expr-def})]
-              (has-form expr (list :value source))))
-
-          (testing "resolve parameters"
-            (let [expr (c/resolve-params expr {})]
-              (has-form expr '(:value (expr-ref "Observation")))))
-
-          (testing "form"
-            (has-form expr '(:value (expr-ref "Observation")))))))
+        (testing "form"
+          (has-form expr '(:value (expr-ref "Observation"))))))
 
     (testing "Tuple"
       (are [elm result] (= result (c/compile {} elm))
