@@ -13,7 +13,7 @@
 
   ;; newer version for buddy-auth dependency
   buddy/buddy-core
-  {:mvn/version "1.11.423"}
+  {:mvn/version "1.12.0-430"}
 
   ;; newer version for buddy-core dependency
   cheshire/cheshire
