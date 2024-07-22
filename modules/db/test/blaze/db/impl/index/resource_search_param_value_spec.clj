@@ -1,5 +1,6 @@
 (ns blaze.db.impl.index.resource-search-param-value-spec
   (:require
+   [blaze.byte-buffer-spec]
    [blaze.byte-string :as bs :refer [byte-string?]]
    [blaze.byte-string-spec]
    [blaze.db.impl.index.resource-search-param-value :as r-sp-v]

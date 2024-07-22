@@ -1,6 +1,7 @@
 (ns blaze.byte-string-spec
   (:require
    [blaze.byte-buffer :refer [byte-buffer?]]
+   [blaze.byte-buffer-spec]
    [blaze.byte-string :as bs]
    [clojure.spec.alpha :as s]))
 

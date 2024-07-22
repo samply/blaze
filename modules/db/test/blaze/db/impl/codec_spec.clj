@@ -1,5 +1,6 @@
 (ns blaze.db.impl.codec-spec
   (:require
+   [blaze.byte-buffer-spec]
    [blaze.byte-string :refer [byte-string?]]
    [blaze.byte-string-spec]
    [blaze.db.api-spec]

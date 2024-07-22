@@ -1,6 +1,7 @@
 (ns blaze.elm.expression.cache-test
   (:require
    [blaze.anomaly :as ba]
+   [blaze.byte-buffer-spec]
    [blaze.cache-collector.protocols :as ccp]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
