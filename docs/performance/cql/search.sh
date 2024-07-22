@@ -12,7 +12,7 @@ OUTPUT_HEADER="${2:-true}"
 if [ "true" = "$OUTPUT_HEADER" ]; then
   echo "Counting Patients with criteria from $FILE..."
 fi
-REPORT="$(curl --server "$BASE" evaluate-measure --force-sync "$SCRIPT_DIR/$FILE.yml" 2> /dev/null)"
+REPORT="$(blazectl --server "$BASE" evaluate-measure --force-sync "$SCRIPT_DIR/$FILE.yml" 2> /dev/null)"
 
 if [ "true" = "$OUTPUT_HEADER" ]; then
   echo "Bloom filter ratio: $(echo "$REPORT" | jq -rf "$SCRIPT_DIR/bloom-filter-ratio.jq")"
