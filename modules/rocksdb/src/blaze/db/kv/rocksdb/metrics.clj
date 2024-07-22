@@ -224,11 +224,53 @@
    "Number of blocks decompressed."
    TickerType/NUMBER_BLOCK_DECOMPRESSED))
 
-(def ^:private blocks-not-compressed-total
+(def ^:private blocks-compression-bypassed-total
   (counter-metric
-   "blaze_rocksdb_blocks_not_compressed_total"
-   "Number of blocks not compressed."
-   TickerType/NUMBER_BLOCK_NOT_COMPRESSED))
+   "blaze_rocksdb_blocks_compression_bypassed_total"
+   "Number of blocks were compression was bypassed."
+   TickerType/NUMBER_BLOCK_COMPRESSION_BYPASSED))
+
+(def ^:private blocks-compression-rejected-total
+  (counter-metric
+   "blaze_rocksdb_blocks_compression_rejected_total"
+   "Number of blocks were compression was rejected."
+   TickerType/NUMBER_BLOCK_COMPRESSION_REJECTED))
+
+(def ^:private compression-input-bytes-total
+  (counter-metric
+   "blaze_rocksdb_compression_input_bytes_total"
+   "Number of input bytes (uncompressed) to compression for SST blocks that are stored compressed."
+   TickerType/BYTES_COMPRESSED_FROM))
+
+(def ^:private compression-output-bytes-total
+  (counter-metric
+   "blaze_rocksdb_compression_output_bytes_total"
+   "Number of output bytes (compressed) to compression for SST blocks that are stored compressed."
+   TickerType/BYTES_COMPRESSED_TO))
+
+(def ^:private compression-bypassed-bytes-total
+  (counter-metric
+   "blaze_rocksdb_compression_bypassed_bytes_total"
+   "Number of uncompressed bytes for SST blocks that are stored uncompressed because compression type is kNoCompression, or some error case caused compression not to run or produce an output."
+   TickerType/BYTES_COMPRESSION_BYPASSED))
+
+(def ^:private compression-rejected-bytes-total
+  (counter-metric
+   "blaze_rocksdb_compression_rejected_bytes_total"
+   "Number of input bytes (uncompressed) to compression for SST blocks that are stored uncompressed because the compression result was rejected, either because the ratio was not acceptable (see CompressionOptions::max_compressed_bytes_per_kb) or found invalid by the `verify_compression` option."
+   TickerType/BYTES_COMPRESSION_REJECTED))
+
+(def ^:private decompression-input-bytes-total
+  (counter-metric
+   "blaze_rocksdb_decompression_input_bytes_total"
+   "Number of input bytes (compressed) to decompression in reading compressed SST blocks from storage."
+   TickerType/BYTES_DECOMPRESSED_FROM))
+
+(def ^:private decompression-output-bytes-total
+  (counter-metric
+   "blaze_rocksdb_decompression_output_bytes_total"
+   "Number of output bytes (uncompressed) from decompression in reading compressed SST blocks from storage."
+   TickerType/BYTES_DECOMPRESSED_TO))
 
 (def ^:private iterators-created-total
   (counter-metric
@@ -315,7 +357,14 @@
      (bloom-filter-full-true-positive-total stats)
      (blocks-compressed-total stats)
      (blocks-decompressed-total stats)
-     (blocks-not-compressed-total stats)
+     (blocks-compression-bypassed-total stats)
+     (blocks-compression-rejected-total stats)
+     (compression-input-bytes-total stats)
+     (compression-output-bytes-total stats)
+     (compression-bypassed-bytes-total stats)
+     (compression-rejected-bytes-total stats)
+     (decompression-input-bytes-total stats)
+     (decompression-output-bytes-total stats)
      (iterators-created-total stats)
      (iterators-deleted-total stats)
      (wal-syncs-total stats)
