@@ -1,5 +1,6 @@
 (ns blaze.db.impl.index.patient-last-change-spec
   (:require
+   [blaze.byte-buffer-spec]
    [blaze.db.impl.codec-spec]
    [blaze.db.impl.index.patient-last-change :as plc]
    [blaze.db.impl.index.patient-last-change.spec]

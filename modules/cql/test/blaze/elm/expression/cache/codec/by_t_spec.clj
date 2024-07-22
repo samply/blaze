@@ -1,5 +1,6 @@
 (ns blaze.elm.expression.cache.codec.by-t-spec
   (:require
+   [blaze.byte-buffer-spec]
    [blaze.db.kv.spec]
    [blaze.elm.expression.cache :as-alias ec]
    [blaze.elm.expression.cache.bloom-filter.spec]
