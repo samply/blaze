@@ -119,13 +119,10 @@ jobs:
         - thread-pool-executor-collector
 
         java-version:
-        - '11'
         - '17'
         - '21'
 
         exclude:
-        - module: jepsen
-          java-version: '11'
         - module: jepsen
           java-version: '17'
 
@@ -166,7 +163,6 @@ jobs:
     strategy:
       matrix:
         java-version:
-        - '11'
         - '17'
         - '21'
 
@@ -212,7 +208,7 @@ jobs:
       uses: actions/setup-java@99b8673ff64fbf99d8d325f52d9a5bdedb8483e9 # v4
       with:
         distribution: 'temurin'
-        java-version: '17'
+        java-version: '21'
 
     - name: Setup Clojure
       uses: DeLaGuardo/setup-clojure@bc7570e912b028bbcc22f457adec7fdf98e2f4ed # 12.5
