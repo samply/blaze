@@ -9,7 +9,7 @@
    [blaze.fhir.test-util :refer [given-failed-future]]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.fhir.util-spec]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :as mtu :refer [with-system]]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
@@ -236,9 +236,10 @@
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (given @(fhir-util/pull (d/db node) "Patient" "0")
+      (given @(mtu/assoc-thread-name (fhir-util/pull (d/db node) "Patient" "0"))
         :fhir/type := :fhir/Patient
-        :id := "0")))
+        :id := "0"
+        [meta :thread-name] :? mtu/common-pool-thread?)))
 
   (testing "pull error"
     (with-redefs

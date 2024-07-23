@@ -15,7 +15,7 @@
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
-(deftype Db [node kv-store basis-t t]
+(defrecord Db [node kv-store basis-t t]
   p/Db
   (-node [_]
     node)

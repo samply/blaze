@@ -144,6 +144,8 @@
   (assoc e ::js/action :update-job))
 
 (defn pull-job
+  "Functions applied after the returned future are executed on the common
+  ForkJoinPool."
   ([node id]
    (pull-job node (d/db node) id))
   ([node db id]
@@ -183,7 +185,10 @@
 
   Returns a CompletableFuture that will complete with the job after the
   transaction in case of success or will complete exceptionally with an anomaly
-  in case of a transaction error or other errors."
+  in case of a transaction error or other errors.
+
+  Functions applied after the returned future are executed on the common
+  ForkJoinPool."
   {:arglists '([node job f] [node job f x])}
   ([node job f]
    (update-job+ node job nil f))

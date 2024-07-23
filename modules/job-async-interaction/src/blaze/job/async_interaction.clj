@@ -110,11 +110,11 @@
 (defn- on-start
   [{:keys [admin-node] ::keys [running-jobs] :as context} job]
   (-> (u/pull-request-bundle admin-node job)
-      (ac/then-compose-async
+      (ac/then-compose
        (fn [{entries :entry}]
          (if-let [t (t job)]
            (-> (job-util/update-job admin-node job start-job)
-               (ac/then-compose-async
+               (ac/then-compose
                 (fn [{:keys [id] :as job}]
                   (swap! running-jobs assoc id false)
                   (let [start (System/currentTimeMillis)]
@@ -127,7 +127,7 @@
                          (fn [e]
                            (if (ba/interrupted? e)
                              (-> (job-util/pull-job admin-node id)
-                                 (ac/then-compose-async
+                                 (ac/then-compose
                                   #(job-util/update-job admin-node % finish-cancellation)))
                              (ac/completed-future e))))
                         (ac/when-complete

@@ -1,7 +1,7 @@
 (ns blaze.rest-api.async-status-handler
   (:require
    [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac :refer [do-async]]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
@@ -16,7 +16,7 @@
 (defn- handler []
   (fn [{{:keys [id]} :path-params :blaze/keys [db]}]
     (-> (fhir-util/pull db "Task" id)
-        (ac/then-compose-async
+        (ac/then-compose
          (fn [{:keys [status] :as job}]
            (case (type/value status)
              "ready"
@@ -33,7 +33,7 @@
                (format "The asynchronous request with id `%s` is cancelled." id)))
              "completed"
              (let [[type id] (some-> job job-async/response-bundle-ref fsr/split-literal-ref)]
-               (do-async [response-bundle (fhir-util/pull db type id)]
+               (do-sync [response-bundle (fhir-util/pull db type id)]
                  (ring/response response-bundle)))
              "failed"
              (ac/completed-future

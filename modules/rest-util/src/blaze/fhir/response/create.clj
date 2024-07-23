@@ -1,6 +1,6 @@
 (ns blaze.fhir.response.create
   (:require
-   [blaze.async.comp :as ac :refer [do-async]]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.handler.fhir.util :as fhir-util]
@@ -32,7 +32,7 @@
         created (and (not (keep? tx-op))
                      (or (nil? old-handle) (identical? :delete (:op old-handle))))]
     (log/trace (format "build-response of %s/%s with vid = %s" type id vid))
-    (do-async [body (body context new-handle)]
+    (do-sync [body (body context new-handle)]
       (cond->
        (-> (ring/response body)
            (ring/status (if created 201 200))

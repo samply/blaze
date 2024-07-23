@@ -21,7 +21,7 @@
    [blaze.job.test-util :as jtu]
    [blaze.job.util :as job-util]
    [blaze.log]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :as mtu :refer [with-system]]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -79,7 +79,7 @@
                       (fn [e]
                         (if (ba/interrupted? e)
                           (-> (job-util/pull-job admin-node id)
-                              (ac/then-compose-async
+                              (ac/then-compose
                                #(job-util/update-job admin-node % finish-cancellation)))
                           e)))))))))
       (-on-resume [_ job]
@@ -325,11 +325,12 @@
     (with-system [{:blaze/keys [job-scheduler] :as system} config]
 
       (testing "the job is created as ready"
-        (given @(js/create-job job-scheduler (ready-job "test"))
+        (given @(mtu/assoc-thread-name (js/create-job job-scheduler (ready-job "test")))
           :fhir/type := :fhir/Task
           job-util/job-number := "1"
           jtu/combined-status := :ready
-          job-util/job-type := :test))
+          job-util/job-type := :test
+          [meta :thread-name] :? mtu/common-pool-thread?))
 
       (testing "the job is in-progress"
         (given @(jtu/pull-job system job-id :in-progress/started)
@@ -459,11 +460,12 @@
 
       @(jtu/pull-job system job-id :in-progress/started)
 
-      (given @(js/cancel-job job-scheduler job-id)
+      (given @(mtu/assoc-thread-name (js/cancel-job job-scheduler job-id))
         :fhir/type := :fhir/Task
         job-util/job-number := "1"
         jtu/combined-status := :cancelled/requested
-        job-util/job-type := :test)
+        job-util/job-type := :test
+        [meta :thread-name] :? mtu/common-pool-thread?)
 
       @(jtu/pull-job system job-id :cancelled/finished)
 
@@ -539,11 +541,12 @@
 
       @(jtu/pull-job system job-id :in-progress/started)
 
-      (given @(js/pause-job job-scheduler job-id)
+      (given @(mtu/assoc-thread-name (js/pause-job job-scheduler job-id))
         :fhir/type := :fhir/Task
         job-util/job-number := "1"
         jtu/combined-status := :on-hold/paused
-        job-util/job-type := :test)))
+        job-util/job-type := :test
+        [meta :thread-name] :? mtu/common-pool-thread?)))
 
   (testing "pause is idempotent, so it can be called twice with the same output"
     (with-system [{:blaze/keys [job-scheduler] :as system} config]
@@ -585,11 +588,12 @@
 
       @(js/pause-job job-scheduler job-id)
 
-      (given @(js/resume-job job-scheduler job-id)
+      (given @(mtu/assoc-thread-name (js/resume-job job-scheduler job-id))
         :fhir/type := :fhir/Task
         job-util/job-number := "1"
         jtu/combined-status := :in-progress/resumed
-        job-util/job-type := :test)
+        job-util/job-type := :test
+        [meta :thread-name] :? mtu/common-pool-thread?)
 
       (testing "the job is completed"
         (given @(jtu/pull-job system job-id :completed)

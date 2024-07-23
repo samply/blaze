@@ -1,7 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.measure
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-   [blaze.async.comp :as ac :refer [do-async do-sync]]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.cql-translator :as cql-translator]
    [blaze.db.api :as d]
@@ -142,7 +142,7 @@
   Returns an anomaly on errors."
   [db measure opts]
   (if-let [library-ref (-> measure :library first type/value)]
-    (do-async [library (find-library db library-ref)]
+    (do-sync [library (find-library db library-ref)]
       (compile-library (d/node db) library opts))
     (ac/completed-future
      (ba/unsupported

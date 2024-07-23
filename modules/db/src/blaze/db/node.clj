@@ -2,7 +2,7 @@
   "This namespace contains the local database node component."
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-   [blaze.async.comp :as ac :refer [do-async do-sync]]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.async.flow :as flow]
    [blaze.db.api :as d]
    [blaze.db.impl.batch-db :as batch-db]
@@ -335,19 +335,19 @@
 
   p/Pull
   (-pull [_ resource-handle]
-    (do-async [resource (get-resource resource-store resource-handle)]
+    (do-sync [resource (get-resource resource-store resource-handle)]
       (or (some->> resource (enhance-resource tx-cache resource-handle))
           (resource-content-not-found-anom resource-handle))))
 
   (-pull-content [_ resource-handle]
-    (do-async [resource (get-resource resource-store resource-handle)]
+    (do-sync [resource (get-resource resource-store resource-handle)]
       (or (some-> resource (with-meta (meta resource-handle)))
           (resource-content-not-found-anom resource-handle))))
 
   (-pull-many [_ resource-handles]
     (let [resource-handles (vec resource-handles)           ; don't evaluate resource-handles twice
           hashes (hashes-of-non-deleted resource-handles)]
-      (do-async [resources (rs/multi-get resource-store hashes)]
+      (do-sync [resources (rs/multi-get resource-store hashes)]
         (into
          []
          (comp (map (partial to-resource tx-cache resources))

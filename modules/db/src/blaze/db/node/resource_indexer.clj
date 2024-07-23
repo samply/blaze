@@ -2,7 +2,7 @@
   "This namespace contains the resource indexer component."
   (:require
    [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac :refer [do-async do-sync]]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.compartment.resource :as cr]
@@ -131,8 +131,7 @@
     (if resources
       (index-resources* context resources)
       (-> (rs/multi-get resource-store (hashes tx-cmds))
-          (ac/then-compose-async
-           (partial index-resources* context))))))
+          (ac/then-compose (partial index-resources* context))))))
 
 (defn- re-index-resource [search-param [hash resource]]
   (log/trace "Re-index resource with hash" (str hash))
@@ -150,7 +149,7 @@
 (defn- re-index-resources*
   [{:keys [resource-store kv-store executor]} search-param resource-handles]
   (log/trace "Re-index" (count resource-handles) "resource(s)")
-  (do-async [resources (rs/multi-get resource-store (mapv rh/hash resource-handles))]
+  (do-sync [resources (rs/multi-get resource-store (mapv rh/hash resource-handles))]
     (async-re-index-resources kv-store executor search-param resources)))
 
 (defn re-index-resources

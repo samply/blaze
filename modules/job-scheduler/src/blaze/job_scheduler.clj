@@ -43,8 +43,7 @@
 (defn- fail-job-on-error [node id e]
   (log/error (format "Error while executing the job with id `%s`:" id) (::anom/message e))
   (-> (job-util/pull-job node id)
-      (ac/then-compose-async
-       #(job-util/update-job node % job-util/fail-job e))))
+      (ac/then-compose #(job-util/update-job node % job-util/fail-job e))))
 
 (defn- job-completion-handler [{:keys [node]} running-jobs id]
   (fn [{:keys [status]} e]
@@ -158,7 +157,7 @@
   {:arglists '([job-scheduler job & other-resources])}
   [{{:keys [node] :as context} :context} job & other-resources]
   (-> (current-job-number-observation context (d/db node))
-      (ac/then-compose-async
+      (ac/then-compose
        (fn [{job-number :value :as obs}]
          (let [id (luid context)]
            (-> (d/transact
@@ -195,7 +194,7 @@
   [{{:keys [node]} :context} id]
   (log/debug "Try to cancel job with id =" id)
   (-> (job-util/pull-job node id)
-      (ac/then-compose-async
+      (ac/then-compose
        (fn [{:keys [status] :as job}]
          (if-not (#{#fhir/code"completed" #fhir/code"failed" #fhir/code"cancelled"} status)
            (job-util/update-job node job cancel-job*)
@@ -210,7 +209,7 @@
 
 (defn- hold-job* [{:keys [node]} id reason conflict-msg]
   (-> (job-util/pull-job node id)
-      (ac/then-compose-async
+      (ac/then-compose
        (fn [{:keys [status] :as job}]
          (condp = status
            #fhir/code"in-progress"
@@ -243,7 +242,7 @@
 
 (defn- resume-job* [{:keys [node]} id]
   (-> (job-util/pull-job node id)
-      (ac/then-compose-async
+      (ac/then-compose
        (fn [{:keys [status] :as job}]
          (condp = status
            #fhir/code"on-hold"

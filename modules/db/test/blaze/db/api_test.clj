@@ -28,7 +28,7 @@
    [blaze.fhir.spec.type.system :as system]
    [blaze.fhir.test-util :refer [given-failed-future]]
    [blaze.log]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :as mtu :refer [with-system]]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -108,10 +108,12 @@
 
     (testing "on currently unavailable database value"
       (with-system [{:blaze.db/keys [node]} config]
-        (let [future (d/sync node 1)]
+        (let [future (mtu/assoc-thread-name (d/sync node 1))]
           @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
 
-          (is (= 1 (d/basis-t @future))))))
+          (given @future
+            d/basis-t := 1
+            [meta :thread-name] :? mtu/common-pool-thread?))))
 
     (testing "errored transactions are ignored"
       (with-system-data [{:blaze.db/keys [node]} config]
@@ -194,8 +196,9 @@
 (deftest transact-test
   (testing "create"
     (testing "one Patient"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+      (with-system [{:blaze.db/keys [node]} config]
+        (given @(mtu/assoc-thread-name (d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]]))
+          [meta :thread-name] :? mtu/common-pool-thread?)
 
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
           :fhir/type := :fhir/Patient
@@ -5303,13 +5306,15 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (let [db (d/db node)]
+      (let [db (d/db node)
+            resource-handle (d/resource-handle db "Patient" "0")]
         (doseq [target [node db]]
-          (given @(d/pull target (d/resource-handle db "Patient" "0"))
+          (given @(mtu/assoc-thread-name (d/pull target resource-handle))
             :fhir/type := :fhir/Patient
             :id := "0"
             [:meta :versionId] := #fhir/id"1"
-            [:meta :lastUpdated] := Instant/EPOCH)))))
+            [:meta :lastUpdated] := Instant/EPOCH
+            [meta :thread-name] :? mtu/common-pool-thread?)))))
 
   (testing "resource content not-found"
     (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-config)]
@@ -5328,12 +5333,14 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (let [db (d/db node)]
+      (let [db (d/db node)
+            resource-handle (d/resource-handle db "Patient" "0")]
         (doseq [target [node db]]
-          (given @(d/pull-content target (d/resource-handle db "Patient" "0"))
+          (given @(mtu/assoc-thread-name (d/pull-content target resource-handle))
             :fhir/type := :fhir/Patient
             :id := "0"
-            :meta := nil)))))
+            :meta := nil
+            [meta :thread-name] :? mtu/common-pool-thread?)))))
 
   (testing "resource content not-found"
     (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-config)]
@@ -5360,13 +5367,14 @@
 
       (let [db (d/db node)]
         (doseq [target [node db]]
-          (given @(d/pull-many target (d/type-list db "Observation"))
+          (given @(mtu/assoc-thread-name (d/pull-many target (d/type-list db "Observation")))
             count := 1
             [0 :fhir/type] := :fhir/Observation
             [0 :id] := "0"
             [0 :meta :tag] := nil
             [0 :code :coding 0 :code] := #fhir/code"code-191518"
-            [0 :subject :reference] := #fhir/string"Patient/0")))))
+            [0 :subject :reference] := #fhir/string"Patient/0"
+            [meta :thread-name] :? mtu/common-pool-thread?)))))
 
   (testing "pull only certain elements"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -5382,14 +5390,15 @@
 
       (let [db (d/db node)]
         (doseq [target [node db]]
-          (given @(d/pull-many target (d/type-list db "Observation") [:subject])
+          (given @(mtu/assoc-thread-name (d/pull-many target (d/type-list db "Observation") [:subject]))
             count := 1
             [0 :fhir/type] := :fhir/Observation
             [0 :id] := "0"
             [0 :meta :tag 0 :system] := #fhir/uri"http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
             [0 :meta :tag 0 :code] := #fhir/code"SUBSETTED"
             [0 :code] := nil
-            [0 :subject :reference] := #fhir/string"Patient/0")))))
+            [0 :subject :reference] := #fhir/string"Patient/0"
+            [meta :thread-name] :? mtu/common-pool-thread?)))))
 
   (testing "pull a single non-existing hash"
     (with-system-data [{:blaze.db/keys [node]} (defective-resource-store-config)]
