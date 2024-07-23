@@ -4,7 +4,7 @@
   https://www.hl7.org/fhir/http.html#transaction"
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
-   [blaze.async.comp :as ac :refer [do-async do-sync]]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
@@ -136,14 +136,14 @@
     ;; transaction because a new id is created for POST requests
     (if-let [handle (d/resource-handle db type id)]
       (if (identical? :blaze.preference.return/representation return-preference)
-        (do-async [resource (pull db handle)]
+        (do-sync [resource (pull db handle)]
           (assoc (created-entry context type handle) :resource resource))
         (ac/completed-future (created-entry context type handle)))
       (let [if-none-exist (-> entry :request :ifNoneExist)
             clauses (conditional-clauses if-none-exist)
             handle (coll/first (d/type-query db type clauses))]
         (if (identical? :blaze.preference.return/representation return-preference)
-          (do-async [resource (pull db handle)]
+          (do-sync [resource (pull db handle)]
             (assoc (noop-entry db handle) :resource resource))
           (ac/completed-future (noop-entry db handle)))))))
 
@@ -170,7 +170,7 @@
   (let [type (name type)
         [new-handle old-handle] (into [] (take 2) (d/instance-history db type id))]
     (if (identical? :blaze.preference.return/representation return-preference)
-      (do-async [resource (pull db new-handle)]
+      (do-sync [resource (pull db new-handle)]
         (assoc (update-entry context type tx-op old-handle new-handle) :resource resource))
       (ac/completed-future (update-entry context type tx-op old-handle new-handle)))))
 

@@ -13,7 +13,7 @@
 
 (defn get
   "Returns a CompletableFuture that will complete with the resource content of
-  `hash` or nil if it was not found."
+  `hash` or will complete with nil if it was not found."
   [store hash]
   (-get store hash))
 

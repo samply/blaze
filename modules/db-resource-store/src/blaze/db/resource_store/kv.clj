@@ -2,7 +2,7 @@
   "A resource store implementation that uses a kev-value store as backend."
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
-   [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.async.comp :as ac :refer [do-async do-sync]]
    [blaze.coll.core :as coll]
    [blaze.db.kv :as kv]
    [blaze.db.kv.spec]
@@ -76,11 +76,12 @@
   (with-open [_ (prom/timer duration-seconds "get-resource")]
     (kv/get kv-store :default (hash/to-byte-array hash))))
 
-(defn- get-and-parse [kv-store hash]
-  (some-> (get-content kv-store hash) (parse-and-conform-cbor hash)))
+(defn- get-content-async [kv-store executor hash]
+  (ac/supply-async #(get-content kv-store hash) executor))
 
 (defn- get-and-parse-async [kv-store executor hash]
-  (ac/supply-async #(get-and-parse kv-store hash) executor))
+  (do-async [bytes (get-content-async kv-store executor hash)]
+    (some-> bytes (parse-and-conform-cbor hash))))
 
 (defn- multi-get-and-parse-async [kv-store executor hashes]
   (mapv (partial get-and-parse-async kv-store executor) hashes))

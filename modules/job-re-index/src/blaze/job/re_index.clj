@@ -118,7 +118,7 @@
       (job-util/update-job admin-node job job-util/fail-job anomaly)
       (cond-> (update-job context job result)
         next
-        (ac/then-compose-async
+        (ac/then-compose
          (fn [job]
            (-> (re-index (name (:fhir/type next)) (:id next))
                (ac/handle (continuation context re-index job))
@@ -134,7 +134,7 @@
       (if-ok [total (d/re-index-total main-db search-param-url)]
         (let [re-index (re-index-fn main-db search-param-url)]
           (-> (job-util/update-job admin-node job start-job total)
-              (ac/then-compose-async
+              (ac/then-compose
                (fn [job]
                  (-> (re-index)
                      (ac/handle (continuation context re-index job))

@@ -15,8 +15,9 @@
    [blaze.fhir.hash-spec]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.test-util :refer [given-failed-future]]
+   [blaze.log]
    [blaze.metrics.spec]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :as mtu :refer [with-system]]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -25,13 +26,14 @@
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [jsonista.core :as j]
+   [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -99,7 +101,7 @@
   (with-system [{collector ::rs-kv/duration-seconds} {::rs-kv/duration-seconds {}}]
     (is (s/valid? :blaze.metrics/collector collector))))
 
-(def ^:private system
+(def ^:private config
   {::rs/kv
    {:kv-store (ig/ref ::kv/mem)
     :executor (ig/ref ::rs-kv/executor)}
@@ -136,13 +138,15 @@
 (deftest get-test
   (testing "success"
     (let [content {:fhir/type :fhir/Patient :id "0"}]
-      (with-system [{store ::rs/kv kv-store ::kv/mem} system]
+      (with-system [{store ::rs/kv kv-store ::kv/mem} config]
         (put! kv-store (hash) content)
 
-        (is (= content @(rs/get store (hash)))))))
+        (given @(mtu/assoc-thread-name (rs/get store (hash)))
+          identity := content
+          [meta :thread-name] :? mtu/common-pool-thread?))))
 
   (testing "parsing error"
-    (with-system [{store ::rs/kv kv-store ::kv/mem} system]
+    (with-system [{store ::rs/kv kv-store ::kv/mem} config]
       (kv/put! kv-store [[:default (hash/to-byte-array (hash)) (invalid-content)]])
 
       (given-failed-future (rs/get store (hash))
@@ -150,7 +154,7 @@
         ::anom/message :# "Error while parsing resource content(.|\\s)*")))
 
   (testing "conforming error"
-    (with-system [{store ::rs/kv kv-store ::kv/mem} system]
+    (with-system [{store ::rs/kv kv-store ::kv/mem} config]
       (kv/put! kv-store [[:default (hash/to-byte-array (hash)) (j/write-value-as-bytes {} cbor-object-mapper)]])
 
       (given-failed-future (rs/get store (hash))
@@ -158,7 +162,7 @@
         ::anom/message := (format "Error while conforming resource content with hash `%s`." (hash)))))
 
   (testing "not-found"
-    (with-system [{store ::rs/kv} system]
+    (with-system [{store ::rs/kv} config]
       (is (nil? @(rs/get store (hash))))))
 
   (testing "error"
@@ -171,24 +175,27 @@
   (testing "success"
     (testing "with one hash"
       (let [content {:fhir/type :fhir/Patient :id "0"}]
-        (with-system [{store ::rs/kv kv-store ::kv/mem} system]
+        (with-system [{store ::rs/kv kv-store ::kv/mem} config]
           (put! kv-store (hash) content)
 
-          (is (= {(hash) content} @(rs/multi-get store [(hash)]))))))
+          (given @(mtu/assoc-thread-name (rs/multi-get store [(hash)]))
+            identity := {(hash) content}))))
 
     (testing "with two hashes"
       (let [content-0 {:fhir/type :fhir/Patient :id "0"}
             content-1 {:fhir/type :fhir/Patient :id "1"}]
-        (with-system [{store ::rs/kv kv-store ::kv/mem} system]
+        (with-system [{store ::rs/kv kv-store ::kv/mem} config]
           (put! kv-store (hash "0") content-0)
           (put! kv-store (hash "1") content-1)
 
-          (is (= {(hash "0") content-0 (hash "1") content-1}
-                 @(rs/multi-get store [(hash "0") (hash "1")])))))))
+          (testing "content matches"
+            (given @(mtu/assoc-thread-name (rs/multi-get store [(hash "0") (hash "1")]))
+              identity := {(hash "0") content-0 (hash "1") content-1}
+              [meta :thread-name] :? mtu/common-pool-thread?))))))
 
   (testing "parsing error"
     (let [hash (hash)]
-      (with-system [{store ::rs/kv kv-store ::kv/mem} system]
+      (with-system [{store ::rs/kv kv-store ::kv/mem} config]
         (kv/put! kv-store [[:default (hash/to-byte-array hash) (invalid-content)]])
 
         (given-failed-future (rs/multi-get store [hash])
@@ -196,8 +203,12 @@
           ::anom/message :# "Error while parsing resource content(.|\\s)*"))))
 
   (testing "not-found"
-    (with-system [{store ::rs/kv} system]
-      (is (= {} @(rs/multi-get store [(hash)])))))
+    (with-system [{store ::rs/kv} config]
+
+      (testing "result is empty"
+        (given @(mtu/assoc-thread-name (rs/multi-get store [(hash)]))
+          identity :? empty?
+          [meta :thread-name] :? mtu/common-pool-thread?))))
 
   (testing "error"
     (testing "with one hash"
@@ -227,7 +238,7 @@
 
 (deftest put-test
   (let [content {:fhir/type :fhir/Patient :id "0"}]
-    (with-system [{store ::rs/kv} system]
+    (with-system [{store ::rs/kv} config]
       @(rs/put! store {(hash) content})
 
       (is (= content @(rs/get store (hash)))))))

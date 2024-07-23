@@ -19,7 +19,7 @@
 (defn- handler [job-scheduler]
   (fn [{{:keys [id]} :path-params}]
     (-> (js/cancel-job job-scheduler id)
-        (ac/then-apply-async
+        (ac/then-apply
          (fn [_]
            (ring/status 202)))
         (ac/exceptionally

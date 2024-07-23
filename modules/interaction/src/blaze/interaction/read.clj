@@ -4,7 +4,7 @@
   https://www.hl7.org/fhir/http.html#read"
   (:require
    [blaze.anomaly :as ba]
-   [blaze.async.comp :as ac :refer [do-async]]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.spec]
    [blaze.handler.fhir.util :as fhir-util]
    [integrant.core :as ig]
@@ -21,7 +21,7 @@
 (def ^:private handler
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params :blaze/keys [db]}]
-    (do-async [resource (fhir-util/pull db type id)]
+    (do-sync [resource (fhir-util/pull db type id)]
       (response resource))))
 
 (defn- wrap-invalid-id [handler]

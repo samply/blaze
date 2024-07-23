@@ -54,10 +54,13 @@
 
   Returns a CompletableFuture that will complete with the database after the
   transaction in case of success or will complete exceptionally with an anomaly
-  in case of a transaction error or other errors."
+  in case of a transaction error or other errors.
+
+  Functions applied after the returned future are executed on the common
+  ForkJoinPool."
   [node tx-ops]
   (-> (np/-submit-tx node tx-ops)
-      (ac/then-compose-async #(np/-tx-result node %))))
+      (ac/then-compose #(np/-tx-result node %))))
 
 (defn changed-resources-publisher
   "Returns a publisher that publishes all changed resources of `type`."
@@ -459,7 +462,10 @@
 
 (defn pull
   "Returns a CompletableFuture that will complete with the resource of
-  `resource-handle` or an anomaly in case of errors."
+  `resource-handle` or an anomaly in case of errors.
+
+  Functions applied after the returned future are executed on the common
+  ForkJoinPool."
   [node-or-db resource-handle]
   (p/-pull node-or-db resource-handle))
 

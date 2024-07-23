@@ -3,7 +3,7 @@
 
   https://www.hl7.org/fhir/http.html#delete"
   (:require
-   [blaze.async.comp :as ac]
+   [blaze.async.comp :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.db.spec]
    [blaze.handler.fhir.util :as fhir-util]
@@ -28,5 +28,5 @@
   (log/info "Init FHIR delete interaction handler")
   (fn [{{{:fhir.resource/keys [type]} :data} ::reitit/match
         {:keys [id]} :path-params}]
-    (-> (d/transact node [[:delete type id]])
-        (ac/then-apply build-response))))
+    (do-sync [db (d/transact node [[:delete type id]])]
+      (build-response db))))

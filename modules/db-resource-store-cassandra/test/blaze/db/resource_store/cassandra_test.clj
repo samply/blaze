@@ -13,7 +13,7 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.test-util :refer [given-failed-future]]
    [blaze.log]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :as mtu :refer [with-system]]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -22,6 +22,7 @@
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [jsonista.core :as j]
+   [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
    [com.datastax.oss.driver.api.core
@@ -33,12 +34,11 @@
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
    [java.net InetSocketAddress]
    [java.nio ByteBuffer]
-   #_{:clj-kondo/ignore [:unused-import]}
    [java.util.concurrent CompletionStage]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -227,7 +227,9 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
-          (is (= content @(rs/get store hash)))))))
+          (given @(mtu/assoc-thread-name (rs/get store hash))
+            identity := content
+            [meta :thread-name] :? mtu/common-pool-thread?)))))
 
   (testing "success after one retry due to timeout"
     (let [content {:fhir/type :fhir/Patient :id "0"}
@@ -253,7 +255,10 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
-          (is (= content @(rs/get store hash))))))))
+          (testing "content matches"
+            (given @(mtu/assoc-thread-name (rs/get store hash))
+              identity := content
+              [meta :thread-name] :? mtu/common-pool-thread?)))))))
 
 (deftest multi-get-test
   (testing "not found"
@@ -275,7 +280,10 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
-          (is (empty? @(rs/multi-get store [hash])))))))
+          (testing "result is empty"
+            (given @(mtu/assoc-thread-name (rs/multi-get store [hash]))
+              identity :? empty?
+              [meta :thread-name] :? mtu/common-pool-thread?))))))
 
   (testing "success"
     (let [content {:fhir/type :fhir/Patient :id "0"}
@@ -298,7 +306,9 @@
 
       (with-redefs [cass/session (fn [_] session)]
         (with-system [{store ::rs/cassandra} {::rs/cassandra {}}]
-          (is (= {hash content} @(rs/multi-get store [hash]))))))))
+          (given @(mtu/assoc-thread-name (rs/multi-get store [hash]))
+            identity := {hash content}
+            [meta :thread-name] :? mtu/common-pool-thread?))))))
 
 (def bound-put-statement (reify BoundStatement))
 

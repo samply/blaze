@@ -13,11 +13,12 @@
    [blaze.job.async-interaction.util :as u]
    [blaze.job.async-interaction.util-spec]
    [blaze.log]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :as mtu :refer [with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
-   [cognitect.anomalies :as anom]))
+   [cognitect.anomalies :as anom]
+   [juxt.iota :refer [given]]))
 
 (st/instrument)
 
@@ -63,4 +64,16 @@
          :id "180340"
          :input [(u/request-bundle-input "Bundle/180302")]})
         ::anom/category := ::anom/not-found
-        ::anom/message := "The request bundle with id `180302` of job with id `180340` was deleted."))))
+        ::anom/message := "The request bundle with id `180302` of job with id `180340` was deleted.")))
+
+  (testing "success"
+    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      [[[:create {:fhir/type :fhir/Bundle :id "180302"}]]]
+
+      (let [task {:fhir/type :fhir/Task :id "180340"
+                  :input [(u/request-bundle-input "Bundle/180302")]}]
+
+        (given @(mtu/assoc-thread-name (u/pull-request-bundle node task))
+          :fhir/type := :fhir/Bundle
+          :id := "180302"
+          [meta :thread-name] :? mtu/common-pool-thread?)))))
