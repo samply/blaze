@@ -211,7 +211,8 @@
   :blaze.fhir.operation.evaluate-measure/timeout
   {:millis #blaze/cfg ["FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT" nat-int? 3600000]}
 
-  :blaze.fhir.operation.evaluate-measure/executor {}
+  :blaze.fhir.operation.evaluate-measure/executor
+  {:num-threads #blaze/cfg ["FHIR_OPERATION_EVALUATE_MEASURE_THREADS" nat-int? :available-processors]}
 
   :blaze.fhir.operation.evaluate-measure/compile-duration-seconds {}
   :blaze.fhir.operation.evaluate-measure/evaluate-duration-seconds {}

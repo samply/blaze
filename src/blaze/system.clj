@@ -6,6 +6,7 @@
   be given to `init!``. The server port has a default of `8080`."
   (:require
    [blaze.log]
+   [blaze.util :as u]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -36,6 +37,11 @@
 
 (defrecord Cfg [env-var spec default])
 
+(defn- resolve-special-default-values [default]
+  (condp identical? default
+    :available-processors (u/available-processors)
+    default))
+
 (defn- cfg
   "Creates a config entry which consists of the name of an environment variable,
   a spec and a default value.
@@ -46,7 +52,7 @@
         (if (symbol? spec-form)
           (var-get (resolve spec-form))
           spec-form)]
-    (->Cfg env-var spec default)))
+    (->Cfg env-var spec (resolve-special-default-values default))))
 
 (defrecord RefMap [key]
   ig/RefLike

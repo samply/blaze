@@ -30,3 +30,6 @@
   (satisfies-prop 10000
     (prop/for-all [s gen/string]
       (not (str/starts-with? (u/strip-leading-slashes s) "/")))))
+
+(deftest available-processors-test
+  (is (pos-int? (u/available-processors))))

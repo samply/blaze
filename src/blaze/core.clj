@@ -9,9 +9,6 @@
 (defn- max-memory []
   (quot (.maxMemory (Runtime/getRuntime)) (* 1024 1024)))
 
-(defn- available-processors []
-  (.availableProcessors (Runtime/getRuntime)))
-
 (defn- config-msg [config]
   (->> (sort-by key config)
        (map (fn [[k v]] (str k " = " v)))
@@ -54,6 +51,6 @@
         {:blaze/keys [version]} (init-system! (System/getenv))]
     (log/info "JVM version:" (System/getProperty "java.version"))
     (log/info "Maximum available memory:" (max-memory) "MiB")
-    (log/info "Number of available processors:" (available-processors))
+    (log/info "Number of available processors:" (u/available-processors))
     (log/info "Successfully started \uD83D\uDD25 Blaze version" version "in"
               (format "%.1f" (u/duration-s start)) "seconds")))

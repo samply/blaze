@@ -19,6 +19,7 @@
    [blaze.luid :as luid]
    [blaze.module :as m :refer [reg-collector]]
    [blaze.spec]
+   [blaze.util :as u]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
@@ -139,14 +140,16 @@
 (defmethod ig/init-key ::timeout [_ {:keys [millis]}]
   (time/millis millis))
 
-(defn- executor-init-msg []
-  (format "Init $evaluate-measure operation executor with %d threads"
-          (.availableProcessors (Runtime/getRuntime))))
+(defmethod m/pre-init-spec ::executor [_]
+  (s/keys :opt-un [:blaze.fhir.operation.evaluate-measure.executor/num-threads]))
+
+(defn- executor-init-msg [num-threads]
+  (format "Init $evaluate-measure operation executor with %d threads" num-threads))
 
 (defmethod ig/init-key ::executor
-  [_ _]
-  (log/info (executor-init-msg))
-  (ex/cpu-bound-pool "operation-evaluate-measure-%d"))
+  [_ {:keys [num-threads] :or {num-threads (u/available-processors)}}]
+  (log/info (executor-init-msg num-threads))
+  (ex/io-pool num-threads "operation-evaluate-measure-%d"))
 
 (defmethod ig/halt-key! ::executor
   [_ executor]

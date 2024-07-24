@@ -20,3 +20,6 @@
   "Strips all possible leading slashes from `s`."
   [s]
   (if (str/starts-with? s "/") (recur (subs s 1)) s))
+
+(defn available-processors []
+  (.availableProcessors (Runtime/getRuntime)))
