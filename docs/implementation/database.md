@@ -120,14 +120,14 @@ The `SystemStats` index keeps track of the total number of resources, and the nu
 
 The indices not depending on `t` directly point to the resource versions by their content hash. 
 
-| Name                                | Key Parts                                                        | Value |
+| Name                                | Key Parts                                                      | Value |
 |-------------------------------------|----------------------------------------------------------------|-------|
 | SearchParamValueResource            | search-param, type, value, id, hash-prefix                     | -     |
 | ResourceSearchParamValue            | type, id, hash-prefix, search-param, value                     | -     |
 | CompartmentSearchParamValueResource | comp-code, comp-id, search-param, type, value, id, hash-prefix | -     |
 | CompartmentResourceType             | comp-code, comp-id, type, id                                   | -     |
 | SearchParam                         | code, type                                                     | id    |
-| ActiveSearchParams                  | id                                                               | -     |
+| ActiveSearchParams                  | id                                                             | -     |
 
 #### SearchParamValueResource
 

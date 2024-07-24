@@ -17,9 +17,12 @@
     [ns name]))
 
 (defn parse-type
+  "Transforms `type-specifier` into either the type name or a vector of the
+  type name for list types."
+  {:arglists '([type-specifier])}
   [{:keys [type name] element-type :elementType}]
   (condp = type
     "NamedTypeSpecifier"
     (second (parse-qualified-name name))
     "ListTypeSpecifier"
-    (str "List<" (parse-type element-type) ">")))
+    [(parse-type element-type)]))

@@ -127,6 +127,11 @@
     (elm-util/parse-type {:type "NamedTypeSpecifier" :name result-type-name})
     (elm-util/parse-type result-type-specifier)))
 
+(defn- render-result-type [result-type]
+  (if (vector? result-type)
+    (format "List<%s>" (first result-type))
+    result-type))
+
 (defn- check-result-type
   "Returns an anomaly if `population-basis` is not compatible with the result
   type of `expression-def`."
@@ -137,14 +142,14 @@
       (when-not (= "Boolean" result-type)
         (ba/incorrect
          (format "The result type `%s` of the expression `%s` differs from the population basis :boolean."
-                 result-type name)
+                 (render-result-type result-type) name)
          :expression-name name
          :population-basis :boolean
          :expression-result-type result-type))
-      (when-not (= (str "List<" population-basis ">") result-type)
+      (when-not (= [population-basis] result-type)
         (ba/incorrect
          (format "The result type `%s` of the expression `%s` differs from the population basis `%s`."
-                 result-type name population-basis)
+                 (render-result-type result-type) name population-basis)
          :expression-name name
          :population-basis population-basis
          :expression-result-type result-type)))))
