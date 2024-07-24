@@ -16,3 +16,6 @@
 
 (s/def :blaze.fhir.operation.evaluate-measure.timeout/millis
   nat-int?)
+
+(s/def :blaze.fhir.operation.evaluate-measure.executor/num-threads
+  pos-int?)
