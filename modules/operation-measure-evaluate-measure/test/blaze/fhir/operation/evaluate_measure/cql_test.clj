@@ -201,7 +201,7 @@
             ::anom/message := "The result type `List<Encounter>` of the expression `InInitialPopulation` differs from the population basis :boolean."
             :expression-name := "InInitialPopulation"
             :population-basis := :boolean
-            :expression-result-type := "List<Encounter>"))))
+            :expression-result-type := ["Encounter"]))))
 
     (testing "Encounter"
       (with-system [system config]

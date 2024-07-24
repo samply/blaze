@@ -30,5 +30,8 @@
   (testing "ELM type"
     (is (= "String" (elm-util/parse-type {:type "NamedTypeSpecifier" :name "{urn:hl7-org:elm-types:r1}String"}))))
 
+  (testing "FHIR type"
+    (is (= "Encounter" (elm-util/parse-type {:type "NamedTypeSpecifier" :name "{http://hl7.org/fhir}Encounter"}))))
+
   (testing "list type"
-    (is (= "List<Encounter>" (elm-util/parse-type {:type "ListTypeSpecifier" :elementType {:type "NamedTypeSpecifier" :name "{http://hl7.org/fhir}Encounter"}})))))
+    (is (= ["Encounter"] (elm-util/parse-type {:type "ListTypeSpecifier" :elementType {:type "NamedTypeSpecifier" :name "{http://hl7.org/fhir}Encounter"}})))))
