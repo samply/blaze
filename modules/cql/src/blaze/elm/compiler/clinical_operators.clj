@@ -19,13 +19,14 @@
       (core/attach-cache-helper-2 calculate-age-at-op cache birth-date
                                   date chrono-precision precision))
     (-resolve-refs [_ expression-defs]
-      (calculate-age-at-op (core/-resolve-refs birth-date expression-defs)
-                           (core/-resolve-refs date expression-defs)
-                           chrono-precision precision))
+      (core/resolve-refs-helper-2 calculate-age-at-op expression-defs birth-date
+                                  date chrono-precision precision))
     (-resolve-params [_ parameters]
-      (calculate-age-at-op (core/-resolve-params birth-date parameters)
-                           (core/-resolve-params date parameters)
-                           chrono-precision precision))
+      (core/resolve-params-helper-2 calculate-age-at-op parameters birth-date
+                                    date chrono-precision precision))
+    (-optimize [_ node]
+      (core/optimize-helper-2 calculate-age-at-op node birth-date date
+                              chrono-precision precision))
     (-eval [_ context resource scope]
       (p/duration-between
        (core/-eval birth-date context resource scope)

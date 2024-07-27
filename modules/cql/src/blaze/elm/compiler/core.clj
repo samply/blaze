@@ -30,8 +30,10 @@
     count can be used by other expressions (most likely and/or/case) to
     reorder their operands so that expressions with less patients get evaluated
     first. Returns nil if unknown.")
-  (-resolve-refs [expression expression-defs])
+  (-resolve-refs [expression expression-defs]
+    "Resolves expressions defined in `expression-defs` in `expression`.")
   (-resolve-params [expression parameters])
+  (-optimize [expression node])
   (-eval [expression context resource scope]
     "Evaluates `expression` on `resource` using `context` and optional `scope`
     for scoped expressions inside queries.")
@@ -70,13 +72,9 @@
      [(fn [] [(constructor op-1 op-2 op-3) (into op-1-bfs (into op-2-bfs op-3-bfs))])])))
 
 (defn attach-cache-helper-1
-  ([constructor cache op arg]
-   (let [[op op-bfs] ((first (-attach-cache op cache)))]
-     [(fn [] [(constructor op arg) op-bfs])]))
-  ([constructor cache op-1 op-2 arg]
-   (let [[op-1 op-1-bfs] ((first (-attach-cache op-1 cache)))
-         [op-2 op-2-bfs] ((first (-attach-cache op-2 cache)))]
-     [(fn [] [(constructor op-1 op-2 arg) (into op-1-bfs op-2-bfs)])])))
+  [constructor cache op arg]
+  (let [[op op-bfs] ((first (-attach-cache op cache)))]
+    [(fn [] [(constructor op arg) op-bfs])]))
 
 (defn attach-cache-helper-2
   ([constructor cache op arg-1 arg-2]
@@ -88,8 +86,8 @@
      [(fn [] [(constructor op-1 op-2 arg-1 arg-2) (into op-1-bfs op-2-bfs)])])))
 
 (defn resolve-refs-helper
-  ([constructor expression-defs op-1]
-   (constructor (-resolve-refs op-1 expression-defs)))
+  ([constructor expression-defs op]
+   (constructor (-resolve-refs op expression-defs)))
   ([constructor expression-defs op-1 op-2]
    (constructor (-resolve-refs op-1 expression-defs)
                 (-resolve-refs op-2 expression-defs)))
@@ -98,9 +96,21 @@
                 (-resolve-refs op-2 expression-defs)
                 (-resolve-refs op-3 expression-defs))))
 
+(defn resolve-refs-helper-1
+  [constructor expression-defs op-1 op-2 arg]
+  (constructor (-resolve-refs op-1 expression-defs)
+               (-resolve-refs op-2 expression-defs)
+               arg))
+
+(defn resolve-refs-helper-2
+  [constructor expression-defs op-1 op-2 arg-1 arg-2]
+  (constructor (-resolve-refs op-1 expression-defs)
+               (-resolve-refs op-2 expression-defs)
+               arg-1 arg-2))
+
 (defn resolve-params-helper
-  ([constructor parameters op-1]
-   (constructor (-resolve-params op-1 parameters)))
+  ([constructor parameters op]
+   (constructor (-resolve-params op parameters)))
   ([constructor parameters op-1 op-2]
    (constructor (-resolve-params op-1 parameters)
                 (-resolve-params op-2 parameters)))
@@ -108,6 +118,34 @@
    (constructor (-resolve-params op-1 parameters)
                 (-resolve-params op-2 parameters)
                 (-resolve-params op-3 parameters))))
+
+(defn resolve-params-helper-1
+  [constructor parameters op-1 op-2 arg]
+  (constructor (-resolve-params op-1 parameters)
+               (-resolve-params op-2 parameters)
+               arg))
+
+(defn resolve-params-helper-2
+  [constructor parameters op-1 op-2 arg-1 arg-2]
+  (constructor (-resolve-params op-1 parameters)
+               (-resolve-params op-2 parameters)
+               arg-1 arg-2))
+
+(defn optimize-helper
+  ([constructor node op]
+   (constructor (-optimize op node)))
+  ([constructor node op-1 op-2]
+   (constructor (-optimize op-1 node) (-optimize op-2 node)))
+  ([constructor node op-1 op-2 op-3]
+   (constructor (-optimize op-1 node) (-optimize op-2 node) (-optimize op-3 node))))
+
+(defn optimize-helper-1
+  [constructor node op-1 op-2 arg]
+  (constructor (-optimize op-1 node) (-optimize op-2 node) arg))
+
+(defn optimize-helper-2
+  [constructor node op-1 op-2 arg-1 arg-2]
+  (constructor (-optimize op-1 node) (-optimize op-2 node) arg-1 arg-2))
 
 (extend-protocol Expression
   nil
@@ -120,6 +158,8 @@
   (-resolve-refs [expr _]
     expr)
   (-resolve-params [expr _]
+    expr)
+  (-optimize [expr _]
     expr)
   (-eval [expr _ _ _]
     expr)
@@ -137,6 +177,8 @@
     expr)
   (-resolve-params [expr _]
     expr)
+  (-optimize [expr _]
+    expr)
   (-eval [expr _ _ _]
     expr)
   (-form [expr]
@@ -152,6 +194,8 @@
   (-resolve-refs [expr _]
     expr)
   (-resolve-params [expr _]
+    expr)
+  (-optimize [expr _]
     expr)
   (-eval [expr _ _ _]
     expr)

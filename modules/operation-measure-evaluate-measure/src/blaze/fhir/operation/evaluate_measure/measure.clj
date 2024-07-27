@@ -129,7 +129,13 @@
       :fhir/issue "value"
       :fhir.issue/expression "Measure.library"))))
 
-(defn- remove-unused-defs [expression-defs measure]
+(defn- remove-unused-defs
+  "Removes all expression definitions from `expression-defs` that are not
+  referenced by `measure`.
+
+  This function should be only called after `library/resolve-all-refs` was
+  called in order to ensure that no open references exist."
+  [expression-defs measure]
   (into {} (filter (comp (u/expression-names measure) key)) expression-defs))
 
 (defn- compile-primary-library
@@ -406,7 +412,6 @@
           (.toMillis ^Duration timeout)))
 
 (defn- attach-cache* [cache context [name {:keys [expression] :as expr}]]
-  [name (c/form expression)]
   (let [[expression bloom-filters] (c/attach-cache expression cache)]
     (-> (assoc-in context [:expression-defs name] (assoc expr :expression expression))
         (update :bloom-filters into bloom-filters))))
@@ -450,7 +455,8 @@
     (do-sync [{:keys [expression-defs function-defs parameter-default-values]}
               (compile-primary-library db measure {})]
       (when-ok [subject-handle (some->> subject-ref (subject-handle db subject-type))]
-        (let [context
+        (let [optimize (partial library/optimize (d/node db))
+              context
               (cond->
                (assoc
                 context
@@ -471,7 +477,8 @@
                      context
                      :expression-defs
                      (-> (remove-unused-defs expression-defs measure)
-                         (library/resolve-param-refs parameter-default-values)))
+                         (library/resolve-params parameter-default-values)
+                         (optimize)))
               cache (attach-cache cache)
               subject-handle
               (assoc :subject-handle (cr/mk-resource db subject-handle)))))))))

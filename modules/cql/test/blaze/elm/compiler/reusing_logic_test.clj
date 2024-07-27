@@ -93,6 +93,12 @@
            expr# (c/resolve-refs (c/compile ctx# elm#) {"x" expr-def#})]
        (has-form expr# '(~'call ~name "y")))))
 
+(defmacro testing-function-ref-optimize [name]
+  `(testing "optimize"
+     (let [elm# #elm/function-ref [~name {:type "Optimizeable" :id "x"}]
+           expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
+       (has-form expr# (list '~'call ~name '~'(optimized "x"))))))
+
 (deftest compile-function-ref-test
   (testing "Throws error on missing function"
     (given (ba/try-anomaly (c/compile {} #elm/function-ref ["name-175844"]))
@@ -124,6 +130,10 @@
 
       (testing "resolve parameters"
         (has-form (core/-resolve-params expr {})
+          (list 'call function-name)))
+
+      (testing "optimize"
+        (has-form (core/-optimize expr nil)
           (list 'call function-name)))
 
       (testing "form"
@@ -173,6 +183,11 @@
 
         (has-form (core/-resolve-params expr {})
           (list 'call function-name '(param-ref "a"))))
+
+      (testing "optimize"
+        (let [elm (elm/function-ref [function-name {:type "Optimizeable" :id "x"}])
+              expr (st/with-instrument-disabled (c/optimize nil (c/compile compile-ctx elm)))]
+          (has-form expr (list 'call function-name '(optimized "x")))))
 
       (testing "form"
         (has-form expr (list 'call function-name '(param-ref "a"))))))
@@ -229,6 +244,12 @@
         (has-form (core/-resolve-params expr {})
           (list 'call function-name '(param-ref "a") '(param-ref "b"))))
 
+      (testing "optimize"
+        (let [elm (elm/function-ref [function-name {:type "Optimizeable" :id "x"}
+                                     {:type "Optimizeable" :id "y"}])
+              expr (st/with-instrument-disabled (c/optimize nil (c/compile compile-ctx elm)))]
+          (has-form expr (list 'call function-name '(optimized "x") '(optimized "y")))))
+
       (testing "form"
         (has-form expr (list 'call function-name '(param-ref "a") '(param-ref "b"))))))
 
@@ -253,6 +274,8 @@
       (testing "resolve parameters"
         (has-form (core/-resolve-params expr {})
           '(call "ToQuantity" (param-ref "x"))))
+
+      (testing-function-ref-optimize "ToQuantity")
 
       (testing "form"
         (has-form expr '(call "ToQuantity" (param-ref "x"))))))
@@ -281,6 +304,8 @@
       (testing "resolve parameters"
         (has-form (core/-resolve-params expr {})
           '(call "ToDate" (param-ref "x"))))
+
+      (testing-function-ref-optimize "ToDate")
 
       (testing "form"
         (has-form expr '(call "ToDate" (param-ref "x"))))))
@@ -319,6 +344,8 @@
         (has-form (core/-resolve-params expr {})
           '(call "ToDateTime" (param-ref "x"))))
 
+      (testing-function-ref-optimize "ToDateTime")
+
       (testing "form"
         (has-form expr '(call "ToDateTime" (param-ref "x"))))))
 
@@ -344,6 +371,8 @@
       (testing "resolve parameters"
         (has-form (core/-resolve-params expr {})
           '(call "ToString" (param-ref "x"))))
+
+      (testing-function-ref-optimize "ToString")
 
       (testing "form"
         (has-form expr '(call "ToString" (param-ref "x"))))))
@@ -372,6 +401,8 @@
       (testing "resolve parameters"
         (has-form (core/-resolve-params expr {})
           '(call "ToCode" (param-ref "x"))))
+
+      (testing-function-ref-optimize "ToCode")
 
       (testing "form"
         (has-form expr '(call "ToCode" (param-ref "x"))))))
@@ -418,6 +449,8 @@
                                {:start #fhir/dateTime"2021-02-23T15:12:45+01:00"
                                 :end #fhir/dateTime"2021-02-23T16:00:00+01:00"}))
 
+        (testing-function-ref-optimize "ToInterval")
+
         (has-form (core/-resolve-params expr {})
           '(call "ToInterval" (param-ref "x"))))
 
@@ -460,6 +493,8 @@
                                [#fhir/Coding{:system "system-172740"
                                              :version "version-172819"
                                              :code "code-172745"}]}))
+
+        (testing-function-ref-optimize "ToConcept")
 
         (has-form (core/-resolve-params expr {})
           '(call "ToConcept" (param-ref "x"))))

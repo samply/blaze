@@ -36,6 +36,7 @@
  elm/list blaze.elm.literal/list
  elm/if blaze.elm.literal/if-expr
  elm/abs blaze.elm.literal/abs
+ elm/combine blaze.elm.literal/combine
  elm/concatenate blaze.elm.literal/concatenate
  elm/ends-with blaze.elm.literal/ends-with
  elm/indexer blaze.elm.literal/indexer

@@ -43,6 +43,8 @@
        (core/resolve-refs-helper date-op expression-defs year))
      (-resolve-params [_ parameters]
        (core/resolve-params-helper date-op parameters year))
+     (-optimize [_ node]
+       (core/optimize-helper date-op node year))
      (-eval [_ context resource scope]
        (some-> (core/-eval year context resource scope) system/date))
      (-form [_]
@@ -69,6 +71,8 @@
        (core/resolve-refs-helper date-op expression-defs year month))
      (-resolve-params [_ parameters]
        (core/resolve-params-helper date-op parameters year month))
+     (-optimize [_ node]
+       (core/optimize-helper date-op node year month))
      (-eval [_ context resource scope]
        (when-let [year (core/-eval year context resource scope)]
          (if-let [month (core/-eval month context resource scope)]
@@ -98,6 +102,8 @@
        (core/resolve-refs-helper date-op expression-defs year month day))
      (-resolve-params [_ parameters]
        (core/resolve-params-helper date-op parameters year month day))
+     (-optimize [_ node]
+       (core/optimize-helper date-op node year month day))
      (-eval [_ context resource scope]
        (when-let [year (core/-eval year context resource scope)]
          (if-let [month (core/-eval month context resource scope)]
@@ -176,6 +182,15 @@
         (core/-resolve-params minute parameters)
         (core/-resolve-params second parameters)
         (core/-resolve-params millisecond parameters)))
+     (-optimize [_ node]
+       (date-time-dynamic-op
+        (core/-optimize year node)
+        (core/-optimize month node)
+        (core/-optimize day node)
+        (core/-optimize hour node)
+        (core/-optimize minute node)
+        (core/-optimize second node)
+        (core/-optimize millisecond node)))
      (-eval [_ context resource scope]
        (system/date-time
         (core/-eval year context resource scope)
@@ -211,6 +226,16 @@
         (core/-resolve-params second parameters)
         (core/-resolve-params millisecond parameters)
         (core/-resolve-params timezone-offset parameters)))
+     (-optimize [_ node]
+       (date-time-dynamic-op
+        (core/-optimize year node)
+        (core/-optimize month node)
+        (core/-optimize day node)
+        (core/-optimize hour node)
+        (core/-optimize minute node)
+        (core/-optimize second node)
+        (core/-optimize millisecond node)
+        (core/-optimize timezone-offset node)))
      (-eval [_ {:keys [now] :as context} resource scope]
        (to-local-date-time-with-offset
         now
@@ -262,6 +287,27 @@
            (core/-resolve-params second parameters)
            (core/-resolve-params millisecond parameters)
            timezone-offset))))
+    (-optimize [_ node]
+      (let [timezone-offset (core/-optimize timezone-offset node)]
+        (if (number? timezone-offset)
+          (date-time-dynamic-op
+           (core/-optimize year node)
+           (core/-optimize month node)
+           (core/-optimize day node)
+           (core/-optimize hour node)
+           (core/-optimize minute node)
+           (core/-optimize second node)
+           (core/-optimize millisecond node)
+           timezone-offset)
+          (date-time-dynamic-timezone-offset-op
+           (core/-optimize year node)
+           (core/-optimize month node)
+           (core/-optimize day node)
+           (core/-optimize hour node)
+           (core/-optimize minute node)
+           (core/-optimize second node)
+           (core/-optimize millisecond node)
+           timezone-offset))))
     (-eval [_ {:keys [now] :as context} resource scope]
       (to-local-date-time-with-offset
        now
@@ -287,6 +333,8 @@
       (core/resolve-refs-helper date-time-date-op expression-defs year month day))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper date-time-date-op parameters year month day))
+    (-optimize [_ node]
+      (core/optimize-helper date-time-date-op node year month day))
     (-eval [_ context resource scope]
       (when-let [year (core/-eval year context resource scope)]
         (if-let [month (core/-eval month context resource scope)]
@@ -306,6 +354,8 @@
       (core/resolve-refs-helper date-time-year-month-op expression-defs year month))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper date-time-year-month-op parameters year month))
+    (-optimize [_ node]
+      (core/optimize-helper date-time-year-month-op node year month))
     (-eval [_ context resource scope]
       (when-let [year (core/-eval year context resource scope)]
         (if-let [month (core/-eval month context resource scope)]
@@ -322,6 +372,8 @@
       (core/resolve-refs-helper date-time-year-op expression-defs year))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper date-time-year-op parameters year))
+    (-optimize [_ node]
+      (core/optimize-helper date-time-year-op node year))
     (-eval [_ context resource scope]
       (some-> (core/-eval year context resource scope) system/date-time))
     (-form [_]
@@ -428,20 +480,28 @@
 (defn- time-op
   ([hour]
    (reify-expr core/Expression
+     (-attach-cache [_ cache]
+       (core/attach-cache-helper time-op cache hour))
      (-resolve-refs [_ expression-defs]
        (core/resolve-refs-helper time-op expression-defs hour))
      (-resolve-params [_ parameters]
-       (time-op (core/-resolve-params hour parameters)))
+       (core/resolve-params-helper time-op parameters hour))
+     (-optimize [_ node]
+       (core/optimize-helper time-op node hour))
      (-eval [_ context resource scope]
        (date-time/local-time (core/-eval hour context resource scope)))
      (-form [_]
        (list 'time (core/-form hour)))))
   ([hour minute]
    (reify-expr core/Expression
+     (-attach-cache [_ cache]
+       (core/attach-cache-helper time-op cache hour minute))
      (-resolve-refs [_ expression-defs]
        (core/resolve-refs-helper time-op expression-defs hour minute))
      (-resolve-params [_ parameters]
        (core/resolve-params-helper time-op parameters hour minute))
+     (-optimize [_ node]
+       (core/optimize-helper time-op node hour minute))
      (-eval [_ context resource scope]
        (date-time/local-time
         (core/-eval hour context resource scope)
@@ -450,10 +510,14 @@
        (list 'time (core/-form hour) (core/-form minute)))))
   ([hour minute second]
    (reify-expr core/Expression
+     (-attach-cache [_ cache]
+       (core/attach-cache-helper time-op cache hour minute second))
      (-resolve-refs [_ expression-defs]
        (core/resolve-refs-helper time-op expression-defs hour minute second))
      (-resolve-params [_ parameters]
        (core/resolve-params-helper time-op parameters hour minute second))
+     (-optimize [_ node]
+       (core/optimize-helper time-op node hour minute second))
      (-eval [_ context resource scope]
        (date-time/local-time
         (core/-eval hour context resource scope)
@@ -475,6 +539,12 @@
         (core/-resolve-params minute parameters)
         (core/-resolve-params second parameters)
         (core/-resolve-params millisecond parameters)))
+     (-optimize [_ node]
+       (time-op
+        (core/-optimize hour node)
+        (core/-optimize minute node)
+        (core/-optimize second node)
+        (core/-optimize millisecond node)))
      (-eval [_ context resource scope]
        (date-time/local-time
         (core/-eval hour context resource scope)

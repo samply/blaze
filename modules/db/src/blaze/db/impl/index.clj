@@ -77,8 +77,8 @@
     (-> clauses order-clauses fix-last-updated)))
 
 (defn other-clauses-filter
-  "Creates a filter xform for all `clauses` by possibly composing multiple
-  filter xforms for each clause."
+  "Creates a filter transducer for all `clauses` by possibly composing multiple
+  filter transducers for each clause."
   [batch-db clauses]
   (transduce
    (map
@@ -112,19 +112,19 @@
          search-param batch-db tid modifier values))
        (resource-handles
         search-param batch-db tid modifier values))))
-  ([context tid clauses start-id]
+  ([batch-db tid clauses start-id]
    (let [[[search-param modifier _ values] & other-clauses] clauses]
      (if (seq other-clauses)
        (coll/eduction
-        (other-clauses-filter context other-clauses)
+        (other-clauses-filter batch-db other-clauses)
         (resource-handles
-         search-param context tid modifier values start-id))
+         search-param batch-db tid modifier values start-id))
        (resource-handles
-        search-param context tid modifier values start-id)))))
+        search-param batch-db tid modifier values start-id)))))
 
-(defn- resource-handle-chunk-counter [context other-clauses chunk]
+(defn- resource-handle-chunk-counter [batch-db other-clauses chunk]
   (transduce
-   (other-clauses-filter context other-clauses)
+   (other-clauses-filter batch-db other-clauses)
    (completing (fn [sum _] (inc sum)))
    0
    chunk))

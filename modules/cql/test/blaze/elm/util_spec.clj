@@ -11,3 +11,7 @@
 (s/fdef elm-util/parse-type
   :args (s/cat :type-specifier :elm/type-specifier)
   :ret (s/nilable (s/or :type string? :list-type (s/tuple string?))))
+
+(s/fdef elm-util/parse-type
+  :args (s/cat :type-specifier :elm/type-specifier)
+  :ret (s/nilable (s/or :type string? :list-type (s/tuple string?))))

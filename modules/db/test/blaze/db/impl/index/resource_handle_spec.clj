@@ -39,6 +39,14 @@
   :args (s/cat :rh rh/resource-handle?)
   :ret :blaze.resource/hash)
 
+(s/fdef rh/num-changes
+  :args (s/cat :rh rh/resource-handle?)
+  :ret :blaze.db/num-changes)
+
+(s/fdef rh/op
+  :args (s/cat :rh rh/resource-handle?)
+  :ret :blaze.db/op)
+
 (s/fdef rh/reference
   :args (s/cat :rh rh/resource-handle?)
   :ret :blaze.fhir/literal-ref)

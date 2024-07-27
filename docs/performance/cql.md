@@ -35,11 +35,23 @@ The following datasets were used:
 
 The creation of the datasets is described in the [Synthea section](./synthea/README.md). The disc size is measured after full manual compaction of the database. The actual disc size will be up to 50% higher, depending on the state of compaction which happens regularly in the background.
 
-## Metric
+## Methods
+
+### Metric
 
 The metric analyzed here are the number of patients a system can process per second. It was chosen because the CQL evaluation performance depends heavily on the number of patients available in Blaze. The datasets contain either 100 k or 1 million patients in order to represent two relevant sizes from where an interpolation or extrapolation towards the target size should be possible. The metric patients per second itself is independent from the actual number of patients and can therefore be used to compare the two population sizes analysed here.
 
 With a given patients per second value, its always possible to calculate the to be expected CQL evaluation duration by dividing the target systems number of patients by that number. So for example, if the metric is 100 k patients/s Blaze will need 1 second if it contains 100 k patients and 5 seconds if it contains 500 k patients.
+
+### Measurement
+
+Measurements are taken by using [blazectl][1]'s `evaluate-measure` subcommand. That subcommand first creates both a Measure and a Library resource and evaluates the Measure afterwards. By creating resources on every run, there is a slight performance impact due to the way LSM trees used by RocksDB work. The measure evaluation returns a MeasureReport that contains the evaluation duration in an extension which ensures that external timing effects play no role.
+
+Before each measurement Blaze is restarted. After that multiple runs are taken. The first run is used to obtain the number of hits and print the Bloom filter usage. It's duration isn't used. After this run the script waits for 10 seconds in order to give Blaze time to settle. During this time the Java just-in-time compiler and garbage collector and to some work. After that 9 runs are done were the duration for the first two runs are discarded. From the remaining 7 durations, the average and standard deviation are calculated. From the average and the total number of patients the final metric patients per second is calculated.
+
+### Systems
+
+All measurements are taken on the same VM that has the size of LEA58. The OS is Ubuntu 22.04.4 LTS. Docker version is 26.1.4. 
 
 ## Simple Code Search
 
@@ -113,7 +125,7 @@ define InInitialPopulation:
   exists [Observation: Code '17861-6' from loinc]
 ```
 
-The CQL queries can be executed with the following `blazectl` commands:
+The CQL queries can be executed with the following commands:
 
 ```sh
 cql/search.sh observation-17861-6
@@ -180,7 +192,7 @@ define InInitialPopulation:
   exists [Observation: "body-weight"] O where O.value < 75.3 'kg'
 ```
 
-The CQL query is executed with the following `blazectl` command:
+The CQL query is executed with the following command:
 
 ```sh
 cql/search.sh observation-body-weight-10
@@ -339,6 +351,56 @@ cql/search.sh condition-all
 cql/search.sh inpatient-stress
 ```
 
+## Medication
+
+![](cql/medication-search-100k.png)
+
+![](cql/medication-search-1M.png)
+
+| Dataset | System | # Hits | Time (s) | StdDev |  Pat./s |
+|---------|--------|-------:|---------:|-------:|--------:|
+| 100k    | LEA25  |    966 |     0.12 |  0.004 | 806.4 k |
+| 100k    | LEA25  |    7 k |     0.12 |  0.006 | 854.3 k |
+| 100k    | LEA36  |    966 |     0.06 |  0.003 | 1.684 M |
+| 100k    | LEA36  |    7 k |     0.06 |  0.002 | 1.637 M |
+| 100k    | LEA47  |    966 |     0.05 |  0.000 | 1.930 M |
+| 100k    | LEA47  |    7 k |     0.05 |  0.001 | 1.900 M |
+| 100k    | LEA58  |    966 |     0.05 |  0.001 | 1.889 M |
+| 100k    | LEA58  |    7 k |     0.06 |  0.001 | 1.800 M |
+| 1M      | LEA25  |   10 k |     1.39 |  0.005 | 720.1 k |
+| 1M      | LEA25  |   66 k |     1.31 |  0.011 | 765.3 k |
+| 1M      | LEA36  |   10 k |     0.69 |  0.003 | 1.440 M |
+| 1M      | LEA36  |   66 k |     0.68 |  0.007 | 1.478 M |
+| 1M      | LEA47  |   10 k |     0.47 |  0.002 | 2.145 M |
+| 1M      | LEA47  |   66 k |     0.45 |  0.004 | 2.214 M |
+| 1M      | LEA58  |   10 k |     0.48 |  0.003 | 2.085 M |
+| 1M      | LEA58  |   66 k |     0.47 |  0.003 | 2.140 M |
+
+### CQL Queries
+
+```sh
+cql/search.sh medication-1
+cql/search.sh medication-7
+```
+
+## Medication Ten
+
+![](cql/medication-ten-search-100k.png)
+
+![](cql/medication-ten-search-1M.png)
+
+| Dataset | System | # Hits | Time (s) | StdDev |  Pat./s |
+|---------|--------|-------:|---------:|-------:|--------:|
+| 100k    | LEA25  |   15 k |     0.19 |  0.009 | 533.7 k |
+| 100k    | LEA36  |   15 k |     0.10 |  0.002 | 1.022 M |
+| 100k    | LEA47  |   15 k |     0.07 |  0.002 | 1.486 M |
+| 100k    | LEA58  |   15 k |     0.07 |  0.001 | 1.491 M |
+| 1M      | LEA25  |  149 k |     2.83 |  0.026 | 353.4 k |
+| 1M      | LEA36  |  149 k |     1.39 |  0.004 | 719.4 k |
+| 1M      | LEA47  |  149 k |     0.72 |  0.006 | 1.393 M |
+| 1M      | LEA58  |  149 k |     0.64 |  0.003 | 1.574 M |
+
+
 ## Condition Code Stratification
 
 ### Data
@@ -355,3 +417,5 @@ cql/search.sh inpatient-stress
 | Dataset | System | # Hits | Time (s) | StdDev | Pat./s |
 |---------|--------|-------:|---------:|-------:|-------:|
 | 100k    | LEA58  | 37.8 M |   280.40 |  3.026 |      0 |
+
+[1]: <https://github.com/samply/blazectl>

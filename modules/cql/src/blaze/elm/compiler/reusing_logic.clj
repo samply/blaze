@@ -104,6 +104,8 @@
       (to-quantity-function-expr (core/-resolve-refs operand expression-defs)))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper to-quantity-function-expr parameters operand))
+    (-optimize [_ node]
+      (core/optimize-helper to-quantity-function-expr node operand))
     (-eval [_ context resource scope]
       (-to-quantity (core/-eval operand context resource scope)))
     (-form [_]
@@ -120,6 +122,8 @@
       (to-code-function-expr (core/-resolve-refs operand expression-defs)))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper to-code-function-expr parameters operand))
+    (-optimize [_ node]
+      (core/optimize-helper to-code-function-expr node operand))
     (-eval [_ context resource scope]
       (some-> (core/-eval operand context resource scope) to-code))
     (-form [_]
@@ -133,6 +137,8 @@
       (to-date-function-expr (core/-resolve-refs operand expression-defs)))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper to-date-function-expr parameters operand))
+    (-optimize [_ node]
+      (core/optimize-helper to-date-function-expr node operand))
     (-eval [_ context resource scope]
       (type/value (core/-eval operand context resource scope)))
     (-form [_]
@@ -146,6 +152,8 @@
       (to-date-time-function-expr (core/-resolve-refs operand expression-defs)))
     (-resolve-params [_ parameters]
       (to-date-time-function-expr (core/-resolve-params operand parameters)))
+    (-optimize [_ parameters]
+      (to-date-time-function-expr (core/-optimize operand parameters)))
     (-eval [_ {:keys [now] :as context} resource scope]
       (p/to-date-time (type/value (core/-eval operand context resource scope)) now))
     (-form [_]
@@ -159,6 +167,8 @@
       (to-string-function-expr (core/-resolve-refs operand expression-defs)))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper to-string-function-expr parameters operand))
+    (-optimize [_ node]
+      (core/optimize-helper to-string-function-expr node operand))
     (-eval [_ context resource scope]
       (some-> (type/value (core/-eval operand context resource scope)) str))
     (-form [_]
@@ -185,6 +195,8 @@
       (to-interval-function-expr (core/-resolve-refs operand expression-defs)))
     (-resolve-params [_ parameters]
       (to-interval-function-expr (core/-resolve-params operand parameters)))
+    (-optimize [_ parameters]
+      (to-interval-function-expr (core/-optimize operand parameters)))
     (-eval [_ context resource scope]
       (-to-interval (core/-eval operand context resource scope) context))
     (-form [_]
@@ -198,6 +210,8 @@
       (to-concept-function-expr (core/-resolve-refs operand expression-defs)))
     (-resolve-params [_ parameters]
       (to-concept-function-expr (core/-resolve-params operand parameters)))
+    (-optimize [_ parameters]
+      (to-concept-function-expr (core/-optimize operand parameters)))
     (-eval [_ context resource scope]
       (when-let [{:keys [coding]} (core/-eval operand context resource scope)]
         (concept (mapv to-code coding))))

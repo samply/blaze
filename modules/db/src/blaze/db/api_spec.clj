@@ -80,6 +80,12 @@
                :clauses :blaze.db.query/clauses)
   :ret (s/or :query :blaze.db/query :anomaly ::anom/anomaly))
 
+(s/fdef d/compile-type-matcher
+  :args (s/cat :node-or-db (s/or :node :blaze.db/node :db :blaze.db/db)
+               :type :fhir.resource/type
+               :clauses :blaze.db.query/clauses)
+  :ret (s/or :matcher :blaze.db/matcher :anomaly ::anom/anomaly))
+
 ;; ---- System-Level Functions ------------------------------------------------
 
 (s/fdef d/system-list
@@ -143,6 +149,16 @@
 (s/fdef d/query-clauses
   :args (s/cat :query :blaze.db/query)
   :ret (s/nilable :blaze.db.query/clauses))
+
+;; ---- Common Matcher Functions ----------------------------------------------
+
+(s/fdef d/matcher-transducer
+  :args (s/cat :db :blaze.db/db :matcher :blaze.db/matcher)
+  :ret fn?)
+
+(s/fdef d/matcher-clauses
+  :args (s/cat :matcher :blaze.db/matcher)
+  :ret :blaze.db.query/clauses)
 
 ;; ---- History Functions -----------------------------------------------------
 

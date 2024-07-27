@@ -1,4 +1,15 @@
 (ns blaze.elm.compiler.library
+  "ELM Library Compiler.
+
+  The provided function should be called in the following order:
+
+  * compile-library: compiles the ELM library into our internal format
+  * evaluate the expressions in the Unfiltered context
+  * resolve-all-refs: resolve all the expression references so that expressions
+      are self contained and all expressions from Unfiltered context are already
+      evaluated
+  * resolve-params: resolve last, not yet evaluated parameters to get truly
+      self contained expressions"
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.elm.compiler :as c]
@@ -74,25 +85,15 @@
    {}
    (-> library :parameters :def)))
 
-(defn resolve-all-refs [expression-defs]
-  (resolve-refs #{} expression-defs))
-
 (defn- unfiltered-expr-names [expression-defs]
   (into
    #{}
    (keep (fn [[name {:keys [context]}]] (when (= "Unfiltered" context) name)))
    expression-defs))
 
-(defn- resolve-param-refs-xf [parameters]
-  (map
-   (fn [[name expr-def]]
-     [name (update expr-def :expression c/resolve-params parameters)])))
-
-(defn resolve-param-refs [expression-defs parameters]
-  (into {} (resolve-param-refs-xf parameters) expression-defs))
-
 (defn compile-library
-  "Compiles `library` using `node`.
+  "Compiles the ELM `library` using `node` into a map of :expression-defs,
+  :function-defs and :parameter-default-values.
 
   There are currently no options."
   [node library opts]
@@ -105,3 +106,33 @@
       {:expression-defs expression-defs
        :function-defs function-defs
        :parameter-default-values parameter-default-values})))
+
+(defn resolve-all-refs
+  "Resolves all expression references in `expression-defs`."
+  [expression-defs]
+  (resolve-refs #{} expression-defs))
+
+(defn- resolve-params-xf [parameters]
+  (map
+   (fn [[name expr-def]]
+     [name (update expr-def :expression c/resolve-params parameters)])))
+
+(defn resolve-params
+  "Resolves `parameters` in `expression-defs`."
+  [expression-defs parameters]
+  (into {} (resolve-params-xf parameters) expression-defs))
+
+(defn- optimize-xf [node]
+  (let [optimize (partial c/optimize node)]
+    (map
+     (fn [[name expr-def]]
+       [name (update expr-def :expression optimize)]))))
+
+(defn optimize
+  "Runs optimizations on expressions from `expression-defs` returning new
+  expression definitions.
+
+  The expressions should be already self contained. So all refs and params
+  should be resolved."
+  [node expression-defs]
+  (into {} (optimize-xf node) expression-defs))

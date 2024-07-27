@@ -233,7 +233,8 @@
   :ret :elm/expression)
 
 (s/fdef elm/date
-  :args (s/cat :arg (s/alt :str string? :exprs (s/coll-of :elm/expression)))
+  :args (s/cat :arg (s/alt :str string? :expr :elm/expression
+                           :exprs (s/coll-of :elm/expression)))
   :ret :elm/expression)
 
 (s/fdef elm/date-from
@@ -241,11 +242,13 @@
   :ret :elm/expression)
 
 (s/fdef elm/date-time
-  :args (s/cat :arg (s/alt :str string? :exprs (s/coll-of :elm/expression)))
+  :args (s/cat :arg (s/alt :str string? :expr :elm/expression
+                           :exprs (s/coll-of :elm/expression)))
   :ret :elm/expression)
 
 (s/fdef elm/time
-  :args (s/cat :arg (s/alt :str string? :exprs (s/coll-of :elm/expression)))
+  :args (s/cat :arg (s/alt :str string? :expr :elm/expression
+                           :exprs (s/coll-of :elm/expression)))
   :ret :elm/expression)
 
 ;; 19.1. Interval

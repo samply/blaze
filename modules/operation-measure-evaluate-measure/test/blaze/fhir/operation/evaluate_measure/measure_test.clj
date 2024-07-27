@@ -843,7 +843,7 @@
 
           (given (into [] (ec/list-by-t cache))
             count := 1
-            [0 ::bloom-filter/expr-form] := "(exists (eduction-query (filter (fn [M] (contains [\"Medication/0\"] (call \"ToString\" (:reference (:medication M)))))) (retrieve \"MedicationStatement\")))"))))))
+            [0 ::bloom-filter/expr-form] := "(exists (eduction-query (matcher [[\"medication\" \"Medication/0\"]]) (retrieve \"MedicationStatement\")))"))))))
 
 (defmacro testing-query [name count]
   `(testing ~name

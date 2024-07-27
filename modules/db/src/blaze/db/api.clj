@@ -170,6 +170,14 @@
   [node-or-db type clauses]
   (p/-compile-type-query-lenient node-or-db type clauses))
 
+(defn compile-type-matcher
+  "Returns a matcher that can be later used in `matcher-transducer` to obtain
+  a transducer that will filter resource handles of `type` matching `clauses`.
+
+  Returns an anomaly if search parameters in clauses can't be resolved."
+  [node-or-db type clauses]
+  (p/-compile-type-matcher node-or-db type clauses))
+
 ;; ---- System-Level Functions ------------------------------------------------
 
 (defn system-list
@@ -302,7 +310,19 @@
 (defn query-clauses
   "Returns the clauses used in `query`."
   [query]
-  (p/-clauses query))
+  (p/-query-clauses query))
+
+;; ---- Common Matcher Functions ----------------------------------------------
+
+(defn matcher-transducer
+  "Returns a transducer of `matcher` which operates on `db`."
+  [db matcher]
+  (p/-matcher-transducer db matcher))
+
+(defn matcher-clauses
+  "Returns a transducer of `matcher` which operates on `db`."
+  [matcher]
+  (p/-matcher-clauses matcher))
 
 ;; ---- History Functions -----------------------------------------------------
 

@@ -125,6 +125,11 @@
           expr (c/resolve-refs (c/compile ctx elm) {"x" expr-def})]
       (has-form expr '(list 1))))
 
+  (testing "optimize"
+    (let [elm #elm/list [{:type "Optimizeable" :id "x"}]
+          expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+      (has-form expr '(list (optimized "x")))))
+
   (ctu/testing-equals-hash-code #elm/list [#elm/parameter-ref "1"]))
 
 ;; 20.2. Contains
@@ -158,6 +163,9 @@
       (testing "resolve parameters"
         (has-form (c/resolve-params expr {}) 'current))
 
+      (testing "optimize"
+        (has-form (st/with-instrument-disabled (c/optimize nil expr)) 'current))
+
       (testing "form"
         (has-form expr 'current)))
 
@@ -182,6 +190,9 @@
 
       (testing "resolve parameters"
         (has-form (c/resolve-params expr {}) '(current "x")))
+
+      (testing "optimize"
+        (has-form (st/with-instrument-disabled (c/optimize nil expr)) '(current "x")))
 
       (testing "form"
         (has-form expr '(current "x"))))
@@ -371,6 +382,8 @@
 
   (ctu/testing-unary-resolve-params elm/exists)
 
+  (ctu/testing-unary-optimize elm/exists)
+
   (ctu/testing-unary-equals-hash-code elm/exists)
 
   (ctu/testing-unary-form elm/exists))
@@ -433,6 +446,14 @@
         (has-form (c/resolve-params expr {"x" [1]})
           '(filter [1] (param-ref "y") "A")))
 
+      (testing "optimize"
+        (let [elm {:type "Filter"
+                   :source {:type "Optimizeable" :id "x"}
+                   :condition {:type "Optimizeable" :id "y"}
+                   :scope "A"}
+              expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+          (has-form expr '(filter (optimized "x") (optimized "y") "A"))))
+
       (testing "form"
         (has-form expr '(filter (param-ref "x") (param-ref "y") "A")))
 
@@ -468,6 +489,13 @@
       (testing "resolve parameters"
         (has-form (c/resolve-params expr {"x" [1]})
           '(filter [1] (param-ref "y"))))
+
+      (testing "optimize"
+        (let [elm {:type "Filter"
+                   :source {:type "Optimizeable" :id "x"}
+                   :condition {:type "Optimizeable" :id "y"}}
+              expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+          (has-form expr '(filter (optimized "x") (optimized "y")))))
 
       (testing "form"
         (has-form expr '(filter (param-ref "x") (param-ref "y"))))
@@ -577,6 +605,14 @@
         (has-form (c/resolve-params expr {"x" [1]})
           '(for-each [1] (param-ref "y") "A")))
 
+      (testing "optimize"
+        (let [elm {:type "ForEach"
+                   :source {:type "Optimizeable" :id "x"}
+                   :element #elm/current "A"
+                   :scope "A"}
+              expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+          (has-form expr '(for-each (optimized "x") (current "A") "A"))))
+
       (testing "form"
         (has-form expr '(for-each (param-ref "x") (param-ref "y") "A")))
 
@@ -610,6 +646,13 @@
       (testing "resolve parameters"
         (has-form (c/resolve-params expr {"x" [1]})
           '(for-each [1] (param-ref "y"))))
+
+      (testing "optimize"
+        (let [elm {:type "ForEach"
+                   :source {:type "Optimizeable" :id "x"}
+                   :element #elm/current nil}
+              expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+          (has-form expr '(for-each (optimized "x") current))))
 
       (testing "form"
         (has-form expr '(for-each (param-ref "x") (param-ref "y"))))

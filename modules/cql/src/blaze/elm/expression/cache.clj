@@ -163,7 +163,7 @@
   p/Cache
   (-get [_ expression]
     (if (overly-large? expression)
-      (log/debug "Skip caching overly large CQL expression.")
+      (log/warn "Skip caching overly large CQL expression.")
       (if-let [future (.getIfPresent mem-cache expression)]
         (when (.isDone future)
           (.get future))

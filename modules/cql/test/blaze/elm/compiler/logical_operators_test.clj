@@ -9,7 +9,7 @@
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.logical-operators :as ops]
    [blaze.elm.compiler.macros :refer [reify-expr]]
-   [blaze.elm.compiler.test-util :as ctu]
+   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.expression.cache.bloom-filter :as bloom-filter]
    [blaze.elm.literal :as elm]
@@ -245,7 +245,14 @@
             [1 3 ::bloom-filter/patient-count] := nil
             [1 4 ::bloom-filter/patient-count] := nil)))))
 
-  (ctu/testing-binary-op elm/and))
+  (ctu/testing-binary-op elm/and)
+
+  (testing "optimize"
+    (doseq [ops [[{:type "Optimizeable" :id "x"} {:type "Null"}]
+                 [{:type "Null"} {:type "Optimizeable" :id "x"}]]]
+      (let [elm (elm/and ops)
+            expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+        (has-form expr '(and nil (optimized "x")))))))
 
 (deftest and-op-patient-count-test
   (testing "both nil"
@@ -528,6 +535,15 @@
   (ctu/testing-binary-resolve-refs elm/or)
 
   (ctu/testing-binary-resolve-params elm/or)
+
+  (ctu/testing-binary-optimize elm/or)
+
+  (testing "optimize"
+    (doseq [ops [[{:type "Optimizeable" :id "x"} {:type "Null"}]
+                 [{:type "Null"} {:type "Optimizeable" :id "x"}]]]
+      (let [elm (elm/or ops)
+            expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+        (has-form expr '(or nil (optimized "x"))))))
 
   (ctu/testing-binary-equals-hash-code elm/or)
 

@@ -15,6 +15,9 @@
     (-resolve-params [_ parameters]
       (arity-n name (core/-resolve-params fn-expr parameters) operand-names
                (map #(core/-resolve-params % parameters) operands)))
+    (-optimize [_ node]
+      (arity-n name (core/-optimize fn-expr node) operand-names
+               (map #(core/-optimize % node) operands)))
     (-eval [_ context resource scope]
       (let [values (map #(core/-eval % context resource scope) operands)]
         (core/-eval fn-expr context resource (merge scope (zipmap operand-names values)))))

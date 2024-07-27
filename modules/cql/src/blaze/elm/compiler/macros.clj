@@ -33,6 +33,9 @@
      ~(if-let [form (find-form '-resolve-params body)]
         form
         (list '-resolve-params ['expr '_] 'expr))
+     ~(if-let [form (find-form '-optimize body)]
+        form
+        (list '-optimize ['expr '_] 'expr))
      ~(if-let [form (find-form '-eval body)]
         form
         (list '-eval ['expr '_ '_ '_] 'expr))
@@ -128,6 +131,13 @@
                         ~elm-expr)
                       `(~caching-op
                         (core/-resolve-params ~operand ~'parameters))))
+                 (~'-optimize [~'_ ~'node]
+                   ~(if elm-expr-binding
+                      `(~caching-op
+                        (core/-optimize ~operand ~'node)
+                        ~elm-expr)
+                      `(~caching-op
+                        (core/-optimize ~operand ~'node))))
                  (~'-eval [~'_ ~context ~resource ~scope]
                    (if (bloom-filter/might-contain? ~bloom-filter ~resource)
                      (let [res# (let ~(generate-binding-vector
@@ -189,6 +199,13 @@
                         ~elm-expr)
                       `(~caching-op
                         (core/-resolve-params ~operand ~'parameters))))
+                 (~'-optimize [~'_ ~'node]
+                   ~(if elm-expr-binding
+                      `(~caching-op
+                        (core/-optimize ~operand ~'node)
+                        ~elm-expr)
+                      `(~caching-op
+                        (core/-optimize ~operand ~'node))))
                  (~'-eval [~'_ ~context ~resource ~scope]
                    (let ~(generate-binding-vector
                           operand-binding `(core/-eval ~operand ~context ~resource ~scope)
@@ -219,6 +236,13 @@
                   ~elm-expr)
                 `(~op
                   (core/-resolve-params ~operand ~'parameters))))
+           (~'-optimize [~'_ ~'node]
+             ~(if elm-expr-binding
+                `(~op
+                  (core/-optimize ~operand ~'node)
+                  ~elm-expr)
+                `(~op
+                  (core/-optimize ~operand ~'node))))
            (~'-eval [~'_ ~context ~resource ~scope]
              (let ~(generate-binding-vector
                     operand-binding `(core/-eval ~operand ~context ~resource ~scope)
@@ -269,6 +293,8 @@
               (core/-resolve-refs ~op-2 ~'expression-defs)))
            (~'-resolve-params [~'_ ~'parameters]
              (core/resolve-params-helper ~op ~'parameters ~op-1 ~op-2))
+           (~'-optimize [~'_ ~'node]
+             (core/optimize-helper ~op ~'node ~op-1 ~op-2))
            (~'-eval [~'_ context# resource# scope#]
              (let [~op-1-binding (core/-eval ~op-1 context# resource# scope#)
                    ~op-2-binding (core/-eval ~op-2 context# resource# scope#)]
@@ -306,6 +332,8 @@
               (core/-resolve-refs ~op-3 ~'expression-defs)))
            (~'-resolve-params [~'_ ~'parameters]
              (core/resolve-params-helper ~op ~'parameters ~op-1 ~op-2 ~op-3))
+           (~'-optimize [~'_ ~'node]
+             (core/optimize-helper ~op ~'node ~op-1 ~op-2 ~op-3))
            (~'-eval [~'_ context# resource# scope#]
              (let [~op-1-binding (core/-eval ~op-1 context# resource# scope#)
                    ~op-2-binding (core/-eval ~op-2 context# resource# scope#)
@@ -341,6 +369,9 @@
            (~'-resolve-params [~'_ ~'parameters]
              (~op
               (mapv #(core/-resolve-params % ~'parameters) ~operands-binding)))
+           (~'-optimize [~'_ ~'node]
+             (~op
+              (mapv #(core/-optimize % ~'node) ~operands-binding)))
            (~'-eval [~'_ context# resource# scope#]
              (let [~operands-binding (mapv #(core/-eval % context# resource# scope#) ~operands-binding)]
                ~@body))
@@ -364,6 +395,8 @@
              (~op (core/-resolve-refs ~source-binding ~'expression-defs)))
            (~'-resolve-params [~'_ ~'parameters]
              (~op (core/-resolve-params ~source-binding ~'parameters)))
+           (~'-optimize [~'_ ~'node]
+             (~op (core/-optimize ~source-binding ~'node)))
            (~'-eval [~'_ context# resource# scope#]
              (let [~source-binding (core/-eval ~source-binding context# resource# scope#)]
                ~@body))
@@ -393,6 +426,10 @@
            (~'-resolve-params [~'_ ~'parameters]
              (~op
               (core/-resolve-params ~operand ~'parameters)
+              ~precision-binding ~precision))
+           (~'-optimize [~'_ ~'node]
+             (~op
+              (core/-optimize ~operand ~'node)
               ~precision-binding ~precision))
            (~'-eval [~'_ context# resource# scope#]
              (let [~operand-binding (core/-eval ~operand context# resource# scope#)]
@@ -432,6 +469,8 @@
                   (core/-resolve-refs ~op-2 ~'expression-defs)))
                (~'-resolve-params [~'_ ~'parameters]
                  (core/resolve-params-helper ~op ~'parameters ~op-1 ~op-2))
+               (~'-optimize [~'_ ~'node]
+                 (core/optimize-helper ~op ~'node ~op-1 ~op-2))
                (~'-eval [~'_ context# resource# scope#]
                  (let [~op-1-binding (core/-eval ~op-1 context# resource# scope#)
                        ~op-2-binding (core/-eval ~op-2 context# resource# scope#)
@@ -455,6 +494,11 @@
              (~precision-op
               (core/-resolve-params ~op-1 ~'parameters)
               (core/-resolve-params ~op-2 ~'parameters)
+              ~precision-binding ~precision))
+           (~'-optimize [~'_ ~'node]
+             (~precision-op
+              (core/-optimize ~op-1 ~'node)
+              (core/-optimize ~op-2 ~'node)
               ~precision-binding ~precision))
            (~'-eval [~'_ context# resource# scope#]
              (let [~op-1-binding (core/-eval ~op-1 context# resource# scope#)

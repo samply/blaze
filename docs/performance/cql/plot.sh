@@ -28,3 +28,7 @@ gnuplot all-code-search-1M.gnuplot
 gnuplot inpatient-stress-search-100k.gnuplot
 gnuplot inpatient-stress-search-100k-fh.gnuplot
 gnuplot inpatient-stress-search-1M.gnuplot
+gnuplot medication-search-100k.gnuplot
+gnuplot medication-search-1M.gnuplot
+gnuplot medication-ten-search-100k.gnuplot
+gnuplot medication-ten-search-1M.gnuplot

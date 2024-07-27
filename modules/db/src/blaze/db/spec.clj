@@ -49,7 +49,10 @@
   rh/resource-handle?)
 
 (s/def :blaze.db/query
-  some?)
+  #(satisfies? p/Query %))
+
+(s/def :blaze.db/matcher
+  #(satisfies? p/Matcher %))
 
 (defmulti tx-op "Transaction operator" first)
 

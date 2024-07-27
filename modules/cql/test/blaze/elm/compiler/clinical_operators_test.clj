@@ -81,6 +81,8 @@
 
   (ctu/testing-binary-precision-resolve-params elm/calculate-age-at "year" "month" "day")
 
+  (ctu/testing-binary-precision-optimize elm/calculate-age-at "year" "month" "day")
+
   (ctu/testing-binary-precision-equals-hash-code elm/calculate-age-at "year" "month" "day")
 
   (ctu/testing-binary-precision-form elm/calculate-age-at "year" "month" "day"))
