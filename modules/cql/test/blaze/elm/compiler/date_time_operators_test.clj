@@ -250,6 +250,7 @@
             (let [expr (c/resolve-params (c/compile compile-ctx elm) {"day" 15})]
               (has-form expr '(date (param-ref "year") (param-ref "month") 15))))))))
 
+  (ctu/testing-unary-op elm/date)
   (ctu/testing-binary-op elm/date)
   (ctu/testing-ternary-op elm/date))
 
@@ -683,6 +684,7 @@
                                          (param-ref "second") (param-ref "millisecond")
                                          (param-ref "timezone-offset")))))))))
 
+  (ctu/testing-unary-op elm/date-time)
   (ctu/testing-binary-op elm/date-time)
   (ctu/testing-ternary-op elm/date-time))
 
@@ -1278,7 +1280,11 @@
           (has-form expr '(time (param-ref "hour") (param-ref "minute")
                                 (param-ref "second") (param-ref "millisecond")))
 
-          (is (false? (core/-static expr))))))))
+          (is (false? (core/-static expr)))))))
+
+  (ctu/testing-unary-op elm/time)
+  (ctu/testing-binary-op elm/time)
+  (ctu/testing-ternary-op elm/time))
 
 ;; 18.21. TimeOfDay
 ;;

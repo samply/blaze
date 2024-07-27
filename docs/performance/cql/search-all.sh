@@ -84,3 +84,21 @@ cql/search.sh inpatient-stress
 cql/search.sh inpatient-stress false
 cql/search.sh inpatient-stress false
 cql/search.sh inpatient-stress false
+
+restart "$COMPOSE_FILE"
+cql/search.sh medication-1
+cql/search.sh medication-1 false
+cql/search.sh medication-1 false
+cql/search.sh medication-1 false
+
+restart "$COMPOSE_FILE"
+cql/search.sh medication-7
+cql/search.sh medication-7 false
+cql/search.sh medication-7 false
+cql/search.sh medication-7 false
+
+restart "$COMPOSE_FILE"
+cql/search.sh medication-ten
+cql/search.sh medication-ten false
+cql/search.sh medication-ten false
+cql/search.sh medication-ten false

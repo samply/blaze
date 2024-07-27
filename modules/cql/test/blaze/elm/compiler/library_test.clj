@@ -11,7 +11,7 @@
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest testing]]
+   [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]))
 
@@ -72,7 +72,10 @@
         (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
           (given expression-defs
             ["Foo" :context] := "Patient"
-            ["Foo" :expression] := true)))))
+            ["Foo" :expression] := true)
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
 
   (testing "one dynamic expression"
     (let [library (t/translate "library Test
@@ -83,7 +86,13 @@
         (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
           (given expression-defs
             ["Gender" :context] := "Patient"
-            ["Gender" expr-form] := '(:gender (singleton-from (retrieve-resource))))))))
+            ["Gender" expr-form] := '(:gender (singleton-from (retrieve-resource))))
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
 
   (testing "one function"
     (let [library (t/translate "library Test
@@ -101,7 +110,13 @@
           (given function-defs
             ["Gender" :context] := "Patient"
             ["Gender" :resultTypeName] := "{http://hl7.org/fhir}AdministrativeGender"
-            ["Gender" :function] :? fn?)))))
+            ["Gender" :function] :? fn?)
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
 
   (testing "two functions, one calling the other"
     (let [library (t/translate "library Test
@@ -114,7 +129,13 @@
         (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
-            ["InInitialPopulation" expr-form] := '(call "Inc2" 1))))))
+            ["InInitialPopulation" expr-form] := '(call "Inc2" 1))
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
 
   (testing "expressions from Patient context are resolved"
     (let [library (t/translate "library Test
@@ -157,7 +178,13 @@
                 "female")
                (exists (retrieve "Observation")))
               (not
-               (exists (retrieve "Condition")))))))))
+               (exists (retrieve "Condition")))))
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
 
   (testing "expressions from Unfiltered context are not resolved"
     (let [library (t/translate "library Test
@@ -205,8 +232,7 @@
               (exists
                (eduction-query
                 (filter
-                 (fn
-                   [M]
+                 (fn [M]
                    (contains
                     (expr-ref
                      "TemozolomidRefs")
@@ -215,7 +241,50 @@
                      (:reference
                       (:medication
                        M))))))
-                (retrieve "MedicationStatement")))))))))
+                (retrieve "MedicationStatement")))))
+
+          (testing "TemozolomidRefs expression will be resolved"
+            (given (library/resolve-all-refs expression-defs)
+              ["InInitialPopulation" :context] := "Patient"
+              ["InInitialPopulation" expr-form] :=
+              '(and
+                (equal
+                 (call
+                  "ToString"
+                  (:gender
+                   (singleton-from
+                    (retrieve-resource))))
+                 "female")
+                (exists
+                 (eduction-query
+                  (filter
+                   (fn [M]
+                     (contains
+                      (vector-query
+                       (comp
+                        (map
+                         (fn
+                           [M]
+                           (concatenate
+                            "Medication/"
+                            (call
+                             "ToString"
+                             (:id
+                              M)))))
+                        distinct)
+                       (retrieve
+                        "Medication"
+                        [["code"
+                          "http://fhir.de/CodeSystem/dimdi/atc|L01AX03"]]))
+                      (call
+                       "ToString"
+                       (:reference
+                        (:medication
+                         M))))))
+                  (retrieve "MedicationStatement"))))))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
 
   (testing "expressions without refs are preserved"
     (let [library (t/translate "library Retrieve
@@ -242,7 +311,49 @@
             ["AllEncounters" :context] := "Patient"
             ["AllEncounters" expr-form] := '(retrieve "Encounter")
             ["Gender" :context] := "Patient"
-            ["Gender" expr-form] := '(:gender (singleton-from (retrieve-resource))))))))
+            ["Gender" expr-form] := '(:gender (singleton-from (retrieve-resource))))
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
+
+  (testing "medication reference optimization"
+    (let [library (t/translate "library Retrieve
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        context Patient
+
+        define InInitialPopulation:
+          exists from [MedicationAdministration] M
+            where M.medication.reference in {'Medication/0', 'Medication/1'}")]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+          (given expression-defs
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] :=
+            '(exists
+              (eduction-query
+               (filter
+                (fn [M]
+                  (contains
+                   ["Medication/0" "Medication/1"]
+                   (call "ToString" (:reference (:medication M))))))
+               (retrieve "MedicationAdministration"))))
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
+            (given (library/optimize node expression-defs)
+              ["InInitialPopulation" :context] := "Patient"
+              ["InInitialPopulation" expr-form] :=
+              '(exists
+                (eduction-query
+                 (matcher [["medication" "Medication/0" "Medication/1"]])
+                 (retrieve "MedicationAdministration")))))))))
 
   (testing "with compile-time error"
     (testing "function"
@@ -260,6 +371,40 @@
           (given (library/compile-library node library default-opts)
             ::anom/category := ::anom/conflict
             ::anom/message := "More than one element in `SingletonFrom` expression.")))))
+
+  (testing "one parameter"
+    (let [library (t/translate "library Test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        parameter Gender String
+
+        context Patient
+
+        define InInitialPopulation:
+          Patient.gender = Gender")]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+          (given expression-defs
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] :=
+            '(equal
+              (call "ToString" (:gender (singleton-from (retrieve-resource))))
+              (param-ref "Gender")))
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "resolving parameters"
+            (given (library/resolve-params expression-defs {"Gender" "female"})
+              ["InInitialPopulation" :context] := "Patient"
+              ["InInitialPopulation" expr-form] :=
+              '(equal
+                (call "ToString" (:gender (singleton-from (retrieve-resource))))
+                "female")))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
 
   (testing "with parameter default"
     (let [library (t/translate "library Test
@@ -289,27 +434,37 @@
               with [Encounter] E
               such that O.encounter.reference = 'Encounter/' + E.id")]
       (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (given (library/compile-library node library {})
-          [:expression-defs "InInitialPopulation" :context] := "Patient"
-          [:expression-defs "InInitialPopulation" expr-form] :=
-          '(exists
-            (eduction-query
-             (filter
-              (fn [O]
-                (exists
-                 (fn [E]
-                   (equal
-                    (call
-                     "ToString"
-                     (:reference
-                      (:encounter
-                       O)))
-                    (concatenate
-                     "Encounter/"
-                     (call "ToString" (:id E)))))
-                 (retrieve "Encounter"))))
-             (retrieve "Observation")))
-          [:function-defs "hasDiagnosis" :function] := nil))))
+        (let [{:keys [expression-defs function-defs]}
+              (library/compile-library node library {})]
+          (given expression-defs
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] :=
+            '(exists
+              (eduction-query
+               (filter
+                (fn [O]
+                  (exists
+                   (fn [E]
+                     (equal
+                      (call
+                       "ToString"
+                       (:reference
+                        (:encounter
+                         O)))
+                      (concatenate
+                       "Encounter/"
+                       (call "ToString" (:id E)))))
+                   (retrieve "Encounter"))))
+               (retrieve "Observation"))))
+
+          (given function-defs
+            ["hasDiagnosis" :function] := nil)
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
 
   (testing "with related context"
     (let [library (t/translate "library test
@@ -324,13 +479,20 @@
         define InInitialPopulation:
           [\"name-133756\" -> Observation]")]
       (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (given (library/compile-library node library {})
-          [:expression-defs "InInitialPopulation" :context] := "Patient"
-          [:expression-defs "InInitialPopulation" expr-form] :=
-          '(retrieve
-            (singleton-from
-             (retrieve-resource))
-            "Observation")))))
+        (let [{:keys [expression-defs]} (library/compile-library node library {})]
+          (given expression-defs
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] :=
+            '(retrieve
+              (singleton-from
+               (retrieve-resource))
+              "Observation"))
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
 
   (testing "retrieve with static concept"
     (let [library (t/translate "library test
@@ -348,15 +510,22 @@
         define InInitialPopulation:
           exists [Condition: prostata]")]
       (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (given (library/compile-library node library {})
-          [:expression-defs "InInitialPopulation" :context] := "Patient"
-          [:expression-defs "InInitialPopulation" expr-form] :=
-          '(exists
-            (retrieve
-             "Condition"
-             [["code"
-               "http://hl7.org/fhir/sid/icd-10|C61"
-               "http://snomed.info/sct|254900004"]]))))))
+        (let [{:keys [expression-defs]} (library/compile-library node library {})]
+          (given expression-defs
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] :=
+            '(exists
+              (retrieve
+               "Condition"
+               [["code"
+                 "http://hl7.org/fhir/sid/icd-10|C61"
+                 "http://snomed.info/sct|254900004"]])))
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
 
   (testing "and expression"
     (let [library (t/translate "library test
@@ -371,16 +540,23 @@
           exists [Encounter] and
           exists [Specimen]")]
       (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (given (library/compile-library node library {})
-          [:expression-defs "InInitialPopulation" :context] := "Patient"
-          [:expression-defs "InInitialPopulation" expr-form] :=
-          '(and
-            (and
-             (and
-              (exists (retrieve "Observation"))
-              (exists (retrieve "Condition")))
-             (exists (retrieve "Encounter")))
-            (exists (retrieve "Specimen")))))))
+        (let [{:keys [expression-defs]} (library/compile-library node library {})]
+          (given expression-defs
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] :=
+            '(and
+              (and
+               (and
+                (exists (retrieve "Observation"))
+                (exists (retrieve "Condition")))
+               (exists (retrieve "Encounter")))
+              (exists (retrieve "Specimen"))))
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
 
   (testing "and expression with named expressions"
     (let [library (t/translate "library test
@@ -427,7 +603,13 @@
                     (exists (retrieve "Observation"))
                     (exists (retrieve "Condition"))
                     (exists (retrieve "Encounter"))
-                    (exists (retrieve "Specimen")))))))))))
+                    (exists (retrieve "Specimen")))))))
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
 
   (testing "or expression"
     (let [library (t/translate "library test
@@ -442,16 +624,23 @@
           exists [Encounter] or
           exists [Specimen]")]
       (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (given (library/compile-library node library {})
-          [:expression-defs "InInitialPopulation" :context] := "Patient"
-          [:expression-defs "InInitialPopulation" expr-form] :=
-          '(or
-            (or
-             (or
-              (exists (retrieve "Observation"))
-              (exists (retrieve "Condition")))
-             (exists (retrieve "Encounter")))
-            (exists (retrieve "Specimen")))))))
+        (let [{:keys [expression-defs]} (library/compile-library node library {})]
+          (given expression-defs
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] :=
+            '(or
+              (or
+               (or
+                (exists (retrieve "Observation"))
+                (exists (retrieve "Condition")))
+               (exists (retrieve "Encounter")))
+              (exists (retrieve "Specimen"))))
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
 
   (testing "or expression with named expressions"
     (let [library (t/translate "library test
@@ -498,7 +687,13 @@
                     (exists (retrieve "Observation"))
                     (exists (retrieve "Condition"))
                     (exists (retrieve "Encounter"))
-                    (exists (retrieve "Specimen")))))))))))
+                    (exists (retrieve "Specimen")))))))
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
 
   (testing "mixed and and or expressions"
     (let [library (t/translate "library test
@@ -547,9 +742,16 @@
                      (exists (retrieve "Condition")))
                     (or
                      (exists (retrieve "Encounter"))
-                     (exists (retrieve "Specimen"))))))))))))
+                     (exists (retrieve "Specimen"))))))))
 
-  (let [library (t/translate "library test
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
+
+  (testing "Equivalent on Concept"
+    (let [library (t/translate "library test
         using FHIR version '4.0.0'
         include FHIRHelpers version '4.0.0'
 
@@ -559,24 +761,31 @@
 
         define InInitialPopulation:
           Patient.identifier.where(type ~ Code 'GKV' from IdentifierType).exists()")]
-    (with-system [{:blaze.db/keys [node]} mem-node-config]
-      (given (library/compile-library node library {})
-        [:expression-defs "InInitialPopulation" :context] := "Patient"
-        [:expression-defs "InInitialPopulation" expr-form] :=
-        '(exists
-          (eduction-query
-           (filter
-            (fn [$this]
-              (equivalent
-               (call
-                "ToConcept"
-                (:type
-                 $this))
-               (concept
-                (code
-                 "http://fhir.de/CodeSystem/identifier-type-de-basis"
-                 nil
-                 "GKV")))))
-           (:identifier
-            (singleton-from
-             (retrieve-resource)))))))))
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (let [{:keys [expression-defs]} (library/compile-library node library {})]
+          (given expression-defs
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] :=
+            '(exists
+              (eduction-query
+               (filter
+                (fn [$this]
+                  (equivalent
+                   (call
+                    "ToConcept"
+                    (:type
+                     $this))
+                   (concept
+                    (code
+                     "http://fhir.de/CodeSystem/identifier-type-de-basis"
+                     nil
+                     "GKV")))))
+               (:identifier
+                (singleton-from
+                 (retrieve-resource))))))
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs)))))))))

@@ -23,9 +23,11 @@
   ([tid id t]
    (resource-handle tid id t hash))
   ([tid id t hash]
-   (resource-handle tid id t hash :create))
-  ([tid id t hash op]
-   (rh/->ResourceHandle tid id t hash 0 op)))
+   (resource-handle tid id t hash 0))
+  ([tid id t hash num-changes]
+   (resource-handle tid id t hash num-changes :create))
+  ([tid id t hash num-changes op]
+   (rh/->ResourceHandle tid id t hash num-changes op)))
 
 (deftest state->num-changes-test
   (are [state num-changes] (= num-changes
@@ -37,7 +39,7 @@
 
 (deftest deleted-test
   (are [rh] (and (rh/deleted? rh) (apply rh/deleted? [rh]))
-    (resource-handle 0 "0" 0 hash :delete)))
+    (resource-handle 0 "0" 0 hash 0 :delete)))
 
 (deftest tid-test
   (satisfies-prop 100
@@ -62,6 +64,18 @@
     (prop/for-all [hash (s/gen :blaze.resource/hash)]
       (let [rh (resource-handle 0 "foo" 0 hash)]
         (= hash (:hash rh) (rh/hash rh) (apply rh/hash [rh]))))))
+
+(deftest num-changes-test
+  (satisfies-prop 100
+    (prop/for-all [num-changes (s/gen :blaze.db/num-changes)]
+      (let [rh (resource-handle 0 "foo" 0 hash num-changes)]
+        (= num-changes (:num-changes rh) (rh/num-changes rh) (apply rh/num-changes [rh]))))))
+
+(deftest op-test
+  (satisfies-prop 10
+    (prop/for-all [op (s/gen :blaze.db/op)]
+      (let [rh (resource-handle 0 "foo" 0 hash 0 op)]
+        (= op (:op rh) (rh/op rh) (apply rh/op [rh]))))))
 
 (deftest reference-test
   (satisfies-prop 100

@@ -76,6 +76,8 @@
     quantity)
   (-resolve-params [quantity _]
     quantity)
+  (-optimize [quantity _]
+    quantity)
   (-eval [quantity _ _ _]
     quantity)
   (-form [quantity]

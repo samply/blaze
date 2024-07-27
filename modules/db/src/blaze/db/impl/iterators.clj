@@ -10,10 +10,10 @@
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
+   [blaze.db.impl.util :as u]
    [blaze.db.kv :as kv])
   (:import
-   [clojure.lang IReduceInit]
-   [java.lang AutoCloseable]))
+   [clojure.lang IReduceInit]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -86,16 +86,6 @@
 (defn- read-key! [buf iter]
   (read! kv/key! buf iter))
 
-(defn- closer [iter]
-  (fn [rf]
-    (fn
-      ([] (rf))
-      ([result]
-       (.close ^AutoCloseable iter)
-       (rf result))
-      ([result input]
-       (rf result input)))))
-
 (defn seek-key-filter
   "Returns a stateful transducer that filters it's inputs by finding a key in
   `column-family` that matches with regards of one of the `values`.
@@ -137,7 +127,7 @@
               (let [key-buf (vswap! key-buf-state read-key! iter)]
                 (matches? target-buf key-buf % value)))))
         values))
-     (closer iter))))
+     (u/closer iter))))
 
 (defn target-length-matcher
   "Returns a matcher that can be used with `seek-key-filter` that calls the

@@ -37,6 +37,8 @@
     expr)
   (-resolve-params [expr _]
     expr)
+  (-optimize [expr _]
+    expr)
   (-eval [expr _ _ _]
     expr)
   (-form [_]
@@ -48,6 +50,9 @@
 
 (defn resource? [x]
   (instance? Resource x))
+
+(defn handle [resource]
+  (.-handle ^Resource resource))
 
 (defn- patient-last-change-t [db handle]
   (or (d/patient-compartment-last-change-t db (rh/id handle)) (rh/t handle)))

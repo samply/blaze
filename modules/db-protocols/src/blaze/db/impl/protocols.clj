@@ -31,6 +31,8 @@
 
   (-execute-query [db query] [db query arg1])
 
+  (-matcher-transducer [db matcher])
+
   (-stop-history-at [db instant])
 
   (-instance-history [db tid id start-t])
@@ -65,6 +67,8 @@
 
   (-compile-type-query-lenient [compiler type clauses])
 
+  (-compile-type-matcher [_ type clauses])
+
   (-compile-system-query [compiler clauses])
 
   (-compile-compartment-query [compiler code type clauses])
@@ -72,13 +76,18 @@
   (-compile-compartment-query-lenient [compiler code type clauses]))
 
 (defprotocol Query
-  (-count [query context]
+  (-count [query batch-db]
     "Returns a CompletableFuture that will complete with the count of the
     matching resource handles.")
 
-  (-execute [query context] [query context arg1])
+  (-execute [query batch-db] [query batch-db arg1])
 
-  (-clauses [query]))
+  (-query-clauses [query]))
+
+(defprotocol Matcher
+  (-transducer [matcher batch-db])
+
+  (-matcher-clauses [matcher]))
 
 (defprotocol Pull
   (-pull [pull resource-handle])

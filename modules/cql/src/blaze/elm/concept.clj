@@ -26,6 +26,8 @@
     expr)
   (-resolve-params [expr _]
     expr)
+  (-optimize [expr _]
+    expr)
   (-eval [this _ _ _]
     this)
   (-form [_]

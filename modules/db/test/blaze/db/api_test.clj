@@ -94,6 +94,15 @@
     {:resource-store (ig/ref ::resource-store-failing-on-put)}
     ::resource-store-failing-on-put {}}))
 
+(defmacro with-open-db
+  "Runs `body` once in a normal database and then again in a batch database."
+  [[db node] & body]
+  `(do
+     (let [~db (d/db ~node)]
+       ~@body)
+     (with-open [~db (d/new-batch-db (d/db ~node))]
+       ~@body)))
+
 (deftest node-test
   (with-system [{:blaze.db/keys [node]} config]
     (is (identical? node (d/node (d/db node))))))
@@ -590,11 +599,9 @@
           ::anom/category := ::anom/conflict))
 
       (testing "creating a second patient in order to add a successful transaction on top"
-        @(d/transact
-          node
-          [[:create {:fhir/type :fhir/Patient :id "1"}]]))
+        @(d/transact node [[:create {:fhir/type :fhir/Patient :id "1"}]]))
 
-      (let [db (d/db node)]
+      (with-open-db [db node]
         (testing "the second patient is found in `db`"
           (given (d/resource-handle db "Patient" "1")
             :id := "1"))
@@ -803,7 +810,7 @@
   (with-system-data [{:blaze.db/keys [node]} config]
     [[[:put {:fhir/type :fhir/Patient :id "id-142136"}]]]
 
-    (let [db (d/db node)]
+    (with-open-db [db node]
       (given (d/tx db (d/basis-t db))
         :blaze.db.tx/instant := Instant/EPOCH))))
 
@@ -4669,7 +4676,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
 
       (testing "the patient can be found"
-        (let [db (d/db node)]
+        (with-open-db [db node]
           (doseq [target [node db]]
             (given @(->> (d/compile-type-query target "Patient" [["active" "true"]])
                          (d/execute-query db)
@@ -4696,13 +4703,6 @@
             [0] := [:sort "_id" :asc]
             [1] := ["active" "true"])))
 
-      (testing "special all clause is removed"
-        (doseq [target [node (d/db node)]]
-          (given (-> (d/compile-type-query target "Patient" [["_lastUpdated" "lt3000-01-01"]])
-                     (d/query-clauses))
-            count := 1
-            [0] := ["_lastUpdated" "lt3000-01-01"])))
-
       (testing "an unknown search-param errors"
         (doseq [target [node (d/db node)]]
           (given (d/compile-type-query target "Patient" [["foo" "bar"]
@@ -4721,54 +4721,60 @@
     @(d/count-query (d/db node) query)))
 
 (deftest compile-type-query-lenient-test
-  (testing "a node with one patient"
-    (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
-        [:put {:fhir/type :fhir/Patient :id "1"}]]]
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0" :active true}]
+      [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
-      (testing "the patient can be found"
-        (let [db (d/db node)]
+    (testing "the patient can be found"
+      (with-open-db [db node]
+        (doseq [target [node db]]
+          (given @(->> (d/compile-type-query-lenient target "Patient" [["active" "true"]])
+                       (d/execute-query db)
+                       (d/pull-many target))
+            count := 1
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0"))))
+
+    (testing "an unknown search-param is ignored"
+      (with-open-db [db node]
+        (doseq [target [node db]]
+          (given @(->> (d/compile-type-query-lenient target "Patient" [["foo" "bar"] ["active" "true"]])
+                       (d/execute-query db)
+                       (d/pull-many target))
+            count := 1
+            [0 :fhir/type] := :fhir/Patient
+            [0 :id] := "0")))
+
+      (testing "one unknown search parameter will result in an empty query"
+        (with-open-db [db node]
           (doseq [target [node db]]
-            (given @(->> (d/compile-type-query-lenient target "Patient" [["active" "true"]])
-                         (d/execute-query db)
-                         (d/pull-many target))
-              count := 1
-              [0 :fhir/type] := :fhir/Patient
-              [0 :id] := "0"))))
-
-      (testing "an unknown search-param is ignored"
-        (let [db (d/db node)]
-          (doseq [target [node db]]
-            (given @(->> (d/compile-type-query-lenient target "Patient" [["foo" "bar"] ["active" "true"]])
-                         (d/execute-query db)
-                         (d/pull-many target))
-              count := 1
-              [0 :fhir/type] := :fhir/Patient
-              [0 :id] := "0")))
-
-        (testing "one unknown search parameter will result in an empty query"
-          (let [db (d/db node)]
-            (doseq [target [node db]]
-              (let [query (d/compile-type-query-lenient target "Patient" [["foo" "bar"]])]
+            (let [query (d/compile-type-query-lenient target "Patient" [["foo" "bar"]])]
+              (testing "all patients are found"
                 (given @(d/pull-many target (d/execute-query db query))
                   count := 2
                   [0 :id] := "0"
-                  [1 :id] := "1")
+                  [1 :id] := "1"))
 
-                (is (empty? (d/query-clauses query))))))
+              (testing "it is possible to start with the second patient"
+                (given @(d/pull-many target (d/execute-query db query "1"))
+                  count := 1
+                  [0 :id] := "1"))
 
-          (testing "count query"
-            (is (= 2 (count-type-query-lenient node "Patient" [["foo" "bar"]]))))))
+              (testing "the query clauses are empty"
+                (is (empty? (d/query-clauses query)))))))
 
-      (testing "invalid date"
-        (given (d/compile-type-query-lenient node "Patient" [["birthdate" "invalid"]])
-          ::anom/category := ::anom/incorrect
-          ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`."))
+        (testing "count query"
+          (is (= 2 (count-type-query-lenient node "Patient" [["foo" "bar"]]))))))
 
-      (testing "sort parameter"
-        (let [query (d/compile-type-query-lenient
-                     node "Patient" [[:sort "_lastUpdated" :asc]])]
-          (is (= [[:sort "_lastUpdated" :asc]] (d/query-clauses query))))))))
+    (testing "invalid date"
+      (given (d/compile-type-query-lenient node "Patient" [["birthdate" "invalid"]])
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`."))
+
+    (testing "sort parameter"
+      (let [query (d/compile-type-query-lenient
+                   node "Patient" [[:sort "_lastUpdated" :asc]])]
+        (is (= [[:sort "_lastUpdated" :asc]] (d/query-clauses query)))))))
 
 (deftest count-query-test
   (testing "different sizes"
@@ -4780,6 +4786,80 @@
             (range n))]
 
           (= n (count-type-query node "Patient" [["active" "true"]])))))))
+
+(deftest compile-type-matcher-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"
+             :active true :gender #fhir/code"male"}]
+      [:put {:fhir/type :fhir/Patient :id "1"
+             :gender #fhir/code"male"}]
+      [:put {:fhir/type :fhir/Patient :id "2"
+             :active true :gender #fhir/code"female"}]
+      [:put {:fhir/type :fhir/Patient :id "3"
+             :gender #fhir/code"female"}]]]
+
+    (testing "one clause"
+      (with-open-db [db node]
+        (doseq [target [node db]]
+          (let [matcher (d/compile-type-matcher target "Patient" [["active" "true"]])
+                xform (d/matcher-transducer db matcher)]
+            (given (into [] xform (d/type-list db "Patient"))
+              count := 2
+              [0 :fhir/type] := :fhir/Patient
+              [0 :id] := "0"
+              [1 :fhir/type] := :fhir/Patient
+              [1 :id] := "2"))
+
+          (let [matcher (d/compile-type-matcher target "Patient" [["gender" "male"]])
+                xform (d/matcher-transducer db matcher)]
+            (given (into [] xform (d/type-list db "Patient"))
+              count := 2
+              [0 :fhir/type] := :fhir/Patient
+              [0 :id] := "0"
+              [1 :fhir/type] := :fhir/Patient
+              [1 :id] := "1")))))
+
+    (testing "two clauses"
+      (with-open-db [db node]
+        (doseq [target [node db]]
+          (doseq [clauses [[["active" "true"] ["gender" "male"]]
+                           [["gender" "male"] ["active" "true"]]]]
+            (let [matcher (d/compile-type-matcher target "Patient" clauses)
+                  xform (d/matcher-transducer db matcher)]
+              (given (into [] xform (d/type-list db "Patient"))
+                count := 1
+                [0 :fhir/type] := :fhir/Patient
+                [0 :id] := "0")))
+
+          (doseq [clauses [[["active" "true"] ["gender" "female"]]
+                           [["gender" "female"] ["active" "true"]]]]
+            (let [matcher (d/compile-type-matcher target "Patient" clauses)
+                  xform (d/matcher-transducer db matcher)]
+              (given (into [] xform (d/type-list db "Patient"))
+                count := 1
+                [0 :fhir/type] := :fhir/Patient
+                [0 :id] := "2"))))))
+
+    (testing "clauses can be read back"
+      (given (-> (d/compile-type-matcher node "Patient" [["active" "true"] ["gender" "female"]])
+                 (d/matcher-clauses))
+        count := 2
+        [0] := ["active" "true"]
+        [1] := ["gender" "female"]))
+
+    (testing "an unknown search-param errors"
+      (with-open-db [db node]
+        (doseq [target [node db]]
+          (given (d/compile-type-matcher target "Patient" [["foo" "bar"]])
+            ::anom/category := ::anom/not-found
+            ::anom/message := "The search-param with code `foo` and type `Patient` was not found."))))
+
+    (testing "invalid date"
+      (with-open-db [db node]
+        (doseq [target [node db]]
+          (given (d/compile-type-matcher target "Patient" [["birthdate" "invalid"]])
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Invalid date-time value `invalid` in search parameter `birthdate`."))))))
 
 ;; ---- System-Level Functions ------------------------------------------------
 
@@ -4850,9 +4930,24 @@
         (is (coll/empty? (d/system-list (d/db node) "Patient" "1")))))))
 
 (deftest system-query-test
+  (testing "a new node has no resources"
+    (with-system [{:blaze.db/keys [node]} config]
+      (with-open-db [db node]
+        (is (coll/empty? (d/system-query db [["_id" "0"]])))
+
+        (testing "an unknown search-param errors"
+          (given (d/system-query db [["foo" "bar"]])
+            ::anom/category := ::anom/not-found
+            ::anom/message := "The search-param with code `foo` and type `Resource` was not found."))))))
+
+(deftest compile-system-query-test
   (with-system [{:blaze.db/keys [node]} config]
-    (testing "a new node has no resources"
-      (is (coll/empty? (d/system-query (d/db node) [["_id" "0"]]))))))
+
+    (testing "an unknown search-param errors"
+      (doseq [target [node (d/db node)]]
+        (given (d/compile-system-query target [["foo" "bar"]])
+          ::anom/category := ::anom/not-found
+          ::anom/message := "The search-param with code `foo` and type `Resource` was not found.")))))
 
 ;; ---- Compartment-Level Functions -------------------------------------------
 
@@ -5201,7 +5296,7 @@
                  {:system #fhir/uri"system-191514"
                   :code #fhir/code"code-191518"}]}}]]]
 
-    (let [db (d/db node)]
+    (with-open-db [db node]
       (doseq [target [node db]]
         (given @(let [query (d/compile-compartment-query
                              target "Patient" "Observation"
@@ -5223,29 +5318,49 @@
                  {:system #fhir/uri"system-191514"
                   :code #fhir/code"code-191518"}]}}]]]
 
-    (let [db (d/db node)]
-      (doseq [target [node db]]
-        (given @(let [query (d/compile-compartment-query-lenient
-                             target "Patient" "Observation"
-                             [["code" "system-191514|code-191518"]])]
-                  (d/pull-many target (d/execute-query db query "0")))
-          count := 1
-          [0 :fhir/type] := :fhir/Observation
-          [0 :id] := "0")))))
+    (testing "the observation can be found"
+      (with-open-db [db node]
+        (doseq [target [node db]]
+          (let [query (d/compile-compartment-query-lenient
+                       target "Patient" "Observation"
+                       [["code" "system-191514|code-191518"]])]
+            (given @(d/pull-many target (d/execute-query db query "0"))
+              count := 1
+              [0 :fhir/type] := :fhir/Observation
+              [0 :id] := "0")
+
+            (is (= (d/query-clauses query)
+                   [["code" "system-191514|code-191518"]]))))))
+
+    (testing "an unknown search-param is ignored"
+      (with-open-db [db node]
+        (doseq [target [node db]]
+          (let [query (d/compile-compartment-query-lenient
+                       target "Patient" "Observation"
+                       [["foo" "bar"]])]
+            (given @(d/pull-many target (d/execute-query db query "0"))
+              count := 1
+              [0 :fhir/type] := :fhir/Observation
+              [0 :id] := "0")
+
+            (testing "the query clauses are empty"
+              (is (empty? (d/query-clauses query))))))))))
 
 (deftest patient-compartment-last-change-t-test
   (testing "non-existing patient"
     (with-system [{:blaze.db/keys [node]} config]
 
       (testing "just returns nil"
-        (is (nil? (d/patient-compartment-last-change-t (d/db node) "0"))))))
+        (with-open-db [db node]
+          (is (nil? (d/patient-compartment-last-change-t db "0")))))))
 
   (testing "single patient"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "has no resources in its compartment"
-        (is (nil? (d/patient-compartment-last-change-t (d/db node) "0"))))))
+        (with-open-db [db node]
+          (is (nil? (d/patient-compartment-last-change-t db "0")))))))
 
   (testing "observation created in same transaction as patient"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -5253,7 +5368,8 @@
         [:put {:fhir/type :fhir/Observation :id "0"
                :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
-      (is (= 1 (d/patient-compartment-last-change-t (d/db node) "0")))))
+      (with-open-db [db node]
+        (is (= 1 (d/patient-compartment-last-change-t db "0"))))))
 
   (testing "observation created after the patient"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -5262,7 +5378,8 @@
                :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
       (testing "the last change comes from the second transaction"
-        (is (= 2 (d/patient-compartment-last-change-t (d/db node) "0"))))
+        (with-open-db [db node]
+          (is (= 2 (d/patient-compartment-last-change-t db "0")))))
 
       (testing "at t=1 there was no change"
         (is (nil? (d/patient-compartment-last-change-t (d/as-of (d/db node) 1) "0"))))))
@@ -5274,7 +5391,8 @@
         [:put {:fhir/type :fhir/Observation :id "0"
                :subject #fhir/Reference{:reference "Patient/1"}}]]]
 
-      (is (nil? (d/patient-compartment-last-change-t (d/db node) "0"))))))
+      (with-open-db [db node]
+        (is (nil? (d/patient-compartment-last-change-t db "0")))))))
 
 (defmethod ig/init-key ::defective-resource-store [_ {:keys [hashes-to-store]}]
   (let [store (atom {})]
@@ -5365,7 +5483,7 @@
                    {:system #fhir/uri"system-191514"
                     :code #fhir/code"code-191518"}]}}]]]
 
-      (let [db (d/db node)]
+      (with-open-db [db node]
         (doseq [target [node db]]
           (given @(mtu/assoc-thread-name (d/pull-many target (d/type-list db "Observation")))
             count := 1
@@ -5388,7 +5506,7 @@
                    {:system #fhir/uri"system-191514"
                     :code #fhir/code"code-191518"}]}}]]]
 
-      (let [db (d/db node)]
+      (with-open-db [db node]
         (doseq [target [node db]]
           (given @(mtu/assoc-thread-name (d/pull-many target (d/type-list db "Observation") [:subject]))
             count := 1
@@ -6434,7 +6552,7 @@
         (with-system-data [{:blaze.db/keys [node]} config]
           [[(patient-profile-create-op 0)]]
 
-          (let [db (d/db node)]
+          (with-open-db [db node]
             (is (= 1 (d/re-index-total db search-param-url)))
 
             (given @(d/re-index db search-param-url)
@@ -6445,7 +6563,7 @@
         (with-system-data [{:blaze.db/keys [node]} config]
           [(mapv patient-profile-create-op (range 10001))]
 
-          (let [db (d/db node)]
+          (with-open-db [db node]
             (is (= 10001 (d/re-index-total db search-param-url)))
 
             (testing "returns Patient with id 10000 as the next one to re-index"
@@ -6465,7 +6583,7 @@
         (with-system-data [{:blaze.db/keys [node]} config]
           [[(observation-create-op 0)]]
 
-          (let [db (d/db node)]
+          (with-open-db [db node]
             (is (= 1 (d/re-index-total db search-param-url)))
 
             (given @(d/re-index db search-param-url)
@@ -6476,7 +6594,7 @@
         (with-system-data [{:blaze.db/keys [node]} config]
           [(mapv observation-create-op (range 10001))]
 
-          (let [db (d/db node)]
+          (with-open-db [db node]
             (is (= 10001 (d/re-index-total db search-param-url)))
 
             (testing "returns Observation with id 10000 as the next one to re-index"
@@ -6497,7 +6615,7 @@
           [(mapv condition-create-op (range 10001))
            (mapv observation-create-op (range 10000))]
 
-          (let [db (d/db node)]
+          (with-open-db [db node]
             (is (= 20001 (d/re-index-total db search-param-url)))
 
             (testing "returns Condition with id 10000 as the next one to re-index"

@@ -16,10 +16,14 @@
 (defn combine-op
   ([source]
    (reify-expr core/Expression
+     (-attach-cache [_ cache]
+       (core/attach-cache-helper combine-op cache source))
      (-resolve-refs [_ expression-defs]
        (combine-op (core/-resolve-refs source expression-defs)))
      (-resolve-params [_ parameters]
        (core/resolve-params-helper combine-op parameters source))
+     (-optimize [_ node]
+       (core/optimize-helper combine-op node source))
      (-eval [_ context resource scope]
        (when-let [source (core/-eval source context resource scope)]
          (string/combine source)))
@@ -27,11 +31,15 @@
        (list 'combine (core/-form source)))))
   ([source separator]
    (reify-expr core/Expression
+     (-attach-cache [_ cache]
+       (core/attach-cache-helper combine-op cache source separator))
      (-resolve-refs [_ expression-defs]
        (combine-op (core/-resolve-refs source expression-defs)
                    (core/-resolve-refs separator expression-defs)))
      (-resolve-params [_ parameters]
        (core/resolve-params-helper combine-op parameters source separator))
+     (-optimize [_ node]
+       (core/optimize-helper combine-op node source separator))
      (-eval [_ context resource scope]
        (when-let [source (core/-eval source context resource scope)]
          (string/combine (core/-eval separator context resource scope)
@@ -70,6 +78,8 @@
                            (core/-resolve-refs string expression-defs)))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper last-position-of-op parameters pattern string))
+    (-optimize [_ node]
+      (core/optimize-helper last-position-of-op node pattern string))
     (-eval [_ context resource scope]
       (when-let [^String pattern (core/-eval pattern context resource scope)]
         (when-let [^String string (core/-eval string context resource scope)]
@@ -105,6 +115,8 @@
                       (core/-resolve-refs string expression-defs)))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper position-of-op parameters pattern string))
+    (-optimize [_ node]
+      (core/optimize-helper position-of-op node pattern string))
     (-eval [_ context resource scope]
       (when-let [^String pattern (core/-eval pattern context resource scope)]
         (when-let [^String string (core/-eval string context resource scope)]
@@ -131,6 +143,8 @@
       (core/resolve-refs-helper split-op expression-defs string separator))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper split-op parameters string separator))
+    (-optimize [_ node]
+      (core/optimize-helper split-op node string separator))
     (-eval [_ context resource scope]
       (when-let [string (core/-eval string context resource scope)]
         (if (= "" string)
@@ -177,6 +191,8 @@
        (core/resolve-refs-helper substring-op expression-defs string start-index))
      (-resolve-params [_ parameters]
        (core/resolve-params-helper substring-op parameters string start-index))
+     (-optimize [_ node]
+       (core/optimize-helper substring-op node string start-index))
      (-eval [_ context resource scope]
        (when-let [^String string (core/-eval string context resource scope)]
          (when-let [start-index (core/-eval start-index context resource scope)]
@@ -192,6 +208,8 @@
        (core/resolve-refs-helper substring-op expression-defs string start-index length))
      (-resolve-params [_ parameters]
        (core/resolve-params-helper substring-op parameters string start-index length))
+     (-optimize [_ node]
+       (core/optimize-helper substring-op node string start-index length))
      (-eval [_ context resource scope]
        (when-let [^String string (core/-eval string context resource scope)]
          (when-let [start-index (core/-eval start-index context resource scope)]

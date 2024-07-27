@@ -120,9 +120,11 @@
     (-attach-cache [_ cache]
       (core/attach-cache-helper converts-to-date-op cache operand))
     (-resolve-refs [_ expression-defs]
-      (converts-to-date-op (core/-resolve-refs operand expression-defs)))
+      (core/resolve-refs-helper converts-to-date-op expression-defs operand))
     (-resolve-params [_ parameters]
-      (converts-to-date-op (core/-resolve-params operand parameters)))
+      (core/resolve-params-helper converts-to-date-op parameters operand))
+    (-optimize [_ node]
+      (core/optimize-helper converts-to-date-op node operand))
     (-eval [_ {:keys [now] :as context} resource scope]
       (when-let [operand (core/-eval operand context resource scope)]
         (when (some? operand)
@@ -140,9 +142,11 @@
     (-attach-cache [_ cache]
       (core/attach-cache-helper converts-to-date-time-op cache operand))
     (-resolve-refs [_ expression-defs]
-      (converts-to-date-time-op (core/-resolve-refs operand expression-defs)))
+      (core/resolve-refs-helper converts-to-date-time-op expression-defs operand))
     (-resolve-params [_ parameters]
-      (converts-to-date-time-op (core/-resolve-params operand parameters)))
+      (core/resolve-params-helper converts-to-date-time-op parameters operand))
+    (-optimize [_ node]
+      (core/optimize-helper converts-to-date-time-op node operand))
     (-eval [_ {:keys [now] :as context} resource scope]
       (when-let [operand (core/-eval operand context resource scope)]
         (when (some? operand)
@@ -193,9 +197,11 @@
     (-attach-cache [_ cache]
       (core/attach-cache-helper converts-to-time-op cache operand))
     (-resolve-refs [_ expression-defs]
-      (converts-to-time-op (core/-resolve-refs operand expression-defs)))
+      (core/resolve-refs-helper converts-to-time-op expression-defs operand))
     (-resolve-params [_ parameters]
-      (converts-to-time-op (core/-resolve-params operand parameters)))
+      (core/resolve-params-helper converts-to-time-op parameters operand))
+    (-optimize [_ node]
+      (core/optimize-helper converts-to-time-op node operand))
     (-eval [_ {:keys [now] :as context} resource scope]
       (when-some [operand (core/-eval operand context resource scope)]
         (some? (p/to-time operand now))))
@@ -289,9 +295,11 @@
     (-attach-cache [_ cache]
       (core/attach-cache-helper to-date-op cache operand))
     (-resolve-refs [_ expression-defs]
-      (to-date-op (core/-resolve-refs operand expression-defs)))
+      (core/resolve-refs-helper to-date-op expression-defs operand))
     (-resolve-params [_ parameters]
-      (to-date-op (core/-resolve-params operand parameters)))
+      (core/resolve-params-helper to-date-op parameters operand))
+    (-optimize [_ node]
+      (core/optimize-helper to-date-op node operand))
     (-eval [_ {:keys [now] :as context} resource scope]
       (p/to-date (core/-eval operand context resource scope) now))
     (-form [_]
@@ -310,9 +318,11 @@
     (-attach-cache [_ cache]
       (core/attach-cache-helper to-date-time-op cache operand))
     (-resolve-refs [_ expression-defs]
-      (to-date-time-op (core/-resolve-refs operand expression-defs)))
+      (core/resolve-refs-helper to-date-time-op expression-defs operand))
     (-resolve-params [_ parameters]
-      (to-date-time-op (core/-resolve-params operand parameters)))
+      (core/resolve-params-helper to-date-time-op parameters operand))
+    (-optimize [_ node]
+      (core/optimize-helper to-date-time-op node operand))
     (-eval [_ {:keys [now] :as context} resource scope]
       (p/to-date-time (core/-eval operand context resource scope) now))
     (-form [_]
@@ -359,9 +369,11 @@
     (-attach-cache [_ cache]
       (core/attach-cache-helper to-time-op cache operand))
     (-resolve-refs [_ expression-defs]
-      (to-time-op (core/-resolve-refs operand expression-defs)))
+      (core/resolve-refs-helper to-time-op expression-defs operand))
     (-resolve-params [_ parameters]
-      (to-time-op (core/-resolve-params operand parameters)))
+      (core/resolve-params-helper to-time-op parameters operand))
+    (-optimize [_ node]
+      (core/optimize-helper to-time-op node operand))
     (-eval [_ {:keys [now] :as context} resource scope]
       (p/to-time (core/-eval operand context resource scope) now))
     (-form [_]

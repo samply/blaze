@@ -38,7 +38,7 @@
 ;; TODO: This definition is inconsistent with the CQL definition https://cql.hl7.org/2019May/09-b-cqlreference.html#combine
 (deftest compile-combine-test
   (testing "Without separator"
-    (are [src res] (= res (core/-eval (c/compile {} {:type "Combine" :source src}) {} nil nil))
+    (are [src res] (= res (core/-eval (c/compile {} (elm/combine src)) {} nil nil))
       #elm/list [#elm/string "a"] "a"
       #elm/list [#elm/string "a" #elm/string "b"] "ab"
 
@@ -47,16 +47,17 @@
       #elm/list [{:type "Null"}] nil
       {:type "Null"} nil)
 
+    (ctu/testing-unary-op elm/combine)
+
     (testing "form and static"
-      (let [expr (ctu/dynamic-compile {:type "Combine"
-                                       :source #elm/parameter-ref "x"})]
+      (let [expr (ctu/dynamic-compile #elm/combine #elm/parameter-ref "x")]
 
         (has-form expr '(combine (param-ref "x")))
 
         (is (false? (core/-static expr))))))
 
   (testing "With separator"
-    (are [src res] (= res (core/-eval (c/compile {} {:type "Combine" :source src :separator #elm/string " "}) {} nil nil))
+    (are [src res] (= res (core/-eval (c/compile {} (elm/combine [src #elm/string " "])) {} nil nil))
       #elm/list [#elm/string "a"] "a"
       #elm/list [#elm/string "a" #elm/string "b"] "a b"
 
@@ -65,10 +66,11 @@
       #elm/list [{:type "Null"}] nil
       {:type "Null"} nil)
 
+    (ctu/testing-binary-op elm/combine)
+
     (testing "form and static"
-      (let [expr (ctu/dynamic-compile {:type "Combine"
-                                       :source #elm/parameter-ref "x"
-                                       :separator #elm/parameter-ref "y"})]
+      (let [expr (ctu/dynamic-compile #elm/combine [#elm/parameter-ref "x"
+                                                    #elm/parameter-ref "y"])]
 
         (has-form expr '(combine (param-ref "x") (param-ref "y")))
 

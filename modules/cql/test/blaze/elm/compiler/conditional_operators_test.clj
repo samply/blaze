@@ -219,6 +219,26 @@
             expr (c/resolve-params (c/compile ctx elm) {"c" "c" "w" "w" "t" "t" "e" "e"})]
         (has-form expr '(case "c" "w" "t" "e")))))
 
+  (testing "optimize"
+    (testing "multi-conditional"
+      (let [elm {:type "Case"
+                 :caseItem
+                 [{:when {:type "Optimizeable" :id "w"}
+                   :then {:type "Optimizeable" :id "t"}}]
+                 :else {:type "Optimizeable" :id "e"}}
+            expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+        (has-form expr '(case (optimized "w") (optimized "t") (optimized "e")))))
+
+    (testing "comparand-based"
+      (let [elm {:type "Case"
+                 :comparand {:type "Optimizeable" :id "c"}
+                 :caseItem
+                 [{:when {:type "Optimizeable" :id "w"}
+                   :then {:type "Optimizeable" :id "t"}}]
+                 :else {:type "Optimizeable" :id "e"}}
+            expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+        (has-form expr '(case (optimized "c") (optimized "w") (optimized "t") (optimized "e"))))))
+
   (testing "equals/hashCode"
     (testing "multi-conditional"
       (let [elm {:type "Case"
@@ -311,6 +331,13 @@
           ctx {:library {:parameters {:def [{:name "c"} {:name "t"} {:name "e"}]}}}
           expr (c/resolve-params (c/compile ctx elm) {"c" "c" "t" "t" "e" "e"})]
       (has-form expr '(if "c" "t" "e"))))
+
+  (testing "optimize"
+    (let [elm #elm/if [{:type "Optimizeable" :id "c"}
+                       {:type "Optimizeable" :id "t"}
+                       {:type "Optimizeable" :id "e"}]
+          expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+      (has-form expr '(if (optimized "c") (optimized "t") (optimized "e")))))
 
   (ctu/testing-equals-hash-code #elm/if [#elm/parameter-ref "x"
                                          #elm/parameter-ref "y"

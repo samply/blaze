@@ -1,5 +1,6 @@
 (ns blaze.elm.compiler-spec
   (:require
+   [blaze.db.spec]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.library-spec]
@@ -27,6 +28,10 @@
 
 (s/fdef c/resolve-params
   :args (s/cat :expression core/expr? :parameters ::c/parameters)
+  :ret core/expr?)
+
+(s/fdef c/optimize
+  :args (s/cat :node :blaze.db/node :expression core/expr?)
   :ret core/expr?)
 
 (s/fdef c/form

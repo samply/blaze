@@ -1,6 +1,7 @@
 (ns blaze.db.node-spec
   (:require
    [blaze.async.comp-spec]
+   [blaze.db.impl.index.resource-handle-spec]
    [blaze.db.impl.index.t-by-instant-spec]
    [blaze.db.impl.index.tx-error-spec]
    [blaze.db.impl.index.tx-success-spec]

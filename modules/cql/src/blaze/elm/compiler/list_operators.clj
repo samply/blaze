@@ -26,6 +26,8 @@
       (list-op (mapv #(core/-resolve-refs % expression-defs) elements)))
     (-resolve-params [_ parameters]
       (list-op (mapv #(core/-resolve-params % parameters) elements)))
+    (-optimize [_ node]
+      (list-op (mapv #(core/-optimize % node) elements)))
     (-eval [_ context resource scope]
       (mapv #(core/-eval % context resource scope) elements))
     (-form [_]
@@ -75,15 +77,13 @@
 (defn- scoped-filter-op [source condition scope]
   (reify-expr core/Expression
     (-resolve-refs [_ expression-defs]
-      (scoped-filter-op
-       (core/-resolve-refs source expression-defs)
-       (core/-resolve-refs condition expression-defs)
-       scope))
+      (core/resolve-refs-helper-1 scoped-filter-op expression-defs source
+                                  condition scope))
     (-resolve-params [_ parameters]
-      (scoped-filter-op
-       (core/-resolve-params source parameters)
-       (core/-resolve-params condition parameters)
-       scope))
+      (core/resolve-params-helper-1 scoped-filter-op parameters source condition
+                                    scope))
+    (-optimize [_ node]
+      (core/optimize-helper-1 scoped-filter-op node source condition scope))
     (-eval [_ context resource scopes]
       (when-let [source (core/-eval source context resource scopes)]
         (filterv
@@ -96,11 +96,11 @@
 (defn- filter-op [source condition]
   (reify-expr core/Expression
     (-resolve-refs [_ expression-defs]
-      (filter-op
-       (core/-resolve-refs source expression-defs)
-       (core/-resolve-refs condition expression-defs)))
+      (core/resolve-refs-helper filter-op expression-defs source condition))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper filter-op parameters source condition))
+    (-optimize [_ node]
+      (core/optimize-helper filter-op node source condition))
     (-eval [_ context resource scopes]
       (when-let [source (core/-eval source context resource scopes)]
         (filterv (partial core/-eval condition context resource) source)))
@@ -141,15 +141,13 @@
 (defn- scoped-for-each [source element scope]
   (reify-expr core/Expression
     (-resolve-refs [_ expression-defs]
-      (scoped-for-each
-       (core/-resolve-refs source expression-defs)
-       (core/-resolve-refs element expression-defs)
-       scope))
+      (core/resolve-refs-helper-1 scoped-for-each expression-defs source element
+                                  scope))
     (-resolve-params [_ parameters]
-      (scoped-for-each
-       (core/-resolve-params source parameters)
-       (core/-resolve-params element parameters)
-       scope))
+      (core/resolve-params-helper-1 scoped-for-each parameters source element
+                                    scope))
+    (-optimize [_ node]
+      (core/optimize-helper-1 scoped-for-each node source element scope))
     (-eval [_ context resource scopes]
       (when-let [source (core/-eval source context resource scopes)]
         (mapv
@@ -162,13 +160,11 @@
 (defn- for-each [source element]
   (reify-expr core/Expression
     (-resolve-refs [_ expression-defs]
-      (for-each
-       (core/-resolve-refs source expression-defs)
-       (core/-resolve-refs element expression-defs)))
+      (core/resolve-refs-helper for-each expression-defs source element))
     (-resolve-params [_ parameters]
-      (for-each
-       (core/-resolve-params source parameters)
-       (core/-resolve-params element parameters)))
+      (core/resolve-params-helper for-each parameters source element))
+    (-optimize [_ node]
+      (core/optimize-helper for-each node source element))
     (-eval [_ context resource scopes]
       (when-let [source (core/-eval source context resource scopes)]
         (mapv (partial core/-eval element context resource) source)))
@@ -189,10 +185,11 @@
     (-attach-cache [_ cache]
       (core/attach-cache-helper index-of-op cache source element))
     (-resolve-refs [_ expression-defs]
-      (index-of-op (core/-resolve-refs source expression-defs)
-                   (core/-resolve-refs element expression-defs)))
+      (core/resolve-refs-helper index-of-op expression-defs source element))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper index-of-op parameters source element))
+    (-optimize [_ node]
+      (core/optimize-helper index-of-op node source element))
     (-eval [_ context resource scopes]
       (when-let [source (core/-eval source context resource scopes)]
         (when-let [element (core/-eval element context resource scopes)]
@@ -246,6 +243,8 @@
                 (core/-resolve-refs end-index expression-defs)))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper slice-op parameters source start-index end-index))
+    (-optimize [_ node]
+      (core/optimize-helper slice-op node source start-index end-index))
     (-eval [_ context resource scopes]
       (when-let [source (core/-eval source context resource scopes)]
         (let [start-index (or (core/-eval start-index context resource scopes) 0)

@@ -13,9 +13,10 @@
    [blaze.elm.compiler.core-spec]
    [blaze.elm.compiler.queries]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
-   [blaze.elm.literal]
+   [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
    [blaze.elm.quantity :refer [quantity]]
+   [blaze.elm.util-spec]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type]
    [clojure.spec.test.alpha :as st]
@@ -234,7 +235,28 @@
                     (filter
                      (fn [P]
                        (equal (call "ToString" (:gender P)) "female")))
-                    (retrieve "Patient")))))))
+                    (retrieve "Patient"))))))
+
+          (testing "with exists expression around"
+            (let [elm {:type "Query"
+                       :source
+                       [{:expression retrieve
+                         :alias "P"}]
+                       :where where}
+                  ctx {:node node :eval-context "Unfiltered"}
+                  expr (c/compile ctx (elm/exists elm))]
+
+              (testing "eval"
+                (is (true? (core/-eval expr {:db db} nil nil))))
+
+              (testing "form"
+                (has-form expr
+                  '(exists
+                    (eduction-query
+                     (filter
+                      (fn [P]
+                        (equal (call "ToString" (:gender P)) "female")))
+                     (retrieve "Patient"))))))))
 
         (testing "with return clause"
           (let [elm {:type "Query"
@@ -673,6 +695,45 @@
                    (retrieve "Encounter"))))
                distinct)
               (retrieve "Observation"))))))))
+
+(deftest compile-query-medication-reference-test
+  (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/MedicationAdministration :id "0"
+             :medication #fhir/Reference{:reference "Medication/0"}
+             :subject #fhir/Reference{:reference "Patient/0"}}]
+      [:put {:fhir/type :fhir/MedicationAdministration :id "1"
+             :medication #fhir/Reference{:reference "Medication/1"}
+             :subject #fhir/Reference{:reference "Patient/0"}}]
+      [:put {:fhir/type :fhir/MedicationStatement :id "0"
+             :medication #fhir/Reference{:reference "Medication/0"}
+             :subject #fhir/Reference{:reference "Patient/0"}}]
+      [:put {:fhir/type :fhir/MedicationStatement :id "1"
+             :medication #fhir/Reference{:reference "Medication/1"}
+             :subject #fhir/Reference{:reference "Patient/0"}}]
+      [:put {:fhir/type :fhir/Medication :id "0"}]
+      [:put {:fhir/type :fhir/Medication :id "1"}]]]
+
+    (doseq [medication-type ["MedicationAdministration"
+                             "MedicationStatement"]]
+      (let [elm {:type "Query"
+                 :source [(elm/aliased-query-source [(elm/retrieve {:type medication-type}) "M"])]
+                 :where #elm/contains[#elm/list [#elm/string "Medication/0"] #elm/function-ref["ToString" #elm/source-property [#elm/scope-property ["M" "medication"] "reference"]]]}
+
+            expr (c/compile {:node node :eval-context "Patient"} (elm/exists elm))
+            expr (c/optimize node expr)
+            db (d/db node)
+            patient (ctu/resource db "Patient" "0")]
+
+        (testing "eval"
+          (is (true? (core/-eval expr {:db db} patient nil))))
+
+        (testing "form"
+          (has-form expr
+            (list 'exists
+                  (list 'eduction-query
+                        '(matcher [["medication" "Medication/0"]])
+                        (list 'retrieve medication-type)))))))))
 
 ;; 10.3. AliasRef
 ;;

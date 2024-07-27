@@ -1,0 +1,5 @@
+library: cql/medication-7.cql
+group:
+- type: Patient
+  population:
+  - expression: InInitialPopulation

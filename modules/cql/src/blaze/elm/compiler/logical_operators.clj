@@ -22,6 +22,8 @@
       (and-nil-op (core/-resolve-refs x expression-defs)))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper and-nil-op parameters x))
+    (-optimize [_ node]
+      (core/optimize-helper and-nil-op node x))
     (-eval [_ context resource scope]
       (when (false? (core/-eval x context resource scope))
         false))
@@ -102,6 +104,8 @@
       (core/resolve-refs-helper and-op expression-defs a b))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper and-op parameters a b))
+    (-optimize [_ node]
+      (core/optimize-helper and-op node a b))
     (-eval [_ context resource scope]
       (let [a (core/-eval a context resource scope)]
         (if (false? a)
@@ -155,6 +159,8 @@
       (or-nil-op (core/-resolve-refs x expression-defs)))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper or-nil-op parameters x))
+    (-optimize [_ node]
+      (core/optimize-helper or-nil-op node x))
     (-eval [_ context resource scope]
       (when (true? (core/-eval x context resource scope))
         true))
@@ -242,6 +248,8 @@
       (core/resolve-refs-helper or-op expression-defs a b))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper or-op parameters a b))
+    (-optimize [_ node]
+      (core/optimize-helper or-op node a b))
     (-eval [_ context resource scope]
       (let [a (core/-eval a context resource scope)]
         (if (true? a)
@@ -281,6 +289,8 @@
       (core/resolve-refs-helper xor-op expression-defs a b))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper xor-op parameters a b))
+    (-optimize [_ node]
+      (core/optimize-helper xor-op node a b))
     (-eval [_ context resource scope]
       (when-some [a (core/-eval a context resource scope)]
         (when-some [b (core/-eval b context resource scope)]

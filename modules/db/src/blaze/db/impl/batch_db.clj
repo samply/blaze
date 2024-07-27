@@ -126,6 +126,9 @@
   (-execute-query [db query arg1]
     (p/-execute query db arg1))
 
+  (-matcher-transducer [db matcher]
+    (p/-transducer matcher db))
+
   ;; ---- History Functions ---------------------------------------------------
 
   (-stop-history-at [_ instant]
@@ -229,6 +232,9 @@
   (-compile-type-query-lenient [_ type clauses]
     (p/-compile-type-query-lenient node type clauses))
 
+  (-compile-type-matcher [_ type clause]
+    (p/-compile-type-matcher node type clause))
+
   (-compile-system-query [_ clauses]
     (p/-compile-system-query node clauses))
 
@@ -276,44 +282,51 @@
 
 (defrecord TypeQuery [tid clauses]
   p/Query
-  (-count [_ context]
-    (index/type-query-total context tid clauses))
-  (-execute [_ context]
-    (index/type-query context tid clauses))
-  (-execute [_ context start-id]
-    (index/type-query context tid clauses (codec/id-byte-string start-id)))
-  (-clauses [_]
+  (-count [_ batch-db]
+    (index/type-query-total batch-db tid clauses))
+  (-execute [_ batch-db]
+    (index/type-query batch-db tid clauses))
+  (-execute [_ batch-db start-id]
+    (index/type-query batch-db tid clauses (codec/id-byte-string start-id)))
+  (-query-clauses [_]
     (decode-clauses clauses)))
 
 (defrecord EmptyTypeQuery [tid]
   p/Query
-  (-count [_ context]
+  (-count [_ batch-db]
     (ac/completed-future
-     (:total (type-stats/seek-value (:snapshot context) tid (:t context)) 0)))
-  (-execute [_ context]
-    (rao/type-list context tid))
-  (-execute [_ context start-id]
-    (rao/type-list context tid (codec/id-byte-string start-id)))
-  (-clauses [_]))
+     (:total (type-stats/seek-value (:snapshot batch-db) tid (:t batch-db)) 0)))
+  (-execute [_ batch-db]
+    (rao/type-list batch-db tid))
+  (-execute [_ batch-db start-id]
+    (rao/type-list batch-db tid (codec/id-byte-string start-id)))
+  (-query-clauses [_]))
 
 (defrecord SystemQuery [clauses]
   p/Query
-  (-execute [_ context]
-    (index/system-query context clauses)))
+  (-execute [_ batch-db]
+    (index/system-query batch-db clauses)))
 
 (defrecord CompartmentQuery [c-hash tid clauses]
   p/Query
-  (-execute [_ context arg1]
-    (index/compartment-query context [c-hash (codec/id-byte-string arg1)]
+  (-execute [_ batch-db arg1]
+    (index/compartment-query batch-db [c-hash (codec/id-byte-string arg1)]
                              tid clauses))
-  (-clauses [_]
+  (-query-clauses [_]
     (decode-clauses clauses)))
 
 (defrecord EmptyCompartmentQuery [c-hash tid]
   p/Query
-  (-execute [_ context arg1]
-    (cr/resource-handles context [c-hash (codec/id-byte-string arg1)] tid))
-  (-clauses [_]))
+  (-execute [_ batch-db arg1]
+    (cr/resource-handles batch-db [c-hash (codec/id-byte-string arg1)] tid))
+  (-query-clauses [_]))
+
+(defrecord TypeMatcher [clauses]
+  p/Matcher
+  (-transducer [_ batch-db]
+    (index/other-clauses-filter batch-db clauses))
+  (-matcher-clauses [_]
+    (decode-clauses clauses)))
 
 (defn new-batch-db
   "Creates a new batch database.

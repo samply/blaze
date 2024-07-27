@@ -25,11 +25,18 @@
       (core/-resolve-refs then expression-defs)])
    items))
 
-(defn- resolve-param-refs [items parameters]
+(defn- resolve-params [items parameters]
   (mapv
    (fn [[when then]]
      [(core/-resolve-params when parameters)
       (core/-resolve-params then parameters)])
+   items))
+
+(defn- optimize [items node]
+  (mapv
+   (fn [[when then]]
+     [(core/-optimize when node)
+      (core/-optimize then node)])
    items))
 
 (defn- comparand-case-op [comparand items else]
@@ -47,8 +54,13 @@
     (-resolve-params [_ parameters]
       (comparand-case-op
        (core/-resolve-params comparand parameters)
-       (resolve-param-refs items parameters)
+       (resolve-params items parameters)
        (core/-resolve-params else parameters)))
+    (-optimize [_ node]
+      (comparand-case-op
+       (core/-optimize comparand node)
+       (optimize items node)
+       (core/-optimize else node)))
     (-eval [_ context resource scope]
       (let [comparand (core/-eval comparand context resource scope)]
         (loop [[[when then] & next-items] items]
@@ -72,8 +84,12 @@
        (core/-resolve-refs else expression-defs)))
     (-resolve-params [_ parameters]
       (multi-conditional-case-op
-       (resolve-param-refs items parameters)
+       (resolve-params items parameters)
        (core/-resolve-params else parameters)))
+    (-optimize [_ node]
+      (multi-conditional-case-op
+       (optimize items node)
+       (core/-optimize else node)))
     (-eval [_ context resource scope]
       (loop [[[when then] & next-items] items]
         (if (core/-eval when context resource scope)
@@ -104,12 +120,11 @@
     (-attach-cache [_ cache]
       (core/attach-cache-helper if-op cache condition then else))
     (-resolve-refs [_ expression-defs]
-      (if-op
-       (core/-resolve-refs condition expression-defs)
-       (core/-resolve-refs then expression-defs)
-       (core/-resolve-refs else expression-defs)))
+      (core/resolve-refs-helper if-op expression-defs condition then else))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper if-op parameters condition then else))
+    (-optimize [_ node]
+      (core/optimize-helper if-op node condition then else))
     (-eval [_ context resource scope]
       (if (core/-eval condition context resource scope)
         (core/-eval then context resource scope)

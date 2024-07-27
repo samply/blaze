@@ -96,6 +96,8 @@
 
           (ctu/testing-constant-resolve-params expr)
 
+          (ctu/testing-constant-optimize expr)
+
           (testing "form"
             (has-form expr '(retrieve-resource))))))
 
@@ -128,6 +130,8 @@
           (ctu/testing-constant-resolve-refs expr)
 
           (ctu/testing-constant-resolve-params expr)
+
+          (ctu/testing-constant-optimize expr)
 
           (testing "form"
             (has-form expr '(retrieve "Observation")))))
@@ -178,6 +182,8 @@
             (ctu/testing-constant-resolve-refs expr)
 
             (ctu/testing-constant-resolve-params expr)
+
+            (ctu/testing-constant-optimize expr)
 
             (testing "form"
               (has-form expr
@@ -240,6 +246,8 @@
             (ctu/testing-constant-resolve-refs expr)
 
             (ctu/testing-constant-resolve-params expr)
+
+            (ctu/testing-constant-optimize expr)
 
             (testing "form"
               (has-form expr
@@ -310,6 +318,8 @@
 
             (ctu/testing-constant-resolve-params expr)
 
+            (ctu/testing-constant-optimize expr)
+
             (testing "form"
               (has-form expr
                 '(retrieve
@@ -349,6 +359,8 @@
           (ctu/testing-constant-resolve-refs expr)
 
           (ctu/testing-constant-resolve-params expr)
+
+          (ctu/testing-constant-optimize expr)
 
           (testing "form"
             (has-form expr
@@ -396,6 +408,8 @@
           (ctu/testing-constant-resolve-refs expr)
 
           (ctu/testing-constant-resolve-params expr)
+
+          (ctu/testing-constant-optimize expr)
 
           (testing "form"
             (has-form expr
@@ -469,6 +483,8 @@
 
           (ctu/testing-constant-resolve-params expr)
 
+          (ctu/testing-constant-optimize expr)
+
           (testing "form"
             (has-form expr
               '(retrieve (singleton-from (retrieve-resource)) "Observation"))))))
@@ -522,6 +538,8 @@
           (ctu/testing-constant-resolve-refs expr)
 
           (ctu/testing-constant-resolve-params expr)
+
+          (ctu/testing-constant-optimize expr)
 
           (testing "form"
             (has-form expr

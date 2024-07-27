@@ -127,6 +127,8 @@
 
           (ctu/testing-constant-resolve-params expr)
 
+          (ctu/testing-constant-optimize expr)
+
           (ctu/testing-equals-hash-code elm)
 
           (testing "form"
@@ -157,6 +159,8 @@
 
           (ctu/testing-constant-resolve-params expr)
 
+          (ctu/testing-constant-optimize expr)
+
           (ctu/testing-equals-hash-code elm)
 
           (testing "form"
@@ -182,6 +186,8 @@
           (ctu/testing-constant-resolve-refs expr)
 
           (ctu/testing-constant-resolve-params expr)
+
+          (ctu/testing-constant-optimize expr)
 
           (ctu/testing-equals-hash-code elm)
 
@@ -214,6 +220,8 @@
 
           (ctu/testing-constant-resolve-params expr)
 
+          (ctu/testing-constant-optimize expr)
+
           (ctu/testing-equals-hash-code elm)
 
           (testing "form"
@@ -239,6 +247,8 @@
           (ctu/testing-constant-resolve-refs expr)
 
           (ctu/testing-constant-resolve-params expr)
+
+          (ctu/testing-constant-optimize expr)
 
           (ctu/testing-equals-hash-code elm)
 

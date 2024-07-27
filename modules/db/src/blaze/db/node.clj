@@ -322,6 +322,11 @@
   (-compile-type-query-lenient [_ type clauses]
     (compile-type-query search-param-registry type clauses true))
 
+  (-compile-type-matcher [_ type clauses]
+    (when-ok [clauses (index/resolve-search-params search-param-registry type
+                                                   clauses false)]
+      (batch-db/->TypeMatcher clauses)))
+
   (-compile-system-query [_ clauses]
     (when-ok [clauses (index/resolve-search-params search-param-registry
                                                    "Resource" clauses false)]

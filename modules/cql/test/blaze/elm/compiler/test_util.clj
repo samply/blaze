@@ -6,6 +6,7 @@
    [blaze.elm.compiler-spec]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
@@ -214,6 +215,10 @@
   `(testing "resolve parameters"
      (is (= ~expr (c/resolve-params ~expr {})))))
 
+(defmacro testing-constant-optimize [expr]
+  `(testing "optimize"
+     (is (= ~expr (st/with-instrument-disabled (c/optimize nil ~expr))))))
+
 (defmacro testing-constant-eval [expr]
   `(testing "eval"
      (is (= ~expr (core/-eval ~expr {} nil nil)))))
@@ -230,6 +235,8 @@
      (testing-constant-resolve-refs ~expr)
 
      (testing-constant-resolve-params ~expr)
+
+     (testing-constant-optimize ~expr)
 
      (testing-constant-eval ~expr)))
 
@@ -321,6 +328,35 @@
              expr# (c/resolve-params (c/compile ctx# elm#) {"x" "y"})]
          (has-form expr# '(~form-name "y"))))))
 
+(defn- optimized-expr [id]
+  (reify-expr core/Expression
+    (-form [_]
+      (list 'optimized id))))
+
+(defn- optimizeable-expr [id]
+  (reify-expr core/Expression
+    (-optimize [_ _]
+      (optimized-expr id))
+    (-form [_]
+      (list 'optimizeable id))))
+
+(s/def ::id
+  string?)
+
+(defmethod blaze.elm.spec/expression :elm.spec.type/optimizeable [_]
+  (s/keys :req-un [::id]))
+
+(defmethod core/compile* :elm.compiler.type/optimizeable
+  [_ {:keys [id]}]
+  (optimizeable-expr id))
+
+(defmacro testing-unary-optimize [elm-constructor]
+  (let [form-name (symbol (name elm-constructor))]
+    `(testing "optimize"
+       (let [elm# (~elm-constructor {:type "Optimizeable" :id "x"})
+             expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
+         (has-form expr# (list '~form-name (list '~'optimized "x")))))))
+
 (defmacro testing-unary-precision-resolve-params
   "Works with unary and aggregate operators."
   [elm-constructor & precisions]
@@ -331,6 +367,16 @@
                ctx# {:library {:parameters {:def [{:name "x"}]}}}
                expr# (c/resolve-params (c/compile ctx# elm#) {"x" "y"})]
            (has-form expr# (list '~form-name "y" precision#)))))))
+
+(defmacro testing-unary-precision-optimize
+  "Works with unary and aggregate operators."
+  [elm-constructor & precisions]
+  (let [form-name (symbol (name elm-constructor))]
+    `(testing "optimize"
+       (doseq [precision# ~(vec precisions)]
+         (let [elm# (~elm-constructor [{:type "Optimizeable" :id "x"} precision#])
+               expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
+           (has-form expr# (list '~form-name (list '~'optimized "x") precision#)))))))
 
 (defmacro testing-unary-equals-hash-code
   [elm-constructor]
@@ -526,7 +572,7 @@
 (defmacro testing-binary-precision-patient-count
   ([elm-constructor]
    `(testing-binary-precision-patient-count ~elm-constructor "year" "month"))
-  ([elm-constructor  & precisions]
+  ([elm-constructor & precisions]
    `(testing "patient count"
       (doseq [precision# ~(vec precisions)]
         (is (nil? (core/-patient-count (dynamic-compile (~elm-constructor
@@ -581,6 +627,14 @@
              expr# (c/resolve-params (c/compile ctx# elm#) {"x" "a" "y" "b"})]
          (has-form expr# '(~form-name "a" "b"))))))
 
+(defmacro testing-binary-optimize [elm-constructor]
+  (let [form-name (symbol (name elm-constructor))]
+    `(testing "optimize"
+       (let [elm# (~elm-constructor [{:type "Optimizeable" :id "a"}
+                                     {:type "Optimizeable" :id "b"}])
+             expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
+         (has-form expr# (list (quote ~form-name) (list (quote ~'optimized) "a") (list (quote ~'optimized) "b")))))))
+
 (defmacro testing-ternary-resolve-params [elm-constructor]
   (let [form-name (symbol (name elm-constructor))]
     `(testing "resolve parameters"
@@ -589,6 +643,18 @@
              ctx# {:library {:parameters {:def [{:name "x"} {:name "y"} {:name "z"}]}}}
              expr# (c/resolve-params (c/compile ctx# elm#) {"x" "a" "y" "b" "z" "c"})]
          (has-form expr# '(~form-name "a" "b" "c"))))))
+
+(defmacro testing-ternary-optimize [elm-constructor]
+  (let [form-name (symbol (name elm-constructor))]
+    `(testing "optimize"
+       (let [elm# (~elm-constructor [{:type "Optimizeable" :id "x"}
+                                     {:type "Optimizeable" :id "y"}
+                                     {:type "Optimizeable" :id "z"}])
+             expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
+         (has-form expr# (list (quote ~form-name)
+                               (list (quote ~'optimized) "x")
+                               (list (quote ~'optimized) "y")
+                               (list (quote ~'optimized) "z")))))))
 
 (defmacro testing-binary-precision-dynamic
   ([elm-constructor]
@@ -636,6 +702,20 @@
                 expr# (c/resolve-params (c/compile ctx# elm#) {"x" "a" "y" "b"})]
             (has-form expr# (list (quote ~form-name) "a" "b" precision#))))))))
 
+(defmacro testing-binary-precision-optimize
+  ([elm-constructor]
+   `(testing-binary-precision-optimize ~elm-constructor "year" "month"))
+  ([elm-constructor & precisions]
+   (let [form-name (symbol (name elm-constructor))]
+     `(testing "optimize"
+        (doseq [precision# ~(vec precisions)]
+          (let [elm# (~elm-constructor
+                      [{:type "Optimizeable" :id "x"}
+                       {:type "Optimizeable" :id "y"}
+                       precision#])
+                expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
+            (has-form expr# (list '~form-name (list '~'optimized "x") (list '~'optimized "y") precision#))))))))
+
 (defmacro testing-ternary-dynamic [elm-constructor]
   `(testing "expression is dynamic"
      (is (false? (core/-static (dynamic-compile (~elm-constructor
@@ -655,6 +735,8 @@
 
      (testing-unary-resolve-params ~elm-constructor)
 
+     (testing-unary-optimize ~elm-constructor)
+
      (testing-unary-equals-hash-code ~elm-constructor)
 
      (testing-unary-form ~elm-constructor)))
@@ -671,6 +753,8 @@
 
      (testing-unary-precision-resolve-params ~elm-constructor ~@precisions)
 
+     (testing-unary-precision-optimize ~elm-constructor ~@precisions)
+
      (testing-unary-precision-equals-hash-code ~elm-constructor ~@precisions)
 
      (testing-unary-precision-form ~elm-constructor ~@precisions)))
@@ -686,6 +770,8 @@
      (testing-binary-resolve-refs ~elm-constructor)
 
      (testing-binary-resolve-params ~elm-constructor)
+
+     (testing-binary-optimize ~elm-constructor)
 
      (testing-binary-equals-hash-code ~elm-constructor)
 
@@ -711,7 +797,11 @@
 
      (testing-binary-resolve-params ~elm-constructor)
 
+     (testing-binary-optimize ~elm-constructor)
+
      (testing-binary-precision-resolve-params ~elm-constructor)
+
+     (testing-binary-precision-optimize ~elm-constructor)
 
      (testing-binary-equals-hash-code ~elm-constructor)
 
@@ -733,6 +823,8 @@
 
      (testing-binary-precision-resolve-params ~elm-constructor ~@precisions)
 
+     (testing-binary-precision-optimize ~elm-constructor ~@precisions)
+
      (testing-binary-precision-equals-hash-code ~elm-constructor ~@precisions)
 
      (testing-binary-precision-form ~elm-constructor ~@precisions)))
@@ -748,6 +840,8 @@
      (testing-ternary-resolve-refs ~elm-constructor)
 
      (testing-ternary-resolve-params ~elm-constructor)
+
+     (testing-ternary-optimize ~elm-constructor)
 
      (testing-ternary-equals-hash-code ~elm-constructor)
 

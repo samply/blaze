@@ -8,6 +8,7 @@
    [blaze.db.impl.index.system-stats :as system-stats]
    [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.impl.protocols :as p]
+   [blaze.db.impl.util :as u]
    [blaze.db.kv :as kv])
   (:import
    [java.io Writer]))
@@ -95,6 +96,10 @@
   (-execute-query [_ query arg1]
     (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-execute-query batch-db query arg1)))
+
+  (-matcher-transducer [_ clauses]
+    (let [batch-db (batch-db/new-batch-db node basis-t t)]
+      (comp (p/-matcher-transducer batch-db clauses) (u/closer batch-db))))
 
   ;; ---- History Functions ---------------------------------------------------
 
@@ -189,6 +194,9 @@
 
   (-compile-type-query-lenient [_ type clauses]
     (p/-compile-type-query-lenient node type clauses))
+
+  (-compile-type-matcher [_ type clauses]
+    (p/-compile-type-matcher node type clauses))
 
   (-compile-system-query [_ clauses]
     (p/-compile-system-query node clauses))

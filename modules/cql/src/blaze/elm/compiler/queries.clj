@@ -5,10 +5,13 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:refer-clojure :exclude [comparator])
   (:require
+   [blaze.anomaly :refer [if-ok]]
    [blaze.coll.core :as coll]
+   [blaze.db.api :as d]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.protocols :as p]
+   [blaze.elm.resource :as cr]
    [blaze.fhir.spec])
   (:import
    [java.util Comparator]))
@@ -32,6 +35,16 @@
       (where-xform-factory alias (core/-resolve-params expr parameters)))
     (-form [_]
       `(~'filter (~'fn [~(symbol alias)] ~(core/-form expr))))))
+
+(defn- where-search-param-xform-factory [matcher]
+  (reify XformFactory
+    (-create [_ {:keys [db]} _ _]
+     ;; TODO: give the matcher the cr/handle function
+      (comp (map cr/handle)
+            (d/matcher-transducer db matcher)
+            (map (partial cr/mk-resource db))))
+    (-form [_]
+      `(~'matcher ~(d/matcher-clauses matcher)))))
 
 (defn- return-xform-factory* [alias expr]
   (reify XformFactory
@@ -109,6 +122,27 @@
        (composed-xform-factory (conj relationship-xform-factories return-xform-factory))
        return-xform-factory))))
 
+(defn- medication-source-type [[name & args]]
+  (when (and (= 'retrieve name)
+             (= 1 (count args))
+             (#{"MedicationAdministration"
+                "MedicationStatement"}
+              (first args)))
+    (first args)))
+
+(defn- contains-medication-refs [scope lhs rhs]
+  (when (and (every? string? lhs)
+             (= (list 'call "ToString" (list :reference (list :medication scope))) rhs))
+    lhs))
+
+(defn- filter-medication-refs [[_ [scope] [name & args]]]
+  (when (= 'contains name)
+    (apply contains-medication-refs scope args)))
+
+(defn- where-medication-refs [[name arg]]
+  (when (= 'filter name)
+    (filter-medication-refs arg)))
+
 (defn- eduction-expr [xform-factory source]
   (reify-expr core/Expression
     (-resolve-refs [_ expression-defs]
@@ -117,6 +151,14 @@
     (-resolve-params [_ parameters]
       (eduction-expr (-resolve-params xform-factory parameters)
                      (core/-resolve-params source parameters)))
+    (-optimize [expr node]
+      (if-let [source-type (medication-source-type (core/-form source))]
+        (if-let [medication-refs (where-medication-refs (-form xform-factory))]
+          (if-ok [matcher (d/compile-type-matcher node source-type [(into ["medication"] medication-refs)])]
+            (eduction-expr (where-search-param-xform-factory matcher) source)
+            expr)
+          expr)
+        expr))
     (-eval [_ context resource scope]
       (coll/eduction
        (-create xform-factory context resource scope)
@@ -185,7 +227,7 @@
                        (core/-resolve-params source parameters)
                        (update sort-by-item :expression core/-resolve-params parameters)))
     (-eval [_ context resource scope]
-      ;; TODO: build a comparator of all sort by items
+     ;; TODO: build a comparator of all sort by items
       (->> (into
             []
             (-create xform-factory context resource scope)

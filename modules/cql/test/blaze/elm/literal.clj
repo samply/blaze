@@ -347,6 +347,15 @@
 
 ;; 17. String Operators
 
+;; 17.1. Combine
+(defn combine [arg]
+  (if (vector? arg)
+    {:type "Combine"
+     :source (clojure.core/first arg)
+     :separator (second arg)}
+    {:type "Combine"
+     :source arg}))
+
 ;; 17.2. Concatenate
 (defn concatenate [ops]
   {:type "Concatenate"
@@ -447,15 +456,21 @@
 
 ;; 18.6. Date
 (defn date [arg]
-  (if (string? arg)
+  (cond
+    (string? arg)
     (date (map integer (str/split arg #"-")))
+    (sequential? arg)
     (let [[year month day] arg]
       (cond->
        {:type "Date"
         :year year
         :resultTypeName "{urn:hl7-org:elm-types:r1}Date"}
         month (assoc :month month)
-        day (assoc :day day)))))
+        day (assoc :day day)))
+    :else
+    {:type "Date"
+     :year arg
+     :resultTypeName "{urn:hl7-org:elm-types:r1}Date"}))
 
 ;; 18.7. DateFrom
 (defn date-from [op]
@@ -464,8 +479,10 @@
 
 ;; 18.8. DateTime
 (defn date-time [arg]
-  (if (string? arg)
+  (cond
+    (string? arg)
     (date-time (map integer (str/split arg #"[-T:.]")))
+    (sequential? arg)
     (let [[year month day hour minute second millisecond timezone-offset] arg]
       (cond->
        {:type "DateTime"
@@ -477,7 +494,11 @@
         minute (assoc :minute minute)
         second (assoc :second second)
         millisecond (assoc :millisecond millisecond)
-        timezone-offset (assoc :timezoneOffset timezone-offset)))))
+        timezone-offset (assoc :timezoneOffset timezone-offset)))
+    :else
+    {:type "DateTime"
+     :year arg
+     :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"}))
 
 ;; 18.9. DateTimeComponentFrom
 (defn date-time-component-from [[x precision]]
@@ -499,17 +520,22 @@
 
 ;; 18.18. Time
 (defn time [arg]
-  (if (string? arg)
+  (cond
+    (string? arg)
     (time (map integer (str/split (if (.contains ^String arg ".")
                                     (subs (str arg "000") 0 12)
                                     arg) #"[:.]")))
+    (sequential? arg)
     (let [[hour minute second millisecond] arg]
       (cond->
        {:type "Time"
         :hour hour}
         minute (assoc :minute minute)
         second (assoc :second second)
-        millisecond (assoc :millisecond millisecond)))))
+        millisecond (assoc :millisecond millisecond)))
+    :else
+    {:type "Time"
+     :hour arg}))
 
 ;; 18.21. TimeOfDay
 (def time-of-day
