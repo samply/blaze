@@ -1056,11 +1056,11 @@ jobs:
       if: ${{ matrix.variant == 'standalone' }}
 
     - name: Prometheus Metrics - Blaze 1
-      run: curl -f http://localhost:8081/metrics
+      run: curl -sf http://localhost:8081/metrics
       if: ${{ matrix.variant == 'distributed' }}
 
     - name: Prometheus Metrics - Blaze 2
-      run: curl -f http://localhost:8082/metrics
+      run: curl -sf http://localhost:8082/metrics
       if: ${{ matrix.variant == 'distributed' }}
 
     - name: Docker Stats
