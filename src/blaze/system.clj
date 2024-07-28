@@ -19,7 +19,7 @@
   (:import
    [java.io PushbackReader]
    [java.security SecureRandom]
-   [java.time Clock]
+   [java.time Clock LocalDate]
    [java.util.concurrent ThreadLocalRandom]))
 
 (defmethod sc/pred-coercer `java-time.amount/duration?
@@ -70,6 +70,15 @@
     (catch Exception e
       (log/warn "Problem while reading blaze.edn. Skipping it." e))))
 
+(defn- read-blaze-version-edn []
+  (log/info "Try to read blaze/version.edn ...")
+  (try
+    (when-let [url (io/resource "blaze/version.edn")]
+      (with-open [rdr (PushbackReader. (io/reader url))]
+        (edn/read rdr)))
+    (catch Exception e
+      (log/warn "Problem while reading blaze/version.edn. Skipping it." e))))
+
 (defn- get-blank [m k default]
   (let [v (get m k)]
     (if (or (nil? v) (str/blank? v))
@@ -98,9 +107,9 @@
     (log/info "Loaded the following namespaces:" (str/join ", " loaded-ns))))
 
 (def ^:private root-config
-  {:blaze/version "0.28.0"
+  {:blaze/version "latest"
 
-   :blaze/release-date "2024-06-28"
+   :blaze/release-date (str (LocalDate/now))
 
    :blaze/clock {}
 
@@ -196,6 +205,7 @@
   (let [config (-> (read-blaze-edn)
                    (merge-storage env)
                    (merge-features env))
+        root-config (merge root-config (read-blaze-version-edn))
         config (-> (merge-with merge root-config config)
                    (resolve-config env))]
     (load-namespaces config)

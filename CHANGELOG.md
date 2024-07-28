@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.29.0
+
+### Performance
+
+* Improve Performance Evaluating MedicationAdministration Queries ([#1899](https://github.com/samply/blaze/issues/1899))
+
+### Enhancements
+
+* Implement the ToConcept Function and Equivalence on Concept ([#1872](https://github.com/samply/blaze/issues/1872))
+
+### Bugfixes
+
+* Ignore Unknown Values of the _summary Search Param ([#1863](https://github.com/samply/blaze/issues/1863))
+
+### Minor Enhancements
+
+* Add Patient Compartment Definition to Capability Statement ([#1858](https://github.com/samply/blaze/issues/1858))
+
+### Documentation
+
+* Update CQL Performance Documentation ([#1880](https://github.com/samply/blaze/issues/1880))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/93?closed=1).
+
 ## v0.28.0
 
 **!!! IMPORTANT !!!**
