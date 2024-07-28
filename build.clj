@@ -1,8 +1,11 @@
 (ns build
-  (:require [clojure.tools.build.api :as b]))
+  (:require
+   [clojure.tools.build.api :as b])
+  (:import
+   [java.time LocalDate]))
 
 (def lib 'samply/blaze)
-(def version "0.28.0")
+(def version "0.29.0")
 (def class-dir "target/classes")
 (def basis (b/create-basis {:project "deps.edn"}))
 (def uber-file (format "target/%s-%s-standalone.jar" (name lib) version))
@@ -14,6 +17,9 @@
   (clean nil)
   (b/copy-dir {:src-dirs ["src" "resources"]
                :target-dir class-dir})
+  (b/write-file {:path (str class-dir "/blaze/version.edn")
+                 :content {:blaze/version version
+                           :blaze/release-date (str (LocalDate/now))}})
   (b/compile-clj {:basis basis
                   :src-dirs ["src"]
                   :class-dir class-dir

@@ -43,9 +43,8 @@ Documentation: [Environment Variables](docs/deployment/environment-variables.md)
 
 ## Release Checklist
 
-* create a release branch called `release/v<version>` like `release/v0.13.1`
-* rename every occurrence of the old version, say `0.25.0` into the new version, say `0.26.0`
-* update the release date in namespace `blaze.system`
+* create a release branch called `release-v<version>` like `release-v0.29.0`
+* rename every occurrence of the old version, say `0.28.0` into the new version, say `0.29.0`
 * update the CHANGELOG based on the milestone
 * create a commit with the title `Release v<version>`
 * create a PR from the release branch into master
