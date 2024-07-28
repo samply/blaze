@@ -159,6 +159,58 @@ jobs:
     - name: Test
       run: make -C modules/${{ matrix.module }} test
 
+    - name: Test Coverage
+      if: ${{ matrix.java-version == '21' && matrix.module != 'db' && matrix.module != 'jepsen' }}
+      run: make -C modules/${{ matrix.module }} test-coverage
+
+    - name: Upload Coverage Report
+      if: ${{ matrix.java-version == '21' && matrix.module != 'db' && matrix.module != 'jepsen' }}
+      uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4
+      with:
+        name: coverage-report-${{ matrix.module }}
+        path: modules/${{ matrix.module }}/target/coverage/codecov.json
+
+  # Special treatment, because it runs much longer as the other modules.
+  test-coverage-db:
+    needs: job-ig
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Setup Java
+      uses: actions/setup-java@99b8673ff64fbf99d8d325f52d9a5bdedb8483e9 # v4
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
+    - name: Setup Clojure
+      uses: DeLaGuardo/setup-clojure@bc7570e912b028bbcc22f457adec7fdf98e2f4ed # 12.5
+      with:
+        cli: '1.11.2.1446'
+
+    - name: Check out Git repository
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+
+    - name: Cache Local Maven Repo
+      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-temurin-21-maven-db-coverage-${{ hashFiles('modules/db/deps.edn') }}
+
+    - name: Download Job IG Profiles
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
+      with:
+        name: job-ig-profiles
+        path: job-ig/fsh-generated/resources
+
+    - name: Test Coverage
+      run: make -C modules/db test-coverage
+
+    - name: Upload Coverage Report
+      uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4
+      with:
+        name: coverage-report-db
+        path: modules/db/target/coverage/codecov.json
+
   test-root:
     strategy:
       matrix:
@@ -198,6 +250,23 @@ jobs:
 
     - name: Test
       run: make test-root
+
+  upload-coverage:
+    needs: [ test, test-coverage-db ]
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Download Coverage Reports
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
+      with:
+        pattern: coverage-report-*
+
+    - name: Codecov Upload
+      uses: codecov/codecov-action@e28ff129e5465c2c0dcc6f003fc735cb6ae0c673 # v4
+      with:
+        name: codecov-umbrella
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true
 
   build:
     needs: [ fmt, lint, test, test-root ]
