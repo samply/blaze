@@ -932,6 +932,8 @@
       [:resource :extension bloom-filter-ratio :value :denominator :value] := 6M
       [first-population :count] := 1))
 
+  (testing-query "q59-icd10-code-version-independent" 2)
+
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
       (is (s/valid? :blaze/resource (:resource result))))
@@ -1194,4 +1196,4 @@
 
 (comment
   (log/set-level! :debug)
-  (evaluate "q58-overly-large-nonparsable-query"))
+  (evaluate "q59-icd10-code-version-independent"))

@@ -788,4 +788,29 @@
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
           (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize node expression-defs))))))))
+
+  (testing "Retrieve on primary code"
+    (let [library (t/translate "library test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        codesystem loinc: 'http://loinc.org'
+
+        context Patient
+
+        define InInitialPopulation:
+          exists [Observation: Code '788-0' from loinc]")]
+      (with-system [{:blaze.db/keys [node]} mem-node-config]
+        (let [{:keys [expression-defs]} (library/compile-library node library {})]
+          (given expression-defs
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] :=
+            '(exists
+              (retrieve "Observation" [["code" "http://loinc.org|788-0"]])))
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
             (is (= expression-defs (library/optimize node expression-defs)))))))))
