@@ -269,7 +269,7 @@ jobs:
         fail_ci_if_error: true
 
   build:
-    needs: [ fmt, lint, test, test-root ]
+    needs: job-ig
     runs-on: ubuntu-22.04
 
     steps:
@@ -325,7 +325,6 @@ jobs:
         path: /tmp/blaze.tar
 
   build-frontend:
-    needs: [ fmt, lint ]
     runs-on: ubuntu-22.04
 
     steps:
@@ -1890,6 +1889,10 @@ jobs:
   push-image:
     if: github.event_name != 'pull_request' || (github.event.pull_request.base.repo.full_name == github.event.pull_request.head.repo.full_name)
     needs:
+    - fmt
+    - lint
+    - test
+    - test-root
     - image-scan
     - cql-expr-cache-test
     - integration-test
