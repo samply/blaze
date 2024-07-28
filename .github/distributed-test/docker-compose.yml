@@ -1,6 +1,6 @@
 services:
   kafka:
-    image: "apache/kafka:3.7.0"
+    image: "apache/kafka:3.8.0"
     environment:
       KAFKA_NODE_ID: 1
       CLUSTER_ID: '5L6g3nShT-eMCtK--X86sw'
@@ -63,13 +63,13 @@ services:
         condition: service_healthy
 
   cassandra-1:
-    image: "cassandra:4.1.4"
+    image: "cassandra:4.1.5"
     volumes:
     - "cassandra-1-data:/var/lib/cassandra"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
-      MAX_HEAP_SIZE: "512M"
-      HEAP_NEWSIZE: "100M"
+      MAX_HEAP_SIZE: "1536M"
+      HEAP_NEWSIZE: "200M"
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
       start_period: 45s
@@ -78,13 +78,13 @@ services:
       retries: 10
 
   cassandra-2:
-    image: "cassandra:4.1.4"
+    image: "cassandra:4.1.5"
     volumes:
     - "cassandra-2-data:/var/lib/cassandra"
     environment:
       CASSANDRA_SEEDS: "cassandra-1,cassandra-2"
-      MAX_HEAP_SIZE: "512M"
-      HEAP_NEWSIZE: "100M"
+      MAX_HEAP_SIZE: "1536M"
+      HEAP_NEWSIZE: "200M"
     healthcheck:
       test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
       start_period: 45s
@@ -121,6 +121,9 @@ services:
       DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042"
       DB_CASSANDRA_REQUEST_TIMEOUT: "60000"
       DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
+      DB_BLOCK_CACHE_SIZE: "128"
+      DB_RESOURCE_CACHE_SIZE: "100000"
+      DB_RESOURCE_INDEXER_THREADS: "8"
     ports:
     - "8081:8081"
     volumes:
@@ -148,6 +151,9 @@ services:
       DB_CASSANDRA_CONTACT_POINTS: "cassandra-1:9042,cassandra-2:9042"
       DB_CASSANDRA_REQUEST_TIMEOUT: "60000"
       DB_CASSANDRA_MAX_CONCURRENT_REQUESTS: "128"
+      DB_BLOCK_CACHE_SIZE: "128"
+      DB_RESOURCE_CACHE_SIZE: "100000"
+      DB_RESOURCE_INDEXER_THREADS: "8"
     ports:
     - "8082:8081"
     volumes:
