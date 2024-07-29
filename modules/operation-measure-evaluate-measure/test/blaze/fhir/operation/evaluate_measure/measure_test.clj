@@ -934,6 +934,8 @@
 
   (testing-query "q59-icd10-code-version-independent" 2)
 
+  (testing-query "q60-medication" 2)
+
   (let [result (evaluate "q1" "subject-list")]
     (testing "MeasureReport is valid"
       (is (s/valid? :blaze/resource (:resource result))))
@@ -1196,4 +1198,4 @@
 
 (comment
   (log/set-level! :debug)
-  (evaluate "q59-icd10-code-version-independent"))
+  (evaluate "q60-medication"))
