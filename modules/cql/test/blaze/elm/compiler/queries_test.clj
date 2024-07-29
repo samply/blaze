@@ -720,20 +720,40 @@
                  :source [(elm/aliased-query-source [(elm/retrieve {:type medication-type}) "M"])]
                  :where #elm/contains[#elm/list [#elm/string "Medication/0"] #elm/function-ref["ToString" #elm/source-property [#elm/scope-property ["M" "medication"] "reference"]]]}
 
-            expr (c/compile {:node node :eval-context "Patient"} (elm/exists elm))
+            expr (c/compile {:node node :eval-context "Patient"
+                             :optimizations #{:first :non-distinct}} elm)
             expr (c/optimize node expr)
             db (d/db node)
             patient (ctu/resource db "Patient" "0")]
 
         (testing "eval"
-          (is (true? (core/-eval expr {:db db} patient nil))))
+          (given (into [] (core/-eval expr {:db db} patient nil))
+            count := 1
+            [0 :fhir/type] := (keyword "fhir" medication-type)
+            [0 :id] := "0"))
 
         (testing "form"
           (has-form expr
-            (list 'exists
-                  (list 'eduction-query
-                        '(matcher [["medication" "Medication/0"]])
-                        (list 'retrieve medication-type)))))))))
+            (list 'eduction-query
+                  '(matcher [["medication" "Medication/0"]])
+                  (list 'retrieve medication-type))))))
+
+    (testing "empty list in contains optimizes to an overall empty list"
+      (let [elm {:type "Query"
+                 :source [(elm/aliased-query-source [(elm/retrieve {:type "MedicationAdministration"}) "M"])]
+                 :where #elm/contains[#elm/list [] #elm/function-ref["ToString" #elm/source-property [#elm/scope-property ["M" "medication"] "reference"]]]}
+
+            expr (c/compile {:node node :eval-context "Patient"
+                             :optimizations #{:first :non-distinct}} elm)
+            expr (st/with-instrument-disabled (c/optimize node expr))
+            db (d/db node)
+            patient (ctu/resource db "Patient" "0")]
+
+        (testing "eval"
+          (is (empty? (core/-eval expr {:db db} patient nil))))
+
+        (testing "form"
+          (has-form expr []))))))
 
 ;; 10.3. AliasRef
 ;;

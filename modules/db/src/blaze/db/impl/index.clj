@@ -41,7 +41,10 @@
 
 (defn- resolve-search-params* [registry type clauses lenient?]
   (reduce
-   #(resolve-search-param registry type %1 (conform-clause %2) lenient?)
+   #(let [clause (conform-clause %2)]
+      (if (s/invalid? clause)
+        (reduced (ba/incorrect (format "Clause `%s` isn't valid." %2)))
+        (resolve-search-param registry type %1 clause lenient?)))
    []
    clauses))
 

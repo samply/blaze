@@ -1,0 +1,173 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "0"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "1"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/1"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "2"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/2"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationAdministration",
+        "id": "0",
+        "medicationReference": {
+          "reference": "Medication/0"
+        },
+        "subject": {
+          "reference": "Patient/0"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "MedicationAdministration/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationAdministration",
+        "id": "1",
+        "medicationReference": {
+          "reference": "Medication/2"
+        },
+        "subject": {
+          "reference": "Patient/1"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "MedicationAdministration/1"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Medication",
+        "id": "0",
+        "code": {
+          "coding": [
+            {
+              "system": "http://fhir.de/CodeSystem/bfarm/atc",
+              "code": "A10BF01"
+            }
+          ]
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Medication/0"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Medication",
+        "id": "1",
+        "code": {
+          "coding": [
+            {
+              "system": "http://fhir.de/CodeSystem/bfarm/atc",
+              "code": "A10BF01"
+            }
+          ]
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Medication/1"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Medication",
+        "id": "2",
+        "code": {
+          "coding": [
+            {
+              "system": "http://fhir.de/CodeSystem/bfarm/atc",
+              "code": "A10BB31"
+            }
+          ]
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Medication/2"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Measure",
+        "id": "0",
+        "url": "0",
+        "status": "active",
+        "subjectCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://hl7.org/fhir/resource-types",
+              "code": "Patient"
+            }
+          ]
+        },
+        "library": [
+          "0"
+        ],
+        "scoring": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/measure-scoring",
+              "code": "cohort"
+            }
+          ]
+        },
+        "group": [
+          {
+            "population": [
+              {
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/measure-population",
+                      "code": "initial-population"
+                    }
+                  ]
+                },
+                "criteria": {
+                  "language": "text/cql-identifier",
+                  "expression": "InInitialPopulation"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Measure/0"
+      }
+    }
+  ]
+}

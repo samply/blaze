@@ -12,7 +12,9 @@
    [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.protocols :as p]
    [blaze.elm.resource :as cr]
-   [blaze.fhir.spec])
+   [blaze.fhir.spec]
+   [cognitect.anomalies :as anom]
+   [taoensso.timbre :as log])
   (:import
    [java.util Comparator]))
 
@@ -154,9 +156,13 @@
     (-optimize [expr node]
       (if-let [source-type (medication-source-type (core/-form source))]
         (if-let [medication-refs (where-medication-refs (-form xform-factory))]
-          (if-ok [matcher (d/compile-type-matcher node source-type [(into ["medication"] medication-refs)])]
-            (eduction-expr (where-search-param-xform-factory matcher) source)
-            expr)
+          (if (empty? medication-refs)
+            []
+            (if-ok [matcher (d/compile-type-matcher node source-type [(into ["medication"] medication-refs)])]
+              (eduction-expr (where-search-param-xform-factory matcher) source)
+              (fn [{::anom/keys [message]}]
+                (log/warn "Error while trying to optimize a query expression:" message)
+                expr)))
           expr)
         expr))
     (-eval [_ context resource scope]
