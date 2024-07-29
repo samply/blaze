@@ -10,7 +10,6 @@
    [blaze.elm.compiler.library :as library]
    [blaze.elm.expression :as-alias expr]
    [blaze.elm.resource :as cr]
-   [blaze.fhir.operation.evaluate-measure.cql :as cql]
    [blaze.fhir.operation.evaluate-measure.measure.group :as group]
    [blaze.fhir.operation.evaluate-measure.measure.population :as pop]
    [blaze.fhir.operation.evaluate-measure.measure.stratifier :as strat]
@@ -422,19 +421,6 @@
    (assoc context :bloom-filters [])
    expression-defs))
 
-(defn- eval-unfiltered-xf [context]
-  (comp (filter (comp #{"Unfiltered"} :context val))
-        (map
-         (fn [[name {expr :expression :as expression-def}]]
-           (when-ok [expr (cql/evaluate-expression-1 context nil name expr)]
-             [name (assoc expression-def :expression expr)])))
-        (halt-when ba/anomaly?)))
-
-(defn- eval-unfiltered [context expression-defs]
-  (transduce (eval-unfiltered-xf context)
-             (completing (fn [r [k v]] (assoc r k v)))
-             expression-defs expression-defs))
-
 (defn timeout-eclipsed-fn [clock now timeout]
   (let [timeout-instant (time/instant (time/plus now timeout))]
     #(when-not (.isBefore (.instant ^Clock clock) timeout-instant)
@@ -471,7 +457,7 @@
                 ::luid/generator (luid-generator context))
                 function-defs
                 (assoc :function-defs function-defs))]
-          (when-ok [expression-defs (eval-unfiltered context expression-defs)
+          (when-ok [expression-defs (library/eval-unfiltered context expression-defs)
                     expression-defs (library/resolve-all-refs expression-defs)]
             (cond-> (assoc
                      context

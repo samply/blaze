@@ -263,10 +263,21 @@
     (-form [_]
       'exists-test)))
 
+(defmethod elm-spec/expression :elm.spec.type/optimize-to-empty-list [_]
+  map?)
+
+(defmethod core/compile* :elm.compiler.type/optimize-to-empty-list [_ _]
+  (reify-expr core/Expression
+    (-optimize [_ _]
+      [])
+    (-form [_]
+      (list 'optimize-to-empty-list))))
+
 (deftest compile-exists-test
   (testing "Static"
     (are [list res] (= res (c/compile {} (elm/exists list)))
       #elm/list [#elm/integer "1"] true
+      #elm/list [{:type "Null"} #elm/integer "1"] true
       #elm/list [#elm/integer "1" #elm/integer "1"] true
       #elm/list [{:type "Null"}] false
       #elm/list [] false
@@ -276,6 +287,7 @@
   (testing "Dynamic"
     (are [list res] (= res (ctu/dynamic-compile-eval (elm/exists list)))
       #elm/list [#elm/parameter-ref "1"] true
+      #elm/list [#elm/parameter-ref "nil" #elm/parameter-ref "1"] true
       #elm/list [#elm/parameter-ref "1" #elm/parameter-ref "1"] true
       #elm/list [#elm/parameter-ref "nil"] false
       #elm/list [] false
@@ -383,6 +395,12 @@
   (ctu/testing-unary-resolve-params elm/exists)
 
   (ctu/testing-unary-optimize elm/exists)
+
+  (testing "optimize to false if operand optimizes to an empty list"
+    (let [elm (elm/exists {:type "OptimizeToEmptyList"})
+          expr (c/compile {:eval-context "Patient"} elm)
+          expr (st/with-instrument-disabled (c/optimize nil expr))]
+      (has-form expr false)))
 
   (ctu/testing-unary-equals-hash-code elm/exists)
 
