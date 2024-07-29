@@ -54,7 +54,8 @@
     (is (true? (coll/empty? []))))
 
   (testing "vector with one element"
-    (is (false? (coll/empty? [1])))))
+    (is (false? (coll/empty? [1])))
+    (is (false? (coll/empty? [nil])))))
 
 (deftest eduction-test
   (testing "eductions are sequential"

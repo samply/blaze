@@ -77,7 +77,8 @@
         resource (gensym "resource")
         scope (gensym "scope")
         bloom-filter (gensym "bloom-filter")
-        expr (gensym "expr")]
+        expr (gensym "expr")
+        node (gensym "node")]
     `(do
        ~(when (:cache attr-map)
           `(do
@@ -199,13 +200,15 @@
                         ~elm-expr)
                       `(~caching-op
                         (core/-resolve-params ~operand ~'parameters))))
-                 (~'-optimize [~'_ ~'node]
+                 (~'-optimize [~'_ ~node]
                    ~(if elm-expr-binding
                       `(~caching-op
-                        (core/-optimize ~operand ~'node)
+                        (core/-optimize ~operand ~node)
                         ~elm-expr)
-                      `(~caching-op
-                        (core/-optimize ~operand ~'node))))
+                      `(let [~operand (core/-optimize ~operand ~node)]
+                         (if (core/static? ~operand)
+                           (let [~operand-binding ~operand] ~@body)
+                           (~caching-op ~operand)))))
                  (~'-eval [~'_ ~context ~resource ~scope]
                    (let ~(generate-binding-vector
                           operand-binding `(core/-eval ~operand ~context ~resource ~scope)

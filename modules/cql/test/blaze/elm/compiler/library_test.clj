@@ -1,6 +1,7 @@
 (ns blaze.elm.compiler.library-test
   (:require
    [blaze.cql-translator :as t]
+   [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler-spec]
@@ -13,9 +14,14 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
-   [juxt.iota :refer [given]]))
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log])
+  (:import
+   [java.time OffsetDateTime]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -320,7 +326,8 @@
             (is (= expression-defs (library/optimize node expression-defs))))))))
 
   (testing "medication reference optimization"
-    (let [library (t/translate "library Retrieve
+    (testing "with two references"
+      (let [library (t/translate "library Retrieve
         using FHIR version '4.0.0'
         include FHIRHelpers version '4.0.0'
 
@@ -329,31 +336,72 @@
         define InInitialPopulation:
           exists from [MedicationAdministration] M
             where M.medication.reference in {'Medication/0', 'Medication/1'}")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
-        (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
-          (given expression-defs
-            ["InInitialPopulation" :context] := "Patient"
-            ["InInitialPopulation" expr-form] :=
-            '(exists
-              (eduction-query
-               (filter
-                (fn [M]
-                  (contains
-                   ["Medication/0" "Medication/1"]
-                   (call "ToString" (:reference (:medication M))))))
-               (retrieve "MedicationAdministration"))))
-
-          (testing "there are no references to resolve"
-            (is (= expression-defs (library/resolve-all-refs expression-defs))))
-
-          (testing "there are no optimizations available"
-            (given (library/optimize node expression-defs)
+        (with-system [{:blaze.db/keys [node]} mem-node-config]
+          (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+            (given expression-defs
               ["InInitialPopulation" :context] := "Patient"
               ["InInitialPopulation" expr-form] :=
               '(exists
                 (eduction-query
-                 (matcher [["medication" "Medication/0" "Medication/1"]])
-                 (retrieve "MedicationAdministration")))))))))
+                 (filter
+                  (fn [M]
+                    (contains
+                     ["Medication/0" "Medication/1"]
+                     (call "ToString" (:reference (:medication M))))))
+                 (retrieve "MedicationAdministration"))))
+
+            (testing "there are no references to resolve"
+              (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+            (testing "there are no optimizations available"
+              (given (library/optimize node expression-defs)
+                ["InInitialPopulation" :context] := "Patient"
+                ["InInitialPopulation" expr-form] :=
+                '(exists
+                  (eduction-query
+                   (matcher [["medication" "Medication/0" "Medication/1"]])
+                   (retrieve "MedicationAdministration")))))))))
+
+    (testing "with no reference because there are no Medications"
+      (let [library (t/translate "library Retrieve
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        codesystem atc: 'http://fhir.de/CodeSystem/bfarm/atc'
+
+        context Unfiltered
+
+        define MedicationRefs:
+          from [Medication: Code 'A10BF01' from atc] M
+            return 'Medication/' + M.id
+
+        context Patient
+
+        define InInitialPopulation:
+          exists from [MedicationAdministration] M
+            where M.medication.reference in MedicationRefs")]
+        (with-system [{:blaze.db/keys [node]} mem-node-config]
+          (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+            (given expression-defs
+              ["InInitialPopulation" :context] := "Patient"
+              ["InInitialPopulation" expr-form] :=
+              '(exists
+                (eduction-query
+                 (filter
+                  (fn [M]
+                    (contains
+                     (expr-ref "MedicationRefs")
+                     (call "ToString" (:reference (:medication M))))))
+                 (retrieve "MedicationAdministration"))))
+
+            (testing "the whole exists expression optimizes to false"
+              (given (->> (library/eval-unfiltered {:db (d/db node)
+                                                    :now (OffsetDateTime/now)}
+                                                   expression-defs)
+                          (library/resolve-all-refs)
+                          (library/optimize node))
+                ["InInitialPopulation" :context] := "Patient"
+                ["InInitialPopulation" expr-form] := false)))))))
 
   (testing "with compile-time error"
     (testing "function"

@@ -19,7 +19,7 @@
 (defn empty?
   "Like `clojure.core/empty?` but for reducible collections."
   [coll]
-  (nil? (first coll)))
+  (identical? ::empty (reduce #(reduced %2) ::empty coll)))
 
 (defn- inc-rf [sum _] (inc ^long sum))
 

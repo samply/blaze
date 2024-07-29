@@ -71,7 +71,7 @@
   {:optimizations #{:first :non-distinct}
    :cache true}
   [list]
-  (not (coll/empty? list)))
+  (some? (coll/first (coll/eduction (remove nil?) list))))
 
 ;; 20.9. Filter
 (defn- scoped-filter-op [source condition scope]

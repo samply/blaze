@@ -15,6 +15,7 @@
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.function :as function]
    [blaze.elm.compiler.library.resolve-refs :refer [resolve-refs]]
+   [blaze.elm.expression :as expr]
    [blaze.elm.normalizer :as normalizer]))
 
 (defn- compile-expression-def
@@ -121,6 +122,19 @@
   "Resolves `parameters` in `expression-defs`."
   [expression-defs parameters]
   (into {} (resolve-params-xf parameters) expression-defs))
+
+(defn- eval-unfiltered-xf [context]
+  (comp (filter (comp #{"Unfiltered"} :context val))
+        (map
+         (fn [[name {expr :expression :as expression-def}]]
+           (when-ok [expr (ba/try-anomaly (expr/eval context expr nil))]
+             [name (assoc expression-def :expression expr)])))
+        (halt-when ba/anomaly?)))
+
+(defn eval-unfiltered [context expression-defs]
+  (transduce (eval-unfiltered-xf context)
+             (completing (fn [r [k v]] (assoc r k v)))
+             expression-defs expression-defs))
 
 (defn- optimize-xf [node]
   (let [optimize (partial c/optimize node)]
