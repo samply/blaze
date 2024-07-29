@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.29.1
+
+### Bugfixes
+
+* Fix Error While Optimizing CQL Queries ([#1942](https://github.com/samply/blaze/issues/1942))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/95?closed=1).
+
 ## v0.29.0
 
 ### Performance
