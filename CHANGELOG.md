@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.29.2
+
+### Notes
+
+This is a minor performance update which adds further optimizations on top of [#1899](https://github.com/samply/blaze/issues/1899). The optimizations eliminate whole logic branches in case Medication resources don't match.  
+
+### Performance
+
+* Optimize CQL Exists over Empty Lists into False ([#1943](https://github.com/samply/blaze/issues/1943))
+* Optimize CQL Logical Expressions ([#1944](https://github.com/samply/blaze/issues/1944))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/95?closed=1).
+
 ## v0.29.1
 
 ### Bugfixes

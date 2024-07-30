@@ -7,7 +7,7 @@ RUN apt-get update && apt-get upgrade -y && \
     rm -rf /var/lib/apt/lists/
 
 RUN mkdir -p /app/data && chown 1001:1001 /app/data
-COPY target/blaze-0.29.1-standalone.jar /app/
+COPY target/blaze-0.29.2-standalone.jar /app/
 
 WORKDIR /app
 USER 1001
@@ -20,4 +20,4 @@ ENV RESOURCE_DB_DIR="/app/data/resource"
 ENV ADMIN_INDEX_DB_DIR="/app/data/admin-index"
 ENV ADMIN_TRANSACTION_DB_DIR="/app/data/admin-transaction"
 
-CMD ["java", "-jar",  "blaze-0.29.1-standalone.jar"]
+CMD ["java", "-jar",  "blaze-0.29.2-standalone.jar"]
