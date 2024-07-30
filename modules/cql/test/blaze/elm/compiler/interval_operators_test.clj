@@ -573,7 +573,12 @@
 
   (ctu/testing-unary-null elm/end)
 
-  (ctu/testing-unary-op elm/end))
+  (ctu/testing-unary-op elm/end)
+
+  (ctu/testing-optimize elm/end
+    (testing "[1 2]"
+      #ctu/optimize-to (interval 1 2)
+      2)))
 
 ;; 19.7. Ends
 ;;
@@ -1103,7 +1108,12 @@
 
   (ctu/testing-unary-null elm/start)
 
-  (ctu/testing-unary-op elm/start))
+  (ctu/testing-unary-op elm/start)
+
+  (ctu/testing-optimize elm/start
+    (testing "[1 2]"
+      #ctu/optimize-to (interval 1 2)
+      1)))
 
 ;; 19.30. Starts
 ;;
@@ -1178,8 +1188,13 @@
 (deftest compile-width-test
   (testing "Integer"
     (are [x res] (= res (ctu/compile-unop elm/width elm/interval x))
-      [#elm/integer "1" #elm/integer "2"] 1))
+      [#elm/integer "-1" #elm/integer "1"] 2))
 
   (ctu/testing-unary-null elm/width)
 
-  (ctu/testing-unary-op elm/width))
+  (ctu/testing-unary-op elm/width)
+
+  (ctu/testing-optimize elm/width
+    (testing "[-1 1]"
+      #ctu/optimize-to (interval -1 1)
+      2)))

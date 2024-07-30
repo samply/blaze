@@ -272,7 +272,16 @@
 
   (ctu/testing-unary-null elm/date-from)
 
-  (ctu/testing-unary-op elm/date-from))
+  (ctu/testing-unary-op elm/date-from)
+
+  (ctu/testing-optimize elm/date-from
+    (testing "2019"
+      #ctu/optimize-to (system/date 2019)
+      (system/date 2019))
+
+    (testing "2019-04-17T12:48"
+      #ctu/optimize-to (system/date-time 2019 4 17 12 48)
+      (system/date 2019 4 17))))
 
 ;; 18.8. DateTime
 ;;

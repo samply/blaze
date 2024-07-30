@@ -127,4 +127,6 @@
  elm/to-quantity blaze.elm.literal/to-quantity
  elm/to-ratio blaze.elm.literal/to-ratio
  elm/to-string blaze.elm.literal/to-string
- elm/calculate-age-at blaze.elm.literal/calculate-age-at}
+ elm/calculate-age-at blaze.elm.literal/calculate-age-at
+ ctu/optimizeable blaze.elm.compiler.test-util/optimizeable
+ ctu/optimize-to blaze.elm.compiler.test-util/optimize-to}

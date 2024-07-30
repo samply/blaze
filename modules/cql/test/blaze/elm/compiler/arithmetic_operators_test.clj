@@ -91,7 +91,17 @@
 
   (ctu/testing-unary-null elm/abs)
 
-  (ctu/testing-unary-op elm/abs))
+  (ctu/testing-unary-op elm/abs)
+
+  (ctu/testing-optimize elm/abs
+    (testing "0"
+      #ctu/optimize-to 0
+      0)
+
+    (testing "-1, 1"
+      #ctu/optimize-to -1
+      #ctu/optimize-to 1
+      1)))
 
 ;; 16.2. Add
 ;;
@@ -377,7 +387,16 @@
 
   (ctu/testing-unary-null elm/ceiling)
 
-  (ctu/testing-unary-op elm/ceiling))
+  (ctu/testing-unary-op elm/ceiling)
+
+  (ctu/testing-optimize elm/ceiling
+    (testing "1"
+      #ctu/optimize-to 1
+      1)
+
+    (testing "1.1"
+      #ctu/optimize-to 1.1M
+      2)))
 
 ;; 16.4. Divide
 ;;
@@ -476,11 +495,21 @@
 (deftest compile-exp-test
   (are [x res] (= res (c/compile {} (elm/exp x)))
     #elm/integer "0" 1M
+    #elm/integer "1" 2.71828183M
     #elm/decimal "0" 1M)
 
   (ctu/testing-unary-null elm/exp)
 
-  (ctu/testing-unary-op elm/exp))
+  (ctu/testing-unary-op elm/exp)
+
+  (ctu/testing-optimize elm/exp
+    (testing "0"
+      #ctu/optimize-to 0
+      1M)
+
+    (testing "1"
+      #ctu/optimize-to 1
+      2.71828183M)))
 
 ;; 16.6. Floor
 ;;
@@ -495,7 +524,16 @@
 
   (ctu/testing-unary-null elm/floor)
 
-  (ctu/testing-unary-op elm/floor))
+  (ctu/testing-unary-op elm/floor)
+
+  (ctu/testing-optimize elm/floor
+    (testing "1"
+      #ctu/optimize-to 1
+      1)
+
+    (testing "1.1"
+      #ctu/optimize-to 1.1M
+      1)))
 
 ;; 16.7. HighBoundary
 ;;
@@ -579,7 +617,16 @@
 
   (ctu/testing-unary-null elm/ln)
 
-  (ctu/testing-unary-op elm/ln))
+  (ctu/testing-unary-op elm/ln)
+
+  (ctu/testing-optimize elm/ln
+    (testing "1"
+      #ctu/optimize-to 1
+      0M)
+
+    (testing "2"
+      #ctu/optimize-to 2
+      0.69314718M)))
 
 ;; 16.11. MaxValue
 ;;
@@ -774,7 +821,16 @@
 
   (ctu/testing-unary-null elm/negate)
 
-  (ctu/testing-unary-op elm/negate))
+  (ctu/testing-unary-op elm/negate)
+
+  (ctu/testing-optimize elm/negate
+    (testing "1"
+      #ctu/optimize-to 1
+      -1)
+
+    (testing "1M"
+      #ctu/optimize-to 1M
+      -1M)))
 
 ;; 16.16. Power
 ;;
@@ -889,7 +945,20 @@
 
   (ctu/testing-unary-null elm/predecessor)
 
-  (ctu/testing-unary-op elm/predecessor))
+  (ctu/testing-unary-op elm/predecessor)
+
+  (ctu/testing-optimize elm/predecessor
+    (testing "Integer 0"
+      #ctu/optimize-to 0
+      -1)
+
+    (testing "Decimal 0"
+      #ctu/optimize-to 0M
+      -1E-8M)
+
+    (testing "Date 2019"
+      #ctu/optimize-to (system/date 2019)
+      (system/date 2018))))
 
 ;; 16.19. Round
 ;;
@@ -1227,7 +1296,20 @@
 
   (ctu/testing-unary-null elm/successor)
 
-  (ctu/testing-unary-op elm/successor))
+  (ctu/testing-unary-op elm/successor)
+
+  (ctu/testing-optimize elm/successor
+    (testing "Integer 0"
+      #ctu/optimize-to 0
+      1)
+
+    (testing "Decimal 0"
+      #ctu/optimize-to 0M
+      1E-8M)
+
+    (testing "Date 2019"
+      #ctu/optimize-to (system/date 2019)
+      (system/date 2020))))
 
 ;; 16.22. Truncate
 ;;
@@ -1242,7 +1324,16 @@
 
   (ctu/testing-unary-null elm/truncate)
 
-  (ctu/testing-unary-op elm/truncate))
+  (ctu/testing-unary-op elm/truncate)
+
+  (ctu/testing-optimize elm/truncate
+    (testing "Integer 1"
+      #ctu/optimize-to 1
+      1)
+
+    (testing "Decimal 1.1"
+      #ctu/optimize-to 1.1M
+      1)))
 
 ;; 16.23. TruncatedDivide
 ;;

@@ -238,7 +238,17 @@
 
           (is (identical? count (core/-eval expr {:db db} patient nil)))))))
 
-  (ctu/testing-unary-op elm/length))
+  (ctu/testing-unary-op elm/length)
+
+  (ctu/testing-optimize elm/length
+    (testing "empty and nil"
+      #ctu/optimize-to ""
+      #ctu/optimize-to nil
+      0)
+
+    (testing "a"
+      #ctu/optimize-to "a"
+      1)))
 
 ;; 17.9. Lower
 ;;
@@ -264,7 +274,20 @@
 
   (ctu/testing-unary-null elm/lower)
 
-  (ctu/testing-unary-op elm/lower))
+  (ctu/testing-unary-op elm/lower)
+
+  (ctu/testing-optimize elm/lower
+    (testing ""
+      #ctu/optimize-to ""
+      "")
+
+    (testing "A"
+      #ctu/optimize-to "A"
+      "a")
+
+    (testing "nil"
+      #ctu/optimize-to nil
+      nil)))
 
 ;; 17.10. Matches
 ;;
@@ -480,4 +503,19 @@
       #elm/parameter-ref "empty-string" ""
       #elm/parameter-ref "a" "A"))
 
-  (ctu/testing-unary-op elm/upper))
+  (ctu/testing-unary-null elm/upper)
+
+  (ctu/testing-unary-op elm/upper)
+
+  (ctu/testing-optimize elm/upper
+    (testing ""
+      #ctu/optimize-to ""
+      "")
+
+    (testing "a"
+      #ctu/optimize-to "a"
+      "A")
+
+    (testing "nil"
+      #ctu/optimize-to nil
+      nil)))

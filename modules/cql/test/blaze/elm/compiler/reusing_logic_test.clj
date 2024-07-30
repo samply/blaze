@@ -95,7 +95,7 @@
 
 (defmacro testing-function-ref-optimize [name]
   `(testing "optimize"
-     (let [elm# #elm/function-ref [~name {:type "Optimizeable" :id "x"}]
+     (let [elm# #elm/function-ref [~name #ctu/optimizeable "x"]
            expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
        (has-form expr# (list '~'call ~name '~'(optimized "x"))))))
 
@@ -185,7 +185,7 @@
           (list 'call function-name '(param-ref "a"))))
 
       (testing "optimize"
-        (let [elm (elm/function-ref [function-name {:type "Optimizeable" :id "x"}])
+        (let [elm (elm/function-ref [function-name #ctu/optimizeable "x"])
               expr (st/with-instrument-disabled (c/optimize nil (c/compile compile-ctx elm)))]
           (has-form expr (list 'call function-name '(optimized "x")))))
 
@@ -245,8 +245,8 @@
           (list 'call function-name '(param-ref "a") '(param-ref "b"))))
 
       (testing "optimize"
-        (let [elm (elm/function-ref [function-name {:type "Optimizeable" :id "x"}
-                                     {:type "Optimizeable" :id "y"}])
+        (let [elm (elm/function-ref [function-name #ctu/optimizeable "x"
+                                     #ctu/optimizeable "y"])
               expr (st/with-instrument-disabled (c/optimize nil (c/compile compile-ctx elm)))]
           (has-form expr (list 'call function-name '(optimized "x") '(optimized "y")))))
 
