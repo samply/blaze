@@ -11,7 +11,7 @@
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
    [blaze.elm.resource :as cr]
-   [blaze.elm.spec]
+   [blaze.elm.spec :as elm-spec]
    [blaze.fhir.spec.type.system :as system]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -343,17 +343,37 @@
 (s/def ::id
   string?)
 
-(defmethod blaze.elm.spec/expression :elm.spec.type/optimizeable [_]
+(defmethod elm-spec/expression :elm.spec.type/optimizeable [_]
   (s/keys :req-un [::id]))
 
 (defmethod core/compile* :elm.compiler.type/optimizeable
   [_ {:keys [id]}]
   (optimizeable-expr id))
 
+(defn optimizeable [id]
+  {:type "Optimizeable" :id id})
+
+(s/def ::value
+  any?)
+
+(defmethod elm-spec/expression :elm.spec.type/optimize-to [_]
+  (s/keys :req-un [::value]))
+
+(defmethod core/compile* :elm.compiler.type/optimize-to
+  [_ {:keys [value]}]
+  (reify-expr core/Expression
+    (-optimize [_ _]
+      value)
+    (-form [_]
+      (list 'optimize-to value))))
+
+(defn optimize-to [value]
+  {:type "OptimizeTo" :value value})
+
 (defmacro testing-unary-optimize [elm-constructor]
   (let [form-name (symbol (name elm-constructor))]
     `(testing "optimize"
-       (let [elm# (~elm-constructor {:type "Optimizeable" :id "x"})
+       (let [elm# (~elm-constructor #ctu/optimizeable "x")
              expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
          (has-form expr# (list '~form-name (list '~'optimized "x")))))))
 
@@ -374,7 +394,7 @@
   (let [form-name (symbol (name elm-constructor))]
     `(testing "optimize"
        (doseq [precision# ~(vec precisions)]
-         (let [elm# (~elm-constructor [{:type "Optimizeable" :id "x"} precision#])
+         (let [elm# (~elm-constructor [#ctu/optimizeable "x" precision#])
                expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
            (has-form expr# (list '~form-name (list '~'optimized "x") precision#)))))))
 
@@ -630,8 +650,8 @@
 (defmacro testing-binary-optimize [elm-constructor]
   (let [form-name (symbol (name elm-constructor))]
     `(testing "optimize"
-       (let [elm# (~elm-constructor [{:type "Optimizeable" :id "a"}
-                                     {:type "Optimizeable" :id "b"}])
+       (let [elm# (~elm-constructor [#ctu/optimizeable "a"
+                                     #ctu/optimizeable "b"])
              expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
          (has-form expr# (list (quote ~form-name) (list (quote ~'optimized) "a") (list (quote ~'optimized) "b")))))))
 
@@ -647,9 +667,9 @@
 (defmacro testing-ternary-optimize [elm-constructor]
   (let [form-name (symbol (name elm-constructor))]
     `(testing "optimize"
-       (let [elm# (~elm-constructor [{:type "Optimizeable" :id "x"}
-                                     {:type "Optimizeable" :id "y"}
-                                     {:type "Optimizeable" :id "z"}])
+       (let [elm# (~elm-constructor [#ctu/optimizeable "x"
+                                     #ctu/optimizeable "y"
+                                     #ctu/optimizeable "z"])
              expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
          (has-form expr# (list (quote ~form-name)
                                (list (quote ~'optimized) "x")
@@ -710,8 +730,8 @@
      `(testing "optimize"
         (doseq [precision# ~(vec precisions)]
           (let [elm# (~elm-constructor
-                      [{:type "Optimizeable" :id "x"}
-                       {:type "Optimizeable" :id "y"}
+                      [#ctu/optimizeable "x"
+                       #ctu/optimizeable "y"
                        precision#])
                 expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
             (has-form expr# (list '~form-name (list '~'optimized "x") (list '~'optimized "y") precision#))))))))
@@ -856,5 +876,18 @@
 (defn resource [db type id]
   (cr/mk-resource db (d/resource-handle db type id)))
 
-(defn eval-unfiltered [elm]
-  (core/-eval (c/compile {:eval-context "Unfiltered"} elm) {} nil nil))
+(defmacro testing-optimize
+  "Generates testing forms for the expression with `elm-constructor`.
+
+  Each `test-case` is a testing form with a description followed by one or more
+  vectors of elm operators followed by one expected form."
+  [elm-constructor & test-cases]
+  `(testing "optimize"
+     ~@(for [[_ test-name & more] test-cases
+             :let [ops (butlast more)
+                   expected (last more)]]
+         `(testing ~test-name
+            ~@(for [op ops]
+                `(let [elm# (~elm-constructor ~op)
+                       expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
+                   (has-form expr# ~expected)))))))

@@ -239,13 +239,15 @@
                   ~elm-expr)
                 `(~op
                   (core/-resolve-params ~operand ~'parameters))))
-           (~'-optimize [~'_ ~'node]
+           (~'-optimize [~'_ ~node]
              ~(if elm-expr-binding
                 `(~op
-                  (core/-optimize ~operand ~'node)
+                  (core/-optimize ~operand ~node)
                   ~elm-expr)
-                `(~op
-                  (core/-optimize ~operand ~'node))))
+                `(let [~operand (core/-optimize ~operand ~node)]
+                   (if (core/static? ~operand)
+                     (let [~operand-binding ~operand] ~@body)
+                     (~op ~operand)))))
            (~'-eval [~'_ ~context ~resource ~scope]
              (let ~(generate-binding-vector
                     operand-binding `(core/-eval ~operand ~context ~resource ~scope)

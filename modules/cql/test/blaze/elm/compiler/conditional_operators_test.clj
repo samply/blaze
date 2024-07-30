@@ -223,19 +223,19 @@
     (testing "multi-conditional"
       (let [elm {:type "Case"
                  :caseItem
-                 [{:when {:type "Optimizeable" :id "w"}
-                   :then {:type "Optimizeable" :id "t"}}]
-                 :else {:type "Optimizeable" :id "e"}}
+                 [{:when #ctu/optimizeable "w"
+                   :then #ctu/optimizeable "t"}]
+                 :else #ctu/optimizeable "e"}
             expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
         (has-form expr '(case (optimized "w") (optimized "t") (optimized "e")))))
 
     (testing "comparand-based"
       (let [elm {:type "Case"
-                 :comparand {:type "Optimizeable" :id "c"}
+                 :comparand #ctu/optimizeable "c"
                  :caseItem
-                 [{:when {:type "Optimizeable" :id "w"}
-                   :then {:type "Optimizeable" :id "t"}}]
-                 :else {:type "Optimizeable" :id "e"}}
+                 [{:when #ctu/optimizeable "w"
+                   :then #ctu/optimizeable "t"}]
+                 :else #ctu/optimizeable "e"}
             expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
         (has-form expr '(case (optimized "c") (optimized "w") (optimized "t") (optimized "e"))))))
 
@@ -333,9 +333,9 @@
       (has-form expr '(if "c" "t" "e"))))
 
   (testing "optimize"
-    (let [elm #elm/if [{:type "Optimizeable" :id "c"}
-                       {:type "Optimizeable" :id "t"}
-                       {:type "Optimizeable" :id "e"}]
+    (let [elm #elm/if [#ctu/optimizeable "c"
+                       #ctu/optimizeable "t"
+                       #ctu/optimizeable "e"]
           expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
       (has-form expr '(if (optimized "c") (optimized "t") (optimized "e")))))
 

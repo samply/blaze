@@ -7,6 +7,7 @@
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.nullological-operators]
    [blaze.elm.compiler.test-util :as ctu]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
@@ -73,7 +74,17 @@
       #elm/parameter-ref "false" true?
       #elm/parameter-ref "nil" false?))
 
-  (ctu/testing-unary-op elm/is-false))
+  (ctu/testing-unary-op elm/is-false)
+
+  (ctu/testing-optimize elm/is-false
+    (testing "false"
+      #ctu/optimize-to true
+      #ctu/optimize-to nil
+      false)
+
+    (testing "true"
+      #ctu/optimize-to false
+      true)))
 
 ;; 14.4. IsNull
 ;;
@@ -93,7 +104,17 @@
       #elm/parameter-ref "false" false?
       #elm/parameter-ref "nil" true?))
 
-  (ctu/testing-unary-op elm/is-null))
+  (ctu/testing-unary-op elm/is-null)
+
+  (ctu/testing-optimize elm/is-null
+    (testing "false"
+      #ctu/optimize-to true
+      #ctu/optimize-to false
+      false)
+
+    (testing "true"
+      #ctu/optimize-to nil
+      true)))
 
 ;; 14.5. IsTrue
 ;;
@@ -113,4 +134,14 @@
       #elm/parameter-ref "false" false?
       #elm/parameter-ref "nil" false?))
 
-  (ctu/testing-unary-op elm/is-true))
+  (ctu/testing-unary-op elm/is-true)
+
+  (ctu/testing-optimize elm/is-true
+    (testing "false"
+      #ctu/optimize-to false
+      #ctu/optimize-to nil
+      false)
+
+    (testing "true"
+      #ctu/optimize-to true
+      true)))

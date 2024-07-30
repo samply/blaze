@@ -401,7 +401,119 @@
                           (library/resolve-all-refs)
                           (library/optimize node))
                 ["InInitialPopulation" :context] := "Patient"
-                ["InInitialPopulation" expr-form] := false)))))))
+                ["InInitialPopulation" expr-form] := false)))))
+
+      (testing "with a disjunction of two such queries"
+        (let [library (t/translate "library Retrieve
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        codesystem atc: 'http://fhir.de/CodeSystem/bfarm/atc'
+
+        context Unfiltered
+
+        define MedicationRefsA:
+          from [Medication: Code 'A10BF01' from atc] M
+            return 'Medication/' + M.id
+
+        define MedicationRefsB:
+          from [Medication: Code 'A10BB31' from atc] M
+            return 'Medication/' + M.id
+
+        context Patient
+
+        define InInitialPopulation:
+          exists (from [MedicationAdministration] M
+            where M.medication.reference in MedicationRefsA) or
+          exists (from [MedicationAdministration] M
+            where M.medication.reference in MedicationRefsB)")]
+          (with-system [{:blaze.db/keys [node]} mem-node-config]
+            (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+              (given expression-defs
+                ["InInitialPopulation" :context] := "Patient"
+                ["InInitialPopulation" expr-form] :=
+                '(or
+                  (exists
+                   (eduction-query
+                    (filter
+                     (fn [M]
+                       (contains
+                        (expr-ref "MedicationRefsA")
+                        (call "ToString" (:reference (:medication M))))))
+                    (retrieve "MedicationAdministration")))
+                  (exists
+                   (eduction-query
+                    (filter
+                     (fn [M]
+                       (contains
+                        (expr-ref "MedicationRefsB")
+                        (call "ToString" (:reference (:medication M))))))
+                    (retrieve "MedicationAdministration")))))
+
+              (testing "the whole exists expression optimizes to false"
+                (given (->> (library/eval-unfiltered {:db (d/db node)
+                                                      :now (OffsetDateTime/now)}
+                                                     expression-defs)
+                            (library/resolve-all-refs)
+                            (library/optimize node))
+                  ["InInitialPopulation" :context] := "Patient"
+                  ["InInitialPopulation" expr-form] := false))))))
+
+      (testing "with the second query having Medication refs"
+        (let [library (t/translate "library Retrieve
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        codesystem atc: 'http://fhir.de/CodeSystem/bfarm/atc'
+
+        context Unfiltered
+
+        define MedicationRefsA:
+          from [Medication: Code 'A10BF01' from atc] M
+            return 'Medication/' + M.id
+
+        context Patient
+
+        define InInitialPopulation:
+          exists (from [MedicationAdministration] M
+            where M.medication.reference in MedicationRefsA) or
+          exists (from [MedicationAdministration] M
+            where M.medication.reference in {'Medication/0'})")]
+          (with-system [{:blaze.db/keys [node]} mem-node-config]
+            (let [{:keys [expression-defs]} (library/compile-library node library default-opts)]
+              (given expression-defs
+                ["InInitialPopulation" :context] := "Patient"
+                ["InInitialPopulation" expr-form] :=
+                '(or
+                  (exists
+                   (eduction-query
+                    (filter
+                     (fn [M]
+                       (contains
+                        (expr-ref "MedicationRefsA")
+                        (call "ToString" (:reference (:medication M))))))
+                    (retrieve "MedicationAdministration")))
+                  (exists
+                   (eduction-query
+                    (filter
+                     (fn [M]
+                       (contains
+                        ["Medication/0"]
+                        (call "ToString" (:reference (:medication M))))))
+                    (retrieve "MedicationAdministration")))))
+
+              (testing "the first query optimizes away"
+                (given (->> (library/eval-unfiltered {:db (d/db node)
+                                                      :now (OffsetDateTime/now)}
+                                                     expression-defs)
+                            (library/resolve-all-refs)
+                            (library/optimize node))
+                  ["InInitialPopulation" :context] := "Patient"
+                  ["InInitialPopulation" expr-form] :=
+                  '(exists
+                    (eduction-query
+                     (matcher [["medication" "Medication/0"]])
+                     (retrieve "MedicationAdministration")))))))))))
 
   (testing "with compile-time error"
     (testing "function"

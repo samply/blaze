@@ -9,7 +9,7 @@
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.logical-operators :as ops]
    [blaze.elm.compiler.macros :refer [reify-expr]]
-   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.compiler.test-util :as ctu]
    [blaze.elm.expression.cache :as ec]
    [blaze.elm.expression.cache.bloom-filter :as bloom-filter]
    [blaze.elm.literal :as elm]
@@ -247,12 +247,49 @@
 
   (ctu/testing-binary-op elm/and)
 
-  (testing "optimize"
-    (doseq [ops [[{:type "Optimizeable" :id "x"} {:type "Null"}]
-                 [{:type "Null"} {:type "Optimizeable" :id "x"}]]]
-      (let [elm (elm/and ops)
-            expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
-        (has-form expr '(and nil (optimized "x")))))))
+  (ctu/testing-optimize elm/and
+    (testing "with one null operand"
+      [#ctu/optimizeable "x" {:type "Null"}]
+      [{:type "Null"} #ctu/optimizeable "x"]
+      '(and nil (optimized "x")))
+
+    (testing "with one null operand and the other operand optimizing to true"
+      [#ctu/optimize-to true {:type "Null"}]
+      [{:type "Null"} #ctu/optimize-to true]
+      nil)
+
+    (testing "with one null operand and the other operand optimizing to false"
+      [#ctu/optimize-to false {:type "Null"}]
+      [{:type "Null"} #ctu/optimize-to false]
+      false)
+
+    (testing "with one null operand and the other operand optimizing to nil"
+      [#ctu/optimize-to nil {:type "Null"}]
+      [{:type "Null"} #ctu/optimize-to nil]
+      nil)
+
+    (testing "with two null operands"
+      [{:type "Null"} {:type "Null"}]
+      nil)
+
+    (testing "with one operand optimizing to true"
+      [#ctu/optimize-to true #ctu/optimizeable "x"]
+      [#ctu/optimizeable "x" #ctu/optimize-to true]
+      '(optimized "x"))
+
+    (testing "with both operands optimizing to true"
+      [#ctu/optimize-to true #ctu/optimize-to true]
+      true)
+
+    (testing "with one operand optimizing to false"
+      [#ctu/optimize-to false #ctu/optimizeable "x"]
+      [#ctu/optimizeable "x" #ctu/optimize-to false]
+      false)
+
+    (testing "with one operand optimizing to nil"
+      [#ctu/optimize-to nil #ctu/optimizeable "x"]
+      [#ctu/optimizeable "x" #ctu/optimize-to nil]
+      '(and nil (optimized "x")))))
 
 (deftest and-op-patient-count-test
   (testing "both nil"
@@ -315,7 +352,20 @@
 
   (ctu/testing-unary-null elm/not)
 
-  (ctu/testing-unary-op elm/not))
+  (ctu/testing-unary-op elm/not)
+
+  (ctu/testing-optimize elm/not
+    (testing "with the operand optimizing to true"
+      #ctu/optimize-to true
+      false)
+
+    (testing "with the operand optimizing to false"
+      #ctu/optimize-to false
+      true)
+
+    (testing "with the operand optimizing to nil"
+      #ctu/optimize-to nil
+      nil)))
 
 ;; 13.4. Or
 ;;
@@ -351,6 +401,7 @@
       #elm/parameter-ref "false" #elm/boolean "false" false?
       #elm/parameter-ref "false" #elm/parameter-ref "false" false?
       #elm/parameter-ref "false" {:type "Null"} nil?
+      #elm/parameter-ref "false" #elm/parameter-ref "nil" nil?
       {:type "Null"} #elm/parameter-ref "false" nil?
 
       #elm/boolean "true" #elm/parameter-ref "nil" true?
@@ -538,12 +589,54 @@
 
   (ctu/testing-binary-optimize elm/or)
 
-  (testing "optimize"
-    (doseq [ops [[{:type "Optimizeable" :id "x"} {:type "Null"}]
-                 [{:type "Null"} {:type "Optimizeable" :id "x"}]]]
-      (let [elm (elm/or ops)
-            expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
-        (has-form expr '(or nil (optimized "x"))))))
+  (ctu/testing-optimize elm/or
+    (testing "with one null operand"
+      [#ctu/optimizeable "x" {:type "Null"}]
+      [{:type "Null"} #ctu/optimizeable "x"]
+      '(or nil (optimized "x")))
+
+    (testing "with one null operand and the other operand optimizing to true"
+      [#ctu/optimize-to true {:type "Null"}]
+      [{:type "Null"} #ctu/optimize-to true]
+      true)
+
+    (testing "with one null operand and the other operand optimizing to false"
+      [#ctu/optimize-to false {:type "Null"}]
+      [{:type "Null"} #ctu/optimize-to false]
+      nil)
+
+    (testing "with one null operand and the other operand optimizing to nil"
+      [#ctu/optimize-to nil {:type "Null"}]
+      [{:type "Null"} #ctu/optimize-to nil]
+      nil)
+
+    (testing "with two null operands"
+      [{:type "Null"} {:type "Null"}]
+      nil)
+
+    (testing "with the other operand optimizing to true"
+      [#ctu/optimize-to true {:type "Null"}]
+      [{:type "Null"} #ctu/optimize-to true]
+      true)
+
+    (testing "with one operand optimizing to true"
+      [#ctu/optimize-to true #ctu/optimizeable "x"]
+      [#ctu/optimizeable "x" #ctu/optimize-to true]
+      true)
+
+    (testing "with one operand optimizing to false"
+      [#ctu/optimize-to false #ctu/optimizeable "x"]
+      [#ctu/optimizeable "x" #ctu/optimize-to false]
+      '(optimized "x"))
+
+    (testing "with both operands optimizing to false"
+      [#ctu/optimize-to false #ctu/optimize-to false]
+      false)
+
+    (testing "with one operand optimizing to nil"
+      [#ctu/optimize-to nil #ctu/optimizeable "x"]
+      [#ctu/optimizeable "x" #ctu/optimize-to nil]
+      '(or nil (optimized "x"))))
 
   (ctu/testing-binary-equals-hash-code elm/or)
 
@@ -625,8 +718,12 @@
 
       #elm/boolean "true" #elm/parameter-ref "nil" nil?
       #elm/parameter-ref "nil" #elm/boolean "true" nil?
+      #elm/parameter-ref "true" #elm/parameter-ref "nil" nil?
+      #elm/parameter-ref "nil" #elm/parameter-ref "true" nil?
       #elm/boolean "false" #elm/parameter-ref "nil" nil?
       #elm/parameter-ref "nil" #elm/boolean "false" nil?
+      #elm/parameter-ref "false" #elm/parameter-ref "nil" nil?
+      #elm/parameter-ref "nil" #elm/parameter-ref "false" nil?
       {:type "Null"} #elm/parameter-ref "nil" nil?
       #elm/parameter-ref "nil" {:type "Null"} nil?
       #elm/parameter-ref "nil" #elm/parameter-ref "nil" nil?))
@@ -675,4 +772,44 @@
       #elm/parameter-ref "a" {:type "Null"} true?
       #elm/parameter-ref "a" #elm/parameter-ref "b" false?))
 
-  (ctu/testing-binary-op elm/xor))
+  (ctu/testing-binary-op elm/xor)
+
+  (ctu/testing-optimize elm/xor
+    (testing "with one null operand"
+      [#ctu/optimizeable "x" {:type "Null"}]
+      [{:type "Null"} #ctu/optimizeable "x"]
+      nil)
+
+    (testing "with two null operands"
+      [{:type "Null"} {:type "Null"}]
+      nil)
+
+    (testing "with one operand optimizing to true"
+      [#ctu/optimize-to true #ctu/optimizeable "x"]
+      [#ctu/optimizeable "x" #ctu/optimize-to true]
+      '(not (optimized "x")))
+
+    (testing "with one operand optimizing to false"
+      [#ctu/optimize-to false #ctu/optimizeable "x"]
+      [#ctu/optimizeable "x" #ctu/optimize-to false]
+      '(optimized "x"))
+
+    (testing "with both operands optimizing to true or false"
+      [#ctu/optimize-to true #ctu/optimize-to true]
+      [#ctu/optimize-to false #ctu/optimize-to false]
+      false)
+
+    (testing "with one operand optimizing to true and the other to false"
+      [#ctu/optimize-to true #ctu/optimize-to false]
+      [#ctu/optimize-to false #ctu/optimize-to true]
+      true)
+
+    (testing "with at least one operand optimizing to nil"
+      [#ctu/optimize-to nil #ctu/optimizeable "x"]
+      [#ctu/optimizeable "x" #ctu/optimize-to nil]
+      [#ctu/optimize-to nil #ctu/optimize-to true]
+      [#ctu/optimize-to true #ctu/optimize-to nil]
+      [#ctu/optimize-to nil #ctu/optimize-to false]
+      [#ctu/optimize-to false #ctu/optimize-to nil]
+      [#ctu/optimize-to nil #ctu/optimize-to nil]
+      nil)))

@@ -12,6 +12,7 @@
    [blaze.elm.compiler-spec]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
+   [blaze.elm.compiler.list-operators]
    [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.expression :as expr]
@@ -126,7 +127,7 @@
       (has-form expr '(list 1))))
 
   (testing "optimize"
-    (let [elm #elm/list [{:type "Optimizeable" :id "x"}]
+    (let [elm #elm/list [#ctu/optimizeable "x"]
           expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
       (has-form expr '(list (optimized "x")))))
 
@@ -224,7 +225,12 @@
 
   (ctu/testing-unary-null elm/distinct)
 
-  (ctu/testing-unary-op elm/distinct))
+  (ctu/testing-unary-op elm/distinct)
+
+  (ctu/testing-optimize elm/distinct
+    (testing "[1 1]"
+      #ctu/optimize-to [1 1]
+      [1])))
 
 ;; 20.5. Equal
 ;;
@@ -262,16 +268,6 @@
            'exists-test-with-cache))])
     (-form [_]
       'exists-test)))
-
-(defmethod elm-spec/expression :elm.spec.type/optimize-to-empty-list [_]
-  map?)
-
-(defmethod core/compile* :elm.compiler.type/optimize-to-empty-list [_ _]
-  (reify-expr core/Expression
-    (-optimize [_ _]
-      [])
-    (-form [_]
-      (list 'optimize-to-empty-list))))
 
 (deftest compile-exists-test
   (testing "Static"
@@ -397,10 +393,15 @@
   (ctu/testing-unary-optimize elm/exists)
 
   (testing "optimize to false if operand optimizes to an empty list"
-    (let [elm (elm/exists {:type "OptimizeToEmptyList"})
+    (let [elm (elm/exists #ctu/optimize-to [])
           expr (c/compile {:eval-context "Patient"} elm)
           expr (st/with-instrument-disabled (c/optimize nil expr))]
       (has-form expr false)))
+
+  (ctu/testing-optimize elm/exists
+    (testing "empty list"
+      #ctu/optimize-to []
+      false))
 
   (ctu/testing-unary-equals-hash-code elm/exists)
 
@@ -466,8 +467,8 @@
 
       (testing "optimize"
         (let [elm {:type "Filter"
-                   :source {:type "Optimizeable" :id "x"}
-                   :condition {:type "Optimizeable" :id "y"}
+                   :source #ctu/optimizeable "x"
+                   :condition #ctu/optimizeable "y"
                    :scope "A"}
               expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
           (has-form expr '(filter (optimized "x") (optimized "y") "A"))))
@@ -510,8 +511,8 @@
 
       (testing "optimize"
         (let [elm {:type "Filter"
-                   :source {:type "Optimizeable" :id "x"}
-                   :condition {:type "Optimizeable" :id "y"}}
+                   :source #ctu/optimizeable "x"
+                   :condition #ctu/optimizeable "y"}
               expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
           (has-form expr '(filter (optimized "x") (optimized "y")))))
 
@@ -542,7 +543,12 @@
 
   (ctu/testing-unary-null elm/first)
 
-  (ctu/testing-unary-op elm/first))
+  (ctu/testing-unary-op elm/first)
+
+  (ctu/testing-optimize elm/first
+    (testing "[1 2]"
+      #ctu/optimize-to [1 2]
+      1)))
 
 ;; 20.11. Flatten
 ;;
@@ -560,7 +566,12 @@
 
   (ctu/testing-unary-null elm/flatten)
 
-  (ctu/testing-unary-op elm/flatten))
+  (ctu/testing-unary-op elm/flatten)
+
+  (ctu/testing-optimize elm/flatten
+    (testing "[1 [2]]"
+      #ctu/optimize-to [1 [2]]
+      [1 2])))
 
 ;; 20.12. ForEach
 ;;
@@ -625,7 +636,7 @@
 
       (testing "optimize"
         (let [elm {:type "ForEach"
-                   :source {:type "Optimizeable" :id "x"}
+                   :source #ctu/optimizeable "x"
                    :element #elm/current "A"
                    :scope "A"}
               expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
@@ -667,7 +678,7 @@
 
       (testing "optimize"
         (let [elm {:type "ForEach"
-                   :source {:type "Optimizeable" :id "x"}
+                   :source #ctu/optimizeable "x"
                    :element #elm/current nil}
               expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
           (has-form expr '(for-each (optimized "x") current))))
@@ -742,7 +753,12 @@
 
   (ctu/testing-unary-null elm/last)
 
-  (ctu/testing-unary-op elm/last))
+  (ctu/testing-unary-op elm/last)
+
+  (ctu/testing-optimize elm/last
+    (testing "[1 2]"
+      #ctu/optimize-to [1 2]
+      2)))
 
 ;; 20.19. Not Equal
 ;;

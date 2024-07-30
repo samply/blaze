@@ -23,7 +23,12 @@
     (-resolve-params [_ parameters]
       (core/resolve-params-helper and-nil-op parameters x))
     (-optimize [_ node]
-      (core/optimize-helper and-nil-op node x))
+      (let [x (core/-optimize x node)]
+        (condp identical? x
+          true nil
+          false false
+          nil nil
+          (and-nil-op x))))
     (-eval [_ context resource scope]
       (when (false? (core/-eval x context resource scope))
         false))
@@ -68,6 +73,8 @@
         b-count (or (core/-patient-count b-op) Long/MAX_VALUE)]
     (- a-count b-count)))
 
+(declare dynamic-and)
+
 (defn and-op [a b]
   (reify-expr core/Expression
     (-attach-cache [_ cache]
@@ -105,7 +112,12 @@
     (-resolve-params [_ parameters]
       (core/resolve-params-helper and-op parameters a b))
     (-optimize [_ node]
-      (core/optimize-helper and-op node a b))
+      (let [a (core/-optimize a node)]
+        (condp identical? a
+          true (core/-optimize b node)
+          false false
+          nil (nil-and (core/-optimize b node))
+          (dynamic-and a (core/-optimize b node)))))
     (-eval [_ context resource scope]
       (let [a (core/-eval a context resource scope)]
         (if (false? a)
@@ -160,7 +172,12 @@
     (-resolve-params [_ parameters]
       (core/resolve-params-helper or-nil-op parameters x))
     (-optimize [_ node]
-      (core/optimize-helper or-nil-op node x))
+      (let [x (core/-optimize x node)]
+        (condp identical? x
+          true true
+          false nil
+          nil nil
+          (or-nil-op x))))
     (-eval [_ context resource scope]
       (when (true? (core/-eval x context resource scope))
         true))
@@ -212,6 +229,8 @@
         b-count (or (core/-patient-count b-op) Long/MAX_VALUE)]
     (- b-count a-count)))
 
+(declare dynamic-or)
+
 (defn or-op [a b]
   (reify-expr core/Expression
     (-attach-cache [_ cache]
@@ -249,7 +268,12 @@
     (-resolve-params [_ parameters]
       (core/resolve-params-helper or-op parameters a b))
     (-optimize [_ node]
-      (core/optimize-helper or-op node a b))
+      (let [a (core/-optimize a node)]
+        (condp identical? a
+          true true
+          false (core/-optimize b node)
+          nil (nil-or (core/-optimize b node))
+          (dynamic-or a (core/-optimize b node)))))
     (-eval [_ context resource scope]
       (let [a (core/-eval a context resource scope)]
         (if (true? a)
@@ -281,6 +305,8 @@
       (dynamic-or a (core/compile* context b)))))
 
 ;; 13.5 Xor
+(declare dynamic-xor)
+
 (defn- xor-op [a b]
   (reify-expr core/Expression
     (-attach-cache [_ cache]
@@ -290,7 +316,17 @@
     (-resolve-params [_ parameters]
       (core/resolve-params-helper xor-op parameters a b))
     (-optimize [_ node]
-      (core/optimize-helper xor-op node a b))
+      (let [a (core/-optimize a node)]
+        (condp identical? a
+          true (let [b (core/-optimize b node)]
+                 (condp identical? b
+                   true false
+                   false true
+                   nil nil
+                   (not-op b)))
+          false (core/-optimize b node)
+          nil nil
+          (dynamic-xor a (core/-optimize b node)))))
     (-eval [_ context resource scope]
       (when-some [a (core/-eval a context resource scope)]
         (when-some [b (core/-eval b context resource scope)]

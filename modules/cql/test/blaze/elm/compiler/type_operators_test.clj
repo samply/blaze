@@ -220,7 +220,12 @@
 
   (ctu/testing-unary-null elm/children)
 
-  (ctu/testing-unary-op elm/children))
+  (ctu/testing-unary-op elm/children)
+
+  (ctu/testing-optimize elm/children
+    (testing "Code"
+      #ctu/optimize-to (code/code "system-164913" "version-164919" "code-164924")
+      ["code-164924" nil "system-164913" "version-164919"])))
 
 ;; TODO 22.5. Convert
 ;;
@@ -371,7 +376,23 @@
 
   (ctu/testing-unary-null elm/converts-to-boolean)
 
-  (ctu/testing-unary-op elm/converts-to-boolean))
+  (ctu/testing-unary-op elm/converts-to-boolean)
+
+  (ctu/testing-optimize elm/converts-to-boolean
+    (testing "String"
+      #ctu/optimize-to "true"
+      #ctu/optimize-to "false"
+      true)
+
+    (testing "Integer - true"
+      #ctu/optimize-to "0"
+      #ctu/optimize-to "1"
+      true)
+
+    (testing "Integer - false"
+      #ctu/optimize-to "2"
+      #ctu/optimize-to "-1"
+      false)))
 
 ;; 22.8. ConvertsToDate
 ;;
@@ -534,7 +555,14 @@
 
   (ctu/testing-unary-null elm/converts-to-decimal)
 
-  (ctu/testing-unary-op elm/converts-to-decimal))
+  (ctu/testing-unary-op elm/converts-to-decimal)
+
+  (ctu/testing-optimize elm/converts-to-decimal
+    (testing "String"
+      #ctu/optimize-to "-1"
+      #ctu/optimize-to "0"
+      #ctu/optimize-to "1"
+      true)))
 
 ;; 22.11. ConvertsToLong
 ;;
@@ -589,7 +617,14 @@
 
   (ctu/testing-unary-null elm/converts-to-long)
 
-  (ctu/testing-unary-op elm/converts-to-long))
+  (ctu/testing-unary-op elm/converts-to-long)
+
+  (ctu/testing-optimize elm/converts-to-long
+    (testing "String"
+      #ctu/optimize-to "-1"
+      #ctu/optimize-to "0"
+      #ctu/optimize-to "1"
+      true)))
 
 ;; 22.12. ConvertsToInteger
 ;;
@@ -643,7 +678,14 @@
 
   (ctu/testing-unary-null elm/converts-to-integer)
 
-  (ctu/testing-unary-op elm/converts-to-integer))
+  (ctu/testing-unary-op elm/converts-to-integer)
+
+  (ctu/testing-optimize elm/converts-to-integer
+    (testing "String"
+      #ctu/optimize-to "-1"
+      #ctu/optimize-to "0"
+      #ctu/optimize-to "1"
+      true)))
 
 ;; 22.13. ConvertsToQuantity
 ;;
@@ -713,7 +755,14 @@
 
   (ctu/testing-unary-null elm/converts-to-quantity)
 
-  (ctu/testing-unary-op elm/converts-to-quantity))
+  (ctu/testing-unary-op elm/converts-to-quantity)
+
+  (ctu/testing-optimize elm/converts-to-quantity
+    (testing "String"
+      #ctu/optimize-to "-1'm'"
+      #ctu/optimize-to "0'm'"
+      #ctu/optimize-to "1'm'"
+      true)))
 
 ;; 22.14. ConvertsToRatio
 ;;
@@ -749,7 +798,14 @@
 
   (ctu/testing-unary-null elm/converts-to-ratio)
 
-  (ctu/testing-unary-op elm/converts-to-ratio))
+  (ctu/testing-unary-op elm/converts-to-ratio)
+
+  (ctu/testing-optimize elm/converts-to-ratio
+    (testing "String"
+      #ctu/optimize-to "-1'm':-1'm'"
+      #ctu/optimize-to "0'm':0'm'"
+      #ctu/optimize-to "1'm':1'm'"
+      true)))
 
 ;; 22.15. ConvertsToString
 ;;
@@ -821,7 +877,12 @@
 
   (ctu/testing-unary-null elm/converts-to-string)
 
-  (ctu/testing-unary-op elm/converts-to-string))
+  (ctu/testing-unary-op elm/converts-to-string)
+
+  (ctu/testing-optimize elm/converts-to-string
+    (testing "String"
+      #ctu/optimize-to "foo"
+      true)))
 
 ;; 22.16. ConvertsToTime
 ;;
@@ -910,7 +971,12 @@
 
   (ctu/testing-unary-null elm/descendents)
 
-  (ctu/testing-unary-op elm/descendents))
+  (ctu/testing-unary-op elm/descendents)
+
+  (ctu/testing-optimize elm/descendents
+    (testing "Code"
+      #ctu/optimize-to (code/code "system-164913" "version-164919" "code-164924")
+      ["code-164924" nil "system-164913" "version-164919"])))
 
 ;; 22.18. Is
 ;;
@@ -1171,7 +1237,16 @@
 
   (ctu/testing-unary-null elm/to-boolean)
 
-  (ctu/testing-unary-op elm/to-boolean))
+  (ctu/testing-unary-op elm/to-boolean)
+
+  (ctu/testing-optimize elm/to-boolean
+    (testing "String - true"
+      #ctu/optimize-to "true"
+      true)
+
+    (testing "String - false"
+      #ctu/optimize-to "false"
+      false)))
 
 ;; 22.20. ToChars
 ;;
@@ -1183,9 +1258,9 @@
 (deftest compile-to-chars-test
   (testing "String"
     (are [x res] (= res (ctu/compile-unop elm/to-chars elm/string x))
-      "A" '("A")
-      "ab" '("a" "b")
-      "" '()))
+      "A" ["A"]
+      "ab" ["a" "b"]
+      "" []))
 
   (testing "Integer"
     (are [x] (nil? (ctu/compile-unop elm/to-chars elm/integer x))
@@ -1193,13 +1268,18 @@
 
   (testing "Dynamic"
     (are [x res] (= res (ctu/dynamic-compile-eval (elm/to-chars x)))
-      #elm/parameter-ref "A" '("A")
-      #elm/parameter-ref "ab" '("a" "b")
-      #elm/parameter-ref "empty-string" '()))
+      #elm/parameter-ref "A" ["A"]
+      #elm/parameter-ref "ab" ["a" "b"]
+      #elm/parameter-ref "empty-string" []))
 
   (ctu/testing-unary-null elm/to-chars)
 
-  (ctu/testing-unary-op elm/to-chars))
+  (ctu/testing-unary-op elm/to-chars)
+
+  (ctu/testing-optimize elm/to-chars
+    (testing "String"
+      #ctu/optimize-to "ab"
+      ["a" "b"])))
 
 ;; 22.21. ToConcept
 ;;
@@ -1226,7 +1306,12 @@
 
   (ctu/testing-unary-null elm/to-concept)
 
-  (ctu/testing-unary-op elm/to-concept))
+  (ctu/testing-unary-op elm/to-concept)
+
+  (ctu/testing-optimize elm/to-concept
+    (testing "String"
+      #ctu/optimize-to (code/code "system-134534" "version-171346" "code-134551")
+      '(concept (code "system-134534" "version-171346" "code-134551")))))
 
 ;; 22.22. ToDate
 ;;
@@ -1414,7 +1499,12 @@
 
   (ctu/testing-unary-null elm/to-decimal)
 
-  (ctu/testing-unary-op elm/to-decimal))
+  (ctu/testing-unary-op elm/to-decimal)
+
+  (ctu/testing-optimize elm/to-decimal
+    (testing "String"
+      #ctu/optimize-to "0"
+      0M)))
 
 ;; 22.25. ToInteger
 ;;
@@ -1455,7 +1545,12 @@
 
   (ctu/testing-unary-null elm/to-integer)
 
-  (ctu/testing-unary-op elm/to-integer))
+  (ctu/testing-unary-op elm/to-integer)
+
+  (ctu/testing-optimize elm/to-integer
+    (testing "String"
+      #ctu/optimize-to "0"
+      0)))
 
 ;; 22.26. ToList
 ;;
@@ -1487,7 +1582,12 @@
       #elm/parameter-ref "nil" []
       #elm/parameter-ref "a" ["a"]))
 
-  (ctu/testing-unary-op elm/to-list))
+  (ctu/testing-unary-op elm/to-list)
+
+  (ctu/testing-optimize elm/to-list
+    (testing "String"
+      #ctu/optimize-to "a"
+      ["a"])))
 
 ;; 22.27. ToLong
 ;;
@@ -1532,7 +1632,12 @@
 
   (ctu/testing-unary-null elm/to-long)
 
-  (ctu/testing-unary-op elm/to-long))
+  (ctu/testing-unary-op elm/to-long)
+
+  (ctu/testing-optimize elm/to-long
+    (testing "String"
+      #ctu/optimize-to "0"
+      0)))
 
 ;; 22.28. ToQuantity
 ;;
@@ -1609,7 +1714,12 @@
 
   (ctu/testing-unary-null elm/to-quantity)
 
-  (ctu/testing-unary-op elm/to-quantity))
+  (ctu/testing-unary-op elm/to-quantity)
+
+  (ctu/testing-optimize elm/to-quantity
+    (testing "String"
+      #ctu/optimize-to "1'm'"
+      '(quantity 1M "m"))))
 
 ;; 22.29. ToRatio
 ;;
@@ -1658,7 +1768,12 @@
 
   (ctu/testing-unary-null elm/to-ratio)
 
-  (ctu/testing-unary-op elm/to-ratio))
+  (ctu/testing-unary-op elm/to-ratio)
+
+  (ctu/testing-optimize elm/to-ratio
+    (testing "String"
+      #ctu/optimize-to "1:2"
+      '(ratio (quantity 1M "1") (quantity 2M "1")))))
 
 ;; 22.30. ToString
 ;;
@@ -1735,7 +1850,12 @@
 
   (ctu/testing-unary-null elm/to-string)
 
-  (ctu/testing-unary-op elm/to-string))
+  (ctu/testing-unary-op elm/to-string)
+
+  (ctu/testing-optimize elm/to-string
+    (testing "Boolean"
+      #ctu/optimize-to true
+      "true")))
 
 ;; 22.31. ToTime
 ;;
