@@ -226,7 +226,7 @@
                  [{:when #ctu/optimizeable "w"
                    :then #ctu/optimizeable "t"}]
                  :else #ctu/optimizeable "e"}
-            expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+            expr (st/with-instrument-disabled (c/optimize (c/compile {} elm) nil))]
         (has-form expr '(case (optimized "w") (optimized "t") (optimized "e")))))
 
     (testing "comparand-based"
@@ -236,7 +236,7 @@
                  [{:when #ctu/optimizeable "w"
                    :then #ctu/optimizeable "t"}]
                  :else #ctu/optimizeable "e"}
-            expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+            expr (st/with-instrument-disabled (c/optimize (c/compile {} elm) nil))]
         (has-form expr '(case (optimized "c") (optimized "w") (optimized "t") (optimized "e"))))))
 
   (testing "equals/hashCode"
@@ -336,7 +336,7 @@
     (let [elm #elm/if [#ctu/optimizeable "c"
                        #ctu/optimizeable "t"
                        #ctu/optimizeable "e"]
-          expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+          expr (st/with-instrument-disabled (c/optimize (c/compile {} elm) nil))]
       (has-form expr '(if (optimized "c") (optimized "t") (optimized "e")))))
 
   (ctu/testing-equals-hash-code #elm/if [#elm/parameter-ref "x"

@@ -441,7 +441,7 @@
     (do-sync [{:keys [expression-defs function-defs parameter-default-values]}
               (compile-primary-library db measure {})]
       (when-ok [subject-handle (some->> subject-ref (subject-handle db subject-type))]
-        (let [optimize (partial library/optimize (d/node db))
+        (let [optimize (partial library/optimize db)
               context
               (cond->
                (assoc

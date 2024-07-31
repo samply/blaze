@@ -30,21 +30,29 @@
 (defn- code-expr
   "Returns an expression which, when evaluated, returns all resources of type
   `data-type` which have a code equivalent to `code` at `property` and are
-  reachable through `context`.
+  reachable through `eval-context`.
 
   Example:
   * data-type - \"Observation\"
+  * eval-context - \"Patient\"
   * property - \"code\"
   * codes - [(code \"http://loinc.org\" nil \"39156-5\")]"
-  [node context data-type property codes]
-  (let [clauses [(into [property] (map code->clause-value) codes)]
-        query (d/compile-compartment-query node context data-type clauses)]
-    (reify-expr core/Expression
-      (-eval [_ {:keys [db]} {:keys [id]} _]
-        (prom/inc! retrieve-total)
-        (coll/eduction (cr/resource-mapper db) (d/execute-query db query id)))
-      (-form [_]
-        `(~'retrieve ~data-type ~(d/query-clauses query))))))
+  [node eval-context data-type property codes]
+  (let [clauses [(into [property] (map code->clause-value) codes)]]
+    (if-ok [type-query (d/compile-type-query node data-type clauses)
+            compartment-query (d/compile-compartment-query node eval-context
+                                                           data-type clauses)]
+      (reify-expr core/Expression
+        (-optimize [expr db]
+          (if (coll/empty? (d/execute-query db type-query))
+            []
+            expr))
+        (-eval [_ {:keys [db]} {:keys [id]} _]
+          (prom/inc! retrieve-total)
+          (coll/eduction (cr/resource-mapper db) (d/execute-query db compartment-query id)))
+        (-form [_]
+          `(~'retrieve ~data-type ~(d/query-clauses compartment-query))))
+      ba/throw-anom)))
 
 ;; TODO: find a better solution than hard coding this case
 (def ^:private specimen-patient-expr

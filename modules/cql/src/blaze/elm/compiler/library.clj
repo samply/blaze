@@ -136,17 +136,17 @@
              (completing (fn [r [k v]] (assoc r k v)))
              expression-defs expression-defs))
 
-(defn- optimize-xf [node]
-  (let [optimize (partial c/optimize node)]
-    (map
-     (fn [[name expr-def]]
-       [name (update expr-def :expression optimize)]))))
+(defn- optimize-xf [db]
+  (map
+   (fn [[name expr-def]]
+     [name (update expr-def :expression c/optimize db)])))
 
 (defn optimize
   "Runs optimizations on expressions from `expression-defs` returning new
-  expression definitions.
+  expression definitions. Uses `db` so the optimizations are database state
+  dependent and can't be reused between database states.
 
   The expressions should be already self contained. So all refs and params
   should be resolved."
-  [node expression-defs]
-  (into {} (optimize-xf node) expression-defs))
+  [db expression-defs]
+  (into {} (optimize-xf db) expression-defs))

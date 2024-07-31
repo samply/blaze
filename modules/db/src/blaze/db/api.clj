@@ -262,8 +262,8 @@
 
 (defn compile-compartment-query
   "Same as `compartment-query` but in a two-step process of pre-compilation and
-  later execution by `execute-query`. The `id` of the compartments' resource
-  will be supplied as argument to `execute-query`.
+  later execution by `execute-query`. The `id` of the compartments (`code`)
+  resource will be supplied as argument to `execute-query`.
 
   Returns an anomaly if search parameters in clauses can't be resolved."
   [node-or-db code type clauses]

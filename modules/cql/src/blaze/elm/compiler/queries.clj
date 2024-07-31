@@ -153,18 +153,21 @@
     (-resolve-params [_ parameters]
       (eduction-expr (-resolve-params xform-factory parameters)
                      (core/-resolve-params source parameters)))
-    (-optimize [expr node]
-      (if-let [source-type (medication-source-type (core/-form source))]
-        (if-let [medication-refs (where-medication-refs (-form xform-factory))]
-          (if (empty? medication-refs)
-            []
-            (if-ok [matcher (d/compile-type-matcher node source-type [(into ["medication"] medication-refs)])]
-              (eduction-expr (where-search-param-xform-factory matcher) source)
-              (fn [{::anom/keys [message]}]
-                (log/warn "Error while trying to optimize a query expression:" message)
-                expr)))
-          expr)
-        expr))
+    (-optimize [expr db]
+      (let [source (core/-optimize source db)]
+        (if (= [] source)
+          []
+          (if-let [source-type (medication-source-type (core/-form source))]
+            (if-let [medication-refs (where-medication-refs (-form xform-factory))]
+              (if (empty? medication-refs)
+                []
+                (if-ok [matcher (d/compile-type-matcher db source-type [(into ["medication"] medication-refs)])]
+                  (eduction-expr (where-search-param-xform-factory matcher) source)
+                  (fn [{::anom/keys [message]}]
+                    (log/warn "Error while trying to optimize a query expression:" message)
+                    expr)))
+              expr)
+            expr))))
     (-eval [_ context resource scope]
       (coll/eduction
        (-create xform-factory context resource scope)

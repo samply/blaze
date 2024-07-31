@@ -2,12 +2,13 @@
   (:require
    [blaze.cql-translator :as t]
    [blaze.db.api :as d]
-   [blaze.db.api-stub :refer [mem-node-config]]
+   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler-spec]
    [blaze.elm.compiler.library :as library]
    [blaze.elm.compiler.library-spec]
    [blaze.elm.expression.cache :as ec]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu]
@@ -28,6 +29,13 @@
 (def ^:private default-opts {})
 
 (def ^:private expr-form (comp c/form :expression))
+
+(defn- codeable-concept [system code]
+  (type/map->CodeableConcept
+   {:coding
+    [(type/map->Coding
+      {:system (type/uri system)
+       :code (type/code code)})]}))
 
 ;; 5.1. Library
 ;;
@@ -81,7 +89,7 @@
             ["Foo" :expression] := true)
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
   (testing "one dynamic expression"
     (let [library (t/translate "library Test
@@ -98,7 +106,7 @@
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
   (testing "one function"
     (let [library (t/translate "library Test
@@ -122,7 +130,7 @@
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
   (testing "two functions, one calling the other"
     (let [library (t/translate "library Test
@@ -141,7 +149,7 @@
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
   (testing "expressions from Patient context are resolved"
     (let [library (t/translate "library Test
@@ -190,7 +198,7 @@
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
   (testing "expressions from Unfiltered context are not resolved"
     (let [library (t/translate "library Test
@@ -290,7 +298,7 @@
                   (retrieve "MedicationStatement"))))))
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
   (testing "expressions without refs are preserved"
     (let [library (t/translate "library Retrieve
@@ -323,7 +331,7 @@
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
   (testing "medication reference optimization"
     (testing "with two references"
@@ -354,7 +362,7 @@
               (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
             (testing "there are no optimizations available"
-              (given (library/optimize node expression-defs)
+              (given (library/optimize (d/db node) expression-defs)
                 ["InInitialPopulation" :context] := "Patient"
                 ["InInitialPopulation" expr-form] :=
                 '(exists
@@ -395,13 +403,14 @@
                  (retrieve "MedicationAdministration"))))
 
             (testing "the whole exists expression optimizes to false"
-              (given (->> (library/eval-unfiltered {:db (d/db node)
-                                                    :now (OffsetDateTime/now)}
-                                                   expression-defs)
-                          (library/resolve-all-refs)
-                          (library/optimize node))
-                ["InInitialPopulation" :context] := "Patient"
-                ["InInitialPopulation" expr-form] := false)))))
+              (let [db (d/db node)]
+                (given (->> (library/eval-unfiltered {:db db
+                                                      :now (OffsetDateTime/now)}
+                                                     expression-defs)
+                            (library/resolve-all-refs)
+                            (library/optimize db))
+                  ["InInitialPopulation" :context] := "Patient"
+                  ["InInitialPopulation" expr-form] := false))))))
 
       (testing "with a disjunction of two such queries"
         (let [library (t/translate "library Retrieve
@@ -451,13 +460,14 @@
                     (retrieve "MedicationAdministration")))))
 
               (testing "the whole exists expression optimizes to false"
-                (given (->> (library/eval-unfiltered {:db (d/db node)
-                                                      :now (OffsetDateTime/now)}
-                                                     expression-defs)
-                            (library/resolve-all-refs)
-                            (library/optimize node))
-                  ["InInitialPopulation" :context] := "Patient"
-                  ["InInitialPopulation" expr-form] := false))))))
+                (let [db (d/db node)]
+                  (given (->> (library/eval-unfiltered {:db db
+                                                        :now (OffsetDateTime/now)}
+                                                       expression-defs)
+                              (library/resolve-all-refs)
+                              (library/optimize db))
+                    ["InInitialPopulation" :context] := "Patient"
+                    ["InInitialPopulation" expr-form] := false)))))))
 
       (testing "with the second query having Medication refs"
         (let [library (t/translate "library Retrieve
@@ -503,17 +513,18 @@
                     (retrieve "MedicationAdministration")))))
 
               (testing "the first query optimizes away"
-                (given (->> (library/eval-unfiltered {:db (d/db node)
-                                                      :now (OffsetDateTime/now)}
-                                                     expression-defs)
-                            (library/resolve-all-refs)
-                            (library/optimize node))
-                  ["InInitialPopulation" :context] := "Patient"
-                  ["InInitialPopulation" expr-form] :=
-                  '(exists
-                    (eduction-query
-                     (matcher [["medication" "Medication/0"]])
-                     (retrieve "MedicationAdministration")))))))))))
+                (let [db (d/db node)]
+                  (given (->> (library/eval-unfiltered {:db db
+                                                        :now (OffsetDateTime/now)}
+                                                       expression-defs)
+                              (library/resolve-all-refs)
+                              (library/optimize db))
+                    ["InInitialPopulation" :context] := "Patient"
+                    ["InInitialPopulation" expr-form] :=
+                    '(exists
+                      (eduction-query
+                       (matcher [["medication" "Medication/0"]])
+                       (retrieve "MedicationAdministration"))))))))))))
 
   (testing "with compile-time error"
     (testing "function"
@@ -564,7 +575,7 @@
                 "female")))
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
   (testing "with parameter default"
     (let [library (t/translate "library Test
@@ -624,7 +635,7 @@
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
   (testing "with related context"
     (let [library (t/translate "library test
@@ -652,7 +663,7 @@
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
   (testing "retrieve with static concept"
     (let [library (t/translate "library test
@@ -682,10 +693,7 @@
                  "http://snomed.info/sct|254900004"]])))
 
           (testing "there are no references to resolve"
-            (is (= expression-defs (library/resolve-all-refs expression-defs))))
-
-          (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))))))
 
   (testing "and expression"
     (let [library (t/translate "library test
@@ -716,7 +724,7 @@
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
   (testing "and expression with named expressions"
     (let [library (t/translate "library test
@@ -769,7 +777,7 @@
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
   (testing "or expression"
     (let [library (t/translate "library test
@@ -800,7 +808,7 @@
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
   (testing "or expression with named expressions"
     (let [library (t/translate "library test
@@ -853,7 +861,7 @@
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
   (testing "mixed and and or expressions"
     (let [library (t/translate "library test
@@ -908,7 +916,7 @@
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
   (testing "Equivalent on Concept"
     (let [library (t/translate "library test
@@ -948,7 +956,7 @@
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs))))))))
 
   (testing "Retrieve on primary code"
     (let [library (t/translate "library test
@@ -961,7 +969,10 @@
 
         define InInitialPopulation:
           exists [Observation: Code '788-0' from loinc]")]
-      (with-system [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+        [[[:put {:fhir/type :fhir/Observation :id "0"
+                 :code (codeable-concept "http://loinc.org" "788-0")}]]]
+
         (let [{:keys [expression-defs]} (library/compile-library node library {})]
           (given expression-defs
             ["InInitialPopulation" :context] := "Patient"
@@ -973,4 +984,98 @@
             (is (= expression-defs (library/resolve-all-refs expression-defs))))
 
           (testing "there are no optimizations available"
-            (is (= expression-defs (library/optimize node expression-defs)))))))))
+            (is (= expression-defs (library/optimize (d/db node) expression-defs)))))))
+
+    (testing "and no available Observations"
+      (let [library (t/translate "library test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        codesystem loinc: 'http://loinc.org'
+
+        context Patient
+
+        define InInitialPopulation:
+          exists [Observation: Code '788-0' from loinc]")]
+        (with-system [{:blaze.db/keys [node]} mem-node-config]
+          (let [{:keys [expression-defs]} (library/compile-library node library {})]
+            (given expression-defs
+              ["InInitialPopulation" :context] := "Patient"
+              ["InInitialPopulation" expr-form] :=
+              '(exists
+                (retrieve "Observation" [["code" "http://loinc.org|788-0"]])))
+
+            (testing "there are no references to resolve"
+              (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+            (testing "the whole expression will be optimized to false"
+              (given (library/optimize (d/db node) expression-defs)
+                ["InInitialPopulation" :context] := "Patient"
+                ["InInitialPopulation" expr-form] := false)))))))
+
+  (testing "query with where clause"
+    (let [library (t/translate "library test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        codesystem loinc: 'http://loinc.org'
+        code body_weight: '29463-7' from loinc
+
+        context Patient
+
+        define InInitialPopulation:
+          exists [Observation: body_weight] O where O.value < 3.3 'kg'")]
+      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+        [[[:put {:fhir/type :fhir/Observation :id "0"
+                 :code (codeable-concept "http://loinc.org" "29463-7")}]]]
+
+        (let [{:keys [expression-defs]} (library/compile-library node library {})]
+          (given expression-defs
+            ["InInitialPopulation" :context] := "Patient"
+            ["InInitialPopulation" expr-form] :=
+            '(exists
+              (eduction-query
+               (filter
+                (fn [O]
+                  (less (call "ToQuantity" (as fhir/Quantity (:value O)))
+                        (quantity 3.3M "kg"))))
+               (retrieve "Observation" [["code" "http://loinc.org|29463-7"]]))))
+
+          (testing "there are no references to resolve"
+            (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+          (testing "there are no optimizations available"
+            (is (= expression-defs (library/optimize (d/db node) expression-defs)))))))
+
+    (testing "and no available Observations"
+      (let [library (t/translate "library test
+        using FHIR version '4.0.0'
+        include FHIRHelpers version '4.0.0'
+
+        codesystem loinc: 'http://loinc.org'
+        code body_weight: '29463-7' from loinc
+
+        context Patient
+
+        define InInitialPopulation:
+          exists [Observation: body_weight] O where O.value < 3.3 'kg'")]
+        (with-system [{:blaze.db/keys [node]} mem-node-config]
+          (let [{:keys [expression-defs]} (library/compile-library node library {})]
+            (given expression-defs
+              ["InInitialPopulation" :context] := "Patient"
+              ["InInitialPopulation" expr-form] :=
+              '(exists
+                (eduction-query
+                 (filter
+                  (fn [O]
+                    (less (call "ToQuantity" (as fhir/Quantity (:value O)))
+                          (quantity 3.3M "kg"))))
+                 (retrieve "Observation" [["code" "http://loinc.org|29463-7"]]))))
+
+            (testing "there are no references to resolve"
+              (is (= expression-defs (library/resolve-all-refs expression-defs))))
+
+            (testing "the whole expression will be optimized to false"
+              (given (library/optimize (d/db node) expression-defs)
+                ["InInitialPopulation" :context] := "Patient"
+                ["InInitialPopulation" expr-form] := false))))))))

@@ -182,15 +182,15 @@
         (core/-resolve-params minute parameters)
         (core/-resolve-params second parameters)
         (core/-resolve-params millisecond parameters)))
-     (-optimize [_ node]
+     (-optimize [_ db]
        (date-time-dynamic-op
-        (core/-optimize year node)
-        (core/-optimize month node)
-        (core/-optimize day node)
-        (core/-optimize hour node)
-        (core/-optimize minute node)
-        (core/-optimize second node)
-        (core/-optimize millisecond node)))
+        (core/-optimize year db)
+        (core/-optimize month db)
+        (core/-optimize day db)
+        (core/-optimize hour db)
+        (core/-optimize minute db)
+        (core/-optimize second db)
+        (core/-optimize millisecond db)))
      (-eval [_ context resource scope]
        (system/date-time
         (core/-eval year context resource scope)
@@ -226,16 +226,16 @@
         (core/-resolve-params second parameters)
         (core/-resolve-params millisecond parameters)
         (core/-resolve-params timezone-offset parameters)))
-     (-optimize [_ node]
+     (-optimize [_ db]
        (date-time-dynamic-op
-        (core/-optimize year node)
-        (core/-optimize month node)
-        (core/-optimize day node)
-        (core/-optimize hour node)
-        (core/-optimize minute node)
-        (core/-optimize second node)
-        (core/-optimize millisecond node)
-        (core/-optimize timezone-offset node)))
+        (core/-optimize year db)
+        (core/-optimize month db)
+        (core/-optimize day db)
+        (core/-optimize hour db)
+        (core/-optimize minute db)
+        (core/-optimize second db)
+        (core/-optimize millisecond db)
+        (core/-optimize timezone-offset db)))
      (-eval [_ {:keys [now] :as context} resource scope]
        (to-local-date-time-with-offset
         now
@@ -287,26 +287,26 @@
            (core/-resolve-params second parameters)
            (core/-resolve-params millisecond parameters)
            timezone-offset))))
-    (-optimize [_ node]
-      (let [timezone-offset (core/-optimize timezone-offset node)]
+    (-optimize [_ db]
+      (let [timezone-offset (core/-optimize timezone-offset db)]
         (if (number? timezone-offset)
           (date-time-dynamic-op
-           (core/-optimize year node)
-           (core/-optimize month node)
-           (core/-optimize day node)
-           (core/-optimize hour node)
-           (core/-optimize minute node)
-           (core/-optimize second node)
-           (core/-optimize millisecond node)
+           (core/-optimize year db)
+           (core/-optimize month db)
+           (core/-optimize day db)
+           (core/-optimize hour db)
+           (core/-optimize minute db)
+           (core/-optimize second db)
+           (core/-optimize millisecond db)
            timezone-offset)
           (date-time-dynamic-timezone-offset-op
-           (core/-optimize year node)
-           (core/-optimize month node)
-           (core/-optimize day node)
-           (core/-optimize hour node)
-           (core/-optimize minute node)
-           (core/-optimize second node)
-           (core/-optimize millisecond node)
+           (core/-optimize year db)
+           (core/-optimize month db)
+           (core/-optimize day db)
+           (core/-optimize hour db)
+           (core/-optimize minute db)
+           (core/-optimize second db)
+           (core/-optimize millisecond db)
            timezone-offset))))
     (-eval [_ {:keys [now] :as context} resource scope]
       (to-local-date-time-with-offset
@@ -539,12 +539,12 @@
         (core/-resolve-params minute parameters)
         (core/-resolve-params second parameters)
         (core/-resolve-params millisecond parameters)))
-     (-optimize [_ node]
+     (-optimize [_ db]
        (time-op
-        (core/-optimize hour node)
-        (core/-optimize minute node)
-        (core/-optimize second node)
-        (core/-optimize millisecond node)))
+        (core/-optimize hour db)
+        (core/-optimize minute db)
+        (core/-optimize second db)
+        (core/-optimize millisecond db)))
      (-eval [_ context resource scope]
        (date-time/local-time
         (core/-eval hour context resource scope)

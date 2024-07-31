@@ -78,7 +78,7 @@
         scope (gensym "scope")
         bloom-filter (gensym "bloom-filter")
         expr (gensym "expr")
-        node (gensym "node")]
+        db (gensym "db")]
     `(do
        ~(when (:cache attr-map)
           `(do
@@ -132,13 +132,13 @@
                         ~elm-expr)
                       `(~caching-op
                         (core/-resolve-params ~operand ~'parameters))))
-                 (~'-optimize [~'_ ~'node]
+                 (~'-optimize [~'_ ~'db]
                    ~(if elm-expr-binding
                       `(~caching-op
-                        (core/-optimize ~operand ~'node)
+                        (core/-optimize ~operand ~'db)
                         ~elm-expr)
                       `(~caching-op
-                        (core/-optimize ~operand ~'node))))
+                        (core/-optimize ~operand ~'db))))
                  (~'-eval [~'_ ~context ~resource ~scope]
                    (if (bloom-filter/might-contain? ~bloom-filter ~resource)
                      (let [res# (let ~(generate-binding-vector
@@ -200,12 +200,12 @@
                         ~elm-expr)
                       `(~caching-op
                         (core/-resolve-params ~operand ~'parameters))))
-                 (~'-optimize [~'_ ~node]
+                 (~'-optimize [~'_ ~db]
                    ~(if elm-expr-binding
                       `(~caching-op
-                        (core/-optimize ~operand ~node)
+                        (core/-optimize ~operand ~db)
                         ~elm-expr)
-                      `(let [~operand (core/-optimize ~operand ~node)]
+                      `(let [~operand (core/-optimize ~operand ~db)]
                          (if (core/static? ~operand)
                            (let [~operand-binding ~operand] ~@body)
                            (~caching-op ~operand)))))
@@ -239,12 +239,12 @@
                   ~elm-expr)
                 `(~op
                   (core/-resolve-params ~operand ~'parameters))))
-           (~'-optimize [~'_ ~node]
+           (~'-optimize [~'_ ~db]
              ~(if elm-expr-binding
                 `(~op
-                  (core/-optimize ~operand ~node)
+                  (core/-optimize ~operand ~db)
                   ~elm-expr)
-                `(let [~operand (core/-optimize ~operand ~node)]
+                `(let [~operand (core/-optimize ~operand ~db)]
                    (if (core/static? ~operand)
                      (let [~operand-binding ~operand] ~@body)
                      (~op ~operand)))))
@@ -400,8 +400,8 @@
              (~op (core/-resolve-refs ~source-binding ~'expression-defs)))
            (~'-resolve-params [~'_ ~'parameters]
              (~op (core/-resolve-params ~source-binding ~'parameters)))
-           (~'-optimize [~'_ ~'node]
-             (~op (core/-optimize ~source-binding ~'node)))
+           (~'-optimize [~'_ ~'db]
+             (~op (core/-optimize ~source-binding ~'db)))
            (~'-eval [~'_ context# resource# scope#]
              (let [~source-binding (core/-eval ~source-binding context# resource# scope#)]
                ~@body))
@@ -432,9 +432,9 @@
              (~op
               (core/-resolve-params ~operand ~'parameters)
               ~precision-binding ~precision))
-           (~'-optimize [~'_ ~'node]
+           (~'-optimize [~'_ ~'db]
              (~op
-              (core/-optimize ~operand ~'node)
+              (core/-optimize ~operand ~'db)
               ~precision-binding ~precision))
            (~'-eval [~'_ context# resource# scope#]
              (let [~operand-binding (core/-eval ~operand context# resource# scope#)]
@@ -500,10 +500,10 @@
               (core/-resolve-params ~op-1 ~'parameters)
               (core/-resolve-params ~op-2 ~'parameters)
               ~precision-binding ~precision))
-           (~'-optimize [~'_ ~'node]
+           (~'-optimize [~'_ ~'db]
              (~precision-op
-              (core/-optimize ~op-1 ~'node)
-              (core/-optimize ~op-2 ~'node)
+              (core/-optimize ~op-1 ~'db)
+              (core/-optimize ~op-2 ~'db)
               ~precision-binding ~precision))
            (~'-eval [~'_ context# resource# scope#]
              (let [~op-1-binding (core/-eval ~op-1 context# resource# scope#)

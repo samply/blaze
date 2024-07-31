@@ -22,8 +22,8 @@
       (and-nil-op (core/-resolve-refs x expression-defs)))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper and-nil-op parameters x))
-    (-optimize [_ node]
-      (let [x (core/-optimize x node)]
+    (-optimize [_ db]
+      (let [x (core/-optimize x db)]
         (condp identical? x
           true nil
           false false
@@ -111,13 +111,13 @@
       (core/resolve-refs-helper and-op expression-defs a b))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper and-op parameters a b))
-    (-optimize [_ node]
-      (let [a (core/-optimize a node)]
+    (-optimize [_ db]
+      (let [a (core/-optimize a db)]
         (condp identical? a
-          true (core/-optimize b node)
+          true (core/-optimize b db)
           false false
-          nil (nil-and (core/-optimize b node))
-          (dynamic-and a (core/-optimize b node)))))
+          nil (nil-and (core/-optimize b db))
+          (dynamic-and a (core/-optimize b db)))))
     (-eval [_ context resource scope]
       (let [a (core/-eval a context resource scope)]
         (if (false? a)
@@ -171,8 +171,8 @@
       (or-nil-op (core/-resolve-refs x expression-defs)))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper or-nil-op parameters x))
-    (-optimize [_ node]
-      (let [x (core/-optimize x node)]
+    (-optimize [_ db]
+      (let [x (core/-optimize x db)]
         (condp identical? x
           true true
           false nil
@@ -267,13 +267,13 @@
       (core/resolve-refs-helper or-op expression-defs a b))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper or-op parameters a b))
-    (-optimize [_ node]
-      (let [a (core/-optimize a node)]
+    (-optimize [_ db]
+      (let [a (core/-optimize a db)]
         (condp identical? a
           true true
-          false (core/-optimize b node)
-          nil (nil-or (core/-optimize b node))
-          (dynamic-or a (core/-optimize b node)))))
+          false (core/-optimize b db)
+          nil (nil-or (core/-optimize b db))
+          (dynamic-or a (core/-optimize b db)))))
     (-eval [_ context resource scope]
       (let [a (core/-eval a context resource scope)]
         (if (true? a)
@@ -315,18 +315,18 @@
       (core/resolve-refs-helper xor-op expression-defs a b))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper xor-op parameters a b))
-    (-optimize [_ node]
-      (let [a (core/-optimize a node)]
+    (-optimize [_ db]
+      (let [a (core/-optimize a db)]
         (condp identical? a
-          true (let [b (core/-optimize b node)]
+          true (let [b (core/-optimize b db)]
                  (condp identical? b
                    true false
                    false true
                    nil nil
                    (not-op b)))
-          false (core/-optimize b node)
+          false (core/-optimize b db)
           nil nil
-          (dynamic-xor a (core/-optimize b node)))))
+          (dynamic-xor a (core/-optimize b db)))))
     (-eval [_ context resource scope]
       (when-some [a (core/-eval a context resource scope)]
         (when-some [b (core/-eval b context resource scope)]

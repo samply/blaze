@@ -217,7 +217,7 @@
 
 (defmacro testing-constant-optimize [expr]
   `(testing "optimize"
-     (is (= ~expr (st/with-instrument-disabled (c/optimize nil ~expr))))))
+     (is (= ~expr (st/with-instrument-disabled (c/optimize ~expr nil))))))
 
 (defmacro testing-constant-eval [expr]
   `(testing "eval"
@@ -374,7 +374,7 @@
   (let [form-name (symbol (name elm-constructor))]
     `(testing "optimize"
        (let [elm# (~elm-constructor #ctu/optimizeable "x")
-             expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
+             expr# (st/with-instrument-disabled (c/optimize (c/compile {} elm#) nil))]
          (has-form expr# (list '~form-name (list '~'optimized "x")))))))
 
 (defmacro testing-unary-precision-resolve-params
@@ -395,7 +395,7 @@
     `(testing "optimize"
        (doseq [precision# ~(vec precisions)]
          (let [elm# (~elm-constructor [#ctu/optimizeable "x" precision#])
-               expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
+               expr# (st/with-instrument-disabled (c/optimize (c/compile {} elm#) nil))]
            (has-form expr# (list '~form-name (list '~'optimized "x") precision#)))))))
 
 (defmacro testing-unary-equals-hash-code
@@ -652,7 +652,7 @@
     `(testing "optimize"
        (let [elm# (~elm-constructor [#ctu/optimizeable "a"
                                      #ctu/optimizeable "b"])
-             expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
+             expr# (st/with-instrument-disabled (c/optimize (c/compile {} elm#) nil))]
          (has-form expr# (list (quote ~form-name) (list (quote ~'optimized) "a") (list (quote ~'optimized) "b")))))))
 
 (defmacro testing-ternary-resolve-params [elm-constructor]
@@ -670,7 +670,7 @@
        (let [elm# (~elm-constructor [#ctu/optimizeable "x"
                                      #ctu/optimizeable "y"
                                      #ctu/optimizeable "z"])
-             expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
+             expr# (st/with-instrument-disabled (c/optimize (c/compile {} elm#) nil))]
          (has-form expr# (list (quote ~form-name)
                                (list (quote ~'optimized) "x")
                                (list (quote ~'optimized) "y")
@@ -733,7 +733,7 @@
                       [#ctu/optimizeable "x"
                        #ctu/optimizeable "y"
                        precision#])
-                expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
+                expr# (st/with-instrument-disabled (c/optimize (c/compile {} elm#) nil))]
             (has-form expr# (list '~form-name (list '~'optimized "x") (list '~'optimized "y") precision#))))))))
 
 (defmacro testing-ternary-dynamic [elm-constructor]
@@ -889,5 +889,5 @@
          `(testing ~test-name
             ~@(for [op ops]
                 `(let [elm# (~elm-constructor ~op)
-                       expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
+                       expr# (st/with-instrument-disabled (c/optimize (c/compile {} elm#) nil))]
                    (has-form expr# ~expected)))))))

@@ -128,7 +128,7 @@
 
   (testing "optimize"
     (let [elm #elm/list [#ctu/optimizeable "x"]
-          expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+          expr (st/with-instrument-disabled (c/optimize (c/compile {} elm) nil))]
       (has-form expr '(list (optimized "x")))))
 
   (ctu/testing-equals-hash-code #elm/list [#elm/parameter-ref "1"]))
@@ -165,7 +165,7 @@
         (has-form (c/resolve-params expr {}) 'current))
 
       (testing "optimize"
-        (has-form (st/with-instrument-disabled (c/optimize nil expr)) 'current))
+        (has-form (st/with-instrument-disabled (c/optimize expr nil)) 'current))
 
       (testing "form"
         (has-form expr 'current)))
@@ -193,7 +193,7 @@
         (has-form (c/resolve-params expr {}) '(current "x")))
 
       (testing "optimize"
-        (has-form (st/with-instrument-disabled (c/optimize nil expr)) '(current "x")))
+        (has-form (st/with-instrument-disabled (c/optimize expr nil)) '(current "x")))
 
       (testing "form"
         (has-form expr '(current "x"))))
@@ -395,7 +395,7 @@
   (testing "optimize to false if operand optimizes to an empty list"
     (let [elm (elm/exists #ctu/optimize-to [])
           expr (c/compile {:eval-context "Patient"} elm)
-          expr (st/with-instrument-disabled (c/optimize nil expr))]
+          expr (st/with-instrument-disabled (c/optimize expr nil))]
       (has-form expr false)))
 
   (ctu/testing-optimize elm/exists
@@ -470,7 +470,7 @@
                    :source #ctu/optimizeable "x"
                    :condition #ctu/optimizeable "y"
                    :scope "A"}
-              expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+              expr (st/with-instrument-disabled (c/optimize (c/compile {} elm) nil))]
           (has-form expr '(filter (optimized "x") (optimized "y") "A"))))
 
       (testing "form"
@@ -513,7 +513,7 @@
         (let [elm {:type "Filter"
                    :source #ctu/optimizeable "x"
                    :condition #ctu/optimizeable "y"}
-              expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+              expr (st/with-instrument-disabled (c/optimize (c/compile {} elm) nil))]
           (has-form expr '(filter (optimized "x") (optimized "y")))))
 
       (testing "form"
@@ -639,7 +639,7 @@
                    :source #ctu/optimizeable "x"
                    :element #elm/current "A"
                    :scope "A"}
-              expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+              expr (st/with-instrument-disabled (c/optimize (c/compile {} elm) nil))]
           (has-form expr '(for-each (optimized "x") (current "A") "A"))))
 
       (testing "form"
@@ -680,7 +680,7 @@
         (let [elm {:type "ForEach"
                    :source #ctu/optimizeable "x"
                    :element #elm/current nil}
-              expr (st/with-instrument-disabled (c/optimize nil (c/compile {} elm)))]
+              expr (st/with-instrument-disabled (c/optimize (c/compile {} elm) nil))]
           (has-form expr '(for-each (optimized "x") current))))
 
       (testing "form"

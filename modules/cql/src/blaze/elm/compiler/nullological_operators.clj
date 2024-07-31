@@ -27,8 +27,8 @@
       (coalesce-op (mapv #(core/-resolve-refs % expression-defs) operands)))
     (-resolve-params [_ parameters]
       (coalesce-op (mapv #(core/-resolve-params % parameters) operands)))
-    (-optimize [_ node]
-      (coalesce-op (mapv #(core/-optimize % node) operands)))
+    (-optimize [_ db]
+      (coalesce-op (mapv #(core/-optimize % db) operands)))
     (-eval [_ context resource scope]
       (reduce
        (fn [_ operand]

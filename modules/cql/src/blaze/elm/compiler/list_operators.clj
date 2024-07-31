@@ -26,8 +26,8 @@
       (list-op (mapv #(core/-resolve-refs % expression-defs) elements)))
     (-resolve-params [_ parameters]
       (list-op (mapv #(core/-resolve-params % parameters) elements)))
-    (-optimize [_ node]
-      (list-op (mapv #(core/-optimize % node) elements)))
+    (-optimize [_ db]
+      (list-op (mapv #(core/-optimize % db) elements)))
     (-eval [_ context resource scope]
       (mapv #(core/-eval % context resource scope) elements))
     (-form [_]

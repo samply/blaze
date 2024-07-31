@@ -31,7 +31,7 @@
   :ret core/expr?)
 
 (s/fdef c/optimize
-  :args (s/cat :node :blaze.db/node :expression core/expr?)
+  :args (s/cat :expression core/expr? :db :blaze.db/db)
   :ret core/expr?)
 
 (s/fdef c/form

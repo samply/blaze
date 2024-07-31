@@ -96,7 +96,7 @@
 (defmacro testing-function-ref-optimize [name]
   `(testing "optimize"
      (let [elm# #elm/function-ref [~name #ctu/optimizeable "x"]
-           expr# (st/with-instrument-disabled (c/optimize nil (c/compile {} elm#)))]
+           expr# (st/with-instrument-disabled (c/optimize (c/compile {} elm#) nil))]
        (has-form expr# (list '~'call ~name '~'(optimized "x"))))))
 
 (deftest compile-function-ref-test
@@ -186,7 +186,7 @@
 
       (testing "optimize"
         (let [elm (elm/function-ref [function-name #ctu/optimizeable "x"])
-              expr (st/with-instrument-disabled (c/optimize nil (c/compile compile-ctx elm)))]
+              expr (st/with-instrument-disabled (c/optimize (c/compile compile-ctx elm) nil))]
           (has-form expr (list 'call function-name '(optimized "x")))))
 
       (testing "form"
@@ -247,7 +247,7 @@
       (testing "optimize"
         (let [elm (elm/function-ref [function-name #ctu/optimizeable "x"
                                      #ctu/optimizeable "y"])
-              expr (st/with-instrument-disabled (c/optimize nil (c/compile compile-ctx elm)))]
+              expr (st/with-instrument-disabled (c/optimize (c/compile compile-ctx elm) nil))]
           (has-form expr (list 'call function-name '(optimized "x") '(optimized "y")))))
 
       (testing "form"
