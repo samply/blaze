@@ -32,11 +32,11 @@
       (core/-resolve-params then parameters)])
    items))
 
-(defn- optimize [items node]
+(defn- optimize [items db]
   (mapv
    (fn [[when then]]
-     [(core/-optimize when node)
-      (core/-optimize then node)])
+     [(core/-optimize when db)
+      (core/-optimize then db)])
    items))
 
 (defn- comparand-case-op [comparand items else]
@@ -56,11 +56,11 @@
        (core/-resolve-params comparand parameters)
        (resolve-params items parameters)
        (core/-resolve-params else parameters)))
-    (-optimize [_ node]
+    (-optimize [_ db]
       (comparand-case-op
-       (core/-optimize comparand node)
-       (optimize items node)
-       (core/-optimize else node)))
+       (core/-optimize comparand db)
+       (optimize items db)
+       (core/-optimize else db)))
     (-eval [_ context resource scope]
       (let [comparand (core/-eval comparand context resource scope)]
         (loop [[[when then] & next-items] items]
@@ -86,10 +86,10 @@
       (multi-conditional-case-op
        (resolve-params items parameters)
        (core/-resolve-params else parameters)))
-    (-optimize [_ node]
+    (-optimize [_ db]
       (multi-conditional-case-op
-       (optimize items node)
-       (core/-optimize else node)))
+       (optimize items db)
+       (core/-optimize else db)))
     (-eval [_ context resource scope]
       (loop [[[when then] & next-items] items]
         (if (core/-eval when context resource scope)

@@ -63,9 +63,9 @@
   (core/-resolve-params expression parameters))
 
 (defn optimize
-  "Carries out various optimizations on `expression`."
-  [node expression]
-  (core/-optimize expression node))
+  "Carries out various optimizations on `expression` using `db`."
+  [expression db]
+  (core/-optimize expression db))
 
 (defn form [expression]
   (core/-form expression))

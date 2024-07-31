@@ -27,5 +27,5 @@
   :ret ::c/expression-defs)
 
 (s/fdef library/optimize
-  :args (s/cat :node :blaze.db/node :expression-defs ::c/expression-defs)
+  :args (s/cat :db :blaze.db/db :expression-defs ::c/expression-defs)
   :ret ::c/expression-defs)

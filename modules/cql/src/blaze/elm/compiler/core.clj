@@ -33,7 +33,7 @@
   (-resolve-refs [expression expression-defs]
     "Resolves expressions defined in `expression-defs` in `expression`.")
   (-resolve-params [expression parameters])
-  (-optimize [expression node])
+  (-optimize [expression db])
   (-eval [expression context resource scope]
     "Evaluates `expression` on `resource` using `context` and optional `scope`
     for scoped expressions inside queries.")
@@ -132,20 +132,20 @@
                arg-1 arg-2))
 
 (defn optimize-helper
-  ([constructor node op]
-   (constructor (-optimize op node)))
-  ([constructor node op-1 op-2]
-   (constructor (-optimize op-1 node) (-optimize op-2 node)))
-  ([constructor node op-1 op-2 op-3]
-   (constructor (-optimize op-1 node) (-optimize op-2 node) (-optimize op-3 node))))
+  ([constructor db op]
+   (constructor (-optimize op db)))
+  ([constructor db op-1 op-2]
+   (constructor (-optimize op-1 db) (-optimize op-2 db)))
+  ([constructor db op-1 op-2 op-3]
+   (constructor (-optimize op-1 db) (-optimize op-2 db) (-optimize op-3 db))))
 
 (defn optimize-helper-1
-  [constructor node op-1 op-2 arg]
-  (constructor (-optimize op-1 node) (-optimize op-2 node) arg))
+  [constructor db op-1 op-2 arg]
+  (constructor (-optimize op-1 db) (-optimize op-2 db) arg))
 
 (defn optimize-helper-2
-  [constructor node op-1 op-2 arg-1 arg-2]
-  (constructor (-optimize op-1 node) (-optimize op-2 node) arg-1 arg-2))
+  [constructor db op-1 op-2 arg-1 arg-2]
+  (constructor (-optimize op-1 db) (-optimize op-2 db) arg-1 arg-2))
 
 (extend-protocol Expression
   nil

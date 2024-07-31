@@ -11,7 +11,7 @@ This is a minor performance update which adds further optimizations on top of [#
 * Optimize CQL Exists over Empty Lists into False ([#1943](https://github.com/samply/blaze/issues/1943))
 * Optimize CQL Logical Expressions ([#1944](https://github.com/samply/blaze/issues/1944))
 
-The full changelog can be found [here](https://github.com/samply/blaze/milestone/95?closed=1).
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/96?closed=1).
 
 ## v0.29.1
 

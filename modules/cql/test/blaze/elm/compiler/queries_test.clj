@@ -722,8 +722,8 @@
 
             expr (c/compile {:node node :eval-context "Patient"
                              :optimizations #{:first :non-distinct}} elm)
-            expr (c/optimize node expr)
             db (d/db node)
+            expr (c/optimize expr db)
             patient (ctu/resource db "Patient" "0")]
 
         (testing "eval"
@@ -745,8 +745,8 @@
 
             expr (c/compile {:node node :eval-context "Patient"
                              :optimizations #{:first :non-distinct}} elm)
-            expr (st/with-instrument-disabled (c/optimize node expr))
             db (d/db node)
+            expr (c/optimize expr db)
             patient (ctu/resource db "Patient" "0")]
 
         (testing "eval"

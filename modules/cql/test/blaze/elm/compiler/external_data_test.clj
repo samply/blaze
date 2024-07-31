@@ -183,11 +183,31 @@
 
             (ctu/testing-constant-resolve-params expr)
 
-            (ctu/testing-constant-optimize expr)
+            (testing "optimize"
+              (is (= expr (c/optimize expr db))))
 
             (testing "form"
               (has-form expr
-                '(retrieve "Observation" [["code" "system-192253|code-192300"]]))))))
+                '(retrieve "Observation" [["code" "system-192253|code-192300"]])))))
+
+        (testing "optimizing into an empty list because Observation isn't available"
+          (with-system [{:blaze.db/keys [node]} mem-node-config]
+            (let [context
+                  {:node node
+                   :eval-context "Patient"
+                   :library
+                   {:codeSystems
+                    {:def
+                     [{:name "sys-def-131750"
+                       :id "system-192253"}]}}}
+                  elm #elm/retrieve
+                       {:type "Observation"
+                        :codes #elm/list [#elm/code ["sys-def-131750"
+                                                     "code-192300"]]}
+                  expr (c/compile context elm)
+                  db (d/db node)]
+
+              (has-form (c/optimize expr db) [])))))
 
       (testing "with two codes"
         (with-system-data [{:blaze.db/keys [node]} mem-node-config]
@@ -247,7 +267,8 @@
 
             (ctu/testing-constant-resolve-params expr)
 
-            (ctu/testing-constant-optimize expr)
+            (testing "optimize"
+              (is (= expr (c/optimize expr db))))
 
             (testing "form"
               (has-form expr
@@ -318,7 +339,8 @@
 
             (ctu/testing-constant-resolve-params expr)
 
-            (ctu/testing-constant-optimize expr)
+            (testing "optimize"
+              (is (= expr (c/optimize expr db))))
 
             (testing "form"
               (has-form expr
@@ -326,7 +348,27 @@
                   "Observation"
                   [["code"
                     "system-192253|code-192300"
-                    "system-192253|code-140541"]]))))))))
+                    "system-192253|code-140541"]]))))))
+
+      (testing "unknown code property"
+        (with-system [{:blaze.db/keys [node]} mem-node-config]
+          (let [context
+                {:node node
+                 :eval-context "Patient"
+                 :library
+                 {:codeSystems
+                  {:def
+                   [{:name "sys-def-225944"
+                     :id "system-225806"}]}}}
+                elm #elm/retrieve
+                     {:type "Observation"
+                      :codes #elm/list [#elm/code ["sys-def-225944"
+                                                   "code-225809"]]
+                      :code-property "foo"}]
+
+            (given (ba/try-anomaly (c/compile context elm))
+              ::anom/category := ::anom/not-found
+              ::anom/message := "The search-param with code `foo` and type `Observation` was not found."))))))
 
   (testing "Specimen context"
     (testing "Patient"

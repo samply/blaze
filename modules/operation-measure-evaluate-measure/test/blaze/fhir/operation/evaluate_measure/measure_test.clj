@@ -927,9 +927,11 @@
   (testing-query "q53-population-basis-boolean" 2)
 
   (testing "q57-mii-specimen-reference"
+    ;; we have only one Bloom filter here, because the database contains only
+    ;; specimen with one of the six codes
     (given (evaluate "q57-mii-specimen-reference" "population" true)
-      [:resource :extension bloom-filter-ratio :value :numerator :value] := 6M
-      [:resource :extension bloom-filter-ratio :value :denominator :value] := 6M
+      [:resource :extension bloom-filter-ratio :value :numerator :value] := 1M
+      [:resource :extension bloom-filter-ratio :value :denominator :value] := 1M
       [first-population :count] := 1))
 
   (testing-query "q59-icd10-code-version-independent" 2)

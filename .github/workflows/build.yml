@@ -462,9 +462,6 @@ jobs:
     - name: Evaluate CQL Query 4
       run: .github/scripts/evaluate-measure.sh q4 0
 
-    - name: Check Bloom Filter
-      run: .github/scripts/check-bloom-filter.sh 484cc96511a406d40ee8eeb4de6a49b05b3766ddef8eb05ac57c6139d774eddc 0
-
     - name: Evaluate CQL Query 4 using Blazectl
       run: .github/scripts/evaluate-measure-blazectl.sh q4 0
 
@@ -888,6 +885,9 @@ jobs:
 
     - name: Evaluate CQL Query 14 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q14 96
+
+    - name: Evaluate CQL Query 15 using Blazectl
+      run: .github/scripts/evaluate-measure.sh q15 31
 
     - name: Evaluate CQL Query 17
       run: .github/scripts/evaluate-measure.sh q17 120
