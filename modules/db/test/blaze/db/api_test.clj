@@ -2215,18 +2215,29 @@
 
   (testing "MedicationKnowledge"
     (with-system-data [{:blaze.db/keys [node]} config]
-      [[[:put {:fhir/type :fhir/MedicationKnowledge
-               :id "id-0"
+      [[[:put {:fhir/type :fhir/MedicationKnowledge :id "0"
                :monitoringProgram
                [{:fhir/type :fhir.MedicationKnowledge/monitoringProgram
                  :name "name-123124"}]}]
-        [:put {:fhir/type :fhir/MedicationKnowledge
-               :id "id-1"}]]]
+        [:put {:fhir/type :fhir/MedicationKnowledge :id "1"}]]]
 
       (testing "monitoring-program-name"
         (given (pull-type-query node "MedicationKnowledge" [["monitoring-program-name" "name-123124"]])
           count := 1
-          [0 :id] := "id-0"))))
+          [0 :id] := "0"))))
+
+  (testing "DocumentReference"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/DocumentReference :id "0"
+               :content
+               [{:fhir/type :fhir.DocumentReference/content
+                 :attachment #fhir/Attachment{:url #fhir/url"url-164344"}}]}]
+        [:put {:fhir/type :fhir/DocumentReference :id "1"}]]]
+
+      (testing "location"
+        (given (pull-type-query node "DocumentReference" [["location" "url-164344"]])
+          count := 1
+          [0 :id] := "0"))))
 
   (testing "Observation"
     (with-system-data [{:blaze.db/keys [node]} config]

@@ -15,5 +15,5 @@
 
 (defmethod search-param :default
   [_ {:keys [url type]}]
-  (log/debug (format "Skip creating search parameter `%s` of type `%s` because it is not implemented." url type))
+  (log/warn (format "Skip creating search parameter `%s` of type `%s` because it is not implemented." url type))
   {::anom/category ::anom/unsupported})
