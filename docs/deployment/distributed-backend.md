@@ -15,7 +15,7 @@ Please be aware that we **don't recommend** to run Blaze on a single server usin
 You will need about 32 GB of RAM to be able to run the example smoothly. You can start it by going into the `docs/deployment/distributed` directory and run:
 
 ```sh
-docker-compose up -d
+docker compose up -d
 ```
 
 Currently, Blaze uses [Kafka][1] for the Transaction Log and [Cassandra][4] for the Resource Store, so the example uses the same. A walk-through of the components follows:

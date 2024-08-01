@@ -9,13 +9,13 @@ If this feature is activated, all FHIR Endpoints will require a valid [JWT][2] i
 In order to test the authentication feature, please start first [Keycloak][4] and then Blaze as defined in the Docker Compose file in the `docs/authentication` directory:
 
 ```sh
-docker-compose up keycloak
+docker compose up keycloak
 ```
 
 wait until keycloak is started
 
 ```sh
-docker-compose up blaze
+docker compose up blaze
 ```
 
 after both services are up, please run:

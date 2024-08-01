@@ -10,13 +10,14 @@ The most reliable way to build Blaze is to use GitHub CI. If you create a PR, a 
 
 ### Using a Local Build Environment
 
-* install Java 17
+* install Java 21
 * install nodejs v18
 * install Clojure by following this [guide](https://clojure.org/guides/install_clojure)
 * install Make
 * install cljfmt: `clj -Ttools install io.github.weavejester/cljfmt '{:git/tag "0.11.2"}' :as cljfmt`
+* run `make -C job-ig build` to create the FHIR profiles
 * run `make uberjar` to create the uberjar that will be available under the `target` directory
-* run `docker build .` to build the Docker image
+* run `docker build -t blaze:latest .` to build the Docker image
 
 ## Working with IntelliJ
 

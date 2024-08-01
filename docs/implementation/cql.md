@@ -1,5 +1,54 @@
 # CQL
 
+## Compilation and Evaluation Pipeline
+
+```
+╭───────────────────────╮
+│ CQL → ELM Translation │
+╰───────────┬───────────╯
+╭───────────┴───────────╮
+│    ELM Compilation    │
+╰───────────┬───────────╯
+╭───────────┴───────────╮
+│  Unfiltered Context   │ 
+│      Evaluation       │
+╰───────────┬───────────╯
+╭───────────┴───────────╮
+│ Reference Resolution  │
+╰───────────┬───────────╯
+╭───────────┴───────────╮
+│     Optimization      │
+╰───────────┬───────────╯
+╭───────────┴───────────╮
+│  Bloom filter attach  │
+╰───────────┬───────────╯
+╭───────────┴───────────╮
+│   Parallel Patient    │ 
+│  Context Evaluation   │
+╰───────────────────────╯            
+```
+
+```
+╭──────────────╮   ╭───────────────────────────────╮  ╭────────────────────────╮
+│   Patient    │   │   MedicationAdministration    │  │   Medciation: ATC 1234 │ 
+╰──────────────╯   ╰───────────────────────────────╯  ╰────────────────────────╯ 
+
+╭──────────────╮   ╭───────────────────────────────╮
+│   Patient    │   │   Observation: loinc 788-7    │
+╰──────────────╯   ╰───────────────────────────────╯
+
+```
+
+### CQL → ELM Translation
+
+The Expression Logical Model (ELM) is the abstract syntax tree (AST) form of CQL. Blaze uses the CQL → ELM translator from the [Clinical Quality Framework][1] project. After that translation, the ELM expressions are available in JSON form and are parsed into Clojure data structures. The function doing this is `blaze.cql-translator/translate`.
+
+### ELM Compilation
+
+The ELM expression are compiled into instances of the `blaze.elm.compiler.core/Expression` protocol. During this compilation a first optimization of static values and compilation of database queries is done. The database node is used during that compilation. The function used is `blaze.elm.compiler.library/compile-library`.
+
+### Unfiltered Context Evaluation
+
 ## Expression Cache
 
 * bloom filter
@@ -86,3 +135,5 @@ O C E S
 | |  ^  
 S E C O  
 ```
+
+[1]: <https://github.com/cqframework>

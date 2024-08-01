@@ -29,19 +29,19 @@ Two certificates and one trust store should be generated in the `modules/ingress
 After you have created the certificates, you can start the system by going into the `docs/deployment/full-standalone` directory and run:
 
 ```sh
-docker-compose up -d keycloak
+docker compose up -d keycloak
 ```
 
 first, because it needs to be fully started before the Blaze components can start to avoid waiting an additional minute for Blaze fetching the Keycloak config again. After Keycloak runs, start the rest of the components:  
 
 ```sh
-docker-compose up -d
+docker compose up -d
 ```
 
 Watch all components to start completely by looking into the log output:
 
 ```sh
-docker-compose logs -f
+docker compose logs -f
 ```
 
 In your browser, please go to `https://blaze.localhost/fhir`. 

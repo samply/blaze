@@ -7,7 +7,7 @@ If you want to facilitate the CQL engine or other features of Blaze, but you can
 In this example we use [HAPI][2] as our primary FHIR server. In the `docs/data-sync` directory, you can find a Docker Compose file with a setup of a HAPI and a Blaze server. Please start the containers by running:
 
 ```sh
-docker-compose -f docs/data-sync/subscription/docker-compose.yml up
+docker compose -f docs/data-sync/subscription/docker-compose.yml up
 ```
 
 After both servers are up and running, you can create two subscriptions, one for Patient resources and one for Observations. Please run:
@@ -34,7 +34,7 @@ Another use-case would be to copy all data from one Blaze server to another. Tha
 In order to test copying all data from one Blaze server to another, start the following Docker Compose project:
 
 ```sh
-docker-compose -f docs/data-sync/copy/docker-compose.yml up
+docker compose -f docs/data-sync/copy/docker-compose.yml up
 ```
 
 You should see a `src` server started at port 8080 and a `dst` server started at port 8082.

@@ -13,6 +13,12 @@ test: prep
 test-coverage: prep
 	clojure -M:test:coverage
 
+cloc-prod:
+	cloc src
+
+cloc-test:
+	cloc test
+
 deps-tree:
 	clojure -X:deps tree
 
