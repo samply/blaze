@@ -42,6 +42,11 @@
   (when-let [value (type/value uri)]
     [[nil (codec/v-hash value)]]))
 
+(defmethod index-entries :fhir/url
+  [_ url]
+  (when-let [value (type/value url)]
+    [[nil (codec/v-hash value)]]))
+
 (defmethod index-entries :fhir/boolean
   [_ boolean]
   (when-some [value (type/value boolean)]

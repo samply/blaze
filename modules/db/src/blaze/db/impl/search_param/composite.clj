@@ -64,7 +64,7 @@
                                                   main-expression c1 c2))))))
 
 (defn- handle-anomaly [{:keys [url type]} anomaly]
-  (log/debug (format "Skip creating search parameter `%s` of type `%s` because it is not implemented." url type))
+  (log/warn (format "Skip creating search parameter `%s` of type `%s` because it is not implemented." url type))
   (assoc anomaly ::anom/category ::anom/unsupported))
 
 (defmethod sc/search-param "composite"
