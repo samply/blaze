@@ -18,7 +18,7 @@
    [taoensso.timbre :as log]))
 
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -506,15 +506,19 @@
             {:fhir/type :fhir/Patient :id "foo"})
       count := 0))
 
-  (testing "multiple item returns an error"
+  ;; HACK: normally multiple items should throw an error. However in R4 many
+  ;; FHIRPath expressions of search parameters use the as type specifier wrongly.
+  ;; Please remove that hack for R5.
+  (testing "multiple items are filtered"
     (given (eval
-            "Patient.identifier as string"
+            "Patient.identifier as Identifier"
             {:fhir/type :fhir/Patient :id "id-162953"
              :identifier
              [#fhir/Identifier{:value "value-163922"}
               #fhir/Identifier{:value "value-163928"}]})
-      ::anom/category := ::anom/incorrect
-      ::anom/message := "as type specifier with more than one item at the left side `[#fhir/Identifier{:value \"value-163922\"} #fhir/Identifier{:value \"value-163928\"}]`")))
+      count := 2
+      [0] := #fhir/Identifier{:value "value-163922"}
+      [1] := #fhir/Identifier{:value "value-163928"})))
 
 ;; 6.3.4 as(type : type specifier)
 (deftest as-function-test
@@ -538,15 +542,19 @@
             {:fhir/type :fhir/Patient :id "foo"})
       count := 0))
 
-  (testing "multiple item returns an error"
+  ;; HACK: normally multiple items should throw an error. However in R4 many
+  ;; FHIRPath expressions of search parameters use the as type specifier wrongly.
+  ;; Please remove that hack for R5.
+  (testing "multiple items are filtered"
     (given (eval
-            "Patient.identifier.as(string)"
+            "Patient.identifier.as(Identifier)"
             {:fhir/type :fhir/Patient :id "id-162953"
              :identifier
              [#fhir/Identifier{:value "value-163922"}
               #fhir/Identifier{:value "value-163928"}]})
-      ::anom/category := ::anom/incorrect
-      ::anom/message := "as type specifier with more than one item at the left side `[#fhir/Identifier{:value \"value-163922\"} #fhir/Identifier{:value \"value-163928\"}]`")))
+      count := 2
+      [0] := #fhir/Identifier{:value "value-163922"}
+      [1] := #fhir/Identifier{:value "value-163928"})))
 
 ;; 6.5. Boolean logic
 

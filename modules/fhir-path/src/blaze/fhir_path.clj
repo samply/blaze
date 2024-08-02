@@ -172,22 +172,21 @@
 
         (throw-anom (ba/incorrect (is-type-specifier-msg coll)))))))
 
-(defn- as-type-specifier-msg [coll]
-  (format "as type specifier with more than one item at the left side `%s`"
-          (pr-str coll)))
-
 (deftype AsTypeExpression [expression type-specifier]
   Expression
   (-eval [_ context coll]
     (let [coll (-eval expression context coll)]
       (case (coll/count coll)
-        0 coll
+        0 []
 
         1 (if (identical? type-specifier (fhir-spec/fhir-type (coll/nth coll 0)))
             coll
             [])
 
-        (throw-anom (ba/incorrect (as-type-specifier-msg coll)))))))
+        ;; HACK: normally multiple items should throw an error. However in R4 many
+        ;; FHIRPath expressions of search parameters use the as type specifier wrongly.
+        ;; Please remove that hack for R5.
+        (filterv #(identical? type-specifier (fhir-spec/fhir-type %)) coll)))))
 
 (deftype UnionExpression [e1 e2]
   Expression
@@ -260,7 +259,10 @@
           coll
           [])
 
-      (throw-anom (ba/incorrect (as-type-specifier-msg coll))))))
+      ;; HACK: normally multiple items should throw an error. However in R4 many
+      ;; FHIRPath expressions of search parameters use the as type specifier wrongly.
+      ;; Please remove that hack for R5.
+      (filterv #(identical? type-specifier (fhir-spec/fhir-type %)) coll))))
 
 (deftype OfTypeFunctionExpression [type-specifier]
   Expression
