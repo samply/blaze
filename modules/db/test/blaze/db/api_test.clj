@@ -2239,6 +2239,38 @@
           count := 1
           [0 :id] := "0"))))
 
+  (testing "Medication"
+    (testing "with one ingredient reference"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Medication :id "0"
+                 :ingredient
+                 [{:fhir/type :fhir.Medication/ingredient
+                   :item #fhir/Reference{:reference "Substance/0"}}]}]
+          [:put {:fhir/type :fhir/Substance :id "0"}]
+          [:put {:fhir/type :fhir/Medication :id "1"}]]]
+
+        (testing "ingredient"
+          (given (pull-type-query node "Medication" [["ingredient" "Substance/0"]])
+            count := 1
+            [0 :id] := "0"))))
+
+    (testing "with two ingredient references"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Medication :id "0"
+                 :ingredient
+                 [{:fhir/type :fhir.Medication/ingredient
+                   :item #fhir/Reference{:reference "Substance/0"}}
+                  {:fhir/type :fhir.Medication/ingredient
+                   :item #fhir/Reference{:reference "Substance/1"}}]}]
+          [:put {:fhir/type :fhir/Substance :id "0"}]
+          [:put {:fhir/type :fhir/Substance :id "1"}]
+          [:put {:fhir/type :fhir/Medication :id "1"}]]]
+
+        (testing "ingredient"
+          (given (pull-type-query node "Medication" [["ingredient" "Substance/0"]])
+            count := 1
+            [0 :id] := "0")))))
+
   (testing "Observation"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Observation :id "id-0"
