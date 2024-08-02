@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.29.3
+
+### Bugfixes
+
+* Add Hack to allow FHIRPath As Type Specifier on Collections ([#1568](https://github.com/samply/blaze/issues/1568))
+
+### Performance
+
+* Optimize CQL by Removing Retrieve Expressions with Non-Matching Codes ([#1952](https://github.com/samply/blaze/issues/1952))
+
+### Minor Enhancements
+
+* Support Search Parameters with Type uri and Data Type url ([#1956](https://github.com/samply/blaze/issues/1956))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/97?closed=1).
+
 ## v0.29.2
 
 ### Notes

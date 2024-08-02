@@ -5,7 +5,7 @@
    [java.time LocalDate]))
 
 (def lib 'samply/blaze)
-(def version "0.29.2")
+(def version "0.29.3")
 (def class-dir "target/classes")
 (def basis (b/create-basis {:project "deps.edn"}))
 (def uber-file (format "target/%s-%s-standalone.jar" (name lib) version))
