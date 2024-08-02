@@ -65,7 +65,7 @@ jobs:
       run: make validate
 
     - name: Upload Profiles
-      uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4
+      uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4
       with:
         name: job-ig-profiles
         path: job-ig/fsh-generated/resources/*.json
@@ -165,7 +165,7 @@ jobs:
 
     - name: Upload Coverage Report
       if: ${{ matrix.java-version == '21' && matrix.module != 'db' && matrix.module != 'jepsen' }}
-      uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4
+      uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4
       with:
         name: coverage-report-${{ matrix.module }}
         path: modules/${{ matrix.module }}/target/coverage/codecov.json
@@ -206,7 +206,7 @@ jobs:
       run: make -C modules/db test-coverage
 
     - name: Upload Coverage Report
-      uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4
+      uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4
       with:
         name: coverage-report-db
         path: modules/db/target/coverage/codecov.json
@@ -303,7 +303,7 @@ jobs:
       run: make uberjar
 
     - name: Upload Blaze Uberjar
-      uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4
+      uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4
       with:
         name: blaze-uberjar
         path: target/blaze-*-standalone.jar
@@ -319,7 +319,7 @@ jobs:
         outputs: type=docker,dest=/tmp/blaze.tar
 
     - name: Upload Blaze Image
-      uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4
+      uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4
       with:
         name: blaze-image
         path: /tmp/blaze.tar
@@ -350,7 +350,7 @@ jobs:
         outputs: type=docker,dest=/tmp/blaze-frontend.tar
 
     - name: Upload Blaze Image
-      uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4
+      uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4
       with:
         name: blaze-frontend-image
         path: /tmp/blaze-frontend.tar
@@ -1712,7 +1712,7 @@ jobs:
     - name: Run Playwright Tests
       run: make -C modules/frontend-e2e test
 
-    - uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4
+    - uses: actions/upload-artifact@89ef406dd8d7e03cfd12d9e0a4a378f454709029 # v4
       with:
         name: playwright-report
         path: modules/frontend-e2e/playwright-report/
