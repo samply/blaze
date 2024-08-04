@@ -9,6 +9,9 @@
   {:level :warning}
 
   :keyword-binding
-  {:level :error}}
+  {:level :error}
+
+  :redundant-str-call
+  {:level :warning}}
 
  :skip-comments true}
