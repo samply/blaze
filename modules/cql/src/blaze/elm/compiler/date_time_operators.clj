@@ -457,7 +457,7 @@
 (def ^:private now-expression
   (reify-expr core/Expression
     (-eval [_ {:keys [now]} _ _]
-      now)
+      (p/to-date-time now now))
     (-form [_]
       'now)))
 
