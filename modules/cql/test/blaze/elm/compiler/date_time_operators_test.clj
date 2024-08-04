@@ -12,6 +12,7 @@
    [blaze.elm.date-time :as date-time]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
+   [blaze.elm.protocols :as p]
    [blaze.fhir.spec.type.system :as system]
    [blaze.test-util :refer [given-thrown satisfies-prop]]
    [clojure.spec.alpha :as s]
@@ -883,7 +884,7 @@
 (deftest compile-now-test
   (are [elm res] (= res (core/-eval (c/compile {} elm) {:now ctu/now} nil nil))
     {:type "Now"}
-    ctu/now))
+    (p/to-date-time ctu/now ctu/now)))
 
 ;; 18.14. SameAs
 ;;
