@@ -49,7 +49,7 @@ deps-list:
 	clojure -X:deps list
 
 repl:
-	clj -M:test -e "(require 'blaze.dev) (in-ns 'blaze.dev)" --repl
+	clj -M:test:repl/interactive -e "(require 'blaze.dev) (in-ns 'blaze.dev)"
 
 cloc-prod-root:
 	cloc src

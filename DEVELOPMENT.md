@@ -37,7 +37,7 @@ In addition to the REPL development inside a single module, it is also possible 
 
 ```make repl```
 
-See the files `Makefile` and `dev/blaze/dev.clj` for more details.
+See the files `Makefile`, `deps.edn`, and `dev/blaze/dev.clj` for more details.
 
 The configuration of the development system is done with the same environment variables used in the production system.
 Documentation: [Environment Variables](docs/deployment/environment-variables.md).
