@@ -312,7 +312,7 @@ jobs:
       uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3
 
     - name: Build and Export to Docker
-      uses: docker/build-push-action@5176d81f87c23d6fc96624dfdbcd9f3830bbe445 # v6
+      uses: docker/build-push-action@5cd11c3a4ced054e52742c5fd54dca954e0edd85 # v6
       with:
         context: .
         tags: blaze:latest
@@ -343,7 +343,7 @@ jobs:
       uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3
 
     - name: Build and Export to Docker
-      uses: docker/build-push-action@5176d81f87c23d6fc96624dfdbcd9f3830bbe445 # v6
+      uses: docker/build-push-action@5cd11c3a4ced054e52742c5fd54dca954e0edd85 # v6
       with:
         context: modules/frontend
         tags: blaze-frontend:latest
@@ -1984,7 +1984,7 @@ jobs:
           type=semver,pattern={{major}}.{{minor}}
 
     - name: Build and push to GHCR
-      uses: docker/build-push-action@5176d81f87c23d6fc96624dfdbcd9f3830bbe445 # v6
+      uses: docker/build-push-action@5cd11c3a4ced054e52742c5fd54dca954e0edd85 # v6
       with:
         context: ${{ matrix.image.context }}
         platforms: linux/amd64,linux/arm64
@@ -2015,7 +2015,7 @@ jobs:
 
     - name: Build and push to DockerHub
       if: ${{ env.dockerhub_username != '' }}
-      uses: docker/build-push-action@5176d81f87c23d6fc96624dfdbcd9f3830bbe445 # v6
+      uses: docker/build-push-action@5cd11c3a4ced054e52742c5fd54dca954e0edd85 # v6
       with:
         context: ${{ matrix.image.context }}
         platforms: linux/amd64,linux/arm64
