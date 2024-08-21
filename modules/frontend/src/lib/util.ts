@@ -4,8 +4,8 @@ export function toTitleCase(s: string): string {
 
 export function sortByProperty<T>(propName: keyof T) {
 	return function (a: T, b: T) {
-		if (a[propName] === undefined) return 1;
-		if (b[propName] === undefined) return -1;
+		if (a[propName] === undefined || a[propName] === null) return 1;
+		if (b[propName] === undefined || b[propName] === null) return -1;
 		if (a[propName] < b[propName]) return -1;
 		if (a[propName] > b[propName]) return 1;
 		return 0;
