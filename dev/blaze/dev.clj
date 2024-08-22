@@ -34,11 +34,13 @@
 ;; Init Development
 (comment
   (init)
+  system
   (pst))
 
 ;; Reset after making changes
 (comment
   (reset)
+  system
   (st/unstrument))
 
 (comment

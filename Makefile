@@ -48,8 +48,8 @@ deps-tree:
 deps-list:
 	clojure -X:deps list
 
-repl:
-	clj -M:test -e "(require 'blaze.dev) (in-ns 'blaze.dev)" --repl
+emacs-repl: prep
+	clj -M:test:emacs-repl
 
 cloc-prod-root:
 	cloc src
@@ -63,4 +63,4 @@ cloc-test: $(MODULES) cloc-test-root
 
 .PHONY: $(MODULES) lint-root lint prep test-root test test-coverage clean-root \
 	clean build-frontend build-ingress uberjar build-all outdated deps-tree \
-	deps-list cloc-prod cloc-test
+	deps-list emacs-repl cloc-prod cloc-test

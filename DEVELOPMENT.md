@@ -35,9 +35,9 @@ Inside the REPL you should be able to discover and play with the functions and e
 
 In addition to the REPL development inside a single module, it is also possible to run a REPL were Blaze can be started as a system. This procedure is automated via a Makefile alias.
 
-```make repl```
+```make emacs-repl```
 
-See the files `Makefile` and `dev/blaze/dev.clj` for more details.
+See the files `Makefile`, `deps.edn`, and `dev/blaze/dev.clj` for more details.
 
 The configuration of the development system is done with the same environment variables used in the production system.
 Documentation: [Environment Variables](docs/deployment/environment-variables.md).
