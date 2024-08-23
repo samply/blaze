@@ -15,7 +15,6 @@ test: install
 
 build: test
 	npm run build
-	cat shutdown.js >> build/index.js
 
 cloc-prod:
 	cloc --exclude-ext=json src

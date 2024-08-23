@@ -139,7 +139,6 @@ export async function calcPropertiesDeep(
 		)
 	)
 		.filter((p) => p !== undefined)
-		// eslint-disable-next-line
 		.map((p) => p as FhirProperty);
 	return {
 		type: { code: structureDefinition.name },
@@ -304,10 +303,7 @@ async function processAbstractElementValue(
 	);
 	return {
 		type: type,
-		properties: properties
-			.filter((p) => p !== undefined)
-			// eslint-disable-next-line
-			.map((p) => p as FhirProperty),
+		properties: properties.filter((p) => p !== undefined).map((p) => p as FhirProperty),
 		object: value
 	};
 }
