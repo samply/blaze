@@ -8,14 +8,14 @@ set style data histograms
 set style histogram clustered
 set style fill solid border -1
 set boxwidth 0.8
-set key right top reverse
+set key left top reverse
 
 # Define x-axis and y-axis labels
 set title "Simple Code Search - Dataset 1M"
 set xlabel 'System'
 set ylabel 'Patients/s'
 set format y "%.0f k"
-set yrange [0:2400]
+set yrange [0:4400]
 
 # Define grid
 set grid ytics
