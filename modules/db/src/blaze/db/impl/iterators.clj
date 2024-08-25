@@ -290,21 +290,20 @@
            (bb/set-limit! kb full-limit)
            res))))))
 
-(defn- entries-prefix-xf [start-key prefix-length decode]
+(defn- entries-prefix-xf [start-key prefix-length xform]
   (comp
    (entries-reader)
    (comp
     (entries-take-while-prefix-matches start-key prefix-length)
-    (map (fn [[kb vb]] (decode kb vb))))))
+    xform)))
 
 (defn prefix-entries
   "Returns a reducible collection of decoded entries of `column-family` starting
   with `start-key` and ending when `prefix-length` bytes of `start-key` no
   longer match.
 
-  The `decode` function has to accept a key and a value byte buffer and decode
-  the bytes from them into an immutable value which will end up in the
-  collection."
-  [snapshot column-family decode prefix-length start-key]
-  (coll snapshot column-family (entries-prefix-xf prefix-length start-key decode)
+  The transducer `xform` will receive a tuple of key byte buffer and value
+  byte buffer and has to emit an immutable value."
+  [snapshot column-family xform prefix-length start-key]
+  (coll snapshot column-family (entries-prefix-xf prefix-length start-key xform)
         start-key))

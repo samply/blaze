@@ -24,7 +24,7 @@
       handle)))
 
 (defn- too-costly-msg [patient-id]
-  (format "The compartment of the Patient with the id `%s` has more than %d resources which is too costly to output. Please use paging by specifying the _count query param." patient-id max-size))
+  (format "The compartment of the Patient with the id `%s` has more than %,d resources which is too costly to output. Please use paging by specifying the _count query param." patient-id max-size))
 
 (defn- handles-xf [page-offset page-size]
   (comp (drop page-offset) (take (inc (or page-size max-size)))))

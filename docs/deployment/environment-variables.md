@@ -113,6 +113,7 @@ More information about distributed deployment are available [here](distributed-b
 | CQL_EXPR_CACHE_SIZE                     | —                          | v0.28  | —      | Size of the CQL expression cache in MiB. This cache is part of the JVM heap. Will be disabled if not given. |
 | CQL_EXPR_CACHE_REFRESH                  | PT24H                      | v0.28  | —      | The duration after which a Bloom filter of the CQL expression cache will be refreshed.                      |
 | CQL_EXPR_CACHE_THREADS                  | 4                          | v0.28  | —      | The maximum number of parallel Bloom filter calculations for the CQL expression cache.                      |
+| ALLOW_MULTIPLE_DELETE                   | false                      | v0.30  | —      | Allow deleting multiple resources using [Conditional Delete](../api.md#conditional-delete).                 |
 
 ¹ Deprecated
 

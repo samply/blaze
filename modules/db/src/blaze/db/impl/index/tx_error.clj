@@ -21,12 +21,14 @@
 (defn- decode-tx-error
   "Returns an anomaly."
   [bytes]
-  (let [{:keys [category message http-status tx-cmd]} (cbor/read bytes)]
+  (let [{:keys [category message http-status fhir-issue tx-cmd]} (cbor/read bytes)]
     (cond-> {::anom/category (keyword "cognitect.anomalies" category)}
       message
       (assoc ::anom/message message)
       http-status
       (assoc :http/status http-status)
+      fhir-issue
+      (assoc :fhir/issue fhir-issue)
       tx-cmd
       (assoc :blaze.db/tx-cmd (decode-tx-cmd tx-cmd)))))
 
@@ -42,11 +44,14 @@
   (some-> (kv/get kv-store :tx-error-index (encode-key t)) decode-tx-error))
 
 (defn- encode-tx-error
-  [{::anom/keys [category message] :http/keys [status] :blaze.db/keys [tx-cmd]}]
+  [{::anom/keys [category message] :http/keys [status] :fhir/keys [issue]
+    :blaze.db/keys [tx-cmd]}]
   (cbor/write
    (cond-> {:category (name category) :message message}
      status
      (assoc :http-status status)
+     issue
+     (assoc :fhir-issue issue)
      tx-cmd
      (assoc :tx-cmd tx-cmd))))
 

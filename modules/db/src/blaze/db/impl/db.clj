@@ -137,6 +137,10 @@
     (with-open [batch-db (batch-db/new-batch-db node basis-t t)]
       (p/-total-num-of-system-changes batch-db since)))
 
+  (-changes [_]
+    (with-open-coll [batch-db (batch-db/new-batch-db node basis-t t)]
+      (p/-changes batch-db)))
+
   ;; ---- Include ---------------------------------------------------------------
 
   (-include [_ resource-handle code]

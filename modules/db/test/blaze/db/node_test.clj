@@ -175,6 +175,13 @@
       [:cause-data ::s/problems 0 :pred] := `boolean?
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
+  (testing "invalid allow-multiple-delete"
+    (given-thrown (ig/init (assoc-in config [:blaze.db/node :allow-multiple-delete] ::invalid))
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `boolean?
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
   (testing "incompatible version"
     (given-thrown (ig/init (with-index-store-version config -1))
       :key := :blaze.db/node

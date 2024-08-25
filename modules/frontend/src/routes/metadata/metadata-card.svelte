@@ -120,7 +120,7 @@
 					</td>
 					<td class="py-2">
 						{#if resource.conditionalDelete !== 'not-supported'}
-							<Check />
+							<span title={resource.conditionalDelete}><Check /></span>
 						{:else}
 							<XMark />
 						{/if}

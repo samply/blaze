@@ -142,6 +142,32 @@
         [0 0 :type] := "Patient"
         [0 0 :id] := "0"
         [0 0 :check-refs] := nil
+        [1] := {})))
+
+  (testing "conditional-delete"
+    (testing "with referential integrity enabled (by default)"
+      (testing "with clauses"
+        (given (tx/prepare-ops {} [[:conditional-delete "Patient" [["identifier" "111033"]]]])
+          [0 0 :op] := "conditional-delete"
+          [0 0 :type] := "Patient"
+          [0 0 :clauses] := [["identifier" "111033"]]
+          [0 0 :check-refs] := true
+          [1] := {}))
+
+      (testing "without clauses"
+        (given (tx/prepare-ops {} [[:conditional-delete "Patient"]])
+          [0 0 :op] := "conditional-delete"
+          [0 0 :type] := "Patient"
+          [0 0 :clauses] := nil
+          [0 0 :check-refs] := true
+          [1] := {})))
+
+    (testing "with referential integrity disabled"
+      (given (tx/prepare-ops {:blaze.db/enforce-referential-integrity false} [[:conditional-delete "Patient" [["identifier" "111033"]]]])
+        [0 0 :op] := "conditional-delete"
+        [0 0 :type] := "Patient"
+        [0 0 :clauses] := [["identifier" "111033"]]
+        [0 0 :check-refs] := nil
         [1] := {}))))
 
 (deftest load-tx-result-test

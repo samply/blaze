@@ -125,6 +125,9 @@
         :delete
         #:blaze.rest-api.interaction
          {:handler success-handler}
+        :conditional-delete-type
+        #:blaze.rest-api.interaction
+         {:handler success-handler}
         :search-type
         #:blaze.rest-api.interaction
          {:handler success-handler}}}]}
@@ -289,6 +292,11 @@
             [:issue 0 :severity] := "error"
             [:issue 0 :code] := "invalid"
             [:issue 0 :diagnostics] := "Unsupported Content-Type header `application/fhir+json`. Please use `application/x-www-form-urlencoded`."))))))
+
+(deftest conditional-delete-type-test
+  (with-system [{:blaze/keys [rest-api]} config]
+    (given (call rest-api {:request-method :delete :uri "/Patient"})
+      :status := 200)))
 
 (def auth-config
   (-> (assoc-in config [:blaze/rest-api :auth-backends] [(ig/ref ::auth-backend)])

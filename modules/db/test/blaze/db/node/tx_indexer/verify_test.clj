@@ -32,6 +32,7 @@
 
 (st/instrument)
 (log/set-min-level! :trace)
+(tu/set-default-locale-english!)                ; important for the thousands separator in 10,000
 
 (test/use-fixtures :each tu/fixture)
 
@@ -736,4 +737,133 @@
 
             [4 0] := :system-stats-index
             [4 1 ss-tu/decode-key] := {:t 3}
-            [4 2 ss-tu/decode-val] := {:total 1 :num-changes 3}))))))
+            [4 2 ss-tu/decode-val] := {:total 1 :num-changes 3})))))
+
+  (testing "conditional delete"
+    (testing "success"
+      (testing "no match"
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:put {:fhir/type :fhir/Patient :id "0"
+                   :identifier [#fhir/Identifier{:value "120426"}]}]]]
+
+          (is
+           (empty?
+            (verify/verify-tx-cmds
+             search-param-registry
+             (d/db node) 2
+             [{:op "conditional-delete" :type "Patient"
+               :clauses [["identifier" "foo"]]}])))))
+
+      (testing "one patient match"
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:put {:fhir/type :fhir/Patient :id "0"
+                   :identifier [#fhir/Identifier{:value "120426"}]}]]]
+
+          (given (verify/verify-tx-cmds
+                  search-param-registry
+                  (d/db node) 2
+                  [{:op "conditional-delete" :type "Patient"
+                    :clauses [["identifier" "120426"]]}])
+
+            count := 5
+
+            [0 0] := :resource-as-of-index
+            [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
+            [0 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+            [1 0] := :type-as-of-index
+            [1 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "0"}
+            [1 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+            [2 0] := :system-as-of-index
+            [2 1 sao-tu/decode-key] := {:t 2 :type "Patient" :id "0"}
+            [2 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+            [3 0] := :type-stats-index
+            [3 1 ts-tu/decode-key] := {:type "Patient" :t 2}
+            [3 2 ts-tu/decode-val] := {:total 0 :num-changes 2}
+
+            [4 0] := :system-stats-index
+            [4 1 ss-tu/decode-key] := {:t 2}
+            [4 2 ss-tu/decode-val] := {:total 0 :num-changes 2})))
+
+      (testing "two patient matches"
+        (testing "is forbidden by default"
+          (with-system-data [{:blaze.db/keys [node]} config]
+            [(vec (for [id ["0" "1"]]
+                    [:create {:fhir/type :fhir/Patient :id id
+                              :identifier [#fhir/Identifier{:value "120426"}]}]))]
+
+            (given (verify/verify-tx-cmds
+                    search-param-registry
+                    (d/db node) 2
+                    [{:op "conditional-delete" :type "Patient"
+                      :clauses [["identifier" "120426"]]}])
+
+              ::anom/category := ::anom/conflict
+              ::anom/message := "Conditional delete of one single Patient with query `identifier=120426` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."
+              :http/status := 412)))
+
+        (testing "fails on more then 10,000 matches"
+          (with-system-data [{:blaze.db/keys [node]} config]
+            [(vec (for [id (range 10001)]
+                    [:create {:fhir/type :fhir/Patient :id (str id)
+                              :identifier [#fhir/Identifier{:value "120426"}]}]))]
+
+            (given (verify/verify-tx-cmds
+                    search-param-registry
+                    (d/db node) 2
+                    [{:op "conditional-delete" :type "Patient"
+                      :clauses [["identifier" "120426"]]
+                      :allow-multiple true}])
+
+              ::anom/category := ::anom/conflict
+              ::anom/message := "Conditional delete of Patients with query `identifier=120426` failed because more than 10,000 matches were found."
+              :fhir/issue "too-costly")))
+
+        (testing "works if allowed"
+          (with-system-data [{:blaze.db/keys [node]} config]
+            [(vec (for [id ["0" "1"]]
+                    [:create {:fhir/type :fhir/Patient :id id
+                              :identifier [#fhir/Identifier{:value "120426"}]}]))]
+
+            (given (verify/verify-tx-cmds
+                    search-param-registry
+                    (d/db node) 2
+                    [{:op "conditional-delete" :type "Patient"
+                      :clauses [["identifier" "120426"]]
+                      :allow-multiple true}])
+
+              count := 8
+
+              [0 0] := :resource-as-of-index
+              [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
+              [0 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+              [1 0] := :type-as-of-index
+              [1 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "0"}
+              [1 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+              [2 0] := :system-as-of-index
+              [2 1 sao-tu/decode-key] := {:t 2 :type "Patient" :id "0"}
+              [2 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+              [3 0] := :resource-as-of-index
+              [3 1 rao-tu/decode-key] := {:type "Patient" :id "1" :t 2}
+              [3 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+              [4 0] := :type-as-of-index
+              [4 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "1"}
+              [4 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+              [5 0] := :system-as-of-index
+              [5 1 sao-tu/decode-key] := {:t 2 :type "Patient" :id "1"}
+              [5 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
+
+              [6 0] := :type-stats-index
+              [6 1 ts-tu/decode-key] := {:type "Patient" :t 2}
+              [6 2 ts-tu/decode-val] := {:total 0 :num-changes 4}
+
+              [7 0] := :system-stats-index
+              [7 1 ss-tu/decode-key] := {:t 2}
+              [7 2 ss-tu/decode-val] := {:total 0 :num-changes 4})))))))

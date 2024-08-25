@@ -110,7 +110,11 @@
          (assoc :post {:interaction "create"
                        :middleware [wrap-resource]
                        :handler (-> interactions :create
-                                    :blaze.rest-api.interaction/handler)}))]
+                                    :blaze.rest-api.interaction/handler)})
+         (contains? interactions :conditional-delete-type)
+         (assoc :delete {:interaction "conditional-delete-type"
+                         :handler (-> interactions :conditional-delete-type
+                                      :blaze.rest-api.interaction/handler)}))]
       ["/_history"
        (cond-> {:name (keyword name "history") :conflicting true}
          (contains? interactions :history-type)

@@ -48,6 +48,7 @@
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-min-level! :trace)
+(tu/set-default-locale-english!)                ; important for the thousands separator in 10,000
 
 (test/use-fixtures :each tu/fixture)
 
@@ -202,365 +203,580 @@
               medication-administrations medication-administration-gen]
       (concat observations encounters procedures medication-administrations))))
 
-(deftest transact-test
-  (testing "create"
-    (testing "one Patient"
-      (with-system [{:blaze.db/keys [node]} config]
-        (given @(mtu/assoc-thread-name (d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]]))
-          [meta :thread-name] :? mtu/common-pool-thread?)
+(deftest transact-create-test
+  (testing "one Patient"
+    (with-system [{:blaze.db/keys [node]} config]
+      (given @(mtu/assoc-thread-name (d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]]))
+        [meta :thread-name] :? mtu/common-pool-thread?)
 
-        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-          :fhir/type := :fhir/Patient
-          :id := "0"
-          [:meta :versionId] := #fhir/id"1"
-          [meta :blaze.db/op] := :create)))
+      (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+        :fhir/type := :fhir/Patient
+        :id := "0"
+        [:meta :versionId] := #fhir/id"1"
+        [meta :blaze.db/op] := :create)))
 
-    (testing "one Patient with one Observation"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        ;; create ops are purposely disordered in order to test the
-        ;; reference dependency ordering algorithm
-        [[[:create
-           {:fhir/type :fhir/Observation :id "0"
-            :subject #fhir/Reference{:reference "Patient/0"}}]
-          [:create {:fhir/type :fhir/Patient :id "0"}]]]
+  (testing "one Patient with one Observation"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      ;; create ops are purposely disordered in order to test the
+      ;; reference dependency ordering algorithm
+      [[[:create
+         {:fhir/type :fhir/Observation :id "0"
+          :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:create {:fhir/type :fhir/Patient :id "0"}]]]
 
-        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-          :fhir/type := :fhir/Patient
-          :id := "0"
-          [:meta :versionId] := #fhir/id"1"
-          [meta :blaze.db/op] := :create)
+      (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+        :fhir/type := :fhir/Patient
+        :id := "0"
+        [:meta :versionId] := #fhir/id"1"
+        [meta :blaze.db/op] := :create)
 
-        (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
-          :fhir/type := :fhir/Observation
-          :id := "0"
-          [:subject :reference] := "Patient/0"
-          [:meta :versionId] := #fhir/id"1"
-          [meta :blaze.db/op] := :create)))
+      (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
+        :fhir/type := :fhir/Observation
+        :id := "0"
+        [:subject :reference] := "Patient/0"
+        [:meta :versionId] := #fhir/id"1"
+        [meta :blaze.db/op] := :create)))
 
-    (testing "a resource can't be created again with the same id"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+  (testing "a resource can't be created again with the same id"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
-        (given-failed-future (d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+      (given-failed-future (d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Resource `Patient/0` already exists in the database with t = 1 and can't be created again.")))
+
+  (testing "generated data"
+    (doseq [gen `[fg/patient fg/observation fg/encounter fg/procedure
+                  fg/allergy-intolerance fg/diagnostic-report fg/library]]
+      (satisfies-prop 20
+        (prop/for-all [tx-ops (create-tx ((resolve gen)) 20)]
+          (with-system-data [{:blaze.db/keys [node]} config]
+            [tx-ops]
+
+            (= (count tx-ops)
+               (count @(d/pull-many node (d/type-list (d/db node) (kebab->pascal (name gen))))))))))))
+
+(deftest transact-conditional-create-test
+  (testing "on empty database"
+    (with-system [{:blaze.db/keys [node]} config]
+      (let [db @(d/transact node [[:create
+                                   {:fhir/type :fhir/Patient :id "0"}
+                                   [["identifier" "111033"]]]])]
+        (testing "the Patient was created"
+          (given @(d/pull node (d/resource-handle db "Patient" "0"))
+            :fhir/type := :fhir/Patient
+            :id := "0"
+            [:meta :versionId] := #fhir/id"1"
+            [meta :blaze.db/op] := :create)))))
+
+  (testing "on non-matching Patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :identifier [#fhir/Identifier{:value "094808"}]}]]]
+
+      (let [db @(d/transact node [[:create
+                                   {:fhir/type :fhir/Patient :id "1"}
+                                   [["identifier" "111033"]]]])]
+        (testing "the Patient was created"
+          (given @(d/pull node (d/resource-handle db "Patient" "1"))
+            :fhir/type := :fhir/Patient
+            :id := "1"
+            [:meta :versionId] := #fhir/id"2"
+            [meta :blaze.db/op] := :create)))))
+
+  (testing "on matching Patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :identifier [#fhir/Identifier{:value "111033"}]}]]]
+
+      (let [db @(d/transact node [[:create
+                                   {:fhir/type :fhir/Patient :id "1"}
+                                   [["identifier" "111033"]]]])]
+        (testing "no new patient is created"
+          (is (= 1 (d/type-total db "Patient")))))))
+
+  (testing "on multiple matching Patients"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate #fhir/date"2020"}]
+        [:put {:fhir/type :fhir/Patient :id "1"
+               :birthDate #fhir/date"2020"}]]]
+
+      (testing "causes a transaction abort with conflict"
+        (given-failed-future
+         (d/transact
+          node
+          [[:create
+            {:fhir/type :fhir/Patient :id "1"}
+            [["birthdate" "2020"]]]])
           ::anom/category := ::anom/conflict
-          ::anom/message := "Resource `Patient/0` already exists in the database with t = 1 and can't be created again.")))
+          ::anom/message := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."))))
 
-    (testing "generated data"
-      (doseq [gen `[fg/patient fg/observation fg/encounter fg/procedure
-                    fg/allergy-intolerance fg/diagnostic-report fg/library]]
-        (satisfies-prop 20
-          (prop/for-all [tx-ops (create-tx ((resolve gen)) 20)]
-            (with-system-data [{:blaze.db/keys [node]} config]
-              [tx-ops]
+  (testing "on deleting the matching Patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :identifier [#fhir/Identifier{:value "153229"}]}]]]
 
-              (= (count tx-ops)
-                 (count @(d/pull-many node (d/type-list (d/db node) (kebab->pascal (name gen))))))))))))
+      (testing "causes a transaction abort with conflict"
+        (given-failed-future
+         (d/transact
+          node
+          [[:create
+            {:fhir/type :fhir/Patient :id "foo"}
+            [["identifier" "153229"]]]
+           [:delete "Patient" "0"]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Duplicate transaction commands `delete Patient/0` and `create Patient?identifier=153229 (resolved to id 0)`."))))
 
-  (testing "conditional create"
-    (testing "one Patient"
-      (testing "on empty database"
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:create
-             {:fhir/type :fhir/Patient :id "0"}
-             [["identifier" "111033"]]]]]
+  (testing "failing query"
+    (with-system [{:blaze.db/keys [node]} config]
+      (given-failed-future
+       (d/transact
+        node
+        [[:create
+          {:fhir/type :fhir/Patient :id "0"}
+          [["foo" "bar"]]]])
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Conditional create of a Patient with query `foo=bar` failed. Cause: The search-param with code `foo` and type `Patient` was not found."))))
 
-          (testing "the Patient was created"
-            (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-              :fhir/type := :fhir/Patient
-              :id := "0"
-              [:meta :versionId] := #fhir/id"1"
-              [meta :blaze.db/op] := :create))))
+(deftest transact-put-test
+  (testing "one Patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (testing "on non-matching Patient"
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"
-                   :identifier [#fhir/Identifier{:value "094808"}]}]]
-           [[:create
-             {:fhir/type :fhir/Patient :id "1"}
-             [["identifier" "111033"]]]]]
-
-          (testing "the Patient was created"
-            (given @(d/pull node (d/resource-handle (d/db node) "Patient" "1"))
-              :fhir/type := :fhir/Patient
-              :id := "1"
-              [:meta :versionId] := #fhir/id"2"
-              [meta :blaze.db/op] := :create))))
-
-      (testing "on matching Patient"
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"
-                   :identifier [#fhir/Identifier{:value "111033"}]}]]
-           [[:create
-             {:fhir/type :fhir/Patient :id "1"}
-             [["identifier" "111033"]]]]]
-
-          (testing "no new patient is created"
-            (is (= 1 (d/type-total (d/db node) "Patient"))))))
-
-      (testing "on multiple matching Patients"
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"
-                   :birthDate #fhir/date"2020"}]
-            [:put {:fhir/type :fhir/Patient :id "1"
-                   :birthDate #fhir/date"2020"}]]]
-
-          (testing "causes a transaction abort with conflict"
-            (given-failed-future
-             (d/transact
-              node
-              [[:create
-                {:fhir/type :fhir/Patient :id "1"}
-                [["birthdate" "2020"]]]])
-              ::anom/category := ::anom/conflict))))
-
-      (testing "on deleting the matching Patient"
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"
-                   :identifier [#fhir/Identifier{:value "153229"}]}]]]
-
-          (testing "causes a transaction abort with conflict"
-            (given-failed-future
-             (d/transact
-              node
-              [[:create
-                {:fhir/type :fhir/Patient :id "foo"}
-                [["identifier" "153229"]]]
-               [:delete "Patient" "0"]])
-              ::anom/category := ::anom/conflict))))))
-
-  (testing "put"
-    (testing "one Patient"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
-
-        (testing "the Patient was created"
-          (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-            :fhir/type := :fhir/Patient
-            :id := "0"
-            [:meta :versionId] := #fhir/id"1"
-            [meta :blaze.db/op] := :put))))
-
-    (testing "one Patient with an Extension on birthDate"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :birthDate
-                 #fhir/date
-                  {:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]
-                   :value "2022"}}]]]
-
-        (testing "the Patient was created"
-          (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-            :fhir/type := :fhir/Patient
-            :id := "0"
-            [:meta :versionId] := #fhir/id"1"
-            [meta :blaze.db/op] := :put
-            [:birthDate :extension 0 :url] := "foo"
-            [:birthDate :extension 0 :value] := #fhir/code"bar"
-            [:birthDate :value] := #fhir/date"2022"))))
-
-    (testing "one Patient with one Observation"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        ;; the create ops are purposely disordered in order to test the
-        ;; reference dependency ordering algorithm
-        [[[:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]
-          [:put {:fhir/type :fhir/Patient :id "0"}]]]
-
-        (testing "the Patient was created"
-          (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-            :fhir/type := :fhir/Patient
-            :id := "0"
-            [:meta :versionId] := #fhir/id"1"
-            [meta :blaze.db/op] := :put))
-
-        (testing "the Observation was created"
-          (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
-            :fhir/type := :fhir/Observation
-            :id := "0"
-            [:meta :versionId] := #fhir/id"1"
-            [:subject :reference] := "Patient/0"
-            [meta :blaze.db/op] := :put))))
-
-    (testing "updating one Patient"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]
-         [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]]
-
-        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-          :fhir/type := :fhir/Patient
-          :id := "0"
-          [:meta :versionId] := #fhir/id"2"
-          :gender := #fhir/code"female"
-          [meta :blaze.db/op] := :put))
-
-      (testing "with if-none-match"
-        (testing "of any"
-          (with-system-data [{:blaze.db/keys [node]} config]
-            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
-
-            (given-failed-future
-             (d/transact
-              node
-              [[:put {:fhir/type :fhir/Patient :id "0"} [:if-none-match :any]]])
-              ::anom/category := ::anom/conflict
-              ::anom/message := "Resource `Patient/0` already exists.")))
-
-        (testing "of 1"
-          (with-system-data [{:blaze.db/keys [node]} config]
-            [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
-
-            (given-failed-future
-             (d/transact
-              node
-              [[:put {:fhir/type :fhir/Patient :id "0"} [:if-none-match 1]]])
-              ::anom/category := ::anom/conflict
-              ::anom/message := "Resource `Patient/0` with version 1 already exists."))))
-
-      (testing "with identical content"
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]
-           [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]]
-
-          (testing "versionId is still 1"
-            (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
-              :fhir/type := :fhir/Patient
-              :id := "0"
-              [:meta :versionId] := #fhir/id"1"
-              :gender := #fhir/code"female"
-              [meta :blaze.db/op] := :put)))))
-
-    (testing "Diamond Reference Dependencies"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        ;; the create ops are purposely disordered in order to test the
-        ;; reference dependency ordering algorithm
-        [[[:put {:fhir/type :fhir/List
-                 :id "0"
-                 :entry
-                 [{:fhir/type :fhir.List/entry
-                   :item #fhir/Reference{:reference "Observation/0"}}
-                  {:fhir/type :fhir.List/entry
-                   :item #fhir/Reference{:reference "Observation/1"}}]}]
-          [:put {:fhir/type :fhir/Observation :id "0"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]
-          [:put {:fhir/type :fhir/Observation :id "1"
-                 :subject #fhir/Reference{:reference "Patient/0"}}]
-          [:put {:fhir/type :fhir/Patient :id "0"}]]]
-
+      (testing "the Patient was created"
         (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
           :fhir/type := :fhir/Patient
           :id := "0"
           [:meta :versionId] := #fhir/id"1"
-          [meta :blaze.db/op] := :put)
-
-        (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
-          :fhir/type := :fhir/Observation
-          :id := "0"
-          [:meta :versionId] := #fhir/id"1"
-          [:subject :reference] := "Patient/0"
-          [meta :blaze.db/op] := :put)
-
-        (given @(d/pull node (d/resource-handle (d/db node) "Observation" "1"))
-          :fhir/type := :fhir/Observation
-          :id := "1"
-          [:meta :versionId] := #fhir/id"1"
-          [:subject :reference] := "Patient/0"
-          [meta :blaze.db/op] := :put)
-
-        (given @(d/pull node (d/resource-handle (d/db node) "List" "0"))
-          :fhir/type := :fhir/List
-          :id := "0"
-          [:meta :versionId] := #fhir/id"1"
-          [:entry 0 :item :reference] := "Observation/0"
-          [:entry 1 :item :reference] := "Observation/1"
           [meta :blaze.db/op] := :put))))
 
-  (testing "delete"
-    (testing "on empty database"
-      (with-system [{:blaze.db/keys [node]} config]
-        (let [db @(d/transact node [[:delete "Patient" "0"]])]
-          (testing "the patient is deleted"
-            (given (d/resource-handle db "Patient" "0")
-              :op := :delete)))
+  (testing "one Patient with an Extension on birthDate"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :birthDate
+               #fhir/date
+                {:extension [#fhir/Extension{:url "foo" :value #fhir/code"bar"}]
+                 :value "2022"}}]]]
 
-        (testing "doing a second delete"
-          (let [db @(d/transact node [[:delete "Patient" "0"]])]
-            (testing "the patient is still deleted and has two changes"
-              (given (d/resource-handle db "Patient" "0")
-                :op := :delete
-                :num-changes := 2))))))
+      (testing "the Patient was created"
+        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+          :fhir/type := :fhir/Patient
+          :id := "0"
+          [:meta :versionId] := #fhir/id"1"
+          [meta :blaze.db/op] := :put
+          [:birthDate :extension 0 :url] := "foo"
+          [:birthDate :extension 0 :value] := #fhir/code"bar"
+          [:birthDate :value] := #fhir/date"2022"))))
 
-    (testing "patient with an observation referencing it"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:create {:fhir/type :fhir/Patient :id "0"}]
-          [:create {:fhir/type :fhir/Observation :id "0"
-                    :subject #fhir/Reference{:reference "Patient/0"}}]]]
+  (testing "one Patient with one Observation"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      ;; the create ops are purposely disordered in order to test the
+      ;; reference dependency ordering algorithm
+      [[[:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Patient :id "0"}]]]
 
-        (testing "deleting only the patient fails"
+      (testing "the Patient was created"
+        (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+          :fhir/type := :fhir/Patient
+          :id := "0"
+          [:meta :versionId] := #fhir/id"1"
+          [meta :blaze.db/op] := :put))
+
+      (testing "the Observation was created"
+        (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
+          :fhir/type := :fhir/Observation
+          :id := "0"
+          [:meta :versionId] := #fhir/id"1"
+          [:subject :reference] := "Patient/0"
+          [meta :blaze.db/op] := :put))))
+
+  (testing "updating one Patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]]
+
+      (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+        :fhir/type := :fhir/Patient
+        :id := "0"
+        [:meta :versionId] := #fhir/id"2"
+        :gender := #fhir/code"female"
+        [meta :blaze.db/op] := :put))
+
+    (testing "with if-none-match"
+      (testing "of any"
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
           (given-failed-future
-           (d/transact node [[:delete "Patient" "0"]])
+           (d/transact
+            node
+            [[:put {:fhir/type :fhir/Patient :id "0"} [:if-none-match :any]]])
             ::anom/category := ::anom/conflict
-            ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`."))
+            ::anom/message := "Resource `Patient/0` already exists.")))
 
-        (testing "deleting the patient and the observation in one transaction succeeds"
-          (let [db @(d/transact node [[:delete "Patient" "0"] [:delete "Observation" "0"]])]
+      (testing "of 1"
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+          (given-failed-future
+           (d/transact
+            node
+            [[:put {:fhir/type :fhir/Patient :id "0"} [:if-none-match 1]]])
+            ::anom/category := ::anom/conflict
+            ::anom/message := "Resource `Patient/0` with version 1 already exists."))))
+
+    (testing "with identical content"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]
+         [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]]
+
+        (testing "versionId is still 1"
+          (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+            :fhir/type := :fhir/Patient
+            :id := "0"
+            [:meta :versionId] := #fhir/id"1"
+            :gender := #fhir/code"female"
+            [meta :blaze.db/op] := :put)))))
+
+  (testing "Diamond Reference Dependencies"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      ;; the create ops are purposely disordered in order to test the
+      ;; reference dependency ordering algorithm
+      [[[:put {:fhir/type :fhir/List
+               :id "0"
+               :entry
+               [{:fhir/type :fhir.List/entry
+                 :item #fhir/Reference{:reference "Observation/0"}}
+                {:fhir/type :fhir.List/entry
+                 :item #fhir/Reference{:reference "Observation/1"}}]}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (given @(d/pull node (d/resource-handle (d/db node) "Patient" "0"))
+        :fhir/type := :fhir/Patient
+        :id := "0"
+        [:meta :versionId] := #fhir/id"1"
+        [meta :blaze.db/op] := :put)
+
+      (given @(d/pull node (d/resource-handle (d/db node) "Observation" "0"))
+        :fhir/type := :fhir/Observation
+        :id := "0"
+        [:meta :versionId] := #fhir/id"1"
+        [:subject :reference] := "Patient/0"
+        [meta :blaze.db/op] := :put)
+
+      (given @(d/pull node (d/resource-handle (d/db node) "Observation" "1"))
+        :fhir/type := :fhir/Observation
+        :id := "1"
+        [:meta :versionId] := #fhir/id"1"
+        [:subject :reference] := "Patient/0"
+        [meta :blaze.db/op] := :put)
+
+      (given @(d/pull node (d/resource-handle (d/db node) "List" "0"))
+        :fhir/type := :fhir/List
+        :id := "0"
+        [:meta :versionId] := #fhir/id"1"
+        [:entry 0 :item :reference] := "Observation/0"
+        [:entry 1 :item :reference] := "Observation/1"
+        [meta :blaze.db/op] := :put))))
+
+(deftest transact-delete-test
+  (testing "on empty database"
+    (with-system [{:blaze.db/keys [node]} config]
+      (let [db @(d/transact node [[:delete "Patient" "0"]])]
+        (testing "the patient is deleted"
+          (given (d/resource-handle db "Patient" "0")
+            :op := :delete)))
+
+      (testing "doing a second delete"
+        (let [db @(d/transact node [[:delete "Patient" "0"]])]
+          (testing "the patient is still deleted and has two changes"
             (given (d/resource-handle db "Patient" "0")
               :op := :delete
-              :num-changes := 2)
-            (given (d/resource-handle db "Observation" "0")
-              :op := :delete
-              :num-changes := 2)))))
+              :num-changes := 2))))))
 
-    (testing "encounter with a condition referencing it"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:create {:fhir/type :fhir/Encounter :id "0"}]
-          [:create {:fhir/type :fhir/Condition :id "0"
-                    :encounter #fhir/Reference{:reference "Encounter/0"}}]]]
+  (testing "patient with an observation referencing it"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]
+        [:create {:fhir/type :fhir/Observation :id "0"
+                  :subject #fhir/Reference{:reference "Patient/0"}}]]]
 
-        (testing "deleting only the encounter fails"
-          (given-failed-future
-           (d/transact node [[:delete "Encounter" "0"]])
-            ::anom/category := ::anom/conflict
-            ::anom/message := "Referential integrity violated. Resource `Encounter/0` should be deleted but is referenced from `Condition/0`."))
+      (testing "deleting only the patient fails"
+        (given-failed-future
+         (d/transact node [[:delete "Patient" "0"]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`."))
 
-        (testing "deleting the encounter and the condition in the same transaction succeeds"
-          (let [db @(d/transact node [[:delete "Encounter" "0"] [:delete "Condition" "0"]])]
-            (given (d/resource-handle db "Encounter" "0")
-              :op := :delete
-              :num-changes := 2)
-            (given (d/resource-handle db "Condition" "0")
-              :op := :delete
-              :num-changes := 2)))))
-
-    (testing "a patient with several resources referencing it"
-      (satisfies-prop 10
-        (prop/for-all [resources mixed-resource-gen]
-          (with-system-data [{:blaze.db/keys [node]} config]
-            [(into [[:put {:fhir/type :fhir/Patient :id "0"}]
-                    [:put {:fhir/type :fhir/Medication :id "0"}]
-                    [:put {:fhir/type :fhir/Practitioner :id "0"}]]
-                   (map (partial vector :create))
-                   resources)]
-            (let [make-delete-command (fn [{id :id type :fhir/type}] [:delete (name type) id])
-                  delete-list (into [[:delete "Patient" "0"]] (map make-delete-command) resources)
-                  db @(d/transact node delete-list)]
-              (for [[_ type id] delete-list]
-                (given (d/resource-handle db type id)
-                  :op := :delete
-                  :num-changes := 2)))))))
-
-    (testing "patient with an observation referencing it without enforcing referential integrity"
-      (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :enforce-referential-integrity] false)]
-        [[[:create {:fhir/type :fhir/Patient :id "0"}]
-          [:create {:fhir/type :fhir/Observation :id "0"
-                    :subject #fhir/Reference{:reference "Patient/0"}}]]]
-        (let [db @(d/transact node [[:delete "Patient" "0"]])]
+      (testing "deleting the patient and the observation in one transaction succeeds"
+        (let [db @(d/transact node [[:delete "Patient" "0"] [:delete "Observation" "0"]])]
           (given (d/resource-handle db "Patient" "0")
             :op := :delete
             :num-changes := 2)
           (given (d/resource-handle db "Observation" "0")
+            :op := :delete
+            :num-changes := 2)))))
+
+  (testing "encounter with a condition referencing it"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Encounter :id "0"}]
+        [:create {:fhir/type :fhir/Condition :id "0"
+                  :encounter #fhir/Reference{:reference "Encounter/0"}}]]]
+
+      (testing "deleting only the encounter fails"
+        (given-failed-future
+         (d/transact node [[:delete "Encounter" "0"]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Referential integrity violated. Resource `Encounter/0` should be deleted but is referenced from `Condition/0`."))
+
+      (testing "deleting the encounter and the condition in the same transaction succeeds"
+        (let [db @(d/transact node [[:delete "Encounter" "0"] [:delete "Condition" "0"]])]
+          (given (d/resource-handle db "Encounter" "0")
+            :op := :delete
+            :num-changes := 2)
+          (given (d/resource-handle db "Condition" "0")
+            :op := :delete
+            :num-changes := 2)))))
+
+  (testing "a patient with several resources referencing it"
+    (satisfies-prop 10
+      (prop/for-all [resources mixed-resource-gen]
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [(into [[:put {:fhir/type :fhir/Patient :id "0"}]
+                  [:put {:fhir/type :fhir/Medication :id "0"}]
+                  [:put {:fhir/type :fhir/Practitioner :id "0"}]]
+                 (map (partial vector :create))
+                 resources)]
+          (let [make-delete-command (fn [{id :id type :fhir/type}] [:delete (name type) id])
+                delete-list (into [[:delete "Patient" "0"]] (map make-delete-command) resources)
+                db @(d/transact node delete-list)]
+            (for [[_ type id] delete-list]
+              (given (d/resource-handle db type id)
+                :op := :delete
+                :num-changes := 2)))))))
+
+  (testing "patient with an observation referencing it without enforcing referential integrity"
+    (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :enforce-referential-integrity] false)]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]
+        [:create {:fhir/type :fhir/Observation :id "0"
+                  :subject #fhir/Reference{:reference "Patient/0"}}]]]
+      (let [db @(d/transact node [[:delete "Patient" "0"]])]
+        (given (d/resource-handle db "Patient" "0")
+          :op := :delete
+          :num-changes := 2)
+        (given (d/resource-handle db "Observation" "0")
+          :op := :create
+          :num-changes := 1)))))
+
+(deftest transact-conditional-delete-test
+  (testing "one matching patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"
+                  :identifier [#fhir/Identifier{:value "181205"}]}]
+        [:create {:fhir/type :fhir/Patient :id "1"
+                  :identifier [#fhir/Identifier{:value "164453"}]}]]]
+
+      (let [db @(d/transact node [[:conditional-delete "Patient"
+                                   [["identifier" "181205"]]]])]
+        (testing "the patient is deleted"
+          (given (d/resource-handle db "Patient" "0")
+            :op := :delete
+            :num-changes := 2))
+
+        (testing "the other patient still exists"
+          (given (d/resource-handle db "Patient" "1")
             :op := :create
             :num-changes := 1)))))
 
+  (testing "no match"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"
+                  :identifier [#fhir/Identifier{:value "181205"}]}]]]
+
+      (let [db @(d/transact node [[:conditional-delete "Patient"
+                                   [["identifier" "foo"]]]])]
+        (testing "the patient isn't deleted"
+          (given (d/resource-handle db "Patient" "0")
+            :op := :create
+            :num-changes := 1)))))
+
+  (testing "two matching patients"
+    (testing "is forbidden by default"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [(vec (for [id ["0" "1"]]
+                [:create {:fhir/type :fhir/Patient :id id
+                          :identifier [#fhir/Identifier{:value "181205"}]}]))]
+
+        (testing "with query"
+          (given-failed-future (d/transact node [[:conditional-delete "Patient" [["identifier" "181205"]]]])
+            ::anom/category := ::anom/conflict
+            ::anom/message := "Conditional delete of one single Patient with query `identifier=181205` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."
+            :http/status := 412))
+
+        (testing "without query (matching all patients)"
+          (given-failed-future (d/transact node [[:conditional-delete "Patient"]])
+            ::anom/category := ::anom/conflict
+            ::anom/message := "Conditional delete of one single Patient without a query failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."
+            :http/status := 412))))
+
+    (testing "works if allowed"
+      (testing "with query"
+        (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
+          [(vec (for [id ["0" "1"]]
+                  [:create {:fhir/type :fhir/Patient :id id
+                            :identifier [#fhir/Identifier{:value "181205"}]}]))
+           [[:create {:fhir/type :fhir/Patient :id "2"
+                      :identifier [#fhir/Identifier{:value "164453"}]}]]]
+
+          (let [db @(d/transact node [[:conditional-delete "Patient"
+                                       [["identifier" "181205"]]]])]
+            (testing "both patients are deleted"
+              (doseq [id ["0" "1"]]
+                (given (d/resource-handle db "Patient" id)
+                  :op := :delete
+                  :num-changes := 2)))
+
+            (testing "the third patient still exists"
+              (given (d/resource-handle db "Patient" "2")
+                :op := :create
+                :num-changes := 1)))))))
+
+  (testing "three patients"
+    (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
+      [(vec (for [id ["0" "1" "2"]]
+              [:create {:fhir/type :fhir/Patient :id id}]))]
+
+      (let [db @(d/transact node [[:conditional-delete "Patient"]])]
+        (testing "all patients are deleted"
+          (doseq [id ["0" "1" "2"]]
+            (given (d/resource-handle db "Patient" id)
+              :op := :delete
+              :num-changes := 2))))))
+
+  (testing "patient with an observation referencing it"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"
+                  :identifier [#fhir/Identifier{:value "181205"}]}]
+        [:create {:fhir/type :fhir/Observation :id "0"
+                  :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+      (testing "deleting only the patient fails"
+        (given-failed-future
+         (d/transact node [[:conditional-delete "Patient" [["identifier" "181205"]]]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`."))
+
+      (testing "deleting the patient and the observation in one transaction succeeds"
+        (let [db @(d/transact node [[:conditional-delete "Patient"
+                                     [["identifier" "181205"]]]
+                                    [:delete "Observation" "0"]])]
+          (given (d/resource-handle db "Patient" "0")
+            :op := :delete
+            :num-changes := 2)
+          (given (d/resource-handle db "Observation" "0")
+            :op := :delete
+            :num-changes := 2)))))
+
+  (testing "two patients with observations referencing them"
+    (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
+      (vec (for [id ["0" "1"]]
+             [[:create {:fhir/type :fhir/Patient :id id
+                        :identifier [#fhir/Identifier{:value "181205"}]}]
+              [:create {:fhir/type :fhir/Observation :id id
+                        :subject (type/map->Reference {:reference (str "Patient/" id)})}]]))
+
+      (testing "deleting only the patients fails"
+        (given-failed-future
+         (d/transact node [[:conditional-delete "Patient" [["identifier" "181205"]]]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`."))
+
+      (testing "deleting the patients and the observations in one transaction succeeds"
+        (let [db @(d/transact node [[:conditional-delete "Patient"
+                                     [["identifier" "181205"]]]
+                                    [:delete "Observation" "0"]
+                                    [:delete "Observation" "1"]])]
+          (doseq [id ["0" "1"]]
+            (given (d/resource-handle db "Patient" id)
+              :op := :delete
+              :num-changes := 2))
+          (doseq [id ["0" "1"]]
+            (given (d/resource-handle db "Observation" id)
+              :op := :delete
+              :num-changes := 2))))))
+
+  (testing "on updating the matching Patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"
+               :identifier [#fhir/Identifier{:value "140151"}]}]]]
+
+      (testing "causes a transaction abort with conflict"
+        (given-failed-future
+         (d/transact
+          node
+          [[:conditional-delete "Patient" [["identifier" "140151"]]]
+           [:put {:fhir/type :fhir/Patient :id "0"}]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Duplicate transaction commands `put Patient/0` and `delete Patient/0`."))))
+
+  (testing "failing query"
+    (with-system [{:blaze.db/keys [node]} config]
+      (given-failed-future (d/transact node [[:conditional-delete "Patient" [["foo" "bar"]]]])
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Conditional delete of Patients with query `foo=bar` failed. Cause: The search-param with code `foo` and type `Patient` was not found."))))
+
+(deftest transact-conditional-delete-too-many-test
+  (log/set-min-level! :info)
+  (st/unstrument)
+  (testing "works up to 10,000 matches"
+    (testing "with query"
+      (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
+        [(vec (for [id (range 10000)]
+                [:create {:fhir/type :fhir/Patient :id (str id)
+                          :identifier [#fhir/Identifier{:value "181205"}]}]))]
+
+        (let [db @(d/transact node [[:conditional-delete "Patient"
+                                     [["identifier" "181205"]]]])]
+          (testing "all patients are deleted"
+            (is (zero? (d/type-total db "Patient")))))))
+
+    (testing "without query (matching all patients)"
+      (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
+        [(vec (for [id (range 10000)]
+                [:create {:fhir/type :fhir/Patient :id (str id)}]))]
+
+        (let [db @(d/transact node [[:conditional-delete "Patient"]])]
+          (testing "all patients are deleted"
+            (is (zero? (d/type-total db "Patient"))))))))
+
+  (testing "fails on more then 10,000 matches"
+    (testing "with query"
+      (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
+        [(vec (for [id (range 10001)]
+                [:create {:fhir/type :fhir/Patient :id (str id)
+                          :identifier [#fhir/Identifier{:value "181205"}]}]))]
+
+        (given-failed-future (d/transact node [[:conditional-delete "Patient" [["identifier" "181205"]]]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Conditional delete of Patients with query `identifier=181205` failed because more than 10,000 matches were found."
+          :fhir/issue := "too-costly")))
+
+    (testing "without query (matching all patients)"
+      (with-system-data [{:blaze.db/keys [node]} (assoc-in config [:blaze.db/node :allow-multiple-delete] true)]
+        [(vec (for [id (range 10001)]
+                [:create {:fhir/type :fhir/Patient :id (str id)
+                          :identifier [#fhir/Identifier{:value "181205"}]}]))]
+
+        (given-failed-future (d/transact node [[:conditional-delete "Patient"]])
+          ::anom/category := ::anom/conflict
+          ::anom/message := "Conditional delete of all Patients failed because more than 10,000 matches were found."
+          :fhir/issue := "too-costly")))))
+
+(deftest transact-test
   (testing "a transaction with duplicate resources fails"
     (testing "two puts"
       (with-system [{:blaze.db/keys [node]} config]
@@ -673,7 +889,8 @@
     (with-system [{:blaze.db/keys [node]} slow-resource-store-system]
       (let [db-futures
             (mapv
-             #(d/transact node [[:create {:fhir/type :fhir/Patient :id (str %)}]])
+             #(-> (d/transact node [[:create {:fhir/type :fhir/Patient :id (str %)}]])
+                  (ac/then-apply :db-after))
              (range 1000))]
 
         (testing "wait for all transactions finishing"
@@ -6005,6 +6222,18 @@
                 [0 :fhir/type] := :fhir/Patient
                 [0 :id] := "0"
                 [0 :meta :versionId] := #fhir/id"1"))))))))
+
+(deftest changes-test
+  (testing "a node with one patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (testing "has that patient changed"
+        (given @(d/pull-many node (d/changes (d/db node)))
+          count := 1
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0"
+          [0 :meta :versionId] := #fhir/id"1")))))
 
 (deftest include-test
   (testing "Observation"

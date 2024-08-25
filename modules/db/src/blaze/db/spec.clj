@@ -91,6 +91,11 @@
          :type :fhir.resource/type
          :id :blaze.resource/id))
 
+(defmethod tx-op :conditional-delete [_]
+  (s/cat :op #{:conditional-delete}
+         :type :fhir.resource/type
+         :clauses (s/? (s/coll-of :blaze.db.query/search-clause :kind vector? :min-count 1))))
+
 (s/def :blaze.db/tx-op
   (s/multi-spec tx-op first))
 
@@ -98,4 +103,7 @@
   (s/coll-of :blaze.db/tx-op :kind vector? :min-count 1))
 
 (s/def :blaze.db/enforce-referential-integrity
+  boolean?)
+
+(s/def :blaze.db/allow-multiple-delete
   boolean?)

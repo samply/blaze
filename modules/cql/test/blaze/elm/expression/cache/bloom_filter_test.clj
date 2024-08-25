@@ -24,6 +24,7 @@
 (defn- fixture [f]
   (st/instrument)
   (ctu/instrument-compile)
+  (log/set-min-level! :trace)
   (f)
   (st/unstrument))
 

@@ -4,6 +4,7 @@
    [blaze.db.api-stub :refer [mem-node-config]]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.interaction.conditional-delete-type]
    [blaze.interaction.delete]
    [blaze.interaction.history.type]
    [blaze.interaction.read]
@@ -124,6 +125,8 @@
    :blaze.interaction/read {}
    :blaze.interaction/delete
    {:node (ig/ref :blaze.db/node)}
+   :blaze.interaction/conditional-delete-type
+   {:node (ig/ref :blaze.db/node)}
    :blaze.interaction/search-system
    {:clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
@@ -165,6 +168,9 @@
        :delete
        #:blaze.rest-api.interaction
         {:handler (ig/ref :blaze.interaction/delete)}
+       :conditional-delete-type
+       #:blaze.rest-api.interaction
+        {:handler (ig/ref :blaze.interaction/conditional-delete-type)}
        :search-type
        #:blaze.rest-api.interaction
         {:handler (ig/ref :blaze.interaction/search-type)}
@@ -287,6 +293,11 @@
     (given (call rest-api {:request-method :get :uri "/Patient/0"})
       :status := 410
       [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
+
+(deftest conditional-delete-type-test
+  (with-system [{:blaze/keys [rest-api]} config]
+    (given (call rest-api {:request-method :delete :uri "/Patient"})
+      :status := 204)))
 
 (deftest search-system-test
   (with-system [{:blaze/keys [rest-api]} config]

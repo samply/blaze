@@ -7,4 +7,5 @@
    [clojure.spec.alpha :as s]))
 
 (s/def :blaze.db.node.transaction/context
-  (s/keys :opt [:blaze.db/enforce-referential-integrity]))
+  (s/keys :opt [:blaze.db/enforce-referential-integrity
+                :blaze.db/allow-multiple-delete]))

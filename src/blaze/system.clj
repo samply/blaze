@@ -93,7 +93,7 @@
     (-> (walk/postwalk
          (fn [x]
            (if (instance? Cfg x)
-             (when-let [value (get-blank env (:env-var x) (:default x))]
+             (when-some [value (get-blank env (:env-var x) (:default x))]
                (let [value (coerce (:spec x) value)]
                  (vswap! settings assoc (:env-var x) {:value value :default-value (:default x)})
                  value))

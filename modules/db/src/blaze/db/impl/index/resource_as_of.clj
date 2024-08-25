@@ -284,14 +284,14 @@
    (i/entries snapshot :resource-as-of-index (system-list-xf t start-tid)
               (start-key start-tid start-id t))))
 
-(defn decoder
+(defn- decoder
   "Returns a function which decodes an resource handle out of a key and a value
   byte buffers from the ResourceAsOf index.
 
   Both byte buffers are changed during decoding and have to be reset accordingly
   after decoding."
   [tid id tid-id-size]
-  (fn [kb vb]
+  (fn [[kb vb]]
     (rh/resource-handle! tid id (codec/descending-long (bb/get-long! kb tid-id-size)) vb)))
 
 (defn instance-history
@@ -302,7 +302,7 @@
   [snapshot tid id start-t]
   (let [tid-id-size (+ codec/tid-size (bs/size id))]
     (i/prefix-entries snapshot :resource-as-of-index
-                      (decoder tid (codec/id-string id) tid-id-size)
+                      (map (decoder tid (codec/id-string id) tid-id-size))
                       tid-id-size (start-key tid id start-t))))
 
 (defn- resource-handle* [iter target-buf key-buf value-buf tid id t]

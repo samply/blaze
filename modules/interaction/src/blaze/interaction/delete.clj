@@ -16,8 +16,7 @@
 
 (defn- build-response [db]
   (let [tx (d/tx db (d/basis-t db))]
-    (-> (ring/response nil)
-        (ring/status 204)
+    (-> (ring/status 204)
         (ring/header "Last-Modified" (fhir-util/last-modified tx))
         (ring/header "ETag" (fhir-util/etag tx)))))
 

@@ -25,7 +25,7 @@
   after decoding."
   [tid]
   (let [ib (byte-array codec/max-id-size)]
-    (fn [kb vb]
+    (fn [[kb vb]]
       (bb/set-position! kb codec/tid-size)
       (let [t (codec/descending-long (bb/get-long! kb))]
         (rh/resource-handle!
@@ -58,5 +58,5 @@
   `start-t` (inclusive) and `start-id` (optional, inclusive) of resources with
   `tid`."
   [snapshot tid start-t start-id]
-  (i/prefix-entries snapshot :type-as-of-index (decoder tid) codec/tid-size
-                    (start-key tid start-t start-id)))
+  (i/prefix-entries snapshot :type-as-of-index (map (decoder tid))
+                    codec/tid-size (start-key tid start-t start-id)))
