@@ -570,7 +570,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ALLOW_MULTIPLE_DELETE=true -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
       if: ${{ matrix.variant == 'standalone' }}
 
     - name: Run Kafka, Cassandra and Blaze
@@ -1050,6 +1050,15 @@ jobs:
 
     - name: Search _tag
       run: .github/scripts/search-tag.sh
+
+    - name: Conditional Delete - Check Referential Integrity Violated
+      run: .github/scripts/conditional-delete-type/check-referential-integrity-violated.sh
+
+    - name: Conditional Delete - Delete All Provenance Resources
+      run: .github/scripts/conditional-delete-type/delete-all-provenance-resources.sh
+
+    - name: Conditional Delete - Delete All Observation Resources Fails
+      run: .github/scripts/conditional-delete-type/delete-all-observation-resources-fails.sh
 
     - name: Prometheus Metrics
       run: .github/scripts/test-metrics.sh

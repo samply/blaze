@@ -66,6 +66,9 @@
             :delete
             #:blaze.rest-api.interaction
                     {:handler #blaze/ref :blaze.interaction/delete}
+            :conditional-delete-type
+            #:blaze.rest-api.interaction
+                    {:handler #blaze/ref :blaze.interaction/conditional-delete-type}
             :history-instance
             #:blaze.rest-api.interaction
                     {:handler #blaze/ref :blaze.interaction.history/instance}
@@ -134,6 +137,9 @@
   :blaze.interaction/delete
   {:node #blaze/ref :blaze.db.main/node}
 
+  :blaze.interaction/conditional-delete-type
+  {:node #blaze/ref :blaze.db.main/node}
+
   :blaze.interaction/read {}
 
   :blaze.interaction/search-system
@@ -180,7 +186,8 @@
    :history-system-handler #blaze/ref :blaze.interaction.history/system
    :resource-patterns #blaze/ref :blaze.rest-api/resource-patterns
    :operations #blaze/ref :blaze.rest-api/operations
-   :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]}
+   :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]
+   :allow-multiple-delete #blaze/cfg ["ALLOW_MULTIPLE_DELETE" boolean? false]}
 
   :blaze.rest-api/async-status-handler
   {}
@@ -283,7 +290,8 @@
    :resource-indexer #blaze/ref :blaze.db.node.main/resource-indexer
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
    :scheduler #blaze/ref :blaze/scheduler
-   :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]}
+   :enforce-referential-integrity #blaze/cfg ["ENFORCE_REFERENTIAL_INTEGRITY" boolean? true]
+   :allow-multiple-delete #blaze/cfg ["ALLOW_MULTIPLE_DELETE" boolean? false]}
 
   [:blaze.db.node/indexer-executor :blaze.db.node.main/indexer-executor] {}
 

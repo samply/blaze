@@ -108,6 +108,9 @@
        :delete
        #:blaze.rest-api.interaction
         {:handler (handler ::delete)}
+       :conditional-delete-type
+       #:blaze.rest-api.interaction
+        {:handler (handler ::conditional-delete-type)}
        :history-instance
        #:blaze.rest-api.interaction
         {:handler (handler ::history-instance)}
@@ -205,6 +208,7 @@
         "/__page" :post ::search-system
         "/Patient" :get ::search-type
         "/Patient" :post ::create
+        "/Patient" :delete ::conditional-delete-type
         "/Patient/_history" :get ::history-type
         "/Patient/__history-page" :get ::history-type
         "/Patient/_search" :post ::search-type
@@ -244,6 +248,7 @@
         "/__page" :post [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
         "/Patient" :get [:observe-request-duration :params :output :error :forwarded :sync :db  :link-headers]
         "/Patient" :post [:observe-request-duration :params :output :error :forwarded :sync :resource]
+        "/Patient" :delete [:observe-request-duration :params :output :error :forwarded :sync]
         "/Patient/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
         "/Patient/__history-page" :get [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
         "/Patient/_search" :post [:observe-request-duration :params :output :error :forwarded :sync :ensure-form-body :db :link-headers]
@@ -278,6 +283,7 @@
           "/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
           "/Patient" :get [:observe-request-duration :params :output :error :forwarded :sync :db  :link-headers]
           "/Patient" :post [:observe-request-duration :params :output :error :forwarded :sync :resource]
+          "/Patient" :delete [:observe-request-duration :params :output :error :forwarded :sync]
           "/Patient/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
           "/Patient/_search" :post [:observe-request-duration :params :output :error :forwarded :sync :ensure-form-body :db :link-headers]
           "/Patient/0" :get [:observe-request-duration :params :output :error :forwarded :sync :db]

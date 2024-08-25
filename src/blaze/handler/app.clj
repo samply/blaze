@@ -11,9 +11,7 @@
    [taoensso.timbre :as log]))
 
 (defn- options-handler [_ respond _]
-  (-> (ring/response nil)
-      (ring/status 405)
-      respond))
+  (respond (ring/status 405)))
 
 (defn- router [health-handler]
   (reitit.ring/router

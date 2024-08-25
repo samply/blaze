@@ -71,5 +71,5 @@
 
 (s/fdef i/prefix-entries
   :args (s/cat :snapshot :blaze.db.kv/snapshot :column-family keyword?
-               :decode fn? :prefix-length nat-int? :start-key byte-string?)
+               :xform fn? :prefix-length nat-int? :start-key byte-string?)
   :ret (cs/coll-of some?))

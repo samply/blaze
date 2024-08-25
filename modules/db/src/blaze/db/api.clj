@@ -422,6 +422,12 @@
   ([db since]
    (p/-total-num-of-system-changes db since)))
 
+(defn changes
+  "Returns a reducible collection of all resource handles changed at the `t` of
+  `db`."
+  [db]
+  (p/-changes db))
+
 ;; ---- Include ---------------------------------------------------------------
 
 (defn include

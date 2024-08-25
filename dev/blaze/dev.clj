@@ -12,6 +12,7 @@
    [blaze.spec]
    [blaze.system :as system]
    [blaze.system-spec]
+   [blaze.test-util :as tu]
    [clojure.repl :refer [pst]]
    [clojure.spec.test.alpha :as st]
    [clojure.tools.namespace.repl :refer [refresh]]
@@ -23,6 +24,7 @@
 (defn init []
   (alter-var-root #'system (constantly (system/init! (System/getenv))))
   (st/instrument)
+  (tu/set-default-locale-english!)
   nil)
 
 (defn reset []

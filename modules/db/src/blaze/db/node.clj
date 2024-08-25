@@ -73,13 +73,6 @@
   (take 16 (iterate #(* 2 %) 0.0001))
   "op")
 
-(defhistogram transaction-sizes
-  "Number of transaction commands per transaction."
-  {:namespace "blaze"
-   :subsystem "db_node"
-   :name "transaction_sizes"}
-  (take 16 (iterate #(* 2 %) 1)))
-
 (defn- db-future
   "Adds a watcher to `node` and returns a CompletableFuture that will complete
   with the database value of at least the point in time `t` if `t` is reached or
@@ -156,7 +149,6 @@
   [{:keys [resource-indexer search-param-registry kv-store] :as node}
    {:keys [t instant tx-cmds] :as tx-data}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
-  (prom/observe! transaction-sizes (count tx-cmds))
   (let [timer (prom/timer duration-seconds "index-resources")
         future (resource-indexer/index-resources resource-indexer tx-data)
         result (index-tx search-param-registry (np/-db node) tx-data)]
@@ -404,9 +396,11 @@
             "referential integrity checks"))
 
 (defn- ctx
-  [{:keys [enforce-referential-integrity]
-    :or {enforce-referential-integrity true}}]
-  {:blaze.db/enforce-referential-integrity enforce-referential-integrity})
+  [{:keys [enforce-referential-integrity allow-multiple-delete]
+    :or {enforce-referential-integrity true
+         allow-multiple-delete false}}]
+  {:blaze.db/enforce-referential-integrity enforce-referential-integrity
+   :blaze.db/allow-multiple-delete allow-multiple-delete})
 
 (def ^:private expected-kv-store-version 0)
 
@@ -492,7 +486,8 @@
     :blaze.db/search-param-registry
     :blaze/scheduler]
    :opt-un
-   [:blaze.db/enforce-referential-integrity]))
+   [:blaze.db/enforce-referential-integrity
+    :blaze.db/allow-multiple-delete]))
 
 (defmethod ig/init-key :blaze.db/node
   [key {:keys [storage tx-log tx-cache indexer-executor kv-store resource-indexer
@@ -534,7 +529,7 @@
   duration-seconds)
 
 (reg-collector ::transaction-sizes
-  transaction-sizes)
+  tx-indexer-verify/transaction-sizes)
 
 (reg-collector ::tx-indexer/duration-seconds
   tx-indexer-verify/duration-seconds)

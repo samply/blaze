@@ -229,6 +229,7 @@
       [:rest 0 :resource 0 :type] := #fhir/code"Patient"
       [:rest 0 :resource 0 :profile] := #fhir/canonical"http://hl7.org/fhir/StructureDefinition/Patient"
       [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
+      [:rest 0 :resource 0 :conditionalDelete] := #fhir/code"single"
       [:rest 0 :resource 0 :referencePolicy] :? (partial some #{#fhir/code"enforced"})
       [:rest 0 :resource 0 :searchParam 0 :name] := "address-use"
       [:rest 0 :resource 0 :searchParam 0 :type] := #fhir/code"token"
@@ -254,7 +255,18 @@
         :fhir/type := :fhir/CapabilityStatement
         [:rest 0 :resource 0 :type] := #fhir/code"Patient"
         [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
-        [:rest 0 :resource 0 :referencePolicy] :? (comp not (partial some #{#fhir/code"enforced"}))))))
+        [:rest 0 :resource 0 :referencePolicy] :? (comp not (partial some #{#fhir/code"enforced"})))))
+
+  (testing "with allowed multiple delete"
+    (with-handler [handler (assoc-in patient-read-interaction-config
+                                     [::rest-api/capabilities-handler
+                                      :allow-multiple-delete]
+                                     true)]
+      (given (:body @(handler {}))
+        :fhir/type := :fhir/CapabilityStatement
+        [:rest 0 :resource 0 :type] := #fhir/code"Patient"
+        [:rest 0 :resource 0 :interaction 0 :code] := #fhir/code"read"
+        [:rest 0 :resource 0 :conditionalDelete] := #fhir/code"multiple"))))
 
 (def ^:private observation-read-interaction-config
   (assoc-in minimal-config [::rest-api/capabilities-handler :resource-patterns]

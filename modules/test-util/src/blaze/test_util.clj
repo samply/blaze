@@ -3,10 +3,11 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :refer [is]]
    [clojure.test.check :as tc]
-   [juxt.iota :refer [given]])
+   [juxt.iota :refer [given]]
+   [taoensso.timbre :as log])
   (:import
    [java.nio ByteBuffer]
-   [java.util Arrays]))
+   [java.util Arrays Locale]))
 
 (set! *warn-on-reflection* true)
 
@@ -47,5 +48,9 @@
 
 (defn fixture [f]
   (st/instrument)
+  (log/set-min-level! :trace)
   (f)
   (st/unstrument))
+
+(defn set-default-locale-english! []
+  (Locale/setDefault Locale/ENGLISH))

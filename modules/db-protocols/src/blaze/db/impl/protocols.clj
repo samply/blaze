@@ -47,6 +47,8 @@
 
   (-total-num-of-system-changes [db since])
 
+  (-changes [db])
+
   (-include [db resource-handle code] [db resource-handle code target-type])
 
   (-rev-include [db resource-handle] [db resource-handle source-type code])

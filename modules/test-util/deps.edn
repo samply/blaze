@@ -1,5 +1,8 @@
 {:deps
- {org.clojars.akiel/iota
+ {com.taoensso/timbre
+  {:mvn/version "6.5.0"}
+
+  org.clojars.akiel/iota
   {:mvn/version "0.1"}
 
   org.clojure/test.check

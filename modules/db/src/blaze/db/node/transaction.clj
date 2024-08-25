@@ -73,6 +73,20 @@
      enforce-referential-integrity
      (assoc :check-refs true))})
 
+(defmethod prepare-op :conditional-delete
+  [{:blaze.db/keys [enforce-referential-integrity allow-multiple-delete]}
+   [_ type clauses]]
+  {:blaze.db/tx-cmd
+   (cond->
+    {:op "conditional-delete"
+     :type type}
+     clauses
+     (assoc :clauses clauses)
+     enforce-referential-integrity
+     (assoc :check-refs true)
+     allow-multiple-delete
+     (assoc :allow-multiple true))})
+
 (def ^:private split
   (juxt #(mapv :blaze.db/tx-cmd %) #(into {} (map :hash-resource) %)))
 

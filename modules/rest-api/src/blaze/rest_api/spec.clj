@@ -46,6 +46,7 @@
     :update
     :patch
     :delete
+    :conditional-delete-type
     :history-instance
     :history-type
     :create

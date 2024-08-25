@@ -21,6 +21,8 @@
   [[_ type id]]
   [type id])
 
+(defmethod extract-type-id :conditional-delete [_])
+
 (defn- duplicate-resource-anomaly [[type id]]
   (ba/incorrect
    (format "Duplicate resource `%s/%s`." type id)
@@ -32,7 +34,7 @@
   Returns an anomaly if there is any duplicate resource."
   [tx-ops]
   (transduce
-   (map extract-type-id)
+   (keep extract-type-id)
    (fn
      ([res]
       (when (ba/anomaly? res) res))

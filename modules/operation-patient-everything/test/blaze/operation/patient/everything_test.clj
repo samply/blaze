@@ -21,7 +21,8 @@
    [java.time Instant]))
 
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
+(tu/set-default-locale-english!)                ; important for the thousands separator in 10,000
 
 (test/use-fixtures :each tu/fixture)
 
@@ -558,7 +559,7 @@
           :fhir/type := :fhir/OperationOutcome
           [:issue 0 :severity] := #fhir/code"error"
           [:issue 0 :code] := #fhir/code"too-costly"
-          [:issue 0 :diagnostics] := "The compartment of the Patient with the id `0` has more than 10000 resources which is too costly to output. Please use paging by specifying the _count query param."))))
+          [:issue 0 :diagnostics] := "The compartment of the Patient with the id `0` has more than 10,000 resources which is too costly to output. Please use paging by specifying the _count query param."))))
 
   (testing "paging"
     (with-handler [handler]
@@ -668,7 +669,7 @@
             (is (= (str base-url context-path "/Observation/3")
                    (:fullUrl entry))))))))
 
-  (testing "page size of 10.000"
+  (testing "page size of 10,000"
     (with-handler [handler]
       [(into
         [[:put {:fhir/type :fhir/Patient :id "0"}]]
@@ -700,5 +701,5 @@
           (is (= (str base-url context-path "/Patient/0/$everything?_count=10000&__t=1&__page-offset=10000")
                  (link-url body "next"))))
 
-        (testing "the bundle contains 10.000 entries"
+        (testing "the bundle contains 10,000 entries"
           (is (= 10000 (count (:entry body)))))))))

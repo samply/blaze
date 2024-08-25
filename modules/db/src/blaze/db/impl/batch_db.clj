@@ -36,6 +36,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- rev-include [db snapshot reference source-tid code]
+  (coll/eduction
+   (u/resource-handle-mapper db source-tid)
+   (sp-vr/prefix-keys snapshot code source-tid (bs/size reference) reference)))
+
 (defn- sp-total
   [db {:keys [base]}]
   (if (= ["Resource"] base)
@@ -170,6 +175,9 @@
       (- (:num-changes (system-stats/seek-value snapshot t) 0)
          (:num-changes (some->> end-t (system-stats/seek-value snapshot)) 0))))
 
+  (-changes [_]
+    (sao/changes snapshot t))
+
   ;; ---- Include ---------------------------------------------------------------
 
   (-include [db resource-handle code]
@@ -181,24 +189,22 @@
 
   (-rev-include [db resource-handle]
     (let [search-param-registry (:search-param-registry node)
-          type (name (type/type resource-handle))]
+          type (name (type/type resource-handle))
+          reference (codec/v-hash (rh/reference resource-handle))]
       (coll/eduction
        (comp
         (mapcat
          (fn [{:keys [base code]}]
-           (coll/eduction
-            (mapcat #(p/-rev-include db resource-handle % code))
-            base)))
+           (let [code (codec/c-hash code)]
+             (coll/eduction
+              (mapcat #(rev-include db snapshot reference (codec/tid %) code))
+              base))))
         (distinct))
        (sr/list-by-target-type search-param-registry type))))
 
   (-rev-include [db resource-handle source-type code]
-    (let [reference (codec/v-hash (rh/reference resource-handle))
-          source-tid (codec/tid source-type)]
-      (coll/eduction
-       (u/resource-handle-mapper db source-tid)
-       (sp-vr/prefix-keys snapshot (codec/c-hash code) source-tid
-                          (bs/size reference) reference))))
+    (rev-include db snapshot (codec/v-hash (rh/reference resource-handle))
+                 (codec/tid source-type) (codec/c-hash code)))
 
   (-patient-everything [db patient-handle start end]
     (pe/patient-everything db patient-handle start end))

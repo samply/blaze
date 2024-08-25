@@ -292,7 +292,28 @@ The `keep` command can be used instead of a `put` command if it's likely that th
 
 ### Delete
 
-**TODO**
+The `delete` command is used to delete a resource.
+
+#### Properties
+
+| Name       | Required | Data Type | Description                      |
+|------------|----------|-----------|----------------------------------|
+| type       | yes      | string    | resource type                    |
+| id         | yes      | string    | resource id                      |
+| check-refs | no       | boolean   | use referential integrity checks |
+
+### Conditional Delete
+
+The `conditional-delete` command is used to delete possibly multiple resources by selection criteria.
+
+#### Properties
+
+| Name           | Required | Data Type | Description                                      |
+|----------------|----------|-----------|--------------------------------------------------|
+| type           | yes      | string    | resource type                                    |
+| clauses        | no       | string    | clauses to use to search for resources to delete |
+| check-refs     | no       | boolean   | use referential integrity checks                 |
+| allow-multiple | no       | boolean   | allow to delete multiple resources               |
 
 [1]: <https://www.datomic.com>
 [2]: <https://xtdb.com>

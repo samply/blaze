@@ -52,7 +52,7 @@ a `503 Service Unavailable` with the following `OperationOutcome`:
     {
       "severity": "error",
       "code": "timeout",
-      "diagnostics": "Timeout while trying to acquire the latest known database state. At least one known transaction hasn't been completed yet. Please try to lower the transaction load or increase the timeout of 10000 ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often."
+      "diagnostics": "Timeout while trying to acquire the latest known database state. At least one known transaction hasn't been completed yet. Please try to lower the transaction load or increase the timeout of 10,000 ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often."
     }
   ]
 }

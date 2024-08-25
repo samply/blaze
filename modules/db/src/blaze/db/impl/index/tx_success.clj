@@ -31,11 +31,11 @@
               (decode-tx t)))))
 
 (defn tx
-  "Returns the transaction with `t` using `kv-store` or nil of none was found.
+  "Returns the transaction with `t` using `tx-cache` or nil of none was found.
 
   Errored transactions are returned by `blaze.db.impl.index.tx-error/tx-error`."
-  [^LoadingCache tx-cache t]
-  (.get tx-cache t))
+  [tx-cache t]
+  (.get ^LoadingCache tx-cache t))
 
 (defn last-t
   "Returns the last known `t` or nil if the store is empty."

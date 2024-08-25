@@ -27,7 +27,7 @@
 (defn- capability-resource
   {:arglists '([context structure-definition])}
   [{:keys [resource-patterns operations search-param-registry
-           enforce-referential-integrity]
+           enforce-referential-integrity allow-multiple-delete]
     :or {enforce-referential-integrity true}}
    {:keys [name url] :as structure-definition}]
   (when-let
@@ -64,7 +64,10 @@
                :conditionalCreate true
                :conditionalRead #fhir/code"not-supported"
                :conditionalUpdate false
-               :conditionalDelete #fhir/code"not-supported"
+               :conditionalDelete
+               (if allow-multiple-delete
+                 #fhir/code"multiple"
+                 #fhir/code"single")
                :referencePolicy
                (cond-> [#fhir/code"literal"
                         #fhir/code"local"]
@@ -236,7 +239,8 @@
     ::history-system-handler
     ::resource-patterns
     ::operations
-    :blaze.db/enforce-referential-integrity]))
+    :blaze.db/enforce-referential-integrity
+    :blaze.db/allow-multiple-delete]))
 
 (defmethod ig/init-key ::rest-api/capabilities-handler
   [_ {:keys [context-path] :or {context-path ""} :as config}]

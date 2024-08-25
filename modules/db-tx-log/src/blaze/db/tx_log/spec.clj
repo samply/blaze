@@ -19,7 +19,7 @@
   queue?)
 
 (s/def :blaze.db.tx-cmd/op
-  #{"create" "put" "keep" "delete"})
+  #{"create" "put" "keep" "delete" "conditional-delete"})
 
 (s/def :blaze.db.tx-cmd/type
   :fhir.resource/type)
@@ -40,6 +40,9 @@
   (s/or :any #{"*"} :t :blaze.db/t))
 
 (s/def :blaze.db.tx-cmd/check-refs
+  boolean?)
+
+(s/def :blaze.db.tx-cmd/allow-multiple
   boolean?)
 
 (defmulti tx-cmd "Transaction command" :op)
@@ -72,8 +75,17 @@
   (s/keys :req-un [:blaze.db.tx-cmd/op
                    :blaze.db.tx-cmd/type
                    :blaze.resource/id]
-          :opt-un [:blaze.db.tx-cmd/if-match
-                   :blaze.db.tx-cmd/check-refs]))
+          :opt-un [:blaze.db.tx-cmd/check-refs]))
+
+(s/def :blaze.db.tx-cmd/clauses
+  (s/coll-of :blaze.db.query/search-clause :kind vector? :min-count 1))
+
+(defmethod tx-cmd "conditional-delete" [_]
+  (s/keys :req-un [:blaze.db.tx-cmd/op
+                   :blaze.db.tx-cmd/type]
+          :opt-un [:blaze.db.tx-cmd/clauses
+                   :blaze.db.tx-cmd/check-refs
+                   :blaze.db.tx-cmd/allow-multiple]))
 
 (s/def :blaze.db/tx-cmd
   (s/multi-spec tx-cmd :op))

@@ -71,3 +71,9 @@
   [snapshot start-t start-tid start-id]
   (i/entries snapshot :system-as-of-index (map (decoder))
              (bs/from-byte-array (start-key start-t start-tid start-id))))
+
+(defn changes
+  "Returns a reducible collection of all resource handles changed at `t`."
+  [snapshot t]
+  (i/prefix-entries snapshot :system-as-of-index (map (decoder)) codec/t-size
+                    (bs/from-byte-array (start-key t nil nil))))
