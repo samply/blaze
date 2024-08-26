@@ -4,7 +4,10 @@
    [blaze.async.comp :as ac]
    [cognitect.anomalies :as anom]))
 
-(defn wrap-sync [handler]
+(defn wrap-sync
+  "This middleware acts as a translation layer between the future-based asnyc
+  handlers and traditional async ring handlers."
+  [handler]
   (fn [request respond raise]
     (-> (try
           (handler request)
