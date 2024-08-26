@@ -199,6 +199,9 @@
 (defmacro if-ok
   "Like `if-let` or `if-some` but tests for anomalies.
 
+  Unlike the normal `if-let` macro, in this macro the `else` branch requires a
+  function, which will be called with the anomaly as an argument.
+
   Each binding consists of a binding-form and an expression. The expression is
   evaluated with all upper binding forms in scope and tested for anomalies. If
   an anomaly is detected, the result of calling the `else` function with it is

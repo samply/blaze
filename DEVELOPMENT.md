@@ -62,6 +62,10 @@ The Clojure code in this project mainly follows the [Clojure Style Guide][2], en
 
 For most parts Blaze is implemented using pure functions. Pure function depend only on their arguments and only produce an output without doing any side effects. Pure functions have one important property, they are referentially transparent, meaning it doesn't matter when or how often they are called.
 
+## Error Handling
+
+When handling error, we use [anomalies][3] instead of exceptions. In short, the idea behind anomalies is to separate the context in which an error occurs from the error itself **without interrupting theexecution flow**. In order to use anomalies effectively, please check the [anomaly module](modules/anomaly/).
+
 ## Components
 
 In a world of functions, there is still a need for some nouns. Such nouns are components, thing that exist in Blaze and possibly have state. A good example is the local database node which represents the local portion of the database, which for sure has state.
@@ -123,3 +127,4 @@ It is important to avoid using reflection. In order to see reflection warnings, 
 
 [1]: <https://github.com/weavejester/integrant>
 [2]: <https://github.com/bbatsov/clojure-style-guide>
+[3]: <https://github.com/cognitect-labs/anomalies/>
