@@ -12,6 +12,7 @@
    [blaze.handler.util :as handler-util]
    [blaze.interaction.history.util :as history-util]
    [blaze.module :as m]
+   [blaze.page-id-cipher.spec]
    [blaze.spec]
    [blaze.util :refer [conj-vec]]
    [clojure.spec.alpha :as s]
@@ -61,7 +62,7 @@
               (update :link conj-vec (next-link (peek paged-version-handles))))))))))
 
 (defmethod m/pre-init-spec :blaze.interaction.history/system [_]
-  (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
+  (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-id-cipher]))
 
 (defmethod ig/init-key :blaze.interaction.history/system [_ context]
   (log/info "Init FHIR history system interaction handler")
@@ -79,5 +80,5 @@
                          :blaze/db db
                          ::reitit/router router
                          ::reitit/match (match router :history)
-                         ::reitit/page-match (match router :history-page))]
+                         :page-match #(reitit/match-by-name router :history-page {:page-id %}))]
       (build-response context params total version-handles since))))

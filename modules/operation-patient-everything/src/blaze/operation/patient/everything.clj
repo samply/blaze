@@ -8,6 +8,7 @@
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.interaction.search.util :as search-util]
    [blaze.luid :as luid]
+   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.module :as m]
    [blaze.spec]
    [clojure.spec.alpha :as s]
@@ -49,13 +50,22 @@
 (defn- luid [{:keys [clock rng-fn]}]
   (luid/luid clock (rng-fn)))
 
+(defn- page-match [{::reitit/keys [router] {:keys [id]} :path-params} page-id]
+  (reitit/match-by-name router :Patient.operation/everything-page
+                        {:id id :page-id page-id}))
+
 (defn- next-link
-  [{:blaze/keys [base-url db] ::reitit/keys [match]} page-size offset]
+  [{:keys [page-id-cipher]} {:blaze/keys [base-url db] :as request} page-size
+   offset]
   {:fhir/type :fhir.Bundle/link
    :relation "next"
-   :url (str base-url (reitit/match->path match {"_count" page-size
-                                                 "__t" (d/t db)
-                                                 "__page-offset" offset}))})
+   :url (->> {"_count" (str page-size)
+              "__t" (str (d/t db))
+              "__page-offset" (str offset)}
+             (decrypt-page-id/encrypt page-id-cipher)
+             (page-match request)
+             (reitit/match->path)
+             (str base-url))})
 
 (defn- bundle [context request resources page-size next-offset]
   (let [entries (mapv (partial search-util/entry request) resources)]
@@ -66,7 +76,7 @@
       :entry entries}
 
       (some? next-offset)
-      (assoc :link [(next-link request page-size next-offset)])
+      (assoc :link [(next-link context request page-size next-offset)])
 
       (nil? page-size)
       (assoc :total (type/->UnsignedInt (count entries))))))
@@ -81,7 +91,7 @@
           (ring/response (bundle context request resources page-size next-offset)))))))
 
 (defmethod m/pre-init-spec :blaze.operation.patient/everything [_]
-  (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
+  (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-id-cipher]))
 
 (defmethod ig/init-key :blaze.operation.patient/everything [_ context]
   (log/info "Init FHIR Patient $everything operation handler")

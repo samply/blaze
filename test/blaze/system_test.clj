@@ -1,7 +1,7 @@
 (ns blaze.system-test
   (:require
    [blaze.async.comp :as ac]
-   [blaze.db.api-stub :refer [mem-node-config]]
+   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.interaction.conditional-delete-type]
@@ -11,6 +11,8 @@
    [blaze.interaction.search-system]
    [blaze.interaction.search-type]
    [blaze.interaction.transaction]
+   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
+   [blaze.middleware.fhir.decrypt-page-id-spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.module.test-util.ring :refer [call]]
    [blaze.page-store.protocols :as pp]
@@ -25,6 +27,7 @@
    [buddy.auth.protocols :as ap]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
    [clojure.test :as test :refer [are deftest testing]]
    [integrant.core :as ig]
    [juxt.iota :refer [given]]
@@ -103,6 +106,7 @@
     :node (ig/ref :blaze.db/node)
     :admin-node (ig/ref :blaze.db/node)
     :db-sync-timeout 10000
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)
     :auth-backends [(ig/ref ::auth-backend)]
     :search-system-handler (ig/ref :blaze.interaction/search-system)
     :transaction-handler (ig/ref :blaze.interaction/transaction)
@@ -130,14 +134,17 @@
    :blaze.interaction/search-system
    {:clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :page-store (ig/ref ::page-store)}
+    :page-store (ig/ref ::page-store)
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
    :blaze.interaction/search-type
    {:clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :page-store (ig/ref ::page-store)}
+    :page-store (ig/ref ::page-store)
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
    :blaze.interaction.history/type
    {:clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
    ::rest-api/async-status-handler
    {}
    ::rest-api/async-status-cancel-handler
@@ -180,7 +187,8 @@
    :blaze.test/executor {}
    :blaze.test/fixed-clock {}
    :blaze.test/fixed-rng-fn {}
-   ::page-store {}))
+   ::page-store {}
+   :blaze.test/page-id-cipher {}))
 
 (defmethod ig/init-key ::auth-backend
   [_ _]
@@ -303,7 +311,19 @@
   (with-system [{:blaze/keys [rest-api]} config]
     (given (call rest-api {:request-method :get :uri ""})
       :status := 200
-      [:body fhir-spec/parse-json :resourceType] := "Bundle")))
+      [:headers "Link"] := "<http://localhost:8080?_count=50>;rel=\"self\""
+      [:body fhir-spec/parse-json :resourceType] := "Bundle"))
+
+  (testing "with two patients"
+    (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [page-id-cipher]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+      (given (call rest-api {:request-method :get :uri "" :query-string "_count=1"})
+        :status := 200
+        [:headers "Link" #(str/split % #",") 0] := "<http://localhost:8080?_count=1>;rel=\"self\""
+        [:headers "Link" #(str/split % #",") 1] := (format "<http://localhost:8080/__page/%s>;rel=\"next\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "1" "__page-type" "Patient" "__page-id" "1"}))
+        [:body fhir-spec/parse-json :resourceType] := "Bundle"))))
 
 (deftest search-type-test
   (testing "using GET"
@@ -311,23 +331,77 @@
       (given (call rest-api {:request-method :get :uri "/Patient"})
         :status := 200
         [:headers "Link"] := "<http://localhost:8080/Patient?_count=50>;rel=\"self\""
-        [:body fhir-spec/parse-json :resourceType] := "Bundle")))
-
-  (testing "using POST"
-    (with-system [{:blaze/keys [rest-api]} config]
-      (given (call rest-api {:request-method :post :uri "/Patient/_search"
-                             :headers {"content-type" "application/x-www-form-urlencoded"}
-                             :body (input-stream (byte-array 0))})
-        :status := 200
         [:body fhir-spec/parse-json :resourceType] := "Bundle"))
 
+    (testing "with two patients"
+      (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [page-id-cipher]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+        (given (call rest-api {:request-method :get :uri "/Patient" :query-string "_count=1"})
+          :status := 200
+          [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "1"}))
+          [:headers "Link" #(str/split % #",") 1] := "<http://localhost:8080/Patient?_count=1>;rel=\"self\""
+          [:headers "Link" #(str/split % #",") 2] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "1" "__page-id" "1"}))
+          [:body fhir-spec/parse-json :resourceType] := "Bundle")
+
+        (testing "fetch the second page"
+          (given (call rest-api {:request-method :get :uri (str "/Patient/__page/" (decrypt-page-id/encrypt page-id-cipher {"__page-id" "1" "__t" "1" "_count" "1"}))})
+            :status := 200
+
+            [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "1"}))
+            [:body fhir-spec/parse-json :resourceType] := "Bundle"))
+
+        (testing "fetch an unknown page"
+          (given (call rest-api {:request-method :get :uri "/Patient/__page/unknown"})
+            :status := 404
+
+            [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))))
+
+  (testing "using POST"
     (testing "with unsupported media-type"
       (with-system [{:blaze/keys [rest-api]} config]
         (given (call rest-api {:request-method :post :uri "/Patient/_search"
                                :headers {"content-type" "application/fhir+json"}
                                :body (input-stream (byte-array 0))})
           :status := 415
-          [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))))
+          [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
+
+    (with-system [{:blaze/keys [rest-api]} config]
+      (given (call rest-api {:request-method :post :uri "/Patient/_search"
+                             :headers {"content-type" "application/x-www-form-urlencoded"}
+                             :body (input-stream (byte-array 0))})
+        :status := 200
+        [:headers "Link"] := "<http://localhost:8080/Patient?_count=50>;rel=\"self\""
+        [:body fhir-spec/parse-json :resourceType] := "Bundle"))
+
+    (testing "with two patients"
+      (with-system-data [{:blaze/keys [rest-api] :blaze.test/keys [page-id-cipher]} config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]
+          [:put {:fhir/type :fhir/Patient :id "1"}]]]
+
+        (given (call rest-api {:request-method :post :uri "/Patient/_search"
+                               :query-string "_count=1"
+                               :headers {"content-type" "application/x-www-form-urlencoded"}
+                               :body (input-stream (byte-array 0))})
+          :status := 200
+          [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "1"}))
+          [:headers "Link" #(str/split % #",") 1] := "<http://localhost:8080/Patient?_count=1>;rel=\"self\""
+          [:headers "Link" #(str/split % #",") 2] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"next\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "1" "__page-id" "1"}))
+          [:body fhir-spec/parse-json :resourceType] := "Bundle")
+
+        (testing "fetch the second page"
+          (given (call rest-api {:request-method :post :uri (str "/Patient/__page/" (decrypt-page-id/encrypt page-id-cipher {"__page-id" "1" "__t" "1" "_count" "1"}))})
+            :status := 200
+
+            [:headers "Link" #(str/split % #",") 0] := (format "<http://localhost:8080/Patient/__page/%s>;rel=\"first\"" (decrypt-page-id/encrypt page-id-cipher {"_count" "1" "__t" "1"}))
+            [:body fhir-spec/parse-json :resourceType] := "Bundle"))
+
+        (testing "fetch an unknown page"
+          (given (call rest-api {:request-method :post :uri "/Patient/__page/unknown"})
+            :status := 404
+
+            [:body fhir-spec/parse-json :resourceType] := "OperationOutcome"))))))
 
 (deftest history-type-test
   (with-system [{:blaze/keys [rest-api]} config]

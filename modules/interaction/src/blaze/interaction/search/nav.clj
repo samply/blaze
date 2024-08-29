@@ -1,10 +1,13 @@
 (ns blaze.interaction.search.nav
   (:require
    [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.page-store :as page-store]
    [blaze.util :refer [conj-vec]]
    [clojure.string :as str]
    [reitit.core :as reitit]))
+
+(set! *warn-on-reflection* true)
 
 (defmulti clause->query-param (fn [_ret [key]] key))
 
@@ -79,7 +82,7 @@
     (seq elements)
     (assoc "_elements" (str/join "," (map name elements)))
     page-size
-    (assoc "_count" page-size)))
+    (assoc "_count" (str page-size))))
 
 (defn- query-params [params clauses]
   (merge-params (clauses->query-params clauses) params))
@@ -98,11 +101,16 @@
 (defn token-url!
   "Returns a CompletableFuture that will complete with a URL that will encode
   `clauses` in a token."
-  [page-store base-url match params clauses t offset]
+  [{:keys [page-store page-id-cipher] :blaze/keys [base-url]} match params
+   clauses t offset]
   (do-sync [query-params (token-query-params! page-store params clauses)]
-    (str base-url (reitit/match->path match (-> query-params
-                                                (assoc "__t" t)
-                                                (merge offset))))))
+    (->> (-> query-params
+             (assoc "__t" (str t))
+             (merge offset))
+         (decrypt-page-id/encrypt page-id-cipher)
+         (match)
+         (reitit/match->path)
+         (str base-url))))
 
 (defn- clauses->token-query-params [token clauses]
   (if token {"__token" token} (clauses->query-params clauses)))
@@ -111,8 +119,12 @@
   (merge-params (clauses->token-query-params token clauses) params))
 
 (defn token-url
-  [base-url match params token clauses t offset]
+  [base-url page-id-cipher match params token clauses t offset]
   (let [query-params (token-query-params params token clauses)]
-    (str base-url (reitit/match->path match (-> query-params
-                                                (assoc "__t" t)
-                                                (merge offset))))))
+    (->> (-> query-params
+             (assoc "__t" (str t))
+             (merge offset))
+         (decrypt-page-id/encrypt page-id-cipher)
+         (match)
+         (reitit/match->path)
+         (str base-url))))

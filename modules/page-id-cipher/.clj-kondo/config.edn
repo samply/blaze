@@ -1,0 +1,4 @@
+{:config-paths
+ ["../../../.clj-kondo/root"
+  "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"
+  "../../fhir-test-util/resources/clj-kondo.exports/blaze/fhir-test-util"]}

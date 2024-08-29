@@ -18,6 +18,9 @@
    [blaze.job-scheduler-spec]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
+   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
+   [blaze.middleware.fhir.decrypt-page-id-spec]
+   [blaze.page-id-cipher.spec :refer [page-id-cipher?]]
    [blaze.page-store-spec]
    [blaze.page-store.local]
    [blaze.page-store.spec :refer [page-store?]]
@@ -34,6 +37,7 @@
   (:import
    [java.time Instant]))
 
+(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-min-level! :trace)
 
@@ -45,23 +49,23 @@
 (def router
   (reitit/router
    [["/Patient" {:name :Patient/type}]
-    ["/Patient/__page" {:name :Patient/page}]
+    ["/Patient/__page/{page-id}" {:name :Patient/page}]
     ["/MeasureReport" {:name :MeasureReport/type}]
-    ["/MeasureReport/__page" {:name :MeasureReport/page}]
+    ["/MeasureReport/__page/{page-id}" {:name :MeasureReport/page}]
     ["/Library" {:name :Library/type}]
-    ["/Library/__page" {:name :Library/page}]
+    ["/Library/__page/{page-id}" {:name :Library/page}]
     ["/List" {:name :List/type}]
-    ["/List/__page" {:name :List/page}]
+    ["/List/__page/{page-id}" {:name :List/page}]
     ["/Condition" {:name :Condition/type}]
-    ["/Condition/__page" {:name :Condition/page}]
+    ["/Condition/__page/{page-id}" {:name :Condition/page}]
     ["/Observation" {:name :Observation/type}]
-    ["/Observation/__page" {:name :Observation/page}]
+    ["/Observation/__page/{page-id}" {:name :Observation/page}]
     ["/MedicationStatement" {:name :MedicationStatement/type}]
-    ["/MedicationStatement/__page" {:name :MedicationStatement/page}]
+    ["/MedicationStatement/__page/{page-id}" {:name :MedicationStatement/page}]
     ["/Medication" {:name :Medication/type}]
     ["/Organization" {:name :Organization/type}]
     ["/Encounter" {:name :Encounter/type}]
-    ["/Encounter/__page" {:name :Encounter/page}]]
+    ["/Encounter/__page/{page-id}" {:name :Encounter/page}]]
    {:syntax :bracket
     :path context-path}))
 
@@ -69,6 +73,13 @@
   (reitit/map->Match
    {:data
     {:name (keyword type "type")
+     :fhir.resource/type type}
+    :path (str context-path "/" type)}))
+
+(defn page-match-of [type]
+  (reitit/map->Match
+   {:data
+    {:name (keyword type "page")
      :fhir.resource/type type}
     :path (str context-path "/" type)}))
 
@@ -80,11 +91,7 @@
     :path (str context-path "/Patient")}))
 
 (def patient-page-match
-  (reitit/map->Match
-   {:data
-    {:name :Patient/page
-     :fhir.resource/type "Patient"}
-    :path (str context-path "/Patient")}))
+  (page-match-of "Patient"))
 
 (deftest init-test
   (testing "nil config"
@@ -99,7 +106,8 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
 
   (testing "invalid clock"
     (given-thrown (ig/init {:blaze.interaction/search-type {:clock ::invalid}})
@@ -107,8 +115,9 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
-      [:cause-data ::s/problems 2 :pred] := `time/clock?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
+      [:cause-data ::s/problems 3 :pred] := `time/clock?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid rng-fn"
     (given-thrown (ig/init {:blaze.interaction/search-type {:rng-fn ::invalid}})
@@ -116,8 +125,9 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
-      [:cause-data ::s/problems 2 :pred] := `fn?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
+      [:cause-data ::s/problems 3 :pred] := `fn?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid page-store"
     (given-thrown (ig/init {:blaze.interaction/search-type {:page-store ::invalid}})
@@ -125,8 +135,19 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `page-store?
-      [:cause-data ::s/problems 2 :val] := ::invalid))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
+      [:cause-data ::s/problems 3 :pred] := `page-store?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
+
+  (testing "invalid page-id-cipher"
+    (given-thrown (ig/init {:blaze.interaction/search-type {:page-id-cipher ::invalid}})
+      :key := :blaze.interaction/search-type
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
+      [:cause-data ::s/problems 3 :pred] := `page-id-cipher?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid context-path"
     (given-thrown (ig/init {:blaze.interaction/search-type {:context-path ::invalid}})
@@ -135,8 +156,9 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
-      [:cause-data ::s/problems 3 :pred] := `string?
-      [:cause-data ::s/problems 3 :val] := ::invalid)))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
+      [:cause-data ::s/problems 4 :pred] := `string?
+      [:cause-data ::s/problems 4 :val] := ::invalid)))
 
 (def config
   (assoc
@@ -145,6 +167,7 @@
    {:clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-store (ig/ref :blaze.page-store/local)
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)
     :context-path context-path}
    :blaze/job-scheduler
    {:node (ig/ref :blaze.db/node)
@@ -152,7 +175,8 @@
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
    :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
    :blaze.test/fixed-rng-fn {}
-   :blaze.test/fixed-rng {}))
+   :blaze.test/fixed-rng {}
+   :blaze.test/page-id-cipher {}))
 
 (defn- wrap-defaults [handler]
   (fn [{::reitit/keys [match] :as request}]
@@ -163,27 +187,38 @@
        (nil? match)
        (assoc ::reitit/match (match-of "Patient"))))))
 
-(defn- wrap-db [handler node]
+(defn- wrap-db [handler node page-id-cipher]
   (fn [{::reitit/keys [match] :as request}]
-    (if (= patient-page-match match)
-      ((db/wrap-snapshot-db handler node 100) request)
+    (if (= "page" (some-> match :data :name name))
+      ((decrypt-page-id/wrap-decrypt-page-id
+        (db/wrap-snapshot-db handler node 100)
+        page-id-cipher)
+       request)
       ((db/wrap-db handler node 100) request))))
 
 (defn- wrap-job-scheduler [handler job-scheduler]
   (fn [request]
     (handler (assoc request :blaze/job-scheduler job-scheduler))))
 
-(defmacro with-handler [[handler-binding & [node-binding]] & more]
+(defmacro with-handler [[handler-binding & [node-binding page-id-cipher-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
+                         page-id-cipher# :blaze.test/page-id-cipher
                          job-scheduler# :blaze/job-scheduler
                          handler# :blaze.interaction/search-type} config]
        ~txs
-       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# page-id-cipher#)
                                   (wrap-job-scheduler job-scheduler#)
                                   wrap-error)
-             ~(or node-binding '_) node#]
+             ~(or node-binding '_) node#
+             ~(or page-id-cipher-binding '_) page-id-cipher#]
          ~@body))))
+
+(defn- page-url [page-id-cipher type query-params]
+  (str base-url context-path "/" type "/__page/" (decrypt-page-id/encrypt page-id-cipher query-params)))
+
+(defn- page-path-params [page-id-cipher params]
+  {:page-id (decrypt-page-id/encrypt page-id-cipher params)})
 
 (deftest handler-test
   (testing "on unknown search parameter"
@@ -551,11 +586,11 @@
 
   (testing "on invalid token"
     (testing "returns error"
-      (with-handler [handler]
+      (with-handler [handler _ page-id-cipher]
         (let [{:keys [status body]}
               @(handler
                 {::reitit/match patient-page-match
-                 :params {"__t" "0" "__token" "invalid-token-175424"}})]
+                 :path-params (page-path-params page-id-cipher {"__t" "0" "__token" "invalid-token-175424"})})]
 
           (is (= 422 status))
 
@@ -567,11 +602,11 @@
 
   (testing "on missing token"
     (testing "returns error"
-      (with-handler [handler]
+      (with-handler [handler _ page-id-cipher]
         (let [{:keys [status body]}
               @(handler
                 {::reitit/match patient-page-match
-                 :params {"__t" "0" "__token" (str/join (repeat 32 "A"))}})]
+                 :path-params (page-path-params page-id-cipher {"__t" "0" "__token" (str/join (repeat 32 "A"))})})]
 
           (is (= 404 status))
 
@@ -671,7 +706,7 @@
             (is (empty? (:entry body))))))))
 
   (testing "with two patients"
-    (with-handler [handler node]
+    (with-handler [handler node page-id-cipher]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
@@ -688,34 +723,11 @@
                    (link-url body "self"))))
 
           (testing "has a first link"
-            (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1")
+            (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
                    (link-url body "first"))))
 
           (testing "has a next link"
-            (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1&__page-id=1")
-                   (link-url body "next"))))
-
-          (testing "the bundle contains one entry"
-            (is (= 1 (count (:entry body)))))))
-
-      (testing "following the self link"
-        (let [{:keys [body]}
-              @(handler
-                {:params {"_count" "1" "__t" "1" "__page-id" "0"}})]
-
-          (testing "the total count is 2"
-            (is (= #fhir/unsignedInt 2 (:total body))))
-
-          (testing "has a self link"
-            (is (= (str base-url context-path "/Patient?_count=1")
-                   (link-url body "self"))))
-
-          (testing "has a first link"
-            (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1")
-                   (link-url body "first"))))
-
-          (testing "has a next link"
-            (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1&__page-id=1")
+            (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1" "__page-id" "1"})
                    (link-url body "next"))))
 
           (testing "the bundle contains one entry"
@@ -724,17 +736,17 @@
       (testing "following the next link"
         (let [{:keys [body]}
               @(handler
-                {:params {"_count" "1" "__t" "1" "__page-id" "1"}})]
+                {::reitit/match patient-page-match
+                 :path-params (page-path-params page-id-cipher {"_count" "1" "__t" "1" "__page-id" "1"})})]
 
           (testing "the total count is 2"
             (is (= #fhir/unsignedInt 2 (:total body))))
 
-          (testing "has a self link"
-            (is (= (str base-url context-path "/Patient?_count=1")
-                   (link-url body "self"))))
+          (testing "has no self link"
+            (is (nil? (link-url body "self"))))
 
           (testing "has a first link"
-            (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1")
+            (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
                    (link-url body "first"))))
 
           (testing "has no next link"
@@ -758,11 +770,11 @@
                      (link-url body "self"))))
 
             (testing "has a first link"
-              (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1")
+              (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
                      (link-url body "first"))))
 
             (testing "has a next link"
-              (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1&__page-id=1")
+              (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1" "__page-id" "1"})
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
@@ -775,7 +787,7 @@
           (let [{:keys [body]}
                 @(handler
                   {::reitit/match patient-page-match
-                   :params {"_count" "1" "__t" "1" "__page-id" "1"}})]
+                   :path-params (page-path-params page-id-cipher {"_count" "1" "__t" "1" "__page-id" "1"})})]
 
             (testing "the total count is 2"
               (is (= #fhir/unsignedInt 2 (:total body))))
@@ -784,7 +796,7 @@
               (is (nil? (link-url body "self"))))
 
             (testing "has a first link"
-              (is (= (str base-url context-path "/Patient/__page?_count=1&__t=1")
+              (is (= (page-url page-id-cipher "Patient" {"_count" "1" "__t" "1"})
                      (link-url body "first"))))
 
             (testing "has no next link"
@@ -794,7 +806,7 @@
               (is (= 1 (count (:entry body))))))))))
 
   (testing "with three patients"
-    (with-handler [handler]
+    (with-handler [handler _ page-id-cipher]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1" :active true}]
         [:put {:fhir/type :fhir/Patient :id "2" :active true}]]]
@@ -832,11 +844,11 @@
                      (link-url body "self"))))
 
             (testing "has a first link"
-              (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1")
+              (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_count" "1" "__t" "1"})
                      (link-url body "first"))))
 
             (testing "has a next link with search params"
-              (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1&__page-id=2")
+              (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_count" "1" "__t" "1" "__page-id" "2"})
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
@@ -879,11 +891,11 @@
                      (link-url body "self"))))
 
             (testing "has a first link with token"
-              (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1")
+              (is (= (page-url page-id-cipher "Patient" {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1"})
                      (link-url body "first"))))
 
             (testing "has a next link with token"
-              (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1&__page-id=2")
+              (is (= (page-url page-id-cipher "Patient" {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"})
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
@@ -911,35 +923,11 @@
             (testing "the bundle contains no entry"
               (is (zero? (count (:entry body))))))))
 
-      (testing "following the self link"
-        (let [{:keys [body]}
-              @(handler
-                {:params {"active" "true" "_count" "1" "__t" "1" "__page-id" "1"}})]
-
-          (testing "their is no total count because we have clauses and we have
-                    more hits than page-size"
-            (is (nil? (:total body))))
-
-          (testing "has a self link"
-            (is (= (str base-url context-path "/Patient?active=true&_count=1")
-                   (link-url body "self"))))
-
-          (testing "has a first link with search params"
-            (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1")
-                   (link-url body "first"))))
-
-          (testing "has a next link with search params"
-            (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1&__page-id=2")
-                   (link-url body "next"))))
-
-          (testing "the bundle contains one entry"
-            (is (= 1 (count (:entry body)))))))
-
       (testing "following the next link"
         (let [{:keys [body]}
               @(handler
                 {::reitit/match patient-page-match
-                 :params {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"}})]
+                 :path-params (page-path-params page-id-cipher {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"})})]
 
           (testing "their is no total count because we have clauses and we have
                     more hits than page-size"
@@ -949,7 +937,7 @@
             (is (nil? (link-url body "self"))))
 
           (testing "has a first link with token"
-            (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1")
+            (is (= (page-url page-id-cipher "Patient" {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1"})
                    (link-url body "first"))))
 
           (testing "has no next link"
@@ -959,7 +947,7 @@
             (is (= 1 (count (:entry body)))))))))
 
   (testing "with four patients"
-    (with-handler [handler]
+    (with-handler [handler _ page-id-cipher]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1" :active true}]
         [:put {:fhir/type :fhir/Patient :id "2" :active true}]
@@ -972,7 +960,7 @@
                   {:params {"active" "true" "_count" "1"}})]
 
             (testing "has a next link with search params"
-              (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1&__page-id=2")
+              (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_count" "1" "__t" "1" "__page-id" "2"})
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
@@ -982,13 +970,13 @@
           (let [{:keys [body]}
                 @(handler
                   {::reitit/match patient-page-match
-                   :params {"active" "true" "_count" "1" "__t" "1" "__page-id" "2"}})]
+                   :path-params (page-path-params page-id-cipher {"active" "true" "_count" "1" "__t" "1" "__page-id" "2"})})]
 
             (testing "has no self link"
               (is (nil? (link-url body "self"))))
 
             (testing "has a next link with search params"
-              (is (= (str base-url context-path "/Patient/__page?active=true&_count=1&__t=1&__page-id=3")
+              (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_count" "1" "__t" "1" "__page-id" "3"})
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
@@ -1002,24 +990,24 @@
                    :params {"active" "true" "_count" "1"}})]
 
             (testing "has a first link with token"
-              (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1")
+              (is (= (page-url page-id-cipher "Patient" {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1"})
                      (link-url body "first"))))
 
             (testing "has a first link with token"
-              (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1&__page-id=2")
+              (is (= (page-url page-id-cipher "Patient" {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"})
                      (link-url body "next"))))))
 
         (testing "following the next link"
           (let [{:keys [body]}
                 @(handler
                   {::reitit/match patient-page-match
-                   :params {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"}})]
+                   :path-params (page-path-params page-id-cipher {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"})})]
 
             (testing "has no self link"
               (is (nil? (link-url body "self"))))
 
             (testing "has a next link with token"
-              (is (= (str base-url context-path "/Patient/__page?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_count=1&__t=1&__page-id=3")
+              (is (= (page-url page-id-cipher "Patient" {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "3"})
                      (link-url body "next")))))))))
 
   (testing "_id search"
@@ -1277,7 +1265,7 @@
               (is (zero? (count (:entry body))))))))))
 
   (testing "_id sort"
-    (with-handler [handler]
+    (with-handler [handler _ page-id-cipher]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
        [[:put {:fhir/type :fhir/Patient :id "2"}]]
        [[:put {:fhir/type :fhir/Patient :id "1"}]]]
@@ -1314,7 +1302,7 @@
                      (link-url body "self"))))
 
             (testing "has a first link"
-              (is (= (str base-url context-path "/Patient/__page?_sort=_id&_count=50&__t=3")
+              (is (= (page-url page-id-cipher "Patient" {"_sort" "_id" "_count" "50" "__t" "3"})
                      (link-url body "first")))))))
 
       (testing "descending"
@@ -1333,7 +1321,7 @@
               [:issue 0 :diagnostics] := "Unsupported sort direction `desc` for search param `_id`."))))))
 
   (testing "_lastUpdated sort"
-    (with-handler [handler]
+    (with-handler [handler _ page-id-cipher]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
        [[:put {:fhir/type :fhir/Patient :id "1"}]]
        [[:put {:fhir/type :fhir/Patient :id "2"}]]]
@@ -1370,7 +1358,7 @@
                      (link-url body "self"))))
 
             (testing "has a first link"
-              (is (= (str base-url context-path "/Patient/__page?_sort=_lastUpdated&_count=50&__t=3")
+              (is (= (page-url page-id-cipher "Patient" {"_sort" "_lastUpdated" "_count" "50" "__t" "3"})
                      (link-url body "first")))))))
 
       (testing "descending"
@@ -1405,7 +1393,7 @@
                      (link-url body "self"))))
 
             (testing "has a first link"
-              (is (= (str base-url context-path "/Patient/__page?_sort=-_lastUpdated&_count=50&__t=3")
+              (is (= (page-url page-id-cipher "Patient" {"_sort" "-_lastUpdated" "_count" "50" "__t" "3"})
                      (link-url body "first")))))))))
 
   (testing "_profile search"
@@ -1931,7 +1919,7 @@
               :id := "id-143814"))))))
 
   (testing "Observation combo-code-value-quantity search"
-    (with-handler [handler]
+    (with-handler [handler _ page-id-cipher]
       [[[:put {:fhir/type :fhir/Observation :id "id-121049"
                :component
                [{:fhir/type :fhir.Observation/component
@@ -2008,7 +1996,12 @@
             (is (= 1 (count (:entry body)))))
 
           (testing "has a next link with search params"
-            (is (= (str base-url context-path "/Observation/__page?combo-code-value-quantity=http%3A%2F%2Floinc.org%7C8480-6%24ge140%7Cmm%5BHg%5D&combo-code-value-quantity=http%3A%2F%2Floinc.org%7C8462-4%24ge90%7Cmm%5BHg%5D&_count=1&__t=2&__page-id=id-123130")
+            (is (= (page-url page-id-cipher "Observation"
+                             {"combo-code-value-quantity"
+                              ["http://loinc.org|8480-6$ge140|mm[Hg]"
+                               "http://loinc.org|8462-4$ge90|mm[Hg]"]
+                              "_count" "1" "__t" "2"
+                              "__page-id" "id-123130"})
                    (link-url body "next"))))))))
 
   (testing "Duplicate OR Search Parameters have no Effect (#293)"
@@ -2051,7 +2044,7 @@
               [:code :coding 0 :code] := #fhir/code"C71.4"))))))
 
   (testing "Paging works with OR Search Parameters"
-    (with-handler [handler]
+    (with-handler [handler _ page-id-cipher]
       [[[:put {:fhir/type :fhir/Condition :id "0"
                :code
                #fhir/CodeableConcept
@@ -2074,10 +2067,10 @@
       (doseq [handling ["strict" "lenient"]]
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
-                {::reitit/match (match-of "Condition")
+                {::reitit/match (page-match-of "Condition")
                  :headers {"prefer" (str "handling=" handling)}
-                 :params {"code" "0,1" "_count" "2"
-                          "__t" "1" "__page-id" "1"}})]
+                 :path-params (page-path-params page-id-cipher {"code" "0,1" "_count" "2"
+                                                                "__t" "1" "__page-id" "1"})})]
 
           (is (= 200 status))
 
@@ -2168,7 +2161,7 @@
 
   (testing "Include Resources"
     (testing "direct include"
-      (with-handler [handler]
+      (with-handler [handler _ page-id-cipher]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
                  :subject #fhir/Reference{:reference "Patient/0"}}]]]
@@ -2194,7 +2187,9 @@
                    (link-url body "self"))))
 
           (testing "has a first link"
-            (is (= (str base-url context-path "/Observation/__page?_include=Observation%3Asubject&_count=50&__t=1")
+            (is (= (page-url page-id-cipher "Observation"
+                             {"_include" ["Observation:subject"]
+                              "_count" "50" "__t" "1"})
                    (link-url body "first"))))
 
           (testing "the bundle contains two entries"
@@ -2336,7 +2331,7 @@
                 [:search :mode] := #fhir/code"include")))))
 
       (testing "with paging"
-        (with-handler [handler]
+        (with-handler [handler _ page-id-cipher]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "1"
                    :subject #fhir/Reference{:reference "Patient/0"}}]
@@ -2361,7 +2356,10 @@
               (is (= #fhir/unsignedInt 2 (:total body))))
 
             (testing "has a next link"
-              (is (= (str base-url context-path "/Observation/__page?_include=Observation%3Asubject&_count=1&__t=1&__page-id=3")
+              (is (= (page-url page-id-cipher "Observation"
+                               {"_include" ["Observation:subject"]
+                                "_count" "1" "__t" "1"
+                                "__page-id" "3"})
                      (link-url body "next"))))
 
             (testing "the bundle contains two entries"
@@ -2402,7 +2400,9 @@
                          (link-url body "self"))))
 
                 (testing "has a first link"
-                  (is (= (str base-url context-path "/Observation/__page?_include=Observation%3Asubject&_count=2&__t=1")
+                  (is (= (page-url page-id-cipher "Observation"
+                                   {"_include" ["Observation:subject"]
+                                    "_count" "2" "__t" "1"})
                          (link-url body "first"))))
 
                 (testing "the bundle contains two entries"
@@ -2517,7 +2517,7 @@
               [:search :mode] := #fhir/code"include")))))
 
     (testing "revinclude"
-      (with-handler [handler]
+      (with-handler [handler _ page-id-cipher]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "1"
                  :subject #fhir/Reference{:reference "Patient/0"}}]]]
@@ -2542,7 +2542,8 @@
                    (link-url body "self"))))
 
           (testing "has a first link"
-            (is (= (str base-url context-path "/Patient/__page?_revinclude=Observation%3Asubject&_count=50&__t=1")
+            (is (= (page-url page-id-cipher "Patient" {"_revinclude" ["Observation:subject"]
+                                                       "_count" "50" "__t" "1"})
                    (link-url body "first"))))
 
           (testing "the bundle contains two entries"
@@ -2561,7 +2562,7 @@
               [:search :mode] := #fhir/code"include"))))
 
       (testing "two revincludes"
-        (with-handler [handler]
+        (with-handler [handler _ page-id-cipher]
           [[[:put {:fhir/type :fhir/Patient :id "0"}]
             [:put {:fhir/type :fhir/Observation :id "1"
                    :subject #fhir/Reference{:reference "Patient/0"}}]
@@ -2589,7 +2590,8 @@
                      (link-url body "self"))))
 
             (testing "has a first link"
-              (is (= (str base-url context-path "/Patient/__page?_revinclude=Observation%3Asubject&_revinclude=Condition%3Asubject&_count=50&__t=1")
+              (is (= (page-url page-id-cipher "Patient" {"_revinclude" ["Observation:subject" "Condition:subject"]
+                                                         "_count" "50" "__t" "1"})
                      (link-url body "first"))))
 
             (testing "the bundle contains two entries"
@@ -2629,7 +2631,7 @@
             [:issue 0 :diagnostics] := "Missing search parameter code in _include search parameter with source type `Observation`.")))))
 
   (testing "_elements"
-    (with-handler [handler]
+    (with-handler [handler _ page-id-cipher]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
                :subject #fhir/Reference{:reference "Patient/0"}
@@ -2655,8 +2657,12 @@
         (testing "the total count is 2"
           (is (= #fhir/unsignedInt 2 (:total body))))
 
-        (testing "the next link includes the _elements query param"
-          (is (str/includes? (link-url body "next") "_elements=subject")))
+        (testing "has a next link"
+          (is (= (page-url page-id-cipher "Observation"
+                           {"_elements" "subject"
+                            "_count" "1" "__t" "1"
+                            "__page-id" "1"})
+                 (link-url body "next"))))
 
         (testing "the bundle contains one entry"
           (is (= 1 (count (:entry body)))))

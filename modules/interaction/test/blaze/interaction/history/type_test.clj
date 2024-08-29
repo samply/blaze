@@ -16,6 +16,9 @@
    [blaze.interaction.test-util :refer [wrap-error]]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
+   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
+   [blaze.middleware.fhir.decrypt-page-id-spec]
+   [blaze.page-id-cipher.spec :refer [page-id-cipher?]]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -30,7 +33,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -45,7 +48,7 @@
     ["/Patient/_history"
      {:fhir.resource/type "Patient"
       :name :Patient/history}]
-    ["/Patient/__history-page"
+    ["/Patient/__history-page/{page-id}"
      {:fhir.resource/type "Patient"
       :name :Patient/history-page}]]
    {:syntax :bracket
@@ -79,23 +82,46 @@
       :key := :blaze.interaction.history/type
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
 
   (testing "invalid clock"
     (given-thrown (ig/init {:blaze.interaction.history/type {:clock ::invalid}})
       :key := :blaze.interaction.history/type
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 1 :pred] := `time/clock?
-      [:cause-data ::s/problems 1 :val] := ::invalid)))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
+      [:cause-data ::s/problems 2 :pred] := `time/clock?
+      [:cause-data ::s/problems 2 :val] := ::invalid))
+
+  (testing "invalid rng-fn"
+    (given-thrown (ig/init {:blaze.interaction.history/type {:rng-fn ::invalid}})
+      :key := :blaze.interaction.history/type
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
+      [:cause-data ::s/problems 2 :pred] := `fn?
+      [:cause-data ::s/problems 2 :val] := ::invalid))
+
+  (testing "invalid page-id-cipher"
+    (given-thrown (ig/init {:blaze.interaction.history/type {:page-id-cipher ::invalid}})
+      :key := :blaze.interaction.history/type
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 2 :pred] := `page-id-cipher?
+      [:cause-data ::s/problems 2 :val] := ::invalid)))
 
 (def config
-  (assoc api-stub/mem-node-config
-         :blaze.interaction.history/type
-         {:node (ig/ref :blaze.db/node)
-          :clock (ig/ref :blaze.test/fixed-clock)
-          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-         :blaze.test/fixed-rng-fn {}))
+  (assoc
+   api-stub/mem-node-config
+   :blaze.interaction.history/type
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
+   :blaze.test/fixed-rng-fn {}
+   :blaze.test/page-id-cipher {}))
 
 (def system-clock-config
   (-> (assoc config :blaze.test/system-clock {})
@@ -110,21 +136,33 @@
        (nil? match)
        (assoc ::reitit/match default-match)))))
 
-(defn wrap-db [handler node]
+(defn wrap-db [handler node page-id-cipher]
   (fn [{::reitit/keys [match] :as request}]
     (if (= page-match match)
-      ((db/wrap-snapshot-db handler node 100) request)
+      ((decrypt-page-id/wrap-decrypt-page-id
+        (db/wrap-snapshot-db handler node 100)
+        page-id-cipher)
+       request)
       ((db/wrap-db handler node 100) request))))
 
-(defmacro with-handler [[handler-binding & [node-binding]] & more]
+(defmacro with-handler [[handler-binding & [node-binding page-id-cipher-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
+                         page-id-cipher# :blaze.test/page-id-cipher
                          handler# :blaze.interaction.history/type} config]
        ~txs
-       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node#)
+       (let [~handler-binding (-> handler# wrap-defaults
+                                  (wrap-db node# page-id-cipher#)
                                   wrap-error)
-             ~(or node-binding '_) node#]
+             ~(or node-binding '_) node#
+             ~(or page-id-cipher-binding '_) page-id-cipher#]
          ~@body))))
+
+(defn- page-url [page-id-cipher query-params]
+  (str base-url context-path "/Patient/__history-page/" (decrypt-page-id/encrypt page-id-cipher query-params)))
+
+(defn- page-path-params [page-id-cipher params]
+  {:page-id (decrypt-page-id/encrypt page-id-cipher params)})
 
 (deftest handler-test
   (testing "with empty node"
@@ -202,7 +240,7 @@
             :lastModified := Instant/EPOCH)))))
 
   (testing "with two patients in one transaction"
-    (with-handler [handler node]
+    (with-handler [handler node page-id-cipher]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Patient :id "1"}]]]
 
@@ -219,7 +257,7 @@
                  (link-url body "self"))))
 
         (testing "has a next link"
-          (is (= (str base-url context-path "/Patient/__history-page?_count=1&__t=1&__page-t=1&__page-id=1")
+          (is (= (page-url page-id-cipher {"_count" "1" "__t" "1" "__page-t" "1" "__page-id" "1"})
                  (link-url body "next"))))
 
         (testing "the entry has the right fullUrl"
@@ -233,8 +271,11 @@
         (let [{:keys [status] {[first-entry] :entry :as body} :body}
               @(handler
                 {::reitit/match page-match
-                 :params {"_count" "1" "__t" "1" "__page-t" "1"
-                          "__page-type" "Patient" "__page-id" "1"}})]
+                 :path-params
+                 (page-path-params
+                  page-id-cipher
+                  {"_count" "1" "__t" "1" "__page-t" "1"
+                   "__page-type" "Patient" "__page-id" "1"})})]
 
           (is (= 200 status))
 
@@ -253,7 +294,8 @@
                    (:fullUrl first-entry))))))))
 
   (testing "with two versions, using since"
-    (with-system-data [{:blaze.db/keys [node] :blaze.test/keys [system-clock]
+    (with-system-data [{:blaze.db/keys [node]
+                        :blaze.test/keys [system-clock page-id-cipher]
                         handler :blaze.interaction.history/type}
                        system-clock-config]
       [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"}]]]
@@ -263,7 +305,8 @@
             _ (Thread/sleep 2000)
             _ @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0"
                                         :gender #fhir/code"female"}]])
-            handler (-> handler wrap-defaults (wrap-db node) wrap-error)
+            handler (-> handler wrap-defaults (wrap-db node page-id-cipher)
+                        wrap-error)
             {:keys [body]}
             @(handler
               {:params {"_since" (str since)}})]

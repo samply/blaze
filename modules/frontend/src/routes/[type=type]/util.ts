@@ -58,11 +58,11 @@ export async function fetchBundleWithDuration(
 export async function fetchPageBundleWithDuration(
 	fetch: typeof window.fetch,
 	params: RouteParams,
-	url: URL
+	pageId: string
 ) {
 	const start = Date.now();
 
-	const res = await fetch(`${base}/${params.type}/__page?${processParams(url.searchParams)}`, {
+	const res = await fetch(`${base}/${params.type}/__page/${pageId}`, {
 		headers: { Accept: 'application/fhir+json' }
 	});
 

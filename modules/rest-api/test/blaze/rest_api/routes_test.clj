@@ -37,8 +37,8 @@
       [2] := ["" {:name :Patient/type}]
       [3] := ["/_history" {:name :Patient/history :conflicting true}]
       [4] := ["/_search" {:name :Patient/search :conflicting true}]
-      [5] := ["/__page" {:name :Patient/page :conflicting true}]
-      [6] := ["/__history-page" {:name :Patient/history-page :conflicting true}]
+      [5] := ["/__page/{page-id}" {:name :Patient/page :conflicting true}]
+      [6] := ["/__history-page/{page-id}" {:name :Patient/history-page :conflicting true}]
       [7 1 1 :name] := :Patient/instance
       [7 1 1 :conflicting] := true
       [7 1 1 :get :middleware count] := 1
@@ -135,7 +135,12 @@
      {:code "evaluate-measure"
       :resource-types ["Measure"]
       :type-handler (handler ::evaluate-measure-type)
-      :instance-handler (handler ::evaluate-measure-instance)}]
+      :instance-handler (handler ::evaluate-measure-instance)}
+    #:blaze.rest-api.operation
+     {:code "everything"
+      :resource-types ["Patient"]
+      :instance-handler (handler ::everything)
+      :instance-page-handler (handler ::everything-page)}]
    :capabilities-handler (handler ::capabilities)
    :metadata-handler (handler ::metadata)
    :admin-handler (handler ::admin)
@@ -166,20 +171,24 @@
           "" :get "search-system"
           "" :post "transaction"
           "/_history" :get "history-system"
-          "/__history-page" :get "history-system"
-          "/__page" :get "search-system"
-          "/__page" :post "search-system"
+          "/__page/0" :get "search-system"
+          "/__page/0" :post "search-system"
+          "/__history-page/0" :get "history-system"
           "/Patient" :get "search-type"
           "/Patient" :post "create"
           "/Patient/_search" :post "search-type"
           "/Patient/_history" :get "history-type"
-          "/Patient/__history-page" :get "history-type"
+          "/Patient/__page/0" :get "search-type"
+          "/Patient/__page/0" :post "search-type"
+          "/Patient/__history-page/0" :get "history-type"
           "/Patient/0" :get "read"
           "/Patient/0" :put "update"
           "/Patient/0" :delete "delete"
           "/Patient/0/_history" :get "history-instance"
-          "/Patient/0/__history-page" :get "history-instance"
+          "/Patient/0/__history-page/0" :get "history-instance"
           "/Patient/0/_history/42" :get "vread"
+          "/Patient/0/$everything" :get "operation-instance-everything"
+          "/Patient/0/__everything-page/0" :get "operation-instance-everything"
           "/Patient/0/Condition" :get "search-compartment"
           "/Patient/0/Observation" :get "search-compartment"
           "/$compact-db" :get "operation-system-compact-db"
@@ -203,23 +212,30 @@
         "" :get ::search-system
         "" :post ::transaction
         "/_history" :get ::history-system
-        "/__history-page" :get ::history-system
-        "/__page" :get ::search-system
-        "/__page" :post ::search-system
+        "/__page/0" :get ::search-system
+        "/__page/0" :post ::search-system
+        "/__history-page/0" :get ::history-system
         "/Patient" :get ::search-type
         "/Patient" :post ::create
         "/Patient" :delete ::conditional-delete-type
-        "/Patient/_history" :get ::history-type
-        "/Patient/__history-page" :get ::history-type
         "/Patient/_search" :post ::search-type
+        "/Patient/_history" :get ::history-type
+        "/Patient/__page/0" :get ::search-type
+        "/Patient/__page/0" :post ::search-type
+        "/Patient/__history-page/0" :get ::history-type
         "/Patient/0" :get ::read
         "/Patient/0" :put ::update
         "/Patient/0" :delete ::delete
         "/Patient/0/_history" :get ::history-instance
-        "/Patient/0/__history-page" :get ::history-instance
+        "/Patient/0/__history-page/0" :get ::history-instance
         "/Patient/0/_history/42" :get ::vread
+        "/Patient/0/$everything" :get ::everything
+        "/Patient/0/$everything" :post ::everything
+        "/Patient/0/__everything-page/0" :get ::everything-page
         "/Patient/0/Condition" :get ::search-patient-compartment
         "/Patient/0/Observation" :get ::search-patient-compartment
+        "/Patient/0/Condition/__page/0" :get ::search-patient-compartment
+        "/Patient/0/Observation/__page/0" :get ::search-patient-compartment
         "/$compact-db" :get ::compact-db
         "/$compact-db" :post ::compact-db
         "/Measure/$evaluate-measure" :get ::evaluate-measure-type
@@ -243,23 +259,25 @@
         "" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
         "" :post [:observe-request-duration :params :output :error :forwarded :sync :resource]
         "/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
-        "/__history-page" :get [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
-        "/__page" :get [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
-        "/__page" :post [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
+        "/__page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db :link-headers]
+        "/__page/0" :post [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db :link-headers]
+        "/__history-page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db :link-headers]
         "/Patient" :get [:observe-request-duration :params :output :error :forwarded :sync :db  :link-headers]
         "/Patient" :post [:observe-request-duration :params :output :error :forwarded :sync :resource]
         "/Patient" :delete [:observe-request-duration :params :output :error :forwarded :sync]
         "/Patient/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
-        "/Patient/__history-page" :get [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
+        "/Patient/__history-page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db :link-headers]
         "/Patient/_search" :post [:observe-request-duration :params :output :error :forwarded :sync :ensure-form-body :db :link-headers]
-        "/Patient/__page" :get [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
-        "/Patient/__page" :post [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
+        "/Patient/__page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db :link-headers]
+        "/Patient/__page/0" :post [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db :link-headers]
         "/Patient/0" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
         "/Patient/0" :put [:observe-request-duration :params :output :error :forwarded :sync :resource]
         "/Patient/0" :delete [:observe-request-duration :params :output :error :forwarded :sync]
         "/Patient/0/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
-        "/Patient/0/__history-page" :get [:observe-request-duration :params :output :error :forwarded :sync :snapshot-db :link-headers]
+        "/Patient/0/__history-page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db :link-headers]
         "/Patient/0/_history/42" :get [:observe-request-duration :params :output :error :forwarded :sync :versioned-instance-db]
+        "/Patient/0/$everything" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
+        "/Patient/0/__everything-page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db]
         "/Patient/0/Condition" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
         "/Patient/0/Observation" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
         "/$compact-db" :get [:observe-request-duration :params :output :error :forwarded :sync :db]

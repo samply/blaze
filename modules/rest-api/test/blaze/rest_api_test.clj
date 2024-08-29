@@ -113,6 +113,7 @@
     :async-status-cancel-handler success-handler
     :capabilities-handler (ig/ref ::rest-api/capabilities-handler)
     :db-sync-timeout 10000
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)
     :search-system-handler success-handler
     :transaction-handler success-handler
     :resource-patterns
@@ -142,7 +143,8 @@
     :search-param-registry (ig/ref :blaze.db/search-param-registry)}
    :blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}
-   :blaze.test/fixed-rng-fn {}))
+   :blaze.test/fixed-rng-fn {}
+   :blaze.test/page-id-cipher {}))
 
 (defmethod ig/init-key ::empty-structure-definition-repo
   [_ _]

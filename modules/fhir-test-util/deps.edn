@@ -15,4 +15,7 @@
   {:local/root "../fhir-structure"}
 
   blaze/module-test-util
-  {:local/root "../module-test-util"}}}
+  {:local/root "../module-test-util"}
+
+  com.google.crypto.tink/tink
+  {:mvn/version "1.15.0"}}}

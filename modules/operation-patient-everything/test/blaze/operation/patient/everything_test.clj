@@ -7,7 +7,10 @@
    [blaze.handler.fhir.util-spec]
    [blaze.handler.util :as handler-util]
    [blaze.middleware.fhir.db :as db]
+   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
+   [blaze.middleware.fhir.decrypt-page-id-spec]
    [blaze.operation.patient.everything]
+   [blaze.page-id-cipher.spec :refer [page-id-cipher?]]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -22,7 +25,7 @@
 
 (st/instrument)
 (log/set-min-level! :trace)
-(tu/set-default-locale-english!)                ; important for the thousands separator in 10,000
+(tu/set-default-locale-english!)                            ; important for the thousands separator in 10,000
 
 (test/use-fixtures :each tu/fixture)
 
@@ -38,23 +41,45 @@
       :key := :blaze.operation.patient/everything
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
 
   (testing "invalid clock"
     (given-thrown (ig/init {:blaze.operation.patient/everything {:clock ::invalid}})
       :key := :blaze.operation.patient/everything
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 1 :pred] := `time/clock?
-      [:cause-data ::s/problems 1 :val] := ::invalid)))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
+      [:cause-data ::s/problems 2 :pred] := `time/clock?
+      [:cause-data ::s/problems 2 :val] := ::invalid))
+
+  (testing "invalid rng-fn"
+    (given-thrown (ig/init {:blaze.operation.patient/everything {:rng-fn ::invalid}})
+      :key := :blaze.operation.patient/everything
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
+      [:cause-data ::s/problems 2 :pred] := `fn?
+      [:cause-data ::s/problems 2 :val] := ::invalid))
+
+  (testing "invalid page-id-cipher"
+    (given-thrown (ig/init {:blaze.operation.patient/everything {:page-id-cipher ::invalid}})
+      :key := :blaze.operation.patient/everything
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 2 :pred] := `page-id-cipher?
+      [:cause-data ::s/problems 2 :val] := ::invalid)))
 
 (def base-url "base-url-113047")
 (def context-path "/context-path-173858")
 
 (def router
   (reitit/router
-   (mapv (fn [type] [(str "/" type) {:name (keyword type "type")}])
-         ["Patient" "Condition" "Observation" "Specimen" "MedicationAdministration"])
+   (into
+    [["/Patient/{id}/__everything-page/{page-id}" {:name :Patient.operation/everything-page}]]
+    (map (fn [type] [(str "/" type) {:name (keyword type "type")}]))
+    ["Patient" "Condition" "Observation" "Specimen" "MedicationAdministration"])
    {:syntax :bracket
     :path context-path}))
 
@@ -62,12 +87,19 @@
   (reitit/map->Match
    {:path (str context-path "/Patient/0/$everything")}))
 
+(def page-match
+  (reitit/map->Match
+   {:path (str context-path "/Patient/0/__everything-page")}))
+
 (def config
-  (assoc api-stub/mem-node-config
-         :blaze.operation.patient/everything
-         {:clock (ig/ref :blaze.test/fixed-clock)
-          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
-         :blaze.test/fixed-rng-fn {}))
+  (assoc
+   api-stub/mem-node-config
+   :blaze.operation.patient/everything
+   {:clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
+   :blaze.test/fixed-rng-fn {}
+   :blaze.test/page-id-cipher {}))
 
 (defn wrap-defaults [handler]
   (fn [request]
@@ -76,20 +108,38 @@
             :blaze/base-url base-url
             ::reitit/router router))))
 
+(defn- wrap-db [handler node page-id-cipher]
+  (fn [{::reitit/keys [match] :as request}]
+    (if (= page-match match)
+      ((decrypt-page-id/wrap-decrypt-page-id
+        (db/wrap-snapshot-db handler node 100)
+        page-id-cipher)
+       request)
+      ((db/wrap-db handler node 100) request))))
+
 (defn wrap-error [handler]
   (fn [request]
     (-> (handler request)
         (ac/exceptionally handler-util/error-response))))
 
-(defmacro with-handler [[handler-binding & [node-binding]] & more]
+(defmacro with-handler [[handler-binding & [node-binding page-id-cipher-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
+                         page-id-cipher# :blaze.test/page-id-cipher
                          handler# :blaze.operation.patient/everything} config]
        ~txs
-       (let [~handler-binding (-> handler# wrap-defaults (db/wrap-db node# 100)
+       (let [~handler-binding (-> handler# wrap-defaults
+                                  (wrap-db node# page-id-cipher#)
                                   wrap-error)
-             ~(or node-binding '_) node#]
+             ~(or node-binding '_) node#
+             ~(or page-id-cipher-binding '_) page-id-cipher#]
          ~@body))))
+
+(defn- page-url [page-id-cipher query-params]
+  (str base-url context-path "/Patient/0/__everything-page/" (decrypt-page-id/encrypt page-id-cipher query-params)))
+
+(defn- page-path-params [page-id-cipher params]
+  {:id "0" :page-id (decrypt-page-id/encrypt page-id-cipher params)})
 
 (deftest handler-test
   (testing "Patient not found"
@@ -562,7 +612,7 @@
           [:issue 0 :diagnostics] := "The compartment of the Patient with the id `0` has more than 10,000 resources which is too costly to output. Please use paging by specifying the _count query param."))))
 
   (testing "paging"
-    (with-handler [handler]
+    (with-handler [handler _ page-id-cipher]
       [(into
         [[:put {:fhir/type :fhir/Patient :id "0"}]]
         (map (fn [idx]
@@ -590,7 +640,7 @@
           (is (nil? (:total body))))
 
         (testing "has a next link"
-          (is (= (str base-url context-path "/Patient/0/$everything?_count=2&__t=1&__page-offset=2")
+          (is (= (page-url page-id-cipher {"_count" "2" "__t" "1" "__page-offset" "2"})
                  (link-url body "next"))))
 
         (testing "the bundle contains 2 entries"
@@ -606,9 +656,12 @@
 
       (testing "following the first next link"
         (let [{:keys [status] {[first-entry second-entry] :entry :as body} :body}
-              @(handler {::reitit/match match
-                         :path-params {:id "0"}
-                         :query-params {"_count" "2" "__t" "1" "__page-offset" "2"}})]
+              @(handler
+                {::reitit/match page-match
+                 :path-params
+                 (page-path-params
+                  page-id-cipher
+                  {"_count" "2" "__t" "1" "__page-offset" "2"})})]
 
           (is (= 200 status))
 
@@ -625,7 +678,7 @@
             (is (nil? (:total body))))
 
           (testing "has a next link"
-            (is (= (str base-url context-path "/Patient/0/$everything?_count=2&__t=1&__page-offset=4")
+            (is (= (page-url page-id-cipher {"_count" "2" "__t" "1" "__page-offset" "4"})
                    (link-url body "next"))))
 
           (testing "the bundle contains 2 entries"
@@ -641,9 +694,12 @@
 
       (testing "following the second next link"
         (let [{:keys [status] {[entry] :entry :as body} :body}
-              @(handler {::reitit/match match
-                         :path-params {:id "0"}
-                         :query-params {"_count" "2" "__t" "1" "__page-offset" "4"}})]
+              @(handler
+                {::reitit/match page-match
+                 :path-params
+                 (page-path-params
+                  page-id-cipher
+                  {"_count" "2" "__t" "1" "__page-offset" "4"})})]
 
           (is (= 200 status))
 
@@ -670,7 +726,7 @@
                    (:fullUrl entry))))))))
 
   (testing "page size of 10,000"
-    (with-handler [handler]
+    (with-handler [handler _ page-id-cipher]
       [(into
         [[:put {:fhir/type :fhir/Patient :id "0"}]]
         (map (fn [i]
@@ -698,7 +754,7 @@
           (is (nil? (:total body))))
 
         (testing "has a next link"
-          (is (= (str base-url context-path "/Patient/0/$everything?_count=10000&__t=1&__page-offset=10000")
+          (is (= (page-url page-id-cipher {"_count" "10000" "__t" "1" "__page-offset" "10000"})
                  (link-url body "next"))))
 
         (testing "the bundle contains 10,000 entries"

@@ -1,5 +1,13 @@
 {:deps
- {com.taoensso/timbre
+ {com.google.guava/guava
+  {:mvn/version "33.3.0-jre"
+   :exclusions
+   [com.google.code.findbugs/jsr305
+    org.checkerframework/checker-qual
+    com.google.errorprone/error_prone_annotations
+    com.google.j2objc/j2objc-annotations]}
+
+  com.taoensso/timbre
   {:mvn/version "6.5.0"}
 
   org.clojars.akiel/iota

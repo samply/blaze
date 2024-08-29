@@ -3,7 +3,6 @@
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
-   [blaze.db.impl.index.resource-handle :as rh]
    [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
    [blaze.job.util :as job-util]))
@@ -43,8 +42,8 @@
 
 (defn pull-request-bundle [node job]
   (if-ok [[type id] (request-bundle-ref job)]
-    (if-let [handle (d/resource-handle (d/db node) type id)]
-      (if-not (rh/deleted? handle)
+    (if-let [{:keys [op] :as handle} (d/resource-handle (d/db node) type id)]
+      (if-not (identical? :delete op)
         (d/pull node handle)
         (ac/completed-future (deleted-anom job id)))
       (ac/completed-future (not-found-anom job id)))

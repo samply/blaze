@@ -49,9 +49,9 @@
     {"__page-type" (name type) "__page-id" id}))
 
 (defn- next-link
-  [{:keys [page-store page-match params] :blaze/keys [base-url db]} entries]
-  (do-sync [url (nav/token-url! page-store base-url page-match params []
-                                (d/t db) (next-link-offset entries))]
+  [{:keys [page-match params] :blaze/keys [db] :as context} entries]
+  (do-sync [url (nav/token-url! context page-match params [] (d/t db)
+                                (next-link-offset entries))]
     {:fhir/type :fhir.Bundle/link
      :relation "next"
      :url url}))
@@ -106,11 +106,12 @@
              :blaze/db db
              ::reitit/router router
              ::reitit/match match
-             :page-match (reitit/match-by-name router :page)
+             :page-match #(reitit/match-by-name router :page {:page-id %})
              :params params))))
 
 (defmethod m/pre-init-spec :blaze.interaction/search-system [_]
-  (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store]))
+  (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store
+                   :blaze/page-id-cipher]))
 
 (defmethod ig/init-key :blaze.interaction/search-system [_ context]
   (log/info "Init FHIR search-system interaction handler")

@@ -111,14 +111,6 @@
 
    :blaze/release-date (str (LocalDate/now))
 
-   :blaze/clock {}
-
-   :blaze/rng-fn {}
-
-   :blaze/secure-rng {}
-
-   :blaze.fhir/structure-definition-repo {}
-
    :blaze.handler/health {}
 
    :blaze/rest-api

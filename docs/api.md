@@ -56,6 +56,10 @@ When searching for date/time with a search parameter value without timezone like
 
 The special search parameter `_sort` supports the values `_id`, `_lastUpdated` and `-_lastUpdated`.
 
+#### Paging
+
+The search-type interaction supports paging which is described in depth in the separate [paging section](#paging-1).
+
 ### Capabilities
 
 Get the capability statement for Blaze. Blaze supports filtering the capability statement by `_elements`. For more information, see: [FHIR - RESTful API - Capabilities][5]
@@ -151,6 +155,29 @@ Async requests can be cancelled before they are completed:
 ```sh
 curl -svXDELETE "http://localhost:8080/fhir/__async-status/DD7MLX6H7OGJN7SD"
 ```
+
+## Paging
+
+Interactions and operations that return a large list of resources support paging via Bundle resources. The various Bundle resources are interlinked via the next link. The paging has the following properties:
+
+### Paging is Stable
+
+The initial request operates on the newest database snapshot available and all pages accessible via next links will continue to use the same database snapshot. Next links will point to custom paging endpoints. The endpoints will expire after for 4 hours in order to constrain the access to old database snapshots. That also means that clients which hold paging URLs will be able to access deleted and changed resources for up to 4 hours.
+
+### Paging URLs are Encrypted
+
+The variable part of paging URLs is encrypted to ensure confidentiality and integrity of the paging parameters. Confidentiality is important in case some of the original query parameters contain sensitive information. To mitigate the risk of exposing this data, FHIR searches are often executed via POST requests, which helps prevent sensitive information from being logged in URLs. Consequently, it is essential that paging URLs do not reveal any confidential data. Integrity is important, because it should not be possible to manipulate the paging URL in order to access a different database snapshot.
+
+#### Encryption Key Management
+
+<dl>
+  <dt>Key Rotation</dt>
+  <dd>Encryption keys are rotated every two hours. Each key is valid for a maximum of four hours, with a total of three keys stored at any time.</dd>
+  <dt>Storage</dt>
+  <dd>Currently, encryption keys are stored in plain text within the admin database. While these keys are not accessible via an API, they are also not encrypted with an external key encryption method.</dd>
+  <dt>Future Improvements</dt>
+  <dd>Implementing external key encryption is feasible but would require additional infrastructure. If you believe that key encryption is necessary, please open an issue for further discussion.</dd>
+</dl>
 
 ## Absolute URLs
 

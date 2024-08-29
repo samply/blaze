@@ -11,6 +11,9 @@
   blaze/module-base
   {:local/root "../module-base"}
 
+  blaze/page-id-cipher
+  {:local/root "../page-id-cipher"}
+
   blaze/page-store
   {:local/root "../page-store"}
 

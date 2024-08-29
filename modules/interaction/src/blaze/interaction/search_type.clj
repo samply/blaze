@@ -15,6 +15,7 @@
    [blaze.interaction.search.util :as search-util]
    [blaze.job.async-interaction.request :as req]
    [blaze.module :as m]
+   [blaze.page-id-cipher.spec]
    [blaze.page-store :as page-store]
    [blaze.page-store.spec]
    [blaze.spec]
@@ -139,8 +140,8 @@
 
 (defn- next-link
   [{:keys [next-link-url-fn]} token clauses next-handle]
-  (let [url (next-link-url-fn token clauses (next-link-offset next-handle))]
-    (link "next" url)))
+  (->> (next-link-url-fn token clauses (next-link-offset next-handle))
+       (link "next")))
 
 (defn- total
   "Calculates the total number of resources returned.
@@ -246,6 +247,11 @@
    name]
   (reitit/match-by-name router (keyword type name)))
 
+(defn- page-match
+  [{{{:fhir.resource/keys [type]} :data} ::reitit/match
+    ::reitit/keys [router]}]
+  (fn [page-id] (reitit/match-by-name router (keyword type "page") {:page-id page-id})))
+
 (defn- self-link-url-fn [{:blaze/keys [base-url] :as request} params]
   (fn [clauses]
     (nav/url base-url (match request "type") params clauses)))
@@ -263,21 +269,21 @@
 (defn- first-link-url-fn
   "Returns a function of `token` and `clauses` that returns the URL of the first
   link."
-  [{:blaze/keys [base-url db] :as request} params]
+  [{:blaze/keys [base-url db] :as request} page-id-cipher params]
   (fn [token clauses]
-    (nav/token-url base-url (match request "page") params token clauses
+    (nav/token-url base-url page-id-cipher (page-match request) params token clauses
                    (d/t db) nil)))
 
 (defn- next-link-url-fn
   "Returns a function of `token`, `clauses` and `offset` that returns the URL
   of the next link."
-  [{:blaze/keys [base-url db] :as request} params]
+  [{:blaze/keys [base-url db] :as request} page-id-cipher params]
   (fn [token clauses offset]
-    (nav/token-url base-url (match request "page") params token clauses
+    (nav/token-url base-url page-id-cipher (page-match request) params token clauses
                    (d/t db) offset)))
 
 (defn- search-context
-  [{:keys [page-store] :as context}
+  [{:keys [page-store page-id-cipher] :as context}
    {{{:fhir.resource/keys [type]} :data} ::reitit/match
     :keys [headers params]
     :blaze/keys [base-url db]
@@ -297,15 +303,16 @@
               :params params
               :self-link-url-fn (self-link-url-fn request params)
               :gen-token-fn (gen-token-fn context request)
-              :first-link-url-fn (first-link-url-fn request params)
-              :next-link-url-fn (next-link-url-fn request params))
+              :first-link-url-fn (first-link-url-fn request page-id-cipher params)
+              :next-link-url-fn (next-link-url-fn request page-id-cipher params))
         handling
         (assoc :blaze.preference/handling handling)
         respond-async
         (assoc :blaze.preference/respond-async true)))))
 
 (defmethod m/pre-init-spec :blaze.interaction/search-type [_]
-  (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store]
+  (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store
+                   :blaze/page-id-cipher]
           :opt-un [:blaze/context-path]))
 
 (defmethod ig/init-key :blaze.interaction/search-type [_ context]
