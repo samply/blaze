@@ -32,7 +32,7 @@
         (-> (fhir-util/sync node t timeout)
             (ac/then-compose #(handler (assoc request :blaze/db %))))
         (ac/completed-future
-         (ba/incorrect (format "Missing or invalid `__t` query param `%s`." (params "__t"))))))))
+         (ba/incorrect (format "Missing or invalid `__t` query param `%s`." (get params "__t"))))))))
 
 (defn wrap-versioned-instance-db
   "Database wrapping for versioned read requests.

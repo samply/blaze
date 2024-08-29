@@ -10,13 +10,13 @@ TOTAL=$(curl -s -H 'Accept: application/fhir+json' "$URL&_summary=count" | jq .t
 HEADERS=$(curl -s -H 'Accept: application/fhir+json' -o /dev/null -D - "$URL")
 LINK_HEADER=$(echo "$HEADERS" | grep -i link | tr -d '\r')
 
-test "Number of patients found" "$TOTAL" "1"
-test "Encoded search param value" "$(echo "$LINK_HEADER" | awk -F'[;,<>?&=]' '{print $4}')" "Le%C3%B3n"
+test "number of patients found" "$TOTAL" "1"
+test "encoded search param value" "$(echo "$LINK_HEADER" | awk -F'[;,<>?&=]' '{print $9}')" "Le%C3%B3n"
 
 URL="$BASE/Condition?code=59621000,10509002"
 TOTAL=$(curl -s -H 'Accept: application/fhir+json' "$URL&_summary=count" | jq .total)
 HEADERS=$(curl -s -H 'Accept: application/fhir+json' -o /dev/null -D - "$URL")
 LINK_HEADER=$(echo "$HEADERS" | grep -i link | tr -d '\r')
 
-test "Number of conditions found" "$TOTAL" "93"
-test "Encoded search param value" "$(echo "$LINK_HEADER" | awk -F'[;,<>?&=]' '{print $4}')" "59621000%2C10509002"
+test "number of conditions found" "$TOTAL" "93"
+test "encoded search param value" "$(echo "$LINK_HEADER" | awk -F'[;,<>?&=]' '{print $9}')" "59621000%2C10509002"

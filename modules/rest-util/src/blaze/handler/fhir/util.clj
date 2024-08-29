@@ -141,8 +141,8 @@
   (str "W/\"" t "\""))
 
 (defn- resource-handle [db type id]
-  (if-let [handle (d/resource-handle db type id)]
-    (if (rh/deleted? handle)
+  (if-let [{:keys [op] :as handle} (d/resource-handle db type id)]
+    (if (identical? :delete op)
       (let [tx (d/tx db (rh/t handle))]
         (ba/not-found
          (format "Resource `%s/%s` was deleted." type id)

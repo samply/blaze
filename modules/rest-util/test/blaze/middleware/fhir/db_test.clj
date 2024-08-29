@@ -75,6 +75,11 @@
   (testing "uses existing database value"
     (is (= ::db @((db/wrap-snapshot-db handler ::node timeout) {:blaze/db ::db}))))
 
+  (testing "with missing params"
+    (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) nil)
+      ::anom/category := ::anom/incorrect
+      ::anom/message := "Missing or invalid `__t` query param `null`."))
+
   (testing "with missing or invalid __t"
     (doseq [t ["a" "-1"]]
       (given-failed-future ((db/wrap-snapshot-db handler ::node timeout) {:params {"__t" t}})

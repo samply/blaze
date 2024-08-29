@@ -12,6 +12,7 @@
    [blaze.handler.util :as handler-util]
    [blaze.interaction.history.util :as history-util]
    [blaze.module :as m]
+   [blaze.page-id-cipher.spec]
    [blaze.spec]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
@@ -19,9 +20,6 @@
    [reitit.core :as reitit]
    [ring.util.response :as ring]
    [taoensso.timbre :as log]))
-
-(defn- match [router type name id]
-  (reitit/match-by-name router (keyword type name) {:id id}))
 
 (defn- next-link [context query-params resource-handle]
   {:fhir/type :fhir.Bundle/link
@@ -56,7 +54,7 @@
               (update :link conj (next-link (peek paged-version-handles))))))))))
 
 (defmethod m/pre-init-spec :blaze.interaction.history/instance [_]
-  (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
+  (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-id-cipher]))
 
 (defmethod ig/init-key :blaze.interaction.history/instance [_ context]
   (log/info "Init FHIR history instance interaction handler")
@@ -73,8 +71,8 @@
                            :blaze/base-url base-url
                            :blaze/db db
                            ::reitit/router router
-                           ::reitit/match (match router type "history-instance" id)
-                           ::reitit/page-match (match router type "history-instance-page" id))]
+                           ::reitit/match (reitit/match-by-name router (keyword type "history-instance") {:id id})
+                           :page-match #(reitit/match-by-name router (keyword type "history-instance-page") {:id id :page-id %}))]
         (build-response context params total version-handles since))
       (ac/completed-future
        (ba/not-found

@@ -39,6 +39,9 @@
 (s/def :blaze/cancelled?
   (s/fspec :args (s/cat) :ret (s/nilable ::anom/anomaly)))
 
+(s/def :blaze/page-id
+  (s/and string? #(re-matches #"[A-Za-z0-9-_]+" %)))
+
 ;; ---- DB ------------------------------------------------------------------
 
 (s/def :blaze.db.query/search-clause

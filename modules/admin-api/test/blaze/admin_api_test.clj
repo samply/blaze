@@ -202,6 +202,7 @@
    {:clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-store (ig/ref :blaze/page-store)
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)
     :context-path "/fhir"}
 
    :blaze.page-store/local
@@ -210,7 +211,8 @@
    :blaze/scheduler {}
 
    :blaze.test/fixed-rng {}
-   :blaze.test/fixed-rng-fn {}})
+   :blaze.test/fixed-rng-fn {}
+   :blaze.test/page-id-cipher {}})
 
 (defn- new-temp-dir! []
   (str (Files/createTempDirectory "blaze" (make-array FileAttribute 0))))

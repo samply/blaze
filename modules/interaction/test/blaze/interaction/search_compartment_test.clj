@@ -13,10 +13,14 @@
    [blaze.interaction.search.params-spec]
    [blaze.interaction.search.util-spec]
    [blaze.interaction.test-util :refer [wrap-error]]
-   [blaze.middleware.fhir.db :refer [wrap-db]]
+   [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
+   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
+   [blaze.middleware.fhir.decrypt-page-id-spec]
+   [blaze.page-id-cipher.spec :refer [page-id-cipher?]]
    [blaze.page-store-spec]
    [blaze.page-store.local]
+   [blaze.page-store.spec :refer [page-store?]]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -38,6 +42,7 @@
 (def router
   (reitit/router
    [["/Patient/{id}/{type}" {:name :Patient/compartment}]
+    ["/Patient/{id}/{type}/__page/{page-id}" {:name :Patient/compartment-page}]
     ["/Observation" {:name :Observation/type}]]
    {:syntax :bracket
     :path context-path}))
@@ -45,7 +50,15 @@
 (def match
   (reitit/map->Match
    {:data
-    {:fhir.compartment/code "Patient"}
+    {:fhir.compartment/code "Patient"
+     :name :Patient/compartment}
+    :path (str context-path "/Patient/0/Observation")}))
+
+(def page-match
+  (reitit/map->Match
+   {:data
+    {:fhir.compartment/code "Patient"
+     :name :Patient/compartment-page}
     :path (str context-path "/Patient/0/Observation")}))
 
 (deftest init-test
@@ -61,7 +74,8 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))))
 
   (testing "invalid clock"
     (given-thrown (ig/init {:blaze.interaction/search-compartment {:clock ::invalid}})
@@ -69,18 +83,52 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
-      [:cause-data ::s/problems 2 :pred] := `time/clock?
-      [:cause-data ::s/problems 2 :val] := ::invalid)))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
+      [:cause-data ::s/problems 3 :pred] := `time/clock?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
+
+  (testing "invalid rng-fn"
+    (given-thrown (ig/init {:blaze.interaction/search-compartment {:rng-fn ::invalid}})
+      :key := :blaze.interaction/search-compartment
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
+      [:cause-data ::s/problems 3 :pred] := `fn?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
+
+  (testing "invalid page-store"
+    (given-thrown (ig/init {:blaze.interaction/search-compartment {:page-store ::invalid}})
+      :key := :blaze.interaction/search-compartment
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-id-cipher))
+      [:cause-data ::s/problems 3 :pred] := `page-store?
+      [:cause-data ::s/problems 3 :val] := ::invalid))
+
+  (testing "invalid page-id-cipher"
+    (given-thrown (ig/init {:blaze.interaction/search-compartment {:page-id-cipher ::invalid}})
+      :key := :blaze.interaction/search-compartment
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :page-store))
+      [:cause-data ::s/problems 3 :pred] := `page-id-cipher?
+      [:cause-data ::s/problems 3 :val] := ::invalid)))
 
 (def config
-  (assoc api-stub/mem-node-config
-         :blaze.interaction/search-compartment
-         {:clock (ig/ref :blaze.test/fixed-clock)
-          :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-          :page-store (ig/ref :blaze.page-store/local)}
-         :blaze.test/fixed-rng-fn {}
-         :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
-         :blaze.test/fixed-rng {}))
+  (assoc
+   api-stub/mem-node-config
+   :blaze.interaction/search-compartment
+   {:clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :page-store (ig/ref :blaze.page-store/local)
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
+   :blaze.test/fixed-rng-fn {}
+   :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
+   :blaze.test/fixed-rng {}
+   :blaze.test/page-id-cipher {}))
 
 (defn wrap-defaults [handler]
   (fn [request]
@@ -90,14 +138,32 @@
             ::reitit/router router
             ::reitit/match match))))
 
-(defmacro with-handler [[handler-binding] & more]
+(defn wrap-db [handler node page-id-cipher]
+  (fn [{::reitit/keys [match] :as request}]
+    (if (= page-match match)
+      ((decrypt-page-id/wrap-decrypt-page-id
+        (db/wrap-snapshot-db handler node 100)
+        page-id-cipher)
+       request)
+      ((db/wrap-db handler node 100) request))))
+
+(defmacro with-handler [[handler-binding & [node-binding page-id-cipher-binding]] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
     `(with-system-data [{node# :blaze.db/node
+                         page-id-cipher# :blaze.test/page-id-cipher
                          handler# :blaze.interaction/search-compartment} config]
        ~txs
-       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# 100)
-                                  wrap-error)]
+       (let [~handler-binding (-> handler# wrap-defaults (wrap-db node# page-id-cipher#)
+                                  wrap-error)
+             ~(or node-binding '_) node#
+             ~(or page-id-cipher-binding '_) page-id-cipher#]
          ~@body))))
+
+(defn- page-url [page-id-cipher type query-params]
+  (str base-url context-path "/Patient/0/" type "/__page/" (decrypt-page-id/encrypt page-id-cipher query-params)))
+
+(defn- page-path-params [page-id-cipher params]
+  {:id "0" :type "Observation" :page-id (decrypt-page-id/encrypt page-id-cipher params)})
 
 (deftest handler-test
   (testing "Returns an Error on Invalid Id"
@@ -449,7 +515,7 @@
           :total := #fhir/unsignedInt 0))))
 
   (testing "with two Observations"
-    (with-handler [handler]
+    (with-handler [handler _ page-id-cipher]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
         [:put {:fhir/type :fhir/Observation :id "0"
                :status #fhir/code"final"
@@ -529,6 +595,61 @@
                 :fullUrl := (str base-url context-path "/Observation/1")
                 [:resource :fhir/type] := :fhir/Observation
                 [:resource :id] := "1"))))
+
+        (testing "with _count=1"
+          (let [{:keys [status body]}
+                @(handler (assoc-in request [:params "_count"] "1"))]
+
+            (is (= 200 status))
+
+            (testing "the body contains a bundle"
+              (is (= :fhir/Bundle (:fhir/type body))))
+
+            (testing "the bundle type is searchset"
+              (is (= #fhir/code"searchset" (:type body))))
+
+            (testing "the total count is 2"
+              (is (= #fhir/unsignedInt 2 (:total body))))
+
+            (testing "has a self link"
+              (is (= (str base-url context-path "/Patient/0/Observation?_count=1")
+                     (link-url body "self"))))
+
+            (testing "has a next link"
+              (is (= (page-url page-id-cipher "Observation" {"_count" "1" "__t" "1" "__page-offset" "1"})
+                     (link-url body "next"))))
+
+            (testing "the bundle contains one entry"
+              (is (= 1 (count (:entry body)))))
+
+            (testing "the entry"
+              (given (-> body :entry first)
+                :fullUrl := (str base-url context-path "/Observation/0")
+                [:resource :fhir/type] := :fhir/Observation
+                [:resource :id] := "0")))
+
+          (testing "following the next link"
+            (let [{:keys [status body]}
+                  @(handler
+                    {::reitit/match page-match
+                     :path-params (page-path-params page-id-cipher {"_count" "1" "__t" "1" "__page-offset" "1"})})]
+
+              (is (= 200 status))
+
+              (testing "the total count is 2"
+                (is (= #fhir/unsignedInt 2 (:total body))))
+
+              (testing "has no next link"
+                (is (nil? (link-url body "next"))))
+
+              (testing "the bundle contains one entry"
+                (is (= 1 (count (:entry body)))))
+
+              (testing "the entry"
+                (given (-> body :entry first)
+                  :fullUrl := (str base-url context-path "/Observation/1")
+                  [:resource :fhir/type] := :fhir/Observation
+                  [:resource :id] := "1")))))
 
         (testing "missing resource contents"
           (with-redefs [rs/multi-get (fn [_ _] (ac/completed-future {}))]

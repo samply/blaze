@@ -82,7 +82,8 @@
     ::async-status-handler
     ::async-status-cancel-handler
     ::capabilities-handler
-    ::db-sync-timeout]
+    ::db-sync-timeout
+    :blaze/page-id-cipher]
    :opt-un
    [:blaze/context-path
     ::auth-backends

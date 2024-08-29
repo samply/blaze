@@ -1,12 +1,9 @@
 (ns blaze.interaction.search.nav-test
   (:require
-   [blaze.async.comp :as ac]
    [blaze.interaction.search.nav :as nav]
    [blaze.interaction.search.nav-spec]
-   [blaze.page-store.protocols :as p]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
-   [clojure.string :as str]
    [clojure.test :as test :refer [deftest is testing]]))
 
 (st/instrument)
@@ -154,55 +151,3 @@
                 {:reverse
                  {:any [{:source-type "Observation" :code "subject"}]}}}}
               nil))))))
-
-(def clauses-1
-  [["foo" "bar"]])
-
-(def page-store
-  (reify p/PageStore
-    (-put [_ clauses]
-      (assert (= clauses-1 clauses))
-      (ac/completed-future (str/join (repeat 32 "A"))))))
-
-(deftest token-url-test
-  (testing "stores clauses and puts token into the query params"
-    (is (= "base-url-195241/Observation?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&__t=195312"
-           @(nav/token-url! page-store "base-url-195241" match {} clauses-1 195312 nil))))
-
-  (testing "reuses existing token"
-    (is (= "base-url-195241/Observation?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&__t=195312"
-           @(nav/token-url!
-             (reify p/PageStore
-               (-put [_ _]
-                 (assert false)))
-             "base-url-195241" match
-             {:token "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"}
-             clauses-1
-             195312
-             nil))))
-
-  (testing "_summary"
-    (is (= "base-url-134538/Observation?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_summary=true&__t=1"
-           @(nav/token-url!
-             (reify p/PageStore
-               (-put [_ _]
-                 (assert false)))
-             "base-url-134538" match
-             {:token "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"
-              :summary "true"}
-             []
-             1
-             nil))))
-
-  (testing "_elements"
-    (is (= "base-url-134538/Observation?__token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB&_elements=a&__t=1"
-           @(nav/token-url!
-             (reify p/PageStore
-               (-put [_ _]
-                 (assert false)))
-             "base-url-134538" match
-             {:token "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"
-              :elements [:a]}
-             []
-             1
-             nil)))))

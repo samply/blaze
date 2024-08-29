@@ -52,12 +52,12 @@
    :url (nav/url base-url match params clauses)})
 
 (defn- next-link-offset [{:keys [page-offset]} entries]
-  {"__page-offset" (+ page-offset (dec (count entries)))})
+  {"__page-offset" (str (+ page-offset (dec (count entries))))})
 
 (defn- next-link
-  [{:keys [page-store match params] :blaze/keys [base-url db]} clauses entries]
-  (do-sync [url (nav/token-url! page-store base-url match params clauses
-                                (d/t db) (next-link-offset params entries))]
+  [{:keys [page-match params] :blaze/keys [db] :as context} clauses entries]
+  (do-sync [url (nav/token-url! context page-match params clauses (d/t db)
+                                (next-link-offset params entries))]
     {:fhir/type :fhir.Bundle/link
      :relation "next"
      :url url}))
@@ -100,6 +100,10 @@
     (ac/completed-future (search-summary context))
     (search-normal context)))
 
+(defn page-match [router code id type]
+  #(reitit/match-by-name router (keyword code "compartment-page")
+                         {:id id :type type :page-id %}))
+
 (defn- search-context
   [{:keys [page-store] :as context}
    {{{:fhir.compartment/keys [code]} :data :as match} ::reitit/match
@@ -132,12 +136,14 @@
                 :code code
                 :id id
                 :type type
+                :page-match (page-match router code id type)
                 :params params)
           handling
           (assoc :blaze.preference/handling handling))))))
 
 (defmethod m/pre-init-spec :blaze.interaction/search-compartment [_]
-  (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store]))
+  (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-store
+                   :blaze/page-id-cipher]))
 
 (defmethod ig/init-key :blaze.interaction/search-compartment [_ context]
   (log/info "Init FHIR search-compartment interaction handler")

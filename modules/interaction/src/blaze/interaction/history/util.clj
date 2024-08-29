@@ -3,6 +3,7 @@
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
+   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.util :as u]
    [reitit.core :as reitit])
   (:import
@@ -61,15 +62,17 @@
    '([context query-params page-t]
      [context query-params page-t id]
      [context query-params page-t type id])}
-  [{:blaze/keys [base-url db] ::reitit/keys [page-match]} query-params page-t & more]
-  (let [path (reitit/match->path
-              page-match
-              (cond-> (assoc query-params "__t" (d/t db) "__page-t" page-t)
-                (= 1 (count more))
-                (assoc "__page-id" (first more))
-                (= 2 (count more))
-                (assoc "__page-type" (first more) "__page-id" (second more))))]
-    (str base-url path)))
+  [{:blaze/keys [base-url db] :keys [page-id-cipher page-match]} query-params
+   page-t & more]
+  (->> (cond-> (assoc query-params "__t" (str (d/t db)) "__page-t" (str page-t))
+         (= 1 (count more))
+         (assoc "__page-id" (first more))
+         (= 2 (count more))
+         (assoc "__page-type" (first more) "__page-id" (second more)))
+       (decrypt-page-id/encrypt page-id-cipher)
+       (page-match)
+       (reitit/match->path)
+       (str base-url)))
 
 (defn- method [resource]
   ((-> resource meta :blaze.db/op)

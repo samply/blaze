@@ -2,6 +2,7 @@
   (:require
    [blaze.fhir.structure-definition-repo :as sdr]
    [blaze.middleware.fhir.db :as db]
+   [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.middleware.fhir.error :as error]
    [blaze.middleware.fhir.output :as fhir-output]
    [blaze.middleware.fhir.resource :as resource]
@@ -12,6 +13,7 @@
    [blaze.rest-api.middleware.link-headers :as link-headers]
    [blaze.rest-api.middleware.metrics :as metrics]
    [blaze.rest-api.middleware.sync :as sync]
+   [blaze.rest-api.operation :as-alias operation]
    [blaze.rest-api.spec]
    [blaze.rest-api.util :as u]
    [blaze.spec]
@@ -83,6 +85,10 @@
                 (metrics/wrap-observe-request-duration-fn interaction)
                 identity))})
 
+(def ^:private wrap-decrypt-page-id
+  {:name :decrypt-page-id
+   :wrap decrypt-page-id/wrap-decrypt-page-id})
+
 (defn resource-route
   "Builds routes for one resource according to `structure-definition`.
 
@@ -90,7 +96,7 @@
 
   Route data contains the resource type under :fhir.resource/type."
   {:arglists '([config resource-patterns structure-definition])}
-  [{:keys [node db-sync-timeout batch?]} resource-patterns
+  [{:keys [node db-sync-timeout batch? page-id-cipher]} resource-patterns
    {:keys [name] :as structure-definition}]
   (when-let
    [{:blaze.rest-api.resource-pattern/keys [interactions]}
@@ -134,25 +140,28 @@
                                     :blaze.rest-api.interaction/handler)}))]]
       (not batch?)
       (conj
-       ["/__page"
+       ["/__page/{page-id}"
         (cond-> {:name (keyword name "page") :conflicting true}
           (contains? interactions :search-type)
           (assoc
            :get {:interaction "search-type"
-                 :middleware [[wrap-snapshot-db node db-sync-timeout]
+                 :middleware [[wrap-decrypt-page-id page-id-cipher]
+                              [wrap-snapshot-db node db-sync-timeout]
                               wrap-link-headers]
                  :handler (-> interactions :search-type
                               :blaze.rest-api.interaction/handler)}
            :post {:interaction "search-type"
-                  :middleware [[wrap-snapshot-db node db-sync-timeout]
+                  :middleware [[wrap-decrypt-page-id page-id-cipher]
+                               [wrap-snapshot-db node db-sync-timeout]
                                wrap-link-headers]
                   :handler (-> interactions :search-type
                                :blaze.rest-api.interaction/handler)}))]
-       ["/__history-page"
+       ["/__history-page/{page-id}"
         (cond-> {:name (keyword name "history-page") :conflicting true}
           (contains? interactions :history-type)
           (assoc :get {:interaction "history-type"
-                       :middleware [[wrap-snapshot-db node db-sync-timeout]
+                       :middleware [[wrap-decrypt-page-id page-id-cipher]
+                                    [wrap-snapshot-db node db-sync-timeout]
                                     wrap-link-headers]
                        :handler (-> interactions :history-type
                                     :blaze.rest-api.interaction/handler)}))])
@@ -198,33 +207,47 @@
                                        :blaze.rest-api.interaction/handler)}))]]]
          (not batch?)
          (conj
-          ["/__history-page"
+          ["/__history-page/{page-id}"
            (cond->
             {:name (keyword name "history-instance-page")
              :conflicting true}
              (contains? interactions :history-instance)
              (assoc :get {:interaction "history-instance"
-                          :middleware [[wrap-snapshot-db node db-sync-timeout]
+                          :middleware [[wrap-decrypt-page-id page-id-cipher]
+                                       [wrap-snapshot-db node db-sync-timeout]
                                        wrap-link-headers]
                           :handler (-> interactions :history-instance
                                        :blaze.rest-api.interaction/handler)}))]))))))
 
 (defn compartment-route
   {:arglists '([context compartment])}
-  [{:keys [node db-sync-timeout]} {:blaze.rest-api.compartment/keys [code search-handler]}]
-  [(format "/%s/{id}/{type}" code)
-   {:name (keyword code "compartment")
-    :fhir.compartment/code code
-    :conflicting true
-    :get {:interaction "search-compartment"
-          :middleware [[wrap-db node db-sync-timeout]
-                       wrap-link-headers]
-          :handler search-handler}}])
+  [{:keys [node db-sync-timeout batch? page-id-cipher]}
+   {:blaze.rest-api.compartment/keys [code search-handler]}]
+  (cond->
+   [(format "/%s/{id}/{type}" code)
+    {:fhir.compartment/code code}
+    [""
+     {:name (keyword code "compartment")
+      :fhir.compartment/code code
+      :conflicting true
+      :get {:interaction "search-compartment"
+            :middleware [[wrap-db node db-sync-timeout]
+                         wrap-link-headers]
+            :handler search-handler}}]]
+    (not batch?)
+    (conj
+     ["/__page/{page-id}"
+      {:name (keyword code "compartment-page")
+       :conflicting true
+       :get {:interaction "search-compartment"
+             :middleware [[wrap-decrypt-page-id page-id-cipher]
+                          [wrap-snapshot-db node db-sync-timeout]
+                          wrap-link-headers]
+             :handler search-handler}}])))
 
 (defn- operation-system-handler-route
   [{:keys [node db-sync-timeout]}
-   {:blaze.rest-api.operation/keys
-    [code response-type post-middleware system-handler]}]
+   {::operation/keys [code response-type post-middleware system-handler]}]
   (when system-handler
     [[(str "/$" code)
       (cond-> {:interaction (str "operation-system-" code)
@@ -239,7 +262,7 @@
 
 (defn operation-type-handler-route
   [{:keys [node db-sync-timeout]}
-   {:blaze.rest-api.operation/keys [code resource-types type-handler]}]
+   {::operation/keys [code resource-types type-handler]}]
   (when type-handler
     (map
      (fn [resource-type]
@@ -253,18 +276,31 @@
      resource-types)))
 
 (defn operation-instance-handler-route
-  [{:keys [node db-sync-timeout]}
-   {:blaze.rest-api.operation/keys [code resource-types instance-handler]}]
+  [{:keys [node db-sync-timeout page-id-cipher]}
+   {::operation/keys [code resource-types instance-handler
+                      instance-page-handler]}]
   (when instance-handler
     (map
      (fn [resource-type]
-       [(str "/" resource-type "/{id}/$" code)
-        {:interaction (str "operation-instance-" code)
-         :conflicting true
-         :middleware [[wrap-db node db-sync-timeout]]
-         :get instance-handler
-         :post {:middleware [wrap-resource]
-                :handler instance-handler}}])
+       (cond->
+        [(str "/" resource-type "/{id}")
+         {:interaction (str "operation-instance-" code)}
+         [(str "/$" code)
+          {:name (keyword (str resource-type ".operation") code)
+           :conflicting true
+           :middleware [[wrap-db node db-sync-timeout]]
+           :get instance-handler
+           :post {:middleware [wrap-resource]
+                  :handler instance-handler}}]]
+
+         instance-page-handler
+         (conj
+          [(str "/__" code "-page/{page-id}")
+           {:name (keyword (str resource-type ".operation") (str code "-page"))
+            :conflicting true
+            :middleware [[wrap-decrypt-page-id page-id-cipher]
+                         [wrap-snapshot-db node db-sync-timeout]]
+            :get instance-page-handler}])))
      resource-types)))
 
 (defn routes
@@ -288,7 +324,8 @@
      async-status-cancel-handler
      capabilities-handler
      metadata-handler
-     admin-handler]
+     admin-handler
+     page-id-cipher]
     :or {context-path ""}
     :as config}]
   (cond->
@@ -322,23 +359,26 @@
                     :handler history-system-handler}))]]
     (not batch?)
     (conj
-     ["/__page"
+     ["/__page/{page-id}"
       (cond-> {:name :page}
         (some? search-system-handler)
         (assoc
          :get {:interaction "search-system"
-               :middleware [[wrap-snapshot-db node db-sync-timeout]
+               :middleware [[wrap-decrypt-page-id page-id-cipher]
+                            [wrap-snapshot-db node db-sync-timeout]
                             wrap-link-headers]
                :handler search-system-handler}
          :post {:interaction "search-system"
-                :middleware [[wrap-snapshot-db node db-sync-timeout]
+                :middleware [[wrap-decrypt-page-id page-id-cipher]
+                             [wrap-snapshot-db node db-sync-timeout]
                              wrap-link-headers]
                 :handler search-system-handler}))]
-     ["/__history-page"
+     ["/__history-page/{page-id}"
       (cond-> {:name :history-page}
         (some? history-system-handler)
         (assoc :get {:interaction "history-system"
-                     :middleware [[wrap-snapshot-db node db-sync-timeout]
+                     :middleware [[wrap-decrypt-page-id page-id-cipher]
+                                  [wrap-snapshot-db node db-sync-timeout]
                                   wrap-link-headers]
                      :handler history-system-handler}))])
     true

@@ -11,6 +11,12 @@
   blaze/job-scheduler
   {:local/root "../job-scheduler"}
 
+  blaze/page-id-cipher
+  {:local/root "../page-id-cipher"}
+
+  buddy/buddy-core
+  {:mvn/version "1.12.0-430"}
+
   org.apache.httpcomponents.core5/httpcore5
   {:mvn/version "5.2.5"}
 

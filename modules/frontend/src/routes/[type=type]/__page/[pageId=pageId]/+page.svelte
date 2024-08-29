@@ -9,13 +9,13 @@
 	import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
 	import BreadcrumbEntryPage from '$lib/breadcrumb/page.svelte';
 
-	import SearchForm from './../search-form.svelte';
+	import SearchForm from '../../search-form.svelte';
 	import TotalCard from '$lib/total-card.svelte';
 	import TotalBadge from '$lib/total-badge.svelte';
 	import DurationBadge from '$lib/duration-badge.svelte';
 	import EntryCard from '$lib/history/entry-card.svelte';
-	import NoResultsCard from './../no-results-card.svelte';
-	import ErrorCard from './../../error-card.svelte';
+	import NoResultsCard from '../../no-results-card.svelte';
+	import ErrorCard from '../../../error-card.svelte';
 
 	export let data: PageData;
 

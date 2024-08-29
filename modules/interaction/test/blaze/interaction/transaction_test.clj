@@ -158,7 +158,8 @@
    {:job-scheduler (ig/ref :blaze/job-scheduler)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
-    :page-store (ig/ref :blaze.page-store/local)}
+    :page-store (ig/ref :blaze.page-store/local)
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
 
    :blaze.interaction/read
    {:node (ig/ref :blaze.db/node)}
@@ -196,7 +197,8 @@
 
    :blaze.test/fixed-rng-fn {}
    :blaze.page-store/local {:secure-rng (ig/ref :blaze.test/fixed-rng)}
-   :blaze.test/fixed-rng {}))
+   :blaze.test/fixed-rng {}
+   :blaze.test/page-id-cipher {}))
 
 (defn wrap-defaults [handler router]
   (fn [request]
