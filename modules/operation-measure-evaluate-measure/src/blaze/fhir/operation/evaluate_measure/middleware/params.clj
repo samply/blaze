@@ -29,6 +29,14 @@
        :fhir/operation-outcome "MSG_PARAM_INVALID"
        :fhir.issue/expression name)))
 
+(defn- invalid-date-param-anom
+  [name value]
+  (ba/incorrect
+   (invalid-date-param-msg name value)
+   :fhir/issue "value"
+   :fhir/operation-outcome "MSG_PARAM_INVALID"
+   :fhir.issue/expression name))
+
 (defn- coerce-date
   "Coerces `value` into a System.Date.
 
@@ -37,11 +45,7 @@
   (-> (system/parse-date value)
       (ba/exceptionally
        (fn [_]
-         (ba/incorrect
-          (invalid-date-param-msg name value)
-          :fhir/issue "value"
-          :fhir/operation-outcome "MSG_PARAM_INVALID"
-          :fhir.issue/expression name)))))
+         (invalid-date-param-anom name value)))))
 
 (defn- invalid-report-type-param-msg [report-type]
   (format "Invalid parameter `reportType` with value `%s`. Should be one of `subject`, `subject-list` or `population`."
@@ -77,7 +81,8 @@
                           request "periodStart" coerce-date)
             period-end (get-required-param-value
                         request "periodEnd" coerce-date)
-            measure (get-param-value request "measure" (fn [_ v] v))
+            measure (get-param-value
+                     request "measure" (fn [_n v] v))
             report-type (get-param-value
                          request "reportType" coerce-report-type)
             subject-ref (coerce-subject-ref-param request)]

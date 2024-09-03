@@ -210,24 +210,65 @@
                                   wrap-error)]
          ~@body))))
 
-(deftest handler-test
+(deftest handler-instance-test
   (testing "Returns Not Found on Non-Existing Measure"
-    (testing "on instance endpoint"
+    (with-handler [handler]
+      (let [{:keys [status body]}
+            @(handler
+              {:path-params {:id "0"}
+               :params {"periodStart" "2014" "periodEnd" "2015"}})]
+
+        (is (= 404 status))
+
+        (given body
+          :fhir/type := :fhir/OperationOutcome
+          [:issue 0 :severity] := #fhir/code"error"
+          [:issue 0 :code] := #fhir/code"not-found"
+          [:issue 0 :diagnostics] := "The Measure resource with id `0` was not found.")))))
+
+(deftest handler-type-test
+  (testing "with missing measure parameter"
+    (testing "on GET requests"
       (with-handler [handler]
         (let [{:keys [status body]}
               @(handler
-                {:path-params {:id "0"}
-                 :params {"periodStart" "2014" "periodEnd" "2015"}})]
+                {:params
+                 {"periodStart" "2014"
+                  "periodEnd" "2015"}})]
 
-          (is (= 404 status))
+          (is (= 400 status))
 
           (given body
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"not-found"
-            [:issue 0 :diagnostics] := "The Measure resource with id `0` was not found."))))
+            [:issue 0 :code] := #fhir/code"required"
+            [:issue 0 :diagnostics] := "The measure parameter is missing."))))
 
-    (testing "on type endpoint"
+    (testing "on POST requests"
+      (with-handler [handler]
+        (let [{:keys [status body]}
+              @(handler
+                {:request-method :post
+                 :body
+                 {:fhir/type :fhir/Parameters
+                  :parameter
+                  [{:fhir/type :fhir.Parameters/parameter
+                    :name "periodStart"
+                    :value #fhir/date"2014"}
+                   {:fhir/type :fhir.Parameters/parameter
+                    :name "periodEnd"
+                    :value #fhir/date"2015"}]}})]
+
+          (is (= 422 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"required"
+            [:issue 0 :diagnostics] := "The measure parameter is missing.")))))
+
+  (testing "Returns 4xx on Non-Existing Measure"
+    (testing "on GET requests"
       (with-handler [handler]
         (let [{:keys [status body]}
               @(handler
@@ -242,24 +283,35 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-found"
-            [:issue 0 :diagnostics] := "The Measure resource with reference `url-181501` was not found.")))
+            [:issue 0 :diagnostics] := "The Measure resource with reference `url-181501` was not found."))))
 
-      (testing "with missing measure parameter"
-        (with-handler [handler]
-          (let [{:keys [status body]}
-                @(handler
-                  {:params
-                   {"periodStart" "2014"
-                    "periodEnd" "2015"}})]
+    (testing "on POST requests"
+      (with-handler [handler]
+        (let [{:keys [status body]}
+              @(handler
+                {:request-method :post
+                 :body
+                 {:fhir/type :fhir/Parameters
+                  :parameter
+                  [{:fhir/type :fhir.Parameters/parameter
+                    :name "periodStart"
+                    :value #fhir/date"2014"}
+                   {:fhir/type :fhir.Parameters/parameter
+                    :name "periodEnd"
+                    :value #fhir/date"2015"}
+                   {:fhir/type :fhir.Parameters/parameter
+                    :name "measure"
+                    :value "url-181501"}]}})]
 
-            (is (= 400 status))
+          (is (= 422 status))
 
-            (given body
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"required"
-              [:issue 0 :diagnostics] := "The measure parameter is missing."))))))
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"not-found"
+            [:issue 0 :diagnostics] := "The Measure resource with reference `url-181501` was not found."))))))
 
+(deftest handler-test
   (testing "Returns Gone on Deleted Resource"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/Measure :id "0"}]]

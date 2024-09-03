@@ -84,7 +84,7 @@
   (format "The Measure resource with reference `%s` was not found." reference))
 
 (defn- find-measure-handle*
-  [db {{:keys [id]} :path-params {:keys [measure]} ::params}]
+  [db {{:keys [id]} :path-params {:keys [measure]} ::params :keys [request-method]}]
   (cond
     id
     (or (d/resource-handle db "Measure" id)
@@ -93,11 +93,13 @@
     measure
     (or (coll/first (d/type-query db "Measure" [["url" measure]]))
         (ba/not-found (measure-with-reference-not-found-msg measure)
-                      :http/status 400))
+                      :http/status (if (= :post request-method) 422 400)))
 
     :else
     (ba/incorrect "The measure parameter is missing."
-                  :fhir/issue "required")))
+                  (cond-> {:fhir/issue "required"}
+                    (= :post request-method)
+                    (assoc :http/status 422)))))
 
 (defn- measure-deleted-msg [{:keys [id]}]
   (format "The Measure resource with the id `%s` was deleted." id))
