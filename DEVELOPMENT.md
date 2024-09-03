@@ -64,7 +64,7 @@ For most parts Blaze is implemented using pure functions. Pure function depend o
 
 ## Error Handling
 
-When handling error, we use [anomalies][3] instead of exceptions. In short, the idea behind anomalies is to separate the context in which an error occurs from the error itself **without interrupting theexecution flow**. In order to use anomalies effectively, please check the [anomaly module](modules/anomaly/).
+When handling error, we use [anomalies][3] instead of exceptions. In short, the idea behind anomalies is to separate the context in which an error occurs from the error itself **without interrupting the execution flow**. In order to use anomalies effectively, please check the [anomaly module](modules/anomaly/).
 
 ## Components
 
