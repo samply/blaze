@@ -1,6 +1,7 @@
 (ns blaze.terminology-service.extern-test
   (:require
    [blaze.fhir.test-util]
+   [blaze.http-client.spec :refer [http-client?]]
    [blaze.module.test-util :refer [with-system]]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.extern]
@@ -17,7 +18,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -50,6 +51,14 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :http-client))
       [:cause-data ::s/problems 1 :pred] := `string?
+      [:cause-data ::s/problems 1 :val] := ::invalid))
+
+  (testing "invalid http-client"
+    (given-thrown (ig/init {::ts/extern {:http-client ::invalid}})
+      :key := ::ts/extern
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :base-uri))
+      [:cause-data ::s/problems 1 :pred] := `http-client?
       [:cause-data ::s/problems 1 :val] := ::invalid)))
 
 (deftest terminology-service-test

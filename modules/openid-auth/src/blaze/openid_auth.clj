@@ -1,5 +1,6 @@
 (ns blaze.openid-auth
   (:require
+   [blaze.http-client.spec]
    [blaze.module :as m]
    [blaze.openid-auth.impl :as impl]
    [blaze.openid-auth.spec]
