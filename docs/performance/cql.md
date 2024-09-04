@@ -436,9 +436,15 @@ cql/search.sh stratifier-condition-code
 
 ### Data
 
-| Dataset | System | # Hits | Time (s) | StdDev | Pat./s |
-|---------|--------|-------:|---------:|-------:|-------:|
-| 100k    | LEA58  | 37.8 M |   280.40 |  3.026 |      0 |
-| 1M      | A5N46  |        |  2689.40 |        |      0 |
+| Dataset | System |  # Hits | Time (s) | StdDev | Pat./s |
+|---------|--------|--------:|---------:|-------:|-------:|
+| 100k    | LEA58  |  37.8 M |   280.40 |  3.026 |      0 |
+| 1M      | A5N46  | 380.5 M |  2768.19 |  9.310 |      0 |
+
+### CQL Queries
+
+```sh
+cql/search.sh stratifier-observation-laboratory-code
+```
 
 [1]: <https://github.com/samply/blazectl>
