@@ -31,6 +31,7 @@
    [blaze.log]
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [with-system]]
+   [blaze.scheduler.spec :refer [scheduler?]]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -117,7 +118,8 @@
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :kv-store))
       [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :resource-indexer))
       [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :resource-store))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :scheduler))))
 
   (testing "invalid tx-log"
     (given-thrown (ig/init (assoc-in config [:blaze.db/node :tx-log] ::invalid))
@@ -166,6 +168,13 @@
       :key := :blaze.db/node
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `search-param-registry?
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid scheduler"
+    (given-thrown (ig/init (assoc-in config [:blaze.db/node :scheduler] ::invalid))
+      :key := :blaze.db/node
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `scheduler?
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid enforce-referential-integrity"
