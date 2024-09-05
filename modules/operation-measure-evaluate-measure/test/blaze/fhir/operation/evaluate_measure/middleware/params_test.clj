@@ -17,7 +17,13 @@
 (def operation-outcome-uri
   #fhir/uri"http://terminology.hl7.org/CodeSystem/operation-outcome")
 
-(def handler (-> (params/wrap-coerce-params ac/completed-future) wrap-error))
+(def handler
+  "This testing handler wraps the request into a future.
+
+   If an error arises, it returns a normal ring response map.
+   If no error arises, it returns the original request."
+  (-> (params/wrap-coerce-params ac/completed-future)
+      wrap-error))
 
 (deftest wrap-coerce-params-test
   (testing "period start"
@@ -114,28 +120,54 @@
           [:period 1] := #fhir/date"2021"))))
 
   (testing "measure"
-    (doseq [request
-            [{:params
-              {"periodStart" "2015"
-               "periodEnd" "2016"
-               "measure" "measure-202606"}}
-             {:body
-              {:fhir/type :fhir/Parameters
-               :parameter
-               [{:fhir/type :fhir.Parameters/parameter
-                 :name "periodStart"
-                 :value #fhir/date"2014"}
-                {:fhir/type :fhir.Parameters/parameter
-                 :name "periodEnd"
-                 :value #fhir/date"2015"}
-                {:fhir/type :fhir.Parameters/parameter
-                 :name "measure"
-                 :value #fhir/string"measure-202606"}]}}]]
-      (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
-            @(handler request)]
+    (testing "invalid (only POST)"
+      (let [request {:request-method :post
+                     :body
+                     {:fhir/type :fhir/Parameters
+                      :parameter
+                      [{:fhir/type :fhir.Parameters/parameter
+                        :name "periodStart"
+                        :value #fhir/date"2014"}
+                       {:fhir/type :fhir.Parameters/parameter
+                        :name "periodEnd"
+                        :value #fhir/date"2015"}
+                       {:fhir/type :fhir.Parameters/parameter
+                        :name "measure"
+                        :value #fhir/date"2015"}]}}
+            {:keys [status body]} @(handler request)]
 
-        (given params
-          :measure := "measure-202606"))))
+        (is (= 400 status))
+
+        (is (= :fhir/OperationOutcome (:fhir/type body)))
+
+        (given (-> body :issue first)
+          :severity := #fhir/code"error"
+          :code := #fhir/code"value"
+          :diagnostics := "Invalid parameter `measure` with value `2015`. Should be a string.")))
+
+    (testing "valid (both GET and POST)"
+      (doseq [request
+              [{:params
+                {"periodStart" "2015"
+                 "periodEnd" "2016"
+                 "measure" "measure-202606"}}
+               {:body
+                {:fhir/type :fhir/Parameters
+                 :parameter
+                 [{:fhir/type :fhir.Parameters/parameter
+                   :name "periodStart"
+                   :value #fhir/date"2014"}
+                  {:fhir/type :fhir.Parameters/parameter
+                   :name "periodEnd"
+                   :value #fhir/date"2015"}
+                  {:fhir/type :fhir.Parameters/parameter
+                   :name "measure"
+                   :value #fhir/string"measure-202606"}]}}]]
+        (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
+              @(handler request)]
+
+          (given params
+            :measure := "measure-202606")))))
 
   (testing "report type"
     (testing "invalid"
