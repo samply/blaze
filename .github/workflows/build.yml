@@ -1898,8 +1898,9 @@ jobs:
     - name: Docker Stats
       run: docker stats --no-stream
 
-  push-image:
-    if: github.event_name != 'pull_request' || (github.event.pull_request.base.repo.full_name == github.event.pull_request.head.repo.full_name)
+  # This job exists only as status check target for the branch protection
+  # because we can't use push-image as this isn't executed in forks.
+  pre-push-image:
     needs:
     - fmt
     - lint
@@ -1926,6 +1927,16 @@ jobs:
     - missing-resource-content-test
     - custom-search-parameters-test
     - build-patient-last-change-index-test
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+
+  push-image:
+    if: github.event_name != 'pull_request' || (github.event.pull_request.base.repo.full_name == github.event.pull_request.head.repo.full_name)
+    needs:
+    - pre-push-image
     runs-on: ubuntu-22.04
     permissions:
       packages: write
