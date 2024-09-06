@@ -51,7 +51,7 @@
        (gen/such-that (partial re-matches #"([0-9a-zA-Z\\+/=]{4})+"))))
 
 (def year
-  (gen/choose 1900 2100))
+  (gen/choose 1 9999))
 
 (def month
   (gen/choose 1 12))

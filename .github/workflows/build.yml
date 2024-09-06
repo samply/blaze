@@ -1061,6 +1061,9 @@ jobs:
     - name: Conditional Delete - Delete All Observation Resources Fails
       run: .github/scripts/conditional-delete-type/delete-all-observation-resources-fails.sh
 
+    - name: Create Patient With Ancient Birth Year
+      run: .github/scripts/create-patient-with-ancient-birth-year.sh
+
     - name: Prometheus Metrics
       run: .github/scripts/test-metrics.sh
       if: ${{ matrix.variant == 'standalone' }}

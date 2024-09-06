@@ -131,6 +131,13 @@ public final class DateTimeYear implements DateTime, Comparable<DateTimeYear> {
 
     @Override
     public String toString() {
-        return Integer.toString(year);
+        int absYear = Math.abs(year);
+        StringBuilder buf = new StringBuilder(6);
+        if (absYear < 1000) {
+            buf.append(year + 10000).deleteCharAt(0);
+        } else {
+            buf.append(year);
+        }
+        return buf.toString();
     }
 }
