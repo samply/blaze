@@ -30,21 +30,18 @@
 (defn- handles-xf [page-offset page-size]
   (comp (drop page-offset) (take (inc (or page-size max-size)))))
 
-(defn- handles [db patient-id query-params page-size]
+(defn- handles [db patient-id start end page-offset page-size]
   (if-let [patient (patient-handle db patient-id)]
-    (when-ok [start (fhir-util/date query-params "start")
-              end (fhir-util/date query-params "end")]
-      (let [page-offset (fhir-util/page-offset query-params)
-            handles (into [] (handles-xf page-offset page-size)
-                          (d/patient-everything db patient start end))]
-        (if page-size
-          (if (< page-size (count handles))
-            {:handles (pop handles)
-             :next-offset (+ page-offset (dec (count handles)))}
-            {:handles handles})
-          (if (< max-size (count handles))
-            (ba/conflict (too-costly-msg patient-id) :fhir/issue "too-costly")
-            {:handles handles}))))
+    (let [handles (into [] (handles-xf page-offset page-size)
+                        (d/patient-everything db patient start end))]
+      (if page-size
+        (if (< page-size (count handles))
+          {:handles (pop handles)
+           :next-offset (+ page-offset (dec (count handles)))}
+          {:handles handles})
+        (if (< max-size (count handles))
+          (ba/conflict (too-costly-msg patient-id) :fhir/issue "too-costly")
+          {:handles handles})))
     (ba/not-found (format "The Patient with id `%s` was not found." patient-id))))
 
 (defn- luid [{:keys [clock rng-fn]}]
@@ -55,19 +52,24 @@
                         {:id id :page-id page-id}))
 
 (defn- next-link
-  [{:keys [page-id-cipher]} {:blaze/keys [base-url db] :as request} page-size
-   offset]
+  [{:keys [page-id-cipher]} {:blaze/keys [base-url db] :as request}
+   start end page-size offset]
   {:fhir/type :fhir.Bundle/link
    :relation "next"
-   :url (->> {"_count" (str page-size)
-              "__t" (str (d/t db))
-              "__page-offset" (str offset)}
+   :url (->> (cond->
+              {"_count" (str page-size)
+               "__t" (str (d/t db))
+               "__page-offset" (str offset)}
+               start
+               (assoc "start" (str start))
+               end
+               (assoc "end" (str end)))
              (decrypt-page-id/encrypt page-id-cipher)
              (page-match request)
              (reitit/match->path)
              (str base-url))})
 
-(defn- bundle [context request resources page-size next-offset]
+(defn- bundle [context request resources start end page-size next-offset]
   (let [entries (mapv (partial search-util/entry request) resources)]
     (cond->
      {:fhir/type :fhir/Bundle
@@ -76,7 +78,7 @@
       :entry entries}
 
       (some? next-offset)
-      (assoc :link [(next-link context request page-size next-offset)])
+      (assoc :link [(next-link context request start end page-size next-offset)])
 
       (nil? page-size)
       (assoc :total (type/->UnsignedInt (count entries))))))
@@ -85,10 +87,15 @@
   (fn [{:blaze/keys [db]
         {:keys [id]} :path-params
         :keys [query-params] :as request}]
-    (let [page-size (fhir-util/page-size query-params max-size nil)]
-      (when-ok [{:keys [handles next-offset]} (handles db id query-params page-size)]
+    (let [page-size (fhir-util/page-size query-params max-size nil)
+          page-offset (fhir-util/page-offset query-params)]
+      (when-ok [start (fhir-util/date query-params "start")
+                end (fhir-util/date query-params "end")
+                {:keys [handles next-offset]} (handles db id start end
+                                                       page-offset page-size)]
         (do-sync [resources (d/pull-many db handles)]
-          (ring/response (bundle context request resources page-size next-offset)))))))
+          (ring/response (bundle context request resources start end page-size
+                                 next-offset)))))))
 
 (defmethod m/pre-init-spec :blaze.operation.patient/everything [_]
   (s/keys :req-un [:blaze/clock :blaze/rng-fn :blaze/page-id-cipher]))
