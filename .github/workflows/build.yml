@@ -1019,6 +1019,9 @@ jobs:
     - name: Patient Everything Paged
       run: .github/scripts/patient-everything-paged.sh
 
+    - name: Patient Everything Paged with Date Range
+      run: .github/scripts/patient-everything-paged-date-range.sh
+
     - name: Patient Identical Update
       run: .github/scripts/patient-identical-update.sh
 
