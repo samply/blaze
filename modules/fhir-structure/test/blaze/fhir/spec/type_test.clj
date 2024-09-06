@@ -837,6 +837,8 @@
   (testing "with year precision"
     (testing "date?"
       (are [x] (type/date? x)
+        #fhir/date"0001"
+        #fhir/date"9999"
         #fhir/date"2022"
         #fhir/date{:id "foo"}))
 
@@ -872,10 +874,16 @@
         #fhir/date{:id "foo" :value "2020"}))
 
     (testing "to-json"
-      (is (= "\"2020\"" (gen-json-string #fhir/date"2020"))))
+      (are [date json] (= json (gen-json-string date))
+        #fhir/date"0001" "\"0001\""
+        #fhir/date"9999" "\"9999\""
+        #fhir/date"2020" "\"2020\""))
 
     (testing "to-xml"
-      (is (= (sexp-value "2020") (type/to-xml #fhir/date"2020"))))
+      (are [date xml] (= (sexp-value xml) (type/to-xml date))
+        #fhir/date"0001" "0001"
+        #fhir/date"9999" "9999"
+        #fhir/date"2020" "2020"))
 
     (testing "equals"
       (is (.equals #fhir/date"2020" #fhir/date"2020"))
@@ -898,6 +906,8 @@
   (testing "with year-month precision"
     (testing "date?"
       (are [x] (type/date? x)
+        #fhir/date"0001-01"
+        #fhir/date"9999-12"
         #fhir/date"2022-05"
         #fhir/date{:id "foo"}))
 
@@ -918,10 +928,16 @@
         #fhir/date{:id "foo" :value "2020-01"}))
 
     (testing "to-json"
-      (is (= "\"2020-01\"" (gen-json-string #fhir/date"2020-01"))))
+      (are [date json] (= json (gen-json-string date))
+        #fhir/date"0001-01" "\"0001-01\""
+        #fhir/date"9999-12" "\"9999-12\""
+        #fhir/date"2020-01" "\"2020-01\""))
 
     (testing "to-xml"
-      (is (= (sexp-value "2020-01") (type/to-xml #fhir/date"2020-01"))))
+      (are [date xml] (= (sexp-value xml) (type/to-xml date))
+        #fhir/date"0001-01" "0001-01"
+        #fhir/date"9999-12" "9999-12"
+        #fhir/date"2020-01" "2020-01"))
 
     (testing "equals"
       (is (.equals #fhir/date"2020-01" #fhir/date"2020-01"))
@@ -964,11 +980,19 @@
         #fhir/date{:id "foo" :value "2020-01-02"}))
 
     (testing "to-json"
+      (are [date json] (= json (gen-json-string date))
+        #fhir/date"0001-01-01" "\"0001-01-01\""
+        #fhir/date"9999-12-31" "\"9999-12-31\"")
+
       (satisfies-prop 100
         (prop/for-all [date (s/gen :system/date)]
           (= (format "\"%s\"" date) (gen-json-string date)))))
 
     (testing "to-xml"
+      (are [date xml] (= (sexp-value xml) (type/to-xml date))
+        #fhir/date"0001-01-01" "0001-01-01"
+        #fhir/date"9999-12-31" "9999-12-31")
+
       (satisfies-prop 100
         (prop/for-all [date (s/gen :system/date)]
           (= (sexp-value (str date)) (type/to-xml date)))))
@@ -995,6 +1019,8 @@
   (testing "with year precision"
     (testing "dateTime?"
       (are [x] (type/dateTime? x)
+        #fhir/dateTime"0001"
+        #fhir/dateTime"9999"
         #fhir/dateTime"2022"
         #fhir/dateTime"2022-01"
         #fhir/dateTime"2022-01-01"
@@ -1003,6 +1029,8 @@
 
     (testing "type"
       (are [x] (= :fhir/dateTime (type/type x))
+        #fhir/dateTime"0001"
+        #fhir/dateTime"9999"
         #fhir/dateTime"2022"
         #fhir/dateTime{:id "foo"}))
 
@@ -1018,10 +1046,16 @@
         #fhir/dateTime{:id "foo" :value "2020"}))
 
     (testing "to-json"
-      (is (= "\"2020\"" (gen-json-string #fhir/dateTime"2020"))))
+      (are [date-time json] (= json (gen-json-string date-time))
+        #fhir/dateTime"0001" "\"0001\""
+        #fhir/dateTime"9999" "\"9999\""
+        #fhir/dateTime"2020" "\"2020\""))
 
     (testing "to-xml"
-      (is (= (sexp-value "2020") (type/to-xml #fhir/dateTime"2020"))))
+      (are [date-time xml] (= (sexp-value xml) (type/to-xml date-time))
+        #fhir/dateTime"0001" "0001"
+        #fhir/dateTime"9999" "9999"
+        #fhir/dateTime"2020" "2020"))
 
     (testing "equals"
       (is (.equals #fhir/dateTime"2020" #fhir/dateTime"2020"))
@@ -1064,10 +1098,16 @@
         #fhir/dateTime{:id "foo" :value "2020-01"}))
 
     (testing "to-json"
-      (is (= "\"2020-01\"" (gen-json-string #fhir/dateTime"2020-01"))))
+      (are [date-time json] (= json (gen-json-string date-time))
+        #fhir/dateTime"0001-01" "\"0001-01\""
+        #fhir/dateTime"9999-12" "\"9999-12\""
+        #fhir/dateTime"2020-01" "\"2020-01\""))
 
     (testing "to-xml"
-      (is (= (sexp-value "2020-01") (type/to-xml #fhir/dateTime"2020-01"))))
+      (are [date-time xml] (= (sexp-value xml) (type/to-xml date-time))
+        #fhir/dateTime"0001-01" "0001-01"
+        #fhir/dateTime"9999-12" "9999-12"
+        #fhir/dateTime"2020-01" "2020-01"))
 
     (testing "equals"
       (is (.equals #fhir/dateTime"2020-01" #fhir/dateTime"2020-01"))
@@ -1110,10 +1150,16 @@
         #fhir/dateTime{:id "foo" :value "2020-01-01"}))
 
     (testing "to-json"
-      (is (= "\"2020-01-01\"" (gen-json-string #fhir/dateTime"2020-01-01"))))
+      (are [date-time json] (= json (gen-json-string date-time))
+        #fhir/dateTime"0001-01-01" "\"0001-01-01\""
+        #fhir/dateTime"9999-12-31" "\"9999-12-31\""
+        #fhir/dateTime"2020-01-01" "\"2020-01-01\""))
 
     (testing "to-xml"
-      (is (= (sexp-value "2020-01-01") (type/to-xml #fhir/dateTime"2020-01-01"))))
+      (are [date-time xml] (= (sexp-value xml) (type/to-xml date-time))
+        #fhir/dateTime"0001-01-01" "0001-01-01"
+        #fhir/dateTime"9999-12-31" "9999-12-31"
+        #fhir/dateTime"2020-01-01" "2020-01-01"))
 
     (testing "equals"
       (is (.equals #fhir/dateTime"2020-01-01" #fhir/dateTime"2020-01-01")))
@@ -1134,6 +1180,8 @@
   (testing "without timezone"
     (testing "dateTime?"
       (are [x] (type/dateTime? x)
+        #fhir/dateTime"0001-01-01T00:00:00"
+        #fhir/dateTime"9999-12-31T12:59:59"
         #fhir/dateTime"2020-01-01T00:00:00"
         #fhir/dateTime{:id "foo"}))
 
