@@ -2094,7 +2094,7 @@ jobs:
         path: docs/.vitepress/dist
 
   deploy-pages:
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-22.04
     needs: [ build-pages ]
     permissions:
