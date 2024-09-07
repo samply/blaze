@@ -51,7 +51,14 @@
     org.unbescape/unbescape
     org.xerial/sqlite-jdbc
     commons-beanutils/commons-beanutils
-    org.apache.httpcomponents/httpclient]}
+    org.apache.httpcomponents/httpclient
+    info.cqframework/cql
+    info.cqframework/qdm
+    info.cqframework/quick
+    info.cqframework/cql-to-elm
+    info.cqframework/elm
+    info.cqframework/model
+    org.apache.commons/commons-collections4]}
 
   ;; CVE-2024-26308, we need at least 1.26.0
   org.apache.commons/commons-compress
@@ -66,6 +73,26 @@
 
   ca.uhn.hapi.fhir/hapi-fhir-caching-caffeine
   {:mvn/version "7.4.0"}
+
+  ;; CVE-2024-45294, we need at least 6.3.23
+  ca.uhn.hapi.fhir/org.hl7.fhir.validation
+  {:mvn/version "6.3.23"
+   :exclusions
+   [net.sf.saxon/Saxon-HE
+    org.ogce/xpp3
+    ognl/ognl
+    org.attoparser/attoparser
+    org.unbescape/unbescape
+    org.xerial/sqlite-jdbc
+    commons-beanutils/commons-beanutils
+    org.apache.httpcomponents/httpclient
+    info.cqframework/cql
+    info.cqframework/qdm
+    info.cqframework/quick
+    info.cqframework/cql-to-elm
+    info.cqframework/elm
+    info.cqframework/model
+    org.apache.commons/commons-collections4]}
 
   org.fhir/ucum
   {:mvn/version "1.0.8"
