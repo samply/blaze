@@ -92,17 +92,19 @@
   :outdated
   {:replace-deps
    {com.github.liquidz/antq
-    {:mvn/version "2.8.1185"}
+    {:mvn/version "2.9.1227"}
 
     org.slf4j/slf4j-nop
     {:mvn/version "2.0.12"}}
 
    :main-opts
    ["-m" "antq.core"
+    "-d" "modules/admin-api"
     "-d" "modules/anomaly"
     "-d" "modules/async"
     "-d" "modules/byte-buffer"
     "-d" "modules/byte-string"
+    "-d" "modules/cache-collector"
     "-d" "modules/cassandra"
     "-d" "modules/coll"
     "-d" "modules/cql"
@@ -121,13 +123,23 @@
     "-d" "modules/http-client"
     "-d" "modules/interaction"
     "-d" "modules/jepsen"
+    "-d" "modules/job-async-interaction"
+    "-d" "modules/job-compact"
+    "-d" "modules/job-re-index"
+    "-d" "modules/job-scheduler"
+    "-d" "modules/job-test-util"
+    "-d" "modules/job-util"
     "-d" "modules/kv"
     "-d" "modules/luid"
     "-d" "modules/metrics"
     "-d" "modules/module-base"
+    "-d" "modules/module-test-util"
     "-d" "modules/openid-auth"
     "-d" "modules/operation-graphql"
     "-d" "modules/operation-measure-evaluate-measure"
+    "-d" "modules/operation-patient-everything"
+    "-d" "modules/operation-totals"
+    "-d" "modules/page-id-cipher"
     "-d" "modules/page-store"
     "-d" "modules/page-store-cassandra"
     "-d" "modules/rest-api"
@@ -142,4 +154,10 @@
     "--exclude" "com.taoensso/timbre"
     "--exclude" "org.antlr/antlr4"
     "--exclude" "org.clojure/alpha.spec"
-    "--exclude" "com.walmartlabs/lacinia"]}}}
+    "--exclude" "com.walmartlabs/lacinia"
+    "--exclude" "info.sunng/ring-jetty9-adapter"
+    "--exclude" "info.cqframework/cql"
+    "--exclude" "info.cqframework/quick"
+    "--exclude" "info.cqframework/model-jackson"
+    "--exclude" "info.cqframework/elm-jackson"
+    "--exclude" "info.cqframework/cql-to-elm"]}}}
