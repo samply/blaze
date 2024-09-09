@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.30.0
+
+### Enhancements
+
+* Implement Conditional Delete ([#1953](https://github.com/samply/blaze/issues/1953))
+* Encrypt Query Params in Page Links ([#1995](https://github.com/samply/blaze/issues/1995))
+
+### Bugfixes
+
+* Fix False Positives while Checking Referential Integrity ([#2015](https://github.com/samply/blaze/issues/2015))
+* Patient $everything Ignores Query Params when Paging ([#2014](https://github.com/samply/blaze/issues/2014))
+* Fix Parsing of Dates starting with a Zero in the Year Component ([#2003](https://github.com/samply/blaze/issues/2003))
+* Fix Status Code of Type-Level $evaluate-measure Operation ([#512](https://github.com/samply/blaze/issues/512))
+* CQL Now Should return a LocalDateTime ([#1966](https://github.com/samply/blaze/issues/1966))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/94?closed=1).
+
 ## v0.29.3
 
 ### Bugfixes
