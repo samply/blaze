@@ -2,6 +2,7 @@
   (:require
    [blaze.byte-buffer :refer [byte-buffer?]]
    [blaze.byte-buffer-spec]
+   [blaze.byte-string :refer [byte-string?]]
    [blaze.db.impl.codec-spec]
    [blaze.db.impl.index.resource-handle :as rh]
    [blaze.db.kv-spec]
@@ -54,3 +55,7 @@
 (s/fdef rh/local-ref-tuple
   :args (s/cat :rh rh/resource-handle?)
   :ret :blaze.fhir/literal-ref-tuple)
+
+(s/fdef rh/tid-id
+  :args (s/cat :rh rh/resource-handle?)
+  :ret byte-string?)

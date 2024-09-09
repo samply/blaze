@@ -121,3 +121,6 @@
 
 (defn local-ref-tuple [{type :fhir/type id :id}]
   [(name type) id])
+
+(defn tid-id [rh]
+  (codec/tid-id (tid rh) (codec/id-byte-string (id rh))))

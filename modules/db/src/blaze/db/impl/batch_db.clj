@@ -190,7 +190,7 @@
   (-rev-include [db resource-handle]
     (let [search-param-registry (:search-param-registry node)
           type (name (type/type resource-handle))
-          reference (codec/v-hash (rh/reference resource-handle))]
+          reference (rh/tid-id resource-handle)]
       (coll/eduction
        (comp
         (mapcat
@@ -203,7 +203,7 @@
        (sr/list-by-target-type search-param-registry type))))
 
   (-rev-include [db resource-handle source-type code]
-    (rev-include db snapshot (codec/v-hash (rh/reference resource-handle))
+    (rev-include db snapshot (rh/tid-id resource-handle)
                  (codec/tid source-type) (codec/c-hash code)))
 
   (-patient-everything [db patient-handle start end]

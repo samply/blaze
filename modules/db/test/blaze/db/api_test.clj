@@ -521,6 +521,24 @@
             :op := :delete
             :num-changes := 2)))))
 
+  (testing "referential integrity checks are not affected by hash collisions"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create
+         {:fhir/type :fhir/Encounter
+          :id "A597AEF8855D993D92B063CC69194E33A57F07760034D054150054BCDABFE332"}]
+        [:create
+         {:fhir/type :fhir/Encounter
+          :id "1577C74A3D24F812C29FC372B5B0D9D325AA86A05A541598BF3734247EEAAE5C"}]
+        [:create
+         {:fhir/type :fhir/Observation :id "0"
+          :encounter #fhir/Reference{:reference "Encounter/1577C74A3D24F812C29FC372B5B0D9D325AA86A05A541598BF3734247EEAAE5C"}}]]]
+
+      (testing "deleting the unreferenced encounter succeeds"
+        (let [db @(d/transact node [[:delete "Encounter" "A597AEF8855D993D92B063CC69194E33A57F07760034D054150054BCDABFE332"]])]
+          (given (d/resource-handle db "Encounter" "A597AEF8855D993D92B063CC69194E33A57F07760034D054150054BCDABFE332")
+            :op := :delete
+            :num-changes := 2)))))
+
   (testing "encounter with a condition referencing it"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:create {:fhir/type :fhir/Encounter :id "0"}]
