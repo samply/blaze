@@ -1,41 +1,60 @@
 # Blaze
 
-[![Build](https://github.com/samply/blaze/actions/workflows/build.yml/badge.svg)](https://github.com/samply/blaze/actions/workflows/build.yml)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/samply/blaze/badge)](https://scorecard.dev/viewer/?uri=github.com/samply/blaze)
-[![Docker Pulls](https://img.shields.io/docker/pulls/samply/blaze.svg)](https://hub.docker.com/r/samply/blaze/)
-[![Code Coverage](https://codecov.io/gh/samply/blaze/branch/develop/graph/badge.svg)](https://codecov.io/gh/samply/blaze)
+A libre [HL7 FHIR](https://hl7.org/fhir/) -compliant Data Store with a high-performance CQL Evaluation Engine.
+
 [![Latest Release](https://img.shields.io/github/v/release/samply/blaze)][5]
+[![Docker Pulls](https://img.shields.io/docker/pulls/samply/blaze.svg)](https://hub.docker.com/r/samply/blaze/)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/samply/blaze/badge)](https://scorecard.dev/viewer/?uri=github.com/samply/blaze)
+[![Code Coverage](https://codecov.io/gh/samply/blaze/branch/develop/graph/badge.svg)](https://codecov.io/gh/samply/blaze)
+[![Build Status](https://github.com/samply/blaze/actions/workflows/build.yml/badge.svg)](https://github.com/samply/blaze/actions/workflows/build.yml)
 
-A FHIR® Store with internal, fast CQL Evaluation Engine
 
-## Goal
+## About
 
-The goal of this project is to provide a FHIR® Store with an internal CQL Evaluation Engine which is able to answer population wide aggregate queries in a timely manner to enable interactive, online queries.
+Blaze is a component of the German [Medical Informatics Initiative](https://www.medizininformatik-initiative.de) and the [European Biobanking Medical Research Infrastructure](https://www.bbmri-eric.eu). As such, Blaze is currently used by 40+ Medical Informatics institutions in Germany and across Europe. A 1.0 version, focused on full FHIR4 compliance, is currently in the works.
 
-## Demo
 
-A demo installation can be found [here](https://blaze.life.uni-leipzig.de/fhir) (user/password: demo).
+## Distinctive Features
 
-## State
+Blaze was designed to satisfy interactive (or, at least, low-latency) scenarios of population-wide aggregate queries in distributed environments.
+Currently, it is the only existing HL7 FHIR -compliant Data Store that satisfies this scenario.
 
-Blaze is widely used in the [Medical Informatics Initiative](https://www.medizininformatik-initiative.de) in Germany and in [Biobanks](https://www.bbmri-eric.eu) across Europe. A 1.0 version is expected in the next months.
+
+## Latest Release
 
 Latest release: [v0.30.0][5]
 
-## Quick Start
 
-In order to run Blaze just execute the following:
+## Try it online!
 
-### Docker
+[Demo Blaze installation at the University of Leipzig, Germany](https://blaze.life.uni-leipzig.de/fhir). _(user/password: demo)_
+
+
+## Run it on your own IT infrastructure!
+
+There are different ways to use Blaze.
+
+### via Docker
+
+Probably the simplest way to use Blaze locally is via a Docker image.
 
 ```sh
 docker volume create blaze-data
 docker run -p 8080:8080 -v blaze-data:/app/data samply/blaze:latest
 ```
 
-Blaze will create multiple directories inside the `blaze-data` volume on its first start and use the same directories on subsequent starts.
+With this setup, Blaze will store all of its instance-specific data inside the `blaze-data` volume, which is to be used on subsequent starts.
 
-Please refer to [Deployment](docs/deployment/README.md) for the full documentation.
+### via other options
+
+For other ways to run and deploy Blaze, please refer to [Deployment](docs/deployment/README.md).
+
+
+## Contributing
+
+We welcome Pull Requests!
+All we ask is to please first read the [development](DEVELOPMENT.md) documentation.
+
 
 ## Documentation
 
@@ -54,25 +73,26 @@ Please refer to [Deployment](docs/deployment/README.md) for the full documentati
 * [Architecture](docs/architecture.md)
 * [Implementation](docs/implementation/README.md)
 
-## Development
-
-Pull requests are welcome. Please consider the [development](DEVELOPMENT.md) documentation before creating one.
 
 ## YourKit Profiler
 
 ![YourKit logo](https://www.yourkit.com/images/yklogo.png)
 
-The developers of Blaze uses the YourKit profiler to optimize performance. YourKit supports open source projects with innovative and intelligent tools for monitoring and profiling Java and .NET applications. YourKit is the creator of [YourKit Java Profiler][6], [YourKit .NET Profiler][7] and [YourKit YouMonitor][8].
+The developers of Blaze use the YourKit profiler to optimize performance. YourKit supports open source projects with innovative and intelligent tools for monitoring and profiling Java and .NET applications. YourKit is the creator of [YourKit Java Profiler][6], [YourKit .NET Profiler][7] and [YourKit YouMonitor][8].
+
 
 ## License
 
-Copyright 2019 - 2024 The Samply Community
+Copyright 2019-2024, The Blaze Community.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 
 http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+
+
+## References
 
 [3]: <https://cql.hl7.org/tests.html>
 [4]: <https://alexanderkiel.gitbook.io/blaze/deployment>
