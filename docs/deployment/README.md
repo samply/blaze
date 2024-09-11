@@ -1,6 +1,6 @@
 # Deployment
 
-## Production
+## for Production
 
 For production ready deployments, there are four options:
 
@@ -9,7 +9,7 @@ For production ready deployments, there are four options:
 * [Distributed Backend Only](distributed-backend.md)
 * [Manual Deployment](manual-deployment.md)
 
-## Development
+## for Development
 
 Blaze can be started with a single command using docker:
 
