@@ -1,82 +1,126 @@
-# Development
+# Development Guide for Blaze
 
 ## Building Blaze
 
-The main build artefact of Blaze is a single Docker image. Apart from the Docker image, an uberjar is build, which can be used also.
+Blaze is built as a single Docker image, along with a separate frontend image.
+There is also an uberjar for standalone use.
 
 ### Using GitHub CI
 
-The most reliable way to build Blaze is to use GitHub CI. If you create a PR, a Docker image with the label `pr-<num>` is created. You can use that image after the pipeline ended successfully.
+The most reliable way to build Blaze is through GitHub CI. When you create a pull request (PR), a Docker image with the label `pr-<num>` is built. You can use this image after the pipeline completes successfully.
 
 ### Using a Local Build Environment
 
-* install Java 21
-* install nodejs v18
-* install Clojure by following this [guide](https://clojure.org/guides/install_clojure)
-* install Make
-* install cljfmt: `clj -Ttools install io.github.weavejester/cljfmt '{:git/tag "0.11.2"}' :as cljfmt`
-* run `make -C job-ig build` to create the FHIR profiles
-* run `make uberjar` to create the uberjar that will be available under the `target` directory
-* run `docker build -t blaze:latest .` to build the Docker image
+Blaze is written in Clojure, a modern LISP for the JVM.
 
-## Working with IntelliJ
+#### Required tools
 
-* install Cursive plugin
-* run `make uberjar` once before importing Blaze into IntelliJ in order to prepare all Deps projects
-* open the Blaze folder
+The latest LTS/stable releases of:
+* a Clojure-aware IDE (Emacs, IntelliJ IDEA with Cursive plugin, Vim, VSCodium...)
+* Java
+* nodejs
+* GNU Make
+* [Clojure, with CLI tools](https://clojure.org/guides/install_clojure)
+* clj-kondo
+* cljfmt: `clj -Ttools install io.github.weavejester/cljfmt '{:git/tag "`[`<latest-stable-release>`](https://github.com/weavejester/cljfmt/releases/latest)`"}' :as cljfmt`
+
+#### Steps
+
+
+1. Create FHIR profiles:
+
+```make -C job-ig build```
+
+2. Create the uberjar in the `target` directory:
+
+```make uberjar```
+
+3. Build the Blaze Docker image:
+
+```docker build -t blaze:latest .```
+
+4. Build the frontend Docker image:
+
+```make build-frontend```
 
 ## Developing Blaze
 
-The recommended way to write new code for Blaze is to open a REPL in the module you like to work on. Blaze uses Clojures own build system [Deps](https://clojure.org/guides/deps_and_cli). You can run a REPL in the command line by starting the tool `clj` inside the module directory.
+### REPL-driven Development in Blaze
 
-The best way to use a REPL, is to use it from your IDE. If you use Intellij, there is a Plugin called [Cursive](https://cursive-ide.com). With Cursive you can create REPL's using the Deps build system. In such a REPL you can also execute the unit tests.
+As for writing code in any LISP in general, the recommended way to hack on Blaze is to use REPL-Driven Development (RDD). This is, to fire up a REPL, connect to it, and evaluate the running system within your IDE as you change it. [More information about RDD](https://clojure.org/guides/repl/introduction).
 
-Inside the REPL you should be able to discover and play with the functions and execute unit tests. Developing a new feature will always include writing unit tests. Code coverage is measured in CI and should only increase. The unit tests should already ensure that the feature is implemented correctly on a module level. In addition to that, integration tests can be added to the GitHub CI pipeline available in the file `.github/workflows/build.yml`.
+Since Blaze is organized into modules, you can fire up a REPL in either of two ways: from the root directory ("a global REPL") or from the specific module you are currently working on ("a local REPL"). A global REPL is better suited for local end-to-end (E2E) testing, running and exploration - it loads the entire system. In contrast, a local REPL is better suited for focused work on a particular module - it only loads the bare minimum amount of namespaces required to make that module function in isolation. Moreover, local REPLs provide you with a faster feedback loop, since they enable you to eval the module's (unit) *tests* - something you simply cannot do from a global REPL, since they are not included in its classpath.
 
-In addition to the REPL development inside a single module, it is also possible to run a REPL were Blaze can be started as a system. This procedure is automated via a Makefile alias.
+#### Running a System REPL
+
+You can run a REPL to run Blaze as a system using the following Makefile alias:
 
 ```make emacs-repl```
 
-See the files `Makefile`, `deps.edn`, and `dev/blaze/dev.clj` for more details.
+For more details, see the `Makefile`, `deps.edn`, and `dev/blaze/dev.clj` files.
+
+#### Running a Remote REPL Into Container
+
+1. add `-Dclojure.server.repl='{:address,\"0.0.0.0\",:port,5555,:accept,clojure.core.server/repl}'` to the `JAVA_TOOL_OPTIONS` env var
+2. bind port 5555
+3. create the remote REPL in your IDE, and connect to it.
+
+
+### Tests and their Importance
+
+Developing a new feature will always include writing the corresponding unit and/or integration tests. Whether you write them upfront or after the fact is up to you. That being said, writing them before/while you actually implement a new feature may make it easier to reason about and assess the feature in the works. Whatever the case, the tests will make it easier to ensure that the new feature is implemented correctly, both at module and system level.
+
+### Blaze's CI Pipeline
+
+This project uses a CI pipeline, which checks:
+* unit tests,
+* integration tests, and
+* code coverage (which should only increase on each commit).
+For more details, see the  `.github/` directory.
+
+### Configuration
 
 The configuration of the development system is done with the same environment variables used in the production system.
 Documentation: [Environment Variables](docs/deployment/environment-variables.md).
 
 ## Release Checklist
 
-* create a release branch called `release-v<version>` like `release-v0.29.0`
-* rename every occurrence of the old version, say `0.28.0` into the new version, say `0.29.0`
-* update the CHANGELOG based on the milestone
-* create a commit with the title `Release v<version>`
-* create a PR from the release branch into master
-* merge that PR
-* create and push a tag called `v<version>` like `v0.13.1` on master at the merge commit
-* merge the release branch back into develop
-* create release notes on GitHub
+1. Create a release branch named `release-v<version>`, e.g., `release-v0.29.0`.
+2. Update all occurrences of the old version (e.g., `0.28.0`) to the new version (e.g., `0.29.0`).
+3. Update the `CHANGELOG.md` based on the milestone.
+4. Create a commit with the title `Release v<version>`.
+5. Create a PR from the release branch to `main`.
+6. Merge the PR.
+7. Create and push a tag named `v<version>`, e.g., `v0.13.1`, on `main` at the merge commit.
+8. Copy the release notes from the `CHANGELOG.md` into the GitHub release.
 
-## Style Guide
+## Code Conventions
 
-The Clojure code in this project mainly follows the [Clojure Style Guide][2], enforced by `cljfmt`. For more details, please check `cljfmt.edn`."
+### Style Guide
 
-## Pure Functions
+Follow the [Clojure Style Guide][2], enforced by `cljfmt`. For more details, check the `cljfmt.edn` file.
 
-For most parts Blaze is implemented using pure functions. Pure function depend only on their arguments and only produce an output without doing any side effects. Pure functions have one important property, they are referentially transparent, meaning it doesn't matter when or how often they are called.
+### Pure Functions
 
-## Error Handling
+Blaze is primarily implemented using pure functions. Pure functions depend only on their arguments and produce an output without side effects. This makes them referentially transparent, meaning their behavior does not change based on when or how often they are called.
 
-When handling error, we use [anomalies][3] instead of exceptions. In short, the idea behind anomalies is to separate the context in which an error occurs from the error itself **without interrupting the execution flow**. In order to use anomalies effectively, please check the [anomaly module](modules/anomaly/).
+### Error Handling
 
-## Components
+Blaze uses [anomalies][3] for error handling, instead of exceptions. Anomalies separate the error context from the error itself without interrupting the execution flow. For more information, see the [anomaly module](modules/anomaly/).
 
-In a world of functions, there is still a need for some nouns. Such nouns are components, thing that exist in Blaze and possibly have state. A good example is the local database node which represents the local portion of the database, which for sure has state.
+### Components
 
-Such components reside in a namespace. There exists a constructor function called `new-<component-name>` which takes the dependencies of the component and returns a new instance of it. These constructor functions are mainly used in tests. In production, the library [integrant][1] is used to wire all components together.
+Components are entities within Blaze and may have state.
+An example of a stateful component is the local database node.
+Components reside in a namespace with a constructor function called `new-<component-name>`.
+In production, we use the [integrant][1] library to wire all of Blaze components together.
 
-### Example:
+#### Example:
 
 ```clojure
 (ns blaze.db.node
   (:require
+    [blaze.module :as m]
     [clojure.spec.alpha :as s]
     [integrant.core :as ig])
   (:import
@@ -104,26 +148,19 @@ Such components reside in a namespace. There exists a constructor function calle
   (.close ^AutoCloseable node))
 ```
 
-In this example, you can see the `new-node` function which gets two dependencies `dep-a` and `dep-b` which could be config values or other components. The function returns the database node itself. In our case the database node holds resources which should be freed when it is no longer needed. A common idiom is to implement `java.lang.AutoCloseable` and call the `.close` method at the end of usage.
+* `new-node` creates a new local database node with dependencies `dep-a` and `dep-b`.
+* `halt-key!`` implements `AutoCloseable` to ensure resources are properly released when the node is closed.
+* `m/pre-init-spec` provides a spec for the dependency map to ensure correct configuration.
+* `ig/init-key` initializes the node and logs a meaningful message at info level.
+* `ig/halt-key!` closes the node and releases any held resources.
 
-While the pair of the function `new-node` and the method `.close` can be used in tests, integrant is used in production. In the example, you can see the multi-method instances `m/pre-init-spec`, `ig/init-key` and `ig/halt-key!`. First `m/pre-init-spec` is used to provide a spec for the dependency map `ig/init-key` receives. The spec is created using the `s/keys` form in order to validate a map. Second the `ig/init-key` method will be called by integrant when the component with the :blaze.db/node key is initialized. In this method we simply call our `new-node` function, passing all dependencies from the map as arguments. In addition to that we log a meaningful message at info level in order to make the startup of Blaze transparent. It's also a good idea to log out any config values here. Last the method `ig/halt-key!` is used to free any resources our component might hold. Here we call our `.close` on the component instance passed.
+### Function Specs
 
-## Function Specs
+Every public function should have a spec. Function specs are declared in a namespace with the suffix `-spec` appended to the function's namespace. Public module-level function specs reside in the `src` folder, while inner-module public function specs reside in the `test` folder. This ensures that specs are used in tests but not included in the global classpath, reducing the uberjar and memory footprint.
 
-Every public function should have a spec. Function specs are declared in a namespace with the suffix `_spec` appended to the namespace of the function. In case the function is public on module level, the spec namespace resides in the `src` folder, otherwise it resides in the `test` folder. Having specs of inner-module public functions in the test folder ensures that they can be used in tests but also removes them from the overall class path of Blaze. Not having such specs on the global class path reduces uberjar and memory footprint. In addition to that it also reduces the number of instrumented functions in inter-module tests.
+### Java Interop
 
-## Java Interop
-
-It is important to avoid using reflection. In order to see reflection warnings, make sure to use ```(set! *warn-on-reflection* true)``` in every namespace which does Java interop.
-
-## REPL
-
-### Remote REPL Into Container
-
-* add `-Dclojure.server.repl='{:address,\"0.0.0.0\",:port,5555,:accept,clojure.core.server/repl}'` to the `JAVA_TOOL_OPTIONS` env var
-* bind port 5555
-* create remote REPL in Cursive
-*
+Avoid using reflection. To enable reflection warnings, add `(set! *warn-on-reflection* true)` to each namespace with Java interop.
 
 [1]: <https://github.com/weavejester/integrant>
 [2]: <https://github.com/bbatsov/clojure-style-guide>
