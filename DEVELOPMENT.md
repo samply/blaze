@@ -20,6 +20,7 @@ The latest LTS/stable releases of:
 * nodejs
 * GNU Make
 * [Clojure, with CLI tools](https://clojure.org/guides/install_clojure)
+* clj-kondo
 * cljfmt: `clj -Ttools install io.github.weavejester/cljfmt '{:git/tag "`[`<latest-stable-release>`](https://github.com/weavejester/cljfmt/releases/latest)`"}' :as cljfmt`
 
 #### Steps
@@ -32,9 +33,9 @@ The latest LTS/stable releases of:
 
 ### REPL-driven Development in Blaze
 
-As for writing code in any LISP in general, the recommended way to hack in Blaze is to use REPL-Driven Development (RDD). This is, to fire up a REPL, connect to it, and evaluate the running system within your IDE as you change it. [More information about RDD](https://clojure.org/guides/repl/introduction).
+As for writing code in any LISP in general, the recommended way to hack on Blaze is to use REPL-Driven Development (RDD). This is, to fire up a REPL, connect to it, and evaluate the running system within your IDE as you change it. [More information about RDD](https://clojure.org/guides/repl/introduction).
 
-In the case of Blaze, you can either start a REPL in the root directory (better for E2E testing/running the system locally) or in the module you are working on (better for localized development, since it provides a quicker feedback loop while automatically running only local tests).
+Since Blaze is organized into modules, you can fire up a REPL in either of two ways: from the root directory ("a global REPL") or from the specific module you are currently working on ("a local REPL"). A global REPL is better suited for local end-to-end (E2E) testing, running and exploration - it loads the entire system. In contrast, a local REPL is better suited for focused work on a particular module - it only loads the bare minimum amount of namespaces required to make that module function in isolation. Moreover, local REPLs provide you with a faster feedback loop, since they enable you to eval the module's (unit) *tests* - something you simply cannot do from a global REPL, since they are not included in its classpath.
 
 #### Running a System REPL
 
@@ -72,13 +73,12 @@ Documentation: [Environment Variables](docs/deployment/environment-variables.md)
 
 1. Create a release branch named `release-v<version>`, e.g., `release-v0.29.0`.
 2. Update all occurrences of the old version (e.g., `0.28.0`) to the new version (e.g., `0.29.0`).
-3. Update the CHANGELOG based on the milestone.
+3. Update the `CHANGELOG.md` based on the milestone.
 4. Create a commit with the title `Release v<version>`.
-5. Create a PR from the release branch to master.
+5. Create a PR from the release branch to `main`.
 6. Merge the PR.
-7. Create and push a tag named `v<version>`, e.g., `v0.13.1`, on master at the merge commit.
-8. Merge the release branch back into develop.
-9. Create release notes on GitHub.
+7. Create and push a tag named `v<version>`, e.g., `v0.13.1`, on `main` at the merge commit.
+8. Copy the release notes from the `CHANGELOG.md` into the GitHub release.
 
 ## Style Guide
 
@@ -140,7 +140,7 @@ In production, we use the [integrant][1] library to wire all of Blaze components
 
 ### Function Specs
 
-Every public function should have a spec. Function specs are declared in a namespace with the suffix `_spec` appended to the function's namespace. Public module-level function specs reside in the `src` folder, while inner-module public function specs reside in the `test` folder. This ensures that specs are used in tests but not included in the global classpath, reducing the uberjar and memory footprint.
+Every public function should have a spec. Function specs are declared in a namespace with the suffix `-spec` appended to the function's namespace. Public module-level function specs reside in the `src` folder, while inner-module public function specs reside in the `test` folder. This ensures that specs are used in tests but not included in the global classpath, reducing the uberjar and memory footprint.
 
 ### Java Interop
 
