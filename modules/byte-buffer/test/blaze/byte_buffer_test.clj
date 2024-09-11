@@ -231,6 +231,45 @@
         (is (zero? (bb/remaining buf)))
         (is (= 1 (bb/get-byte! buf 0)))))))
 
+(deftest put-null-terminated-byte-string-test
+  (testing "inlined"
+    (testing "zero length"
+      (let [buf (bb/allocate 1)]
+        (bb/put-null-terminated-byte-string! buf (ByteString/fromHex ""))
+        (is (zero? (bb/remaining buf)))
+        (is (= 0 (bb/get-byte! buf 0))))
+
+      (let [buf (bb/allocate 2)]
+        (bb/put-null-terminated-byte-string! buf (ByteString/fromHex ""))
+        (is (= 1 (bb/remaining buf)))
+        (is (= 0 (bb/get-byte! buf 0)))))
+
+    (testing "length one"
+      (let [buf (bb/allocate 2)]
+        (bb/put-null-terminated-byte-string! buf (ByteString/fromHex "01"))
+        (is (zero? (bb/remaining buf)))
+        (is (= 1 (bb/get-byte! buf 0)))
+        (is (= 0 (bb/get-byte! buf 1))))))
+
+  (testing "function"
+    (testing "zero length"
+      (let [buf (bb/allocate 1)]
+        (apply bb/put-null-terminated-byte-string! buf (ByteString/fromHex "") [])
+        (is (zero? (bb/remaining buf)))
+        (is (= 0 (bb/get-byte! buf 0))))
+
+      (let [buf (bb/allocate 2)]
+        (apply bb/put-null-terminated-byte-string! buf (ByteString/fromHex "") [])
+        (is (= 1 (bb/remaining buf)))
+        (is (= 0 (bb/get-byte! buf 0)))))
+
+    (testing "length one"
+      (let [buf (bb/allocate 2)]
+        (apply bb/put-null-terminated-byte-string! buf (ByteString/fromHex "01") [])
+        (is (zero? (bb/remaining buf)))
+        (is (= 1 (bb/get-byte! buf 0)))
+        (is (= 0 (bb/get-byte! buf 1)))))))
+
 (deftest limit-test
   (satisfies-prop 100
     (prop/for-all [capacity gen/nat]
@@ -263,6 +302,15 @@
     (let [buf (bb/allocate 1)]
       (apply bb/set-position! buf 1 [])
       (is (zero? (bb/remaining buf))))))
+
+(deftest remaining-test
+  (testing "inlined"
+    (let [buf (bb/allocate 1)]
+      (is (= 1 (bb/remaining buf)))))
+
+  (testing "function"
+    (let [buf (bb/allocate 1)]
+      (is (= 1 (apply bb/remaining buf []))))))
 
 (deftest flip-test
   (testing "inlined"
@@ -394,6 +442,39 @@
       (bb/flip! buf)
       (is (= 1 (apply bb/get-long! buf [])))
       (is (= 1 (apply bb/get-long! buf 0 []))))))
+
+(deftest copy-into-byte-array-test
+  (testing "inlined"
+    (let [buf (bb/allocate 1)
+          ba (byte-array 1)]
+      (bb/put-byte! buf 23)
+      (bb/flip! buf)
+      (bb/copy-into-byte-array! buf ba)
+      (is (= 23 (aget ba 0))))
+
+    (testing "with offset and length"
+      (let [buf (bb/allocate 1)
+            ba (byte-array 3)]
+        (bb/put-byte! buf 23)
+        (bb/flip! buf)
+        (bb/copy-into-byte-array! buf ba 1 1)
+        (is (= 23 (aget ba 1))))))
+
+  (testing "function"
+    (let [buf (bb/allocate 1)
+          ba (byte-array 1)]
+      (bb/put-byte! buf 23)
+      (bb/flip! buf)
+      (apply bb/copy-into-byte-array! buf ba [])
+      (is (= 23 (aget ba 0))))
+
+    (testing "with offset and length"
+      (let [buf (bb/allocate 1)
+            ba (byte-array 3)]
+        (bb/put-byte! buf 23)
+        (bb/flip! buf)
+        (apply bb/copy-into-byte-array! buf ba 1 1 [])
+        (is (= 23 (aget ba 1)))))))
 
 (deftest size-up-to-null-test
   (testing "empty buffer"

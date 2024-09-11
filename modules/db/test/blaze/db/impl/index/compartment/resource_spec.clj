@@ -1,5 +1,6 @@
 (ns blaze.db.impl.index.compartment.resource-spec
   (:require
+   [blaze.byte-buffer-spec]
    [blaze.byte-string-spec]
    [blaze.coll.core-spec]
    [blaze.coll.spec :as cs]

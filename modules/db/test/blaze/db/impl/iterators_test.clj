@@ -7,7 +7,7 @@
    [blaze.db.kv.mem]
    [blaze.db.kv.mem-spec]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu]
+   [blaze.test-util :as tu :refer [ba]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]))
 
@@ -17,9 +17,6 @@
 
 (def config
   {::kv/mem {:column-families {}}})
-
-(defn- ba [& bytes]
-  (byte-array bytes))
 
 (deftest seek-key-filter-test
   (testing "minimal filter matching every input"
