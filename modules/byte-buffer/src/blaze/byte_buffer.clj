@@ -8,7 +8,7 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 (defn byte-buffer? [x]
-  #(instance? ByteBuffer x))
+  (instance? ByteBuffer x))
 
 (defn allocate
   "Allocates a new byte buffer.
@@ -90,6 +90,13 @@
   [byte-buffer byte-string]
   (.copyTo ^ByteString byte-string byte-buffer)
   byte-buffer)
+
+(defn put-null-terminated-byte-string!
+  "Copies all bytes of `byte-string` into `byte-buffer` and adds a null byte
+  after them."
+  [byte-buffer byte-string]
+  (.copyTo ^ByteString byte-string byte-buffer)
+  (put-byte! byte-buffer 0))
 
 (defn limit
   "Returns the limit of `byte-buffer`."

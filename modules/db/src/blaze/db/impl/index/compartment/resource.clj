@@ -40,8 +40,7 @@
         co-res-id (coll/nth compartment 1)]
     (-> (bb/allocate (key-prefix-size co-res-id))
         (bb/put-int! co-c-hash)
-        (bb/put-byte-string! co-res-id)
-        (bb/put-byte! 0)
+        (bb/put-null-terminated-byte-string! co-res-id)
         (bb/put-int! tid)
         bb/flip!
         bs/from-byte-buffer!)))
@@ -53,8 +52,7 @@
         co-res-id (coll/nth compartment 1)]
     (-> (bb/allocate (unchecked-add-int (key-prefix-size co-res-id) (bs/size id)))
         (bb/put-int! co-c-hash)
-        (bb/put-byte-string! co-res-id)
-        (bb/put-byte! 0)
+        (bb/put-null-terminated-byte-string! co-res-id)
         (bb/put-int! tid)
         (bb/put-byte-string! id))))
 

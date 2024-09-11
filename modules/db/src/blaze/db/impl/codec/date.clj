@@ -17,8 +17,7 @@
 
 (defn- encode-range* [lower-bound upper-bound]
   (-> (bb/allocate (+ 2 (bs/size lower-bound) (bs/size upper-bound)))
-      (bb/put-byte-string! lower-bound)
-      (bb/put-byte! 0)
+      (bb/put-null-terminated-byte-string! lower-bound)
       (bb/put-byte-string! upper-bound)
       (bb/put-byte! (bs/size lower-bound))
       bb/flip!

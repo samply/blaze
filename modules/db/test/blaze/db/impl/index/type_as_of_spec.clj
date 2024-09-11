@@ -1,5 +1,6 @@
 (ns blaze.db.impl.index.type-as-of-spec
   (:require
+   [blaze.byte-buffer-spec]
    [blaze.byte-string-spec]
    [blaze.coll.spec :as cs]
    [blaze.db.impl.codec-spec]
