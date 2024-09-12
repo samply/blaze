@@ -2,7 +2,8 @@
 
 ## Building Blaze
 
-Blaze is built as a single Docker image, along with an uberjar for standalone use.
+Blaze is built as a single Docker image, along with a separate frontend image.
+There is also an uberjar for standalone use.
 
 ### Using GitHub CI
 
@@ -25,9 +26,22 @@ The latest LTS/stable releases of:
 
 #### Steps
 
-1. Run `make -C job-ig build` to create FHIR profiles.
-2. Run `make uberjar` to create the uberjar in the `target` directory.
-3. Run `docker build -t blaze:latest .` to build the Docker image.
+
+1. Create FHIR profiles:
+
+```make -C job-ig build```
+
+2. Create the uberjar in the `target` directory:
+
+```make uberjar```
+
+3. Build the Blaze Docker image:
+
+```docker build -t blaze:latest .```
+
+4. Build the frontend Docker image:
+
+```make frontend```
 
 ## Developing Blaze
 
@@ -69,7 +83,7 @@ For more details, see the  `.github/` directory.
 The configuration of the development system is done with the same environment variables used in the production system.
 Documentation: [Environment Variables](docs/deployment/environment-variables.md).
 
-## Release Checklist (TODO: use current release workflow)
+## Release Checklist
 
 1. Create a release branch named `release-v<version>`, e.g., `release-v0.29.0`.
 2. Update all occurrences of the old version (e.g., `0.28.0`) to the new version (e.g., `0.29.0`).
@@ -80,7 +94,9 @@ Documentation: [Environment Variables](docs/deployment/environment-variables.md)
 7. Create and push a tag named `v<version>`, e.g., `v0.13.1`, on `main` at the merge commit.
 8. Copy the release notes from the `CHANGELOG.md` into the GitHub release.
 
-## Style Guide
+## Code Conventions
+
+### Style Guide
 
 Follow the [Clojure Style Guide][2], enforced by `cljfmt`. For more details, check the `cljfmt.edn` file.
 
