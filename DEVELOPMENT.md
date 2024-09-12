@@ -41,7 +41,7 @@ The latest LTS/stable releases of:
 
 4. Build the frontend Docker image:
 
-```make frontend```
+```make build-frontend```
 
 ## Developing Blaze
 
