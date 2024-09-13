@@ -6,11 +6,13 @@
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.interaction.conditional-delete-type]
    [blaze.interaction.delete]
+   [blaze.interaction.delete-history]
    [blaze.interaction.history.type]
    [blaze.interaction.read]
    [blaze.interaction.search-system]
    [blaze.interaction.search-type]
    [blaze.interaction.transaction]
+   [blaze.interaction.vread]
    [blaze.middleware.fhir.decrypt-page-id :as decrypt-page-id]
    [blaze.middleware.fhir.decrypt-page-id-spec]
    [blaze.module.test-util :refer [with-system]]
@@ -127,7 +129,10 @@
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :db-sync-timeout 10000}
    :blaze.interaction/read {}
+   :blaze.interaction/vread {}
    :blaze.interaction/delete
+   {:node (ig/ref :blaze.db/node)}
+   :blaze.interaction/delete-history
    {:node (ig/ref :blaze.db/node)}
    :blaze.interaction/conditional-delete-type
    {:node (ig/ref :blaze.db/node)}
@@ -172,9 +177,15 @@
       {:read
        #:blaze.rest-api.interaction
         {:handler (ig/ref :blaze.interaction/read)}
+       :vread
+       #:blaze.rest-api.interaction
+        {:handler (ig/ref :blaze.interaction/vread)}
        :delete
        #:blaze.rest-api.interaction
         {:handler (ig/ref :blaze.interaction/delete)}
+       :delete-history
+       #:blaze.rest-api.interaction
+        {:handler (ig/ref :blaze.interaction/delete-history)}
        :conditional-delete-type
        #:blaze.rest-api.interaction
         {:handler (ig/ref :blaze.interaction/conditional-delete-type)}
@@ -242,10 +253,56 @@
       :body := nil)))
 
 (deftest read-test
-  (with-system [{:blaze/keys [rest-api]} config]
-    (given (call rest-api {:request-method :get :uri "/Patient/0"})
-      :status := 404
-      [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
+  (with-system-data [{:blaze/keys [rest-api]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+    (testing "success"
+      (given (call rest-api {:request-method :get :uri "/Patient/0"})
+        :status := 200
+        [:body fhir-spec/parse-json :resourceType] := "Patient"))
+
+    (testing "not found"
+      (given (call rest-api {:request-method :get :uri "/Patient/1"})
+        :status := 404
+        [:body fhir-spec/parse-json :resourceType] := "OperationOutcome"))))
+
+(deftest vread-test
+  (with-system-data [{:blaze/keys [rest-api]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0" :active false}]]
+     [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
+
+    (testing "current version"
+      (given (call rest-api {:request-method :get :uri "/Patient/0/_history/2"})
+        :status := 200
+        [:body fhir-spec/parse-json :active] := true))
+
+    (testing "older version"
+      (given (call rest-api {:request-method :get :uri "/Patient/0/_history/1"})
+        :status := 200
+        [:body fhir-spec/parse-json :active] := false))
+
+    (doseq [t [0 3]]
+      (testing (format "version %d doesn't exist" t)
+        (given (call rest-api {:request-method :get :uri (format "/Patient/0/_history/%d" t)})
+          :status := 404
+          [:body fhir-spec/parse-json :resourceType] := "OperationOutcome"))))
+
+  (testing "with deleted history"
+    (with-system-data [{:blaze/keys [rest-api]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active false}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]
+       [[:delete-history "Patient" "0"]]]
+
+      (testing "current version"
+        (given (call rest-api {:request-method :get :uri "/Patient/0/_history/2"})
+          :status := 200
+          [:body fhir-spec/parse-json :active] := true))
+
+      (doseq [t [0 1 3]]
+        (testing (format "version %d doesn't exist" t)
+          (given (call rest-api {:request-method :get :uri (format "/Patient/0/_history/%d" t)})
+            :status := 404
+            [:body fhir-spec/parse-json :resourceType] := "OperationOutcome"))))))
 
 (def read-bundle
   {:fhir/type :fhir/Bundle
@@ -300,6 +357,19 @@
 
     (given (call rest-api {:request-method :get :uri "/Patient/0"})
       :status := 410
+      [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
+
+(deftest delete-history-test
+  (with-system-data [{:blaze/keys [rest-api]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0" :active false}]]
+     [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
+
+    (given (call rest-api {:request-method :delete :uri "/Patient/0/_history"})
+      :status := 204
+      :body := nil)
+
+    (given (call rest-api {:request-method :get :uri "/Patient/0/_history/1"})
+      :status := 404
       [:body fhir-spec/parse-json :resourceType] := "OperationOutcome")))
 
 (deftest conditional-delete-type-test

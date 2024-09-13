@@ -1,5 +1,6 @@
 (ns blaze.db.node.tx-indexer.verify-test
   (:require
+   [blaze.anomaly :as ba]
    [blaze.byte-string :as bs]
    [blaze.db.api :as d]
    [blaze.db.impl.index.patient-last-change-test-util :as plc-tu]
@@ -23,9 +24,12 @@
    [blaze.fhir.spec.type]
    [blaze.log]
    [blaze.module.test-util :refer [with-system]]
-   [blaze.test-util :as tu]
+   [blaze.test-util :as tu :refer [satisfies-prop]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.gen.alpha :as sg]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
+   [clojure.test.check.properties :as prop]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log]))
@@ -49,6 +53,20 @@
                             :patient #fhir/Reference{:reference "Patient/0"}})
 
 (deftest verify-tx-cmds-test
+  (testing "two commands with the same identity aren't allowed"
+    (let [hash (hash/generate patient-0)
+          op-gen (sg/such-that (complement #{"conditional-delete"})
+                               (s/gen :blaze.db.tx-cmd/op))
+          cmd (fn [op] {:op op :type "Patient" :id "0" :hash hash})]
+      (with-system [{:blaze.db/keys [node]} config]
+
+        (satisfies-prop 100
+          (prop/for-all [op-1 op-gen
+                         op-2 op-gen]
+            (ba/conflict?
+             (verify/verify-tx-cmds search-param-registry (d/db node) 1
+                                    [(cmd op-1) (cmd op-2)])))))))
+
   (testing "adding one Patient to an empty store"
     (let [hash (hash/generate patient-0)]
       (doseq [op [:create :put]
@@ -867,3 +885,107 @@
               [7 0] := :system-stats-index
               [7 1 ss-tu/decode-key] := {:t 2}
               [7 2 ss-tu/decode-val] := {:total 0 :num-changes 4})))))))
+
+(deftest verify-delete-history-test
+  (testing "empty database"
+    (with-system [{:blaze.db/keys [node]} config]
+
+      (is (empty? (verify/verify-tx-cmds
+                   search-param-registry
+                   (d/db node) 1
+                   [{:op "delete-history" :type "Patient" :id "0"}])))))
+
+  (testing "one patient"
+    (testing "with one version"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (is (empty? (verify/verify-tx-cmds
+                     search-param-registry
+                     (d/db node) 3
+                     [{:op "delete-history" :type "Patient" :id "0"}])))))
+
+    (testing "with two versions"
+      (let [patient-v1 {:fhir/type :fhir/Patient :id "0" :active false}
+            patient-v2 {:fhir/type :fhir/Patient :id "0" :active true}
+            hash-v1 (hash/generate patient-v1)]
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:create patient-v1]]
+           [[:put patient-v2]]]
+
+          (given (verify/verify-tx-cmds
+                  search-param-registry
+                  (d/db node) 3
+                  [{:op "delete-history" :type "Patient" :id "0"}])
+
+            count := 5
+
+            [0 0] := :resource-as-of-index
+            [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 1}
+            [0 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 3}
+
+            [1 0] := :type-as-of-index
+            [1 1 tao-tu/decode-key] := {:type "Patient" :t 1 :id "0"}
+            [1 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 3}
+
+            [2 0] := :system-as-of-index
+            [2 1 sao-tu/decode-key] := {:t 1 :type "Patient" :id "0"}
+            [2 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 3}
+
+            [3 0] := :type-stats-index
+            [3 1 ts-tu/decode-key] := {:type "Patient" :t 3}
+            [3 2 ts-tu/decode-val] := {:total 1 :num-changes 1}
+
+            [4 0] := :system-stats-index
+            [4 1 ss-tu/decode-key] := {:t 3}
+            [4 2 ss-tu/decode-val] := {:total 1 :num-changes 1}))))
+
+    (testing "with three versions"
+      (let [patient-v1 {:fhir/type :fhir/Patient :id "0" :active false}
+            patient-v2 {:fhir/type :fhir/Patient :id "0" :active true}
+            patient-v3 {:fhir/type :fhir/Patient :id "0" :active false}
+            hash-v1 (hash/generate patient-v1)
+            hash-v2 (hash/generate patient-v2)]
+        (with-system-data [{:blaze.db/keys [node]} config]
+          [[[:create patient-v1]]
+           [[:put patient-v2]]
+           [[:put patient-v3]]]
+
+          (given (verify/verify-tx-cmds
+                  search-param-registry
+                  (d/db node) 4
+                  [{:op "delete-history" :type "Patient" :id "0"}])
+
+            count := 8
+
+            [0 0] := :resource-as-of-index
+            [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
+            [0 2 rts-tu/decode-val] := {:hash hash-v2 :num-changes 2 :op :put :purged-at 4}
+
+            [1 0] := :type-as-of-index
+            [1 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "0"}
+            [1 2 rts-tu/decode-val] := {:hash hash-v2 :num-changes 2 :op :put :purged-at 4}
+
+            [2 0] := :system-as-of-index
+            [2 1 sao-tu/decode-key] := {:t 2 :type "Patient" :id "0"}
+            [2 2 rts-tu/decode-val] := {:hash hash-v2 :num-changes 2 :op :put :purged-at 4}
+
+            [3 0] := :resource-as-of-index
+            [3 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 1}
+            [3 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 4}
+
+            [4 0] := :type-as-of-index
+            [4 1 tao-tu/decode-key] := {:type "Patient" :t 1 :id "0"}
+            [4 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 4}
+
+            [5 0] := :system-as-of-index
+            [5 1 sao-tu/decode-key] := {:t 1 :type "Patient" :id "0"}
+            [5 2 rts-tu/decode-val] := {:hash hash-v1 :num-changes 1 :op :create :purged-at 4}
+
+            [6 0] := :type-stats-index
+            [6 1 ts-tu/decode-key] := {:type "Patient" :t 4}
+            [6 2 ts-tu/decode-val] := {:total 1 :num-changes 1}
+
+            [7 0] := :system-stats-index
+            [7 1 ss-tu/decode-key] := {:t 4}
+            [7 2 ss-tu/decode-val] := {:total 1 :num-changes 1}))))))

@@ -835,7 +835,7 @@
                 @(handler
                   {:params {"active" "true" "_count" "1"}})]
 
-            (testing "their is no total count because we have clauses and we have
+            (testing "there is no total count because we have clauses and we have
                     more hits than page-size"
               (is (nil? (:total body))))
 
@@ -882,7 +882,7 @@
                   {::reitit/match patient-search-match
                    :params {"active" "true" "_count" "1"}})]
 
-            (testing "their is no total count because we have clauses and we have
+            (testing "there is no total count because we have clauses and we have
                     more hits than page-size"
               (is (nil? (:total body))))
 
@@ -929,7 +929,7 @@
                 {::reitit/match patient-page-match
                  :path-params (page-path-params page-id-cipher {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB" "_count" "1" "__t" "1" "__page-id" "2"})})]
 
-          (testing "their is no total count because we have clauses and we have
+          (testing "there is no total count because we have clauses and we have
                     more hits than page-size"
             (is (nil? (:total body))))
 

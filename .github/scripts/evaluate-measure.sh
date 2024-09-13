@@ -20,9 +20,9 @@ REPORT=$(evaluate_measure "$BASE" "$MEASURE_URI")
 COUNT=$(echo "$REPORT" | jq -r ".group[0].population[0].count")
 
 if [ "$COUNT" = "$EXPECTED_COUNT" ]; then
-  echo "OK 👍: count ($COUNT) equals the expected count"
+  echo "✅ count ($COUNT) equals the expected count"
 else
-  echo "Fail 😞: count ($COUNT) != $EXPECTED_COUNT"
+  echo "🆘 count ($COUNT) != $EXPECTED_COUNT"
   echo "Report:"
   echo "$REPORT" | jq .
   exit 1

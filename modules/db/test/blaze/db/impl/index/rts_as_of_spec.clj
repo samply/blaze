@@ -14,5 +14,6 @@
                :t :blaze.db/t
                :hash :blaze.resource/hash
                :num-changes nat-int?
-               :op keyword?)
+               :op keyword?
+               :purged-at (s/? :blaze.db/t))
   :ret (s/coll-of :blaze.db.kv/put-entry))

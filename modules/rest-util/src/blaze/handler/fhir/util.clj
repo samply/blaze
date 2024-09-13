@@ -4,8 +4,8 @@
   (:require
    [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
+   [blaze.coll.core :as coll]
    [blaze.db.api :as d]
-   [blaze.db.impl.index.resource-handle :as rh]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
@@ -140,25 +140,35 @@
   [{:blaze.db/keys [t]}]
   (str "W/\"" t "\""))
 
+(defn- deleted-anom [db {:fhir/keys [type] :keys [id t]}]
+  (let [tx (d/tx db t)]
+    (ba/not-found
+     (format "Resource `%s/%s` was deleted." (name type) id)
+     :http/status 410
+     :http/headers
+     [["Last-Modified" (last-modified tx)]
+      ["ETag" (etag tx)]]
+     :fhir/issue "deleted")))
+
 (defn- resource-handle [db type id]
   (if-let [{:keys [op] :as handle} (d/resource-handle db type id)]
     (if (identical? :delete op)
-      (let [tx (d/tx db (rh/t handle))]
-        (ba/not-found
-         (format "Resource `%s/%s` was deleted." type id)
-         :http/status 410
-         :http/headers
-         [["Last-Modified" (last-modified tx)]
-          ["ETag" (etag tx)]]
-         :fhir/issue "deleted"))
+      (deleted-anom db handle)
       handle)
-    (ba/not-found
-     (format "Resource `%s/%s` was not found." type id)
-     :fhir/issue "not-found")))
+    (ba/not-found (format "Resource `%s/%s` was not found." type id))))
+
+(defn- pull* [db resource-handle]
+  (if (ba/anomaly? resource-handle)
+    (ac/completed-future resource-handle)
+    (-> (d/pull db resource-handle)
+        (ac/exceptionally
+         #(assoc %
+                 ::anom/category ::anom/fault
+                 :fhir/issue "incomplete")))))
 
 (defn pull
   "Returns a CompletableFuture that will complete with the resource with `type`
-  and `id` if not deleted in `db` or an anomaly otherwise.
+  and `id` if not deleted in `db` or complete exceptionally.
 
   Returns a not-found anomaly if the resource was not found or is deleted. In
   case it is deleted, sets :http/status to 410 and :http/headers Last-Modified
@@ -167,13 +177,38 @@
   Functions applied after the returned future are executed on the common
   ForkJoinPool."
   [db type id]
-  (if-ok [resource-handle (resource-handle db type id)]
-    (-> (d/pull db resource-handle)
-        (ac/exceptionally
-         #(assoc %
-                 ::anom/category ::anom/fault
-                 :fhir/issue "incomplete")))
-    ac/completed-future))
+  (pull* db (resource-handle db type id)))
+
+(defn- historic-resource-handle-not-found-anom [type id t]
+  (ba/not-found
+   (format "Resource `%s/%s` with version `%d` was not found." type id t)))
+
+(defn- deleted-version-msg [{:fhir/keys [type] :keys [id t]}]
+  (format "Resource `%s/%s` was deleted in version `%d`." (name type) id t))
+
+(defn- deleted-version-anom [db handle]
+  (assoc (deleted-anom db handle) ::anom/message (deleted-version-msg handle)))
+
+(defn- historic-resource-handle [db type id t]
+  (if-let [handle (coll/first (d/instance-history db type id t))]
+    (cond
+      (not= t (:t handle)) (historic-resource-handle-not-found-anom type id t)
+      (identical? :delete (:op handle)) (deleted-version-anom db handle)
+      :else handle)
+    (historic-resource-handle-not-found-anom type id t)))
+
+(defn pull-historic
+  "Returns a CompletableFuture that will complete with the resource with `type`,
+  `id` and `t` (version) if not deleted in `db` or complete exceptionally.
+
+  Returns a not-found anomaly if the resource was not found or is deleted. In
+  case it is deleted, sets :http/status to 410 and :http/headers Last-Modified
+  and ETag to appropriate values.
+
+  Functions applied after the returned future are executed on the common
+  ForkJoinPool."
+  [db type id t]
+  (pull* db (historic-resource-handle db type id t)))
 
 (defn- timeout-msg [timeout]
   (format "Timeout while trying to acquire the latest known database state. At least one known transaction hasn't been completed yet. Please try to lower the transaction load or increase the timeout of %d ms by setting DB_SYNC_TIMEOUT to a higher value if you see this often." timeout))

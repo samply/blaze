@@ -9,13 +9,14 @@
  :lint-as
  {blaze.interaction.create-test/with-handler clojure.core/fn
   blaze.interaction.delete-test/with-handler clojure.core/fn
+  blaze.interaction.delete-history-test/with-handler clojure.core/fn
   blaze.interaction.conditional-delete-type-test/with-handler clojure.core/fn
   blaze.interaction.conditional-delete-type-test/with-handler-allow-multiple clojure.core/fn
   blaze.interaction.history.instance-test/with-handler clojure.core/fn
   blaze.interaction.history.system-test/with-handler clojure.core/fn
   blaze.interaction.history.type-test/with-handler clojure.core/fn
   blaze.interaction.read-test/with-handler clojure.core/fn
-  blaze.interaction.read-test/with-vread-handler clojure.core/fn
+  blaze.interaction.vread-test/with-handler clojure.core/fn
   blaze.interaction.search-compartment-test/with-handler clojure.core/fn
   blaze.interaction.search-system-test/with-handler clojure.core/fn
   blaze.interaction.search-type-test/with-handler clojure.core/fn

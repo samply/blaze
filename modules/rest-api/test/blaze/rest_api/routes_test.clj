@@ -108,6 +108,9 @@
        :delete
        #:blaze.rest-api.interaction
         {:handler (handler ::delete)}
+       :delete-history
+       #:blaze.rest-api.interaction
+        {:handler (handler ::delete-history)}
        :conditional-delete-type
        #:blaze.rest-api.interaction
         {:handler (handler ::conditional-delete-type)}
@@ -185,6 +188,7 @@
           "/Patient/0" :put "update"
           "/Patient/0" :delete "delete"
           "/Patient/0/_history" :get "history-instance"
+          "/Patient/0/_history" :delete "delete-history"
           "/Patient/0/__history-page/0" :get "history-instance"
           "/Patient/0/_history/42" :get "vread"
           "/Patient/0/$everything" :get "operation-instance-everything"
@@ -227,6 +231,7 @@
         "/Patient/0" :put ::update
         "/Patient/0" :delete ::delete
         "/Patient/0/_history" :get ::history-instance
+        "/Patient/0/_history" :delete ::delete-history
         "/Patient/0/__history-page/0" :get ::history-instance
         "/Patient/0/_history/42" :get ::vread
         "/Patient/0/$everything" :get ::everything
@@ -274,8 +279,9 @@
         "/Patient/0" :put [:observe-request-duration :params :output :error :forwarded :sync :resource]
         "/Patient/0" :delete [:observe-request-duration :params :output :error :forwarded :sync]
         "/Patient/0/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
+        "/Patient/0/_history" :delete [:observe-request-duration :params :output :error :forwarded :sync]
         "/Patient/0/__history-page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db :link-headers]
-        "/Patient/0/_history/42" :get [:observe-request-duration :params :output :error :forwarded :sync :versioned-instance-db]
+        "/Patient/0/_history/42" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
         "/Patient/0/$everything" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
         "/Patient/0/__everything-page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db]
         "/Patient/0/Condition" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
@@ -308,7 +314,8 @@
           "/Patient/0" :put [:observe-request-duration :params :output :error :forwarded :sync :resource]
           "/Patient/0" :delete [:observe-request-duration :params :output :error :forwarded :sync]
           "/Patient/0/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
-          "/Patient/0/_history/42" :get [:observe-request-duration :params :output :error :forwarded :sync :versioned-instance-db]
+          "/Patient/0/_history" :delete [:observe-request-duration :params :output :error :forwarded :sync]
+          "/Patient/0/_history/42" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
           "/Patient/0/Condition" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
           "/Patient/0/Observation" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
           "/$compact-db" :get [:observe-request-duration :params :output :error :forwarded :sync :db]

@@ -63,14 +63,15 @@
     (Longs/toByteArray (codec/descending-long ^long start-t))))
 
 (defn system-history
-  "Returns a reducible collection of all versions between `start-t` (inclusive),
-  `start-tid` (optional, inclusive) and `start-id` (optional, inclusive) of all
-  resources.
-
-  Versions are resource handles."
-  [snapshot start-t start-tid start-id]
-  (i/entries snapshot :system-as-of-index (map (decoder))
-             (bs/from-byte-array (start-key start-t start-tid start-id))))
+  "Returns a reducible collection of all historic resource handles of the
+  database with the point in time `t` between `start-t` (inclusive), `start-tid`
+  (optional, inclusive) and `start-id` (optional, inclusive)."
+  [snapshot t start-t start-tid start-id]
+  (i/entries
+   snapshot :system-as-of-index
+   (comp (map (decoder))
+         (filter #(< (long t) (rh/purged-at %))))
+   (bs/from-byte-array (start-key start-t start-tid start-id))))
 
 (defn changes
   "Returns a reducible collection of all resource handles changed at `t`."

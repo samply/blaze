@@ -48,6 +48,10 @@
   :args (s/cat :rh rh/resource-handle?)
   :ret :blaze.db/op)
 
+(s/fdef rh/purged-at
+  :args (s/cat :rh rh/resource-handle?)
+  :ret :blaze.db/t)
+
 (s/fdef rh/reference
   :args (s/cat :rh rh/resource-handle?)
   :ret :blaze.fhir/literal-ref)

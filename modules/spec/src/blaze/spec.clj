@@ -154,6 +154,12 @@
   (s/or :coll (s/coll-of string?)
         :string string?))
 
+(s/def :http/status
+  (s/and int? #(<= 100 % 599)))
+
+(s/def :http/headers
+  (s/coll-of (s/tuple string? string?)))
+
 ;; ---- Clojure ---------------------------------------------------------------
 
 (s/def :clojure/binding-form (s/or :symbol simple-symbol?

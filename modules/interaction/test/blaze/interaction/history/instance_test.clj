@@ -314,6 +314,9 @@
               {:path-params {:id "0"}
                :params {"_count" "1"}})]
 
+        (testing "the total count is 2"
+          (is (= #fhir/unsignedInt 2 (:total body))))
+
         (testing "has a self link"
           (is (= (str base-url context-path "/Patient/0/_history?_count=1")
                  (link-url body "self"))))

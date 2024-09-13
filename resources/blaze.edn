@@ -60,13 +60,16 @@
                     {:handler #blaze/ref :blaze.interaction/read}
             :vread
             #:blaze.rest-api.interaction
-                    {:handler #blaze/ref :blaze.interaction/read}
+                    {:handler #blaze/ref :blaze.interaction/vread}
             :update
             #:blaze.rest-api.interaction
                     {:handler #blaze/ref :blaze.interaction/update}
             :delete
             #:blaze.rest-api.interaction
                     {:handler #blaze/ref :blaze.interaction/delete}
+            :delete-history
+            #:blaze.rest-api.interaction
+                    {:handler #blaze/ref :blaze.interaction/delete-history}
             :conditional-delete-type
             #:blaze.rest-api.interaction
                     {:handler #blaze/ref :blaze.interaction/conditional-delete-type}
@@ -142,10 +145,14 @@
   :blaze.interaction/delete
   {:node #blaze/ref :blaze.db.main/node}
 
+  :blaze.interaction/delete-history
+  {:node #blaze/ref :blaze.db.main/node}
+
   :blaze.interaction/conditional-delete-type
   {:node #blaze/ref :blaze.db.main/node}
 
   :blaze.interaction/read {}
+  :blaze.interaction/vread {}
 
   :blaze.interaction/search-system
   {:clock #blaze/ref :blaze/clock

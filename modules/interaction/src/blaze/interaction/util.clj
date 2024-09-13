@@ -1,12 +1,15 @@
 (ns blaze.interaction.util
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.spec.type :as type]
+   [blaze.handler.fhir.util :as fhir-util]
    [blaze.luid :as luid]
    [blaze.util :as u]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [ring.util.response :as ring]))
 
 (defn etag->t [etag]
   (let [[_ t] (re-find #"W/\"(\d+)\"" etag)]
@@ -124,3 +127,22 @@
   {:arglists '([tx-op])}
   [[op]]
   (identical? :keep op))
+
+(defn wrap-invalid-id [handler]
+  (fn [{{:keys [id]} :path-params :as request}]
+    (cond
+      (not (re-matches #"[A-Za-z0-9\-\.]{1,64}" id))
+      (ac/completed-future
+       (ba/incorrect
+        (format "Resource id `%s` is invalid." id)
+        :fhir/issue "value"
+        :fhir/operation-outcome "MSG_ID_INVALID"))
+
+      :else
+      (handler request))))
+
+(defn response [resource]
+  (let [{:blaze.db/keys [tx]} (meta resource)]
+    (-> (ring/response resource)
+        (ring/header "Last-Modified" (fhir-util/last-modified tx))
+        (ring/header "ETag" (fhir-util/etag tx)))))

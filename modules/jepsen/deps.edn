@@ -21,4 +21,7 @@
    :main-opts ["-m" "kaocha.runner"]}
 
   :register
-  {:main-opts ["-m" "blaze.jepsen.register"]}}}
+  {:main-opts ["-m" "blaze.jepsen.register"]}
+
+  :resource-history
+  {:main-opts ["-m" "blaze.jepsen.resource-history"]}}}

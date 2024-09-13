@@ -27,7 +27,9 @@
   ([tid id t hash num-changes]
    (resource-handle tid id t hash num-changes :create))
   ([tid id t hash num-changes op]
-   (rh/->ResourceHandle tid id t hash num-changes op)))
+   (resource-handle tid id t hash num-changes op Long/MAX_VALUE))
+  ([tid id t hash num-changes op purged-at]
+   (rh/->ResourceHandle tid id t hash num-changes op purged-at)))
 
 (deftest state->num-changes-test
   (are [state num-changes] (= num-changes
@@ -76,6 +78,12 @@
     (prop/for-all [op (s/gen :blaze.db/op)]
       (let [rh (resource-handle 0 "foo" 0 hash 0 op)]
         (= op (:op rh) (rh/op rh) (apply rh/op [rh]))))))
+
+(deftest purged-at-test
+  (satisfies-prop 10
+    (prop/for-all [purged-at (s/gen :blaze.db/t)]
+      (let [rh (resource-handle 0 "foo" 0 hash 0 :create purged-at)]
+        (= purged-at (:purged-at rh) (rh/purged-at rh) (apply rh/purged-at [rh]))))))
 
 (deftest reference-test
   (satisfies-prop 100

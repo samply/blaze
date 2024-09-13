@@ -1,16 +1,115 @@
 # FHIR RESTful API
 
-Blaze exposes a [FHIR RESTful API][1] under the default context path of `/fhir`. The [CapabilityStatement][2] exposed under `/fhir/metadata` can be used to discover the capabilities of Blaze. Everything stated there can be considered to be implemented correctly. If not please [file an issue][3]. 
+Blaze exposes a [FHIR RESTful API][1] under the default context path of `/fhir`. The [CapabilityStatement][2] exposed under `/fhir/metadata` can be used to discover the capabilities of Blaze. Everything stated there can be considered to be implemented correctly. If you find any discrepancies, please open an [issue][3]. 
 
 ## Interactions
 
+### Read
+
+```
+GET [base]/[type]/[id]
+```
+
+### Versioned Read
+
+```
+GET [base]/[type]/[id]/_history/[vid]
+```
+
 ### Update
+
+The update interaction creates a new current version for an existing resource or creates an initial version if no resource already exists for the given id.
+
+```
+PUT [base]/[type]/[id]
+```
 
 Blaze keeps track over the history of all updates of each resource. However if the content of the resource update is equal to the current version of the resource, no new history entry is created. Usually such identical content updates will only cost a very small amount of transaction handling storage but no additional resource or index storage.
 
+### Conditional Update
+
+Conditional update interaction will be implemented in the future. Please see issue [#361](https://github.com/samply/blaze/issues/361) for more information.
+
+### Patch
+
+The patch interaction isn't implemented yet. Please open an [issue][3] if you need patch.
+
+### Conditional Patch
+
+The conditional patch interaction isn't implemented yet. Please open an [issue][3] if you need patch.
+
 ### Delete
 
+The delete interaction removes an existing resource.
+
+```
+DELETE [base]/[type]/[id]
+```
+
+Because Blaze keeps a history of all resource versions, the version of the resource past the deletion will be still accessible in it's [history](#history-instance). However past versions can be deleted themself via the [delete history](#delete-history) interaction. 
+
 By default Blaze enforces referential integrity while deleting resources. So resources that are referred by other resources can't be deleted without deleting the other resources first. That behaviour can be changed by setting the [environment variable](deployment/environment-variables.md) `ENFORCE_REFERENTIAL_INTEGRITY` to `false`.
+
+### Delete History
+
+> [!CAUTION]
+> The delete history interaction is trial use in the unreleased next version of FHIR. So it is subject to change. Please use it with care.
+
+The delete history interaction removes all versions of the resource except the current version. 
+
+```
+DELETE [base]/[type]/[id]/_history
+```
+
+Deleting the history of a resource means that the historical versions of that resource can no longer be accessed. Subsequent [versioned reads](#versioned-read) of that historical versions will return a `404 Not Found`. Versions are also removed from the [type history](#history-type) and [system history](#history-system). Only active [paging sessions](#paging-sessions) will be able to access the deleted versions for a limited amount of time.
+
+> [!NOTE]
+> Due to stability concerns, there is a fix limit of 100,000 versions that can be deleted by this interaction. In case more than 100,000 versions exist, an OperationOutcome with code `too-costly` is returned. Currently there is no way to delete a history with more than 100,000 versions. Please open an [issue][3] if you need to delete larger histories.
+
+### History Instance
+
+The history instance interaction retrieves the history of a particular resource.
+
+```
+GET [base]/[type]/[id]/_history
+```
+
+The return content is a Bundle with type set to `history` containing the versions of the resource in question, sorted with newest versions first, and including versions of resource deletions. The history instance interaction supports paging which is described in depth in the separate [paging sessions](#paging-sessions) section.
+
+### Create
+
+The create interaction creates a new resource with a server-assigned id. If the client wishes to have control over the id of a newly submitted resource, it should use the [update](#update) interaction instead.
+
+```
+POST [base]/[type]
+```
+
+### Conditional Create
+
+It's currently possible to use conditional create in transaction or batch requests.
+
+### Search Type
+
+```
+GET [base]/[type]?param1=value&...
+POST [base]/[type]/_search
+```
+
+#### _profile
+
+Search for `Resource.meta.profile` is supported using the `_profile` search param with exact match or using the `below` modifier as in `_profile:below` with major and minor version prefix match. [Semver][6] is expected for version numbers so a search value of `<url>|1` will find all versions with major version `1` and a search value of `<url>|1.2` will find all versions with major version `1` and minor version `2`. Patch versions are not supported with the `below` modifier.
+
+#### Date Search
+
+When searching for date/time with a search parameter value without timezone like `2024` or `2024-02-16`, Blaze calculates the range of the search parameter values based on [UTC][7]. That means that a resource with a date/time value staring at `2024-01-01T00:00:00+01:00` will be not found by a search with `2024`. Please comment on [issue #1498](https://github.com/samply/blaze/issues/1498) if you like to have this situation improved.
+
+#### Sorting
+
+The special search parameter `_sort` supports the values `_id`, `_lastUpdated` and `-_lastUpdated`.
+
+#### Paging
+
+The search-type interaction supports paging which is described in depth in the separate [paging sessions](#paging-sessions) section.
 
 ### Conditional Delete
 
@@ -20,10 +119,10 @@ The conditional delete operation allows to delete all resources matching certain
 DELETE [base]/[type]?[search parameters]
 ```
 
-By default, the delete is only performed if one resource matches. However it's possible to allow deleting multiple resources by setting the [environment variable](deployment/environment-variables.md) `ALLOW_MULTIPLE_DELETE` to `true`. 
+By default, the delete is only performed if one resource matches. However it's possible to allow deleting multiple resources by setting the [environment variable](deployment/environment-variables.md) `ALLOW_MULTIPLE_DELETE` to `true`.
 
 > [!NOTE]
-> Due to stability concerns, there is a fix limit of 10,000 resources that can be deleted by this interaction. In case more than 10,000 resources match, an OperationOutcome with code `too-costly` is returned.  
+> Due to stability concerns, there is a fix limit of 10,000 resources that can be deleted by this interaction. In case more than 10,000 resources match, an OperationOutcome with code `too-costly` is returned.
 
 The successful response will have the status code `204 No Content` with no payload by default. However it's possible to specify a return preference of `OperationOutcome` by setting the `Prefer` header to `return=OperationOutcome`. In this case a success OperationOutcome with a diagnostic of the number of deleted resources is returned.
 
@@ -42,27 +141,45 @@ The successful response will have the status code `204 No Content` with no paylo
 }
 ```
 
-### Search Type
+### History Type
 
-#### _profile
+The history type interaction retrieves the history of all resources of a particular type.
 
-Search for `Resource.meta.profile` is supported using the `_profile` search param with exact match or using the `below` modifier as in `_profile:below` with major and minor version prefix match. [Semver][6] is expected for version numbers so a search value of `<url>|1` will find all versions with major version `1` and a search value of `<url>|1.2` will find all versions with major version `1` and minor version `2`. Patch versions are not supported with the `below` modifier.
+```
+GET [base]/[type]/_history
+```
 
-#### Date Search
-
-When searching for date/time with a search parameter value without timezone like `2024` or `2024-02-16`, Blaze calculates the range of the search parameter values based on [UTC][7]. That means that a resource with a date/time value staring at `2024-01-01T00:00:00+01:00` will be not found by a search with `2024`. Please comment on [issue #1498](https://github.com/samply/blaze/issues/1498) if you like to have this situation improved.
-
-#### Sorting
-
-The special search parameter `_sort` supports the values `_id`, `_lastUpdated` and `-_lastUpdated`.
-
-#### Paging
-
-The search-type interaction supports paging which is described in depth in the separate [paging section](#paging-1).
+The return content is a Bundle with type set to `history` containing the versions of the resources in question, sorted with newest versions first, and including versions of resource deletions. The history type interaction supports paging which is described in depth in the separate [paging sessions](#paging-sessions) section.
 
 ### Capabilities
 
 Get the capability statement for Blaze. Blaze supports filtering the capability statement by `_elements`. For more information, see: [FHIR - RESTful API - Capabilities][5]
+
+### Batch
+
+The batch interaction allows to submit a set of actions to be performed as a single HTTP request. The semantics of the individual actions described in the `batch` Bundle are identical of the semantics of the corresponding individual request. The actions are performed in order but can be interleaved by other individual requests or actions from other batch interactions. 
+
+```
+POST [base]
+```
+
+### Transaction
+
+The transaction interaction allows to submit a set of actions to be performed inside a single transaction. Blaze supports the full set of ACID (atomicity, consistency, isolation, durability) properties. Transactions are always performed atomically and in isolation. Actions from other individual requests or actions from batch interactions will not interleave with any actions from a transaction interaction.  
+
+```
+POST [base]
+```
+
+### History System
+
+The history system interaction retrieves the history of all resources of the whole system.
+
+```
+GET [base]/_history
+```
+
+The return content is a Bundle with type set to `history` containing the versions of the resources in question, sorted with newest versions first, and including versions of resource deletions. The history system interaction supports paging which is described in depth in the separate [paging sessions](#paging-sessions) section.
 
 ## Operations
 
@@ -156,17 +273,25 @@ Async requests can be cancelled before they are completed:
 curl -svXDELETE "http://localhost:8080/fhir/__async-status/DD7MLX6H7OGJN7SD"
 ```
 
-## Paging
+## Paging Sessions
 
-Interactions and operations that return a large list of resources support paging via Bundle resources. The various Bundle resources are interlinked via the next link. The paging has the following properties:
+Interactions and operations that return a large list of resources support paging via Bundle resources. The various Bundle resources are interlinked via the next link. The process of retrieving a part of or all Bundle resources (pages) of a large response forms a paging session. Paging sessions have the following properties: 
 
-### Paging is Stable
+### Stable
 
-The initial request operates on the newest database snapshot available and all pages accessible via next links will continue to use the same database snapshot. Next links will point to custom paging endpoints. The endpoints will expire after for 4 hours in order to constrain the access to old database snapshots. That also means that clients which hold paging URLs will be able to access deleted and changed resources for up to 4 hours.
+Paging sessions operate on a stable database snapshot. Next links will point to custom paging session endpoints. The endpoints will expire after for 4 hours in order to constrain the usage of a paging session. That also means that clients which have access to a paging session, will be able to access deleted and changed resources for up to 4 hours.
 
-### Paging URLs are Encrypted
+### Expire
 
-The variable part of paging URLs is encrypted to ensure confidentiality and integrity of the paging parameters. Confidentiality is important in case some of the original query parameters contain sensitive information. To mitigate the risk of exposing this data, FHIR searches are often executed via POST requests, which helps prevent sensitive information from being logged in URLs. Consequently, it is essential that paging URLs do not reveal any confidential data. Integrity is important, because it should not be possible to manipulate the paging URL in order to access a different database snapshot.
+Paging sessions will expire after 4 hours without activity. Activities are requesting the first or next page.
+
+### Fast
+
+Paging sessions don't require initial setup time and show constant costs per page in most cases. In fact paging sessions don't require book keeping at server side at all. Their state is solely communicated via link URLs. For search requests with more than one parameter, page costs can vary because of internal query handling.
+
+### Encrypted
+
+The variable part of paging URLs is encrypted to ensure confidentiality and integrity of the paging parameters. Confidentiality is important in case some of the original query parameters contain sensitive information. To mitigate the risk of exposing this data, FHIR searches are often executed via POST requests, which helps prevent sensitive information from being logged in URLs. Consequently, it is essential that paging URLs do not reveal any confidential data. Integrity is important, because it should not be possible to manipulate the paging URL in order to access a different paging session.
 
 #### Encryption Key Management
 

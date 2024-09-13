@@ -207,6 +207,7 @@
      refs)))
 
 (def ^:private inc-0 (fnil inc 0))
+(def ^:private minus-0 (fnil - 0))
 
 (defmethod verify-tx-cmd "create"
   [_search-param-registry db-before t res {:keys [type id hash refs]}]
@@ -326,6 +327,45 @@
            (update-in [:stats tid :num-changes] inc-0))
         (and op (not (identical? :delete op)))
         (update-in [:stats tid :total] (fnil dec 0))))))
+
+(def ^:private ^:const ^long delete-history-max 100000)
+
+(defn- too-many-history-entries-msg [type id]
+  (format "Deleting the history of `%s/%s` failed because there are more than %,d history entries."
+          type id delete-history-max))
+
+(defn- too-many-history-entries-anom [type id]
+  (ba/conflict
+   (too-many-history-entries-msg type id)
+   :fhir/issue "too-costly"))
+
+(defn- instance-history [db type id]
+  (into [] (comp (drop 1) (take delete-history-max)) (d/instance-history db type id)))
+
+(defn- purge-entry [tid id t rh]
+  (rts/index-entries tid id (rh/t rh) (rh/hash rh) (rh/num-changes rh) (rh/op rh) t))
+
+(defn- purge-entries [tid id t instance-history]
+  (into [] (mapcat (partial purge-entry tid id t)) instance-history))
+
+(defn- add-delete-history-entries [entries tid id t instance-history]
+  (-> (update entries :entries into (purge-entries tid (codec/id-byte-string id) t instance-history))
+      (update-in [:stats tid :num-changes] minus-0 (count instance-history))))
+
+(defmethod verify-tx-cmd "delete-history"
+  [_ db-before t res {:keys [type id]}]
+  (log/trace "verify-tx-cmd :delete-history" (str type "/" id))
+  (with-open [_ (prom/timer duration-seconds "verify-delete-history")]
+    (let [tid (codec/tid type)
+          instance-history (instance-history db-before type id)]
+      (cond
+        (empty? instance-history) res
+
+        (= delete-history-max (count instance-history))
+        (throw-anom (too-many-history-entries-anom type id))
+
+        :else
+        (add-delete-history-entries res tid id t instance-history)))))
 
 (defmethod verify-tx-cmd :default
   [_search-param-registry _db-before _t res _tx-cmd]

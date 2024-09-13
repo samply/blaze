@@ -10,6 +10,10 @@
   :args (s/cat :headers (s/nilable map?) :name string?)
   :ret (s/nilable keyword?))
 
+(s/fdef handler-util/error-response
+  :args (s/cat :error some?)
+  :ret map?)
+
 (s/fdef handler-util/luid
   :args (s/cat :context (s/keys :req-un [:blaze/clock :blaze/rng-fn]))
   :ret :blaze/luid)

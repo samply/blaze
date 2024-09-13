@@ -54,9 +54,12 @@
         bs/from-byte-buffer!)))
 
 (defn type-history
-  "Returns a reducible collection of all historic resource handles between
-  `start-t` (inclusive) and `start-id` (optional, inclusive) of resources with
-  `tid`."
-  [snapshot tid start-t start-id]
-  (i/prefix-entries snapshot :type-as-of-index (map (decoder tid))
-                    codec/tid-size (start-key tid start-t start-id)))
+  "Returns a reducible collection of all historic resource handles with type
+  `tid` of the database with the point in time `t` between `start-t` (inclusive)
+  and `start-id` (optional, inclusive)."
+  [snapshot tid t start-t start-id]
+  (i/prefix-entries
+   snapshot :type-as-of-index
+   (comp (map (decoder tid))
+         (filter #(< (long t) (rh/purged-at %))))
+   codec/tid-size (start-key tid start-t start-id)))

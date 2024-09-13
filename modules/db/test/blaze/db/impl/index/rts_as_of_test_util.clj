@@ -10,6 +10,9 @@
   (let [buf (bb/wrap byte-array)
         hash (hash/from-byte-buffer! buf)
         state (bb/get-long! buf)]
-    {:hash hash
-     :num-changes (rh/state->num-changes state)
-     :op (rh/state->op state)}))
+    (cond->
+     {:hash hash
+      :num-changes (rh/state->num-changes state)
+      :op (rh/state->op state)}
+      (<= 8 (bb/remaining buf))
+      (assoc :purged-at (bb/get-long! buf)))))

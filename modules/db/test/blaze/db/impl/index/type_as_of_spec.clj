@@ -15,6 +15,7 @@
 (s/fdef tao/type-history
   :args (s/cat :snapshot :blaze.db.kv/snapshot
                :tid :blaze.db/tid
+               :t :blaze.db/t
                :start-t :blaze.db/t
                :start-id (s/nilable :blaze.db/id-byte-string))
   :ret (cs/coll-of :blaze.db/resource-handle))

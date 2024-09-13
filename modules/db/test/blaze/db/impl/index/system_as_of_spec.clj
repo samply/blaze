@@ -15,6 +15,7 @@
 
 (s/fdef sao/system-history
   :args (s/cat :snapshot :blaze.db.kv/snapshot
+               :t :blaze.db/t
                :start-t :blaze.db/t
                :start-tid (s/nilable :blaze.db/tid)
                :start-id (s/nilable :blaze.db/id-byte-string))

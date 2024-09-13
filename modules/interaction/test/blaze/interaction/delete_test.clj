@@ -1,5 +1,5 @@
 (ns blaze.interaction.delete-test
-  "Specifications relevant for the FHIR update interaction:
+  "Specifications relevant for the FHIR delete interaction:
 
   https://www.hl7.org/fhir/http.html#delete"
   (:require
@@ -33,7 +33,7 @@
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))))
 
-  (testing "invalid executor"
+  (testing "invalid node"
     (given-thrown (ig/init {:blaze.interaction/delete {:node ::invalid}})
       :key := :blaze.interaction/delete
       :reason := ::ig/build-failed-spec
@@ -43,9 +43,7 @@
 (def config
   (assoc api-stub/mem-node-config
          :blaze.interaction/delete
-         {:node (ig/ref :blaze.db/node)
-          :executor (ig/ref :blaze.test/executor)}
-         :blaze.test/executor {}))
+         {:node (ig/ref :blaze.db/node)}))
 
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]

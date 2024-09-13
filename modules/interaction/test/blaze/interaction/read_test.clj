@@ -12,7 +12,7 @@
    [blaze.db.spec]
    [blaze.interaction.read]
    [blaze.interaction.test-util :refer [wrap-error]]
-   [blaze.middleware.fhir.db :refer [wrap-db wrap-versioned-instance-db]]
+   [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.middleware.fhir.db-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
@@ -50,16 +50,6 @@
                                   wrap-error)]
          ~@body))))
 
-(defmacro with-vread-handler [[handler-binding] & more]
-  (let [[txs body] (api-stub/extract-txs-body more)]
-    `(with-system-data [{node# :blaze.db/node
-                         handler# :blaze.interaction/read} config]
-       ~txs
-       (let [~handler-binding (-> handler# wrap-defaults
-                                  (wrap-versioned-instance-db node# 100)
-                                  wrap-error)]
-         ~@body))))
-
 (deftest handler-test
   (testing "returns Not-Found on non-existing resource"
     (with-handler [handler]
@@ -88,21 +78,6 @@
           [:issue 0 :details :coding 0 :system] := operation-outcome
           [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_ID_INVALID"
           [:issue 0 :diagnostics] := "Resource id `A_B` is invalid."))))
-
-  (testing "returns Bad-Request on invalid version id"
-    (with-vread-handler [handler]
-      (let [{:keys [status body]}
-            @(handler {:path-params {:id "0" :vid "a"}})]
-
-        (is (= 400 status))
-
-        (given body
-          :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"value"
-          [:issue 0 :details :coding 0 :system] := operation-outcome
-          [:issue 0 :details :coding 0 :code] := #fhir/code"MSG_ID_INVALID"
-          [:issue 0 :diagnostics] := "Resource versionId `a` is invalid."))))
 
   (testing "returns Gone on deleted resource"
     (with-handler [handler]
@@ -148,29 +123,6 @@
 
       (let [{:keys [status headers body]}
             @(handler {:path-params {:id "0"}})]
-
-        (is (= 200 status))
-
-        (testing "Transaction time in Last-Modified header"
-          (is (= "Thu, 1 Jan 1970 00:00:00 GMT" (get headers "Last-Modified"))))
-
-        (testing "Version in ETag header"
-          ;; 1 is the T of the transaction of the resource update
-          (is (= "W/\"1\"" (get headers "ETag"))))
-
-        (given body
-          :fhir/type := :fhir/Patient
-          :id := "0"
-          [:meta :versionId] := #fhir/id"1"
-          [:meta :lastUpdated] := Instant/EPOCH))))
-
-  (testing "returns existing resource on versioned read even if it is currently deleted"
-    (with-vread-handler [handler]
-      [[[:put {:fhir/type :fhir/Patient :id "0"}]]
-       [[:delete "Patient" "0"]]]
-
-      (let [{:keys [status headers body]}
-            @(handler {:path-params {:id "0" :vid "1"}})]
 
         (is (= 200 status))
 

@@ -152,7 +152,9 @@
   * :fhir/operation-outcome
       - will go into `OperationOutcome.issue.details` as code with system
         http://terminology.hl7.org/CodeSystem/operation-outcome
-  * :fhir.issue/expression - will go into `OperationOutcome.issue.expression`"
+  * :fhir.issue/expression - will go into `OperationOutcome.issue.expression`
+  * :http/status - the HTTP status to use
+  * :http/headers - a list of tuples of header name and header value"
   [error]
   (error-response*
    error
