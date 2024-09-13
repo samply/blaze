@@ -216,8 +216,7 @@
     (with-system [{:blaze.db/keys [node]} mem-node-config]
       (given-failed-future (fhir-util/pull (d/db node) "Patient" "0")
         ::anom/category := ::anom/not-found
-        ::anom/message := "Resource `Patient/0` was not found."
-        :fhir/issue := "not-found")))
+        ::anom/message := "Resource `Patient/0` was not found.")))
 
   (testing "deleted"
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
@@ -248,6 +247,63 @@
         [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
         (given-failed-future (fhir-util/pull (d/db node) "Patient" "0")
+          ::anom/category := ::anom/fault
+          :fhir/issue := "incomplete")))))
+
+(deftest pull-historic-test
+  (testing "not-found"
+    (with-system [{:blaze.db/keys [node]} mem-node-config]
+      (given-failed-future (fhir-util/pull-historic (d/db node) "Patient" "0" 0)
+        ::anom/category := ::anom/not-found
+        ::anom/message := "Resource `Patient/0` with version `0` was not found."))
+
+    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active false}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]
+       [[:delete-history "Patient" "0"]]]
+
+      (given-failed-future (fhir-util/pull-historic (d/db node) "Patient" "0" 1)
+        ::anom/category := ::anom/not-found
+        ::anom/message := "Resource `Patient/0` with version `1` was not found.")))
+
+  (testing "found"
+    (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      [[[:put {:fhir/type :fhir/Patient :id "0" :active false}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
+
+      (testing "version 1"
+        (given @(mtu/assoc-thread-name (fhir-util/pull-historic (d/db node) "Patient" "0" 1))
+          :fhir/type := :fhir/Patient
+          :id := "0"
+          :active := false
+          [meta :thread-name] :? mtu/common-pool-thread?))
+
+      (testing "version 2"
+        (given @(mtu/assoc-thread-name (fhir-util/pull-historic (d/db node) "Patient" "0" 2))
+          :fhir/type := :fhir/Patient
+          :id := "0"
+          :active := true
+          [meta :thread-name] :? mtu/common-pool-thread?)))
+
+    (testing "deleted version"
+      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+        [[[:delete "Patient" "0"]]]
+
+        (given-failed-future (fhir-util/pull-historic (d/db node) "Patient" "0" 1)
+          ::anom/category := ::anom/not-found
+          ::anom/message := "Resource `Patient/0` was deleted in version `1`."
+          :http/status := 410
+          :http/headers := [["Last-Modified" "Thu, 1 Jan 1970 00:00:00 GMT"]
+                            ["ETag" "W/\"1\""]]
+          :fhir/issue := "deleted"))))
+
+  (testing "pull error"
+    (with-redefs
+     [d/pull (fn [_ _] (ac/completed-future (ba/fault)))]
+      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+        [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+        (given-failed-future (fhir-util/pull-historic (d/db node) "Patient" "0" 1)
           ::anom/category := ::anom/fault
           :fhir/issue := "incomplete")))))
 

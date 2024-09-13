@@ -17,7 +17,7 @@ test "after cancel issue code" "$(echo "$RESPONSE" | jq -r '.issue[0].code')" "n
 
 DIAGNOSTICS="$(curl -s -H 'Accept: application/fhir+json' "$STATUS_URL" | jq -r '.issue[0].diagnostics')"
 if [[ "$DIAGNOSTICS" =~ The\ asynchronous\ request\ with\ id\ \`[A-Z0-9]+\`\ is\ cancelled. ]]; then
-    echo "OK 👍: the diagnostics message is right"
+    echo "✅ the diagnostics message is right"
 else
-    echo "Fail 😞: the diagnostics message is $DIAGNOSTICS, expected /The asynchronous request with id \`[A-Z0-9]\+\` is cancelled./"
+    echo "🆘 the diagnostics message is $DIAGNOSTICS, expected /The asynchronous request with id \`[A-Z0-9]\+\` is cancelled./"
 fi

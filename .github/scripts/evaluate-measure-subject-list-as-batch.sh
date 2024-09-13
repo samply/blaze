@@ -132,9 +132,9 @@ BUNDLE=$(evaluate_measure "$BASE" "$MEASURE_ID")
 COUNT=$(echo "$BUNDLE" | jq -r ".entry[0].resource.group[0].population[0].count")
 
 if [ "$COUNT" = "$EXPECTED_COUNT" ]; then
-  echo "OK 👍: count ($COUNT) equals the expected count"
+  echo "✅ count ($COUNT) equals the expected count"
 else
-  echo "Fail 😞: count ($COUNT) != $EXPECTED_COUNT"
+  echo "🆘 count ($COUNT) != $EXPECTED_COUNT"
   echo "Report:"
   echo "$BUNDLE" | jq .
   exit 1
@@ -145,9 +145,9 @@ PATIENT_BUNDLE=$(fetch_patients "$BASE" "$LIST_ID")
 ID_COUNT=$(echo "$PATIENT_BUNDLE" | jq -r ".entry[].resource.id" | sort -u | wc -l | xargs)
 
 if [ "$ID_COUNT" = "$EXPECTED_COUNT" ]; then
-  echo "OK 👍: downloaded patient count ($ID_COUNT) equals the expected count"
+  echo "✅ downloaded patient count ($ID_COUNT) equals the expected count"
 else
-  echo "Fail 😞: downloaded patient count ($ID_COUNT) != $EXPECTED_COUNT"
+  echo "🆘 downloaded patient count ($ID_COUNT) != $EXPECTED_COUNT"
   echo "Patient bundle:"
   echo "$PATIENT_BUNDLE" | jq .
   exit 1

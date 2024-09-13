@@ -18,20 +18,20 @@ ACTUAL_NUM_PROCEDURES=$(jq -r .resourceType output.ndjson | grep -c Procedure)
 rm output.ndjson
 
 if [ "$EXPECTED_NUM_PATIENTS" != "$ACTUAL_NUM_PATIENTS" ]; then
-  echo "Fail 😞: Patient download size was ${ACTUAL_NUM_PATIENTS} but should be ${EXPECTED_NUM_PATIENTS}"
+  echo "🆘 Patient download size was ${ACTUAL_NUM_PATIENTS} but should be ${EXPECTED_NUM_PATIENTS}"
   exit 1
 elif [ "$EXPECTED_NUM_OBSERVATIONS" != "$ACTUAL_NUM_OBSERVATIONS" ]; then
-  echo "Fail 😞: Observation download size was ${ACTUAL_NUM_OBSERVATIONS} but should be ${EXPECTED_NUM_OBSERVATIONS}"
+  echo "🆘 Observation download size was ${ACTUAL_NUM_OBSERVATIONS} but should be ${EXPECTED_NUM_OBSERVATIONS}"
   exit 1
 elif [ "$EXPECTED_NUM_CONDITIONS" != "$ACTUAL_NUM_CONDITIONS" ]; then
-  echo "Fail 😞: Condition download size was ${ACTUAL_NUM_CONDITIONS} but should be ${EXPECTED_NUM_CONDITIONS}"
+  echo "🆘 Condition download size was ${ACTUAL_NUM_CONDITIONS} but should be ${EXPECTED_NUM_CONDITIONS}"
   exit 1
 elif [ "$EXPECTED_NUM_ENCOUNTERS" != "$ACTUAL_NUM_ENCOUNTERS" ]; then
-  echo "Fail 😞: Encounter download size was ${ACTUAL_NUM_ENCOUNTERS} but should be ${EXPECTED_NUM_ENCOUNTERS}"
+  echo "🆘 Encounter download size was ${ACTUAL_NUM_ENCOUNTERS} but should be ${EXPECTED_NUM_ENCOUNTERS}"
   exit 1
 elif [ "$EXPECTED_NUM_PROCEDURES" != "$ACTUAL_NUM_PROCEDURES" ]; then
-  echo "Fail 😞: Procedure download size was ${ACTUAL_NUM_PROCEDURES} but should be ${EXPECTED_NUM_PROCEDURES}"
+  echo "🆘 Procedure download size was ${ACTUAL_NUM_PROCEDURES} but should be ${EXPECTED_NUM_PROCEDURES}"
   exit 1
 else
-  echo "OK 👍: all download sizes match"
+  echo "✅ all download sizes match"
 fi

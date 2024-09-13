@@ -34,6 +34,7 @@
   :args (s/cat :snapshot ::kv/snapshot
                :tid :blaze.db/tid
                :id :blaze.db/id-byte-string
+               :t :blaze.db/t
                :start-t :blaze.db/t)
   :ret (cs/coll-of :blaze.db/resource-handle))
 
@@ -56,11 +57,3 @@
                :id-extractor (s/? fn?)
                :matcher (s/? fn?))
   :ret fn?)
-
-(s/fdef rao/num-of-instance-changes
-  :args (s/cat :snapshot ::kv/snapshot
-               :tid :blaze.db/tid
-               :id :blaze.db/id-byte-string
-               :start-t :blaze.db/t
-               :end-t :blaze.db/t)
-  :ret nat-int?)

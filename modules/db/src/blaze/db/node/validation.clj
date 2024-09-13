@@ -23,6 +23,8 @@
 
 (defmethod extract-type-id :conditional-delete [_])
 
+(defmethod extract-type-id :delete-history [_])
+
 (defn- duplicate-resource-anomaly [[type id]]
   (ba/incorrect
    (format "Duplicate resource `%s/%s`." type id)

@@ -14,8 +14,8 @@ fi
 COUNT=$(echo "$REPORT" | jq '.group[0].population[0].count')
 
 if [ "$COUNT" = "$EXPECTED_COUNT" ]; then
-  echo "OK 👍: count ($COUNT) equals the expected count"
+  echo "✅ count ($COUNT) equals the expected count"
 else
-  echo "Fail 😞: count ($COUNT) != $EXPECTED_COUNT"
+  echo "🆘 count ($COUNT) != $EXPECTED_COUNT"
   exit 1
 fi

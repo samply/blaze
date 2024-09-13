@@ -21,14 +21,27 @@
     (identical? :create op) (Numbers/setBit 1)
     (identical? :delete op) (Numbers/setBit 0)))
 
-(defn encode-value [hash num-changes op]
-  (-> (bb/allocate rao/value-size)
-      (hash/into-byte-buffer! hash)
-      (bb/put-long! (state num-changes op))
-      bb/array))
+(defn- encode-value
+  ([hash num-changes op]
+   (-> (bb/allocate rao/min-value-size)
+       (hash/into-byte-buffer! hash)
+       (bb/put-long! (state num-changes op))
+       bb/array))
+  ([hash num-changes op purged-at]
+   (-> (bb/allocate rao/max-value-size)
+       (hash/into-byte-buffer! hash)
+       (bb/put-long! (state num-changes op))
+       (bb/put-long! purged-at)
+       bb/array)))
 
-(defn index-entries [tid id t hash num-changes op]
-  (let [value (encode-value hash num-changes op)]
-    [[:resource-as-of-index (rao/encode-key tid id t) value]
-     [:type-as-of-index (tao/encode-key tid t id) value]
-     [:system-as-of-index (sao/encode-key t tid id) value]]))
+(defn index-entries
+  ([tid id t hash num-changes op]
+   (let [value (encode-value hash num-changes op)]
+     [[:resource-as-of-index (rao/encode-key tid id t) value]
+      [:type-as-of-index (tao/encode-key tid t id) value]
+      [:system-as-of-index (sao/encode-key t tid id) value]]))
+  ([tid id t hash num-changes op purged-at]
+   (let [value (encode-value hash num-changes op purged-at)]
+     [[:resource-as-of-index (rao/encode-key tid id t) value]
+      [:type-as-of-index (tao/encode-key tid t id) value]
+      [:system-as-of-index (sao/encode-key t tid id) value]])))

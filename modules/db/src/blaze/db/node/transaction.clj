@@ -87,6 +87,13 @@
      allow-multiple-delete
      (assoc :allow-multiple true))})
 
+(defmethod prepare-op :delete-history
+  [_ [_ type id]]
+  {:blaze.db/tx-cmd
+   {:op "delete-history"
+    :type type
+    :id id}})
+
 (def ^:private split
   (juxt #(mapv :blaze.db/tx-cmd %) #(into {} (map :hash-resource) %)))
 

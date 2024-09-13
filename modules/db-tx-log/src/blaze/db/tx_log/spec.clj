@@ -19,7 +19,7 @@
   queue?)
 
 (s/def :blaze.db.tx-cmd/op
-  #{"create" "put" "keep" "delete" "conditional-delete"})
+  #{"create" "put" "keep" "delete" "conditional-delete" "delete-history"})
 
 (s/def :blaze.db.tx-cmd/type
   :fhir.resource/type)
@@ -86,6 +86,11 @@
           :opt-un [:blaze.db.tx-cmd/clauses
                    :blaze.db.tx-cmd/check-refs
                    :blaze.db.tx-cmd/allow-multiple]))
+
+(defmethod tx-cmd "delete-history" [_]
+  (s/keys :req-un [:blaze.db.tx-cmd/op
+                   :blaze.db.tx-cmd/type
+                   :blaze.resource/id]))
 
 (s/def :blaze.db/tx-cmd
   (s/multi-spec tx-cmd :op))

@@ -12,6 +12,10 @@
    [cognitect.anomalies :as anom]
    [reitit.core :as reitit]))
 
+(s/fdef fhir-util/parse-nat-long
+  :args (s/cat :s string?)
+  :ret (s/nilable nat-int?))
+
 (s/fdef fhir-util/t
   :args (s/cat :query-params (s/nilable :ring.request/query-params))
   :ret (s/nilable :blaze.db/t))
@@ -67,6 +71,11 @@
 
 (s/fdef fhir-util/pull
   :args (s/cat :db :blaze.db/db :type :fhir.resource/type :id :blaze.resource/id)
+  :ret ac/completable-future?)
+
+(s/fdef fhir-util/pull-historic
+  :args (s/cat :db :blaze.db/db :type :fhir.resource/type :id :blaze.resource/id
+               :t :blaze.db/t)
   :ret ac/completable-future?)
 
 (s/fdef fhir-util/sync

@@ -8,8 +8,8 @@ curl -sXPUT -d '{"resourceType" : "Patient", "id": "0"}' -H 'Content-Type: appli
 RESULT=$(curl -s "$BASE/Observation?_include=Observation:subject" | jq -r '.entry[].search.mode' | tr '\n' '|')
 
 if [ "$RESULT" = "match|include|" ]; then
-  echo "OK 👍: include works"
+  echo "✅ include works"
 else
-  echo "Fail 😞: include doesn't work"
+  echo "🆘 include doesn't work"
   exit 1
 fi

@@ -26,9 +26,9 @@ AUTHORED_ON_ISO=$(echo "$JOB" | jq -r '.authoredOn')
 AUTHORED_ON_EPOCH_SECONDS=$($DATE_CMD -d "$AUTHORED_ON_ISO" +%s)
 NOW_EPOCH_SECONDS=$($DATE_CMD +%s)
 if ((NOW_EPOCH_SECONDS - AUTHORED_ON_EPOCH_SECONDS < 10)); then
-  echo "OK 👍: the authoredOn dateTime is set and current"
+  echo "✅ the authoredOn dateTime is set and current"
 else
-  echo "Fail 😞: the authoredOn dateTime is $AUTHORED_ON_ISO, but should be a current dateTime"
+  echo "🆘 the authoredOn dateTime is $AUTHORED_ON_ISO, but should be a current dateTime"
   exit 1
 fi
 

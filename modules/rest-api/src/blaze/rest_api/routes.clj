@@ -47,10 +47,6 @@
   {:name :snapshot-db
    :wrap db/wrap-snapshot-db})
 
-(def ^:private wrap-versioned-instance-db
-  {:name :versioned-instance-db
-   :wrap db/wrap-versioned-instance-db})
-
 (def ^:private wrap-ensure-form-body
   {:name :ensure-form-body
    :wrap ensure-form-body/wrap-ensure-form-body})
@@ -197,12 +193,16 @@
                           :middleware [[wrap-db node db-sync-timeout]
                                        wrap-link-headers]
                           :handler (-> interactions :history-instance
-                                       :blaze.rest-api.interaction/handler)}))]
+                                       :blaze.rest-api.interaction/handler)})
+             (contains? interactions :delete-history)
+             (assoc :delete {:interaction "delete-history"
+                             :handler (-> interactions :delete-history
+                                          :blaze.rest-api.interaction/handler)}))]
           ["/{vid}"
            (cond-> {:name (keyword name "versioned-instance")}
              (contains? interactions :vread)
              (assoc :get {:interaction "vread"
-                          :middleware [[wrap-versioned-instance-db node db-sync-timeout]]
+                          :middleware [[wrap-db node db-sync-timeout]]
                           :handler (-> interactions :vread
                                        :blaze.rest-api.interaction/handler)}))]]]
          (not batch?)

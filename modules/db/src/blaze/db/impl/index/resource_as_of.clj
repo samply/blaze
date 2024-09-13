@@ -21,8 +21,11 @@
 (def ^:private ^:const ^long max-key-size
   (+ except-id-key-size codec/max-id-size))
 
-(def ^:const ^long value-size
+(def ^:const ^long min-value-size
   (+ hash/size codec/state-size))
+
+(def ^:const ^long max-value-size
+  (+ hash/size codec/state-size codec/t-size))
 
 (defn- focus-id!
   "Reduces the limit of `kb` in order to hide the t and focus on id solely."
@@ -295,15 +298,16 @@
     (rh/resource-handle! tid id (codec/descending-long (bb/get-long! kb tid-id-size)) vb)))
 
 (defn instance-history
-  "Returns a reducible collection of all versions of the resource with `tid` and
-  `id` starting at `start-t`.
-
-  Versions are resource handles."
-  [snapshot tid id start-t]
+  "Returns a reducible collection of all historic resource handles of the
+  resource with `tid` and `id` of the database with the point in time `t`
+  starting at `start-t`."
+  [snapshot tid id t start-t]
   (let [tid-id-size (+ codec/tid-size (bs/size id))]
-    (i/prefix-entries snapshot :resource-as-of-index
-                      (map (decoder tid (codec/id-string id) tid-id-size))
-                      tid-id-size (start-key tid id start-t))))
+    (i/prefix-entries
+     snapshot :resource-as-of-index
+     (comp (map (decoder tid (codec/id-string id) tid-id-size))
+           (take-while #(< (long t) (rh/purged-at %))))
+     tid-id-size (start-key tid id start-t))))
 
 (defn- resource-handle* [iter target-buf key-buf value-buf tid id t]
   (let [tid-id-size (+ codec/tid-size (bs/size id))
@@ -347,7 +351,7 @@
   [snapshot tid id t]
   (let [target-buf (bb/allocate max-key-size)
         key-buf (bb/allocate max-key-size)
-        value-buf (bb/allocate value-size)]
+        value-buf (bb/allocate max-value-size)]
     (with-open [iter (kv/new-iterator snapshot :resource-as-of-index)]
       (resource-handle* iter target-buf key-buf value-buf tid id t))))
 
@@ -369,7 +373,7 @@
   [snapshot t]
   (let [target-buf (bb/allocate max-key-size)
         key-buf (bb/allocate max-key-size)
-        value-buf (bb/allocate value-size)
+        value-buf (bb/allocate max-value-size)
         iter (kv/new-iterator snapshot :resource-as-of-index)]
     (comp
      (keep
@@ -389,7 +393,7 @@
   ([snapshot t tid id-extractor matcher]
    (let [target-buf (bb/allocate max-key-size)
          key-buf (bb/allocate max-key-size)
-         value-buf (bb/allocate value-size)
+         value-buf (bb/allocate max-value-size)
          iter (kv/new-iterator snapshot :resource-as-of-index)]
      (comp
       (keep
@@ -399,10 +403,3 @@
            (when (matcher input handle)
              handle))))
       (closer iter)))))
-
-(defn num-of-instance-changes
-  "Returns the number of changes between `start-t` (inclusive) and `end-t`
-  (inclusive) of the resource with `tid` and `id` in `snapshot`."
-  [snapshot tid id start-t end-t]
-  (- (long (:num-changes (resource-handle snapshot tid id start-t) 0))
-     (long (:num-changes (resource-handle snapshot tid id end-t) 0))))

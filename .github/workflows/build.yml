@@ -1067,6 +1067,9 @@ jobs:
     - name: Create Patient With Ancient Birth Year
       run: .github/scripts/create-patient-with-ancient-birth-year.sh
 
+    - name: Delete History
+      run: .github/scripts/delete-history.sh
+
     - name: Prometheus Metrics
       run: .github/scripts/test-metrics.sh
       if: ${{ matrix.variant == 'standalone' }}
@@ -1494,6 +1497,9 @@ jobs:
     - name: Jepsen Register Test
       run: make -C modules/jepsen register-test-fast
 
+    - name: Jepsen Resource History Test
+      run: make -C modules/jepsen resource-history-test-fast
+
   openid-auth-test:
     needs: build
     runs-on: ubuntu-22.04
@@ -1900,6 +1906,9 @@ jobs:
 
     - name: Jepsen Register Test
       run: make -C modules/jepsen register-test-slow
+
+    - name: Jepsen Resource History Test
+      run: make -C modules/jepsen resource-history-test-slow
 
     - name: Docker Stats
       run: docker stats --no-stream

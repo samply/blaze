@@ -96,6 +96,11 @@
          :type :fhir.resource/type
          :clauses (s/? (s/coll-of :blaze.db.query/search-clause :kind vector? :min-count 1))))
 
+(defmethod tx-op :delete-history [_]
+  (s/cat :op #{:delete-history}
+         :type :fhir.resource/type
+         :id :blaze.resource/id))
+
 (s/def :blaze.db/tx-op
   (s/multi-spec tx-op first))
 

@@ -11,9 +11,9 @@ blazectl --no-progress --server "$BASE" download "$TYPE" -q "_sort=$SORT&$QUERY"
 
 SIZE=$(wc -l "$FILE_NAME_PREFIX-get.ndjson" | xargs | cut -d ' ' -f1)
 if [ "$EXPECTED_SIZE" = "$SIZE" ]; then
-  echo "OK 👍: download size matches for GET request"
+  echo "✅ download size matches for GET request"
 else
-  echo "Fail 😞: download size was ${SIZE} but should be ${EXPECTED_SIZE} for GET request"
+  echo "🆘 download size was ${SIZE} but should be ${EXPECTED_SIZE} for GET request"
   rm "$FILE_NAME_PREFIX-get.ndjson"
   exit 1
 fi
@@ -22,19 +22,19 @@ blazectl --server "$BASE" download "$TYPE" -p -q "_sort=$SORT&$QUERY" -o "$FILE_
 
 SIZE=$(wc -l "$FILE_NAME_PREFIX-post.ndjson" | xargs | cut -d ' ' -f1)
 if [ "$EXPECTED_SIZE" = "$SIZE" ]; then
-  echo "OK 👍: download size matches for POST request"
+  echo "✅ download size matches for POST request"
 else
-  echo "Fail 😞: download size was ${SIZE} but should be ${EXPECTED_SIZE} for POST request"
+  echo "🆘 download size was ${SIZE} but should be ${EXPECTED_SIZE} for POST request"
   rm "$FILE_NAME_PREFIX-get.ndjson"
   rm "$FILE_NAME_PREFIX-post.ndjson"
   exit 1
 fi
 
 if [ "$(diff "$FILE_NAME_PREFIX-get.ndjson" "$FILE_NAME_PREFIX-post.ndjson")" = "" ]; then
-  echo "OK 👍: both downloads are identical"
+  echo "✅ both downloads are identical"
   rm "$FILE_NAME_PREFIX-post.ndjson"
 else
-  echo "Fail 😞: the GET and the POST download differ"
+  echo "🆘 the GET and the POST download differ"
   rm "$FILE_NAME_PREFIX-get.ndjson"
   rm "$FILE_NAME_PREFIX-post.ndjson"
   exit 1
@@ -45,9 +45,9 @@ if [[ "$SORT" == "_id" ]]; then
   IDS=$(cat "$FILE_NAME_PREFIX-get.ndjson" | jq -r '.id')
   IDS_SORT=$(echo "$IDS" | sort)
   if [ "$IDS" = "$IDS_SORT" ]; then
-    echo "OK 👍: resources are sorted by id"
+    echo "✅ resources are sorted by id"
   else
-    echo "Fail 😞: resources are not sorted by id"
+    echo "🆘 resources are not sorted by id"
     exit 1
   fi
 
@@ -63,9 +63,9 @@ elif [[ "$SORT" == "_lastUpdated" || "$SORT" == "-_lastUpdated" ]]; then
     LAST_UPDATED_SORT=$(echo "$LAST_UPDATED" | sort)
   fi
   if [ "$LAST_UPDATED" = "$LAST_UPDATED_SORT" ]; then
-    echo "OK 👍: resources are sorted by lastUpdated"
+    echo "✅ resources are sorted by lastUpdated"
   else
-    echo "Fail 😞: resources are not sorted by lastUpdated"
+    echo "🆘 resources are not sorted by lastUpdated"
     echo "$LAST_UPDATED"
     exit 1
   fi

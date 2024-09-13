@@ -9,6 +9,3 @@
 
 (s/fdef db/wrap-snapshot-db
   :args (s/cat :handler ifn? :node :blaze.db/node :timeout pos-int?))
-
-(s/fdef db/wrap-versioned-instance-db
-  :args (s/cat :handler ifn? :node :blaze.db/node :timeout pos-int?))

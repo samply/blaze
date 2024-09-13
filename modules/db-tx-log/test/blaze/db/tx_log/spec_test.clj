@@ -11,7 +11,7 @@
    [taoensso.timbre :as log]))
 
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -39,8 +39,16 @@
       {:op "put"
        :type "Patient"
        :id "0"
+       :hash patient-hash-0}
+      {:op "put"
+       :type "Patient"
+       :id "0"
        :hash patient-hash-0
        :if-match 1}
+      {:op "keep"
+       :type "Patient"
+       :id "0"
+       :hash patient-hash-0}
       {:op "delete"
        :type "Patient"
        :id "0"
@@ -48,11 +56,29 @@
       {:op "delete"
        :type "Patient"
        :id "0"
-       :check-refs true}))
+       :check-refs true}
+      {:op "conditional-delete"
+       :type "Patient"}
+      {:op "delete-history"
+       :type "Patient"
+       :id "0"}))
 
   (testing "invalid"
     (are [tx-cmd] (not (s/valid? :blaze.db/tx-cmd tx-cmd))
+      nil
+      1
+      {:op "create"
+       :type "Patient"
+       :id "0"}
+      {:op "put"
+       :type "Patient"
+       :id "0"}
+      {:op "delete"
+       :type "Patient"}
       {:op "delete"
        :type "Patient"
        :id "0"
-       :check-refs "i should be a boolean"})))
+       :check-refs "i should be a boolean"}
+      {:op "conditional-delete"}
+      {:op "delete-history"
+       :type "Patient"})))

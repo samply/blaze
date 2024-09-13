@@ -1,5 +1,5 @@
 (ns blaze.interaction.conditional-delete-type-test
-  "Specifications relevant for the FHIR update interaction:
+  "Specifications relevant for the FHIR conditional delete interaction:
 
   https://www.hl7.org/fhir/http.html#cdelete"
   (:require
