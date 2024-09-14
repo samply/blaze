@@ -37,6 +37,6 @@
 
     ;; TODO: remove after Cloverage reflection problems are solved. https://github.com/cloverage/cloverage/issues/345
     org.clojure/clojure
-    {:mvn/version "1.11.4"}}
+    {:mvn/version "1.12.0"}}
 
    :main-opts ["-m" "kaocha.runner" "--profile" "coverage"]}}}
