@@ -10,10 +10,11 @@
   (:require
    [blaze.byte-buffer :as bb]
    [blaze.byte-string :as bs]
+   [blaze.coll.core :as coll]
    [blaze.db.impl.util :as u]
    [blaze.db.kv :as kv])
   (:import
-   [clojure.lang IReduceInit]))
+   [clojure.lang Counted IReduceInit]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -164,17 +165,25 @@
 
 (defn- coll
   ([snapshot column-family xform]
-   (reify IReduceInit
+   (reify
+     IReduceInit
      (reduce [_ rf init]
        (with-open [iter (kv/new-iterator snapshot column-family)]
          (kv/seek-to-first! iter)
-         (reduce-iter! iter kv/next! (xform (completing rf)) init)))))
+         (reduce-iter! iter kv/next! (xform (completing rf)) init)))
+     Counted
+     (count [coll]
+       (.reduce coll coll/inc-rf 0))))
   ([snapshot column-family xform start-key]
-   (reify IReduceInit
+   (reify
+     IReduceInit
      (reduce [_ rf init]
        (with-open [iter (kv/new-iterator snapshot column-family)]
          (kv/seek! iter (bs/to-byte-array start-key))
-         (reduce-iter! iter kv/next! (xform (completing rf)) init))))))
+         (reduce-iter! iter kv/next! (xform (completing rf)) init)))
+     Counted
+     (count [coll]
+       (.reduce coll coll/inc-rf 0)))))
 
 (defn- coll-prev [snapshot column-family xform start-key]
   (reify IReduceInit

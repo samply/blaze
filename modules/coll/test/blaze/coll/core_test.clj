@@ -1,11 +1,14 @@
 (ns blaze.coll.core-test
   (:require
-   [blaze.coll.core :as coll]
+   [blaze.coll.core :as coll :refer [with-open-coll]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest is testing]]))
+   [clojure.test :as test :refer [are deftest is testing]])
+  (:import
+   [java.lang AutoCloseable]))
 
 (st/instrument)
+(set! *warn-on-reflection* true)
 
 (test/use-fixtures :each tu/fixture)
 
@@ -93,3 +96,11 @@
       [::x ::y] 0 ::x
       [::x ::y] 1 ::y
       [::x ::y] 2 ::not-found)))
+
+(deftest with-open-coll-test
+  (let [state (volatile! false)
+        coll (with-open-coll [_ (reify AutoCloseable (close [_] (vreset! state true)))]
+               (coll/eduction (map inc) (range 10)))]
+    (is (= 10 (count coll)))
+    (is (= (range 1 11) (vec coll)))
+    (is (true? @state))))
