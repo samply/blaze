@@ -225,6 +225,16 @@
                                   {:http-client http-client})
         :fhir/type := :fhir/OperationOutcome))))
 
+(deftest delete-history-test
+  (let [http-client (HttpClientMock.)]
+
+    (-> (.onDelete http-client "http://localhost:8080/fhir/Patient/0/_history")
+        (.doReturnStatus 204))
+
+    (is (nil? @(fhir-client/delete-history "http://localhost:8080/fhir"
+                                           "Patient" "0"
+                                           {:http-client http-client})))))
+
 (deftest transact-test
   (let [http-client (HttpClientMock.)
         bundle {:fhir/type :fhir/Bundle
@@ -373,9 +383,9 @@
 
       (given @(fhir-client/search-system "http://localhost:8080/fhir"
                                          {:http-client http-client})
+        count := 1
         [0 :fhir/type] := :fhir/Patient
-        [0 :id] := "0"
-        1 := nil)))
+        [0 :id] := "0")))
 
   (testing "one bundle with two patients"
     (let [http-client (HttpClientMock.)]
@@ -391,11 +401,11 @@
 
       (given @(fhir-client/search-system "http://localhost:8080/fhir"
                                          {:http-client http-client})
+        count := 2
         [0 :fhir/type] := :fhir/Patient
         [0 :id] := "0"
         [1 :fhir/type] := :fhir/Patient
-        [1 :id] := "1"
-        2 := nil)))
+        [1 :id] := "1")))
 
   (testing "two bundles with two patients"
     (let [http-client (HttpClientMock.)]
@@ -421,11 +431,11 @@
 
       (given @(fhir-client/search-system "http://localhost:8080/fhir"
                                          {:http-client http-client})
+        count := 2
         [0 :fhir/type] := :fhir/Patient
         [0 :id] := "0"
         [1 :fhir/type] := :fhir/Patient
-        [1 :id] := "1"
-        2 := nil)))
+        [1 :id] := "1")))
 
   (testing "with query params"
     (let [http-client (HttpClientMock.)]
@@ -441,9 +451,9 @@
       (given @(fhir-client/search-system "http://localhost:8080/fhir"
                                          {:http-client http-client
                                           :query-params {"_id" "0"}})
+        count := 1
         [0 :fhir/type] := :fhir/Patient
-        [0 :id] := "0"
-        1 := nil)))
+        [0 :id] := "0")))
 
   (testing "Server Error without JSON response"
     (let [http-client (HttpClientMock.)]
@@ -454,6 +464,25 @@
       (given-failed-future (fhir-client/search-system "http://localhost:8080/fhir"
                                                       {:http-client http-client})
         ::anom/category := ::anom/fault))))
+
+(deftest history-instance-test
+  (testing "one bundle with one patient"
+    (let [http-client (HttpClientMock.)]
+
+      (-> (.onGet http-client "http://localhost:8080/fhir/Patient/0/_history")
+          (.doReturn
+           (j/write-value-as-string
+            {:resourceType "Bundle"
+             :entry
+             [{:resource {:resourceType "Patient" :id "0"}}]}))
+          (.withHeader "content-type" "application/fhir+json"))
+
+      (given @(fhir-client/history-instance "http://localhost:8080/fhir"
+                                            "Patient" "0"
+                                            {:http-client http-client})
+        count := 1
+        [0 :fhir/type] := :fhir/Patient
+        [0 :id] := "0"))))
 
 (def temp-dir (Files/createTempDirectory "blaze" (make-array FileAttribute 0)))
 

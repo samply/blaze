@@ -39,9 +39,15 @@
 (defn delete
   "Returns a CompletableFuture that will complete with resource of `type` and
   `id` deleted."
+  [base-uri type id & [opts]]
+  (impl/delete (str base-uri "/" type "/" id) opts))
+
+(defn delete-history
+  "Returns a CompletableFuture that will complete with resource of `type` and
+  `id` deleted."
   {:arglists '([base-uri type id & [opts]])}
   [base-uri type id & [opts]]
-  (impl/delete (str base-uri "/" (name type) "/" id) opts))
+  (impl/delete (str base-uri "/" type "/" id "/_history") opts))
 
 (defn transact
   "Returns a CompletableFuture that will complete with `bundle` transacted."
@@ -108,6 +114,29 @@
   success or will complete exceptionally with an anomaly in case of an error."
   [base-uri & [opts]]
   (let [src (search-system-publisher base-uri opts)
+        pro (resource-processor)
+        dst (flow/collect pro)]
+    (flow/subscribe! src pro)
+    dst))
+
+(defn history-instance-publisher
+  "Returns a Publisher that produces a Bundle per page of versions of resource
+  with `type` and `id`.
+
+  Use `resource-processor` to transform the pages to individual resources. Use
+  `history-instance` if you simply want to fetch all resources."
+  [base-uri type id & [opts]]
+  (reify Flow$Publisher
+    (subscribe [_ subscriber]
+      (->> (impl/paging-subscription subscriber (str base-uri "/" type "/" id "/_history") opts)
+           (flow/on-subscribe! subscriber)))))
+
+(defn history-instance
+  "Returns a CompletableFuture that will complete with all versions of resource
+  with `type` and `id` in case of success or will complete exceptionally with an
+  anomaly in case of an error."
+  [base-uri type id & [opts]]
+  (let [src (history-instance-publisher base-uri type id opts)
         pro (resource-processor)
         dst (flow/collect pro)]
     (flow/subscribe! src pro)

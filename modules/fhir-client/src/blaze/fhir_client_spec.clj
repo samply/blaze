@@ -35,6 +35,11 @@
                :opts (s/? :blaze.fhir-client/options))
   :ret ac/completable-future?)
 
+(s/fdef fhir-client/delete-history
+  :args (s/cat :base-uri string? :type :fhir.resource/type :id :blaze.resource/id
+               :opts (s/? :blaze.fhir-client/options))
+  :ret ac/completable-future?)
+
 (s/fdef fhir-client/transact
   :args (s/cat :base-uri string? :bundle :blaze/resource
                :opts (s/? :blaze.fhir-client/options))
@@ -59,8 +64,22 @@
                :opts (s/? :blaze.fhir-client/options))
   :ret ac/completable-future?)
 
+(s/fdef fhir-client/search-system-publisher
+  :args (s/cat :base-uri string? :opts (s/? :blaze.fhir-client/options))
+  :ret flow/publisher?)
+
 (s/fdef fhir-client/search-system
   :args (s/cat :base-uri string? :opts (s/? :blaze.fhir-client/options))
+  :ret ac/completable-future?)
+
+(s/fdef fhir-client/history-instance-publisher
+  :args (s/cat :base-uri string? :type :fhir.resource/type :id :blaze.resource/id
+               :opts (s/? :blaze.fhir-client/options))
+  :ret flow/publisher?)
+
+(s/fdef fhir-client/history-instance
+  :args (s/cat :base-uri string? :type :fhir.resource/type :id :blaze.resource/id
+               :opts (s/? :blaze.fhir-client/options))
   :ret ac/completable-future?)
 
 (s/fdef fhir-client/spit
