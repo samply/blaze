@@ -8,8 +8,7 @@
   "../../module-test-util/resources/clj-kondo.exports/blaze/module-test-util"]
 
  :lint-as
- {blaze.db.impl.macros/with-open-coll clojure.core/with-open
-  blaze.elm.compiler.macros/defunop clojure.core/defn
+ {blaze.elm.compiler.macros/defunop clojure.core/defn
   blaze.elm.compiler.macros/defbinop clojure.core/defn
   blaze.elm.compiler.macros/defternop clojure.core/defn
   blaze.elm.compiler.macros/defnaryop clojure.core/defn

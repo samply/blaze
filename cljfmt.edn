@@ -6,6 +6,7 @@
   if-ok [[:block 1]]
   try-one [[:block 2]]
   when-ok [[:block 1]]
+  with-open-coll [[:block 1]]
   do-sync [[:block 1]]
   do-async [[:block 1]]
   has-form [[:block 1]]

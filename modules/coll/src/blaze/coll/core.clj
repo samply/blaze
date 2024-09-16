@@ -21,7 +21,7 @@
   [coll]
   (identical? ::empty (reduce #(reduced %2) ::empty coll)))
 
-(defn- inc-rf [sum _] (inc ^long sum))
+(defn inc-rf [sum _] (inc ^long sum))
 
 (defn eduction
   "Like `clojure.core/eduction` but implements Counted instead of Iterable."
@@ -67,4 +67,7 @@
      IReduceInit
      (reduce [_ rf# init#]
        (with-open ~bindings
-         (reduce rf# init# ~coll)))))
+         (reduce rf# init# ~coll)))
+     Counted
+     (count [coll#]
+       (.reduce coll# inc-rf 0))))

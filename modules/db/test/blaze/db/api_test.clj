@@ -1152,7 +1152,7 @@
        [[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (testing "has one list entry"
-        (is (= 1 (count (vec (d/type-list (d/db node) "Patient")))))
+        (is (= 1 (count (d/type-list (d/db node) "Patient"))))
         (is (= 1 (d/type-total (d/db node) "Patient"))))))
 
   (testing "a node with two patients in two transactions"
@@ -1233,11 +1233,11 @@
        [[:put {:fhir/type :fhir/Observation :id "0"}]]]
 
       (testing "has one patient list entry"
-        (is (= 1 (count (vec (d/type-list (d/db node) "Patient")))))
+        (is (= 1 (count (d/type-list (d/db node) "Patient"))))
         (is (= 1 (d/type-total (d/db node) "Patient"))))
 
       (testing "has one observation list entry"
-        (is (= 1 (count (vec (d/type-list (d/db node) "Observation")))))
+        (is (= 1 (count (d/type-list (d/db node) "Observation"))))
         (is (= 1 (d/type-total (d/db node) "Observation"))))))
 
   (testing "the database is immutable"
@@ -4382,7 +4382,7 @@
                                   :end #fhir/dateTime"2001-07"}}]]]
 
     (let [db (d/db node)
-          num-encounter #(count (vec (d/type-query db "Encounter" %)))]
+          num-encounter #(count (d/type-query db "Encounter" %))]
       (are [year n] (= n (num-encounter [["date" (format "gt%d-01-01" year)]
                                          ["date" (format "lt%d-01-01" (inc year))]]))
         1999 2
@@ -4428,7 +4428,7 @@
         [tx-ops]
 
         (let [db (d/db node)
-              num-encounter #(count (vec (d/type-query db "Encounter" %)))]
+              num-encounter #(count (d/type-query db "Encounter" %))]
           (= (num-encounter [["date" (str year)]])
              (num-encounter [["date" (format "sa%d-12-31" (dec year))]
                              ["date" (format "eb%d-01-01" (inc year))]])))))))
@@ -4441,7 +4441,7 @@
         [tx-ops]
 
         (let [db (d/db node)
-              num-encounter #(count (vec (d/type-query db "Encounter" %)))]
+              num-encounter #(count (d/type-query db "Encounter" %))]
           (= (num-encounter [["date" (str "ap" year)]])
              (num-encounter [["date" (format "ge%d-01-01" year)]
                              ["date" (format "lt%d-01-01" (inc year))]])))))))
@@ -6355,7 +6355,7 @@
           (let [db (d/db node)
                 patient (d/resource-handle db "Patient" "0")]
 
-            (is (coll/empty? (vec (d/rev-include db patient)))))))
+            (is (coll/empty? (d/rev-include db patient))))))
 
       (testing "with three resources"
         (with-system-data [{:blaze.db/keys [node]} config]
@@ -6684,7 +6684,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
-        (is (= 1 (count (vec (d/type-list batch-db "Patient")))))
+        (is (= 1 (count (d/type-list batch-db "Patient"))))
         (is (= 1 (d/type-total batch-db "Patient"))))))
 
   (testing "compile-type-query"
@@ -6714,7 +6714,7 @@
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
 
       (with-open [batch-db (d/new-batch-db (d/db node))]
-        (is (= 1 (count (vec (d/system-list batch-db)))))
+        (is (= 1 (count (d/system-list batch-db))))
         (is (= 1 (d/system-total batch-db))))))
 
   (testing "compile-compartment-query"
