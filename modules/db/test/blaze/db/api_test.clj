@@ -498,10 +498,10 @@
 
       (testing "doing a second delete"
         (let [db @(d/transact node [[:delete "Patient" "0"]])]
-          (testing "the patient is still deleted and has two changes"
+          (testing "the patient is still deleted and still only has one change"
             (given (d/resource-handle db "Patient" "0")
               :op := :delete
-              :num-changes := 2))))))
+              :num-changes := 1))))))
 
   (testing "patient with an observation referencing it"
     (with-system-data [{:blaze.db/keys [node]} config]

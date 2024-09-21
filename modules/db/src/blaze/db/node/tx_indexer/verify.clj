@@ -321,12 +321,14 @@
           {:keys [num-changes op] :or {num-changes 0} :as old-resource-handle}
           (d/resource-handle db-before type id)
           refs (some->> old-resource-handle (patient-refs search-param-registry db-before type))]
-      (cond->
-       (-> (update res :entries into (index-entries tid id t hash/deleted-hash (inc num-changes) :delete refs))
-           (update :del-resources conj [type id])
-           (update-in [:stats tid :num-changes] inc-0))
-        (and op (not (identical? :delete op)))
-        (update-in [:stats tid :total] (fnil dec 0))))))
+      (if (identical? :delete op)
+        res
+        (cond->
+         (-> (update res :entries into (index-entries tid id t hash/deleted-hash (inc num-changes) :delete refs))
+             (update :del-resources conj [type id])
+             (update-in [:stats tid :num-changes] inc-0))
+          op
+          (update-in [:stats tid :total] (fnil dec 0)))))))
 
 (def ^:private ^:const ^long delete-history-max 100000)
 
