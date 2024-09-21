@@ -294,32 +294,10 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:delete "Patient" "0"]]]
 
-      (given (verify/verify-tx-cmds
-              search-param-registry
-              (d/db node) 2
-              [{:op "delete" :type "Patient" :id "0"}])
-
-        count := 5
-
-        [0 0] := :resource-as-of-index
-        [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
-        [0 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
-
-        [1 0] := :type-as-of-index
-        [1 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "0"}
-        [1 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
-
-        [2 0] := :system-as-of-index
-        [2 1 sao-tu/decode-key] := {:t 2 :type "Patient" :id "0"}
-        [2 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
-
-        [3 0] := :type-stats-index
-        [3 1 ts-tu/decode-key] := {:type "Patient" :t 2}
-        [3 2 ts-tu/decode-val] := {:total 0 :num-changes 2}
-
-        [4 0] := :system-stats-index
-        [4 1 ss-tu/decode-key] := {:t 2}
-        [4 2 ss-tu/decode-val] := {:total 0 :num-changes 2})))
+      (is (empty? (verify/verify-tx-cmds
+                   search-param-registry
+                   (d/db node) 2
+                   [{:op "delete" :type "Patient" :id "0"}])))))
 
   (testing "deleting an existing Patient"
     (with-system-data [{:blaze.db/keys [node]} config]
