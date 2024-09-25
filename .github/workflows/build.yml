@@ -388,6 +388,9 @@ jobs:
         output: trivy-results.sarif
         severity: 'CRITICAL,HIGH'
         timeout: '15m0s'
+      env:
+        # https://aquasecurity.github.io/trivy/v0.55/docs/references/troubleshooting/#github-rate-limiting
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload Trivy Scan Results to GitHub Security Tab
       if: ${{ (github.repository_owner == 'samply') || (vars.IMAGE_SCAN_UPLOAD == 'true') }}
