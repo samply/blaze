@@ -15,7 +15,7 @@
 
 (defn- decoder
   "Returns a function which decodes an resource handle out of a key and a value
-  byte buffer from the TypeAsOf index.
+  byte buffer from the TypeAsOf index if not purged at `base-t`.
 
   Closes over a shared byte array for id decoding, because the String
   constructor creates a copy of the id bytes anyway. Can only be used from one
@@ -23,7 +23,7 @@
 
   Both buffers are changed during decoding and have to be reset accordingly
   after decoding."
-  [tid]
+  [tid base-t]
   (let [ib (byte-array codec/max-id-size)]
     (fn [[kb vb]]
       (bb/set-position! kb codec/tid-size)
@@ -33,7 +33,7 @@
          (let [id-size (bb/remaining kb)]
            (bb/copy-into-byte-array! kb ib 0 id-size)
            (codec/id ib 0 id-size))
-         t vb)))))
+         t base-t vb)))))
 
 (defn encode-key
   "Encodes the key of the TypeAsOf index from `tid`, `t` and `id`."
@@ -60,6 +60,5 @@
   [snapshot tid t start-t start-id]
   (i/prefix-entries
    snapshot :type-as-of-index
-   (comp (map (decoder tid))
-         (filter #(< (long t) (rh/purged-at %))))
+   (keep (decoder tid t))
    codec/tid-size (start-key tid start-t start-id)))

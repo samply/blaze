@@ -13,8 +13,8 @@
 
 (s/fdef rh/resource-handle!
   :args (s/cat :tid :blaze.db/tid :id :blaze.resource/id
-               :t :blaze.db/t :vb byte-buffer?)
-  :ret :blaze.db/resource-handle)
+               :t :blaze.db/t :base-t :blaze.db/t :vb byte-buffer?)
+  :ret (s/nilable :blaze.db/resource-handle))
 
 (s/fdef rh/resource-handle?
   :args (s/cat :x any?)
@@ -47,10 +47,6 @@
 (s/fdef rh/op
   :args (s/cat :rh rh/resource-handle?)
   :ret :blaze.db/op)
-
-(s/fdef rh/purged-at
-  :args (s/cat :rh rh/resource-handle?)
-  :ret :blaze.db/t)
 
 (s/fdef rh/reference
   :args (s/cat :rh rh/resource-handle?)
