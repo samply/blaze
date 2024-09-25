@@ -18,7 +18,7 @@
   (.totalSize (GraphLayout/parseInstance (object-array xs))))
 
 (defn- resource-handle [id-size]
-  (rh/resource-handle! 0 (str/join (repeat id-size "0")) 0 (bb/allocate 40)))
+  (rh/resource-handle! 0 (str/join (repeat id-size "0")) 0 0 (bb/allocate 40)))
 
 (deftest resource-handle-test
   (testing "instance size"

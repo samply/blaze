@@ -95,9 +95,10 @@
           true)))))
 
 (defn- new-entry!
-  "Creates a new resource handle entry."
-  [tid ib vb t]
-  (rh/resource-handle! tid (codec/id (bb/array ib) 0 (bb/remaining ib)) t vb))
+  "Creates a new resource handle entry if not purged at `base-t`."
+  [tid ib vb t base-t]
+  (rh/resource-handle! tid (codec/id (bb/array ib) 0 (bb/remaining ib)) t
+                       base-t vb))
 
 (defn- type-entry-creator
   "Returns a function which creates a new resource handle entry if the `t` in
@@ -106,14 +107,14 @@
   (fn [kb vb]
     (let [t (codec/descending-long (bb/get-long! kb))]
       (when (<= t ^long base-t)
-        (new-entry! tid ib vb t)))))
+        (new-entry! tid ib vb t base-t)))))
 
 (defn- system-entry-creator
   [tid-box ib base-t]
   (fn [kb vb]
     (let [t (codec/descending-long (bb/get-long! kb))]
       (when (<= t ^long base-t)
-        (new-entry! @tid-box ib vb t)))))
+        (new-entry! @tid-box ib vb t base-t)))))
 
 (defn- group-by-id
   "Returns a stateful transducer which takes flags from `id-marker` and supplies
@@ -289,13 +290,14 @@
 
 (defn- decoder
   "Returns a function which decodes an resource handle out of a key and a value
-  byte buffers from the ResourceAsOf index.
+  byte buffers from the ResourceAsOf index if not purged at `t`.
 
   Both byte buffers are changed during decoding and have to be reset accordingly
   after decoding."
-  [tid id tid-id-size]
+  [tid id tid-id-size t]
   (fn [[kb vb]]
-    (rh/resource-handle! tid id (codec/descending-long (bb/get-long! kb tid-id-size)) vb)))
+    (rh/resource-handle! tid id (codec/descending-long (bb/get-long! kb tid-id-size))
+                         t vb)))
 
 (defn instance-history
   "Returns a reducible collection of all historic resource handles of the
@@ -305,8 +307,7 @@
   (let [tid-id-size (+ codec/tid-size (bs/size id))]
     (i/prefix-entries
      snapshot :resource-as-of-index
-     (comp (map (decoder tid (codec/id-string id) tid-id-size))
-           (take-while #(< (long t) (rh/purged-at %))))
+     (keep (decoder tid (codec/id-string id) tid-id-size t))
      tid-id-size (start-key tid id start-t))))
 
 (defn- resource-handle* [iter target-buf key-buf value-buf tid id t]
@@ -343,6 +344,7 @@
            tid
            (codec/id-string id)
            (codec/descending-long (bb/get-long! key-buf tid-id-size))
+           t
            value-buf))))))
 
 (defn resource-handle

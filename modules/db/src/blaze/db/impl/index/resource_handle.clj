@@ -11,7 +11,7 @@
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
-(deftype ResourceHandle [^int tid id ^long t hash ^long num-changes op ^long purged-at]
+(deftype ResourceHandle [^int tid id ^long t hash ^long num-changes op]
   p/FhirType
   (-type [_]
    ;; TODO: maybe cache this
@@ -29,7 +29,6 @@
       :hash hash
       :num-changes num-changes
       :op op
-      :purged-at purged-at
       not-found))
 
   Object
@@ -62,26 +61,21 @@
       :delete
       :put)))
 
-(defn- get-purged-at! [vb]
-  (if (<= 8 (bb/remaining vb))
-    (bb/get-long! vb)
-    Long/MAX_VALUE))
-
 (defn resource-handle!
-  "Creates a new resource handle.
+  "Creates a new resource handle when not purged at `base-t`.
 
   The type of that handle will be the keyword `:fhir/<resource-type>`."
-  [tid id t vb]
+  [tid id t base-t vb]
   (let [hash (hash/from-byte-buffer! vb)
         state (bb/get-long! vb)]
-    (ResourceHandle.
-     tid
-     id
-     t
-     hash
-     (state->num-changes state)
-     (state->op state)
-     (get-purged-at! vb))))
+    (when (or (< (bb/remaining vb) 8) (< (long base-t) (bb/get-long! vb)))
+      (ResourceHandle.
+       tid
+       id
+       t
+       hash
+       (state->num-changes state)
+       (state->op state)))))
 
 (defn resource-handle? [x]
   (instance? ResourceHandle x))
@@ -122,11 +116,6 @@
   {:inline (fn [rh] `(.-op ~(with-meta rh {:tag `ResourceHandle})))}
   [rh]
   (.-op ^ResourceHandle rh))
-
-(defn purged-at
-  {:inline (fn [rh] `(.-purged-at ~(with-meta rh {:tag `ResourceHandle})))}
-  [rh]
-  (.-purged-at ^ResourceHandle rh))
 
 (defn reference [rh]
   (str (codec/tid->type (tid rh)) "/" (id rh)))
