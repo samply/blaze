@@ -1,9 +1,14 @@
 (ns blaze.db.node.tx-indexer.expand
+  "Expands non-terminal transaction commands into terminal transaction commands
+  that are verified later."
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.coll.core :as coll]
    [blaze.db.api :as d]
+   [blaze.db.impl.protocols :as p]
    [blaze.db.kv.spec]
    [blaze.db.node.tx-indexer.util :as tx-u]
+   [blaze.db.search-param-registry :as sr]
    [cognitect.anomalies :as anom]
    [prometheus.alpha :as prom]))
 
@@ -102,19 +107,45 @@
             h1 [(assoc command :op "delete" :id (:id h1))]
             :else []))))))
 
+(defn- purge-tx-cmds
+  [{{:keys [search-param-registry]} :node :as batch-db} patient-handle check-refs]
+  (let [rev-include (partial p/-rev-include batch-db patient-handle)]
+    (coll/eduction
+     (comp
+      (mapcat
+       (fn [[type codes]]
+         (when-not (= "Patient" type)
+           (coll/eduction
+            (comp
+             (mapcat (partial rev-include type))
+             (map
+              (fn [{:keys [id]}]
+                {:op "purge" :type type :id id :check-refs check-refs})))
+            codes))))
+      (distinct))
+     (sr/compartment-resources search-param-registry "Patient"))))
+
+(defmethod expand "patient-purge"
+  [db-before {:keys [id check-refs] :or {check-refs false}}]
+  (with-open [_ (prom/timer tx-u/duration-seconds "expand-patient-purge")]
+    (when-let [handle (d/resource-handle db-before "Patient" id)]
+      (into
+       [{:op "purge" :type "Patient" :id id :check-refs check-refs}]
+       (purge-tx-cmds db-before handle check-refs)))))
+
 (defmethod expand :default
   [_ command]
   [command])
 
 (defn expand-tx-cmds
-  "Expands all conditional `commands` into non-conditional commands.
+  "Expands all non-terminal `tx-cmds` into terminal transaction commands.
 
   Returns an anomaly on errors."
-  [db-before commands]
+  [db-before tx-cmds]
   (with-open [_ (prom/timer tx-u/duration-seconds "expand-tx-cmds")]
     (transduce
      (comp (map (partial expand db-before))
            (halt-when ba/anomaly?)
            cat)
      conj
-     commands)))
+     tx-cmds)))

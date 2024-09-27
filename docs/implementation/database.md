@@ -38,23 +38,25 @@ There are two different sets of indices, ones which depend on the database value
 
 ### Indices depending on t
 
-| Name              | Key Parts | Value                         |
-|-------------------|-----------|-------------------------------|
-| ResourceAsOf      | type id t | content-hash, num-changes, op |
-| TypeAsOf          | type t id | content-hash, num-changes, op |
-| SystemAsOf        | t type id | content-hash, num-changes, op |
-| PatientLastChange | pat-id t  | -                             |
-| TxSuccess         | t         | instant                       |
-| TxError           | t         | anomaly                       |
-| TByInstant        | instant   | t                             |
-| TypeStats         | type t    | total, num-changes            |
-| SystemStats       | t         | total, num-changes            |
+| Name              | Key Parts | Value                                     |
+|-------------------|-----------|-------------------------------------------|
+| ResourceAsOf      | type id t | content-hash, num-changes, op, purged-at? |
+| TypeAsOf          | type t id | content-hash, num-changes, op, purged-at? |
+| SystemAsOf        | t type id | content-hash, num-changes, op, purged-at? |
+| PatientLastChange | pat-id t  | -                                         |
+| TxSuccess         | t         | instant                                   |
+| TxError           | t         | anomaly                                   |
+| TByInstant        | instant   | t                                         |
+| TypeStats         | type t    | total, num-changes                        |
+| SystemStats       | t         | total, num-changes                        |
 
 #### ResourceAsOf
 
-The `ResourceAsOf` index is the primary index which maps the resource identifier `(type, id)` together with the `t` to the `content-hash` of the resource version. In addition to that, the index contains the number of changes `num-changes` to the resource and the operator `op` of the change leading to the index entry.
+The `ResourceAsOf` index is the primary index which maps the resource identifier `(type, id)` together with the `t` to the `content-hash` of the resource version. In addition to that, the index contains the number of changes `num-changes` to the resource, the operator `op` of the change leading to the index entry and an optional `purged-at` point in time were the version was purged.
 
 The `ResourceAsOf` index is used to access the version of a resource at a particular point in time `t`. In other words, given a point in time `t`, the database value with that `t`, allows to access the resource version at that point in time by its identifier. Because the index only contains entries with `t` values of changes to each resource, the most current resource version is determined by querying the index for the greatest `t` less or equal to the `t` of the database value.
+
+Index entries with a `purged-at` point in time at or before the current `t` of a database are not part of that database. 
 
 ##### Example 
 
@@ -314,6 +316,28 @@ The `conditional-delete` command is used to delete possibly multiple resources b
 | clauses        | no       | string    | clauses to use to search for resources to delete |
 | check-refs     | no       | boolean   | use referential integrity checks                 |
 | allow-multiple | no       | boolean   | allow to delete multiple resources               |
+
+### Delete History
+
+The `delete-history` command is used to delete the history of a resource.
+
+#### Properties
+
+| Name       | Required | Data Type | Description                      |
+|------------|----------|-----------|----------------------------------|
+| type       | yes      | string    | resource type                    |
+| id         | yes      | string    | resource id                      |
+
+### Patient Purge
+
+The `patient-purge` command is used to remove all current and historical versions for all resources in a patient compartment.
+
+#### Properties
+
+| Name       | Required | Data Type | Description                      |
+|------------|----------|-----------|----------------------------------|
+| id         | yes      | string    | patient id                       |
+| check-refs | no       | boolean   | use referential integrity checks |
 
 [1]: <https://www.datomic.com>
 [2]: <https://xtdb.com>

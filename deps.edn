@@ -22,6 +22,9 @@
   blaze.operation/patient-everything
   {:local/root "modules/operation-patient-everything"}
 
+  blaze.operation/patient-purge
+  {:local/root "modules/operation-patient-purge"}
+
   blaze.operation/totals
   {:local/root "modules/operation-totals"}
 

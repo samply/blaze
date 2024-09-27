@@ -19,7 +19,8 @@
   queue?)
 
 (s/def :blaze.db.tx-cmd/op
-  #{"create" "put" "keep" "delete" "conditional-delete" "delete-history"})
+  #{"create" "put" "keep" "delete" "conditional-delete" "delete-history"
+    "patient-purge"})
 
 (s/def :blaze.db.tx-cmd/type
   :fhir.resource/type)
@@ -91,6 +92,11 @@
   (s/keys :req-un [:blaze.db.tx-cmd/op
                    :blaze.db.tx-cmd/type
                    :blaze.resource/id]))
+
+(defmethod tx-cmd "patient-purge" [_]
+  (s/keys :req-un [:blaze.db.tx-cmd/op
+                   :blaze.resource/id]
+          :opt-un [:blaze.db.tx-cmd/check-refs]))
 
 (s/def :blaze.db/tx-cmd
   (s/multi-spec tx-cmd :op))

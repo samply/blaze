@@ -61,7 +61,7 @@ The delete history interaction removes all versions of the resource except the c
 DELETE [base]/[type]/[id]/_history
 ```
 
-Deleting the history of a resource means that the historical versions of that resource can no longer be accessed. Subsequent [versioned reads](#versioned-read) of that historical versions will return a `404 Not Found`. Versions are also removed from the [type history](#history-type) and [system history](#history-system). Only active [paging sessions](#paging-sessions) will be able to access the deleted versions for a limited amount of time.
+Deleting the history of a resource means that the historical versions of that resource can no longer be accessed. Subsequent [versioned reads](#versioned-read) of that historical versions will return a `404 Not Found`. Versions are also removed from the [type history](#history-type) and [system history](#history-system). Only active [paging sessions](#paging-sessions) and [asynchronous requests](#asynchronous-requests) started before the delete history interaction will be able to access the deleted versions for a limited amount of time.
 
 > [!NOTE]
 > Due to stability concerns, there is a fix limit of 100,000 versions that can be deleted by this interaction. In case more than 100,000 versions exist, an OperationOutcome with code `too-costly` is returned. Currently there is no way to delete a history with more than 100,000 versions. Please open an [issue][3] if you need to delete larger histories.
@@ -188,6 +188,7 @@ The following Operations are implemented:
 * [$graphql](http://hl7.org/fhir/resource-operation-graphql.html)
 * [Measure $evaluate-measure](api/operation-measure-evaluate-measure.md)
 * [Patient $everything](api/operation-patient-everything.md)
+* [Patient $purge](api/operation-patient-purge.md)
 
 ## Asynchronous Requests
 

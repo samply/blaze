@@ -108,6 +108,7 @@ jobs:
         - operation-graphql
         - operation-measure-evaluate-measure
         - operation-patient-everything
+        - operation-patient-purge
         - operation-totals
         - page-id-cipher
         - page-store
@@ -1062,7 +1063,7 @@ jobs:
       run: .github/scripts/conditional-delete-type/check-referential-integrity-violated.sh
 
     - name: Conditional Delete - Delete All Provenance Resources
-      run: .github/scripts/conditional-delete-type/delete-all-provenance-resources.sh
+      run: .github/scripts/conditional-delete-type/delete-all-resources-of-type.sh "Provenance"
 
     - name: Conditional Delete - Delete All Observation Resources Fails
       run: .github/scripts/conditional-delete-type/delete-all-observation-resources-fails.sh
@@ -1072,6 +1073,12 @@ jobs:
 
     - name: Delete History
       run: .github/scripts/delete-history.sh
+
+    - name: Conditional Delete - Delete All List Resources
+      run: .github/scripts/conditional-delete-type/delete-all-resources-of-type.sh "List"
+
+    - name: Patient Purge
+      run: .github/scripts/patient-purge.sh
 
     - name: Prometheus Metrics
       run: .github/scripts/test-metrics.sh

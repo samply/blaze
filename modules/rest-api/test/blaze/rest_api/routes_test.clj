@@ -133,7 +133,17 @@
    :operations
    [#:blaze.rest-api.operation
      {:code "compact-db"
+      :affects-state true
       :system-handler (handler ::compact-db)}
+    #:blaze.rest-api.operation
+     {:code "graphql"
+      :affects-state false
+      :response-type :json
+      :system-handler (handler ::graphql)}
+    #:blaze.rest-api.operation
+     {:code "totals"
+      :affects-state false
+      :system-handler (handler ::totals)}
     #:blaze.rest-api.operation
      {:code "evaluate-measure"
       :resource-types ["Measure"]
@@ -141,9 +151,15 @@
       :instance-handler (handler ::evaluate-measure-instance)}
     #:blaze.rest-api.operation
      {:code "everything"
+      :affects-state false
       :resource-types ["Patient"]
       :instance-handler (handler ::everything)
-      :instance-page-handler (handler ::everything-page)}]
+      :instance-page-handler (handler ::everything-page)}
+    #:blaze.rest-api.operation
+     {:code "purge"
+      :affects-state true
+      :resource-types ["Patient"]
+      :instance-handler (handler ::purge)}]
    :capabilities-handler (handler ::capabilities)
    :metadata-handler (handler ::metadata)
    :admin-handler (handler ::admin)
@@ -192,11 +208,16 @@
           "/Patient/0/__history-page/0" :get "history-instance"
           "/Patient/0/_history/42" :get "vread"
           "/Patient/0/$everything" :get "operation-instance-everything"
+          "/Patient/0/$everything" :post "operation-instance-everything"
           "/Patient/0/__everything-page/0" :get "operation-instance-everything"
+          "/Patient/0/$purge" :post "operation-instance-purge"
           "/Patient/0/Condition" :get "search-compartment"
           "/Patient/0/Observation" :get "search-compartment"
-          "/$compact-db" :get "operation-system-compact-db"
           "/$compact-db" :post "operation-system-compact-db"
+          "/$graphql" :get "operation-system-graphql"
+          "/$graphql" :post "operation-system-graphql"
+          "/$totals" :get "operation-system-totals"
+          "/$totals" :post "operation-system-totals"
           "/Measure/$evaluate-measure" :get "operation-type-evaluate-measure"
           "/Measure/$evaluate-measure" :post "operation-type-evaluate-measure"
           "/Measure/0/$evaluate-measure" :get "operation-instance-evaluate-measure"
@@ -237,12 +258,16 @@
         "/Patient/0/$everything" :get ::everything
         "/Patient/0/$everything" :post ::everything
         "/Patient/0/__everything-page/0" :get ::everything-page
+        "/Patient/0/$purge" :post ::purge
         "/Patient/0/Condition" :get ::search-patient-compartment
         "/Patient/0/Observation" :get ::search-patient-compartment
         "/Patient/0/Condition/__page/0" :get ::search-patient-compartment
         "/Patient/0/Observation/__page/0" :get ::search-patient-compartment
-        "/$compact-db" :get ::compact-db
         "/$compact-db" :post ::compact-db
+        "/$graphql" :get ::graphql
+        "/$graphql" :post ::graphql
+        "/$totals" :get ::totals
+        "/$totals" :post ::totals
         "/Measure/$evaluate-measure" :get ::evaluate-measure-type
         "/Measure/$evaluate-measure" :post ::evaluate-measure-type
         "/Measure/0/$evaluate-measure" :get ::evaluate-measure-instance
@@ -267,7 +292,7 @@
         "/__page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db :link-headers]
         "/__page/0" :post [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db :link-headers]
         "/__history-page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db :link-headers]
-        "/Patient" :get [:observe-request-duration :params :output :error :forwarded :sync :db  :link-headers]
+        "/Patient" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
         "/Patient" :post [:observe-request-duration :params :output :error :forwarded :sync :resource]
         "/Patient" :delete [:observe-request-duration :params :output :error :forwarded :sync]
         "/Patient/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
@@ -283,13 +308,18 @@
         "/Patient/0/__history-page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db :link-headers]
         "/Patient/0/_history/42" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
         "/Patient/0/$everything" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
+        "/Patient/0/$everything" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
         "/Patient/0/__everything-page/0" :get [:observe-request-duration :params :output :error :forwarded :sync :decrypt-page-id :snapshot-db]
+        "/Patient/0/$purge" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
         "/Patient/0/Condition" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
         "/Patient/0/Observation" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
-        "/$compact-db" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
         "/$compact-db" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
+        "/$graphql" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
+        "/$graphql" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
+        "/$totals" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
+        "/$totals" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
         "/Measure/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
-        "/Measure/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :db  :resource]
+        "/Measure/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
         "/Measure/0/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
         "/Measure/0/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
         "/Measure/0" :get [:observe-request-duration :params :output :error :forwarded :sync :db]))
@@ -305,7 +335,7 @@
           "" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
           "" :post [:observe-request-duration :params :output :error :forwarded :sync :resource]
           "/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
-          "/Patient" :get [:observe-request-duration :params :output :error :forwarded :sync :db  :link-headers]
+          "/Patient" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
           "/Patient" :post [:observe-request-duration :params :output :error :forwarded :sync :resource]
           "/Patient" :delete [:observe-request-duration :params :output :error :forwarded :sync]
           "/Patient/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
@@ -316,12 +346,18 @@
           "/Patient/0/_history" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
           "/Patient/0/_history" :delete [:observe-request-duration :params :output :error :forwarded :sync]
           "/Patient/0/_history/42" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
+          "/Patient/0/$everything" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
+          "/Patient/0/$everything" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
+          "/Patient/0/$purge" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
           "/Patient/0/Condition" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
           "/Patient/0/Observation" :get [:observe-request-duration :params :output :error :forwarded :sync :db :link-headers]
-          "/$compact-db" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
           "/$compact-db" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
+          "/$graphql" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
+          "/$graphql" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
+          "/$totals" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
+          "/$totals" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
           "/Measure/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
-          "/Measure/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :db  :resource]
+          "/Measure/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
           "/Measure/0/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :db]
           "/Measure/0/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :db :resource]
           "/Measure/0" :get [:observe-request-duration :params :output :error :forwarded :sync :db])))))
@@ -337,9 +373,8 @@
                    (mapv (comp :name #(if (sequential? %) (first %) %)))))
         "" :get [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db :link-headers]
         "" :post [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :resource]
-        "/$compact-db" :get [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db]
         "/$compact-db" :post [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db :resource]
         "/Measure/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db]
-        "/Measure/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db  :resource]
+        "/Measure/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db :resource]
         "/Measure/0/$evaluate-measure" :get [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db]
         "/Measure/0/$evaluate-measure" :post [:observe-request-duration :params :output :error :forwarded :sync :auth-guard :db :resource]))))

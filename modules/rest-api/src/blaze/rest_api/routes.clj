@@ -247,37 +247,43 @@
 
 (defn- operation-system-handler-route
   [{:keys [node db-sync-timeout]}
-   {::operation/keys [code response-type post-middleware system-handler]}]
+   {::operation/keys [code affects-state response-type post-middleware
+                      system-handler]}]
   (when system-handler
     [[(str "/$" code)
-      (cond-> {:interaction (str "operation-system-" code)
-               :middleware [[wrap-db node db-sync-timeout]]
-               :get system-handler
-               :post {:middleware [(if post-middleware
-                                     post-middleware
-                                     wrap-resource)]
-                      :handler system-handler}}
+      (cond->
+       {:interaction (str "operation-system-" code)
+        :middleware [[wrap-db node db-sync-timeout]]
+
+        :post {:middleware [(if post-middleware
+                              post-middleware
+                              wrap-resource)]
+               :handler system-handler}}
+        (not (true? affects-state))
+        (assoc :get system-handler)
         response-type
         (assoc :response-type response-type))]]))
 
-(defn operation-type-handler-route
+(defn- operation-type-handler-route
   [{:keys [node db-sync-timeout]}
-   {::operation/keys [code resource-types type-handler]}]
+   {::operation/keys [code affects-state resource-types type-handler]}]
   (when type-handler
     (map
      (fn [resource-type]
        [(str "/" resource-type "/$" code)
-        {:interaction (str "operation-type-" code)
-         :conflicting true
-         :middleware [[wrap-db node db-sync-timeout]]
-         :get type-handler
-         :post {:middleware [wrap-resource]
-                :handler type-handler}}])
+        (cond->
+         {:interaction (str "operation-type-" code)
+          :conflicting true
+          :middleware [[wrap-db node db-sync-timeout]]
+          :post {:middleware [wrap-resource]
+                 :handler type-handler}}
+          (not (true? affects-state))
+          (assoc :get type-handler))])
      resource-types)))
 
-(defn operation-instance-handler-route
+(defn- operation-instance-handler-route
   [{:keys [node db-sync-timeout page-id-cipher]}
-   {::operation/keys [code resource-types instance-handler
+   {::operation/keys [code affects-state resource-types instance-handler
                       instance-page-handler]}]
   (when instance-handler
     (map
@@ -286,12 +292,15 @@
         [(str "/" resource-type "/{id}")
          {:interaction (str "operation-instance-" code)}
          [(str "/$" code)
-          {:name (keyword (str resource-type ".operation") code)
-           :conflicting true
-           :middleware [[wrap-db node db-sync-timeout]]
-           :get instance-handler
-           :post {:middleware [wrap-resource]
-                  :handler instance-handler}}]]
+          (cond->
+           {:name (keyword (str resource-type ".operation") code)
+            :conflicting true
+            :middleware [[wrap-db node db-sync-timeout]]
+
+            :post {:middleware [wrap-resource]
+                   :handler instance-handler}}
+            (not (true? affects-state))
+            (assoc :get instance-handler))]]
 
          instance-page-handler
          (conj
