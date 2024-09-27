@@ -6887,6 +6887,25 @@
           [0 fhir-spec/fhir-type] := :fhir/Patient
           [0 :id] := "0"
           [1 fhir-spec/fhir-type] := :fhir/Observation
+          [1 :id] := "1"))))
+
+  (testing "doesn't include the deleted observation"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Patient :id "0"}]
+        [:put {:fhir/type :fhir/Observation :id "0"
+               :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:put {:fhir/type :fhir/Observation :id "1"
+               :subject #fhir/Reference{:reference "Patient/0"}}]]
+       [[:delete "Observation" "0"]]]
+
+      (let [db (d/db node)
+            patient (d/resource-handle db "Patient" "0")]
+
+        (given (vec (d/patient-everything db patient))
+          count := 2
+          [0 :fhir/type] := :fhir/Patient
+          [0 :id] := "0"
+          [1 :fhir/type] := :fhir/Observation
           [1 :id] := "1")))))
 
 (deftest batch-db-test

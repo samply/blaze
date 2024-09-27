@@ -14,11 +14,10 @@
    [blaze.db.kv.mem-spec]
    [blaze.db.node]
    [blaze.db.node.tx-indexer.verify :as verify]
-   [blaze.db.node.tx-indexer.verify-spec]
-   [blaze.db.search-param-registry]
-   [blaze.db.test-util :refer [config search-param-registry with-system-data]]
+   [blaze.db.test-util :refer [config with-system-data]]
    [blaze.db.tx-cache]
    [blaze.db.tx-log.local]
+   [blaze.db.tx-log.spec]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
    [blaze.fhir.spec.type]
@@ -36,21 +35,23 @@
 
 (st/instrument)
 (log/set-min-level! :trace)
-(tu/set-default-locale-english!)                ; important for the thousands separator in 10,000
+(tu/set-default-locale-english!)                            ; important for the thousands separator in 10,000
 
 (test/use-fixtures :each tu/fixture)
 
 (def patient-0 {:fhir/type :fhir/Patient :id "0"})
 (def patient-0-v2 {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"male"})
 (def patient-1 {:fhir/type :fhir/Patient :id "1"})
-(def patient-2 {:fhir/type :fhir/Patient :id "2"
-                :identifier [#fhir/Identifier{:value "120426"}]})
 (def observation-0 {:fhir/type :fhir/Observation :id "0"
                     :subject #fhir/Reference{:reference "Patient/0"}})
 (def observation-1 {:fhir/type :fhir/Observation :id "1"
                     :subject #fhir/Reference{:reference "Patient/0"}})
 (def allergy-intolerance-0 {:fhir/type :fhir/AllergyIntolerance :id "0"
                             :patient #fhir/Reference{:reference "Patient/0"}})
+
+(defn- verify-tx-cmds [node t tx-cmds]
+  (with-open [db (d/new-batch-db (d/db node))]
+    (verify/verify-tx-cmds db t tx-cmds)))
 
 (deftest verify-tx-cmds-test
   (testing "two commands with the same identity aren't allowed"
@@ -64,17 +65,15 @@
           (prop/for-all [op-1 op-gen
                          op-2 op-gen]
             (ba/conflict?
-             (verify/verify-tx-cmds search-param-registry (d/db node) 1
-                                    [(cmd op-1) (cmd op-2)])))))))
+             (verify-tx-cmds node 1 [(cmd op-1) (cmd op-2)])))))))
 
   (testing "adding one Patient to an empty store"
     (let [hash (hash/generate patient-0)]
       (doseq [op [:create :put]
               if-none-match [nil "*"]]
         (with-system [{:blaze.db/keys [node]} config]
-          (given (verify/verify-tx-cmds
-                  search-param-registry
-                  (d/db node) 1
+          (given (verify-tx-cmds
+                  node 1
                   [(cond-> {:op (name op) :type "Patient" :id "0" :hash hash}
                      if-none-match
                      (assoc :if-none-match if-none-match))])
@@ -107,9 +106,8 @@
         (with-system-data [{:blaze.db/keys [node]} config]
           [[[:put patient-0]]]
 
-          (given (verify/verify-tx-cmds
-                  search-param-registry
-                  (d/db node) 2
+          (given (verify-tx-cmds
+                  node 2
                   [(cond-> {:op "put" :type "Patient" :id "0" :hash hash}
                      if-match
                      (assoc :if-match if-match))])
@@ -143,9 +141,8 @@
           [[[:put patient-0]]
            [[:delete "Patient" "0"]]]
 
-          (given (verify/verify-tx-cmds
-                  search-param-registry
-                  (d/db node) 3
+          (given (verify-tx-cmds
+                  node 3
                   [(cond-> {:op "put" :type "Patient" :id "0" :hash hash}
                      if-match
                      (assoc :if-match if-match))])
@@ -176,9 +173,8 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put patient-0]]]
 
-      (is (empty? (verify/verify-tx-cmds
-                   search-param-registry
-                   (d/db node) 2
+      (is (empty? (verify-tx-cmds
+                   node 2
                    [{:op "put" :type "Patient" :id "0"
                      :hash (hash/generate patient-0)}])))))
 
@@ -186,10 +182,7 @@
     (with-system [{:blaze.db/keys [node]} config]
 
       (let [tx-cmd {:op "keep" :type "Patient" :id "0" :hash (hash/generate patient-0)}]
-        (given (verify/verify-tx-cmds
-                search-param-registry
-                (d/db node) 1
-                [tx-cmd])
+        (given (verify-tx-cmds node 1 [tx-cmd])
           ::anom/category := ::anom/conflict
           ::anom/message := "Keep failed on `Patient/0`."
           :blaze.db/tx-cmd := tx-cmd))))
@@ -200,10 +193,7 @@
        [[:put patient-0-v2]]]
 
       (let [tx-cmd {:op "keep" :type "Patient" :id "0" :hash (hash/generate patient-0)}]
-        (given (verify/verify-tx-cmds
-                search-param-registry
-                (d/db node) 1
-                [tx-cmd])
+        (given (verify-tx-cmds node 1 [tx-cmd])
           ::anom/category := ::anom/conflict
           ::anom/message := "Keep failed on `Patient/0`."
           :blaze.db/tx-cmd := tx-cmd))))
@@ -218,10 +208,7 @@
           (let [tx-cmd {:op "keep" :type "Patient" :id "0"
                         :hash (hash/generate patient-0-v2)
                         :if-match if-match}]
-            (given (verify/verify-tx-cmds
-                    search-param-registry
-                    (d/db node) 1
-                    [tx-cmd])
+            (given (verify-tx-cmds node 1 [tx-cmd])
               ::anom/category := ::anom/conflict
               ::anom/message := "Precondition `W/\"3\"` failed on `Patient/0`."
               :http/status := 412
@@ -237,10 +224,7 @@
           (let [tx-cmd {:op "keep" :type "Patient" :id "0"
                         :hash (hash/generate patient-0)
                         :if-match if-match}]
-            (given (verify/verify-tx-cmds
-                    search-param-registry
-                    (d/db node) 1
-                    [tx-cmd])
+            (given (verify-tx-cmds node 1 [tx-cmd])
               ::anom/category := ::anom/conflict
               ::anom/message := "Precondition `W/\"3\"` failed on `Patient/0`."
               :http/status := 412
@@ -252,21 +236,46 @@
 
       (testing "with different if-matches"
         (doseq [if-match [nil 1 [1] [1 2]]]
-          (is (empty? (verify/verify-tx-cmds
-                       search-param-registry
-                       (d/db node) 1
+          (is (empty? (verify-tx-cmds
+                       node 1
                        [(cond->
                          {:op "keep" :type "Patient" :id "0"
                           :hash (hash/generate patient-0)}
                           if-match
                           (assoc :if-match if-match))])))))))
 
+  (testing "on recreation"
+    (let [hash (hash/generate patient-0)]
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put patient-0]]
+         [[:delete "Patient" "0"]]]
+
+        (given (verify-tx-cmds node 3 [{:op "put" :type "Patient" :id "0" :hash hash}])
+          count := 5
+
+          [0 0] := :resource-as-of-index
+          [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 3}
+          [0 2 rts-tu/decode-val] := {:hash hash :num-changes 3 :op :put}
+
+          [1 0] := :type-as-of-index
+          [1 1 tao-tu/decode-key] := {:type "Patient" :t 3 :id "0"}
+          [1 2 rts-tu/decode-val] := {:hash hash :num-changes 3 :op :put}
+
+          [2 0] := :system-as-of-index
+          [2 1 sao-tu/decode-key] := {:t 3 :type "Patient" :id "0"}
+          [2 2 rts-tu/decode-val] := {:hash hash :num-changes 3 :op :put}
+
+          [3 0] := :type-stats-index
+          [3 1 ts-tu/decode-key] := {:type "Patient" :t 3}
+          [3 2 ts-tu/decode-val] := {:total 1 :num-changes 3}
+
+          [4 0] := :system-stats-index
+          [4 1 ss-tu/decode-key] := {:t 3}
+          [4 2 ss-tu/decode-val] := {:total 1 :num-changes 3}))))
+
   (testing "deleting a Patient from an empty store"
     (with-system [{:blaze.db/keys [node]} config]
-      (given (verify/verify-tx-cmds
-              search-param-registry
-              (d/db node) 1
-              [{:op "delete" :type "Patient" :id "0"}])
+      (given (verify-tx-cmds node 1 [{:op "delete" :type "Patient" :id "0"}])
 
         count := 5
 
@@ -294,19 +303,13 @@
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:delete "Patient" "0"]]]
 
-      (is (empty? (verify/verify-tx-cmds
-                   search-param-registry
-                   (d/db node) 2
-                   [{:op "delete" :type "Patient" :id "0"}])))))
+      (is (empty? (verify-tx-cmds node 2 [{:op "delete" :type "Patient" :id "0"}])))))
 
   (testing "deleting an existing Patient"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put patient-0]]]
 
-      (given (verify/verify-tx-cmds
-              search-param-registry
-              (d/db node) 2
-              [{:op "delete" :type "Patient" :id "0"}])
+      (given (verify-tx-cmds node 2 [{:op "delete" :type "Patient" :id "0"}])
 
         count := 5
 
@@ -335,10 +338,7 @@
       [[[:put patient-0]
         [:put observation-0]]]
 
-      (given (verify/verify-tx-cmds
-              search-param-registry
-              (d/db node) 2
-              [{:op "delete" :type "Observation" :id "0"}])
+      (given (verify-tx-cmds node 2 [{:op "delete" :type "Observation" :id "0"}])
 
         count := 6
 
@@ -371,10 +371,7 @@
       [[[:put patient-0]
         [:put allergy-intolerance-0]]]
 
-      (given (verify/verify-tx-cmds
-              search-param-registry
-              (d/db node) 2
-              [{:op "delete" :type "AllergyIntolerance" :id "0"}])
+      (given (verify-tx-cmds node 2 [{:op "delete" :type "AllergyIntolerance" :id "0"}])
 
         count := 6
 
@@ -407,10 +404,7 @@
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put patient-0]]]
 
-        (given (verify/verify-tx-cmds
-                search-param-registry
-                (d/db node) 2
-                [{:op "put" :type "Patient" :id "1" :hash hash}])
+        (given (verify-tx-cmds node 2 [{:op "put" :type "Patient" :id "1" :hash hash}])
 
           count := 5
 
@@ -441,9 +435,8 @@
         (with-system-data [{:blaze.db/keys [node]} config]
           [[[:put patient-0]]]
 
-          (given (verify/verify-tx-cmds
-                  search-param-registry
-                  (d/db node) 2
+          (given (verify-tx-cmds
+                  node 2
                   [(cond-> {:op (name op) :type "Observation" :id "0"
                             :hash hash :refs [["Patient" "0"]]}
                      if-none-match
@@ -480,10 +473,10 @@
       (let [hash (hash/generate observation-0)]
         (with-system [{:blaze.db/keys [node]} config]
 
-          (given (verify/verify-tx-cmds
-                  search-param-registry
-                  (d/db node) 2
-                  [{:op "put" :type "Observation" :id "0" :hash hash :refs [["Patient" "0"]]}])
+          (given (verify-tx-cmds
+                  node 2
+                  [{:op "put" :type "Observation" :id "0" :hash hash
+                    :refs [["Patient" "0"]]}])
 
             ::anom/category := ::anom/conflict
             ::anom/message := "Referential integrity violated. Resource `Patient/0` doesn't exist."))))
@@ -492,9 +485,8 @@
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put patient-0]]]
 
-        (given (verify/verify-tx-cmds
-                search-param-registry
-                (d/db node) 2
+        (given (verify-tx-cmds
+                node 2
                 [{:op "put" :type "Patient" :id "0"
                   :hash (hash/generate patient-0)
                   :if-match 0}])
@@ -506,9 +498,8 @@
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put patient-0]]]
 
-        (given (verify/verify-tx-cmds
-                search-param-registry
-                (d/db node) 2
+        (given (verify-tx-cmds
+                node 2
                 [{:op "put" :type "Patient" :id "0"
                   :hash (hash/generate patient-0)
                   :if-none-match "*"}])
@@ -520,9 +511,8 @@
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:put patient-0]]]
 
-        (given (verify/verify-tx-cmds
-                search-param-registry
-                (d/db node) 2
+        (given (verify-tx-cmds
+                node 2
                 [{:op "put" :type "Patient" :id "0"
                   :hash (hash/generate patient-0)
                   :if-none-match 1}])
@@ -536,9 +526,8 @@
         (with-system-data [{:blaze.db/keys [node]} config]
           [[[:put patient-0]]]
 
-          (given (verify/verify-tx-cmds
-                  search-param-registry
-                  (d/db node) 2
+          (given (verify-tx-cmds
+                  node 2
                   [{:op "delete" :type "Patient" :id "0" :check-refs true}
                    {:op "put" :type "Observation" :id "0" :hash hash :refs [["Patient" "0"]]}])
 
@@ -550,9 +539,8 @@
         [[[:put patient-0]
           [:put observation-0]]]
 
-        (given (verify/verify-tx-cmds
-                search-param-registry
-                (d/db node) 2
+        (given (verify-tx-cmds
+                node 2
                 [{:op "delete" :type "Patient" :id "0" :check-refs true}
                  {:op "delete" :type "Observation" :id "0" :check-refs true}])
 
@@ -603,11 +591,7 @@
         [[[:put patient-0]
           [:put observation-0]]]
 
-        (given (verify/verify-tx-cmds
-                search-param-registry
-                (d/db node) 2
-                [{:op "delete" :type "Patient" :id "0" :check-refs true}])
-
+        (given (verify-tx-cmds node 2 [{:op "delete" :type "Patient" :id "0" :check-refs true}])
           ::anom/category := ::anom/conflict
           ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0`.")))
 
@@ -616,10 +600,7 @@
         [[[:put patient-0]
           [:put observation-0]]]
 
-        (given (verify/verify-tx-cmds
-                search-param-registry
-                (d/db node) 2
-                [{:op "delete" :type "Patient" :id "0"}])
+        (given (verify-tx-cmds node 2 [{:op "delete" :type "Patient" :id "0"}])
 
           count := 5
 
@@ -649,239 +630,23 @@
         [:put observation-0]
         [:put observation-1]]]
 
-      (given (verify/verify-tx-cmds
-              search-param-registry
-              (d/db node) 2
-              [{:op "delete" :type "Patient" :id "0" :check-refs true}])
-
+      (given (verify-tx-cmds node 2 [{:op "delete" :type "Patient" :id "0" :check-refs true}])
         ::anom/category := ::anom/conflict
-        ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0` and others.")))
-
-  (testing "conditional create"
-    (testing "conflict"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0"
-                 :birthDate #fhir/date"2020"}]
-          [:put {:fhir/type :fhir/Patient :id "1"
-                 :birthDate #fhir/date"2020"}]]]
-
-        (given (verify/verify-tx-cmds
-                search-param-registry
-                (d/db node) 2
-                [{:op "create" :type "Patient" :id "foo"
-                  :hash (hash/generate patient-0)
-                  :if-none-exist [["birthdate" "2020"]]}])
-          ::anom/category := ::anom/conflict
-          ::anom/message := "Conditional create of a Patient with query `birthdate=2020` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."
-          :http/status := 412)))
-
-    (testing "match"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:put patient-2]]]
-
-        (is
-         (empty?
-          (verify/verify-tx-cmds
-           search-param-registry
-           (d/db node) 2
-           [{:op "create" :type "Patient" :id "0"
-             :hash (hash/generate patient-0)
-             :if-none-exist [["identifier" "120426"]]}])))))
-
-    (testing "conflict because matching resource is deleted"
-      (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:put patient-2]]]
-
-        (given (verify/verify-tx-cmds
-                search-param-registry
-                (d/db node) 2
-                [{:op "delete" :type "Patient" :id "2"}
-                 {:op "create" :type "Patient" :id "0"
-                  :hash (hash/generate patient-0)
-                  :if-none-exist [["identifier" "120426"]]}])
-          ::anom/category := ::anom/conflict
-          ::anom/message := "Duplicate transaction commands `create Patient?identifier=120426 (resolved to id 2)` and `delete Patient/2`.")))
-
-    (testing "on recreation"
-      (let [hash (hash/generate patient-0)]
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put patient-0]]
-           [[:delete "Patient" "0"]]]
-
-          (given (verify/verify-tx-cmds
-                  search-param-registry
-                  (d/db node) 3
-                  [{:op "put" :type "Patient" :id "0" :hash hash}])
-
-            count := 5
-
-            [0 0] := :resource-as-of-index
-            [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 3}
-            [0 2 rts-tu/decode-val] := {:hash hash :num-changes 3 :op :put}
-
-            [1 0] := :type-as-of-index
-            [1 1 tao-tu/decode-key] := {:type "Patient" :t 3 :id "0"}
-            [1 2 rts-tu/decode-val] := {:hash hash :num-changes 3 :op :put}
-
-            [2 0] := :system-as-of-index
-            [2 1 sao-tu/decode-key] := {:t 3 :type "Patient" :id "0"}
-            [2 2 rts-tu/decode-val] := {:hash hash :num-changes 3 :op :put}
-
-            [3 0] := :type-stats-index
-            [3 1 ts-tu/decode-key] := {:type "Patient" :t 3}
-            [3 2 ts-tu/decode-val] := {:total 1 :num-changes 3}
-
-            [4 0] := :system-stats-index
-            [4 1 ss-tu/decode-key] := {:t 3}
-            [4 2 ss-tu/decode-val] := {:total 1 :num-changes 3})))))
-
-  (testing "conditional delete"
-    (testing "success"
-      (testing "no match"
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"
-                   :identifier [#fhir/Identifier{:value "120426"}]}]]]
-
-          (is
-           (empty?
-            (verify/verify-tx-cmds
-             search-param-registry
-             (d/db node) 2
-             [{:op "conditional-delete" :type "Patient"
-               :clauses [["identifier" "foo"]]}])))))
-
-      (testing "one patient match"
-        (with-system-data [{:blaze.db/keys [node]} config]
-          [[[:put {:fhir/type :fhir/Patient :id "0"
-                   :identifier [#fhir/Identifier{:value "120426"}]}]]]
-
-          (given (verify/verify-tx-cmds
-                  search-param-registry
-                  (d/db node) 2
-                  [{:op "conditional-delete" :type "Patient"
-                    :clauses [["identifier" "120426"]]}])
-
-            count := 5
-
-            [0 0] := :resource-as-of-index
-            [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
-            [0 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
-
-            [1 0] := :type-as-of-index
-            [1 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "0"}
-            [1 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
-
-            [2 0] := :system-as-of-index
-            [2 1 sao-tu/decode-key] := {:t 2 :type "Patient" :id "0"}
-            [2 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
-
-            [3 0] := :type-stats-index
-            [3 1 ts-tu/decode-key] := {:type "Patient" :t 2}
-            [3 2 ts-tu/decode-val] := {:total 0 :num-changes 2}
-
-            [4 0] := :system-stats-index
-            [4 1 ss-tu/decode-key] := {:t 2}
-            [4 2 ss-tu/decode-val] := {:total 0 :num-changes 2})))
-
-      (testing "two patient matches"
-        (testing "is forbidden by default"
-          (with-system-data [{:blaze.db/keys [node]} config]
-            [(vec (for [id ["0" "1"]]
-                    [:create {:fhir/type :fhir/Patient :id id
-                              :identifier [#fhir/Identifier{:value "120426"}]}]))]
-
-            (given (verify/verify-tx-cmds
-                    search-param-registry
-                    (d/db node) 2
-                    [{:op "conditional-delete" :type "Patient"
-                      :clauses [["identifier" "120426"]]}])
-
-              ::anom/category := ::anom/conflict
-              ::anom/message := "Conditional delete of one single Patient with query `identifier=120426` failed because at least the two matches `Patient/0/_history/1` and `Patient/1/_history/1` were found."
-              :http/status := 412)))
-
-        (testing "fails on more then 10,000 matches"
-          (with-system-data [{:blaze.db/keys [node]} config]
-            [(vec (for [id (range 10001)]
-                    [:create {:fhir/type :fhir/Patient :id (str id)
-                              :identifier [#fhir/Identifier{:value "120426"}]}]))]
-
-            (given (verify/verify-tx-cmds
-                    search-param-registry
-                    (d/db node) 2
-                    [{:op "conditional-delete" :type "Patient"
-                      :clauses [["identifier" "120426"]]
-                      :allow-multiple true}])
-
-              ::anom/category := ::anom/conflict
-              ::anom/message := "Conditional delete of Patients with query `identifier=120426` failed because more than 10,000 matches were found."
-              :fhir/issue "too-costly")))
-
-        (testing "works if allowed"
-          (with-system-data [{:blaze.db/keys [node]} config]
-            [(vec (for [id ["0" "1"]]
-                    [:create {:fhir/type :fhir/Patient :id id
-                              :identifier [#fhir/Identifier{:value "120426"}]}]))]
-
-            (given (verify/verify-tx-cmds
-                    search-param-registry
-                    (d/db node) 2
-                    [{:op "conditional-delete" :type "Patient"
-                      :clauses [["identifier" "120426"]]
-                      :allow-multiple true}])
-
-              count := 8
-
-              [0 0] := :resource-as-of-index
-              [0 1 rao-tu/decode-key] := {:type "Patient" :id "0" :t 2}
-              [0 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
-
-              [1 0] := :type-as-of-index
-              [1 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "0"}
-              [1 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
-
-              [2 0] := :system-as-of-index
-              [2 1 sao-tu/decode-key] := {:t 2 :type "Patient" :id "0"}
-              [2 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
-
-              [3 0] := :resource-as-of-index
-              [3 1 rao-tu/decode-key] := {:type "Patient" :id "1" :t 2}
-              [3 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
-
-              [4 0] := :type-as-of-index
-              [4 1 tao-tu/decode-key] := {:type "Patient" :t 2 :id "1"}
-              [4 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
-
-              [5 0] := :system-as-of-index
-              [5 1 sao-tu/decode-key] := {:t 2 :type "Patient" :id "1"}
-              [5 2 rts-tu/decode-val] := {:hash hash/deleted-hash :num-changes 2 :op :delete}
-
-              [6 0] := :type-stats-index
-              [6 1 ts-tu/decode-key] := {:type "Patient" :t 2}
-              [6 2 ts-tu/decode-val] := {:total 0 :num-changes 4}
-
-              [7 0] := :system-stats-index
-              [7 1 ss-tu/decode-key] := {:t 2}
-              [7 2 ss-tu/decode-val] := {:total 0 :num-changes 4})))))))
+        ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Observation/0` and others."))))
 
 (deftest verify-delete-history-test
   (testing "empty database"
     (with-system [{:blaze.db/keys [node]} config]
 
-      (is (empty? (verify/verify-tx-cmds
-                   search-param-registry
-                   (d/db node) 1
-                   [{:op "delete-history" :type "Patient" :id "0"}])))))
+      (is (empty? (verify-tx-cmds node 1 [{:op "delete-history" :type "Patient" :id "0"}])))))
 
   (testing "one patient"
     (testing "with one version"
       (with-system-data [{:blaze.db/keys [node]} config]
         [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
-        (is (empty? (verify/verify-tx-cmds
-                     search-param-registry
-                     (d/db node) 3
-                     [{:op "delete-history" :type "Patient" :id "0"}])))))
+        (testing "nothing to do because there is only the current version"
+          (is (empty? (verify-tx-cmds node 2 [{:op "delete-history" :type "Patient" :id "0"}]))))))
 
     (testing "with two versions"
       (let [patient-v1 {:fhir/type :fhir/Patient :id "0" :active false}
@@ -891,11 +656,7 @@
           [[[:create patient-v1]]
            [[:put patient-v2]]]
 
-          (given (verify/verify-tx-cmds
-                  search-param-registry
-                  (d/db node) 3
-                  [{:op "delete-history" :type "Patient" :id "0"}])
-
+          (given (verify-tx-cmds node 3 [{:op "delete-history" :type "Patient" :id "0"}])
             count := 5
 
             [0 0] := :resource-as-of-index
@@ -929,11 +690,7 @@
            [[:put patient-v2]]
            [[:put patient-v3]]]
 
-          (given (verify/verify-tx-cmds
-                  search-param-registry
-                  (d/db node) 4
-                  [{:op "delete-history" :type "Patient" :id "0"}])
-
+          (given (verify-tx-cmds node 4 [{:op "delete-history" :type "Patient" :id "0"}])
             count := 8
 
             [0 0] := :resource-as-of-index

@@ -1,6 +1,6 @@
 (ns blaze.db.node.tx-indexer.verify
   (:require
-   [blaze.anomaly :as ba :refer [if-ok throw-anom when-ok]]
+   [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.db.api :as d]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.patient-last-change :as plc]
@@ -9,23 +9,16 @@
    [blaze.db.impl.index.system-stats :as system-stats]
    [blaze.db.impl.index.type-stats :as type-stats]
    [blaze.db.kv.spec]
+   [blaze.db.node.tx-indexer.util :as tx-u]
    [blaze.db.search-param-registry :as sr]
    [blaze.fhir.hash :as hash]
    [blaze.util :as u]
    [clojure.string :as str]
-   [cognitect.anomalies :as anom]
+
    [prometheus.alpha :as prom :refer [defhistogram]]
    [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
-
-(defhistogram duration-seconds
-  "Durations in transaction indexer."
-  {:namespace "blaze"
-   :subsystem "db"
-   :name "tx_indexer_duration_seconds"}
-  (take 16 (iterate #(* 2 %) 0.00001))
-  "op")
 
 (defhistogram transaction-sizes
   "Number of transaction commands per transaction."
@@ -34,129 +27,11 @@
    :name "transaction_sizes"}
   (take 16 (iterate #(* 2 %) 1)))
 
-(defmulti expand-conditional-command
-  "Expands possibly conditional `command` into possibly many non-conditional
-  commands.
-
-  Returns an anomaly on errors."
-  {:arglists '([db-before command])}
-  (fn [_ {:keys [op]}] op))
-
-(defn- clauses->query-params [clauses]
-  (->> clauses
-       (map (fn [[param & values]] (str param "=" (str/join "," values))))
-       (str/join "&")))
-
-(defn- failing-conditional-create-query-msg [type clauses {::anom/keys [message]}]
-  (format "Conditional create of a %s with query `%s` failed. Cause: %s"
-          type (clauses->query-params clauses) message))
-
-(defn- conditional-create-matches [db type clauses]
-  (if-ok [resource-handles (d/type-query db type clauses)]
-    (into [] (take 2) resource-handles)
-    #(ba/incorrect (failing-conditional-create-query-msg type clauses %))))
-
-(defn- format-handle [type {:keys [id t]}]
-  (format "%s/%s/_history/%s" type id t))
-
-(defn- multiple-existing-resources-msg [type clauses [h1 h2]]
-  (format "Conditional create of a %s with query `%s` failed because at least the two matches `%s` and `%s` were found."
-          type (clauses->query-params clauses) (format-handle type h1)
-          (format-handle type h2)))
-
-(defn- multiple-existing-resources-anom [type clauses handles]
-  (ba/conflict
-   (multiple-existing-resources-msg type clauses handles)
-   :http/status 412))
-
-(defmethod expand-conditional-command "create"
-  [db-before {:keys [type if-none-exist] :as command}]
-  (with-open [_ (prom/timer duration-seconds "expand-create")]
-    (when-ok [[h1 h2] (some->> if-none-exist (conditional-create-matches db-before type))]
-      (cond
-        h2 (multiple-existing-resources-anom type if-none-exist [h1 h2])
-        h1 [(assoc command :op "hold" :id (:id h1))]
-        :else [command]))))
-
-(def ^:private ^:const ^long max-multiple-deletes 10000)
-
-(defn- too-many-multiple-matches-msg
-  ([type]
-   (format "Conditional delete of all %ss failed because more than %,d matches were found."
-           type max-multiple-deletes))
-  ([type clauses]
-   (format "Conditional delete of %ss with query `%s` failed because more than %,d matches were found."
-           type (clauses->query-params clauses) max-multiple-deletes)))
-
-(defn- too-many-multiple-matches-anom [type clauses]
-  (ba/conflict
-   (if clauses
-     (too-many-multiple-matches-msg type clauses)
-     (too-many-multiple-matches-msg type))
-   :fhir/issue "too-costly"))
-
-(defn- failing-conditional-delete-query-msg [type clauses {::anom/keys [message]}]
-  (format "Conditional delete of %ss with query `%s` failed. Cause: %s"
-          type (clauses->query-params clauses) message))
-
-(defn- conditional-delete-matches [db type clauses]
-  (-> (d/type-query db type clauses)
-      (ba/exceptionally #(ba/incorrect (failing-conditional-delete-query-msg type clauses %)))))
-
-(defn- multiple-matches-msg
-  ([type [h1 h2]]
-   (format "Conditional delete of one single %s without a query failed because at least the two matches `%s` and `%s` were found."
-           type (format-handle type h1) (format-handle type h2)))
-  ([type clauses [h1 h2]]
-   (format "Conditional delete of one single %s with query `%s` failed because at least the two matches `%s` and `%s` were found."
-           type (clauses->query-params clauses) (format-handle type h1)
-           (format-handle type h2))))
-
-(defn- multiple-matches-anom [type clauses handles]
-  (ba/conflict
-   (if clauses
-     (multiple-matches-msg type clauses handles)
-     (multiple-matches-msg type handles))
-   :http/status 412))
-
-(defmethod expand-conditional-command "conditional-delete"
-  [db-before {:keys [type clauses allow-multiple] :as command}]
-  (with-open [_ (prom/timer duration-seconds "expand-conditional-delete")]
-    (when-ok [matches (or (some->> clauses (conditional-delete-matches db-before type))
-                          (d/type-list db-before type))]
-      (if allow-multiple
-        (let [handles (into [] (take (inc max-multiple-deletes)) matches)]
-          (if (< max-multiple-deletes (count handles))
-            (too-many-multiple-matches-anom type clauses)
-            (mapv (fn [{:keys [id]}] (assoc command :op "delete" :id id)) handles)))
-        (let [[h1 h2] (into [] (take 2) matches)]
-          (cond
-            h2 (multiple-matches-anom type clauses [h1 h2])
-            h1 [(assoc command :op "delete" :id (:id h1))]
-            :else []))))))
-
-(defmethod expand-conditional-command :default
-  [_ command]
-  [command])
-
-(defn- expand-conditional-commands
-  "Expands all conditional `commands` into non-conditional commands.
-
-  Returns an anomaly on errors."
-  [db-before commands]
-  (with-open [_ (prom/timer duration-seconds "expand-tx-cmds")]
-    (transduce
-     (comp (map (partial expand-conditional-command db-before))
-           (halt-when ba/anomaly?)
-           cat)
-     conj
-     commands)))
-
 (defmulti format-command :op)
 
 (defmethod format-command "hold" [{:keys [type id if-none-exist]}]
   (format "create %s?%s (resolved to id %s)" type
-          (clauses->query-params if-none-exist) id))
+          (tx-u/clauses->query-params if-none-exist) id))
 
 (defmethod format-command :default [{:keys [op type id]}]
   (format "%s %s/%s" op type id))
@@ -174,13 +49,13 @@
    {}
    cmds))
 
-(defmulti verify-tx-cmd
-  "Verifies one transaction command. Returns `res` with added index entries and
-  statistics of the transaction outcome.
+(defmulti verify
+  "Verifies `command`. Returns `res` with added index entries and statistics of
+  the transaction outcome.
 
   Throws an anomaly on conflicts."
-  {:arglists '([search-param-registry db-before t res cmd])}
-  (fn [_search-param-registry _db-before _t _res {:keys [op]}] op))
+  {:arglists '([db-before t res command])}
+  (fn [_db-before _t _res {:keys [op]}] op))
 
 (defn- verify-tx-cmd-create-msg [type id]
   (format "verify-tx-cmd :create %s/%s" type id))
@@ -209,10 +84,9 @@
 (def ^:private inc-0 (fnil inc 0))
 (def ^:private minus-0 (fnil - 0))
 
-(defmethod verify-tx-cmd "create"
-  [_search-param-registry db-before t res {:keys [type id hash refs]}]
+(defmethod verify "create" [db-before t res {:keys [type id hash refs]}]
   (log/trace (verify-tx-cmd-create-msg type id))
-  (with-open [_ (prom/timer duration-seconds "verify-create")]
+  (with-open [_ (prom/timer tx-u/duration-seconds "verify-create")]
     (check-id-collision! db-before type id)
     (let [tid (codec/tid type)]
       (-> (update res :entries into (index-entries tid id t hash 1 :create refs))
@@ -251,11 +125,11 @@
 (defn- precondition-version-failed-anomaly [type id if-none-match]
   (ba/conflict (precondition-version-failed-msg type id if-none-match) :http/status 412))
 
-(defmethod verify-tx-cmd "put"
-  [_search-param-registry db-before t res
+(defmethod verify "put"
+  [db-before t res
    {:keys [type id hash if-match if-none-match refs] :as tx-cmd}]
   (log/trace (verify-tx-cmd-put-msg type id (u/to-seq if-match) if-none-match))
-  (with-open [_ (prom/timer duration-seconds "verify-put")]
+  (with-open [_ (prom/timer tx-u/duration-seconds "verify-put")]
     (let [tid (codec/tid type)
           if-match (u/to-seq if-match)
           {:keys [num-changes op] :or {num-changes 0} old-t :t old-hash :hash}
@@ -286,10 +160,10 @@
     (format "verify-tx-cmd :keep %s/%s if-match: %s" type id (print-etags if-match))
     (format "verify-tx-cmd :keep %s/%s" type id)))
 
-(defmethod verify-tx-cmd "keep"
-  [_search-param-registry db-before _ res {:keys [type id hash if-match] :as tx-cmd}]
+(defmethod verify "keep"
+  [db-before _ res {:keys [type id hash if-match] :as tx-cmd}]
   (log/trace (verify-tx-cmd-keep-msg type id (u/to-seq if-match)))
-  (with-open [_ (prom/timer duration-seconds "verify-keep")]
+  (with-open [_ (prom/timer tx-u/duration-seconds "verify-keep")]
     (let [if-match (u/to-seq if-match)
           {old-hash :hash old-t :t} (d/resource-handle db-before type id)]
       (cond
@@ -306,21 +180,21 @@
 
 (defn- patient-refs
   "Returns references from `resource-handle` to Patient resources."
-  [search-param-registry db type resource-handle]
+  [{{:keys [search-param-registry]} :node :as db} type resource-handle]
   (into
    []
    (comp (mapcat #(d/include db resource-handle % "Patient"))
          (map (fn [{:keys [id]}] ["Patient" id])))
    (sr/compartment-resources search-param-registry "Patient" type)))
 
-(defmethod verify-tx-cmd "delete"
-  [search-param-registry db-before t res {:keys [type id]}]
+(defmethod verify "delete"
+  [db-before t res {:keys [type id]}]
   (log/trace "verify-tx-cmd :delete" (str type "/" id))
-  (with-open [_ (prom/timer duration-seconds "verify-delete")]
+  (with-open [_ (prom/timer tx-u/duration-seconds "verify-delete")]
     (let [tid (codec/tid type)
           {:keys [num-changes op] :or {num-changes 0} :as old-resource-handle}
           (d/resource-handle db-before type id)
-          refs (some->> old-resource-handle (patient-refs search-param-registry db-before type))]
+          refs (some->> old-resource-handle (patient-refs db-before type))]
       (if (identical? :delete op)
         res
         (cond->
@@ -341,9 +215,6 @@
    (too-many-history-entries-msg type id)
    :fhir/issue "too-costly"))
 
-(defn- instance-history [db type id]
-  (into [] (comp (drop 1) (take delete-history-max)) (d/instance-history db type id)))
-
 (defn- purge-entry [tid id t rh]
   (rts/index-entries tid id (rh/t rh) (rh/hash rh) (rh/num-changes rh) (rh/op rh) t))
 
@@ -354,12 +225,13 @@
   (-> (update entries :entries into (purge-entries tid (codec/id-byte-string id) t instance-history))
       (update-in [:stats tid :num-changes] minus-0 (count instance-history))))
 
-(defmethod verify-tx-cmd "delete-history"
-  [_ db-before t res {:keys [type id]}]
+(defmethod verify "delete-history"
+  [db-before t res {:keys [type id]}]
   (log/trace "verify-tx-cmd :delete-history" (str type "/" id))
-  (with-open [_ (prom/timer duration-seconds "verify-delete-history")]
+  (with-open [_ (prom/timer tx-u/duration-seconds "verify-delete-history")]
     (let [tid (codec/tid type)
-          instance-history (instance-history db-before type id)]
+          instance-history (into [] (comp (drop 1) (take delete-history-max))
+                                 (d/instance-history db-before type id))]
       (cond
         (empty? instance-history) res
 
@@ -369,13 +241,13 @@
         :else
         (add-delete-history-entries res tid id t instance-history)))))
 
-(defmethod verify-tx-cmd :default
-  [_search-param-registry _db-before _t res _tx-cmd]
+(defmethod verify :default
+  [_db-before _t res _tx-cmd]
   res)
 
-(defn- verify-tx-cmds** [search-param-registry db-before t tx-cmds]
+(defn- verify-tx-cmds* [db-before t tx-cmds]
   (reduce
-   (partial verify-tx-cmd search-param-registry db-before t)
+   (partial verify db-before t)
    {:entries []
     :new-resources #{}
     :del-resources #{}}
@@ -389,11 +261,11 @@
     (type-stats/index-entry tid new-t (merge-with + current-stats increments))))
 
 (defn- conj-type-stats [entries {:keys [snapshot t]} new-t stats]
-  (with-open [_ (prom/timer duration-seconds "type-stats")]
+  (with-open [_ (prom/timer tx-u/duration-seconds "type-stats")]
     (into entries (map (partial type-stat-entry snapshot t new-t)) stats)))
 
 (defn- system-stats [{:keys [snapshot t]} new-t stats]
-  (with-open [_ (prom/timer duration-seconds "system-stats")]
+  (with-open [_ (prom/timer tx-u/duration-seconds "system-stats")]
     (let [current-stats (or (system-stats/seek-value snapshot t) empty-stats)]
       (system-stats/index-entry new-t (apply merge-with + current-stats (vals stats))))))
 
@@ -454,21 +326,15 @@
           db new-resources del-resources type id refs))))
    cmds))
 
-(defn- verify-tx-cmds* [search-param-registry db-before t cmds]
-  (when-ok [cmds (expand-conditional-commands db-before cmds)]
-    (prom/observe! transaction-sizes (count cmds))
-    (ba/try-anomaly
-     (detect-duplicate-commands! cmds)
-     (let [res (verify-tx-cmds** search-param-registry db-before t cmds)]
-       (check-referential-integrity! db-before res cmds)
-       (post-process-res db-before t res)))))
-
 (defn verify-tx-cmds
   "Verifies transaction commands. Returns index entries of the transaction
   outcome if it is successful or an anomaly if it fails.
 
   The `t` is for the new transaction to commit."
-  [search-param-registry db-before t cmds]
-  (with-open [_ (prom/timer duration-seconds "verify-tx-cmds")
-              batch-db-before (d/new-batch-db db-before)]
-    (verify-tx-cmds* search-param-registry batch-db-before t cmds)))
+  [db-before t tx-cmds]
+  (prom/observe! transaction-sizes (count tx-cmds))
+  (ba/try-anomaly
+   (detect-duplicate-commands! tx-cmds)
+   (let [res (verify-tx-cmds* db-before t tx-cmds)]
+     (check-referential-integrity! db-before res tx-cmds)
+     (post-process-res db-before t res))))

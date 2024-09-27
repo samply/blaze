@@ -7,7 +7,7 @@
 
 (defn index-entries
   {:arglists '([node tx-data])}
-  [{:keys [search-param-registry] :as node} {:keys [t] :as tx-data}]
-  (when-ok [entries (tx-indexer/index-tx search-param-registry (db/db node (dec t)) tx-data)]
+  [node {:keys [t] :as tx-data}]
+  (when-ok [entries (tx-indexer/index-tx (db/db node (dec t)) tx-data)]
     (-> (filterv (comp #{:patient-last-change-index} first) entries)
         (conj (plc/state-index-entry {:type :building :t t})))))
