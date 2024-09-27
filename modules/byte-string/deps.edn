@@ -13,7 +13,7 @@
     com.google.j2objc/j2objc-annotations]}
 
   com.fasterxml.jackson.core/jackson-databind
-  {:mvn/version "2.17.2"}}
+  {:mvn/version "2.18.0"}}
 
  :aliases
  {:test
