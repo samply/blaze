@@ -96,6 +96,7 @@
    #:blaze.rest-api.operation
            {:code "graphql"
             :def-uri "http://hl7.org/fhir/OperationDefinition/Resource-graphql"
+            :affects-state false
             :resource-types ["Resource"]
             :post-middleware #blaze/ref :blaze.fhir.operation.graphql.middleware/query
             :response-type :json
@@ -103,13 +104,22 @@
    #:blaze.rest-api.operation
            {:code "everything"
             :def-uri "http://hl7.org/fhir/OperationDefinition/Patient-everything"
+            :affects-state false
             :resource-types ["Patient"]
             :instance-handler #blaze/ref :blaze.operation.patient/everything
             :instance-page-handler #blaze/ref :blaze.operation.patient/everything
             :documentation "Returns all resources from the patient compartment of one concrete patient including the patient. Has a fix limit of 10,000 resources if paging isn't used. Paging is supported when the _count parameter is used. No other params are supported."}
    #:blaze.rest-api.operation
+           {:code "purge"
+            :def-uri "http://hl7.org/fhir/OperationDefinition/Patient-purge"
+            :affects-state true
+            :resource-types ["Patient"]
+            :instance-handler #blaze/ref :blaze.operation.patient/purge
+            :documentation "This operation is used to request the removal of all current and historical versions for all resources in a patient compartment or from a Group of patient compartments. The return is an OperationOutcome with results and/or details about execution."}
+   #:blaze.rest-api.operation
            {:code "totals"
             :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/totals"
+            :affects-state false
             :resource-types ["Resource"]
             :system-handler #blaze/ref :blaze.fhir.operation/totals
             :documentation "Retrieves the total counts of resources available by resource type."}]
@@ -258,6 +268,12 @@
   {:clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn
    :page-id-cipher #blaze/ref :blaze/page-id-cipher}
+
+  ;;
+  ;; FHIR Operation Patient Purge
+  ;;
+  :blaze.operation.patient/purge
+  {:node #blaze/ref :blaze.db.main/node}
 
   ;;
   ;; FHIR Operation Totals

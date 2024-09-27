@@ -104,7 +104,9 @@
       :else
       (ba/incorrect (unsupported-media-type-msg content-type)
                     :http/status 415))
-    (ba/incorrect "Content-Type header expected, but is missing.")))
+    (if (str/blank? (slurp (:body request)))
+      (assoc request :body nil)
+      (ba/incorrect "Content-Type header expected, but is missing."))))
 
 (defn wrap-resource
   "Middleware to parse a resource from the body according the content-type

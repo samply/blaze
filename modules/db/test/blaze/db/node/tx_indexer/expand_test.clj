@@ -14,6 +14,7 @@
    [blaze.fhir.spec.spec]
    [blaze.fhir.spec.type]
    [blaze.log]
+   [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -135,3 +136,41 @@
             [1 :op] := "delete"
             [1 :type] := "Patient"
             [1 :id] := "1"))))))
+
+(deftest expand-tx-cmds-patient-purge-test
+  (testing "empty database"
+    (with-system [{:blaze.db/keys [node]} config]
+      (is (empty? (expand-tx-cmds node [{:op "patient-purge" :id "0"}])))))
+
+  (testing "patient only"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (given (expand-tx-cmds node [{:op "patient-purge" :id "0"}])
+        count := 1
+        [0 :op] := "purge"
+        [0 :type] := "Patient"
+        [0 :id] := "0"
+        [0 :check-refs] := false)
+
+      (given (expand-tx-cmds node [{:op "patient-purge" :id "0" :check-refs true}])
+        count := 1
+        [0 :op] := "purge"
+        [0 :type] := "Patient"
+        [0 :id] := "0"
+        [0 :check-refs] := true)))
+
+  (testing "patient with one observation"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]
+        [:create {:fhir/type :fhir/Observation :id "0"
+                  :subject #fhir/Reference{:reference "Patient/0"}}]]]
+
+      (given (expand-tx-cmds node [{:op "patient-purge" :id "0"}])
+        count := 2
+        [0 :op] := "purge"
+        [0 :type] := "Patient"
+        [0 :id] := "0"
+        [1 :op] := "purge"
+        [1 :type] := "Observation"
+        [1 :id] := "0"))))

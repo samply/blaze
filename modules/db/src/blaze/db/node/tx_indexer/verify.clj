@@ -1,4 +1,6 @@
 (ns blaze.db.node.tx-indexer.verify
+  "Verifies terminal transaction commands. Non-terminal transaction commands
+  are first expanded."
   (:require
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.db.api :as d]
@@ -14,7 +16,6 @@
    [blaze.fhir.hash :as hash]
    [blaze.util :as u]
    [clojure.string :as str]
-
    [prometheus.alpha :as prom :refer [defhistogram]]
    [taoensso.timbre :as log]))
 
@@ -241,6 +242,26 @@
         :else
         (add-delete-history-entries res tid id t instance-history)))))
 
+;; like delete-history but also purges the current version
+(defmethod verify "purge"
+  [db-before t res {:keys [type id]}]
+  (log/trace "verify-tx-cmd :purge" (str type "/" id))
+  (with-open [_ (prom/timer tx-u/duration-seconds "verify-purge")]
+    (let [tid (codec/tid type)
+          instance-history (into [] (take (inc delete-history-max))
+                                 (d/instance-history db-before type id))]
+      (cond
+        (empty? instance-history) res
+
+        (= (inc delete-history-max) (count instance-history))
+        (throw-anom (too-many-history-entries-anom type id))
+
+        :else
+        (cond-> (add-delete-history-entries res tid id t instance-history)
+          (not (identical? :delete (rh/op (first instance-history))))
+          (-> (update :del-resources conj [type id])
+              (update-in [:stats tid :total] (fnil dec 0))))))))
+
 (defmethod verify :default
   [_db-before _t res _tx-cmd]
   res)
@@ -317,7 +338,7 @@
   [db {:keys [new-resources del-resources]} cmds]
   (run!
    (fn [{:keys [op type id refs check-refs]}]
-     (if (= op "delete")
+     (if (#{"delete" "purge"} op)
        (when check-refs
          (check-referential-integrity-delete!
           db del-resources type id))
@@ -327,8 +348,8 @@
    cmds))
 
 (defn verify-tx-cmds
-  "Verifies transaction commands. Returns index entries of the transaction
-  outcome if it is successful or an anomaly if it fails.
+  "Verifies terminal `tx-cmds`. Returns index entries of the transaction outcome
+  if it is successful or an anomaly if it fails.
 
   The `t` is for the new transaction to commit."
   [db-before t tx-cmds]

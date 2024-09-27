@@ -94,6 +94,15 @@
     :type type
     :id id}})
 
+(defmethod prepare-op :patient-purge
+  [{:blaze.db/keys [enforce-referential-integrity]} [_ id]]
+  {:blaze.db/tx-cmd
+   (cond->
+    {:op "patient-purge"
+     :id id}
+     enforce-referential-integrity
+     (assoc :check-refs true))})
+
 (def ^:private split
   (juxt #(mapv :blaze.db/tx-cmd %) #(into {} (map :hash-resource) %)))
 

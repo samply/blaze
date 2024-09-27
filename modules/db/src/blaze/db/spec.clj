@@ -101,6 +101,10 @@
          :type :fhir.resource/type
          :id :blaze.resource/id))
 
+(defmethod tx-op :patient-purge [_]
+  (s/cat :op #{:patient-purge}
+         :id :blaze.resource/id))
+
 (s/def :blaze.db/tx-op
   (s/multi-spec tx-op first))
 

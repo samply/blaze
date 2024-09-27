@@ -3,6 +3,7 @@
    [blaze.db.spec]
    [blaze.executors :as ex]
    [blaze.rest-api :as-alias rest-api]
+   [blaze.rest-api.operation :as-alias operation]
    [blaze.spec]
    [buddy.auth.protocols :as p]
    [clojure.spec.alpha :as s]
@@ -91,38 +92,46 @@
 (s/def ::rest-api/compartments
   (s/coll-of ::rest-api/compartment))
 
-(s/def :blaze.rest-api.operation/code
+(s/def ::operation/code
   string?)
 
-(s/def :blaze.rest-api.operation/def-uri
+(s/def ::operation/def-uri
   string?)
 
-(s/def :blaze.rest-api.operation/resource-types
+(s/def ::operation/affects-state
+  boolean?)
+
+(s/def ::operation/response-type
+  #{:json})
+
+(s/def ::operation/resource-types
   (s/coll-of string?))
 
-(s/def :blaze.rest-api.operation/system-handler
+(s/def ::operation/system-handler
   (s/or :ref ig/ref? :handler fn?))
 
-(s/def :blaze.rest-api.operation/type-handler
+(s/def ::operation/type-handler
   (s/or :ref ig/ref? :handler fn?))
 
-(s/def :blaze.rest-api.operation/instance-handler
+(s/def ::operation/instance-handler
   (s/or :ref ig/ref? :handler fn?))
 
-(s/def :blaze.rest-api.operation/documentation
+(s/def ::operation/documentation
   string?)
 
 (s/def ::rest-api/operation
   (s/keys
    :req
-   [:blaze.rest-api.operation/code
-    :blaze.rest-api.operation/def-uri]
+   [::operation/code
+    ::operation/def-uri]
    :opt
-   [:blaze.rest-api.operation/resource-types
-    :blaze.rest-api.operation/system-handler
-    :blaze.rest-api.operation/type-handler
-    :blaze.rest-api.operation/instance-handler
-    :blaze.rest-api.operation/documentation]))
+   [::operation/affects-state
+    ::operation/response-type
+    ::operation/resource-types
+    ::operation/system-handler
+    ::operation/type-handler
+    ::operation/instance-handler
+    ::operation/documentation]))
 
 (s/def ::rest-api/operations
   (s/coll-of ::rest-api/operation))
