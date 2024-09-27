@@ -15,7 +15,7 @@ permissions: read-all
 
 jobs:
   fmt:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Setup Clojure
@@ -30,7 +30,7 @@ jobs:
       run: make fmt
 
   lint:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Setup Clojure
@@ -45,7 +45,7 @@ jobs:
       run: make lint
 
   job-ig:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Setup Node
@@ -128,7 +128,7 @@ jobs:
           java-version: '17'
 
     needs: job-ig
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Setup Java
@@ -174,7 +174,7 @@ jobs:
   # Special treatment, because it runs much longer as the other modules.
   test-coverage-db:
     needs: job-ig
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Setup Java
@@ -220,7 +220,7 @@ jobs:
         - '21'
 
     needs: job-ig
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Setup Java
@@ -254,7 +254,7 @@ jobs:
 
   upload-coverage:
     needs: [ test, test-coverage-db ]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Download Coverage Reports
@@ -271,7 +271,7 @@ jobs:
 
   build:
     needs: job-ig
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Setup Java
@@ -326,7 +326,7 @@ jobs:
         path: /tmp/blaze.tar
 
   build-frontend:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -358,7 +358,7 @@ jobs:
 
   image-scan:
     needs: [ build, build-frontend ]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       security-events: write
     strategy:
@@ -400,7 +400,7 @@ jobs:
 
   cql-expr-cache-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -549,7 +549,7 @@ jobs:
 
   integration-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     strategy:
       matrix:
@@ -1090,7 +1090,7 @@ jobs:
 
   integration-test-synthea-1000:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1158,7 +1158,7 @@ jobs:
 
   not-enforcing-referential-integrity-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1202,7 +1202,7 @@ jobs:
 
   admin-api-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1241,7 +1241,7 @@ jobs:
   # caused Jetty to close the stream.
   small-transactions-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1282,7 +1282,7 @@ jobs:
 
   big-transaction-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1317,7 +1317,7 @@ jobs:
 
   evaluate-measure-timeout-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1355,7 +1355,7 @@ jobs:
 
   include-without-referential-integrity-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1384,7 +1384,7 @@ jobs:
 
   chaining-without-referential-integrity-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1415,7 +1415,7 @@ jobs:
   # resolve to existing resources
   bundle-with-references-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1447,7 +1447,7 @@ jobs:
 
   jepsen-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Setup Java
@@ -1505,7 +1505,7 @@ jobs:
 
   openid-auth-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1546,7 +1546,7 @@ jobs:
 
   custom-search-parameters-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1578,7 +1578,7 @@ jobs:
 
   doc-copy-data-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1622,7 +1622,7 @@ jobs:
 
   big-binary-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1660,7 +1660,7 @@ jobs:
 
   frontend-test:
     needs: [ build, build-frontend ]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1744,7 +1744,7 @@ jobs:
 
   missing-resource-content-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1795,7 +1795,7 @@ jobs:
   # the new database schema especially building the PatientLastChange index.
   build-patient-last-change-index-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1839,7 +1839,7 @@ jobs:
 
   jepsen-distributed-test:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Setup Java
@@ -1945,7 +1945,7 @@ jobs:
     - missing-resource-content-test
     - custom-search-parameters-test
     - build-patient-last-change-index-test
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Check out Git repository
@@ -1955,7 +1955,7 @@ jobs:
     if: github.event_name != 'pull_request' || (github.event.pull_request.base.repo.full_name == github.event.pull_request.head.repo.full_name)
     needs:
     - pre-push-image
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       packages: write
     strategy:
@@ -2068,7 +2068,7 @@ jobs:
     if: github.ref_type == 'tag'
     needs:
     - push-image
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
 
@@ -2079,7 +2079,7 @@ jobs:
         files: target/blaze-*-standalone.jar
 
   build-pages:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
     - name: Check out Git repository
       uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
@@ -2107,7 +2107,7 @@ jobs:
 
   deploy-pages:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: [ build-pages ]
     permissions:
       pages: write
