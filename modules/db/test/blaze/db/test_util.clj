@@ -6,6 +6,7 @@
    [blaze.db.node :as node]
    [blaze.db.resource-store :as rs]
    [blaze.db.resource-store.kv :as rs-kv]
+   [blaze.db.search-param-registry]
    [blaze.db.tx-cache]
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]

@@ -21,9 +21,7 @@
   [[_ type id]]
   [type id])
 
-(defmethod extract-type-id :conditional-delete [_])
-
-(defmethod extract-type-id :delete-history [_])
+(defmethod extract-type-id :default [_])
 
 (defn- duplicate-resource-anomaly [[type id]]
   (ba/incorrect

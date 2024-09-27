@@ -23,6 +23,7 @@
    [blaze.db.node.spec]
    [blaze.db.node.transaction :as tx]
    [blaze.db.node.tx-indexer :as tx-indexer]
+   [blaze.db.node.tx-indexer.util :as tx-u]
    [blaze.db.node.tx-indexer.verify :as tx-indexer-verify]
    [blaze.db.node.util :as node-util]
    [blaze.db.node.validation :as validation]
@@ -99,9 +100,9 @@
          (remove-watch state future))))
     future))
 
-(defn- index-tx [search-param-registry db-before tx-data]
+(defn- index-tx [db-before tx-data]
   (with-open [_ (prom/timer duration-seconds "index-transactions")]
-    (tx-indexer/index-tx search-param-registry db-before tx-data)))
+    (tx-indexer/index-tx db-before tx-data)))
 
 (defn- advance-t! [state t]
   (log/trace "advance state to t =" t)
@@ -146,12 +147,12 @@
   "This is the main transaction handling function.
 
   If indexes resources and transaction data and commits either success or error."
-  [{:keys [resource-indexer search-param-registry kv-store] :as node}
+  [{:keys [resource-indexer kv-store] :as node}
    {:keys [t instant tx-cmds] :as tx-data}]
   (log/trace "index transaction with t =" t "and" (count tx-cmds) "command(s)")
   (let [timer (prom/timer duration-seconds "index-resources")
         future (resource-indexer/index-resources resource-indexer tx-data)
-        result (index-tx search-param-registry (np/-db node) tx-data)]
+        result (index-tx (np/-db node) tx-data)]
     (if (ba/anomaly? result)
       (commit-error! node t result)
       (do
@@ -532,4 +533,4 @@
   tx-indexer-verify/transaction-sizes)
 
 (reg-collector ::tx-indexer/duration-seconds
-  tx-indexer-verify/duration-seconds)
+  tx-u/duration-seconds)
