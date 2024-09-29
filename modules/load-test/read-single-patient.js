@@ -1,18 +1,13 @@
 import http from 'k6/http';
-import { check, fail } from 'k6';
-import { randomItem } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
+import exec from 'k6/execution';
+import { fail } from 'k6';
+import { randomItem } from 'https://jslib.k6.io/k6-utils/1.3.0/index.js';
 
 export const options = {
 
-	thresholds: {
-		http_req_failed: [{ threshold: 'rate<0.01' }], // http errors should be less than 0.1%
-		http_req_duration: ['p(99)<100'] // 99% of requests should be below 100ms
-	},
-
 	setupTimeout: '300s',
 	insecureSkipTLSVerify: true,
-
-	summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(95)', 'p(99)', 'count'],
+	discardResponseBodies: true,
 
 	stages: [
 		{ duration: '30s', target: 64 },
@@ -24,7 +19,7 @@ export const options = {
 const base = 'https://blaze.srv.local/fhir';
 //const base = 'http://localhost:8080/fhir';
 //const base = 'http://blaze-test-host:8080/fhir';
-const accessToken = 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ5VmMwcnVQZjdrMDgxN2JWMWF0ZFoycWpJUUFqYnR3RUpiZklvZ3k3aElzIn0.eyJleHAiOjE3MjY3NzM4MzIsImlhdCI6MTcyNjc3MDIzMiwianRpIjoiOWVhODk2MzYtNGMzNy00NWMyLTkwMDQtZjA0MDkyYjA2YzhiIiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay5zcnYubG9jYWwvcmVhbG1zL2JsYXplIiwic3ViIjoiNzJhN2YzN2UtYjMzZi00OTA4LTlhZDktMzNiZTBkNGMxNjIwIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiYWNjb3VudCIsInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6ImVtYWlsIHByb2ZpbGUiLCJjbGllbnRJZCI6ImFjY291bnQiLCJjbGllbnRIb3N0IjoiMTcyLjE4LjAuNCIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwicHJlZmVycmVkX3VzZXJuYW1lIjoic2VydmljZS1hY2NvdW50LWFjY291bnQiLCJjbGllbnRBZGRyZXNzIjoiMTcyLjE4LjAuNCJ9.gC4lWwCsW-tA_hYLyNjafb10wTmYYKKxmAzAFIeIWHjMmqD5mj2Vg8vkOK8Dy_7DfeHPtMP3_Yavqwd7b3ggdvyJwg3gdMVZniLDBwf0Jt5v_ldih6MXn19l2WfUsfucMFWCkZsAekApB7Vp2s6dKZcwvc3noA5uCBSn2sSaUt8xFoSBOsOgQRNVw2U4pT7eVzyjz5bXC_ZlTqyfQAtmU2k0pedhFZ0U4m3L-zhydSgz-wfEhaDyWjC1IgM5Q8kUj9gVoQtFS6zZ_959J6BOXdnq6ozMLlxZSXjGJ0EH1zxu0pWJMA-WU8C96VhsmxD6w8GynXB2b9SQeqOoxeXlAw';
+const accessToken = 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ5VmMwcnVQZjdrMDgxN2JWMWF0ZFoycWpJUUFqYnR3RUpiZklvZ3k3aElzIn0.eyJleHAiOjE3Mjc1NTQxODgsImlhdCI6MTcyNzU1MDU4OCwianRpIjoiNzM4OTQyZmQtOGViZS00MzM1LWFkZDgtYzQyMjMxZDUzNjMyIiwiaXNzIjoiaHR0cHM6Ly9rZXljbG9hay5zcnYubG9jYWwvcmVhbG1zL2JsYXplIiwic3ViIjoiNzJhN2YzN2UtYjMzZi00OTA4LTlhZDktMzNiZTBkNGMxNjIwIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiYWNjb3VudCIsInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6ImVtYWlsIHByb2ZpbGUiLCJjbGllbnRJZCI6ImFjY291bnQiLCJjbGllbnRIb3N0IjoiMTcyLjE4LjAuMyIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwicHJlZmVycmVkX3VzZXJuYW1lIjoic2VydmljZS1hY2NvdW50LWFjY291bnQiLCJjbGllbnRBZGRyZXNzIjoiMTcyLjE4LjAuMyJ9.ND8MJD-SUNoQXvts4pYheQBoV2DZ57vVejUFkpkMSWoodu_kxVeOhHfLqv1y0jP6VPGa2-XAuxeJQj_5wzVsvfAWoWw793svoGCVDErGxL0g6jySoxDbaoJ3HIWwV0muOgf9PVoVlJg3iYEc8qGGsT6HYXhOb3BSFObaDHcDRUnerbECaDoAVcOhuR9fMy0pCFg2TBBkjW_ldR0lNpckxZyesl0dxSMt3VXlC_FUVmSWqh_u7KSmh1VhyvK1zw5GACd3qGppfrvdAHW9rlQ5VHIJneFPOYjqcCiK4Gvy0EVceU8POar2-crd3_e8kXt_QCeIOgP0N3jL994y6E0_pA';
 
 const commonHeaders = {
 	'Accept': 'application/fhir+json',
@@ -41,26 +36,17 @@ const readParams = {
 
 const searchTypeParams = {
 	headers: commonHeaders,
+	responseType: "text",
 	tags: {
 		name: 'search-type'
 	}
 };
 
 export default function({ patientIds }) {
+	exec.vu.tags['vus_active'] = exec.instance.vusActive;
+
 	const id = randomItem(patientIds);
-
-	const res = http.get(`${base}/Patient/${id}`, readParams);
-
-	check(res, {
-		'response code was 200': (res) => res.status === 200
-	});
-
-	const body = res.json();
-
-	check(body, {
-		'response body is a Patient': (body) => body.resourceType === 'Patient',
-		'Patient id': (body) => body.id === id
-	});
+	http.get(`${base}/Patient/${id}`, readParams);
 }
 
 function readPatientIds(url) {

@@ -1,7 +1,12 @@
+upstream backend {
+    server backend:8080;
+    keepalive 64;
+}
+
 map $http_authorization $upstream {
     default http://frontend:3000;
 
-    "~Bearer" http://backend:8080;
+    "~Bearer" http://backend;
 }
 
 server {
@@ -38,6 +43,7 @@ server {
         proxy_pass $upstream;
         proxy_set_header x-forwarded-proto https;
         proxy_set_header x-forwarded-host ${BLAZE_HOST};
+        proxy_set_header Connection "";
     }
 }
 
