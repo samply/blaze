@@ -10,34 +10,54 @@
 
 (set! *warn-on-reflection* true)
 
-(defn anomaly? [x]
+(defn anomaly?
+  "Checks whether `x` is an anomaly."
+  [x]
   (some? (::anom/category x)))
 
-(defn unavailable? [x]
+(defn unavailable?
+  "Checks whether `x` is an anomaly of category `unavailable`."
+  [x]
   (identical? ::anom/unavailable (::anom/category x)))
 
-(defn interrupted? [x]
+(defn interrupted?
+  "Checks whether `x` is an anomaly of category `interrupted`."
+  [x]
   (identical? ::anom/interrupted (::anom/category x)))
 
-(defn incorrect? [x]
+(defn incorrect?
+  "Checks whether `x` is an anomaly of category `incorrect`."
+  [x]
   (identical? ::anom/incorrect (::anom/category x)))
 
-(defn forbidden? [x]
+(defn forbidden?
+  "Checks whether `x` is an anomaly of category `forbidden`."
+  [x]
   (identical? ::anom/forbidden (::anom/category x)))
 
-(defn unsupported? [x]
+(defn unsupported?
+  "Checks whether `x` is an anomaly of category `unsupported`."
+  [x]
   (identical? ::anom/unsupported (::anom/category x)))
 
-(defn not-found? [x]
+(defn not-found?
+  "Checks whether `x` is an anomaly of category `not-found`."
+  [x]
   (identical? ::anom/not-found (::anom/category x)))
 
-(defn conflict? [x]
+(defn conflict?
+  "Checks whether `x` is an anomaly of category `conflict`."
+  [x]
   (identical? ::anom/conflict (::anom/category x)))
 
-(defn fault? [x]
+(defn fault?
+  "Checks whether `x` is an anomaly of category `fault`."
+  [x]
   (identical? ::anom/fault (::anom/category x)))
 
-(defn busy? [x]
+(defn busy?
+  "Checks whether `x` is an anomaly of category `busy`."
+  [x]
   (identical? ::anom/busy (::anom/category x)))
 
 (defn- anomaly*
