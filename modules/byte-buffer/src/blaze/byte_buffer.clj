@@ -7,7 +7,9 @@
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
 
-(defn byte-buffer? [x]
+(defn byte-buffer?
+  "Checks whether `x` is an instance of ByteBuffer."
+  [x]
   (instance? ByteBuffer x))
 
 (defn allocate
@@ -29,6 +31,7 @@
   (ByteBuffer/wrap byte-array))
 
 (defn capacity
+  "Returns the capacity of `byte-buffer`."
   {:inline
    (fn [byte-buffer]
      `(.capacity ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
@@ -36,6 +39,7 @@
   (.capacity ^ByteBuffer byte-buffer))
 
 (defn put-byte!
+  "Puts the byte `x` into `byte-buffer` at the current position."
   {:inline
    (fn [byte-buffer x]
      `(.put ~(vary-meta byte-buffer assoc :tag `ByteBuffer) (byte ~x)))}
@@ -43,6 +47,7 @@
   (.put ^ByteBuffer byte-buffer (byte x)))
 
 (defn put-short!
+  "Puts the short `x` into `byte-buffer` at the current position."
   {:inline
    (fn [byte-buffer x]
      `(.putShort ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~x))}
@@ -50,6 +55,7 @@
   (.putShort ^ByteBuffer byte-buffer x))
 
 (defn put-int!
+  "Puts the int `x` into `byte-buffer` at the current position."
   {:inline
    (fn [byte-buffer x]
      `(.putInt ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~x))}
@@ -57,6 +63,7 @@
   (.putInt ^ByteBuffer byte-buffer x))
 
 (defn put-long!
+  "Puts the long `x` into `byte-buffer` at the current position."
   {:inline
    (fn [byte-buffer x]
      `(.putLong ~(vary-meta byte-buffer assoc :tag `ByteBuffer) ~x))}
@@ -64,6 +71,10 @@
   (.putLong ^ByteBuffer byte-buffer x))
 
 (defn put-byte-array!
+  "Puts the `byte-array` into `byte-buffer` at the current position.
+
+  If `offset` and `length` are provided, only the specified portion of the
+  `byte-array` is put."
   {:inline
    (fn
      ([byte-buffer byte-array]
@@ -107,6 +118,7 @@
   (.limit ^ByteBuffer byte-buffer))
 
 (defn set-limit!
+  "Sets the limit `byte-buffer` to `limit`."
   {:inline
    (fn [byte-buffer limit]
      `(.limit ~(vary-meta byte-buffer assoc :tag `ByteBuffer) (int ~limit)))}
@@ -114,6 +126,7 @@
   (.limit ^ByteBuffer byte-buffer (int limit)))
 
 (defn position
+  "Returns the current position of `byte-buffer`."
   {:inline
    (fn [byte-buffer]
      `(.position ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
@@ -121,6 +134,7 @@
   (.position ^ByteBuffer byte-buffer))
 
 (defn set-position!
+  "Sets the position of `byte-buffer` to `position`."
   {:inline
    (fn [byte-buffer position]
      `(.position ~(vary-meta byte-buffer assoc :tag `ByteBuffer) (int ~position)))}
@@ -128,7 +142,8 @@
   (.position ^ByteBuffer byte-buffer (int position)))
 
 (defn remaining
-  "Returns the number of elements between the current position and the limit."
+  "Returns the number of elements between the current position and the limit of
+  `byte-buffer`."
   {:inline
    (fn [byte-buffer]
      `(.remaining ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
@@ -138,7 +153,10 @@
 (defn flip!
   "Flips `byte-buffer`.
 
-  The limit is set to the current position and then the position is set to zero. If the mark is defined then it is discarded.\nAfter a sequence of channel-read or put operations, invoke this method to prepare for a sequence of channel-write or relative get operations."
+  The limit is set to the current position and then the position is set to zero.
+  If the mark is defined then it is discarded. After a sequence of channel-read
+  or put operations, invoke this method to prepare for a sequence of
+  channel-write or relative get operations."
   {:inline
    (fn [byte-buffer]
      `(.flip ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
@@ -198,6 +216,9 @@
    (.get ^ByteBuffer byte-buffer (int index))))
 
 (defn get-int!
+  "Reads the next four bytes of `byte-buffer` at its current position, composing
+  them into an int value according to the current byte order, and then
+  increments the position of `byte-buffer` by four."
   {:inline
    (fn [byte-buffer]
      `(.getInt ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
@@ -205,6 +226,9 @@
   (.getInt ^ByteBuffer byte-buffer))
 
 (defn get-long!
+  "Reads the next eight bytes of `byte-buffer` at its current position or
+  `index`, composing them into a long value according to the current byte order,
+  and then increments the position of `byte-buffer` by eight."
   {:inline
    (fn
      ([byte-buffer]
@@ -273,6 +297,7 @@
   (.mismatch ^ByteBuffer a b))
 
 (defn array
+  "Returns the byte array that backs `byte-buffer`."
   {:inline
    (fn [byte-buffer]
      `(.array ~(vary-meta byte-buffer assoc :tag `ByteBuffer)))}
