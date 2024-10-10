@@ -224,11 +224,11 @@
       (and value (nil? system))
       (conj (str "|" value)))))
 
-(defn- remove-non-matching [db expression value resource-handle]
+(defn- matches-identifier-values? [db expression value-set resource-handle]
   (let [resource @(d/pull db resource-handle)
         values (fhir-path/eval noop-resolver expression resource)]
     (assert (not (ba/anomaly? values)))
-    (some #{value} (mapcat identifier-values values))))
+    (some value-set (mapcat identifier-values values))))
 
 (defrecord SearchParamTokenIdentifier [name url type base code target c-hash expression]
   p/SearchParam
@@ -241,23 +241,21 @@
   (-resource-handles [_ batch-db tid modifier value]
     (let [c-hash (c-hash-w-modifier c-hash code modifier)
           resource-handles (resource-handles batch-db c-hash tid value)]
-      (if (< 1 (count resource-handles))
-        (filterv (partial remove-non-matching batch-db expression value) resource-handles)
-        resource-handles)))
+      (filterv (partial matches-identifier-values? batch-db expression #{value}) resource-handles)))
 
   (-resource-handles [_ batch-db tid modifier value start-id]
     (let [c-hash (c-hash-w-modifier c-hash code modifier)
           resource-handles (resource-handles batch-db c-hash tid value start-id)]
-      (if (< 1 (count resource-handles))
-        (filterv (partial remove-non-matching batch-db expression value) resource-handles)
-        resource-handles)))
+      (filterv (partial matches-identifier-values? batch-db expression #{value}) resource-handles)))
 
   (-compartment-keys [_ _ _ _ _])
 
   (-matcher [_ batch-db modifier values]
-    (r-sp-v/value-prefix-filter (:snapshot batch-db)
-                                (c-hash-w-modifier c-hash code modifier)
-                                (mapv codec/v-hash values)))
+    (comp
+     (r-sp-v/value-prefix-filter (:snapshot batch-db)
+                                 (c-hash-w-modifier c-hash code modifier)
+                                 (mapv codec/v-hash values))
+     (filter (partial matches-identifier-values? batch-db expression (set values)))))
 
   (-compartment-ids [_ _ _])
 
