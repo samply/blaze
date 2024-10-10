@@ -76,7 +76,7 @@
 
   ;; CVE-2024-45294, we need at least 6.3.23
   ca.uhn.hapi.fhir/org.hl7.fhir.validation
-  {:mvn/version "6.3.30"
+  {:mvn/version "6.3.31"
    :exclusions
    [net.sf.saxon/Saxon-HE
     org.ogce/xpp3
