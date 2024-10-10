@@ -5338,7 +5338,35 @@
         (given (pull-type-query node "Patient" [["active" "true"] ["identifier" "system-115849|"]])
           count := 2
           [0 :id] := "0"
-          [1 :id] := "1")))))
+          [1 :id] := "1"))))
+
+  (testing "doesn't find the Observation with identifier with hash collision"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Observation :id "0"
+               :identifier
+               [#fhir/Identifier{:value "2404351199702_20240422094702_DELTA-HE"}]}]]]
+
+      (is (empty? (pull-type-query node "Observation" [["identifier" "2410301332030_20241009113701_FDP-D"]]))))
+
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:put {:fhir/type :fhir/Observation :id "0"
+               :identifier
+               [#fhir/Identifier{:value "2404351199702_20240422094702_DELTA-HE"}]}]]
+       [[:put {:fhir/type :fhir/Observation :id "1"
+               :identifier
+               [#fhir/Identifier{:value "2404351199702_20240422094702_DELTA-HE"}]}]]]
+
+      (is (empty? (pull-type-query node "Observation" [["identifier" "2410301332030_20241009113701_FDP-D"]] "1"))))
+
+    (testing "as second clause"
+      (with-system-data [{:blaze.db/keys [node]} config]
+        [[[:put {:fhir/type :fhir/Observation :id "0"
+                 :status #fhir/code"final"
+                 :identifier
+                 [#fhir/Identifier{:value "2404351199702_20240422094702_DELTA-HE"}]}]]]
+
+        (is (empty? (pull-type-query node "Observation" [["status" "final"]
+                                                         ["identifier" "2410301332030_20241009113701_FDP-D"]])))))))
 
 (deftest type-query-tag-test
   (with-system-data [{:blaze.db/keys [node]} config]
