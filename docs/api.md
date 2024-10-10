@@ -53,6 +53,9 @@ By default Blaze enforces referential integrity while deleting resources. So res
 ### Delete History
 
 > [!CAUTION]
+> The delete history interaction is currently **alpha** and has to be enabled explicitly by setting the env var `ENABLE_INTERACTION_DELETE_HISTORY` to true. Please don't use it in production. Please be aware that the database might not be able to migrate to a newer version of Blaze if the operation was used.
+
+> [!CAUTION]
 > The delete history interaction is trial use in the unreleased next version of FHIR. So it is subject to change. Please use it with care.
 
 The delete history interaction removes all versions of the resource except the current version. 

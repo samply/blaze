@@ -125,6 +125,8 @@ services:
       DB_RESOURCE_CACHE_SIZE: "100000"
       DB_RESOURCE_INDEXER_THREADS: "8"
       ALLOW_MULTIPLE_DELETE: "true"
+      ENABLE_INTERACTION_DELETE_HISTORY: "true"
+      ENABLE_OPERATION_PATIENT_PURGE: "true"
     ports:
     - "8081:8081"
     volumes:
@@ -156,6 +158,8 @@ services:
       DB_RESOURCE_CACHE_SIZE: "100000"
       DB_RESOURCE_INDEXER_THREADS: "8"
       ALLOW_MULTIPLE_DELETE: "true"
+      ENABLE_INTERACTION_DELETE_HISTORY: "true"
+      ENABLE_OPERATION_PATIENT_PURGE: "true"
     ports:
     - "8082:8081"
     volumes:

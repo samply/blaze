@@ -88,8 +88,8 @@
     (is (s/valid? :blaze.metrics/collector collector))))
 
 (deftest resource-patterns-init-test
-  (with-system [{::rest-api/keys [resource-patterns]} {::rest-api/resource-patterns ::patterns}]
-    (is (= ::patterns resource-patterns))))
+  (with-system [{::rest-api/keys [resource-patterns]} {::rest-api/resource-patterns {:default ::interactions}}]
+    (is (= [#:blaze.rest-api.resource-pattern{:type :default :interactions ::interactions}] resource-patterns))))
 
 (deftest operations-init-test
   (with-system [{::rest-api/keys [operations]} {::rest-api/operations ::operations}]
@@ -116,22 +116,21 @@
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)
     :search-system-handler success-handler
     :transaction-handler success-handler
-    :resource-patterns
-    [#:blaze.rest-api.resource-pattern
-      {:type :default
-       :interactions
-       {:read
-        #:blaze.rest-api.interaction
-         {:handler success-handler}
-        :delete
-        #:blaze.rest-api.interaction
-         {:handler success-handler}
-        :conditional-delete-type
-        #:blaze.rest-api.interaction
-         {:handler success-handler}
-        :search-type
-        #:blaze.rest-api.interaction
-         {:handler success-handler}}}]}
+    :resource-patterns (ig/ref ::rest-api/resource-patterns)}
+   ::rest-api/resource-patterns
+   {:default
+    {:read
+     #:blaze.rest-api.interaction
+      {:handler success-handler}
+     :delete
+     #:blaze.rest-api.interaction
+      {:handler success-handler}
+     :conditional-delete-type
+     #:blaze.rest-api.interaction
+      {:handler success-handler}
+     :search-type
+     #:blaze.rest-api.interaction
+      {:handler success-handler}}}
    :blaze/job-scheduler
    {:node (ig/ref :blaze.db/node)
     :clock (ig/ref :blaze.test/fixed-clock)
