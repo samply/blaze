@@ -9,6 +9,7 @@
    [blaze.interaction.delete-history]
    [blaze.interaction.history.type]
    [blaze.interaction.read]
+   [blaze.interaction.search-compartment]
    [blaze.interaction.search-system]
    [blaze.interaction.search-type]
    [blaze.interaction.transaction]
@@ -99,6 +100,22 @@
           :value "default"
           :default-value "default"}]}})))
 
+(deftest merge-features-test
+  (testing "vector"
+    (given (system/merge-features
+            {:base-config {:foo [:a]}
+             :features [{:key :bar :name "bar" :toggle "T" :config {:foo [:b]}}]}
+            {"T" "true"})
+      :foo := [:a :b]))
+
+  (testing "nested map"
+    (given (system/merge-features
+            {:base-config {:foo {:default {:read {}}}}
+             :features [{:key :bar :name "bar" :toggle "T" :config {:foo {:default {:delete-history {}}}}}]}
+            {"T" "true"})
+      :foo := {:default {:read {}
+                         :delete-history {}}})))
+
 (def config
   (assoc
    mem-node-config
@@ -116,6 +133,10 @@
     :async-status-cancel-handler (ig/ref ::rest-api/async-status-cancel-handler)
     :capabilities-handler (ig/ref ::rest-api/capabilities-handler)
     :resource-patterns (ig/ref ::rest-api/resource-patterns)
+    :compartments
+    [#:blaze.rest-api.compartment
+      {:code "Patient"
+       :search-handler (ig/ref :blaze.interaction/search-compartment)}]
     :job-scheduler (ig/ref :blaze/job-scheduler)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
@@ -146,6 +167,11 @@
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
     :page-store (ig/ref ::page-store)
     :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
+   :blaze.interaction/search-compartment
+   {:clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :page-store (ig/ref ::page-store)
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
    :blaze.interaction.history/type
    {:clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
@@ -171,30 +197,28 @@
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
    ::rest-api/resource-patterns
-   [#:blaze.rest-api.resource-pattern
-     {:type :default
-      :interactions
-      {:read
-       #:blaze.rest-api.interaction
-        {:handler (ig/ref :blaze.interaction/read)}
-       :vread
-       #:blaze.rest-api.interaction
-        {:handler (ig/ref :blaze.interaction/vread)}
-       :delete
-       #:blaze.rest-api.interaction
-        {:handler (ig/ref :blaze.interaction/delete)}
-       :delete-history
-       #:blaze.rest-api.interaction
-        {:handler (ig/ref :blaze.interaction/delete-history)}
-       :conditional-delete-type
-       #:blaze.rest-api.interaction
-        {:handler (ig/ref :blaze.interaction/conditional-delete-type)}
-       :search-type
-       #:blaze.rest-api.interaction
-        {:handler (ig/ref :blaze.interaction/search-type)}
-       :history-type
-       #:blaze.rest-api.interaction
-        {:handler (ig/ref :blaze.interaction.history/type)}}}]
+   {:default
+    {:read
+     #:blaze.rest-api.interaction
+      {:handler (ig/ref :blaze.interaction/read)}
+     :vread
+     #:blaze.rest-api.interaction
+      {:handler (ig/ref :blaze.interaction/vread)}
+     :delete
+     #:blaze.rest-api.interaction
+      {:handler (ig/ref :blaze.interaction/delete)}
+     :delete-history
+     #:blaze.rest-api.interaction
+      {:handler (ig/ref :blaze.interaction/delete-history)}
+     :conditional-delete-type
+     #:blaze.rest-api.interaction
+      {:handler (ig/ref :blaze.interaction/conditional-delete-type)}
+     :search-type
+     #:blaze.rest-api.interaction
+      {:handler (ig/ref :blaze.interaction/search-type)}
+     :history-type
+     #:blaze.rest-api.interaction
+      {:handler (ig/ref :blaze.interaction.history/type)}}}
    :blaze.test/executor {}
    :blaze.test/fixed-clock {}
    :blaze.test/fixed-rng-fn {}
@@ -472,6 +496,14 @@
             :status := 404
 
             [:body fhir-spec/parse-json :resourceType] := "OperationOutcome"))))))
+
+(deftest search-compartment-test
+  (with-system-data [{:blaze/keys [rest-api]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]]]
+
+    (given (call rest-api {:request-method :get :uri "/Patient/0/Observation"})
+      :status := 200
+      [:body fhir-spec/parse-json :resourceType] := "Bundle")))
 
 (deftest history-type-test
   (with-system [{:blaze/keys [rest-api]} config]

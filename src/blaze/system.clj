@@ -175,7 +175,7 @@
              {:key (clojure.core/name key) :name name :toggle toggle
               :enabled enabled?}))
 
-(defn- merge-features
+(defn merge-features
   "Merges feature config portions of enabled features into `base-config`."
   {:arglists '([blaze-edn env])}
   [{:keys [base-config features]} env]
@@ -185,7 +185,12 @@
            res (conj-feature res feature enabled?)]
        (log/info "Feature" name (if enabled? "enabled" "disabled"))
        (if enabled?
-         (merge-with (partial merge-with merge) res config)
+         (merge-with
+          (fn [v1 v2]
+            (cond
+              (and (vector? v1) (vector? v2)) (into v1 v2)
+              :else (merge-with merge v1 v2)))
+          res config)
          res)))
    base-config
    features))

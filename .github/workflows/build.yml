@@ -293,7 +293,7 @@ jobs:
       uses: actions/cache@3624ceb22c1c5a301c8db4169662070a689d9ea8 # v4
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-17-maven-build-${{ hashFiles('**/deps.edn') }}
+        key: ${{ runner.os }}-temurin-21-maven-build-${{ hashFiles('**/deps.edn') }}
 
     - name: Download Job IG Profiles
       uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
@@ -575,7 +575,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ALLOW_MULTIPLE_DELETE=true -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ALLOW_MULTIPLE_DELETE=true -e ENABLE_INTERACTION_DELETE_HISTORY=true -e ENABLE_OPERATION_PATIENT_PURGE=true -p 8080:8080 -p 8081:8081 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
       if: ${{ matrix.variant == 'standalone' }}
 
     - name: Run Kafka, Cassandra and Blaze
@@ -1475,7 +1475,7 @@ jobs:
       uses: actions/cache@3624ceb22c1c5a301c8db4169662070a689d9ea8 # v4
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-17-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
+        key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
 
     - name: APT Update
       run: sudo apt-get update
@@ -1493,7 +1493,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_INTERACTION_DELETE_HISTORY=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -1867,7 +1867,7 @@ jobs:
       uses: actions/cache@3624ceb22c1c5a301c8db4169662070a689d9ea8 # v4
       with:
         path: ~/.m2/repository
-        key: ${{ runner.os }}-temurin-17-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
+        key: ${{ runner.os }}-temurin-21-maven-jepsen-${{ hashFiles('modules/jepsen/deps.edn') }}
 
     - name: APT Update
       run: sudo apt-get update

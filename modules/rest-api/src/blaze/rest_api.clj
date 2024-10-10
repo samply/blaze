@@ -116,7 +116,12 @@
 
 (defmethod ig/init-key :blaze.rest-api/resource-patterns
   [_ patterns]
-  patterns)
+  (into
+   []
+   (map
+    (fn [[type interactions]]
+      #:blaze.rest-api.resource-pattern{:type type :interactions interactions}))
+   patterns))
 
 (defmethod ig/init-key :blaze.rest-api/operations
   [_ operations]

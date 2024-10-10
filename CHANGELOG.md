@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.30.1
+
+### Bugfixes
+
+* Fix Returning Resources with Non-Matching Identifier ([#2111](https://github.com/samply/blaze/issues/2111))
+
+### Enhancements (alpha)
+
+* Implement the delete-history Command ([#1382](https://github.com/samply/blaze/issues/1382)) ([docs](https://github.com/samply/blaze/blob/main/docs/api.md#delete-history))
+* Implement Operation $purge on Patient ([#1298](https://github.com/samply/blaze/issues/1298)) ([docs](https://github.com/samply/blaze/blob/main/docs/api/operation-patient-purge.md))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/99?closed=1).
+
 ## v0.30.0
 
 ### Enhancements
