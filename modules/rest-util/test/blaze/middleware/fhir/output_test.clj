@@ -27,6 +27,12 @@
    (fn [_ respond _]
      (respond (ring/response {:fhir/type :fhir/Patient :id "0"})))))
 
+(def binary-resource-handler-200
+  "A handler which uses the binary middleware and just returns a binary resource."
+  (wrap-output
+   (fn [_ respond _]
+     (respond (ring/response {:fhir/type :fhir/Binary :data #fhir/base64Binary"MTA1NjE0Cg=="})))))
+
 (def resource-handler-304
   "A handler which returns a 304 Not Modified response."
   (wrap-output
@@ -204,6 +210,13 @@
     (given (call (special-resource-handler {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"foo\u001Ebar"}) {:headers {"accept" "application/fhir+xml"}})
       [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
       [:body parse-xml :issue 0 :diagnostics] := "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))
+
+(deftest binary-test
+  (testing "with accept header"
+    (given (call binary-resource-handler-200 {:headers {"accept" "text/plain"}})
+      :status := 200
+      [:headers "Content-Type"] := "text/plain"
+      :body := "105614")))
 
 (deftest not-acceptable-test
   (is (nil? (call resource-handler-200 {:headers {"accept" "text/plain"}}))))
