@@ -1,9 +1,11 @@
 (ns blaze.middleware.fhir.output-test
   (:require
+   [blaze.byte-string :as bs]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec-spec]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util]
-   [blaze.middleware.fhir.output :refer [wrap-output]]
+   [blaze.middleware.fhir.output :refer [wrap-binary-output wrap-output]]
    [blaze.module.test-util.ring :refer [call]]
    [blaze.test-util :as tu]
    [clojure.data.xml :as xml]
@@ -21,7 +23,12 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def ^:private resource-handler-200
+(defn- resource-handler-200 [resource]
+  (wrap-output
+   (fn [_ respond _]
+     (respond (ring/response resource)))))
+
+(def ^:private resource-handler-200-with-patient
   "A handler which just returns a patient."
   (wrap-output
    (fn [_ respond _]
@@ -33,10 +40,24 @@
    (fn [_ respond _]
      (respond (ring/status 304)))))
 
-(defn- special-resource-handler [resource]
-  (wrap-output
+(defn- binary-resource-handler-200
+  "A handler which uses the binary middleware and
+  returns a binary resource."
+  [{:keys [content-type data]}]
+  (wrap-binary-output
    (fn [_ respond _]
-     (respond (ring/response resource)))))
+     (respond
+      (ring/response
+       (cond-> {:fhir/type :fhir/Binary}
+         data (assoc :data (type/base64Binary data))
+         content-type (assoc :contentType (type/code content-type))))))))
+
+(def ^:private binary-resource-handler-200-no-body
+  "A handler which uses the binary middleware and
+  returns a response with 200 and no body."
+  (wrap-binary-output
+   (fn [_ respond _]
+     (respond (ring/status 200)))))
 
 (defn- parse-json [body]
   (fhir-spec/conform-json (fhir-spec/parse-json body)))
@@ -44,7 +65,7 @@
 (deftest json-test
   (testing "JSON is the default"
     (testing "without accept header"
-      (given (call resource-handler-200 {})
+      (given (call resource-handler-200-with-patient {})
         :status := 200
         [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
         [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
@@ -59,7 +80,7 @@
       (doseq [[accept content-type] [["*/*" "application/fhir+json;charset=utf-8"]
                                      ["application/*" "application/fhir+json;charset=utf-8"]
                                      ["text/*" "text/json;charset=utf-8"]]]
-        (given (call resource-handler-200 {:headers {"accept" accept}})
+        (given (call resource-handler-200-with-patient {:headers {"accept" accept}})
           :status := 200
           [:headers "Content-Type"] := content-type
           [:body parse-json] := {:fhir/type :fhir/Patient :id "0"}))))
@@ -69,7 +90,7 @@
                                    ["application/json" "application/json;charset=utf-8"]
                                    ["text/json" "text/json;charset=utf-8"]
                                    ["application/fhir+xml;q=0.9, application/fhir+json;q=1.0" "application/fhir+json;charset=utf-8"]]]
-      (given (call resource-handler-200 {:headers {"accept" accept}})
+      (given (call resource-handler-200-with-patient {:headers {"accept" accept}})
         :status := 200
         [:headers "Content-Type"] := content-type
         [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})))
@@ -83,7 +104,7 @@
                                           ["*/*" "application/json" "application/json;charset=utf-8"]
                                           ["*/*" "text/json" "text/json;charset=utf-8"]
                                           ["*/*" "json" "application/fhir+json;charset=utf-8"]]]
-      (given (call resource-handler-200
+      (given (call resource-handler-200-with-patient
                    {:headers {"accept" accept}
                     :query-params {"_format" format}})
         :status := 200
@@ -109,7 +130,7 @@
              ["text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9" "application/xml;charset=utf-8"]
              ;; Firefox
              ["text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8" "application/xml;charset=utf-8"]]]
-      (given (call resource-handler-200 {:headers {"accept" accept}})
+      (given (call resource-handler-200-with-patient {:headers {"accept" accept}})
         :status := 200
         [:headers "Content-Type"] := content-type
         [:body parse-xml] := {:fhir/type :fhir/Patient :id "0"})))
@@ -123,7 +144,7 @@
                                           ["*/*" "application/xml" "application/xml;charset=utf-8"]
                                           ["*/*" "text/xml" "text/xml;charset=utf-8"]
                                           ["*/*" "xml" "application/fhir+xml;charset=utf-8"]]]
-      (given (call resource-handler-200
+      (given (call resource-handler-200-with-patient
                    {:headers {"accept" accept}
                     :query-params {"_format" format}})
         :status := 200
@@ -137,11 +158,68 @@
       :body := nil))
 
   (testing "failing XML emit"
-    (given (call (special-resource-handler {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"foo\u001Ebar"}) {:headers {"accept" "application/fhir+xml"}})
+    (given (call (resource-handler-200 {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"foo\u001Ebar"}) {:headers {"accept" "application/fhir+xml"}})
       :status := 500
       [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
       [:body parse-xml :fhir/type] := :fhir/OperationOutcome
       [:body parse-xml :issue 0 :diagnostics] := "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))
 
+(deftest binary-resource-test
+  (testing "returning the resource"
+    (testing "JSON"
+      (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTA1NjE0Cg=="}) {:headers {"accept" "application/fhir+json"}})
+        :status := 200
+        [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
+        [:body parse-json] := {:fhir/type :fhir/Binary
+                               :contentType #fhir/code"text/plain"
+                               :data #fhir/base64Binary"MTA1NjE0Cg=="}))
+
+    (testing "XML"
+      (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTA1NjE0Cg=="}) {:headers {"accept" "application/fhir+xml"}})
+        :status := 200
+        [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
+        [:body parse-xml] := {:fhir/type :fhir/Binary
+                              :contentType #fhir/code"text/plain"
+                              :data #fhir/base64Binary"MTA1NjE0Cg=="})))
+
+  (testing "returning the data"
+    (testing "with content type"
+      (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTA1NjE0Cg=="}) {:headers {"accept" "text/plain"}})
+        :status := 200
+        [:headers "Content-Type"] := "text/plain"
+        [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
+
+    (testing "without content type"
+      (given (call (binary-resource-handler-200 {:content-type nil :data "MTA1NjE0Cg=="}) {:headers {"accept" "text/plain"}})
+        :status := 200
+        [:headers "Content-Type"] := "application/octet-stream"
+        [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
+
+    (testing "without data"
+      (testing "with content type"
+        (given (call (binary-resource-handler-200 {:content-type "text/plain"}) {:headers {"accept" "text/plain"}})
+          :status := 200
+          [:headers "Content-Type"] := "text/plain"
+          :body := nil))
+
+      (testing "without content type"
+        (given (call (binary-resource-handler-200 {:content-type nil}) {:headers {"accept" "text/plain"}})
+          :status := 200
+          [:headers "Content-Type"] := "application/octet-stream"
+          :body := nil))
+
+      (testing "without body at all"
+        (given (call binary-resource-handler-200-no-body {:headers {"accept" "text/plain"}})
+          :status := 200
+          [:headers "Content-Type"] := nil
+          :body := nil)))
+
+    (testing "failing binary emit (with invalid data)"
+      (given (call (binary-resource-handler-200 {:content-type "application/pdf" :data "MTANjECg=="}) {:headers {"accept" "text/plain"}})
+        :status := 500
+        [:headers "Content-Type"] := "application/pdf"
+        [:body :fhir/type] := :fhir/OperationOutcome
+        [:body :issue 0 :diagnostics] := "Input byte array has wrong 4-byte ending unit"))))
+
 (deftest not-acceptable-test
-  (is (nil? (call resource-handler-200 {:headers {"accept" "text/plain"}}))))
+  (is (nil? (call resource-handler-200-with-patient {:headers {"accept" "text/plain"}}))))
