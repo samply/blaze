@@ -96,3 +96,11 @@
   ([handler opts]
    (fn [request respond raise]
      (handler request #(respond (handle-response opts request %)) raise))))
+
+(defn wrap-binary-output
+  "Middleware to output binary resources."
+  ([handler]
+   (wrap-binary-output handler {}))
+  ([handler opts]
+   (fn [request respond raise]
+     (handler request #(respond (handle-response opts request %)) raise))))
