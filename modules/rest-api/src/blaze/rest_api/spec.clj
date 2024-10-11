@@ -102,7 +102,7 @@
   boolean?)
 
 (s/def ::operation/response-type
-  #{:json})
+  #{:json :binary})
 
 (s/def ::operation/resource-types
   (s/coll-of string?))
