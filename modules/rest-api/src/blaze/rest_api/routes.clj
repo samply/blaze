@@ -64,6 +64,7 @@
    :compile (fn [{:keys [response-type] :response-type.json/keys [opts]} _]
               (condp = response-type
                 :json (output/wrap-output opts)
+                :binary (fhir-output/wrap-binary-output opts)
                 :none identity
                 fhir-output/wrap-output))})
 

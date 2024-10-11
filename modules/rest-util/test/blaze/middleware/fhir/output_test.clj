@@ -3,7 +3,7 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec-spec]
    [blaze.fhir.test-util]
-   [blaze.middleware.fhir.output :refer [wrap-output]]
+   [blaze.middleware.fhir.output :refer [wrap-binary-output wrap-output]]
    [blaze.module.test-util.ring :refer [call]]
    [blaze.test-util :as tu]
    [clojure.data.xml :as xml]
@@ -29,7 +29,7 @@
 
 (def binary-resource-handler-200
   "A handler which uses the binary middleware and just returns a binary resource."
-  (wrap-output
+  (wrap-binary-output
    (fn [_ respond _]
      (respond (ring/response {:fhir/type :fhir/Binary :data #fhir/base64Binary"MTA1NjE0Cg=="})))))
 
