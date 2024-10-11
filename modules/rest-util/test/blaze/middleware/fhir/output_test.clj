@@ -1,9 +1,11 @@
 (ns blaze.middleware.fhir.output-test
   (:require
+   [blaze.byte-string :as bs]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec-spec]
+   [blaze.fhir.spec.type :as fhir-type]
    [blaze.fhir.test-util]
-   [blaze.middleware.fhir.output :refer [wrap-output]]
+   [blaze.middleware.fhir.output :refer [wrap-binary-output wrap-output]]
    [blaze.module.test-util.ring :refer [call]]
    [blaze.test-util :as tu]
    [clojure.data.xml :as xml]
@@ -26,6 +28,18 @@
   (wrap-output
    (fn [_ respond _]
      (respond (ring/response {:fhir/type :fhir/Patient :id "0"})))))
+
+(defn binary-resource-handler-200
+  "A handler which uses the binary middleware and just returns
+  a binary resource."
+  [{:keys [content-type data] :as _body}]
+  (wrap-binary-output
+   (fn [_ respond _]
+     (respond
+      (ring/response
+       (cond-> {:fhir/type :fhir/Binary}
+         data (assoc :data (fhir-type/base64Binary data))
+         content-type (assoc :contentType (fhir-type/code content-type))))))))
 
 (def resource-handler-304
   "A handler which returns a 304 Not Modified response."
@@ -204,6 +218,38 @@
     (given (call (special-resource-handler {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"foo\u001Ebar"}) {:headers {"accept" "application/fhir+xml"}})
       [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
       [:body parse-xml :issue 0 :diagnostics] := "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))
+
+(deftest binary-resource-test
+
+  (testing "with data and with content type"
+    (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTA1NjE0Cg=="}) {:headers {"accept" "text/plain"}})
+      :status := 200
+      [:headers "Content-Type"] := "text/plain"
+      [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
+
+  (testing "with data and without content type"
+    (given (call (binary-resource-handler-200 {:content-type nil :data "MTA1NjE0Cg=="}) {:headers {"accept" "text/plain"}})
+      :status := 200
+      [:headers "Content-Type"] := "application/octet-stream"
+      [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
+
+  (testing "without data and with content type"
+    (given (call (binary-resource-handler-200 {:content-type "text/plain"}) {:headers {"accept" "text/plain"}})
+      :status := 200
+      [:headers "Content-Type"] := "text/plain"
+      :body := nil))
+
+  (testing "without data and without content type"
+    (given (call (binary-resource-handler-200 {:content-type nil}) {:headers {"accept" "text/plain"}})
+      :status := 200
+      [:headers "Content-Type"] := "application/octet-stream"
+      :body := nil))
+
+  (testing "without body at all"
+    (given (call (binary-resource-handler-200 nil) {:headers {"accept" "text/plain"}})
+      :status := 200
+      [:headers "Content-Type"] := "application/octet-stream"
+      :body := nil)))
 
 (deftest not-acceptable-test
   (is (nil? (call resource-handler-200 {:headers {"accept" "text/plain"}}))))
