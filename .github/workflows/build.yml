@@ -1080,6 +1080,9 @@ jobs:
     - name: Patient Purge
       run: .github/scripts/patient-purge.sh
 
+    - name: Run Prune Job
+      run: .github/scripts/admin-api/run-prune-job.sh
+
     - name: Prometheus Metrics
       run: .github/scripts/test-metrics.sh
       if: ${{ matrix.variant == 'standalone' }}

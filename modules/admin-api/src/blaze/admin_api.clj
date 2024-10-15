@@ -18,6 +18,7 @@
    [blaze.interaction.util :as iu]
    [blaze.job-scheduler :as js]
    [blaze.job-scheduler.spec]
+   [blaze.job.prune]
    [blaze.job.re-index]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.output :as fhir-output]
@@ -179,7 +180,8 @@
    :wrap resource/wrap-resource})
 
 (def ^:private allowed-profiles
-  #{#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"
+  #{#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/PruneJob"
+    #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"
     #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"
     #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"})
 
@@ -458,12 +460,17 @@
       "blaze/job/async_interaction/StructureDefinition-AsyncInteractionJob.json"
       "blaze/job/async_interaction/StructureDefinition-AsyncInteractionRequestBundle.json"
       "blaze/job/async_interaction/StructureDefinition-AsyncInteractionResponseBundle.json"
-      "blaze/job/async_interaction/CodeSystem-AsyncInteractionJobParameter.json"
       "blaze/job/async_interaction/CodeSystem-AsyncInteractionJobOutput.json"
+      "blaze/job/async_interaction/CodeSystem-AsyncInteractionJobParameter.json"
       "blaze/job/compact/StructureDefinition-CompactJob.json"
+      "blaze/job/prune/StructureDefinition-PruneJob.json"
+      "blaze/job/prune/CodeSystem-PruneIndices.json"
+      "blaze/job/prune/CodeSystem-PruneJobOutput.json"
+      "blaze/job/prune/CodeSystem-PruneJobParameter.json"
+      "blaze/job/prune/ValueSet-PruneIndices.json"
       "blaze/job/re_index/StructureDefinition-ReIndexJob.json"
-      "blaze/job/re_index/CodeSystem-ReIndexJobParameter.json"
-      "blaze/job/re_index/CodeSystem-ReIndexJobOutput.json"])
+      "blaze/job/re_index/CodeSystem-ReIndexJobOutput.json"
+      "blaze/job/re_index/CodeSystem-ReIndexJobParameter.json"])
     s))
 
 (defn- create-validator* []

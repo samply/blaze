@@ -430,6 +430,11 @@
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
 
+  :blaze.job/prune
+  {:main-node #blaze/ref :blaze.db.main/node
+   :admin-node #blaze/ref :blaze.db.admin/node
+   :clock #blaze/ref :blaze/clock}
+
   :blaze.job/re-index
   {:main-node #blaze/ref :blaze.db.main/node
    :admin-node #blaze/ref :blaze.db.admin/node

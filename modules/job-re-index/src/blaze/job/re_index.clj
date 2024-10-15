@@ -82,7 +82,7 @@
   (some-> (job-util/output-value job output-system "next-resource")
           type/value))
 
-(defn elapsed [clock job]
+(defn- elapsed [clock job]
   (-> (time/duration (-> job :meta :lastUpdated) (time/instant clock))
       (time/as :seconds)))
 
@@ -146,8 +146,7 @@
 (defn- on-resume
   [{:keys [main-node] :as context} job]
   (let [main-db (d/db main-node)
-        search-param-url (search-param-url job)
-        re-index (re-index-fn main-db search-param-url)
+        re-index (re-index-fn main-db (search-param-url job))
         [type id] (some-> (next-resource job) (str/split #"/" 2))]
     (-> (if type (re-index type id) (re-index))
         (ac/handle (continuation context re-index job))

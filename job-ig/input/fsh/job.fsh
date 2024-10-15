@@ -8,6 +8,7 @@ Id: JobType
 Title: "Job Type"
 * ^status = #active
 * #re-index "(Re)Index a Search Parameter"
+* #prune "Prune the Database"
 * #compact "Compact Database Column Families"
 * #async-interaction "Asynchronous Interaction Request"
 * #async-bulk-data "Asynchronous Bulk Data Request"

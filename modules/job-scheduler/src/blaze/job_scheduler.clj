@@ -50,11 +50,10 @@
     (swap! running-jobs dissoc id)
     (if e
       (if (job-util/job-update-failed? e)
-        (log/debug "Paused job with id =" id)
+        (log/debug "The job with id =" id "was unable to update itself. It may have been paused.")
         (fail-job-on-error node id e))
-      (if (= #fhir/code"cancelled" status)
-        (log/debug "Cancelled job with id =" id)
-        (log/debug "Completed job with id =" id)))))
+      (log/debug "The execution of the job with id =" id "ended with status ="
+                 (type/value status)))))
 
 (defn- wrap-error [f context job]
   (try
