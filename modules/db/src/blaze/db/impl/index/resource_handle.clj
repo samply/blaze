@@ -61,6 +61,16 @@
       :delete
       :put)))
 
+(defn purged!?
+  "Returns true if the index entry with `vb` has an encoded purged-at t at or
+  before `t`.
+
+  The position of `vb` has to be after reading the state and will be incremented
+  by 8 byte in case the end isn't reached."
+  [vb t]
+  (and (= (bb/remaining vb) codec/t-size)
+       (<= (bb/get-long! vb) (long t))))
+
 (defn resource-handle!
   "Creates a new resource handle when not purged at `base-t`.
 
@@ -68,7 +78,7 @@
   [tid id t base-t vb]
   (let [hash (hash/from-byte-buffer! vb)
         state (bb/get-long! vb)]
-    (when (or (< (bb/remaining vb) 8) (< (long base-t) (bb/get-long! vb)))
+    (when-not (purged!? vb base-t)
       (ResourceHandle.
        tid
        id

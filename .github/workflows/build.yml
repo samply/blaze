@@ -1187,7 +1187,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=512 -e ENABLE_OPERATION_PATIENT_PURGE=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=512 -e ENABLE_OPERATION_PATIENT_PURGE=true -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -1207,6 +1207,15 @@ jobs:
     - name: Check Total-Number of Resources are 92114
       run: .github/scripts/check-total-number-of-resources.sh 92114
 
+    - name: Check Estimate Number of Keys in the ResourceAsOf Index
+      run: .github/scripts/admin-api/check-column-family-estimate-num-keys.sh "resource-as-of-index" "92114"
+
+    - name: Check Estimate Number of Keys in the TypeAsOf Index
+      run: .github/scripts/admin-api/check-column-family-estimate-num-keys.sh "type-as-of-index" "92114"
+
+    - name: Check Estimate Number of Keys in the SystemAsOf Index
+      run: .github/scripts/admin-api/check-column-family-estimate-num-keys.sh "system-as-of-index" "92114"
+
     - name: Patient Purge all
       run: .github/scripts/patient-purge-all.sh
 
@@ -1218,6 +1227,30 @@ jobs:
 
     - name: Check Resource Totals
       run: .github/scripts/check-resource-totals-after-patient-purge.sh
+
+    - name: Check Total-Number of Resources are 13358
+      run: .github/scripts/check-total-number-of-resources.sh 13358
+
+    - name: Run Prune Job
+      run: .github/scripts/admin-api/run-prune-job.sh
+
+    - name: Compact Column Family resource-as-of-index
+      run: blazectl --server http://localhost:8080/fhir compact index resource-as-of-index
+
+    - name: Compact Column Family type-as-of-index
+      run: blazectl --server http://localhost:8080/fhir compact index type-as-of-index
+
+    - name: Compact Column Family system-as-of-index
+      run: blazectl --server http://localhost:8080/fhir compact index system-as-of-index
+
+    - name: Check Estimate Number of Keys in the ResourceAsOf Index
+      run: .github/scripts/admin-api/check-column-family-estimate-num-keys.sh "resource-as-of-index" "13358"
+
+    - name: Check Estimate Number of Keys in the TypeAsOf Index
+      run: .github/scripts/admin-api/check-column-family-estimate-num-keys.sh "type-as-of-index" "13358"
+
+    - name: Check Estimate Number of Keys in the SystemAsOf Index
+      run: .github/scripts/admin-api/check-column-family-estimate-num-keys.sh "system-as-of-index" "13358"
 
     - name: Docker Stats
       run: docker stats --no-stream

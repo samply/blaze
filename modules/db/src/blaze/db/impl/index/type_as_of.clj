@@ -5,7 +5,8 @@
    [blaze.byte-string :as bs]
    [blaze.db.impl.codec :as codec]
    [blaze.db.impl.index.resource-handle :as rh]
-   [blaze.db.impl.iterators :as i]))
+   [blaze.db.impl.iterators :as i]
+   [blaze.fhir.hash :as hash]))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* :warn-on-boxed)
@@ -62,3 +63,52 @@
    snapshot :type-as-of-index
    (keep (decoder tid t))
    codec/tid-size (start-key tid start-t start-id)))
+
+(defn- delete-entry! [kb]
+  (bb/set-position! kb 0)
+  (let [key (byte-array (bb/limit kb))]
+    (bb/copy-into-byte-array! kb key)
+    [:type-as-of-index key]))
+
+(defn- prune-rf [n]
+  (fn [ret {:keys [idx delete-entry] [tid t id] :key}]
+    (if (= idx n)
+      (reduced (assoc ret :next {:tid tid :t t :id id}))
+      (cond-> (update ret :num-entries-processed inc)
+        delete-entry
+        (update :delete-entries conj delete-entry)))))
+
+(defn- prune-key! [kb]
+  [(bb/get-int! kb)
+   (codec/descending-long (bb/get-long! kb))
+   (bs/from-byte-buffer! kb (bb/remaining kb))])
+
+(defn- prune-xf [t]
+  (map-indexed
+   (fn [idx [kb vb]]
+     (bb/set-position! vb (+ hash/size codec/state-size))
+     (cond->
+      {:idx idx :key (prune-key! kb)}
+       (rh/purged!? vb t)
+       (assoc :delete-entry (delete-entry! kb))))))
+
+(defn prune
+  "Scans the TypeAsOf index for entries which were purged at or before `t`.
+
+  Processes at most `n` entries and optionally starts at the entry with
+  `start-tid`, `start-t` and `start-id`.
+
+  Returns a map with :delete-entries and :next where :delete-entries is a
+  vector of all index entries to delete and :next is a map of :tid, :t and :id
+  of the index entry to start with in the next iteration if necessary."
+  ([snapshot n t]
+   (reduce
+    (prune-rf n)
+    {:delete-entries [] :num-entries-processed 0}
+    (i/entries snapshot :type-as-of-index (prune-xf t))))
+  ([snapshot n t start-tid start-t start-id]
+   (reduce
+    (prune-rf n)
+    {:delete-entries [] :num-entries-processed 0}
+    (i/entries snapshot :type-as-of-index (prune-xf t)
+               (start-key start-tid start-t start-id)))))

@@ -19,6 +19,9 @@
   blaze/job-compact
   {:local/root "../job-compact"}
 
+  blaze/job-prune
+  {:local/root "../job-prune"}
+
   blaze/job-re-index
   {:local/root "../job-re-index"}
 

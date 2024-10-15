@@ -526,6 +526,11 @@
 ;; ---- (Re) Index ------------------------------------------------------------
 
 (defn re-index-total
+  "Returns the total number of resources that have to be processed when
+  (re)indexing the search parameter with `search-param-url`.
+
+  Returns an anomaly if the search parameter with `search-param-url` was not
+  found."
   [db search-param-url]
   (p/-re-index-total db search-param-url))
 
@@ -541,3 +546,25 @@
    (p/-re-index db search-param-url))
   ([db search-param-url start-type start-id]
    (p/-re-index db search-param-url start-type start-id)))
+
+;; ---- Prune -----------------------------------------------------------------
+
+(defn prune-total
+  "Returns the estimated total number of index entries that have to be processed
+  during pruning."
+  [node]
+  (np/-prune-total node))
+
+(defn prune
+  "Removes purged and outdated index entries from `node` which were purged at or
+  before `t`.
+
+  Processes at most `n` index entries. The function `prune-total` can be used to
+  determine to total number of index entries needed to process.
+
+  Returns a map of :index, :type, :id and :t which can supplied to the optional
+  `start` argument to continue the pruning."
+  ([node n t]
+   (np/-prune node n t nil))
+  ([node n t start]
+   (np/-prune node n t start)))
