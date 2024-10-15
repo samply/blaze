@@ -15,7 +15,6 @@
    [com.fasterxml.jackson.core JsonFactory StreamReadConstraints]
    [com.fasterxml.jackson.databind DeserializationFeature ObjectMapper]
    [com.fasterxml.jackson.dataformat.cbor CBORFactory]
-   [java.util Base64]
    [java.util.regex Pattern]))
 
 (set! *warn-on-reflection* true)
@@ -115,14 +114,6 @@
     (if-let [spec (s2/get-spec key)]
       (s2/unform spec resource)
       (throw (ex-info (format "Missing spec: %s" key) {:key key})))))
-
-(defn unform-binary
-  "Returns the binary representation of the base64-encoded `x` string."
-  [^String x]
-  (let [key (transform-type-key (type/type x) "binary")]
-    (if-let [spec (s2/get-spec key)]
-      (.decode (Base64/getDecoder) x)
-      (throw (ex-info (format "Missing spec: %s" key) {:key key :x x})))))
 
 (defn fhir-type
   "Returns the FHIR type of `x` as keyword with the namespace `fhir` or nil if

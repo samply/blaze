@@ -15,7 +15,8 @@
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
-   [java.io ByteArrayOutputStream]))
+   [java.io ByteArrayOutputStream]
+   [java.util Base64]))
 
 (set! *warn-on-reflection* true)
 
@@ -49,10 +50,10 @@
   (with-open [_ (prom/timer generate-duration-seconds "xml")]
     (generate-xml* body)))
 
-(defn- generate-binary [body]
+(defn- generate-binary [^String body]
   (log/trace "generate binary")
   (with-open [_ (prom/timer generate-duration-seconds "binary")]
-    (fhir-spec/unform-binary body)))
+    (.decode (Base64/getDecoder) body)))
 
 (defn- encode-response-json [{:keys [body] :as response} content-type]
   (cond-> response body (-> (update :body generate-json)
