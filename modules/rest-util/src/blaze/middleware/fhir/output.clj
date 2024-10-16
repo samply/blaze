@@ -55,7 +55,7 @@
 (defn- generate-binary [body]
   (log/trace "generate binary")
   (with-open [_ (prom/timer generate-duration-seconds "binary")]
-    (.decode (Base64/getDecoder) (fhir-type/value (:data body)))))
+    (.decode (Base64/getDecoder) ^String (fhir-type/value (:data body)))))
 
 (defn- encode-response-json [{:keys [body] :as response} content-type]
   (cond-> response body (-> (update :body generate-json)
@@ -75,12 +75,12 @@
 ;; we have to convert the string into a `code` fhir primitive type.
 ;; (check the same ns as the value fn - look for a `code` fn).
 ;;
-  (let [content-type (-> response :body :fhir/type)]
+  (let [content-type (-> response :body :contentType)]
     (cond-> response
       body (-> (update :body generate-binary))
       ;; Are you sure `fhir-type/code` is implemented?
       ;; When I look at the file, it is simply "declared"...
-      content-type (ring/content-type (fhir-type/code content-type)))))
+      content-type (ring/content-type (fhir-type/value content-type)))))
 
 (defn- format-key [format]
   (condp = format

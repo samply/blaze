@@ -3,6 +3,7 @@
    [blaze.byte-string :as bs]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec-spec]
+   [blaze.fhir.spec.type :as fhir-type]
    [blaze.fhir.test-util]
    [blaze.middleware.fhir.output :refer [wrap-binary-output wrap-output]]
    [blaze.module.test-util.ring :refer [call]]
@@ -29,11 +30,16 @@
      (respond (ring/response {:fhir/type :fhir/Patient :id "0"})))))
 
 (defn binary-resource-handler-200
-  "A handler which uses the binary middleware and just returns a binary resource."
+  "A handler which uses the binary middleware and just returns
+  a binary resource."
   [content-type]
   (wrap-binary-output
    (fn [_ respond _]
-     (respond (ring/response {:fhir/type :fhir/Binary :data #fhir/base64Binary"MTA1NjE0Cg==" :contentType content-type})))))
+     (respond
+       (ring/response
+         (cond->
+             {:fhir/type :fhir/Binary :data #fhir/base64Binary"MTA1NjE0Cg=="}
+           content-type (assoc :contentType (fhir-type/code content-type))))))))
 
 (def resource-handler-304
   "A handler which returns a 304 Not Modified response."
@@ -224,6 +230,8 @@
       :status := 200
       [:headers "Content-Type"] := "text/plain"
       [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A")))
+
+;; TODO: add a test case for a binary resource without data
 
 (deftest not-acceptable-test
   (is (nil? (call resource-handler-200 {:headers {"accept" "text/plain"}}))))
