@@ -66,6 +66,8 @@
                             (ring/content-type content-type))))
 
 (defn- encode-response-binary [{:keys [body] :as response}]
+;; The contentType is in the response.
+;;
 ;; If there is no content-type (it is nil), it should
 ;; not add :contentType at all.
 ;;
@@ -76,6 +78,8 @@
   (let [content-type (-> response :body :fhir/type)]
     (cond-> response
       body (-> (update :body generate-binary))
+      ;; Are you sure `fhir-type/code` is implemented?
+      ;; When I look at the file, it is simply "declared"...
       content-type (ring/content-type (fhir-type/code content-type)))))
 
 (defn- format-key [format]
