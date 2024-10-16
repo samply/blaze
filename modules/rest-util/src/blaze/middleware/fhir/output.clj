@@ -74,8 +74,9 @@
 ;; (check the same ns as the value fn - look for a `code` fn).
 ;;
   (let [content-type (-> response :body :fhir/type)]
-    (cond-> response body (-> (update :body generate-binary)
-                              (ring/content-type content-type)))))
+    (cond-> response
+      body (-> (update :body generate-binary))
+      content-type (ring/content-type (fhir-type/code content-type)))))
 
 (defn- format-key [format]
   (condp = format
