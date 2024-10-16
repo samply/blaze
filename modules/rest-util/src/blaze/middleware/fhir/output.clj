@@ -52,11 +52,10 @@
   (with-open [_ (prom/timer generate-duration-seconds "xml")]
     (generate-xml* body)))
 
-(defn- generate-binary [^String body]
+(defn- generate-binary [body]
   (log/trace "generate binary")
   (with-open [_ (prom/timer generate-duration-seconds "binary")]
-    (ba/try-one IllegalArgumentException ::anom/incorrect
-      (.decode (Base64/getDecoder) (fhir-type/value ^base64Binary (:data body))))))
+    (.decode (Base64/getDecoder) (fhir-type/value (:data body)))))
 
 (defn- encode-response-json [{:keys [body] :as response} content-type]
   (cond-> response body (-> (update :body generate-json)
