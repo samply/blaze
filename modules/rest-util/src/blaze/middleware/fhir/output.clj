@@ -66,6 +66,13 @@
                             (ring/content-type content-type))))
 
 (defn- encode-response-binary [{:keys [body] :as response}]
+;; If there is no content-type (it is nil), it should
+;; not add :contentType at all.
+;;
+;; If there is a content-type, assuming it is a string,
+;; we have to convert the string into a `code` fhir primitive type.
+;; (check the same ns as the value fn - look for a `code` fn).
+;;
   (let [content-type (-> response :body :fhir/type)]
     (cond-> response body (-> (update :body generate-binary)
                               (ring/content-type content-type)))))

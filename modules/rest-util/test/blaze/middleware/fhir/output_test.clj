@@ -28,11 +28,12 @@
    (fn [_ respond _]
      (respond (ring/response {:fhir/type :fhir/Patient :id "0"})))))
 
-(def binary-resource-handler-200
+(defn binary-resource-handler-200
   "A handler which uses the binary middleware and just returns a binary resource."
+  [content-type]
   (wrap-binary-output
    (fn [_ respond _]
-     (respond (ring/response {:fhir/type :fhir/Binary :data #fhir/base64Binary"MTA1NjE0Cg=="})))))
+     (respond (ring/response {:fhir/type :fhir/Binary :data #fhir/base64Binary"MTA1NjE0Cg==" :contentType content-type})))))
 
 (def resource-handler-304
   "A handler which returns a 304 Not Modified response."
@@ -213,10 +214,15 @@
       [:body parse-xml :issue 0 :diagnostics] := "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))
 
 (deftest binary-test
-  (testing "with accept header"
-    (given (call binary-resource-handler-200 {:headers {"accept" "text/plain"}})
+  (testing "without content type"
+    (given (call (binary-resource-handler-200 nil) {:headers {"accept" "text/plain"}})
       :status := 200
-      [:headers "Content-Type"] := ":fhir/Binary"
+      [:headers "Content-Type"] := "application/octet-stream"
+      [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
+  (testing "with content type"
+    (given (call (binary-resource-handler-200 "text/plain") {:headers {"accept" "text/plain"}})
+      :status := 200
+      [:headers "Content-Type"] := "text/plain"
       [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A")))
 
 (deftest not-acceptable-test
