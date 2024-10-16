@@ -1,5 +1,6 @@
 (ns blaze.middleware.fhir.output-test
   (:require
+   [blaze.byte-string :as bs]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec-spec]
    [blaze.fhir.test-util]
@@ -215,8 +216,8 @@
   (testing "with accept header"
     (given (call binary-resource-handler-200 {:headers {"accept" "text/plain"}})
       :status := 200
-      [:headers "Content-Type"] := "text/plain"
-      :body := "105614")))
+      [:headers "Content-Type"] := ":fhir/Binary"
+      [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A")))
 
 (deftest not-acceptable-test
   (is (nil? (call resource-handler-200 {:headers {"accept" "text/plain"}}))))
