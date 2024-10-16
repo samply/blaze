@@ -232,6 +232,7 @@
       [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A")))
 
 ;; TODO: add a test case for a binary resource without data
+;; TODO: add a test case for a binary resource without a body
 
 (deftest not-acceptable-test
   (is (nil? (call resource-handler-200 {:headers {"accept" "text/plain"}}))))
