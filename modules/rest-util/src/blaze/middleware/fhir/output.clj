@@ -7,9 +7,11 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type :as fhir-type]
    [blaze.handler.util :as handler-util]
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
+   [cognitect.anomalies :as anom]
    [muuntaja.parse :as parse]
    [prometheus.alpha :as prom]
    [ring.util.response :as ring]
@@ -50,10 +52,10 @@
   (with-open [_ (prom/timer generate-duration-seconds "xml")]
     (generate-xml* body)))
 
-(defn- generate-binary [^String body]
+(defn- generate-binary [body]
   (log/trace "generate binary")
   (with-open [_ (prom/timer generate-duration-seconds "binary")]
-    (.decode (Base64/getDecoder) body)))
+    (.decode (Base64/getDecoder) (fhir-type/value (:data body)))))
 
 (defn- encode-response-json [{:keys [body] :as response} content-type]
   (cond-> response body (-> (update :body generate-json)
@@ -63,9 +65,10 @@
   (cond-> response body (-> (update :body generate-xml)
                             (ring/content-type content-type))))
 
-(defn- encode-response-binary [{:keys [body] :as response} content-type]
-  (cond-> response body (-> (update :body generate-binary)
-                            (ring/content-type content-type))))
+(defn- encode-response-binary [{:keys [body] :as response}]
+  (let [content-type (-> response :body :fhir/type)]
+    (cond-> response body (-> (update :body generate-binary)
+                              (ring/content-type content-type)))))
 
 (defn- format-key [format]
   (condp = format
@@ -111,7 +114,7 @@
   (case (request-format request)
     :fhir+json (encode-response-json response "application/fhir+json;charset=utf-8")
     :fhir+xml (encode-response-xml response "application/fhir+xml;charset=utf-8")
-    (encode-response-binary response "text/plain;charset=utf-8")))
+    (encode-response-binary response)))
 
 (defn wrap-binary-output
   "Middleware to output binary resources."
