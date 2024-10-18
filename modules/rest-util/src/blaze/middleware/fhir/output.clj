@@ -55,7 +55,7 @@
 (defn- generate-binary [body]
   (log/trace "generate binary")
   (with-open [_ (prom/timer generate-duration-seconds "binary")]
-    (.decode (Base64/getDecoder) (fhir-type/value (:data body)))))
+    (.decode (Base64/getDecoder) ^String (fhir-type/value (:data body)))))
 
 (defn- encode-response-json [{:keys [body] :as response} content-type]
   (cond-> response body (-> (update :body generate-json)
@@ -66,18 +66,12 @@
                             (ring/content-type content-type))))
 
 (defn- encode-response-binary [{:keys [body] :as response}]
-;; The contentType is in the response.
-;;
-;; If there is no content-type (it is nil), it should
-;; not add :contentType at all.
-;;
-;; If there is a content-type, assuming it is a string,
-;; we have to convert the string into a `code` fhir primitive type.
-;; (check the same ns as the value fn - look for a `code` fn).
-;;
-  (let [content-type (-> response :body :fhir/type)]
-    (cond-> response body (-> (update :body generate-binary)
-                              (ring/content-type content-type)))))
+  (let [content-type (or (-> response :body :contentType fhir-type/value)
+                         "application/octet-stream")]
+    (cond->
+        (ring/content-type response content-type)
+      body (-> (update :body generate-binary)))))
+
 
 (defn- format-key [format]
   (condp = format
