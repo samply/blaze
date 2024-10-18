@@ -14,6 +14,11 @@ Parsing a JSON document like:
 {
  "resourceType": "Patient",
  "id": "0",
+ "name": [
+    {
+      "text": "John Doe"
+    }
+  ],
  "birthDate": "2020",
  "deceasedBoolean": false
 }

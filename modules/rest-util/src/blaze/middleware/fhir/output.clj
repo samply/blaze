@@ -1,17 +1,24 @@
 (ns blaze.middleware.fhir.output
-  "JSON/XML serialization middleware."
+  "FHIR Resource serialization middleware.
+
+  Currently supported formats:
+  * standard: JSON, XML;
+  * special: binary."
   (:require
    [blaze.anomaly :as ba]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type :as fhir-type]
    [blaze.handler.util :as handler-util]
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
+   [cognitect.anomalies :as anom]
    [muuntaja.parse :as parse]
    [prometheus.alpha :as prom]
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
-   [java.io ByteArrayOutputStream]))
+   [java.io ByteArrayOutputStream]
+   [java.util Base64]))
 
 (set! *warn-on-reflection* true)
 
@@ -45,6 +52,11 @@
   (with-open [_ (prom/timer generate-duration-seconds "xml")]
     (generate-xml* body)))
 
+(defn- generate-binary [body]
+  (log/trace "generate binary")
+  (with-open [_ (prom/timer generate-duration-seconds "binary")]
+    (.decode (Base64/getDecoder) ^String (fhir-type/value (:data body)))))
+
 (defn- encode-response-json [{:keys [body] :as response} content-type]
   (cond-> response body (-> (update :body generate-json)
                             (ring/content-type content-type))))
@@ -52,6 +64,14 @@
 (defn- encode-response-xml [{:keys [body] :as response} content-type]
   (cond-> response body (-> (update :body generate-xml)
                             (ring/content-type content-type))))
+
+(defn- encode-response-binary [{:keys [body] :as response}]
+  (let [content-type (or (-> response :body :contentType fhir-type/value)
+                         "application/octet-stream")]
+    (cond->
+        (ring/content-type response content-type)
+      body (-> (update :body generate-binary)))))
+
 
 (defn- format-key [format]
   (condp = format
@@ -92,3 +112,17 @@
   ([handler opts]
    (fn [request respond raise]
      (handler request #(respond (handle-response opts request %)) raise))))
+
+(defn handle-binary-response [opts request response]
+  (case (request-format request)
+    :fhir+json (encode-response-json response "application/fhir+json;charset=utf-8")
+    :fhir+xml (encode-response-xml response "application/fhir+xml;charset=utf-8")
+    (encode-response-binary response)))
+
+(defn wrap-binary-output
+  "Middleware to output binary resources."
+  ([handler]
+   (wrap-binary-output handler {}))
+  ([handler opts]
+   (fn [request respond raise]
+     (handler request #(respond (handle-binary-response opts request %)) raise))))
