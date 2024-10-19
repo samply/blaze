@@ -42,7 +42,7 @@
    :exclusions [javax.xml.bind/jaxb-api]}
 
   ca.uhn.hapi.fhir/hapi-fhir-validation
-  {:mvn/version "7.4.3"
+  {:mvn/version "7.4.4"
    :exclusions
    [net.sf.saxon/Saxon-HE
     org.ogce/xpp3
@@ -65,34 +65,14 @@
   {:mvn/version "1.27.1"}
 
   ca.uhn.hapi.fhir/hapi-fhir-structures-r4
-  {:mvn/version "7.4.3"
+  {:mvn/version "7.4.4"
    :exclusions [com.google.code.findbugs/jsr305]}
 
   ca.uhn.hapi.fhir/hapi-fhir-validation-resources-r4
-  {:mvn/version "7.4.3"}
+  {:mvn/version "7.4.4"}
 
   ca.uhn.hapi.fhir/hapi-fhir-caching-caffeine
-  {:mvn/version "7.4.3"}
-
-  ;; CVE-2024-45294, we need at least 6.3.23
-  ca.uhn.hapi.fhir/org.hl7.fhir.validation
-  {:mvn/version "6.3.31"
-   :exclusions
-   [net.sf.saxon/Saxon-HE
-    org.ogce/xpp3
-    ognl/ognl
-    org.attoparser/attoparser
-    org.unbescape/unbescape
-    org.xerial/sqlite-jdbc
-    commons-beanutils/commons-beanutils
-    org.apache.httpcomponents/httpclient
-    info.cqframework/cql
-    info.cqframework/qdm
-    info.cqframework/quick
-    info.cqframework/cql-to-elm
-    info.cqframework/elm
-    info.cqframework/model
-    org.apache.commons/commons-collections4]}
+  {:mvn/version "7.4.4"}
 
   org.fhir/ucum
   {:mvn/version "1.0.8"
