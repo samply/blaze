@@ -7,13 +7,9 @@ Load tests use [k6][1].
 You need to [install k6][2].
 
 ```sh
-k6 run script.js
-```
-
-## Run via Docker
-
-```sh
-docker run --rm -i grafana/k6 run - < script.js
+export ACCESS_TOKEN = ...
+make run-patient-everything
+make report
 ```
 
 ## Results
