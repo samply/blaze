@@ -23,7 +23,7 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def resource-handler-200
+(def ^:private resource-handler-200
   "A handler which just returns a patient."
   (wrap-output
    (fn [_ respond _]
@@ -41,7 +41,7 @@
          data (assoc :data (fhir-type/base64Binary data))
          content-type (assoc :contentType (fhir-type/code content-type))))))))
 
-(def resource-handler-304
+(def ^:private resource-handler-304
   "A handler which returns a 304 Not Modified response."
   (wrap-output
    (fn [_ respond _]
