@@ -228,30 +228,40 @@
       [:body parse-xml :issue 0 :diagnostics] := "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))
 
 (deftest binary-resource-test
+  (testing "possible accept headers"
+    (are [accept content-type body]
+         (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTA1NjE0Cg=="}) {:headers {"accept" accept}})
+           :status := 200
+           [:headers "Content-Type"] := content-type
+           [:body bs/from-byte-array] := body)
+      "application/fhir+json" "application/fhir+json;charset=utf-8" #blaze/byte-string"7B2264617461223A224D5441314E6A453043673D3D222C22636F6E74656E7454797065223A22746578742F706C61696E222C227265736F7572636554797065223A2242696E617279227D"
+      "application/fhir+xml" "application/fhir+xml;charset=utf-8" #blaze/byte-string"3C3F786D6C2076657273696F6E3D27312E302720656E636F64696E673D275554462D38273F3E3C42696E61727920786D6C6E733D22687474703A2F2F686C372E6F72672F66686972223E3C636F6E74656E74547970652076616C75653D22746578742F706C61696E222F3E3C646174612076616C75653D224D5441314E6A453043673D3D222F3E3C2F42696E6172793E"))
 
-  (testing "with data and with content type"
-    (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTA1NjE0Cg=="}) {:headers {"accept" "text/plain"}})
-      :status := 200
-      [:headers "Content-Type"] := "text/plain"
-      [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
+  (testing "with data"
+    (testing "with content type"
+      (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTA1NjE0Cg=="}) {:headers {"accept" "text/plain"}})
+        :status := 200
+        [:headers "Content-Type"] := "text/plain"
+        [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
 
-  (testing "with data and without content type"
-    (given (call (binary-resource-handler-200 {:content-type nil :data "MTA1NjE0Cg=="}) {:headers {"accept" "text/plain"}})
-      :status := 200
-      [:headers "Content-Type"] := "application/octet-stream"
-      [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
+    (testing "without content type"
+      (given (call (binary-resource-handler-200 {:content-type nil :data "MTA1NjE0Cg=="}) {:headers {"accept" "text/plain"}})
+        :status := 200
+        [:headers "Content-Type"] := "application/octet-stream"
+        [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A")))
 
-  (testing "without data and with content type"
-    (given (call (binary-resource-handler-200 {:content-type "text/plain"}) {:headers {"accept" "text/plain"}})
-      :status := 200
-      [:headers "Content-Type"] := "text/plain"
-      :body := nil))
+  (testing "without data"
+    (testing "with content type"
+      (given (call (binary-resource-handler-200 {:content-type "text/plain"}) {:headers {"accept" "text/plain"}})
+        :status := 200
+        [:headers "Content-Type"] := "text/plain"
+        :body := nil))
 
-  (testing "without data and without content type"
-    (given (call (binary-resource-handler-200 {:content-type nil}) {:headers {"accept" "text/plain"}})
-      :status := 200
-      [:headers "Content-Type"] := "application/octet-stream"
-      :body := nil))
+    (testing "without content type"
+      (given (call (binary-resource-handler-200 {:content-type nil}) {:headers {"accept" "text/plain"}})
+        :status := 200
+        [:headers "Content-Type"] := "application/octet-stream"
+        :body := nil)))
 
   (testing "without body at all"
     (given (call binary-resource-handler-304 {:headers {"accept" "text/plain"}})
