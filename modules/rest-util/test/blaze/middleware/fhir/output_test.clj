@@ -29,9 +29,9 @@
    (fn [_ respond _]
      (respond (ring/response {:fhir/type :fhir/Patient :id "0"})))))
 
-(defn binary-resource-handler-200
-  "A handler which uses the binary middleware and just returns
-  a binary resource."
+(defn- binary-resource-handler-200
+  "A handler which uses the binary middleware and
+  returns a binary resource."
   [{:keys [content-type data] :as _body}]
   (wrap-binary-output
    (fn [_ respond _]
@@ -44,6 +44,13 @@
 (def resource-handler-304
   "A handler which returns a 304 Not Modified response."
   (wrap-output
+   (fn [_ respond _]
+     (respond (ring/status 304)))))
+
+(def ^:private binary-resource-handler-304
+  "A handler which uses the binary middleware and
+  returns a 304 Not Modified response."
+  (wrap-binary-output
    (fn [_ respond _]
      (respond (ring/status 304)))))
 
@@ -211,6 +218,7 @@
 
   (testing "not modified"
     (given (call resource-handler-304 {:headers {"accept" "application/fhir+xml"}})
+      :status := 304
       [:headers "Content-Type"] := nil
       :body := nil))
 
@@ -246,9 +254,9 @@
       :body := nil))
 
   (testing "without body at all"
-    (given (call (binary-resource-handler-200 nil) {:headers {"accept" "text/plain"}})
-      :status := 200
-      [:headers "Content-Type"] := "application/octet-stream"
+    (given (call binary-resource-handler-304 {:headers {"accept" "text/plain"}})
+      :status := 304
+      [:headers "Content-Type"] := nil
       :body := nil)))
 
 (deftest not-acceptable-test
