@@ -21,13 +21,13 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(def resource-handler-200
+(def ^:private resource-handler-200
   "A handler which just returns a patient."
   (wrap-output
    (fn [_ respond _]
      (respond (ring/response {:fhir/type :fhir/Patient :id "0"})))))
 
-(def resource-handler-304
+(def ^:private resource-handler-304
   "A handler which returns a 304 Not Modified response."
   (wrap-output
    (fn [_ respond _]
