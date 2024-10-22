@@ -65,11 +65,14 @@
   (cond-> response body (-> (update :body generate-xml)
                             (ring/content-type content-type))))
 
+(defn- binary-content-type [body]
+  (when body
+    (or (-> body :contentType fhir-type/value)
+        "application/octet-stream")))
+
 (defn- encode-response-binary [{:keys [body] :as response}]
-  (let [content-type (or (-> response :body :contentType fhir-type/value)
-                         "application/octet-stream")]
-    (cond-> (ring/content-type response content-type)
-      body (-> (update :body generate-binary)))))
+  (cond-> response body (-> (update :body generate-binary)
+                            (ring/content-type (binary-content-type body)))))
 
 (defn- format-key [format]
   (condp = format
