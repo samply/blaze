@@ -77,14 +77,13 @@
           :body := nil)))
 
     (testing "with accept header"
-      (are [accept content-type]
-           (given (call resource-handler-200 {:headers {"accept" accept}})
-             :status := 200
-             [:headers "Content-Type"] := content-type
-             [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
-        "*/*" "application/fhir+json;charset=utf-8"
-        "application/*" "application/fhir+json;charset=utf-8"
-        "text/*" "text/json;charset=utf-8")))
+      (doseq [[accept content-type] [["*/*" "application/fhir+json;charset=utf-8"]
+                                     ["application/*" "application/fhir+json;charset=utf-8"]
+                                     ["text/*" "text/json;charset=utf-8"]]]
+        (given (call resource-handler-200 {:headers {"accept" accept}})
+          :status := 200
+          [:headers "Content-Type"] := content-type
+          [:body parse-json] := {:fhir/type :fhir/Patient :id "0"}))))
 
   (testing "possible accept headers"
     (are [accept content-type]
