@@ -5,11 +5,26 @@
    [blaze.server.spec]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
-   [ring.adapter.jetty9 :as ring-jetty]
+   [ring.adapter.jetty :as ring-jetty]
+   [ring.util.jakarta.servlet]
    [ring.util.response :as ring]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log])
+  (:import
+   [blaze.server ContextOutputStream]
+   [jakarta.servlet AsyncContext]
+   [jakarta.servlet.http HttpServletResponse]
+   [org.eclipse.jetty.server Server]))
 
 (set! *warn-on-reflection* true)
+
+(alter-var-root
+ #'ring.util.jakarta.servlet/make-output-stream
+ (constantly
+  (fn [^HttpServletResponse response ^AsyncContext context]
+    (let [os (.getOutputStream response)]
+      (if (nil? context)
+        os
+        (ContextOutputStream. os context))))))
 
 (defn- server-request [request]
   (assoc request :blaze/request-arrived (System/nanoTime)))
@@ -35,7 +50,7 @@
    {:port port
     :async? async?
     ;; TODO: remove such a long timeout only here because of FHIR_OPERATION_EVALUATE_MEASURE_TIMEOUT
-    :async-timeout 3610000                                 ; 1 h and 10 s
+    :async-timeout 3610000                                  ; 1 h and 10 s
     :join? false
     :send-server-version? false
     :min-threads min-threads
@@ -44,4 +59,4 @@
 (defmethod ig/halt-key! :blaze/server
   [_ server]
   (log/info "Shutdown main server")
-  (ring-jetty/stop-server server))
+  (.stop ^Server server))

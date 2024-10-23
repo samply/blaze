@@ -7,4 +7,4 @@
    {:basis (b/create-basis {:project "deps.edn"})
     :src-dirs ["java"]
     :class-dir "target/classes"
-    :javac-opts ["-Xlint:all" "-source" "11" "-target" "11"]}))
+    :javac-opts ["-Xlint:all" "-source" "17" "-target" "17"]}))
