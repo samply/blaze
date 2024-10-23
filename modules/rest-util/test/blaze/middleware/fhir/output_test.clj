@@ -117,38 +117,23 @@
 
 (deftest xml-test
   (testing "possible accept headers"
-    (are [accept content-type]
-         (given (call resource-handler-200 {:headers {"accept" accept}})
-           :status := 200
-           [:headers "Content-Type"] := content-type
-           [:body parse-xml] := {:fhir/type :fhir/Patient :id "0"})
-      "application/fhir+xml"
-      "application/fhir+xml;charset=utf-8"
-
-      "application/xml"
-      "application/xml;charset=utf-8"
-
-      "text/xml"
-      "text/xml;charset=utf-8"
-
-      "application/fhir+json;q=0.9, application/fhir+xml;q=1.0"
-      "application/fhir+xml;charset=utf-8"
-
-      ;; Safari
-      "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-      "application/xml;charset=utf-8"
-
-      ;; Chrome
-      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
-      "application/xml;charset=utf-8"
-
-      ;; Edge
-      "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
-      "application/xml;charset=utf-8"
-
-      ;; Firefox
-      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
-      "application/xml;charset=utf-8"))
+    (doseq [[accept content-type]
+            [["application/fhir+xml" "application/fhir+xml;charset=utf-8"]
+             ["application/xml" "application/xml;charset=utf-8"]
+             ["text/xml" "text/xml;charset=utf-8"]
+             ["application/fhir+json;q=0.9, application/fhir+xml;q=1.0" "application/fhir+xml;charset=utf-8"]
+             ;; Safari
+             ["text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" "application/xml;charset=utf-8"]
+             ;; Chrome
+             ["text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9" "application/xml;charset=utf-8"]
+             ;; Edge
+             ["text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9" "application/xml;charset=utf-8"]
+             ;; Firefox
+             ["text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8" "application/xml;charset=utf-8"]]]
+      (given (call resource-handler-200 {:headers {"accept" accept}})
+        :status := 200
+        [:headers "Content-Type"] := content-type
+        [:body parse-xml] := {:fhir/type :fhir/Patient :id "0"})))
 
   (testing "_format overrides"
     (are [accept format content-type]
