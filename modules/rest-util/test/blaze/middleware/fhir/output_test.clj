@@ -11,7 +11,7 @@
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest is testing]]
+   [clojure.test :as test :refer [deftest is testing]]
    [juxt.iota :refer [given]]
    [ring.util.response :as ring]
    [taoensso.timbre :as log]))
