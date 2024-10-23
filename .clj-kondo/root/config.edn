@@ -60,6 +60,7 @@
   {:aliases
    {blaze.anomaly ba
     blaze.async.comp ac
+    blaze.byte-string bs
     blaze.coll.spec cs
     blaze.db.api d
     blaze.db.kv kv
@@ -69,7 +70,9 @@
     blaze.elm.compiler.external-data ed
     blaze.elm.expression expr
     blaze.executors ex
+    blaze.fhir.spec fhir-spec
     blaze.fhir.spec.references fsr
+    blaze.fhir.spec.type type
     blaze.fhir.structure-definition-repo sdr
     blaze.job-scheduler js
     blaze.job.async-interaction job-async
