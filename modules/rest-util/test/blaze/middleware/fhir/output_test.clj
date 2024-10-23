@@ -96,44 +96,20 @@
         [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})))
 
   (testing "_format overrides"
-    (are [accept format content-type]
-         (given (call resource-handler-200
-                      {:headers {"accept" accept}
-                       :query-params {"_format" format}})
-           :status := 200
-           [:headers "Content-Type"] := content-type
-           [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})
-      "application/fhir+xml"
-      "application/fhir+json"
-      "application/fhir+json;charset=utf-8"
-
-      "application/fhir+xml"
-      "application/json"
-      "application/json;charset=utf-8"
-
-      "application/fhir+xml"
-      "text/json"
-      "text/json;charset=utf-8"
-
-      "application/fhir+xml"
-      "json"
-      "application/fhir+json;charset=utf-8"
-
-      "*/*"
-      "application/fhir+json"
-      "application/fhir+json;charset=utf-8"
-
-      "*/*"
-      "application/json"
-      "application/json;charset=utf-8"
-
-      "*/*"
-      "text/json"
-      "text/json;charset=utf-8"
-
-      "*/*"
-      "json"
-      "application/fhir+json;charset=utf-8")))
+    (doseq [[accept format content-type] [["application/fhir+xml" "application/fhir+json" "application/fhir+json;charset=utf-8"]
+                                          ["application/fhir+xml" "application/json" "application/json;charset=utf-8"]
+                                          ["application/fhir+xml" "text/json" "text/json;charset=utf-8"]
+                                          ["application/fhir+xml" "json" "application/fhir+json;charset=utf-8"]
+                                          ["*/*" "application/fhir+json" "application/fhir+json;charset=utf-8"]
+                                          ["*/*" "application/json" "application/json;charset=utf-8"]
+                                          ["*/*" "text/json" "text/json;charset=utf-8"]
+                                          ["*/*" "json" "application/fhir+json;charset=utf-8"]]]
+      (given (call resource-handler-200
+                   {:headers {"accept" accept}
+                    :query-params {"_format" format}})
+        :status := 200
+        [:headers "Content-Type"] := content-type
+        [:body parse-json] := {:fhir/type :fhir/Patient :id "0"}))))
 
 (defn- parse-xml [body]
   (with-open [reader (io/reader body)]
