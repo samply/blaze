@@ -7,7 +7,7 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.fhir.spec :as fhir-spec]
-   [blaze.fhir.spec.type :as fhir-type]
+   [blaze.fhir.spec.type :as type]
    [blaze.handler.util :as handler-util]
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
@@ -55,7 +55,7 @@
   (log/trace "generate binary")
   (with-open [_ (prom/timer generate-duration-seconds "binary")]
     (when (:data body)
-      (.decode (Base64/getDecoder) ^String (fhir-type/value (:data body))))))
+      (.decode (Base64/getDecoder) ^String (type/value (:data body))))))
 
 (defn- encode-response-json [{:keys [body] :as response} content-type]
   (cond-> response body (-> (update :body generate-json)
@@ -66,9 +66,8 @@
                             (ring/content-type content-type))))
 
 (defn- binary-content-type [body]
-  (when body
-    (or (-> body :contentType fhir-type/value)
-        "application/octet-stream")))
+  (or (-> body :contentType type/value)
+      "application/octet-stream"))
 
 (defn- encode-response-binary [{:keys [body] :as response}]
   (cond-> response body (-> (update :body generate-binary)
@@ -114,7 +113,7 @@
    (fn [request respond raise]
      (handler request #(respond (handle-response opts request %)) raise))))
 
-(defn handle-binary-response [_opts request response]
+(defn handle-binary-response [request response]
   (case (request-format request)
     :fhir+json (encode-response-json response "application/fhir+json;charset=utf-8")
     :fhir+xml (encode-response-xml response "application/fhir+xml;charset=utf-8")
@@ -122,8 +121,6 @@
 
 (defn wrap-binary-output
   "Middleware to output binary resources."
-  ([handler]
-   (wrap-binary-output handler {}))
-  ([handler opts]
-   (fn [request respond raise]
-     (handler request #(respond (handle-binary-response opts request %)) raise))))
+  [handler]
+  (fn [request respond raise]
+    (handler request #(respond (handle-binary-response request %)) raise)))

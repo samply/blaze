@@ -3,7 +3,7 @@
    [blaze.byte-string :as bs]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec-spec]
-   [blaze.fhir.spec.type :as fhir-type]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util]
    [blaze.middleware.fhir.output :refer [wrap-binary-output wrap-output]]
    [blaze.module.test-util.ring :refer [call]]
@@ -38,8 +38,8 @@
      (respond
       (ring/response
        (cond-> {:fhir/type :fhir/Binary}
-         data (assoc :data (fhir-type/base64Binary data))
-         content-type (assoc :contentType (fhir-type/code content-type))))))))
+         data (assoc :data (type/base64Binary data))
+         content-type (assoc :contentType (type/code content-type))))))))
 
 (def ^:private resource-handler-304
   "A handler which returns a 304 Not Modified response."
