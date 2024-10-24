@@ -4,7 +4,7 @@ In this section, the representation of FHIR data is discussed. In Blaze there ar
 
 ## External Serialization at the REST API
 
-Blaze supports JSON and XML serialization with JSON as default. Blaze uses [jsonista][1] to parse and generate JSON and [Clojure data.xml][2] to parse and generate XML. 
+Blaze supports JSON and XML serialization with JSON as default. Blaze uses [jsonista][1] to parse and generate JSON and [Clojure data.xml][2] to parse and generate XML.
 
 ### JSON
 
@@ -14,6 +14,11 @@ Parsing a JSON document like:
 {
  "resourceType": "Patient",
  "id": "0",
+ "name": [
+    {
+      "text": "John Doe"
+    }
+  ],
  "birthDate": "2020",
  "deceasedBoolean": false
 }
@@ -51,11 +56,11 @@ Parsing a XML document like:
 will produce the following Clojure data structure:
 
 ```clojure
-{:tag :Patient 
- :content 
+{:tag :Patient
+ :content
  [{:tag :id :attrs {:value "0"}}
   {:tag :name
-   :content 
+   :content
    [{:tag :text :attrs {:value "John Doe"}}]}
   {:tag :birthDate :attrs {:value "2020"}}
   {:tag :deceasedBoolean :attrs {:value "false"}}]}
@@ -65,7 +70,7 @@ The Clojure data structure the XML parser produces, looks completely different t
 
 ## Internal Representation
 
-There are two main reasons why Blaze uses an internal representation for FHIR data which differs from both the JSON and XML representation. First one common representation is necessary and second both the JSON and XML representation have the type information only at the top-level and in case of polymorphic properties at the property name instead on the value. 
+There are two main reasons why Blaze uses an internal representation for FHIR data which differs from both the JSON and XML representation. First one common representation is necessary and second both the JSON and XML representation have the type information only at the top-level and in case of polymorphic properties at the property name instead on the value.
 
 The internal representation of the example above looks like this:
 
@@ -92,7 +97,7 @@ All types used to hold fhir data will implement the `FhirType` protocol. Clojure
   (-value [_]))
 ```
 
-First, the `-type` method will return the FHIR type of a value and second the `-value` method will return the value of a primitive type as FHIRPath system type. The `FhirType` protocol will ensure that every Java type used for primitive types, together with the maps used for the other types, will look the same. 
+First, the `-type` method will return the FHIR type of a value and second the `-value` method will return the value of a primitive type as FHIRPath system type. The `FhirType` protocol will ensure that every Java type used for primitive types, together with the maps used for the other types, will look the same.
 
 The following table shows the mapping from primitive FHIR types to Java types:
 
@@ -122,7 +127,7 @@ For `boolean`, `integer` `string` and `decimal`, the obvious Java types are used
 
 The types, `uri`, `url`, `canonical`, `base64Binary`, `code`, `oid`, `id` and `markdown` are based on the FHIRPath system type `System.String`, which means they have an internal value of type string, but can have extensions, like all other primitive FHIR types. For that types, a thin wrapper is used in case no extension is given. That wrapper is necessary in order to differentiate them from plain Java strings. The wrapper itself is a Java class, extending the `FhirType` protocol to deliver the type and the internal value. The wrapper class costs 16 bytes of heap space. For that reason, instances of `uri` are 16 bytes bigger than instances of `string`.
 
-The type `instant` is either backed by a `java.time.Instant` if the time zone is UTC or by a wrapper class with embedded `java.time.OffsetDateTime`. While using the `java.time.Instant` saves a lot of memory, it can't represent time zones other than UTC so the wrapped `java.time.OffsetDateTime` has to be used in cases other time zones are used. 
+The type `instant` is either backed by a `java.time.Instant` if the time zone is UTC or by a wrapper class with embedded `java.time.OffsetDateTime`. While using the `java.time.Instant` saves a lot of memory, it can't represent time zones other than UTC so the wrapped `java.time.OffsetDateTime` has to be used in cases other time zones are used.
 
 The type `date` is represented with the help of the three `java.time` types `Year`, `YearMonth` and `LocalDate`, one for each precision the `date` type supports. Keeping track of the precision is important for FHIR `date` and `dateTime` types and the `java.time` types are a perfect fit here.
 
@@ -132,7 +137,7 @@ Last but not least the type `time` is represented by `java.time.LocalTime` and t
 
 ## Serialization at the Document Store
 
-At the document store, FHIR resources are serialized in the CBOR format. CBOR stands for Concise Binary Object Representation and is defined in [RFC 7049][5]. CBOR is a binary serialization format. 
+At the document store, FHIR resources are serialized in the CBOR format. CBOR stands for Concise Binary Object Representation and is defined in [RFC 7049][5]. CBOR is a binary serialization format.
 
 **TODO: continue...**
 
