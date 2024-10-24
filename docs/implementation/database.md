@@ -36,7 +36,7 @@ Another data model is the document model used in document stores like [MongoDB][
 
 There are two different sets of indices, ones which depend on the database value point in time `t` and the ones which only depend on the content hash of resource versions. The former indices are used to build up the database values were the latter are used to enable queries based on search parameters.
 
-### Indices depending on t
+### Transaction Indices
 
 | Name              | Key Parts | Value                                     |
 |-------------------|-----------|-------------------------------------------|
@@ -118,7 +118,7 @@ The `TypeStats` index keeps track of the total number of resources, and the numb
 
 The `SystemStats` index keeps track of the total number of resources, and the number of changes to all resources at a particular point in time `t`. This statistic is used to populate the total count property in system listings and system history listings in case there are no filters applied.
 
-### Indices not depending on t
+### Search Param Indices
 
 The indices not depending on `t` directly point to the resource versions by their content hash. 
 
@@ -327,6 +327,12 @@ The `delete-history` command is used to delete the history of a resource.
 |------------|----------|-----------|----------------------------------|
 | type       | yes      | string    | resource type                    |
 | id         | yes      | string    | resource id                      |
+
+#### Execution
+
+* get all instance history entries
+* add the `t` of the transaction as `purged-at?` to the value of each of the history entries not only in the ResourceAsOf index, but also in the TypeAsOf and SystemAsOf index
+* remove the number of history entries purged from the number of changes of `type` and thw whole system
 
 ### Patient Purge
 

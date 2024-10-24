@@ -1,67 +1,53 @@
 (ns blaze.profiling
   "Profiling namespace without test dependencies."
   (:require
-    [blaze.system :as system]
-    [blaze.cache-collector :as cc]
-    [blaze.cache-collector.protocols :as ccp]
-    [blaze.db.kv.rocksdb :as rocksdb]
-    [blaze.db.resource-cache :as resource-cache]
-    [blaze.elm.expression :as-alias expr]
-    [blaze.elm.expression.cache :as ec]
-    [blaze.system :as system]
-    [clojure.tools.namespace.repl :refer [refresh]]
-    [taoensso.timbre :as log]))
-
+   [blaze.cache-collector.protocols :as ccp]
+   [blaze.db.kv.rocksdb :as rocksdb]
+   [blaze.db.resource-cache :as resource-cache]
+   [blaze.elm.expression :as-alias expr]
+   [blaze.elm.expression.cache :as ec]
+   [blaze.system :as system]
+   [clojure.tools.namespace.repl :refer [refresh]]
+   [taoensso.timbre :as log]))
 
 (defonce system nil)
-
 
 (defn init []
   (alter-var-root #'system (constantly (system/init! (System/getenv))))
   nil)
 
-
 (defn reset []
   (some-> system system/shutdown!)
   (refresh :after `init))
 
-
 ;; Init Development
 (comment
   (init)
-  (pst)
-  )
-
+  (pst))
 
 ;; Reset after making changes
 (comment
-  (reset)
-  )
-
+  (reset))
 
 (comment
   (log/set-level! :trace)
   (log/set-level! :debug)
-  (log/set-level! :info)
-  )
+  (log/set-level! :info))
 
 ;; Transaction Cache
 (comment
   (str (ccp/-stats (:blaze.db/tx-cache system)))
-  (resource-cache/invalidate-all! (:blaze.db/tx-cache system))
-  )
+  (resource-cache/invalidate-all! (:blaze.db/tx-cache system)))
 
 ;; Resource Cache
 (comment
   (str (ccp/-stats (:blaze.db/resource-cache system)))
-  (resource-cache/invalidate-all! (:blaze.db/resource-cache system))
-  )
+  (resource-cache/invalidate-all! (:blaze.db/resource-cache system)))
 
 ;; CQL Expression Cache
 (comment
   (into [] (ec/list-by-t (::expr/cache system)))
-  (str (ccp/-stats (::expr/cache system)))
-  )
+  (str (ccp/-stats (::expr/cache system))))
 
 ;; DB
 (comment
@@ -87,5 +73,4 @@
   (rocksdb/property resource-db "rocksdb.stats")
 
   (def transaction-db (system [:blaze.db.kv/rocksdb :blaze.db/transaction-kv-store]))
-  (rocksdb/property transaction-db "rocksdb.stats")
-  )
+  (rocksdb/property transaction-db "rocksdb.stats"))
