@@ -83,7 +83,12 @@
      refs)))
 
 (def ^:private inc-0 (fnil inc 0))
+(def ^:private dec-0 (fnil dec 0))
 (def ^:private minus-0 (fnil - 0))
+
+(defn- inc-num-changes-and-total [stat]
+  (-> (update stat :num-changes inc-0)
+      (update :total inc-0)))
 
 (defmethod verify "create" [db-before t res {:keys [type id hash refs]}]
   (log/trace (verify-tx-cmd-create-msg type id))
@@ -92,8 +97,7 @@
     (let [tid (codec/tid type)]
       (-> (update res :entries into (index-entries tid id t hash 1 :create refs))
           (update :new-resources conj [type id])
-          (update-in [:stats tid :num-changes] inc-0)
-          (update-in [:stats tid :total] inc-0)))))
+          (update-in [:stats tid] inc-num-changes-and-total)))))
 
 (defn- print-etags [ts]
   (str/join "," (map (partial format "W/\"%d\"") ts)))
@@ -145,6 +149,7 @@
         (and (some? old-t) (= if-none-match old-t))
         (throw-anom (precondition-version-failed-anomaly type id if-none-match))
 
+        ;; identical update, we will do nothing
         (= old-hash hash)
         res
 
@@ -203,7 +208,7 @@
              (update :del-resources conj [type id])
              (update-in [:stats tid :num-changes] inc-0))
           op
-          (update-in [:stats tid :total] (fnil dec 0)))))))
+          (update-in [:stats tid :total] dec-0))))))
 
 (def ^:private ^:const ^long delete-history-max 100000)
 
@@ -219,12 +224,9 @@
 (defn- purge-entry [tid id t rh]
   (rts/index-entries tid id (rh/t rh) (rh/hash rh) (rh/num-changes rh) (rh/op rh) t))
 
-(defn- purge-entries [tid id t instance-history]
-  (into [] (mapcat (partial purge-entry tid id t)) instance-history))
-
-(defn- add-delete-history-entries [entries tid id t instance-history]
-  (-> (update entries :entries into (purge-entries tid (codec/id-byte-string id) t instance-history))
-      (update-in [:stats tid :num-changes] minus-0 (count instance-history))))
+(defn- add-purge-entries [res tid id t resource-handles]
+  (-> (update res :entries into (mapcat (partial purge-entry tid (codec/id-byte-string id) t)) resource-handles)
+      (update-in [:stats tid :num-changes] minus-0 (count resource-handles))))
 
 (defmethod verify "delete-history"
   [db-before t res {:keys [type id]}]
@@ -240,7 +242,7 @@
         (throw-anom (too-many-history-entries-anom type id))
 
         :else
-        (add-delete-history-entries res tid id t instance-history)))))
+        (add-purge-entries res tid id t instance-history)))))
 
 ;; like delete-history but also purges the current version
 (defmethod verify "purge"
@@ -257,10 +259,10 @@
         (throw-anom (too-many-history-entries-anom type id))
 
         :else
-        (cond-> (add-delete-history-entries res tid id t instance-history)
+        (cond-> (add-purge-entries res tid id t instance-history)
           (not (identical? :delete (rh/op (first instance-history))))
           (-> (update :del-resources conj [type id])
-              (update-in [:stats tid :total] (fnil dec 0))))))))
+              (update-in [:stats tid :total] dec-0)))))))
 
 (defmethod verify :default
   [_db-before _t res _tx-cmd]
@@ -336,16 +338,17 @@
 
 (defn- check-referential-integrity!
   [db {:keys [new-resources del-resources]} cmds]
-  (run!
-   (fn [{:keys [op type id refs check-refs]}]
-     (if (#{"delete" "purge"} op)
-       (when check-refs
-         (check-referential-integrity-delete!
-          db del-resources type id))
-       (when refs
-         (check-referential-integrity-write!
-          db new-resources del-resources type id refs))))
-   cmds))
+  (with-open [_ (prom/timer tx-u/duration-seconds "check-referential-integrity")]
+    (run!
+     (fn [{:keys [op type id refs check-refs]}]
+       (if (#{"delete" "purge"} op)
+         (when check-refs
+           (check-referential-integrity-delete!
+            db del-resources type id))
+         (when refs
+           (check-referential-integrity-write!
+            db new-resources del-resources type id refs))))
+     cmds)))
 
 (defn verify-tx-cmds
   "Verifies terminal `tx-cmds`. Returns index entries of the transaction outcome

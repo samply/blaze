@@ -8,7 +8,7 @@
   {:namespace "blaze"
    :subsystem "db"
    :name "tx_indexer_duration_seconds"}
-  (take 16 (iterate #(* 2 %) 0.00001))
+  (take 16 (iterate #(* 2 %) 0.0001))
   "op")
 
 (defn clauses->query-params [clauses]

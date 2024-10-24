@@ -1163,6 +1163,62 @@ jobs:
     - name: Docker Stats
       run: docker stats --no-stream
 
+  integration-test-patient-purge:
+    needs: build
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=512 -e ENABLE_OPERATION_PATIENT_PURGE=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+
+    - name: Docker Logs
+      run: docker logs blaze
+
+    - name: Check Capability Statement
+      run: .github/scripts/check-capability-statement.sh
+
+    - name: Check Referential Integrity Enforced
+      run: .github/scripts/check-referential-integrity-enforced.sh
+
+    - name: Load Data
+      run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/synthea
+
+    - name: Check Total-Number of Resources are 92114
+      run: .github/scripts/check-total-number-of-resources.sh 92114
+
+    - name: Patient Purge all
+      run: .github/scripts/patient-purge-all.sh
+
+    - name: Download All Resources
+      run: .github/scripts/download-all-resources.sh
+
+    - name: Download Patient Resources
+      run: .github/scripts/download-resources.sh Patient
+
+    - name: Check Resource Totals
+      run: .github/scripts/check-resource-totals-after-patient-purge.sh
+
+    - name: Docker Stats
+      run: docker stats --no-stream
+
   not-enforcing-referential-integrity-test:
     needs: build
     runs-on: ubuntu-24.04
@@ -1935,6 +1991,7 @@ jobs:
     - cql-expr-cache-test
     - integration-test
     - integration-test-synthea-1000
+    - integration-test-patient-purge
     - not-enforcing-referential-integrity-test
     - admin-api-test
     - small-transactions-test

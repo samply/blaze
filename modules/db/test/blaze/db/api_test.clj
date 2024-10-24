@@ -432,16 +432,29 @@
 
     (testing "with identical content"
       (with-system-data [{:blaze.db/keys [node]} config]
-        [[[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]
-         [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]]
+        [[[:create {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]]]
 
-        (testing "versionId is still 1"
-          (given @(pull-resource (d/db node) "Patient" "0")
-            :fhir/type := :fhir/Patient
-            :id := "0"
-            [:meta :versionId] := #fhir/id"1"
-            :gender := #fhir/code"female"
-            [meta :blaze.db/op] := :put)))))
+        (let [db @(d/transact node [[:put {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"female"}]])]
+
+          (testing "versionId is still 1"
+            (given @(pull-resource db "Patient" "0")
+              :fhir/type := :fhir/Patient
+              :id := "0"
+              [:meta :versionId] := #fhir/id"1"
+              :gender := #fhir/code"female"
+              [meta :blaze.db/op] := :create))
+
+          (testing "instance history contains only one entry"
+            (is (= 1 (d/total-num-of-instance-changes db "Patient" "0")))
+            (is (= 1 (count (d/instance-history db "Patient" "0")))))
+
+          (testing "type history contains only one entry"
+            (is (= 1 (d/total-num-of-type-changes db "Patient")))
+            (is (= 1 (count (d/type-history db "Patient")))))
+
+          (testing "system history contains only one entry"
+            (is (= 1 (d/total-num-of-system-changes db)))
+            (is (= 1 (count (d/system-history db)))))))))
 
   (testing "Diamond Reference Dependencies"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -885,6 +898,40 @@
             [0 :active] := true
             [1 :active] := false)))))
 
+  (testing "two patients, one with one version and the other with two versions"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]
+        [:create {:fhir/type :fhir/Patient :id "1" :active false}]]
+       [[:put {:fhir/type :fhir/Patient :id "1" :active true}]]]
+
+      (let [db-after @(d/transact node [[:delete-history "Patient" "0"]
+                                        [:delete-history "Patient" "1"]])]
+
+        (testing "the patient 1"
+          (let [patient @(pull-resource db-after "Patient" "1")]
+
+            (testing "is active"
+              (given patient
+                :active := true))
+
+            (testing "the instance history contains only that patient"
+              (is (= 1 (d/total-num-of-instance-changes db-after "Patient" "1")))
+              (is (= [patient] @(pull-instance-history db-after "Patient" "1"))))))
+
+        (testing "the type history contains two entries"
+          (is (= 2 (d/total-num-of-type-changes db-after "Patient")))
+          (given @(d/pull-many node (d/type-history db-after "Patient"))
+            count := 2
+            [0 :active] := true
+            [1 :id] := "0"))
+
+        (testing "the system history contains two entries"
+          (is (= 2 (d/total-num-of-system-changes db-after)))
+          (given @(d/pull-many node (d/system-history db-after))
+            count := 2
+            [0 :active] := true
+            [1 :id] := "0")))))
+
   (testing "one deleted patient"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]
@@ -1038,7 +1085,34 @@
           (is (coll/empty? (d/instance-history db-after "Patient" "0")))
           (is (coll/empty? (d/type-history db-after "Patient")))
           (is (coll/empty? (d/system-history db-after)))
-          (is (coll/empty? (d/changes db-after)))))))
+          (is (coll/empty? (d/changes db-after)))))
+
+      (testing "purging it again"
+        (let [db-after @(d/transact node [[:patient-purge "0"]])]
+
+          (testing "the patient is still gone"
+            (is (nil? (d/resource-handle db-after "Patient" "0")))
+            (is (zero? (d/total-num-of-instance-changes db-after "Patient" "0")))
+            (is (zero? (d/total-num-of-type-changes db-after "Patient")))
+            (is (zero? (d/total-num-of-system-changes db-after)))
+            (is (coll/empty? (d/instance-history db-after "Patient" "0")))
+            (is (coll/empty? (d/type-history db-after "Patient")))
+            (is (coll/empty? (d/system-history db-after)))
+            (is (coll/empty? (d/changes db-after)))))))
+
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (testing "purging a non-exiting patient"
+        (let [db-after @(d/transact node [[:patient-purge "1"]])]
+
+          (testing "the existing patient is fine"
+            (given (d/resource-handle db-after "Patient" "0")
+              :id := "0"
+              :op := :create))
+
+          (testing "the purged patient doesn't exist"
+            (is (nil? (d/resource-handle db-after "Patient" "1"))))))))
 
   (testing "one deleted patient"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -1099,6 +1173,29 @@
             (is (= 1 (count (d/system-history db-after))))
             (is (coll/empty? (d/changes db-after))))))))
 
+  (testing "three patients created in different transactions"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+       [[:create {:fhir/type :fhir/Patient :id "1"}]]
+       [[:create {:fhir/type :fhir/Patient :id "2"}]]]
+
+      (testing "purging the middle one"
+        (let [db-after @(d/transact node [[:patient-purge "1"]])]
+
+          (testing "the type history contains the two remaining patients"
+            (is (= 2 (d/total-num-of-type-changes db-after "Patient")))
+            (given @(d/pull-many node (d/type-history db-after "Patient"))
+              count := 2
+              [0 :id] := "2"
+              [1 :id] := "0"))
+
+          (testing "the system history contains the two remaining patients"
+            (is (= 2 (d/total-num-of-system-changes db-after)))
+            (given @(d/pull-many node (d/system-history db-after))
+              count := 2
+              [0 :id] := "2"
+              [1 :id] := "0"))))))
+
   (testing "one patient with one observation"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]
@@ -1122,6 +1219,37 @@
           (is (coll/empty? (d/system-history db-after)))
           (is (coll/empty? (d/changes db-after)))))))
 
+  (testing "one patient with one observation and one encounter"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]
+        [:create {:fhir/type :fhir/Encounter :id "0"
+                  :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:create {:fhir/type :fhir/Observation :id "0"
+                  :subject #fhir/Reference{:reference "Patient/0"}
+                  :encounter #fhir/Reference{:reference "Encounter/0"}}]]]
+
+      (let [db-after @(d/transact node [[:patient-purge "0"]])]
+
+        (testing "the patient, the observation and the encounter are gone"
+          (is (nil? (d/resource-handle db-after "Patient" "0")))
+          (is (nil? (d/resource-handle db-after "Encounter" "0")))
+          (is (nil? (d/resource-handle db-after "Observation" "0")))
+          (is (zero? (d/total-num-of-instance-changes db-after "Patient" "0")))
+          (is (zero? (d/total-num-of-instance-changes db-after "Encounter" "0")))
+          (is (zero? (d/total-num-of-instance-changes db-after "Observation" "0")))
+          (is (zero? (d/total-num-of-type-changes db-after "Patient")))
+          (is (zero? (d/total-num-of-type-changes db-after "Encounter")))
+          (is (zero? (d/total-num-of-type-changes db-after "Observation")))
+          (is (zero? (d/total-num-of-system-changes db-after)))
+          (is (coll/empty? (d/instance-history db-after "Patient" "0")))
+          (is (coll/empty? (d/instance-history db-after "Encounter" "0")))
+          (is (coll/empty? (d/instance-history db-after "Observation" "0")))
+          (is (coll/empty? (d/type-history db-after "Patient")))
+          (is (coll/empty? (d/type-history db-after "Encounter")))
+          (is (coll/empty? (d/type-history db-after "Observation")))
+          (is (coll/empty? (d/system-history db-after)))
+          (is (coll/empty? (d/changes db-after)))))))
+
   (testing "one patient with one MedicationAdministration and Medication"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -1132,7 +1260,7 @@
 
       (let [db-after @(d/transact node [[:patient-purge "0"]])]
 
-        (testing "the Medication says"
+        (testing "the Medication stays"
           (is (nil? (d/resource-handle db-after "Patient" "0")))
           (is (nil? (d/resource-handle db-after "MedicationAdministration" "0")))
           (is (= "0" (:id (d/resource-handle db-after "Medication" "0"))))
@@ -1152,6 +1280,48 @@
           (is (= 1 (count (d/system-history db-after))))
           (is (coll/empty? (d/changes db-after)))))))
 
+  (testing "purge one patient and delete another in the same transaction"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+       [[:create {:fhir/type :fhir/Patient :id "1"}]]
+       [[:put {:fhir/type :fhir/Patient :id "0" :active true}]]]
+
+      (let [db-after @(d/transact node [[:patient-purge "0"]
+                                        [:delete "Patient" "1"]])]
+
+        (testing "both patients are gone"
+          (is (coll/empty? (d/type-list db-after "Patient"))))
+
+        (testing "patient history contains two entries from patient 1"
+          (is (= 2 (d/total-num-of-type-changes db-after "Patient")))
+          (is (= ["1" "1"] (mapv :id (d/type-history db-after "Patient")))))
+
+        (testing "system history contains two entries from patient 1"
+          (is (= 2 (d/total-num-of-system-changes db-after)))
+          (is (= ["1" "1"] (mapv :id (d/system-history db-after))))))))
+
+  (testing "purge, create and purge a patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]
+       [[:patient-purge "0"]]]
+
+      (let [db-after @(d/transact node [[:create {:fhir/type :fhir/Patient :id "0"}]])]
+
+        (testing "the patient exists"
+          (is (= ["0"] (mapv :id (d/type-list db-after "Patient")))))
+
+        (testing "instance history contains one entry"
+          (is (= 1 (d/total-num-of-instance-changes db-after "Patient" "0")))
+          (is (= ["0"] (mapv :id (d/instance-history db-after "Patient" "0")))))
+
+        (testing "type history contains one entry"
+          (is (= 1 (d/total-num-of-type-changes db-after "Patient")))
+          (is (= ["0"] (mapv :id (d/type-history db-after "Patient")))))
+
+        (testing "system history contains one entry"
+          (is (= 1 (d/total-num-of-system-changes db-after)))
+          (is (= ["0"] (mapv :id (d/system-history db-after))))))))
+
   (testing "one patient linked by another patient"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]
@@ -1162,7 +1332,30 @@
 
       (given-failed-future (d/transact node [[:patient-purge "0"]])
         ::anom/category := ::anom/conflict
-        ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Patient/1`."))))
+        ::anom/message := "Referential integrity violated. Resource `Patient/0` should be deleted but is referenced from `Patient/1`.")))
+
+  (testing "one patient linked by another patient"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]
+        [:create {:fhir/type :fhir/Patient :id "1"}]
+        [:create {:fhir/type :fhir/Encounter :id "0"
+                  :subject #fhir/Reference{:reference "Patient/0"}}]
+        [:create {:fhir/type :fhir/Observation :id "1"
+                  :subject #fhir/Reference{:reference "Patient/1"}
+                  :encounter #fhir/Reference{:reference "Encounter/0"}}]]]
+
+      (given-failed-future (d/transact node [[:patient-purge "0"]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Referential integrity violated. Resource `Encounter/0` should be deleted but is referenced from `Observation/1`.")))
+
+  (testing "purging an creating the same patient in one transaction fails"
+    (with-system-data [{:blaze.db/keys [node]} config]
+      [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
+
+      (given-failed-future (d/transact node [[:patient-purge "0"]
+                                             [:create {:fhir/type :fhir/Patient :id "0"}]])
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Duplicate transaction commands `create Patient/0` and `purge Patient/0`."))))
 
 (deftest transact-patient-purge-too-many-test
   (log/set-min-level! :info)
