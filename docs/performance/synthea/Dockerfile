@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21.0.4_7-jre-jammy@sha256:ce644c2da74d34ca9b9ddd6d3aa72d0f80a4d8f90454270985af8fc986c60dfc
+FROM eclipse-temurin:21.0.5_11-jre-jammy@sha256:5d7781c6aabbc2f8673ec1899f2fdf6851f20c94dcdefeb8a1ca1e37e9c13e92
 
 ADD https://github.com/synthetichealth/synthea/releases/download/v3.1.1/synthea-with-dependencies.jar /gen/synthea.jar
 COPY synthea.properties /gen/
