@@ -1160,6 +1160,9 @@ jobs:
     - name: Patient Everything Paged
       run: .github/scripts/patient-everything-paged-1000.sh
 
+    - name: Patient Purge all
+      run: .github/scripts/patient-purge-all.sh
+
     - name: Docker Stats
       run: docker stats --no-stream
 
