@@ -490,6 +490,9 @@
   "Returns a CompletableFuture that will complete with the resource of
   `resource-handle` or an anomaly in case of errors.
 
+  Note: If an deleted resource is pulled, a stub with type, id and meta will be
+  returned.
+
   Functions applied after the returned future are executed on the common
   ForkJoinPool."
   [node-or-db resource-handle]

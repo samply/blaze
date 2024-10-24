@@ -219,12 +219,12 @@
 (defn- purge-entry [tid id t rh]
   (rts/index-entries tid id (rh/t rh) (rh/hash rh) (rh/num-changes rh) (rh/op rh) t))
 
-(defn- purge-entries [tid id t instance-history]
-  (into [] (mapcat (partial purge-entry tid id t)) instance-history))
+(defn- purge-entries [tid id t resource-handles]
+  (into [] (mapcat (partial purge-entry tid id t)) resource-handles))
 
-(defn- add-delete-history-entries [entries tid id t instance-history]
-  (-> (update entries :entries into (purge-entries tid (codec/id-byte-string id) t instance-history))
-      (update-in [:stats tid :num-changes] minus-0 (count instance-history))))
+(defn- add-purge-entries [res tid id t resource-handles]
+  (-> (update res :entries into (purge-entries tid (codec/id-byte-string id) t resource-handles))
+      (update-in [:stats tid :num-changes] minus-0 (count resource-handles))))
 
 (defmethod verify "delete-history"
   [db-before t res {:keys [type id]}]
@@ -240,7 +240,7 @@
         (throw-anom (too-many-history-entries-anom type id))
 
         :else
-        (add-delete-history-entries res tid id t instance-history)))))
+        (add-purge-entries res tid id t instance-history)))))
 
 ;; like delete-history but also purges the current version
 (defmethod verify "purge"
@@ -257,7 +257,7 @@
         (throw-anom (too-many-history-entries-anom type id))
 
         :else
-        (cond-> (add-delete-history-entries res tid id t instance-history)
+        (cond-> (add-purge-entries res tid id t instance-history)
           (not (identical? :delete (rh/op (first instance-history))))
           (-> (update :del-resources conj [type id])
               (update-in [:stats tid :total] (fnil dec 0))))))))
