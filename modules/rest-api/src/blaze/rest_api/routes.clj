@@ -103,8 +103,6 @@
       {:fhir.resource/type name}
       [""
        (cond-> {:name (keyword name "type")}
-         (= name "Binary")
-         (assoc :response-type :binary)
          (contains? interactions :search-type)
          (assoc :get {:interaction "search-type"
                       :middleware [[wrap-db node db-sync-timeout]
@@ -172,6 +170,8 @@
           (cond->
            {:name (keyword name "instance")
             :conflicting true}
+            (= name "Binary")
+            (assoc :response-type :binary)
             (contains? interactions :read)
             (assoc :get {:interaction "read"
                          :middleware [[wrap-db node db-sync-timeout]]
