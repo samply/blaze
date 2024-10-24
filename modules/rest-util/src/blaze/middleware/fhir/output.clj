@@ -96,6 +96,8 @@
         :fhir+json)))
 
 (defn handle-response [opts request response]
+  (println "handle-response runs")
+  (println "request URI: " (-> request :uri))
   (case (request-format request)
     :fhir+json (encode-response-json response "application/fhir+json;charset=utf-8")
     :fhir+xml (encode-response-xml response "application/fhir+xml;charset=utf-8")
@@ -111,9 +113,11 @@
    (wrap-output handler {}))
   ([handler opts]
    (fn [request respond raise]
+     (println "wrap-outup runs with the following request URI: " (-> request :uri))
      (handler request #(respond (handle-response opts request %)) raise))))
 
 (defn handle-binary-response [request response]
+  (println "handle-binary-response runs")
   (case (request-format request)
     :fhir+json (encode-response-json response "application/fhir+json;charset=utf-8")
     :fhir+xml (encode-response-xml response "application/fhir+xml;charset=utf-8")
