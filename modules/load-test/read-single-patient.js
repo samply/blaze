@@ -52,7 +52,7 @@ export default function({ patientIds }) {
 function readPatientIds(url) {
 	const res = http.get(url, searchTypeParams);
 
-	if (res.status !== 200) fail('non 200 response code while reading all patients');
+	if (res.status !== 200) fail(`non 200 response code ${res.status} while reading all patients`);
 
 	const body = res.json();
 
