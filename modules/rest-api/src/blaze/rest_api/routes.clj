@@ -64,6 +64,7 @@
    :compile (fn [{:keys [response-type] :response-type.json/keys [opts]} _]
               (condp = response-type
                 :json (output/wrap-output opts)
+                :binary fhir-output/wrap-binary-output
                 :none identity
                 fhir-output/wrap-output))})
 
@@ -169,6 +170,8 @@
           (cond->
            {:name (keyword name "instance")
             :conflicting true}
+            (= name "Binary")
+            (assoc :response-type :binary)
             (contains? interactions :read)
             (assoc :get {:interaction "read"
                          :middleware [[wrap-db node db-sync-timeout]]
