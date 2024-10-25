@@ -138,7 +138,9 @@
 
   (testing "failing XML emit"
     (given (call (special-resource-handler {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"foo\u001Ebar"}) {:headers {"accept" "application/fhir+xml"}})
+      :status := 500
       [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
+      [:body parse-xml :fhir/type] := :fhir/OperationOutcome
       [:body parse-xml :issue 0 :diagnostics] := "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))
 
 (deftest not-acceptable-test
