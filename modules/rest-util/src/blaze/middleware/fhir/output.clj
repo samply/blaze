@@ -32,29 +32,37 @@
   (with-open [_ (prom/timer generate-duration-seconds "json")]
     (fhir-spec/unform-json body)))
 
-(defn- generate-xml** [body]
+(defn- xml-byte-array [body]
   (let [out (ByteArrayOutputStream.)]
     (with-open [writer (io/writer out)]
       (xml/emit (fhir-spec/unform-xml body) writer))
     (.toByteArray out)))
 
-(defn- generate-xml* [body]
-  (try
-    (generate-xml** body)
-    (catch Throwable e
-      (generate-xml** (handler-util/operation-outcome (ba/anomaly e))))))
+(defn- e->xml-byte-array [e]
+  (-> e
+      ba/anomaly
+      handler-util/operation-outcome
+      xml-byte-array))
 
-(defn- generate-xml [body]
+(defn- generate-xml* [response]
+  (try
+    (update response :body xml-byte-array)
+    (catch Throwable e
+      (assoc response
+             :body (e->xml-byte-array e)
+             :status 500))))
+
+(defn- generate-xml [response]
   (log/trace "generate XML")
   (with-open [_ (prom/timer generate-duration-seconds "xml")]
-    (generate-xml* body)))
+    (generate-xml* response)))
 
 (defn- encode-response-json [{:keys [body] :as response} content-type]
   (cond-> response body (-> (update :body generate-json)
                             (ring/content-type content-type))))
 
 (defn- encode-response-xml [{:keys [body] :as response} content-type]
-  (cond-> response body (-> (update :body generate-xml)
+  (cond-> response body (-> generate-xml
                             (ring/content-type content-type))))
 
 (defn- format-key [format]
