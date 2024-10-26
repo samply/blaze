@@ -1,6 +1,6 @@
 services:
   ingress:
-    image: "nginx:1.25.4"
+    image: "nginx:1.27.2"
     environment:
       BLAZE_HOST: "blaze.localhost"
       KEYCLOAK_HOST: "keycloak.localhost"

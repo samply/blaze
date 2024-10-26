@@ -107,7 +107,7 @@ An nginx server is used as the ingress component. You should see the configurati
 
 ```yaml
 ingress:
-  image: "nginx:1.25.4"
+  image: "nginx:1.27.2"
   environment:
     BLAZE_HOST: "blaze.localhost"
     KEYCLOAK_HOST: "keycloak.localhost"
