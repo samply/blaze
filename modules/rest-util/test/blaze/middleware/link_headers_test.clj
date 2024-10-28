@@ -1,7 +1,7 @@
-(ns blaze.rest-api.middleware.link-headers-test
+(ns blaze.middleware.link-headers-test
   (:require
    [blaze.async.comp :as ac]
-   [blaze.rest-api.middleware.link-headers :refer [wrap-link-headers]]
+   [blaze.middleware.link-headers :refer [wrap-link-headers]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]

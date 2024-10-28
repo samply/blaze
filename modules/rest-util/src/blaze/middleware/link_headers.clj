@@ -1,4 +1,4 @@
-(ns blaze.rest-api.middleware.link-headers
+(ns blaze.middleware.link-headers
   "Middleware that will transfer bundle links into link headers according to
   RFC 8288."
   (:require

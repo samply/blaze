@@ -272,6 +272,7 @@
    :job-scheduler #blaze/ref :blaze/job-scheduler
    :db-sync-timeout #blaze/cfg ["DB_SYNC_TIMEOUT" pos-int? 10000]
    :read-job-handler #blaze/ref :blaze.interaction/read
+   :history-job-handler #blaze/ref :blaze.interaction.history/instance
    :search-type-job-handler #blaze/ref :blaze.interaction/search-type}
 
   ;;

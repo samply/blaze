@@ -18,6 +18,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
    [blaze.interaction.create]
+   [blaze.interaction.history.instance]
    [blaze.interaction.read]
    [blaze.interaction.search-type]
    [blaze.job-scheduler :as js]
@@ -178,6 +179,7 @@
     :admin-node (ig/ref :blaze.db.admin/node)
     :job-scheduler (ig/ref :blaze/job-scheduler)
     :read-job-handler (ig/ref :blaze.interaction/read)
+    :history-job-handler (ig/ref :blaze.interaction.history/instance)
     :search-type-job-handler (ig/ref :blaze.interaction/search-type)
     :dbs {"index" (ig/ref :blaze.db.main/index-kv-store)
           "resource" (ig/ref :blaze.db/resource-kv-store)}
@@ -197,6 +199,11 @@
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
 
    :blaze.interaction/read {}
+
+   :blaze.interaction.history/instance
+   {:clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :page-id-cipher (ig/ref :blaze.test/page-id-cipher)}
 
    :blaze.interaction/search-type
    {:clock (ig/ref :blaze.test/fixed-clock)
@@ -232,9 +239,10 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :features))))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 7 :pred] := `(fn ~'[%] (contains? ~'% :features))))
 
   (testing "invalid context path"
     (given-thrown (ig/init {:blaze/admin-api {:context-path ::invalid}})
@@ -243,12 +251,13 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :features))
-      [:cause-data ::s/problems 6 :via] := [:blaze/context-path]
-      [:cause-data ::s/problems 6 :pred] := `string?
-      [:cause-data ::s/problems 6 :val] := ::invalid))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :features))
+      [:cause-data ::s/problems 7 :via] := [:blaze/context-path]
+      [:cause-data ::s/problems 7 :pred] := `string?
+      [:cause-data ::s/problems 7 :val] := ::invalid))
 
   (testing "invalid admin node"
     (given-thrown (ig/init {:blaze/admin-api {:admin-node ::invalid}})
@@ -257,12 +266,13 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :context-path))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :features))
-      [:cause-data ::s/problems 6 :via] := [:blaze.db/node]
-      [:cause-data ::s/problems 6 :pred] := `node?
-      [:cause-data ::s/problems 6 :val] := ::invalid))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :features))
+      [:cause-data ::s/problems 7 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 7 :pred] := `node?
+      [:cause-data ::s/problems 7 :val] := ::invalid))
 
   (testing "invalid settings"
     (given-thrown (ig/init {:blaze/admin-api {:settings ::invalid}})
@@ -272,11 +282,12 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :features))
-      [:cause-data ::s/problems 6 :via] := [::admin-api/settings]
-      [:cause-data ::s/problems 6 :pred] := `coll?
-      [:cause-data ::s/problems 6 :val] := ::invalid))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :features))
+      [:cause-data ::s/problems 7 :via] := [::admin-api/settings]
+      [:cause-data ::s/problems 7 :pred] := `coll?
+      [:cause-data ::s/problems 7 :val] := ::invalid))
 
   (testing "invalid features"
     (given-thrown (ig/init {:blaze/admin-api {:features ::invalid}})
@@ -286,11 +297,12 @@
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :job-scheduler))
       [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :read-job-handler))
-      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
-      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :settings))
-      [:cause-data ::s/problems 6 :via] := [::admin-api/features]
-      [:cause-data ::s/problems 6 :pred] := `coll?
-      [:cause-data ::s/problems 6 :val] := ::invalid))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :history-job-handler))
+      [:cause-data ::s/problems 5 :pred] := `(fn ~'[%] (contains? ~'% :search-type-job-handler))
+      [:cause-data ::s/problems 6 :pred] := `(fn ~'[%] (contains? ~'% :settings))
+      [:cause-data ::s/problems 7 :via] := [::admin-api/features]
+      [:cause-data ::s/problems 7 :pred] := `coll?
+      [:cause-data ::s/problems 7 :val] := ::invalid))
 
   (testing "with minimal config"
     (with-system [{handler :blaze/admin-api} (config (new-temp-dir!))]
@@ -865,6 +877,44 @@
             @(handler
               {:request-method :get
                :uri "/fhir/__admin/Task/AAAAAAAAAAAAAAAA"})]
+
+        (is (= 404 status))
+
+        (given body
+          "resourceType" := "OperationOutcome"
+          ["issue" 0 "severity"] := "error"
+          ["issue" 0 "code"] := "not-found"
+          ["issue" 0 "diagnostics"] := "Resource `Task/AAAAAAAAAAAAAAAA` was not found.")))))
+
+(deftest history-job-test
+  (testing "existing job"
+    (with-handler [handler] (config (new-temp-dir!)) []
+      @(handler
+        {:request-method :post
+         :uri "/fhir/__admin/Task"
+         :headers {"content-type" "application/fhir+json"}
+         :body (fhir-spec/unform-json re-index-job)})
+
+      (let [{:keys [status body]}
+            @(handler
+              {:request-method :get
+               :uri "/fhir/__admin/Task/AAAAAAAAAAAAAAAA/_history"})]
+
+        (is (= 200 status))
+
+        (given body
+          "resourceType" := "Bundle"
+          "type" := "history"
+          ["entry" 0 "request" "method"] := "POST"
+          ["entry" 0 "request" "url"] := "Task"
+          ["entry" 0 "resource" "id"] := "AAAAAAAAAAAAAAAA"))))
+
+  (testing "non-existing job"
+    (with-handler [handler] (config (new-temp-dir!)) []
+      (let [{:keys [status body]}
+            @(handler
+              {:request-method :get
+               :uri "/fhir/__admin/Task/AAAAAAAAAAAAAAAA/_history"})]
 
         (is (= 404 status))
 

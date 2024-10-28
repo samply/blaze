@@ -49,3 +49,13 @@ output_expr() {
 PROCESSING_DURATION="$(echo "$JOB" | jq "$(output_expr "processing-duration") | .valueQuantity")"
 test "processing-duration unit system" "$(echo "$PROCESSING_DURATION" | jq -r .system)" "http://unitsofmeasure.org"
 test "processing-duration unit code" "$(echo "$PROCESSING_DURATION" | jq -r .code)" "s"
+
+# History
+JOB_HISTORY=$(curl -s -H 'Accept: application/fhir+json' "$BASE/__admin/Task/$JOB_ID/_history")
+
+test "history resource type" "$(echo "$JOB_HISTORY" | jq -r '.resourceType')" "Bundle"
+test "history bundle type" "$(echo "$JOB_HISTORY" | jq -r '.type')" "history"
+test "history total" "$(echo "$JOB_HISTORY" | jq -r '.total')" "3"
+test "history 0 status" "$(echo "$JOB_HISTORY" | jq -r '.entry[0].resource.status')" "completed"
+test "history 1 status" "$(echo "$JOB_HISTORY" | jq -r '.entry[1].resource.status')" "in-progress"
+test "history 2 status" "$(echo "$JOB_HISTORY" | jq -r '.entry[2].resource.status')" "ready"

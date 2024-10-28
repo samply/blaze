@@ -22,6 +22,7 @@
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.output :as fhir-output]
    [blaze.middleware.fhir.resource :as resource]
+   [blaze.middleware.link-headers :as link-headers]
    [blaze.middleware.output :as output]
    [blaze.module :as m]
    [blaze.spec]
@@ -178,6 +179,10 @@
   {:name :resource
    :wrap resource/wrap-resource})
 
+(def ^:private wrap-link-headers
+  {:name :link-headers
+   :wrap link-headers/wrap-link-headers})
+
 (def ^:private allowed-profiles
   #{#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"
     #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"
@@ -233,9 +238,9 @@
 
 (defn- router
   [{:keys [context-path admin-node validator db-sync-timeout dbs
-           create-job-handler read-job-handler search-type-job-handler
-           pause-job-handler resume-job-handler cancel-job-handler
-           cql-cache-stats-handler cql-bloom-filters-handler]
+           create-job-handler read-job-handler history-job-handler
+           search-type-job-handler pause-job-handler resume-job-handler
+           cancel-job-handler cql-cache-stats-handler cql-bloom-filters-handler]
     :or {context-path ""
          db-sync-timeout 10000}
     :as context}]
@@ -400,6 +405,11 @@
        {:get
         {:middleware [[wrap-db admin-node db-sync-timeout]]
          :handler read-job-handler}}]
+      ["/_history"
+       {:get
+        {:middleware [[wrap-db admin-node db-sync-timeout]
+                      wrap-link-headers]
+         :handler history-job-handler}}]
       ["/$pause"
        {:post
         {:handler pause-job-handler}}]
@@ -533,8 +543,8 @@
 
 (defmethod m/pre-init-spec :blaze/admin-api [_]
   (s/keys :req-un [:blaze/context-path ::admin-node :blaze/job-scheduler
-                   ::read-job-handler ::search-type-job-handler
-                   ::settings ::features]
+                   ::read-job-handler ::history-job-handler
+                   ::search-type-job-handler ::settings ::features]
           :opt [::dbs ::expr/cache ::db-sync-timeout]))
 
 (defmethod ig/init-key :blaze/admin-api
