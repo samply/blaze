@@ -18,6 +18,9 @@ The `docs/deployment/full-standalone` directory contains a Docker Compose file w
 > [!NOTE]
 > You will need about 16 GB of RAM to be able to run the example smoothly. 
 
+> [!NOTE]
+> The example setup uses the default context path /fhir. Currently the UI only works with that default context path.
+
 Before you can start the system, you have to generate certificates for the ingress component. To do so, please go into the base directory of this Blaze repository and run:
 
 ```sh
