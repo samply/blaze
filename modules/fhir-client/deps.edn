@@ -12,7 +12,7 @@
   {:local/root "../fhir-structure"}
 
   com.taoensso/timbre
-  {:mvn/version "6.5.0"}
+  {:mvn/version "6.6.0"}
 
   hato/hato
   {:mvn/version "1.0.0"}}
