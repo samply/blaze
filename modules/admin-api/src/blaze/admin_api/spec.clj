@@ -15,6 +15,9 @@
 (s/def ::admin-api/read-job-handler
   fn?)
 
+(s/def ::admin-api/history-job-handler
+  fn?)
+
 (s/def ::admin-api/search-type-job-handler
   fn?)
 
