@@ -1,10 +1,10 @@
 (ns blaze.page-store.local-test
   (:require
    [blaze.anomaly-spec]
-   [blaze.fhir.test-util :refer [given-failed-future]]
+   [blaze.fhir.test-util]
    [blaze.metrics.core :as metrics]
    [blaze.metrics.spec]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :refer [given-failed-future with-system]]
    [blaze.page-store :as page-store]
    [blaze.page-store-spec]
    [blaze.page-store.local]
@@ -21,7 +21,7 @@
    [taoensso.timbre :as log]))
 
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 

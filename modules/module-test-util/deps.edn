@@ -1,7 +1,10 @@
 {:paths ["src" "resources"]
 
  :deps
- {blaze/async
+ {blaze/anomaly
+  {:local/root "../anomaly"}
+
+  blaze/async
   {:local/root "../async"}
 
   blaze/test-util

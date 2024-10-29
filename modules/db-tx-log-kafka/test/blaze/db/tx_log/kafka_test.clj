@@ -6,9 +6,8 @@
    [blaze.executors :as ex]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
-   [blaze.fhir.test-util :refer [given-failed-future]]
    [blaze.metrics.spec]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :refer [given-failed-future with-system]]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -30,7 +29,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 
