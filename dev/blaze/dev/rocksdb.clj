@@ -1,6 +1,6 @@
 (ns blaze.dev.rocksdb
   (:require
-   [blaze.async.comp :as ac]
+   [blaze.db.kv :as kv]
    [blaze.db.kv.rocksdb :as rocksdb]
    [blaze.db.kv.rocksdb-spec]
    [blaze.dev :refer [system]]
@@ -18,7 +18,7 @@
   (get system [:blaze.db.kv/rocksdb :blaze.db/resource-kv-store]))
 
 (comment
-  (ac/supply-async #(rocksdb/compact-range! (index-kv-store) :resource-as-of-index))
+  @(kv/compact! (index-kv-store) :resource-as-of-index)
 
   (doseq [index [:search-param-value-index
                  :resource-value-index
@@ -36,9 +36,9 @@
                  :system-stats-index
                  :cql-bloom-filter
                  :cql-bloom-filter-by-t]]
-    (ac/supply-async #(rocksdb/compact-range! (index-kv-store) index)))
+    @(kv/compact! (index-kv-store) index))
 
-  (ac/supply-async #(rocksdb/compact-range! (resource-kv-store) :default))
+  @(kv/compact! (resource-kv-store) :default)
 
   (mapv
    (fn [^ThreadStatus status]

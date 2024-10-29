@@ -45,4 +45,6 @@
 
   (-write [store entries])
 
-  (-estimate-num-keys [store column-family]))
+  (-estimate-num-keys [store column-family])
+
+  (-compact [store column-family]))

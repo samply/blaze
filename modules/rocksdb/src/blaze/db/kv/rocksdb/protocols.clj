@@ -9,5 +9,4 @@
   (-agg-long-property [_ name])
   (-tables [_] [_ column-family])
   (-column-family-meta-data [_ column-family])
-  (-compact-range [_ column-family])
   (-drop-column-family [_ column-family]))

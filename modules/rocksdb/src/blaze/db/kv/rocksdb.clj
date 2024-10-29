@@ -1,6 +1,7 @@
 (ns blaze.db.kv.rocksdb
   (:require
-   [blaze.anomaly :as ba :refer [when-ok]]
+   [blaze.anomaly :as ba :refer [if-ok when-ok]]
+   [blaze.async.comp :as ac]
    [blaze.db.kv :as kv]
    [blaze.db.kv.protocols :as kv-p]
    [blaze.db.kv.rocksdb.impl :as impl]
@@ -158,18 +159,6 @@
   [store column-family]
   (p/-column-family-meta-data store column-family))
 
-(defn compact-range!
-  "Runs compaction on `column-family` in `store`.
-
-  After the column family has been compacted, all data will have been pushed
-  down to the last level containing any data.
-
-  Blocks until finished.
-
-  Returns an anomaly if the column family doesn't exist."
-  [store column-family]
-  (p/-compact-range store column-family))
-
 (defn drop-column-family!
   "Drops `column-family` in `store`.
 
@@ -208,6 +197,13 @@
 
   (-estimate-num-keys [store column-family]
     (p/-long-property store column-family "rocksdb.estimate-num-keys"))
+
+  ;; After the column family has been compacted, all data will have been pushed
+  ;; down to the last level containing any data.
+  (-compact [_ column-family]
+    (if-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
+      (ac/supply-async #(.compactRange db cfh))
+      ac/completed-future))
 
   p/Rocks
   (-path [_]
@@ -275,10 +271,6 @@
   (-drop-column-family [_ column-family]
     (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
       (.dropColumnFamily db cfh)))
-
-  (-compact-range [_ column-family]
-    (when-ok [cfh (ba/try-anomaly (impl/get-cfh cfhs column-family))]
-      (.compactRange db cfh)))
 
   AutoCloseable
   (close [_]
