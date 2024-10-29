@@ -8,7 +8,7 @@
    [blaze.db.kv.mem-spec]
    [blaze.db.kv.protocols :as p]
    [blaze.log]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :refer [given-failed-future with-system]]
    [blaze.test-util :as tu :refer [ba bb bytes= given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -589,6 +589,14 @@
     [[:default (ba 0x00) (ba 0x10)]]
 
     (is (= 1 (kv/estimate-num-keys kv-store :default)))))
+
+(deftest compact-test
+  (with-system [{kv-store ::kv/mem} config]
+    (is (nil? @(kv/compact! kv-store :default)))
+
+    (given-failed-future (kv/compact! kv-store :foo)
+      ::anom/category := ::anom/not-found
+      ::anom/message := "Column family `foo` not found.")))
 
 (deftest init-component-test
   (is (kv/store? (ig/init-key ::kv/mem {}))))

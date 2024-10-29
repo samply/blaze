@@ -187,6 +187,15 @@
 (defn estimate-num-keys
   "Returns the estimated number of keys in `column-family` of `store`.
 
-  Returns an anomaly if the column-family was not found."
+  Returns an anomaly if `column-family` was not found."
   [store column-family]
   (p/-estimate-num-keys store column-family))
+
+(defn compact!
+  "Compacts the storage of `column-family` of `store`.
+
+  Returns a CompletableFuture that will complete after the compaction is done
+  or will complete exceptionally with an anomaly if `column-family` was not
+  found."
+  [store column-family]
+  (p/-compact store column-family))

@@ -4,6 +4,7 @@
   It uses sorted maps with byte array keys and values."
   (:require
    [blaze.anomaly :as ba :refer [throw-anom]]
+   [blaze.async.comp :as ac]
    [blaze.byte-buffer :as bb]
    [blaze.db.kv :as kv]
    [blaze.db.kv.protocols :as p]
@@ -180,7 +181,12 @@
   (-estimate-num-keys [_ column-family]
     (if-let [m (get @db column-family)]
       (count m)
-      (column-family-not-found-anom column-family))))
+      (column-family-not-found-anom column-family)))
+
+  (-compact [_ column-family]
+    (ac/completed-future
+     (when-not (get @db column-family)
+       (column-family-not-found-anom column-family)))))
 
 (def ^:private bytes-cmp
   (reify Comparator

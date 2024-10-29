@@ -637,6 +637,26 @@
 
     (is (= 1 (kv/estimate-num-keys db :default)))))
 
+(defn int-ba [i]
+  (bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i)))))
+
+(deftest compact-test
+  (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
+    (is (nil? @(kv/compact! db :default)))
+
+    (given-failed-future (kv/compact! db :foo)
+      ::anom/category := ::anom/not-found
+      ::anom/message := "Column family `foo` not found."))
+
+  (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
+    (run!
+     #(kv/put! db [[:a (int-ba %) (apply ba (range 10000))]])
+     (range 10000 20000))
+
+    @(kv/compact! db :a)
+
+    (is (some? (kv/get db :a (ba 0x27 0x10))))))
+
 (deftest path-test
   (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
     (is (string? (rocksdb/path db)))))
@@ -728,9 +748,6 @@
             ::anom/category := ::anom/not-found
             ::anom/message := "Property with name `name-143127` was not found on column-family with name `a`."))))))
 
-(defn int-ba [i]
-  (bs/to-byte-array (bs/from-hex (str/upper-case (Long/toHexString i)))))
-
 (deftest tables-test
   (testing "default column-family"
     (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
@@ -806,22 +823,6 @@
       (given (rocksdb/column-family-meta-data db :column-family-173005)
         ::anom/category := ::anom/not-found
         ::anom/message := "Column family `column-family-173005` not found."))))
-
-(deftest compact-range-test
-  (with-system [{db ::kv/rocksdb} (a-config (new-temp-dir!))]
-    (run!
-     #(kv/put! db [[:a (int-ba %) (apply ba (range 10000))]])
-     (range 10000 20000))
-
-    (rocksdb/compact-range! db :a)
-
-    (is (some? (kv/get db :a (ba 0x27 0x10)))))
-
-  (testing "with unknown column-family"
-    (with-system [{db ::kv/rocksdb} (config (new-temp-dir!))]
-      (given (rocksdb/compact-range! db :column-family-190947)
-        ::anom/category := ::anom/not-found
-        ::anom/message := "Column family `column-family-190947` not found."))))
 
 (deftest drop-column-family-test
   (let [dir (new-temp-dir!)]
