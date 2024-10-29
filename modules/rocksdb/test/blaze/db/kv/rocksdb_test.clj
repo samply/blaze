@@ -11,7 +11,7 @@
    [blaze.db.kv.rocksdb.column-family-meta-data.level :as-alias column-family-meta-data-level]
    [blaze.db.kv.rocksdb.impl-spec]
    [blaze.db.kv.rocksdb.metrics :as-alias metrics]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.module.test-util :refer [given-failed-future with-system]]
    [blaze.test-util :as tu :refer [ba bb bytes= given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]

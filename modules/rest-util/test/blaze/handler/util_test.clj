@@ -1,9 +1,9 @@
 (ns blaze.handler.util-test
   (:require
    [blaze.async.comp-spec]
-   [blaze.fhir.test-util :refer [given-failed-future]]
    [blaze.handler.util :as handler-util]
    [blaze.luid.spec]
+   [blaze.module.test-util :refer [given-failed-future]]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]

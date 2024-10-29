@@ -2,9 +2,9 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
-   [blaze.fhir.test-util :refer [given-failed-future]]
    [blaze.interaction.search.params :as params]
    [blaze.interaction.search.params-spec]
+   [blaze.module.test-util :refer [given-failed-future]]
    [blaze.page-store.protocols :as p]
    [blaze.preference.handling :as-alias handling]
    [blaze.test-util :as tu]

@@ -7,11 +7,11 @@
    [blaze.async.comp :as ac]
    [blaze.db.api :as d]
    [blaze.db.api-spec]
-   [blaze.fhir.test-util :refer [given-failed-future]]
    [blaze.handler.fhir.util :as fhir-util]
    [blaze.handler.fhir.util-spec]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
+   [blaze.module.test-util :refer [given-failed-future]]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom])

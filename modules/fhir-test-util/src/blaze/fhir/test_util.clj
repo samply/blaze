@@ -1,14 +1,11 @@
 (ns blaze.fhir.test-util
   (:require
-   [blaze.anomaly :as ba]
    [blaze.byte-buffer :as bb]
    [blaze.executors :as ex]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.structure-definition-repo]
-   [clojure.test :refer [is]]
    [integrant.core :as ig]
-   [java-time.api :as time]
-   [juxt.iota :refer [given]])
+   [java-time.api :as time])
   (:import
    [com.google.crypto.tink Aead DeterministicAead KeysetHandle]
    [com.google.crypto.tink.daead DeterministicAeadConfig PredefinedDeterministicAeadParameters]
@@ -18,10 +15,6 @@
 
 (set! *warn-on-reflection* true)
 (DeterministicAeadConfig/register)
-
-(defmacro given-failed-future [future & body]
-  `(given (ba/try-anomaly (deref ~future) (is false))
-     ~@body))
 
 (defmethod ig/init-key :blaze.test/fixed-clock
   [_ _]

@@ -1,8 +1,11 @@
 (ns blaze.module.test-util
   (:require
+   [blaze.anomaly :as ba]
    [blaze.async.comp :refer [do-sync]]
    [clojure.string :as str]
-   [integrant.core :as ig]))
+   [clojure.test :refer [is]]
+   [integrant.core :as ig]
+   [juxt.iota :refer [given]]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,3 +31,7 @@
 (defn common-pool-thread? [thread-name]
   (or (str/starts-with? thread-name "ForkJoinPool.commonPool")
       (= (.getName (Thread/currentThread)) thread-name)))
+
+(defmacro given-failed-future [future & body]
+  `(given (ba/try-anomaly (deref ~future) (is false))
+     ~@body))
