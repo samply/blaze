@@ -8,13 +8,14 @@ Under ideal conditions, Blaze can execute a FHIR Search query for a single code 
 
 The following systems with rising resources were used for performance evaluation:
 
-| System | Provider | CPU        | Cores |     RAM |    SSD | Heap Mem ¹ | Block Cache ² | Resource Cache ³ |
-|--------|----------|------------|------:|--------:|-------:|-----------:|--------------:|-----------------:|
-| LEA25  | on-prem  | EPYC 7543P |     4 |  32 GiB |   2 TB |      8 GiB |         8 GiB |            2.5 M | 
-| LEA36  | on-prem  | EPYC 7543P |     8 |  64 GiB |   2 TB |     16 GiB |        16 GiB |              5 M | 
-| LEA47  | on-prem  | EPYC 7543P |    16 | 128 GiB |   2 TB |     32 GiB |        32 GiB |             10 M | 
-| LEA58  | on-prem  | EPYC 7543P |    32 | 256 GiB |   2 TB |     64 GiB |        64 GiB |             20 M | 
-| CCX42  | Hetzner  | EPYC 7763  |    16 |  64 GiB | 360 GB |     16 GiB |         8 GiB |              5 M | 
+| System | Provider | CPU         | Cores |     RAM |    SSD | Heap Mem ¹ | Block Cache ² | Resource Cache ³ |
+|--------|----------|-------------|------:|--------:|-------:|-----------:|--------------:|-----------------:|
+| LEA25  | on-prem  | EPYC 7543P  |     4 |  32 GiB |   2 TB |      8 GiB |         8 GiB |            2.5 M | 
+| LEA36  | on-prem  | EPYC 7543P  |     8 |  64 GiB |   2 TB |     16 GiB |        16 GiB |              5 M | 
+| LEA47  | on-prem  | EPYC 7543P  |    16 | 128 GiB |   2 TB |     32 GiB |        32 GiB |             10 M | 
+| LEA58  | on-prem  | EPYC 7543P  |    32 | 256 GiB |   2 TB |     64 GiB |        64 GiB |             20 M | 
+| CCX42  | Hetzner  | EPYC 7763   |    16 |  64 GiB | 360 GB |     16 GiB |         8 GiB |              5 M |  
+| A5N46  | on-prem  | Ryzen 9900X |    24 |  96 GiB |   2 TB |     24 GiB |        24 GiB |             10 M |
 
 ¹ Size of the Java Heap (`JAVA_TOOL_OPTIONS`)
 ² Size of the block cache (`DB_BLOCK_CACHE_SIZE`)
@@ -215,6 +216,122 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 | LEA58  | 100k    | 29463-7 |   183 |  1.6 M |    23.18 |  0.217 |    14.64 |
 
 ¹ time in seconds per 1 million resources, ² block cache hit ratio is near zero
+
+## Code and Patient Search
+
+In this section, FHIR Search for selecting Observation resources with a certain code and 100 Patients is used.
+
+### Counting
+
+Counting is done using the following `curl` command:
+
+```sh
+curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&subject=$PATIENT_REFS&_summary=count"
+```
+
+| System | Dataset | Code    | # Hits | Time (s) | StdDev | T/1M ¹ |
+|--------|---------|---------|-------:|---------:|-------:|-------:|
+| A5N46  | 1M      | 8310-5  |    109 |     0.00 |  0.001 |  36.46 |
+| A5N46  | 1M      | 55758-7 |    1 k |     0.01 |  0.001 |   4.55 |
+| A5N46  | 1M      | 72514-3 |    4 k |     0.01 |  0.001 |   1.79 |
+
+¹ time in seconds per 1 million resources
+
+### Download of Resources
+
+Most measurements are done after Blaze is in a steady state with all resources to download in it's resource cache in order to cancel out resource load times from disk or file system cache.
+
+Download is done using the following `blazectl` command:
+
+```sh
+blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&subject=$PATIENT_REFS&_count=1000" > /dev/null"
+```
+
+| System | Dataset | Code    | # Hits | Time (s) | StdDev | T/1M ¹ |
+|--------|---------|---------|-------:|---------:|-------:|-------:|
+| A5N46  | 1M      | 8310-5  |    109 |     0.00 |  0.005 |  30.57 |
+| A5N46  | 1M      | 55758-7 |    1 k |     0.05 |  0.005 |  39.95 |
+| A5N46  | 1M      | 72514-3 |    4 k |     0.09 |  0.005 |  20.88 |
+
+¹ time in seconds per 1 million resources
+
+### Download of Resources with Subsetting
+
+In case only a subset of information of a resource is needed, the special [_elements][1] search parameter can be used to retrieve only certain properties of a resource. Here `_elements=subject` was used.
+
+Most measurements are done after Blaze is in a steady state with all resources to download in it's resource cache in order to cancel out resource load times from disk or file system cache.
+
+Download is done using the following `blazectl` command:
+
+```sh
+blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&subject=$PATIENT_REFS&_elements=subject&_count=1000" > /dev/null"
+```
+
+| System | Dataset | Code    | # Hits | Time (s) | StdDev | T/1M ¹ |
+|--------|---------|---------|-------:|---------:|-------:|-------:|
+| A5N46  | 1M      | 8310-5  |    109 |     0.00 |  0.000 | 0.00 ² |
+| A5N46  | 1M      | 55758-7 |    1 k |     0.03 |  0.000 |  25.68 |
+| A5N46  | 1M      | 72514-3 |    4 k |     0.06 |  0.000 |  14.46 |
+
+¹ time in seconds per 1 million resources, ² to fast to be measured
+
+## Code, Date and Patient Search
+
+In this section, FHIR Search for selecting Observation resources with a certain code, a certain date and 100 Patients is used.
+
+### Counting
+
+Counting is done using the following `curl` command:
+
+```sh
+curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&date=2020&subject=$PATIENT_REFS&_summary=count"
+```
+
+| System | Dataset | Code    | # Hits | Time (s) | StdDev | T/1M ¹ |
+|--------|---------|---------|-------:|---------:|-------:|-------:|
+| A5N46  | 1M      | 8310-5  |     29 |     0.00 |  0.001 | 126.55 |
+| A5N46  | 1M      | 55758-7 |    121 |     0.01 |  0.001 |  63.52 |
+| A5N46  | 1M      | 72514-3 |    420 |     0.01 |  0.001 |  33.34 |
+
+¹ time in seconds per 1 million resources
+
+### Download of Resources
+
+Most measurements are done after Blaze is in a steady state with all resources to download in it's resource cache in order to cancel out resource load times from disk or file system cache.
+
+Download is done using the following `blazectl` command:
+
+```sh
+blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&date=2020&subject=$PATIENT_REFS&_count=1000" > /dev/null"
+```
+
+| System | Dataset | Code    | # Hits | Time (s) | StdDev | T/1M ¹ |
+|--------|---------|---------|-------:|---------:|-------:|-------:|
+| A5N46  | 1M      | 8310-5  |     29 |     0.00 |  0.000 | 0.00 ² |
+| A5N46  | 1M      | 55758-7 |    121 |     0.01 |  0.000 |  82.64 |
+| A5N46  | 1M      | 72514-3 |    420 |     0.02 |  0.000 |  47.61 |
+
+¹ time in seconds per 1 million resources, ² to fast to be measured
+
+### Download of Resources with Subsetting
+
+In case only a subset of information of a resource is needed, the special [_elements][1] search parameter can be used to retrieve only certain properties of a resource. Here `_elements=subject` was used.
+
+Most measurements are done after Blaze is in a steady state with all resources to download in it's resource cache in order to cancel out resource load times from disk or file system cache.
+
+Download is done using the following `blazectl` command:
+
+```sh
+blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&date=2020&subject=$PATIENT_REFS&_elements=subject&_count=1000" > /dev/null"
+```
+
+| System | Dataset | Code    | # Hits | Time (s) | StdDev | T/1M ¹ |
+|--------|---------|---------|-------:|---------:|-------:|-------:|
+| A5N46  | 1M      | 8310-5  |     29 |     0.00 |  0.000 | 0.00 ² |
+| A5N46  | 1M      | 55758-7 |    121 |     0.00 |  0.000 | 0.00 ² |
+| A5N46  | 1M      | 72514-3 |    420 |     0.02 |  0.000 |  47.61 |
+
+¹ time in seconds per 1 million resources, ² to fast to be measured
 
 ## Simple Date Search
 

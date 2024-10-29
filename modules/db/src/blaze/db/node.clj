@@ -29,17 +29,20 @@
    [blaze.db.node.validation :as validation]
    [blaze.db.node.version :as version]
    [blaze.db.resource-store :as rs]
-   [blaze.db.search-param-registry]
+   [blaze.db.search-param-registry :as sr]
    [blaze.db.search-param-registry.spec]
    [blaze.db.tx-log :as tx-log]
    [blaze.executors :as ex]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
    [blaze.module :as m :refer [reg-collector]]
    [blaze.scheduler :as sched]
    [blaze.spec]
    [blaze.util :refer [conj-vec]]
+   [clojure.set :as set]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [java-time.api :as time]
@@ -216,12 +219,42 @@
     (ac/completed-future (deleted-resource resource-handle))
     (rs/get resource-store (rh/hash resource-handle))))
 
+(defn- clause-with-code-fn? [codes]
+  (fn [[search-param]]
+    (codes (:code search-param))))
+
+(defn- has-system? [value]
+  (let [[system code] (str/split value #"\|")]
+    (not (or (str/blank? system) (str/blank? code)))))
+
+(defn- token-clause? [[search-param _ values]]
+  (and (= "token" (:type search-param))
+       (every? has-system? values)))
+
+(defn- compartment-clause-patient-ids [[_ _ values]]
+  (map second (keep fsr/split-literal-ref values)))
+
+(defn- compile-patient-type-query [search-param-registry type clauses]
+  (let [codes (set/intersection
+               #{"subject" "patient"}
+               (set (sr/compartment-resources search-param-registry "Patient" type)))]
+    (when (seq codes)
+      (let [[compartment-clause & more] (filter (clause-with-code-fn? codes) clauses)
+            [token-clause] (filter token-clause? clauses)]
+        (when (and compartment-clause (empty? more) token-clause)
+          (batch-db/->PatientTypeQuery
+           (codec/tid type)
+           (compartment-clause-patient-ids compartment-clause)
+           compartment-clause
+           (into [token-clause] (remove (clause-with-code-fn? (conj codes (:code (first token-clause))))) clauses)))))))
+
 (defn- compile-type-query [search-param-registry type clauses lenient?]
   (when-ok [clauses (index/resolve-search-params search-param-registry type clauses
                                                  lenient?)]
     (if (empty? clauses)
       (batch-db/->EmptyTypeQuery (codec/tid type))
-      (batch-db/->TypeQuery (codec/tid type) clauses))))
+      (or (compile-patient-type-query search-param-registry type clauses)
+          (batch-db/->TypeQuery (codec/tid type) clauses)))))
 
 (defn- compile-compartment-query
   [search-param-registry code type clauses lenient?]
