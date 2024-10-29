@@ -299,6 +299,31 @@
   (-query-clauses [_]
     (decode-clauses clauses)))
 
+(def ^:private ^:const ^long patient-c-hash (codec/c-hash "Patient"))
+
+(defrecord PatientTypeQuery [tid patient-ids compartment-clause clauses]
+  p/Query
+  (-count [query batch-db]
+    (ac/completed-future (count (p/-execute query batch-db))))
+  (-execute [_ batch-db]
+    (coll/eduction
+     (mapcat
+      #(index/compartment-query
+        batch-db [patient-c-hash (codec/id-byte-string %)] tid
+        clauses))
+     patient-ids))
+  (-execute [_ batch-db start-id]
+    (coll/eduction
+     (comp
+      (mapcat
+       #(index/compartment-query
+         batch-db [patient-c-hash (codec/id-byte-string %)] tid
+         clauses))
+      (drop-while #(not= start-id (rh/id %))))
+     patient-ids))
+  (-query-clauses [_]
+    (decode-clauses (into [compartment-clause] clauses))))
+
 (defrecord EmptyTypeQuery [tid]
   p/Query
   (-count [_ batch-db]

@@ -4520,6 +4520,163 @@
               [0 :id] := "id-0"
               [1 :id] := "id-2")))))))
 
+(deftest type-query-observation-code-subject-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/Patient :id "1"}]
+      [:put {:fhir/type :fhir/Observation :id "0"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://loinc.org"
+                  :code #fhir/code"94564-2"
+                  :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+             :subject #fhir/Reference{:reference "Patient/0"}}]
+      [:put {:fhir/type :fhir/Observation :id "1"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://loinc.org"
+                  :code #fhir/code"94564-2"
+                  :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+             :subject #fhir/Reference{:reference "Patient/1"}}]]]
+
+    (doseq [code ["http://loinc.org|94564-2" "94564-2"]]
+      (testing "as first clause"
+        (testing "with one patient"
+          (let [clauses [["subject" "Patient/0"]
+                         ["code" code]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 1
+              [0 :id] := "0")
+
+            (testing "count query"
+              (is (= 1 (count-type-query node "Observation" clauses))))))
+
+        (testing "with two patients"
+          (let [clauses [["subject" "Patient/0" "Patient/1"]
+                         ["code" code]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "0"
+              [1 :id] := "1")
+
+            (testing "it is possible to start with the second observation"
+              (given (pull-type-query node "Observation" clauses "1")
+                count := 1
+                [0 :id] := "1"))
+
+            (testing "count query"
+              (is (= 2 (count-type-query node "Observation" clauses)))))))
+
+      (testing "as second clause"
+        (testing "with one patient"
+          (let [clauses [["code" code]
+                         ["subject" "Patient/0"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 1
+              [0 :id] := "0")
+
+            (testing "count query"
+              (is (= 1 (count-type-query node "Observation" clauses))))))
+
+        (testing "with two patients"
+          (let [clauses [["code" code]
+                         ["subject" "Patient/0" "Patient/1"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "0"
+              [1 :id] := "1")
+
+            (testing "count query"
+              (is (= 2 (count-type-query node "Observation" clauses)))))))
+
+      (testing "with both subject and patient parameters"
+        (testing "with one patient"
+          (let [clauses [["code" code]
+                         ["subject" "Patient/0"]
+                         ["patient" "Patient/0"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 1
+              [0 :id] := "0")
+
+            (testing "count query"
+              (is (= 1 (count-type-query node "Observation" clauses))))))
+
+        (testing "with two patients"
+          (let [clauses [["code" code]
+                         ["subject" "Patient/0" "Patient/1"]
+                         ["patient" "Patient/0" "Patient/1"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "0"
+              [1 :id] := "1")
+
+            (testing "count query"
+              (is (= 2 (count-type-query node "Observation" clauses))))))))))
+
+(deftest type-query-observation-date-subject-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/Patient :id "1"}]
+      [:put {:fhir/type :fhir/Observation :id "0"
+             :effective #fhir/dateTime"1990-06-14T12:24:48Z"
+             :subject #fhir/Reference{:reference "Patient/0"}}]
+      [:put {:fhir/type :fhir/Observation :id "1"
+             :effective #fhir/dateTime"1990-06-14T12:24:48Z"
+             :subject #fhir/Reference{:reference "Patient/1"}}]]]
+
+    (testing "as first clause"
+      (testing "with one patient"
+        (let [clauses [["subject" "Patient/0"]
+                       ["date" "1990-06-14T12:24:48Z"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 1
+            [0 :id] := "0")
+
+          (testing "count query"
+            (is (= 1 (count-type-query node "Observation" clauses))))))
+
+      (testing "with two patients"
+        (let [clauses [["subject" "Patient/0" "Patient/1"]
+                       ["date" "1990-06-14T12:24:48Z"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 2
+            [0 :id] := "0"
+            [1 :id] := "1")
+
+          (testing "it is possible to start with the second observation"
+            (given (pull-type-query node "Observation" clauses "1")
+              count := 1
+              [0 :id] := "1"))
+
+          (testing "count query"
+            (is (= 2 (count-type-query node "Observation" clauses)))))))
+
+    (testing "as second clause"
+      (testing "with one patient"
+        (let [clauses [["date" "1990-06-14T12:24:48Z"]
+                       ["subject" "Patient/0"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 1
+            [0 :id] := "0")
+
+          (testing "count query"
+            (is (= 1 (count-type-query node "Observation" clauses))))))
+
+      (testing "with two patients"
+        (let [clauses [["date" "1990-06-14T12:24:48Z"]
+                       ["subject" "Patient/0" "Patient/1"]]]
+          (given (pull-type-query node "Observation" clauses)
+            count := 2
+            [0 :id] := "0"
+            [1 :id] := "1")
+
+          (testing "count query"
+            (is (= 2 (count-type-query node "Observation" clauses)))))))))
+
 (deftest type-query-list-test
   (testing "item"
     (testing "with no modifier"
@@ -5608,6 +5765,29 @@
             count := 2
             [0] := [:sort "_id" :asc]
             [1] := ["active" "true"])))
+
+      (testing "PatientTypeQuery"
+        (testing "order is - compartment, token and others"
+          (doseq [target [node (d/db node)]]
+            (given (-> (d/compile-type-query target "Observation" [["date" "1990-06-14T12:24:48Z"]
+                                                                   ["code" "http://loinc.org|94564-2"]
+                                                                   ["subject" "Patient/0" "Patient/1"]])
+                       (d/query-clauses))
+              count := 3
+              [0] := ["subject" "Patient/0" "Patient/1"]
+              [1] := ["code" "http://loinc.org|94564-2"]
+              [2] := ["date" "1990-06-14T12:24:48Z"])))
+
+        (testing "subject and patient parameters"
+          (doseq [target [node (d/db node)]]
+            (given (-> (d/compile-type-query target "Observation" [["code" "http://loinc.org|94564-2"]
+                                                                   ["subject" "Patient/0" "Patient/1"]
+                                                                   ["patient" "Patient/0" "Patient/1"]])
+                       (d/query-clauses))
+              count := 3
+              [0] := ["subject" "Patient/0" "Patient/1"]
+              [1] := ["code" "http://loinc.org|94564-2"]
+              [2] := ["patient" "Patient/0" "Patient/1"]))))
 
       (testing "an unknown search-param errors"
         (doseq [target [node (d/db node)]]

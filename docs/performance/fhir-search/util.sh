@@ -31,9 +31,11 @@ calc-print-stats() {
   if (( $(echo "$COUNT > 1000000" | bc) )); then
     COUNT=$(echo "scale=2; $COUNT / 1000000" | bc)
     COUNT_FORMAT="%4.1f M"
-  else
+  elif (( $(echo "$COUNT > 1000" | bc) )); then
     COUNT=$(echo "scale=2; $COUNT / 1000" | bc)
     COUNT_FORMAT="%4.0f k"
+  else
+    COUNT_FORMAT="%6.0f"
   fi
 
   printf "| $COUNT_FORMAT | %8.2f | %6.3f | %6.2f |\n" "$COUNT" "$AVG" "$(echo "$STATS" | jq .stddev)" "$AVG_1M"

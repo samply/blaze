@@ -230,4 +230,7 @@
 
       (testing "only Observation codes"
         (is (= (sr/compartment-resources search-param-registry "Patient" "Observation")
-               ["subject" "performer"]))))))
+               ["subject" "performer"])))
+
+      (testing "Device isn't in patient compartment"
+        (is (empty? (sr/compartment-resources search-param-registry "Patient" "Device")))))))
