@@ -31,13 +31,19 @@ clean: $(MODULES) clean-root
 build-frontend:
 	$(MAKE) -C modules/frontend build
 
+build-frontend-image: build-frontend
+	docker build -t blaze-frontend:latest modules/frontend
+
 build-ingress:
 	$(MAKE) -C modules/ingress all
 
 uberjar: prep
 	clojure -T:build uber
 
-build-all: uberjar build-frontend build-ingress
+build-image: uberjar
+	docker build -t blaze:latest .
+
+build-all: build-image build-frontend-image build-ingress
 
 outdated:
 	clojure -M:outdated
@@ -62,5 +68,5 @@ cloc-test-root:
 cloc-test: $(MODULES) cloc-test-root
 
 .PHONY: $(MODULES) lint-root lint prep test-root test test-coverage clean-root \
-	clean build-frontend build-ingress uberjar build-all outdated deps-tree \
-	deps-list emacs-repl cloc-prod cloc-test
+	clean build-frontend build-frontend-image build-ingress uberjar build-all \
+	outdated deps-tree deps-list emacs-repl cloc-prod cloc-test

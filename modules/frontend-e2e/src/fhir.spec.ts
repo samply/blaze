@@ -110,7 +110,16 @@ test.describe('Admin', () => {
                 await expectActiveNavLink(page, 'Databases');
 
                 await expect(page.getByRole('heading', {name: 'Index'})).toBeVisible();
+                await expect(page.locator("dl").getByText('File System Usage')).toBeVisible();
+                await expect(page.locator("dl").getByText('Usable Space')).toBeVisible();
+                await expect(page.locator("dl").getByText('Block Cache Usage')).toBeVisible();
+                await expect(page.locator("dl").getByText('Compactions')).toBeVisible();
+
                 await expect(page.getByRole('heading', {name: 'Column Families'})).toBeVisible();
+                await expect(page.getByRole('columnheader', { name: 'Name' })).toBeVisible();
+                await expect(page.getByRole('columnheader', { name: '# Keys' })).toBeVisible();
+                await expect(page.getByRole('columnheader', { name: 'File Size' })).toBeVisible();
+                await expect(page.getByRole('columnheader', { name: 'Memtable Size' })).toBeVisible();
 
                 for (const name of ['ResourceAsOfIndex', 'ResourceValueIndex', 'SearchParamValueIndex']) {
                     await expect(page.getByRole('link', {name: name, exact: true})).toBeVisible();
@@ -126,7 +135,13 @@ test.describe('Admin', () => {
                 await expectActiveNavLink(page, 'Databases');
 
                 await expect(page.getByRole('heading', {name: 'Index - ResourceAsOfIndex'})).toBeVisible();
+                await expect(page.locator("dl").getByText('File System Usage')).toBeVisible();
+                await expect(page.locator("dl").getByText('# Files')).toBeVisible();
+
                 await expect(page.getByRole('heading', {name: 'Levels'})).toBeVisible();
+                await expect(page.getByRole('columnheader', { name: 'Level' })).toBeVisible();
+                await expect(page.getByRole('columnheader', { name: '# Files' })).toBeVisible();
+                await expect(page.getByRole('columnheader', { name: 'Size' })).toBeVisible();
             });
         });
     });
@@ -142,14 +157,44 @@ test.describe('Admin', () => {
             await goToJobs(page);
 
             await expect(page).toHaveTitle("Jobs - Admin - Blaze");
+            await expect(page.getByText('All Jobs')).toBeVisible();
             await expect(page.getByRole('link', {name: 'New Job'})).toBeVisible();
         });
 
-        test('Create Job and wait unit completed', async ({page}) => {
+        test('Create Compact a Database Column Family Job and wait unit completed', async ({page}) => {
             await goToJobs(page);
             await page.getByRole('link', {name: 'New Job', exact: true}).click();
 
             await expect(page).toHaveTitle("Create New Job - Admin - Blaze");
+            await page.getByRole('link', {name: 'Compact a Database Column Family'}).click()
+
+            const database = 'Index';
+            const columnFamily = 'ResourceAsOfIndex';
+
+            await page.getByLabel('Database').selectOption(database)
+            await page.getByLabel('Column Family').selectOption(columnFamily)
+            await page.getByRole('button', {name: 'Submit New Job'}).click()
+
+            await expect(page).toHaveTitle(/Job #\d+ - Admin - Blaze/);
+            await expect(page.getByRole('heading', {name: /Job #\d+/})).toBeVisible();
+            await expect(page.getByText('Status')).toBeVisible();
+            await expect(page.getByText('Compact a Database Column Family')).toBeVisible();
+            await expect(page.getByText('Database ' + database)).toBeVisible();
+            await expect(page.getByText('Column Family ' + columnFamily)).toBeVisible();
+
+            // may appear later
+            await expect(page.getByText('Processing Duration')).toBeVisible({timeout: 50000});
+            await expect(page.getByText('Status completed')).toBeVisible({timeout: 50000});
+        });
+
+        test('Create (Re)Index a Search Parameter Job and wait unit completed', async ({page}) => {
+            await goToJobs(page);
+            await page.getByRole('link', {name: 'New Job', exact: true}).click();
+
+            await expect(page).toHaveTitle("Create New Job - Admin - Blaze");
+            await page.getByRole('link', {name: '(Re)Index a Search Parameter'}).click()
+
+            await expect(page).toHaveTitle("Create New (Re)Index a Search Parameter Job - Admin - Blaze");
 
             const searchParamUrl = 'http://hl7.org/fhir/SearchParameter/Resource-profile';
 
@@ -174,7 +219,9 @@ test.describe('Admin', () => {
             await page.getByRole('link', {name: 'New Job', exact: true}).click();
 
             await expect(page).toHaveTitle("Create New Job - Admin - Blaze");
+            await page.getByRole('link', {name: '(Re)Index a Search Parameter'}).click()
 
+            await expect(page).toHaveTitle("Create New (Re)Index a Search Parameter Job - Admin - Blaze");
             await page.getByRole('link', {name: 'Cancel'}).click()
 
             await expect(page).toHaveTitle("Jobs - Admin - Blaze");

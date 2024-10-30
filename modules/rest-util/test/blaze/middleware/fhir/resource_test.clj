@@ -52,6 +52,16 @@
           fhir-spec/fhir-type := :fhir/Patient)
         (is (true? @closed?)))))
 
+  (testing "empty body"
+    (given @(resource-handler
+             {:headers {"content-type" "application/fhir+json"}
+              :body (input-stream "")})
+      :status := 400
+      [:body fhir-spec/fhir-type] := :fhir/OperationOutcome
+      [:body :issue 0 :severity] := #fhir/code"error"
+      [:body :issue 0 :code] := #fhir/code"invalid"
+      [:body :issue 0 :diagnostics] := "No content to map due to end-of-input\n at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1]"))
+
   (testing "body with invalid JSON"
     (given @(resource-handler
              {:headers {"content-type" "application/fhir+json"}

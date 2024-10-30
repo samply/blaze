@@ -696,7 +696,7 @@
            [#fhir/Coding
              {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
               :code #fhir/code"compact"
-              :display "Compact Database Column Families"}]}
+              :display "Compact a Database Column Family"}]}
    :authoredOn #fhir/dateTime"2024-04-13T10:05:20.927Z"
    :input
    [{:fhir/type :fhir.Task/input
@@ -704,8 +704,15 @@
             {:coding
              [#fhir/Coding
                {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter"
-                :code #fhir/code"column-family-name"}]}
-     :value "SearchParamValueIndex"}]})
+                :code #fhir/code"database"}]}
+     :value #fhir/code"index"}
+    {:fhir/type :fhir.Task/input
+     :type #fhir/CodeableConcept
+            {:coding
+             [#fhir/Coding
+               {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter"
+                :code #fhir/code"column-family"}]}
+     :value #fhir/code"search-param-value-index"}]})
 
 (deftest create-job-test
   (testing "no profile"
@@ -790,7 +797,7 @@
               {:request-method :post
                :uri "/fhir/__admin/Task"
                :headers {"content-type" "application/fhir+json"}
-               :body (fhir-spec/unform-json (update-in re-index-job [:code :coding 0] merge {:code #fhir/code"compact" :display "Compact Database Column Families"}))})]
+               :body (fhir-spec/unform-json (update-in re-index-job [:code :coding 0] merge {:code #fhir/code"compact" :display "Compact a Database Column Family"}))})]
 
         (is (= 400 status))
 
@@ -798,9 +805,26 @@
           "resourceType" := "OperationOutcome"
           ["issue" 0 "severity"] := "error"
           ["issue" 0 "code"] := "processing"
-          ["issue" 0 "diagnostics"] := "The pattern [system https://samply.github.io/blaze/fhir/CodeSystem/JobType, code re-index, and display '(Re)Index a Search Parameter'] defined in the profile https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob not found. Issues: [ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.code,message=Value is 'compact' but must be 're-index'], ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.display,message=Value is 'Compact Database Column Families' but must be '(Re)Index a Search Parameter']]"))))
+          ["issue" 0 "diagnostics"] := "The pattern [system https://samply.github.io/blaze/fhir/CodeSystem/JobType, code re-index, and display '(Re)Index a Search Parameter'] defined in the profile https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob not found. Issues: [ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.code,message=Value is 'compact' but must be 're-index'], ValidationMessage[level=ERROR,type=VALUE,location=Task.code.coding.display,message=Value is 'Compact a Database Column Family' but must be '(Re)Index a Search Parameter']]"))))
 
   (testing "re-index job"
+    (testing "non-absolute search-param-url"
+      (with-handler [handler] (config (new-temp-dir!)) []
+        (let [{:keys [status body]}
+              @(handler
+                {:request-method :post
+                 :uri "/fhir/__admin/Task"
+                 :headers {"content-type" "application/fhir+json"}
+                 :body (fhir-spec/unform-json (assoc-in re-index-job [:input 0 :value] #fhir/canonical"foo"))})]
+
+          (is (= 400 status))
+
+          (given body
+            "resourceType" := "OperationOutcome"
+            ["issue" 0 "severity"] := "error"
+            ["issue" 0 "code"] := "processing"
+            ["issue" 0 "diagnostics"] := "Canonical URLs must be absolute URLs if they are not fragment references (foo)"))))
+
     (with-handler [handler] (config (new-temp-dir!)) []
       (let [{:keys [status headers body]}
             @(handler
@@ -825,6 +849,26 @@
           "status" := "draft"))))
 
   (testing "compact job"
+    (testing "unknown database code"
+      (with-handler [handler] (config (new-temp-dir!)) []
+        (let [{:keys [status body]}
+              @(handler
+                {:request-method :post
+                 :uri "/fhir/__admin/Task"
+                 :headers {"content-type" "application/fhir+json"}
+                 :body (fhir-spec/unform-json (assoc-in compact-job [:input 0 :value] #fhir/code"foo"))})]
+
+          (is (= 400 status))
+
+          (given body
+            "resourceType" := "OperationOutcome"
+            ["issue" 0 "severity"] := "error"
+            ["issue" 0 "code"] := "processing"
+            ["issue" 0 "diagnostics"] := "Unknown code 'https://samply.github.io/blaze/fhir/CodeSystem/Database#foo'"
+            ["issue" 1 "severity"] := "error"
+            ["issue" 1 "code"] := "processing"
+            ["issue" 1 "diagnostics"] := "The value provided ('foo') was not found in the value set 'Database Value Set' (https://samply.github.io/blaze/fhir/ValueSet/Database), and a code is required from this value set  (error message = Unknown code 'https://samply.github.io/blaze/fhir/CodeSystem/Database#foo' for in-memory expansion of ValueSet 'https://samply.github.io/blaze/fhir/ValueSet/Database')"))))
+
     (with-handler [handler] (config (new-temp-dir!)) []
       (let [{:keys [status headers body]}
             @(handler

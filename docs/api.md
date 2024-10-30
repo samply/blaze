@@ -188,6 +188,7 @@ The return content is a Bundle with type set to `history` containing the version
 
 The following Operations are implemented:
 
+* [$compact](api/operation-compact.md)
 * [$graphql](http://hl7.org/fhir/resource-operation-graphql.html)
 * [Measure $evaluate-measure](api/operation-measure-evaluate-measure.md)
 * [Patient $everything](api/operation-patient-everything.md)
