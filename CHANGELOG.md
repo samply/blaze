@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.30.2
+
+### Performance
+
+* Improve FHIR Search Performance with Subject References ([#2161](https://github.com/samply/blaze/issues/2161))
+
+### Documentation
+
+* Add Note About Fix Context Path When Using the UI ([#2135](https://github.com/samply/blaze/issues/2135))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/102?closed=1).
+
 ## v0.30.1
 
 ### Bugfixes
