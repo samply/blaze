@@ -1,15 +1,21 @@
 import type { Actions, PageServerLoad } from './$types';
 import { base } from '$app/paths';
 import { error, fail, type NumericRange, redirect } from '@sveltejs/kit';
+import { pascalCase } from 'change-case';
 import { type Job, toJob } from '$lib/jobs';
-import {
-	extractSearchParamUrl,
-	extractProcessingDuration as extractReIndexProcessingDuration
-} from '$lib/jobs/re-index';
 import {
 	extractRequest,
 	extractProcessingDuration as extractAsyncProcessingDuration
 } from '$lib/jobs/async-interaction';
+import {
+	extractDatabase,
+	extractColumnFamily,
+	extractProcessingDuration as extractCompactProcessingDuration
+} from '$lib/jobs/compact';
+import {
+	extractSearchParamUrl,
+	extractProcessingDuration as extractReIndexProcessingDuration
+} from '$lib/jobs/re-index';
 import type { Bundle, BundleEntry, Task } from 'fhir/r4';
 
 export interface SummaryJob extends Job {
@@ -17,10 +23,29 @@ export interface SummaryJob extends Job {
 	processingDuration?: number;
 }
 
-function toSummaryJob(job: Task, includes: BundleEntry[]) {
+function toSummaryJob(job: Task, includes: BundleEntry[]): SummaryJob | undefined {
 	const baseJob = toJob(job);
 	if (baseJob === undefined) {
 		return undefined;
+	}
+
+	if (baseJob.type.code === 'async-interaction') {
+		const request = extractRequest(job, includes);
+		return request === undefined
+			? undefined
+			: { ...baseJob, detail: request, processingDuration: extractAsyncProcessingDuration(job) };
+	}
+
+	if (baseJob.type.code === 'compact') {
+		const database = extractDatabase(job);
+		const columnFamily = extractColumnFamily(job);
+		return database === undefined || columnFamily === undefined
+			? undefined
+			: {
+					...baseJob,
+					detail: pascalCase(database) + ' / ' + pascalCase(columnFamily),
+					processingDuration: extractCompactProcessingDuration(job)
+				};
 	}
 
 	if (baseJob.type.code === 're-index') {
@@ -32,13 +57,6 @@ function toSummaryJob(job: Task, includes: BundleEntry[]) {
 					detail: searchParamUrl,
 					processingDuration: extractReIndexProcessingDuration(job)
 				};
-	}
-
-	if (baseJob.type.code === 'async-interaction') {
-		const request = extractRequest(job, includes);
-		return request === undefined
-			? undefined
-			: { ...baseJob, detail: request, processingDuration: extractAsyncProcessingDuration(job) };
 	}
 
 	return { ...baseJob, detail: 'TODO' };

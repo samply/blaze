@@ -31,6 +31,18 @@
   :args (s/cat :job :fhir/Task :system (s/? string?) :code string?)
   :ret any?)
 
+(s/fdef job-util/error-category
+  :args (s/cat :job :fhir/Task)
+  :ret (s/nilable ::anom/category))
+
+(s/fdef job-util/error-msg
+  :args (s/cat :job :fhir/Task)
+  :ret (s/nilable string?))
+
+(s/fdef job-util/error
+  :args (s/cat :job :fhir/Task)
+  :ret (s/nilable ::anom/anomaly))
+
 (s/fdef job-util/update-output-value
   :args (s/cat :job :fhir/Task :system string? :code string? :f fn? :x any?)
   :ret any?)

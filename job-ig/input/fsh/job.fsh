@@ -7,10 +7,10 @@ CodeSystem: JobType
 Id: JobType
 Title: "Job Type"
 * ^status = #active
-* #re-index "(Re)Index a Search Parameter"
-* #compact "Compact Database Column Families"
 * #async-interaction "Asynchronous Interaction Request"
 * #async-bulk-data "Asynchronous Bulk Data Request"
+* #compact "Compact a Database Column Family"
+* #re-index "(Re)Index a Search Parameter"
 
 CodeSystem: JobStatusReason
 Id: JobStatusReason
@@ -33,7 +33,28 @@ CodeSystem: JobOutput
 Id: JobOutput
 Title: "Job Output"
 * ^status = #active
+* #error-category "Error Category"
 * #error "Error"
+
+CodeSystem: ErrorCategory
+Id: ErrorCategory
+Title: "Error Category"
+* ^status = #active
+* #unavailable
+* #interrupted
+* #busy
+* #incorrect
+* #forbidden
+* #unsupported
+* #not-found
+* #conflict
+* #fault
+
+ValueSet: ErrorCategory
+Id: ErrorCategory
+Title: "Error Category Value Set"
+* ^status = #active
+* include codes from system ErrorCategory
 
 Profile: Job
 Parent: Task
@@ -62,6 +83,12 @@ Parent: Task
 * output ^slicing.discriminator.type = #pattern
 * output ^slicing.discriminator.path = "type"
 * output ^slicing.rules = #open
+* output contains errorCategory 0..1
+* output[errorCategory] ^short = "Error Category"
+* output[errorCategory] ^definition = "Error category."
+* output[errorCategory].type = $JO#error-category
+* output[errorCategory].value[x] only code
+* output[errorCategory].valueCode from ErrorCategory
 * output contains error 0..1
 * output[error] ^short = "Error"
 * output[error] ^definition = "Error message."

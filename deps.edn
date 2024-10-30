@@ -13,6 +13,9 @@
   blaze/interaction
   {:local/root "modules/interaction"}
 
+  blaze.operation/compact
+  {:local/root "modules/operation-compact"}
+
   blaze.operation/graphql
   {:local/root "modules/operation-graphql"}
 

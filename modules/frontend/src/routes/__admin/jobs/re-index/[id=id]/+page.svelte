@@ -14,12 +14,12 @@
 
 	let timeout: ReturnType<typeof setTimeout>;
 
-	// reload page data every 10 seconds if the job is still in progress
+	// reload page data every 5 seconds if the job is still in progress
 	afterUpdate(() => {
-		if (data.job.status === 'in-progress') {
+		if (data.job.status === 'ready' || data.job.status === 'in-progress') {
 			timeout = setTimeout(() => {
 				invalidateAll();
-			}, 10000);
+			}, 5000);
 		}
 	});
 

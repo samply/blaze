@@ -1,8 +1,8 @@
 fmt:
-	cljfmt check build.clj deps.edn
+	cljfmt check src test build.clj deps.edn tests.edn
 
 lint:
-	clj-kondo --lint build.clj deps.edn
+	clj-kondo --lint src test build.clj deps.edn
 
 build:
 	clojure -T:build copy-profiles
@@ -11,14 +11,16 @@ prep: build
 	clojure -X:deps prep
 
 test: prep
-	true
+	clojure -M:test:kaocha --profile :ci
 
 test-coverage: prep
-	true
+	clojure -M:test:coverage
 
 cloc-prod:
+	cloc src
 
 cloc-test:
+	cloc test
 
 clean:
 	rm -rf .clj-kondo/.cache .cpcache target resources

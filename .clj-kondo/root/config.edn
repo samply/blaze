@@ -72,6 +72,8 @@
     blaze.fhir.spec.references fsr
     blaze.fhir.structure-definition-repo sdr
     blaze.job-scheduler js
+    blaze.job.async-interaction job-async
+    blaze.job.compact job-compact
     blaze.middleware.fhir.db db
     blaze.rest-api.header header
     blaze.scheduler sched

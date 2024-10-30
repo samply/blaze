@@ -34,6 +34,7 @@
   "Tries to pull the job with `status` from `system`.
 
   Waits until `status` is reached or 10 seconds are eclipsed."
+  {:arglists '([system status] [system job-id status])}
   ([{:blaze/keys [job-scheduler] :as system} status]
    (pull-job system (job-id job-scheduler) status))
   ([system job-id status]

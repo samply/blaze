@@ -184,9 +184,9 @@
    :wrap link-headers/wrap-link-headers})
 
 (def ^:private allowed-profiles
-  #{#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"
+  #{#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"
     #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"
-    #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"})
+    #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"})
 
 (defn- check-profile [resource]
   (if (some allowed-profiles (-> resource :meta :profile))
@@ -462,18 +462,24 @@
   (let [s (PrePopulatedValidationSupport. context)]
     (run!
      #(.addResource s (load-profile context %))
-     ["blaze/job_scheduler/StructureDefinition-Job.json"
+     ["blaze/db/CodeSystem-ColumnFamily.json"
+      "blaze/db/CodeSystem-Database.json"
+      "blaze/db/ValueSet-ColumnFamily.json"
+      "blaze/db/ValueSet-Database.json"
+      "blaze/job_scheduler/StructureDefinition-Job.json"
       "blaze/job_scheduler/CodeSystem-JobType.json"
       "blaze/job_scheduler/CodeSystem-JobOutput.json"
       "blaze/job/async_interaction/StructureDefinition-AsyncInteractionJob.json"
       "blaze/job/async_interaction/StructureDefinition-AsyncInteractionRequestBundle.json"
       "blaze/job/async_interaction/StructureDefinition-AsyncInteractionResponseBundle.json"
-      "blaze/job/async_interaction/CodeSystem-AsyncInteractionJobParameter.json"
       "blaze/job/async_interaction/CodeSystem-AsyncInteractionJobOutput.json"
+      "blaze/job/async_interaction/CodeSystem-AsyncInteractionJobParameter.json"
+      "blaze/job/compact/CodeSystem-CompactJobOutput.json"
+      "blaze/job/compact/CodeSystem-CompactJobParameter.json"
       "blaze/job/compact/StructureDefinition-CompactJob.json"
       "blaze/job/re_index/StructureDefinition-ReIndexJob.json"
-      "blaze/job/re_index/CodeSystem-ReIndexJobParameter.json"
-      "blaze/job/re_index/CodeSystem-ReIndexJobOutput.json"])
+      "blaze/job/re_index/CodeSystem-ReIndexJobOutput.json"
+      "blaze/job/re_index/CodeSystem-ReIndexJobParameter.json"])
     s))
 
 (defn- create-validator* []

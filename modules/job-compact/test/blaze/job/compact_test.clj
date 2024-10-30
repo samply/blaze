@@ -1,0 +1,237 @@
+(ns blaze.job.compact-test
+  (:require
+   [blaze.db.api-spec]
+   [blaze.db.kv :as kv :refer [store?]]
+   [blaze.db.kv.mem]
+   [blaze.db.node :as node]
+   [blaze.db.resource-store :as rs]
+   [blaze.db.resource-store.kv :as rs-kv]
+   [blaze.db.search-param-registry]
+   [blaze.db.tx-cache]
+   [blaze.db.tx-log :as tx-log]
+   [blaze.db.tx-log.local]
+   [blaze.fhir.test-util :refer [structure-definition-repo]]
+   [blaze.job-scheduler :as js]
+   [blaze.job.compact :as job-compact]
+   [blaze.job.compact-spec]
+   [blaze.job.test-util :as jtu]
+   [blaze.job.util :as job-util]
+   [blaze.log]
+   [blaze.module.test-util :refer [with-system]]
+   [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.spec.alpha :as s]
+   [clojure.spec.test.alpha :as st]
+   [clojure.test :as test :refer [deftest testing]]
+   [integrant.core :as ig]
+   [java-time.api :as time]
+   [juxt.iota :refer [given]]))
+
+(set! *warn-on-reflection* true)
+(st/instrument)
+
+(test/use-fixtures :each tu/fixture)
+
+(deftest init-test
+  (testing "nil config"
+    (given-thrown (ig/init {:blaze.job/compact nil})
+      :key := :blaze.job/compact
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `map?))
+
+  (testing "missing config"
+    (given-thrown (ig/init {:blaze.job/compact {}})
+      :key := :blaze.job/compact
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :index-db))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))))
+
+  (testing "invalid :index-db"
+    (given-thrown (ig/init {:blaze.job/compact {:index-db ::invalid}})
+      :key := :blaze.job/compact
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :admin-node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 2 :pred] := `store?
+      [:cause-data ::s/problems 2 :val] := ::invalid)))
+
+(derive :blaze.db.admin/node :blaze.db/node)
+
+(def config
+  {:blaze/job-scheduler
+   {:node (ig/ref :blaze.db.admin/node)
+    :handlers {:blaze.job/compact (ig/ref :blaze.job/compact)}
+    :clock (ig/ref :blaze.test/offset-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+
+   :blaze.job/compact
+   {:index-db (ig/ref :blaze.db.main/index-kv-store)
+    :admin-node (ig/ref :blaze.db.admin/node)
+    :clock (ig/ref :blaze.test/offset-clock)}
+
+   :blaze.db.admin/node
+   {:tx-log (ig/ref :blaze.db.admin/tx-log)
+    :tx-cache (ig/ref :blaze.db.admin/tx-cache)
+    :indexer-executor (ig/ref :blaze.db.node.admin/indexer-executor)
+    :resource-store (ig/ref :blaze.db/resource-store)
+    :kv-store (ig/ref :blaze.db.admin/index-kv-store)
+    :resource-indexer (ig/ref :blaze.db.node.admin/resource-indexer)
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :scheduler (ig/ref :blaze/scheduler)
+    :poll-timeout (time/millis 10)}
+
+   [::tx-log/local :blaze.db.admin/tx-log]
+   {:kv-store (ig/ref :blaze.db.admin/transaction-kv-store)
+    :clock (ig/ref :blaze.test/fixed-clock)}
+
+   [::kv/mem :blaze.db.admin/transaction-kv-store]
+   {:column-families {}}
+
+   [:blaze.db/tx-cache :blaze.db.admin/tx-cache]
+   {:kv-store (ig/ref :blaze.db.admin/index-kv-store)}
+
+   [::node/indexer-executor :blaze.db.node.admin/indexer-executor]
+   {}
+
+   [::kv/mem :blaze.db.main/index-kv-store]
+   {:column-families
+    {:search-param-value-index nil
+     :resource-value-index nil
+     :compartment-search-param-value-index nil
+     :compartment-resource-type-index nil
+     :active-search-params nil
+     :tx-success-index {:reverse-comparator? true}
+     :tx-error-index nil
+     :t-by-instant-index {:reverse-comparator? true}
+     :resource-as-of-index nil
+     :type-as-of-index nil
+     :system-as-of-index nil
+     :type-stats-index nil
+     :system-stats-index nil}}
+
+   [::kv/mem :blaze.db.admin/index-kv-store]
+   {:column-families
+    {:search-param-value-index nil
+     :resource-value-index nil
+     :compartment-search-param-value-index nil
+     :compartment-resource-type-index nil
+     :active-search-params nil
+     :tx-success-index {:reverse-comparator? true}
+     :tx-error-index nil
+     :t-by-instant-index {:reverse-comparator? true}
+     :resource-as-of-index nil
+     :type-as-of-index nil
+     :system-as-of-index nil
+     :type-stats-index nil
+     :system-stats-index nil}}
+
+   [::node/resource-indexer :blaze.db.node.admin/resource-indexer]
+   {:kv-store (ig/ref :blaze.db.admin/index-kv-store)
+    :resource-store (ig/ref :blaze.db/resource-store)
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :executor (ig/ref :blaze.db.node.resource-indexer.admin/executor)}
+
+   [:blaze.db.node.resource-indexer/executor :blaze.db.node.resource-indexer.admin/executor]
+   {}
+
+   ::rs/kv
+   {:kv-store (ig/ref :blaze.db/resource-kv-store)
+    :executor (ig/ref ::rs-kv/executor)}
+
+   [::kv/mem :blaze.db/resource-kv-store]
+   {:column-families {}}
+
+   ::rs-kv/executor {}
+
+   :blaze.db/search-param-registry
+   {:structure-definition-repo structure-definition-repo}
+
+   :blaze/scheduler {}
+
+   :blaze.test/fixed-clock {}
+
+   :blaze.test/offset-clock
+   {:clock (ig/ref :blaze.test/fixed-clock)
+    :offset-seconds 11}
+
+   :blaze.test/fixed-rng-fn {}})
+
+(def job-missing-database
+  {:fhir/type :fhir/Task
+   :meta #fhir/Meta{:profile [#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"]}
+   :status #fhir/code"ready"
+   :intent #fhir/code"order"
+   :code
+   #fhir/CodeableConcept
+    {:coding
+     [#fhir/Coding
+       {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
+        :code #fhir/code"compact"
+        :display "Compact a Database Column Family"}]}})
+
+(def job-missing-column-family
+  (assoc
+   job-missing-database
+   :input
+   [{:fhir/type :fhir.Task/input
+     :type #fhir/CodeableConcept
+            {:coding
+             [#fhir/Coding
+               {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/CompactJobParameter"
+                :code #fhir/code"database"}]}
+     :value #fhir/code "index"}]))
+
+(defn- output-value [job code]
+  (job-util/output-value job "https://samply.github.io/blaze/fhir/CodeSystem/CompactJobOutput" code))
+
+(defn- processing-duration [job]
+  (output-value job "processing-duration"))
+
+(deftest simple-job-execution-test
+  (testing "success"
+    (testing "increment three times, once for each index"
+      (with-system [{:blaze/keys [job-scheduler] :as system} config]
+
+        @(js/create-job job-scheduler (job-compact/job (time/offset-date-time) "index" "resource-as-of-index"))
+
+        (testing "the job is completed"
+          (given @(jtu/pull-job system :completed)
+            :fhir/type := :fhir/Task
+            job-util/job-number := "1"
+            jtu/combined-status := :completed
+            [processing-duration :value] :? pos?
+            [processing-duration :unit] := #fhir/string"s"
+            [processing-duration :system] := #fhir/uri"http://unitsofmeasure.org"
+            [processing-duration :code] := #fhir/code"s"))
+
+        (testing "job history"
+          (given @(jtu/pull-job-history system)
+            count := 3
+
+            [0 jtu/combined-status] := :ready
+            [1 jtu/combined-status] := :in-progress/started
+            [2 jtu/combined-status] := :completed)))))
+
+  (testing "missing database"
+    (with-system [{:blaze/keys [job-scheduler] :as system} config]
+
+      @(js/create-job job-scheduler job-missing-database)
+
+      (testing "the job has failed"
+        (given @(jtu/pull-job system :failed)
+          :fhir/type := :fhir/Task
+          job-util/job-number := "1"
+          jtu/combined-status := :failed
+          job-util/error-msg := "Missing `database` parameter."))))
+
+  (testing "missing column-family"
+    (with-system [{:blaze/keys [job-scheduler] :as system} config]
+
+      @(js/create-job job-scheduler job-missing-column-family)
+
+      (testing "the job has failed"
+        (given @(jtu/pull-job system :failed)
+          :fhir/type := :fhir/Task
+          job-util/job-number := "1"
+          jtu/combined-status := :failed
+          job-util/error-msg := "Missing `column-family` parameter.")))))

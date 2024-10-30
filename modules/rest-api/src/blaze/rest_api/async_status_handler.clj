@@ -5,6 +5,7 @@
    [blaze.fhir.spec.references :as fsr]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.fhir.util :as fhir-util]
+   [blaze.handler.util :as handler-util]
    [blaze.job.async-interaction :as job-async]
    [blaze.job.util :as job-util]
    [blaze.rest-api :as-alias rest-api]
@@ -32,13 +33,26 @@
               (ba/not-found
                (format "The asynchronous request with id `%s` is cancelled." id)))
              "completed"
-             (let [[type id] (some-> job job-async/response-bundle-ref fsr/split-literal-ref)]
+             (if-let [[type id] (some-> job job-async/response-bundle-ref fsr/split-literal-ref)]
                (do-sync [response-bundle (fhir-util/pull db type id)]
-                 (ring/response response-bundle)))
+                 (ring/response response-bundle))
+               (ac/completed-future
+                (ring/response
+                 {:fhir/type :fhir/Bundle
+                  :type #fhir/code"batch-response"
+                  :entry
+                  [{:fhir/type :fhir.Bundle/entry
+                    :response {:fhir/type :fhir.Bundle.entry/response
+                               :status "200"}}]})))
              "failed"
              (ac/completed-future
-              (ba/fault
-               (format "The asynchronous request with id `%s` failed. Cause: %s" id (job-util/error-msg job))))))))))
+              (ring/response
+               {:fhir/type :fhir/Bundle
+                :type #fhir/code"batch-response"
+                :entry
+                [{:fhir/type :fhir.Bundle/entry
+                  :response (handler-util/bundle-error-response
+                             (job-util/error job))}]}))))))))
 
 (defmethod ig/init-key ::rest-api/async-status-handler
   [_ _]

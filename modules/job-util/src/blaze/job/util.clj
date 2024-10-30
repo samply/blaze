@@ -95,10 +95,22 @@
   ([{:keys [output]} system code]
    (some (io-pred system code) output)))
 
+(defn error-category
+  "Returns the error category of `job` in case it failed and an error category
+  is available."
+  [job]
+  (some->> (output-value job "error-category") (keyword "cognitect.anomalies")))
+
 (defn error-msg
   "Returns the error message of `job` in case it failed."
   [job]
   (output-value job "error"))
+
+(defn error
+  "Returns the error as anomaly of `job` in case it failed."
+  [job]
+  (when-let [msg (error-msg job)]
+    #::anom{:category (or (error-category job) ::anom/fault) :message msg}))
 
 (defn- update-output-value* [system code f x output]
   (cond-> output
@@ -200,7 +212,8 @@
   [{::anom/keys [category] ::js/keys [action]}]
   (and (= ::anom/conflict category) (= :update-job action)))
 
-(defn fail-job [job {::anom/keys [message]}]
+(defn fail-job [job {::anom/keys [category message]}]
   (-> (assoc job :status #fhir/code"failed")
       (dissoc :statusReason :businessStatus)
+      (add-output "error-category" (name category))
       (add-output "error" (or message "empty error message"))))

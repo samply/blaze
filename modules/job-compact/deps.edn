@@ -1,8 +1,11 @@
-{:paths ["resources"]
+{:paths ["resources" "src"]
 
  :deps
  {blaze/job-scheduler
   {:local/root "../job-scheduler"}
+
+  blaze/kv
+  {:local/root "../kv"}
 
   blaze/module-base
   {:local/root "../module-base"}}
@@ -17,4 +20,28 @@
   {:deps
    {io.github.clojure/tools.build
     {:git/tag "v0.10.5" :git/sha "2a21b7a"}}
-   :ns-default build}}}
+   :ns-default build}
+
+  :test
+  {:extra-paths ["test"]
+
+   :extra-deps
+   {blaze/db-stub
+    {:local/root "../db-stub"}
+
+    blaze/job-test-util
+    {:local/root "../job-test-util"}}}
+
+  :kaocha
+  {:extra-deps
+   {lambdaisland/kaocha
+    {:mvn/version "1.91.1392"}}
+
+   :main-opts ["-m" "kaocha.runner"]}
+
+  :coverage
+  {:extra-deps
+   {lambdaisland/kaocha-cloverage
+    {:mvn/version "1.1.89"}}
+
+   :main-opts ["-m" "kaocha.runner" "--profile" "coverage"]}}}

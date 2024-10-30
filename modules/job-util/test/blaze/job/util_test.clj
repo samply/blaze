@@ -227,7 +227,7 @@
         (given @(job-util/update-job+ node job [{:fhir/type :fhir/Bundle :id "0"}]
                                       job-util/fail-job (ba/fault "msg-181135"))
           :status := #fhir/code"failed"
-          job-util/error-msg := "msg-181135")
+          job-util/error := (ba/fault "msg-181135"))
 
         (is (some? (d/resource-handle (d/db node) "Bundle" "0")))))))
 

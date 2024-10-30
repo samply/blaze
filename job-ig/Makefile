@@ -10,4 +10,7 @@ validator_cli.jar:
 validate: validator_cli.jar
 	java -jar validator_cli.jar -version 4.0.1 -level error -debug -ig fsh-generated/resources fsh-generated/resources/Task-*.json fsh-generated/resources/Bundle-*.json
 
-.PHONY: install build validate
+clean:
+	rm -r fsh-generated
+
+.PHONY: install build validate clean

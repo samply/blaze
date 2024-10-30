@@ -431,6 +431,11 @@
    :clock #blaze/ref :blaze/clock
    :rng-fn #blaze/ref :blaze/rng-fn}
 
+  :blaze.job/compact
+  {:index-db #blaze/ref :blaze.db.main/index-kv-store
+   :admin-node #blaze/ref :blaze.db.admin/node
+   :clock #blaze/ref :blaze/clock}
+
   :blaze.job/re-index
   {:main-node #blaze/ref :blaze.db.main/node
    :admin-node #blaze/ref :blaze.db.admin/node
@@ -577,6 +582,10 @@
    ;;
    :blaze/admin-api
    {:dbs {}}
+
+   :blaze.job/compact
+   {:transaction-db #blaze/ref :blaze.db.main/transaction-kv-store
+    :resource-db #blaze/ref :blaze.db/resource-kv-store}
 
    ;;
    ;; Local Page Store
@@ -931,6 +940,10 @@
      "transaction" #blaze/ref :blaze.db.main/transaction-kv-store
      "resource" #blaze/ref :blaze.db/resource-kv-store}}
 
+   :blaze.job/compact
+   {:transaction-db #blaze/ref :blaze.db.main/transaction-kv-store
+    :resource-db #blaze/ref :blaze.db/resource-kv-store}
+
    ;;
    ;; Local Page Store
    ;;
@@ -1274,7 +1287,19 @@
      :admin-handler #blaze/ref :blaze/admin-api}
 
     :blaze.rest-api/metadata-handler
-    {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}}}
+    {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}
+
+    :blaze.fhir.operation/compact
+    {:clock #blaze/ref :blaze/clock
+     :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]}
+
+    :blaze.rest-api/operations
+    [#:blaze.rest-api.operation
+            {:code "compact"
+             :def-uri "https://samply.github.io/blaze/fhir/OperationDefinition/compact"
+             :affects-state true
+             :system-handler #blaze/ref :blaze.fhir.operation/compact
+             :documentation "This operation is used to compact a certain column family of a certain database. It will be always async."}]}}
 
   ;;
   ;; OpenID Authentication

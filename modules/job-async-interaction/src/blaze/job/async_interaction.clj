@@ -14,7 +14,8 @@
    [blaze.rest-api :as-alias rest-api]
    [blaze.spec]
    [clojure.spec.alpha :as s]
-   [integrant.core :as ig]))
+   [integrant.core :as ig]
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -142,6 +143,7 @@
 
 (defmethod ig/init-key :blaze.job/async-interaction
   [_ config]
+  (log/info "Init async-interaction job handler")
   (let [context (assoc config ::running-jobs (atom {}))]
     (reify p/JobHandler
       (-on-start [_ job]

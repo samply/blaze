@@ -7,4 +7,4 @@ run-patient-everything:
 report:
 	./report.sh /tmp/test-results.json
 
-.PHONY: fmt lint test-coverage cloc-prod cloc-test run-read-single-patient run-patient-everything
+.PHONY: fmt lint test-coverage cloc-prod cloc-test clean run-read-single-patient run-patient-everything

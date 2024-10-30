@@ -3,13 +3,10 @@ import { base } from '$app/paths';
 import type { OperationOutcome, Task } from 'fhir/r4';
 import { fail, redirect } from '@sveltejs/kit';
 
-const display = new Map();
-display.set('re-index', '(Re)Index a Search Parameter');
-
 export const actions = {
 	default: async ({ request, fetch }) => {
 		const data = await request.formData();
-		const searchParamUrl = data.get('search-param-url');
+		const searchParamUrl = data.get('search-param-url') as string;
 
 		const res = await fetch(`${base}/__admin/Task`, {
 			method: 'POST',
@@ -24,9 +21,9 @@ export const actions = {
 				code: {
 					coding: [
 						{
-							code: data.get('type'),
+							code: 're-index',
 							system: 'https://samply.github.io/blaze/fhir/CodeSystem/JobType',
-							display: display.get(data.get('type'))
+							display: '(Re)Index a Search Parameter'
 						}
 					]
 				},
@@ -49,7 +46,11 @@ export const actions = {
 
 		if (!res.ok) {
 			const error: OperationOutcome = await res.json();
-			return fail(400, { searchParamUrl, incorrect: true, msg: error.issue[0]?.details?.text });
+			return fail(400, {
+				searchParamUrl,
+				incorrect: true,
+				msg: error.issue[0]?.diagnostics ?? error.issue[0]?.details?.text
+			});
 		}
 
 		const task: Task = await res.json();

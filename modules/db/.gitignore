@@ -1,1 +1,3 @@
-resources/blaze/db/Bundle-JobSearchParameterBundle.json
+resources/blaze/db/Bundle-*
+resources/blaze/db/CodeSystem-*
+resources/blaze/db/ValueSet-*
