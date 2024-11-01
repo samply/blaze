@@ -7,13 +7,13 @@
    [blaze.elm.expression.cache.codec :as codec]
    [blaze.elm.expression.cache.codec.form :as form]
    [blaze.elm.resource :as cr]
+   [java-time.api :as time]
    [prometheus.alpha :as prom :refer [defhistogram]]
    [taoensso.timbre :as log])
   (:import
    [blaze.elm.expression.cache.codec BloomFilterContainer]
    [blaze.elm.resource Resource]
-   [com.google.common.hash BloomFilter]
-   [java.time OffsetDateTime]))
+   [com.google.common.hash BloomFilter]))
 
 (set! *warn-on-reflection* true)
 
@@ -63,7 +63,7 @@
       []
       (comp (map (partial cr/mk-resource batch-db))
             xform
-            (filter (partial expr/eval {:db batch-db :now (OffsetDateTime/now)} expression))
+            (filter (partial expr/eval {:db batch-db :now (time/offset-date-time)} expression))
             (map :id))
       (d/type-list db "Patient")))))
 

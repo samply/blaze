@@ -18,19 +18,15 @@
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
    [integrant.core :as ig]
+   [java-time.api :as time]
    [juxt.iota :refer [given]]
-   [taoensso.timbre :as log])
-  (:import
-   [java.time Clock OffsetDateTime]))
+   [taoensso.timbre :as log]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
-
-(defn- now [clock]
-  (OffsetDateTime/now ^Clock clock))
 
 (def library-empty
   "library Retrieve
@@ -96,7 +92,7 @@
    library]
   (let [{:keys [expression-defs function-defs]} (compile-library node library)]
     {:db (d/db node)
-     :now (now fixed-clock)
+     :now (time/offset-date-time fixed-clock)
      ::expr/cache cache
      :interrupted? (constantly nil)
      :expression-defs expression-defs
