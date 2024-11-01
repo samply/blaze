@@ -23,11 +23,9 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
-   [juxt.iota :refer [given]])
-  (:import
-   [java.time OffsetDateTime]))
+   [java-time.api :as time]
+   [juxt.iota :refer [given]]))
 
-(set! *warn-on-reflection* true)
 (st/instrument)
 (ctu/instrument-compile)
 
@@ -40,7 +38,7 @@
 (test/use-fixtures :each fixture)
 
 (defn- eval-context [db]
-  {:db db :now (OffsetDateTime/now)})
+  {:db db :now (time/offset-date-time)})
 
 ;; 11.1. Retrieve
 ;;

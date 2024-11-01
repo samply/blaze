@@ -14,9 +14,8 @@
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.string :as str]
-   [clojure.test :as test :refer [deftest is testing]])
-  (:import
-   [java.time OffsetDateTime]))
+   [clojure.test :as test :refer [deftest is testing]]
+   [java-time.api :as time]))
 
 (st/instrument)
 
@@ -86,7 +85,7 @@
          `(testing ~name
             ~@(for [{:keys [name expression invalid? output]} tests]
                 `(testing ~name
-                   (let [~'now (OffsetDateTime/now)]
+                   (let [~'now (time/offset-date-time)]
                      ~(if invalid?
                         `(is (~'thrown? Exception (eval ~'now ~expression)))
                         `(is

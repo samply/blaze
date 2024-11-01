@@ -24,7 +24,7 @@
    [taoensso.timbre :as log])
   (:import
    [java.nio.charset StandardCharsets]
-   [java.time Clock Duration OffsetDateTime]
+   [java.time Clock Duration]
    [java.util Base64]))
 
 (set! *warn-on-reflection* true)
@@ -379,9 +379,6 @@
     (seq result)
     (assoc :group result)))
 
-(defn- now [clock]
-  (OffsetDateTime/now ^Clock clock))
-
 (defn- luid-generator [{:keys [clock rng-fn]}]
   (luid/generator clock (rng-fn)))
 
@@ -436,7 +433,7 @@
     :as context} measure
    {:keys [report-type subject-ref]}]
   (let [subject-type (subject-type measure)
-        now (now clock)
+        now (time/offset-date-time clock)
         timeout-eclipsed? (timeout-eclipsed-fn clock now timeout)]
     (do-sync [{:keys [expression-defs function-defs parameter-default-values]}
               (compile-primary-library db measure {})]

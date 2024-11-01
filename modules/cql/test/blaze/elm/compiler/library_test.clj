@@ -15,12 +15,10 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [java-time.api :as time]
    [juxt.iota :refer [given]]
-   [taoensso.timbre :as log])
-  (:import
-   [java.time OffsetDateTime]))
+   [taoensso.timbre :as log]))
 
-(set! *warn-on-reflection* true)
 (st/instrument)
 (log/set-min-level! :trace)
 
@@ -405,7 +403,7 @@
             (testing "the whole exists expression optimizes to false"
               (let [db (d/db node)]
                 (given (->> (library/eval-unfiltered {:db db
-                                                      :now (OffsetDateTime/now)}
+                                                      :now (time/offset-date-time)}
                                                      expression-defs)
                             (library/resolve-all-refs)
                             (library/optimize db))
@@ -462,7 +460,7 @@
               (testing "the whole exists expression optimizes to false"
                 (let [db (d/db node)]
                   (given (->> (library/eval-unfiltered {:db db
-                                                        :now (OffsetDateTime/now)}
+                                                        :now (time/offset-date-time)}
                                                        expression-defs)
                               (library/resolve-all-refs)
                               (library/optimize db))
@@ -515,7 +513,7 @@
               (testing "the first query optimizes away"
                 (let [db (d/db node)]
                   (given (->> (library/eval-unfiltered {:db db
-                                                        :now (OffsetDateTime/now)}
+                                                        :now (time/offset-date-time)}
                                                        expression-defs)
                               (library/resolve-all-refs)
                               (library/optimize db))

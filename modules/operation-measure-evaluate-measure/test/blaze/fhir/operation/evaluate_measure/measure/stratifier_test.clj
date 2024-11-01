@@ -14,17 +14,13 @@
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
-   [juxt.iota :refer [given]])
-  (:import
-   [java.time Clock OffsetDateTime]))
+   [java-time.api :as time]
+   [juxt.iota :refer [given]]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
 
 (test/use-fixtures :each tu/fixture)
-
-(defn- now [clock]
-  (OffsetDateTime/now ^Clock clock))
 
 (defn- compile-library [node cql]
   (when-ok [library (cql-translator/translate cql)]
@@ -160,7 +156,7 @@
   (let [{:keys [expression-defs function-defs]} (compile-library node library)]
     (cond->
      {:db (d/db node)
-      :now (now fixed-clock)
+      :now (time/offset-date-time fixed-clock)
       :interrupted? (constantly nil)
       :expression-defs expression-defs
       :executor executor}

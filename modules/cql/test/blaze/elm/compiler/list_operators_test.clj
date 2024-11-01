@@ -33,9 +33,8 @@
    [clojure.test :as test :refer [are deftest is testing]]
    [clojure.test.check.properties :as prop]
    [integrant.core :as ig]
-   [juxt.iota :refer [given]])
-  (:import
-   [java.time OffsetDateTime]))
+   [java-time.api :as time]
+   [juxt.iota :refer [given]]))
 
 (set! *warn-on-reflection* true)
 (st/instrument)
@@ -317,7 +316,7 @@
               expr (c/compile compile-context elm)
               eval-context
               {:db db
-               :now (OffsetDateTime/now)}]
+               :now (time/offset-date-time)}]
 
           (testing "has no Observation at the beginning"
             (let [[expr bloom-filters] (c/attach-cache expr cache)]
@@ -366,7 +365,7 @@
               expr (c/compile compile-context elm)
               eval-context
               {:db db
-               :now (OffsetDateTime/now)}]
+               :now (time/offset-date-time)}]
 
           (testing "has no Observation at the beginning"
             (is (false? (expr/eval eval-context expr patient))))
