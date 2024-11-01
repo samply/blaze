@@ -2,7 +2,7 @@
   (:require
    [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.anomaly-spec]
-   [blaze.cql-translator :as cql-translator]
+   [blaze.cql.translator :as cql-translator]
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.elm.compiler.library :as library]

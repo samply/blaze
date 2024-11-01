@@ -5,7 +5,7 @@
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
    [blaze.anomaly :as ba]
-   [blaze.cql-translator :as t]
+   [blaze.cql.translator :as t]
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.elm.compiler :as c]

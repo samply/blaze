@@ -3,7 +3,7 @@
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.coll.core :as coll]
-   [blaze.cql-translator :as cql-translator]
+   [blaze.cql.translator :as cql-translator]
    [blaze.db.api :as d]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.library :as library]

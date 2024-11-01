@@ -41,7 +41,7 @@
 
 ### CQL → ELM Translation
 
-The Expression Logical Model (ELM) is the abstract syntax tree (AST) form of CQL. Blaze uses the CQL → ELM translator from the [Clinical Quality Framework][1] project. After that translation, the ELM expressions are available in JSON form and are parsed into Clojure data structures. The function doing this is `blaze.cql-translator/translate`.
+The Expression Logical Model (ELM) is the abstract syntax tree (AST) form of CQL. Blaze uses the CQL → ELM translator from the [Clinical Quality Framework][1] project. After that translation, the ELM expressions are available in JSON form and are parsed into Clojure data structures. The function doing this is `blaze.cql.translator/translate`.
 
 ### ELM Compilation
 

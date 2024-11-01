@@ -1,4 +1,4 @@
-(ns blaze.cql-translator
+(ns blaze.cql.translator
   (:require
    [blaze.anomaly :as ba]
    [blaze.elm.spec]

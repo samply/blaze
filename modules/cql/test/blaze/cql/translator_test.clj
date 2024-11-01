@@ -1,7 +1,7 @@
-(ns blaze.cql-translator-test
+(ns blaze.cql.translator-test
   (:require
-   [blaze.cql-translator :refer [translate]]
-   [blaze.cql-translator-spec]
+   [blaze.cql.translator :refer [translate]]
+   [blaze.cql.translator-spec]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
