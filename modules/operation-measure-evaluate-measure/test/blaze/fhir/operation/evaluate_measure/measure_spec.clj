@@ -1,7 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure.measure-spec
   (:require
    [blaze.async.comp :as ac]
-   [blaze.cql-translator-spec]
+   [blaze.cql.translator-spec]
    [blaze.db.spec]
    [blaze.elm.expression :as-alias expr]
    [blaze.elm.expression.spec]

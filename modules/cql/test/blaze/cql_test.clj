@@ -3,8 +3,8 @@
   (:refer-clojure :exclude [compile eval])
   (:require
    [blaze.anomaly :refer [if-ok]]
-   [blaze.cql-translator :refer [translate]]
-   [blaze.cql-translator-spec]
+   [blaze.cql.translator :refer [translate]]
+   [blaze.cql.translator-spec]
    [blaze.elm.compiler :refer [compile]]
    [blaze.elm.expression :as expr]
    [blaze.elm.expression-spec]
