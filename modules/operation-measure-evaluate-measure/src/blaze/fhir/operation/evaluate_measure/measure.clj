@@ -6,7 +6,6 @@
    [blaze.cql-translator :as cql-translator]
    [blaze.db.api :as d]
    [blaze.elm.compiler :as c]
-   [blaze.elm.compiler-spec]
    [blaze.elm.compiler.library :as library]
    [blaze.elm.expression :as-alias expr]
    [blaze.elm.resource :as cr]

@@ -1,6 +1,5 @@
 (ns blaze.elm.compiler.library.spec
   (:require
-   [blaze.anomaly-spec]
    [blaze.elm.compiler :as-alias c]
    [blaze.elm.compiler.expression-def :as-alias expression-def]
    [blaze.elm.compiler.function-def :as-alias function-def]

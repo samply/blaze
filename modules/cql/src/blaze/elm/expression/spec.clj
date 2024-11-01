@@ -1,7 +1,9 @@
 (ns blaze.elm.expression.spec
   (:require
-   [blaze.db.api-spec]
+   [blaze.db.spec]
    [blaze.elm.compiler :as-alias c]
+   [blaze.elm.compiler.library.spec]
+   [blaze.elm.compiler.spec]
    [blaze.elm.expression :as-alias expr]
    [blaze.elm.expression.cache.protocols :as p]
    [blaze.elm.spec]
