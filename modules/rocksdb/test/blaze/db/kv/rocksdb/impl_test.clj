@@ -409,3 +409,10 @@
           {:file-name "file-175300"
            :job-id 175248})
          "Deleted SST file file-175300 in job 175248.")))
+
+(deftest map-property-test
+  (testing "converts snake case into kebab case"
+    (is (= {:foo-bar 42} (impl/map-property {"foo_bar" 42}))))
+
+  (testing "converts dot-delimited property names into hierarchical maps"
+    (is (= {:foo {:bar 23 :baz 42}} (impl/map-property {"foo.bar" 23 "foo.baz" 42})))))
