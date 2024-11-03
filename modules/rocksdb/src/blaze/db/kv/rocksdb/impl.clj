@@ -3,7 +3,8 @@
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.db.kv.rocksdb.column-family-meta-data :as-alias column-family-meta-data]
    [blaze.db.kv.rocksdb.column-family-meta-data.level :as-alias column-family-meta-data-level]
-   [clojure.core.protocols :as p])
+   [clojure.core.protocols :as p]
+   [clojure.string :as str])
   (:import
    [clojure.lang ILookup]
    [com.google.common.base CaseFormat]
@@ -300,4 +301,8 @@
   (.to CaseFormat/LOWER_UNDERSCORE CaseFormat/LOWER_HYPHEN s))
 
 (defn map-property [m]
-  (reduce-kv #(assoc %1 (keyword (snake->kebab %2)) %3) {} m))
+  (reduce-kv
+   #(let [key (mapv keyword (str/split (snake->kebab %2) #"\."))]
+      (assoc-in %1 key %3))
+   {}
+   m))
