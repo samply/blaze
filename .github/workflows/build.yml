@@ -19,7 +19,7 @@ jobs:
 
     steps:
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@bc7570e912b028bbcc22f457adec7fdf98e2f4ed # 12.5
+      uses: DeLaGuardo/setup-clojure@c72ba59d25875f7523e06a671431b5f9f084992d # 12.6
       with:
         cljfmt: 0.12.0
 
@@ -34,7 +34,7 @@ jobs:
 
     steps:
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@bc7570e912b028bbcc22f457adec7fdf98e2f4ed # 12.5
+      uses: DeLaGuardo/setup-clojure@c72ba59d25875f7523e06a671431b5f9f084992d # 12.6
       with:
         clj-kondo: '2024.08.29'
 
@@ -139,7 +139,7 @@ jobs:
         java-version: ${{ matrix.java-version }}
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@bc7570e912b028bbcc22f457adec7fdf98e2f4ed # 12.5
+      uses: DeLaGuardo/setup-clojure@c72ba59d25875f7523e06a671431b5f9f084992d # 12.6
       with:
         cli: '1.12.0.1479'
 
@@ -185,7 +185,7 @@ jobs:
         java-version: '21'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@bc7570e912b028bbcc22f457adec7fdf98e2f4ed # 12.5
+      uses: DeLaGuardo/setup-clojure@c72ba59d25875f7523e06a671431b5f9f084992d # 12.6
       with:
         cli: '1.12.0.1479'
 
@@ -231,7 +231,7 @@ jobs:
         java-version: ${{ matrix.java-version }}
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@bc7570e912b028bbcc22f457adec7fdf98e2f4ed # 12.5
+      uses: DeLaGuardo/setup-clojure@c72ba59d25875f7523e06a671431b5f9f084992d # 12.6
       with:
         cli: '1.12.0.1479'
 
@@ -282,7 +282,7 @@ jobs:
         java-version: '21'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@bc7570e912b028bbcc22f457adec7fdf98e2f4ed # 12.5
+      uses: DeLaGuardo/setup-clojure@c72ba59d25875f7523e06a671431b5f9f084992d # 12.6
       with:
         cli: '1.12.0.1479'
 
@@ -1520,7 +1520,7 @@ jobs:
         java-version: '21'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@bc7570e912b028bbcc22f457adec7fdf98e2f4ed # 12.5
+      uses: DeLaGuardo/setup-clojure@c72ba59d25875f7523e06a671431b5f9f084992d # 12.6
       with:
         cli: '1.12.0.1479'
 
@@ -1912,7 +1912,7 @@ jobs:
         java-version: '21'
 
     - name: Setup Clojure
-      uses: DeLaGuardo/setup-clojure@bc7570e912b028bbcc22f457adec7fdf98e2f4ed # 12.5
+      uses: DeLaGuardo/setup-clojure@c72ba59d25875f7523e06a671431b5f9f084992d # 12.6
       with:
         cli: '1.12.0.1479'
 
