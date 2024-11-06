@@ -1,28 +1,40 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:base",
+    "config:recommended",
     "helpers:pinGitHubActionDigests",
     "docker:pinDigests"
   ],
   "packageRules": [
     {
-      "matchDatasources": ["npm"],
-      "schedule": ["before 4am on monday"]
+      "matchDatasources": [
+        "npm"
+      ],
+      "schedule": [
+        "before 4am on monday"
+      ]
     },
     {
-      "matchPackagePatterns": ["com.fasterxml.jackson"],
-      "groupName": "jackson"
+      "groupName": "jackson",
+      "matchPackageNames": [
+        "/com.fasterxml.jackson/"
+      ]
     },
     {
-      "matchPackagePatterns": ["info.cqframework"],
-      "groupName": "cqframework"
+      "groupName": "cqframework",
+      "matchPackageNames": [
+        "/info.cqframework/"
+      ]
     },
     {
-      "matchPackagePatterns": ["ca.uhn.hapi.fhir"],
-      "groupName": "hapi"
+      "groupName": "hapi",
+      "matchPackageNames": [
+        "/ca.uhn.hapi.fhir/"
+      ]
     }
   ],
-  "ignorePaths": ["docker-compose.yml"],
+  "ignorePaths": [
+    "docker-compose.yml"
+  ],
   "prConcurrentLimit": 3
 }
