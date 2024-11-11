@@ -14,6 +14,7 @@
    [blaze.db.kv.mem-spec]
    [blaze.db.node]
    [blaze.db.node.tx-indexer.verify :as verify]
+   [blaze.db.node.tx-indexer.verify-spec]
    [blaze.db.test-util :refer [config with-system-data]]
    [blaze.db.tx-cache]
    [blaze.db.tx-log.local]
@@ -56,7 +57,7 @@
 (deftest verify-tx-cmds-test
   (testing "two commands with the same identity aren't allowed"
     (let [hash (hash/generate patient-0)
-          op-gen (sg/such-that (complement #{"conditional-delete"})
+          op-gen (sg/such-that (complement #{"conditional-delete" "patient-purge"})
                                (s/gen :blaze.db.tx-cmd/op))
           cmd (fn [op] {:op op :type "Patient" :id "0" :hash hash})]
       (with-system [{:blaze.db/keys [node]} config]

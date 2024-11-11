@@ -24,7 +24,7 @@
    [blaze.db.node.transaction :as tx]
    [blaze.db.node.tx-indexer :as tx-indexer]
    [blaze.db.node.tx-indexer.util :as tx-u]
-   [blaze.db.node.tx-indexer.verify :as tx-indexer-verify]
+   [blaze.db.node.tx-indexer.verify :as verify]
    [blaze.db.node.util :as node-util]
    [blaze.db.node.validation :as validation]
    [blaze.db.node.version :as version]
@@ -563,7 +563,7 @@
   duration-seconds)
 
 (reg-collector ::transaction-sizes
-  tx-indexer-verify/transaction-sizes)
+  verify/transaction-sizes)
 
 (reg-collector ::tx-indexer/duration-seconds
   tx-u/duration-seconds)

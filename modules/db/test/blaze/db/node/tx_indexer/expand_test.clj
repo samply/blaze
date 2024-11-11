@@ -5,6 +5,7 @@
    [blaze.db.kv.mem-spec]
    [blaze.db.node]
    [blaze.db.node.tx-indexer.expand :as expand]
+   [blaze.db.node.tx-indexer.expand-spec]
    [blaze.db.search-param-registry]
    [blaze.db.test-util :refer [config with-system-data]]
    [blaze.db.tx-cache]
@@ -63,7 +64,8 @@
         count := 1
         [0 :op] := "hold"
         [0 :type] := "Patient"
-        [0 :id] := "2"))))
+        [0 :id] := "2"
+        [0 :if-none-exist] := [["identifier" "120426"]]))))
 
 (deftest expand-tx-cmds-conditional-delete-test
   (testing "success"
