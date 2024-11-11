@@ -99,6 +99,10 @@
           (update :new-resources conj [type id])
           (update-in [:stats tid] inc-num-changes-and-total)))))
 
+(defmethod verify "hold"
+  [_db-before _t res _tx-cmd]
+  res)
+
 (defn- print-etags [ts]
   (str/join "," (map (partial format "W/\"%d\"") ts)))
 
@@ -263,10 +267,6 @@
           (not (identical? :delete (rh/op (first instance-history))))
           (-> (update :del-resources conj [type id])
               (update-in [:stats tid :total] dec-0)))))))
-
-(defmethod verify :default
-  [_db-before _t res _tx-cmd]
-  res)
 
 (defn- verify-tx-cmds* [db-before t tx-cmds]
   (reduce

@@ -22,9 +22,6 @@
   #{"create" "put" "keep" "delete" "conditional-delete" "delete-history"
     "patient-purge"})
 
-(s/def :blaze.db.tx-cmd/type
-  :fhir.resource/type)
-
 (s/def :blaze.db.tx-cmd/refs
   (s/coll-of :blaze.fhir/literal-ref-tuple))
 
@@ -50,7 +47,7 @@
 
 (defmethod tx-cmd "create" [_]
   (s/keys :req-un [:blaze.db.tx-cmd/op
-                   :blaze.db.tx-cmd/type
+                   :fhir.resource/type
                    :blaze.resource/id
                    :blaze.resource/hash]
           :opt-un [:blaze.db.tx-cmd/refs
@@ -58,7 +55,7 @@
 
 (defmethod tx-cmd "put" [_]
   (s/keys :req-un [:blaze.db.tx-cmd/op
-                   :blaze.db.tx-cmd/type
+                   :fhir.resource/type
                    :blaze.resource/id
                    :blaze.resource/hash]
           :opt-un [:blaze.db.tx-cmd/refs
@@ -67,14 +64,14 @@
 
 (defmethod tx-cmd "keep" [_]
   (s/keys :req-un [:blaze.db.tx-cmd/op
-                   :blaze.db.tx-cmd/type
+                   :fhir.resource/type
                    :blaze.resource/id
                    :blaze.resource/hash]
           :opt-un [:blaze.db.tx-cmd/if-match]))
 
 (defmethod tx-cmd "delete" [_]
   (s/keys :req-un [:blaze.db.tx-cmd/op
-                   :blaze.db.tx-cmd/type
+                   :fhir.resource/type
                    :blaze.resource/id]
           :opt-un [:blaze.db.tx-cmd/check-refs]))
 
@@ -83,14 +80,14 @@
 
 (defmethod tx-cmd "conditional-delete" [_]
   (s/keys :req-un [:blaze.db.tx-cmd/op
-                   :blaze.db.tx-cmd/type]
+                   :fhir.resource/type]
           :opt-un [:blaze.db.tx-cmd/clauses
                    :blaze.db.tx-cmd/check-refs
                    :blaze.db.tx-cmd/allow-multiple]))
 
 (defmethod tx-cmd "delete-history" [_]
   (s/keys :req-un [:blaze.db.tx-cmd/op
-                   :blaze.db.tx-cmd/type
+                   :fhir.resource/type
                    :blaze.resource/id]))
 
 (defmethod tx-cmd "patient-purge" [_]
