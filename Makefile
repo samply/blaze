@@ -27,6 +27,7 @@ clean-root:
 	rm -rf .clj-kondo/.cache .cpcache target
 
 clean: $(MODULES) clean-root
+	$(MAKE) -C job-ig clean
 
 build-frontend:
 	$(MAKE) -C modules/frontend build
