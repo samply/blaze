@@ -1,6 +1,6 @@
 {:deps
  {clojure.java-time/clojure.java-time
-  {:mvn/version "1.4.2"}
+  {:mvn/version "1.4.3"}
 
   com.cognitect/anomalies
   {:mvn/version "0.1.12"}}}
