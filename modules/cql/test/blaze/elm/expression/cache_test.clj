@@ -17,7 +17,6 @@
    [blaze.elm.literal :as elm]
    [blaze.executors :as ex]
    [blaze.fhir.test-util]
-   [blaze.log]
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :refer [given-thrown]]

@@ -1,6 +1,7 @@
 (ns blaze.test-util
   (:require
    [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
    [clojure.test :refer [is]]
    [clojure.test.check :as tc]
    [juxt.iota :refer [given]]
@@ -54,3 +55,29 @@
 
 (defn set-default-locale-english! []
   (Locale/setDefault Locale/ENGLISH))
+
+(defn- thread-name []
+  (let [name (.getName (Thread/currentThread))]
+    (if (str/starts-with? name "nREPL-session") "nREPL-session" name)))
+
+(defn- output-fn
+  ([data] (output-fn nil data))
+  ([opts data]
+   (let [{:keys [no-stacktrace?]} opts
+         {:keys [level ?err msg_ ?ns-str ?file timestamp_ ?line]} data]
+     (str
+      (force timestamp_) " "
+      (force (thread-name)) " "
+      (str/upper-case (name level)) " "
+      "[" (or ?ns-str ?file "?") ":" (or ?line "?") "] - "
+      (force msg_)
+      (when-not no-stacktrace?
+        (when-let [err ?err]
+          (str "\n" (log/stacktrace err opts))))))))
+
+(log/merge-config!
+ {:timestamp-opts
+  {:pattern "HH:mm:ss.SSSX"
+   :locale :jvm-default
+   :timezone :utc}
+  :output-fn output-fn})

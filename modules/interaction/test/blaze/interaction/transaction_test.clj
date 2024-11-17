@@ -22,7 +22,6 @@
    [blaze.interaction.transaction]
    [blaze.interaction.update]
    [blaze.interaction.util-spec]
-   [blaze.log]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
    [blaze.page-store-spec]

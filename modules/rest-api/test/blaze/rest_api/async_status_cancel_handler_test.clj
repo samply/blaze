@@ -8,7 +8,6 @@
    [blaze.job-scheduler :as js]
    [blaze.job-scheduler.protocols :as p]
    [blaze.job.async-interaction :as job-async]
-   [blaze.log]
    [blaze.metrics.spec]
    [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.rest-api :as-alias rest-api]

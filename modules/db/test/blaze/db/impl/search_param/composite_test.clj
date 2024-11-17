@@ -27,7 +27,7 @@
    [blaze.fhir_path GetChildrenExpression TypedStartExpression]))
 
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 

@@ -6,7 +6,6 @@
    [blaze.db.kv-spec]
    [blaze.db.kv.iter-pool :as ip]
    [blaze.db.kv.protocols :as p]
-   [blaze.log]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [are deftest is testing]]
@@ -20,7 +19,7 @@
 
 (set! *warn-on-reflection* true)
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 

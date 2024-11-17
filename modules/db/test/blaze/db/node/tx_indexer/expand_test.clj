@@ -14,7 +14,6 @@
    [blaze.fhir.hash-spec]
    [blaze.fhir.spec.spec]
    [blaze.fhir.spec.type]
-   [blaze.log]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]

@@ -10,7 +10,6 @@
    [blaze.db.tx-log :as tx-log]
    [blaze.db.tx-log.local]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.log]
    [blaze.module.test-util :refer [with-system]]
    [blaze.page-id-cipher]
    [blaze.page-id-cipher.spec]

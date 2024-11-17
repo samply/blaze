@@ -11,7 +11,6 @@
    [blaze.job.async-interaction-spec]
    [blaze.job.async-interaction.util :as u]
    [blaze.job.async-interaction.util-spec]
-   [blaze.log]
    [blaze.module.test-util :as mtu :refer [given-failed-future with-system]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]

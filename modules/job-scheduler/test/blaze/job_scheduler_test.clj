@@ -20,7 +20,6 @@
    [blaze.job-scheduler.protocols :as p]
    [blaze.job.test-util :as jtu]
    [blaze.job.util :as job-util]
-   [blaze.log]
    [blaze.module.test-util :as mtu :refer [given-failed-future with-system]]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
