@@ -44,9 +44,9 @@
   (st/unstrument))
 
 (comment
-  (log/set-level! :trace)
-  (log/set-level! :debug)
-  (log/set-level! :info))
+  (log/set-min-level! :trace)
+  (log/set-min-level! :debug)
+  (log/set-min-level! :info))
 
 ;; Transaction Cache
 (comment

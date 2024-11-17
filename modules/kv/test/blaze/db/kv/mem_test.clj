@@ -7,7 +7,6 @@
    [blaze.db.kv.mem]
    [blaze.db.kv.mem-spec]
    [blaze.db.kv.protocols :as p]
-   [blaze.log]
    [blaze.module.test-util :refer [given-failed-future with-system]]
    [blaze.test-util :as tu :refer [ba bb bytes= given-thrown]]
    [clojure.spec.alpha :as s]

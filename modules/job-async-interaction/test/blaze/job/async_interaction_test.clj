@@ -20,7 +20,6 @@
    [blaze.job.async-interaction-spec]
    [blaze.job.test-util :as jtu]
    [blaze.job.util :as job-util]
-   [blaze.log]
    [blaze.luid :as luid]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu :refer [given-thrown]]

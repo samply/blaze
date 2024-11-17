@@ -6,7 +6,6 @@
    [blaze.db.api :as d]
    [blaze.db.spec]
    [blaze.fhir.spec.type :as type]
-   [blaze.log]
    [blaze.luid :as luid]
    [blaze.module :as m]
    [blaze.page-id-cipher.impl :as impl]

@@ -27,7 +27,6 @@
    [blaze.db.tx-log.local-spec]
    [blaze.db.tx-log.spec :refer [tx-log?]]
    [blaze.executors :as ex]
-   [blaze.log]
    [blaze.metrics.spec]
    [blaze.module.test-util :refer [given-failed-future with-system]]
    [blaze.scheduler.spec :refer [scheduler?]]

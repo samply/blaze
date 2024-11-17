@@ -7,7 +7,6 @@
    [blaze.db.node :refer [node?]]
    [blaze.interaction.conditional-delete-type]
    [blaze.interaction.test-util :refer [wrap-error]]
-   [blaze.log]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]

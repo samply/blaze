@@ -24,7 +24,7 @@
 (xml-name/alias-uri 'f "http://hl7.org/fhir")
 
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 

@@ -6,7 +6,6 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.db.node :refer [node?]]
    [blaze.interaction.delete]
-   [blaze.log]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]

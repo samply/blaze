@@ -14,7 +14,6 @@
    [blaze.fhir.operation.evaluate-measure.measure.util-spec]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
-   [blaze.log]
    [blaze.module.test-util :refer [given-failed-future]]
    [blaze.test-util :as tu]
    [clojure.java.io :as io]
@@ -1199,5 +1198,5 @@
       ::anom/message := "Error while parsing the ELM representation of a CQL library: Could not convert library to JSON using JAXB serializer.")))
 
 (comment
-  (log/set-level! :debug)
+  (log/set-min-level! :debug)
   (evaluate "q60-medication"))

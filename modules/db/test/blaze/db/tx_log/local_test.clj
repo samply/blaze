@@ -13,7 +13,6 @@
    [blaze.db.tx-log.spec]
    [blaze.fhir.hash :as hash]
    [blaze.fhir.hash-spec]
-   [blaze.log]
    [blaze.module.test-util :refer [given-failed-future with-system]]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]

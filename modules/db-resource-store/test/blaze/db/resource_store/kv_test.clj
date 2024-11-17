@@ -15,7 +15,6 @@
    [blaze.fhir.hash-spec]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.test-util]
-   [blaze.log]
    [blaze.metrics.spec]
    [blaze.module.test-util :as mtu :refer [given-failed-future with-system]]
    [blaze.test-util :as tu :refer [given-thrown]]

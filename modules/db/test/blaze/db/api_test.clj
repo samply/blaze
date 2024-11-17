@@ -26,7 +26,6 @@
    [blaze.fhir.spec.generators :as fg]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.spec.type.system :as system]
-   [blaze.log]
    [blaze.module.test-util :as mtu :refer [given-failed-future with-system]]
    [blaze.test-util :as tu :refer [satisfies-prop]]
    [clojure.spec.alpha :as s]

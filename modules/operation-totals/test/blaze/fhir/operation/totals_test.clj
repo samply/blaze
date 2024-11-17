@@ -4,7 +4,6 @@
    [blaze.fhir.operation.totals]
    [blaze.fhir.structure-definition-repo-spec]
    [blaze.fhir.structure-definition-repo.spec :refer [structure-definition-repo?]]
-   [blaze.log]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.db-spec]
    [blaze.test-util :as tu :refer [given-thrown]]

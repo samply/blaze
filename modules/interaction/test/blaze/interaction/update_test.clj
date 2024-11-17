@@ -16,7 +16,6 @@
    [blaze.fhir.spec.type :as type]
    [blaze.interaction.test-util :refer [wrap-error]]
    [blaze.interaction.update]
-   [blaze.log]
    [blaze.test-util :as tu :refer [given-thrown satisfies-prop]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]

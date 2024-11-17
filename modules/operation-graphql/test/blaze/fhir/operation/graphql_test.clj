@@ -6,7 +6,6 @@
    [blaze.executors :as ex]
    [blaze.fhir.operation.graphql :as graphql]
    [blaze.fhir.operation.graphql.test-util :refer [wrap-error]]
-   [blaze.log]
    [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.middleware.fhir.db-spec]
    [blaze.module.test-util :refer [with-system]]
@@ -19,7 +18,7 @@
    [taoensso.timbre :as log]))
 
 (st/instrument)
-(log/set-level! :trace)
+(log/set-min-level! :trace)
 
 (test/use-fixtures :each tu/fixture)
 

@@ -16,7 +16,6 @@
    [blaze.job.compact-spec]
    [blaze.job.test-util :as jtu]
    [blaze.job.util :as job-util]
-   [blaze.log]
    [blaze.module.test-util :refer [with-system]]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
