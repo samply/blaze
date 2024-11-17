@@ -24,8 +24,8 @@
     (-resolve-params [_ parameters]
       (core/resolve-params-helper-2 calculate-age-at-op parameters birth-date
                                     date chrono-precision precision))
-    (-optimize [_ node]
-      (core/optimize-helper-2 calculate-age-at-op node birth-date date
+    (-optimize [_ db]
+      (core/optimize-helper-2 calculate-age-at-op db birth-date date
                               chrono-precision precision))
     (-eval [_ context resource scope]
       (p/duration-between

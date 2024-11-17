@@ -82,8 +82,8 @@
     (-resolve-params [_ parameters]
       (core/resolve-params-helper-1 scoped-filter-op parameters source condition
                                     scope))
-    (-optimize [_ node]
-      (core/optimize-helper-1 scoped-filter-op node source condition scope))
+    (-optimize [_ db]
+      (core/optimize-helper-1 scoped-filter-op db source condition scope))
     (-eval [_ context resource scopes]
       (when-let [source (core/-eval source context resource scopes)]
         (filterv
@@ -99,8 +99,8 @@
       (core/resolve-refs-helper filter-op expression-defs source condition))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper filter-op parameters source condition))
-    (-optimize [_ node]
-      (core/optimize-helper filter-op node source condition))
+    (-optimize [_ db]
+      (core/optimize-helper filter-op db source condition))
     (-eval [_ context resource scopes]
       (when-let [source (core/-eval source context resource scopes)]
         (filterv (partial core/-eval condition context resource) source)))
@@ -146,8 +146,8 @@
     (-resolve-params [_ parameters]
       (core/resolve-params-helper-1 scoped-for-each parameters source element
                                     scope))
-    (-optimize [_ node]
-      (core/optimize-helper-1 scoped-for-each node source element scope))
+    (-optimize [_ db]
+      (core/optimize-helper-1 scoped-for-each db source element scope))
     (-eval [_ context resource scopes]
       (when-let [source (core/-eval source context resource scopes)]
         (mapv
@@ -163,8 +163,8 @@
       (core/resolve-refs-helper for-each expression-defs source element))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper for-each parameters source element))
-    (-optimize [_ node]
-      (core/optimize-helper for-each node source element))
+    (-optimize [_ db]
+      (core/optimize-helper for-each db source element))
     (-eval [_ context resource scopes]
       (when-let [source (core/-eval source context resource scopes)]
         (mapv (partial core/-eval element context resource) source)))
@@ -188,8 +188,8 @@
       (core/resolve-refs-helper index-of-op expression-defs source element))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper index-of-op parameters source element))
-    (-optimize [_ node]
-      (core/optimize-helper index-of-op node source element))
+    (-optimize [_ db]
+      (core/optimize-helper index-of-op db source element))
     (-eval [_ context resource scopes]
       (when-let [source (core/-eval source context resource scopes)]
         (when-let [element (core/-eval element context resource scopes)]
@@ -243,8 +243,8 @@
                 (core/-resolve-refs end-index expression-defs)))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper slice-op parameters source start-index end-index))
-    (-optimize [_ node]
-      (core/optimize-helper slice-op node source start-index end-index))
+    (-optimize [_ db]
+      (core/optimize-helper slice-op db source start-index end-index))
     (-eval [_ context resource scopes]
       (when-let [source (core/-eval source context resource scopes)]
         (let [start-index (or (core/-eval start-index context resource scopes) 0)

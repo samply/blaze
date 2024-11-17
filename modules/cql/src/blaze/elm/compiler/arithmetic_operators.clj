@@ -123,8 +123,8 @@
       (core/resolve-refs-helper round-op expression-defs operand precision))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper round-op parameters operand precision))
-    (-optimize [_ node]
-      (core/optimize-helper round-op node operand precision))
+    (-optimize [_ db]
+      (core/optimize-helper round-op db operand precision))
     (-eval [_ context resource scope]
       (p/round (core/-eval operand context resource scope)
                (core/-eval precision context resource scope)))

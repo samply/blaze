@@ -123,8 +123,8 @@
       (core/resolve-refs-helper if-op expression-defs condition then else))
     (-resolve-params [_ parameters]
       (core/resolve-params-helper if-op parameters condition then else))
-    (-optimize [_ node]
-      (core/optimize-helper if-op node condition then else))
+    (-optimize [_ db]
+      (core/optimize-helper if-op db condition then else))
     (-eval [_ context resource scope]
       (if (core/-eval condition context resource scope)
         (core/-eval then context resource scope)
