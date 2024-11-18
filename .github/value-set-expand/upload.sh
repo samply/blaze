@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
-filename=$1
-base="http://localhost:8080/fhir"
+filename="$1"
+base="${2:-http://localhost:8080/fhir}"
 
 resource_type="$(jq -r .resourceType "$filename")"
 if [[ "$resource_type" =~ ValueSet|CodeSystem ]]; then

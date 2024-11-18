@@ -261,7 +261,7 @@
 (defn stratum-expression-evaluator* [{:keys [name expression function]}]
   (if function
     (fn [context {:keys [subject-handle population-handle]}]
-      (evaluate-stratum-expression context subject-handle name (function [population-handle])))
+      (evaluate-stratum-expression context subject-handle name (function population-handle)))
     (fn [context {:keys [subject-handle]}]
       (evaluate-stratum-expression context subject-handle name expression))))
 

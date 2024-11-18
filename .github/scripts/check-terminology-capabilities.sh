@@ -3,7 +3,7 @@
 script_dir="$(dirname "$(readlink -f "$0")")"
 . "$script_dir/util.sh"
 
-base="http://localhost:8080/fhir"
+base="${1:-http://localhost:8080/fhir}"
 terminology_capabilities=$(curl -sH 'Accept: application/fhir+json' "$base/metadata?mode=terminology")
 
 test "resourceType" "$(echo "$terminology_capabilities" | jq -r .resourceType)" "TerminologyCapabilities"

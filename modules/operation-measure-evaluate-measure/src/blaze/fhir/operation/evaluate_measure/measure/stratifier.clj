@@ -9,7 +9,7 @@
    [blaze.luid :as luid]
    [blaze.util :refer [conj-vec str]]))
 
-(defn quantity-value [value]
+(defn- quantity-value [value]
   (let [code (-> value :code type/value)]
     (cond-> (str (-> value :value type/value)) code (str " " code))))
 

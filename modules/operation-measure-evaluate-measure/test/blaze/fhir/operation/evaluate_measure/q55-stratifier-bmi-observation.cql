@@ -9,5 +9,5 @@ context Patient
 define InInitialPopulation:
     [Observation: Code '39156-5' from loinc]
 
-define function Bmi(observation FHIR.Observation):
+define function Bmi(observation Observation):
   observation.value

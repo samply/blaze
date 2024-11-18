@@ -28,6 +28,16 @@
     (-> (ba/try-anomaly (update def :expression (partial c/compile context)))
         (ba/exceptionally #(assoc % :context context :elm/expression (:expression def))))))
 
+(defn create-function
+  ([name expression]
+   (partial function/arity-0 name expression))
+  ([name expression op-name]
+   (partial function/arity-1 name expression op-name))
+  ([name expression op-name-1 op-name-2]
+   (partial function/arity-2 name expression op-name-1 op-name-2))
+  ([name expression op-name-1 op-name-2 & more]
+   (partial function/arity-n name expression (into [op-name-1 op-name-2] more))))
+
 (defn- compile-function-def
   "Compiles the function of `def` in `context`.
 
@@ -36,7 +46,7 @@
   [context {:keys [name operand] :as def}]
   (when-ok [{:keys [expression]} (compile-expression-def context def)]
     (-> (dissoc def :expression)
-        (assoc :function (partial function/arity-n name expression (mapv :name operand))))))
+        (assoc :function (apply create-function name expression (mapv :name operand))))))
 
 (defn- compile-function-defs [context library]
   (transduce
@@ -93,13 +103,15 @@
    expression-defs))
 
 (defn compile-library
-  "Compiles the ELM `library` using `node` into a map of :expression-defs,
+  "Compiles the ELM `library` using `context` into a map of :expression-defs,
   :function-defs and :parameter-default-values.
 
+  Returns an anomaly in case of errors.
+
   There are currently no options."
-  [node library opts]
+  [context library opts]
   (let [library (normalizer/normalize-library library)
-        context (assoc opts :node node :library library)]
+        context (merge opts context {:library library})]
     (when-ok [{:keys [function-defs] :as context} (compile-function-defs context library)
               expression-defs (expression-defs context library)
               expression-defs (resolve-refs (unfiltered-expr-names expression-defs) expression-defs)

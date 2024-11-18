@@ -7,5 +7,5 @@ context Patient
 define InInitialPopulation:
   [Condition]
 
-define function Code(condition FHIR.Condition):
+define function Code(condition Condition):
   condition.code

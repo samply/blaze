@@ -1,7 +1,6 @@
 (ns blaze.elm.compiler.core-spec
   (:require
    [blaze.elm.compiler.core :as core]
-   [blaze.elm.compiler.core-spec]
    [blaze.util-spec]
    [clojure.spec.alpha :as s]))
 

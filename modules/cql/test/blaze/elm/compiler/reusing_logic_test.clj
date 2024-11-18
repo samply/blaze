@@ -10,6 +10,7 @@
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
    [blaze.elm.compiler.function :as function]
+   [blaze.elm.compiler.function-spec]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.concept :refer [concept]]
    [blaze.elm.expression.cache :as ec]
@@ -109,7 +110,7 @@
   (testing "Custom function with arity 0"
     (let [function-name "name-210650"
           fn-expr (c/compile {} #elm/integer "1")
-          compile-ctx {:function-defs {function-name {:function (partial function/arity-n function-name fn-expr [])}}}
+          compile-ctx {:function-defs {function-name {:function (partial function/arity-0 function-name fn-expr)}}}
           elm (elm/function-ref [function-name])
           expr (c/compile compile-ctx elm)]
 
@@ -120,7 +121,7 @@
         (is (false? (core/-static expr))))
 
       (testing "attach cache"
-        (is (= [expr []] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
+        (is (= [expr nil] (st/with-instrument-disabled (c/attach-cache expr ::cache)))))
 
       (ctu/testing-constant-patient-count expr)
 
@@ -144,7 +145,7 @@
           fn-expr (c/compile {} #elm/negate #elm/operand-ref"x")
           compile-ctx {:library {:parameters {:def [{:name "a"}]}}
                        :eval-context "Patient"
-                       :function-defs {function-name {:function (partial function/arity-n function-name fn-expr ["x"])}}}
+                       :function-defs {function-name {:function (partial function/arity-1 function-name fn-expr "x")}}}
           elm (elm/function-ref [function-name #elm/parameter-ref "a"])
           expr (c/compile compile-ctx elm)]
 
@@ -197,7 +198,7 @@
           fn-expr (c/compile {} #elm/add [#elm/operand-ref"x" #elm/operand-ref"y"])
           compile-ctx {:library {:parameters {:def [{:name "a"} {:name "b"}]}}
                        :eval-context "Patient"
-                       :function-defs {function-name {:function (partial function/arity-n function-name fn-expr ["x" "y"])}}}
+                       :function-defs {function-name {:function (partial function/arity-2 function-name fn-expr "x" "y")}}}
           elm (elm/function-ref [function-name #elm/parameter-ref "a" #elm/parameter-ref "b"])
           expr (c/compile compile-ctx elm)]
 
@@ -241,6 +242,12 @@
         (has-form (core/-resolve-params expr {"a" 1 "b" 2})
           (list 'call function-name 1 2))
 
+        (has-form (core/-resolve-params expr {"a" 1})
+          (list 'call function-name 1 '(param-ref "b")))
+
+        (has-form (core/-resolve-params expr {"b" 1})
+          (list 'call function-name '(param-ref "a") 1))
+
         (has-form (core/-resolve-params expr {})
           (list 'call function-name '(param-ref "a") '(param-ref "b"))))
 
@@ -252,6 +259,73 @@
 
       (testing "form"
         (has-form expr (list 'call function-name '(param-ref "a") '(param-ref "b"))))))
+
+  (testing "Custom function with arity 3"
+    (let [function-name "name-184652"
+          fn-expr (c/compile {} #elm/add [#elm/operand-ref"x" #elm/add [#elm/operand-ref"y" #elm/operand-ref"z"]])
+          compile-ctx {:library {:parameters {:def [{:name "a"} {:name "b"} {:name "c"}]}}
+                       :eval-context "Patient"
+                       :function-defs {function-name {:function (partial function/arity-n function-name fn-expr ["x" "y" "z"])}}}
+          elm (elm/function-ref [function-name #elm/parameter-ref "a" #elm/parameter-ref "b" #elm/parameter-ref "c"])
+          expr (c/compile compile-ctx elm)]
+
+      (testing "eval"
+        (are [a b c res] (= res (core/-eval expr {:parameters {"a" a "b" b "c" c}} nil nil))
+          1 1 1 3
+          1 1 0 2
+          1 0 0 1
+          0 0 0 0))
+
+      (testing "expression is dynamic"
+        (is (false? (core/-static expr))))
+
+      (testing "attach cache"
+        (with-redefs [ec/get #(do (assert (= ::cache %1)) (c/form %2))]
+          (let [elm (elm/function-ref [function-name
+                                       #elm/exists #elm/retrieve{:type "Observation"}
+                                       #elm/exists #elm/retrieve{:type "Condition"}
+                                       #elm/exists #elm/retrieve{:type "Encounter"}])
+                expr (c/compile compile-ctx elm)]
+            (given (st/with-instrument-disabled (c/attach-cache expr ::cache))
+              count := 2
+              [0] := expr
+              [1 count] := 3
+              [1 0] := '(exists (retrieve "Observation"))
+              [1 1] := '(exists (retrieve "Condition"))
+              [1 2] := '(exists (retrieve "Encounter"))))))
+
+      (ctu/testing-constant-patient-count expr)
+
+      (testing "resolve expression references"
+        (let [elm (elm/function-ref [function-name
+                                     #elm/expression-ref "x"
+                                     #elm/expression-ref "y"])
+              expr-defs [{:type "ExpressionDef" :name "x" :expression "a"
+                          :context "Unfiltered"}
+                         {:type "ExpressionDef" :name "y" :expression "b"
+                          :context "Unfiltered"}]
+              ctx (assoc compile-ctx :library {:statements {:def expr-defs}})
+              expr (c/resolve-refs (c/compile ctx elm) (zipmap ["x" "y"] expr-defs))]
+          (has-form expr (list 'call function-name "a" "b"))))
+
+      (testing "resolve parameters"
+        (has-form (core/-resolve-params expr {"a" 1 "b" 2 "c" 3})
+          (list 'call function-name 1 2 3))
+
+        (has-form (core/-resolve-params expr {"a" 1 "c" 3})
+          (list 'call function-name 1 '(param-ref "b") 3))
+
+        (has-form (core/-resolve-params expr {})
+          (list 'call function-name '(param-ref "a") '(param-ref "b") '(param-ref "c"))))
+
+      (testing "optimize"
+        (let [elm (elm/function-ref [function-name #ctu/optimizeable "x"
+                                     #ctu/optimizeable "y" #ctu/optimizeable "z"])
+              expr (st/with-instrument-disabled (c/optimize (c/compile compile-ctx elm) nil))]
+          (has-form expr (list 'call function-name '(optimized "x") '(optimized "y") '(optimized "z")))))
+
+      (testing "form"
+        (has-form expr (list 'call function-name '(param-ref "a") '(param-ref "b") '(param-ref "c"))))))
 
   (testing "ToQuantity"
     (let [compile-ctx {:library {:parameters {:def [{:name "x"}]}}}

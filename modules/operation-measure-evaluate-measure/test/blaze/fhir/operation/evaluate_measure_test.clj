@@ -8,7 +8,7 @@
    [blaze.elm.expression :as-alias expr]
    [blaze.executors :as ex]
    [blaze.fhir.operation.evaluate-measure :as evaluate-measure]
-   [blaze.fhir.operation.evaluate-measure.spec]
+   [blaze.fhir.operation.evaluate-measure.measure-spec]
    [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util]
@@ -19,6 +19,9 @@
    [blaze.module-spec]
    [blaze.module.test-util :refer [given-failed-system with-system]]
    [blaze.spec]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.local :as ts-local]
    [blaze.test-util :as tu]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -69,12 +72,13 @@
    {:contentType #fhir/code "text/cql"
     :data #fhir/base64Binary "bGlicmFyeSBSZXRyaWV2ZQp1c2luZyBGSElSIHZlcnNpb24gJzQuMC4wJwppbmNsdWRlIEZISVJIZWxwZXJzIHZlcnNpb24gJzQuMC4wJwoKY29udGV4dCBQYXRpZW50CgpkZWZpbmUgSW5Jbml0aWFsUG9wdWxhdGlvbjoKICB0cnVlCgpkZWZpbmUgR2VuZGVyOgogIFBhdGllbnQuZ2VuZGVyCg=="})
 
-(def config
+(def ^:private config
   (assoc
    api-stub/mem-node-config
    ::evaluate-measure/handler
    {:node (ig/ref :blaze.db/node)
     ::expr/cache (ig/ref ::expr/cache)
+    :terminology-service (ig/ref :blaze/terminology-service)
     :executor (ig/ref :blaze.test/executor)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
@@ -85,8 +89,14 @@
    ::expr/cache
    {:node (ig/ref :blaze.db/node)
     :executor (ig/ref :blaze.test/executor)}
+   ::ts/local
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :graph-cache (ig/ref ::ts-local/graph-cache)}
    :blaze.test/executor {}
-   :blaze.test/fixed-rng-fn {}))
+   :blaze.test/fixed-rng-fn {}
+   ::ts-local/graph-cache {}))
 
 (deftest init-test
   (testing "nil config"
@@ -109,6 +119,13 @@
       :key := ::evaluate-measure/handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :via] := [:blaze.db/node]
+      [:cause-data ::s/problems 0 :val] := ::invalid))
+
+  (testing "invalid terminology-service"
+    (given-failed-system (assoc-in config [::evaluate-measure/handler :terminology-service] ::invalid)
+      :key := ::evaluate-measure/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :via] := [:blaze/terminology-service]
       [:cause-data ::s/problems 0 :val] := ::invalid))
 
   (testing "invalid executor"
@@ -447,10 +464,10 @@
                      (str base-url "/__async-status/AAAAAAAAAAAAAAAA")))))))
 
       (testing "cohort scoring"
-        (doseq [library-ref [#fhir/canonical "library-url-094115"
-                             #fhir/canonical "Library/0"
-                             #fhir/canonical "/Library/0"]
-                cancelled? [nil (constantly nil)]]
+        (doseq [library-ref [#fhir/canonical"library-url-094115"
+                             #fhir/canonical"Library/0"
+                             #fhir/canonical"/Library/0"]
+                cancelled?  [nil (constantly nil)]]
           (with-handler [handler]
             [[[:put
                {:fhir/type :fhir/Measure :id "0"

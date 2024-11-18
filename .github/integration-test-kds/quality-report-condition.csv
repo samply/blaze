@@ -1,0 +1,43 @@
+"system","code","display","text","count"
+,,,"true",8
+,,,"true",7
+,,,"false",1
+"http://terminology.hl7.org/CodeSystem/condition-clinical","active",,,6
+,,,"null",2
+,,,"null",8
+"http://terminology.hl7.org/CodeSystem/condition-ver-status","confirmed",,,6
+,,,"null",2
+,,,"null",8
+"http://fhir.de/CodeSystem/bfarm/icd-10-gm","B05.3",,,1
+"http://fhir.de/CodeSystem/bfarm/icd-10-gm","H67.1","Otitis media bei anderenorts klassifizierten Viruskrankheiten",,1
+"http://snomed.info/sct","363346000","Malignant neoplastic disease (disorder)",,1
+"http://snomed.info/sct","266987004","History of malignant neoplasm (situation)",,1
+"http://hl7.org/fhir/sid/icd-10","A15.0",,,1
+"http://hl7.org/fhir/sid/icd-10","C34.8",,,1
+"http://fhir.de/CodeSystem/bfarm/icd-10-gm","C21.8",,,1
+"http://fhir.de/CodeSystem/bfarm/icd-10-gm","C16.9",,,1
+"https://fhir.kbv.de/CodeSystem/KBV_CS_SFHIR_ICD_DIAGNOSESICHERHEIT","G","gesicherte Diagnose",,1
+,,,"null",7
+,,,"null",8
+"https://fhir.kbv.de/CodeSystem/KBV_CS_SFHIR_ICD_SEITENLOKALISATION","B","beiderseits",,1
+,,,"null",7
+,,,"null",8
+"http://fhir.de/CodeSystem/icd-10-gm-mehrfachcodierungs-kennzeichen","†",,,1
+,,,"null",7
+,,,"null",8
+"http://snomed.info/sct","25342003","Middle ear structure (body structure)",,1
+,,,"null",6
+"http://snomed.info/sct","281088000","Structure of anus and/or rectum (body structure)",,1
+,,,"null",7
+"http://snomed.info/sct","281088000","Structure of anus and/or rectum (body structure)",,1
+,,,"false",8
+,,,"true",8
+,,,"false",2
+,,,"true",6
+,,,"dateTime",2
+,,,"null",6
+,,,"null",8
+,,,"false",6
+,,,"true",2
+,,,"1",6
+,,,"0",2
