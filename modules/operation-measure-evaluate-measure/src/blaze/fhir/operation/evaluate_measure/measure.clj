@@ -77,25 +77,25 @@
 
 (defn- compile-library*
   "Compiles the CQL code from the first attachment in the `library` resource
-  using `node`.
+  using `context`.
 
   Returns an anomaly on errors."
-  [node library opts]
+  [context library opts]
   (when-ok [cql-code (extract-cql-code library)
             library (translate cql-code)]
-    (library/compile-library node library opts)))
+    (library/compile-library context library opts)))
 
 (defn- compile-library
   "Compiles the CQL code from the first attachment in the `library` resource
-  using `node`.
+  using `context`.
 
   Returns an anomaly on errors."
-  {:arglists '([node library opts])}
-  [node {:keys [id] :as library} opts]
+  {:arglists '([context library opts])}
+  [context {:keys [id] :as library} opts]
   (log/debug (format "Start compiling Library with ID `%s`..." id))
   (let [timer (prom/timer compile-duration-seconds)]
     (try
-      (compile-library* node library opts)
+      (compile-library* context library opts)
       (finally
         (let [duration (prom/observe-duration! timer)]
           (log/debug
@@ -145,10 +145,13 @@
   compilation.
 
   Returns an anomaly on errors."
-  [db measure opts]
+  [db terminology-service measure opts]
   (if-let [library-ref (-> measure :library first type/value)]
     (do-sync [library (find-library db library-ref)]
-      (compile-library (d/node db) library opts))
+      (let [context (cond-> {:node (d/node db)}
+                      terminology-service
+                      (assoc :terminology-service terminology-service))]
+        (compile-library context library opts)))
     (ac/completed-future
      (ba/unsupported
       "Missing primary library. Currently only CQL expressions together with one primary library are supported."
@@ -423,7 +426,7 @@
         :timeout timeout))))
 
 (defn- enhance-context
-  [{:keys [clock db timeout]
+  [{:keys [clock db timeout terminology-service]
     :blaze/keys [cancelled?]
     ::expr/keys [cache]
     :or {timeout (time/hours 1)}
@@ -433,7 +436,7 @@
         now (time/offset-date-time clock)
         timeout-eclipsed? (timeout-eclipsed-fn clock now timeout)]
     (do-sync [{:keys [expression-defs function-defs parameter-default-values]}
-              (compile-primary-library db measure {})]
+              (compile-primary-library db terminology-service measure {})]
       (when-ok [subject-handle (some->> subject-ref (subject-handle db subject-type))]
         (let [optimize (partial library/optimize db)
               context

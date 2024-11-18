@@ -71,7 +71,17 @@
    (let [[op-1 op-1-bfs] ((first (-attach-cache op-1 cache)))
          [op-2 op-2-bfs] ((first (-attach-cache op-2 cache)))
          [op-3 op-3-bfs] ((first (-attach-cache op-3 cache)))]
-     [(fn [] [(constructor op-1 op-2 op-3) (into op-1-bfs (into op-2-bfs op-3-bfs))])])))
+     [(fn []
+        [(constructor op-1 op-2 op-3)
+         (into [] cat [op-1-bfs op-2-bfs op-3-bfs])])]))
+  ([constructor cache op-1 op-2 op-3 & more]
+   (let [[op-1 op-1-bfs] ((first (-attach-cache op-1 cache)))
+         [op-2 op-2-bfs] ((first (-attach-cache op-2 cache)))
+         [op-3 op-3-bfs] ((first (-attach-cache op-3 cache)))
+         [ops bfs] (attach-cache-expressions cache more)]
+     [(fn []
+        [(apply constructor op-1 op-2 op-3 ops)
+         (into [] cat [op-1-bfs op-2-bfs op-3-bfs bfs])])])))
 
 (defn attach-cache-helper-1
   [constructor cache op arg]

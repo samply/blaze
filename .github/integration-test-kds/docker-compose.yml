@@ -1,0 +1,28 @@
+services:
+  data-server:
+    image: "blaze:latest"
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx2g"
+      EXTERN_TERMINOLOGY_SERVICE_URL: "http://terminology-server:8080/fhir"
+    ports:
+    - "8080:8080"
+    volumes:
+    - "blaze-data:/app/data"
+
+  terminology-server:
+    image: "blaze:latest"
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx8g"
+      ENABLE_TERMINOLOGY_SERVICE: "true"
+      ENABLE_TERMINOLOGY_LOINC: "true"
+      ENABLE_TERMINOLOGY_SNOMED_CT: "true"
+      SNOMED_CT_RELEASE_PATH: "/app/sct-release"
+    ports:
+    - "8082:8080"
+    volumes:
+    - "blaze-terminology-data:/app/data"
+    - "../../SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z:/app/sct-release"
+
+volumes:
+  blaze-data:
+  blaze-terminology-data:

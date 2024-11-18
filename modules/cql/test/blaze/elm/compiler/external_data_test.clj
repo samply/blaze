@@ -12,18 +12,22 @@
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.external-data]
    [blaze.elm.compiler.library :as library]
+   [blaze.elm.compiler.library-spec]
    [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
    [blaze.elm.expression :as expr]
    [blaze.elm.expression-spec]
    [blaze.elm.literal :as elm]
    [blaze.elm.util-spec]
-   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type]
    [blaze.module.test-util :refer [with-system]]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.local :as ts-local]
    [blaze.util-spec]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
    [cognitect.anomalies :as anom]
+   [integrant.core :as ig]
    [java-time.api :as time]
    [juxt.iota :refer [given]]))
 
@@ -37,6 +41,20 @@
   (st/unstrument))
 
 (test/use-fixtures :each fixture)
+
+(def ^:private config
+  (assoc
+   mem-node-config
+   ::ts/local
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :graph-cache (ig/ref ::ts-local/graph-cache)}
+   :blaze.test/fixed-rng-fn {}
+   ::ts-local/graph-cache {}))
+
+(defn- compile-context [{:blaze.db/keys [node] ::ts/keys [local]}]
+  {:node node :terminology-service local})
 
 (defn- eval-context [db]
   {:db db :now (time/offset-date-time)})
@@ -483,7 +501,7 @@
 
   (testing "with related context"
     (testing "without code"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node] :as system} config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
                  :subject #fhir/Reference{:reference #fhir/string "Patient/0"}}]]]
@@ -501,7 +519,8 @@
                         define InInitialPopulation:
                           [\"name-133756\" -> Observation]
                         ")
-              {:keys [expression-defs]} (library/compile-library node library {})
+              context (compile-context system)
+              {:keys [expression-defs]} (library/compile-library context library {})
               db (d/db node)
               patient (ctu/resource db "Patient" "0")
               eval-context (assoc (eval-context db) :expression-defs expression-defs)
@@ -531,7 +550,7 @@
               '(retrieve (singleton-from (retrieve-resource)) "Observation"))))))
 
     (testing "with pre-compiled database query"
-      (with-system-data [{:blaze.db/keys [node]} mem-node-config]
+      (with-system-data [{:blaze.db/keys [node] :as system} config]
         [[[:put {:fhir/type :fhir/Patient :id "0"}]
           [:put {:fhir/type :fhir/Observation :id "0"
                  :code
@@ -557,7 +576,8 @@
                         define InInitialPopulation:
                           [\"name-133730\" -> Observation: Code 'code-133657' from sys]
                         ")
-              {:keys [expression-defs]} (library/compile-library node library {})
+              context (compile-context system)
+              {:keys [expression-defs]} (library/compile-library context library {})
               db (d/db node)
               patient (ctu/resource db "Patient" "0")
               eval-context (assoc (eval-context db) :expression-defs expression-defs)

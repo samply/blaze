@@ -1584,20 +1584,47 @@ jobs:
     - name: Load Blaze Image
       run: docker load --input /tmp/blaze.tar
 
+    - name: Download SNOMED CT Release
+      uses: ./.github/actions/speicherwolke-download
+      with:
+        token: ${{ secrets.SCT_DOWNLOAD_TOKEN }}
+        filename: SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z.zip
+
+    - name: Unzip SNOMED CT Release
+      run: unzip SnomedCT_Germany-EditionRelease_PRODUCTION_20241115T120000Z.zip
+
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e DB_BLOCK_CACHE_SIZE=2048 -e ENABLE_ADMIN_API=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker compose -f .github/integration-test-kds/docker-compose.yml up -d
 
     - name: Download and Unzip MII Test Data
       run: make -C .github/test-data kds-testdata-2024.0.1/tx
 
-    - name: Wait for Blaze
+    - name: Install All KDS Terminology Resources
+      run: make -C .github/value-set-expand install
+
+    - name: Wait for the Data Server
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
-    - name: Check Capability Statement
+    - name: Wait for the Terminology Server
+      run: .github/scripts/wait-for-url.sh http://localhost:8082/health
+
+    - name: Check Capability Statement of the Data Server
       run: .github/scripts/check-capability-statement.sh
+
+    - name: Check Capability Statement of the Terminology Server
+      run: .github/scripts/check-capability-statement.sh http://localhost:8082/fhir
 
     - name: Check Referential Integrity Enforced
       run: .github/scripts/check-referential-integrity-enforced.sh
+
+    - name: Check Terminology Capabilities of the Terminology Server
+      run: .github/scripts/check-terminology-capabilities.sh http://localhost:8082/fhir
+
+    - name: Upload KDS Terminology Resources into the Terminology Server
+      run: .github/value-set-expand/upload-all.sh http://localhost:8082/fhir
+
+    - name: Check Terminology Capabilities of the Terminology Server
+      run: .github/scripts/check-terminology-capabilities.sh http://localhost:8082/fhir
 
     - name: Load Data
       run: blazectl --no-progress --server http://localhost:8080/fhir upload .github/test-data/kds-testdata-2024.0.1/tx
@@ -1610,6 +1637,9 @@ jobs:
 
     - name: Download MedicationStatement Resources with ATC Code B01AC06
       run: .github/scripts/download-resources-query.sh MedicationStatement "patient=mii-exa-test-data-patient-1&medication.code=http://fhir.de/CodeSystem/bfarm/atc|B01AC06" 1
+
+    - name: Run Condition Quality Report
+      run: .github/integration-test-kds/evaluate-measure.sh quality-report-condition 8
 
   integration-test-patient-purge:
     needs: build

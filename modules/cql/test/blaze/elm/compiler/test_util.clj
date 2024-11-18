@@ -610,8 +610,8 @@
                                                        #elm/parameter-ref "z"])))))))
 
 (defmacro testing-binary-resolve-refs
-  [elm-constructor]
-  (let [form-name (symbol (name elm-constructor))]
+  [elm-constructor & [form-name]]
+  (let [form-name (or (some-> form-name symbol) (symbol (name elm-constructor)))]
     `(testing "resolve expression references"
        (let [elm# (~elm-constructor
                    [#elm/expression-ref "x"
@@ -649,8 +649,8 @@
              expr# (c/resolve-params (c/compile ctx# elm#) {"x" "a" "y" "b"})]
          (has-form expr# '(~form-name "a" "b"))))))
 
-(defmacro testing-binary-optimize [elm-constructor]
-  (let [form-name (symbol (name elm-constructor))]
+(defmacro testing-binary-optimize [elm-constructor & [form-name]]
+  (let [form-name (or (some-> form-name symbol) (symbol (name elm-constructor)))]
     `(testing "optimize"
        (let [elm# (~elm-constructor [#ctu/optimizeable "a"
                                      #ctu/optimizeable "b"])

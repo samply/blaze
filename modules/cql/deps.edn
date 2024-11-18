@@ -4,6 +4,9 @@
  {blaze/db
   {:local/root "../db"}
 
+  blaze/terminology-service
+  {:local/root "../terminology-service"}
+
   com.fasterxml.jackson.module/jackson-module-jaxb-annotations
   {:mvn/version "2.20.1"
    :exclusions [javax.xml.bind/jaxb-api]}

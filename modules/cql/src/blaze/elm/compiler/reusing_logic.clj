@@ -223,9 +223,9 @@
    (format "Function definition `%s` not found." name)
    :context context))
 
-(defn compile-function [{:keys [function-defs] :as context} name operands]
+(defn- compile-function [{:keys [function-defs] :as context} name operands]
   (if-let [{:keys [function]} (get function-defs name)]
-    (function operands)
+    (apply function operands)
     (throw-anom (function-def-not-found-anom context name))))
 
 ;; 9.4. FunctionRef
