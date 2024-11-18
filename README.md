@@ -4,7 +4,7 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/samply/blaze/badge)](https://scorecard.dev/viewer/?uri=github.com/samply/blaze)
 [![Docker Pulls](https://img.shields.io/docker/pulls/samply/blaze.svg)](https://hub.docker.com/r/samply/blaze/)
 [![Code Coverage](https://codecov.io/gh/samply/blaze/branch/develop/graph/badge.svg)](https://codecov.io/gh/samply/blaze)
-[![Latest Release](https://img.shields.io/github/v/release/samply/blaze)][5]
+[![Latest Release](https://img.shields.io/github/v/release/samply/blaze?color=1874a7)][5]
 
 A FHIR® Store with internal, fast CQL Evaluation Engine
 
