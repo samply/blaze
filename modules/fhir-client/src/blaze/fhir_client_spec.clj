@@ -52,6 +52,12 @@
                :opts (s/? ::fhir-client/options))
   :ret ac/completable-future?)
 
+(s/fdef fhir-client/execute-type-post
+  :args (s/cat :base-uri string? :type :fhir.resource/type :name string?
+               :params :fhir/Parameters
+               :opts (s/? ::fhir-client/options))
+  :ret ac/completable-future?)
+
 (s/fdef fhir-client/search-type-publisher
   :args (s/cat :base-uri string? :type :fhir.resource/type
                :opts (s/? ::fhir-client/options))

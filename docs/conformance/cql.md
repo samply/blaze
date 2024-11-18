@@ -32,8 +32,8 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 3.8.  | ConceptRef    | ✓          |                          |       |
 | 3.9.  | Quantity      | ✓          |                          |       |
 | 3.10. | Ratio         | ✓          |                          |       |
-| 3.11. | ValueSetDef   | ✗          |                          |       |
-| 3.12. | ValueSetRef   | ✗          |                          |       |
+| 3.11. | ValueSetDef   | ✓          |                          |       |
+| 3.12. | ValueSetRef   | ✓          |                          |       |
 
 ### 4. Type Specifiers
 
@@ -373,7 +373,7 @@ The section numbers refer to the documentation of the [ELM Specification](https:
 | 23.5.  | Equal           | ✓          |
 | 23.6.  | Equivalent      | ✓          |
 | 23.7.  | InCodeSystem    | ✗          |
-| 23.8.  | InValueSet      | ✗          |
+| 23.8.  | InValueSet      | ✓          |
 | 23.9.  | ExpandValueSet  | ✗          |
 | 23.10. | Not Equal       | ✓          |
 | 23.11. | SubsumedBy      | ✗          |

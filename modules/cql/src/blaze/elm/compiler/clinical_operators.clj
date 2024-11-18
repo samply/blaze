@@ -4,9 +4,12 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+   [blaze.elm.code :as code]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.macros :refer [reify-expr]]
-   [blaze.elm.protocols :as p]))
+   [blaze.elm.concept :as concept]
+   [blaze.elm.protocols :as p]
+   [blaze.elm.value-set :as value-set]))
 
 ;; 23.3. CalculateAge
 ;;
@@ -42,3 +45,34 @@
     (when-let [date (core/compile* context date)]
       (let [chrono-precision (some-> precision core/to-chrono-unit)]
         (calculate-age-at-op birth-date date chrono-precision precision)))))
+
+;; 23.8. InValueSet
+(defn- in-value-set [code value-set]
+  (reify-expr core/Expression
+    (-attach-cache [_ cache]
+      (core/attach-cache-helper in-value-set cache code value-set))
+    (-resolve-refs [_ expression-defs]
+      (core/resolve-refs-helper in-value-set expression-defs code value-set))
+    (-resolve-params [_ parameters]
+      (core/resolve-params-helper in-value-set parameters code value-set))
+    (-optimize [_ db]
+      (core/optimize-helper in-value-set db code value-set))
+    (-eval [_ context resource scope]
+      (if-some [code (core/-eval code context resource scope)]
+        (let [value-set (core/-eval value-set context resource scope)]
+          (cond
+            (string? code) (value-set/contains-string? value-set code)
+            (code/code? code) (value-set/contains-code? value-set code)
+            (concept/concept? code) (value-set/contains-concept? value-set code)))
+        false))
+    (-form [_]
+      (list 'in-value-set (core/-form code) (core/-form value-set)))))
+
+(defmethod core/compile* :elm.compiler.type/in-value-set
+  [context
+   {:keys [code] value-set :valueset value-set-expression :valuesetExpression}]
+  (let [code (core/compile* context code)]
+    (if (nil? code)
+      false
+      (when-let [value-set (core/compile* context (or value-set value-set-expression))]
+        (in-value-set code value-set)))))

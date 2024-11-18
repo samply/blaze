@@ -714,13 +714,13 @@
                         :resultTypeName "{http://hl7.org/fhir}Period"}
                        :resultTypeName "{http://hl7.org/fhir}dateTime"}
                       :resultTypeName "{urn:hl7-org:elm-types:r1}DateTime"
-                      :direction "asc"}]}}]
+                      :direction "asc"}]}}
+              expr (c/compile {:node node :eval-context "Patient"} elm)
+              db (d/db node)
+              patient (ctu/resource db "Patient" "0")]
 
-          (let [expr (c/compile {:node node :eval-context "Patient"} elm)
-                db (d/db node)
-                patient (ctu/resource db "Patient" "0")]
-            (testing "eval"
-              (is (= ["0" "1"] (map :id (core/-eval expr {:db db} patient nil)))))))))))
+          (testing "eval"
+            (is (= ["0" "1"] (map :id (core/-eval expr {:db db} patient nil))))))))))
 
 (deftest compile-query-medication-reference-test
   (with-system-data [{:blaze.db/keys [node]} mem-node-config]

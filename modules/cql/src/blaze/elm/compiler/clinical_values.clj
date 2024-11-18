@@ -10,7 +10,8 @@
    [blaze.elm.concept :refer [concept]]
    [blaze.elm.date-time :as date-time]
    [blaze.elm.quantity :refer [quantity]]
-   [blaze.elm.ratio :refer [ratio]]))
+   [blaze.elm.ratio :refer [ratio]]
+   [blaze.elm.value-set :as value-set]))
 
 (defn- find-code-system-def
   "Returns the code-system-def with `name` from `library` or nil if not found."
@@ -113,5 +114,18 @@
 ;; Not needed because it's not an expression.
 
 ;; 3.12. ValueSetRef
-;;
-;; TODO
+(defn- find-value-set-def
+  "Returns the value-set-def with `name` from `library` or nil if not found."
+  {:arglists '([library name])}
+  [{{value-set-defs :def} :valueSets} name]
+  (some #(when (= name (:name %)) %) value-set-defs))
+
+(def ^:private unsupported-anom
+  (ba/unsupported "Terminology operations are not supported. Please enable either the external or the internal terminology service."))
+
+(defmethod core/compile* :elm.compiler.type/value-set-ref
+  [{:keys [library terminology-service]} {:keys [name]}]
+  (when-let [{:keys [id]} (find-value-set-def library name)]
+    (if terminology-service
+      (value-set/value-set terminology-service id)
+      (throw-anom unsupported-anom))))

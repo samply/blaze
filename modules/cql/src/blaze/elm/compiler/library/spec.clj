@@ -5,6 +5,7 @@
    [blaze.elm.compiler.function-def :as-alias function-def]
    [blaze.elm.compiler.spec]
    [blaze.fhir.spec.spec]
+   [blaze.terminology-service.spec]
    [clojure.spec.alpha :as s]))
 
 (s/def ::expression-def/name
@@ -39,6 +40,9 @@
 
 (s/def ::c/library
   (s/keys :req-un [::c/expression-defs ::c/function-defs ::c/parameter-default-values]))
+
+(s/def ::c/context
+  (s/keys :req-un [:blaze.db/node] :opt-un [:blaze/terminology-service]))
 
 (s/def ::c/options
   map?)

@@ -70,7 +70,6 @@
   case of success or will complete exceptionally with an anomaly in case of an
   error."
   [uri opts]
-  (log/trace "Fetch" uri)
   (hc/get
    uri
    (merge
@@ -93,7 +92,6 @@
   {"if-match" etag})
 
 (defn create [uri resource opts]
-  (log/trace "Create" uri)
   (hc/post
    uri
    (merge
@@ -107,7 +105,6 @@
    handle-error))
 
 (defn update [uri resource opts]
-  (log/trace "Update" uri)
   (hc/put
    uri
    (merge
@@ -122,7 +119,6 @@
    handle-error))
 
 (defn delete [uri opts]
-  (log/trace "Delete" uri)
   (hc/delete
    uri
    (merge
@@ -135,14 +131,13 @@
        body))
    handle-error))
 
-(defn transact [uri bundle opts]
-  (log/trace "Transact")
+(defn post [uri resource opts]
   (hc/post
    uri
    (merge
     {:accept :fhir+json
      :content-type :fhir+json
-     :body (generate-body opts bundle)
+     :body (generate-body opts resource)
      :as :fhir
      :async? true}
     opts)

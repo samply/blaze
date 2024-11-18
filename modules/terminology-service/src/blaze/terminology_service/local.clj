@@ -297,6 +297,7 @@
   (reify p/TerminologyService
     (-code-systems [_]
       (c/code-systems (d/db node)))
+
     (-code-system-validate-code [_ params]
       (if-ok [params (validate-params cs-validate-code-param-specs params)
               params (cs-validate-code-more params)]
@@ -305,6 +306,7 @@
               (ac/then-apply #(cs/validate-code % params))
               (handle-close db)))
         ac/completed-future))
+
     (-expand-value-set [_ params]
       (if-ok [params (validate-params vs-expand-param-specs params)
               params (expand-vs-more params)]
@@ -316,6 +318,7 @@
                (partial vs-expand/expand-value-set context))
               (handle-close db)))
         ac/completed-future))
+
     (-value-set-validate-code [_ params]
       (let [validate-params (partial validate-params vs-validate-code-param-specs)]
         (if-ok [params (validate-params params)
@@ -343,7 +346,7 @@
 
 (defmethod ig/init-key ::ts/local
   [_ {:keys [node] :as config}]
-  (log/info "Init local terminology server")
+  (log/info "Init local terminology service")
   (let [context (context config)]
     (ensure-code-systems config context)
     (load-all-code-systems node)
@@ -354,7 +357,7 @@
 
 (defmethod ig/init-key ::graph-cache
   [_ {:keys [num-concepts] :or {num-concepts 100000}}]
-  (log/info "Init local terminology server graph cache with a size of" num-concepts "concepts")
+  (log/info "Init local terminology service graph cache with a size of" num-concepts "concepts")
   (-> (Caffeine/newBuilder)
       (.maximumWeight num-concepts)
       (.weigher (fn [_ {:keys [concepts]}] (count concepts)))
