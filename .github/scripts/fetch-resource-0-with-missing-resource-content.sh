@@ -1,7 +1,8 @@
 #!/bin/bash -e
 
 #
-# This script fetches the Patient/0 expecting that the resource content is missing.
+# This script fetches the Patient/0 expecting that the resource content
+# to be missing.
 #
 
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"

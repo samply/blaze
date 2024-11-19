@@ -1,5 +1,8 @@
 #!/bin/bash -e
 
+#
+# This script verifies the correct cancellation of async requests.
+
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 . "$SCRIPT_DIR/util.sh"
 
