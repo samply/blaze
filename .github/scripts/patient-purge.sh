@@ -1,5 +1,9 @@
 #!/bin/bash -e
 
+#
+# This script verifies that the patient and all resources that are part of the
+# patient compartment are purged.
+
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 . "$SCRIPT_DIR/util.sh"
 
@@ -7,7 +11,7 @@ BASE="http://localhost:8080/fhir"
 PATIENT_IDENTIFIER="X26238298X"
 PATIENT_ID=$(curl -s "$BASE/Patient?identifier=$PATIENT_IDENTIFIER" | jq -r '.entry[0].resource.id')
 
-echo "calling \$purge with GET isn't possible"
+echo "calling \$purge via GET should not be allowed"
 test "GET response code" "$(curl -s -o /dev/null -w '%{response_code}' "$BASE/Patient/$PATIENT_ID/\$purge")" "405"
 
 OUTCOME="$(curl -s -XPOST "$BASE/Patient/$PATIENT_ID/\$purge")"
