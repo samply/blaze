@@ -1,5 +1,9 @@
 (ns blaze.middleware.fhir.output
-  "JSON/XML serialization middleware."
+  "FHIR Resource serialization middleware.
+
+  Currently supported formats:
+  * standard: JSON, XML;
+  * special: binary."
   (:require
    [blaze.anomaly :as ba]
    [blaze.fhir.spec :as fhir-spec]

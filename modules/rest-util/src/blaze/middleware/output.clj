@@ -1,5 +1,8 @@
 (ns blaze.middleware.output
-  "JSON serialization middleware."
+  "Non-FHIR serialization middleware.
+
+  Currently supported formats:
+  * standard: JSON."
   (:require
    [jsonista.core :as j]
    [ring.util.response :as ring]))
