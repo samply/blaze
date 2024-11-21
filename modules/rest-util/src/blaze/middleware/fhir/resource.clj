@@ -1,5 +1,8 @@
 (ns blaze.middleware.fhir.resource
-  "JSON/XML deserialization middleware."
+  "FHIR Resource deserialization middleware.
+
+  Currently supported formats:
+  * standard: JSON, XML."
   (:require
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac]
