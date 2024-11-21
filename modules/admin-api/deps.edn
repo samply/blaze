@@ -42,7 +42,7 @@
    :exclusions [javax.xml.bind/jaxb-api]}
 
   ca.uhn.hapi.fhir/hapi-fhir-validation
-  {:mvn/version "7.4.5"
+  {:mvn/version "7.6.0"
    :exclusions
    [net.sf.saxon/Saxon-HE
     org.ogce/xpp3
