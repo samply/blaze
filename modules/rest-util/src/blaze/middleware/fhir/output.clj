@@ -27,10 +27,19 @@
 
 (def ^:private parse-accept (parse/fast-memoize 1000 parse/parse-accept))
 
+(defn- generate-json** [body]
+  (fhir-spec/unform-json body))
+
+(defn- generate-json* [body]
+  (try
+    (generate-json** body)
+    (catch Throwable e
+      (generate-json** (handler-util/operation-outcome (ba/anomaly e))))))
+
 (defn- generate-json [body]
   (log/trace "generate JSON")
   (with-open [_ (prom/timer generate-duration-seconds "json")]
-    (fhir-spec/unform-json body)))
+    (generate-json* body)))
 
 (defn- xml-byte-array [body]
   (let [out (ByteArrayOutputStream.)]
