@@ -42,8 +42,8 @@
 
 (defn pull-request-bundle [node job]
   (if-ok [[type id] (request-bundle-ref job)]
-    (if-let [{:keys [op] :as handle} (d/resource-handle (d/db node) type id)]
-      (if-not (identical? :delete op)
+    (if-let [handle (d/resource-handle (d/db node) type id)]
+      (if-not (d/deleted? handle)
         (d/pull node handle)
         (ac/completed-future (deleted-anom job id)))
       (ac/completed-future (not-found-anom job id)))

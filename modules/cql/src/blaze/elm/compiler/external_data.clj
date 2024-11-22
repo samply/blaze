@@ -63,8 +63,8 @@
         (when reference
           (when-let [[type id] (fsr/split-literal-ref reference)]
             (when (and (= "Patient" type) (string? id))
-              (let [{:keys [op] :as handle} (d/resource-handle db "Patient" id)]
-                (when-not (identical? :delete op)
+              (when-let [handle (d/resource-handle db "Patient" id)]
+                (when-not (d/deleted? handle)
                   [(cr/mk-resource db handle)])))))))
     (-form [_]
       '(retrieve (Specimen) "Patient"))))

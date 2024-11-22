@@ -1,7 +1,7 @@
 (ns blaze.fhir.operation.evaluate-measure
   "Main entry point into the $evaluate-measure operation."
   (:require
-   [blaze.anomaly :as ba]
+   [blaze.anomaly :as ba :refer [when-ok]]
    [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
@@ -105,8 +105,8 @@
   (format "The Measure resource with the id `%s` was deleted." id))
 
 (defn- find-measure-handle [db request]
-  (let [{:keys [op] :as measure-handle} (find-measure-handle* db request)]
-    (if (identical? :delete op)
+  (when-ok [measure-handle (find-measure-handle* db request)]
+    (if (d/deleted? measure-handle)
       (ba/not-found (measure-deleted-msg measure-handle)
                     :http/status 410
                     :fhir/issue "deleted")

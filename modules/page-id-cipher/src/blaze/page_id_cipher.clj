@@ -31,9 +31,7 @@
 
 (defn- find-key-set-resource [db]
   (log/trace "try to find the key set resource")
-  (when-let [{:keys [op] :as handle} (coll/first (d/type-query db "DocumentReference" [["identifier" identifier]]))]
-    (when-not (identical? :delete op)
-      handle)))
+  (coll/first (d/type-query db "DocumentReference" [["identifier" identifier]])))
 
 (defn- b64-encode [bytes]
   (.encodeToString (Base64/getEncoder) bytes))

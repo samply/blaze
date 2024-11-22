@@ -50,6 +50,10 @@
   :args (s/cat :x any?)
   :ret boolean?)
 
+(s/fdef d/deleted?
+  :args (s/cat :resource-handle :blaze.db/resource-handle)
+  :ret boolean?)
+
 ;; ---- Type-Level Functions --------------------------------------------------
 
 (s/fdef d/type-list

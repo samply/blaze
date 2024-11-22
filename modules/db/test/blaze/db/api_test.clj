@@ -1655,11 +1655,17 @@
     (with-system [{:blaze.db/keys [node]} config]
       (is (nil? (d/resource-handle (d/db node) "Patient" "foo")))))
 
-  (testing "a resource handle is actually one"
+  (testing "a resource handle"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:create {:fhir/type :fhir/Patient :id "0"}]]]
 
-      (is (d/resource-handle? (d/resource-handle (d/db node) "Patient" "0")))))
+      (let [resource-handle (d/resource-handle (d/db node) "Patient" "0")]
+
+        (testing "is not deleted"
+          (is (not (d/deleted? resource-handle))))
+
+        (testing "is actually one"
+          (is (d/resource-handle? resource-handle))))))
 
   (testing "doesn't find a resource handle mit prefix of it's id"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -1699,17 +1705,21 @@
         [meta :blaze.db/tx :blaze.db/t] := 1
         [meta :blaze.db/num-changes] := 1)))
 
-  (testing "a deleted resource is flagged"
+  (testing "a deleted resource"
     (with-system-data [{:blaze.db/keys [node]} config]
       [[[:put {:fhir/type :fhir/Patient :id "0"}]]
        [[:delete "Patient" "0"]]]
 
-      (given @(pull-resource (d/db node) "Patient" "0")
-        :fhir/type := :fhir/Patient
-        :id := "0"
-        [:meta :versionId] := #fhir/id"2"
-        [meta :blaze.db/op] := :delete
-        [meta :blaze.db/tx :blaze.db/t] := 2))))
+      (testing "is not deleted"
+        (is (d/deleted? (d/resource-handle (d/db node) "Patient" "0"))))
+
+      (testing "is flagged"
+        (given @(pull-resource (d/db node) "Patient" "0")
+          :fhir/type := :fhir/Patient
+          :id := "0"
+          [:meta :versionId] := #fhir/id"2"
+          [meta :blaze.db/op] := :delete
+          [meta :blaze.db/tx :blaze.db/t] := 2)))))
 
 ;; ---- Type-Level Functions --------------------------------------------------
 
