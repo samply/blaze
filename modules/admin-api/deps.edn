@@ -65,14 +65,14 @@
   {:mvn/version "1.27.1"}
 
   ca.uhn.hapi.fhir/hapi-fhir-structures-r4
-  {:mvn/version "7.4.5"
+  {:mvn/version "7.6.0"
    :exclusions [com.google.code.findbugs/jsr305]}
 
   ca.uhn.hapi.fhir/hapi-fhir-validation-resources-r4
-  {:mvn/version "7.4.5"}
+  {:mvn/version "7.6.0"}
 
   ca.uhn.hapi.fhir/hapi-fhir-caching-caffeine
-  {:mvn/version "7.4.5"}
+  {:mvn/version "7.6.0"}
 
   org.fhir/ucum
   {:mvn/version "1.0.8"
