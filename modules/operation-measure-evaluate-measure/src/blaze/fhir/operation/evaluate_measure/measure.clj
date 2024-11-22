@@ -385,8 +385,8 @@
   (format "Subject with type `%s` and id `%s` was not found." type id))
 
 (defn- subject-handle* [db type id]
-  (if-let [{:keys [op] :as handle} (d/resource-handle db type id)]
-    (if (identical? :delete op)
+  (if-let [handle (d/resource-handle db type id)]
+    (if (d/deleted? handle)
       (ba/incorrect (missing-subject-msg type id))
       handle)
     (ba/incorrect (missing-subject-msg type id))))

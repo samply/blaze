@@ -113,6 +113,11 @@
 (defn resource-handle? [x]
   (rh/resource-handle? x))
 
+(defn deleted?
+  "Returns `true` if `resource-handle` is deleted."
+  [resource-handle]
+  (rh/deleted? resource-handle))
+
 ;; ---- Type-Level Functions --------------------------------------------------
 
 (defn type-list

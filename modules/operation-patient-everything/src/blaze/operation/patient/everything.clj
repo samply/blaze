@@ -20,8 +20,8 @@
 (def ^:private ^:const ^long max-size 10000)
 
 (defn- patient-handle [db id]
-  (when-let [{:keys [op] :as handle} (d/resource-handle db "Patient" id)]
-    (when-not (identical? :delete op)
+  (when-let [handle (d/resource-handle db "Patient" id)]
+    (when-not (d/deleted? handle)
       handle)))
 
 (defn- too-costly-msg [patient-id]

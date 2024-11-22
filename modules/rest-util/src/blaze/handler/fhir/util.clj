@@ -151,8 +151,8 @@
      :fhir/issue "deleted")))
 
 (defn- resource-handle [db type id]
-  (if-let [{:keys [op] :as handle} (d/resource-handle db type id)]
-    (if (identical? :delete op)
+  (if-let [handle (d/resource-handle db type id)]
+    (if (d/deleted? handle)
       (deleted-anom db handle)
       handle)
     (ba/not-found (format "Resource `%s/%s` was not found." type id))))
