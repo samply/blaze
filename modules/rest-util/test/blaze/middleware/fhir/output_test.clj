@@ -132,6 +132,7 @@
 
   (testing "not modified"
     (given (call resource-handler-304 {:headers {"accept" "application/fhir+xml"}})
+      :status := 304
       [:headers "Content-Type"] := nil
       :body := nil))
 
