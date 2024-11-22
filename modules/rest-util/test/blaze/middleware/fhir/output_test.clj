@@ -88,7 +88,14 @@
                     :query-params {"_format" format}})
         :status := 200
         [:headers "Content-Type"] := content-type
-        [:body parse-json] := {:fhir/type :fhir/Patient :id "0"}))))
+        [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})))
+
+  (testing "failing JSON emit"
+    (given (call (special-resource-handler {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"foo\u001Ebar"}) {:headers {"accept" "application/fhir+json"}})
+      :status := 500
+      [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
+      [:body parse-json :fhir/type] := :fhir/OperationOutcome
+      [:body parse-json :issue 0 :diagnostics] := "(I still need to find out what the correct diagnostic message looks like)")))
 
 (defn- parse-xml [body]
   (with-open [reader (io/reader body)]
