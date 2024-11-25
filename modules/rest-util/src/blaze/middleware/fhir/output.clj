@@ -13,7 +13,8 @@
    [muuntaja.parse :as parse]
    [prometheus.alpha :as prom]
    [ring.util.response :as ring]
-   [taoensso.timbre :as log])
+   [taoensso.timbre :as log]
+   [jsonista.core :as j])
   (:import
    [java.io ByteArrayOutputStream]))
 
@@ -27,19 +28,63 @@
 
 (def ^:private parse-accept (parse/fast-memoize 1000 parse/parse-accept))
 
+(defn- e->byte-array [e byte-array-fn]
+  (-> e
+      ba/anomaly
+      handler-util/operation-outcome
+      byte-array-fn))
+
 (defn- generate-json** [body]
   (fhir-spec/unform-json body))
 
-(defn- generate-json* [body]
-  (try
-    (generate-json** body)
-    (catch Throwable e
-      (generate-json** (handler-util/operation-outcome (ba/anomaly e))))))
 
-(defn- generate-json [body]
+(comment
+  (defn- parse-json [body]
+    (fhir-spec/conform-json (fhir-spec/parse-json body)))
+
+
+  (parse-json (generate-json** {:fhir/type :fhir/Patient :id "0"}))
+;; => {:fhir/type :fhir/Patient, :id "0"}
+  :end)
+
+(defn- generate-json* [response]
+  (try
+    (update response :body generate-json**)
+    (catch Throwable e
+      (update response :body (constantly (generate-json** (handler-util/operation-outcome (ba/anomaly e))))))))
+
+
+(comment
+  (def invalid-body {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"foo\u001Ebar"})
+  (def valid-body   {:fhir/type :fhir/Patient :id "0"})
+
+  (ring/response valid-body)
+  ;; => {:status 200, :headers {}, :body {:fhir/type :fhir/Patient, :id "0"}}
+
+  (def valid-resp (ring/response valid-body))
+
+  (ring/response invalid-body)
+  ;; => {:status 200, :headers {}, :body {:fhir/type :fhir/Patient, :id "0", :gender #fhir/code"foobar"}}
+
+  (def invalid-resp (ring/response invalid-body))
+
+  (generate-json* valid-resp)
+;; => {:status 200, :headers {}, :body #object["[B" 0x72aa21ba "[B@72aa21ba"]}
+  (-> valid-resp
+      generate-json*
+      parse-json)
+;; => {:cognitect.anomalies/category :cognitect.anomalies/incorrect, :cognitect.anomalies/message "Invalid JSON representation of a resource.", :x #:cognitect.anomalies{:category :cognitect.anomalies/incorrect, :message "No implementation of method: :-read-value of protocol: #'jsonista.core/ReadValue found for class: clojure.lang.PersistentArrayMap"}, :fhir/issues [#:fhir.issues{:severity "error", :code "value", :diagnostics "Given resource does not contain a `resourceType` property."}]}
+
+  (parse-json (j/write-value-as-string {:fhir/type :fhir/Patient :id "0"}))
+;; => {:cognitect.anomalies/category :cognitect.anomalies/incorrect, :cognitect.anomalies/message "Invalid JSON representation of a resource.", :x {:fhir/type "fhir/Patient", :id "0"}, :fhir/issues [#:fhir.issues{:severity "error", :code "value", :diagnostics "Given resource does not contain a `resourceType` property."}]}
+
+  :end)
+
+
+(defn- generate-json [response]
   (log/trace "generate JSON")
   (with-open [_ (prom/timer generate-duration-seconds "json")]
-    (generate-json* body)))
+    (generate-json* response)))
 
 (defn- xml-byte-array [body]
   (let [out (ByteArrayOutputStream.)]
@@ -47,18 +92,25 @@
       (xml/emit (fhir-spec/unform-xml body) writer))
     (.toByteArray out)))
 
-(defn- e->xml-byte-array [e]
-  (-> e
-      ba/anomaly
-      handler-util/operation-outcome
-      xml-byte-array))
+
+(comment
+
+  (defn- parse-xml [body]
+    (with-open [reader (io/reader body)]
+      (fhir-spec/conform-xml (xml/parse reader))))
+
+  (parse-xml (xml-byte-array {:fhir/type :fhir/Patient :id "0"}))
+  ;; => {:id "0", :fhir/type :fhir/Patient}
+
+  :end)
+
 
 (defn- generate-xml* [response]
   (try
     (update response :body xml-byte-array)
     (catch Throwable e
       (assoc response
-             :body (e->xml-byte-array e)
+             :body (e->byte-array e xml-byte-array)
              :status 500))))
 
 (defn- generate-xml [response]
@@ -67,7 +119,7 @@
     (generate-xml* response)))
 
 (defn- encode-response-json [{:keys [body] :as response} content-type]
-  (cond-> response body (-> (update :body generate-json)
+  (cond-> response body (-> generate-json
                             (ring/content-type content-type))))
 
 (defn- encode-response-xml [{:keys [body] :as response} content-type]

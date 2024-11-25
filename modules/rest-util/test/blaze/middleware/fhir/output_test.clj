@@ -90,7 +90,7 @@
         [:headers "Content-Type"] := content-type
         [:body parse-json] := {:fhir/type :fhir/Patient :id "0"})))
 
-  (testing "failing JSON emit"
+  (testing "invalid JSON"
     (given (call (special-resource-handler {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"foo\u001Ebar"}) {:headers {"accept" "application/fhir+json"}})
       :status := 500
       [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
