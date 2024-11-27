@@ -432,7 +432,9 @@
             :end nil}
           (interval/interval
            (system/date-time 2021 2 23 14 12 45)
-           nil)))
+           nil)
+          nil
+          nil))
 
       (testing "expression is dynamic"
         (is (false? (core/-static expr))))
