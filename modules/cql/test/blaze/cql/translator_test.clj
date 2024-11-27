@@ -85,6 +85,29 @@
       [1 :expression :operand 0 :operand :source :name] := "Patient"
       [1 :expression :operand 1 :type] := "Literal"))
 
+  (testing "Overlaps"
+    (given-translation
+      "library Test
+       using FHIR version '4.0.0'
+       include FHIRHelpers version '4.0.0'
+
+       codesystem snomed: 'http://snomed.info/sct'
+
+       define InInitialPopulation:
+         exists
+           from [Procedure: Code '431182000' from snomed] P
+           where P.performed overlaps Interval[@2020-02-01, @2020-06-01]"
+      [0 :name] := "InInitialPopulation"
+      [0 :context] := "Patient"
+      [0 :expression :type] := "Exists"
+      [0 :expression :resultTypeName] := "{urn:hl7-org:elm-types:r1}Boolean"
+      [0 :expression :operand :type] := "Query"
+      [0 :expression :operand :where :type] := "Overlaps"
+      [0 :expression :operand :where :operand 0 :type] := "FunctionRef"
+      [0 :expression :operand :where :operand 0 :name] := "ToInterval"
+      [0 :expression :operand :where :operand 0 :operand 0 :type] := "As"
+      [0 :expression :operand :where :operand 0 :operand 0 :asType] := "{http://hl7.org/fhir}Period"))
+
   (testing "Returns a valid :elm/library"
     (are [cql] (s/valid? :elm/library (translate cql))
       "library Test
