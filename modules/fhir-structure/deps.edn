@@ -14,7 +14,7 @@
   {:mvn/version "3.1.8"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-cbor
-  {:mvn/version "2.18.1"}
+  {:mvn/version "2.18.2"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-xml
   {:mvn/version "2.18.2"}
