@@ -17,7 +17,7 @@
   {:mvn/version "2.18.1"}
 
   com.fasterxml.jackson.dataformat/jackson-dataformat-xml
-  {:mvn/version "2.18.1"}
+  {:mvn/version "2.18.2"}
 
   metosin/jsonista
   {:mvn/version "0.3.12"}
