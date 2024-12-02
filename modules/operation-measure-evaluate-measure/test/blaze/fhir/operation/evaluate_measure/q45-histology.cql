@@ -10,4 +10,4 @@ context Patient
 define InInitialPopulation:
   exists
     from [Observation: Code '59847-4' from loinc] O
-    where O.value.coding contains Code '8140/3' from icdo3
+    where O.value as CodeableConcept ~ Code '8140/3' from icdo3

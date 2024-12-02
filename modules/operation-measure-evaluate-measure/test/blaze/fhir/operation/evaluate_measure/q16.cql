@@ -7,4 +7,4 @@ codesystem FastingStatus: 'http://terminology.hl7.org/CodeSystem/v2-0916'
 context Specimen
 
 define InInitialPopulation:
-  Specimen.collection.fastingStatus.coding contains Code 'NF' from FastingStatus
+  Specimen.collection.fastingStatus as CodeableConcept ~ Code 'NF' from FastingStatus
