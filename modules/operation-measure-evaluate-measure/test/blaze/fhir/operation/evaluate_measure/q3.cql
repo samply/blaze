@@ -7,4 +7,4 @@ codesystem SampleMaterialType: 'https://fhir.bbmri.de/CodeSystem/SampleMaterialT
 context Specimen
 
 define InInitialPopulation:
-  Specimen.type.coding contains Code 'whole-blood' from SampleMaterialType
+  Specimen.type ~ Code 'whole-blood' from SampleMaterialType
