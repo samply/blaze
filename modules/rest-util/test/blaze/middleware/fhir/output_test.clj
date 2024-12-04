@@ -170,6 +170,14 @@
       [:body parse-xml :fhir/type] := :fhir/OperationOutcome
       [:body parse-xml :issue 0 :diagnostics] := "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))
 
+(comment
+  (-> (call (special-resource-handler {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"foo\u001Ebar"}) {:headers {"accept" "application/fhir+xml"}})
+      (update :body parse-xml)
+      clojure.pprint/pprint
+      with-out-str)
+;; => "16:16:16.290Z nREPL-session TRACE [blaze.middleware.fhir.output:58] - generate XML\n{:status 500,\n :headers {\"Content-Type\" \"application/fhir+xml;charset=utf-8\"},\n :body\n {:issue\n  [{:severity #fhir/code\"error\",\n    :code #fhir/code\"exception\",\n    :diagnostics\n    \"Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)\",\n    :fhir/type :fhir.OperationOutcome/issue}],\n  :fhir/type :fhir/OperationOutcome}}\n"
+  :end)
+
 (deftest binary-resource-test
   (testing "returning the resource"
     (testing "JSON"
@@ -227,6 +235,14 @@
           [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
           [:body parse-xml :fhir/type] := :fhir/OperationOutcome
           [:body parse-xml :issue 0 :diagnostics] := "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))))
+
+(comment
+  (-> (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTANjECg=="}) {:headers {"accept" "application/fhir+xml"}})
+      (update :body parse-xml)
+      clojure.pprint/pprint
+      with-out-str)
+;; => "16:16:29.993Z nREPL-session TRACE [blaze.middleware.fhir.output:58] - generate XML\n{:status 200,\n :headers {\"Content-Type\" \"application/fhir+xml;charset=utf-8\"},\n :body\n {:cognitect.anomalies/category :cognitect.anomalies/incorrect,\n  :cognitect.anomalies/message\n  \"Invalid XML representation of a resource.\",\n  :x\n  {:tag :xmlns.http%3A%2F%2Fhl7.org%2Ffhir/Binary,\n   :attrs {},\n   :content\n   ({:tag :xmlns.http%3A%2F%2Fhl7.org%2Ffhir/contentType,\n     :attrs {:value \"text/plain\"},\n     :content ()}\n    {:tag :xmlns.http%3A%2F%2Fhl7.org%2Ffhir/data,\n     :attrs {:value \"MTANjECg==\"},\n     :content ()})},\n  :fhir/issues\n  [#:fhir.issues{:severity \"error\",\n                 :code \"invariant\",\n                 :diagnostics\n                 \"Error on value `MTANjECg==`. Expected type is `base64Binary`, regex `([0-9a-zA-Z\\\\\\\\+/=]{4})+`.\"}]}}\n"
+  :end)
 
 (deftest not-acceptable-test
   (is (nil? (call resource-handler-200 {:headers {"accept" "text/plain"}}))))

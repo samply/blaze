@@ -46,6 +46,11 @@
       (xml/emit (fhir-spec/unform-xml body) writer))
     (.toByteArray out)))
 
+(comment
+  (-> (generate-xml** {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"foo\u001Ebar"})
+      (update :body parse-xml))
+  :end)
+
 (defn- generate-xml* [response]
   (try
     (update response :body generate-xml**)
@@ -54,14 +59,49 @@
              :body (generate-error generate-xml** e)
              :status 500))))
 
+(comment
+
+  (generate-error generate-binary** (IllegalArgumentException. "Invalid argument provided"))
+;; => #object["[B" 0xeec6160 "[B@eec6160"]
+  :end)
+
 (defn- generate-xml [response]
   (log/trace "generate XML")
   (with-open [_ (prom/timer generate-duration-seconds "xml")]
     (generate-xml* response)))
 
+(comment
+  (try (generate-xml** {:fhir/type :fhir/Patient :id "0" :gender "foobar"})
+       (catch Throwable e (ex-message e)))
+  ;; => "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)"
+
+  (-> (generate-xml* {:status 200, :headers {}, :body {:fhir/type :fhir/Patient :id "0" :gender "foobar"}})
+      (update :body parse-xml))
+  ;; => {:status 500, :headers {}, :body {:issue [{:severity #fhir/code"error", :code #fhir/code"exception", :diagnostics "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)", :fhir/type :fhir.OperationOutcome/issue}], :fhir/type :fhir/OperationOutcome}}
+  :end)
+
 (defn- generate-binary** [body]
   (when (:data body)
     (.decode (Base64/getDecoder) ^String (type/value (:data body)))))
+
+(comment
+  (:data {:data "MTANjECg==" :content-type nil})
+  ;; => "MTANjECg=="
+
+  (type/value (:data {:data "MTANjECg==" :content-type nil}))
+  ;; => "MTANjECg=="
+
+  (type/base64Binary (type/value (:data {:data "MTANjECg==" :content-type nil})))
+  ;; => #fhir/base64Binary"MTANjECg=="
+
+  (type/base64Binary "MTANjECg==")
+  ;; => #fhir/base64Binary"MTANjECg=="
+
+  (generate-binary** {:data "MTANjECg==" :content-type nil})
+  ; Unhandled java.lang.IllegalArgumentException
+  ;   Input byte array has wrong 4-byte ending unit
+
+  :end)
 
 (defn- generate-binary* [response]
   (try
@@ -71,10 +111,36 @@
              :body (generate-error generate-binary** e)
              :status 500))))
 
+(comment
+  (generate-binary* {:status 200, :headers {}, :body {:data "MTANjECg==" :content-type nil}})
+  ;; => {:status 500, :headers {}, :body nil}
+
+  (generate-binary** {:data "MTANjECg==" :content-type nil})
+   ;; =>
+   ;;  Unhandled java.lang.IllegalArgumentException
+   ;;  Input byte array has wrong 4-byte ending unit
+
+  (try (generate-binary* {:status 200 :headers {} :body {:data "MTANjECg==" :content-type nil}})
+       (catch Throwable e (ex-message e)))
+;; => nil
+  :end)
+
 (defn- generate-binary [response]
   (log/trace "generate binary")
   (with-open [_ (prom/timer generate-duration-seconds "binary")]
     (generate-binary* response)))
+
+(comment
+  (defn- parse-xml [body]
+    (with-open [reader (io/reader body)]
+      (fhir-spec/conform-xml (xml/parse reader))))
+
+  (-> (generate-binary {:status 200, :headers {}, :body {:data "MTANjECg==" :content-type nil}}))
+;; => {:status 500, :headers {}, :body nil}
+
+  (-> (generate-binary* {:status 200, :headers {}, :body {:data "MTANjECg==" :content-type nil}}))
+;; => {:status 500, :headers {}, :body nil}
+  :end)
 
 (defn- encode-response-json [{:keys [body] :as response} content-type]
   (cond-> response body (-> (update :body generate-json)
