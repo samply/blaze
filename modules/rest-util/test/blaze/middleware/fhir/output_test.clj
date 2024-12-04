@@ -218,7 +218,15 @@
         (given (call binary-resource-handler-no-body {:headers {"accept" "text/plain"}})
           :status := 200
           [:headers "Content-Type"] := nil
-          :body := nil)))))
+          :body := nil)))
+
+    (testing "failing binary emit"
+      (testing "invalid base64 representation of a binary resource (from XML)"
+        (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTANjECg=="}) {:headers {"accept" "application/fhir+xml"}})
+          :status := 500
+          [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
+          [:body parse-xml :fhir/type] := :fhir/OperationOutcome
+          [:body parse-xml :issue 0 :diagnostics] := "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))))
 
 (deftest not-acceptable-test
   (is (nil? (call resource-handler-200 {:headers {"accept" "text/plain"}}))))
