@@ -17,7 +17,7 @@
    [taoensso.timbre :as log])
   (:import
    [java.io ByteArrayOutputStream]
-   [java.util Base64]))
+   [java.util Base64 Base64$Decoder]))
 
 (set! *warn-on-reflection* true)
 
@@ -80,9 +80,9 @@
   ;; => {:status 500, :headers {}, :body {:issue [{:severity #fhir/code"error", :code #fhir/code"exception", :diagnostics "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)", :fhir/type :fhir.OperationOutcome/issue}], :fhir/type :fhir/OperationOutcome}}
   :end)
 
-(defn- generate-binary** [body]
-  (when (:data body)
-    (.decode (Base64/getDecoder) ^String (type/value (:data body)))))
+(defn- generate-binary** [{:keys [data]}]
+  (when data
+    (.decode (Base64/getDecoder) ^String (type/value data))))
 
 (comment
   (:data {:data "MTANjECg==" :content-type nil})
@@ -108,7 +108,7 @@
     (update response :body generate-binary**)
     (catch Throwable e
       (assoc response
-             :body (generate-error generate-binary** e)
+             :body (generate-error identity e)
              :status 500))))
 
 (comment
