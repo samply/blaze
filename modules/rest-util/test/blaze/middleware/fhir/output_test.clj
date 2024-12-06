@@ -237,11 +237,11 @@
           [:body parse-xml :issue 0 :diagnostics] := "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))))
 
 (comment
-  (-> (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTANjECg=="}) {:headers {"accept" "application/fhir+xml"}})
-      (update :body parse-xml)
+  (-> (call (binary-resource-handler-200 {:content-type "application/pdf" :data "MTANjECg=="}) {})
+      (update :body parse-json)
       clojure.pprint/pprint
       with-out-str)
-;; => "16:16:29.993Z nREPL-session TRACE [blaze.middleware.fhir.output:58] - generate XML\n{:status 200,\n :headers {\"Content-Type\" \"application/fhir+xml;charset=utf-8\"},\n :body\n {:cognitect.anomalies/category :cognitect.anomalies/incorrect,\n  :cognitect.anomalies/message\n  \"Invalid XML representation of a resource.\",\n  :x\n  {:tag :xmlns.http%3A%2F%2Fhl7.org%2Ffhir/Binary,\n   :attrs {},\n   :content\n   ({:tag :xmlns.http%3A%2F%2Fhl7.org%2Ffhir/contentType,\n     :attrs {:value \"text/plain\"},\n     :content ()}\n    {:tag :xmlns.http%3A%2F%2Fhl7.org%2Ffhir/data,\n     :attrs {:value \"MTANjECg==\"},\n     :content ()})},\n  :fhir/issues\n  [#:fhir.issues{:severity \"error\",\n                 :code \"invariant\",\n                 :diagnostics\n                 \"Error on value `MTANjECg==`. Expected type is `base64Binary`, regex `([0-9a-zA-Z\\\\\\\\+/=]{4})+`.\"}]}}\n"
+;; => "17:01:34.645Z nREPL-session TRACE [blaze.middleware.fhir.output:39] - generate JSON\n{:status 200,\n :headers {\"Content-Type\" \"application/fhir+json;charset=utf-8\"},\n :body\n {:cognitect.anomalies/category :cognitect.anomalies/incorrect,\n  :cognitect.anomalies/message\n  \"Invalid JSON representation of a resource.\",\n  :x\n  {:resourceType \"Binary\",\n   :contentType \"application/pdf\",\n   :data \"MTANjECg==\"},\n  :fhir/issues\n  [#:fhir.issues{:severity \"error\",\n                 :code \"invariant\",\n                 :diagnostics\n                 \"Error on value `MTANjECg==`. Expected type is `base64Binary`, regex `([0-9a-zA-Z\\\\\\\\+/=]{4})+`.\",\n                 :expression \"data\"}]}}\n"
   :end)
 
 (deftest not-acceptable-test

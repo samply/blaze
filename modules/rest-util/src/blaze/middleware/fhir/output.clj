@@ -59,12 +59,6 @@
              :body (generate-error generate-xml** e)
              :status 500))))
 
-(comment
-
-  (generate-error generate-binary** (IllegalArgumentException. "Invalid argument provided"))
-;; => #object["[B" 0xeec6160 "[B@eec6160"]
-  :end)
-
 (defn- generate-xml [response]
   (log/trace "generate XML")
   (with-open [_ (prom/timer generate-duration-seconds "xml")]
@@ -112,17 +106,24 @@
              :status 500))))
 
 (comment
-  (generate-binary* {:status 200, :headers {}, :body {:data "MTANjECg==" :content-type nil}})
-  ;; => {:status 500, :headers {}, :body nil}
+
+  (generate-error generate-binary** (IllegalArgumentException. "Invalid argument provided"))
+  ;; => nil
+
+  (generate-error identity (IllegalArgumentException. "Invalid argument provided"))
+;; => {:fhir/type :fhir/OperationOutcome, :issue [{:fhir/type :fhir.OperationOutcome/issue, :severity #fhir/code"error", :code #fhir/code"exception", :diagnostics "Invalid argument provided"}]}
 
   (generate-binary** {:data "MTANjECg==" :content-type nil})
    ;; =>
    ;;  Unhandled java.lang.IllegalArgumentException
    ;;  Input byte array has wrong 4-byte ending unit
 
+  (generate-binary* {:status 200, :headers {}, :body {:data "MTANjECg==" :content-type nil}})
+;; => {:status 500, :headers {}, :body {:fhir/type :fhir/OperationOutcome, :issue [{:fhir/type :fhir.OperationOutcome/issue, :severity #fhir/code"error", :code #fhir/code"exception", :diagnostics "Input byte array has wrong 4-byte ending unit"}]}}
+
   (try (generate-binary* {:status 200 :headers {} :body {:data "MTANjECg==" :content-type nil}})
        (catch Throwable e (ex-message e)))
-;; => nil
+;; => {:status 500, :headers {}, :body {:fhir/type :fhir/OperationOutcome, :issue [{:fhir/type :fhir.OperationOutcome/issue, :severity #fhir/code"error", :code #fhir/code"exception", :diagnostics "Input byte array has wrong 4-byte ending unit"}]}}
   :end)
 
 (defn- generate-binary [response]
@@ -136,10 +137,8 @@
       (fhir-spec/conform-xml (xml/parse reader))))
 
   (-> (generate-binary {:status 200, :headers {}, :body {:data "MTANjECg==" :content-type nil}}))
-;; => {:status 500, :headers {}, :body nil}
+;; => {:status 500, :headers {}, :body {:fhir/type :fhir/OperationOutcome, :issue [{:fhir/type :fhir.OperationOutcome/issue, :severity #fhir/code"error", :code #fhir/code"exception", :diagnostics "Input byte array has wrong 4-byte ending unit"}]}}
 
-  (-> (generate-binary* {:status 200, :headers {}, :body {:data "MTANjECg==" :content-type nil}}))
-;; => {:status 500, :headers {}, :body nil}
   :end)
 
 (defn- encode-response-json [{:keys [body] :as response} content-type]
