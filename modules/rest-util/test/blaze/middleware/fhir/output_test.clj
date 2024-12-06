@@ -237,6 +237,21 @@
           [:body parse-json :fhir/type] := :fhir/OperationOutcome
           [:body parse-json :issue 0 :diagnostics] := "Input byte array has wrong 4-byte ending unit")))))
 
+;; This is what the parsed `:body` looks like:
+#_{:cognitect.anomalies/category :cognitect.anomalies/incorrect,
+   :cognitect.anomalies/message
+   "Invalid JSON representation of a resource.",
+   :x
+   {:resourceType "Binary",
+    :contentType "application/pdf",
+    :data "MTANjECg=="},
+   :fhir/issues
+   [#:fhir.issues{:severity "error",
+                  :code "invariant",
+                  :diagnostics
+                  "Error on value `MTANjECg==`. Expected type is `base64Binary`, regex `([0-9a-zA-Z\\\\+/=]{4})+`.",
+                  :expression "data"}]}
+
 (comment
   (-> (call (binary-resource-handler-200 {:content-type "application/pdf" :data "MTANjECg=="}) {})
       (update :body parse-json)
