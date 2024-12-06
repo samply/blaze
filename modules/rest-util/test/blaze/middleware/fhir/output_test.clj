@@ -179,6 +179,7 @@
   :end)
 
 (deftest binary-resource-test
+  (st/unstrument)
   (testing "returning the resource"
     (testing "JSON"
       (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTA1NjE0Cg=="}) {:headers {"accept" "application/fhir+json"}})
@@ -229,6 +230,7 @@
           :body := nil)))
 
     (testing "failing binary emit"
+      (st/unstrument)
       (testing "invalid base64 representation of a binary resource (from JSON)"
         (given (call (binary-resource-handler-200 {:content-type "application/pdf" :data "MTANjECg=="}) {})
           :status := 500
