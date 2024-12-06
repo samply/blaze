@@ -229,12 +229,13 @@
           :body := nil)))
 
     (testing "failing binary emit"
-      (testing "invalid base64 representation of a binary resource (from XML)"
-        (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTANjECg=="}) {:headers {"accept" "application/fhir+xml"}})
+      (testing "invalid base64 representation of a binary resource (from JSON)"
+        (given (call (binary-resource-handler-200 {:content-type "application/pdf" :data "MTANjECg=="}) {})
           :status := 500
-          [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
-          [:body parse-xml :fhir/type] := :fhir/OperationOutcome
-          [:body parse-xml :issue 0 :diagnostics] := "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))))
+          [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
+          [:body parse-json] := "This will fail"
+          [:body parse-json :fhir/type] := :fhir/OperationOutcome
+          [:body parse-json :issue 0 :diagnostics] := "Input byte array has wrong 4-byte ending unit")))))
 
 (comment
   (-> (call (binary-resource-handler-200 {:content-type "application/pdf" :data "MTANjECg=="}) {})
