@@ -1,21 +1,12 @@
 (ns blaze.terminology-service-spec
   (:require
    [blaze.async.comp :as ac]
-   [blaze.terminology-service :as terminology-service :refer [terminology-service?]]
+   [blaze.terminology-service :as ts]
+   [blaze.terminology-service.expand-value-set :as-alias expand-vs]
+   [blaze.terminology-service.spec]
    [clojure.spec.alpha :as s]))
 
-(s/def ::url
-  string?)
-
-(s/def ::valueSetVersion
-  string?)
-
-(s/def ::filter
-  string?)
-
-(def expand-value-set-params
-  (s/keys :opt-un [::url ::valueSetVersion ::filter]))
-
-(s/fdef terminology-service/expand-value-set
-  :args (s/cat :terminology-service terminology-service? :params expand-value-set-params)
+(s/fdef ts/expand-value-set
+  :args (s/cat :terminology-service :blaze/terminology-service
+               :request ::expand-vs/request)
   :ret ac/completable-future?)

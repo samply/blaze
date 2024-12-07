@@ -80,6 +80,7 @@
     blaze.middleware.fhir.db db
     blaze.rest-api.header header
     blaze.scheduler sched
+    blaze.terminology-service ts
     blaze.test-util tu
     blaze.util u
     buddy.auth auth

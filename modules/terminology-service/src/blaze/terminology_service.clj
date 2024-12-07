@@ -1,17 +1,10 @@
-(ns blaze.terminology-service)
-
-(defprotocol TerminologyService
-  (-expand-value-set [_ params]))
-
-(defn terminology-service? [x]
-  (satisfies? TerminologyService x))
+(ns blaze.terminology-service
+  (:require
+   [blaze.terminology-service.protocols :as p]))
 
 (defn expand-value-set
-  "Possible params are:
-   * url
-   * valueSetVersion
-   * filter
-
-  See also: https://www.hl7.org/fhir/valueset-operation-expand.html"
-  [terminology-service params]
-  (-expand-value-set terminology-service params))
+  "Returns a CompletableFuture that will complete with the expanded variant of
+  the ValueSet specified in `request` or will complete exceptionally with an
+  anomaly in case of an error."
+  [terminology-service request]
+  (p/-expand-value-set terminology-service request))

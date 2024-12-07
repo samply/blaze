@@ -1,6 +1,12 @@
 {:deps
- {blaze/db
-  {:local/root "../db"}}
+ {blaze/module-base
+  {:local/root "../module-base"}
+
+  blaze/rest-util
+  {:local/root "../rest-util"}
+
+  blaze/terminology-service
+  {:local/root "../terminology-service"}}
 
  :aliases
  {:test

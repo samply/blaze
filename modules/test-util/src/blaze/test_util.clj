@@ -81,3 +81,10 @@
    :locale :jvm-default
    :timezone :utc}
   :output-fn output-fn})
+
+(defn permutations [coll]
+  (if (empty? coll)
+    '(())
+    (for [x coll
+          perm (permutations (remove #{x} coll))]
+      (cons x perm))))

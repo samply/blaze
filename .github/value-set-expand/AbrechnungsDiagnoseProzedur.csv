@@ -1,0 +1,3 @@
+"http://fhir.de/CodeSystem/KontaktDiagnoseProzedur","hospital-main-diagnosis"
+"http://fhir.de/CodeSystem/KontaktDiagnoseProzedur","principle-DRG"
+"http://fhir.de/CodeSystem/KontaktDiagnoseProzedur","secondary-DRG"

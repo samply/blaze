@@ -4,6 +4,7 @@
    [blaze.http-client.spec :refer [http-client?]]
    [blaze.module.test-util :refer [with-system]]
    [blaze.terminology-service :as ts]
+   [blaze.terminology-service-spec]
    [blaze.terminology-service.extern]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
