@@ -4,15 +4,24 @@
   Section numbers are according to
   https://cql.hl7.org/04-logicalspecification.html."
   (:require
+   [blaze.db.api :as d]
+   [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.elm.compiler :as c]
    [blaze.elm.compiler.clinical-operators]
    [blaze.elm.compiler.core :as core]
    [blaze.elm.compiler.core-spec]
-   [blaze.elm.compiler.test-util :as ctu]
+   [blaze.elm.compiler.test-util :as ctu :refer [has-form]]
+   [blaze.elm.expression :as expr]
+   [blaze.elm.expression-spec]
    [blaze.elm.literal :as elm]
    [blaze.elm.literal-spec]
+   [blaze.terminology-service :as ts]
+   [blaze.terminology-service-spec]
+   [blaze.terminology-service.local]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [are deftest testing]]))
+   [clojure.test :as test :refer [are deftest is testing]]
+   [integrant.core :as ig]
+   [java-time.api :as time]))
 
 (st/instrument)
 (ctu/instrument-compile)
@@ -93,7 +102,151 @@
 
 ;; TODO 23.7. InCodeSystem
 
-;; TODO 23.8. InValueSet
+;; 23.8. InValueSet
+;;
+;; The InValueSet operator returns true if the given code is in the given value
+;; set.
+;;
+;; The first argument is expected to be a String, Code, or Concept.
+;;
+;; The second argument is statically a ValueSetRef. This allows for both static
+;; analysis of the value set references within an artifact, as well as the
+;; implementation of value set membership by the target environment as a service
+;; call to a terminology server, if desired.
+;;
+;; The third argument is expected to be a ValueSet, allowing references to value
+;; sets to be preserved as references.
+(def ^:private config
+  (assoc
+   mem-node-config
+   ::ts/local
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)}))
+
+(defn- eval-context [db]
+  {:db db :now (time/offset-date-time)})
+
+(deftest in-value-set-test
+  (testing "Code"
+    (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri"system-115910"
+               :content #fhir/code"complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"code-115927"}
+                {:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"code-105600"}]}]
+        [:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-135750"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"system-115910"}]}}]]]
+
+      (let [context
+            {:library
+             {:codeSystems
+              {:def [{:name "sys-def-115852" :id "system-115910"}]}
+              :valueSets
+              {:def
+               [{:name "value-set-def-135520"
+                 :id "value-set-135750"}]}}
+             :terminology-service terminology-service}
+            elm #elm/in-value-set [#elm/code ["sys-def-115852" "code-115927"]
+                                   #elm/value-set-ref "value-set-def-135520"]
+            expr (c/compile context elm)
+            db (d/db node)]
+
+        (testing "eval"
+          (is (true? (expr/eval (eval-context db) expr nil))))
+
+        (testing "form"
+          (has-form expr
+            '(in-value-set
+              (code "system-115910" nil "code-115927")
+              (value-set "value-set-135750")))))))
+
+  (testing "String"
+    (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri"system-115910"
+               :content #fhir/code"complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"code-115927"}
+                {:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"code-105600"}]}]
+        [:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-135750"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"system-115910"}]}}]]]
+
+      (let [context
+            {:library
+             {:valueSets
+              {:def
+               [{:name "value-set-def-135520"
+                 :id "value-set-135750"}]}}
+             :terminology-service terminology-service}
+            elm #elm/in-value-set [#elm/string "code-115927"
+                                   #elm/value-set-ref "value-set-def-135520"]
+            expr (c/compile context elm)
+            db (d/db node)]
+
+        (testing "eval"
+          (is (true? (expr/eval (eval-context db) expr nil))))
+
+        (testing "form"
+          (has-form expr
+            '(in-value-set
+              "code-115927"
+              (value-set "value-set-135750")))))))
+
+  (testing "Concept"
+    (with-system-data [{:blaze.db/keys [node] terminology-service ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri"system-115910"
+               :content #fhir/code"complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"code-115927"}
+                {:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"code-105600"}]}]
+        [:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-135750"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"system-115910"}]}}]]]
+
+      (let [context
+            {:library
+             {:codeSystems
+              {:def [{:name "sys-def-115852" :id "system-115910" :version "version-132113"}]}
+              :valueSets
+              {:def
+               [{:name "value-set-def-135520"
+                 :id "value-set-135750"}]}}
+             :terminology-service terminology-service}
+            elm #elm/in-value-set [#elm/concept [[#elm/code ["sys-def-115852" "code-115927"]]]
+                                   #elm/value-set-ref "value-set-def-135520"]
+            expr (c/compile context elm)
+            db (d/db node)]
+
+        (testing "eval"
+          (is (true? (expr/eval (eval-context db) expr nil))))
+
+        (testing "form"
+          (has-form expr
+            '(in-value-set
+              (concept (code "system-115910" "version-132113" "code-115927"))
+              (value-set "value-set-135750"))))))))
 
 ;; 23.9. Not Equal
 

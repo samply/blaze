@@ -7,10 +7,14 @@
    [blaze.anomaly :as ba :refer [throw-anom]]
    [blaze.elm.code :as code]
    [blaze.elm.compiler.core :as core]
+   [blaze.elm.compiler.macros :refer [reify-expr]]
    [blaze.elm.concept :refer [concept]]
    [blaze.elm.date-time :as date-time]
    [blaze.elm.quantity :refer [quantity]]
-   [blaze.elm.ratio :refer [ratio]]))
+   [blaze.elm.ratio :refer [ratio]]
+   [blaze.elm.value-set :as value-set]
+   [blaze.fhir.spec.type :as type]
+   [blaze.terminology-service :as ts]))
 
 (defn- find-code-system-def
   "Returns the code-system-def with `name` from `library` or nil if not found."
@@ -113,5 +117,30 @@
 ;; Not needed because it's not an expression.
 
 ;; 3.12. ValueSetRef
-;;
-;; TODO
+(defn- find-value-set-def
+  "Returns the value-set-def with `name` from `library` or nil if not found."
+  {:arglists '([library name])}
+  [{{value-set-defs :def} :valueSets} name]
+  (some #(when (= name (:name %)) %) value-set-defs))
+
+(defn- to-code [{:keys [system code]}]
+  (value-set/->Code (type/value system) (type/value code)))
+
+(defn- value-set [{{:keys [contains]} :expansion}]
+  (into #{} (map to-code) contains))
+
+(defn- expand-value-set [terminology-service request]
+  (try
+    @(ts/expand-value-set terminology-service request)
+    (catch Exception e
+      (throw (ex-cause e)))))
+
+(defmethod core/compile* :elm.compiler.type/value-set-ref
+  [{:keys [library terminology-service]} {:keys [name]}]
+  (when-let [{:keys [id]} (find-value-set-def library name)]
+    (let [value-set (value-set (expand-value-set terminology-service {:url id}))]
+      (reify-expr core/Expression
+        (-eval [_ _ _ _]
+          value-set)
+        (-form [_]
+          (list 'value-set id))))))

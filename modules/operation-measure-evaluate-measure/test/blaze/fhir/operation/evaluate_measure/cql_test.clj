@@ -6,6 +6,7 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.elm.compiler.library :as library]
+   [blaze.elm.compiler.library-spec]
    [blaze.elm.expression :as expr]
    [blaze.fhir.operation.evaluate-measure.cql :as cql]
    [blaze.fhir.operation.evaluate-measure.cql-spec]
@@ -13,6 +14,8 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type]
    [blaze.module.test-util :refer [given-failed-future with-system]]
+   [blaze.terminology-service :as ts]
+   [blaze.terminology-service.local]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -78,9 +81,9 @@
   define InInitialPopulation:
     true")
 
-(defn- compile-library [node cql]
+(defn- compile-library [{:blaze.db/keys [node] ::ts/keys [local]} cql]
   (when-ok [library (cql-translator/translate cql)]
-    (library/compile-library node library {})))
+    (library/compile-library {:node node :terminology-service local} library {})))
 
 (defn- failing-eval [msg]
   (fn [_ _ _] (throw (Exception. ^String msg))))
@@ -88,9 +91,10 @@
 (defn- context
   [{:blaze.db/keys [node]
     ::expr/keys [cache]
-    :blaze.test/keys [fixed-clock executor]}
+    :blaze.test/keys [fixed-clock executor]
+    :as system}
    library]
-  (let [{:keys [expression-defs function-defs]} (compile-library node library)]
+  (let [{:keys [expression-defs function-defs]} (compile-library system library)]
     {:db (d/db node)
      :now (time/offset-date-time fixed-clock)
      ::expr/cache cache
@@ -100,11 +104,15 @@
      :executor executor}))
 
 (def ^:private config
-  (assoc mem-node-config
-         ::expr/cache
-         {:node (ig/ref :blaze.db/node)
-          :executor (ig/ref :blaze.test/executor)}
-         :blaze.test/executor {}))
+  (assoc
+   mem-node-config
+   ::expr/cache
+   {:node (ig/ref :blaze.db/node)
+    :executor (ig/ref :blaze.test/executor)}
+   ::ts/local
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)}
+   :blaze.test/executor {}))
 
 (def ^:private conj-reduce-op
   (fn [_db] conj))
