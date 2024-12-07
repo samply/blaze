@@ -97,6 +97,7 @@ jobs:
         - interaction
         - jepsen
         - job-async-interaction
+        - job-compact
         - job-re-index
         - job-scheduler
         - job-util
@@ -105,11 +106,13 @@ jobs:
         - metrics
         - module-base
         - openid-auth
+        - operation-compact
         - operation-graphql
         - operation-measure-evaluate-measure
         - operation-patient-everything
         - operation-patient-purge
         - operation-totals
+        - operation-value-set-expand
         - page-id-cipher
         - page-store
         - page-store-cassandra
@@ -118,6 +121,7 @@ jobs:
         - rocksdb
         - scheduler
         - server
+        - terminology-service
         - thread-pool-executor-collector
 
         java-version:
