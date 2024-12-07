@@ -9,12 +9,12 @@ The system level \$compact operation is used to compact column families of Rocks
 POST [base]/$compact
 ```
 
-## Parameters
+## In Parameters
 
-| Use | Name          | Cardinality | Type | Documentation                                                          |
-|-----|---------------|-------------|------|------------------------------------------------------------------------|
-| IN  | database      | 1..1        | code | One of three possible databases: `index`, `transaction` and `resource` |
-| IN  | column-family | 1..1        | code | Name of the column family depending on the database. See below.        |
+| Name          | Cardinality | Type | Documentation                                                          |
+|---------------|-------------|------|------------------------------------------------------------------------|
+| database      | 1..1        | code | One of three possible databases: `index`, `transaction` and `resource` |
+| column-family | 1..1        | code | Name of the column family depending on the database. See below.        |
 
 ### Column Families
 

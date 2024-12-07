@@ -13,6 +13,9 @@
   blaze/interaction
   {:local/root "modules/interaction"}
 
+  blaze/openid-auth
+  {:local/root "modules/openid-auth"}
+
   blaze.operation/compact
   {:local/root "modules/operation-compact"}
 
@@ -31,8 +34,8 @@
   blaze.operation/totals
   {:local/root "modules/operation-totals"}
 
-  blaze/openid-auth
-  {:local/root "modules/openid-auth"}
+  blaze.operation/value-set-expand
+  {:local/root "modules/operation-value-set-expand"}
 
   blaze/page-store-cassandra
   {:local/root "modules/page-store-cassandra"}
@@ -45,6 +48,9 @@
 
   blaze/server
   {:local/root "modules/server"}
+
+  blaze/terminology-service
+  {:local/root "modules/terminology-service"}
 
   blaze/thread-pool-executor-collector
   {:local/root "modules/thread-pool-executor-collector"}

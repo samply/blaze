@@ -193,6 +193,7 @@ The following Operations are implemented:
 * [Measure $evaluate-measure](api/operation-measure-evaluate-measure.md)
 * [Patient $everything](api/operation-patient-everything.md)
 * [Patient $purge](api/operation-patient-purge.md)
+* [ValueSet $expand](api/operation-value-set-expand.md)
 
 ## Asynchronous Requests
 

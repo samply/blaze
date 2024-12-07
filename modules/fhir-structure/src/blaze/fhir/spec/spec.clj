@@ -54,3 +54,21 @@
 
 (s/def :fhir/dateTime
   #(s2/valid? :fhir/dateTime %))
+
+(s/def :fhir/CodeSystem
+  #(s2/valid? :fhir/CodeSystem %))
+
+(s/def :fhir.CodeSystem/concept
+  #(s2/valid? :fhir.CodeSystem/concept %))
+
+(s/def :fhir/ValueSet
+  #(s2/valid? :fhir/ValueSet %))
+
+(s/def :fhir.ValueSet.compose.include/concept
+  #(s2/valid? :fhir.ValueSet.compose.include/concept %))
+
+(s/def :fhir.ValueSet.compose.include/filter
+  #(s2/valid? :fhir.ValueSet.compose.include/filter %))
+
+(s/def :fhir.ValueSet.expansion/contains
+  #(s2/valid? :fhir.ValueSet.expansion/contains %))

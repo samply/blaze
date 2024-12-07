@@ -110,7 +110,15 @@
             :affects-state false
             :resource-types ["Resource"]
             :system-handler #blaze/ref :blaze.fhir.operation/totals
-            :documentation "Retrieves the total counts of resources available by resource type."}]
+            :documentation "Retrieves the total counts of resources available by resource type."}
+   #:blaze.rest-api.operation
+           {:code "expand"
+            :def-uri "http://hl7.org/fhir/OperationDefinition/ValueSet-expand"
+            :affects-state false
+            :resource-types ["ValueSet"]
+            :type-handler #blaze/ref :blaze.fhir.operation.value-set/expand
+            :instance-handler #blaze/ref :blaze.fhir.operation.value-set/expand
+            :documentation "The $expand operation can be used to expand all codes of a ValueSet."}]
 
   ;;
   ;; FHIR Interactions
@@ -262,6 +270,16 @@
   ;;
   :blaze.fhir.operation/totals
   {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}
+
+  ;;
+  ;; FHIR Operation ValueSet Expand
+  ;;
+  :blaze.fhir.operation.value-set/expand
+  {:terminology-service #blaze/ref :blaze/terminology-service}
+
+  :blaze.terminology-service/local
+  {:node #blaze/ref :blaze.db.main/node
+   :clock #blaze/ref :blaze/clock}
 
   ;;
   ;; Admin API

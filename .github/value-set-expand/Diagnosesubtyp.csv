@@ -1,0 +1,6 @@
+"http://fhir.de/CodeSystem/KontaktDiagnoseProzedur","cause-of-death"
+"http://fhir.de/CodeSystem/KontaktDiagnoseProzedur","department-main-diagnosis"
+"http://fhir.de/CodeSystem/KontaktDiagnoseProzedur","infection-control-diagnosis"
+"http://fhir.de/CodeSystem/KontaktDiagnoseProzedur","surgery-diagnosis"
+"http://terminology.hl7.org/CodeSystem/diagnosis-role","AD"
+"http://terminology.hl7.org/CodeSystem/diagnosis-role","DD"

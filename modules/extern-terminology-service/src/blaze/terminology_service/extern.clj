@@ -6,13 +6,14 @@
    [blaze.module :as m :refer [reg-collector]]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.extern.spec]
+   [blaze.terminology-service.protocols :as p]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [prometheus.alpha :as prom :refer [defhistogram]]
    [taoensso.timbre :as log])
   (:import
-   [com.github.benmanes.caffeine.cache Caffeine AsyncCacheLoader
-    AsyncLoadingCache]))
+   [com.github.benmanes.caffeine.cache
+    AsyncCacheLoader AsyncLoadingCache Caffeine]))
 
 (set! *warn-on-reflection* true)
 
@@ -21,40 +22,37 @@
   {:namespace "terminology_service"}
   (take 14 (iterate #(* 2 %) 0.001)))
 
-(defn- expand-value-set* [base-uri http-client params]
-  (log/debug "Expand ValueSet with params" (pr-str params))
+(defn- expand-value-set* [base-uri http-client url]
+  (log/debug "Expand ValueSet with url" url)
   (fhir-client/execute-type-get base-uri "ValueSet" "expand"
                                 {:http-client http-client
-                                 :query-params params}))
+                                 :query-params {:url url}}))
 
-(defn- expand-value-set [base-uri http-client params]
+(defn- expand-value-set [base-uri http-client url]
   (let [timer (prom/timer request-duration-seconds)]
-    (-> (expand-value-set* base-uri http-client params)
+    (-> (expand-value-set* base-uri http-client url)
         (ac/when-complete
          (fn [_ _] (prom/observe-duration! timer))))))
 
 (defn- cache [base-uri http-client]
   (-> (Caffeine/newBuilder)
       (.maximumSize 1000)
-      (.buildAsync
-       (reify AsyncCacheLoader
-         (asyncLoad [_ params _]
-           (expand-value-set base-uri http-client params))))))
+      (^[AsyncCacheLoader] Caffeine/.buildAsync
+       (fn [request _]
+         (expand-value-set base-uri http-client (:url request))))))
 
-(defrecord TerminologyService [^AsyncLoadingCache cache]
-  ts/TerminologyService
-  (-expand-value-set [_ params]
-    (.get cache params)))
-
-(defmethod m/pre-init-spec :blaze.terminology-service/extern [_]
+(defmethod m/pre-init-spec ::ts/extern [_]
   (s/keys :req-un [::base-uri :blaze/http-client]))
 
-(defmethod ig/init-key :blaze.terminology-service/extern
+(defmethod ig/init-key ::ts/extern
   [_ {:keys [base-uri http-client]}]
   (log/info (str "Init terminology server connection: " base-uri))
-  (->TerminologyService (cache base-uri http-client)))
+  (let [cache (cache base-uri http-client)]
+    (reify p/TerminologyService
+      (-expand-value-set [_ request]
+        (.get ^AsyncLoadingCache cache request)))))
 
-(derive :blaze.terminology-service/extern :blaze/terminology-service)
+(derive ::ts/extern :blaze/terminology-service)
 
 (reg-collector ::request-duration-seconds
   request-duration-seconds)
