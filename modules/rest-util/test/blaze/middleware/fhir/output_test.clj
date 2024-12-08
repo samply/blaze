@@ -244,15 +244,14 @@
    :cognitect.anomalies/message
    "Invalid JSON representation of a resource.",
    :x
-   {:resourceType "Binary",
-    :contentType "application/pdf",
-    :data "MTANjECg=="},
+   #:cognitect.anomalies{:category :cognitect.anomalies/incorrect,
+                         :message
+                         "No implementation of method: :-read-value of protocol: #'jsonista.core/ReadValue found for class: clojure.lang.PersistentArrayMap"},
    :fhir/issues
    [#:fhir.issues{:severity "error",
-                  :code "invariant",
+                  :code "value",
                   :diagnostics
-                  "Error on value `MTANjECg==`. Expected type is `base64Binary`, regex `([0-9a-zA-Z\\\\+/=]{4})+`.",
-                  :expression "data"}]}
+                  "Given resource does not contain a `resourceType` property."}]}
 
 (comment
   (-> (call (binary-resource-handler-200 {:content-type "application/pdf" :data "MTANjECg=="}) {})
