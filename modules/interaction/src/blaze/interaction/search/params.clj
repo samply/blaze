@@ -44,6 +44,10 @@
   [summary query-params]
   (or (zero? (fhir-util/page-size query-params)) (= "count" summary)))
 
+(defn- total [{total "_total"}]
+  (when (= "accurate" total)
+    total))
+
 (defn decode
   "Returns a CompletableFuture that will complete with decoded params or
   complete exceptionally in case of errors.
@@ -54,7 +58,8 @@
   [page-store handling query-params]
   (do-sync [{:keys [clauses token]} (clauses page-store query-params)]
     (when-ok [include-defs (include/include-defs handling query-params)
-              summary (summary handling query-params)]
+              summary (summary handling query-params)
+              total (total query-params)]
       (cond->
        {:clauses clauses
         :include-defs include-defs
@@ -65,5 +70,5 @@
         :page-type (fhir-util/page-type query-params)
         :page-id (fhir-util/page-id query-params)
         :page-offset (fhir-util/page-offset query-params)}
-        token
-        (assoc :token token)))))
+        token (assoc :token token)
+        total (assoc :total total)))))

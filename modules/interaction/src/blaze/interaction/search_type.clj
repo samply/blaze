@@ -31,10 +31,10 @@
     (d/type-list db type page-id)
     (d/type-list db type)))
 
-(defn- type-query [db type clauses page-id]
-  (if page-id
-    (d/type-query db type clauses page-id)
-    (d/type-query db type clauses)))
+(defn- compile-type-query [db type clauses handling]
+  (if (identical? :blaze.preference.handling/strict handling)
+    (d/compile-type-query db type clauses)
+    (d/compile-type-query-lenient db type clauses)))
 
 (defn- execute-query [db query page-id]
   (if page-id
@@ -42,22 +42,13 @@
     (d/execute-query db query)))
 
 (defn- handles-and-clauses
-  [{:keys [type] :blaze.preference/keys [handling]
-    {:keys [clauses page-id]} :params}
-   db]
-  (cond
-    (empty? clauses)
+  [{:blaze/keys [db] :keys [type] :blaze.preference/keys [handling]
+    {:keys [clauses page-id]} :params}]
+  (if (empty? clauses)
     {:handles (type-list db type page-id)}
-
-    (identical? :blaze.preference.handling/strict handling)
-    (when-ok [handles (type-query db type clauses page-id)]
-      {:handles handles
-       :clauses clauses})
-
-    :else
-    (when-ok [query (d/compile-type-query-lenient db type clauses)]
+    (when-ok [query (compile-type-query db type clauses handling)]
       {:handles (execute-query db query page-id)
-       :clauses (d/query-clauses query)})))
+       :query query})))
 
 (defn- build-matches-only-page [page-size handles]
   (let [handles (into [] (take (inc page-size)) handles)]
@@ -95,6 +86,34 @@
     (map #(d/pull-many db % elements))
     (map (partial d/pull-many db))))
 
+(defn- total-future
+  "Calculates the total number of resources returned.
+
+  If we are on the first page (page-id is nil) and we don't have a next match,
+  we can use number of matches.
+
+  If we have no query (returning all resources), we can use `d/type-total`.
+
+  If we are forced to calculate the total (total is accurate) we issue an
+  `d/count-query`.
+
+  Otherwise, we don't report it."
+  [db type query {:keys [page-id total]} matches next-match]
+  (cond
+    ;; evaluate this criteria first, because we can potentially safe the
+    ;; d/type-total call
+    (and (nil? page-id) (nil? next-match))
+    (ac/completed-future (count matches))
+
+    (nil? query)
+    (ac/completed-future (d/type-total db type))
+
+    (= "accurate" total)
+    (d/count-query db query)
+
+    :else
+    (ac/completed-future nil)))
+
 (defn- page-data
   "Returns a CompletableFuture that will complete with a map of:
 
@@ -105,13 +124,16 @@
 
   or an anomaly in case of errors."
   {:arglists '([context])}
-  [{:blaze/keys [db] {:keys [include-defs page-size] :as params} :params :as context}]
-  (if-ok [{:keys [handles clauses]} (handles-and-clauses context db)]
+  [{:blaze/keys [db] :keys [type]
+    {:keys [include-defs page-size] :as params} :params
+    :as context}]
+  (if-ok [{:keys [handles query]} (handles-and-clauses context)]
     (let [{:keys [matches includes next-match]}
           (build-page db include-defs page-size handles)
+          total-future (total-future db type query params matches next-match)
           match-futures (into [] (comp (partition-all 100) (pull-matches-xf params db)) matches)
           include-futures (into [] (comp (partition-all 100) (map (partial d/pull-many db))) includes)]
-      (-> (ac/all-of (into match-futures include-futures))
+      (-> (ac/all-of (into (conj match-futures total-future) include-futures))
           (ac/exceptionally
            #(assoc %
                    ::anom/category ::anom/fault
@@ -119,9 +141,9 @@
           (ac/then-apply
            (fn [_]
              {:entries (entries context match-futures include-futures)
-              :num-matches (count matches)
               :next-handle next-match
-              :clauses clauses}))))
+              :total (ac/join total-future)
+              :clauses (some-> query d/query-clauses)}))))
     ac/completed-future))
 
 (defn- link [relation url]
@@ -142,24 +164,6 @@
   [{:keys [next-link-url-fn]} token clauses next-handle]
   (->> (next-link-url-fn token clauses (next-link-offset next-handle))
        (link "next")))
-
-(defn- total
-  "Calculates the total number of resources returned.
-
-  If we have no clauses (returning all resources), we can use `d/type-total`.
-  Secondly, if the number of entries found is not more than one page in size,
-  we can use that number. Otherwise, there is no cheap way to calculate the
-  number of matching resources, so we don't report it."
-  [{:keys [type] :blaze/keys [db] {:keys [clauses page-id]} :params}
-   num-matches next-handle]
-  (cond
-    ;; evaluate this criteria first, because we can potentially safe the
-    ;; d/type-total call
-    (and (nil? page-id) (nil? next-handle))
-    num-matches
-
-    (empty? clauses)
-    (d/type-total db type)))
 
 (defn- zero-bundle
   "Generate a special bundle if the search results in zero matches to avoid
@@ -193,23 +197,15 @@
 (defn- search-normal [context]
   (-> (page-data context)
       (ac/then-compose
-       (fn [{:keys [entries num-matches next-handle clauses]}]
-         (let [total (total context num-matches next-handle)]
-           (if (some-> total zero?)
-             (ac/completed-future (zero-bundle context clauses))
-             (do-sync [token (gen-token! context clauses)]
-               (if next-handle
-                 (-> (normal-bundle context token clauses entries total)
-                     (update :link conj (next-link context token clauses next-handle)))
-                 (normal-bundle context token clauses entries total)))))))
+       (fn [{:keys [entries next-handle total clauses]}]
+         (if (some-> total zero?)
+           (ac/completed-future (zero-bundle context clauses))
+           (do-sync [token (gen-token! context clauses)]
+             (if next-handle
+               (-> (normal-bundle context token clauses entries total)
+                   (update :link conj (next-link context token clauses next-handle)))
+               (normal-bundle context token clauses entries total))))))
       (ac/then-apply ring/response)))
-
-(defn- compile-type-query
-  [{:keys [type] :blaze/keys [db] :blaze.preference/keys [handling]
-    {:keys [clauses]} :params}]
-  (if (identical? :blaze.preference.handling/strict handling)
-    (d/compile-type-query db type clauses)
-    (d/compile-type-query-lenient db type clauses)))
 
 (defn- summary-response [context total clauses]
   (ring/response
@@ -223,10 +219,11 @@
   (ac/completed-future (summary-response context (d/type-total db type) [])))
 
 (defn- search-summary
-  [{:blaze/keys [db] {:keys [clauses]} :params :as context}]
+  [{:keys [type] :blaze/keys [db] {:keys [clauses]} :params
+    :blaze.preference/keys [handling] :as context}]
   (if (empty? clauses)
     (no-query-summary-response context)
-    (if-ok [query (compile-type-query context)]
+    (if-ok [query (compile-type-query db type clauses handling)]
       (let [clauses (d/query-clauses query)]
         (if (empty? clauses)
           (no-query-summary-response context)
@@ -279,8 +276,8 @@
   of the next link."
   [{:blaze/keys [base-url db] :as request} page-id-cipher params]
   (fn [token clauses offset]
-    (nav/token-url base-url page-id-cipher (page-match request) params token clauses
-                   (d/t db) offset)))
+    (nav/token-url base-url page-id-cipher (page-match request) params token
+                   clauses (d/t db) offset)))
 
 (defn- search-context
   [{:keys [page-store page-id-cipher] :as context}

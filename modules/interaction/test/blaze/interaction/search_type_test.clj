@@ -852,7 +852,30 @@
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
-              (is (= 1 (count (:entry body)))))))
+              (is (= 1 (count (:entry body))))))
+
+          (testing "with _total=accurate"
+            (let [{:keys [body]}
+                  @(handler
+                    {:params {"active" "true" "_total" "accurate" "_count" "1"}})]
+
+              (testing "the total count is 2"
+                (is (= #fhir/unsignedInt 2 (:total body))))
+
+              (testing "has a self link"
+                (is (= (str base-url context-path "/Patient?active=true&_total=accurate&_count=1")
+                       (link-url body "self"))))
+
+              (testing "has a first link"
+                (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_total" "accurate" "_count" "1" "__t" "1"})
+                       (link-url body "first"))))
+
+              (testing "has a next link with search params"
+                (is (= (page-url page-id-cipher "Patient" {"active" ["true"] "_total" "accurate" "_count" "1" "__t" "1" "__page-id" "2"})
+                       (link-url body "next"))))
+
+              (testing "the bundle contains one entry"
+                (is (= 1 (count (:entry body))))))))
 
         (testing "search for inactive patients"
           (let [{:keys [body]}
@@ -899,7 +922,31 @@
                      (link-url body "next"))))
 
             (testing "the bundle contains one entry"
-              (is (= 1 (count (:entry body)))))))
+              (is (= 1 (count (:entry body))))))
+
+          (testing "with _total=accurate"
+            (let [{:keys [body]}
+                  @(handler
+                    {::reitit/match patient-search-match
+                     :params {"active" "true" "_total" "accurate" "_count" "1"}})]
+
+              (testing "the total count is 2"
+                (is (= #fhir/unsignedInt 2 (:total body))))
+
+              (testing "has a self link"
+                (is (= (str base-url context-path "/Patient?active=true&_total=accurate&_count=1")
+                       (link-url body "self"))))
+
+              (testing "has a first link with token"
+                (is (= (page-url page-id-cipher "Patient" {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC" "_total" "accurate" "_count" "1" "__t" "1"})
+                       (link-url body "first"))))
+
+              (testing "has a next link with token"
+                (is (= (page-url page-id-cipher "Patient" {"__token" "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC" "_total" "accurate" "_count" "1" "__t" "1" "__page-id" "2"})
+                       (link-url body "next"))))
+
+              (testing "the bundle contains one entry"
+                (is (= 1 (count (:entry body))))))))
 
         (testing "search for inactive patients"
           (let [{:keys [body]}

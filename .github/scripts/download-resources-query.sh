@@ -9,11 +9,16 @@ QUERY=$2
 EXPECTED_SIZE=$3
 FILE_NAME_PREFIX="$(uuidgen)"
 
-count() {
+summary_count() {
   curl -sH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$BASE/$TYPE?$QUERY&_summary=count" | jq .total
 }
 
-test "count size" "$(count)" "$EXPECTED_SIZE"
+total_count() {
+  curl -sH 'Prefer: handling=strict' -H 'Accept: application/fhir+json' "$BASE/$TYPE?$QUERY&_total=accurate" | jq .total
+}
+
+test "_summary=count count" "$(summary_count)" "$EXPECTED_SIZE"
+test "_total=accurate count" "$(total_count)" "$EXPECTED_SIZE"
 
 blazectl --no-progress --server "$BASE" download "$TYPE" -q "$QUERY" -o "$FILE_NAME_PREFIX-get.ndjson"
 

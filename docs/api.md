@@ -98,6 +98,20 @@ GET [base]/[type]?param1=value&...
 POST [base]/[type]/_search
 ```
 
+#### Search Result Parameters
+
+| Name             | Description                                                     |
+|------------------|-----------------------------------------------------------------|
+| `_sort`          | see Sorting                                                     |
+| `_count`         | the default page size is 50 and the maximum page size is 10.000 |
+| `_include`       | supported, except the wildcard `*`                              |
+| `_revinclude`    | supported, except the wildcard `*`                              |
+| `_summary`       | only `count` is supported                                       |
+| `_total`         | `accurate` is supported                                         |
+| `_elements`      | fully supported                                                 |
+| `_contained`     | not supported                                                   |
+| `_containedType` | not supported                                                   |
+
 #### _profile
 
 Search for `Resource.meta.profile` is supported using the `_profile` search param with exact match or using the `below` modifier as in `_profile:below` with major and minor version prefix match. [Semver][6] is expected for version numbers so a search value of `<url>|1` will find all versions with major version `1` and a search value of `<url>|1.2` will find all versions with major version `1` and minor version `2`. Patch versions are not supported with the `below` modifier.
