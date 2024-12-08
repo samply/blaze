@@ -268,7 +268,7 @@ jobs:
         pattern: coverage-report-*
 
     - name: Codecov Upload
-      uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
+      uses: codecov/codecov-action@7f8b4b4bde536c465e797be725718b88c5d95e0e # v5
       with:
         name: codecov-umbrella
         token: ${{ secrets.CODECOV_TOKEN }}
