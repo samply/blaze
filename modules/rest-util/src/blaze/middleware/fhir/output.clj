@@ -7,6 +7,7 @@
   (:require
    [blaze.anomaly :as ba]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type :as type]
    [blaze.handler.util :as handler-util]
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
@@ -15,7 +16,8 @@
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
   (:import
-   [java.io ByteArrayOutputStream]))
+   [java.io ByteArrayOutputStream]
+   [java.util Base64 Base64$Decoder]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,6 +28,12 @@
   "format")
 
 (def ^:private parse-accept (parse/fast-memoize 1000 parse/parse-accept))
+
+(defn- generate-error [generation-fn ex]
+  (-> ex
+      ba/anomaly
+      handler-util/operation-outcome
+      generation-fn))
 
 (defn- generate-json [body]
   (log/trace "generate JSON")
@@ -38,24 +46,100 @@
       (xml/emit (fhir-spec/unform-xml body) writer))
     (.toByteArray out)))
 
-(defn- generate-xml-error [e]
-  (-> e
-      ba/anomaly
-      handler-util/operation-outcome
-      generate-xml**))
+(comment
+  (-> (generate-xml** {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"foo\u001Ebar"})
+      (update :body parse-xml))
+  :end)
 
 (defn- generate-xml* [response]
   (try
     (update response :body generate-xml**)
     (catch Throwable e
       (assoc response
-             :body (generate-xml-error e)
+             :body (generate-error generate-xml** e)
              :status 500))))
 
 (defn- generate-xml [response]
   (log/trace "generate XML")
   (with-open [_ (prom/timer generate-duration-seconds "xml")]
     (generate-xml* response)))
+
+(comment
+  (try (generate-xml** {:fhir/type :fhir/Patient :id "0" :gender "foobar"})
+       (catch Throwable e (ex-message e)))
+  ;; => "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)"
+
+  (-> (generate-xml* {:status 200, :headers {}, :body {:fhir/type :fhir/Patient :id "0" :gender "foobar"}})
+      (update :body parse-xml))
+  ;; => {:status 500, :headers {}, :body {:issue [{:severity #fhir/code"error", :code #fhir/code"exception", :diagnostics "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)", :fhir/type :fhir.OperationOutcome/issue}], :fhir/type :fhir/OperationOutcome}}
+  :end)
+
+(defn- generate-binary** [{:keys [data]}]
+  (when data
+    (.decode (Base64/getDecoder) ^String (type/value data))))
+
+(comment
+  (:data {:data "MTANjECg==" :content-type nil})
+  ;; => "MTANjECg=="
+
+  (type/value (:data {:data "MTANjECg==" :content-type nil}))
+  ;; => "MTANjECg=="
+
+  (type/base64Binary (type/value (:data {:data "MTANjECg==" :content-type nil})))
+  ;; => #fhir/base64Binary"MTANjECg=="
+
+  (type/base64Binary "MTANjECg==")
+  ;; => #fhir/base64Binary"MTANjECg=="
+
+  (generate-binary** {:data "MTANjECg==" :content-type nil})
+  ; Unhandled java.lang.IllegalArgumentException
+  ;   Input byte array has wrong 4-byte ending unit
+
+  :end)
+
+(defn- generate-binary* [response]
+  (try
+    (update response :body generate-binary**)
+    (catch Throwable e
+      (assoc response
+             :body (generate-error identity e)
+             :status 500))))
+
+(comment
+
+  (generate-error generate-binary** (IllegalArgumentException. "Invalid argument provided"))
+  ;; => nil
+
+  (generate-error identity (IllegalArgumentException. "Invalid argument provided"))
+;; => {:fhir/type :fhir/OperationOutcome, :issue [{:fhir/type :fhir.OperationOutcome/issue, :severity #fhir/code"error", :code #fhir/code"exception", :diagnostics "Invalid argument provided"}]}
+
+  (generate-binary** {:data "MTANjECg==" :content-type nil})
+   ;; =>
+   ;;  Unhandled java.lang.IllegalArgumentException
+   ;;  Input byte array has wrong 4-byte ending unit
+
+  (generate-binary* {:status 200, :headers {}, :body {:data "MTANjECg==" :content-type nil}})
+;; => {:status 500, :headers {}, :body {:fhir/type :fhir/OperationOutcome, :issue [{:fhir/type :fhir.OperationOutcome/issue, :severity #fhir/code"error", :code #fhir/code"exception", :diagnostics "Input byte array has wrong 4-byte ending unit"}]}}
+
+  (try (generate-binary* {:status 200 :headers {} :body {:data "MTANjECg==" :content-type nil}})
+       (catch Throwable e (ex-message e)))
+;; => {:status 500, :headers {}, :body {:fhir/type :fhir/OperationOutcome, :issue [{:fhir/type :fhir.OperationOutcome/issue, :severity #fhir/code"error", :code #fhir/code"exception", :diagnostics "Input byte array has wrong 4-byte ending unit"}]}}
+  :end)
+
+(defn- generate-binary [response]
+  (log/trace "generate binary")
+  (with-open [_ (prom/timer generate-duration-seconds "binary")]
+    (generate-binary* response)))
+
+(comment
+  (defn- parse-xml [body]
+    (with-open [reader (io/reader body)]
+      (fhir-spec/conform-xml (xml/parse reader))))
+
+  (-> (generate-binary {:status 200, :headers {}, :body {:data "MTANjECg==" :content-type nil}}))
+;; => {:status 500, :headers {}, :body {:fhir/type :fhir/OperationOutcome, :issue [{:fhir/type :fhir.OperationOutcome/issue, :severity #fhir/code"error", :code #fhir/code"exception", :diagnostics "Input byte array has wrong 4-byte ending unit"}]}}
+
+  :end)
 
 (defn- encode-response-json [{:keys [body] :as response} content-type]
   (cond-> response body (-> (update :body generate-json)
@@ -64,6 +148,14 @@
 (defn- encode-response-xml [{:keys [body] :as response} content-type]
   (cond-> response body (-> generate-xml
                             (ring/content-type content-type))))
+
+(defn- binary-content-type [body]
+  (or (-> body :contentType type/value)
+      "application/octet-stream"))
+
+(defn- encode-response-binary [{:keys [body] :as response}]
+  (cond-> response body (-> generate-binary
+                            (ring/content-type (binary-content-type body)))))
 
 (defn- format-key [format]
   (condp = format
@@ -104,3 +196,15 @@
   ([handler opts]
    (fn [request respond raise]
      (handler request #(respond (handle-response opts request %)) raise))))
+
+(defn handle-binary-response [request response]
+  (case (request-format request)
+    :fhir+json (encode-response-json response "application/fhir+json;charset=utf-8")
+    :fhir+xml (encode-response-xml response "application/fhir+xml;charset=utf-8")
+    (encode-response-binary response)))
+
+(defn wrap-binary-output
+  "Middleware to output binary resources."
+  [handler]
+  (fn [request respond raise]
+    (handler request #(respond (handle-binary-response request %)) raise)))

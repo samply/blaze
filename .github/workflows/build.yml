@@ -569,6 +569,9 @@ jobs:
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
 
+    - name: Install xq
+      run: .github/scripts/install-xq.sh
+
     - name: Download Blaze Image
       uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
       with:
@@ -1062,6 +1065,15 @@ jobs:
 
     - name: Search _tag
       run: .github/scripts/search-tag.sh
+
+    - name: Binary Content Download - not found
+      run: .github/scripts/read-binary-content-not-found.sh
+
+    - name: Binary Content Download - found (via JSON)
+      run: .github/scripts/read-binary-content-via-json-found.sh
+
+    - name: Binary Content Download - found (via XML)
+      run: .github/scripts/read-binary-content-via-xml-found.sh
 
     - name: Conditional Delete - Check Referential Integrity Violated
       run: .github/scripts/conditional-delete-type/check-referential-integrity-violated.sh

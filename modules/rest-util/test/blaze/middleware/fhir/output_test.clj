@@ -1,9 +1,11 @@
 (ns blaze.middleware.fhir.output-test
   (:require
+   [blaze.byte-string :as bs]
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec-spec]
+   [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util]
-   [blaze.middleware.fhir.output :refer [wrap-output]]
+   [blaze.middleware.fhir.output :refer [wrap-binary-output wrap-output]]
    [blaze.module.test-util.ring :refer [call]]
    [blaze.test-util :as tu]
    [clojure.data.xml :as xml]
@@ -27,16 +29,41 @@
    (fn [_ respond _]
      (respond (ring/response {:fhir/type :fhir/Patient :id "0"})))))
 
+(defn- binary-resource-handler-200
+  "A handler which uses the binary middleware and
+  returns a binary resource."
+  [{:keys [content-type data]}]
+  (wrap-binary-output
+   (fn [_ respond _]
+     (respond
+      (ring/response
+       (cond-> {:fhir/type :fhir/Binary}
+         data (assoc :data (type/base64Binary data))
+         content-type (assoc :contentType (type/code content-type))))))))
+
+(def ^:private binary-resource-handler-no-body
+  "A handler which uses the binary middleware and
+  returns a response with 200 and no body."
+  (wrap-binary-output
+   (fn [_ respond _]
+     (respond (ring/status 200)))))
+
 (def ^:private resource-handler-304
   "A handler which returns a 304 Not Modified response."
   (wrap-output
    (fn [_ respond _]
      (respond (ring/status 304)))))
 
-(defn- special-resource-handler [resource]
-  (wrap-output
+(defn- common-handler [wrapper-middleware resource]
+  (wrapper-middleware
    (fn [_ respond _]
      (respond (ring/response resource)))))
+
+(defn- special-resource-handler [resource]
+  (common-handler wrap-output resource))
+
+(defn- binary-resource-handler [resource]
+  (common-handler wrap-binary-output resource))
 
 (defn- parse-json [body]
   (fhir-spec/conform-json (fhir-spec/parse-json body)))
@@ -142,6 +169,97 @@
       [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
       [:body parse-xml :fhir/type] := :fhir/OperationOutcome
       [:body parse-xml :issue 0 :diagnostics] := "Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)")))
+
+(comment
+  (-> (call (special-resource-handler {:fhir/type :fhir/Patient :id "0" :gender #fhir/code"foo\u001Ebar"}) {:headers {"accept" "application/fhir+xml"}})
+      (update :body parse-xml)
+      clojure.pprint/pprint
+      with-out-str)
+;; => "16:16:16.290Z nREPL-session TRACE [blaze.middleware.fhir.output:58] - generate XML\n{:status 500,\n :headers {\"Content-Type\" \"application/fhir+xml;charset=utf-8\"},\n :body\n {:issue\n  [{:severity #fhir/code\"error\",\n    :code #fhir/code\"exception\",\n    :diagnostics\n    \"Invalid white space character (0x1e) in text to output (in xml 1.1, could output as a character entity)\",\n    :fhir/type :fhir.OperationOutcome/issue}],\n  :fhir/type :fhir/OperationOutcome}}\n"
+  :end)
+
+(deftest binary-resource-test
+  (st/unstrument)
+  (testing "returning the resource"
+    (testing "JSON"
+      (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTA1NjE0Cg=="}) {:headers {"accept" "application/fhir+json"}})
+        :status := 200
+        [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
+        [:body parse-json] := {:fhir/type :fhir/Binary
+                               :contentType #fhir/code"text/plain"
+                               :data #fhir/base64Binary"MTA1NjE0Cg=="}))
+
+    (testing "XML"
+      (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTA1NjE0Cg=="}) {:headers {"accept" "application/fhir+xml"}})
+        :status := 200
+        [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
+        [:body parse-xml] := {:fhir/type :fhir/Binary
+                              :contentType #fhir/code"text/plain"
+                              :data #fhir/base64Binary"MTA1NjE0Cg=="})))
+
+  (testing "returning the data"
+    (testing "with content type"
+      (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTA1NjE0Cg=="}) {:headers {"accept" "text/plain"}})
+        :status := 200
+        [:headers "Content-Type"] := "text/plain"
+        [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
+
+    (testing "without content type"
+      (given (call (binary-resource-handler-200 {:content-type nil :data "MTA1NjE0Cg=="}) {:headers {"accept" "text/plain"}})
+        :status := 200
+        [:headers "Content-Type"] := "application/octet-stream"
+        [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
+
+    (testing "without data"
+      (testing "with content type"
+        (given (call (binary-resource-handler-200 {:content-type "text/plain"}) {:headers {"accept" "text/plain"}})
+          :status := 200
+          [:headers "Content-Type"] := "text/plain"
+          :body := nil))
+
+      (testing "without content type"
+        (given (call (binary-resource-handler-200 {:content-type nil}) {:headers {"accept" "text/plain"}})
+          :status := 200
+          [:headers "Content-Type"] := "application/octet-stream"
+          :body := nil))
+
+      (testing "without body at all"
+        (given (call binary-resource-handler-no-body {:headers {"accept" "text/plain"}})
+          :status := 200
+          [:headers "Content-Type"] := nil
+          :body := nil)))
+
+    (testing "failing binary emit"
+      (st/unstrument)
+      (testing "invalid base64 representation of a binary resource (from JSON)"
+        (given (call (binary-resource-handler-200 {:content-type "application/pdf" :data "MTANjECg=="}) {:headers {"accept" "text/plain"}})
+          :status := 500
+          [:headers "Content-Type"] := "application/pdf"
+          [:body parse-json] := "This will fail"
+          [:body parse-json :fhir/type] := :fhir/OperationOutcome
+          [:body parse-json :issue 0 :diagnostics] := "Input byte array has wrong 4-byte ending unit")))))
+
+;; This is what the parsed `:body` looks like:
+#_{:cognitect.anomalies/category :cognitect.anomalies/incorrect,
+   :cognitect.anomalies/message
+   "Invalid JSON representation of a resource.",
+   :x
+   #:cognitect.anomalies{:category :cognitect.anomalies/incorrect,
+                         :message
+                         "No implementation of method: :-read-value of protocol: #'jsonista.core/ReadValue found for class: clojure.lang.PersistentArrayMap"},
+   :fhir/issues
+   [#:fhir.issues{:severity "error",
+                  :code "value",
+                  :diagnostics
+                  "Given resource does not contain a `resourceType` property."}]}
+
+(comment
+  (-> (call (binary-resource-handler-200 {:content-type "application/pdf" :data "MTANjECg=="}) {})
+      (update :body parse-json)
+      clojure.pprint/pprint
+      with-out-str)
+;; => "17:01:34.645Z nREPL-session TRACE [blaze.middleware.fhir.output:39] - generate JSON\n{:status 200,\n :headers {\"Content-Type\" \"application/fhir+json;charset=utf-8\"},\n :body\n {:cognitect.anomalies/category :cognitect.anomalies/incorrect,\n  :cognitect.anomalies/message\n  \"Invalid JSON representation of a resource.\",\n  :x\n  {:resourceType \"Binary\",\n   :contentType \"application/pdf\",\n   :data \"MTANjECg==\"},\n  :fhir/issues\n  [#:fhir.issues{:severity \"error\",\n                 :code \"invariant\",\n                 :diagnostics\n                 \"Error on value `MTANjECg==`. Expected type is `base64Binary`, regex `([0-9a-zA-Z\\\\\\\\+/=]{4})+`.\",\n                 :expression \"data\"}]}}\n"
+  :end)
 
 (deftest not-acceptable-test
   (is (nil? (call resource-handler-200 {:headers {"accept" "text/plain"}}))))
