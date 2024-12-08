@@ -73,12 +73,15 @@
       (seq rev-itr)
       (assoc "_revinclude:iterate" rev-itr))))
 
-(defn- merge-params [clauses-params {:keys [include-defs summary elements page-size]}]
+(defn- merge-params
+  [clauses-params {:keys [include-defs summary total elements page-size]}]
   (cond-> clauses-params
     (seq include-defs)
     (merge (include-defs->query-params include-defs))
     summary
     (assoc "_summary" summary)
+    total
+    (assoc "_total" total)
     (seq elements)
     (assoc "_elements" (str/join "," (map name elements)))
     page-size
