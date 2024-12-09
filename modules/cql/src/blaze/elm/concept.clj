@@ -33,6 +33,9 @@
   (-form [_]
     `(~'concept ~@(map core/-form codes))))
 
+(defn concept? [x]
+  (instance? Concept x))
+
 (defn concept
   "Returns a CQL concept"
   [codes]

@@ -12,6 +12,7 @@
    [blaze.fhir.spec]
    [blaze.http.spec]
    [blaze.spec]
+   [blaze.terminology-service.spec]
    [clojure.spec.alpha :as s]
    [reitit.core :as reitit])
   (:import
@@ -21,7 +22,7 @@
   (s/keys :req [:blaze/base-url ::reitit/router]
           :opt [:blaze/cancelled? ::expr/cache]
           :req-un [:blaze/clock :blaze/rng-fn :blaze.db/db
-                   ::evaluate-measure/executor]
+                   ::evaluate-measure/executor :blaze/terminology-service]
           :opt-un [::evaluate-measure/timeout]))
 
 (defn- temporal? [x]

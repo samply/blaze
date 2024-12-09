@@ -115,6 +115,10 @@
                   denominator-unit
                   (assoc :unit denominator-unit))})
 
+;; 3.12. ValueSetRef
+(defn value-set-ref [name]
+  {:type "ValueSetRef" :name name})
+
 ;; 7. Parameters
 
 ;; 7.2. ParameterRef
@@ -905,3 +909,9 @@
     :operand [x y]}
     precision
     (assoc :precision precision)))
+
+;; 23.8. InValueSet
+(defn in-value-set [[code value-set]]
+  {:type "InValueSet"
+   :code code
+   :valueset value-set})

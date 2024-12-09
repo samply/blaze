@@ -11,7 +11,7 @@
    [cognitect.anomalies :as-alias anom]))
 
 (s/fdef library/compile-library
-  :args (s/cat :node :blaze.db/node :library :elm/library :opts ::c/options)
+  :args (s/cat :context ::c/context :library :elm/library :opts ::c/options)
   :ret (s/or :library ::c/library :anomaly ::anom/anomaly))
 
 (s/fdef library/resolve-all-refs
