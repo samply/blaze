@@ -8,6 +8,7 @@
    [blaze.elm.expression :as-alias expr]
    [blaze.executors :as ex]
    [blaze.fhir.operation.evaluate-measure :as evaluate-measure]
+   [blaze.fhir.operation.evaluate-measure.measure-spec]
    [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util]
@@ -15,6 +16,9 @@
    [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.middleware.fhir.db-spec]
    [blaze.module.test-util :refer [with-system]]
+   [blaze.terminology-service :as ts]
+   [blaze.terminology-service.local]
+   [blaze.terminology-service.spec :refer [terminology-service?]]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -71,6 +75,7 @@
    ::evaluate-measure/handler
    {:node (ig/ref :blaze.db/node)
     ::expr/cache (ig/ref ::expr/cache)
+    :terminology-service (ig/ref :blaze/terminology-service)
     :executor (ig/ref :blaze.test/executor)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
@@ -81,6 +86,9 @@
    ::expr/cache
    {:node (ig/ref :blaze.db/node)
     :executor (ig/ref :blaze.test/executor)}
+   ::ts/local
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)}
    :blaze.test/executor {}
    :blaze.test/fixed-rng-fn {}))
 
@@ -96,29 +104,43 @@
       :key := ::evaluate-measure/handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :terminology-service))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :executor))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 4 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))))
 
   (testing "invalid node"
     (given-thrown (ig/init {::evaluate-measure/handler {:node ::invalid}})
       :key := ::evaluate-measure/handler
       :reason := ::ig/build-failed-spec
-      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :executor))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 3 :pred] := `node?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :terminology-service))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 4 :pred] := `node?
+      [:cause-data ::s/problems 4 :val] := ::invalid))
+
+  (testing "invalid terminology-service"
+    (given-thrown (ig/init {::evaluate-measure/handler {:terminology-service ::invalid}})
+      :key := ::evaluate-measure/handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :executor))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 4 :pred] := `terminology-service?
+      [:cause-data ::s/problems 4 :val] := ::invalid))
 
   (testing "invalid executor"
     (given-thrown (ig/init {::evaluate-measure/handler {:executor ::invalid}})
       :key := ::evaluate-measure/handler
       :reason := ::ig/build-failed-spec
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :node))
-      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :clock))
-      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
-      [:cause-data ::s/problems 3 :pred] := `ex/executor?
-      [:cause-data ::s/problems 3 :val] := ::invalid))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :terminology-service))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :clock))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :rng-fn))
+      [:cause-data ::s/problems 4 :pred] := `ex/executor?
+      [:cause-data ::s/problems 4 :val] := ::invalid))
 
   (testing "init"
     (with-system [{::evaluate-measure/keys [handler]} config]
@@ -378,7 +400,7 @@
         (doseq [library-ref [#fhir/canonical"library-url-094115"
                              #fhir/canonical"Library/0"
                              #fhir/canonical"/Library/0"]
-                cancelled?  [nil (constantly nil)]]
+                cancelled? [nil (constantly nil)]]
           (with-handler [handler]
             [[[:put
                {:fhir/type :fhir/Measure :id "0"
