@@ -1,6 +1,6 @@
 (ns blaze.rest-api.capabilities-handler
   (:require
-   [blaze.async.comp :as ac]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.search-param-registry :as sr]
    [blaze.db.search-param-registry.spec]
    [blaze.fhir.spec.type :as type]
@@ -13,6 +13,8 @@
    [blaze.rest-api.spec]
    [blaze.rest-api.util :as u]
    [blaze.spec]
+   [blaze.terminology-service :as ts]
+   [blaze.terminology-service.spec]
    [clojure.spec.alpha :as s]
    [integrant.core :as ig]
    [reitit.ring]
@@ -20,6 +22,9 @@
    [ring.util.response :as ring]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private copyright
+  #fhir/markdown"Copyright 2019 - 2024 The Samply Community\n\nLicensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at\n\nhttp://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.")
 
 (def ^:private quantity-documentation
   #fhir/markdown"Decimal values are truncated at two digits after the decimal point.")
@@ -133,13 +138,12 @@
      search-system-handler
      transaction-handler-active?
      history-system-handler]
-    :as context}]
+    :as config}]
   {:fhir/type :fhir/CapabilityStatement
    :status #fhir/code"active"
    :experimental false
    :publisher "The Samply Community"
-   :copyright
-   #fhir/markdown"Copyright 2019 - 2024 The Samply Community\n\nLicensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at\n\nhttp://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License."
+   :copyright copyright
    :kind #fhir/code"instance"
    :date (type/dateTime release-date)
    :software
@@ -157,7 +161,7 @@
      :resource
      (into
       []
-      (keep (partial capability-resource context))
+      (keep (partial capability-resource config))
       (sdr/resources structure-definition-repo))
      :interaction
      (cond-> []
@@ -207,22 +211,64 @@
        :documentation "Only `count` is supported at the moment."}]
      :compartment ["http://hl7.org/fhir/CompartmentDefinition/patient"]}]})
 
+(defn- build-terminology-capabilities-base
+  [{:keys [version release-date]}]
+  {:fhir/type :fhir/TerminologyCapabilities
+   :meta #fhir/Meta{:profile [#fhir/canonical"http://hl7.org/fhir/StructureDefinition/TerminologyCapabilities"]}
+   :status #fhir/code"active"
+   :experimental false
+   :publisher "The Samply Community"
+   :copyright copyright
+   :kind #fhir/code"instance"
+   :date (type/dateTime release-date)
+   :software
+   {:name "Blaze"
+    :version version
+    :releaseDate (type/dateTime release-date)}
+   :implementation
+   {:description "Blaze"}
+   :validateCode {:translations #fhir/boolean false}})
+
+(defn- context
+  [{:keys [context-path terminology-service] :or {context-path ""} :as config}]
+  {:context-path context-path
+   :capability-statement-base (build-capability-statement-base config)
+   :terminology-capabilities-base (build-terminology-capabilities-base config)
+   :terminology-service terminology-service})
+
 (defn- final-capability-statement
-  [capability-statement base-url context-path elements]
+  [{:keys [context-path capability-statement-base]} base-url elements]
   (cond-> (assoc-in
-           capability-statement
+           capability-statement-base
            [:implementation :url]
            (type/->Url (str base-url context-path)))
     (seq elements) (select-keys (conj elements :fhir/type))))
 
-(defn- tag [capability-statement]
-  (Integer/toHexString (hash capability-statement)))
+(defn- final-terminology-capabilities
+  [{:keys [context-path terminology-service terminology-capabilities-base]}
+   base-url]
+  (do-sync [code-systems (ts/code-systems terminology-service)]
+    (cond->
+     (assoc-in
+      terminology-capabilities-base
+      [:implementation :url]
+      (type/->Url (str base-url context-path)))
+      code-systems (assoc :codeSystem code-systems))))
 
-(defn response [{:strs [if-none-match]} capability-statement]
-  (let [tag (tag capability-statement)]
+(defn- final-capabilities [context base-url mode elements]
+  (if (= "terminology" mode)
+    (final-terminology-capabilities context base-url)
+    (ac/completed-future
+     (final-capability-statement context base-url elements))))
+
+(defn- tag [capabilities]
+  (Integer/toHexString (hash capabilities)))
+
+(defn response [{:strs [if-none-match]} capabilities]
+  (let [tag (tag capabilities)]
     (-> (if ((header/if-none-match->tags if-none-match) tag)
           (ring/status 304)
-          (ring/response capability-statement))
+          (ring/response capabilities))
         (ring/header "ETag" (format "W/\"%s\"" tag)))))
 
 (defmethod m/pre-init-spec ::rest-api/capabilities-handler [_]
@@ -240,15 +286,17 @@
     ::resource-patterns
     ::operations
     :blaze.db/enforce-referential-integrity
-    :blaze.db/allow-multiple-delete]))
+    :blaze.db/allow-multiple-delete
+    :blaze/terminology-service]))
 
 (defmethod ig/init-key ::rest-api/capabilities-handler
-  [_ {:keys [context-path] :or {context-path ""} :as config}]
-  (let [capability-statement-base (build-capability-statement-base config)]
+  [_ config]
+  (let [context (context config)
+        mode (if (:terminology-service context)
+               #(get % "mode")
+               (constantly nil))]
     (fn [{:keys [query-params headers] :blaze/keys [base-url]}]
       (let [elements (fhir-util/elements query-params)
-            capability-statement (final-capability-statement
-                                  capability-statement-base base-url
-                                  context-path elements)]
-        (-> (response headers capability-statement)
-            (ac/completed-future))))))
+            mode (mode query-params)]
+        (do-sync [capabilities (final-capabilities context base-url mode elements)]
+          (response headers capabilities))))))

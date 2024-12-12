@@ -31,7 +31,6 @@
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
-   [java.util Random]
    [java.util.concurrent TimeUnit]))
 
 (set! *warn-on-reflection* true)
@@ -108,7 +107,7 @@
      :blaze.job/error (ig/ref :blaze.job/error)
      :blaze.job/throws-error (ig/ref :blaze.job/throws-error)}
     :clock (ig/ref :blaze.test/fixed-clock)
-    :rng-fn (ig/ref ::incrementing-rng-fn)}
+    :rng-fn (ig/ref :blaze.test/incrementing-rng-fn)}
 
    :blaze.job/test
    {:admin-node (ig/ref :blaze.db.admin/node)}
@@ -230,13 +229,7 @@
 
    :blaze.test/fixed-clock {}
 
-   ::incrementing-rng-fn {}})
-
-(defmethod ig/init-key ::incrementing-rng-fn
-  [_ _]
-  (let [n (atom -1)]
-    #(proxy [Random] []
-       (nextLong [] (swap! n inc)))))
+   :blaze.test/incrementing-rng-fn {}})
 
 (deftest init-test
   (testing "nil config"
