@@ -2,19 +2,24 @@
   (:require
    [blaze.db.spec]
    [blaze.fhir.spec.spec]
+   [blaze.terminology-service.code-system-validate-code :as-alias cs-validate-code]
    [blaze.terminology-service.expand-value-set :as-alias expand-vs]
    [blaze.terminology-service.expand-value-set.request :as-alias request]
    [blaze.terminology-service.protocols :as p]
+   [blaze.terminology-service.value-set-validate-code :as-alias vs-validate-code]
    [clojure.spec.alpha :as s]))
 
-(defn terminology-service? [x]
-  (satisfies? p/TerminologyService x))
-
 (s/def :blaze/terminology-service
-  terminology-service?)
+  #(satisfies? p/TerminologyService %))
 
 (s/def ::request/url
   string?)
+
+(s/def ::request/code-system
+  :fhir/CodeSystem)
+
+(s/def ::request/value-set
+  :fhir/ValueSet)
 
 (s/def ::request/value-set-version
   string?)
@@ -25,6 +30,32 @@
 (s/def ::request/include-definition
   boolean?)
 
+(s/def ::request/active-only
+  boolean?)
+
+(s/def ::request/code
+  string?)
+
+(s/def ::request/system
+  string?)
+
+(s/def ::request/version
+  string?)
+
+(s/def ::request/coding
+  :fhir/Coding)
+
+;; parameters are taken from: http://hl7.org/fhir/R4/codesystem-operation-validate-code.html
+(s/def ::cs-validate-code/request
+  (s/keys
+   :opt-un
+   [:blaze.resource/id
+    ::request/url
+    ::request/code-system
+    ::request/code
+    ::request/version
+    ::request/coding]))
+
 ;; parameters are taken from: http://hl7.org/fhir/R4/valueset-operation-expand.html
 (s/def ::expand-vs/request
   (s/keys
@@ -33,4 +64,17 @@
     ::request/url
     ::request/value-set-version
     ::request/count
-    ::request/include-definition]))
+    ::request/include-definition
+    ::request/active-only]))
+
+;; parameters are taken from: http://hl7.org/fhir/R4/valueset-operation-validate-code.html
+(s/def ::vs-validate-code/request
+  (s/keys
+   :opt-un
+   [:blaze.resource/id
+    ::request/url
+    ::request/value-set
+    ::request/value-set-version
+    ::request/code
+    ::request/system
+    ::request/coding]))

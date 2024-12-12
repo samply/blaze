@@ -31,6 +31,9 @@
 (s/def :fhir/CodeableConcept
   #(s2/valid? :fhir/CodeableConcept %))
 
+(s/def :fhir/Coding
+  #(s2/valid? :fhir/Coding %))
+
 (s/def :fhir/Expression
   #(s2/valid? :fhir/Expression %))
 
@@ -72,3 +75,6 @@
 
 (s/def :fhir.ValueSet.expansion/contains
   #(s2/valid? :fhir.ValueSet.expansion/contains %))
+
+(s/def :fhir/Parameters
+  #(s2/valid? :fhir/Parameters %))

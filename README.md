@@ -50,6 +50,7 @@ Please refer to [Deployment](docs/deployment/README.md) for the full documentati
 * [Tuning Guide](docs/tuning-guide.md)
 * [Tooling](docs/tooling.md)
 * [CQL Queries](docs/cql-queries.md)
+* [Terminology Service](docs/terminology-service.md)
 * [Authentication](docs/authentication.md)
 * [Architecture](docs/architecture.md)
 * [Implementation](docs/implementation/README.md)

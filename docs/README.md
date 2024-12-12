@@ -11,6 +11,7 @@
 * [Tuning Guide](tuning-guide.md)
 * [Tooling](tooling.md)
 * [CQL Queries](cql-queries.md)
+* [Terminology Service](terminology-service.md)
 * [Authentication](authentication.md)
 * [Architecture](architecture.md)
 * [Implementation](implementation/README.md)

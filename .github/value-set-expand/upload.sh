@@ -5,7 +5,12 @@ BASE="http://localhost:8080/fhir"
 
 echo "Upload $FILENAME"
 
-RESOURCE_TYPE=$(jq -r .resourceType "$FILENAME")
+RESOURCE_TYPE="$(jq -r .resourceType "$FILENAME")"
 if [[ "$RESOURCE_TYPE" =~ ValueSet|CodeSystem ]]; then
-  curl -sf -H "Content-Type: application/fhir+json" -H "Prefer: return=minimal" -d @"$FILENAME" "$BASE/$RESOURCE_TYPE"
+  URL="$(jq -r .url "$FILENAME")"
+  if [[ "$URL" =~ http://unitsofmeasure.org|http://snomed.info/sct ]]; then
+    echo "Skip creating the code system $URL which is internal in Blaze"
+  else
+    curl -sf -H "Content-Type: application/fhir+json" -H "Prefer: return=minimal" -d @"$FILENAME" "$BASE/$RESOURCE_TYPE"
+  fi
 fi
