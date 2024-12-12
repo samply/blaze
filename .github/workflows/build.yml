@@ -1279,6 +1279,42 @@ jobs:
     - name: Expand KDS Terminology Resources
       run: .github/value-set-expand/expand.sh
 
+  integration-test-value-set-validate-code:
+    needs: build
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+    - name: Setup Node
+      uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
+      with:
+        node-version: 21
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+
+    - name: Download MII Test Data
+      run: wget https://github.com/medizininformatik-initiative/mii-testdata/releases/download/v1.0.1/kds-testdata-2024.0.1.zip
+      working-directory: .github/validation
+
+    - name: Unzip MII Test Data
+      run: unzip kds-testdata-2024.0.1.zip
+      working-directory: .github/validation
+
   not-enforcing-referential-integrity-test:
     needs: build
     runs-on: ubuntu-24.04

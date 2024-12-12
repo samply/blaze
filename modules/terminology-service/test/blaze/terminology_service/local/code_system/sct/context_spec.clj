@@ -1,0 +1,24 @@
+(ns blaze.terminology-service.local.code-system.sct.context-spec
+  (:require
+   [blaze.db.spec]
+   [blaze.fhir.spec.spec]
+   [blaze.terminology-service.local.code-system.sct.context :as context]
+   [blaze.terminology-service.local.code-system.sct.spec]
+   [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]))
+
+(s/fdef context/find-concept
+  :args (s/cat :concept-index map? :module-id :sct/id :version :sct/time :concept-id :sct/id)
+  :ret (s/nilable boolean?))
+
+(s/fdef context/neighbors
+  :args (s/cat :index map? :module-id :sct/id :version :sct/time :concept-id :sct/id)
+  :ret (s/coll-of :sct/id :kind set?))
+
+(s/fdef context/transitive-neighbors
+  :args (s/cat :index map? :module-id :sct/id :version :sct/time :concept-id :sct/id)
+  :ret (s/coll-of :sct/id :kind set?))
+
+(s/fdef context/build
+  :args (s/cat :path string?)
+  :ret (s/or :context :sct/context :anomaly ::anom/anomaly))

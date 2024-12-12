@@ -26,6 +26,8 @@
    [blaze.rest-api.capabilities-handler]
    [blaze.system :as system]
    [blaze.system-spec]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service.local]
    [blaze.test-util :as tu]
    [buddy.auth.protocols :as ap]
    [clojure.spec.alpha :as s]
@@ -135,8 +137,8 @@
     :resource-patterns (ig/ref ::rest-api/resource-patterns)
     :compartments
     [#:blaze.rest-api.compartment
-      {:code "Patient"
-       :search-handler (ig/ref :blaze.interaction/search-compartment)}]
+            {:code "Patient"
+             :search-handler (ig/ref :blaze.interaction/search-compartment)}]
     :job-scheduler (ig/ref :blaze/job-scheduler)
     :clock (ig/ref :blaze.test/fixed-clock)
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
@@ -185,6 +187,7 @@
     :release-date "2024-01-07"
     :structure-definition-repo structure-definition-repo
     :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :terminology-service (ig/ref ::ts/local)
     :search-system-handler (ig/ref :blaze.interaction/search-system)
     :transaction-handler-active? true
     :resource-patterns (ig/ref ::rest-api/resource-patterns)}
@@ -200,25 +203,28 @@
    {:default
     {:read
      #:blaze.rest-api.interaction
-      {:handler (ig/ref :blaze.interaction/read)}
+             {:handler (ig/ref :blaze.interaction/read)}
      :vread
      #:blaze.rest-api.interaction
-      {:handler (ig/ref :blaze.interaction/vread)}
+             {:handler (ig/ref :blaze.interaction/vread)}
      :delete
      #:blaze.rest-api.interaction
-      {:handler (ig/ref :blaze.interaction/delete)}
+             {:handler (ig/ref :blaze.interaction/delete)}
      :delete-history
      #:blaze.rest-api.interaction
-      {:handler (ig/ref :blaze.interaction/delete-history)}
+             {:handler (ig/ref :blaze.interaction/delete-history)}
      :conditional-delete-type
      #:blaze.rest-api.interaction
-      {:handler (ig/ref :blaze.interaction/conditional-delete-type)}
+             {:handler (ig/ref :blaze.interaction/conditional-delete-type)}
      :search-type
      #:blaze.rest-api.interaction
-      {:handler (ig/ref :blaze.interaction/search-type)}
+             {:handler (ig/ref :blaze.interaction/search-type)}
      :history-type
      #:blaze.rest-api.interaction
-      {:handler (ig/ref :blaze.interaction.history/type)}}}
+             {:handler (ig/ref :blaze.interaction.history/type)}}}
+   ::ts/local
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)}
    :blaze.test/executor {}
    :blaze.test/fixed-clock {}
    :blaze.test/fixed-rng-fn {}

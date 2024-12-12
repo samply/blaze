@@ -118,7 +118,23 @@
             :resource-types ["ValueSet"]
             :type-handler #blaze/ref :blaze.fhir.operation.value-set/expand
             :instance-handler #blaze/ref :blaze.fhir.operation.value-set/expand
-            :documentation "The $expand operation can be used to expand all codes of a ValueSet."}]
+            :documentation "The $expand operation can be used to expand all codes of a ValueSet."}
+   #:blaze.rest-api.operation
+           {:code "validate-code"
+            :def-uri "http://hl7.org/fhir/OperationDefinition/CodeSystem-validate-code"
+            :affects-state false
+            :resource-types ["CodeSystem"]
+            :type-handler #blaze/ref :blaze.fhir.operation.code-system/validate-code
+            :instance-handler #blaze/ref :blaze.fhir.operation.code-system/validate-code
+            :documentation "Validate that a coded value is in the code system."}
+   #:blaze.rest-api.operation
+           {:code "validate-code"
+            :def-uri "http://hl7.org/fhir/OperationDefinition/ValueSet-validate-code"
+            :affects-state false
+            :resource-types ["ValueSet"]
+            :type-handler #blaze/ref :blaze.fhir.operation.value-set/validate-code
+            :instance-handler #blaze/ref :blaze.fhir.operation.value-set/validate-code
+            :documentation "Validate that a coded value is in the set of codes allowed by a value set."}]
 
   ;;
   ;; FHIR Interactions
@@ -202,6 +218,7 @@
    :context-path #blaze/cfg ["CONTEXT_PATH" string? "/fhir"]
    :structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo
    :search-param-registry #blaze/ref :blaze.db/search-param-registry
+   :terminology-service #blaze/ref :blaze/terminology-service
    :search-system-handler #blaze/ref :blaze.interaction/search-system
    :transaction-handler-active? true
    :history-system-handler #blaze/ref :blaze.interaction.history/system
@@ -220,6 +237,12 @@
   ;; CQL Evaluation Engine
   ;;
   :blaze.cql/retrieve-total {}
+
+  ;;
+  ;; FHIR Operation CodeSystem Validate Code
+  ;;
+  :blaze.fhir.operation.code-system/validate-code
+  {:terminology-service #blaze/ref :blaze/terminology-service}
 
   ;;
   ;; FHIR Operation Evaluate Measure
@@ -277,9 +300,16 @@
   :blaze.fhir.operation.value-set/expand
   {:terminology-service #blaze/ref :blaze/terminology-service}
 
+  ;;
+  ;; FHIR Operation ValueSet Validate Code
+  ;;
+  :blaze.fhir.operation.value-set/validate-code
+  {:terminology-service #blaze/ref :blaze/terminology-service}
+
   :blaze.terminology-service/local
   {:node #blaze/ref :blaze.db.main/node
-   :clock #blaze/ref :blaze/clock}
+   :clock #blaze/ref :blaze/clock
+   :sct-release-path #blaze/cfg ["SCT_RELEASE_PATH" string?]}
 
   ;;
   ;; Admin API
