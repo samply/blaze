@@ -1,14 +1,15 @@
 (ns blaze.rest-api.capabilities-handler-test
   (:require
+   [blaze.db.api-stub :as api-stub :refer [mem-node-config with-system-data]]
    [blaze.db.impl.search-param]
-   [blaze.db.search-param-registry.spec :refer [search-param-registry?]]
-   [blaze.fhir.structure-definition-repo.spec :refer [structure-definition-repo?]]
    [blaze.fhir.test-util :refer [structure-definition-repo]]
-   [blaze.module.test-util :refer [with-system]]
+   [blaze.middleware.fhir.db-spec]
    [blaze.rest-api :as-alias rest-api]
    [blaze.rest-api.capabilities-handler]
    [blaze.rest-api.header-spec]
    [blaze.rest-api.spec]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service.local]
    [blaze.test-util :as tu :refer [given-thrown]]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
@@ -69,7 +70,7 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :version))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :release-date))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
-      [:cause-data ::s/problems 3 :pred] := `structure-definition-repo?
+      [:cause-data ::s/problems 3 :via] := [:blaze.fhir/structure-definition-repo]
       [:cause-data ::s/problems 3 :val] := ::invalid))
 
   (testing "invalid search-param-registry"
@@ -79,25 +80,40 @@
       [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :version))
       [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :release-date))
       [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
-      [:cause-data ::s/problems 3 :pred] := `search-param-registry?
-      [:cause-data ::s/problems 3 :val] := ::invalid)))
+      [:cause-data ::s/problems 3 :via] := [:blaze.db/search-param-registry]
+      [:cause-data ::s/problems 3 :val] := ::invalid))
+
+  (testing "invalid terminology-service"
+    (given-thrown (ig/init {::rest-api/capabilities-handler {:terminology-service ::invalid}})
+      :key := ::rest-api/capabilities-handler
+      :reason := ::ig/build-failed-spec
+      [:cause-data ::s/problems 0 :pred] := `(fn ~'[%] (contains? ~'% :version))
+      [:cause-data ::s/problems 1 :pred] := `(fn ~'[%] (contains? ~'% :release-date))
+      [:cause-data ::s/problems 2 :pred] := `(fn ~'[%] (contains? ~'% :structure-definition-repo))
+      [:cause-data ::s/problems 3 :pred] := `(fn ~'[%] (contains? ~'% :search-param-registry))
+      [:cause-data ::s/problems 4 :via] := [:blaze/terminology-service]
+      [:cause-data ::s/problems 4 :val] := ::invalid)))
 
 (def ^:private copyright
   #fhir/markdown"Copyright 2019 - 2024 The Samply Community\n\nLicensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at\n\nhttp://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.")
 
-(defmacro with-handler [[handler-binding config] & body]
-  `(with-system [{handler# ::rest-api/capabilities-handler} ~config]
-     (let [~handler-binding handler#]
-       ~@body)))
+(defmacro with-handler [[handler-binding config] & more]
+  (let [[txs body] (api-stub/extract-txs-body more)]
+    `(with-system-data [{handler# ::rest-api/capabilities-handler} ~config]
+       ~txs
+       (let [~handler-binding handler#]
+         ~@body))))
 
 (def ^:private minimal-config
-  {::rest-api/capabilities-handler
+  (assoc
+   mem-node-config
+   ::rest-api/capabilities-handler
    {:version "version-131640"
     :release-date "2024-01-07"
     :structure-definition-repo structure-definition-repo
     :search-param-registry (ig/ref :blaze.db/search-param-registry)}
    :blaze.db/search-param-registry
-   {:structure-definition-repo structure-definition-repo}})
+   {:structure-definition-repo structure-definition-repo}))
 
 (deftest minimal-config-test
   (with-handler [handler minimal-config]
@@ -113,6 +129,7 @@
         :fhir/type := :fhir/CapabilityStatement
         :status := #fhir/code"active"
         :experimental := false
+        :date := #fhir/dateTime"2024-01-07"
         :publisher := "The Samply Community"
         :copyright := copyright
         :kind := #fhir/code"instance"
@@ -181,7 +198,18 @@
           (is (= 304 status))
 
           (testing "ETag header"
-            (is (= "W/\"66d24e11\"" (get headers "ETag")))))))))
+            (is (= "W/\"66d24e11\"" (get headers "ETag"))))))))
+
+  (testing "mode=terminology is ignored"
+    (with-handler [handler minimal-config]
+      (let [{:keys [status body]}
+            @(handler {:blaze/base-url "base-url-131713"
+                       :query-params {"mode" "terminology"}})]
+
+        (is (= 200 status))
+
+        (given body
+          :fhir/type := :fhir/CapabilityStatement)))))
 
 (def ^:private minimal-search-system-config
   (assoc-in minimal-config [::rest-api/capabilities-handler :search-system-handler]
@@ -346,3 +374,51 @@
       [:rest 0 :resource 0 :operation 0 :definition] :=
       #fhir/canonical"http://hl7.org/fhir/OperationDefinition/Measure-evaluate-measure"
       [:rest 0 :resource 0 :operation 0 :documentation] := #fhir/markdown"documentation-161800")))
+
+(def ^:private terminology-service-config
+  (-> minimal-config
+      (assoc-in
+       [::rest-api/capabilities-handler :terminology-service]
+       (ig/ref ::ts/local))
+      (assoc
+       ::ts/local
+       {:node (ig/ref :blaze.db/node)
+        :clock (ig/ref :blaze.test/fixed-clock)
+        :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
+       :blaze.test/fixed-rng-fn {})))
+
+(deftest terminology-test
+  (testing "with no code system"
+    (with-handler [handler terminology-service-config]
+      (given (:body @(handler {:blaze/base-url "base-url-131713"
+                               :query-params {"mode" "terminology"}}))
+        :fhir/type := :fhir/TerminologyCapabilities
+        [:meta :profile] := [#fhir/canonical"http://hl7.org/fhir/StructureDefinition/TerminologyCapabilities"]
+        :status := #fhir/code"active"
+        :experimental := false
+        :date := #fhir/dateTime"2024-01-07"
+        :publisher := "The Samply Community"
+        :copyright := copyright
+        :kind := #fhir/code"instance"
+        [:software :name] := "Blaze"
+        [:software :version] := "version-131640"
+        [:implementation :url] := #fhir/url"base-url-131713"
+        [:codeSystem count] := 0
+        [:validateCode :translations] := #fhir/boolean false)))
+
+  (testing "with one code system"
+    (with-handler [handler terminology-service-config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri"system-192435"
+               :version #fhir/string"version-121451"
+               :status #fhir/code"active"
+               :content #fhir/code"complete"}]]]
+
+      (given (:body @(handler {:blaze/base-url "base-url-131713"
+                               :query-params {"mode" "terminology"}}))
+        :fhir/type := :fhir/TerminologyCapabilities
+        [:codeSystem count] := 1
+        [:codeSystem 0 :uri] := #fhir/canonical"system-192435"
+        [:codeSystem 0 :version count] := 1
+        [:codeSystem 0 :version 0 :code] := #fhir/string"version-121451"
+        [:codeSystem 0 :version 0 :isDefault] := #fhir/boolean true))))

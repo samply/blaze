@@ -110,15 +110,7 @@
             :affects-state false
             :resource-types ["Resource"]
             :system-handler #blaze/ref :blaze.fhir.operation/totals
-            :documentation "Retrieves the total counts of resources available by resource type."}
-   #:blaze.rest-api.operation
-           {:code "expand"
-            :def-uri "http://hl7.org/fhir/OperationDefinition/ValueSet-expand"
-            :affects-state false
-            :resource-types ["ValueSet"]
-            :type-handler #blaze/ref :blaze.fhir.operation.value-set/expand
-            :instance-handler #blaze/ref :blaze.fhir.operation.value-set/expand
-            :documentation "The $expand operation can be used to expand all codes of a ValueSet."}]
+            :documentation "Retrieves the total counts of resources available by resource type."}]
 
   ;;
   ;; FHIR Interactions
@@ -270,16 +262,6 @@
   ;;
   :blaze.fhir.operation/totals
   {:structure-definition-repo #blaze/ref :blaze.fhir/structure-definition-repo}
-
-  ;;
-  ;; FHIR Operation ValueSet Expand
-  ;;
-  :blaze.fhir.operation.value-set/expand
-  {:terminology-service #blaze/ref :blaze/terminology-service}
-
-  :blaze.terminology-service/local
-  {:node #blaze/ref :blaze.db.main/node
-   :clock #blaze/ref :blaze/clock}
 
   ;;
   ;; Admin API
@@ -1394,4 +1376,59 @@
              :documentation "This operation is used to request the removal of all current and historical versions for all resources in a patient compartment or from a Group of patient compartments. The return is an OperationOutcome with results and/or details about execution."}]
 
     :blaze.operation.patient/purge
-    {:node #blaze/ref :blaze.db.main/node}}}]}
+    {:node #blaze/ref :blaze.db.main/node}}}
+
+  {:key :terminology-service
+   :name "Terminology Service"
+   :toggle "ENABLE_TERMINOLOGY_SERVICE"
+   :config
+   {:blaze.rest-api/operations
+    [#:blaze.rest-api.operation
+            {:code "expand"
+             :def-uri "http://hl7.org/fhir/OperationDefinition/ValueSet-expand"
+             :affects-state false
+             :resource-types ["ValueSet"]
+             :type-handler #blaze/ref :blaze.fhir.operation.value-set/expand
+             :instance-handler #blaze/ref :blaze.fhir.operation.value-set/expand
+             :documentation "The $expand operation can be used to expand all codes of a ValueSet."}
+     #:blaze.rest-api.operation
+             {:code "validate-code"
+              :def-uri "http://hl7.org/fhir/OperationDefinition/CodeSystem-validate-code"
+              :affects-state false
+              :resource-types ["CodeSystem"]
+              :type-handler #blaze/ref :blaze.fhir.operation.code-system/validate-code
+              :instance-handler #blaze/ref :blaze.fhir.operation.code-system/validate-code
+              :documentation "Validate that a coded value is in the code system."}
+     #:blaze.rest-api.operation
+             {:code "validate-code"
+              :def-uri "http://hl7.org/fhir/OperationDefinition/ValueSet-validate-code"
+              :affects-state false
+              :resource-types ["ValueSet"]
+              :type-handler #blaze/ref :blaze.fhir.operation.value-set/validate-code
+              :instance-handler #blaze/ref :blaze.fhir.operation.value-set/validate-code
+              :documentation "Validate that a coded value is in the set of codes allowed by a value set."}]
+
+    :blaze.fhir.operation.code-system/validate-code
+    {:terminology-service #blaze/ref :blaze.terminology-service/local}
+
+    :blaze.fhir.operation.value-set/expand
+    {:terminology-service #blaze/ref :blaze.terminology-service/local}
+
+    :blaze.fhir.operation.value-set/validate-code
+    {:terminology-service #blaze/ref :blaze.terminology-service/local}
+
+    :blaze.terminology-service/local
+    {:node #blaze/ref :blaze.db.main/node
+     :clock #blaze/ref :blaze/clock
+     :rng-fn #blaze/ref :blaze/rng-fn
+     :enable-ucum true}
+
+    :blaze.rest-api/capabilities-handler
+    {:terminology-service #blaze/ref :blaze.terminology-service/local}}}
+
+  {:key :terminology-sct
+   :name "Snomed CT Terminology"
+   :toggle "ENABLE_TERMINOLOGY_SNOMED_CT"
+   :config
+   {:blaze.terminology-service/local
+    {:sct-release-path #blaze/cfg ["SNOMED_CT_RELEASE_PATH" blaze.path/dir?]}}}]}

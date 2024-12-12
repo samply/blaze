@@ -207,7 +207,9 @@ The following Operations are implemented:
 * [Measure $evaluate-measure](api/operation-measure-evaluate-measure.md)
 * [Patient $everything](api/operation-patient-everything.md)
 * [Patient $purge](api/operation-patient-purge.md)
+* [CodeSystem $validate-code](api/operation-code-system-validate-code.md)
 * [ValueSet $expand](api/operation-value-set-expand.md)
+* [ValueSet $validate-code](api/operation-value-set-validate-code.md)
 
 ## Asynchronous Requests
 

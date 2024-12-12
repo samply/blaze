@@ -16,6 +16,9 @@
   blaze/openid-auth
   {:local/root "modules/openid-auth"}
 
+  blaze.operation/code-system-validate-code
+  {:local/root "modules/operation-code-system-validate-code"}
+
   blaze.operation/compact
   {:local/root "modules/operation-compact"}
 
@@ -36,6 +39,9 @@
 
   blaze.operation/value-set-expand
   {:local/root "modules/operation-value-set-expand"}
+
+  blaze.operation/value-set-validate-code
+  {:local/root "modules/operation-value-set-validate-code"}
 
   blaze/page-store-cassandra
   {:local/root "modules/page-store-cassandra"}

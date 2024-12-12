@@ -17,6 +17,9 @@
   blaze/spec
   {:local/root "../spec"}
 
+  blaze/terminology-service
+  {:local/root "../terminology-service"}
+
   buddy/buddy-auth
   {:mvn/version "3.0.323"
    :exclusions [buddy/buddy-sign]}}

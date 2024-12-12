@@ -103,3 +103,9 @@
   {:arglists '([graph code])}
   [{:keys [concepts child-index]} code]
   (into [] (map concepts) (is-a-codes child-index code)))
+
+(defn descendent-of
+  "Returns a list of all descendant concepts of `code`."
+  {:arglists '([graph code])}
+  [{:keys [concepts child-index]} code]
+  (into [] (map concepts) (disj (is-a-codes child-index code) code)))

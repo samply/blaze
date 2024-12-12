@@ -6,6 +6,7 @@
   be given to `init!``. The server port has a default of `8080`."
   (:require
    [blaze.log]
+   [blaze.path :refer [dir? path]]
    [blaze.util :as u]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
@@ -32,6 +33,19 @@
         (try
           (time/duration x)
           (catch Exception _
+            ::s/invalid))
+        :else ::s/invalid))))
+
+(defmethod sc/pred-coercer `dir?
+  [_]
+  (reify
+    sc/Coercer
+    (-coerce [_ x]
+      (cond
+        (string? x)
+        (let [path (path x)]
+          (if (dir? path)
+            path
             ::s/invalid))
         :else ::s/invalid))))
 

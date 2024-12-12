@@ -8,9 +8,10 @@ validator_cli.jar:
 	wget -q https://github.com/hapifhir/org.hl7.fhir.validator-wrapper/releases/latest/download/validator_cli.jar
 
 validate: validator_cli.jar
-	java -jar validator_cli.jar -version 4.0.1 -level error -debug -tx n/a -ig fsh-generated/resources fsh-generated/resources/Task-*.json fsh-generated/resources/Bundle-*.json
+	java -jar validator_cli.jar -version 4.0.1 -level error -tx n/a -ig fsh-generated/resources fsh-generated/resources/Task-*.json fsh-generated/resources/Bundle-*.json
 
 clean:
-	rm -r fsh-generated
+	rm -rf fsh-generated
+	rm validator_cli.jar
 
 .PHONY: install build validate clean

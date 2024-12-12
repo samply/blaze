@@ -1,6 +1,13 @@
 {:deps
  {blaze/db
-  {:local/root "../db"}}
+  {:local/root "../db"}
+
+  blaze/luid
+  {:local/root "../luid"}
+
+  org.fhir/ucum
+  {:mvn/version "1.0.9"
+   :exclusions [xpp3/xpp3 xpp3/xpp3_xpath]}}
 
  :aliases
  {:test
