@@ -166,7 +166,7 @@
      [#fhir/Coding
        {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
         :code #fhir/code"compact"
-        :display "Compact a Database Column Family"}]}})
+        :display #fhir/string"Compact a Database Column Family"}]}})
 
 (def job-missing-column-family
   (assoc

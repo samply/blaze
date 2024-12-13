@@ -215,7 +215,7 @@
            [#fhir/Coding
              {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
               :code #fhir/code"re-index"
-              :display "(Re)Index a Search Parameter"}]}})
+              :display #fhir/string"(Re)Index a Search Parameter"}]}})
 
 (def job-clinical-code
   (assoc

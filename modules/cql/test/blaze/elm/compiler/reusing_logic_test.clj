@@ -386,9 +386,9 @@
         (are [x res] (= res (core/-eval expr {:parameters {"x" x}} nil nil))
           nil
           nil
-          #fhir/Coding{:system "system-140820"
-                       :version "version-140924"
-                       :code "code-140828"}
+          #fhir/Coding{:system #fhir/uri"system-140820"
+                       :version #fhir/string"version-140924"
+                       :code #fhir/code"code-140828"}
           (code/code "system-140820" "version-140924" "code-140828")))
 
       (testing "expression is dynamic"
@@ -471,9 +471,9 @@
           nil
           #fhir/CodeableConcept
            {:coding
-            [#fhir/Coding{:system "system-172740"
-                          :version "version-172819"
-                          :code "code-172745"}]}
+            [#fhir/Coding{:system #fhir/uri"system-172740"
+                          :version #fhir/string"version-172819"
+                          :code #fhir/code"code-172745"}]}
           (concept
            [(code/code "system-172740" "version-172819" "code-172745")])))
 
@@ -487,14 +487,14 @@
       (testing "resolve parameters"
         (has-form (core/-resolve-params expr {"x" #fhir/CodeableConcept
                                                    {:coding
-                                                    [#fhir/Coding{:system "system-172740"
-                                                                  :version "version-172819"
-                                                                  :code "code-172745"}]}})
+                                                    [#fhir/Coding{:system #fhir/uri"system-172740"
+                                                                  :version #fhir/string"version-172819"
+                                                                  :code #fhir/code"code-172745"}]}})
           '(call "ToConcept" #fhir/CodeableConcept
                               {:coding
-                               [#fhir/Coding{:system "system-172740"
+                               [#fhir/Coding{:system #fhir/uri"system-172740"
                                              :version "version-172819"
-                                             :code "code-172745"}]}))
+                                             :code #fhir/code"code-172745"}]}))
 
         (testing-function-ref-optimize "ToConcept")
 

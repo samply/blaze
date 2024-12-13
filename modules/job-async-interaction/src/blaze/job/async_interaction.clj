@@ -34,7 +34,7 @@
            [#fhir/Coding
              {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
               :code #fhir/code"async-interaction"
-              :display "Asynchronous Interaction Request"}]}
+              :display #fhir/string"Asynchronous Interaction Request"}]}
    :authoredOn authored-on
    :input
    [(u/request-bundle-input (str "Bundle/" bundle-id))

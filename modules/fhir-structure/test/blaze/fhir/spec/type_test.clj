@@ -1508,7 +1508,7 @@
     #fhir/Coding
      {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
       :code #fhir/code"D"
-      :display "divers"}})
+      :display #fhir/string"divers"}})
 
 (def extended-gender-code
   (type/code {:extension [gender-extension] :value "other"}))
@@ -2205,7 +2205,7 @@
       #fhir/Coding{:code #fhir/code"code-202828"}
       "74e3328d"
 
-      #fhir/Coding{:display "display-154256"}
+      #fhir/Coding{:display #fhir/string"display-154256"}
       "baac923d"))
 
   (testing "references"

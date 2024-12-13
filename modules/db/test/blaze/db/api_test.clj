@@ -4387,14 +4387,14 @@
                [#fhir/Coding
                  {:system #fhir/uri"http://loinc.org"
                   :code #fhir/code"94564-2"
-                  :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+                  :display #fhir/string"SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
              :value
              #fhir/CodeableConcept
               {:coding
                [#fhir/Coding
                  {:system #fhir/uri"http://snomed.info/sct"
                   :code #fhir/code"260373001"
-                  :display "Detected (qualifier value)"}]}}]
+                  :display #fhir/string"Detected (qualifier value)"}]}}]
       [:put {:fhir/type :fhir/Observation :id "id-1"
              :status #fhir/code"final"
              :code
@@ -4403,14 +4403,14 @@
                [#fhir/Coding
                  {:system #fhir/uri"http://loinc.org"
                   :code #fhir/code"94564-2"
-                  :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+                  :display #fhir/string"SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
              :value
              #fhir/CodeableConcept
               {:coding
                [#fhir/Coding
                  {:system #fhir/uri"http://snomed.info/sct"
                   :code #fhir/code"260415000"
-                  :display "Not detected (qualifier value)"}]}}]
+                  :display #fhir/string"Not detected (qualifier value)"}]}}]
       [:put {:fhir/type :fhir/Observation :id "id-2"
              :status #fhir/code"final"
              :code
@@ -4419,14 +4419,14 @@
                [#fhir/Coding
                  {:system #fhir/uri"http://loinc.org"
                   :code #fhir/code"94564-2"
-                  :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+                  :display #fhir/string"SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
              :value
              #fhir/CodeableConcept
               {:coding
                [#fhir/Coding
                  {:system #fhir/uri"http://snomed.info/sct"
                   :code #fhir/code"260373001"
-                  :display "Detected (qualifier value)"}]}}]]]
+                  :display #fhir/string"Detected (qualifier value)"}]}}]]]
 
     (testing "missing second value part"
       (given (d/type-query (d/db node) "Observation" [["code-value-concept" "http://loinc.org|94564-2"]])
@@ -4540,7 +4540,7 @@
                [#fhir/Coding
                  {:system #fhir/uri"http://loinc.org"
                   :code #fhir/code"94564-2"
-                  :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+                  :display #fhir/string"SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
              :subject #fhir/Reference{:reference "Patient/0"}}]
       [:put {:fhir/type :fhir/Observation :id "1"
              :code
@@ -4549,7 +4549,7 @@
                [#fhir/Coding
                  {:system #fhir/uri"http://loinc.org"
                   :code #fhir/code"94564-2"
-                  :display "SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+                  :display #fhir/string"SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
              :subject #fhir/Reference{:reference "Patient/1"}}]]]
 
     (doseq [code ["http://loinc.org|94564-2" "94564-2"]]
