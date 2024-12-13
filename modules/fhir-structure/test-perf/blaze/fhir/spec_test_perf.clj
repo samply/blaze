@@ -35,11 +35,11 @@
        [#fhir/Coding
          {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/observation-category"
           :code #fhir/code"vital-signs"
-          :display "vital-signs"}]}]
+          :display #fhir/string"vital-signs"}]}]
     :code #fhir/CodeableConcept
            {:coding [#fhir/Coding{:system #fhir/uri"http://loinc.org"
                                   :code #fhir/code"39156-5"
-                                  :display "Body Mass Index"}]
+                                  :display #fhir/string"Body Mass Index"}]
             :text "Body Mass Index"}
     :subject #fhir/Reference{:reference "Patient/DACG22233TWT7CKL"}
     :effective #fhir/dateTime"2013-01-04T23:45:50Z"
@@ -68,11 +68,11 @@
         [#fhir/Coding
           {:system #fhir/uri"http://terminology.hl7.org/CodeSystem/observation-category"
            :code #fhir/code"vital-signs"
-           :display "vital-signs"}]}]
+           :display #fhir/string"vital-signs"}]}]
      :code #fhir/CodeableConcept
             {:coding [#fhir/Coding{:system #fhir/uri"http://loinc.org"
                                    :code #fhir/code"39156-5"
-                                   :display "Body Mass Index"}]
+                                   :display #fhir/string"Body Mass Index"}]
              :text "Body Mass Index"}
      :subject #fhir/Reference{:reference "Patient/DACG22233TWT7CKL"}
      :effective #fhir/dateTime"2013-01-04T23:45:50Z"

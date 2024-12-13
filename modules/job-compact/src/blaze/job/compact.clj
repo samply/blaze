@@ -44,7 +44,7 @@
      [#fhir/Coding
        {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
         :code #fhir/code"compact"
-        :display "Compact a Database Column Family"}]}
+        :display #fhir/string"Compact a Database Column Family"}]}
    :authoredOn authored-on
    :input
    [{:fhir/type :fhir.Task/input

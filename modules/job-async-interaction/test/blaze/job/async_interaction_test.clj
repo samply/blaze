@@ -311,7 +311,7 @@
                  [#fhir/Coding
                    {:system #fhir/uri"https://samply.github.io/blaze/fhir/CodeSystem/JobType"
                     :code #fhir/code"async-interaction"
-                    :display "Asynchronous Interaction Request"}]}})
+                    :display #fhir/string"Asynchronous Interaction Request"}]}})
 
       (testing "the job is failed"
         (given @(jtu/pull-job system :failed)

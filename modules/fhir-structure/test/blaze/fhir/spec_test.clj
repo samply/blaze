@@ -561,7 +561,7 @@
                   #fhir/Coding
                    {:system #fhir/uri"http://fhir.de/CodeSystem/gender-amtlich-de"
                     :code #fhir/code"D"
-                    :display "divers"}}]
+                    :display #fhir/string"divers"}}]
                :value "other"}}))))
 
   (testing "Patient with Narrative"
@@ -3370,13 +3370,13 @@
         #fhir/Coding{:system #fhir/uri"system-185812"}
         {:system "system-185812"}
 
-        #fhir/Coding{:version "version-185951"}
+        #fhir/Coding{:version #fhir/string"version-185951"}
         {:version "version-185951"}
 
         #fhir/Coding{:code #fhir/code"code-190226"}
         {:code "code-190226"}
 
-        #fhir/Coding{:display "display-190327"}
+        #fhir/Coding{:display #fhir/string"display-190327"}
         {:display "display-190327"}))
 
     (testing "XML"
