@@ -1,4 +1,4 @@
-(ns blaze.middleware.output
+(ns blaze.middleware.non-fhir.output
   "Non-FHIR serialization middleware.
 
   Currently supported formats:
