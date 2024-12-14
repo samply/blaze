@@ -183,36 +183,41 @@
                               :data #fhir/base64Binary"MTA1NjE0Cg=="})))
 
   (testing "returning the data"
-    (testing "with content type"
-      (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTA1NjE0Cg=="}) {:headers {"accept" "text/plain"}})
-        :status := 200
-        [:headers "Content-Type"] := "text/plain"
-        [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
+    (testing "valid cases"
+      (testing "with data"
+        (testing "with different non-FHIR accept headers"
+          (testing "with content type"
+            (doseq [[non-fhir-content-type] [["text/plain" "application/pdf" "any+other+non+FHIR/content+type"]]]
+              (given (call (binary-resource-handler-200 {:content-type non-fhir-content-type :data "MTA1NjE0Cg=="}) {:headers {"accept" non-fhir-content-type}})
+                :status := 200
+                [:headers "Content-Type"] := non-fhir-content-type
+                [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A")))
 
-    (testing "without content type"
-      (given (call (binary-resource-handler-200 {:content-type nil :data "MTA1NjE0Cg=="}) {:headers {"accept" "text/plain"}})
-        :status := 200
-        [:headers "Content-Type"] := "application/octet-stream"
-        [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
+          (testing "without content type"
+            (doseq [[non-fhir-content-type] [["text/plain" "application/pdf" "any+other+non+FHIR/content+type"]]]
+              (given (call (binary-resource-handler-200 {:content-type nil :data "MTA1NjE0Cg=="}) {:headers {"accept" non-fhir-content-type}})
+                :status := 200
+                [:headers "Content-Type"] := "application/octet-stream"
+                [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A")))))
 
-    (testing "without data"
-      (testing "with content type"
-        (given (call (binary-resource-handler-200 {:content-type "text/plain"}) {:headers {"accept" "text/plain"}})
-          :status := 200
-          [:headers "Content-Type"] := "text/plain"
-          :body := nil))
+      (testing "without data"
+        (testing "with content type"
+          (given (call (binary-resource-handler-200 {:content-type "text/plain"}) {:headers {"accept" "text/plain"}})
+            :status := 200
+            [:headers "Content-Type"] := "text/plain"
+            :body := nil))
 
-      (testing "without content type"
-        (given (call (binary-resource-handler-200 {:content-type nil}) {:headers {"accept" "text/plain"}})
-          :status := 200
-          [:headers "Content-Type"] := "application/octet-stream"
-          :body := nil))
+        (testing "without content type"
+          (given (call (binary-resource-handler-200 {:content-type nil}) {:headers {"accept" "text/plain"}})
+            :status := 200
+            [:headers "Content-Type"] := "application/octet-stream"
+            :body := nil))
 
-      (testing "without body at all"
-        (given (call binary-resource-handler-200-no-body {:headers {"accept" "text/plain"}})
-          :status := 200
-          [:headers "Content-Type"] := nil
-          :body := nil)))
+        (testing "without body at all"
+          (given (call binary-resource-handler-200-no-body {:headers {"accept" "text/plain"}})
+            :status := 200
+            [:headers "Content-Type"] := nil
+            :body := nil))))
 
     (testing "failing binary emit (with invalid data)"
       (given (call (binary-resource-handler-200 {:content-type "application/pdf" :data "MTANjECg=="}) {:headers {"accept" "text/plain"}})
