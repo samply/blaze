@@ -29,8 +29,8 @@
 
 (def ^:private parse-accept (parse/fast-memoize 1000 parse/parse-accept))
 
-(defn- generate-error [generation-fn ex]
-  (-> ex
+(defn- generate-error-payload [generation-fn e]
+  (-> e
       ba/anomaly
       handler-util/operation-outcome
       generation-fn))
@@ -51,7 +51,7 @@
     (update response :body generate-xml**)
     (catch Throwable e
       (assoc response
-             :body (generate-error generate-xml** e)
+             :body (generate-error-payload generate-xml** e)
              :status 500))))
 
 (defn- generate-xml [response]
@@ -68,7 +68,7 @@
     (update response :body generate-binary**)
     (catch Throwable e
       (assoc response
-             :body (generate-error identity e)
+             :body (generate-error-payload identity e)
              :status 500))))
 
 (defn- generate-binary [response]
