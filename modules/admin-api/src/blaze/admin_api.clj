@@ -454,9 +454,9 @@
 (defn- load-profile [context name]
   (log/debug "Load profile" name)
   (let [parser (.newJsonParser ^FhirContext context)
-        classloader (.getContextClassLoader (Thread/currentThread))
-        source (.getResourceAsStream classloader name)]
-    (.parseResource parser source)))
+        classloader (.getContextClassLoader (Thread/currentThread))]
+    (with-open [source (.getResourceAsStream classloader name)]
+      (.parseResource parser source))))
 
 (defn- profile-validation-support [context]
   (let [s (PrePopulatedValidationSupport. context)]
