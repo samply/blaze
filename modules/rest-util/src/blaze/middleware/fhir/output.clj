@@ -68,7 +68,7 @@
     (update response :body generate-binary**)
     (catch Throwable e
       (assoc response
-             :body (generate-error-payload identity e)
+             :body (generate-error-payload generate-json e)
              :status 500))))
 
 (defn- generate-binary [response]
