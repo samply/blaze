@@ -14,7 +14,8 @@
    [clojure.test :as test :refer [deftest is testing]]
    [juxt.iota :refer [given]]
    [ring.util.response :as ring]
-   [taoensso.timbre :as log]))
+   [taoensso.timbre :as log]
+   [blaze.terminology-service.request :as request]))
 
 (set! *warn-on-reflection* true)
 
@@ -43,12 +44,13 @@
 (defn- binary-resource-handler-200
   "A handler which uses the binary middleware and
   returns a binary resource."
-  [{:keys [content-type data]}]
+  [{:keys [content-type data] :fhir/keys [type] :as req}]
   (wrap-binary-output
    (fn [_ respond _]
      (respond
       (ring/response
-       (cond-> {:fhir/type :fhir/Binary}
+       (cond-> req
+         {:fhir/type :fhir/Binary} (assoc :resourceType (type/base64Binary type))
          data (assoc :data (type/base64Binary data))
          content-type (assoc :contentType (type/code content-type))))))))
 
@@ -214,12 +216,12 @@
           [:headers "Content-Type"] := nil
           :body := nil)))
 
-    (testing "failing binary emit (with invalid data)"
-      (given (call (binary-resource-handler-200 {:content-type "application/pdf" :data "MTANjECg=="}) {:headers {"accept" "text/plain"}})
+    (testing "failing binary emit (with invalid data, using the JSON default)"
+      (given (call (binary-resource-handler-200 {:fhir/type :fhir/Binary :content-type "application/pdf" :data "MTANjECg=="}) {:headers {"accept" "application/fhir+json"}})
         :status := 500
-        [:headers "Content-Type"] := "application/pdf"
-        [:body :fhir/type] := :fhir/OperationOutcome
-        [:body :issue 0 :diagnostics] := "Input byte array has wrong 4-byte ending unit"))))
+        [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
+        [:body parse-json :fhir/type] := :fhir/OperationOutcome
+        [:body parse-json :issue 0 :diagnostics] := "Input byte array has wrong 4-byte ending unit"))))
 
 (deftest not-acceptable-test
   (is (nil? (call resource-handler-200-with-patient {:headers {"accept" "text/plain"}}))))
