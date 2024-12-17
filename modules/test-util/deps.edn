@@ -1,6 +1,6 @@
 {:deps
  {com.google.guava/guava
-  {:mvn/version "33.3.1-jre"
+  {:mvn/version "33.4.0-jre"
    :exclusions
    [com.google.code.findbugs/jsr305
     org.checkerframework/checker-qual
