@@ -71,7 +71,7 @@
  {:build
   {:deps
    {io.github.clojure/tools.build
-    {:git/tag "v0.10.5" :git/sha "2a21b7a"}}
+    {:git/tag "v0.10.6" :git/sha "52cf7d6"}}
    :ns-default build}
 
   ;; For both toying at the terminal and/or use via any nREPL-aware IDE
