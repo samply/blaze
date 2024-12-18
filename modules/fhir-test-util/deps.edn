@@ -18,4 +18,4 @@
   {:local/root "../module-test-util"}
 
   com.google.crypto.tink/tink
-  {:mvn/version "1.15.0"}}}
+  {:mvn/version "1.16.0"}}}
