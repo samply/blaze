@@ -1,8 +1,8 @@
-(ns blaze.middleware.output-test
+(ns blaze.middleware.non-fhir.output-test
   (:require
    [blaze.fhir.spec-spec]
    [blaze.fhir.test-util]
-   [blaze.middleware.output :refer [wrap-output]]
+   [blaze.middleware.non-fhir.output :refer [wrap-output]]
    [blaze.module.test-util.ring :refer [call]]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]

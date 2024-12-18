@@ -1,5 +1,5 @@
-(ns blaze.middleware.link-headers
-  "Middleware that will transfer bundle links into link headers according to
+(ns blaze.middleware.non-fhir.link-headers
+  "Non-FHIR middleware that will transfer bundle links into link headers according to
   RFC 8288."
   (:require
    [blaze.async.comp :refer [do-sync]]
