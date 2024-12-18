@@ -108,6 +108,30 @@
       [0 :expression :operand :where :operand 0 :operand 0 :type] := "As"
       [0 :expression :operand :where :operand 0 :operand 0 :asType] := "{http://hl7.org/fhir}Period"))
 
+  (testing "Valueset"
+    (given-translation
+      "library Test
+      using FHIR version '4.0.0'
+      include FHIRHelpers version '4.0.0'
+      valueset \"Female Administrative Sex\": 'urn:oid:2.16.840.1.113883.3.560.100.2'
+      context Patient
+      define \"PatientIsFemale\": Patient.gender in \"Female Administrative Sex\""
+      [0 :name] := "Patient"
+      [0 :context] := "Patient"
+      [0 :expression :type] := "SingletonFrom"
+      [0 :expression :operand :type] := "Retrieve"
+      [0 :expression :operand :dataType] := "{http://hl7.org/fhir}Patient"
+      [1 :name] := "PatientIsFemale"
+      [1 :context] := "Patient"
+      [1 :expression :type] := "InValueSet"
+      [1 :expression :resultTypeName] := "{urn:hl7-org:elm-types:r1}Boolean"
+      [1 :expression :valueset :name] := "Female Administrative Sex"
+      [1 :expression :code :type] := "FunctionRef"
+      [1 :expression :code :name] := "ToString"
+      [1 :expression :code :operand 0 :type] := "Property"
+      [1 :expression :code :operand 0 :source :type] := "ExpressionRef"
+      [1 :expression :code :operand 0 :source :name] := "Patient"))
+
   (testing "Returns a valid :elm/library"
     (are [cql] (s/valid? :elm/library (translate cql))
       "library Test

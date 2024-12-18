@@ -96,10 +96,12 @@
   "Compiles the ELM `library` using `node` into a map of :expression-defs,
   :function-defs and :parameter-default-values.
 
+  Returns an anomaly in case of errors.
+
   There are currently no options."
-  [node library opts]
+  [context library opts]
   (let [library (normalizer/normalize-library library)
-        context (assoc opts :node node :library library)]
+        context (merge opts context {:library library})]
     (when-ok [{:keys [function-defs] :as context} (compile-function-defs context library)
               expression-defs (expression-defs context library)
               expression-defs (resolve-refs (unfiltered-expr-names expression-defs) expression-defs)
