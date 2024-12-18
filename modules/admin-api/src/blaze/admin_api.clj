@@ -18,6 +18,7 @@
    [blaze.interaction.util :as iu]
    [blaze.job-scheduler :as js]
    [blaze.job-scheduler.spec]
+   [blaze.job.prune]
    [blaze.job.re-index]
    [blaze.middleware.fhir.db :as db]
    [blaze.middleware.fhir.output :as fhir-output]
@@ -186,6 +187,7 @@
 (def ^:private allowed-profiles
   #{#fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/AsyncInteractionJob"
     #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/CompactJob"
+    #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/PruneJob"
     #fhir/canonical"https://samply.github.io/blaze/fhir/StructureDefinition/ReIndexJob"})
 
 (defn- check-profile [resource]
@@ -477,6 +479,11 @@
       "blaze/job/compact/CodeSystem-CompactJobOutput.json"
       "blaze/job/compact/CodeSystem-CompactJobParameter.json"
       "blaze/job/compact/StructureDefinition-CompactJob.json"
+      "blaze/job/prune/StructureDefinition-PruneJob.json"
+      "blaze/job/prune/CodeSystem-PruneIndices.json"
+      "blaze/job/prune/CodeSystem-PruneJobOutput.json"
+      "blaze/job/prune/CodeSystem-PruneJobParameter.json"
+      "blaze/job/prune/ValueSet-PruneIndices.json"
       "blaze/job/re_index/StructureDefinition-ReIndexJob.json"
       "blaze/job/re_index/CodeSystem-ReIndexJobOutput.json"
       "blaze/job/re_index/CodeSystem-ReIndexJobParameter.json"])
