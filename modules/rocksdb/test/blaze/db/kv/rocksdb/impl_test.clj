@@ -198,7 +198,7 @@
   (.createColumnFamily ^RocksDB db (ColumnFamilyDescriptor. (from-hex name))))
 
 (deftest put-wb-test
-  (with-open [db (RocksDB/open (str (new-temp-dir!)))]
+  (with-open [db (RocksDB/open (new-temp-dir!))]
     (let [cfh-1 (cfh db "01")
           cfh-2 (cfh db "02")]
       (are [entries state-val] (let [state (atom [])]
@@ -234,7 +234,7 @@
       (swap! state conj [cfh (to-hex key)]))))
 
 (deftest delete-wb-test
-  (with-open [db (RocksDB/open (str (new-temp-dir!)))]
+  (with-open [db (RocksDB/open (new-temp-dir!))]
     (let [cfh-1 (cfh db "01")
           cfh-2 (cfh db "02")]
       (are [entries state-val] (let [state (atom [])]
@@ -264,7 +264,7 @@
       (swap! state conj [cfh (to-hex key) (to-hex val)]))))
 
 (deftest write-wb-test
-  (with-open [db (RocksDB/open (str (new-temp-dir!)))]
+  (with-open [db (RocksDB/open (new-temp-dir!))]
     (let [cfh-1 (cfh db "01")
           cfh-2 (cfh db "02")]
       (testing "put"
@@ -361,7 +361,7 @@
       ::anom/message := "msg-151628")))
 
 (deftest listener-test
-  (with-open [db (RocksDB/open (str (new-temp-dir!)))]
+  (with-open [db (RocksDB/open (new-temp-dir!))]
     (testing "compaction begin"
       (let [res (volatile! nil)]
         (.onCompactionBegin
