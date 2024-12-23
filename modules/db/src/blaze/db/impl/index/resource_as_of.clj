@@ -151,11 +151,16 @@
                (search-entry! kb vb)
                result))))))))
 
-(defn- encode-key-buf [tid id t]
-  (-> (bb/allocate (unchecked-add-int except-id-key-size (bs/size id)))
-      (bb/put-int! tid)
-      (bb/put-byte-string! id)
-      (bb/put-long! (codec/descending-long t))))
+(defn- encode-key-buf
+  ([tid id]
+   (-> (bb/allocate (unchecked-add-int codec/tid-size (bs/size id)))
+       (bb/put-int! tid)
+       (bb/put-byte-string! id)))
+  ([tid id t]
+   (-> (bb/allocate (unchecked-add-int except-id-key-size (bs/size id)))
+       (bb/put-int! tid)
+       (bb/put-byte-string! id)
+       (bb/put-long! (codec/descending-long t)))))
 
 (defn encode-key
   "Encodes the key of the ResourceAsOf index from `tid`, `id` and `t`."
@@ -179,6 +184,10 @@
 (defn- start-key
   ([tid]
    (-> (Ints/toByteArray tid) bs/from-byte-array))
+  ([tid start-id]
+   (-> (encode-key-buf tid start-id)
+       bb/flip!
+       bs/from-byte-buffer!))
   ([tid start-id t]
    (-> (encode-key-buf tid start-id t)
        bb/flip!
@@ -262,6 +271,7 @@
   iteration. The state and t which are both longs are read from the off-heap key
   and value buffer. The hash and state which are read from the value buffer are
   only read once for each resource handle."
+  {:arglists '([batch-db tid] [batch-db tid start-id])}
   ([{:keys [snapshot t]} tid]
    (i/entries snapshot :resource-as-of-index (type-list-xf t tid)
               (start-key tid)))
@@ -282,6 +292,7 @@
   tid and resource id.
 
   The list starts at the optional `start-tid` and `start-id`."
+  {:arglists '([batch-db] [batch-db start-tid start-id])}
   ([{:keys [snapshot t]}]
    (i/entries snapshot :resource-as-of-index (system-list-xf t nil)))
   ([{:keys [snapshot t]} start-tid start-id]
@@ -405,3 +416,52 @@
            (when (matcher input handle)
              handle))))
       (closer iter)))))
+
+(defn- delete-entry! [kb]
+  (bb/set-position! kb 0)
+  (let [key (byte-array (bb/limit kb))]
+    (bb/copy-into-byte-array! kb key)
+    [:resource-as-of-index key]))
+
+(defn- prune-rf [n]
+  (fn [ret {:keys [idx delete-entry] [tid id t] :key}]
+    (if (= idx n)
+      (reduced (assoc ret :next {:tid tid :id id :t t}))
+      (cond-> (update ret :num-entries-processed inc)
+        delete-entry
+        (update :delete-entries conj delete-entry)))))
+
+(defn- prune-key! [kb]
+  [(bb/get-int! kb)
+   (bs/from-byte-buffer! kb (- (bb/remaining kb) codec/t-size))
+   (codec/descending-long (bb/get-long! kb))])
+
+(defn- prune-xf [t]
+  (map-indexed
+   (fn [idx [kb vb]]
+     (bb/set-position! vb (+ hash/size codec/state-size))
+     (cond->
+      {:idx idx :key (prune-key! kb)}
+       (rh/purged!? vb t)
+       (assoc :delete-entry (delete-entry! kb))))))
+
+(defn prune
+  "Scans the ResourceAsOf index for entries which were purged at or before `t`.
+
+  Processes at most `n` entries and optionally starts at the entry with
+  `start-tid` and `start-id`.
+
+  Returns a map with :delete-entries and :next where :delete-entries is a
+  vector of all index entries to delete and :next is a map of :tid and :id of
+  the index entry to start with in the next iteration if necessary."
+  ([snapshot n t]
+   (reduce
+    (prune-rf n)
+    {:delete-entries [] :num-entries-processed 0}
+    (i/entries snapshot :resource-as-of-index (prune-xf t))))
+  ([snapshot n t start-tid start-id start-t]
+   (reduce
+    (prune-rf n)
+    {:delete-entries [] :num-entries-processed 0}
+    (i/entries snapshot :resource-as-of-index (prune-xf t)
+               (start-key start-tid start-id start-t)))))
