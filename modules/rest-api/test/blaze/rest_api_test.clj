@@ -13,6 +13,8 @@
    [blaze.rest-api :as rest-api]
    [blaze.rest-api.capabilities-handler]
    [blaze.rest-api.routes-spec]
+   [blaze.terminology-service :as-alias ts]
+   [blaze.terminology-service.local]
    [blaze.test-util :as tu :refer [given-thrown]]
    [buddy.auth.protocols :as ap]
    [clojure.spec.alpha :as s]
@@ -139,9 +141,14 @@
    {:version "version-131640"
     :release-date "2024-05-23"
     :structure-definition-repo structure-definition-repo
-    :search-param-registry (ig/ref :blaze.db/search-param-registry)}
+    :search-param-registry (ig/ref :blaze.db/search-param-registry)
+    :terminology-service (ig/ref ::ts/local)}
    :blaze.db/search-param-registry
    {:structure-definition-repo structure-definition-repo}
+   ::ts/local
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
    :blaze.test/fixed-rng-fn {}
    :blaze.test/page-id-cipher {}))
 

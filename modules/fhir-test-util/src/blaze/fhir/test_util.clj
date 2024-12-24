@@ -33,6 +33,12 @@
   #(proxy [Random] []
      (nextLong [] n)))
 
+(defmethod ig/init-key :blaze.test/incrementing-rng-fn
+  [_ _]
+  (let [n (atom -1)]
+    #(proxy [Random] []
+       (nextLong [] (swap! n inc)))))
+
 (defmethod ig/init-key :blaze.test/fixed-rng
   [_ _]
   (let [state (atom 0)]

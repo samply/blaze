@@ -48,13 +48,13 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
+    - name: Check out Git repository
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
     - name: Setup Node
       uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
       with:
-        node-version: 21
-
-    - name: Check out Git repository
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        node-version-file: .nvmrc
 
     - name: Build
       working-directory: job-ig
@@ -106,6 +106,7 @@ jobs:
         - metrics
         - module-base
         - openid-auth
+        - operation-code-system-validate-code
         - operation-compact
         - operation-graphql
         - operation-measure-evaluate-measure
@@ -113,6 +114,7 @@ jobs:
         - operation-patient-purge
         - operation-totals
         - operation-value-set-expand
+        - operation-value-set-validate-code
         - page-id-cipher
         - page-store
         - page-store-cassandra
@@ -340,7 +342,7 @@ jobs:
     - name: Setup Node
       uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
       with:
-        node-version: 21
+        node-version-file: .nvmrc
 
     - name: Build Frontend
       run: make build-frontend
@@ -1264,20 +1266,77 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx4g -e ENABLE_TERMINOLOGY_SERVICE=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
-    - name: All KDS Terminology Resources
-      working-directory: .github/value-set-expand
-      run: npm install
+    - name: Install All KDS Terminology Resources
+      run: make -C .github/value-set-expand install
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
 
+    - name: Check Capability Statement
+      run: .github/scripts/check-capability-statement-terminology-service.sh
+
     - name: Upload KDS Terminology Resources
       run: .github/value-set-expand/upload-all.sh
 
+    - name: Check Terminology Capabilities
+      run: .github/scripts/check-terminology-capabilities.sh
+
     - name: Expand KDS Terminology Resources
       run: .github/value-set-expand/expand.sh
+
+  integration-test-validation:
+    needs: build
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Check out Git repository
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+    - name: Setup Node
+      uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
+      with:
+        node-version-file: .nvmrc
+
+    - name: Install Blazectl
+      run: .github/scripts/install-blazectl.sh
+
+    - name: Download Blaze Image
+      uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
+      with:
+        name: blaze-image
+        path: /tmp
+
+    - name: Load Blaze Image
+      run: docker load --input /tmp/blaze.tar
+
+    - name: Run Blaze
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx4g -e ENABLE_TERMINOLOGY_SERVICE=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+
+    - name: Install All KDS Terminology Resources
+      run: make -C .github/value-set-expand install
+
+    - name: Download and Unzip MII Test Data
+      run: make -C .github/validation kds-test-data
+
+    - name: Install Validator
+      run: make -C .github/validation validator_cli.jar
+
+    - name: Wait for Blaze
+      run: .github/scripts/wait-for-url.sh http://localhost:8080/health
+
+    - name: Check Capability Statement
+      run: .github/scripts/check-capability-statement-terminology-service.sh
+
+    - name: Upload KDS Terminology Resources
+      run: .github/value-set-expand/upload-all.sh
+
+    - name: Check Terminology Capabilities
+      run: .github/scripts/check-terminology-capabilities.sh
+
+    - name: Validate Medication Resources
+      run: .github/validation/validate-medication.sh
 
   not-enforcing-referential-integrity-test:
     needs: build
@@ -1798,7 +1857,7 @@ jobs:
     - name: Setup Node
       uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
       with:
-        node-version: 21
+        node-version-file: .nvmrc
 
     - name: Install Blazectl
       run: .github/scripts/install-blazectl.sh
@@ -2059,6 +2118,7 @@ jobs:
     - integration-test-synthea-1000
     - integration-test-patient-purge
     - integration-test-value-set-expand
+    - integration-test-validation
     - not-enforcing-referential-integrity-test
     - admin-api-test
     - small-transactions-test
@@ -2114,7 +2174,7 @@ jobs:
       if: ${{ matrix.image.context == 'modules/frontend' }}
       uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
       with:
-        node-version: 21
+        node-version-file: .nvmrc
 
     - name: Build Frontend
       if: ${{ matrix.image.context == 'modules/frontend' }}
@@ -2218,7 +2278,7 @@ jobs:
     - name: Setup Node
       uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
       with:
-        node-version: 21
+        node-version-file: .nvmrc
         cache: npm
         cache-dependency-path: 'docs/package-lock.json'
 
