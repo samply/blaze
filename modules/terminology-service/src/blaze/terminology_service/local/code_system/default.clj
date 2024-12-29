@@ -10,16 +10,26 @@
    [blaze.terminology-service.local.code-system.filter.equals]
    [blaze.terminology-service.local.code-system.filter.exists]
    [blaze.terminology-service.local.code-system.filter.is-a]
+   [blaze.terminology-service.local.code-system.filter.regex]
    [blaze.terminology-service.local.code-system.util :as u]
    [blaze.terminology-service.local.graph :as graph]
    [blaze.terminology-service.local.priority :as priority]
    [cognitect.anomalies :as anom]))
 
+(defn- code-system-not-complete-msg [{:keys [url content]}]
+  (format "Can't use the code system `%s` because it is not complete. It's content is `%s`."
+          url (type/value content)))
+
+(defn- code-system-not-complete-anom [code-system]
+  (ba/conflict (code-system-not-complete-msg code-system)))
+
 (defmethod c/find :default
   [{:keys [db]} url & [version]]
   (do-sync [code-systems (d/pull-many db (d/type-query db "CodeSystem" (cond-> [["url" url]] version (conj ["version" version]))))]
-    (if-let [{concepts :concept :as code-system} (first (priority/sort-by-priority code-systems))]
-      (assoc code-system :default/graph (graph/build-graph concepts))
+    (if-let [{:keys [content] concepts :concept :as code-system} (first (priority/sort-by-priority code-systems))]
+      (if (= "complete" (type/value content))
+        (assoc code-system :default/graph (graph/build-graph concepts))
+        (code-system-not-complete-anom code-system))
       (ba/not-found
        (if version
          (format "The code system `%s` with version `%s` was not found." url version)
@@ -44,14 +54,9 @@
   (or (some (concept-pred code) concepts)
       (ba/not-found (not-found-msg code-system code))))
 
-(defn- check-complete [{:keys [content] :as code-system}]
-  (when-not (= "complete" (type/value content))
-    (ba/incorrect (format "Can't use the code system `%s` because it is not complete. It's content is `%s`." (type/value (:url code-system)) (type/value content)))))
-
 (defmethod c/validate-code :default
   [{:keys [url] :as code-system} request]
-  (if-ok [_ (check-complete code-system)
-          code (u/extract-code request (type/value url))
+  (if-ok [code (u/extract-code request (type/value url))
           {:keys [code]} (find-concept code-system code)]
     {:fhir/type :fhir/Parameters
      :parameter
@@ -65,79 +70,72 @@
        [(u/parameter "result" #fhir/boolean false)
         (u/parameter "message" (type/string message))]})))
 
-(defn- code-system-not-complete-msg [{:keys [url content]}]
-  (format "Can't expand the code system `%s` because it is not complete. It's content is `%s`."
-          url (type/value content)))
-
-(defn- code-system-not-complete-anom [code-system]
-  (ba/unsupported (code-system-not-complete-msg code-system) :http/status 409))
-
-(defn- check-code-system-content [{:keys [content] :as code-system}]
-  (when-not (= "complete" (type/value content))
-    (code-system-not-complete-anom code-system)))
-
 (defn- inactive? [{properties :property}]
   (some
    (fn [{:keys [code value]}]
-     (and (= "inactive" (type/value code))
+     (condp = (type/value code)
+       "status" (when (= "retired" (type/value value)) true)
+       "inactive" (when-some [value (type/value value)] value)
+       nil))
+   properties))
+
+(defn- not-selectable? [{properties :property}]
+  (some
+   (fn [{:keys [code value]}]
+     (and (= "notSelectable" (type/value code))
           (type/value value)))
    properties))
 
-(defn- complete-xf [{:keys [url]}]
-  (map
-   (fn [{:keys [code display] :as concept}]
-     (cond-> {:system url :code code}
-       display (assoc :display display)
-       (inactive? concept) (assoc :inactive #fhir/boolean true)))))
+(defn- create-contains [url {:keys [code display] :as concept}]
+  (cond-> {:system url :code code}
+    display (assoc :display display)
+    (inactive? concept) (assoc :inactive #fhir/boolean true)
+    (not-selectable? concept) (assoc :abstract #fhir/boolean true)))
 
-(defn- active-complete-xf [{:keys [url]}]
+(defn- xf [{:keys [url]}]
+  (map
+   (fn [concept]
+     (create-contains url concept))))
+
+(defn- active-xf [{:keys [url]}]
   (keep
-   (fn [{:keys [code display] :as concept}]
+   (fn [concept]
      (when-not (inactive? concept)
-       (cond-> {:system url :code code}
-         display (assoc :display display))))))
+       (create-contains url concept)))))
 
 (defmethod c/expand-complete :default
-  [{:keys [active-only]} {concepts :concept :as code-system}]
-  (when-ok [_ (check-code-system-content code-system)]
-    (into
-     []
-     ((if active-only active-complete-xf complete-xf) code-system)
-     concepts)))
+  [{:keys [active-only]} inactive {{:keys [concepts]} :default/graph :as code-system}]
+  (into
+   []
+   ((if (or active-only (false? inactive)) active-xf xf) code-system)
+   (vals concepts)))
 
 (defn- concept-xf [{:keys [url] {:keys [concepts]} :default/graph}]
   (keep
-   (fn [{:keys [code] vs-display :display}]
-     (when-let [{:keys [display] :as concept} (concepts (type/value code))]
-       (let [display (or vs-display display)]
-         (cond-> {:system url :code code}
-           display (assoc :display display)
-           (inactive? concept) (assoc :inactive #fhir/boolean true)))))))
+   (fn [{:keys [code display]}]
+     (when-let [concept (concepts (type/value code))]
+       (cond-> (create-contains url concept)
+         display (assoc :display display))))))
 
-(defn- active-concept-xf [{:keys [url] {:keys [concepts]} :default/graph}]
+(defn- concept-active-xf [{:keys [url] {:keys [concepts]} :default/graph}]
   (keep
-   (fn [{:keys [code] vs-display :display}]
-     (when-let [{:keys [display] :as concept} (concepts (type/value code))]
-       (let [display (or vs-display display)]
-         (when-not (inactive? concept)
-           (cond-> {:system url :code code}
-             display (assoc :display display))))))))
+   (fn [{:keys [code display]}]
+     (when-let [concept (concepts (type/value code))]
+       (when-not (inactive? concept)
+         (cond-> (create-contains url concept)
+           display (assoc :display display)))))))
 
 (defmethod c/expand-concept :default
-  [{:keys [active-only]} code-system value-set-concepts]
-  (when-ok [_ (check-code-system-content code-system)]
-    (into
-     []
-     ((if active-only active-concept-xf concept-xf) code-system)
-     value-set-concepts)))
+  [{:keys [active-only]} inactive code-system value-set-concepts]
+  (into
+   []
+   ((if (or active-only (false? inactive)) concept-active-xf concept-xf) code-system)
+   value-set-concepts))
 
 (defmethod c/expand-filter :default
-  [_ {:keys [url] :as code-system} filter]
-  (when-ok [_ (check-code-system-content code-system)
-            concepts (filter/filter-concepts filter code-system)]
+  [{:keys [active-only]} inactive code-system filter]
+  (when-ok [concepts (filter/filter-concepts filter code-system)]
     (into
      #{}
-     (map
-      (fn [{:keys [code display]}]
-        {:system url :code code :display display}))
+     ((if (or active-only (false? inactive)) active-xf xf) code-system)
      concepts)))

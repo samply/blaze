@@ -13,7 +13,7 @@
 (defn- merge-properties
   "Merges `new-props` into `current-props` not producing duplicates."
   [current-props new-props]
-  (reduce conj-property current-props new-props))
+  (reduce conj-property (or current-props []) new-props))
 
 (defn- hierarchy-codes
   "Returns all parent codes of `concept` as strings."
@@ -61,13 +61,13 @@
    child-index child-codes))
 
 (defn- assoc-child
-  "Associates `child-code` to all `parent-codes` in the :children part of `graph`."
+  "Associates `child-code` to all `parent-codes` in the :child-index part of `graph`."
   [graph parent-codes child-code]
   (-> (update graph :concepts ensure-child-property parent-codes (child-property child-code))
       (update :child-index append-child-index parent-codes child-code)))
 
 (defn- assoc-parent
-  "Associates `parent-code` to all `child-codes` in the :children part of `graph`."
+  "Associates `parent-code` to all `child-codes` in the :child-index part of `graph`."
   [graph child-codes parent-code]
   (-> (update graph :concepts ensure-parent-property child-codes (parent-property parent-code))
       (update :child-index append-parent-index child-codes parent-code)))
@@ -76,17 +76,37 @@
   (cond-> concept
     properties (update :property merge-properties properties)))
 
+(defn- assoc-child-properties [concept child-codes]
+  (update concept :property merge-properties (map child-property child-codes)))
+
+(defn- roots [{:keys [concepts child-index]}]
+  (reduce
+   (fn [roots children]
+     (reduce disj roots children))
+   (set (keys concepts))
+   (vals child-index)))
+
+(defn- merge-child-graph [graph parent-code child-graph]
+  (let [child-codes (roots child-graph)]
+    (-> (update graph :concepts (partial merge-with merge-concept) (:concepts child-graph))
+        (update :child-index (partial merge-with into) (:child-index child-graph))
+        (assoc-parent child-codes parent-code)
+        (update-in [:concepts parent-code] assoc-child-properties child-codes))))
+
 (defn build-graph
   "Builds a graph from `concepts` of a code system."
   [concepts]
   (reduce
    (fn [graph {:keys [code] :as concept}]
      (let [code (type/value code)
+           child-concepts (:concept concept)
+           concept (dissoc concept :concept)
            parent-codes (hierarchy-codes "parent" concept)
            child-codes (hierarchy-codes "child" concept)]
        (cond-> (update-in graph [:concepts code] merge-concept concept)
          (seq parent-codes) (assoc-child parent-codes code)
-         (seq child-codes) (assoc-parent child-codes code))))
+         (seq child-codes) (assoc-parent child-codes code)
+         (seq child-concepts) (merge-child-graph code (build-graph child-concepts)))))
    {:concepts {}
     :child-index {}}
    concepts))

@@ -17,29 +17,30 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private parameter-specs
-  [{:name "url" :action :copy}
-   {:name "valueSet" :action :copy-resource}
-   {:name "valueSetVersion" :action :copy}
-   {:name "context"}
-   {:name "contextDirection"}
-   {:name "filter"}
-   {:name "date"}
-   {:name "offset" :action :parse-nat-long}
-   {:name "count" :action :parse-nat-long}
-   {:name "includeDesignations"}
-   {:name "designation"}
-   {:name "includeDefinition" :action :parse-boolean}
-   {:name "activeOnly" :action :parse-boolean}
-   {:name "useSupplement"}
-   {:name "excludeNested" :action :parse-boolean}
-   {:name "excludeNotForUI"}
-   {:name "excludePostCoordinated"}
-   {:name "displayLanguage" :action :copy}
-   {:name "property"}
-   {:name "exclude-system"}
-   {:name "system-version" :action :parse-canonical :cardinality :many}
-   {:name "check-system-version"}
-   {:name "force-system-version"}])
+  {"url" {:action :copy}
+   "valueSet" {:action :copy-resource}
+   "valueSetVersion" {:action :copy}
+   "context" {}
+   "contextDirection" {}
+   "filter" {}
+   "date" {}
+   "offset" {:action :parse-nat-long}
+   "count" {:action :parse-nat-long}
+   "includeDesignations" {}
+   "designation" {}
+   "includeDefinition" {:action :parse-boolean}
+   "activeOnly" {:action :parse-boolean}
+   "useSupplement" {}
+   "excludeNested" {:action :parse-boolean}
+   "excludeNotForUI" {}
+   "excludePostCoordinated" {}
+   "displayLanguage" {:action :copy}
+   "property" {}
+   "exclude-system" {}
+   "system-version" {:action :parse-canonical :cardinality :many}
+   "check-system-version" {}
+   "force-system-version" {}
+   "tx-resource" {:action :copy-resource :cardinality :many}})
 
 (defn camel->kebab [s]
   (.to CaseFormat/LOWER_CAMEL CaseFormat/LOWER_HYPHEN s))
@@ -49,31 +50,31 @@
     (when-not (neg? value)
       value)))
 
-(defn- assoc-via [params {:keys [name cardinality]} value]
+(defn- assoc-via [params {:keys [cardinality]} name value]
   (if (identical? :many cardinality)
-    (update params (keyword (camel->kebab name)) (fnil conj []) value)
+    (update params (keyword (str (camel->kebab name) "s")) (fnil conj []) value)
     (assoc params (keyword (camel->kebab name)) value)))
 
 (defn- validate-query-params [params]
-  (reduce
-   (fn [new-params {:keys [name action] :as spec}]
-     (if-let [value (get params name)]
+  (reduce-kv
+   (fn [new-params name value]
+     (if-let [{:keys [action] :as spec} (parameter-specs name)]
        (case action
          :copy
-         (assoc-via new-params spec value)
+         (assoc-via new-params spec name value)
 
          :parse-nat-long
          (if-let [value (parse-nat-long value)]
-           (assoc-via new-params spec value)
+           (assoc-via new-params spec name value)
            (reduced (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a non-negative integer." name))))
 
          :parse-boolean
          (if-let [value (parse-boolean value)]
-           (assoc-via new-params spec value)
+           (assoc-via new-params spec name value)
            (reduced (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a boolean." name))))
 
          :parse-canonical
-         (assoc-via new-params spec (type/canonical value))
+         (assoc-via new-params spec name (type/canonical value))
 
          :copy-resource
          (reduced (ba/unsupported (format "Unsupported parameter `%s` in GET request. Please use POST." name)
@@ -83,33 +84,34 @@
                                   :http/status 400)))
        new-params))
    {}
-   parameter-specs))
+   params))
 
 (defn- validate-body-params [{params :parameter}]
   (reduce
-   (fn [new-params {:keys [name action] :as spec}]
-     (if-let [param (some #(when (= name (type/value (:name %))) %) params)]
-       (case action
-         (:copy :parse-boolean)
-         (assoc-via new-params spec (type/value (:value param)))
+   (fn [new-params {:keys [name] :as param}]
+     (let [name (type/value name)]
+       (if-let [{:keys [action] :as spec} (parameter-specs name)]
+         (case action
+           (:copy :parse-boolean)
+           (assoc-via new-params spec name (type/value (:value param)))
 
-         :parse-nat-long
-         (let [value (type/value (:value param))]
-           (if-not (neg? value)
-             (assoc-via new-params spec value)
-             (reduced (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a non-negative integer." name)))))
+           :parse-nat-long
+           (let [value (type/value (:value param))]
+             (if-not (neg? value)
+               (assoc-via new-params spec name value)
+               (reduced (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a non-negative integer." name)))))
 
-         :parse-canonical
-         (assoc-via new-params spec (:value param))
+           :parse-canonical
+           (assoc-via new-params spec name (:value param))
 
-         :copy-resource
-         (assoc-via new-params spec (:resource param))
+           :copy-resource
+           (assoc-via new-params spec name (:resource param))
 
-         (reduced (ba/unsupported (format "Unsupported parameter `%s`." name)
-                                  :http/status 400)))
-       new-params))
+           (reduced (ba/unsupported (format "Unsupported parameter `%s`." name)
+                                    :http/status 400)))
+         new-params)))
    {}
-   parameter-specs))
+   params))
 
 (defn- validate-more [{:keys [offset] :as params}]
   (if (and (some? offset) (not (zero? offset)))

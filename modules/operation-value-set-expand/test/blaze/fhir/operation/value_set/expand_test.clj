@@ -51,7 +51,7 @@
     :rng-fn (ig/ref :blaze.test/fixed-rng-fn)}
    :blaze.test/fixed-rng-fn {}))
 
-(defn wrap-error [handler]
+(defn- wrap-error [handler]
   (fn [request]
     (-> (handler request)
         (ac/exceptionally handler-util/error-response))))
@@ -62,6 +62,10 @@
        ~txs
        (let [~handler-binding (-> handler# wrap-error)]
          ~@body))))
+
+(defn- parameter [name]
+  (fn [{:keys [parameter]}]
+    (some #(when (= name (type/value (:name %))) %) parameter)))
 
 (deftest handler-test
   (testing "ValueSet not found"
@@ -258,7 +262,25 @@
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 1
           [:expansion :contains 0 :system] := #fhir/uri"system-115910"
-          [:expansion :contains 0 :code] := #fhir/code"code-115927"))))
+          [:expansion :contains 0 :code] := #fhir/code"code-115927"))
+
+      (testing "ignores unknown parameter"
+        (let [{:keys [status]}
+              @(handler {:path-params {:id "152952"}
+                         :query-params {"foo" "bar"}})]
+
+          (is (= 200 status)))
+
+        (let [{:keys [status]}
+              @(handler {:request-method :post
+                         :path-params {:id "152952"}
+                         :body {:fhir/type :fhir/Parameters
+                                :parameter
+                                [{:fhir/type :fhir.Parameters/parameter
+                                  :name #fhir/string"foo"
+                                  :value #fhir/string"bar"}]}})]
+
+          (is (= 200 status))))))
 
   (testing "successful expansion by url"
     (with-handler [handler]
@@ -385,11 +407,7 @@
 
             (given body
               :fhir/type := :fhir/ValueSet
-              :compose := nil
-              [:expansion :parameter 0 :name] := #fhir/string "version"
-              [:expansion :parameter 0 :value] := #fhir/uri"system-115910|version-170327"
-              [:expansion :parameter 1 :name] := #fhir/string "count"
-              [:expansion :parameter 1 :value] := #fhir/integer 0
+              [:expansion (parameter "count") :value] := #fhir/integer 0
               [:expansion :total] := #fhir/integer 1
               [:expansion :contains count] := 0)))
 
@@ -415,7 +433,6 @@
 
             (given body
               :fhir/type := :fhir/ValueSet
-              :compose := nil
               [:expansion :contains count] := 1
               [:expansion :contains 0 :system] := #fhir/uri"system-115910"
               [:expansion :contains 0 :code] := #fhir/code"code-115927")))
@@ -528,8 +545,7 @@
 
           (given body
             :fhir/type := :fhir/ValueSet
-            [:expansion :parameter 0 :name] := #fhir/string "count"
-            [:expansion :parameter 0 :value] := #fhir/integer 0
+            [:expansion (parameter "count") :value] := #fhir/integer 0
             [:expansion :total] := #fhir/integer 1
             [:expansion :contains count] := 0))))
 
@@ -558,8 +574,7 @@
 
           (given body
             :fhir/type := :fhir/ValueSet
-            [:expansion :parameter 0 :name] := #fhir/string "count"
-            [:expansion :parameter 0 :value] := #fhir/integer 1
+            [:expansion (parameter "count") :value] := #fhir/integer 1
             [:expansion :total] := #fhir/integer 2
             [:expansion :contains count] := 1
             [:expansion :contains 0 :system] := #fhir/uri"system-115910"
@@ -607,7 +622,7 @@
           [:expansion :contains 0 :system] := #fhir/uri"system-135810"
           [:expansion :contains 0 :code] := #fhir/code"code-135827"))))
 
-  (testing "with inactive concept"
+  (testing "successful expansion with inactive concept"
     (with-handler [handler]
       [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                :url #fhir/uri"system-170110"
@@ -648,4 +663,41 @@
 
           (given body
             :fhir/type := :fhir/ValueSet
-            [:expansion :contains count] := 0))))))
+            [:expansion :contains count] := 0)))))
+
+  (testing "successful expansion with externally supplied value set and code system"
+    (with-handler [handler]
+      (let [{:keys [status body]}
+            @(handler {:request-method :post
+                       :body {:fhir/type :fhir/Parameters
+                              :parameter
+                              [{:fhir/type :fhir.Parameters/parameter
+                                :name #fhir/string"url"
+                                :value #fhir/uri"value-set-110445"}
+                               {:fhir/type :fhir.Parameters/parameter
+                                :name #fhir/string"tx-resource"
+                                :resource
+                                {:fhir/type :fhir/CodeSystem
+                                 :url #fhir/uri"system-115910"
+                                 :content #fhir/code"complete"
+                                 :concept
+                                 [{:fhir/type :fhir.CodeSystem/concept
+                                   :code #fhir/code"code-115927"}]}}
+                               {:fhir/type :fhir.Parameters/parameter
+                                :name #fhir/string"tx-resource"
+                                :resource
+                                {:fhir/type :fhir/ValueSet
+                                 :url #fhir/uri"value-set-110445"
+                                 :compose
+                                 {:fhir/type :fhir.ValueSet/compose
+                                  :include
+                                  [{:fhir/type :fhir.ValueSet.compose/include
+                                    :system #fhir/uri"system-115910"}]}}}]}})]
+
+        (is (= 200 status))
+
+        (given body
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+          [:expansion :contains 0 :code] := #fhir/code"code-115927")))))

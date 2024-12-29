@@ -2,6 +2,7 @@
   (:require
    [blaze.fhir.test-util]
    [blaze.terminology-service.local.graph :as graph]
+   [blaze.terminology-service.local.graph-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -40,6 +41,27 @@
       :child-index := {}))
 
   (testing "one root and one child"
+    (testing "with hierarchy"
+      (given (graph/build-graph
+              [{:fhir/type :fhir.CodeSystem/concept
+                :code #fhir/code"code-180828"
+                :concept
+                [{:fhir/type :fhir.CodeSystem/concept
+                  :code #fhir/code"code-191445"}]}])
+        [:concepts "code-180828"] := {:fhir/type :fhir.CodeSystem/concept
+                                      :code #fhir/code"code-180828"
+                                      :property
+                                      [{:fhir/type :fhir.CodeSystem.concept/property
+                                        :code #fhir/code"child"
+                                        :value #fhir/code"code-191445"}]}
+        [:concepts "code-191445"] := {:fhir/type :fhir.CodeSystem/concept
+                                      :code #fhir/code"code-191445"
+                                      :property
+                                      [{:fhir/type :fhir.CodeSystem.concept/property
+                                        :code #fhir/code"parent"
+                                        :value #fhir/code"code-180828"}]}
+        :child-index := {"code-180828" #{"code-191445"}}))
+
     (testing "with parent property only"
       (given (graph/build-graph
               [{:fhir/type :fhir.CodeSystem/concept
@@ -117,44 +139,67 @@
         :child-index := {"code-180828" #{"code-191445"}})))
 
   (testing "one root, one child and one child of the child"
-    (given (graph/build-graph
-            [{:fhir/type :fhir.CodeSystem/concept
-              :code #fhir/code"code-180828"}
-             {:fhir/type :fhir.CodeSystem/concept
-              :code #fhir/code"code-191445"
-              :property
-              [{:fhir/type :fhir.CodeSystem.concept/property
-                :code #fhir/code"parent"
-                :value #fhir/code"code-180828"}]}
-             {:fhir/type :fhir.CodeSystem/concept
-              :code #fhir/code"code-104304"
-              :property
-              [{:fhir/type :fhir.CodeSystem.concept/property
-                :code #fhir/code"parent"
-                :value #fhir/code"code-191445"}]}])
-      [:concepts "code-180828"] := {:fhir/type :fhir.CodeSystem/concept
-                                    :code #fhir/code"code-180828"
-                                    :property
-                                    [{:fhir/type :fhir.CodeSystem.concept/property
-                                      :code #fhir/code"child"
-                                      :value #fhir/code"code-191445"}]}
-      [:concepts "code-191445"] := {:fhir/type :fhir.CodeSystem/concept
-                                    :code #fhir/code"code-191445"
-                                    :property
-                                    [{:fhir/type :fhir.CodeSystem.concept/property
-                                      :code #fhir/code"parent"
-                                      :value #fhir/code"code-180828"}
-                                     {:fhir/type :fhir.CodeSystem.concept/property
-                                      :code #fhir/code"child"
-                                      :value #fhir/code"code-104304"}]}
-      [:concepts "code-104304"] := {:fhir/type :fhir.CodeSystem/concept
-                                    :code #fhir/code"code-104304"
-                                    :property
-                                    [{:fhir/type :fhir.CodeSystem.concept/property
-                                      :code #fhir/code"parent"
-                                      :value #fhir/code"code-191445"}]}
-      :child-index := {"code-180828" #{"code-191445"}
-                       "code-191445" #{"code-104304"}}))
+    (testing "with hierarchy"
+      (given (graph/build-graph
+              [{:fhir/type :fhir.CodeSystem/concept
+                :code #fhir/code"code-180828"
+                :concept
+                [{:fhir/type :fhir.CodeSystem/concept
+                  :code #fhir/code"code-191445"
+                  :concept
+                  [{:fhir/type :fhir.CodeSystem/concept
+                    :code #fhir/code"code-104304"}]}]}])
+        [:concepts "code-180828" :code] := #fhir/code"code-180828"
+        [:concepts "code-180828" :property set] := #{{:fhir/type :fhir.CodeSystem.concept/property
+                                                      :code #fhir/code"child"
+                                                      :value #fhir/code"code-191445"}}
+        [:concepts "code-191445" :code] := #fhir/code"code-191445"
+        [:concepts "code-191445" :property set] := #{{:fhir/type :fhir.CodeSystem.concept/property
+                                                      :code #fhir/code"parent"
+                                                      :value #fhir/code"code-180828"}
+                                                     {:fhir/type :fhir.CodeSystem.concept/property
+                                                      :code #fhir/code"child"
+                                                      :value #fhir/code"code-104304"}}
+        [:concepts "code-104304" :code] := #fhir/code"code-104304"
+        [:concepts "code-104304" :property set] := #{{:fhir/type :fhir.CodeSystem.concept/property
+                                                      :code #fhir/code"parent"
+                                                      :value #fhir/code"code-191445"}}
+        :child-index := {"code-180828" #{"code-191445"}
+                         "code-191445" #{"code-104304"}}))
+
+    (testing "with parent property only"
+      (given (graph/build-graph
+              [{:fhir/type :fhir.CodeSystem/concept
+                :code #fhir/code"code-180828"}
+               {:fhir/type :fhir.CodeSystem/concept
+                :code #fhir/code"code-191445"
+                :property
+                [{:fhir/type :fhir.CodeSystem.concept/property
+                  :code #fhir/code"parent"
+                  :value #fhir/code"code-180828"}]}
+               {:fhir/type :fhir.CodeSystem/concept
+                :code #fhir/code"code-104304"
+                :property
+                [{:fhir/type :fhir.CodeSystem.concept/property
+                  :code #fhir/code"parent"
+                  :value #fhir/code"code-191445"}]}])
+        [:concepts "code-180828" :code] := #fhir/code"code-180828"
+        [:concepts "code-180828" :property set] := #{{:fhir/type :fhir.CodeSystem.concept/property
+                                                      :code #fhir/code"child"
+                                                      :value #fhir/code"code-191445"}}
+        [:concepts "code-191445" :code] := #fhir/code"code-191445"
+        [:concepts "code-191445" :property set] := #{{:fhir/type :fhir.CodeSystem.concept/property
+                                                      :code #fhir/code"parent"
+                                                      :value #fhir/code"code-180828"}
+                                                     {:fhir/type :fhir.CodeSystem.concept/property
+                                                      :code #fhir/code"child"
+                                                      :value #fhir/code"code-104304"}}
+        [:concepts "code-104304" :code] := #fhir/code"code-104304"
+        [:concepts "code-104304" :property set] := #{{:fhir/type :fhir.CodeSystem.concept/property
+                                                      :code #fhir/code"parent"
+                                                      :value #fhir/code"code-191445"}}
+        :child-index := {"code-180828" #{"code-191445"}
+                         "code-191445" #{"code-104304"}})))
 
   (testing "one child with two parents"
     (given (graph/build-graph

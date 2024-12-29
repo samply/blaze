@@ -4,9 +4,7 @@
    [blaze.fhir.spec.type :as type]
    [blaze.terminology-service.local.code-system.filter.core :as core]))
 
-(defn- xform
-  "Creates either a filter of a remove xform, depending on the filter value."
-  [{:keys [property value]}]
+(defn- xform [{:keys [property value]}]
   (if-let [property (type/value property)]
     (if-some [search-value (type/value value)]
       (filter

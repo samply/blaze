@@ -18,11 +18,11 @@
 (defn- all-version-expansion-anom [url]
   (ba/unsupported (all-version-expansion-msg url)))
 
-(defn- find-version [{:keys [system-version]} system]
+(defn- find-version [{:keys [system-versions]} system]
   (some
    #(let [[s v] (str/split (type/value %) #"\|")]
       (when (= system s) v))
-   system-version))
+   system-versions))
 
 (defn- find-code-system [{:keys [request] :as context} {:keys [system version]}]
   (condp = (type/value version)
@@ -32,37 +32,43 @@
           (cs/find context (type/value system)))
     (cs/find context (type/value system) (type/value version))))
 
-(defn- expand-filters [request code-system filters]
-  (->> (map (partial cs/expand-filter request code-system) filters)
+(defn- expand-filters [request inactive code-system filters]
+  (->> (map (partial cs/expand-filter request inactive code-system) filters)
        (apply set/intersection)))
+
+(defn- expand-code-system [{:keys [request]} inactive code-system concepts filters]
+  (cond
+    (seq concepts) (cs/expand-concept request inactive code-system concepts)
+    (seq filters) (expand-filters request inactive code-system filters)
+    :else (cs/expand-complete request inactive code-system)))
+
+(defn- used-codesystem-parameter [{:keys [url version]}]
+  {:fhir/type :fhir.ValueSet.expansion/parameter
+   :name #fhir/string"used-codesystem"
+   :value (type/uri (cond-> (type/value url) (type/value version) (str "|" (type/value version))))})
 
 (defn- version-parameter [url version]
   {:fhir/type :fhir.ValueSet.expansion/parameter
    :name #fhir/string"version"
    :value (type/uri (str url "|" version))})
 
-(defn- append-version [concepts {:keys [url version]}]
-  (cond-> {:contains concepts}
-    version (assoc :parameter #{(version-parameter url version)})))
-
-(defn- expand-code-system [{:keys [request]} code-system concepts filters]
-  (cond
-    (seq concepts) (cs/expand-concept request code-system concepts)
-    (seq filters) (expand-filters request code-system filters)
-    :else (cs/expand-complete request code-system)))
+(defn- code-system-parameters [{:keys [url version] :as code-system}]
+  (cond-> #{(used-codesystem-parameter code-system)}
+    (type/value version) (conj (version-parameter (type/value url) (type/value version)))))
 
 (defn- include-system
-  [context {concepts :concept filters :filter :as include}]
+  [context inactive {concepts :concept filters :filter :as include}]
   (if (and (seq concepts) (seq filters))
     (ac/completed-future (ba/incorrect "Incorrect combination of concept and filter."))
     (do-sync [code-system (find-code-system context include)]
-      (when-ok [concepts (expand-code-system context code-system concepts filters)]
-        (append-version concepts code-system)))))
+      (when-ok [concepts (expand-code-system context inactive code-system concepts filters)]
+        {:parameter (code-system-parameters code-system)
+         :contains concepts}))))
 
 (declare expand-value-set)
 
-(defn- expand-value-set-by-canonical [{:keys [db] :as context} canonical]
-  (-> (vs/find db canonical)
+(defn- expand-value-set-by-canonical [context canonical]
+  (-> (vs/find context canonical)
       (ac/then-compose (partial expand-value-set context))))
 
 (defn- include-value-sets [context value-sets]
@@ -70,18 +76,18 @@
     (do-sync [_ (ac/all-of futures)]
       (transduce (map (comp #(select-keys % [:parameter :contains]) :expansion ac/join)) (partial merge-with into) futures))))
 
-(defn- include [context {:keys [system] value-sets :valueSet :as include}]
+(defn- include [context inactive {:keys [system] value-sets :valueSet :as include}]
   (cond
     (and system value-sets)
     (ac/completed-future (ba/incorrect "Incorrect combination of system and valueSet."))
 
-    system (include-system context include)
+    system (include-system context inactive include)
     value-sets (include-value-sets context value-sets)
 
     :else (ac/completed-future (ba/incorrect "Missing system or valueSet."))))
 
-(defn- expand-includes [context includes]
-  (let [futures (mapv (partial include context) includes)]
+(defn- expand-includes [context inactive includes]
+  (let [futures (mapv (partial include context inactive) includes)]
     (do-sync [_ (ac/all-of futures)]
       (transduce (map ac/join) (partial merge-with into) futures))))
 
@@ -93,9 +99,21 @@
    :name #fhir/string"count"
    :value (type/integer count)})
 
-(defn- append-params [parameters {:keys [count]}]
+(defn- active-only-parameter [active-only]
+  {:fhir/type :fhir.ValueSet.expansion/parameter
+   :name #fhir/string"activeOnly"
+   :value (type/boolean active-only)})
+
+(defn- exclude-nested-parameter [exclude-nested]
+  {:fhir/type :fhir.ValueSet.expansion/parameter
+   :name #fhir/string"excludeNested"
+   :value (type/boolean exclude-nested)})
+
+(defn- append-params [parameters {:keys [count active-only exclude-nested]}]
   (cond-> parameters
-    count (conj (count-parameter count))))
+    count (conj (count-parameter count))
+    (some? active-only) (conj (active-only-parameter active-only))
+    (some? exclude-nested) (conj (exclude-nested-parameter exclude-nested))))
 
 (defn- expansion [{:keys [clock] {:keys [count] :as request} :request} parameters concepts]
   (cond->
@@ -110,9 +128,9 @@
 (defn- expand-value-set**
   [{{:keys [include-definition] :or {include-definition false}} :request
     :as context}
-   {{includes :include excludes :exclude} :compose :as value-set}]
-  (let [includes (expand-includes context includes)
-        excludes (expand-includes context excludes)]
+   {{:keys [inactive] includes :include excludes :exclude} :compose :as value-set}]
+  (let [includes (expand-includes context inactive includes)
+        excludes (expand-includes context inactive excludes)]
     (do-sync [_ (ac/all-of [includes excludes])]
       (let [includes (ac/join includes)
             excludes (ac/join excludes)

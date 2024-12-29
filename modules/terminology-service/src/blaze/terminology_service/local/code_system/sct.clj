@@ -81,7 +81,7 @@
         (u/parameter "message" (type/string message))]})))
 
 (defmethod c/expand-complete :sct
-  [_ _]
+  [_ _ _]
   (ba/conflict
    "Expanding all Snomed CT concepts is too costly."
    :fhir/issue "too-costly"))
@@ -110,12 +110,12 @@
         :display (type/string (context/find-description description-index code version))}))))
 
 (defmethod c/expand-concept :sct
-  [{:keys [active-only]} code-system concepts]
+  [{:keys [active-only]} inactive code-system concepts]
   (into
    []
    (comp
     (keep (comp parse-sctid type/value :code))
-    ((if active-only active-concept-xf concept-xf) code-system))
+    ((if (or active-only (false? inactive)) active-concept-xf concept-xf) code-system))
    concepts))
 
 (defmulti filter-one
@@ -139,11 +139,11 @@
   (ba/unsupported (format "Unsupported filter operator `%s` in code system `http://snomed.info/sct`." (type/value op))))
 
 (defmethod c/expand-filter :sct
-  [{:keys [active-only]} code-system filter]
+  [{:keys [active-only]} inactive code-system filter]
   (when-ok [codes (filter-one code-system filter)]
     (into
      #{}
-     ((if active-only active-concept-xf concept-xf) code-system)
+     ((if (or active-only (false? inactive)) active-concept-xf concept-xf) code-system)
      codes)))
 
 (defn build-context [release-path]

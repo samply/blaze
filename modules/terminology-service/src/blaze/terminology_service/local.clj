@@ -54,11 +54,14 @@
     (d/pull db value-set)
     (ac/completed-future (value-set-not-found-by-id-anom id))))
 
-(defn- find-value-set [db {:keys [id url value-set] version :value-set-version}]
+(defn- find-value-set
+  [{:keys [db]
+    {:keys [id url value-set] version :value-set-version} :request
+    :as context}]
   (cond
     value-set (ac/completed-future value-set)
-    (and url version) (vs/find db url version)
-    url (vs/find db url)
+    (and url version) (vs/find context url version)
+    url (vs/find context url)
     id (find-value-set-by-id db id)
     :else (ac/completed-future (ba/incorrect "Missing ID or URL."))))
 
@@ -97,16 +100,18 @@
             (ac/then-apply #(cs/validate-code % request))
             (handle-close db))))
     (-expand-value-set [_ request]
-      (let [db (d/new-batch-db (d/db node))]
-        (-> (find-value-set db request)
+      (let [db (d/new-batch-db (d/db node))
+            context (assoc context :db db :request request)]
+        (-> (find-value-set context)
             (ac/then-compose
-             (partial vs-expand/expand-value-set (assoc context :db db :request request)))
+             (partial vs-expand/expand-value-set context))
             (handle-close db))))
     (-value-set-validate-code [_ request]
-      (let [db (d/new-batch-db (d/db node))]
-        (-> (find-value-set db request)
+      (let [db (d/new-batch-db (d/db node))
+            context (assoc context :db db :request request)]
+        (-> (find-value-set context)
             (ac/then-compose
-             (partial vs-validate-code/validate-code (assoc context :db db :request request)))
+             (partial vs-validate-code/validate-code context))
             (handle-close db))))))
 
 (defmethod m/pre-init-spec ::ts/local [_]

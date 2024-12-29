@@ -10,6 +10,8 @@
 "http://fhir.de/CodeSystem/dkgev/Abrechnungsart","KEK","Konsile für externe Krankenhäuser"
 "http://fhir.de/CodeSystem/dkgev/Abrechnungsart","KIA","Spezialambulanz in Kinderkliniken"
 "http://fhir.de/CodeSystem/dkgev/Abrechnungsart","KV","KV-Ermächtigung / Notfallabrechnung"
+"http://fhir.de/CodeSystem/dkgev/Abrechnungsart","KVI","KV-Institutsermächtigung"
+"http://fhir.de/CodeSystem/dkgev/Abrechnungsart","KVN","KV-Notfall"
 "http://fhir.de/CodeSystem/dkgev/Abrechnungsart","MVZ","Medizinische Versorgungszentren"
 "http://fhir.de/CodeSystem/dkgev/Abrechnungsart","PEPP","Pauschalierendes Entgeltsystem Psychiatrie und Psychosomatik"
 "http://fhir.de/CodeSystem/dkgev/Abrechnungsart","PIA","Psychiatrische Institutsambulanz"
