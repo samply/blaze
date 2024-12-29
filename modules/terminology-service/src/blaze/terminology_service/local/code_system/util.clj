@@ -8,7 +8,7 @@
       (let [{:keys [system code]} (-> request :coding)]
         (if (= url (type/value system))
           (type/value code)
-          (ba/incorrect (format "The system of the provided coding `%s` does not match the code system with URL `%s`." (type/value system) url))))))
+          (ba/incorrect (format "The system of the provided coding `%s` does not match the code system `%s`." (type/value system) url))))))
 
 (defn parameter [name value]
   {:fhir/type :fhir.Parameters/parameter

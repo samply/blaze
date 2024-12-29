@@ -35,7 +35,7 @@
            :sct/version version)))
 
 (defn- code-system-not-found-msg [version]
-  (format "The code system with URL `http://snomed.info/sct` and version `%s` was not found." version))
+  (format "The code system `http://snomed.info/sct` with version `%s` was not found." version))
 
 (defmethod c/find :sct
   [{:keys [db] :sct/keys [context]} _ & [version]]
@@ -51,7 +51,7 @@
   (assoc-context code-system context))
 
 (defn- not-found-msg [code]
-  (format "The provided code `%s` was not found in the code system with URL `http://snomed.info/sct`." code))
+  (format "The provided code `%s` was not found in the code system `http://snomed.info/sct`." code))
 
 (defn- find-concept
   [{{:keys [concept-index]} :sct/context :sct/keys [module-id version]} code]

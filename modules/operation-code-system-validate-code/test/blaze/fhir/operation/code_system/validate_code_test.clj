@@ -89,7 +89,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-found"
-            [:issue 0 :diagnostics] := "The code system with URL `153404` was not found."))))
+            [:issue 0 :diagnostics] := "The code system `153404` was not found."))))
 
     (testing "without url or id"
       (with-handler [handler]
@@ -102,43 +102,12 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := "Missing required parameter `url`."))))
+            [:issue 0 :diagnostics] := "Missing required parameter `url`.")))))
 
-    (testing "unsupported parameters"
-      (with-handler [handler]
-        (doseq [param ["codeableConcept" "date" "abstract"]]
-          (testing "GET"
-            (let [{:keys [status body]}
-                  @(handler {:query-params {param "foo"}})]
-
-              (is (= 400 status))
-
-              (given body
-                :fhir/type := :fhir/OperationOutcome
-                [:issue 0 :severity] := #fhir/code"error"
-                [:issue 0 :code] := #fhir/code"not-supported"
-                [:issue 0 :diagnostics] := (format "Unsupported parameter `%s`." param))))
-
-          (testing "POST"
-            (let [{:keys [status body]}
-                  @(handler {:request-method :post
-                             :body {:fhir/type :fhir/Parameters
-                                    :parameter
-                                    [{:fhir/type :fhir.Parameters/parameter
-                                      :name (type/string param)
-                                      :value (type/string "foo")}]}})]
-
-              (is (= 400 status))
-
-              (given body
-                :fhir/type := :fhir/OperationOutcome
-                [:issue 0 :severity] := #fhir/code"error"
-                [:issue 0 :code] := #fhir/code"not-supported"
-                [:issue 0 :diagnostics] := (format "Unsupported parameter `%s`." param)))))))
-
-    (testing "unsupported GET parameters"
-      (with-handler [handler]
-        (doseq [param ["codeSystem" "coding"]]
+  (testing "unsupported parameters"
+    (with-handler [handler]
+      (doseq [param ["codeableConcept" "date" "abstract"]]
+        (testing "GET"
           (let [{:keys [status body]}
                 @(handler {:query-params {param "foo"}})]
 
@@ -148,7 +117,38 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"not-supported"
-              [:issue 0 :diagnostics] := (format "Unsupported parameter `%s` in GET request. Please use POST." param)))))))
+              [:issue 0 :diagnostics] := (format "Unsupported parameter `%s`." param))))
+
+        (testing "POST"
+          (let [{:keys [status body]}
+                @(handler {:request-method :post
+                           :body {:fhir/type :fhir/Parameters
+                                  :parameter
+                                  [{:fhir/type :fhir.Parameters/parameter
+                                    :name (type/string param)
+                                    :value (type/string "foo")}]}})]
+
+            (is (= 400 status))
+
+            (given body
+              :fhir/type := :fhir/OperationOutcome
+              [:issue 0 :severity] := #fhir/code"error"
+              [:issue 0 :code] := #fhir/code"not-supported"
+              [:issue 0 :diagnostics] := (format "Unsupported parameter `%s`." param)))))))
+
+  (testing "unsupported GET parameters"
+    (with-handler [handler]
+      (doseq [param ["codeSystem" "coding"]]
+        (let [{:keys [status body]}
+              @(handler {:query-params {param "foo"}})]
+
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"not-supported"
+            [:issue 0 :diagnostics] := (format "Unsupported parameter `%s` in GET request. Please use POST." param))))))
 
   (testing "successful validation by id"
     (with-handler [handler]
