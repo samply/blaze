@@ -28,17 +28,21 @@
   :ret :fhir/Parameters)
 
 (s/fdef cs/expand-complete
-  :args (s/cat :request ::cs/expand-request :code-system :fhir/CodeSystem)
+  :args (s/cat :request ::cs/expand-request
+               :inactive (s/nilable boolean?)
+               :code-system :fhir/CodeSystem)
   :ret (s/coll-of :fhir.ValueSet.expansion/contains))
 
 (s/fdef cs/expand-concept
   :args (s/cat :request ::cs/expand-request
+               :inactive (s/nilable boolean?)
                :code-system :fhir/CodeSystem
                :concepts (s/coll-of :fhir.ValueSet.compose.include/concept))
   :ret (s/coll-of :fhir.ValueSet.expansion/contains))
 
 (s/fdef cs/expand-filter
   :args (s/cat :request ::cs/expand-request
+               :inactive (s/nilable boolean?)
                :code-system :fhir/CodeSystem
                :filter :fhir.ValueSet.compose.include/filter)
   :ret (s/coll-of :fhir.ValueSet.expansion/contains :kind set?))

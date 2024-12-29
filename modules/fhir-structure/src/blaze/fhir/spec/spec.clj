@@ -58,6 +58,9 @@
 (s/def :fhir/dateTime
   #(s2/valid? :fhir/dateTime %))
 
+(s/def :fhir/canonical
+  #(s2/valid? :fhir/canonical %))
+
 (s/def :fhir/CodeSystem
   #(s2/valid? :fhir/CodeSystem %))
 

@@ -7,7 +7,7 @@
    [blaze.terminology-service.local.code-system.filter.core :as core]))
 
 (defn- xform
-  "Creates either a filter of a remove xform, depending on the filter value."
+  "Creates either a filter or a remove xform, depending on the filter value."
   [{:keys [property value]}]
   (if-let [property (type/value property)]
     (if-some [should-exist? (parse-boolean (type/value value))]

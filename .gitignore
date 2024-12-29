@@ -3,3 +3,5 @@ classes
 .cpcache
 .cache
 .nrepl-port
+fhir-tx-ecosystem-ig
+validator_cli.jar

@@ -2,13 +2,14 @@
   "Main code system functionality."
   (:refer-clojure :exclude [find list])
   (:require
-   [blaze.async.comp :refer [do-sync]]
+   [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
    [blaze.terminology-service.local.code-system.core :as c]
    [blaze.terminology-service.local.code-system.default]
    [blaze.terminology-service.local.code-system.sct]
    [blaze.terminology-service.local.code-system.ucum]
+   [blaze.terminology-service.local.graph :as graph]
    [blaze.terminology-service.local.priority :as priority]))
 
 (defn list
@@ -26,13 +27,37 @@
         [url (priority/sort-by-priority code-systems)]))
      (group-by (comp type/value :url) code-systems))))
 
+(defn- assoc-graph [{concepts :concept :as code-system}]
+  (assoc code-system :default/graph (graph/build-graph concepts)))
+
+(defn- find-in-tx-resources
+  ([tx-resources url]
+   (some
+    (fn [{:fhir/keys [type] :as resource}]
+      (when (identical? :fhir/CodeSystem type)
+        (when (= url (type/value (:url resource)))
+          (ac/completed-future (assoc-graph resource)))))
+    tx-resources))
+  ([tx-resources url version]
+   (some
+    (fn [{:fhir/keys [type] :as resource}]
+      (when (identical? :fhir/CodeSystem type)
+        (when (= url (type/value (:url resource)))
+          (when (= version (type/value (:version resource)))
+            (ac/completed-future (assoc-graph resource))))))
+    tx-resources)))
+
 (defn find
   "Returns a CompletableFuture that will complete with the first CodeSystem
   resource with `url` and optional `version` in `context` according to priority
   or complete exceptionally in case of none found or errors."
   {:arglists '([context url] [context url version])}
-  [& args]
-  (apply c/find args))
+  ([{{:keys [tx-resources]} :request :as context} url]
+   (or (some-> tx-resources (find-in-tx-resources url))
+       (c/find context url)))
+  ([{{:keys [tx-resources]} :request :as context} url version]
+   (or (some-> tx-resources (find-in-tx-resources url version))
+       (c/find context url version))))
 
 (defn enhance
   "Adds additional data to `code-system`."
@@ -47,17 +72,17 @@
 
 (defn expand-complete
   "Returns a list of all concepts as expansion of `code-system`."
-  [request code-system]
-  (c/expand-complete request code-system))
+  [request inactive code-system]
+  (c/expand-complete request inactive code-system))
 
 (defn expand-concept
   "Returns a list of concepts as expansion of `code-system` according to the
   given `concepts`."
-  [request code-system concepts]
-  (c/expand-concept request code-system concepts))
+  [request inactive code-system concepts]
+  (c/expand-concept request inactive code-system concepts))
 
 (defn expand-filter
   "Returns a set of concepts as expansion of `code-system` according to
   `filter`."
-  [request code-system filter]
-  (c/expand-filter request code-system filter))
+  [request inactive code-system filter]
+  (c/expand-filter request inactive code-system filter))

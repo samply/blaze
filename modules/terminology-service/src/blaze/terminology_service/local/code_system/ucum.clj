@@ -20,6 +20,26 @@
     (with-open [stream (.getResourceAsStream classloader "ucum-essence.xml")]
       (UcumEssenceService. stream))))
 
+(def ^:private code-system
+  {:fhir/type :fhir/CodeSystem
+   :url #fhir/uri"http://unitsofmeasure.org"
+   :version #fhir/string"2013.10.21"
+   :name #fhir/string"UCUM"
+   :title #fhir/string"Unified Code for Units of Measure (UCUM)"
+   :status #fhir/code"active"
+   :experimental #fhir/boolean false
+   :date #fhir/dateTime"2013-10-21"
+   :caseSensitive #fhir/boolean true
+   :content #fhir/code"not-present"})
+
+(defmethod c/find :ucum
+  [& _]
+  (ac/completed-future code-system))
+
+(defmethod c/enhance :ucum
+  [_ code-system]
+  code-system)
+
 (defn- validate [code]
   (when (.validate ^UcumService service code)
     (ba/incorrect (format "The provided code `%s` was not found in the code system `http://unitsofmeasure.org`." code))))
@@ -41,7 +61,7 @@
         (u/parameter "message" (type/string message))]})))
 
 (defmethod c/expand-concept :ucum
-  [_ _ concepts]
+  [_ _ _ concepts]
   (into
    []
    (keep
@@ -59,20 +79,7 @@
 
 (defn- create-code-system [{:keys [node] :as context}]
   (log/debug "Create UCUM code system...")
-  (d/transact
-   node
-   [[:create
-     {:fhir/type :fhir/CodeSystem
-      :id (luid context)
-      :url #fhir/uri"http://unitsofmeasure.org"
-      :version #fhir/string"2013.10.21"
-      :name #fhir/string"UCUM"
-      :title #fhir/string"Unified Code for Units of Measure (UCUM)"
-      :status #fhir/code"active"
-      :experimental #fhir/boolean false
-      :date #fhir/dateTime"2013-10-21"
-      :caseSensitive #fhir/boolean true
-      :content #fhir/code"not-present"}]]))
+  (d/transact node [[:create (assoc code-system :id (luid context))]]))
 
 (defn ensure-code-system
   "Ensures that the UCUM code system is present in the database node."
