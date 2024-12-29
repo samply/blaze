@@ -22,8 +22,8 @@
       (assoc code-system :default/graph (graph/build-graph concepts))
       (ba/not-found
        (if version
-         (format "The code system with URL `%s` and version `%s` was not found." url version)
-         (format "The code system with URL `%s` was not found." url))))))
+         (format "The code system `%s` with version `%s` was not found." url version)
+         (format "The code system `%s` was not found." url))))))
 
 (defmethod c/enhance :default
   [_ {concepts :concept :as code-system}]
@@ -36,7 +36,7 @@
 
 (defn- not-found-msg [{:keys [url]} code]
   (if url
-    (format "The provided code `%s` was not found in the code system with URL `%s`." code (type/value url))
+    (format "The provided code `%s` was not found in the code system `%s`." code (type/value url))
     (format "The provided code `%s` was not found in the provided code system." code)))
 
 (defn- find-concept
@@ -46,7 +46,7 @@
 
 (defn- check-complete [{:keys [content] :as code-system}]
   (when-not (= "complete" (type/value content))
-    (ba/incorrect (format "Can't use the code system with URL `%s` because it is not complete. It's content is `%s`." (type/value (:url code-system)) (type/value content)))))
+    (ba/incorrect (format "Can't use the code system `%s` because it is not complete. It's content is `%s`." (type/value (:url code-system)) (type/value content)))))
 
 (defmethod c/validate-code :default
   [{:keys [url] :as code-system} request]
@@ -66,7 +66,7 @@
         (u/parameter "message" (type/string message))]})))
 
 (defn- code-system-not-complete-msg [{:keys [url content]}]
-  (format "Can't expand the code system with URL `%s` because it is not complete. It's content is `%s`."
+  (format "Can't expand the code system `%s` because it is not complete. It's content is `%s`."
           url (type/value content)))
 
 (defn- code-system-not-complete-anom [code-system]

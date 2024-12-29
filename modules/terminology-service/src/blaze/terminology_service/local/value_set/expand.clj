@@ -13,7 +13,7 @@
    [java-time.api :as time]))
 
 (defn- all-version-expansion-msg [url]
-  (format "Expanding the code system with URL `%s` in all versions is unsupported." url))
+  (format "Expanding the code system `%s` in all versions is unsupported." url))
 
 (defn- all-version-expansion-anom [url]
   (ba/unsupported (all-version-expansion-msg url)))

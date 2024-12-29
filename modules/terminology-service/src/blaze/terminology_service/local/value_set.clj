@@ -17,4 +17,4 @@
   ([db url version]
    (do-sync [code-systems (d/pull-many db (d/type-query db "ValueSet" [["url" url] ["version" version]]))]
      (or (first (priority/sort-by-priority code-systems))
-         (ba/not-found (format "The value set `%s` and version `%s` was not found." url version))))))
+         (ba/not-found (format "The value set `%s` with version `%s` was not found." url version))))))

@@ -115,7 +115,7 @@ for url in $(blazectl --server "$BASE" download ValueSet -q "_elements=url&_coun
     # content: fragment (http://fhir.de/CodeSystem/dkgev/Fachabteilungsschluessel)
     continue
   else
-    echo "Expand ValueSet with URL: $url"
+    echo "Expand ValueSet: $url"
     curl -sfH "Accept: application/fhir+json" -o /dev/null "$BASE/ValueSet/\$expand?url=$url"
   fi
 done

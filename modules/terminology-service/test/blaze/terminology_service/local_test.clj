@@ -221,13 +221,13 @@
       (testing "url"
         (given-failed-future (ts/code-system-validate-code ts {:url "url-194718"})
           ::anom/category := ::anom/not-found
-          ::anom/message := "The code system with URL `url-194718` was not found."
+          ::anom/message := "The code system `url-194718` was not found."
           :t := 0))
 
       (testing "url and version"
         (given-failed-future (ts/code-system-validate-code ts {:url "url-144258" :version "version-144244"})
           ::anom/category := ::anom/not-found
-          ::anom/message := "The code system with URL `url-144258` and version `version-144244` was not found."
+          ::anom/message := "The code system `url-144258` with version `version-144244` was not found."
           :t := 0)))))
 
 (deftest code-system-validate-code-test
@@ -241,64 +241,59 @@
                  :code #fhir/code"code-115927"}]}]]]
 
       (testing "existing code"
-        (let [request {:code "code-115927"}]
-          (doseq [request (mapv (partial merge request) [{:url "system-115910"} {:id "0"}])]
-            (given @(ts/code-system-validate-code ts request)
-              :fhir/type := :fhir/Parameters
-              [:parameter count] := 3
-              [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value] := #fhir/boolean true
-              [:parameter 1 :name] := #fhir/string"code"
-              [:parameter 1 :value] := #fhir/code"code-115927"
-              [:parameter 2 :name] := #fhir/string"system"
-              [:parameter 2 :value] := #fhir/uri"system-115910"))))
+        (doseq [request [{:url "system-115910"} {:id "0"}]]
+          (given @(ts/code-system-validate-code ts (assoc request :code "code-115927"))
+            :fhir/type := :fhir/Parameters
+            [:parameter count] := 3
+            [:parameter 0 :name] := #fhir/string"result"
+            [:parameter 0 :value] := #fhir/boolean true
+            [:parameter 1 :name] := #fhir/string"code"
+            [:parameter 1 :value] := #fhir/code"code-115927"
+            [:parameter 2 :name] := #fhir/string"system"
+            [:parameter 2 :value] := #fhir/uri"system-115910")))
 
       (testing "non-existing code"
-        (let [request {:code "code-153948"}]
-          (doseq [request (mapv (partial merge request) [{:url "system-115910"} {:id "0"}])]
-            (given @(ts/code-system-validate-code ts request)
+        (doseq [request [{:url "system-115910"} {:id "0"}]]
+          (given @(ts/code-system-validate-code ts (assoc request :code "code-153948"))
+            :fhir/type := :fhir/Parameters
+            [:parameter count] := 2
+            [:parameter 0 :name] := #fhir/string"result"
+            [:parameter 0 :value] := #fhir/boolean false
+            [:parameter 1 :name] := #fhir/string"message"
+            [:parameter 1 :value] := #fhir/string"The provided code `code-153948` was not found in the code system `system-115910`.")))
+
+      (testing "existing coding"
+        (doseq [request [{:url "system-115910"} {:id "0"}]]
+          (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"system-115910" :code #fhir/code"code-115927"}))
+            :fhir/type := :fhir/Parameters
+            [:parameter count] := 3
+            [:parameter 0 :name] := #fhir/string"result"
+            [:parameter 0 :value] := #fhir/boolean true
+            [:parameter 1 :name] := #fhir/string"code"
+            [:parameter 1 :value] := #fhir/code"code-115927"
+            [:parameter 2 :name] := #fhir/string"system"
+            [:parameter 2 :value] := #fhir/uri"system-115910")))
+
+      (testing "non-existing coding"
+        (testing "with non-existing system"
+          (doseq [request [{:url "system-115910"} {:id "0"}]]
+            (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"system-170454" :code #fhir/code"code-115927"}))
               :fhir/type := :fhir/Parameters
               [:parameter count] := 2
               [:parameter 0 :name] := #fhir/string"result"
               [:parameter 0 :value] := #fhir/boolean false
               [:parameter 1 :name] := #fhir/string"message"
-              [:parameter 1 :value] := #fhir/string"The provided code `code-153948` was not found in the code system with URL `system-115910`."))))
-
-      (testing "existing coding"
-        (let [request {:coding #fhir/Coding{:system #fhir/uri"system-115910" :code #fhir/code"code-115927"}}]
-          (doseq [request (mapv (partial merge request) [{:url "system-115910"} {:id "0"}])]
-            (given @(ts/code-system-validate-code ts request)
-              :fhir/type := :fhir/Parameters
-              [:parameter count] := 3
-              [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value] := #fhir/boolean true
-              [:parameter 1 :name] := #fhir/string"code"
-              [:parameter 1 :value] := #fhir/code"code-115927"
-              [:parameter 2 :name] := #fhir/string"system"
-              [:parameter 2 :value] := #fhir/uri"system-115910"))))
-
-      (testing "non-existing coding"
-        (testing "with non-existing system"
-          (let [request {:coding #fhir/Coding{:system #fhir/uri"system-170454" :code #fhir/code"code-115927"}}]
-            (doseq [request (mapv (partial merge request) [{:url "system-115910"} {:id "0"}])]
-              (given @(ts/code-system-validate-code ts request)
-                :fhir/type := :fhir/Parameters
-                [:parameter count] := 2
-                [:parameter 0 :name] := #fhir/string"result"
-                [:parameter 0 :value] := #fhir/boolean false
-                [:parameter 1 :name] := #fhir/string"message"
-                [:parameter 1 :value] := #fhir/string"The system of the provided coding `system-170454` does not match the code system with URL `system-115910`."))))
+              [:parameter 1 :value] := #fhir/string"The system of the provided coding `system-170454` does not match the code system `system-115910`.")))
 
         (testing "with non-existing code"
-          (let [request {:coding #fhir/Coding{:system #fhir/uri"system-115910" :code #fhir/code"code-153948"}}]
-            (doseq [request (mapv (partial merge request) [{:url "system-115910"} {:id "0"}])]
-              (given @(ts/code-system-validate-code ts request)
-                :fhir/type := :fhir/Parameters
-                [:parameter count] := 2
-                [:parameter 0 :name] := #fhir/string"result"
-                [:parameter 0 :value] := #fhir/boolean false
-                [:parameter 1 :name] := #fhir/string"message"
-                [:parameter 1 :value] := #fhir/string"The provided code `code-153948` was not found in the code system with URL `system-115910`.")))))))
+          (doseq [request [{:url "system-115910"} {:id "0"}]]
+            (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"system-115910" :code #fhir/code"code-153948"}))
+              :fhir/type := :fhir/Parameters
+              [:parameter count] := 2
+              [:parameter 0 :name] := #fhir/string"result"
+              [:parameter 0 :value] := #fhir/boolean false
+              [:parameter 1 :name] := #fhir/string"message"
+              [:parameter 1 :value] := #fhir/string"The provided code `code-153948` was not found in the code system `system-115910`."))))))
 
   (testing "with non-complete code system"
     (with-system-data [{ts ::ts/local} config]
@@ -312,7 +307,7 @@
         [:parameter 0 :name] := #fhir/string"result"
         [:parameter 0 :value] := #fhir/boolean false
         [:parameter 1 :name] := #fhir/string"message"
-        [:parameter 1 :value] := #fhir/string"Can't use the code system with URL `system-115910` because it is not complete. It's content is `not-present`.")))
+        [:parameter 1 :value] := #fhir/string"Can't use the code system `system-115910` because it is not complete. It's content is `not-present`.")))
 
   (testing "with code-system"
     (with-system [{ts ::ts/local} config]
@@ -386,7 +381,7 @@
               [:parameter 0 :name] := #fhir/string"result"
               [:parameter 0 :value] := #fhir/boolean false
               [:parameter 1 :name] := #fhir/string"message"
-              [:parameter 1 :value] := #fhir/string"The provided code `code-153948` was not found in the code system with URL `system-115910`."))))
+              [:parameter 1 :value] := #fhir/string"The provided code `code-153948` was not found in the code system `system-115910`."))))
 
       (testing "existing coding"
         (let [request
@@ -411,144 +406,135 @@
 (deftest code-system-validate-code-sct-test
   (with-system [{ts ::ts/local :blaze.db/keys [node]} sct-config]
     (testing "existing code"
-      (let [request {:code "441510007"}]
-        (doseq [request (mapv (partial merge request)
-                              [{:url "http://snomed.info/sct"}
-                               {:url "http://snomed.info/sct"
-                                :version "http://snomed.info/sct/900000000000207008"}
-                               {:url "http://snomed.info/sct"
-                                :version "http://snomed.info/sct/900000000000207008/version/20241001"}
-                               {:id (sct-id node)}])]
-          (given @(ts/code-system-validate-code ts request)
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 5
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean true
-            [:parameter 1 :name] := #fhir/string"code"
-            [:parameter 1 :value] := #fhir/code"441510007"
-            [:parameter 2 :name] := #fhir/string"system"
-            [:parameter 2 :value] := #fhir/uri"http://snomed.info/sct"
-            [:parameter 3 :name] := #fhir/string"version"
-            [:parameter 3 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
-            [:parameter 4 :name] := #fhir/string"display"
-            [:parameter 4 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"))))
+      (doseq [request [{:url "http://snomed.info/sct"}
+                       {:url "http://snomed.info/sct"
+                        :version "http://snomed.info/sct/900000000000207008"}
+                       {:url "http://snomed.info/sct"
+                        :version "http://snomed.info/sct/900000000000207008/version/20241001"}
+                       {:id (sct-id node)}]]
+        (given @(ts/code-system-validate-code ts (assoc request :code "441510007"))
+          :fhir/type := :fhir/Parameters
+          [:parameter count] := 5
+          [:parameter 0 :name] := #fhir/string"result"
+          [:parameter 0 :value] := #fhir/boolean true
+          [:parameter 1 :name] := #fhir/string"code"
+          [:parameter 1 :value] := #fhir/code"441510007"
+          [:parameter 2 :name] := #fhir/string"system"
+          [:parameter 2 :value] := #fhir/uri"http://snomed.info/sct"
+          [:parameter 3 :name] := #fhir/string"version"
+          [:parameter 3 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+          [:parameter 4 :name] := #fhir/string"display"
+          [:parameter 4 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)")))
 
     (testing "non-existing code"
-      (doseq [request [{:code "non-existing"} {:code "0815"} {:code "441510008"}]
-              request (mapv (partial merge request) [{:url "http://snomed.info/sct"} {:id (sct-id node)}])]
+      (doseq [code ["non-existing" "0815" "441510008"]
+              request [{:url "http://snomed.info/sct" :code code}
+                       {:id (sct-id node) :code code}]]
         (given @(ts/code-system-validate-code ts request)
           :fhir/type := :fhir/Parameters
           [:parameter count] := 2
           [:parameter 0 :name] := #fhir/string"result"
           [:parameter 0 :value] := #fhir/boolean false
           [:parameter 1 :name] := #fhir/string"message"
-          [:parameter 1 :value] := (type/string (format "The provided code `%s` was not found in the code system with URL `http://snomed.info/sct`." (:code request))))))
+          [:parameter 1 :value] := (type/string (format "The provided code `%s` was not found in the code system `http://snomed.info/sct`." (:code request))))))
 
     (testing "existing coding"
-      (let [request {:coding #fhir/Coding{:system #fhir/uri"http://snomed.info/sct" :code #fhir/code"441510007"}}]
-        (doseq [request (mapv (partial merge request) [{:url "http://snomed.info/sct"} {:id (sct-id node)}])]
-          (given @(ts/code-system-validate-code ts request)
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 5
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean true
-            [:parameter 1 :name] := #fhir/string"code"
-            [:parameter 1 :value] := #fhir/code"441510007"
-            [:parameter 2 :name] := #fhir/string"system"
-            [:parameter 2 :value] := #fhir/uri"http://snomed.info/sct"
-            [:parameter 3 :name] := #fhir/string"version"
-            [:parameter 3 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
-            [:parameter 4 :name] := #fhir/string"display"
-            [:parameter 4 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"))))
+      (doseq [request [{:url "http://snomed.info/sct"} {:id (sct-id node)}]]
+        (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"http://snomed.info/sct" :code #fhir/code"441510007"}))
+          :fhir/type := :fhir/Parameters
+          [:parameter count] := 5
+          [:parameter 0 :name] := #fhir/string"result"
+          [:parameter 0 :value] := #fhir/boolean true
+          [:parameter 1 :name] := #fhir/string"code"
+          [:parameter 1 :value] := #fhir/code"441510007"
+          [:parameter 2 :name] := #fhir/string"system"
+          [:parameter 2 :value] := #fhir/uri"http://snomed.info/sct"
+          [:parameter 3 :name] := #fhir/string"version"
+          [:parameter 3 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+          [:parameter 4 :name] := #fhir/string"display"
+          [:parameter 4 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)")))
 
     (testing "non-existing coding"
-      (let [request {:coding #fhir/Coding{:system #fhir/uri"http://snomed.info/sct" :code #fhir/code"non-existing"}}]
-        (doseq [request (mapv (partial merge request) [{:url "http://snomed.info/sct"} {:id (sct-id node)}])]
-          (given @(ts/code-system-validate-code ts request)
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 2
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean false
-            [:parameter 1 :name] := #fhir/string"message"
-            [:parameter 1 :value] := #fhir/string"The provided code `non-existing` was not found in the code system with URL `http://snomed.info/sct`."))))
+      (doseq [request [{:url "http://snomed.info/sct"} {:id (sct-id node)}]]
+        (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"http://snomed.info/sct" :code #fhir/code"non-existing"}))
+          :fhir/type := :fhir/Parameters
+          [:parameter count] := 2
+          [:parameter 0 :name] := #fhir/string"result"
+          [:parameter 0 :value] := #fhir/boolean false
+          [:parameter 1 :name] := #fhir/string"message"
+          [:parameter 1 :value] := #fhir/string"The provided code `non-existing` was not found in the code system `http://snomed.info/sct`.")))
 
     (testing "coding with non-matching code system"
-      (let [request {:coding #fhir/Coding{:system #fhir/uri"system-115433" :code #fhir/code"code-115438"}}]
-        (doseq [request (mapv (partial merge request) [{:url "http://snomed.info/sct"} {:id (sct-id node)}])]
-          (given @(ts/code-system-validate-code ts request)
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 2
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean false
-            [:parameter 1 :name] := #fhir/string"message"
-            [:parameter 1 :value] := #fhir/string"The system of the provided coding `system-115433` does not match the code system with URL `http://snomed.info/sct`."))))))
+      (doseq [request [{:url "http://snomed.info/sct"} {:id (sct-id node)}]]
+        (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"system-115433" :code #fhir/code"code-115438"}))
+          :fhir/type := :fhir/Parameters
+          [:parameter count] := 2
+          [:parameter 0 :name] := #fhir/string"result"
+          [:parameter 0 :value] := #fhir/boolean false
+          [:parameter 1 :name] := #fhir/string"message"
+          [:parameter 1 :value] := #fhir/string"The system of the provided coding `system-115433` does not match the code system `http://snomed.info/sct`.")))))
 
 (deftest code-system-validate-code-ucum-test
   (testing "with id or url"
     (with-system [{ts ::ts/local :blaze.db/keys [node]} ucum-config]
       (testing "existing code"
-        (let [request {:code "s"}]
-          (doseq [request (mapv (partial merge request) [{:url "http://unitsofmeasure.org"} {:id (ucum-id node)}])]
-            (given @(ts/code-system-validate-code ts request)
-              :fhir/type := :fhir/Parameters
-              [:parameter count] := 4
-              [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value] := #fhir/boolean true
-              [:parameter 1 :name] := #fhir/string"code"
-              [:parameter 1 :value] := #fhir/code"s"
-              [:parameter 2 :name] := #fhir/string"system"
-              [:parameter 2 :value] := #fhir/uri"http://unitsofmeasure.org"
-              [:parameter 3 :name] := #fhir/string"version"
-              [:parameter 3 :value] := #fhir/string"2013.10.21"))))
+        (doseq [request [{:url "http://unitsofmeasure.org"} {:id (ucum-id node)}]]
+          (given @(ts/code-system-validate-code ts (assoc request :code "s"))
+            :fhir/type := :fhir/Parameters
+            [:parameter count] := 4
+            [:parameter 0 :name] := #fhir/string"result"
+            [:parameter 0 :value] := #fhir/boolean true
+            [:parameter 1 :name] := #fhir/string"code"
+            [:parameter 1 :value] := #fhir/code"s"
+            [:parameter 2 :name] := #fhir/string"system"
+            [:parameter 2 :value] := #fhir/uri"http://unitsofmeasure.org"
+            [:parameter 3 :name] := #fhir/string"version"
+            [:parameter 3 :value] := #fhir/string"2013.10.21")))
 
       (testing "non-existing code"
-        (let [request {:code "non-existing"}]
-          (doseq [request (mapv (partial merge request) [{:url "http://unitsofmeasure.org"} {:id (ucum-id node)}])]
-            (given @(ts/code-system-validate-code ts request)
+        (doseq [request [{:url "http://unitsofmeasure.org"} {:id (ucum-id node)}]]
+          (given @(ts/code-system-validate-code ts (assoc request :code "non-existing"))
+            :fhir/type := :fhir/Parameters
+            [:parameter count] := 2
+            [:parameter 0 :name] := #fhir/string"result"
+            [:parameter 0 :value] := #fhir/boolean false
+            [:parameter 1 :name] := #fhir/string"message"
+            [:parameter 1 :value] := #fhir/string"The provided code `non-existing` was not found in the code system `http://unitsofmeasure.org`.")))
+
+      (testing "existing coding"
+        (doseq [request [{:url "http://unitsofmeasure.org"} {:id (ucum-id node)}]]
+          (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"http://unitsofmeasure.org" :code #fhir/code"km"}))
+            :fhir/type := :fhir/Parameters
+            [:parameter count] := 4
+            [:parameter 0 :name] := #fhir/string"result"
+            [:parameter 0 :value] := #fhir/boolean true
+            [:parameter 1 :name] := #fhir/string"code"
+            [:parameter 1 :value] := #fhir/code"km"
+            [:parameter 2 :name] := #fhir/string"system"
+            [:parameter 2 :value] := #fhir/uri"http://unitsofmeasure.org"
+            [:parameter 3 :name] := #fhir/string"version"
+            [:parameter 3 :value] := #fhir/string"2013.10.21")))
+
+      (testing "non-existing coding"
+        (testing "with non-existing system"
+          (doseq [request [{:url "http://unitsofmeasure.org"} {:id (ucum-id node)}]]
+            (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"system-170454" :code #fhir/code"code-115927"}))
               :fhir/type := :fhir/Parameters
               [:parameter count] := 2
               [:parameter 0 :name] := #fhir/string"result"
               [:parameter 0 :value] := #fhir/boolean false
               [:parameter 1 :name] := #fhir/string"message"
-              [:parameter 1 :value] := #fhir/string"The provided code `non-existing` was not found in the code system with URL `http://unitsofmeasure.org`."))))
-
-      (testing "existing coding"
-        (let [request {:coding #fhir/Coding{:system #fhir/uri"http://unitsofmeasure.org" :code #fhir/code"km"}}]
-          (doseq [request (mapv (partial merge request) [{:url "http://unitsofmeasure.org"} {:id (ucum-id node)}])]
-            (given @(ts/code-system-validate-code ts request)
-              :fhir/type := :fhir/Parameters
-              [:parameter count] := 4
-              [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value] := #fhir/boolean true
-              [:parameter 1 :name] := #fhir/string"code"
-              [:parameter 1 :value] := #fhir/code"km"
-              [:parameter 2 :name] := #fhir/string"system"
-              [:parameter 2 :value] := #fhir/uri"http://unitsofmeasure.org"
-              [:parameter 3 :name] := #fhir/string"version"
-              [:parameter 3 :value] := #fhir/string"2013.10.21"))))
-
-      (testing "non-existing coding"
-        (testing "with non-existing system"
-          (let [request {:coding #fhir/Coding{:system #fhir/uri"system-170454" :code #fhir/code"code-115927"}}]
-            (doseq [request (mapv (partial merge request) [{:url "http://unitsofmeasure.org"} {:id (ucum-id node)}])]
-              (given @(ts/code-system-validate-code ts request)
-                :fhir/type := :fhir/Parameters
-                [:parameter count] := 2
-                [:parameter 0 :name] := #fhir/string"result"
-                [:parameter 0 :value] := #fhir/boolean false
-                [:parameter 1 :name] := #fhir/string"message"
-                [:parameter 1 :value] := #fhir/string"The system of the provided coding `system-170454` does not match the code system with URL `http://unitsofmeasure.org`."))))
+              [:parameter 1 :value] := #fhir/string"The system of the provided coding `system-170454` does not match the code system `http://unitsofmeasure.org`.")))
 
         (testing "with non-existing code"
-          (let [request {:coding #fhir/Coding{:system #fhir/uri"http://unitsofmeasure.org" :code #fhir/code"non-existing"}}]
-            (doseq [request (mapv (partial merge request) [{:url "http://unitsofmeasure.org"} {:id (ucum-id node)}])]
-              (given @(ts/code-system-validate-code ts request)
-                :fhir/type := :fhir/Parameters
-                [:parameter count] := 2
-                [:parameter 0 :name] := #fhir/string"result"
-                [:parameter 0 :value] := #fhir/boolean false
-                [:parameter 1 :name] := #fhir/string"message"
-                [:parameter 1 :value] := #fhir/string"The provided code `non-existing` was not found in the code system with URL `http://unitsofmeasure.org`."))))))))
+          (doseq [request [{:url "http://unitsofmeasure.org"} {:id (ucum-id node)}]]
+            (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"http://unitsofmeasure.org" :code #fhir/code"non-existing"}))
+              :fhir/type := :fhir/Parameters
+              [:parameter count] := 2
+              [:parameter 0 :name] := #fhir/string"result"
+              [:parameter 0 :value] := #fhir/boolean false
+              [:parameter 1 :name] := #fhir/string"message"
+              [:parameter 1 :value] := #fhir/string"The provided code `non-existing` was not found in the code system `http://unitsofmeasure.org`.")))))))
 
 (deftest expand-value-set-fails-test
   (with-system [{ts ::ts/local} config]
@@ -573,7 +559,7 @@
       (testing "url and version"
         (given-failed-future (ts/expand-value-set ts {:url "url-144258" :value-set-version "version-144244"})
           ::anom/category := ::anom/not-found
-          ::anom/message := "The value set `url-144258` and version `version-144244` was not found."
+          ::anom/message := "The value set `url-144258` with version `version-144244` was not found."
           :t := 0))))
 
   (with-system-data [{ts ::ts/local} config]
@@ -612,7 +598,7 @@
 
       (given-failed-future (ts/expand-value-set ts {:url "value-set-135750"})
         ::anom/category := ::anom/not-found
-        ::anom/message := "Error while expanding the value set `value-set-135750`. The code system with URL `system-115910` was not found."
+        ::anom/message := "Error while expanding the value set `value-set-135750`. The code system `system-115910` was not found."
         :t := 1))
 
     (testing "with version"
@@ -628,7 +614,7 @@
 
         (given-failed-future (ts/expand-value-set ts {:url "value-set-135750"})
           ::anom/category := ::anom/not-found
-          ::anom/message := "Error while expanding the value set `value-set-135750`. The code system with URL `system-115910` and version `version-093818` was not found."
+          ::anom/message := "Error while expanding the value set `value-set-135750`. The code system `system-115910` with version `version-093818` was not found."
           :t := 1))
 
       (testing "special * value is unsupported"
@@ -644,7 +630,7 @@
 
           (given-failed-future (ts/expand-value-set ts {:url "value-set-135750"})
             ::anom/category := ::anom/unsupported
-            ::anom/message := "Error while expanding the value set `value-set-135750`. Expanding the code system with URL `system-115910` in all versions is unsupported."
+            ::anom/message := "Error while expanding the value set `value-set-135750`. Expanding the code system `system-115910` in all versions is unsupported."
             :t := 1)))))
 
   (testing "fails with value set ref and system"
@@ -743,19 +729,19 @@
 
       (given-failed-future (ts/expand-value-set ts {:url "value-set-161213"})
         ::anom/category := ::anom/unsupported
-        ::anom/message := "Error while expanding the value set `value-set-161213`. Can't expand the code system with URL `system-180814` because it is not complete. It's content is `example`."
+        ::anom/message := "Error while expanding the value set `value-set-161213`. Can't expand the code system `system-180814` because it is not complete. It's content is `example`."
         :http/status := 409
         :t := 1)
 
       (given-failed-future (ts/expand-value-set ts {:url "value-set-170447"})
         ::anom/category := ::anom/unsupported
-        ::anom/message := "Error while expanding the value set `value-set-170447`. Can't expand the code system with URL `system-180814` because it is not complete. It's content is `example`."
+        ::anom/message := "Error while expanding the value set `value-set-170447`. Can't expand the code system `system-180814` because it is not complete. It's content is `example`."
         :http/status := 409
         :t := 1)
 
       (given-failed-future (ts/expand-value-set ts {:url "value-set-170829"})
         ::anom/category := ::anom/unsupported
-        ::anom/message := "Error while expanding the value set `value-set-170829`. Can't expand the code system with URL `system-180814` because it is not complete. It's content is `example`."
+        ::anom/message := "Error while expanding the value set `value-set-170829`. Can't expand the code system `system-180814` because it is not complete. It's content is `example`."
         :http/status := 409
         :t := 1))))
 
@@ -2099,7 +2085,7 @@
                                [{:fhir/type :fhir.ValueSet.compose/include
                                  :system #fhir/uri"system-115910"}]}}})
         ::anom/category := ::anom/unsupported
-        ::anom/message := "Error while expanding the provided value set. Can't expand the code system with URL `system-115910` because it is not complete. It's content is `not-present`."
+        ::anom/message := "Error while expanding the provided value set. Can't expand the code system `system-115910` because it is not complete. It's content is `not-present`."
         :t := 1)))
 
   (with-system-data [{ts ::ts/local} config]
@@ -2271,7 +2257,7 @@
 
           (given-failed-future (ts/expand-value-set ts {:id "0"})
             ::anom/category := ::anom/not-found
-            ::anom/message := "Error while expanding the provided value set. The code system with URL `http://snomed.info/sct` and version `http://snomed.info/sct/900000000000207008/version/none-existing` was not found."))))))
+            ::anom/message := "Error while expanding the provided value set. The code system `http://snomed.info/sct` with version `http://snomed.info/sct/900000000000207008/version/none-existing` was not found."))))))
 
 (deftest expand-value-set-sct-filter-test
   (testing "unknown filter operator"
@@ -2718,7 +2704,7 @@
       (testing "url and version"
         (given-failed-future (ts/value-set-validate-code ts {:url "url-144258" :value-set-version "version-144244"})
           ::anom/category := ::anom/not-found
-          ::anom/message := "The value set `url-144258` and version `version-144244` was not found."
+          ::anom/message := "The value set `url-144258` with version `version-144244` was not found."
           :t := 0)))))
 
 (deftest value-set-validate-code-test
@@ -2754,57 +2740,20 @@
                   :system #fhir/uri"system-202449"}]}}]]]
 
       (testing "existing code"
-        (let [request {:code "code-115927" :system "system-115910"}]
-          (doseq [request (mapv (partial merge request) [{:url "value-set-135750"} {:id "0"}])]
-            (given @(ts/value-set-validate-code ts request)
-              :fhir/type := :fhir/Parameters
-              [:parameter count] := 3
-              [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value] := #fhir/boolean true
-              [:parameter 1 :name] := #fhir/string"code"
-              [:parameter 1 :value] := #fhir/code"code-115927"
-              [:parameter 2 :name] := #fhir/string"system"
-              [:parameter 2 :value] := #fhir/uri"system-115910")))
+        (doseq [request [{:url "value-set-135750"} {:id "0"}]]
+          (given @(ts/value-set-validate-code ts (assoc request :code "code-115927" :system "system-115910"))
+            :fhir/type := :fhir/Parameters
+            [:parameter count] := 3
+            [:parameter 0 :name] := #fhir/string"result"
+            [:parameter 0 :value] := #fhir/boolean true
+            [:parameter 1 :name] := #fhir/string"code"
+            [:parameter 1 :value] := #fhir/code"code-115927"
+            [:parameter 2 :name] := #fhir/string"system"
+            [:parameter 2 :value] := #fhir/uri"system-115910"))
 
         (testing "with infer-system"
-          (let [request {:code "code-115927" :infer-system true}]
-            (doseq [request (mapv (partial merge request) [{:url "value-set-135750"} {:id "0"}])]
-              (given @(ts/value-set-validate-code ts request)
-                :fhir/type := :fhir/Parameters
-                [:parameter count] := 3
-                [:parameter 0 :name] := #fhir/string"result"
-                [:parameter 0 :value] := #fhir/boolean true
-                [:parameter 1 :name] := #fhir/string"code"
-                [:parameter 1 :value] := #fhir/code"code-115927"
-                [:parameter 2 :name] := #fhir/string"system"
-                [:parameter 2 :value] := #fhir/uri"system-115910")))
-
-          (testing "with non-unique code"
-            (let [request {:code "code-115927" :infer-system true}]
-              (doseq [request (mapv (partial merge request) [{:url "value-set-203901"} {:id "1"}])]
-                (given @(ts/value-set-validate-code ts request)
-                  :fhir/type := :fhir/Parameters
-                  [:parameter count] := 2
-                  [:parameter 0 :name] := #fhir/string"result"
-                  [:parameter 0 :value] := #fhir/boolean false
-                  [:parameter 1 :name] := #fhir/string"message"
-                  [:parameter 1 :value] := #fhir/string"While inferring the system was requested, the provided code `code-115927` was not unique in the value set `value-set-203901`."))))))
-
-      (testing "non-existing code"
-        (let [request {:code "code-153948" :system "system-115910"}]
-          (doseq [request (mapv (partial merge request) [{:url "value-set-135750"} {:id "0"}])]
-            (given @(ts/value-set-validate-code ts request)
-              :fhir/type := :fhir/Parameters
-              [:parameter count] := 2
-              [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value] := #fhir/boolean false
-              [:parameter 1 :name] := #fhir/string"message"
-              [:parameter 1 :value] := #fhir/string"The provided code `code-153948` of system `system-115910` was not found in the value set `value-set-135750`."))))
-
-      (testing "existing coding"
-        (let [request {:coding #fhir/Coding{:system #fhir/uri"system-115910" :code #fhir/code"code-115927"}}]
-          (doseq [request (mapv (partial merge request) [{:url "value-set-135750"} {:id "0"}])]
-            (given @(ts/value-set-validate-code ts request)
+          (doseq [request [{:url "value-set-135750"} {:id "0"}]]
+            (given @(ts/value-set-validate-code ts (assoc request :code "code-115927" :infer-system true))
               :fhir/type := :fhir/Parameters
               [:parameter count] := 3
               [:parameter 0 :name] := #fhir/string"result"
@@ -2812,18 +2761,49 @@
               [:parameter 1 :name] := #fhir/string"code"
               [:parameter 1 :value] := #fhir/code"code-115927"
               [:parameter 2 :name] := #fhir/string"system"
-              [:parameter 2 :value] := #fhir/uri"system-115910"))))
+              [:parameter 2 :value] := #fhir/uri"system-115910"))
+
+          (testing "with non-unique code"
+            (doseq [request [{:url "value-set-203901"} {:id "1"}]]
+              (given @(ts/value-set-validate-code ts (assoc request :code "code-115927" :infer-system true))
+                :fhir/type := :fhir/Parameters
+                [:parameter count] := 2
+                [:parameter 0 :name] := #fhir/string"result"
+                [:parameter 0 :value] := #fhir/boolean false
+                [:parameter 1 :name] := #fhir/string"message"
+                [:parameter 1 :value] := #fhir/string"While inferring the system was requested, the provided code `code-115927` was not unique in the value set `value-set-203901`.")))))
+
+      (testing "non-existing code"
+        (doseq [request [{:url "value-set-135750"} {:id "0"}]]
+          (given @(ts/value-set-validate-code ts (assoc request :code "code-153948" :system "system-115910"))
+            :fhir/type := :fhir/Parameters
+            [:parameter count] := 2
+            [:parameter 0 :name] := #fhir/string"result"
+            [:parameter 0 :value] := #fhir/boolean false
+            [:parameter 1 :name] := #fhir/string"message"
+            [:parameter 1 :value] := #fhir/string"The provided code `code-153948` of system `system-115910` was not found in the value set `value-set-135750`.")))
+
+      (testing "existing coding"
+        (doseq [request [{:url "value-set-135750"} {:id "0"}]]
+          (given @(ts/value-set-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"system-115910" :code #fhir/code"code-115927"}))
+            :fhir/type := :fhir/Parameters
+            [:parameter count] := 3
+            [:parameter 0 :name] := #fhir/string"result"
+            [:parameter 0 :value] := #fhir/boolean true
+            [:parameter 1 :name] := #fhir/string"code"
+            [:parameter 1 :value] := #fhir/code"code-115927"
+            [:parameter 2 :name] := #fhir/string"system"
+            [:parameter 2 :value] := #fhir/uri"system-115910")))
 
       (testing "non-existing coding"
-        (let [request {:coding #fhir/Coding{:system #fhir/uri"system-115910" :code #fhir/code"code-153948"}}]
-          (doseq [request (mapv (partial merge request) [{:url "value-set-135750"} {:id "0"}])]
-            (given @(ts/value-set-validate-code ts request)
-              :fhir/type := :fhir/Parameters
-              [:parameter count] := 2
-              [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value] := #fhir/boolean false
-              [:parameter 1 :name] := #fhir/string"message"
-              [:parameter 1 :value] := #fhir/string"The provided code `code-153948` of system `system-115910` was not found in the value set `value-set-135750`."))))))
+        (doseq [request [{:url "value-set-135750"} {:id "0"}]]
+          (given @(ts/value-set-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"system-115910" :code #fhir/code"code-153948"}))
+            :fhir/type := :fhir/Parameters
+            [:parameter count] := 2
+            [:parameter 0 :name] := #fhir/string"result"
+            [:parameter 0 :value] := #fhir/boolean false
+            [:parameter 1 :name] := #fhir/string"message"
+            [:parameter 1 :value] := #fhir/string"The provided code `code-153948` of system `system-115910` was not found in the value set `value-set-135750`.")))))
 
   (testing "with value-set"
     (with-system-data [{ts ::ts/local} config]

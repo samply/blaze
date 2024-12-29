@@ -22,7 +22,7 @@
 
 (defn- validate [code]
   (when (.validate ^UcumService service code)
-    (ba/incorrect (format "The provided code `%s` was not found in the code system with URL `http://unitsofmeasure.org`." code))))
+    (ba/incorrect (format "The provided code `%s` was not found in the code system `http://unitsofmeasure.org`." code))))
 
 (defmethod c/validate-code :ucum
   [{:keys [url version]} request]
