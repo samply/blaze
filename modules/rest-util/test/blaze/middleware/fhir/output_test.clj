@@ -214,12 +214,12 @@
           [:headers "Content-Type"] := nil
           :body := nil)))
 
-    (testing "failing binary emit (with invalid data)"
+    (testing "failing binary emit (with invalid data, using the JSON default)"
       (given (call (binary-resource-handler-200 {:content-type "application/pdf" :data "MTANjECg=="}) {:headers {"accept" "text/plain"}})
         :status := 500
         [:headers "Content-Type"] := "application/pdf"
-        [:body :fhir/type] := :fhir/OperationOutcome
-        [:body :issue 0 :diagnostics] := "Input byte array has wrong 4-byte ending unit"))))
+        [:body parse-json :fhir/type] := :fhir/OperationOutcome
+        [:body parse-json :issue 0 :diagnostics] := "Input byte array has wrong 4-byte ending unit"))))
 
 (deftest not-acceptable-test
   (is (nil? (call resource-handler-200-with-patient {:headers {"accept" "text/plain"}}))))
