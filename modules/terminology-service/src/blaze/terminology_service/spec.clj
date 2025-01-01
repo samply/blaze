@@ -27,6 +27,9 @@
 (s/def ::request/count
   nat-int?)
 
+(s/def ::request/include-designations
+  boolean?)
+
 (s/def ::request/include-definition
   boolean?)
 
@@ -50,6 +53,9 @@
 
 (s/def ::request/system-versions
   (s/coll-of :fhir/canonical))
+
+(s/def ::request/properties
+  (s/coll-of string?))
 
 (s/def ::request/tx-resource
   (s/or :code-system :fhir/CodeSystem :value-set :fhir/ValueSet))
@@ -76,9 +82,11 @@
     ::request/url
     ::request/value-set-version
     ::request/count
+    ::request/include-designations
     ::request/include-definition
     ::request/active-only
     ::request/exclude-nested
+    ::request/properties
     ::request/system-versions
     ::request/tx-resources]))
 

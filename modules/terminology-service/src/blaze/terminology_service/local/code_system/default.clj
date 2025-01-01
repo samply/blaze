@@ -86,56 +86,68 @@
           (type/value value)))
    properties))
 
-(defn- create-contains [url {:keys [code display] :as concept}]
-  (cond-> {:system url :code code}
-    display (assoc :display display)
-    (inactive? concept) (assoc :inactive #fhir/boolean true)
-    (not-selectable? concept) (assoc :abstract #fhir/boolean true)))
+(defn- definition-property [definition]
+  {:fhir/type :fhir.ValueSet.expansion.contains/property
+   :code #fhir/code"definition"
+   :value definition})
 
-(defn- xf [{:keys [url]}]
+(defn- create-contains
+  [{:keys [include-designations properties]}
+   url
+   {:keys [code display definition] :as concept}]
+  (let [normal-properties (remove #{"definition"} properties)]
+    (cond-> {:system url :code code}
+      display (assoc :display display)
+      (inactive? concept) (assoc :inactive #fhir/boolean true)
+      (not-selectable? concept) (assoc :abstract #fhir/boolean true)
+      include-designations (assoc :designation (:designation concept))
+      (seq normal-properties) (assoc :property (filterv (comp (set normal-properties) type/value :code) (:property concept)))
+      (and definition (some #{"definition"} properties)) (update :property (fnil conj []) (definition-property definition)))))
+
+(defn- xf [request {:keys [url]}]
   (map
    (fn [concept]
-     (create-contains url concept))))
+     (create-contains request url concept))))
 
-(defn- active-xf [{:keys [url]}]
+(defn- active-xf [request {:keys [url]}]
   (keep
    (fn [concept]
      (when-not (inactive? concept)
-       (create-contains url concept)))))
+       (create-contains request url concept)))))
 
 (defmethod c/expand-complete :default
-  [{:keys [active-only]} inactive {{:keys [concepts]} :default/graph :as code-system}]
+  [{:keys [active-only] :as request} inactive {{:keys [concepts]} :default/graph :as code-system}]
   (into
    []
-   ((if (or active-only (false? inactive)) active-xf xf) code-system)
+   ((if (or active-only (false? inactive)) active-xf xf) request code-system)
    (vals concepts)))
 
-(defn- concept-xf [{:keys [url] {:keys [concepts]} :default/graph}]
+(defn- concept-xf [request {:keys [url] {:keys [concepts]} :default/graph}]
   (keep
    (fn [{:keys [code display]}]
      (when-let [concept (concepts (type/value code))]
-       (cond-> (create-contains url concept)
+       (cond-> (create-contains request url concept)
          display (assoc :display display))))))
 
-(defn- concept-active-xf [{:keys [url] {:keys [concepts]} :default/graph}]
+(defn- concept-active-xf [request {:keys [url] {:keys [concepts]} :default/graph}]
   (keep
    (fn [{:keys [code display]}]
      (when-let [concept (concepts (type/value code))]
        (when-not (inactive? concept)
-         (cond-> (create-contains url concept)
+         (cond-> (create-contains request url concept)
            display (assoc :display display)))))))
 
 (defmethod c/expand-concept :default
-  [{:keys [active-only]} inactive code-system value-set-concepts]
+  [{:keys [active-only] :as request} inactive code-system value-set-concepts]
   (into
    []
-   ((if (or active-only (false? inactive)) concept-active-xf concept-xf) code-system)
+   ((if (or active-only (false? inactive)) concept-active-xf concept-xf) request code-system)
    value-set-concepts))
 
 (defmethod c/expand-filter :default
-  [{:keys [active-only]} inactive code-system filter]
+  [{:keys [active-only] :as request} inactive code-system filter]
   (when-ok [concepts (filter/filter-concepts filter code-system)]
     (into
      #{}
-     ((if (or active-only (false? inactive)) active-xf xf) code-system)
+     ((if (or active-only (false? inactive)) active-xf xf) request code-system)
      concepts)))

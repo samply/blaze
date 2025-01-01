@@ -1384,6 +1384,9 @@ jobs:
     - name: Check Simple Expand
       run: .github/terminology-tests/simple-expand.sh
 
+    - name: Check Parameters Expand
+      run: .github/terminology-tests/parameters-expand.sh
+
   not-enforcing-referential-integrity-test:
     needs: build
     runs-on: ubuntu-24.04

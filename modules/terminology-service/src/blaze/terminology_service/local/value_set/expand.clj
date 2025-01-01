@@ -99,6 +99,11 @@
    :name #fhir/string"count"
    :value (type/integer count)})
 
+(defn- include-designations-parameter [include-designations]
+  {:fhir/type :fhir.ValueSet.expansion/parameter
+   :name #fhir/string"includeDesignations"
+   :value (type/boolean include-designations)})
+
 (defn- active-only-parameter [active-only]
   {:fhir/type :fhir.ValueSet.expansion/parameter
    :name #fhir/string"activeOnly"
@@ -109,19 +114,33 @@
    :name #fhir/string"excludeNested"
    :value (type/boolean exclude-nested)})
 
-(defn- append-params [parameters {:keys [count active-only exclude-nested]}]
+(defn- append-params
+  [parameters {:keys [count include-designations active-only exclude-nested]}]
   (cond-> parameters
     count (conj (count-parameter count))
+    (some? include-designations) (conj (include-designations-parameter include-designations))
     (some? active-only) (conj (active-only-parameter active-only))
     (some? exclude-nested) (conj (exclude-nested-parameter exclude-nested))))
 
-(defn- expansion [{:keys [clock] {:keys [count] :as request} :request} parameters concepts]
+(defn- append-property [property]
+  (cond-> {:fhir/type :fhir.ValueSet.expansion/property
+           :code (type/code property)}
+    (#{"status" "definition"} property)
+    (assoc :uri (type/uri (str "http://hl7.org/fhir/concept-properties#" property)))))
+
+(defn- append-properties [properties]
+  (mapv append-property properties))
+
+(defn- expansion
+  [{:keys [clock] {:keys [properties count] :as request} :request} parameters
+   concepts]
   (cond->
    {:fhir/type :fhir.ValueSet/expansion
     :identifier (type/uri (str "urn:uuid:" (random-uuid)))
     :timestamp (time/offset-date-time clock)
     :total (clojure.core/count concepts)
     :parameter (append-params parameters request)}
+    (seq properties) (assoc :property (append-properties properties))
     (nil? count) (assoc :contains concepts)
     (pos-int? count) (assoc :contains (into [] (take count) concepts))))
 

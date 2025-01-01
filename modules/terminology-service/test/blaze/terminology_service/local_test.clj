@@ -802,6 +802,103 @@
             [:expansion :contains 0 :code] := #fhir/code"code-115927"
             [:expansion :contains 0 #(contains? % :display)] := false)))
 
+      (testing "including designations"
+        (with-system-data [{ts ::ts/local} config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri"system-115910"
+                   :content #fhir/code"complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code"code-115927"
+                     :designation
+                     [{:fhir/type :fhir.CodeSystem.concept/designation
+                       :value #fhir/string"designation-011441"}]}]}]
+            [:put {:fhir/type :fhir/ValueSet :id "0"
+                   :url #fhir/uri"value-set-135750"
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"system-115910"}]}}]]]
+
+          (doseq [request [{:url "value-set-135750"} {:id "0"}]]
+            (given @(ts/expand-value-set ts (assoc request :include-designations true))
+              :fhir/type := :fhir/ValueSet
+              [:expansion (parameter "includeDesignations") 0 :value] := #fhir/boolean true
+              [:expansion :contains count] := 1
+              [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+              [:expansion :contains 0 :code] := #fhir/code"code-115927"
+              [:expansion :contains 0 :designation 0 :value] := #fhir/string"designation-011441"))))
+
+      (testing "including properties"
+        (with-system-data [{ts ::ts/local} config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri"system-115910"
+                   :content #fhir/code"complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code"code-115927"
+                     :property
+                     [{:fhir/type :fhir.CodeSystem.concept/property
+                       :code #fhir/code"status"
+                       :value #fhir/code"active"}
+                      {:fhir/type :fhir.CodeSystem.concept/property
+                       :code #fhir/code"property-034158"
+                       :value #fhir/code"value-034206"}]}]}]
+            [:put {:fhir/type :fhir/ValueSet :id "0"
+                   :url #fhir/uri"value-set-135750"
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"system-115910"}]}}]]]
+
+          (doseq [request [{:url "value-set-135750"} {:id "0"}]]
+            (given @(ts/expand-value-set ts (assoc request :properties ["status" "property-034158"]))
+              :fhir/type := :fhir/ValueSet
+              [:expansion :property count] := 2
+              [:expansion :property 0 :code] := #fhir/code"status"
+              [:expansion :property 0 :uri] := #fhir/uri"http://hl7.org/fhir/concept-properties#status"
+              [:expansion :property 1 :code] := #fhir/code"property-034158"
+              [:expansion :contains count] := 1
+              [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+              [:expansion :contains 0 :code] := #fhir/code"code-115927"
+              [:expansion :contains 0 :property count] := 2
+              [:expansion :contains 0 :property 0 :code] := #fhir/code"status"
+              [:expansion :contains 0 :property 0 :value] := #fhir/code"active"
+              [:expansion :contains 0 :property 1 :code] := #fhir/code"property-034158"
+              [:expansion :contains 0 :property 1 :value] := #fhir/code"value-034206")))
+
+        (testing "special definition property (FHIR-43519)"
+          (with-system-data [{ts ::ts/local} config]
+            [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                     :url #fhir/uri"system-115910"
+                     :content #fhir/code"complete"
+                     :concept
+                     [{:fhir/type :fhir.CodeSystem/concept
+                       :code #fhir/code"code-115927"
+                       :definition #fhir/string"definition-143747"}]}]
+              [:put {:fhir/type :fhir/ValueSet :id "0"
+                     :url #fhir/uri"value-set-135750"
+                     :compose
+                     {:fhir/type :fhir.ValueSet/compose
+                      :include
+                      [{:fhir/type :fhir.ValueSet.compose/include
+                        :system #fhir/uri"system-115910"}]}}]]]
+
+            (doseq [request [{:url "value-set-135750"} {:id "0"}]]
+              (given @(ts/expand-value-set ts (assoc request :properties ["definition"]))
+                :fhir/type := :fhir/ValueSet
+                [:expansion :property count] := 1
+                [:expansion :property 0 :code] := #fhir/code"definition"
+                [:expansion :property 0 :uri] := #fhir/uri"http://hl7.org/fhir/concept-properties#definition"
+                [:expansion :contains count] := 1
+                [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+                [:expansion :contains 0 :code] := #fhir/code"code-115927"
+                [:expansion :contains 0 :property count] := 1
+                [:expansion :contains 0 :property 0 :code] := #fhir/code"definition"
+                [:expansion :contains 0 :property 0 :value] := #fhir/string"definition-143747")))))
+
       (testing "with versions"
         (testing "choosing an explicit version"
           (with-system-data [{ts ::ts/local} config]
@@ -978,7 +1075,40 @@
             [:expansion :contains count] := 1
             [:expansion :contains 0 :system] := #fhir/uri"system-115910"
             [:expansion :contains 0 :code] := #fhir/code"code-163444"
-            [:expansion :contains 0 #(contains? % :display)] := false)))
+            [:expansion :contains 0 #(contains? % :display)] := false))
+
+        (testing "including designations"
+          (with-system-data [{ts ::ts/local} config]
+            [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                     :url #fhir/uri"system-115910"
+                     :content #fhir/code"complete"
+                     :concept
+                     [{:fhir/type :fhir.CodeSystem/concept
+                       :code #fhir/code"code-115927"}
+                      {:fhir/type :fhir.CodeSystem/concept
+                       :code #fhir/code"code-163444"
+                       :designation
+                       [{:fhir/type :fhir.CodeSystem.concept/designation
+                         :value #fhir/string"designation-011441"}]}]}]
+              [:put {:fhir/type :fhir/ValueSet :id "0"
+                     :url #fhir/uri"value-set-135750"
+                     :compose
+                     {:fhir/type :fhir.ValueSet/compose
+                      :include
+                      [{:fhir/type :fhir.ValueSet.compose/include
+                        :system #fhir/uri"system-115910"
+                        :concept
+                        [{:fhir/type :fhir.ValueSet.compose.include/concept
+                          :code #fhir/code"code-163444"}]}]}}]]]
+
+            (given @(ts/expand-value-set ts {:url "value-set-135750"
+                                             :include-designations true})
+              :fhir/type := :fhir/ValueSet
+              [:expansion (parameter "includeDesignations") 0 :value] := #fhir/boolean true
+              [:expansion :contains count] := 1
+              [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+              [:expansion :contains 0 :code] := #fhir/code"code-163444"
+              [:expansion :contains 0 :designation 0 :value] := #fhir/string"designation-011441"))))
 
       (testing "exclude one code"
         (with-system-data [{ts ::ts/local} config]
@@ -1766,7 +1896,42 @@
           [:expansion :contains count] := 1
           [:expansion :contains 0 :system] := #fhir/uri"system-182822"
           [:expansion :contains 0 :code] := #fhir/code"code-182832"
-          [:expansion :contains 0 :display] := #fhir/string"display-182717"))))
+          [:expansion :contains 0 :display] := #fhir/string"display-182717")))
+
+    (testing "including designations"
+      (with-system-data [{ts ::ts/local} config]
+        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                 :url #fhir/uri"system-182822"
+                 :content #fhir/code"complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code"code-182832"
+                   :display #fhir/string"display-182717"
+                   :designation
+                   [{:fhir/type :fhir.CodeSystem.concept/designation
+                     :value #fhir/string"designation-011441"}]}]}]
+          [:put {:fhir/type :fhir/ValueSet :id "0"
+                 :url #fhir/uri"value-set-182905"
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri"system-182822"
+                    :filter
+                    [{:fhir/type :fhir.ValueSet.compose.include/filter
+                      :property #fhir/code"concept"
+                      :op #fhir/code"is-a"
+                      :value #fhir/string"code-182832"}]}]}}]]]
+
+        (doseq [request [{:url "value-set-182905"} {:id "0"}]]
+          (given @(ts/expand-value-set ts (assoc request :include-designations true))
+            :fhir/type := :fhir/ValueSet
+            [:expansion (parameter "includeDesignations") 0 :value] := #fhir/boolean true
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri"system-182822"
+            [:expansion :contains 0 :code] := #fhir/code"code-182832"
+            [:expansion :contains 0 :display] := #fhir/string"display-182717"
+            [:expansion :contains 0 :designation 0 :value] := #fhir/string"designation-011441")))))
 
   (testing "with two concepts, a parent and a child"
     (with-system-data [{ts ::ts/local} config]
@@ -3099,7 +3264,7 @@
           [:expansion :contains 0 :system] := #fhir/uri"system-115910"
           [:expansion :contains 0 :code] := #fhir/code"code-115927"))))
 
-  (testing "retains definition"
+  (testing "including definition"
     (with-system-data [{ts ::ts/local} config]
       [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                :url #fhir/uri"system-115910"
