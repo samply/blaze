@@ -8,6 +8,7 @@
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.spec]
    [clojure.spec.alpha :as s]
+   [clojure.string :as str]
    [integrant.core :as ig]
    [ring.util.response :as ring]
    [taoensso.timbre :as log])
@@ -26,7 +27,7 @@
    "date" {}
    "offset" {:action :parse-nat-long}
    "count" {:action :parse-nat-long}
-   "includeDesignations" {}
+   "includeDesignations" {:action :parse-boolean}
    "designation" {}
    "includeDefinition" {:action :parse-boolean}
    "activeOnly" {:action :parse-boolean}
@@ -35,7 +36,7 @@
    "excludeNotForUI" {}
    "excludePostCoordinated" {}
    "displayLanguage" {:action :copy}
-   "property" {}
+   "property" {:action :copy :cardinality :many}
    "exclude-system" {}
    "system-version" {:action :parse-canonical :cardinality :many}
    "check-system-version" {}
@@ -50,9 +51,14 @@
     (when-not (neg? value)
       value)))
 
+(defn- plural [s]
+  (if (str/ends-with? s "y")
+    (str (subs s 0 (dec (count s))) "ies")
+    (str s "s")))
+
 (defn- assoc-via [params {:keys [cardinality]} name value]
   (if (identical? :many cardinality)
-    (update params (keyword (str (camel->kebab name) "s")) (fnil conj []) value)
+    (update params (keyword (plural (camel->kebab name))) (fnil conj []) value)
     (assoc params (keyword (camel->kebab name)) value)))
 
 (defn- validate-query-params [params]
@@ -69,7 +75,7 @@
            (reduced (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a non-negative integer." name))))
 
          :parse-boolean
-         (if-let [value (parse-boolean value)]
+         (if-some [value (parse-boolean value)]
            (assoc-via new-params spec name value)
            (reduced (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a boolean." name))))
 

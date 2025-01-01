@@ -111,9 +111,8 @@
     (testing "unsupported parameters"
       (with-handler [handler]
         (doseq [param ["context" "contextDirection" "filter" "date"
-                       "includeDesignations" "designation"
-                       "useSupplement" "excludeNotForUI"
-                       "excludePostCoordinated" "property"
+                       "designation" "useSupplement" "excludeNotForUI"
+                       "excludePostCoordinated"
                        "exclude-system" "check-system-version"
                        "force-system-version"]]
           (testing "GET"
@@ -299,10 +298,14 @@
                 [{:fhir/type :fhir.ValueSet.compose/include
                   :system #fhir/uri"system-115910"}]}}]]]
 
-      (doseq [lang [nil "en" "de"]]
+      (doseq [include-designations [nil "true" "false"]
+              lang [nil "en" "de"]
+              property [nil "definition"]]
         (let [{:keys [status body]}
               @(handler {:query-params (cond-> {"url" "value-set-154043"}
-                                         lang (assoc "displayLanguage" lang))})]
+                                         include-designations (assoc "includeDesignations" include-designations)
+                                         lang (assoc "displayLanguage" lang)
+                                         property (assoc "property" property))})]
 
           (is (= 200 status))
 
@@ -314,7 +317,9 @@
             [:expansion :contains 0 :code] := #fhir/code"code-115927")))
 
       (testing "POST"
-        (doseq [lang [nil "en" "de"]]
+        (doseq [include-designations [nil true false]
+                lang [nil "en" "de"]
+                property [nil ["definition"] ["parent" "child"]]]
           (let [{:keys [status body]}
                 @(handler {:request-method :post
                            :body {:fhir/type :fhir/Parameters
@@ -323,11 +328,24 @@
                                    [{:fhir/type :fhir.Parameters/parameter
                                      :name #fhir/string"url"
                                      :value #fhir/uri"value-set-154043"}]
+                                    include-designations
+                                    (conj
+                                     {:fhir/type :fhir.Parameters/parameter
+                                      :name #fhir/string"includeDesignations"
+                                      :value (type/boolean include-designations)})
                                     lang
                                     (conj
                                      {:fhir/type :fhir.Parameters/parameter
                                       :name #fhir/string"displayLanguage"
-                                      :value (type/code lang)}))}})]
+                                      :value (type/code lang)})
+                                    property
+                                    (into
+                                     (map
+                                      (fn [property]
+                                        {:fhir/type :fhir.Parameters/parameter
+                                         :name #fhir/string"property"
+                                         :value (type/string property)}))
+                                     property))}})]
 
             (is (= 200 status))
 
