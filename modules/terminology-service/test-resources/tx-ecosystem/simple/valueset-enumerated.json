@@ -1,0 +1,28 @@
+{
+  "resourceType" : "ValueSet",
+  "id" : "simple-enumerated",
+  "url" : "http://hl7.org/fhir/test/ValueSet/simple-enumerated",
+  "version" : "5.0.0",
+  "name" : "SimpleValueSetEnumerated",
+  "title" : "Simple ValueSet Enumerated",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "compose" : {
+    "include" : [{
+      "system" : "http://hl7.org/fhir/test/CodeSystem/simple",
+      "concept" : [{
+        "code" : "code1"
+      },{
+        "code" : "code2"
+      },{
+        "code" : "code3"
+      },{
+        "code" : "code2a"
+      },{
+        "code" : "code2b"
+      }]
+    }]
+  }
+}

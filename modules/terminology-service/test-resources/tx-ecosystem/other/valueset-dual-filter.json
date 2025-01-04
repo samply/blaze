@@ -1,0 +1,26 @@
+{
+  "resourceType" : "ValueSet",
+  "id" : "dual-filter",
+  "url" : "http://hl7.org/fhir/test/ValueSet/dual-filter",
+  "title": "Active concepts",
+  "description": "Active concepts",
+  "compose" : {
+    "include": [
+      {
+        "system": "http://hl7.org/fhir/test/CodeSystem/dual-filter",
+        "filter": [
+          {
+            "property": "concept",
+            "op": "descendent-of",
+            "value": "AA"
+          },
+          {
+            "property": "status",
+            "op": "=",
+            "value": "A"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1421,14 +1421,27 @@
     {:node #blaze/ref :blaze.db.main/node
      :clock #blaze/ref :blaze/clock
      :rng-fn #blaze/ref :blaze/rng-fn
+     :enable-bcp-13 true
      :enable-ucum true}
 
     :blaze.rest-api/capabilities-handler
     {:terminology-service #blaze/ref :blaze.terminology-service/local}}}
+
+  {:key :terminology-loinc
+   :name "LOINC Terminology"
+   :toggle "ENABLE_TERMINOLOGY_LOINC"
+   :config
+   {:blaze.terminology-service/local
+    {:loinc #blaze/ref :blaze.terminology-service.local.code-system/loinc}
+
+    :blaze.terminology-service.local.code-system/loinc {}}}
 
   {:key :terminology-sct
    :name "Snomed CT Terminology"
    :toggle "ENABLE_TERMINOLOGY_SNOMED_CT"
    :config
    {:blaze.terminology-service/local
-    {:sct-release-path #blaze/cfg ["SNOMED_CT_RELEASE_PATH" blaze.path/dir?]}}}]}
+    {:sct #blaze/ref :blaze.terminology-service.local.code-system/sct}
+
+    :blaze.terminology-service.local.code-system/sct
+    {:release-path #blaze/cfg ["SNOMED_CT_RELEASE_PATH" blaze.path/dir?]}}}]}

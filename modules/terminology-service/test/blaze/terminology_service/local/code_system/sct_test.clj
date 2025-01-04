@@ -5,6 +5,7 @@
    [blaze.fhir.test-util]
    [blaze.module.test-util :refer [with-system]]
    [blaze.path :refer [path]]
+   [blaze.terminology-service.local.code-system :as-alias cs]
    [blaze.terminology-service.local.code-system.sct :as sct]
    [blaze.terminology-service.local.code-system.sct-spec]
    [blaze.test-util :as tu]
@@ -19,18 +20,20 @@
   (assoc
    mem-node-config
    :blaze.test/fixed-clock {}
-   :blaze.test/incrementing-rng-fn {}))
+   :blaze.test/incrementing-rng-fn {}
+   ::cs/sct {:release-path (path "sct-release")}))
 
 (deftest ensure-code-systems-test
-  (with-system [{:blaze.db/keys [node] :blaze.test/keys [fixed-clock incrementing-rng-fn]} config]
-    (let [context {:node node :clock fixed-clock :rng-fn incrementing-rng-fn}
-          sct-context (sct/build-context (path "sct-release"))]
+  (with-system [{:blaze.db/keys [node]
+                 :blaze.test/keys [fixed-clock incrementing-rng-fn]
+                 ::cs/keys [sct]} config]
+    (let [context {:node node :clock fixed-clock :rng-fn incrementing-rng-fn}]
 
       (testing "after creation"
-        (let [db @(sct/ensure-code-systems context sct-context)]
+        (let [db @(sct/ensure-code-systems context sct)]
 
           (testing "82 code systems are available"
             (is (= 82 (d/type-total db "CodeSystem"))))))
 
       (testing "a second call does nothing"
-        (is (nil? @(sct/ensure-code-systems context sct-context)))))))
+        (is (nil? @(sct/ensure-code-systems context sct)))))))

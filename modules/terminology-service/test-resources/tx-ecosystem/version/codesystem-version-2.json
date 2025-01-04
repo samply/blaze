@@ -1,0 +1,35 @@
+{
+  "resourceType" : "CodeSystem",
+  "language" : "en",
+  "id" : "version-2",
+  "url" : "http://hl7.org/fhir/test/CodeSystem/version",
+  "version" : "1.2.0",
+  "name" : "VersionedTestCodeSystem",
+  "title" : "Versioned Test Code System",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "caseSensitive" : true,
+  "content" : "complete",
+  "property" : [{
+    "code" : "prop",
+    "uri" : "http://hl7.org/fhir/test/CodeSystem/properties#prop",
+    "type" : "code"
+  }],
+  "concept" : [{
+    "code" : "code1",
+    "display" : "Display 1 (1.2)",
+    "definition" : "My first code"
+  },
+  {
+    "code" : "code2",
+    "display" : "Display 2 (1.2)",
+    "definition" : "My second code"
+  },
+  {
+    "code" : "code3",
+    "display" : "Display 3 (1.2)",
+    "definition" : "My third code"
+  }]
+}

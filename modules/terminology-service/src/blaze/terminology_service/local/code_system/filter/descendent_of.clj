@@ -7,5 +7,9 @@
    [blaze.terminology-service.local.graph :as graph]))
 
 (defmethod core/filter-concepts :descendent-of
-  [{:keys [value]} {:default/keys [graph]}]
+  [{:default/keys [graph]} {:keys [value]}]
   (graph/descendent-of graph (type/value value)))
+
+(defmethod core/find-concept :descendent-of
+  [{:default/keys [graph]} {:keys [value]} code]
+  (graph/find-descendent-of graph (type/value value) code))

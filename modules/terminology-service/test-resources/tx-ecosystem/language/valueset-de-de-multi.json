@@ -1,0 +1,27 @@
+{
+  "resourceType" : "ValueSet",
+  "id" : "de-de-multi",
+  "url" : "http://hl7.org/fhir/test/ValueSet/de-de-multi",
+  "version" : "5.0.0",
+  "name" : "LanguageValueSetDEMulti",
+  "title" : "Language ValueSet DE Multi",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "compose" : {
+    "extension" : [{
+      "url" : "http://hl7.org/fhir/tools/StructureDefinion/valueset-expansion-param",
+      "extension" : [{
+        "url" : "name",
+        "valueCode" : "displayLanguage"
+      },{
+        "url" : "value",
+        "valueCode" : "de"
+      }]
+    }],
+    "include" : [{
+      "system" : "http://hl7.org/fhir/test/CodeSystem/de-multi"
+    }]
+  }
+}

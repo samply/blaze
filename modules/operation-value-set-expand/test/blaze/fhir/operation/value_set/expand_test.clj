@@ -4,7 +4,10 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.operation.value-set.expand]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.util :as u]
    [blaze.handler.util :as handler-util]
+   [blaze.middleware.fhir.db :refer [wrap-db]]
+   [blaze.middleware.fhir.db-spec]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.local]
    [blaze.test-util :as tu :refer [given-thrown]]
@@ -58,9 +61,10 @@
 
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
-    `(with-system-data [{handler# :blaze.fhir.operation.value-set/expand} config]
+    `(with-system-data [{node# :blaze.db/node
+                         handler# :blaze.fhir.operation.value-set/expand} config]
        ~txs
-       (let [~handler-binding (-> handler# wrap-error)]
+       (let [~handler-binding (-> handler# (wrap-db node# 100) wrap-error)]
          ~@body))))
 
 (defn- parameter [name]
@@ -68,7 +72,7 @@
     (some #(when (= name (type/value (:name %))) %) parameter)))
 
 (deftest handler-test
-  (testing "ValueSet not found"
+  (testing "value set not found"
     (testing "by id"
       (with-handler [handler]
         (let [{:keys [status body]}
@@ -80,7 +84,7 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-found"
-            [:issue 0 :diagnostics] := "The value set with id `170852` was not found."))))
+            [:issue 0 :diagnostics] := "Resource `ValueSet/170852` was not found."))))
 
     (testing "by url"
       (with-handler [handler]
@@ -93,60 +97,16 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-found"
-            [:issue 0 :diagnostics] := "The value set `153404` was not found."))))
+            [:issue 0 :diagnostics] := "The value set `153404` was not found.")))))
 
-    (testing "without url or id"
-      (with-handler [handler]
-        (let [{:keys [status body]}
-              @(handler {})]
-
-          (is (= 400 status))
-
-          (given body
-            :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := "Missing required parameter `url`."))))
-
-    (testing "unsupported parameters"
-      (with-handler [handler]
-        (doseq [param ["context" "contextDirection" "filter" "date"
-                       "designation" "useSupplement" "excludeNotForUI"
-                       "excludePostCoordinated"
-                       "exclude-system" "check-system-version"
-                       "force-system-version"]]
-          (testing "GET"
-            (let [{:keys [status body]}
-                  @(handler {:query-params {param "foo"}})]
-
-              (is (= 400 status))
-
-              (given body
-                :fhir/type := :fhir/OperationOutcome
-                [:issue 0 :severity] := #fhir/code"error"
-                [:issue 0 :code] := #fhir/code"not-supported"
-                [:issue 0 :diagnostics] := (format "Unsupported parameter `%s`." param))))
-
-          (testing "POST"
-            (let [{:keys [status body]}
-                  @(handler {:request-method :post
-                             :body {:fhir/type :fhir/Parameters
-                                    :parameter
-                                    [{:fhir/type :fhir.Parameters/parameter
-                                      :name (type/string param)
-                                      :value (type/string "foo")}]}})]
-
-              (is (= 400 status))
-
-              (given body
-                :fhir/type := :fhir/OperationOutcome
-                [:issue 0 :severity] := #fhir/code"error"
-                [:issue 0 :code] := #fhir/code"not-supported"
-                [:issue 0 :diagnostics] := (format "Unsupported parameter `%s`." param)))))))
-
-    (testing "unsupported GET parameters"
-      (with-handler [handler]
-        (doseq [param ["valueSet"]]
+  (testing "unsupported parameters"
+    (with-handler [handler]
+      (doseq [param ["context" "contextDirection" "filter" "date"
+                     "designation" "useSupplement" "excludeNotForUI"
+                     "excludePostCoordinated"
+                     "exclude-system" "check-system-version"
+                     "force-system-version"]]
+        (testing "GET"
           (let [{:keys [status body]}
                 @(handler {:query-params {param "foo"}})]
 
@@ -156,78 +116,42 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"not-supported"
-              [:issue 0 :diagnostics] := (format "Unsupported parameter `%s` in GET request. Please use POST." param))))))
+              [:issue 0 :diagnostics] := (format "Unsupported parameter `%s`." param))))
 
-    (testing "invalid non-integer parameter count"
-      (testing "GET"
-        (with-handler [handler]
-          (doseq [value ["", "a" "-1"]]
-            (let [{:keys [status body]}
-                  @(handler {:query-params {"count" value}})]
-
-              (is (= 400 status))
-
-              (given body
-                :fhir/type := :fhir/OperationOutcome
-                [:issue 0 :severity] := #fhir/code"error"
-                [:issue 0 :code] := #fhir/code"invalid"
-                [:issue 0 :diagnostics] := "Invalid value for parameter `count`. Has to be a non-negative integer.")))))
-
-      (testing "POST"
-        (with-handler [handler]
+        (testing "POST"
           (let [{:keys [status body]}
                 @(handler {:request-method :post
-                           :body {:fhir/type :fhir/Parameters
-                                  :parameter
-                                  [{:fhir/type :fhir.Parameters/parameter
-                                    :name #fhir/string"count"
-                                    :value #fhir/integer -1}]}})]
+                           :body (u/parameters
+                                  (type/string param) (type/string "foo"))})]
 
             (is (= 400 status))
 
             (given body
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"invalid"
-              [:issue 0 :diagnostics] := "Invalid value for parameter `count`. Has to be a non-negative integer.")))))
+              [:issue 0 :code] := #fhir/code"not-supported"
+              [:issue 0 :diagnostics] := (format "Unsupported parameter `%s`." param)))))))
 
-    (testing "invalid non-zero parameter offset"
-      (testing "GET"
-        (with-handler [handler]
-          (let [{:keys [status body]}
-                @(handler {:query-params {"offset" "1"}})]
+  (testing "unsupported GET parameters"
+    (with-handler [handler]
+      (doseq [param ["valueSet" "tx-resource"]]
+        (let [{:keys [status body]}
+              @(handler {:query-params {param "foo"}})]
 
-            (is (= 400 status))
+          (is (= 400 status))
 
-            (given body
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"invalid"
-              [:issue 0 :diagnostics] := "Invalid non-zero value for parameter `offset`."))))
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"not-supported"
+            [:issue 0 :diagnostics] := (format "Unsupported parameter `%s` in GET request. Please use POST." param))))))
 
-      (testing "POST"
-        (with-handler [handler]
-          (let [{:keys [status body]}
-                @(handler {:request-method :post
-                           :body {:fhir/type :fhir/Parameters
-                                  :parameter
-                                  [{:fhir/type :fhir.Parameters/parameter
-                                    :name #fhir/string"offset"
-                                    :value #fhir/integer 1}]}})]
-
-            (is (= 400 status))
-
-            (given body
-              :fhir/type := :fhir/OperationOutcome
-              [:issue 0 :severity] := #fhir/code"error"
-              [:issue 0 :code] := #fhir/code"invalid"
-              [:issue 0 :diagnostics] := "Invalid non-zero value for parameter `offset`.")))))
-
-    (testing "invalid boolean parameter includeDefinition"
+  (testing "invalid non-integer parameter count"
+    (testing "GET"
       (with-handler [handler]
-        (doseq [value ["", "a" "0" "1"]]
+        (doseq [value ["" "a"]]
           (let [{:keys [status body]}
-                @(handler {:query-params {"includeDefinition" value}})]
+                @(handler {:query-params {"count" value}})]
 
             (is (= 400 status))
 
@@ -235,7 +159,65 @@
               :fhir/type := :fhir/OperationOutcome
               [:issue 0 :severity] := #fhir/code"error"
               [:issue 0 :code] := #fhir/code"invalid"
-              [:issue 0 :diagnostics] := "Invalid value for parameter `includeDefinition`. Has to be a boolean."))))))
+              [:issue 0 :diagnostics] := "Invalid value for parameter `count`. Has to be an integer.")))))
+
+    (testing "POST"
+      (with-handler [handler]
+        (let [{:keys [status body]}
+              @(handler {:request-method :post
+                         :body (u/parameters
+                                #fhir/string"count" #fhir/integer -1)})]
+
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"invalid"
+            [:issue 0 :diagnostics] := "Invalid value for parameter `count`. Has to be a non-negative integer.")))))
+
+  (testing "invalid non-zero parameter offset"
+    (testing "GET"
+      (with-handler [handler]
+        (let [{:keys [status body]}
+              @(handler {:query-params {"url" "153404" "offset" "1"}})]
+
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"invalid"
+            [:issue 0 :diagnostics] := "Invalid non-zero value for parameter `offset`."))))
+
+    (testing "POST"
+      (with-handler [handler]
+        (let [{:keys [status body]}
+              @(handler {:request-method :post
+                         :body (u/parameters
+                                #fhir/string"offset" #fhir/integer 1)})]
+
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"invalid"
+            [:issue 0 :diagnostics] := "Invalid non-zero value for parameter `offset`.")))))
+
+  (testing "invalid boolean parameter includeDefinition"
+    (with-handler [handler]
+      (doseq [value ["" "a" "0" "1"]]
+        (let [{:keys [status body]}
+              @(handler {:query-params {"includeDefinition" value}})]
+
+          (is (= 400 status))
+
+          (given body
+            :fhir/type := :fhir/OperationOutcome
+            [:issue 0 :severity] := #fhir/code"error"
+            [:issue 0 :code] := #fhir/code"invalid"
+            [:issue 0 :diagnostics] := "Invalid value for parameter `includeDefinition`. Has to be a boolean.")))))
 
   (testing "successful expansion by id"
     (with-handler [handler]
@@ -245,7 +227,8 @@
                :concept
                [{:fhir/type :fhir.CodeSystem/concept
                  :code #fhir/code"code-115927"}]}]
-        [:put {:fhir/type :fhir/ValueSet :id "152952"
+        [:put {:fhir/type :fhir/ValueSet :id "id-152952"
+               :url #fhir/uri"value-set-164038"
                :compose
                {:fhir/type :fhir.ValueSet/compose
                 :include
@@ -253,7 +236,7 @@
                   :system #fhir/uri"system-115910"}]}}]]]
 
       (let [{:keys [status body]}
-            @(handler {:path-params {:id "152952"}})]
+            @(handler {:path-params {:id "id-152952"}})]
 
         (is (= 200 status))
 
@@ -265,19 +248,16 @@
 
       (testing "ignores unknown parameter"
         (let [{:keys [status]}
-              @(handler {:path-params {:id "152952"}
+              @(handler {:path-params {:id "id-152952"}
                          :query-params {"foo" "bar"}})]
 
           (is (= 200 status)))
 
         (let [{:keys [status]}
               @(handler {:request-method :post
-                         :path-params {:id "152952"}
-                         :body {:fhir/type :fhir/Parameters
-                                :parameter
-                                [{:fhir/type :fhir.Parameters/parameter
-                                  :name #fhir/string"foo"
-                                  :value #fhir/string"bar"}]}})]
+                         :path-params {:id "id-152952"}
+                         :body (u/parameters
+                                #fhir/string"foo" #fhir/string"bar")})]
 
           (is (= 200 status))))))
 
@@ -321,31 +301,32 @@
                 lang [nil "en" "de"]
                 property [nil ["definition"] ["parent" "child"]]]
           (let [{:keys [status body]}
-                @(handler {:request-method :post
-                           :body {:fhir/type :fhir/Parameters
-                                  :parameter
-                                  (cond->
-                                   [{:fhir/type :fhir.Parameters/parameter
-                                     :name #fhir/string"url"
-                                     :value #fhir/uri"value-set-154043"}]
-                                    include-designations
-                                    (conj
-                                     {:fhir/type :fhir.Parameters/parameter
-                                      :name #fhir/string"includeDesignations"
-                                      :value (type/boolean include-designations)})
-                                    lang
-                                    (conj
-                                     {:fhir/type :fhir.Parameters/parameter
-                                      :name #fhir/string"displayLanguage"
-                                      :value (type/code lang)})
-                                    property
-                                    (into
-                                     (map
-                                      (fn [property]
-                                        {:fhir/type :fhir.Parameters/parameter
-                                         :name #fhir/string"property"
-                                         :value (type/string property)}))
-                                     property))}})]
+                @(handler
+                  {:request-method :post
+                   :body {:fhir/type :fhir/Parameters
+                          :parameter
+                          (cond->
+                           [{:fhir/type :fhir.Parameters/parameter
+                             :name #fhir/string"url"
+                             :value #fhir/uri"value-set-154043"}]
+                            include-designations
+                            (conj
+                             {:fhir/type :fhir.Parameters/parameter
+                              :name #fhir/string"includeDesignations"
+                              :value (type/boolean include-designations)})
+                            lang
+                            (conj
+                             {:fhir/type :fhir.Parameters/parameter
+                              :name #fhir/string"displayLanguage"
+                              :value (type/code lang)})
+                            property
+                            (into
+                             (map
+                              (fn [property]
+                                {:fhir/type :fhir.Parameters/parameter
+                                 :name #fhir/string"property"
+                                 :value (type/string property)}))
+                             property))}})]
 
             (is (= 200 status))
 
@@ -382,17 +363,14 @@
 
         (let [{:keys [status body]}
               @(handler {:request-method :post
-                         :body {:fhir/type :fhir/Parameters
-                                :parameter
-                                [{:fhir/type :fhir.Parameters/parameter
-                                  :name #fhir/string"valueSet"
-                                  :resource
-                                  {:fhir/type :fhir/ValueSet
-                                   :compose
-                                   {:fhir/type :fhir.ValueSet/compose
-                                    :include
-                                    [{:fhir/type :fhir.ValueSet.compose/include
-                                      :system #fhir/uri"system-115910"}]}}}]}})]
+                         :body (u/parameters
+                                "valueSet"
+                                {:fhir/type :fhir/ValueSet
+                                 :compose
+                                 {:fhir/type :fhir.ValueSet/compose
+                                  :include
+                                  [{:fhir/type :fhir.ValueSet.compose/include
+                                    :system #fhir/uri"system-115910"}]}})})]
 
           (is (= 200 status))
 
@@ -406,20 +384,15 @@
         (testing "and count = 0"
           (let [{:keys [status body]}
                 @(handler {:request-method :post
-                           :body {:fhir/type :fhir/Parameters
-                                  :parameter
-                                  [{:fhir/type :fhir.Parameters/parameter
-                                    :name #fhir/string"valueSet"
-                                    :resource
-                                    {:fhir/type :fhir/ValueSet
-                                     :compose
-                                     {:fhir/type :fhir.ValueSet/compose
-                                      :include
-                                      [{:fhir/type :fhir.ValueSet.compose/include
-                                        :system #fhir/uri"system-115910"}]}}}
-                                   {:fhir/type :fhir.Parameters/parameter
-                                    :name #fhir/string"count"
-                                    :value #fhir/integer 0}]}})]
+                           :body (u/parameters
+                                  "valueSet"
+                                  {:fhir/type :fhir/ValueSet
+                                   :compose
+                                   {:fhir/type :fhir.ValueSet/compose
+                                    :include
+                                    [{:fhir/type :fhir.ValueSet.compose/include
+                                      :system #fhir/uri"system-115910"}]}}
+                                  "count" #fhir/integer 0)})]
 
             (is (= 200 status))
 
@@ -432,20 +405,15 @@
         (testing "and offset = 0"
           (let [{:keys [status body]}
                 @(handler {:request-method :post
-                           :body {:fhir/type :fhir/Parameters
-                                  :parameter
-                                  [{:fhir/type :fhir.Parameters/parameter
-                                    :name #fhir/string"valueSet"
-                                    :resource
-                                    {:fhir/type :fhir/ValueSet
-                                     :compose
-                                     {:fhir/type :fhir.ValueSet/compose
-                                      :include
-                                      [{:fhir/type :fhir.ValueSet.compose/include
-                                        :system #fhir/uri"system-115910"}]}}}
-                                   {:fhir/type :fhir.Parameters/parameter
-                                    :name #fhir/string"offset"
-                                    :value #fhir/integer 0}]}})]
+                           :body (u/parameters
+                                  "valueSet"
+                                  {:fhir/type :fhir/ValueSet
+                                   :compose
+                                   {:fhir/type :fhir.ValueSet/compose
+                                    :include
+                                    [{:fhir/type :fhir.ValueSet.compose/include
+                                      :system #fhir/uri"system-115910"}]}}
+                                  "offset" #fhir/integer 0)})]
 
             (is (= 200 status))
 
@@ -458,20 +426,15 @@
         (testing "including the definition"
           (let [{:keys [status body]}
                 @(handler {:request-method :post
-                           :body {:fhir/type :fhir/Parameters
-                                  :parameter
-                                  [{:fhir/type :fhir.Parameters/parameter
-                                    :name #fhir/string"valueSet"
-                                    :resource
-                                    {:fhir/type :fhir/ValueSet
-                                     :compose
-                                     {:fhir/type :fhir.ValueSet/compose
-                                      :include
-                                      [{:fhir/type :fhir.ValueSet.compose/include
-                                        :system #fhir/uri"system-115910"}]}}}
-                                   {:fhir/type :fhir.Parameters/parameter
-                                    :name #fhir/string"includeDefinition"
-                                    :value #fhir/boolean true}]}})]
+                           :body (u/parameters
+                                  "valueSet"
+                                  {:fhir/type :fhir/ValueSet
+                                   :compose
+                                   {:fhir/type :fhir.ValueSet/compose
+                                    :include
+                                    [{:fhir/type :fhir.ValueSet.compose/include
+                                      :system #fhir/uri"system-115910"}]}}
+                                  "includeDefinition" #fhir/boolean true)})]
 
             (is (= 200 status))
 
@@ -486,20 +449,16 @@
         (testing "and system-version"
           (let [{:keys [status body]}
                 @(handler {:request-method :post
-                           :body {:fhir/type :fhir/Parameters
-                                  :parameter
-                                  [{:fhir/type :fhir.Parameters/parameter
-                                    :name #fhir/string"valueSet"
-                                    :resource
-                                    {:fhir/type :fhir/ValueSet
-                                     :compose
-                                     {:fhir/type :fhir.ValueSet/compose
-                                      :include
-                                      [{:fhir/type :fhir.ValueSet.compose/include
-                                        :system #fhir/uri"system-115910"}]}}}
-                                   {:fhir/type :fhir.Parameters/parameter
-                                    :name #fhir/string"system-version"
-                                    :value #fhir/canonical"system-115910|version-170327"}]}})]
+                           :body (u/parameters
+                                  "valueSet"
+                                  {:fhir/type :fhir/ValueSet
+                                   :compose
+                                   {:fhir/type :fhir.ValueSet/compose
+                                    :include
+                                    [{:fhir/type :fhir.ValueSet.compose/include
+                                      :system #fhir/uri"system-115910"}]}}
+                                  "system-version"
+                                  #fhir/canonical"system-115910|version-170327")})]
 
             (is (= 200 status))
 
@@ -687,30 +646,23 @@
     (with-handler [handler]
       (let [{:keys [status body]}
             @(handler {:request-method :post
-                       :body {:fhir/type :fhir/Parameters
-                              :parameter
-                              [{:fhir/type :fhir.Parameters/parameter
-                                :name #fhir/string"url"
-                                :value #fhir/uri"value-set-110445"}
-                               {:fhir/type :fhir.Parameters/parameter
-                                :name #fhir/string"tx-resource"
-                                :resource
-                                {:fhir/type :fhir/CodeSystem
-                                 :url #fhir/uri"system-115910"
-                                 :content #fhir/code"complete"
-                                 :concept
-                                 [{:fhir/type :fhir.CodeSystem/concept
-                                   :code #fhir/code"code-115927"}]}}
-                               {:fhir/type :fhir.Parameters/parameter
-                                :name #fhir/string"tx-resource"
-                                :resource
-                                {:fhir/type :fhir/ValueSet
-                                 :url #fhir/uri"value-set-110445"
-                                 :compose
-                                 {:fhir/type :fhir.ValueSet/compose
-                                  :include
-                                  [{:fhir/type :fhir.ValueSet.compose/include
-                                    :system #fhir/uri"system-115910"}]}}}]}})]
+                       :body (u/parameters
+                              "url" #fhir/uri"value-set-110445"
+                              "tx-resource"
+                              {:fhir/type :fhir/CodeSystem
+                               :url #fhir/uri"system-115910"
+                               :content #fhir/code"complete"
+                               :concept
+                               [{:fhir/type :fhir.CodeSystem/concept
+                                 :code #fhir/code"code-115927"}]}
+                              "tx-resource"
+                              {:fhir/type :fhir/ValueSet
+                               :url #fhir/uri"value-set-110445"
+                               :compose
+                               {:fhir/type :fhir.ValueSet/compose
+                                :include
+                                [{:fhir/type :fhir.ValueSet.compose/include
+                                  :system #fhir/uri"system-115910"}]}})})]
 
         (is (= 200 status))
 

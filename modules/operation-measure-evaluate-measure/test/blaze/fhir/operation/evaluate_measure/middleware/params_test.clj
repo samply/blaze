@@ -3,6 +3,7 @@
    [blaze.async.comp :as ac]
    [blaze.fhir.operation.evaluate-measure.middleware.params :as params]
    [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
+   [blaze.fhir.util :as u]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -106,14 +107,9 @@
       (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
             @(handler
               {:body
-               {:fhir/type :fhir/Parameters
-                :parameter
-                [{:fhir/type :fhir.Parameters/parameter
-                  :name "periodStart"
-                  :value #fhir/date"2020"}
-                 {:fhir/type :fhir.Parameters/parameter
-                  :name "periodEnd"
-                  :value #fhir/date"2021"}]}})]
+               (u/parameters
+                "periodStart" #fhir/date"2020"
+                "periodEnd" #fhir/date"2021")})]
 
         (given params
           [:period 0] := #fhir/date"2020"
@@ -123,17 +119,10 @@
     (testing "invalid (only POST)"
       (let [request {:request-method :post
                      :body
-                     {:fhir/type :fhir/Parameters
-                      :parameter
-                      [{:fhir/type :fhir.Parameters/parameter
-                        :name "periodStart"
-                        :value #fhir/date"2014"}
-                       {:fhir/type :fhir.Parameters/parameter
-                        :name "periodEnd"
-                        :value #fhir/date"2015"}
-                       {:fhir/type :fhir.Parameters/parameter
-                        :name "measure"
-                        :value #fhir/date"2015"}]}}
+                     (u/parameters
+                      "periodStart" #fhir/date"2014"
+                      "periodEnd" #fhir/date"2015"
+                      "measure" #fhir/date"2015")}
             {:keys [status body]} @(handler request)]
 
         (is (= 400 status))
@@ -152,17 +141,10 @@
                  "periodEnd" "2016"
                  "measure" "measure-202606"}}
                {:body
-                {:fhir/type :fhir/Parameters
-                 :parameter
-                 [{:fhir/type :fhir.Parameters/parameter
-                   :name "periodStart"
-                   :value #fhir/date"2014"}
-                  {:fhir/type :fhir.Parameters/parameter
-                   :name "periodEnd"
-                   :value #fhir/date"2015"}
-                  {:fhir/type :fhir.Parameters/parameter
-                   :name "measure"
-                   :value #fhir/string"measure-202606"}]}}]]
+                (u/parameters
+                 "periodStart" #fhir/date"2014"
+                 "periodEnd" #fhir/date"2015"
+                 "measure" #fhir/string"measure-202606")}]]
         (let [{:blaze.fhir.operation.evaluate-measure/keys [params]}
               @(handler request)]
 
@@ -211,17 +193,10 @@
             @(handler
               {:request-method :post
                :body
-               {:fhir/type :fhir/Parameters
-                :parameter
-                [{:fhir/type :fhir.Parameters/parameter
-                  :name "periodStart"
-                  :value #fhir/date"2014"}
-                 {:fhir/type :fhir.Parameters/parameter
-                  :name "periodEnd"
-                  :value #fhir/date"2015"}
-                 {:fhir/type :fhir.Parameters/parameter
-                  :name "reportType"
-                  :value #fhir/code"subject-list"}]}})]
+               (u/parameters
+                "periodStart" #fhir/date"2014"
+                "periodEnd" #fhir/date"2015"
+                "reportType" #fhir/code"subject-list")})]
 
         (given params
           :report-type := "subject-list")))

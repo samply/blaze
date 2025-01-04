@@ -11,6 +11,7 @@
    [blaze.fhir.operation.evaluate-measure.test-util :refer [wrap-error]]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util]
+   [blaze.fhir.util :as u]
    [blaze.metrics.spec]
    [blaze.middleware.fhir.db :refer [wrap-db]]
    [blaze.middleware.fhir.db-spec]
@@ -254,14 +255,9 @@
                   {:request-method :post
                    :path-params {:id "0"}
                    :body
-                   {:fhir/type :fhir/Parameters
-                    :parameter
-                    [{:fhir/type :fhir.Parameters/parameter
-                      :name "periodStart"
-                      :value #fhir/date"2014"}
-                     {:fhir/type :fhir.Parameters/parameter
-                      :name "periodEnd"
-                      :value #fhir/date"2015"}]}})]
+                   (u/parameters
+                    "periodStart" #fhir/date"2014"
+                    "periodEnd" #fhir/date"2015")})]
 
             (is (= 201 status))
 
@@ -509,17 +505,10 @@
                 @(handler
                   {:request-method :post
                    :body
-                   {:fhir/type :fhir/Parameters
-                    :parameter
-                    [{:fhir/type :fhir.Parameters/parameter
-                      :name "measure"
-                      :value #fhir/string"url-181501"}
-                     {:fhir/type :fhir.Parameters/parameter
-                      :name "periodStart"
-                      :value #fhir/date"2014"}
-                     {:fhir/type :fhir.Parameters/parameter
-                      :name "periodEnd"
-                      :value #fhir/date"2015"}]}})]
+                   (u/parameters
+                    "measure" #fhir/string"url-181501"
+                    "periodStart" #fhir/date"2014"
+                    "periodEnd" #fhir/date"2015")})]
 
             (is (= 201 status))
 
@@ -550,17 +539,10 @@
                         {:request-method :post
                          :headers {"prefer" "return=minimal"}
                          :body
-                         {:fhir/type :fhir/Parameters
-                          :parameter
-                          [{:fhir/type :fhir.Parameters/parameter
-                            :name "measure"
-                            :value #fhir/string"url-181501"}
-                           {:fhir/type :fhir.Parameters/parameter
-                            :name "periodStart"
-                            :value #fhir/date"2014"}
-                           {:fhir/type :fhir.Parameters/parameter
-                            :name "periodEnd"
-                            :value #fhir/date"2015"}]}})]
+                         (u/parameters
+                          "measure" #fhir/string"url-181501"
+                          "periodStart" #fhir/date"2014"
+                          "periodEnd" #fhir/date"2015")})]
 
                   (is (= 201 status))
 
@@ -592,14 +574,9 @@
                   @(handler
                     {:request-method :post
                      :body
-                     {:fhir/type :fhir/Parameters
-                      :parameter
-                      [{:fhir/type :fhir.Parameters/parameter
-                        :name "periodStart"
-                        :value #fhir/date"2014"}
-                       {:fhir/type :fhir.Parameters/parameter
-                        :name "periodEnd"
-                        :value #fhir/date"2015"}]}})]
+                     (u/parameters
+                      "periodStart" #fhir/date"2014"
+                      "periodEnd" #fhir/date"2015")})]
 
               (is (= 422 status))
 
@@ -632,17 +609,10 @@
                   @(handler
                     {:request-method :post
                      :body
-                     {:fhir/type :fhir/Parameters
-                      :parameter
-                      [{:fhir/type :fhir.Parameters/parameter
-                        :name "periodStart"
-                        :value #fhir/date"2014"}
-                       {:fhir/type :fhir.Parameters/parameter
-                        :name "periodEnd"
-                        :value #fhir/date"2015"}
-                       {:fhir/type :fhir.Parameters/parameter
-                        :name "measure"
-                        :value "url-181501"}]}})]
+                     (u/parameters
+                      "periodStart" #fhir/date"2014"
+                      "periodEnd"  #fhir/date"2015"
+                      "measure" "url-181501")})]
 
               (is (= 422 status))
 
