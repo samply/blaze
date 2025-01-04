@@ -52,10 +52,10 @@
   resource with `url` and optional `version` in `context` according to priority
   or complete exceptionally in case of none found or errors."
   {:arglists '([context url] [context url version])}
-  ([{{:keys [tx-resources]} :request :as context} url]
+  ([{:keys [tx-resources] :as context} url]
    (or (some-> tx-resources (find-in-tx-resources url))
        (c/find context url)))
-  ([{{:keys [tx-resources]} :request :as context} url version]
+  ([{:keys [tx-resources] :as context} url version]
    (or (some-> tx-resources (find-in-tx-resources url version))
        (c/find context url version))))
 
@@ -66,23 +66,34 @@
 
 (defn validate-code
   "Returns a Parameters resource that contains the response of the validation
-  `request`."
-  [code-system request]
-  (c/validate-code code-system request))
+  `params`."
+  [code-system params]
+  (c/validate-code code-system params))
 
 (defn expand-complete
   "Returns a list of all concepts as expansion of `code-system`."
-  [request inactive code-system]
-  (c/expand-complete request inactive code-system))
+  [code-system params]
+  (c/expand-complete code-system params))
 
 (defn expand-concept
   "Returns a list of concepts as expansion of `code-system` according to the
   given `concepts`."
-  [request inactive code-system concepts]
-  (c/expand-concept request inactive code-system concepts))
+  [code-system concepts params]
+  (c/expand-concept code-system concepts params))
 
 (defn expand-filter
   "Returns a set of concepts as expansion of `code-system` according to
-  `filter`."
-  [request inactive code-system filter]
-  (c/expand-filter request inactive code-system filter))
+  `filter` or an anomaly in case of errors."
+  [code-system filter params]
+  (c/expand-filter code-system filter params))
+
+(defn find-complete
+  "Returns the concept according to `params` if it exists in `code-system`."
+  [code-system params]
+  (c/find-complete code-system params))
+
+(defn find-filter
+  "Returns the concept according to `params` if it exists in `code-system` and
+  satisfies `filter` or an anomaly in case of errors."
+  [code-system filter params]
+  (c/find-filter code-system filter params))
