@@ -1,0 +1,18 @@
+{
+  "resourceType" : "ValueSet",
+  "id" : "en-enlang-single",
+  "language" : "en",
+  "url" : "http://hl7.org/fhir/test/ValueSet/en-enlang-single",
+  "version" : "5.0.0",
+  "name" : "LanguageValueSetENSingleENLang",
+  "title" : "Language ValueSet EN Single for EN by Lang",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "compose" : {
+    "include" : [{
+      "system" : "http://hl7.org/fhir/test/CodeSystem/en-single"
+    }]
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "resourceType" : "CodeSystem",
+  "language" : "en",
+  "id" : "inactive",
+  "url" : "http://hl7.org/fhir/test/CodeSystem/inactive",
+  "version" : "0.1.0",
+  "name" : "InactiveTestCodeSystem",
+  "title" : "Inactive Test Code System",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "caseSensitive" : true,
+  "content" : "complete",
+  "concept" : [{
+    "code" : "codeActive",
+    "display" : "Display Active"
+  },
+  {
+    "code" : "codeInactive",
+    "display" : "Display inactive",
+    "property" : [{
+      "code" : "inactive",
+      "valueBoolean" : true
+    }]
+  },
+  {
+    "code" : "codeRetired",
+    "display" : "Display Retired",
+    "property" : [{
+      "code" : "status",
+      "valueCode" : "retired"
+    }]
+  }]
+}

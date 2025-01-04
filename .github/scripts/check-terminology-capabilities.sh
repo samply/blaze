@@ -12,4 +12,5 @@ test "kind" "$(echo "$TERMINOLOGY_CAPABILITIES" | jq -r .kind)" "instance"
 test "software name" "$(echo "$TERMINOLOGY_CAPABILITIES" | jq -r .software.name)" "Blaze"
 test "URL" "$(echo "$TERMINOLOGY_CAPABILITIES" | jq -r .implementation.url)" "http://localhost:8080/fhir"
 
+test "LOINC version" "$(echo "$TERMINOLOGY_CAPABILITIES" | jq -r '.codeSystem[] | select(.uri == "http://loinc.org").version[0].code' )" "2.78"
 test "UCUM version" "$(echo "$TERMINOLOGY_CAPABILITIES" | jq -r '.codeSystem[] | select(.uri == "http://unitsofmeasure.org").version[0].code' )" "2013.10.21"

@@ -1,0 +1,10 @@
+{
+  "resourceType" : "Parameters",
+  "parameter" : [{
+    "name" : "uuid",
+    "valueUuid" : "urn:uuid:7fd71a73-448e-43de-8018-4dfea36a7368"
+  },{
+    "name" : "check-system-version",
+    "valueCanonical" : "http://hl7.org/fhir/test/CodeSystem/version|1.0"
+  }]
+}

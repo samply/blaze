@@ -1,9 +1,17 @@
 (ns blaze.terminology-service.local.value-set.validate-code.spec
   (:require
-   [blaze.terminology-service.local.value-set.validate-code :as-alias l-vs-validate-code]
-   [blaze.terminology-service.spec]
-   [blaze.terminology-service.value-set-validate-code :as-alias vs-validate-code]
+   [blaze.db.spec]
+   [blaze.fhir.spec]
+   [blaze.terminology-service.local.validate-code :as-alias vc]
+   [blaze.terminology-service.local.validate-code.spec]
+   [blaze.terminology-service.local.value-set.validate-code :as-alias vs-validate-code]
    [clojure.spec.alpha :as s]))
 
-(s/def ::l-vs-validate-code/context
-  (s/keys :req-un [::vs-validate-code/request]))
+(s/def ::vs-validate-code/context
+  (s/keys :req-un [:blaze.db/db]))
+
+(s/def ::active-only
+  boolean?)
+
+(s/def ::vs-validate-code/params
+  (s/keys :req-un [::vc/clause] :opt-un [::active-only]))

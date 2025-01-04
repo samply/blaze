@@ -1,0 +1,22 @@
+{
+  "resourceType" : "ValueSet",
+  "id" : "simple-filter-isa",
+  "url" : "http://hl7.org/fhir/test/ValueSet/simple-filter-isa",
+  "version" : "5.0.0",
+  "name" : "SimpleValueSetFilterIsA",
+  "title" : "Simple ValueSet Filter by Is-A",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "compose" : {
+    "include" : [{
+      "system" : "http://hl7.org/fhir/test/CodeSystem/simple",
+      "filter" : [{
+        "property" : "concept",
+        "op" : "is-a",
+        "value" : "code2"
+      }]
+    }]
+  }
+}
