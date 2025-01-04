@@ -1,0 +1,17 @@
+{
+  "resourceType" : "ValueSet",
+  "id" : "simple-import",
+  "url" : "http://hl7.org/fhir/test/ValueSet/simple-import",
+  "version" : "5.0.0",
+  "name" : "SimpleValueSetImport",
+  "title" : "Simple ValueSet With Import",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "compose" : {
+    "include" : [{
+      "valueSet" : ["http://hl7.org/fhir/test/ValueSet/simple-filter-isa"]
+    }]
+  }
+}

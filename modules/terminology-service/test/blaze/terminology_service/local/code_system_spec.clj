@@ -3,13 +3,13 @@
    [blaze.async.comp :as ac]
    [blaze.db.spec]
    [blaze.fhir.spec.spec]
-   [blaze.terminology-service.code-system-validate-code :as-alias cs-validate-code]
    [blaze.terminology-service.local.code-system :as cs]
    [blaze.terminology-service.local.code-system.sct.context-spec]
    [blaze.terminology-service.local.code-system.spec]
    [blaze.terminology-service.local.priority-spec]
    [blaze.terminology-service.spec]
-   [clojure.spec.alpha :as s]))
+   [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]))
 
 (s/fdef cs/list
   :args (s/cat :db :blaze.db/db)
@@ -24,25 +24,34 @@
   :ret :fhir/CodeSystem)
 
 (s/fdef cs/validate-code
-  :args (s/cat :code-system :fhir/CodeSystem :request ::cs-validate-code/request)
+  :args (s/cat :code-system :fhir/CodeSystem :params ::cs/validate-code-params)
   :ret :fhir/Parameters)
 
 (s/fdef cs/expand-complete
-  :args (s/cat :request ::cs/expand-request
-               :inactive (s/nilable boolean?)
-               :code-system :fhir/CodeSystem)
+  :args (s/cat :code-system :fhir/CodeSystem
+               :params ::cs/expand-params)
   :ret (s/coll-of :fhir.ValueSet.expansion/contains))
 
 (s/fdef cs/expand-concept
-  :args (s/cat :request ::cs/expand-request
-               :inactive (s/nilable boolean?)
-               :code-system :fhir/CodeSystem
-               :concepts (s/coll-of :fhir.ValueSet.compose.include/concept))
+  :args (s/cat :code-system :fhir/CodeSystem
+               :concepts (s/coll-of :fhir.ValueSet.compose.include/concept)
+               :params ::cs/expand-params)
   :ret (s/coll-of :fhir.ValueSet.expansion/contains))
 
 (s/fdef cs/expand-filter
-  :args (s/cat :request ::cs/expand-request
-               :inactive (s/nilable boolean?)
-               :code-system :fhir/CodeSystem
-               :filter :fhir.ValueSet.compose.include/filter)
-  :ret (s/coll-of :fhir.ValueSet.expansion/contains :kind set?))
+  :args (s/cat :code-system :fhir/CodeSystem
+               :filter :fhir.ValueSet.compose.include/filter
+               :params ::cs/expand-params)
+  :ret (s/or :concepts (s/coll-of :fhir.ValueSet.expansion/contains :kind set?)
+             :anomaly ::anom/anomaly))
+
+(s/fdef cs/find-complete
+  :args (s/cat :code-system :fhir/CodeSystem
+               :params ::cs/validate-code-params)
+  :ret map?)
+
+(s/fdef cs/find-filter
+  :args (s/cat :code-system :fhir/CodeSystem
+               :filter :fhir.ValueSet.compose.include/filter
+               :params ::cs/validate-code-params)
+  :ret (s/or :concept map? :anomaly ::anom/anomaly))

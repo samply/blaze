@@ -1,0 +1,102 @@
+{
+  "resourceType" : "ValueSet",
+  "id" : "extensions-enumerated",
+  "extension" : [{
+    "url" : "http://hl7.org/fhir/test/StructureDefinition/unknown-extension-4",
+    "valueString" : "unknown extensions are ignored"
+  },{
+    "url" : "http://hl7.org/fhir/StructureDefinition/valueset-supplement",
+    "valueCanonical" : "http://hl7.org/fhir/test/CodeSystem/supplement|0.1.1"
+  }],
+  "url" : "http://hl7.org/fhir/test/ValueSet/extensions-enumerated",
+  "version" : "5.0.0",
+  "name" : "ExtensionsValueSetEnumerated",
+  "title" : "Extensions ValueSet Enumerated",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "compose" : {
+    "include" : [{
+      "system" : "http://hl7.org/fhir/test/CodeSystem/extensions",
+      "concept" : [{
+        "code" : "code1",
+        "extension" : [{
+          "url" : "http://hl7.org/fhir/StructureDefinition/valueset-deprecated",
+          "valueBoolean" : true
+        },{
+          "url" : "http://hl7.org/fhir/StructureDefinition/valueset-conceptOrder",
+          "valueInteger" : 0
+        },{
+          "url" : "http://hl7.org/fhir/StructureDefinition/valueset-label",
+          "valueString" : "a."
+        },{
+          "url" : "http://hl7.org/fhir/test/StructureDefinition/unknown-extension-5",
+          "valueString" : "unknown extensions are ignored"
+        }]
+      },{
+        "code" : "code2",
+        "extension" : [{
+          "url" : "http://hl7.org/fhir/StructureDefinition/valueset-concept-definition",
+          "valueString" : "An alternative definition"
+        },{
+          "url" : "http://hl7.org/fhir/StructureDefinition/valueset-conceptOrder",
+          "valueInteger" : 1
+        },{
+          "url" : "http://hl7.org/fhir/StructureDefinition/valueset-label",
+          "valueString" : "b."
+        }],
+        "designation" : [{
+          "language" : "de",
+          "value" : "Mein zweiter Code",
+          "extension" : [{
+            "url" : "http://hl7.org/fhir/StructureDefinition/coding-sctdescid",
+            "valueId" : "345356"
+          },{
+            "url" : "http://hl7.org/fhir/test/StructureDefinition/unknown-extension-6",
+            "valueString" : "unknown extensions are ignored"
+          }]
+        }]
+      },{ 
+        "code" : "code3",
+        "extension" : [{
+          "url" : "http://hl7.org/fhir/StructureDefinition/valueset-conceptOrder",
+          "valueInteger" : 2
+        },{
+          "url" : "http://hl7.org/fhir/StructureDefinition/valueset-label",
+          "valueString" : "c."
+        }]
+      },{
+        "code" : "code4",
+        "extension" : [{
+          "url" : "http://hl7.org/fhir/StructureDefinition/valueset-conceptOrder",
+          "valueInteger" : 3
+        },{
+          "url" : "http://hl7.org/fhir/StructureDefinition/valueset-label",
+          "valueString" : "d."
+        },{
+          "url" : "http://hl7.org/fhir/StructureDefinition/itemWeight",
+          "valueDecimal" : 4
+        },{
+          "url" : "http://hl7.org/fhir/StructureDefinition/rendering-style",
+          "valueString" : "color: #343434"
+        },{
+          "url" : "http://hl7.org/fhir/StructureDefinition/rendering-xhtml",
+          "valueString" : "<span style=\"color: maroon\">This is still a dumb way to do things</span>"
+        }]
+      },{
+        "code" : "code5",
+        "extension" : [{
+          "url" : "http://hl7.org/fhir/StructureDefinition/valueset-conceptOrder",
+          "valueInteger" : 4
+        },{
+          "url" : "http://hl7.org/fhir/StructureDefinition/valueset-concept-definition",
+          "valueString" : "A valueset specific definition"
+        },{
+          "url" : "http://hl7.org/fhir/StructureDefinition/valueset-label",
+          "valueString" : "e."
+        }]
+      }]
+    }]
+  }
+}

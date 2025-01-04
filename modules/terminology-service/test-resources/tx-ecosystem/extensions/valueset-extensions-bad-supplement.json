@@ -1,0 +1,21 @@
+{
+  "resourceType" : "ValueSet",
+  "id" : "extensions-bad-supplement",
+  "extension" : [{
+    "url" : "http://hl7.org/fhir/StructureDefinition/valueset-supplement",
+    "valueCanonical" : "http://hl7.org/fhir/test/CodeSystem/supplementX"
+  }],
+  "url" : "http://hl7.org/fhir/test/ValueSet/extensions-bad-supplement",
+  "version" : "5.0.0",
+  "name" : "ExtensionsValueSetBadSupplement",
+  "title" : "Extensions ValueSet Bad Supplement",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "compose" : {
+    "include" : [{
+      "system" : "http://hl7.org/fhir/test/CodeSystem/extensions"
+    }]
+  }
+}

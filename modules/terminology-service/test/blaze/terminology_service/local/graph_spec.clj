@@ -17,3 +17,11 @@
 (s/fdef graph/descendent-of
   :args (s/cat :graph ::local/graph :code string?)
   :ret (s/coll-of :fhir.CodeSystem/concept))
+
+(s/fdef graph/find-descendent-of
+  :args (s/cat :graph ::local/graph :start-code string? :code string?)
+  :ret (s/nilable :fhir.CodeSystem/concept))
+
+(s/fdef graph/find-is-a
+  :args (s/cat :graph ::local/graph :start-code string? :code string?)
+  :ret (s/nilable :fhir.CodeSystem/concept))

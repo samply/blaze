@@ -1,0 +1,21 @@
+{
+  "resourceType" : "ValueSet",
+  "id" : "extensions-all",
+  "url" : "http://hl7.org/fhir/test/ValueSet/extensions-all",
+  "version" : "5.0.0",
+  "name" : "ExtensionsValueSetAll",
+  "title" : "Extensions ValueSet All",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "compose" : {
+    "include" : [{
+      "system" : "http://hl7.org/fhir/test/CodeSystem/extensions",
+      "extension" : [{
+        "url" : "http://hl7.org/fhir/test/StructureDefinition/unknown-extension-1",
+        "valueString" : "unknown extensions are ignored"
+      }]
+    }]
+  }
+}

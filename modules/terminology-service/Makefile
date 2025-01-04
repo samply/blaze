@@ -4,7 +4,10 @@ fmt:
 lint:
 	clj-kondo --lint src test deps.edn
 
-prep:
+build:
+	clojure -T:build download-loinc
+
+prep: build
 	clojure -X:deps prep
 
 test: prep
@@ -20,6 +23,6 @@ cloc-test:
 	cloc test
 
 clean:
-	rm -rf .clj-kondo/.cache .cpcache target
+	rm -rf .clj-kondo/.cache .cpcache target resources/blaze/terminology_service/local/code_system/loinc
 
 .PHONY: fmt lint prep test test-coverage cloc-prod cloc-test clean

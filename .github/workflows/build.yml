@@ -1263,7 +1263,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx4g -e ENABLE_TERMINOLOGY_SERVICE=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx4g -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Install All KDS Terminology Resources
       run: make -C .github/value-set-expand install
@@ -1288,6 +1288,12 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
+    - name: Setup Java
+      uses: actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b # v4
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+
     - name: Check out Git repository
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
@@ -1312,7 +1318,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx4g -e ENABLE_TERMINOLOGY_SERVICE=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx4g -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Install All KDS Terminology Resources
       run: make -C .github/value-set-expand install
@@ -1333,21 +1339,21 @@ jobs:
       run: .github/scripts/check-terminology-capabilities.sh
 
     - name: Validate Medication Resources
-      run: .github/validation/validate-medication.sh
+      run: .github/validation/validate.sh
 
   terminology-tests:
     needs: build
     runs-on: ubuntu-24.04
 
     steps:
-    - name: Check out Git repository
-      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+    - name: Setup Java
+      uses: actions/setup-java@7a6d8a8234af8eb26422e24e3006232cccaa061b # v4
+      with:
+        distribution: 'temurin'
+        java-version: '21'
 
     - name: Check out Git repository
       uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-      with:
-        repository: HL7/fhir-tx-ecosystem-ig
-        path: fhir-tx-ecosystem-ig
 
     - name: Setup Node
       uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
@@ -1367,7 +1373,7 @@ jobs:
       run: docker load --input /tmp/blaze.tar
 
     - name: Run Blaze
-      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_TERMINOLOGY_SERVICE=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
+      run: docker run --name blaze -d -e JAVA_TOOL_OPTIONS=-Xmx2g -e ENABLE_TERMINOLOGY_SERVICE=true -e ENABLE_TERMINOLOGY_LOINC=true -p 8080:8080 --read-only --tmpfs /tmp:exec -v blaze-data:/app/data blaze:latest
 
     - name: Wait for Blaze
       run: .github/scripts/wait-for-url.sh http://localhost:8080/health
@@ -1381,8 +1387,8 @@ jobs:
     - name: Check Simple Expand
       run: .github/terminology-tests/simple-expand.sh
 
-    - name: Check Parameters Expand
-      run: .github/terminology-tests/parameters-expand.sh
+    - name: Check Good
+      run: .github/terminology-tests/good.sh
 
   not-enforcing-referential-integrity-test:
     needs: build

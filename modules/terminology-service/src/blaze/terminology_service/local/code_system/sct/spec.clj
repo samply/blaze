@@ -1,11 +1,17 @@
 (ns blaze.terminology-service.local.code-system.sct.spec
   (:require
+   [blaze.fhir.spec]
+   [blaze.path.spec]
+   [blaze.terminology-service.local.code-system.sct :as-alias sct]
    [clojure.spec.alpha :as s])
   (:import
    [java.time LocalDate]
    [java.time.format DateTimeFormatter DateTimeParseException]))
 
 (set! *warn-on-reflection* true)
+
+(s/def ::sct/release-path
+  :blaze/dir)
 
 (s/def :sct/id
   int?)
@@ -24,18 +30,26 @@
 (s/def :sct/version
   :sct/time)
 
+(s/def :sct/code-systems
+  (s/coll-of :fhir/CodeSystem))
+
 (s/def :sct/concept-index
   map?)
 
 (s/def :sct/child-index
   map?)
 
-(s/def :sct/description-index
+(s/def :sct/fully-specified-name-index
+  map?)
+
+(s/def :sct/synonym-index
   map?)
 
 (s/def :sct/context
   (s/keys
    :req-un
-   [:sct/concept-index
+   [:sct/code-systems
+    :sct/concept-index
     :sct/child-index
-    :sct/description-index]))
+    :sct/fully-specified-name-index
+    :sct/synonym-index]))

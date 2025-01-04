@@ -3,6 +3,7 @@
    [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.terminology-service.local.code-system :as cs]
+   [blaze.terminology-service.local.code-system-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest testing]]
@@ -16,7 +17,8 @@
   (testing "with one code system"
     (with-system-data [{:blaze.db/keys [node]} mem-node-config]
       [[[:put {:fhir/type :fhir/CodeSystem :id "id-160617"
-               :url #fhir/uri"system-192435"}]]]
+               :url #fhir/uri"system-192435"
+               :content #fhir/code"complete"}]]]
 
       (given @(cs/list (d/db node))
         count := 1
@@ -30,9 +32,11 @@
         (testing "created in the same transaction"
           (with-system-data [{:blaze.db/keys [node]} mem-node-config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
-                     :url #fhir/uri"system-192435"}]
+                     :url #fhir/uri"system-192435"
+                     :content #fhir/code"complete"}]
               [:put {:fhir/type :fhir/CodeSystem :id "id-1"
-                     :url #fhir/uri"system-192435"}]]]
+                     :url #fhir/uri"system-192435"
+                     :content #fhir/code"complete"}]]]
 
             (testing "the one with the higher id comes first"
               (given @(cs/list (d/db node))
@@ -45,9 +49,11 @@
         (testing "created in different transactions"
           (with-system-data [{:blaze.db/keys [node]} mem-node-config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-1"
-                     :url #fhir/uri"system-192435"}]]
+                     :url #fhir/uri"system-192435"
+                     :content #fhir/code"complete"}]]
              [[:put {:fhir/type :fhir/CodeSystem :id "id-0"
-                     :url #fhir/uri"system-192435"}]]]
+                     :url #fhir/uri"system-192435"
+                     :content #fhir/code"complete"}]]]
 
             (testing "the newer one comes first"
               (given @(cs/list (d/db node))
@@ -62,10 +68,12 @@
           (with-system-data [{:blaze.db/keys [node]} mem-node-config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
                      :url #fhir/uri"system-192435"
-                     :version #fhir/string"2"}]]
+                     :version #fhir/string"2"
+                     :content #fhir/code"complete"}]]
              [[:put {:fhir/type :fhir/CodeSystem :id "id-1"
                      :url #fhir/uri"system-192435"
-                     :version #fhir/string"1"}]]]
+                     :version #fhir/string"1"
+                     :content #fhir/code"complete"}]]]
 
             (testing "the higher version comes first"
               (given @(cs/list (d/db node))
@@ -79,10 +87,12 @@
           (with-system-data [{:blaze.db/keys [node]} mem-node-config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
                      :url #fhir/uri"system-192435"
-                     :version #fhir/string"1.10"}]]
+                     :version #fhir/string"1.10"
+                     :content #fhir/code"complete"}]]
              [[:put {:fhir/type :fhir/CodeSystem :id "id-1"
                      :url #fhir/uri"system-192435"
-                     :version #fhir/string"1.2"}]]]
+                     :version #fhir/string"1.2"
+                     :content #fhir/code"complete"}]]]
 
             (testing "the higher version comes first"
               (given @(cs/list (d/db node))
@@ -96,10 +106,12 @@
           (with-system-data [{:blaze.db/keys [node]} mem-node-config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
                      :url #fhir/uri"system-192435"
-                     :version #fhir/string"1.a"}]]
+                     :version #fhir/string"1.a"
+                     :content #fhir/code"complete"}]]
              [[:put {:fhir/type :fhir/CodeSystem :id "id-1"
                      :url #fhir/uri"system-192435"
-                     :version #fhir/string"1.2"}]]]
+                     :version #fhir/string"1.2"
+                     :content #fhir/code"complete"}]]]
 
             (testing "the alpha version comes first"
               (given @(cs/list (d/db node))
@@ -113,10 +125,12 @@
           (with-system-data [{:blaze.db/keys [node]} mem-node-config]
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
                      :url #fhir/uri"system-192435"
-                     :version #fhir/string"2"}]]
+                     :version #fhir/string"2"
+                     :content #fhir/code"complete"}]]
              [[:put {:fhir/type :fhir/CodeSystem :id "id-1"
                      :url #fhir/uri"system-192435"
-                     :version #fhir/string"1.2"}]]]
+                     :version #fhir/string"1.2"
+                     :content #fhir/code"complete"}]]]
 
             (testing "the alpha version comes first"
               (given @(cs/list (d/db node))
@@ -131,10 +145,12 @@
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
                      :url #fhir/uri"system-192435"
                      :status #fhir/code"active"
-                     :version #fhir/string"1.1"}]]
+                     :version #fhir/string"1.1"
+                     :content #fhir/code"complete"}]]
              [[:put {:fhir/type :fhir/CodeSystem :id "id-1"
                      :url #fhir/uri"system-192435"
-                     :version #fhir/string"1.2"}]]]
+                     :version #fhir/string"1.2"
+                     :content #fhir/code"complete"}]]]
 
             (testing "the alpha version comes first"
               (given @(cs/list (d/db node))
@@ -149,11 +165,13 @@
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
                      :url #fhir/uri"system-192435"
                      :version #fhir/string"1.1"
-                     :status #fhir/code"active"}]]
+                     :status #fhir/code"active"
+                     :content #fhir/code"complete"}]]
              [[:put {:fhir/type :fhir/CodeSystem :id "id-1"
                      :url #fhir/uri"system-192435"
                      :version #fhir/string"1.2"
-                     :status #fhir/code"draft"}]]]
+                     :status #fhir/code"draft"
+                     :content #fhir/code"complete"}]]]
 
             (testing "the alpha version comes first"
               (given @(cs/list (d/db node))
@@ -168,11 +186,13 @@
             [[[:put {:fhir/type :fhir/CodeSystem :id "id-0"
                      :url #fhir/uri"system-192435"
                      :version #fhir/string"1.1"
-                     :status #fhir/code"draft"}]]
+                     :status #fhir/code"draft"
+                     :content #fhir/code"complete"}]]
              [[:put {:fhir/type :fhir/CodeSystem :id "id-1"
                      :url #fhir/uri"system-192435"
                      :version #fhir/string"1.2"
-                     :status #fhir/code"retired"}]]]
+                     :status #fhir/code"retired"
+                     :content #fhir/code"complete"}]]]
 
             (testing "the alpha version comes first"
               (given @(cs/list (d/db node))

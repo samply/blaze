@@ -1,14 +1,12 @@
 (ns blaze.terminology-service.local.code-system.ucum
   (:require
-   [blaze.anomaly :as ba :refer [if-ok]]
+   [blaze.anomaly :as ba]
    [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
    [blaze.luid :as luid]
    [blaze.terminology-service.local.code-system.core :as c]
-   [blaze.terminology-service.local.code-system.util :as u]
-   [cognitect.anomalies :as anom]
    [taoensso.timbre :as log])
   (:import
    [org.fhir.ucum UcumEssenceService UcumService]))
@@ -40,36 +38,28 @@
   [_ code-system]
   code-system)
 
-(defn- validate [code]
-  (when (.validate ^UcumService service code)
-    (ba/incorrect (format "The provided code `%s` was not found in the code system `http://unitsofmeasure.org`." code))))
+(defmethod c/expand-complete :ucum
+  [_ _]
+  (ba/conflict "Expanding all UCUM concepts is not possible."))
 
-(defmethod c/validate-code :ucum
-  [{:keys [url version]} request]
-  (if-ok [code (u/extract-code request (type/value url))
-          _ (validate code)]
-    {:fhir/type :fhir/Parameters
-     :parameter
-     [(u/parameter "result" #fhir/boolean true)
-      (u/parameter "code" (type/code code))
-      (u/parameter "system" #fhir/uri"http://unitsofmeasure.org")
-      (u/parameter "version" version)]}
-    (fn [{::anom/keys [message]}]
-      {:fhir/type :fhir/Parameters
-       :parameter
-       [(u/parameter "result" #fhir/boolean false)
-        (u/parameter "message" (type/string message))]})))
+(defn- valid? [code]
+  (nil? (.validate ^UcumService service code)))
 
 (defmethod c/expand-concept :ucum
-  [_ _ _ concepts]
+  [_ concepts _]
   (into
    []
    (keep
     (fn [{:keys [code]}]
-      (when (nil? (.validate ^UcumService service (type/value code)))
+      (when (valid? (type/value code))
         {:system #fhir/uri"http://unitsofmeasure.org"
          :code code})))
    concepts))
+
+(defmethod c/find-complete :ucum
+  [{:keys [url version]} {{:keys [code]} :clause}]
+  (when (valid? code)
+    {:code (type/code code) :system url :version version}))
 
 (defn- ucum-query [db]
   (d/type-query db "CodeSystem" [["url" "http://unitsofmeasure.org"]]))
