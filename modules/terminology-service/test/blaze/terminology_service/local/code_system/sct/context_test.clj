@@ -6,7 +6,7 @@
    [blaze.terminology-service.local.code-system.sct.context-spec]
    [blaze.test-util :as tu]
    [clojure.spec.test.alpha :as st]
-   [clojure.test :as test :refer [deftest is testing]]
+   [clojure.test :as test :refer [are deftest is testing]]
    [cognitect.anomalies :as anom]
    [juxt.iota :refer [given]]))
 
@@ -122,42 +122,74 @@
                                               20020131 {true [100001001]})}}]
     (is (= #{100000000 100001001 102272007} (context/transitive-neighbors-including index 900000000000207008 20020131 102272007)))))
 
-(deftest build-description-index-test
-  (is (= (context/build-description-index
+(deftest find-transitive-neighbor-test
+  (let [index {900000000000207008 {102272007 (time-map
+                                              20090731 {false [100000000]}
+                                              20020131 {true [100000000]})
+                                   100000000 (time-map
+                                              20090731 {false [100001001]}
+                                              20020131 {true [100001001]})}}]
+    (are [concept-id] (true? (context/find-transitive-neighbor index 900000000000207008 20020131 102272007 concept-id))
+      100000000 100001001)))
+
+(deftest build-fully-specified-name-index-test
+  (is (= (context/build-fully-specified-name-index
           (.stream
            ["1145019\t20020131\t1\t900000000000207008\t127858008\ten\t900000000000003001\tEctopic female breast (body structure)\t900000000000020002"
             "1145019\t20040731\t0\t900000000000207008\t127858008\ten\t900000000000003001\tEctopic female breast (body structure)\t900000000000020002"
             "2461362011\t20040731\t1\t900000000000207008\t127858008\ten\t900000000000003001\tEctopic female breast (morphologic abnormality)\t900000000000020002"
             "2461362011\t20170731\t1\t900000000000207008\t127858008\ten\t900000000000003001\tEctopic female breast (morphologic abnormality)\t900000000000448009"]))
-         {127858008 {20170731 {true "Ectopic female breast (morphologic abnormality)"},
-                     20040731 {false "Ectopic female breast (body structure)",
-                               true "Ectopic female breast (morphologic abnormality)"},
+         {127858008 {20170731 {true "Ectopic female breast (morphologic abnormality)"}
+                     20040731 {false "Ectopic female breast (body structure)"
+                               true "Ectopic female breast (morphologic abnormality)"}
                      20020131 {true "Ectopic female breast (body structure)"}}})))
 
+(deftest build-synonym-index-test
+  (is (= (context/build-synonym-index
+          (.stream
+           ["1778924019\t20030731\t1\t900000000000207008\t399537006\ten\t900000000000013009\tClinical TNM stage grouping\t900000000000020002"
+            "1786868015\t20030731\t1\t900000000000207008\t399537006\ten\t900000000000013009\tcTNM stage grouping\t900000000000017005"]))
+         {399537006 {20030731 {true ["Clinical TNM stage grouping"
+                                     "cTNM stage grouping"]}}})))
+
 (deftest find-description-test
-  (let [index {127858008 (time-map
-                          20170731 {false "Ectopic female breast (morphologic abnormality)"},
-                          20040731 {false "Ectopic female breast (body structure)",
-                                    true "Ectopic female breast (morphologic abnormality)"},
-                          20020131 {true "Ectopic female breast (body structure)"})}]
+  (testing "one value"
+    (let [index {127858008 (time-map
+                            20170731 {false "Ectopic female breast (morphologic abnormality)"}
+                            20040731 {false "Ectopic female breast (body structure)"
+                                      true "Ectopic female breast (morphologic abnormality)"}
+                            20020131 {true "Ectopic female breast (body structure)"})}]
 
-    (testing "description did not exist at this time"
-      (is (nil? (context/find-description index 127858008 20020130))))
+      (testing "description did not exist at this time"
+        (is (nil? (context/find-description index 127858008 20020130))))
 
-    (testing "description just became active"
-      (is (= "Ectopic female breast (body structure)" (context/find-description index 127858008 20020131))))
+      (testing "description just became active"
+        (is (= "Ectopic female breast (body structure)" (context/find-description index 127858008 20020131))))
 
-    (testing "description is still the first variant"
-      (is (= "Ectopic female breast (body structure)" (context/find-description index 127858008 20040730))))
+      (testing "description is still the first variant"
+        (is (= "Ectopic female breast (body structure)" (context/find-description index 127858008 20040730))))
 
-    (testing "description changed"
-      (is (= "Ectopic female breast (morphologic abnormality)" (context/find-description index 127858008 20040731))))
+      (testing "description changed"
+        (is (= "Ectopic female breast (morphologic abnormality)" (context/find-description index 127858008 20040731))))
 
-    (testing "description is still the second variant"
-      (is (= "Ectopic female breast (morphologic abnormality)" (context/find-description index 127858008 20170730))))
+      (testing "description is still the second variant"
+        (is (= "Ectopic female breast (morphologic abnormality)" (context/find-description index 127858008 20170730))))
 
-    (testing "description just became inactive"
-      (is (nil? (context/find-description index 127858008 20170731))))))
+      (testing "description just became inactive"
+        (is (nil? (context/find-description index 127858008 20170731))))))
+
+  (testing "multiple values"
+    ;; TODO: use real history
+    (let [index {399537006 (time-map
+                            20030731 {true ["Clinical TNM stage grouping"
+                                            "cTNM stage grouping"]})}]
+
+      (testing "description did not exist at this time"
+        (is (nil? (context/find-description index 399537006 20030730))))
+
+      (testing "description just became active"
+        (is (= ["Clinical TNM stage grouping"
+                "cTNM stage grouping"] (context/find-description index 399537006 20030731)))))))
 
 (deftest build-test
   (testing "wrong path"

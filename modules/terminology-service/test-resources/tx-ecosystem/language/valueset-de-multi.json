@@ -1,0 +1,17 @@
+{
+  "resourceType" : "ValueSet",
+  "id" : "de-multi",
+  "url" : "http://hl7.org/fhir/test/ValueSet/de-multi",
+  "version" : "5.0.0",
+  "name" : "LanguageValueSetDEMulti",
+  "title" : "Language ValueSet DE Multi",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "compose" : {
+    "include" : [{
+      "system" : "http://hl7.org/fhir/test/CodeSystem/de-multi"
+    }]
+  }
+}

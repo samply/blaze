@@ -1351,6 +1351,7 @@ jobs:
       with:
         repository: HL7/fhir-tx-ecosystem-ig
         path: fhir-tx-ecosystem-ig
+        ref: c000bbc79078938c980df74afeac3c80cb9deffd
 
     - name: Setup Node
       uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
@@ -1384,8 +1385,8 @@ jobs:
     - name: Check Simple Expand
       run: .github/terminology-tests/simple-expand.sh
 
-    - name: Check Parameters Expand
-      run: .github/terminology-tests/parameters-expand.sh
+    - name: Check Good
+      run: .github/terminology-tests/good.sh
 
   not-enforcing-referential-integrity-test:
     needs: build

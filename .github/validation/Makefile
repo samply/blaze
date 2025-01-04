@@ -5,10 +5,7 @@ kds-test-data: kds-testdata-2024.0.1.zip
 	unzip kds-testdata-2024.0.1.zip
 	rm kds-testdata-2024.0.1.zip
 
-validate-medication:
-	./validate-medication.sh
-
 clean:
 	rm -rf kds-testdata-2024.0.1
 
-.PHONY: kds-test-data validate clean
+.PHONY: kds-test-data clean

@@ -4,141 +4,105 @@
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.fhir.spec.type :as type]
+   [blaze.handler.fhir.util :as fhir-util]
    [blaze.module :as m]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.spec]
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]
    [integrant.core :as ig]
    [ring.util.response :as ring]
-   [taoensso.timbre :as log])
-  (:import
-   [com.google.common.base CaseFormat]))
+   [taoensso.timbre :as log]))
 
-(set! *warn-on-reflection* true)
+(defn- coerce-boolean [name value]
+  (if-some [value (parse-boolean value)]
+    (type/boolean value)
+    (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a boolean." name))))
+
+(defn- coerce-canonical [_ value]
+  (type/canonical value))
+
+(defn- coerce-code [_ value]
+  (type/code value))
+
+(defn- coerce-integer [name value]
+  (if-let [value (parse-long value)]
+    (type/integer value)
+    (ba/incorrect (format "Invalid value for parameter `%s`. Has to be an integer." name))))
+
+(defn- coerce-string [_ value]
+  (type/string value))
+
+(defn- coerce-uri [_ value]
+  (type/uri value))
 
 (def ^:private parameter-specs
-  {"url" {:action :copy}
-   "valueSet" {:action :copy-resource}
-   "valueSetVersion" {:action :copy}
+  {"url" {:action :copy :coerce coerce-uri}
+   "valueSet" {:action :complex}
+   "valueSetVersion" {:action :copy :coerce coerce-string}
    "context" {}
    "contextDirection" {}
    "filter" {}
    "date" {}
-   "offset" {:action :parse-nat-long}
-   "count" {:action :parse-nat-long}
-   "includeDesignations" {:action :parse-boolean}
+   "offset" {:action :copy :coerce coerce-integer}
+   "count" {:action :copy :coerce coerce-integer}
+   "includeDesignations" {:action :copy :coerce coerce-boolean}
    "designation" {}
-   "includeDefinition" {:action :parse-boolean}
-   "activeOnly" {:action :parse-boolean}
+   "includeDefinition" {:action :copy :coerce coerce-boolean}
+   "activeOnly" {:action :copy :coerce coerce-boolean}
    "useSupplement" {}
-   "excludeNested" {:action :parse-boolean}
+   "excludeNested" {:action :copy :coerce coerce-boolean}
    "excludeNotForUI" {}
    "excludePostCoordinated" {}
-   "displayLanguage" {:action :copy}
-   "property" {:action :copy :cardinality :many}
+   "displayLanguage" {:action :copy :coerce coerce-code}
+   "property" {:action :copy :coerce coerce-string}
    "exclude-system" {}
-   "system-version" {:action :parse-canonical :cardinality :many}
+   "system-version" {:action :copy :coerce coerce-canonical}
    "check-system-version" {}
    "force-system-version" {}
-   "tx-resource" {:action :copy-resource :cardinality :many}})
+   "tx-resource" {:action :complex}})
 
-(defn camel->kebab [s]
-  (.to CaseFormat/LOWER_CAMEL CaseFormat/LOWER_HYPHEN s))
-
-(defn- parse-nat-long [value]
-  (when-let [value (parse-long value)]
-    (when-not (neg? value)
-      value)))
-
-(defn- plural [s]
-  (if (str/ends-with? s "y")
-    (str (subs s 0 (dec (count s))) "ies")
-    (str s "s")))
-
-(defn- assoc-via [params {:keys [cardinality]} name value]
-  (if (identical? :many cardinality)
-    (update params (keyword (plural (camel->kebab name))) (fnil conj []) value)
-    (assoc params (keyword (camel->kebab name)) value)))
+(defn- parameter [name value]
+  {:fhir/type :fhir.Parameters/parameter
+   :name (type/string name)
+   :value value})
 
 (defn- validate-query-params [params]
   (reduce-kv
    (fn [new-params name value]
-     (if-let [{:keys [action] :as spec} (parameter-specs name)]
+     (if-let [{:keys [action coerce]} (parameter-specs name)]
        (case action
          :copy
-         (assoc-via new-params spec name value)
+         (if-ok [value (coerce name value)]
+           (conj new-params (parameter name value))
+           reduced)
 
-         :parse-nat-long
-         (if-let [value (parse-nat-long value)]
-           (assoc-via new-params spec name value)
-           (reduced (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a non-negative integer." name))))
-
-         :parse-boolean
-         (if-some [value (parse-boolean value)]
-           (assoc-via new-params spec name value)
-           (reduced (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a boolean." name))))
-
-         :parse-canonical
-         (assoc-via new-params spec name (type/canonical value))
-
-         :copy-resource
+         :complex
          (reduced (ba/unsupported (format "Unsupported parameter `%s` in GET request. Please use POST." name)
                                   :http/status 400))
 
          (reduced (ba/unsupported (format "Unsupported parameter `%s`." name)
                                   :http/status 400)))
        new-params))
-   {}
+   []
    params))
 
-(defn- validate-body-params [{params :parameter}]
-  (reduce
-   (fn [new-params {:keys [name] :as param}]
-     (let [name (type/value name)]
-       (if-let [{:keys [action] :as spec} (parameter-specs name)]
-         (case action
-           (:copy :parse-boolean)
-           (assoc-via new-params spec name (type/value (:value param)))
+(defn- validate-params* [{:keys [request-method body query-params]}]
+  (if (= :post request-method)
+    body
+    (when-ok [params (validate-query-params query-params)]
+      {:fhir/type :fhir/Parameters :parameter params})))
 
-           :parse-nat-long
-           (let [value (type/value (:value param))]
-             (if-not (neg? value)
-               (assoc-via new-params spec name value)
-               (reduced (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a non-negative integer." name)))))
-
-           :parse-canonical
-           (assoc-via new-params spec name (:value param))
-
-           :copy-resource
-           (assoc-via new-params spec name (:resource param))
-
-           (reduced (ba/unsupported (format "Unsupported parameter `%s`." name)
-                                    :http/status 400)))
-         new-params)))
-   {}
-   params))
-
-(defn- validate-more [{:keys [offset] :as params}]
-  (if (and (some? offset) (not (zero? offset)))
-    (ba/incorrect "Invalid non-zero value for parameter `offset`.")
-    params))
-
-(defn- validate-params [{:keys [request-method body query-params]}]
-  (when-ok [params (if (= :post request-method)
-                     (validate-body-params body)
-                     (validate-query-params query-params))]
-    (validate-more params)))
-
-(defn- expand-value-set
-  [terminology-service {{:keys [id]} :path-params :as request}]
-  (if-ok [{:keys [url value-set] :as params} (validate-params request)]
-    (cond
-      id (ts/expand-value-set terminology-service (assoc params :id id))
-      url (ts/expand-value-set terminology-service params)
-      value-set (ts/expand-value-set terminology-service params)
-      :else (ac/completed-future (ba/incorrect "Missing required parameter `url`.")))
+(defn- validate-params [{{:keys [id]} :path-params :blaze/keys [db] :as request}]
+  (if-ok [params (validate-params* request)]
+    (if id
+      (do-sync [{:keys [url]} (fhir-util/pull db "ValueSet" id)]
+        (update params :parameter (fnil conj []) (parameter "url" url)))
+      (ac/completed-future params))
     ac/completed-future))
+
+(defn- expand-value-set [terminology-service request]
+  (-> (validate-params request)
+      (ac/then-compose (partial ts/expand-value-set terminology-service))))
 
 (defn- handler [terminology-service]
   (fn [request]

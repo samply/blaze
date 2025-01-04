@@ -1,0 +1,18 @@
+{
+  "resourceType" : "ValueSet",
+  "id" : "simple-active",
+  "url" : "http://hl7.org/fhir/test/ValueSet/simple-active",
+  "version" : "5.0.0",
+  "name" : "SimpleValueSetActive",
+  "title" : "Simple ValueSet Active",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "compose" : {
+    "inactive" : false,
+    "include" : [{
+      "system" : "http://hl7.org/fhir/test/CodeSystem/simple"
+    }]
+  }
+}

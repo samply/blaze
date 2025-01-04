@@ -4,96 +4,111 @@
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.fhir.spec.type :as type]
+   [blaze.handler.fhir.util :as fhir-util]
    [blaze.module :as m]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.spec]
    [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [ring.util.response :as ring]
-   [taoensso.timbre :as log])
-  (:import
-   [com.google.common.base CaseFormat]))
+   [taoensso.timbre :as log]))
 
-(set! *warn-on-reflection* true)
+(defn- coerce-boolean [name value]
+  (if-some [value (parse-boolean value)]
+    (type/boolean value)
+    (ba/incorrect (format "Invalid value for parameter `%s`. Has to be a boolean." name))))
+
+(defn- coerce-code [_ value]
+  (type/code value))
+
+(defn- coerce-string [_ value]
+  (type/string value))
+
+(defn- coerce-uri [_ value]
+  (type/uri value))
 
 (def ^:private parameter-specs
-  [{:name "url" :action :copy}
-   {:name "context"}
-   {:name "valueSet" :action :copy-resource}
-   {:name "valueSetVersion"}
-   {:name "code" :action :copy}
-   {:name "system" :action :copy}
-   {:name "systemVersion"}
-   {:name "display"}
-   {:name "coding" :action :copy-complex-type}
-   {:name "codeableConcept"}
-   {:name "date"}
-   {:name "abstract"}
-   {:name "displayLanguage" :action :copy}
-   {:name "useSupplement"}
-   {:name "inferSystem" :action :copy}])
+  {"url" {:action :copy :coerce coerce-uri}
+   "context" {}
+   "valueSet" {:action :complex}
+   "valueSetVersion" {:action :copy :coerce coerce-string}
+   "code" {:action :copy :coerce coerce-code}
+   "system" {:action :copy :coerce coerce-uri}
+   "systemVersion" {:action :copy :coerce coerce-string}
+   "display" {:action :copy :coerce coerce-string}
+   "coding" {:action :complex}
+   "codeableConcept" {:action :complex}
+   "date" {}
+   "abstract" {}
+   "displayLanguage" {:action :copy :coerce coerce-string}
+   "useSupplement" {}
+   "inferSystem" {:action :copy :coerce coerce-boolean}
+   "tx-resource" {:action :complex}})
 
-(defn camel->kebab [s]
-  (.to CaseFormat/LOWER_CAMEL CaseFormat/LOWER_HYPHEN s))
+(defn- parameter [name value]
+  {:fhir/type :fhir.Parameters/parameter
+   :name (type/string name)
+   :value value})
 
 (defn- validate-query-params [params]
-  (reduce
-   (fn [new-params {:keys [name action]}]
-     (if-let [value (get params name)]
+  (reduce-kv
+   (fn [new-params name value]
+     (if-let [{:keys [action coerce]} (parameter-specs name)]
        (case action
          :copy
-         (assoc new-params (keyword (camel->kebab name)) value)
+         (if-ok [value (coerce name value)]
+           (conj new-params (parameter name value))
+           reduced)
 
-         (:copy-complex-type :copy-resource)
+         :complex
          (reduced (ba/unsupported (format "Unsupported parameter `%s` in GET request. Please use POST." name)
                                   :http/status 400))
 
          (reduced (ba/unsupported (format "Unsupported parameter `%s`." name)
                                   :http/status 400)))
        new-params))
-   {}
-   parameter-specs))
+   []
+   params))
 
-(defn- validate-body-params [{params :parameter}]
-  (reduce
-   (fn [new-params {:keys [name action]}]
-     (if-let [param (some #(when (= name (type/value (:name %))) %) params)]
-       (case action
-         :copy
-         (assoc new-params (keyword (camel->kebab name)) (type/value (:value param)))
+(defn- contains-param? [name {:keys [parameter]}]
+  (some (comp #{name} type/value :name) parameter))
 
-         :copy-complex-type
-         (assoc new-params (keyword (camel->kebab name)) (:value param))
+(defn- body-params [{:keys [body] {:strs [accept-language]} :headers}]
+  (cond-> body
+    (and accept-language (not (contains-param? "displayLanguage" body)))
+    (update :parameter (fnil conj []) (parameter "displayLanguage" (type/string accept-language)))))
 
-         :copy-resource
-         (assoc new-params (keyword (camel->kebab name)) (:resource param))
+(defn- params-from-headers [{:strs [accept-language]}]
+  (cond-> {}
+    accept-language (assoc "displayLanguage" accept-language)))
 
-         (reduced (ba/unsupported (format "Unsupported parameter `%s`." name)
-                                  :http/status 400)))
-       new-params))
-   {}
-   parameter-specs))
+(defn- query-params [{:keys [headers query-params]}]
+  (merge (params-from-headers headers) query-params))
 
-(defn- validate-more [{:keys [code system infer-system] :as params}]
-  (if (and code (not infer-system) (nil? system))
-    (ba/incorrect "Missing required parameter `system`.")
-    params))
+(defn- validate-params* [{:keys [request-method] :as request}]
+  (if (= :post request-method)
+    (body-params request)
+    (when-ok [params (validate-query-params (query-params request))]
+      {:fhir/type :fhir/Parameters :parameter params})))
 
-(defn- validate-params [{:keys [request-method body query-params]}]
-  (when-ok [params (if (= :post request-method)
-                     (validate-body-params body)
-                     (validate-query-params query-params))]
-    (validate-more params)))
-
-(defn- validate-code
-  [terminology-service {{:keys [id]} :path-params :as request}]
-  (if-ok [{:keys [url value-set] :as params} (validate-params request)]
-    (cond
-      id (ts/value-set-validate-code terminology-service (assoc params :id id))
-      url (ts/value-set-validate-code terminology-service params)
-      value-set (ts/value-set-validate-code terminology-service params)
-      :else (ac/completed-future (ba/incorrect "Missing required parameter `url`.")))
+(defn- validate-params [{{:keys [id]} :path-params :blaze/keys [db] :as request}]
+  (if-ok [params (validate-params* request)]
+    (if id
+      (do-sync [{:keys [url]} (fhir-util/pull db "ValueSet" id)]
+        (update params :parameter (fnil conj []) (parameter "url" url)))
+      (ac/completed-future params))
     ac/completed-future))
+
+(defn- validate-code* [terminology-service params]
+  (-> (ts/value-set-validate-code terminology-service params)
+      (ac/exceptionally
+       (fn [{::anom/keys [category] :as anomaly}]
+         (cond-> anomaly (= ::anom/not-found category) (assoc :http/status 400))))))
+
+(defn- validate-code [terminology-service request]
+  (-> (validate-params request)
+      (ac/then-compose (partial validate-code* terminology-service))))
 
 (defn- handler [terminology-service]
   (fn [request]

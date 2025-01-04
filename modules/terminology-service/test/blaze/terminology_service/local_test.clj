@@ -1,11 +1,11 @@
 (ns blaze.terminology-service.local-test
   (:require
-   [blaze.coll.core :as coll]
-   [blaze.db.api :as d]
    [blaze.db.api-stub :refer [mem-node-config with-system-data]]
    [blaze.db.node :refer [node?]]
+   [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.fhir.test-util]
+   [blaze.fhir.util :as u]
    [blaze.module.test-util :refer [given-failed-future with-system]]
    [blaze.path :refer [path]]
    [blaze.terminology-service :as ts]
@@ -13,8 +13,11 @@
    [blaze.terminology-service.local]
    [blaze.terminology-service.local.code-system-spec]
    [blaze.terminology-service.local.graph-spec]
+   [blaze.terminology-service.local.validate-code-spec]
    [blaze.terminology-service.local.value-set-spec]
+   [blaze.terminology-service.local.value-set.validate-code.issue-test :refer [tx-issue-type]]
    [blaze.test-util :as tu :refer [given-thrown]]
+   [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [clojure.spec.test.alpha :as st]
    [clojure.test :as test :refer [deftest is testing]]
@@ -99,12 +102,6 @@
 
 (defn- uuid-urn? [s]
   (some? (re-matches #"urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" s)))
-
-(defn- sct-id [node]
-  (:id (coll/first (d/type-query (d/db node) "CodeSystem" [["url" "http://snomed.info/sct"] ["version" "http://snomed.info/sct/900000000000207008/version/20241001"]]))))
-
-(defn- ucum-id [node]
-  (:id (coll/first (d/type-query (d/db node) "CodeSystem" [["url" "http://unitsofmeasure.org"]]))))
 
 (defn- sort-expansion [value-set]
   (update-in value-set [:expansion :contains] (partial sort-by (comp type/value :code))))
@@ -209,44 +206,178 @@
           [1 :version 0 :code] := nil
           [1 :version 0 :isDefault] := #fhir/boolean true)))))
 
+(defn- code-system-validate-code [ts & nvs]
+  (ts/code-system-validate-code ts (apply u/parameters nvs)))
+
 (deftest code-system-validate-code-fails-test
   (with-system [{ts ::ts/local} config]
-    (testing "missing id or url"
-      (given-failed-future (ts/code-system-validate-code ts {})
+    (testing "no parameters"
+      (given-failed-future (code-system-validate-code ts)
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Missing ID or URL."))
+        ::anom/message := "Missing one of the parameters `code`, `coding` or `codeableConcept`."))
 
     (testing "not found"
-      (testing "id"
-        (given-failed-future (ts/code-system-validate-code ts {:id "id-175736"})
-          ::anom/category := ::anom/not-found
-          ::anom/message := "The code system with id `id-175736` was not found."
-          :t := 0))
-
       (testing "url"
-        (given-failed-future (ts/code-system-validate-code ts {:url "url-194718"})
+        (given-failed-future (code-system-validate-code ts
+                               "url" #fhir/uri"url-194718"
+                               "code" #fhir/code"code-083955")
           ::anom/category := ::anom/not-found
           ::anom/message := "The code system `url-194718` was not found."
           :t := 0))
 
       (testing "url and version"
-        (given-failed-future (ts/code-system-validate-code ts {:url "url-144258" :version "version-144244"})
+        (given-failed-future (code-system-validate-code ts
+                               "url" #fhir/uri"url-144258"
+                               "code" #fhir/code"code-083955"
+                               "version" #fhir/string"version-144244")
           ::anom/category := ::anom/not-found
-          ::anom/message := "The code system `url-144258` with version `version-144244` was not found."
+          ::anom/message := "The code system `url-144258|version-144244` was not found."
           :t := 0)))
 
     (testing "with non-complete code system"
-      (with-system-data [{ts ::ts/local} config]
-        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-                 :url #fhir/uri"system-115910"
-                 :content #fhir/code"not-present"}]]]
+      (doseq [content ["not-present" "example" "fragment" "supplement"]]
+        (with-system-data [{ts ::ts/local} config]
+          [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                   :url #fhir/uri"system-115910"
+                   :content (type/code content)}]]]
 
-        (given-failed-future (ts/code-system-validate-code ts {:url "system-115910" :code "code-115927"})
-          ::anom/category := ::anom/conflict
-          ::anom/message := "Can't use the code system `system-115910` because it is not complete. It's content is `not-present`.")))))
+          (given-failed-future (code-system-validate-code ts
+                                 "url" #fhir/uri"system-115910"
+                                 "code" #fhir/code"code-115927")
+            ::anom/category := ::anom/conflict
+            ::anom/message := (format "Can't use the code system `system-115910` because it is not complete. It's content is `%s`." content)))))))
 
 (deftest code-system-validate-code-test
-  (testing "with id or url"
+  (testing "with url"
+    (with-system-data [{ts ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri"system-115910"
+               :content #fhir/code"complete"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"code-115927"
+                 :display #fhir/string"display-112832"}]}]]]
+
+      (testing "existing code"
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"system-115910"
+                  "code" #fhir/code"code-115927")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"code-115927"
+          [(parameter "system") 0 :value] := #fhir/uri"system-115910"
+          [(parameter "display") 0 :value] := #fhir/string"display-112832"))
+
+      (testing "non-existing code"
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"system-115910"
+                  "code" #fhir/code"code-153948")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := #fhir/string"Unknown code `code-153948` was not found in the code system `system-115910`."))
+
+      (testing "existing coding"
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"system-115910"
+                  "coding" #fhir/Coding{:system #fhir/uri"system-115910"
+                                        :code #fhir/code"code-115927"})
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"code-115927"
+          [(parameter "system") 0 :value] := #fhir/uri"system-115910"))
+
+      (testing "non-existing coding"
+        (testing "with non-existing system"
+          (given-failed-future (code-system-validate-code ts
+                                 "url" #fhir/uri"system-115910"
+                                 "coding" #fhir/Coding{:system #fhir/uri"system-170454"
+                                                       :code #fhir/code"code-115927"})
+            ::anom/category := ::anom/incorrect
+            ::anom/message := "Parameter `url` differs from parameter `coding.system`."))
+
+        (testing "with non-existing code"
+          (given @(code-system-validate-code ts
+                    "url" #fhir/uri"system-115910"
+                    "coding" #fhir/Coding{:system #fhir/uri"system-115910"
+                                          :code #fhir/code"code-153948"})
+            :fhir/type := :fhir/Parameters
+            [(parameter "result") 0 :value] := #fhir/boolean false
+            [(parameter "message") 0 :value] := #fhir/string"Unknown code `code-153948` was not found in the code system `system-115910`.")))))
+
+  (testing "with code-system"
+    (with-system [{ts ::ts/local} config]
+      (testing "existing code"
+        (given @(code-system-validate-code ts
+                  "codeSystem"
+                  {:fhir/type :fhir/CodeSystem
+                   :content #fhir/code"complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code"code-115927"}]}
+                  "code" #fhir/code"code-115927")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"code-115927")
+
+        (testing "with url"
+          (given @(code-system-validate-code ts
+                    "codeSystem"
+                    {:fhir/type :fhir/CodeSystem
+                     :url #fhir/uri"system-115910"
+                     :content #fhir/code"complete"
+                     :concept
+                     [{:fhir/type :fhir.CodeSystem/concept
+                       :code #fhir/code"code-115927"}]}
+                    "code" #fhir/code"code-115927")
+            :fhir/type := :fhir/Parameters
+            [(parameter "result") 0 :value] := #fhir/boolean true
+            [(parameter "code") 0 :value] := #fhir/code"code-115927"
+            [(parameter "system") 0 :value] := #fhir/uri"system-115910")))
+
+      (testing "non-existing code"
+        (given @(code-system-validate-code ts
+                  "codeSystem"
+                  {:fhir/type :fhir/CodeSystem
+                   :content #fhir/code"complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code"code-115927"}]}
+                  "code" #fhir/code"code-153948")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := #fhir/string"Unknown code `code-153948` was not found in the provided code system.")
+
+        (testing "with url"
+          (given @(code-system-validate-code ts
+                    "codeSystem"
+                    {:fhir/type :fhir/CodeSystem
+                     :url #fhir/uri"system-115910"
+                     :content #fhir/code"complete"
+                     :concept
+                     [{:fhir/type :fhir.CodeSystem/concept
+                       :code #fhir/code"code-115927"}]}
+                    "code" #fhir/code"code-153948")
+            :fhir/type := :fhir/Parameters
+            [(parameter "result") 0 :value] := #fhir/boolean false
+            [(parameter "message") 0 :value] := #fhir/string"Unknown code `code-153948` was not found in the code system `system-115910`.")))
+
+      (testing "existing coding"
+        (given @(code-system-validate-code ts
+                  "codeSystem"
+                  {:fhir/type :fhir/CodeSystem
+                   :url #fhir/uri"system-172718"
+                   :content #fhir/code"complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code"code-172653"}]}
+                  "coding" #fhir/Coding{:system #fhir/uri"system-172718"
+                                        :code #fhir/code"code-172653"})
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"code-172653"
+          [(parameter "system") 0 :value] := #fhir/uri"system-172718"))))
+
+  (testing "with coding only"
     (with-system-data [{ts ::ts/local} config]
       [[[:put {:fhir/type :fhir/CodeSystem :id "0"
                :url #fhir/uri"system-115910"
@@ -255,323 +386,185 @@
                [{:fhir/type :fhir.CodeSystem/concept
                  :code #fhir/code"code-115927"}]}]]]
 
-      (testing "existing code"
-        (doseq [request [{:url "system-115910"} {:id "0"}]]
-          (given @(ts/code-system-validate-code ts (assoc request :code "code-115927"))
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 3
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean true
-            [:parameter 1 :name] := #fhir/string"code"
-            [:parameter 1 :value] := #fhir/code"code-115927"
-            [:parameter 2 :name] := #fhir/string"system"
-            [:parameter 2 :value] := #fhir/uri"system-115910")))
+      (given @(code-system-validate-code ts
+                "coding" #fhir/Coding{:system #fhir/uri"system-115910"
+                                      :code #fhir/code"code-115927"})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"code-115927"
+        [(parameter "system") 0 :value] := #fhir/uri"system-115910"))
 
-      (testing "non-existing code"
-        (doseq [request [{:url "system-115910"} {:id "0"}]]
-          (given @(ts/code-system-validate-code ts (assoc request :code "code-153948"))
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 2
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean false
-            [:parameter 1 :name] := #fhir/string"message"
-            [:parameter 1 :value] := #fhir/string"The provided code `code-153948` was not found in the code system `system-115910`.")))
+    (testing "with version"
+      (with-system-data [{ts ::ts/local} config]
+        [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+                 :url #fhir/uri"system-115910"
+                 :content #fhir/code"complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code"code-115927"}]}]
+          [:put {:fhir/type :fhir/CodeSystem :id "1"
+                 :url #fhir/uri"system-115910"
+                 :version #fhir/string"version-124939"
+                 :content #fhir/code"complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code"code-124951"}]}]]]
 
-      (testing "existing coding"
-        (doseq [request [{:url "system-115910"} {:id "0"}]]
-          (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"system-115910" :code #fhir/code"code-115927"}))
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 3
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean true
-            [:parameter 1 :name] := #fhir/string"code"
-            [:parameter 1 :value] := #fhir/code"code-115927"
-            [:parameter 2 :name] := #fhir/string"system"
-            [:parameter 2 :value] := #fhir/uri"system-115910")))
-
-      (testing "non-existing coding"
-        (testing "with non-existing system"
-          (doseq [request [{:url "system-115910"} {:id "0"}]]
-            (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"system-170454" :code #fhir/code"code-115927"}))
-              :fhir/type := :fhir/Parameters
-              [:parameter count] := 2
-              [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value] := #fhir/boolean false
-              [:parameter 1 :name] := #fhir/string"message"
-              [:parameter 1 :value] := #fhir/string"The system of the provided coding `system-170454` does not match the code system `system-115910`.")))
-
-        (testing "with non-existing code"
-          (doseq [request [{:url "system-115910"} {:id "0"}]]
-            (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"system-115910" :code #fhir/code"code-153948"}))
-              :fhir/type := :fhir/Parameters
-              [:parameter count] := 2
-              [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value] := #fhir/boolean false
-              [:parameter 1 :name] := #fhir/string"message"
-              [:parameter 1 :value] := #fhir/string"The provided code `code-153948` was not found in the code system `system-115910`."))))))
-
-  (testing "with code-system"
-    (with-system [{ts ::ts/local} config]
-      (testing "existing code"
-        (let [request
-              {:code-system
-               {:fhir/type :fhir/CodeSystem
-                :content #fhir/code"complete"
-                :concept
-                [{:fhir/type :fhir.CodeSystem/concept
-                  :code #fhir/code"code-115927"}]}
-               :code "code-115927"}]
-          (given @(ts/code-system-validate-code ts request)
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 2
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean true
-            [:parameter 1 :name] := #fhir/string"code"
-            [:parameter 1 :value] := #fhir/code"code-115927"))
-
-        (testing "with url"
-          (let [request
-                {:code-system
-                 {:fhir/type :fhir/CodeSystem
-                  :url #fhir/uri"system-115910"
-                  :content #fhir/code"complete"
-                  :concept
-                  [{:fhir/type :fhir.CodeSystem/concept
-                    :code #fhir/code"code-115927"}]}
-                 :code "code-115927"}]
-            (given @(ts/code-system-validate-code ts request)
-              :fhir/type := :fhir/Parameters
-              [:parameter count] := 3
-              [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value] := #fhir/boolean true
-              [:parameter 1 :name] := #fhir/string"code"
-              [:parameter 1 :value] := #fhir/code"code-115927"
-              [:parameter 2 :name] := #fhir/string"system"
-              [:parameter 2 :value] := #fhir/uri"system-115910"))))
-
-      (testing "non-existing code"
-        (let [request
-              {:code-system
-               {:fhir/type :fhir/CodeSystem
-                :content #fhir/code"complete"
-                :concept
-                [{:fhir/type :fhir.CodeSystem/concept
-                  :code #fhir/code"code-115927"}]}
-               :code "code-153948"}]
-          (given @(ts/code-system-validate-code ts request)
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 2
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean false
-            [:parameter 1 :name] := #fhir/string"message"
-            [:parameter 1 :value] := #fhir/string"The provided code `code-153948` was not found in the provided code system."))
-
-        (testing "with url"
-          (let [request
-                {:code-system
-                 {:fhir/type :fhir/CodeSystem
-                  :url #fhir/uri"system-115910"
-                  :content #fhir/code"complete"
-                  :concept
-                  [{:fhir/type :fhir.CodeSystem/concept
-                    :code #fhir/code"code-115927"}]}
-                 :code "code-153948"}]
-            (given @(ts/code-system-validate-code ts request)
-              :fhir/type := :fhir/Parameters
-              [:parameter count] := 2
-              [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value] := #fhir/boolean false
-              [:parameter 1 :name] := #fhir/string"message"
-              [:parameter 1 :value] := #fhir/string"The provided code `code-153948` was not found in the code system `system-115910`."))))
-
-      (testing "existing coding"
-        (let [request
-              {:code-system
-               {:fhir/type :fhir/CodeSystem
-                :url #fhir/uri"system-172718"
-                :content #fhir/code"complete"
-                :concept
-                [{:fhir/type :fhir.CodeSystem/concept
-                  :code #fhir/code"code-172653"}]}
-               :coding #fhir/Coding{:system #fhir/uri"system-172718" :code #fhir/code"code-172653"}}]
-          (given @(ts/code-system-validate-code ts request)
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 3
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean true
-            [:parameter 1 :name] := #fhir/string"code"
-            [:parameter 1 :value] := #fhir/code"code-172653"
-            [:parameter 2 :name] := #fhir/string"system"
-            [:parameter 2 :value] := #fhir/uri"system-172718"))))))
+        (given @(code-system-validate-code ts
+                  "coding" #fhir/Coding{:system #fhir/uri"system-115910"
+                                        :version #fhir/string"version-124939"
+                                        :code #fhir/code"code-124951"})
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"code-124951"
+          [(parameter "system") 0 :value] := #fhir/uri"system-115910"
+          [(parameter "version") 0 :value] := #fhir/string"version-124939")))))
 
 (deftest code-system-validate-code-sct-test
-  (with-system [{ts ::ts/local :blaze.db/keys [node]} sct-config]
+  (with-system [{ts ::ts/local} sct-config]
     (testing "existing code"
-      (doseq [request [{:url "http://snomed.info/sct"}
-                       {:url "http://snomed.info/sct"
-                        :version "http://snomed.info/sct/900000000000207008"}
-                       {:url "http://snomed.info/sct"
-                        :version "http://snomed.info/sct/900000000000207008/version/20241001"}
-                       {:id (sct-id node)}]]
-        (given @(ts/code-system-validate-code ts (assoc request :code "441510007"))
+      (doseq [version [nil
+                       "http://snomed.info/sct/900000000000207008"
+                       "http://snomed.info/sct/900000000000207008/version/20241001"]]
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"http://snomed.info/sct"
+                  "code" #fhir/code"441510007"
+                  "version" (some-> version type/string))
           :fhir/type := :fhir/Parameters
-          [:parameter count] := 5
-          [:parameter 0 :name] := #fhir/string"result"
-          [:parameter 0 :value] := #fhir/boolean true
-          [:parameter 1 :name] := #fhir/string"code"
-          [:parameter 1 :value] := #fhir/code"441510007"
-          [:parameter 2 :name] := #fhir/string"system"
-          [:parameter 2 :value] := #fhir/uri"http://snomed.info/sct"
-          [:parameter 3 :name] := #fhir/string"version"
-          [:parameter 3 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
-          [:parameter 4 :name] := #fhir/string"display"
-          [:parameter 4 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)")))
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"441510007"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"))
+
+      (testing "synonym display"
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"http://snomed.info/sct"
+                  "code" #fhir/code"441510007"
+                  "display" #fhir/string"Blood specimen with anticoagulant")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"441510007"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"))
+
+      (testing "wrong display"
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"http://snomed.info/sct"
+                  "code" #fhir/code"441510007"
+                  "display" #fhir/string"wrong")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := #fhir/string"Invalid display `wrong` for code `http://snomed.info/sct#441510007`. A valid display is `Blood specimen with anticoagulant (specimen)`."
+          [(parameter "code") 0 :value] := #fhir/code"441510007"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+          [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+          [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"invalid"
+          [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "invalid-display")
+          [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"Invalid display `wrong` for code `http://snomed.info/sct#441510007`. A valid display is `Blood specimen with anticoagulant (specimen)`."
+          [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"display"])))
 
     (testing "non-existing code"
-      (doseq [code ["non-existing" "0815" "441510008"]
-              request [{:url "http://snomed.info/sct" :code code}
-                       {:id (sct-id node) :code code}]]
-        (given @(ts/code-system-validate-code ts request)
+      (doseq [code ["non-existing" "0815" "441510008"]]
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"http://snomed.info/sct"
+                  "code" (type/code code))
           :fhir/type := :fhir/Parameters
-          [:parameter count] := 2
-          [:parameter 0 :name] := #fhir/string"result"
-          [:parameter 0 :value] := #fhir/boolean false
-          [:parameter 1 :name] := #fhir/string"message"
-          [:parameter 1 :value] := (type/string (format "The provided code `%s` was not found in the code system `http://snomed.info/sct`." (:code request))))))
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := (type/string (format "Unknown code `%s` was not found in the code system `http://snomed.info/sct|http://snomed.info/sct/900000000000207008/version/20241001`." code)))))
 
     (testing "existing coding"
-      (doseq [request [{:url "http://snomed.info/sct"} {:id (sct-id node)}]]
-        (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"http://snomed.info/sct" :code #fhir/code"441510007"}))
-          :fhir/type := :fhir/Parameters
-          [:parameter count] := 5
-          [:parameter 0 :name] := #fhir/string"result"
-          [:parameter 0 :value] := #fhir/boolean true
-          [:parameter 1 :name] := #fhir/string"code"
-          [:parameter 1 :value] := #fhir/code"441510007"
-          [:parameter 2 :name] := #fhir/string"system"
-          [:parameter 2 :value] := #fhir/uri"http://snomed.info/sct"
-          [:parameter 3 :name] := #fhir/string"version"
-          [:parameter 3 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
-          [:parameter 4 :name] := #fhir/string"display"
-          [:parameter 4 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)")))
+      (given @(code-system-validate-code ts
+                "url" #fhir/uri"http://snomed.info/sct"
+                "coding" #fhir/Coding{:system #fhir/uri"http://snomed.info/sct" :code #fhir/code"441510007"})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"441510007"
+        [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+        [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"))
 
     (testing "non-existing coding"
-      (doseq [request [{:url "http://snomed.info/sct"} {:id (sct-id node)}]]
-        (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"http://snomed.info/sct" :code #fhir/code"non-existing"}))
-          :fhir/type := :fhir/Parameters
-          [:parameter count] := 2
-          [:parameter 0 :name] := #fhir/string"result"
-          [:parameter 0 :value] := #fhir/boolean false
-          [:parameter 1 :name] := #fhir/string"message"
-          [:parameter 1 :value] := #fhir/string"The provided code `non-existing` was not found in the code system `http://snomed.info/sct`.")))
-
-    (testing "coding with non-matching code system"
-      (doseq [request [{:url "http://snomed.info/sct"} {:id (sct-id node)}]]
-        (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"system-115433" :code #fhir/code"code-115438"}))
-          :fhir/type := :fhir/Parameters
-          [:parameter count] := 2
-          [:parameter 0 :name] := #fhir/string"result"
-          [:parameter 0 :value] := #fhir/boolean false
-          [:parameter 1 :name] := #fhir/string"message"
-          [:parameter 1 :value] := #fhir/string"The system of the provided coding `system-115433` does not match the code system `http://snomed.info/sct`.")))))
+      (given @(code-system-validate-code ts
+                "url" #fhir/uri"http://snomed.info/sct"
+                "coding" #fhir/Coding{:system #fhir/uri"http://snomed.info/sct" :code #fhir/code"non-existing"})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"Unknown code `non-existing` was not found in the code system `http://snomed.info/sct|http://snomed.info/sct/900000000000207008/version/20241001`."))))
 
 (deftest code-system-validate-code-ucum-test
-  (testing "with id or url"
-    (with-system [{ts ::ts/local :blaze.db/keys [node]} ucum-config]
-      (testing "existing code"
-        (doseq [request [{:url "http://unitsofmeasure.org"} {:id (ucum-id node)}]]
-          (given @(ts/code-system-validate-code ts (assoc request :code "s"))
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 4
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean true
-            [:parameter 1 :name] := #fhir/string"code"
-            [:parameter 1 :value] := #fhir/code"s"
-            [:parameter 2 :name] := #fhir/string"system"
-            [:parameter 2 :value] := #fhir/uri"http://unitsofmeasure.org"
-            [:parameter 3 :name] := #fhir/string"version"
-            [:parameter 3 :value] := #fhir/string"2013.10.21")))
+  (with-system [{ts ::ts/local} ucum-config]
+    (testing "existing code"
+      (given @(code-system-validate-code ts
+                "url" #fhir/uri"http://unitsofmeasure.org"
+                "code" #fhir/code"s")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"s"
+        [(parameter "system") 0 :value] := #fhir/uri"http://unitsofmeasure.org"
+        [(parameter "version") 0 :value] := #fhir/string"2013.10.21"))
 
-      (testing "non-existing code"
-        (doseq [request [{:url "http://unitsofmeasure.org"} {:id (ucum-id node)}]]
-          (given @(ts/code-system-validate-code ts (assoc request :code "non-existing"))
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 2
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean false
-            [:parameter 1 :name] := #fhir/string"message"
-            [:parameter 1 :value] := #fhir/string"The provided code `non-existing` was not found in the code system `http://unitsofmeasure.org`.")))
+    (testing "non-existing code"
+      (given @(code-system-validate-code ts
+                "url" #fhir/uri"http://unitsofmeasure.org"
+                "code" #fhir/code"non-existing")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"Unknown code `non-existing` was not found in the code system `http://unitsofmeasure.org|2013.10.21`."))
 
-      (testing "existing coding"
-        (doseq [request [{:url "http://unitsofmeasure.org"} {:id (ucum-id node)}]]
-          (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"http://unitsofmeasure.org" :code #fhir/code"km"}))
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 4
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean true
-            [:parameter 1 :name] := #fhir/string"code"
-            [:parameter 1 :value] := #fhir/code"km"
-            [:parameter 2 :name] := #fhir/string"system"
-            [:parameter 2 :value] := #fhir/uri"http://unitsofmeasure.org"
-            [:parameter 3 :name] := #fhir/string"version"
-            [:parameter 3 :value] := #fhir/string"2013.10.21")))
+    (testing "existing coding"
+      (given @(code-system-validate-code ts
+                "url" #fhir/uri"http://unitsofmeasure.org"
+                "coding" #fhir/Coding{:system #fhir/uri"http://unitsofmeasure.org" :code #fhir/code"km"})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"km"
+        [(parameter "system") 0 :value] := #fhir/uri"http://unitsofmeasure.org"
+        [(parameter "version") 0 :value] := #fhir/string"2013.10.21"))
 
-      (testing "non-existing coding"
-        (testing "with non-existing system"
-          (doseq [request [{:url "http://unitsofmeasure.org"} {:id (ucum-id node)}]]
-            (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"system-170454" :code #fhir/code"code-115927"}))
-              :fhir/type := :fhir/Parameters
-              [:parameter count] := 2
-              [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value] := #fhir/boolean false
-              [:parameter 1 :name] := #fhir/string"message"
-              [:parameter 1 :value] := #fhir/string"The system of the provided coding `system-170454` does not match the code system `http://unitsofmeasure.org`.")))
+    (testing "non-existing coding"
+      (testing "with non-existing code"
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"http://unitsofmeasure.org"
+                  "coding" #fhir/Coding{:system #fhir/uri"http://unitsofmeasure.org" :code #fhir/code"non-existing"})
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := #fhir/string"Unknown code `non-existing` was not found in the code system `http://unitsofmeasure.org|2013.10.21`.")))))
 
-        (testing "with non-existing code"
-          (doseq [request [{:url "http://unitsofmeasure.org"} {:id (ucum-id node)}]]
-            (given @(ts/code-system-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"http://unitsofmeasure.org" :code #fhir/code"non-existing"}))
-              :fhir/type := :fhir/Parameters
-              [:parameter count] := 2
-              [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value] := #fhir/boolean false
-              [:parameter 1 :name] := #fhir/string"message"
-              [:parameter 1 :value] := #fhir/string"The provided code `non-existing` was not found in the code system `http://unitsofmeasure.org`.")))))))
+(defn- expand-value-set [ts & nvs]
+  (ts/expand-value-set ts (apply u/parameters nvs)))
 
 (deftest expand-value-set-fails-test
   (with-system [{ts ::ts/local} config]
-    (testing "missing id or url"
-      (given-failed-future (ts/expand-value-set ts {})
+    (testing "no parameters"
+      (given-failed-future (expand-value-set ts)
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Missing ID or URL."))
+        ::anom/message := "Missing both parameters `url` and `valueSet`."))
+
+    (testing "invalid non-zero parameter offset"
+      (given-failed-future (expand-value-set ts
+                             "offset" #fhir/integer 1)
+        ::anom/category := ::anom/incorrect
+        ::anom/message := "Invalid non-zero value for parameter `offset`."))
 
     (testing "not found"
-      (testing "id"
-        (given-failed-future (ts/expand-value-set ts {:id "id-175736"})
-          ::anom/category := ::anom/not-found
-          ::anom/message := "The value set with id `id-175736` was not found."
-          :t := 0))
-
       (testing "url"
-        (given-failed-future (ts/expand-value-set ts {:url "url-194718"})
+        (given-failed-future (expand-value-set ts
+                               "url" #fhir/uri"url-194718")
           ::anom/category := ::anom/not-found
           ::anom/message := "The value set `url-194718` was not found."
           :t := 0))
 
       (testing "url and version"
-        (given-failed-future (ts/expand-value-set ts {:url "url-144258" :value-set-version "version-144244"})
+        (given-failed-future (expand-value-set ts
+                               "url" #fhir/uri"url-144258"
+                               "valueSetVersion" #fhir/string"version-144244")
           ::anom/category := ::anom/not-found
-          ::anom/message := "The value set `url-144258` with version `version-144244` was not found."
+          ::anom/message := "The value set `url-144258|version-144244` was not found."
           :t := 0))))
-
-  (with-system-data [{ts ::ts/local} config]
-    [[[:put {:fhir/type :fhir/ValueSet :id "id-180012"}]]
-     [[:delete "ValueSet" "id-180012"]]]
-
-    (testing "deleted value set not found"
-      (given-failed-future (ts/expand-value-set ts {:id "id-180012"})
-        ::anom/category := ::anom/not-found
-        ::anom/message := "The value set with id `id-180012` was not found."
-        :t := 2)))
 
   (testing "empty include"
     (with-system-data [{ts ::ts/local} config]
@@ -582,7 +575,8 @@
                 :include
                 [{:fhir/type :fhir.ValueSet.compose/include}]}}]]]
 
-      (given-failed-future (ts/expand-value-set ts {:url "value-set-135750"})
+      (given-failed-future (expand-value-set ts
+                             "url" #fhir/uri"value-set-135750")
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error while expanding the value set `value-set-135750`. Missing system or valueSet."
         :t := 1)))
@@ -597,7 +591,8 @@
                 [{:fhir/type :fhir.ValueSet.compose/include
                   :system #fhir/uri"system-115910"}]}}]]]
 
-      (given-failed-future (ts/expand-value-set ts {:url "value-set-135750"})
+      (given-failed-future (expand-value-set ts
+                             "url" #fhir/uri"value-set-135750")
         ::anom/category := ::anom/not-found
         ::anom/message := "Error while expanding the value set `value-set-135750`. The code system `system-115910` was not found."
         :t := 1))
@@ -613,9 +608,10 @@
                     :system #fhir/uri"system-115910"
                     :version "version-093818"}]}}]]]
 
-        (given-failed-future (ts/expand-value-set ts {:url "value-set-135750"})
+        (given-failed-future (expand-value-set ts
+                               "url" #fhir/uri"value-set-135750")
           ::anom/category := ::anom/not-found
-          ::anom/message := "Error while expanding the value set `value-set-135750`. The code system `system-115910` with version `version-093818` was not found."
+          ::anom/message := "Error while expanding the value set `value-set-135750`. The code system `system-115910|version-093818` was not found."
           :t := 1))
 
       (testing "special * value is unsupported"
@@ -629,7 +625,8 @@
                       :system #fhir/uri"system-115910"
                       :version "*"}]}}]]]
 
-          (given-failed-future (ts/expand-value-set ts {:url "value-set-135750"})
+          (given-failed-future (expand-value-set ts
+                                 "url" #fhir/uri"value-set-135750")
             ::anom/category := ::anom/unsupported
             ::anom/message := "Error while expanding the value set `value-set-135750`. Expanding the code system `system-115910` in all versions is unsupported."
             :t := 1)))))
@@ -657,7 +654,8 @@
                   :system #fhir/uri"system-180814"
                   :valueSet [#fhir/canonical"value-set-135750"]}]}}]]]
 
-      (given-failed-future (ts/expand-value-set ts {:url "value-set-161213"})
+      (given-failed-future (expand-value-set ts
+                             "url" #fhir/uri"value-set-161213")
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error while expanding the value set `value-set-161213`. Incorrect combination of system and valueSet."
         :t := 1)))
@@ -685,7 +683,8 @@
                     :op #fhir/code"op-unknown-160011"
                     :value #fhir/string"value-160032"}]}]}}]]]
 
-      (given-failed-future (ts/expand-value-set ts {:url "value-set-161213"})
+      (given-failed-future (expand-value-set ts
+                             "url" #fhir/uri"value-set-161213")
         ::anom/category := ::anom/incorrect
         ::anom/message := "Error while expanding the value set `value-set-161213`. Incorrect combination of concept and filter."
         :t := 1)))
@@ -728,17 +727,20 @@
                     :op #fhir/code"op-unknown-160011"
                     :value #fhir/string"value-160032"}]}]}}]]]
 
-      (given-failed-future (ts/expand-value-set ts {:url "value-set-161213"})
+      (given-failed-future (expand-value-set ts
+                             "url" #fhir/uri"value-set-161213")
         ::anom/category := ::anom/conflict
         ::anom/message := "Error while expanding the value set `value-set-161213`. Can't use the code system `system-180814` because it is not complete. It's content is `example`."
         :t := 1)
 
-      (given-failed-future (ts/expand-value-set ts {:url "value-set-170447"})
+      (given-failed-future (expand-value-set ts
+                             "url" #fhir/uri"value-set-170447")
         ::anom/category := ::anom/conflict
         ::anom/message := "Error while expanding the value set `value-set-170447`. Can't use the code system `system-180814` because it is not complete. It's content is `example`."
         :t := 1)
 
-      (given-failed-future (ts/expand-value-set ts {:url "value-set-170829"})
+      (given-failed-future (expand-value-set ts
+                             "url" #fhir/uri"value-set-170829")
         ::anom/category := ::anom/conflict
         ::anom/message := "Error while expanding the value set `value-set-170829`. Can't use the code system `system-180814` because it is not complete. It's content is `example`."
         :t := 1))))
@@ -764,10 +766,10 @@
                   :code #fhir/code"code-115927"
                   :display #fhir/string"display-115927"}]}}]]]
 
-      (doseq [request [{:url "value-set-135750"}
-                       {:url "value-set-135750" :value-set-version "version-143955"}
-                       {:id "id-144002"}]]
-        (given @(ts/expand-value-set ts request)
+      (doseq [params [["url" #fhir/uri"value-set-135750"]
+                      ["url" #fhir/uri"value-set-135750"
+                       "valueSetVersion" #fhir/string"version-143955"]]]
+        (given @(apply expand-value-set ts params)
           :fhir/type := :fhir/ValueSet
           [:expansion :identifier] := #fhir/uri"urn:uuid:b01db38a-3ec8-4167-a279-0bb1200624a8"
           [:expansion :contains count] := 1
@@ -793,14 +795,14 @@
                   [{:fhir/type :fhir.ValueSet.compose/include
                     :system #fhir/uri"system-115910"}]}}]]]
 
-        (doseq [request [{:url "value-set-135750"} {:id "0"}]]
-          (given @(ts/expand-value-set ts request)
-            :fhir/type := :fhir/ValueSet
-            [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri"system-115910"
-            [:expansion :contains count] := 1
-            [:expansion :contains 0 :system] := #fhir/uri"system-115910"
-            [:expansion :contains 0 :code] := #fhir/code"code-115927"
-            [:expansion :contains 0 #(contains? % :display)] := false)))
+        (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
+          :fhir/type := :fhir/ValueSet
+          [:expansion :parameter count] := 1
+          [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri"system-115910"
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+          [:expansion :contains 0 :code] := #fhir/code"code-115927"
+          [:expansion :contains 0 #(contains? % :display)] := false))
 
       (testing "including designations"
         (with-system-data [{ts ::ts/local} config]
@@ -821,14 +823,15 @@
                     [{:fhir/type :fhir.ValueSet.compose/include
                       :system #fhir/uri"system-115910"}]}}]]]
 
-          (doseq [request [{:url "value-set-135750"} {:id "0"}]]
-            (given @(ts/expand-value-set ts (assoc request :include-designations true))
-              :fhir/type := :fhir/ValueSet
-              [:expansion (parameter "includeDesignations") 0 :value] := #fhir/boolean true
-              [:expansion :contains count] := 1
-              [:expansion :contains 0 :system] := #fhir/uri"system-115910"
-              [:expansion :contains 0 :code] := #fhir/code"code-115927"
-              [:expansion :contains 0 :designation 0 :value] := #fhir/string"designation-011441"))))
+          (given @(expand-value-set ts
+                    "url" #fhir/uri"value-set-135750"
+                    "includeDesignations" #fhir/boolean true)
+            :fhir/type := :fhir/ValueSet
+            [:expansion (parameter "includeDesignations") 0 :value] := #fhir/boolean true
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+            [:expansion :contains 0 :code] := #fhir/code"code-115927"
+            [:expansion :contains 0 :designation 0 :value] := #fhir/string"designation-011441")))
 
       (testing "including properties"
         (with-system-data [{ts ::ts/local} config]
@@ -853,21 +856,23 @@
                     [{:fhir/type :fhir.ValueSet.compose/include
                       :system #fhir/uri"system-115910"}]}}]]]
 
-          (doseq [request [{:url "value-set-135750"} {:id "0"}]]
-            (given @(ts/expand-value-set ts (assoc request :properties ["status" "property-034158"]))
-              :fhir/type := :fhir/ValueSet
-              [:expansion :property count] := 2
-              [:expansion :property 0 :code] := #fhir/code"status"
-              [:expansion :property 0 :uri] := #fhir/uri"http://hl7.org/fhir/concept-properties#status"
-              [:expansion :property 1 :code] := #fhir/code"property-034158"
-              [:expansion :contains count] := 1
-              [:expansion :contains 0 :system] := #fhir/uri"system-115910"
-              [:expansion :contains 0 :code] := #fhir/code"code-115927"
-              [:expansion :contains 0 :property count] := 2
-              [:expansion :contains 0 :property 0 :code] := #fhir/code"status"
-              [:expansion :contains 0 :property 0 :value] := #fhir/code"active"
-              [:expansion :contains 0 :property 1 :code] := #fhir/code"property-034158"
-              [:expansion :contains 0 :property 1 :value] := #fhir/code"value-034206")))
+          (given @(expand-value-set ts
+                    "url" #fhir/uri"value-set-135750"
+                    "property" "status"
+                    "property" "property-034158")
+            :fhir/type := :fhir/ValueSet
+            [:expansion :property count] := 2
+            [:expansion :property 0 :code] := #fhir/code"status"
+            [:expansion :property 0 :uri] := #fhir/uri"http://hl7.org/fhir/concept-properties#status"
+            [:expansion :property 1 :code] := #fhir/code"property-034158"
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+            [:expansion :contains 0 :code] := #fhir/code"code-115927"
+            [:expansion :contains 0 :property count] := 2
+            [:expansion :contains 0 :property 0 :code] := #fhir/code"status"
+            [:expansion :contains 0 :property 0 :value] := #fhir/code"active"
+            [:expansion :contains 0 :property 1 :code] := #fhir/code"property-034158"
+            [:expansion :contains 0 :property 1 :value] := #fhir/code"value-034206"))
 
         (testing "special definition property (FHIR-43519)"
           (with-system-data [{ts ::ts/local} config]
@@ -886,18 +891,19 @@
                       [{:fhir/type :fhir.ValueSet.compose/include
                         :system #fhir/uri"system-115910"}]}}]]]
 
-            (doseq [request [{:url "value-set-135750"} {:id "0"}]]
-              (given @(ts/expand-value-set ts (assoc request :properties ["definition"]))
-                :fhir/type := :fhir/ValueSet
-                [:expansion :property count] := 1
-                [:expansion :property 0 :code] := #fhir/code"definition"
-                [:expansion :property 0 :uri] := #fhir/uri"http://hl7.org/fhir/concept-properties#definition"
-                [:expansion :contains count] := 1
-                [:expansion :contains 0 :system] := #fhir/uri"system-115910"
-                [:expansion :contains 0 :code] := #fhir/code"code-115927"
-                [:expansion :contains 0 :property count] := 1
-                [:expansion :contains 0 :property 0 :code] := #fhir/code"definition"
-                [:expansion :contains 0 :property 0 :value] := #fhir/string"definition-143747")))))
+            (given @(expand-value-set ts
+                      "url" #fhir/uri"value-set-135750"
+                      "property" "definition")
+              :fhir/type := :fhir/ValueSet
+              [:expansion :property count] := 1
+              [:expansion :property 0 :code] := #fhir/code"definition"
+              [:expansion :property 0 :uri] := #fhir/uri"http://hl7.org/fhir/concept-properties#definition"
+              [:expansion :contains count] := 1
+              [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+              [:expansion :contains 0 :code] := #fhir/code"code-115927"
+              [:expansion :contains 0 :property count] := 1
+              [:expansion :contains 0 :property 0 :code] := #fhir/code"definition"
+              [:expansion :contains 0 :property 0 :value] := #fhir/string"definition-143747"))))
 
       (testing "with versions"
         (testing "choosing an explicit version"
@@ -932,14 +938,13 @@
                         :system #fhir/uri"system-115910"
                         :version "2.0.0"}]}}]]]
 
-            (doseq [request [{:url "value-set-135750"} {:id "0"}]]
-              (given @(ts/expand-value-set ts request)
-                :fhir/type := :fhir/ValueSet
-                [:expansion (parameter "version") 0 :value] := #fhir/uri"system-115910|2.0.0"
-                [:expansion :contains count] := 1
-                [:expansion :contains 0 :system] := #fhir/uri"system-115910"
-                [:expansion :contains 0 :code] := #fhir/code"code-092722"
-                [:expansion :contains 0 #(contains? % :display)] := false))))
+            (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
+              :fhir/type := :fhir/ValueSet
+              [:expansion (parameter "version") 0 :value] := #fhir/uri"system-115910|2.0.0"
+              [:expansion :contains count] := 1
+              [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+              [:expansion :contains 0 :code] := #fhir/code"code-092722"
+              [:expansion :contains 0 #(contains? % :display)] := false)))
 
         (testing "choosing the newest version by default"
           (with-system-data [{ts ::ts/local} config]
@@ -972,14 +977,13 @@
                       [{:fhir/type :fhir.ValueSet.compose/include
                         :system #fhir/uri"system-115910"}]}}]]]
 
-            (doseq [request [{:url "value-set-135750"} {:id "0"}]]
-              (given @(ts/expand-value-set ts request)
-                :fhir/type := :fhir/ValueSet
-                [:expansion (parameter "version") 0 :value] := #fhir/uri"system-115910|3.0.0"
-                [:expansion :contains count] := 1
-                [:expansion :contains 0 :system] := #fhir/uri"system-115910"
-                [:expansion :contains 0 :code] := #fhir/code"code-115357"
-                [:expansion :contains 0 #(contains? % :display)] := false))))
+            (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
+              :fhir/type := :fhir/ValueSet
+              [:expansion (parameter "version") 0 :value] := #fhir/uri"system-115910|3.0.0"
+              [:expansion :contains count] := 1
+              [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+              [:expansion :contains 0 :code] := #fhir/code"code-115357"
+              [:expansion :contains 0 #(contains? % :display)] := false)))
 
         (testing "choosing the version by parameter"
           (with-system-data [{ts ::ts/local} config]
@@ -1012,14 +1016,15 @@
                       [{:fhir/type :fhir.ValueSet.compose/include
                         :system #fhir/uri"system-115910"}]}}]]]
 
-            (doseq [request [{:url "value-set-135750"} {:id "0"}]]
-              (given @(ts/expand-value-set ts (assoc request :system-versions [#fhir/canonical"system-115910|2.0.0"]))
-                :fhir/type := :fhir/ValueSet
-                [:expansion (parameter "version") 0 :value] := #fhir/uri"system-115910|2.0.0"
-                [:expansion :contains count] := 1
-                [:expansion :contains 0 :system] := #fhir/uri"system-115910"
-                [:expansion :contains 0 :code] := #fhir/code"code-092722"
-                [:expansion :contains 0 #(contains? % :display)] := false))))))
+            (given @(expand-value-set ts
+                      "url" #fhir/uri"value-set-135750"
+                      "system-version" #fhir/canonical"system-115910|2.0.0")
+              :fhir/type := :fhir/ValueSet
+              [:expansion (parameter "version") 0 :value] := #fhir/uri"system-115910|2.0.0"
+              [:expansion :contains count] := 1
+              [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+              [:expansion :contains 0 :code] := #fhir/code"code-092722"
+              [:expansion :contains 0 #(contains? % :display)] := false)))))
 
     (testing "with two codes"
       (with-system-data [{ts ::ts/local} config]
@@ -1039,7 +1044,7 @@
                   [{:fhir/type :fhir.ValueSet.compose/include
                     :system #fhir/uri"system-115910"}]}}]]]
 
-        (given @(ts/expand-value-set ts {:url "value-set-135750"})
+        (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 2
           [:expansion :contains 0 :system] := #fhir/uri"system-115910"
@@ -1070,7 +1075,7 @@
                       [{:fhir/type :fhir.ValueSet.compose.include/concept
                         :code #fhir/code"code-163444"}]}]}}]]]
 
-          (given @(ts/expand-value-set ts {:url "value-set-135750"})
+          (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
             :fhir/type := :fhir/ValueSet
             [:expansion :contains count] := 1
             [:expansion :contains 0 :system] := #fhir/uri"system-115910"
@@ -1101,8 +1106,9 @@
                         [{:fhir/type :fhir.ValueSet.compose.include/concept
                           :code #fhir/code"code-163444"}]}]}}]]]
 
-            (given @(ts/expand-value-set ts {:url "value-set-135750"
-                                             :include-designations true})
+            (given @(expand-value-set ts
+                      "url" #fhir/uri"value-set-135750"
+                      "includeDesignations" #fhir/boolean true)
               :fhir/type := :fhir/ValueSet
               [:expansion (parameter "includeDesignations") 0 :value] := #fhir/boolean true
               [:expansion :contains count] := 1
@@ -1134,7 +1140,7 @@
                       [{:fhir/type :fhir.ValueSet.compose.include/concept
                         :code #fhir/code"code-163444"}]}]}}]]]
 
-          (given @(ts/expand-value-set ts {:url "value-set-135750"})
+          (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
             :fhir/type := :fhir/ValueSet
             [:expansion :contains count] := 1
             [:expansion :contains 0 :system] := #fhir/uri"system-115910"
@@ -1160,7 +1166,7 @@
                   [{:fhir/type :fhir.ValueSet.compose/include
                     :system #fhir/uri"system-115910"}]}}]]]
 
-        (given @(ts/expand-value-set ts {:url "value-set-135750"})
+        (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 2
           [:expansion :contains 0 :system] := #fhir/uri"system-115910"
@@ -1192,7 +1198,7 @@
                       [{:fhir/type :fhir.ValueSet.compose.include/concept
                         :code #fhir/code"code-115927"}]}]}}]]]
 
-          (given @(ts/expand-value-set ts {:url "value-set-135750"})
+          (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
             :fhir/type := :fhir/ValueSet
             [:expansion :contains count] := 1
             [:expansion :contains 0 :system] := #fhir/uri"system-115910"
@@ -1221,7 +1227,7 @@
                       [{:fhir/type :fhir.ValueSet.compose.include/concept
                         :code #fhir/code"code-163444"}]}]}}]]]
 
-          (given @(ts/expand-value-set ts {:url "value-set-135750"})
+          (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
             :fhir/type := :fhir/ValueSet
             [:expansion :contains count] := 1
             [:expansion :contains 0 :system] := #fhir/uri"system-115910"
@@ -1253,7 +1259,7 @@
                    {:fhir/type :fhir.ValueSet.compose/include
                     :system #fhir/uri"system-180814"}]}}]]]
 
-        (given @(ts/expand-value-set ts {:url "value-set-135750"})
+        (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
           :fhir/type := :fhir/ValueSet
           [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri"system-180814"
           [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri"system-115910"
@@ -1293,7 +1299,7 @@
                    {:fhir/type :fhir.ValueSet.compose/include
                     :system #fhir/uri"system-180814"}]}}]]]
 
-        (given @(ts/expand-value-set ts {:url "value-set-135750"})
+        (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
           :fhir/type := :fhir/ValueSet
           [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri"system-180814"
           [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri"system-115910"
@@ -1345,7 +1351,7 @@
                       [{:fhir/type :fhir.ValueSet.compose.include/concept
                         :code #fhir/code"code-163824"}]}]}}]]]
 
-          (given @(ts/expand-value-set ts {:url "value-set-135750"})
+          (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
             :fhir/type := :fhir/ValueSet
             [:expansion (parameter "used-codesystem") 0 :value] := #fhir/uri"system-180814"
             [:expansion (parameter "used-codesystem") 1 :value] := #fhir/uri"system-115910"
@@ -1390,8 +1396,9 @@
                 [{:fhir/type :fhir.ValueSet.compose/include
                   :system #fhir/uri"system-135810"}]}}]]]
 
-      (given @(ts/expand-value-set ts {:url "value-set-154043"
-                                       :value-set-version "version-135747"})
+      (given @(expand-value-set ts
+                "url" #fhir/uri"value-set-154043"
+                "valueSetVersion" #fhir/string"version-135747")
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] := 1
         [:expansion :contains 0 :system] := #fhir/uri"system-135810"
@@ -1422,15 +1429,58 @@
                  :code #fhir/code"code-163445"
                  :display #fhir/string"display-164521"}]}]]]
 
-      (let [request {:value-set
-                     {:fhir/type :fhir/ValueSet
-                      :compose
-                      {:fhir/type :fhir.ValueSet/compose
-                       :include
-                       [{:fhir/type :fhir.ValueSet.compose/include
-                         :system #fhir/uri"system-170702"}]}}}]
+      (given @(expand-value-set ts
+                "valueSet"
+                {:fhir/type :fhir/ValueSet
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri"system-170702"}]}})
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] := 3
+        [:expansion :contains 0 :system] := #fhir/uri"system-170702"
+        [:expansion :contains 0 :inactive] := #fhir/boolean true
+        [:expansion :contains 0 :code] := #fhir/code"code-170118"
+        [:expansion :contains 1 :system] := #fhir/uri"system-170702"
+        [:expansion :contains 1 :inactive] := #fhir/boolean true
+        [:expansion :contains 1 :code] := #fhir/code"code-164637"
+        [:expansion :contains 2 :system] := #fhir/uri"system-170702"
+        [:expansion :contains 2 :code] := #fhir/code"code-163445"
+        [:expansion :contains 2 :display] := #fhir/string"display-164521")
 
-        (given @(ts/expand-value-set ts request)
+      (testing "including only active"
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :inactive #fhir/boolean false
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"system-170702"}]}})
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :system] := #fhir/uri"system-170702"
+          [:expansion :contains 0 :code] := #fhir/code"code-163445"))
+
+      (testing "including all codes"
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"system-170702"
+                      :concept
+                      [{:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code"code-170118"}
+                       {:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code"code-164637"}
+                       {:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code"code-163445"
+                        :display #fhir/string"display-165751"}]}]}})
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 3
           [:expansion :contains 0 :system] := #fhir/uri"system-170702"
@@ -1441,109 +1491,30 @@
           [:expansion :contains 1 :code] := #fhir/code"code-164637"
           [:expansion :contains 2 :system] := #fhir/uri"system-170702"
           [:expansion :contains 2 :code] := #fhir/code"code-163445"
-          [:expansion :contains 2 :display] := #fhir/string"display-164521")
-
-        (testing "active only"
-          (given @(ts/expand-value-set ts (assoc request :active-only true))
-            :fhir/type := :fhir/ValueSet
-            [:expansion (parameter "activeOnly") 0 :value] := #fhir/boolean true
-            [:expansion :contains count] := 1
-            [:expansion :contains 0 :system] := #fhir/uri"system-170702"
-            [:expansion :contains 0 :code] := #fhir/code"code-163445")))
-
-      (testing "including only active"
-        (let [request {:value-set
-                       {:fhir/type :fhir/ValueSet
-                        :compose
-                        {:fhir/type :fhir.ValueSet/compose
-                         :inactive #fhir/boolean false
-                         :include
-                         [{:fhir/type :fhir.ValueSet.compose/include
-                           :system #fhir/uri"system-170702"}]}}}]
-
-          (given @(ts/expand-value-set ts request)
-            :fhir/type := :fhir/ValueSet
-            [:expansion :contains count] := 1
-            [:expansion :contains 0 :system] := #fhir/uri"system-170702"
-            [:expansion :contains 0 :code] := #fhir/code"code-163445")
-
-          (testing "setting active only to false doesn't include inactives"
-            (given @(ts/expand-value-set ts (assoc request :active-only false))
-              :fhir/type := :fhir/ValueSet
-              [:expansion (parameter "activeOnly") 0 :value] := #fhir/boolean false
-              [:expansion :contains count] := 1
-              [:expansion :contains 0 :system] := #fhir/uri"system-170702"
-              [:expansion :contains 0 :code] := #fhir/code"code-163445"))))
-
-      (testing "including all codes"
-        (let [request {:value-set
-                       {:fhir/type :fhir/ValueSet
-                        :compose
-                        {:fhir/type :fhir.ValueSet/compose
-                         :include
-                         [{:fhir/type :fhir.ValueSet.compose/include
-                           :system #fhir/uri"system-170702"
-                           :concept
-                           [{:fhir/type :fhir.ValueSet.compose.include/concept
-                             :code #fhir/code"code-170118"}
-                            {:fhir/type :fhir.ValueSet.compose.include/concept
-                             :code #fhir/code"code-164637"}
-                            {:fhir/type :fhir.ValueSet.compose.include/concept
-                             :code #fhir/code"code-163445"
-                             :display #fhir/string"display-165751"}]}]}}}]
-
-          (given @(ts/expand-value-set ts request)
-            :fhir/type := :fhir/ValueSet
-            [:expansion :contains count] := 3
-            [:expansion :contains 0 :system] := #fhir/uri"system-170702"
-            [:expansion :contains 0 :inactive] := #fhir/boolean true
-            [:expansion :contains 0 :code] := #fhir/code"code-170118"
-            [:expansion :contains 1 :system] := #fhir/uri"system-170702"
-            [:expansion :contains 1 :inactive] := #fhir/boolean true
-            [:expansion :contains 1 :code] := #fhir/code"code-164637"
-            [:expansion :contains 2 :system] := #fhir/uri"system-170702"
-            [:expansion :contains 2 :code] := #fhir/code"code-163445"
-            [:expansion :contains 2 :display] := #fhir/string"display-165751")
-
-          (testing "active only"
-            (given @(ts/expand-value-set ts (assoc request :active-only true))
-              :fhir/type := :fhir/ValueSet
-              [:expansion (parameter "activeOnly") 0 :value] := #fhir/boolean true
-              [:expansion :contains count] := 1
-              [:expansion :contains 0 :system] := #fhir/uri"system-170702"
-              [:expansion :contains 0 :code] := #fhir/code"code-163445")))
+          [:expansion :contains 2 :display] := #fhir/string"display-165751")
 
         (testing "including only active"
-          (let [request {:value-set
-                         {:fhir/type :fhir/ValueSet
-                          :compose
-                          {:fhir/type :fhir.ValueSet/compose
-                           :inactive #fhir/boolean false
-                           :include
-                           [{:fhir/type :fhir.ValueSet.compose/include
-                             :system #fhir/uri"system-170702"
-                             :concept
-                             [{:fhir/type :fhir.ValueSet.compose.include/concept
-                               :code #fhir/code"code-170118"}
-                              {:fhir/type :fhir.ValueSet.compose.include/concept
-                               :code #fhir/code"code-164637"}
-                              {:fhir/type :fhir.ValueSet.compose.include/concept
-                               :code #fhir/code"code-163445"
-                               :display #fhir/string"display-165751"}]}]}}}]
-
-            (given @(ts/expand-value-set ts request)
-              :fhir/type := :fhir/ValueSet
-              [:expansion :contains count] := 1
-              [:expansion :contains 0 :system] := #fhir/uri"system-170702"
-              [:expansion :contains 0 :code] := #fhir/code"code-163445")
-
-            (testing "setting active only to false doesn't include inactives"
-              (given @(ts/expand-value-set ts (assoc request :active-only false))
-                :fhir/type := :fhir/ValueSet
-                [:expansion (parameter "activeOnly") 0 :value] := #fhir/boolean false
-                [:expansion :contains count] := 1
-                [:expansion :contains 0 :system] := #fhir/uri"system-170702"
-                [:expansion :contains 0 :code] := #fhir/code"code-163445")))))))
+          (given @(expand-value-set ts
+                    "valueSet"
+                    {:fhir/type :fhir/ValueSet
+                     :compose
+                     {:fhir/type :fhir.ValueSet/compose
+                      :inactive #fhir/boolean false
+                      :include
+                      [{:fhir/type :fhir.ValueSet.compose/include
+                        :system #fhir/uri"system-170702"
+                        :concept
+                        [{:fhir/type :fhir.ValueSet.compose.include/concept
+                          :code #fhir/code"code-170118"}
+                         {:fhir/type :fhir.ValueSet.compose.include/concept
+                          :code #fhir/code"code-164637"}
+                         {:fhir/type :fhir.ValueSet.compose.include/concept
+                          :code #fhir/code"code-163445"
+                          :display #fhir/string"display-165751"}]}]}})
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri"system-170702"
+            [:expansion :contains 0 :code] := #fhir/code"code-163445")))))
 
   (testing "with not-selectable concepts"
     (with-system-data [{ts ::ts/local} config]
@@ -1566,13 +1537,14 @@
                  :code #fhir/code"code-163445"
                  :display #fhir/string"display-164521"}]}]
         [:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-145941"
                :compose
                {:fhir/type :fhir.ValueSet/compose
                 :include
                 [{:fhir/type :fhir.ValueSet.compose/include
                   :system #fhir/uri"system-170702"}]}}]]]
 
-      (given @(ts/expand-value-set ts {:id "0"})
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-145941")
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] := 3
         [:expansion :contains 0 :system] := #fhir/uri"system-170702"
@@ -1586,76 +1558,79 @@
 
   (testing "with externally supplied value set and code system"
     (with-system [{ts ::ts/local} config]
-      (let [request {:url "value-set-110445"
-                     :tx-resources
-                     [{:fhir/type :fhir/CodeSystem
-                       :url #fhir/uri"system-115910"
-                       :content #fhir/code"complete"
-                       :concept
-                       [{:fhir/type :fhir.CodeSystem/concept
-                         :code #fhir/code"code-115927"}]}
-                      {:fhir/type :fhir/ValueSet
-                       :url #fhir/uri"value-set-110445"
-                       :compose
-                       {:fhir/type :fhir.ValueSet/compose
-                        :include
-                        [{:fhir/type :fhir.ValueSet.compose/include
-                          :system #fhir/uri"system-115910"}]}}]}]
-        (given @(ts/expand-value-set ts request)
+      (given @(expand-value-set ts
+                "url" #fhir/uri"value-set-110445"
+                "tx-resource"
+                {:fhir/type :fhir/CodeSystem
+                 :url #fhir/uri"system-115910"
+                 :content #fhir/code"complete"
+                 :concept
+                 [{:fhir/type :fhir.CodeSystem/concept
+                   :code #fhir/code"code-115927"}]}
+                "tx-resource"
+                {:fhir/type :fhir/ValueSet
+                 :url #fhir/uri"value-set-110445"
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri"system-115910"}]}})
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] := 1
+        [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+        [:expansion :contains 0 :code] := #fhir/code"code-115927"))
+
+    (testing "with value set version"
+      (with-system [{ts ::ts/local} config]
+        (given @(expand-value-set ts
+                  "url" #fhir/uri"value-set-110445"
+                  "valueSetVersion" #fhir/string"version-134920"
+                  "tx-resource"
+                  {:fhir/type :fhir/CodeSystem
+                   :url #fhir/uri"system-115910"
+                   :content #fhir/code"complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code"code-115927"}]}
+                  "tx-resource"
+                  {:fhir/type :fhir/ValueSet
+                   :url #fhir/uri"value-set-110445"
+                   :version #fhir/string"version-134920"
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"system-115910"}]}})
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 1
           [:expansion :contains 0 :system] := #fhir/uri"system-115910"
           [:expansion :contains 0 :code] := #fhir/code"code-115927")))
 
-    (testing "with value set version"
-      (with-system [{ts ::ts/local} config]
-        (let [request {:url "value-set-110445"
-                       :value-set-version "version-134920"
-                       :tx-resources
-                       [{:fhir/type :fhir/CodeSystem
-                         :url #fhir/uri"system-115910"
-                         :content #fhir/code"complete"
-                         :concept
-                         [{:fhir/type :fhir.CodeSystem/concept
-                           :code #fhir/code"code-115927"}]}
-                        {:fhir/type :fhir/ValueSet
-                         :url #fhir/uri"value-set-110445"
-                         :version #fhir/string"version-134920"
-                         :compose
-                         {:fhir/type :fhir.ValueSet/compose
-                          :include
-                          [{:fhir/type :fhir.ValueSet.compose/include
-                            :system #fhir/uri"system-115910"}]}}]}]
-          (given @(ts/expand-value-set ts request)
-            :fhir/type := :fhir/ValueSet
-            [:expansion :contains count] := 1
-            [:expansion :contains 0 :system] := #fhir/uri"system-115910"
-            [:expansion :contains 0 :code] := #fhir/code"code-115927"))))
-
     (testing "with code system version"
       (with-system [{ts ::ts/local} config]
-        (let [request {:url "value-set-110445"
-                       :tx-resources
-                       [{:fhir/type :fhir/CodeSystem
-                         :url #fhir/uri"system-115910"
-                         :version #fhir/string"version-135221"
-                         :content #fhir/code"complete"
-                         :concept
-                         [{:fhir/type :fhir.CodeSystem/concept
-                           :code #fhir/code"code-115927"}]}
-                        {:fhir/type :fhir/ValueSet
-                         :url #fhir/uri"value-set-110445"
-                         :compose
-                         {:fhir/type :fhir.ValueSet/compose
-                          :include
-                          [{:fhir/type :fhir.ValueSet.compose/include
-                            :system #fhir/uri"system-115910"
-                            :version #fhir/string"version-135221"}]}}]}]
-          (given @(ts/expand-value-set ts request)
-            :fhir/type := :fhir/ValueSet
-            [:expansion :contains count] := 1
-            [:expansion :contains 0 :system] := #fhir/uri"system-115910"
-            [:expansion :contains 0 :code] := #fhir/code"code-115927"))))))
+        (given @(expand-value-set ts
+                  "url" #fhir/uri"value-set-110445"
+                  "tx-resource"
+                  {:fhir/type :fhir/CodeSystem
+                   :url #fhir/uri"system-115910"
+                   :version #fhir/string"version-135221"
+                   :content #fhir/code"complete"
+                   :concept
+                   [{:fhir/type :fhir.CodeSystem/concept
+                     :code #fhir/code"code-115927"}]}
+                  "tx-resource"
+                  {:fhir/type :fhir/ValueSet
+                   :url #fhir/uri"value-set-110445"
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"system-115910"
+                      :version #fhir/string"version-135221"}]}})
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+          [:expansion :contains 0 :code] := #fhir/code"code-115927")))))
 
 (deftest expand-value-set-value-include-set-refs-test
   (testing "one value set ref"
@@ -1681,7 +1656,7 @@
                 [{:fhir/type :fhir.ValueSet.compose/include
                   :valueSet [#fhir/canonical"value-set-135750"]}]}}]]]
 
-      (given @(ts/expand-value-set ts {:url "value-set-161213"})
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-161213")
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] := 1
         [:expansion :contains 0 :system] := #fhir/uri"system-180814"
@@ -1714,7 +1689,7 @@
                   [{:fhir/type :fhir.ValueSet.compose/include
                     :valueSet [#fhir/canonical"value-set-135750"]}]}}]]]
 
-        (given @(ts/expand-value-set ts {:url "value-set-161213"})
+        (given @(expand-value-set ts "url" #fhir/uri"value-set-161213")
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 1
           [:expansion :contains 0 :system] := #fhir/uri"system-180814"
@@ -1759,7 +1734,7 @@
                   [#fhir/canonical"value-set-135750"
                    #fhir/canonical"value-set-162451"]}]}}]]]
 
-      (given @(ts/expand-value-set ts {:url "value-set-162456"})
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-162456")
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] := 2
         [:expansion :contains 0 :system] := #fhir/uri"system-180814"
@@ -1801,7 +1776,7 @@
                   [#fhir/canonical"value-set-135750"
                    #fhir/canonical"value-set-162451"]}]}}]]]
 
-      (given @(ts/expand-value-set ts {:url "value-set-162456"})
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-162456")
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] := 1
         [:expansion :contains 0 :system] := #fhir/uri"system-180814"
@@ -1824,21 +1799,21 @@
                 [{:fhir/type :fhir.ValueSet.compose/include
                   :valueSet [#fhir/canonical"value-set-135750"]}]}}]]]
 
-      (let [request {:url "value-set-161213"
-                     :tx-resources
-                     [{:fhir/type :fhir/ValueSet
-                       :url #fhir/uri"value-set-135750"
-                       :compose
-                       {:fhir/type :fhir.ValueSet/compose
-                        :include
-                        [{:fhir/type :fhir.ValueSet.compose/include
-                          :system #fhir/uri"system-180814"}]}}]}]
-        (given @(ts/expand-value-set ts request)
-          :fhir/type := :fhir/ValueSet
-          [:expansion :contains count] := 1
-          [:expansion :contains 0 :system] := #fhir/uri"system-180814"
-          [:expansion :contains 0 :code] := #fhir/code"code-180828"
-          [:expansion :contains 0 #(contains? % :display)] := false)))))
+      (given @(expand-value-set ts
+                "url" #fhir/uri"value-set-161213"
+                "tx-resource"
+                {:fhir/type :fhir/ValueSet
+                 :url #fhir/uri"value-set-135750"
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri"system-180814"}]}})
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] := 1
+        [:expansion :contains 0 :system] := #fhir/uri"system-180814"
+        [:expansion :contains 0 :code] := #fhir/code"code-180828"
+        [:expansion :contains 0 #(contains? % :display)] := false))))
 
 (deftest expand-value-set-include-filter-test
   (testing "unknown filter operator"
@@ -1863,7 +1838,7 @@
                     :op #fhir/code"op-unknown-160011"
                     :value #fhir/string"value-160032"}]}]}}]]]
 
-      (given-failed-future (ts/expand-value-set ts {:url "value-set-160118"})
+      (given-failed-future (expand-value-set ts "url" #fhir/uri"value-set-160118")
         ::anom/category := ::anom/unsupported
         ::anom/message := "Error while expanding the value set `value-set-160118`. Unsupported filter operator `op-unknown-160011` in code system `system-182822`."))))
 
@@ -1890,13 +1865,12 @@
                     :op #fhir/code"is-a"
                     :value #fhir/string"code-182832"}]}]}}]]]
 
-      (doseq [request [{:url "value-set-182905"} {:id "0"}]]
-        (given @(ts/expand-value-set ts request)
-          :fhir/type := :fhir/ValueSet
-          [:expansion :contains count] := 1
-          [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-          [:expansion :contains 0 :code] := #fhir/code"code-182832"
-          [:expansion :contains 0 :display] := #fhir/string"display-182717")))
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-182905")
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] := 1
+        [:expansion :contains 0 :system] := #fhir/uri"system-182822"
+        [:expansion :contains 0 :code] := #fhir/code"code-182832"
+        [:expansion :contains 0 :display] := #fhir/string"display-182717"))
 
     (testing "including designations"
       (with-system-data [{ts ::ts/local} config]
@@ -1923,15 +1897,16 @@
                       :op #fhir/code"is-a"
                       :value #fhir/string"code-182832"}]}]}}]]]
 
-        (doseq [request [{:url "value-set-182905"} {:id "0"}]]
-          (given @(ts/expand-value-set ts (assoc request :include-designations true))
-            :fhir/type := :fhir/ValueSet
-            [:expansion (parameter "includeDesignations") 0 :value] := #fhir/boolean true
-            [:expansion :contains count] := 1
-            [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-            [:expansion :contains 0 :code] := #fhir/code"code-182832"
-            [:expansion :contains 0 :display] := #fhir/string"display-182717"
-            [:expansion :contains 0 :designation 0 :value] := #fhir/string"designation-011441")))))
+        (given @(expand-value-set ts
+                  "url" #fhir/uri"value-set-182905"
+                  "includeDesignations" #fhir/boolean true)
+          :fhir/type := :fhir/ValueSet
+          [:expansion (parameter "includeDesignations") 0 :value] := #fhir/boolean true
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :system] := #fhir/uri"system-182822"
+          [:expansion :contains 0 :code] := #fhir/code"code-182832"
+          [:expansion :contains 0 :display] := #fhir/string"display-182717"
+          [:expansion :contains 0 :designation 0 :value] := #fhir/string"designation-011441"))))
 
   (testing "with two concepts, a parent and a child"
     (with-system-data [{ts ::ts/local} config]
@@ -1962,16 +1937,15 @@
                     :op #fhir/code"is-a"
                     :value #fhir/string"code-182832"}]}]}}]]]
 
-      (doseq [request [{:url "value-set-182905"} {:id "0"}]]
-        (given (sort-expansion @(ts/expand-value-set ts request))
-          :fhir/type := :fhir/ValueSet
-          [:expansion :contains count] := 2
-          [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-          [:expansion :contains 0 :code] := #fhir/code"code-182832"
-          [:expansion :contains 0 :display] := #fhir/string"display-182717"
-          [:expansion :contains 1 :system] := #fhir/uri"system-182822"
-          [:expansion :contains 1 :code] := #fhir/code"code-191445"
-          [:expansion :contains 1 :display] := #fhir/string"display-191448")))
+      (given (sort-expansion @(expand-value-set ts "url" #fhir/uri"value-set-182905"))
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] := 2
+        [:expansion :contains 0 :system] := #fhir/uri"system-182822"
+        [:expansion :contains 0 :code] := #fhir/code"code-182832"
+        [:expansion :contains 0 :display] := #fhir/string"display-182717"
+        [:expansion :contains 1 :system] := #fhir/uri"system-182822"
+        [:expansion :contains 1 :code] := #fhir/code"code-191445"
+        [:expansion :contains 1 :display] := #fhir/string"display-191448"))
 
     (testing "with inactive child"
       (with-system-data [{ts ::ts/local} config]
@@ -1993,67 +1967,51 @@
                      :code #fhir/code"inactive"
                      :value #fhir/boolean true}]}]}]]]
 
-        (let [request {:value-set
-                       {:fhir/type :fhir/ValueSet
-                        :compose
-                        {:fhir/type :fhir.ValueSet/compose
-                         :include
-                         [{:fhir/type :fhir.ValueSet.compose/include
-                           :system #fhir/uri"system-182822"
-                           :filter
-                           [{:fhir/type :fhir.ValueSet.compose.include/filter
-                             :property #fhir/code"concept"
-                             :op #fhir/code"is-a"
-                             :value #fhir/string"code-182832"}]}]}}}]
-          (given (sort-expansion @(ts/expand-value-set ts request))
-            :fhir/type := :fhir/ValueSet
-            [:expansion :contains count] := 2
-            [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-            [:expansion :contains 0 :code] := #fhir/code"code-182832"
-            [:expansion :contains 0 :display] := #fhir/string"display-182717"
-            [:expansion :contains 1 :system] := #fhir/uri"system-182822"
-            [:expansion :contains 1 :inactive] := #fhir/boolean true
-            [:expansion :contains 1 :code] := #fhir/code"code-191445"
-            [:expansion :contains 1 :display] := #fhir/string"display-191448")
-
-          (testing "active only"
-            (given @(ts/expand-value-set ts (assoc request :active-only true))
-              :fhir/type := :fhir/ValueSet
-              [:expansion (parameter "activeOnly") 0 :value] := #fhir/boolean true
-              [:expansion :contains count] := 1
-              [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-              [:expansion :contains 0 :code] := #fhir/code"code-182832"
-              [:expansion :contains 0 :display] := #fhir/string"display-182717")))
+        (given (sort-expansion
+                @(expand-value-set ts
+                   "valueSet"
+                   {:fhir/type :fhir/ValueSet
+                    :compose
+                    {:fhir/type :fhir.ValueSet/compose
+                     :include
+                     [{:fhir/type :fhir.ValueSet.compose/include
+                       :system #fhir/uri"system-182822"
+                       :filter
+                       [{:fhir/type :fhir.ValueSet.compose.include/filter
+                         :property #fhir/code"concept"
+                         :op #fhir/code"is-a"
+                         :value #fhir/string"code-182832"}]}]}}))
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] := 2
+          [:expansion :contains 0 :system] := #fhir/uri"system-182822"
+          [:expansion :contains 0 :code] := #fhir/code"code-182832"
+          [:expansion :contains 0 :display] := #fhir/string"display-182717"
+          [:expansion :contains 1 :system] := #fhir/uri"system-182822"
+          [:expansion :contains 1 :inactive] := #fhir/boolean true
+          [:expansion :contains 1 :code] := #fhir/code"code-191445"
+          [:expansion :contains 1 :display] := #fhir/string"display-191448")
 
         (testing "including only active"
-          (let [request {:value-set
-                         {:fhir/type :fhir/ValueSet
-                          :compose
-                          {:fhir/type :fhir.ValueSet/compose
-                           :inactive #fhir/boolean false
-                           :include
-                           [{:fhir/type :fhir.ValueSet.compose/include
-                             :system #fhir/uri"system-182822"
-                             :filter
-                             [{:fhir/type :fhir.ValueSet.compose.include/filter
-                               :property #fhir/code"concept"
-                               :op #fhir/code"is-a"
-                               :value #fhir/string"code-182832"}]}]}}}]
-            (given (sort-expansion @(ts/expand-value-set ts request))
-              :fhir/type := :fhir/ValueSet
-              [:expansion :contains count] := 1
-              [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-              [:expansion :contains 0 :code] := #fhir/code"code-182832"
-              [:expansion :contains 0 :display] := #fhir/string"display-182717")
-
-            (testing "setting active only to false doesn't include inactives"
-              (given @(ts/expand-value-set ts (assoc request :active-only false))
-                :fhir/type := :fhir/ValueSet
-                [:expansion (parameter "activeOnly") 0 :value] := #fhir/boolean false
-                [:expansion :contains count] := 1
-                [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-                [:expansion :contains 0 :code] := #fhir/code"code-182832"
-                [:expansion :contains 0 :display] := #fhir/string"display-182717")))))))
+          (given (sort-expansion
+                  @(expand-value-set ts
+                     "valueSet"
+                     {:fhir/type :fhir/ValueSet
+                      :compose
+                      {:fhir/type :fhir.ValueSet/compose
+                       :inactive #fhir/boolean false
+                       :include
+                       [{:fhir/type :fhir.ValueSet.compose/include
+                         :system #fhir/uri"system-182822"
+                         :filter
+                         [{:fhir/type :fhir.ValueSet.compose.include/filter
+                           :property #fhir/code"concept"
+                           :op #fhir/code"is-a"
+                           :value #fhir/string"code-182832"}]}]}}))
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri"system-182822"
+            [:expansion :contains 0 :code] := #fhir/code"code-182832"
+            [:expansion :contains 0 :display] := #fhir/string"display-182717")))))
 
   (testing "with three concepts, a parent, a child and a child of the child"
     (with-system-data [{ts ::ts/local} config]
@@ -2091,19 +2049,18 @@
                     :op #fhir/code"is-a"
                     :value #fhir/string"code-182832"}]}]}}]]]
 
-      (doseq [request [{:url "value-set-182905"} {:id "0"}]]
-        (given (sort-expansion @(ts/expand-value-set ts request))
-          :fhir/type := :fhir/ValueSet
-          [:expansion :contains count] := 3
-          [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-          [:expansion :contains 0 :code] := #fhir/code"code-182832"
-          [:expansion :contains 0 :display] := #fhir/string"display-182717"
-          [:expansion :contains 1 :system] := #fhir/uri"system-182822"
-          [:expansion :contains 1 :code] := #fhir/code"code-191445"
-          [:expansion :contains 1 :display] := #fhir/string"display-191448"
-          [:expansion :contains 2 :system] := #fhir/uri"system-182822"
-          [:expansion :contains 2 :code] := #fhir/code"code-192308"
-          [:expansion :contains 2 :display] := #fhir/string"display-192313")))
+      (given (sort-expansion @(expand-value-set ts "url" #fhir/uri"value-set-182905"))
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] := 3
+        [:expansion :contains 0 :system] := #fhir/uri"system-182822"
+        [:expansion :contains 0 :code] := #fhir/code"code-182832"
+        [:expansion :contains 0 :display] := #fhir/string"display-182717"
+        [:expansion :contains 1 :system] := #fhir/uri"system-182822"
+        [:expansion :contains 1 :code] := #fhir/code"code-191445"
+        [:expansion :contains 1 :display] := #fhir/string"display-191448"
+        [:expansion :contains 2 :system] := #fhir/uri"system-182822"
+        [:expansion :contains 2 :code] := #fhir/code"code-192308"
+        [:expansion :contains 2 :display] := #fhir/string"display-192313"))
 
     (testing "works if child of child comes before child"
       (with-system-data [{ts ::ts/local} config]
@@ -2141,19 +2098,18 @@
                       :op #fhir/code"is-a"
                       :value #fhir/string"code-182832"}]}]}}]]]
 
-        (doseq [request [{:url "value-set-182905"} {:id "0"}]]
-          (given (sort-expansion @(ts/expand-value-set ts request))
-            :fhir/type := :fhir/ValueSet
-            [:expansion :contains count] := 3
-            [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-            [:expansion :contains 0 :code] := #fhir/code"code-182832"
-            [:expansion :contains 0 :display] := #fhir/string"display-182717"
-            [:expansion :contains 1 :system] := #fhir/uri"system-182822"
-            [:expansion :contains 1 :code] := #fhir/code"code-191445"
-            [:expansion :contains 1 :display] := #fhir/string"display-191448"
-            [:expansion :contains 2 :system] := #fhir/uri"system-182822"
-            [:expansion :contains 2 :code] := #fhir/code"code-192308"
-            [:expansion :contains 2 :display] := #fhir/string"display-192313"))))))
+        (given (sort-expansion @(expand-value-set ts "url" #fhir/uri"value-set-182905"))
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] := 3
+          [:expansion :contains 0 :system] := #fhir/uri"system-182822"
+          [:expansion :contains 0 :code] := #fhir/code"code-182832"
+          [:expansion :contains 0 :display] := #fhir/string"display-182717"
+          [:expansion :contains 1 :system] := #fhir/uri"system-182822"
+          [:expansion :contains 1 :code] := #fhir/code"code-191445"
+          [:expansion :contains 1 :display] := #fhir/string"display-191448"
+          [:expansion :contains 2 :system] := #fhir/uri"system-182822"
+          [:expansion :contains 2 :code] := #fhir/code"code-192308"
+          [:expansion :contains 2 :display] := #fhir/string"display-192313")))))
 
 (deftest expand-value-set-include-filter-descendent-of-test
   (testing "with a single concept"
@@ -2178,10 +2134,9 @@
                     :op #fhir/code"descendent-of"
                     :value #fhir/string"code-182832"}]}]}}]]]
 
-      (doseq [request [{:url "value-set-182905"} {:id "0"}]]
-        (given @(ts/expand-value-set ts request)
-          :fhir/type := :fhir/ValueSet
-          [:expansion :contains count] := 0))))
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-182905")
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] := 0)))
 
   (testing "with two concepts, a parent and a child"
     (with-system-data [{ts ::ts/local} config]
@@ -2212,13 +2167,12 @@
                     :op #fhir/code"descendent-of"
                     :value #fhir/string"code-182832"}]}]}}]]]
 
-      (doseq [request [{:url "value-set-182905"} {:id "0"}]]
-        (given (sort-expansion @(ts/expand-value-set ts request))
-          :fhir/type := :fhir/ValueSet
-          [:expansion :contains count] := 1
-          [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-          [:expansion :contains 0 :code] := #fhir/code"code-191445"
-          [:expansion :contains 0 :display] := #fhir/string"display-191448"))))
+      (given (sort-expansion @(expand-value-set ts "url" #fhir/uri"value-set-182905"))
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] := 1
+        [:expansion :contains 0 :system] := #fhir/uri"system-182822"
+        [:expansion :contains 0 :code] := #fhir/code"code-191445"
+        [:expansion :contains 0 :display] := #fhir/string"display-191448")))
 
   (testing "with three concepts, a parent, a child and a child of the child"
     (with-system-data [{ts ::ts/local} config]
@@ -2256,16 +2210,15 @@
                     :op #fhir/code"descendent-of"
                     :value #fhir/string"code-182832"}]}]}}]]]
 
-      (doseq [request [{:url "value-set-182905"} {:id "0"}]]
-        (given (sort-expansion @(ts/expand-value-set ts request))
-          :fhir/type := :fhir/ValueSet
-          [:expansion :contains count] := 2
-          [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-          [:expansion :contains 0 :code] := #fhir/code"code-191445"
-          [:expansion :contains 0 :display] := #fhir/string"display-191448"
-          [:expansion :contains 1 :system] := #fhir/uri"system-182822"
-          [:expansion :contains 1 :code] := #fhir/code"code-192308"
-          [:expansion :contains 1 :display] := #fhir/string"display-192313")))))
+      (given (sort-expansion @(expand-value-set ts "url" #fhir/uri"value-set-182905"))
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] := 2
+        [:expansion :contains 0 :system] := #fhir/uri"system-182822"
+        [:expansion :contains 0 :code] := #fhir/code"code-191445"
+        [:expansion :contains 0 :display] := #fhir/string"display-191448"
+        [:expansion :contains 1 :system] := #fhir/uri"system-182822"
+        [:expansion :contains 1 :code] := #fhir/code"code-192308"
+        [:expansion :contains 1 :display] := #fhir/string"display-192313"))))
 
 (deftest expand-value-set-include-filter-exists-test
   (testing "fails"
@@ -2279,41 +2232,41 @@
                  :display #fhir/string"display-182717"}]}]]]
 
       (testing "with missing property"
-        (let [request {:value-set
-                       {:fhir/type :fhir/ValueSet
-                        :url #fhir/uri"value-set-182905"
-                        :compose
-                        {:fhir/type :fhir.ValueSet/compose
-                         :include
-                         [{:fhir/type :fhir.ValueSet.compose/include
-                           :system #fhir/uri"system-182822"
-                           :filter
-                           [{:fhir/type :fhir.ValueSet.compose.include/filter
-                             :op #fhir/code"exists"
-                             :value #fhir/string"true"}]}]}}}]
-
-          (given-failed-future (ts/expand-value-set ts request)
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Error while expanding the value set `value-set-182905`. Missing filter property.")))
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet"
+           {:fhir/type :fhir/ValueSet
+            :url #fhir/uri"value-set-182905"
+            :compose
+            {:fhir/type :fhir.ValueSet/compose
+             :include
+             [{:fhir/type :fhir.ValueSet.compose/include
+               :system #fhir/uri"system-182822"
+               :filter
+               [{:fhir/type :fhir.ValueSet.compose.include/filter
+                 :op #fhir/code"exists"
+                 :value #fhir/string"true"}]}]}})
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Error while expanding the value set `value-set-182905`. Missing filter property."))
 
       (testing "with invalid value"
-        (let [request {:value-set
-                       {:fhir/type :fhir/ValueSet
-                        :url #fhir/uri"value-set-182905"
-                        :compose
-                        {:fhir/type :fhir.ValueSet/compose
-                         :include
-                         [{:fhir/type :fhir.ValueSet.compose/include
-                           :system #fhir/uri"system-182822"
-                           :filter
-                           [{:fhir/type :fhir.ValueSet.compose.include/filter
-                             :property #fhir/code"property-160622"
-                             :op #fhir/code"exists"
-                             :value #fhir/string"invalid-162128"}]}]}}}]
-
-          (given-failed-future (ts/expand-value-set ts request)
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Error while expanding the value set `value-set-182905`. The filter value should be one of `true` or `false` but was `invalid-162128`.")))))
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet"
+           {:fhir/type :fhir/ValueSet
+            :url #fhir/uri"value-set-182905"
+            :compose
+            {:fhir/type :fhir.ValueSet/compose
+             :include
+             [{:fhir/type :fhir.ValueSet.compose/include
+               :system #fhir/uri"system-182822"
+               :filter
+               [{:fhir/type :fhir.ValueSet.compose.include/filter
+                 :property #fhir/code"property-160622"
+                 :op #fhir/code"exists"
+                 :value #fhir/string"invalid-162128"}]}]}})
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Error while expanding the value set `value-set-182905`. The filter value should be one of `true` or `false` but was `invalid-162128`."))))
 
   (testing "with a single concept"
     (testing "without a property"
@@ -2339,13 +2292,12 @@
                         :op #fhir/code"exists"
                         :value #fhir/string"false"}]}]}}]]]
 
-          (doseq [request [{:url "value-set-182905"} {:id "0"}]]
-            (given @(ts/expand-value-set ts request)
-              :fhir/type := :fhir/ValueSet
-              [:expansion :contains count] := 1
-              [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-              [:expansion :contains 0 :code] := #fhir/code"code-182832"
-              [:expansion :contains 0 :display] := #fhir/string"display-182717"))))
+          (given @(expand-value-set ts "url" #fhir/uri"value-set-182905")
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri"system-182822"
+            [:expansion :contains 0 :code] := #fhir/code"code-182832"
+            [:expansion :contains 0 :display] := #fhir/string"display-182717")))
 
       (testing "that should exist"
         (with-system-data [{ts ::ts/local} config]
@@ -2369,10 +2321,9 @@
                         :op #fhir/code"exists"
                         :value #fhir/string"true"}]}]}}]]]
 
-          (doseq [request [{:url "value-set-182905"} {:id "0"}]]
-            (given @(ts/expand-value-set ts request)
-              :fhir/type := :fhir/ValueSet
-              [:expansion :contains count] := 0)))))
+          (given @(expand-value-set ts "url" #fhir/uri"value-set-182905")
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] := 0))))
 
     (testing "with existing property"
       (testing "that shouldn't exist"
@@ -2401,10 +2352,9 @@
                         :op #fhir/code"exists"
                         :value #fhir/string"false"}]}]}}]]]
 
-          (doseq [request [{:url "value-set-182905"} {:id "0"}]]
-            (given @(ts/expand-value-set ts request)
-              :fhir/type := :fhir/ValueSet
-              [:expansion :contains count] := 0))))
+          (given @(expand-value-set ts "url" #fhir/uri"value-set-182905")
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] := 0)))
 
       (testing "that should exist"
         (with-system-data [{ts ::ts/local} config]
@@ -2432,13 +2382,12 @@
                         :op #fhir/code"exists"
                         :value #fhir/string"true"}]}]}}]]]
 
-          (doseq [request [{:url "value-set-182905"} {:id "0"}]]
-            (given @(ts/expand-value-set ts request)
-              :fhir/type := :fhir/ValueSet
-              [:expansion :contains count] := 1
-              [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-              [:expansion :contains 0 :code] := #fhir/code"code-182832"
-              [:expansion :contains 0 :display] := #fhir/string"display-182717")))))))
+          (given @(expand-value-set ts "url" #fhir/uri"value-set-182905")
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri"system-182822"
+            [:expansion :contains 0 :code] := #fhir/code"code-182832"
+            [:expansion :contains 0 :display] := #fhir/string"display-182717"))))))
 
 (deftest expand-value-set-include-filter-equals-test
   (testing "fails"
@@ -2452,40 +2401,40 @@
                  :display #fhir/string"display-182717"}]}]]]
 
       (testing "with missing property"
-        (let [request {:value-set
-                       {:fhir/type :fhir/ValueSet
-                        :url #fhir/uri"value-set-171904"
-                        :compose
-                        {:fhir/type :fhir.ValueSet/compose
-                         :include
-                         [{:fhir/type :fhir.ValueSet.compose/include
-                           :system #fhir/uri"system-182822"
-                           :filter
-                           [{:fhir/type :fhir.ValueSet.compose.include/filter
-                             :op #fhir/code"="
-                             :value #fhir/string"value-161324"}]}]}}}]
-
-          (given-failed-future (ts/expand-value-set ts request)
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Error while expanding the value set `value-set-171904`. Missing filter property.")))
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet"
+           {:fhir/type :fhir/ValueSet
+            :url #fhir/uri"value-set-171904"
+            :compose
+            {:fhir/type :fhir.ValueSet/compose
+             :include
+             [{:fhir/type :fhir.ValueSet.compose/include
+               :system #fhir/uri"system-182822"
+               :filter
+               [{:fhir/type :fhir.ValueSet.compose.include/filter
+                 :op #fhir/code"="
+                 :value #fhir/string"value-161324"}]}]}})
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Error while expanding the value set `value-set-171904`. Missing filter property."))
 
       (testing "with missing value"
-        (let [request {:value-set
-                       {:fhir/type :fhir/ValueSet
-                        :url #fhir/uri"value-set-171904"
-                        :compose
-                        {:fhir/type :fhir.ValueSet/compose
-                         :include
-                         [{:fhir/type :fhir.ValueSet.compose/include
-                           :system #fhir/uri"system-182822"
-                           :filter
-                           [{:fhir/type :fhir.ValueSet.compose.include/filter
-                             :property #fhir/code"property-175506"
-                             :op #fhir/code"="}]}]}}}]
-
-          (given-failed-future (ts/expand-value-set ts request)
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Error while expanding the value set `value-set-171904`. Missing filter value.")))))
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet"
+           {:fhir/type :fhir/ValueSet
+            :url #fhir/uri"value-set-171904"
+            :compose
+            {:fhir/type :fhir.ValueSet/compose
+             :include
+             [{:fhir/type :fhir.ValueSet.compose/include
+               :system #fhir/uri"system-182822"
+               :filter
+               [{:fhir/type :fhir.ValueSet.compose.include/filter
+                 :property #fhir/code"property-175506"
+                 :op #fhir/code"="}]}]}})
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Error while expanding the value set `value-set-171904`. Missing filter value."))))
 
   (with-system-data [{ts ::ts/local} config]
     [[[:put {:fhir/type :fhir/CodeSystem :id "0"
@@ -2529,13 +2478,12 @@
                   :op #fhir/code"="
                   :value #fhir/string"value-161324"}]}]}}]]]
 
-    (doseq [request [{:url "value-set-175628"} {:id "0"}]]
-      (given @(ts/expand-value-set ts request)
-        :fhir/type := :fhir/ValueSet
-        [:expansion :contains count] := 1
-        [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-        [:expansion :contains 0 :code] := #fhir/code"code-175652"
-        [:expansion :contains 0 :display] := #fhir/string"display-175659"))))
+    (given @(expand-value-set ts "url" #fhir/uri"value-set-175628")
+      :fhir/type := :fhir/ValueSet
+      [:expansion :contains count] := 1
+      [:expansion :contains 0 :system] := #fhir/uri"system-182822"
+      [:expansion :contains 0 :code] := #fhir/code"code-175652"
+      [:expansion :contains 0 :display] := #fhir/string"display-175659")))
 
 (deftest expand-value-set-include-filter-regex-test
   (testing "fails"
@@ -2549,59 +2497,59 @@
                  :display #fhir/string"display-182717"}]}]]]
 
       (testing "with missing property"
-        (let [request {:value-set
-                       {:fhir/type :fhir/ValueSet
-                        :url #fhir/uri"value-set-171904"
-                        :compose
-                        {:fhir/type :fhir.ValueSet/compose
-                         :include
-                         [{:fhir/type :fhir.ValueSet.compose/include
-                           :system #fhir/uri"system-182822"
-                           :filter
-                           [{:fhir/type :fhir.ValueSet.compose.include/filter
-                             :op #fhir/code"regex"
-                             :value #fhir/string"value-161324"}]}]}}}]
-
-          (given-failed-future (ts/expand-value-set ts request)
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Error while expanding the value set `value-set-171904`. Missing filter property.")))
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet"
+           {:fhir/type :fhir/ValueSet
+            :url #fhir/uri"value-set-171904"
+            :compose
+            {:fhir/type :fhir.ValueSet/compose
+             :include
+             [{:fhir/type :fhir.ValueSet.compose/include
+               :system #fhir/uri"system-182822"
+               :filter
+               [{:fhir/type :fhir.ValueSet.compose.include/filter
+                 :op #fhir/code"regex"
+                 :value #fhir/string"value-161324"}]}]}})
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Error while expanding the value set `value-set-171904`. Missing filter property."))
 
       (testing "with missing value"
-        (let [request {:value-set
-                       {:fhir/type :fhir/ValueSet
-                        :url #fhir/uri"value-set-171904"
-                        :compose
-                        {:fhir/type :fhir.ValueSet/compose
-                         :include
-                         [{:fhir/type :fhir.ValueSet.compose/include
-                           :system #fhir/uri"system-182822"
-                           :filter
-                           [{:fhir/type :fhir.ValueSet.compose.include/filter
-                             :property #fhir/code"property-175506"
-                             :op #fhir/code"regex"}]}]}}}]
-
-          (given-failed-future (ts/expand-value-set ts request)
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Error while expanding the value set `value-set-171904`. Missing filter value.")))
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet"
+           {:fhir/type :fhir/ValueSet
+            :url #fhir/uri"value-set-171904"
+            :compose
+            {:fhir/type :fhir.ValueSet/compose
+             :include
+             [{:fhir/type :fhir.ValueSet.compose/include
+               :system #fhir/uri"system-182822"
+               :filter
+               [{:fhir/type :fhir.ValueSet.compose.include/filter
+                 :property #fhir/code"property-175506"
+                 :op #fhir/code"regex"}]}]}})
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Error while expanding the value set `value-set-171904`. Missing filter value."))
 
       (testing "with invalid value"
-        (let [request {:value-set
-                       {:fhir/type :fhir/ValueSet
-                        :url #fhir/uri"value-set-171904"
-                        :compose
-                        {:fhir/type :fhir.ValueSet/compose
-                         :include
-                         [{:fhir/type :fhir.ValueSet.compose/include
-                           :system #fhir/uri"system-182822"
-                           :filter
-                           [{:fhir/type :fhir.ValueSet.compose.include/filter
-                             :property #fhir/code"property-175506"
-                             :op #fhir/code"regex"
-                             :value #fhir/string"["}]}]}}}]
-
-          (given-failed-future (ts/expand-value-set ts request)
-            ::anom/category := ::anom/incorrect
-            ::anom/message := "Error while expanding the value set `value-set-171904`. Invalid regex pattern `[`.")))))
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet"
+           {:fhir/type :fhir/ValueSet
+            :url #fhir/uri"value-set-171904"
+            :compose
+            {:fhir/type :fhir.ValueSet/compose
+             :include
+             [{:fhir/type :fhir.ValueSet.compose/include
+               :system #fhir/uri"system-182822"
+               :filter
+               [{:fhir/type :fhir.ValueSet.compose.include/filter
+                 :property #fhir/code"property-175506"
+                 :op #fhir/code"regex"
+                 :value #fhir/string"["}]}]}})
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Error while expanding the value set `value-set-171904`. Invalid regex pattern `[`."))))
 
   (testing "code"
     (with-system-data [{ts ::ts/local} config]
@@ -2628,14 +2576,13 @@
                     :op #fhir/code"regex"
                     :value #fhir/string"a+"}]}]}}]]]
 
-      (doseq [request [{:url "value-set-175628"} {:id "0"}]]
-        (given @(ts/expand-value-set ts request)
-          :fhir/type := :fhir/ValueSet
-          [:expansion :contains count] := 2
-          [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-          [:expansion :contains 0 :code] := #fhir/code"a"
-          [:expansion :contains 1 :system] := #fhir/uri"system-182822"
-          [:expansion :contains 1 :code] := #fhir/code"aa"))))
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-175628")
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] := 2
+        [:expansion :contains 0 :system] := #fhir/uri"system-182822"
+        [:expansion :contains 0 :code] := #fhir/code"a"
+        [:expansion :contains 1 :system] := #fhir/uri"system-182822"
+        [:expansion :contains 1 :code] := #fhir/code"aa")))
 
   (testing "other property"
     (with-system-data [{ts ::ts/local} config]
@@ -2677,14 +2624,13 @@
                     :op #fhir/code"regex"
                     :value #fhir/string"a+"}]}]}}]]]
 
-      (doseq [request [{:url "value-set-175628"} {:id "0"}]]
-        (given @(ts/expand-value-set ts request)
-          :fhir/type := :fhir/ValueSet
-          [:expansion :contains count] := 2
-          [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-          [:expansion :contains 0 :code] := #fhir/code"code-145731"
-          [:expansion :contains 1 :system] := #fhir/uri"system-182822"
-          [:expansion :contains 1 :code] := #fhir/code"code-145708")))))
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-175628")
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] := 2
+        [:expansion :contains 0 :system] := #fhir/uri"system-182822"
+        [:expansion :contains 0 :code] := #fhir/code"code-145731"
+        [:expansion :contains 1 :system] := #fhir/uri"system-182822"
+        [:expansion :contains 1 :code] := #fhir/code"code-145708"))))
 
 (deftest expand-value-set-include-filter-multiple-test
   (testing "is-a and exists (and the other way around)"
@@ -2721,13 +2667,12 @@
                       :system #fhir/uri"system-182822"
                       :filter filters}]}}]]]
 
-          (doseq [request [{:url "value-set-182905"} {:id "0"}]]
-            (given @(ts/expand-value-set ts request)
-              :fhir/type := :fhir/ValueSet
-              [:expansion :contains count] := 1
-              [:expansion :contains 0 :system] := #fhir/uri"system-182822"
-              [:expansion :contains 0 :code] := #fhir/code"code-191445"
-              [:expansion :contains 0 :display] := #fhir/string"display-191448")))))))
+          (given @(expand-value-set ts "url" #fhir/uri"value-set-182905")
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri"system-182822"
+            [:expansion :contains 0 :code] := #fhir/code"code-191445"
+            [:expansion :contains 0 :display] := #fhir/string"display-191448"))))))
 
 (deftest expand-value-set-provided-value-set-test
   (testing "fails on non-complete code system"
@@ -2736,15 +2681,15 @@
                :url #fhir/uri"system-115910"
                :content #fhir/code"not-present"}]]]
 
-      (given-failed-future (ts/expand-value-set
-                            ts
-                            {:value-set
-                             {:fhir/type :fhir/ValueSet
-                              :compose
-                              {:fhir/type :fhir.ValueSet/compose
-                               :include
-                               [{:fhir/type :fhir.ValueSet.compose/include
-                                 :system #fhir/uri"system-115910"}]}}})
+      (given-failed-future
+       (expand-value-set ts
+         "valueSet"
+         {:fhir/type :fhir/ValueSet
+          :compose
+          {:fhir/type :fhir.ValueSet/compose
+           :include
+           [{:fhir/type :fhir.ValueSet.compose/include
+             :system #fhir/uri"system-115910"}]}})
         ::anom/category := ::anom/conflict
         ::anom/message := "Error while expanding the provided value set. Can't use the code system `system-115910` because it is not complete. It's content is `not-present`."
         :t := 1)))
@@ -2757,15 +2702,14 @@
              [{:fhir/type :fhir.CodeSystem/concept
                :code #fhir/code"code-115927"}]}]]]
 
-    (given @(ts/expand-value-set
-             ts
-             {:value-set
+    (given @(expand-value-set ts
+              "valueSet"
               {:fhir/type :fhir/ValueSet
                :compose
                {:fhir/type :fhir.ValueSet/compose
                 :include
                 [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri"system-115910"}]}}})
+                  :system #fhir/uri"system-115910"}]}})
       :fhir/type := :fhir/ValueSet
       [:expansion :contains count] := 1
       [:expansion :contains 0 :system] := #fhir/uri"system-115910"
@@ -2783,7 +2727,7 @@
                 [{:fhir/type :fhir.ValueSet.compose/include
                   :system #fhir/uri"http://snomed.info/sct"}]}}]]]
 
-      (given-failed-future (ts/expand-value-set ts {:id "0"})
+      (given-failed-future (expand-value-set ts "url" #fhir/uri"system-182137")
         ::anom/category := ::anom/conflict
         ::anom/message := "Error while expanding the value set `system-182137`. Expanding all Snomed CT concepts is too costly."
         :fhir/issue "too-costly"))))
@@ -2792,6 +2736,7 @@
   (testing "include one concept"
     (with-system-data [{ts ::ts/local} sct-config]
       [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"system-151922"
                :compose
                {:fhir/type :fhir.ValueSet/compose
                 :include
@@ -2801,86 +2746,67 @@
                   [{:fhir/type :fhir.ValueSet.compose.include/concept
                     :code #fhir/code"441510007"}]}]}}]]]
 
-      (given @(ts/expand-value-set ts {:id "0"})
+      (given @(expand-value-set ts "url" #fhir/uri"system-151922")
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] := 1
         [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
         [:expansion :contains 0 #(contains? % :inactive)] := false
         [:expansion :contains 0 :code] := #fhir/code"441510007"
-        [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"))
+        [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+        [:expansion :contains 0 #(contains? % :designation)] := false))
 
     (testing "with inactive concepts"
       (with-system [{ts ::ts/local} sct-config]
-        (let [request {:value-set
-                       {:fhir/type :fhir/ValueSet :id "0"
-                        :compose
-                        {:fhir/type :fhir.ValueSet/compose
-                         :include
-                         [{:fhir/type :fhir.ValueSet.compose/include
-                           :system #fhir/uri"http://snomed.info/sct"
-                           :concept
-                           [{:fhir/type :fhir.ValueSet.compose.include/concept
-                             :code #fhir/code"860958002"}
-                            {:fhir/type :fhir.ValueSet.compose.include/concept
-                             :code #fhir/code"441510007"}]}]}}}]
-
-          (given @(ts/expand-value-set ts request)
-            :fhir/type := :fhir/ValueSet
-            [:expansion :contains count] := 2
-            [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
-            [:expansion :contains 0 :inactive] := #fhir/boolean true
-            [:expansion :contains 0 :code] := #fhir/code"860958002"
-            [:expansion :contains 0 :display] := #fhir/string"Temperature of blood (observable entity)"
-            [:expansion :contains 1 :system] := #fhir/uri"http://snomed.info/sct"
-            [:expansion :contains 1 #(contains? % :inactive)] := false
-            [:expansion :contains 1 :code] := #fhir/code"441510007"
-            [:expansion :contains 1 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)")
-
-          (testing "active only"
-            (given @(ts/expand-value-set ts (assoc request :active-only true))
-              :fhir/type := :fhir/ValueSet
-              [:expansion :contains count] := 1
-              [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
-              [:expansion :contains 0 #(contains? % :inactive)] := false
-              [:expansion :contains 0 :code] := #fhir/code"441510007"
-              [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)")))
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"http://snomed.info/sct"
+                      :concept
+                      [{:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code"860958002"}
+                       {:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code"441510007"}]}]}})
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] := 2
+          [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains 0 :inactive] := #fhir/boolean true
+          [:expansion :contains 0 :code] := #fhir/code"860958002"
+          [:expansion :contains 0 :display] := #fhir/string"Temperature of blood (observable entity)"
+          [:expansion :contains 1 :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains 1 #(contains? % :inactive)] := false
+          [:expansion :contains 1 :code] := #fhir/code"441510007"
+          [:expansion :contains 1 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)")
 
         (testing "including only active"
-          (let [request {:value-set
-                         {:fhir/type :fhir/ValueSet :id "0"
-                          :compose
-                          {:fhir/type :fhir.ValueSet/compose
-                           :inactive #fhir/boolean false
-                           :include
-                           [{:fhir/type :fhir.ValueSet.compose/include
-                             :system #fhir/uri"http://snomed.info/sct"
-                             :concept
-                             [{:fhir/type :fhir.ValueSet.compose.include/concept
-                               :code #fhir/code"860958002"}
-                              {:fhir/type :fhir.ValueSet.compose.include/concept
-                               :code #fhir/code"441510007"}]}]}}}]
-
-            (given @(ts/expand-value-set ts request)
-              :fhir/type := :fhir/ValueSet
-              [:expansion :contains count] := 1
-              [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
-              [:expansion :contains 0 #(contains? % :inactive)] := false
-              [:expansion :contains 0 :code] := #fhir/code"441510007"
-              [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)")
-
-            (testing "setting active only to false doesn't include inactives"
-              (given @(ts/expand-value-set ts (assoc request :active-only false))
-                :fhir/type := :fhir/ValueSet
-                [:expansion (parameter "activeOnly") 0 :value] := #fhir/boolean false
-                [:expansion :contains count] := 1
-                [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
-                [:expansion :contains 0 #(contains? % :inactive)] := false
-                [:expansion :contains 0 :code] := #fhir/code"441510007"
-                [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"))))))
+          (given @(expand-value-set ts
+                    "valueSet"
+                    {:fhir/type :fhir/ValueSet
+                     :compose
+                     {:fhir/type :fhir.ValueSet/compose
+                      :inactive #fhir/boolean false
+                      :include
+                      [{:fhir/type :fhir.ValueSet.compose/include
+                        :system #fhir/uri"http://snomed.info/sct"
+                        :concept
+                        [{:fhir/type :fhir.ValueSet.compose.include/concept
+                          :code #fhir/code"860958002"}
+                         {:fhir/type :fhir.ValueSet.compose.include/concept
+                          :code #fhir/code"441510007"}]}]}})
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
+            [:expansion :contains 0 #(contains? % :inactive)] := false
+            [:expansion :contains 0 :code] := #fhir/code"441510007"
+            [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"))))
 
     (testing "with version (module)"
       (with-system-data [{ts ::ts/local} sct-config]
         [[[:put {:fhir/type :fhir/ValueSet :id "0"
+                 :url #fhir/uri"system-152048"
                  :compose
                  {:fhir/type :fhir.ValueSet/compose
                   :include
@@ -2891,7 +2817,7 @@
                     [{:fhir/type :fhir.ValueSet.compose.include/concept
                       :code #fhir/code"441510007"}]}]}}]]]
 
-        (given @(ts/expand-value-set ts {:id "0"})
+        (given @(expand-value-set ts "url" #fhir/uri"system-152048")
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 1
           [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
@@ -2902,6 +2828,7 @@
       (testing "german module"
         (with-system-data [{ts ::ts/local} sct-config]
           [[[:put {:fhir/type :fhir/ValueSet :id "0"
+                   :url #fhir/uri"system-152116"
                    :compose
                    {:fhir/type :fhir.ValueSet/compose
                     :include
@@ -2912,13 +2839,14 @@
                       [{:fhir/type :fhir.ValueSet.compose.include/concept
                         :code #fhir/code"441510007"}]}]}}]]]
 
-          (given @(ts/expand-value-set ts {:id "0"})
+          (given @(expand-value-set ts "url" #fhir/uri"system-152116")
             :fhir/type := :fhir/ValueSet
             [:expansion :contains count] := 0))))
 
     (testing "with version"
       (with-system-data [{ts ::ts/local} sct-config]
         [[[:put {:fhir/type :fhir/ValueSet :id "0"
+                 :url #fhir/uri"system-152139"
                  :compose
                  {:fhir/type :fhir.ValueSet/compose
                   :include
@@ -2929,7 +2857,7 @@
                     [{:fhir/type :fhir.ValueSet.compose.include/concept
                       :code #fhir/code"441510007"}]}]}}]]]
 
-        (given @(ts/expand-value-set ts {:id "0"})
+        (given @(expand-value-set ts "url" #fhir/uri"system-152139")
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 1
           [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
@@ -2938,23 +2866,51 @@
           [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"))
 
       (testing "non-existing version"
-        (with-system-data [{ts ::ts/local} sct-config]
-          [[[:put {:fhir/type :fhir/ValueSet :id "0"
-                   :compose
-                   {:fhir/type :fhir.ValueSet/compose
-                    :include
-                    [{:fhir/type :fhir.ValueSet.compose/include
-                      :system #fhir/uri"http://snomed.info/sct"
-                      :version #fhir/string"http://snomed.info/sct/900000000000207008/version/none-existing"
-                      :concept
-                      [{:fhir/type :fhir.ValueSet.compose.include/concept
-                        :code #fhir/code"441510007"}]}]}}]]]
-
-          (given-failed-future (ts/expand-value-set ts {:id "0"})
+        (with-system [{ts ::ts/local} sct-config]
+          (given-failed-future (expand-value-set ts
+                                 "valueSet"
+                                 {:fhir/type :fhir/ValueSet
+                                  :compose
+                                  {:fhir/type :fhir.ValueSet/compose
+                                   :include
+                                   [{:fhir/type :fhir.ValueSet.compose/include
+                                     :system #fhir/uri"http://snomed.info/sct"
+                                     :version #fhir/string"http://snomed.info/sct/900000000000207008/version/none-existing"
+                                     :concept
+                                     [{:fhir/type :fhir.ValueSet.compose.include/concept
+                                       :code #fhir/code"441510007"}]}]}})
             ::anom/category := ::anom/not-found
-            ::anom/message := "Error while expanding the provided value set. The code system `http://snomed.info/sct` with version `http://snomed.info/sct/900000000000207008/version/none-existing` was not found."))))))
+            ::anom/message := "Error while expanding the provided value set. The code system `http://snomed.info/sct|http://snomed.info/sct/900000000000207008/version/none-existing` was not found."))))
 
-(deftest expand-value-set-sct-filter-test
+    (testing "with designations"
+      (with-system-data [{ts ::ts/local} sct-config]
+        [[[:put {:fhir/type :fhir/ValueSet :id "0"
+                 :url #fhir/uri"system-174336"
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri"http://snomed.info/sct"
+                    :concept
+                    [{:fhir/type :fhir.ValueSet.compose.include/concept
+                      :code #fhir/code"441510007"}]}]}}]]]
+
+        (given @(expand-value-set ts
+                  "url" #fhir/uri"system-174336"
+                  "includeDesignations" #fhir/boolean true)
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] := 1
+          [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains 0 #(contains? % :inactive)] := false
+          [:expansion :contains 0 :code] := #fhir/code"441510007"
+          [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+          [:expansion :contains 0 :designation 0 :language] := #fhir/code"en"
+          [:expansion :contains 0 :designation 0 :use :system] := #fhir/uri"http://snomed.info/sct"
+          [:expansion :contains 0 :designation 0 :use :code] := #fhir/code"900000000000013009"
+          [:expansion :contains 0 :designation 0 :use :display] := #fhir/string"Synonym"
+          [:expansion :contains 0 :designation 0 :value] := #fhir/string"Blood specimen with anticoagulant")))))
+
+(deftest expand-value-set-sct-include-filter-test
   (testing "unknown filter operator"
     (with-system-data [{ts ::ts/local} sct-config]
       [[[:put {:fhir/type :fhir/ValueSet :id "0"
@@ -2970,14 +2926,15 @@
                     :op #fhir/code"op-unknown-120524"
                     :value #fhir/string"value-160032"}]}]}}]]]
 
-      (given-failed-future (ts/expand-value-set ts {:url "value-set-120544"})
+      (given-failed-future (expand-value-set ts "url" #fhir/uri"value-set-120544")
         ::anom/category := ::anom/unsupported
         ::anom/message := "Error while expanding the value set `value-set-120544`. Unsupported filter operator `op-unknown-120524` in code system `http://snomed.info/sct`."))))
 
-(deftest expand-value-set-sct-filter-is-a-test
+(deftest expand-value-set-sct-include-filter-is-a-test
   (testing "with a single is-a filter"
     (with-system-data [{ts ::ts/local} sct-config]
       [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-152706"
                :compose
                {:fhir/type :fhir.ValueSet/compose
                 :include
@@ -2989,8 +2946,10 @@
                     :op #fhir/code"is-a"
                     :value #fhir/string"441510007"}]}]}}]]]
 
-      (doseq [request [{} {:system-versions [#fhir/canonical"http://snomed.info/sct|http://snomed.info/sct/900000000000207008"]}]]
-        (given @(ts/expand-value-set ts (assoc request :id "0"))
+      (doseq [request [["url" #fhir/uri"value-set-152706"]
+                       ["url" #fhir/uri"value-set-152706"
+                        "system-version" #fhir/canonical"http://snomed.info/sct|http://snomed.info/sct/900000000000207008"]]]
+        (given @(apply expand-value-set ts request)
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 3
           [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
@@ -3009,6 +2968,7 @@
     (testing "with many children"
       (with-system-data [{ts ::ts/local} sct-config]
         [[[:put {:fhir/type :fhir/ValueSet :id "0"
+                 :url #fhir/uri"value-set-152902"
                  :compose
                  {:fhir/type :fhir.ValueSet/compose
                   :include
@@ -3020,7 +2980,7 @@
                       :op #fhir/code"is-a"
                       :value #fhir/string"123038009"}]}]}}]]]
 
-        (given @(ts/expand-value-set ts {:id "0"})
+        (given @(expand-value-set ts "url" #fhir/uri"value-set-152902")
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 1812
           [:expansion :contains 0 :code] := #fhir/code"396807009"
@@ -3029,6 +2989,7 @@
     (testing "with inactive concepts"
       (with-system-data [{ts ::ts/local} sct-config]
         [[[:put {:fhir/type :fhir/ValueSet :id "0"
+                 :url #fhir/uri"value-set-152936"
                  :compose
                  {:fhir/type :fhir.ValueSet/compose
                   :include
@@ -3040,7 +3001,7 @@
                       :op #fhir/code"is-a"
                       :value #fhir/string"860958002"}]}]}}]]]
 
-        (given @(ts/expand-value-set ts {:id "0"})
+        (given @(expand-value-set ts "url" #fhir/uri"value-set-152936")
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 1
           [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
@@ -3049,14 +3010,17 @@
           [:expansion :contains 0 :display] := #fhir/string"Temperature of blood (observable entity)")
 
         (testing "active only"
-          (given @(ts/expand-value-set ts {:id "0" :active-only true})
+          (given @(expand-value-set ts
+                    "url" #fhir/uri"value-set-152936"
+                    "activeOnly" #fhir/boolean true)
             :fhir/type := :fhir/ValueSet
             [:expansion :contains count] := 0))))))
 
-(deftest expand-value-set-sct-filter-descendent-of-test
+(deftest expand-value-set-sct-include-filter-descendent-of-test
   (testing "with a single descendent-of filter"
     (with-system-data [{ts ::ts/local} sct-config]
       [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-152706"
                :compose
                {:fhir/type :fhir.ValueSet/compose
                 :include
@@ -3068,8 +3032,10 @@
                     :op #fhir/code"descendent-of"
                     :value #fhir/string"441510007"}]}]}}]]]
 
-      (doseq [request [{} {:system-versions [#fhir/canonical"http://snomed.info/sct|http://snomed.info/sct/900000000000207008"]}]]
-        (given @(ts/expand-value-set ts (assoc request :id "0"))
+      (doseq [request [["url" #fhir/uri"value-set-152706"]
+                       ["url" #fhir/uri"value-set-152706"
+                        "system-version" #fhir/canonical"http://snomed.info/sct|http://snomed.info/sct/900000000000207008"]]]
+        (given @(apply expand-value-set ts request)
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 2
           [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
@@ -3084,6 +3050,7 @@
     (testing "with many children"
       (with-system-data [{ts ::ts/local} sct-config]
         [[[:put {:fhir/type :fhir/ValueSet :id "0"
+                 :url #fhir/uri"value-set-152706"
                  :compose
                  {:fhir/type :fhir.ValueSet/compose
                   :include
@@ -3095,7 +3062,7 @@
                       :op #fhir/code"descendent-of"
                       :value #fhir/string"123038009"}]}]}}]]]
 
-        (given @(ts/expand-value-set ts {:id "0"})
+        (given @(expand-value-set ts "url" #fhir/uri"value-set-152706")
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 1811
           [:expansion :contains 0 :code] := #fhir/code"396807009"
@@ -3104,6 +3071,7 @@
     (testing "with inactive concepts"
       (with-system-data [{ts ::ts/local} sct-config]
         [[[:put {:fhir/type :fhir/ValueSet :id "0"
+                 :url #fhir/uri"value-set-152706"
                  :compose
                  {:fhir/type :fhir.ValueSet/compose
                   :include
@@ -3113,7 +3081,7 @@
                     [{:fhir/type :fhir.ValueSet.compose.include/concept
                       :code #fhir/code"860958002"}]}]}}]]]
 
-        (given @(ts/expand-value-set ts {:id "0"})
+        (given @(expand-value-set ts "url" #fhir/uri"value-set-152706")
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 1
           [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
@@ -3122,13 +3090,16 @@
           [:expansion :contains 0 :display] := #fhir/string"Temperature of blood (observable entity)")
 
         (testing "active only"
-          (given @(ts/expand-value-set ts {:id "0" :active-only true})
+          (given @(expand-value-set ts
+                    "url" #fhir/uri"value-set-152706"
+                    "activeOnly" #fhir/boolean true)
             :fhir/type := :fhir/ValueSet
             [:expansion :contains count] := 0))))))
 
 (deftest expand-value-set-ucum-test
   (with-system-data [{ts ::ts/local} ucum-config]
     [[[:put {:fhir/type :fhir/ValueSet :id "0"
+             :url #fhir/uri"value-set-152706"
              :compose
              {:fhir/type :fhir.ValueSet/compose
               :include
@@ -3140,7 +3111,7 @@
                  {:fhir/type :fhir.ValueSet.compose.include/concept
                   :code #fhir/code"[degF]"}]}]}}]]]
 
-    (given @(ts/expand-value-set ts {:id "0"})
+    (given @(expand-value-set ts "url" #fhir/uri"value-set-152706")
       :fhir/type := :fhir/ValueSet
       [:expansion :contains count] := 2
       [:expansion :contains 0 :system] := #fhir/uri"http://unitsofmeasure.org"
@@ -3166,13 +3137,12 @@
                 [{:fhir/type :fhir.ValueSet.compose/include
                   :system #fhir/uri"system-115910"}]}}]]]
 
-      (doseq [request [{:url "value-set-135750"} {:id "0"}]]
-        (given @(ts/expand-value-set ts request)
-          :fhir/type := :fhir/ValueSet
-          [:expansion :contains count] := 1
-          [:expansion :contains 0 :system] := #fhir/uri"system-115910"
-          [:expansion :contains 0 :code] := #fhir/code"code-115927"
-          [:expansion :contains 0 :display] := #fhir/string"display-182508")))
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] := 1
+        [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+        [:expansion :contains 0 :code] := #fhir/code"code-115927"
+        [:expansion :contains 0 :display] := #fhir/string"display-182508"))
 
     (testing "include only one code"
       (with-system-data [{ts ::ts/local} config]
@@ -3196,7 +3166,7 @@
                     [{:fhir/type :fhir.ValueSet.compose.include/concept
                       :code #fhir/code"code-163444"}]}]}}]]]
 
-        (given @(ts/expand-value-set ts {:url "value-set-135750"})
+        (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
           :fhir/type := :fhir/ValueSet
           [:expansion :contains count] := 1
           [:expansion :contains 0 :system] := #fhir/uri"system-115910"
@@ -3226,7 +3196,7 @@
                     :code #fhir/code"code-163444"
                     :display #fhir/string"display-182609"}]}]}}]]]
 
-      (given @(ts/expand-value-set ts {:url "value-set-135750"})
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
         :fhir/type := :fhir/ValueSet
         [:expansion :contains count] := 1
         [:expansion :contains 0 :system] := #fhir/uri"system-115910"
@@ -3250,19 +3220,18 @@
                 [{:fhir/type :fhir.ValueSet.compose/include
                   :system #fhir/uri"system-115910"}]}}]]]
 
-      (doseq [request [{:url "value-set-135750"} {:id "0"}]]
-        (given @(ts/expand-value-set ts request)
-          :fhir/type := :fhir/ValueSet
-          :id := nil
-          :meta := nil
-          :url := #fhir/uri"value-set-135750"
-          :compose := nil
-          [:expansion :timestamp] := #fhir/dateTime"1970-01-01T00:00:00Z"
-          [:expansion :identifier type/value] :? uuid-urn?
-          [:expansion :total] := #fhir/integer 1
-          [:expansion :contains count] := 1
-          [:expansion :contains 0 :system] := #fhir/uri"system-115910"
-          [:expansion :contains 0 :code] := #fhir/code"code-115927"))))
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
+        :fhir/type := :fhir/ValueSet
+        :id := nil
+        :meta := nil
+        :url := #fhir/uri"value-set-135750"
+        :compose := nil
+        [:expansion :timestamp] := #fhir/dateTime"1970-01-01T00:00:00Z"
+        [:expansion :identifier type/value] :? uuid-urn?
+        [:expansion :total] := #fhir/integer 1
+        [:expansion :contains count] := 1
+        [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+        [:expansion :contains 0 :code] := #fhir/code"code-115927")))
 
   (testing "including definition"
     (with-system-data [{ts ::ts/local} config]
@@ -3281,8 +3250,9 @@
                 [{:fhir/type :fhir.ValueSet.compose/include
                   :system #fhir/uri"system-115910"}]}}]]]
 
-      (given @(ts/expand-value-set ts {:url "value-set-135750"
-                                       :include-definition true})
+      (given @(expand-value-set ts
+                "url" #fhir/uri"value-set-135750"
+                "includeDefinition" #fhir/boolean true)
         :fhir/type := :fhir/ValueSet
         :id := nil
         :meta := nil
@@ -3313,15 +3283,14 @@
                 [{:fhir/type :fhir.ValueSet.compose/include
                   :system #fhir/uri"system-115910"}]}}]]]
 
-      (doseq [request [{:url "value-set-135750"} {:id "0"}]]
-        (given @(ts/expand-value-set ts request)
-          :fhir/type := :fhir/ValueSet
-          :url := #fhir/uri"value-set-135750"
-          :version := #fhir/string"version-132003"
-          :status := #fhir/code"active"
-          [:expansion :contains count] := 1
-          [:expansion :contains 0 :system] := #fhir/uri"system-115910"
-          [:expansion :contains 0 :code] := #fhir/code"code-115927"))))
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-135750")
+        :fhir/type := :fhir/ValueSet
+        :url := #fhir/uri"value-set-135750"
+        :version := #fhir/string"version-132003"
+        :status := #fhir/code"active"
+        [:expansion :contains count] := 1
+        [:expansion :contains 0 :system] := #fhir/uri"system-115910"
+        [:expansion :contains 0 :code] := #fhir/code"code-115927")))
 
   (testing "supports count"
     (testing "zero"
@@ -3342,7 +3311,9 @@
                   [{:fhir/type :fhir.ValueSet.compose/include
                     :system #fhir/uri"system-115910"}]}}]]]
 
-        (given @(ts/expand-value-set ts {:url "value-set-135750" :count 0})
+        (given @(expand-value-set ts
+                  "url" #fhir/uri"value-set-135750"
+                  "count" #fhir/integer 0)
           :fhir/type := :fhir/ValueSet
           [:expansion (parameter "count") 0 :name] := #fhir/string"count"
           [:expansion :total] := #fhir/integer 2
@@ -3366,7 +3337,9 @@
                   [{:fhir/type :fhir.ValueSet.compose/include
                     :system #fhir/uri"system-115910"}]}}]]]
 
-        (given @(ts/expand-value-set ts {:url "value-set-135750" :count 1})
+        (given @(expand-value-set ts
+                  "url" #fhir/uri"value-set-135750"
+                  "count" #fhir/integer 1)
           :fhir/type := :fhir/ValueSet
           [:expansion (parameter "count") 0 :value] := #fhir/integer 1
           [:expansion :total] := #fhir/integer 2
@@ -3390,267 +3363,1244 @@
                 [{:fhir/type :fhir.ValueSet.compose/include
                   :system #fhir/uri"system-115910"}]}}]]]
 
-      (given @(ts/expand-value-set ts {:url "value-set-135750" :exclude-nested true})
+      (given @(expand-value-set ts
+                "url" #fhir/uri"value-set-135750"
+                "excludeNested" #fhir/boolean true)
         :fhir/type := :fhir/ValueSet
         [:expansion (parameter "excludeNested") 0 :value] := #fhir/boolean true))))
 
+(defn- value-set-validate-code [ts & nvs]
+  (ts/value-set-validate-code ts (apply u/parameters nvs)))
+
 (deftest value-set-validate-code-fails-test
   (with-system [{ts ::ts/local} config]
-    (testing "missing id or url"
-      (given-failed-future (ts/value-set-validate-code ts {})
+    (testing "no parameters"
+      (given-failed-future (value-set-validate-code ts)
         ::anom/category := ::anom/incorrect
-        ::anom/message := "Missing ID or URL."))
+        ::anom/message := "Missing both parameters `url` and `valueSet`."))
 
     (testing "not found"
-      (testing "id"
-        (given-failed-future (ts/value-set-validate-code ts {:id "id-175736"})
-          ::anom/category := ::anom/not-found
-          ::anom/message := "The value set with id `id-175736` was not found."
-          :t := 0))
-
       (testing "url"
-        (given-failed-future (ts/value-set-validate-code ts {:url "url-194718"})
+        (given-failed-future (value-set-validate-code ts
+                               "url" #fhir/uri"url-194718"
+                               "code" #fhir/code"code-083955"
+                               "inferSystem" #fhir/boolean true)
           ::anom/category := ::anom/not-found
           ::anom/message := "The value set `url-194718` was not found."
           :t := 0))
 
       (testing "url and version"
-        (given-failed-future (ts/value-set-validate-code ts {:url "url-144258" :value-set-version "version-144244"})
+        (given-failed-future (value-set-validate-code ts
+                               "url" #fhir/uri"url-144258"
+                               "valueSetVersion" #fhir/string"version-144244"
+                               "code" #fhir/code"code-083955"
+                               "inferSystem" #fhir/boolean true)
           ::anom/category := ::anom/not-found
-          ::anom/message := "The value set `url-144258` with version `version-144244` was not found."
-          :t := 0)))))
+          ::anom/message := "The value set `url-144258|version-144244` was not found."
+          :t := 0))))
 
-(deftest value-set-validate-code-test
-  (testing "with id or url"
+  (testing "supplement not found"
     (with-system-data [{ts ::ts/local} config]
       [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri"system-115910"
+               :url #fhir/uri"system-172718"
+               :version #fhir/string"version-172730"
                :content #fhir/code"complete"
                :concept
                [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code"code-115927"}]}]
-        [:put {:fhir/type :fhir/CodeSystem :id "1"
-               :url #fhir/uri"system-202449"
-               :content #fhir/code"complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code"code-115927"}]}]
+                 :code #fhir/code"code-182832"
+                 :display #fhir/string"display-182717"}]}]
         [:put {:fhir/type :fhir/ValueSet :id "0"
-               :url #fhir/uri"value-set-135750"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri"system-115910"}]}}]
-        [:put {:fhir/type :fhir/ValueSet :id "1"
-               :url #fhir/uri"value-set-203901"
-               :compose
-               {:fhir/type :fhir.ValueSet/compose
-                :include
-                [{:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri"system-115910"}
-                 {:fhir/type :fhir.ValueSet.compose/include
-                  :system #fhir/uri"system-202449"}]}}]]]
+               :extension
+               [#fhir/Extension{:url "http://hl7.org/fhir/StructureDefinition/valueset-supplement"
+                                :value #fhir/canonical"system-172718|version-172744"}]
+               :url #fhir/uri"value-set-172753"}]]]
 
-      (testing "existing code"
-        (doseq [request [{:url "value-set-135750"} {:id "0"}]]
-          (given @(ts/value-set-validate-code ts (assoc request :code "code-115927" :system "system-115910"))
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 3
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean true
-            [:parameter 1 :name] := #fhir/string"code"
-            [:parameter 1 :value] := #fhir/code"code-115927"
-            [:parameter 2 :name] := #fhir/string"system"
-            [:parameter 2 :value] := #fhir/uri"system-115910"))
+      (given-failed-future (value-set-validate-code ts
+                             "url" #fhir/uri"value-set-172753"
+                             "code" #fhir/code"code-172811"
+                             "system" #fhir/uri"system-172822")
+        ::anom/category := ::anom/not-found
+        ::anom/message := "The code system `system-172718|version-172744` was not found."))))
 
-        (testing "with infer-system"
-          (doseq [request [{:url "value-set-135750"} {:id "0"}]]
-            (given @(ts/value-set-validate-code ts (assoc request :code "code-115927" :infer-system true))
-              :fhir/type := :fhir/Parameters
-              [:parameter count] := 3
-              [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value] := #fhir/boolean true
-              [:parameter 1 :name] := #fhir/string"code"
-              [:parameter 1 :value] := #fhir/code"code-115927"
-              [:parameter 2 :name] := #fhir/string"system"
-              [:parameter 2 :value] := #fhir/uri"system-115910"))
-
-          (testing "with non-unique code"
-            (doseq [request [{:url "value-set-203901"} {:id "1"}]]
-              (given @(ts/value-set-validate-code ts (assoc request :code "code-115927" :infer-system true))
-                :fhir/type := :fhir/Parameters
-                [:parameter count] := 2
-                [:parameter 0 :name] := #fhir/string"result"
-                [:parameter 0 :value] := #fhir/boolean false
-                [:parameter 1 :name] := #fhir/string"message"
-                [:parameter 1 :value] := #fhir/string"While inferring the system was requested, the provided code `code-115927` was not unique in the value set `value-set-203901`.")))))
-
-      (testing "non-existing code"
-        (doseq [request [{:url "value-set-135750"} {:id "0"}]]
-          (given @(ts/value-set-validate-code ts (assoc request :code "code-153948" :system "system-115910"))
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 2
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean false
-            [:parameter 1 :name] := #fhir/string"message"
-            [:parameter 1 :value] := #fhir/string"The provided code `code-153948` of system `system-115910` was not found in the value set `value-set-135750`.")))
-
-      (testing "existing coding"
-        (doseq [request [{:url "value-set-135750"} {:id "0"}]]
-          (given @(ts/value-set-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"system-115910" :code #fhir/code"code-115927"}))
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 3
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean true
-            [:parameter 1 :name] := #fhir/string"code"
-            [:parameter 1 :value] := #fhir/code"code-115927"
-            [:parameter 2 :name] := #fhir/string"system"
-            [:parameter 2 :value] := #fhir/uri"system-115910")))
-
-      (testing "non-existing coding"
-        (doseq [request [{:url "value-set-135750"} {:id "0"}]]
-          (given @(ts/value-set-validate-code ts (assoc request :coding #fhir/Coding{:system #fhir/uri"system-115910" :code #fhir/code"code-153948"}))
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 2
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean false
-            [:parameter 1 :name] := #fhir/string"message"
-            [:parameter 1 :value] := #fhir/string"The provided code `code-153948` of system `system-115910` was not found in the value set `value-set-135750`.")))))
-
-  (testing "with value-set"
+(deftest value-set-validate-code-include-all-test
+  (testing "version *"
     (with-system-data [{ts ::ts/local} config]
       [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri"system-115910"
+               :url #fhir/uri"system-182822"
                :content #fhir/code"complete"
                :concept
                [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code"code-115927"}]}]
-        [:put {:fhir/type :fhir/CodeSystem :id "1"
-               :url #fhir/uri"system-202449"
+                 :code #fhir/code"code-182832"}]}]
+        [:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-105710"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"system-182822"
+                  :version "*"}]}}]]]
+
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-105710"
+                "code" #fhir/code"code-182832"
+                "system" #fhir/uri"system-182822")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"code-182832"
+        [(parameter "system") 0 :value] := #fhir/uri"system-182822"))))
+
+(deftest value-set-validate-code-include-filter-test
+  (testing "unknown filter operator"
+    (with-system-data [{ts ::ts/local} config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri"system-182822"
                :content #fhir/code"complete"
                :concept
                [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code"code-115927"}]}]]]
+                 :code #fhir/code"code-182832"
+                 :display #fhir/string"display-182717"}]}]
+        [:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-105710"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"system-182822"
+                  :filter
+                  [{:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code"property-160019"
+                    :op #fhir/code"op-unknown-120524"
+                    :value #fhir/string"value-160032"}]}]}}]]]
 
-      (testing "existing code"
-        (let [request
-              {:value-set
-               {:fhir/type :fhir/ValueSet
-                :compose
-                {:fhir/type :fhir.ValueSet/compose
-                 :include
-                 [{:fhir/type :fhir.ValueSet.compose/include
-                   :system #fhir/uri"system-115910"}]}}
-               :code "code-115927"
-               :system "system-115910"}]
-          (given @(ts/value-set-validate-code ts request)
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-105710"
+                "code" #fhir/code"code-182832"
+                "system" #fhir/uri"system-182822")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"Unable to check whether the code is in the value set `value-set-105710` because the value set was invalid. Unsupported filter operator `op-unknown-120524` in code system `system-182822`."
+        [(parameter "code") 0 :value] := #fhir/code"code-182832"
+        [(parameter "system") 0 :value] := #fhir/uri"system-182822"))))
+
+(deftest value-set-validate-code-sct-include-all-test
+  (with-system-data [{ts ::ts/local} sct-config]
+    [[[:put {:fhir/type :fhir/ValueSet :id "0"
+             :url #fhir/uri"value-set-102658"
+             :compose
+             {:fhir/type :fhir.ValueSet/compose
+              :include
+              [{:fhir/type :fhir.ValueSet.compose/include
+                :system #fhir/uri"http://snomed.info/sct"}]}}]]]
+
+    (given @(value-set-validate-code ts
+              "url" #fhir/uri"value-set-102658"
+              "code" #fhir/code"441510007"
+              "system" #fhir/uri"http://snomed.info/sct")
+      :fhir/type := :fhir/Parameters
+      [(parameter "result") 0 :value] := #fhir/boolean true
+      [(parameter "code") 0 :value] := #fhir/code"441510007"
+      [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+      [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+      [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
+
+  (testing "with supplement"
+    (with-system-data [{ts ::ts/local} sct-config]
+      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
+               :url #fhir/uri"system-103927"
+               :content #fhir/code"supplement"
+               :concept
+               [{:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"441510007"
+                 :designation
+                 [{:fhir/type :fhir.CodeSystem.concept/designation
+                   :language #fhir/code"de"
+                   :value #fhir/string"designation-104319"}]}]}]
+        [:put {:fhir/type :fhir/ValueSet :id "0"
+               :extension
+               [#fhir/Extension{:url "http://hl7.org/fhir/StructureDefinition/valueset-supplement"
+                                :value #fhir/canonical"system-103927"}]
+               :url #fhir/uri"value-set-102658"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://snomed.info/sct"}]}}]]]
+
+      (testing "without displayLanguage"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-102658"
+                  "code" #fhir/code"441510007"
+                  "system" #fhir/uri"http://snomed.info/sct"
+                  "display" #fhir/string"designation-104319")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"441510007"
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
+
+      (testing "with displayLanguage"
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-102658"
+                  "code" #fhir/code"441510007"
+                  "system" #fhir/uri"http://snomed.info/sct"
+                  "display" #fhir/string"designation-104319"
+                  "displayLanguage" #fhir/code"de")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"441510007"
+          [(parameter "display") 0 :value] := #fhir/string"designation-104319"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001")))))
+
+(deftest value-set-validate-code-sct-include-concept-test
+  (testing "non-matching concept"
+    (with-system-data [{ts ::ts/local} sct-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-120641"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://snomed.info/sct"
+                  :concept
+                  [{:fhir/type :fhir.ValueSet.compose.include/concept
+                    :code #fhir/code"860958002"}]}]}}]]]
+
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-120641"
+                "code" #fhir/code"441510007"
+                "system" #fhir/uri"http://snomed.info/sct")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"The provided code `http://snomed.info/sct#441510007` was not found in the value set `value-set-120641`.",
+        [(parameter "code") 0 :value] := #fhir/code"441510007"
+        [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#441510007` was not found in the value set `value-set-120641`.",
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"])))
+
+  (testing "active concept"
+    (with-system-data [{ts ::ts/local} sct-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-120641"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://snomed.info/sct"
+                  :concept
+                  [{:fhir/type :fhir.ValueSet.compose.include/concept
+                    :code #fhir/code"441510007"}]}]}}]]]
+
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-120641"
+                "code" #fhir/code"441510007"
+                "system" #fhir/uri"http://snomed.info/sct")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"441510007"
+        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+        [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+        [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001")))
+
+  (testing "inactive concept"
+    (with-system [{ts ::ts/local} sct-config]
+      (given @(value-set-validate-code ts
+                "valueSet"
+                {:fhir/type :fhir/ValueSet
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri"http://snomed.info/sct"
+                    :concept
+                    [{:fhir/type :fhir.ValueSet.compose.include/concept
+                      :code #fhir/code"860958002"}]}]}}
+                "code" #fhir/code"860958002"
+                "system" #fhir/uri"http://snomed.info/sct")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"860958002"
+        [(parameter "display") 0 :value] := #fhir/string"Temperature of blood (observable entity)"
+        [(parameter "inactive") 0 :value] := #fhir/boolean true
+        [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+        [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001")
+
+      (testing "with active only"
+        (with-system [{ts ::ts/local} sct-config]
+          (given @(value-set-validate-code ts
+                    "valueSet"
+                    {:fhir/type :fhir/ValueSet
+                     :compose
+                     {:fhir/type :fhir.ValueSet/compose
+                      :include
+                      [{:fhir/type :fhir.ValueSet.compose/include
+                        :system #fhir/uri"http://snomed.info/sct"
+                        :concept
+                        [{:fhir/type :fhir.ValueSet.compose.include/concept
+                          :code #fhir/code"860958002"}]}]}}
+                    "code" #fhir/code"860958002"
+                    "system" #fhir/uri"http://snomed.info/sct"
+                    "activeOnly" #fhir/boolean true)
             :fhir/type := :fhir/Parameters
-            [:parameter count] := 3
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean true
-            [:parameter 1 :name] := #fhir/string"code"
-            [:parameter 1 :value] := #fhir/code"code-115927"
-            [:parameter 2 :name] := #fhir/string"system"
-            [:parameter 2 :value] := #fhir/uri"system-115910"))
+            [(parameter "result") 0 :value] := #fhir/boolean false
+            [(parameter "message") 0 :value] := #fhir/string"The provided code `http://snomed.info/sct#860958002` was not found in the provided value set.",
+            [(parameter "code") 0 :value] := #fhir/code"860958002"
+            [(parameter "display") 0 :value] := #fhir/string"Temperature of blood (observable entity)"
+            [(parameter "inactive") 0 :value] := #fhir/boolean true
+            [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+            [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+            [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+            [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+            [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+            [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#860958002` was not found in the provided value set.",
+            [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"]
+            [(parameter "issues") 0 :resource :issue 1 :severity] := #fhir/code"error"
+            [(parameter "issues") 0 :resource :issue 1 :code] := #fhir/code"business-rule"
+            [(parameter "issues") 0 :resource :issue 1 :details :coding] :? (tx-issue-type "code-rule")
+            [(parameter "issues") 0 :resource :issue 1 :details :text] := #fhir/string"The code `860958002` is valid but is not active."
+            [(parameter "issues") 0 :resource :issue 1 :expression] := [#fhir/string"code"])))))
 
-        (testing "with infer-system"
-          (let [request
-                {:value-set
-                 {:fhir/type :fhir/ValueSet
-                  :compose
-                  {:fhir/type :fhir.ValueSet/compose
-                   :include
-                   [{:fhir/type :fhir.ValueSet.compose/include
-                     :system #fhir/uri"system-115910"}]}}
-                 :code "code-115927"
-                 :infer-system true}]
-            (given @(ts/value-set-validate-code ts request)
-              :fhir/type := :fhir/Parameters
-              [:parameter count] := 3
-              [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value] := #fhir/boolean true
-              [:parameter 1 :name] := #fhir/string"code"
-              [:parameter 1 :value] := #fhir/code"code-115927"
-              [:parameter 2 :name] := #fhir/string"system"
-              [:parameter 2 :value] := #fhir/uri"system-115910"))
+  (testing "with version (module)"
+    (with-system-data [{ts ::ts/local} sct-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-152014"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://snomed.info/sct"
+                  :version #fhir/string"http://snomed.info/sct/900000000000207008"
+                  :concept
+                  [{:fhir/type :fhir.ValueSet.compose.include/concept
+                    :code #fhir/code"441510007"}]}]}}]]]
 
-          (testing "with non-unique code"
-            (let [request
-                  {:value-set
-                   {:fhir/type :fhir/ValueSet
-                    :compose
-                    {:fhir/type :fhir.ValueSet/compose
-                     :include
-                     [{:fhir/type :fhir.ValueSet.compose/include
-                       :system #fhir/uri"system-115910"}
-                      {:fhir/type :fhir.ValueSet.compose/include
-                       :system #fhir/uri"system-202449"}]}}
-                   :code "code-115927"
-                   :infer-system true}]
-              (given @(ts/value-set-validate-code ts request)
-                :fhir/type := :fhir/Parameters
-                [:parameter count] := 2
-                [:parameter 0 :name] := #fhir/string"result"
-                [:parameter 0 :value] := #fhir/boolean false
-                [:parameter 1 :name] := #fhir/string"message"
-                [:parameter 1 :value] := #fhir/string"While inferring the system was requested, the provided code `code-115927` was not unique in the provided value set.")))))
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-152014"
+                "code" #fhir/code"441510007"
+                "system" #fhir/uri"http://snomed.info/sct")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"441510007"
+        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+        [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+        [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001")))
 
-      (testing "existing coding"
-        (let [request
-              {:value-set
-               {:fhir/type :fhir/ValueSet
-                :compose
-                {:fhir/type :fhir.ValueSet/compose
-                 :include
-                 [{:fhir/type :fhir.ValueSet.compose/include
-                   :system #fhir/uri"system-115910"}]}}
-               :coding #fhir/Coding{:system #fhir/uri"system-115910"
-                                    :code #fhir/code"code-115927"}}]
-          (given @(ts/value-set-validate-code ts request)
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 3
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean true
-            [:parameter 1 :name] := #fhir/string"code"
-            [:parameter 1 :value] := #fhir/code"code-115927"
-            [:parameter 2 :name] := #fhir/string"system"
-            [:parameter 2 :value] := #fhir/uri"system-115910")))
+  (testing "with version"
+    (with-system-data [{ts ::ts/local} sct-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-152138"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://snomed.info/sct"
+                  :version #fhir/string"http://snomed.info/sct/900000000000207008/version/20231201"
+                  :concept
+                  [{:fhir/type :fhir.ValueSet.compose.include/concept
+                    :code #fhir/code"441510007"}]}]}}]]]
 
-      (testing "non-existing code"
-        (let [request
-              {:value-set
-               {:fhir/type :fhir/ValueSet
-                :compose
-                {:fhir/type :fhir.ValueSet/compose
-                 :include
-                 [{:fhir/type :fhir.ValueSet.compose/include
-                   :system #fhir/uri"system-115910"}]}}
-               :system "system-115910"
-               :code "code-153948"}]
-          (given @(ts/value-set-validate-code ts request)
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 2
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean false
-            [:parameter 1 :name] := #fhir/string"message"
-            [:parameter 1 :value] := #fhir/string"The provided code `code-153948` of system `system-115910` was not found in the provided value set.")))
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-152138"
+                "code" #fhir/code"441510007"
+                "system" #fhir/uri"http://snomed.info/sct")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"441510007"
+        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+        [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+        [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20231201"))
 
-      (testing "non-existing coding"
-        (let [request
-              {:value-set
-               {:fhir/type :fhir/ValueSet
-                :compose
-                {:fhir/type :fhir.ValueSet/compose
-                 :include
-                 [{:fhir/type :fhir.ValueSet.compose/include
-                   :system #fhir/uri"system-115910"}]}}
-               :coding #fhir/Coding{:system #fhir/uri"system-115910"
-                                    :code #fhir/code"code-153948"}}]
-          (given @(ts/value-set-validate-code ts request)
-            :fhir/type := :fhir/Parameters
-            [:parameter count] := 2
-            [:parameter 0 :name] := #fhir/string"result"
-            [:parameter 0 :value] := #fhir/boolean false
-            [:parameter 1 :name] := #fhir/string"message"
-            [:parameter 1 :value] := #fhir/string"The provided code `code-153948` of system `system-115910` was not found in the provided value set."))))))
+    (testing "non-existing version"
+      (with-system [{ts ::ts/local} sct-config]
+        (given @(value-set-validate-code ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"http://snomed.info/sct"
+                      :version #fhir/string"http://snomed.info/sct/900000000000207008/version/none-existing"
+                      :concept
+                      [{:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code"441510007"}]}]}}
+                  "code" #fhir/code"441510007"
+                  "system" #fhir/uri"http://snomed.info/sct")
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := #fhir/string"A definition for the code system `http://snomed.info/sct|http://snomed.info/sct/900000000000207008/version/none-existing` could not be found, so the code cannot be validated.",
+          [(parameter "code") 0 :value] := #fhir/code"441510007"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/none-existing"
+          [(parameter "issues") 0 :resource :issue count] := 2
+          [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+          [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"not-found"
+          [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-found")
+          [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"A definition for the code system `http://snomed.info/sct|http://snomed.info/sct/900000000000207008/version/none-existing` could not be found, so the code cannot be validated."
+          [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"system"]
+          [(parameter "issues") 0 :resource :issue 1 :severity] := #fhir/code"warning"
+          [(parameter "issues") 0 :resource :issue 1 :code] := #fhir/code"not-found"
+          [(parameter "issues") 0 :resource :issue 1 :details :coding] :? (tx-issue-type "vs-invalid")
+          [(parameter "issues") 0 :resource :issue 1 :details :text] := #fhir/string"Unable to check whether the code is in the provided value set because the code system `http://snomed.info/sct|http://snomed.info/sct/900000000000207008/version/none-existing` was not found.")))
+
+    (testing "synonym display"
+      (with-system-data [{ts ::ts/local} sct-config]
+        [[[:put {:fhir/type :fhir/ValueSet :id "0"
+                 :url #fhir/uri"value-set-120641"
+                 :compose
+                 {:fhir/type :fhir.ValueSet/compose
+                  :include
+                  [{:fhir/type :fhir.ValueSet.compose/include
+                    :system #fhir/uri"http://snomed.info/sct"
+                    :concept
+                    [{:fhir/type :fhir.ValueSet.compose.include/concept
+                      :code #fhir/code"441510007"}]}]}}]]]
+
+        (given @(value-set-validate-code ts
+                  "url" #fhir/uri"value-set-120641"
+                  "code" #fhir/code"441510007"
+                  "system" #fhir/uri"http://snomed.info/sct"
+                  "display" #fhir/string"Blood specimen with anticoagulant")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"441510007"
+          [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001")))))
+
+(deftest value-set-validate-code-sct-include-filter-test
+  (testing "unknown filter operator"
+    (with-system-data [{ts ::ts/local} sct-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-105710"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://snomed.info/sct"
+                  :filter
+                  [{:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code"property-160019"
+                    :op #fhir/code"op-unknown-120524"
+                    :value #fhir/string"value-160032"}]}]}}]]]
+
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-105710"
+                "code" #fhir/code"441510007"
+                "system" #fhir/uri"http://snomed.info/sct")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"Unable to check whether the code is in the value set `value-set-105710` because the value set was invalid. Unsupported filter operator `op-unknown-120524` in code system `http://snomed.info/sct`."
+        [(parameter "code") 0 :value] := #fhir/code"441510007"
+        [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"))))
+
+(deftest value-set-validate-code-sct-include-filter-is-a-test
+  (with-system-data [{ts ::ts/local} sct-config]
+    [[[:put {:fhir/type :fhir/ValueSet :id "0"
+             :url #fhir/uri"value-set-113851"
+             :compose
+             {:fhir/type :fhir.ValueSet/compose
+              :include
+              [{:fhir/type :fhir.ValueSet.compose/include
+                :system #fhir/uri"http://snomed.info/sct"
+                :filter
+                [{:fhir/type :fhir.ValueSet.compose.include/filter
+                  :property #fhir/code"concept"
+                  :op #fhir/code"is-a"
+                  :value #fhir/string"441510007"}]}]}}]]]
+
+    (testing "direct code"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-113851"
+                "code" #fhir/code"441510007"
+                "system" #fhir/uri"http://snomed.info/sct")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"441510007"
+        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with anticoagulant (specimen)"
+        [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+        [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
+
+    (testing "child code"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-113851"
+                "code" #fhir/code"445295009"
+                "system" #fhir/uri"http://snomed.info/sct")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"445295009"
+        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with edetic acid (specimen)"
+        [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+        [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
+
+    (testing "parent code"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-113851"
+                "code" #fhir/code"119297000"
+                "system" #fhir/uri"http://snomed.info/sct")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"The provided code `http://snomed.info/sct#119297000` was not found in the value set `value-set-113851`."
+        [(parameter "code") 0 :value] := #fhir/code"119297000"
+        [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+        [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#119297000` was not found in the value set `value-set-113851`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"]))))
+
+(deftest value-set-validate-code-sct-include-filter-descendent-of-test
+  (with-system-data [{ts ::ts/local} sct-config]
+    [[[:put {:fhir/type :fhir/ValueSet :id "0"
+             :url #fhir/uri"value-set-113851"
+             :compose
+             {:fhir/type :fhir.ValueSet/compose
+              :include
+              [{:fhir/type :fhir.ValueSet.compose/include
+                :system #fhir/uri"http://snomed.info/sct"
+                :filter
+                [{:fhir/type :fhir.ValueSet.compose.include/filter
+                  :property #fhir/code"concept"
+                  :op #fhir/code"descendent-of"
+                  :value #fhir/string"441510007"}]}]}}]]]
+
+    (testing "direct code"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-113851"
+                "code" #fhir/code"441510007"
+                "system" #fhir/uri"http://snomed.info/sct")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"The provided code `http://snomed.info/sct#441510007` was not found in the value set `value-set-113851`."
+        [(parameter "code") 0 :value] := #fhir/code"441510007"
+        [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+        [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#441510007` was not found in the value set `value-set-113851`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"]))
+
+    (testing "child code"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-113851"
+                "code" #fhir/code"445295009"
+                "system" #fhir/uri"http://snomed.info/sct")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"445295009"
+        [(parameter "display") 0 :value] := #fhir/string"Blood specimen with edetic acid (specimen)"
+        [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+        [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"))
+
+    (testing "parent code"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"value-set-113851"
+                "code" #fhir/code"119297000"
+                "system" #fhir/uri"http://snomed.info/sct")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"The provided code `http://snomed.info/sct#119297000` was not found in the value set `value-set-113851`."
+        [(parameter "code") 0 :value] := #fhir/code"119297000"
+        [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+        [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://snomed.info/sct#119297000` was not found in the value set `value-set-113851`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"]))))
+
+(defn- load-resource [test name]
+  (fhir-spec/conform-json (fhir-spec/parse-json (slurp (io/resource (format "tx-ecosystem/%s/%s.json" test name))))))
+
+(deftest tx-ecosystem-validation-tests
+  (with-system-data [{ts ::ts/local} config]
+    [[[:put (load-resource "simple" "codesystem-simple")]
+      [:put (load-resource "simple" "valueset-all")]
+      [:put (load-resource "simple" "valueset-import-bad")]
+      [:put (load-resource "simple" "valueset-enumerated")]
+      [:put (load-resource "simple" "valueset-filter-isa")]
+      [:put (load-resource "simple" "valueset-filter-property")]
+      [:put (load-resource "simple" "valueset-filter-regex")]
+      [:put (load-resource "language" "codesystem-de-multi")]
+      [:put (load-resource "language" "codesystem-de-single")]
+      [:put (load-resource "language" "codesystem-en-multi")]
+      [:put (load-resource "language" "codesystem-en-single")]
+      [:put (load-resource "language" "valueset-de-multi")]
+      [:put (load-resource "language" "valueset-de-single")]
+      [:put (load-resource "language" "valueset-en-multi")]
+      [:put (load-resource "language" "valueset-en-single")]
+      [:put (load-resource "language" "valueset-en-enlang-multi")]
+      [:put (load-resource "language" "valueset-en-en-multi")]
+      [:put (load-resource "version" "codesystem-version-1")]
+      [:put (load-resource "version" "codesystem-version-2")]
+      [:put (load-resource "version" "valueset-all-version-1")]
+      [:put (load-resource "version" "valueset-all-version-2")]
+      [:put (load-resource "version" "valueset-all-version")]
+      [:put (load-resource "inactive" "valueset-all")]
+      [:put (load-resource "inactive" "codesystem-inactive")]]]
+
+    (testing "validation-simple-code-good"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/simple-all"
+                "code" #fhir/code"code1"
+                "system" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+        [(parameter "version") 0 :value] := #fhir/string"0.1.0"))
+
+    (testing "validation-simple-code-implied-good"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/simple-all"
+                "code" #fhir/code"code1"
+                "inferSystem" #fhir/boolean true)
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+        [(parameter "version") 0 :value] := #fhir/string"0.1.0"))
+
+    (testing "validation-simple-coding-good"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/simple-all"
+                "coding"
+                #fhir/Coding
+                 {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+                  :code #fhir/code"code1"})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+        [(parameter "version") 0 :value] := #fhir/string"0.1.0"))
+
+    (testing "validation-simple-codeableconcept-good"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/simple-all"
+                "codeableConcept"
+                #fhir/CodeableConcept
+                 {:coding
+                  [#fhir/Coding
+                    {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+                     :code #fhir/code"code1"}]})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+        [(parameter "version") 0 :value] := #fhir/string"0.1.0"
+        [(parameter "codeableConcept") 0 :value] := #fhir/CodeableConcept
+                                                     {:coding
+                                                      [#fhir/Coding
+                                                        {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+                                                         :code #fhir/code"code1"}]}))
+
+    (testing "validation-simple-code-bad-code"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/simple-all"
+                "code" #fhir/code"code1x"
+                "system" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"The provided code `http://hl7.org/fhir/test/CodeSystem/simple#code1x` was not found in the value set `http://hl7.org/fhir/test/ValueSet/simple-all|5.0.0`."
+        [(parameter "code") 0 :value] := #fhir/code"code1x"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://hl7.org/fhir/test/CodeSystem/simple#code1x` was not found in the value set `http://hl7.org/fhir/test/ValueSet/simple-all|5.0.0`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"]
+        [(parameter "issues") 0 :resource :issue 1 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 1 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 1 :details :coding] :? (tx-issue-type "invalid-code")
+        [(parameter "issues") 0 :resource :issue 1 :details :text] := #fhir/string"Unknown code `code1x` was not found in the code system `http://hl7.org/fhir/test/CodeSystem/simple`."
+        [(parameter "issues") 0 :resource :issue 1 :expression] := [#fhir/string"code"]))
+
+    (testing "validation-simple-code-implied-bad-code"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/simple-all"
+                "code" #fhir/code"code1x"
+                "inferSystem" #fhir/boolean true)
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"The provided code `code1x` was not found in the value set `http://hl7.org/fhir/test/ValueSet/simple-all|5.0.0`."
+        [(parameter "code") 0 :value] := #fhir/code"code1x"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `code1x` was not found in the value set `http://hl7.org/fhir/test/ValueSet/simple-all|5.0.0`."
+        [(parameter "issues") 0 :resource :issue 1 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 1 :code] := #fhir/code"not-found"
+        [(parameter "issues") 0 :resource :issue 1 :details :coding] :? (tx-issue-type "cannot-infer")
+        [(parameter "issues") 0 :resource :issue 1 :details :text] := #fhir/string"The provided code `code1x` is not known to belong to the inferred code system `http://hl7.org/fhir/test/CodeSystem/simple`."))
+
+    (testing "validation-simple-coding-bad-code"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/simple-all"
+                "coding"
+                #fhir/Coding
+                 {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+                  :code #fhir/code"code1x"})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"The provided code `http://hl7.org/fhir/test/CodeSystem/simple#code1x` was not found in the value set `http://hl7.org/fhir/test/ValueSet/simple-all|5.0.0`."
+        [(parameter "code") 0 :value] := #fhir/code"code1x"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://hl7.org/fhir/test/CodeSystem/simple#code1x` was not found in the value set `http://hl7.org/fhir/test/ValueSet/simple-all|5.0.0`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"Coding.code"]
+        [(parameter "issues") 0 :resource :issue 1 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 1 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 1 :details :coding] :? (tx-issue-type "invalid-code")
+        [(parameter "issues") 0 :resource :issue 1 :details :text] := #fhir/string"Unknown code `code1x` was not found in the code system `http://hl7.org/fhir/test/CodeSystem/simple`."
+        [(parameter "issues") 0 :resource :issue 1 :expression] := [#fhir/string"Coding.code"]))
+
+    (testing "validation-simple-coding-bad-code-inactive"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/inactive-all"
+                "coding"
+                #fhir/Coding
+                 {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/inactive"
+                  :code #fhir/code"codeInactive"}
+                "activeOnly" #fhir/boolean true)
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"The provided code `http://hl7.org/fhir/test/CodeSystem/inactive#codeInactive` was not found in the value set `http://hl7.org/fhir/test/ValueSet/inactive-all|5.0.0`."
+        [(parameter "code") 0 :value] := #fhir/code"codeInactive"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/inactive"
+        [(parameter "version") 0 :value] := #fhir/string"0.1.0"
+        [(parameter "display") 0 :value] := #fhir/string"Display inactive"
+        [(parameter "inactive") 0 :value] := #fhir/boolean true
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/inactive"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://hl7.org/fhir/test/CodeSystem/inactive#codeInactive` was not found in the value set `http://hl7.org/fhir/test/ValueSet/inactive-all|5.0.0`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"Coding.code"]
+        [(parameter "issues") 0 :resource :issue 1 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 1 :code] := #fhir/code"business-rule"
+        [(parameter "issues") 0 :resource :issue 1 :details :coding] :? (tx-issue-type "code-rule")
+        [(parameter "issues") 0 :resource :issue 1 :details :text] := #fhir/string"The code `codeInactive` is valid but is not active."
+        [(parameter "issues") 0 :resource :issue 1 :expression] := [#fhir/string"Coding.code"]))
+
+    (testing "validation-simple-codeableconcept-bad-code"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/simple-all"
+                "codeableConcept"
+                #fhir/CodeableConcept
+                 {:coding
+                  [#fhir/Coding
+                    {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+                     :code #fhir/code"code1x"}]})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"The provided code `http://hl7.org/fhir/test/CodeSystem/simple#code1x` was not found in the value set `http://hl7.org/fhir/test/ValueSet/simple-all|5.0.0`."
+        [(parameter "codeableConcept") 0 :value] := #fhir/CodeableConcept
+                                                     {:coding
+                                                      [#fhir/Coding
+                                                        {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+                                                         :code #fhir/code"code1x"}]}
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://hl7.org/fhir/test/CodeSystem/simple#code1x` was not found in the value set `http://hl7.org/fhir/test/ValueSet/simple-all|5.0.0`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"CodeableConcept.coding[0].code"]
+        [(parameter "issues") 0 :resource :issue 1 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 1 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 1 :details :coding] :? (tx-issue-type "invalid-code")
+        [(parameter "issues") 0 :resource :issue 1 :details :text] := #fhir/string"Unknown code `code1x` was not found in the code system `http://hl7.org/fhir/test/CodeSystem/simple`."
+        [(parameter "issues") 0 :resource :issue 1 :expression] := [#fhir/string"CodeableConcept.coding[0].code"]))
+
+    (testing "validation-simple-code-bad-valueSet"
+      (given-failed-future (value-set-validate-code ts
+                             "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/simple-allX"
+                             "code" #fhir/code"code1"
+                             "system" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple")
+        ::anom/category := ::anom/not-found
+        ::anom/message := "The value set `http://hl7.org/fhir/test/ValueSet/simple-allX` was not found."))
+
+    (testing "validation-simple-code-bad-import"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/simple-import-bad"
+                "code" #fhir/code"code1"
+                "system" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"A definition for the value Set `http://hl7.org/fhir/test/ValueSet/simple-filter-isaX` could not be found."
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"not-found"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-found")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"A definition for the value Set `http://hl7.org/fhir/test/ValueSet/simple-filter-isaX` could not be found."
+        [(parameter "issues") 0 :resource :issue 1 :severity] := #fhir/code"warning"
+        [(parameter "issues") 0 :resource :issue 1 :code] := #fhir/code"not-found"
+        [(parameter "issues") 0 :resource :issue 1 :details :coding] :? (tx-issue-type "vs-invalid")
+        [(parameter "issues") 0 :resource :issue 1 :details :text] := #fhir/string"Unable to check whether the code is in the value set `http://hl7.org/fhir/test/ValueSet/simple-import-bad|5.0.0` because the value set `http://hl7.org/fhir/test/ValueSet/simple-filter-isaX` was not found."))
+
+    (testing "validation-simple-code-bad-system"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/simple-all"
+                "code" #fhir/code"code1"
+                "system" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simplex")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"A definition for the code system `http://hl7.org/fhir/test/CodeSystem/simplex` could not be found, so the code cannot be validated."
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simplex"
+        [(parameter "issues") 0 :resource :issue count] := 2
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://hl7.org/fhir/test/CodeSystem/simplex#code1` was not found in the value set `http://hl7.org/fhir/test/ValueSet/simple-all|5.0.0`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"]
+        [(parameter "issues") 0 :resource :issue 1 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 1 :code] := #fhir/code"not-found"
+        [(parameter "issues") 0 :resource :issue 1 :details :coding] :? (tx-issue-type "not-found")
+        [(parameter "issues") 0 :resource :issue 1 :details :text] := #fhir/string"A definition for the code system `http://hl7.org/fhir/test/CodeSystem/simplex` could not be found, so the code cannot be validated."
+        [(parameter "issues") 0 :resource :issue 1 :expression] := [#fhir/string"system"]))
+
+    (testing "validation-simple-coding-no-system"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/simple-all"
+                "coding" #fhir/Coding{:code #fhir/code"code1"})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"The provided code `code1` was not found in the value set `http://hl7.org/fhir/test/ValueSet/simple-all|5.0.0`."
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `code1` was not found in the value set `http://hl7.org/fhir/test/ValueSet/simple-all|5.0.0`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"Coding.code"]
+        [(parameter "issues") 0 :resource :issue 1 :severity] := #fhir/code"warning"
+        [(parameter "issues") 0 :resource :issue 1 :code] := #fhir/code"invalid"
+        [(parameter "issues") 0 :resource :issue 1 :details :coding] :? (tx-issue-type "invalid-data")
+        [(parameter "issues") 0 :resource :issue 1 :details :text] := #fhir/string"Coding has no system. A code with no system has no defined meaning, and it cannot be validated. A system should be provided."
+        [(parameter "issues") 0 :resource :issue 1 :expression] := [#fhir/string"Coding"]))
+
+    (testing "validation-simple-code-bad-version1"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/simple-all"
+                "code" #fhir/code"code1"
+                "system" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+                "systemVersion" #fhir/string"1.0.0")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"A definition for the code system `http://hl7.org/fhir/test/CodeSystem/simple|1.0.0` could not be found, so the code cannot be validated."
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+        [(parameter "version") 0 :value] := #fhir/string"1.0.0"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"not-found"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-found")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"A definition for the code system `http://hl7.org/fhir/test/CodeSystem/simple|1.0.0` could not be found, so the code cannot be validated."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"system"]))
+
+    (testing "validation-simple-code-good-version"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/version-all-1"
+                "code" #fhir/code"code1"
+                "system" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+                "systemVersion" #fhir/string"1.0.0")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1 (1.0)"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+        [(parameter "version") 0 :value] := #fhir/string"1.0.0"))
+
+    (testing "validation-simple-codeableconcept-good-version"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/version-all-1"
+                "codeableConcept"
+                #fhir/CodeableConcept
+                 {:coding
+                  [#fhir/Coding
+                    {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+                     :version #fhir/string"1.0.0"
+                     :code #fhir/code"code1"}]})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1 (1.0)"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+        [(parameter "version") 0 :value] := #fhir/string"1.0.0"
+        [(parameter "codeableConcept") 0 :value] := #fhir/CodeableConcept
+                                                     {:coding
+                                                      [#fhir/Coding
+                                                        {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+                                                         :version #fhir/string"1.0.0"
+                                                         :code #fhir/code"code1"}]}))
+
+    (testing "validation-simple-code-good-display"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/version-all-1"
+                "code" #fhir/code"code1"
+                "display" #fhir/string"Display 1 (1.0)"
+                "system" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+                "systemVersion" #fhir/string"1.0.0")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1 (1.0)"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+        [(parameter "version") 0 :value] := #fhir/string"1.0.0"))
+
+    (testing "validation-simple-codeableconcept-good-display"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/version-all-1"
+                "codeableConcept"
+                #fhir/CodeableConcept
+                 {:coding
+                  [#fhir/Coding
+                    {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+                     :display #fhir/string"Display 1 (1.0)"
+                     :code #fhir/code"code1"}]})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1 (1.0)"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+        [(parameter "version") 0 :value] := #fhir/string"1.0.0"
+        [(parameter "codeableConcept") 0 :value] := #fhir/CodeableConcept
+                                                     {:coding
+                                                      [#fhir/Coding
+                                                        {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+                                                         :display #fhir/string"Display 1 (1.0)"
+                                                         :code #fhir/code"code1"}]}))
+
+    (testing "validation-simple-code-bad-display"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/version-all-1"
+                "code" #fhir/code"code1"
+                "system" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+                "display" #fhir/string"Display 1X")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"Invalid display `Display 1X` for code `http://hl7.org/fhir/test/CodeSystem/version#code1`. A valid display is `Display 1 (1.0)`."
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+        [(parameter "version") 0 :value] := #fhir/string"1.0.0"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1 (1.0)"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "invalid-display")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"Invalid display `Display 1X` for code `http://hl7.org/fhir/test/CodeSystem/version#code1`. A valid display is `Display 1 (1.0)`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"display"]))
+
+    (testing "validation-simple-code-bad-display-ws"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/version-all-1"
+                "code" #fhir/code"code1"
+                "system" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+                "display" #fhir/string"Display  1 (1.0)")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"Invalid display `Display  1 (1.0)` for code `http://hl7.org/fhir/test/CodeSystem/version#code1`. A valid display is `Display 1 (1.0)`."
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+        [(parameter "version") 0 :value] := #fhir/string"1.0.0"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1 (1.0)"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "invalid-display")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"Invalid display `Display  1 (1.0)` for code `http://hl7.org/fhir/test/CodeSystem/version#code1`. A valid display is `Display 1 (1.0)`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"display"]))
+
+    (testing "validation-simple-coding-bad-display"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/version-all-1"
+                "coding"
+                #fhir/Coding
+                 {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+                  :code #fhir/code"code1"
+                  :display #fhir/string"Display 1X"})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"Invalid display `Display 1X` for code `http://hl7.org/fhir/test/CodeSystem/version#code1`. A valid display is `Display 1 (1.0)`."
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+        [(parameter "version") 0 :value] := #fhir/string"1.0.0"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1 (1.0)"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "invalid-display")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"Invalid display `Display 1X` for code `http://hl7.org/fhir/test/CodeSystem/version#code1`. A valid display is `Display 1 (1.0)`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"Coding.display"]))
+
+    (testing "validation-simple-code-bad-display-warning"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/version-all-1"
+                "code" #fhir/code"code1"
+                "system" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+                "display" #fhir/string"Display  1 (1.0)"
+                "lenient-display-validation" #fhir/boolean true)
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "message") 0 :value] := #fhir/string"Invalid display `Display  1 (1.0)` for code `http://hl7.org/fhir/test/CodeSystem/version#code1`. A valid display is `Display 1 (1.0)`."
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/version"
+        [(parameter "version") 0 :value] := #fhir/string"1.0.0"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1 (1.0)"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"warning"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "invalid-display")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"Invalid display `Display  1 (1.0)` for code `http://hl7.org/fhir/test/CodeSystem/version#code1`. A valid display is `Display 1 (1.0)`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"display"]))
+
+    (testing "validation-simple-code-good-language"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/en-multi"
+                "code" #fhir/code"code1"
+                "display" #fhir/string"Anzeige 1"
+                "system" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/en-multi"
+                "displayLanguage" #fhir/code"de,it,zh")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "display") 0 :value] := #fhir/string"Anzeige 1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/en-multi"))
+
+    (testing "validation-simple-code-bad-language"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/en-multi"
+                "code" #fhir/code"code1"
+                "display" #fhir/code"Anzeige 1"
+                "system" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/en-multi"
+                "displayLanguage" #fhir/code"en")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"Invalid display `Anzeige 1` for code `http://hl7.org/fhir/test/CodeSystem/en-multi#code1`. A valid display is `Display 1`."
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/en-multi"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "invalid-display")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"Invalid display `Anzeige 1` for code `http://hl7.org/fhir/test/CodeSystem/en-multi#code1`. A valid display is `Display 1`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"display"]))
+
+    (testing "validation-simple-code-good-regex"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/simple-filter-regex"
+                "code" #fhir/code"code1"
+                "system" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+        [(parameter "version") 0 :value] := #fhir/string"0.1.0"))
+
+    (testing "validation-simple-code-bad-regex"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/simple-filter-regex"
+                "code" #fhir/code"code2a"
+                "system" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"The provided code `http://hl7.org/fhir/test/CodeSystem/simple#code2a` was not found in the value set `http://hl7.org/fhir/test/ValueSet/simple-filter-regex|5.0.0`."
+        [(parameter "code") 0 :value] := #fhir/code"code2a"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+        [(parameter "version") 0 :value] := #fhir/string"0.1.0"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://hl7.org/fhir/test/CodeSystem/simple#code2a` was not found in the value set `http://hl7.org/fhir/test/ValueSet/simple-filter-regex|5.0.0`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"]))
+
+    (testing "validation-simple-coding-bad-language-vs"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/en-en-multi"
+                "coding"
+                #fhir/Coding
+                 {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/en-multi"
+                  :code #fhir/code"code1"
+                  :display #fhir/string"Anzeige 1"})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"Invalid display `Anzeige 1` for code `http://hl7.org/fhir/test/CodeSystem/en-multi#code1`. A valid display is `Display 1`."
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/en-multi"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "invalid-display")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"Invalid display `Anzeige 1` for code `http://hl7.org/fhir/test/CodeSystem/en-multi#code1`. A valid display is `Display 1`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"Coding.display"]))
+
+    (testing "validation-simple-coding-bad-language-vslang"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/en-enlang-multi"
+                "coding"
+                #fhir/Coding
+                 {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/en-multi"
+                  :code #fhir/code"code1"
+                  :display #fhir/string"Anzeige 1"})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"Invalid display `Anzeige 1` for code `http://hl7.org/fhir/test/CodeSystem/en-multi#code1`. A valid display is `Display 1`."
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/en-multi"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "invalid-display")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"Invalid display `Anzeige 1` for code `http://hl7.org/fhir/test/CodeSystem/en-multi#code1`. A valid display is `Display 1`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"Coding.display"]))
+
+    (testing "validation-cs-code-good"
+      (given @(code-system-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+                "code" #fhir/code"code1")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+        [(parameter "version") 0 :value] := #fhir/string"0.1.0"))
+
+    (testing "validation-cs-code-bad-code"
+      (given @(code-system-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+                "code" #fhir/code"code1x")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"Unknown code `code1x` was not found in the code system `http://hl7.org/fhir/test/CodeSystem/simple|0.1.0`."
+        [(parameter "code") 0 :value] := #fhir/code"code1x"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/simple"
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "invalid-code")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"Unknown code `code1x` was not found in the code system `http://hl7.org/fhir/test/CodeSystem/simple|0.1.0`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"code"]))))
+
+(deftest tx-ecosystem-other-tests
+  (with-system-data [{ts ::ts/local} config]
+    [[[:put (load-resource "other" "codesystem-dual-filter")]
+      [:put (load-resource "other" "valueset-dual-filter")]]]
+
+    (testing "validation-dual-filter-in"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/dual-filter"
+                "codeableConcept"
+                #fhir/CodeableConcept
+                 {:coding
+                  [#fhir/Coding
+                    {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/dual-filter"
+                     :code #fhir/code"AA1"}]})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"AA1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/dual-filter"
+        [(parameter "display") 0 :value] := #fhir/string"AA1"
+        [(parameter "codeableConcept") 0 :value] := #fhir/CodeableConcept
+                                                     {:coding
+                                                      [#fhir/Coding
+                                                        {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/dual-filter"
+                                                         :code #fhir/code"AA1"}]}))
+
+    (testing "validation-dual-filter-out"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/dual-filter"
+                "codeableConcept"
+                #fhir/CodeableConcept
+                 {:coding
+                  [#fhir/Coding
+                    {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/dual-filter"
+                     :code #fhir/code"AA"}]})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean false
+        [(parameter "message") 0 :value] := #fhir/string"The provided code `http://hl7.org/fhir/test/CodeSystem/dual-filter#AA` was not found in the value set `http://hl7.org/fhir/test/ValueSet/dual-filter`."
+        [(parameter "codeableConcept") 0 :value] := #fhir/CodeableConcept
+                                                     {:coding
+                                                      [#fhir/Coding
+                                                        {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/dual-filter"
+                                                         :code #fhir/code"AA"}]}
+        [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+        [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"code-invalid"
+        [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "not-in-vs")
+        [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"The provided code `http://hl7.org/fhir/test/CodeSystem/dual-filter#AA` was not found in the value set `http://hl7.org/fhir/test/ValueSet/dual-filter`."
+        [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"CodeableConcept.coding[0].code"]))))
+
+(deftest tx-ecosystem-extensions-tests
+  (with-system-data [{ts ::ts/local} config]
+    [[[:put (load-resource "extensions" "codesystem-extensions")]
+      [:put (load-resource "extensions" "codesystem-supplement")]
+      [:put (load-resource "extensions" "valueset-extensions-all")]
+      [:put (load-resource "extensions" "valueset-extensions-bad-supplement")]
+      [:put (load-resource "extensions" "valueset-extensions-enumerated")]]]
+
+    (testing "validate-code-bad-supplement"
+      (given-failed-future
+       (value-set-validate-code ts
+         "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/extensions-bad-supplement"
+         "code" #fhir/code"code1"
+         "system" #fhir/uri"http://hl7.org/fhir/test/CodeSystem/extensions")
+        ::anom/category := ::anom/not-found
+        ::anom/message := "The code system `http://hl7.org/fhir/test/CodeSystem/supplementX` was not found."))
+
+    (testing "validate-coding-bad-supplement"
+      (given-failed-future
+       (value-set-validate-code ts
+         "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/extensions-bad-supplement"
+         "coding"
+         #fhir/Coding
+          {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/extensions"
+           :code #fhir/code"code1"})
+        ::anom/category := ::anom/not-found
+        ::anom/message := "The code system `http://hl7.org/fhir/test/CodeSystem/supplementX` was not found."))
+
+    (testing "validate-codeableconcept-bad-supplement"
+      (given-failed-future
+       (value-set-validate-code ts
+         "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/extensions-bad-supplement"
+         "codeableConcept"
+         #fhir/CodeableConcept
+          {:coding
+           [#fhir/Coding
+             {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/extensions"
+              :code #fhir/code"code1"}]})
+        ::anom/category := ::anom/not-found
+        ::anom/message := "The code system `http://hl7.org/fhir/test/CodeSystem/supplementX` was not found."))
+
+    (testing "validate-coding-good-supplement"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/extensions-enumerated"
+                "coding"
+                #fhir/Coding
+                 {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/extensions"
+                  :code #fhir/code"code1"
+                  :display #fhir/string"ectenoot"})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "display") 0 :value] := #fhir/string"Display 1"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/extensions"))
+
+    (testing "validate-coding-good2-supplement"
+      (given @(value-set-validate-code ts
+                "url" #fhir/uri"http://hl7.org/fhir/test/ValueSet/extensions-enumerated"
+                "displayLanguage" #fhir/code"nl"
+                "coding"
+                #fhir/Coding
+                 {:system #fhir/uri"http://hl7.org/fhir/test/CodeSystem/extensions"
+                  :code #fhir/code"code1"
+                  :display #fhir/string"ectenoot"})
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"code1"
+        [(parameter "display") 0 :value] := #fhir/string"ectenoot"
+        [(parameter "system") 0 :value] := #fhir/uri"http://hl7.org/fhir/test/CodeSystem/extensions"))))

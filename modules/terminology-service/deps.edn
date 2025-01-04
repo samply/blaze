@@ -5,13 +5,17 @@
   blaze/luid
   {:local/root "../luid"}
 
+  metosin/muuntaja
+  {:mvn/version "0.6.11"
+   :exclusions [javax.xml.bind/jaxb-api]}
+
   org.fhir/ucum
   {:mvn/version "1.0.9"
    :exclusions [xpp3/xpp3 xpp3/xpp3_xpath]}}
 
  :aliases
  {:test
-  {:extra-paths ["test"]
+  {:extra-paths ["test" "test-resources"]
 
    :extra-deps
    {blaze/db-stub

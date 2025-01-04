@@ -15,6 +15,7 @@
 (set! *unchecked-math* :warn-on-boxed)
 
 (def ^:private ^:const ^long fully-specified-name 900000000000003001)
+(def ^:private ^:const ^long synonym 900000000000013009)
 (def ^:private ^:const ^long is-a 116680003)
 (def ^:private ^:const ^long model-component-module 900000000000012004)
 (def ^:private ^:const ^long core-module 900000000000207008)
@@ -93,7 +94,7 @@
 (def ^:private update-time-map
   (fnil update (sorted-map-by >)))
 
-(defn build-description-index [lines]
+(defn build-fully-specified-name-index [lines]
   (-> ^Stream lines
       (.map description-line)
       (.filter #(= fully-specified-name (:type-id %)))
@@ -102,6 +103,16 @@
        (fn [index {:keys [concept-id effective-time active term]}]
          (update index concept-id update-time-map effective-time assoc (= 1 active) term))
        (partial merge-with (partial merge-with merge)))))
+
+(defn build-synonym-index [lines]
+  (-> ^Stream lines
+      (.map description-line)
+      (.filter #(= synonym (:type-id %)))
+      (.reduce
+       {}
+       (fn [index {:keys [concept-id effective-time active term]}]
+         (update index concept-id update-time-map effective-time update (= 1 active) (fnil conj []) term))
+       (partial merge-with (partial merge-with (partial merge-with into))))))
 
 (defn find-description [description-index concept-id version]
   (when-let [versions (get description-index concept-id)]
@@ -130,10 +141,10 @@
        (partial merge-with (partial merge-with (partial merge-with (partial merge-with into)))))))
 
 (defn neighbors
-  "Returns a set of neighbors (parents or children) of concept in a module of a
-  certain version."
-  [index module-id version concept-id]
-  (when-let [versions (get-in index [module-id concept-id])]
+  "Returns a set of neighbors (parents or children depending on `index`) of
+  concept in a module of a certain version."
+  [index module-id version code]
+  (when-let [versions (get-in index [module-id code])]
     (reduce
      (fn [parents {added true removed false}]
        (reduce conj (reduce disj parents removed) added))
@@ -141,8 +152,8 @@
      (vals (rsubseq versions >= version)))))
 
 (defn transitive-neighbors
-  "Returns a set of transitive neighbors (parents or children) of concept
-  excluding itself in a module of a certain version."
+  "Returns a set of transitive neighbors (parents or children depending on
+  `index`) of concept excluding itself in a module of a certain version."
   [index module-id version concept-id]
   (loop [to-visit #{concept-id}
          visited #{}
@@ -156,8 +167,8 @@
                (into result neighbors))))))
 
 (defn transitive-neighbors-including
-  "Returns a set of transitive neighbors (parents or children) of concept
-  including itself in a module of a certain version."
+  "Returns a set of transitive neighbors (parents or children depending on
+  `index`) of concept including itself in a module of a certain version."
   [index module-id version concept-id]
   (loop [to-visit #{concept-id}
          visited #{}
@@ -165,11 +176,25 @@
     (if (empty? to-visit)
       result
       (let [current (first to-visit)
-            neighbors (neighbors index module-id version current)
-            new-neighbors (remove visited neighbors)]
-        (recur (into (disj to-visit current) new-neighbors)
+            neighbors (neighbors index module-id version current)]
+        (recur (into (disj to-visit current) (remove visited) neighbors)
                (conj visited current)
                (into result neighbors))))))
+
+(defn find-transitive-neighbor
+  "Returns true if concept is in the set of transitive neighbors (parents or
+  children depending on `index`) of start-concept in a module of a certain
+  version."
+  [index module-id version start-concept-id concept-id]
+  (loop [to-visit #{start-concept-id}
+         visited #{}]
+    (when (seq to-visit)
+      (let [current (first to-visit)
+            neighbors (neighbors index module-id version current)]
+        (if (contains? neighbors concept-id)
+          true
+          (recur (into (disj to-visit current) (remove visited) neighbors)
+                 (conj visited current)))))))
 
 (defn build-concept-index
   "module -> concept -> list versions ordered by time with active"
@@ -200,7 +225,7 @@
 
   Here only the international (900000000000207008) and the German (11000274103)
   edition."
-  [description-index lines]
+  [fully-specified-name-index lines]
   (-> ^Stream lines
       (.map module-dependency-refset-line)
       (.filter #(= 1 (:active %)))
@@ -211,7 +236,7 @@
          {:fhir/type :fhir/CodeSystem
           :url #fhir/uri"http://snomed.info/sct"
           :version (type/string (version-url module-id source-effective-time))
-          :title (type/string (find-description description-index module-id source-effective-time))
+          :title (type/string (find-description fully-specified-name-index module-id source-effective-time))
           :status #fhir/code"active"
           :experimental #fhir/boolean false
           :date (type/dateTime (str (LocalDate/parse (str source-effective-time) DateTimeFormatter/BASIC_ISO_DATE)))
@@ -253,10 +278,12 @@
             concept-file (find-file term-path "sct2_Concept_Full")
             relationship-file (find-file term-path "sct2_Relationship_Full")
             description-file (find-file term-path "sct2_Description_Full")
-            description-index (stream-file build-description-index description-file)
-            code-systems (stream-file (partial build-code-systems description-index) module-dependency-file)]
+            fully-specified-name-index (stream-file build-fully-specified-name-index description-file)
+            synonym-index (stream-file build-synonym-index description-file)
+            code-systems (stream-file (partial build-code-systems fully-specified-name-index) module-dependency-file)]
     {:code-systems code-systems
      :current-int-system (find-current-int-system code-systems)
      :concept-index (stream-file build-concept-index concept-file)
      :child-index (stream-file build-child-index relationship-file)
-     :description-index description-index}))
+     :fully-specified-name-index fully-specified-name-index
+     :synonym-index synonym-index}))

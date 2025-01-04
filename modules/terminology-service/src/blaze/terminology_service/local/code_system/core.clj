@@ -19,32 +19,46 @@
       "http://unitsofmeasure.org" :ucum
       nil)))
 
-(defmulti validate-code
-  {:arglists '([code-system request])}
-  (fn [{:keys [url]} _]
-    (condp = (type/value url)
-      "http://snomed.info/sct" :sct
-      "http://unitsofmeasure.org" :ucum
-      nil)))
-
 (defmulti expand-complete
-  {:arglists '([request inactive code-system])}
-  (fn [_ _ {:keys [url]}]
+  {:arglists '([code-system active-only])}
+  (fn [{:keys [url]} _]
     (condp = (type/value url)
       "http://snomed.info/sct" :sct
       nil)))
 
 (defmulti expand-concept
-  {:arglists '([request inactive code-system concepts])}
-  (fn [_ _ {:keys [url]} _]
+  {:arglists '([code-system concepts params])}
+  (fn [{:keys [url]} _ _]
     (condp = (type/value url)
       "http://snomed.info/sct" :sct
       "http://unitsofmeasure.org" :ucum
       nil)))
 
 (defmulti expand-filter
-  {:arglists '([request inactive code-system filter])}
-  (fn [_ _ {:keys [url]} _]
+  {:arglists '([code-system filter params])}
+  (fn [{:keys [url]} _ _]
+    (condp = (type/value url)
+      "http://snomed.info/sct" :sct
+      nil)))
+
+(defmulti find-complete
+  {:arglists '([code-system params])}
+  (fn [{:keys [url]} _]
+    (condp = (type/value url)
+      "http://snomed.info/sct" :sct
+      "http://unitsofmeasure.org" :ucum
+      nil)))
+
+(defmulti find-filter
+  {:arglists '([code-system filter params])}
+  (fn [{:keys [url]} _ _]
+    (condp = (type/value url)
+      "http://snomed.info/sct" :sct
+      nil)))
+
+(defmulti satisfies-filter?
+  {:arglists '([code-system filter concept])}
+  (fn [{:keys [url]} _ _]
     (condp = (type/value url)
       "http://snomed.info/sct" :sct
       nil)))

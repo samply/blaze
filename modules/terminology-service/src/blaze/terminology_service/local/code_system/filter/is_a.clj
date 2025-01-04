@@ -8,5 +8,5 @@
    [blaze.terminology-service.local.graph :as graph]))
 
 (defmethod core/filter-concepts :is-a
-  [{:keys [value]} {:default/keys [graph]}]
+  [{:default/keys [graph]} {:keys [value]}]
   (graph/is-a graph (type/value value)))

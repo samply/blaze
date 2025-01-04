@@ -129,3 +129,18 @@
   {:arglists '([graph code])}
   [{:keys [concepts child-index]} code]
   (into [] (map concepts) (disj (is-a-codes child-index code) code)))
+
+(defn find-descendent-of
+  "Returns concept of `code` if it is in the set of descendant codes of
+  `start-code`."
+  {:arglists '([graph start-code code])}
+  [{:keys [concepts child-index]} start-code code]
+  (loop [to-visit #{start-code}
+         visited #{}]
+    (when (seq to-visit)
+      (let [current (first to-visit)
+            children (child-index current)]
+        (if (contains? children code)
+          (concepts code)
+          (recur (into (disj to-visit current) (remove visited) children)
+                 (conj visited current)))))))

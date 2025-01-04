@@ -4,7 +4,10 @@
    [blaze.db.api-stub :as api-stub :refer [with-system-data]]
    [blaze.fhir.operation.code-system.validate-code]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.util :as u]
    [blaze.handler.util :as handler-util]
+   [blaze.middleware.fhir.db :refer [wrap-db]]
+   [blaze.middleware.fhir.db-spec]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.local]
    [blaze.test-util :as tu :refer [given-thrown]]
@@ -58,9 +61,10 @@
 
 (defmacro with-handler [[handler-binding] & more]
   (let [[txs body] (api-stub/extract-txs-body more)]
-    `(with-system-data [{handler# :blaze.fhir.operation.code-system/validate-code} config]
+    `(with-system-data [{node# :blaze.db/node
+                         handler# :blaze.fhir.operation.code-system/validate-code} config]
        ~txs
-       (let [~handler-binding (-> handler# wrap-error)]
+       (let [~handler-binding (-> handler# (wrap-db node# 100) wrap-error)]
          ~@body))))
 
 (deftest handler-test
@@ -76,37 +80,25 @@
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
             [:issue 0 :code] := #fhir/code"not-found"
-            [:issue 0 :diagnostics] := "The code system with id `170852` was not found."))))
+            [:issue 0 :diagnostics] := "Resource `CodeSystem/170852` was not found."))))
 
     (testing "by url"
       (with-handler [handler]
         (let [{:keys [status body]}
-              @(handler {:query-params {"url" "153404"}})]
-
-          (is (= 404 status))
-
-          (given body
-            :fhir/type := :fhir/OperationOutcome
-            [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"not-found"
-            [:issue 0 :diagnostics] := "The code system `153404` was not found."))))
-
-    (testing "without url or id"
-      (with-handler [handler]
-        (let [{:keys [status body]}
-              @(handler {})]
+              @(handler {:query-params {"url" "153404"
+                                        "code" "123033"}})]
 
           (is (= 400 status))
 
           (given body
             :fhir/type := :fhir/OperationOutcome
             [:issue 0 :severity] := #fhir/code"error"
-            [:issue 0 :code] := #fhir/code"invalid"
-            [:issue 0 :diagnostics] := "Missing required parameter `url`.")))))
+            [:issue 0 :code] := #fhir/code"not-found"
+            [:issue 0 :diagnostics] := "The code system `153404` was not found.")))))
 
   (testing "unsupported parameters"
     (with-handler [handler]
-      (doseq [param ["codeableConcept" "date" "abstract"]]
+      (doseq [param ["date" "abstract"]]
         (testing "GET"
           (let [{:keys [status body]}
                 @(handler {:query-params {param "foo"}})]
@@ -122,11 +114,7 @@
         (testing "POST"
           (let [{:keys [status body]}
                 @(handler {:request-method :post
-                           :body {:fhir/type :fhir/Parameters
-                                  :parameter
-                                  [{:fhir/type :fhir.Parameters/parameter
-                                    :name (type/string param)
-                                    :value (type/string "foo")}]}})]
+                           :body (u/parameters param "foo")})]
 
             (is (= 400 status))
 
@@ -138,7 +126,7 @@
 
   (testing "unsupported GET parameters"
     (with-handler [handler]
-      (doseq [param ["codeSystem" "coding"]]
+      (doseq [param ["codeSystem" "coding" "codeableConcept" "tx-resource"]]
         (let [{:keys [status body]}
               @(handler {:query-params {param "foo"}})]
 
@@ -170,18 +158,28 @@
             (given body
               :fhir/type := :fhir/Parameters
               [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value type/value] := result))))
+              [:parameter 0 :value type/value] := result)))
+
+        (testing "ignores unknown parameter"
+          (let [{:keys [status body]}
+                @(handler {:path-params {:id "id-162245"}
+                           :query-params {"code" "code-115927"
+                                          "foo" "bar"}})]
+
+            (is (= 200 status))
+
+            (given body
+              :fhir/type := :fhir/Parameters
+              [:parameter 0 :name] := #fhir/string"result"
+              [:parameter 0 :value] := #fhir/boolean true))))
 
       (testing "and coding"
         (let [{:keys [status body]}
               @(handler {:request-method :post
                          :path-params {:id "id-162245"}
-                         :body {:fhir/type :fhir/Parameters
-                                :parameter
-                                [{:fhir/type :fhir.Parameters/parameter
-                                  :name #fhir/string"coding"
-                                  :value #fhir/Coding{:system #fhir/uri"system-115910"
-                                                      :code #fhir/code"code-115927"}}]}})]
+                         :body (u/parameters
+                                "coding" #fhir/Coding{:system #fhir/uri"system-115910"
+                                                      :code #fhir/code"code-115927"})})]
 
           (is (= 200 status))
 
@@ -193,7 +191,28 @@
             [:parameter 1 :name] := #fhir/string"code"
             [:parameter 1 :value] := #fhir/code"code-115927"
             [:parameter 2 :name] := #fhir/string"system"
-            [:parameter 2 :value] := #fhir/uri"system-115910")))))
+            [:parameter 2 :value] := #fhir/uri"system-115910"))
+
+        (testing "ignores unknown parameter"
+          (let [{:keys [status body]}
+                @(handler {:request-method :post
+                           :path-params {:id "id-162245"}
+                           :body (u/parameters
+                                  "coding" #fhir/Coding{:system #fhir/uri"system-115910"
+                                                        :code #fhir/code"code-115927"}
+                                  "foo" "bar")})]
+
+            (is (= 200 status))
+
+            (given body
+              :fhir/type := :fhir/Parameters
+              [:parameter count] := 3
+              [:parameter 0 :name] := #fhir/string"result"
+              [:parameter 0 :value] := #fhir/boolean true
+              [:parameter 1 :name] := #fhir/string"code"
+              [:parameter 1 :value] := #fhir/code"code-115927"
+              [:parameter 2 :name] := #fhir/string"system"
+              [:parameter 2 :value] := #fhir/uri"system-115910"))))))
 
   (testing "successful validation by url"
     (with-handler [handler]
@@ -215,34 +234,15 @@
             (given body
               :fhir/type := :fhir/Parameters
               [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value type/value] := result)))
-
-        (testing "with displayLanguage"
-          (doseq [lang ["en" "de"]]
-            (let [{:keys [status body]}
-                  @(handler {:query-params {"url" "system-115910"
-                                            "code" "code-115927"
-                                            "displayLanguage" lang}})]
-
-              (is (= 200 status))
-
-              (given body
-                :fhir/type := :fhir/Parameters
-                [:parameter 0 :name] := #fhir/string"result"
-                [:parameter 0 :value] := #fhir/boolean true)))))
+              [:parameter 0 :value type/value] := result))))
 
       (testing "and coding"
         (let [{:keys [status body]}
               @(handler {:request-method :post
-                         :body {:fhir/type :fhir/Parameters
-                                :parameter
-                                [{:fhir/type :fhir.Parameters/parameter
-                                  :name #fhir/string"url"
-                                  :value #fhir/uri"system-115910"}
-                                 {:fhir/type :fhir.Parameters/parameter
-                                  :name #fhir/string"coding"
-                                  :value #fhir/Coding{:system #fhir/uri"system-115910"
-                                                      :code #fhir/code"code-115927"}}]}})]
+                         :body (u/parameters
+                                "url" #fhir/uri"system-115910"
+                                "coding" #fhir/Coding{:system #fhir/uri"system-115910"
+                                                      :code #fhir/code"code-115927"})})]
 
           (is (= 200 status))
 
@@ -254,115 +254,4 @@
             [:parameter 1 :name] := #fhir/string"code"
             [:parameter 1 :value] := #fhir/code"code-115927"
             [:parameter 2 :name] := #fhir/string"system"
-            [:parameter 2 :value] := #fhir/uri"system-115910"))
-
-        (testing "with displayLanguage"
-          (doseq [lang ["en" "de"]]
-            (let [{:keys [status body]}
-                  @(handler {:request-method :post
-                             :body {:fhir/type :fhir/Parameters
-                                    :parameter
-                                    [{:fhir/type :fhir.Parameters/parameter
-                                      :name #fhir/string"url"
-                                      :value #fhir/uri"system-115910"}
-                                     {:fhir/type :fhir.Parameters/parameter
-                                      :name #fhir/string"coding"
-                                      :value #fhir/Coding{:system #fhir/uri"system-115910"
-                                                          :code #fhir/code"code-115927"}}
-                                     {:fhir/type :fhir.Parameters/parameter
-                                      :name #fhir/string"displayLanguage"
-                                      :value (type/code lang)}]}})]
-
-              (is (= 200 status))
-
-              (given body
-                :fhir/type := :fhir/Parameters
-                [:parameter count] := 3
-                [:parameter 0 :name] := #fhir/string"result"
-                [:parameter 0 :value] := #fhir/boolean true
-                [:parameter 1 :name] := #fhir/string"code"
-                [:parameter 1 :value] := #fhir/code"code-115927"
-                [:parameter 2 :name] := #fhir/string"system"
-                [:parameter 2 :value] := #fhir/uri"system-115910")))))))
-
-  (testing "successful validation by coding only"
-    (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri"system-115910"
-               :content #fhir/code"complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code"code-115927"}]}]]]
-
-      (let [{:keys [status body]}
-            @(handler {:request-method :post
-                       :body {:fhir/type :fhir/Parameters
-                              :parameter
-                              [{:fhir/type :fhir.Parameters/parameter
-                                :name #fhir/string"coding"
-                                :value #fhir/Coding{:system #fhir/uri"system-115910"
-                                                    :code #fhir/code"code-115927"}}]}})]
-
-        (is (= 200 status))
-
-        (given body
-          :fhir/type := :fhir/Parameters
-          [:parameter count] := 3
-          [:parameter 0 :name] := #fhir/string"result"
-          [:parameter 0 :value] := #fhir/boolean true
-          [:parameter 1 :name] := #fhir/string"code"
-          [:parameter 1 :value] := #fhir/code"code-115927"
-          [:parameter 2 :name] := #fhir/string"system"
-          [:parameter 2 :value] := #fhir/uri"system-115910"))))
-
-  (testing "fails with coding only without system"
-    (with-handler [handler]
-      [[[:put {:fhir/type :fhir/CodeSystem :id "0"
-               :url #fhir/uri"system-115910"
-               :content #fhir/code"complete"
-               :concept
-               [{:fhir/type :fhir.CodeSystem/concept
-                 :code #fhir/code"code-115927"}]}]]]
-
-      (let [{:keys [status body]}
-            @(handler {:request-method :post
-                       :body {:fhir/type :fhir/Parameters
-                              :parameter
-                              [{:fhir/type :fhir.Parameters/parameter
-                                :name #fhir/string"coding"
-                                :value #fhir/Coding{:code #fhir/code"code-115927"}}]}})]
-
-        (is (= 400 status))
-
-        (given body
-          :fhir/type := :fhir/OperationOutcome
-          [:issue 0 :severity] := #fhir/code"error"
-          [:issue 0 :code] := #fhir/code"invalid"
-          [:issue 0 :diagnostics] := "Missing required parameter `url`."))))
-
-  (testing "successful validation by codeSystem"
-    (testing "and code"
-      (with-handler [handler]
-        (doseq [[code result] [["code-115927" true] ["code-210428" false]]]
-          (let [{:keys [status body]}
-                @(handler {:request-method :post
-                           :body {:fhir/type :fhir/Parameters
-                                  :parameter
-                                  [{:fhir/type :fhir.Parameters/parameter
-                                    :name #fhir/string"codeSystem"
-                                    :resource
-                                    {:fhir/type :fhir/CodeSystem
-                                     :content #fhir/code"complete"
-                                     :concept
-                                     [{:fhir/type :fhir.CodeSystem/concept
-                                       :code #fhir/code"code-115927"}]}}
-                                   {:fhir/type :fhir.Parameters/parameter
-                                    :name #fhir/string"code"
-                                    :value (type/code code)}]}})]
-
-            (is (= 200 status))
-
-            (given body
-              :fhir/type := :fhir/Parameters
-              [:parameter 0 :name] := #fhir/string"result"
-              [:parameter 0 :value type/value] := result)))))))
+            [:parameter 2 :value] := #fhir/uri"system-115910"))))))

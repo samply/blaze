@@ -74,6 +74,7 @@
     blaze.fhir.spec.references fsr
     blaze.fhir.spec.type type
     blaze.fhir.structure-definition-repo sdr
+    blaze.handler.fhir.util fhir-util
     blaze.job-scheduler js
     blaze.job.async-interaction job-async
     blaze.job.compact job-compact

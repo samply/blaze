@@ -18,6 +18,6 @@
     (ba/incorrect "Missing filter property.")))
 
 (defmethod core/filter-concepts :exists
-  [filter {{:keys [concepts]} :default/graph}]
+  [{{:keys [concepts]} :default/graph} filter]
   (when-ok [xform (xform filter)]
     (into [] xform (vals concepts))))
