@@ -4555,76 +4555,82 @@
     (doseq [code ["http://loinc.org|94564-2" "94564-2"]]
       (testing "as first clause"
         (testing "with one patient"
-          (let [clauses [["subject" "Patient/0"]
-                         ["code" code]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 1
-              [0 :id] := "0")
+          (doseq [subject ["Patient/0" "0"]]
+            (let [clauses [["subject" subject]
+                           ["code" code]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 1
+                [0 :id] := "0")
 
-            (testing "count query"
-              (is (= 1 (count-type-query node "Observation" clauses))))))
+              (testing "count query"
+                (is (= 1 (count-type-query node "Observation" clauses)))))))
 
         (testing "with two patients"
-          (let [clauses [["subject" "Patient/0" "Patient/1"]
-                         ["code" code]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 2
-              [0 :id] := "0"
-              [1 :id] := "1")
+          (doseq [subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
+            (let [clauses [(into ["subject"] subjects)
+                           ["code" code]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "0"
+                [1 :id] := "1")
 
-            (testing "it is possible to start with the second observation"
-              (given (pull-type-query node "Observation" clauses "1")
-                count := 1
-                [0 :id] := "1"))
+              (testing "it is possible to start with the second observation"
+                (given (pull-type-query node "Observation" clauses "1")
+                  count := 1
+                  [0 :id] := "1"))
 
-            (testing "count query"
-              (is (= 2 (count-type-query node "Observation" clauses)))))))
+              (testing "count query"
+                (is (= 2 (count-type-query node "Observation" clauses))))))))
 
       (testing "as second clause"
         (testing "with one patient"
-          (let [clauses [["code" code]
-                         ["subject" "Patient/0"]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 1
-              [0 :id] := "0")
+          (doseq [subject ["Patient/0" "0"]]
+            (let [clauses [["code" code]
+                           ["subject" subject]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 1
+                [0 :id] := "0")
 
-            (testing "count query"
-              (is (= 1 (count-type-query node "Observation" clauses))))))
+              (testing "count query"
+                (is (= 1 (count-type-query node "Observation" clauses)))))))
 
         (testing "with two patients"
-          (let [clauses [["code" code]
-                         ["subject" "Patient/0" "Patient/1"]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 2
-              [0 :id] := "0"
-              [1 :id] := "1")
+          (doseq [subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
+            (let [clauses [["code" code]
+                           (into ["subject"] subjects)]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "0"
+                [1 :id] := "1")
 
-            (testing "count query"
-              (is (= 2 (count-type-query node "Observation" clauses)))))))
+              (testing "count query"
+                (is (= 2 (count-type-query node "Observation" clauses))))))))
 
       (testing "with both subject and patient parameters"
         (testing "with one patient"
-          (let [clauses [["code" code]
-                         ["subject" "Patient/0"]
-                         ["patient" "Patient/0"]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 1
-              [0 :id] := "0")
+          (doseq [subject ["Patient/0" "0"]]
+            (let [clauses [["code" code]
+                           ["subject" subject]
+                           ["patient" subject]]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 1
+                [0 :id] := "0")
 
-            (testing "count query"
-              (is (= 1 (count-type-query node "Observation" clauses))))))
+              (testing "count query"
+                (is (= 1 (count-type-query node "Observation" clauses)))))))
 
         (testing "with two patients"
-          (let [clauses [["code" code]
-                         ["subject" "Patient/0" "Patient/1"]
-                         ["patient" "Patient/0" "Patient/1"]]]
-            (given (pull-type-query node "Observation" clauses)
-              count := 2
-              [0 :id] := "0"
-              [1 :id] := "1")
+          (doseq [subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
+            (let [clauses [["code" code]
+                           (into ["subject"] subjects)
+                           (into ["patient"] subjects)]]
+              (given (pull-type-query node "Observation" clauses)
+                count := 2
+                [0 :id] := "0"
+                [1 :id] := "1")
 
-            (testing "count query"
-              (is (= 2 (count-type-query node "Observation" clauses))))))))))
+              (testing "count query"
+                (is (= 2 (count-type-query node "Observation" clauses)))))))))))
 
 (deftest type-query-observation-date-subject-test
   (with-system-data [{:blaze.db/keys [node]} config]
@@ -4639,52 +4645,56 @@
 
     (testing "as first clause"
       (testing "with one patient"
-        (let [clauses [["subject" "Patient/0"]
-                       ["date" "1990-06-14T12:24:48Z"]]]
-          (given (pull-type-query node "Observation" clauses)
-            count := 1
-            [0 :id] := "0")
+        (doseq [subject ["Patient/0" "0"]]
+          (let [clauses [["subject" subject]
+                         ["date" "1990-06-14T12:24:48Z"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 1
+              [0 :id] := "0")
 
-          (testing "count query"
-            (is (= 1 (count-type-query node "Observation" clauses))))))
+            (testing "count query"
+              (is (= 1 (count-type-query node "Observation" clauses)))))))
 
       (testing "with two patients"
-        (let [clauses [["subject" "Patient/0" "Patient/1"]
-                       ["date" "1990-06-14T12:24:48Z"]]]
-          (given (pull-type-query node "Observation" clauses)
-            count := 2
-            [0 :id] := "0"
-            [1 :id] := "1")
+        (doseq [subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
+          (let [clauses [(into ["subject"] subjects)
+                         ["date" "1990-06-14T12:24:48Z"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "0"
+              [1 :id] := "1")
 
-          (testing "it is possible to start with the second observation"
-            (given (pull-type-query node "Observation" clauses "1")
-              count := 1
-              [0 :id] := "1"))
+            (testing "it is possible to start with the second observation"
+              (given (pull-type-query node "Observation" clauses "1")
+                count := 1
+                [0 :id] := "1"))
 
-          (testing "count query"
-            (is (= 2 (count-type-query node "Observation" clauses)))))))
+            (testing "count query"
+              (is (= 2 (count-type-query node "Observation" clauses))))))))
 
     (testing "as second clause"
       (testing "with one patient"
-        (let [clauses [["date" "1990-06-14T12:24:48Z"]
-                       ["subject" "Patient/0"]]]
-          (given (pull-type-query node "Observation" clauses)
-            count := 1
-            [0 :id] := "0")
+        (doseq [subject ["Patient/0" "0"]]
+          (let [clauses [["date" "1990-06-14T12:24:48Z"]
+                         ["subject" subject]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 1
+              [0 :id] := "0")
 
-          (testing "count query"
-            (is (= 1 (count-type-query node "Observation" clauses))))))
+            (testing "count query"
+              (is (= 1 (count-type-query node "Observation" clauses)))))))
 
       (testing "with two patients"
-        (let [clauses [["date" "1990-06-14T12:24:48Z"]
-                       ["subject" "Patient/0" "Patient/1"]]]
-          (given (pull-type-query node "Observation" clauses)
-            count := 2
-            [0 :id] := "0"
-            [1 :id] := "1")
+        (doseq [subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
+          (let [clauses [["date" "1990-06-14T12:24:48Z"]
+                         (into ["subject"] subjects)]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "0"
+              [1 :id] := "1")
 
-          (testing "count query"
-            (is (= 2 (count-type-query node "Observation" clauses)))))))))
+            (testing "count query"
+              (is (= 2 (count-type-query node "Observation" clauses))))))))))
 
 (deftest type-query-list-test
   (testing "item"
@@ -5777,13 +5787,14 @@
 
       (testing "PatientTypeQuery"
         (testing "order is - compartment, token and others"
-          (doseq [target [node (d/db node)]]
+          (doseq [target [node (d/db node)]
+                  subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
             (given (-> (d/compile-type-query target "Observation" [["date" "1990-06-14T12:24:48Z"]
                                                                    ["code" "http://loinc.org|94564-2"]
-                                                                   ["subject" "Patient/0" "Patient/1"]])
+                                                                   (into ["subject"] subjects)])
                        (d/query-clauses))
               count := 3
-              [0] := ["subject" "Patient/0" "Patient/1"]
+              [0] := (into ["subject"] subjects)
               [1] := ["code" "http://loinc.org|94564-2"]
               [2] := ["date" "1990-06-14T12:24:48Z"])))
 

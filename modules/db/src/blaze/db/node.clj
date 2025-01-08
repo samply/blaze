@@ -232,7 +232,10 @@
        (every? has-system? values)))
 
 (defn- compartment-clause-patient-ids [[_ _ values]]
-  (map second (keep fsr/split-literal-ref values)))
+  (keep
+   #(or (some-> (fsr/split-literal-ref %) second)
+        (when (re-matches #"[A-Za-z0-9\-\.]{1,64}" %) %))
+   values))
 
 (defn- compile-patient-type-query [search-param-registry type clauses]
   (let [codes (set/intersection
