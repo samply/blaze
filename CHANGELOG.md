@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.31.0
+
+### Enhancements
+
+* Implement Direct Download of Binary Content at the Binary Endpoint ([#2108](https://github.com/samply/blaze/issues/2108))
+* Implement Parameter _total in FHIR Search ([#2226](https://github.com/samply/blaze/issues/2226)) ([docs](https://github.com/samply/blaze/blob/5efaa3a21ed4005ab7bfa876c58ebb31110a6829/docs/api.md?plain=1#L110))
+* Create Operation $compact ([#208](https://github.com/samply/blaze/issues/208)) ([docs](https://github.com/samply/blaze/blob/main/docs/api/operation-compact.md))
+  
+### Bugfixes
+
+* Fix Optimised FHIR Search with Subject References ([#2293](https://github.com/samply/blaze/issues/2293))
+
+The full changelog can be found [here](https://github.com/samply/blaze/milestone/100?closed=1).
+
 ## v0.30.2
 
 ### Performance
