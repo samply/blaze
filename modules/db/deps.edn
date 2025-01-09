@@ -44,7 +44,7 @@
   {:local/root "../spec"}
 
   commons-codec/commons-codec
-  {:mvn/version "1.17.1"}}
+  {:mvn/version "1.17.2"}}
 
  :deps/prep-lib
  {:alias :build
