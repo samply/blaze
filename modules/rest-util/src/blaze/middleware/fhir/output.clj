@@ -9,6 +9,7 @@
    [blaze.fhir.spec :as fhir-spec]
    [blaze.fhir.spec.type :as type]
    [blaze.handler.util :as handler-util]
+   [cheshire.core :as json]
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [muuntaja.parse :as parse]
@@ -35,10 +36,24 @@
       handler-util/operation-outcome
       generation-fn))
 
-(defn- generate-json [body]
+(defn- generate-json** [body]
+  (let [out (ByteArrayOutputStream.)]
+    (with-open [writer (io/writer out)]
+      (json/generate-stream (fhir-spec/unform-json body) writer))
+    (.toByteArray out)))
+
+(defn- generate-json* [response]
+  (try
+    (update response :body generate-json**)
+    (catch Throwable e
+      (assoc response
+             :body (generate-error-payload generate-json** e)
+             :status 500))))
+
+(defn- generate-json [response]
   (log/trace "generate JSON")
   (with-open [_ (prom/timer generate-duration-seconds "json")]
-    (fhir-spec/unform-json body)))
+    (generate-json* response)))
 
 (defn- generate-xml** [body]
   (let [out (ByteArrayOutputStream.)]
@@ -68,7 +83,7 @@
     (update response :body generate-binary**)
     (catch Throwable e
       (assoc response
-             :body (generate-error-payload identity e)
+             :body (generate-error-payload generate-json** e)
              :status 500))))
 
 (defn- generate-binary [response]
@@ -77,7 +92,7 @@
     (generate-binary* response)))
 
 (defn- encode-response-json [{:keys [body] :as response} content-type]
-  (cond-> response body (-> (update :body generate-json)
+  (cond-> response body (-> generate-json
                             (ring/content-type content-type))))
 
 (defn- encode-response-xml [{:keys [body] :as response} content-type]
