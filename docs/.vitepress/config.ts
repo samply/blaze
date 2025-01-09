@@ -27,7 +27,7 @@ export default defineConfig({
         nav: [
             {text: 'Home', link: '/'},
             {
-                text: "v0.30.2",
+                text: "v0.31.0",
                 items: [
                     {
                         text: 'Changelog',
