@@ -11,6 +11,7 @@
    [clojure.data.xml :as xml]
    [clojure.java.io :as io]
    [clojure.spec.test.alpha :as st]
+   [clojure.string :as str]
    [clojure.test :as test :refer [deftest is testing]]
    [juxt.iota :refer [given]]
    [ring.util.response :as ring]
@@ -214,12 +215,25 @@
           [:headers "Content-Type"] := nil
           :body := nil)))
 
-    (testing "failing binary emit (with invalid data)"
-      (given (call (binary-resource-handler-200 {:content-type "application/pdf" :data "MTANjECg=="}) {:headers {"accept" "text/plain"}})
-        :status := 500
-        [:headers "Content-Type"] := "application/pdf"
-        [:body :fhir/type] := :fhir/OperationOutcome
-        [:body :issue 0 :diagnostics] := "Input byte array has wrong 4-byte ending unit"))))
+    (testing "invalid cases"
+      (testing "with invalid binary data"
+        (testing "accepting various non-FHIR content types"
+          (doseq [[non-fhir-content-type] [["text/plain" "application/pdf" "any+other+non+FHIR/content+type"]]]
+            (given (call (binary-resource-handler-200 {:fhir/type :fhir/Binary :content-type non-fhir-content-type :data "MTANjECg=="}) {:headers {"accept" "application/pdf"}})
+              :status := 500
+              [:headers "Content-Type"] := non-fhir-content-type
+              [:body parse-json :fhir/type] := :fhir/OperationOutcome
+              [:body parse-json :issue 0 :diagnostics] := "Input byte array has wrong 4-byte ending unit")))
+
+        (testing "accepting FHIR types"
+          (doseq [[accept-fhir-content-type response-fhir-content-type parsing-fn resource-type] [["application/fhir+json" "application/fhir+json;charset=utf-8" parse-json "JSON"]
+                                                                                                  ["application/fhir+xml" "application/fhir+xml;charset=utf-8" parse-xml "XML"]]]
+            (given (call (binary-resource-handler-200 {:fhir/type :fhir/Binary :content-type "application/pdf" :data "MTANjECg=="}) {:headers {"accept" accept-fhir-content-type}})
+              :status := 200
+              [:headers "Content-Type"] := response-fhir-content-type
+              [:body parsing-fn :cognitect.anomalies/category] := :cognitect.anomalies/incorrect
+              [:body parsing-fn :cognitect.anomalies/message] := (str/join " " ["Invalid" resource-type "representation of a resource."])
+              [:body parsing-fn :fhir/issues 0 :fhir.issues/diagnostics] := "Error on value `MTANjECg==`. Expected type is `base64Binary`, regex `([0-9a-zA-Z\\\\+/=]{4})+`.")))))))
 
 (deftest not-acceptable-test
   (is (nil? (call resource-handler-200-with-patient {:headers {"accept" "text/plain"}}))))

@@ -61,14 +61,18 @@
 
 (defn- generate-binary** [{:keys [data]}]
   (when data
-    (.decode (Base64/getDecoder) ^String (type/value data))))
+    (let [out (ByteArrayOutputStream.)]
+      (with-open [writer (io/output-stream out)]
+        (let [decoded-bytes (.decode (Base64/getDecoder) ^String (type/value data))]
+          (.write writer decoded-bytes)))
+      (.toByteArray out))))
 
 (defn- generate-binary* [response]
   (try
     (update response :body generate-binary**)
     (catch Throwable e
       (assoc response
-             :body (generate-error-payload identity e)
+             :body (generate-error-payload generate-json e)
              :status 500))))
 
 (defn- generate-binary [response]
