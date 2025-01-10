@@ -26,7 +26,7 @@
    :exclusions [ring/ring-core]}
 
   metosin/muuntaja
-  {:mvn/version "0.6.10"
+  {:mvn/version "0.6.11"
    :exclusions [com.cognitect/transit-clj]}
 
   ring/ring-core
