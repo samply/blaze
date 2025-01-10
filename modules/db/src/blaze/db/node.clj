@@ -40,7 +40,6 @@
    [blaze.scheduler :as sched]
    [blaze.spec]
    [blaze.util :refer [conj-vec]]
-   [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]
@@ -219,6 +218,12 @@
     (ac/completed-future (deleted-resource resource-handle))
     (rs/get resource-store (rh/hash resource-handle))))
 
+(defn- patient-compartment-search-param-codes [search-param-registry type]
+  (when (seq (sr/compartment-resources search-param-registry "Patient" type))
+    (cond-> #{"subject" "patient"}
+      (nil? (sr/get search-param-registry "subject" type)) (disj "subject")
+      (nil? (sr/get search-param-registry "patient" type)) (disj "patient"))))
+
 (defn- clause-with-code-fn? [codes]
   (fn [[search-param]]
     (codes (:code search-param))))
@@ -231,23 +236,36 @@
   (and (= "token" (:type search-param))
        (every? has-system? values)))
 
-(defn- compartment-clause-patient-ids [[_ _ values]]
-  (keep
-   #(or (some-> (fsr/split-literal-ref %) second)
-        (when (re-matches #"[A-Za-z0-9\-\.]{1,64}" %) %))
+(defn- compartment-clause-patient-ids [[{:keys [code]} _ values]]
+  (transduce
+   (comp
+    (map
+     (if (= "patient" code)
+       (fn [value]
+         (if-let [[type id] (fsr/split-literal-ref value)]
+           (when (= "Patient" type)
+             id)
+           (when (re-matches #"[A-Za-z0-9\-\.]{1,64}" value)
+             value)))
+       (fn [value]
+         (when-let [[type id] (fsr/split-literal-ref value)]
+           (when (= "Patient" type)
+             id)))))
+    (halt-when nil?))
+   conj
+   []
    values))
 
 (defn- compile-patient-type-query [search-param-registry type clauses]
-  (let [codes (set/intersection
-               #{"subject" "patient"}
-               (set (sr/compartment-resources search-param-registry "Patient" type)))]
+  (let [codes (patient-compartment-search-param-codes search-param-registry type)]
     (when (seq codes)
       (let [[compartment-clause & more] (filter (clause-with-code-fn? codes) clauses)
-            [token-clause] (filter token-clause? clauses)]
-        (when (and compartment-clause (empty? more) token-clause)
+            [token-clause] (filter token-clause? clauses)
+            patient-ids (compartment-clause-patient-ids compartment-clause)]
+        (when (and compartment-clause (empty? more) token-clause patient-ids)
           (batch-db/->PatientTypeQuery
            (codec/tid type)
-           (compartment-clause-patient-ids compartment-clause)
+           patient-ids
            compartment-clause
            (into [token-clause] (remove (clause-with-code-fn? (conj codes (:code (first token-clause))))) clauses)))))))
 
