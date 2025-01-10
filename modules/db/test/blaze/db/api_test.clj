@@ -39,6 +39,7 @@
    [juxt.iota :refer [given]]
    [taoensso.timbre :as log])
   (:import
+   [blaze.db.impl.batch_db PatientTypeQuery]
    [com.google.common.base CaseFormat]
    [java.time Instant]
    [java.util.concurrent TimeUnit]))
@@ -4533,6 +4534,8 @@
   (with-system-data [{:blaze.db/keys [node]} config]
     [[[:put {:fhir/type :fhir/Patient :id "0"}]
       [:put {:fhir/type :fhir/Patient :id "1"}]
+      [:put {:fhir/type :fhir/Group :id "0"}]
+      [:put {:fhir/type :fhir/Group :id "1"}]
       [:put {:fhir/type :fhir/Observation :id "0"
              :code
              #fhir/CodeableConcept
@@ -4550,14 +4553,33 @@
                  {:system #fhir/uri"http://loinc.org"
                   :code #fhir/code"94564-2"
                   :display #fhir/string"SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
-             :subject #fhir/Reference{:reference "Patient/1"}}]]]
+             :subject #fhir/Reference{:reference "Patient/1"}}]
+      [:put {:fhir/type :fhir/Observation :id "2"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://loinc.org"
+                  :code #fhir/code"94564-2"
+                  :display #fhir/string"SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+             :subject #fhir/Reference{:reference "Group/0"}}]
+      [:put {:fhir/type :fhir/Observation :id "3"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://loinc.org"
+                  :code #fhir/code"94564-2"
+                  :display #fhir/string"SARS-CoV-2 (COVID-19) IgM Ab [Presence]"}]}
+             :subject #fhir/Reference{:reference "Group/1"}}]]]
 
     (doseq [code ["http://loinc.org|94564-2" "94564-2"]]
       (testing "as first clause"
         (testing "with one patient"
-          (doseq [subject ["Patient/0" "0"]]
-            (let [clauses [["subject" subject]
-                           ["code" code]]]
+          (doseq [subject-clause [["subject" "Patient/0"]
+                                  ["patient" "Patient/0"]
+                                  ["patient" "0"]]]
+            (let [clauses [subject-clause ["code" code]]]
               (given (pull-type-query node "Observation" clauses)
                 count := 1
                 [0 :id] := "0")
@@ -4565,10 +4587,22 @@
               (testing "count query"
                 (is (= 1 (count-type-query node "Observation" clauses)))))))
 
+        (testing "with one group"
+          (let [clauses [["subject" "Group/0"] ["code" code]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 1
+              [0 :id] := "2")
+
+            (testing "count query"
+              (is (= 1 (count-type-query node "Observation" clauses))))))
+
         (testing "with two patients"
-          (doseq [subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
-            (let [clauses [(into ["subject"] subjects)
-                           ["code" code]]]
+          (doseq [subject-clause [["subject" "Patient/0" "Patient/1"]
+                                  ["patient" "Patient/0" "Patient/1"]
+                                  ["patient" "Patient/0" "1"]
+                                  ["patient" "0" "Patient/1"]
+                                  ["patient" "0" "1"]]]
+            (let [clauses [subject-clause ["code" code]]]
               (given (pull-type-query node "Observation" clauses)
                 count := 2
                 [0 :id] := "0"
@@ -4580,13 +4614,29 @@
                   [0 :id] := "1"))
 
               (testing "count query"
-                (is (= 2 (count-type-query node "Observation" clauses))))))))
+                (is (= 2 (count-type-query node "Observation" clauses)))))))
+
+        (testing "with two groups"
+          (let [clauses [["subject" "Group/0" "Group/1"] ["code" code]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "2"
+              [1 :id] := "3")
+
+            (testing "it is possible to start with the second observation"
+              (given (pull-type-query node "Observation" clauses "3")
+                count := 1
+                [0 :id] := "3"))
+
+            (testing "count query"
+              (is (= 2 (count-type-query node "Observation" clauses)))))))
 
       (testing "as second clause"
         (testing "with one patient"
-          (doseq [subject ["Patient/0" "0"]]
-            (let [clauses [["code" code]
-                           ["subject" subject]]]
+          (doseq [subject-clause [["subject" "Patient/0"]
+                                  ["patient" "Patient/0"]
+                                  ["patient" "0"]]]
+            (let [clauses [["code" code] subject-clause]]
               (given (pull-type-query node "Observation" clauses)
                 count := 1
                 [0 :id] := "0")
@@ -4594,43 +4644,263 @@
               (testing "count query"
                 (is (= 1 (count-type-query node "Observation" clauses)))))))
 
+        (testing "with one group"
+          (let [clauses [["code" code] ["subject" "Group/0"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 1
+              [0 :id] := "2")
+
+            (testing "count query"
+              (is (= 1 (count-type-query node "Observation" clauses))))))
+
         (testing "with two patients"
-          (doseq [subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
-            (let [clauses [["code" code]
-                           (into ["subject"] subjects)]]
+          (doseq [subject-clause [["subject" "Patient/0" "Patient/1"]
+                                  ["patient" "Patient/0" "Patient/1"]
+                                  ["patient" "Patient/0" "1"]
+                                  ["patient" "0" "Patient/1"]
+                                  ["patient" "0" "1"]]]
+            (let [clauses [["code" code] subject-clause]]
               (given (pull-type-query node "Observation" clauses)
                 count := 2
                 [0 :id] := "0"
                 [1 :id] := "1")
 
+              (testing "it is possible to start with the second observation"
+                (given (pull-type-query node "Observation" clauses "1")
+                  count := 1
+                  [0 :id] := "1"))
+
               (testing "count query"
-                (is (= 2 (count-type-query node "Observation" clauses))))))))
+                (is (= 2 (count-type-query node "Observation" clauses)))))))
+
+        (testing "with two groups"
+          (let [clauses [["code" code] ["subject" "Group/0" "Group/1"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "2"
+              [1 :id] := "3")
+
+            (testing "it is possible to start with the second observation"
+              (given (pull-type-query node "Observation" clauses "3")
+                count := 1
+                [0 :id] := "3"))
+
+            (testing "count query"
+              (is (= 2 (count-type-query node "Observation" clauses)))))))
 
       (testing "with both subject and patient parameters"
         (testing "with one patient"
-          (doseq [subject ["Patient/0" "0"]]
-            (let [clauses [["code" code]
-                           ["subject" subject]
-                           ["patient" subject]]]
-              (given (pull-type-query node "Observation" clauses)
+          (doseq [ref ["Patient/0" "0"]
+                  clauses [[["code" code]
+                            ["subject" "Patient/0"]
+                            ["patient" ref]]
+                           [["code" code]
+                            ["patient" ref]
+                            ["subject" "Patient/0"]]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 1
+              [0 :id] := "0")
+
+            (testing "count query"
+              (is (= 1 (count-type-query node "Observation" clauses))))))
+
+        (testing "with two patients"
+          (let [clauses [["code" code]
+                         ["subject" "Patient/0" "Patient/1"]
+                         ["patient" "Patient/0" "Patient/1"]]]
+            (given (pull-type-query node "Observation" clauses)
+              count := 2
+              [0 :id] := "0"
+              [1 :id] := "1")
+
+            (testing "count query"
+              (is (= 2 (count-type-query node "Observation" clauses))))))))))
+
+(deftest type-query-procedure-code-subject-test
+  (with-system-data [{:blaze.db/keys [node]} config]
+    [[[:put {:fhir/type :fhir/Patient :id "0"}]
+      [:put {:fhir/type :fhir/Patient :id "1"}]
+      [:put {:fhir/type :fhir/Group :id "0"}]
+      [:put {:fhir/type :fhir/Group :id "1"}]
+      [:put {:fhir/type :fhir/Procedure :id "0"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://snomed.info/sct"
+                  :code #fhir/code"243141005"
+                  :display #fhir/string"Mechanically assisted spontaneous ventilation (regime/therapy)"}]}
+             :subject #fhir/Reference{:reference "Patient/0"}}]
+      [:put {:fhir/type :fhir/Procedure :id "1"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://snomed.info/sct"
+                  :code #fhir/code"243141005"
+                  :display #fhir/string"Mechanically assisted spontaneous ventilation (regime/therapy)"}]}
+             :subject #fhir/Reference{:reference "Patient/1"}}]
+      [:put {:fhir/type :fhir/Procedure :id "2"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://snomed.info/sct"
+                  :code #fhir/code"243141005"
+                  :display #fhir/string"Mechanically assisted spontaneous ventilation (regime/therapy)"}]}
+             :subject #fhir/Reference{:reference "Group/0"}}]
+      [:put {:fhir/type :fhir/Procedure :id "3"
+             :code
+             #fhir/CodeableConcept
+              {:coding
+               [#fhir/Coding
+                 {:system #fhir/uri"http://snomed.info/sct"
+                  :code #fhir/code"243141005"
+                  :display #fhir/string"Mechanically assisted spontaneous ventilation (regime/therapy)"}]}
+             :subject #fhir/Reference{:reference "Group/1"}}]]]
+
+    (doseq [code ["http://snomed.info/sct|243141005" "243141005"]]
+      (testing "as first clause"
+        (testing "with one patient"
+          (doseq [subject-clause [["subject" "Patient/0"]
+                                  ["patient" "Patient/0"]
+                                  ["patient" "0"]]]
+            (let [clauses [subject-clause ["code" code]]]
+              (given (pull-type-query node "Procedure" clauses)
                 count := 1
                 [0 :id] := "0")
 
               (testing "count query"
-                (is (= 1 (count-type-query node "Observation" clauses)))))))
+                (is (= 1 (count-type-query node "Procedure" clauses)))))))
+
+        (testing "with one group"
+          (let [clauses [["subject" "Group/0"] ["code" code]]]
+            (given (pull-type-query node "Procedure" clauses)
+              count := 1
+              [0 :id] := "2")
+
+            (testing "count query"
+              (is (= 1 (count-type-query node "Procedure" clauses))))))
 
         (testing "with two patients"
-          (doseq [subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
-            (let [clauses [["code" code]
-                           (into ["subject"] subjects)
-                           (into ["patient"] subjects)]]
-              (given (pull-type-query node "Observation" clauses)
+          (doseq [subject-clause [["subject" "Patient/0" "Patient/1"]
+                                  ["patient" "Patient/0" "Patient/1"]
+                                  ["patient" "Patient/0" "1"]
+                                  ["patient" "0" "Patient/1"]
+                                  ["patient" "0" "1"]]]
+            (let [clauses [subject-clause ["code" code]]]
+              (given (pull-type-query node "Procedure" clauses)
                 count := 2
                 [0 :id] := "0"
                 [1 :id] := "1")
 
+              (testing "it is possible to start with the second Procedure"
+                (given (pull-type-query node "Procedure" clauses "1")
+                  count := 1
+                  [0 :id] := "1"))
+
               (testing "count query"
-                (is (= 2 (count-type-query node "Observation" clauses)))))))))))
+                (is (= 2 (count-type-query node "Procedure" clauses)))))))
+
+        (testing "with two groups"
+          (let [clauses [["subject" "Group/0" "Group/1"] ["code" code]]]
+            (given (pull-type-query node "Procedure" clauses)
+              count := 2
+              [0 :id] := "2"
+              [1 :id] := "3")
+
+            (testing "it is possible to start with the second Procedure"
+              (given (pull-type-query node "Procedure" clauses "3")
+                count := 1
+                [0 :id] := "3"))
+
+            (testing "count query"
+              (is (= 2 (count-type-query node "Procedure" clauses)))))))
+
+      (testing "as second clause"
+        (testing "with one patient"
+          (doseq [subject-clause [["subject" "Patient/0"]
+                                  ["patient" "Patient/0"]
+                                  ["patient" "0"]]]
+            (let [clauses [["code" code] subject-clause]]
+              (given (pull-type-query node "Procedure" clauses)
+                count := 1
+                [0 :id] := "0")
+
+              (testing "count query"
+                (is (= 1 (count-type-query node "Procedure" clauses)))))))
+
+        (testing "with one group"
+          (let [clauses [["code" code] ["subject" "Group/0"]]]
+            (given (pull-type-query node "Procedure" clauses)
+              count := 1
+              [0 :id] := "2")
+
+            (testing "count query"
+              (is (= 1 (count-type-query node "Procedure" clauses))))))
+
+        (testing "with two patients"
+          (doseq [subject-clause [["subject" "Patient/0" "Patient/1"]
+                                  ["patient" "Patient/0" "Patient/1"]
+                                  ["patient" "Patient/0" "1"]
+                                  ["patient" "0" "Patient/1"]
+                                  ["patient" "0" "1"]]]
+            (let [clauses [["code" code] subject-clause]]
+              (given (pull-type-query node "Procedure" clauses)
+                count := 2
+                [0 :id] := "0"
+                [1 :id] := "1")
+
+              (testing "it is possible to start with the second Procedure"
+                (given (pull-type-query node "Procedure" clauses "1")
+                  count := 1
+                  [0 :id] := "1"))
+
+              (testing "count query"
+                (is (= 2 (count-type-query node "Procedure" clauses)))))))
+
+        (testing "with two groups"
+          (let [clauses [["code" code] ["subject" "Group/0" "Group/1"]]]
+            (given (pull-type-query node "Procedure" clauses)
+              count := 2
+              [0 :id] := "2"
+              [1 :id] := "3")
+
+            (testing "it is possible to start with the second Procedure"
+              (given (pull-type-query node "Procedure" clauses "3")
+                count := 1
+                [0 :id] := "3"))
+
+            (testing "count query"
+              (is (= 2 (count-type-query node "Procedure" clauses)))))))
+
+      (testing "with both subject and patient parameters"
+        (testing "with one patient"
+          (doseq [ref ["Patient/0" "0"]
+                  clauses [[["code" code]
+                            ["subject" "Patient/0"]
+                            ["patient" ref]]
+                           [["code" code]
+                            ["patient" ref]
+                            ["subject" "Patient/0"]]]]
+            (given (pull-type-query node "Procedure" clauses)
+              count := 1
+              [0 :id] := "0")
+
+            (testing "count query"
+              (is (= 1 (count-type-query node "Procedure" clauses))))))
+
+        (testing "with two patients"
+          (let [clauses [["code" code]
+                         ["subject" "Patient/0" "Patient/1"]
+                         ["patient" "Patient/0" "Patient/1"]]]
+            (given (pull-type-query node "Procedure" clauses)
+              count := 2
+              [0 :id] := "0"
+              [1 :id] := "1")
+
+            (testing "count query"
+              (is (= 2 (count-type-query node "Procedure" clauses))))))))))
 
 (deftest type-query-observation-date-subject-test
   (with-system-data [{:blaze.db/keys [node]} config]
@@ -5752,6 +6022,9 @@
       count := 1
       [0 :id] := "2")))
 
+(defn- patient-type-query? [x]
+  (instance? PatientTypeQuery x))
+
 (deftest compile-type-query-test
   (testing "a node with one patient"
     (with-system-data [{:blaze.db/keys [node]} config]
@@ -5786,28 +6059,107 @@
             [1] := ["active" "true"])))
 
       (testing "PatientTypeQuery"
+        (testing "patient and code"
+          (doseq [target [node (d/db node)]
+                  type ["Condition" "DiagnosticReport" "MedicationAdministration" "MedicationRequest" "MedicationStatement" "Observation" "Procedure"]
+                  subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
+
+            (let [clauses [["code" "system|code"]
+                           (into ["patient"] subjects)]]
+              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+
+        (testing "patient and category"
+          (doseq [target [node (d/db node)]
+                  type ["Consent"]
+                  subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
+
+            (let [clauses [["category" "system|code"]
+                           (into ["patient"] subjects)]]
+              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+
+        (testing "patient and class"
+          (doseq [target [node (d/db node)]
+                  type ["Encounter"]
+                  subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
+
+            (let [clauses [["class" "system|code"]
+                           (into ["patient"] subjects)]]
+              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+
+        (testing "patient and modality"
+          (doseq [target [node (d/db node)]
+                  type ["ImagingStudy"]
+                  subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
+
+            (let [clauses [["modality" "system|code"]
+                           (into ["patient"] subjects)]]
+              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+
+        (testing "patient and type"
+          (doseq [target [node (d/db node)]
+                  type ["Specimen"]
+                  subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
+
+            (let [clauses [["type" "system|code"]
+                           (into ["patient"] subjects)]]
+              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+
+        (testing "subject and code"
+          (doseq [target [node (d/db node)]
+                  type ["Condition" "DiagnosticReport" "MedicationAdministration" "MedicationRequest" "MedicationStatement" "Observation" "Procedure"]]
+
+            (let [clauses [["code" "system|code"]
+                           ["subject" "Patient/0" "Patient/1"]]]
+              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+
+        (testing "subject and class"
+          (doseq [target [node (d/db node)]
+                  type ["Encounter"]]
+
+            (let [clauses [["class" "system|code"]
+                           ["subject" "Patient/0" "Patient/1"]]]
+              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+
+        (testing "subject and modality"
+          (doseq [target [node (d/db node)]
+                  type ["ImagingStudy"]]
+
+            (let [clauses [["modality" "system|code"]
+                           ["subject" "Patient/0" "Patient/1"]]]
+              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+
+        (testing "subject and type"
+          (doseq [target [node (d/db node)]
+                  type ["Specimen"]]
+
+            (let [clauses [["type" "system|code"]
+                           ["subject" "Patient/0" "Patient/1"]]]
+              (is (patient-type-query? (d/compile-type-query target type clauses))))))
+
         (testing "order is - compartment, token and others"
           (doseq [target [node (d/db node)]
-                  subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
-            (given (-> (d/compile-type-query target "Observation" [["date" "1990-06-14T12:24:48Z"]
-                                                                   ["code" "http://loinc.org|94564-2"]
-                                                                   (into ["subject"] subjects)])
-                       (d/query-clauses))
-              count := 3
-              [0] := (into ["subject"] subjects)
-              [1] := ["code" "http://loinc.org|94564-2"]
-              [2] := ["date" "1990-06-14T12:24:48Z"])))
+                  type ["Observation" "Procedure"]]
 
-        (testing "subject and patient parameters"
-          (doseq [target [node (d/db node)]]
-            (given (-> (d/compile-type-query target "Observation" [["code" "http://loinc.org|94564-2"]
-                                                                   ["subject" "Patient/0" "Patient/1"]
-                                                                   ["patient" "Patient/0" "Patient/1"]])
-                       (d/query-clauses))
-              count := 3
-              [0] := ["subject" "Patient/0" "Patient/1"]
-              [1] := ["code" "http://loinc.org|94564-2"]
-              [2] := ["patient" "Patient/0" "Patient/1"]))))
+            (testing "with patient search param"
+              (doseq [subjects [["Patient/0" "Patient/1"] ["0" "1"]]]
+                (given (-> (d/compile-type-query target type [["date" "1990-06-14T12:24:48Z"]
+                                                              ["code" "system|code"]
+                                                              (into ["patient"] subjects)])
+                           (d/query-clauses))
+                  count := 3
+                  [0] := (into ["patient"] subjects)
+                  [1] := ["code" "system|code"]
+                  [2] := ["date" "1990-06-14T12:24:48Z"])))
+
+            (testing "with subject search param"
+              (given (-> (d/compile-type-query target type [["date" "1990-06-14T12:24:48Z"]
+                                                            ["code" "system|code"]
+                                                            ["subject" "Patient/0" "Patient/1"]])
+                         (d/query-clauses))
+                count := 3
+                [0] := ["subject" "Patient/0" "Patient/1"]
+                [1] := ["code" "system|code"]
+                [2] := ["date" "1990-06-14T12:24:48Z"])))))
 
       (testing "an unknown search-param errors"
         (doseq [target [node (d/db node)]]

@@ -159,7 +159,13 @@
               {:fhir/type :fhir/Observation :id "0"
                :subject #fhir/Reference{:reference "Patient/1"}})
         count := 1
-        [0] := ["Patient" "1"]))
+        [0] := ["Patient" "1"])
+
+      (testing "Group is no compartment"
+        (is (empty? (sr/linked-compartments
+                     search-param-registry
+                     {:fhir/type :fhir/Observation :id "0"
+                      :subject #fhir/Reference{:reference "Group/1"}})))))
 
     (testing "MedicationAdministration subject"
       (given (sr/linked-compartments

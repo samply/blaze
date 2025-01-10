@@ -186,7 +186,9 @@
         (fn [value]
           (when (identical? :fhir/Reference (fhir-spec/fhir-type value))
             (when-let [reference (type/value (:reference value))]
-              (some-> (fsr/split-literal-ref reference) (coll/nth 1))))))
+              (when-let [[type id] (fsr/split-literal-ref reference)]
+                (when (= "Patient" type)
+                  id))))))
        values)))
 
   (-index-values [search-param resolver resource]
