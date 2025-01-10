@@ -50,9 +50,8 @@
   (try
     (update response :body generate-xml**)
     (catch Throwable e
-      (assoc response
-             :body (generate-error-payload generate-xml** e)
-             :status 500))))
+      (-> (ring/response (generate-error-payload generate-xml** e))
+          (ring/status 500)))))
 
 (defn- generate-xml [response]
   (log/trace "generate XML")
@@ -63,13 +62,18 @@
   (when data
     (.decode (Base64/getDecoder) ^String (type/value data))))
 
-(defn- generate-binary* [response]
+(defn- binary-content-type [body]
+  (or (-> body :contentType type/value)
+      "application/octet-stream"))
+
+(defn- generate-binary* [{:keys [body] :as response}]
   (try
-    (update response :body generate-binary**)
+    (-> (update response :body generate-binary**)
+        (ring/content-type (binary-content-type body)))
     (catch Throwable e
-      (assoc response
-             :body (generate-error-payload identity e)
-             :status 500))))
+      (-> (ring/response (generate-error-payload generate-json e))
+          (ring/status 500)
+          (ring/content-type "application/fhir+json")))))
 
 (defn- generate-binary [response]
   (log/trace "generate binary")
@@ -84,13 +88,8 @@
   (cond-> response body (-> generate-xml
                             (ring/content-type content-type))))
 
-(defn- binary-content-type [body]
-  (or (-> body :contentType type/value)
-      "application/octet-stream"))
-
 (defn- encode-response-binary [{:keys [body] :as response}]
-  (cond-> response body (-> generate-binary
-                            (ring/content-type (binary-content-type body)))))
+  (cond-> response body generate-binary))
 
 (defn- format-key [format]
   (condp = format
