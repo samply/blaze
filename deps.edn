@@ -134,7 +134,7 @@
   :outdated
   {:replace-deps
    {com.github.liquidz/antq
-    {:mvn/version "2.10.1241"}
+    {:mvn/version "2.11.1264"}
 
     org.slf4j/slf4j-nop
     {:mvn/version "2.0.16"}}
@@ -177,10 +177,15 @@
     "-d" "modules/module-base"
     "-d" "modules/module-test-util"
     "-d" "modules/openid-auth"
+    "-d" "modules/operation-code-system-validate-code"
+    "-d" "modules/operation-compact"
     "-d" "modules/operation-graphql"
     "-d" "modules/operation-measure-evaluate-measure"
     "-d" "modules/operation-patient-everything"
+    "-d" "modules/operation-patient-purge"
     "-d" "modules/operation-totals"
+    "-d" "modules/operation-value-set-expand"
+    "-d" "modules/operation-value-set-validate-code"
     "-d" "modules/page-id-cipher"
     "-d" "modules/page-store"
     "-d" "modules/page-store-cassandra"
@@ -193,11 +198,8 @@
     "-d" "modules/terminology-service"
     "-d" "modules/test-util"
     "-d" "modules/thread-pool-executor-collector"
-    "--exclude" "com.taoensso/timbre"
     "--exclude" "org.antlr/antlr4"
     "--exclude" "org.clojure/alpha.spec"
-    "--exclude" "com.walmartlabs/lacinia"
-    "--exclude" "info.sunng/ring-jetty9-adapter"
     "--exclude" "info.cqframework/cql"
     "--exclude" "info.cqframework/quick"
     "--exclude" "info.cqframework/model-jackson"
