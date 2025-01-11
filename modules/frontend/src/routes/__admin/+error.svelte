@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 
-	import ErrorCard from '../error-card.svelte';
+	import ErrorCard from '$lib/error-card.svelte';
 </script>
 
 <svelte:head>

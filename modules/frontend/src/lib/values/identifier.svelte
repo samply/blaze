@@ -7,11 +7,17 @@
 		return value.type?.text;
 	}
 
-	export let values: FhirObject<Identifier>[];
+	interface Props {
+		values: FhirObject<Identifier>[];
+	}
 
-	$: compactValues = values
-		.map((v) => ({ type: compactType(v.object), value: v.object.value }))
-		.sort(sortByProperty('type'));
+	let { values }: Props = $props();
+
+	let compactValues = $derived(
+		values
+			.map((v) => ({ type: compactType(v.object), value: v.object.value }))
+			.sort(sortByProperty('type'))
+	);
 </script>
 
 <div class="ring-1 ring-gray-300 rounded-lg">

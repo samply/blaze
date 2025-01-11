@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 
-	import { afterUpdate, onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import Status from '$lib/jobs/re-index/status.svelte';
 	import DescriptionList from '$lib/tailwind/description/left-aligned/list.svelte';
@@ -10,22 +9,22 @@
 	import prettyNum from '$lib/pretty-num';
 	import humanizeDuration from 'humanize-duration';
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
 
-	let timeout: ReturnType<typeof setTimeout>;
+	let { data }: Props = $props();
 
 	// reload page data every 5 seconds if the job is still in progress
-	afterUpdate(() => {
+	$effect(() => {
 		if (data.job.status === 'ready' || data.job.status === 'in-progress') {
-			timeout = setTimeout(() => {
+			const timeout = setTimeout(() => {
 				invalidateAll();
 			}, 5000);
-		}
-	});
 
-	onDestroy(() => {
-		if (timeout) {
-			clearTimeout(timeout);
+			return () => {
+				clearTimeout(timeout);
+			};
 		}
 	});
 </script>
@@ -36,11 +35,13 @@
 
 <main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8">
 	<DescriptionList>
-		<svelte:fragment slot="title">Job #{data.job.number}</svelte:fragment>
-		<svelte:fragment slot="description">
+		{#snippet title()}
+			Job #{data.job.number}
+		{/snippet}
+		{#snippet description()}
 			Last Updated
 			<DateTime value={data.job.lastUpdated} />
-		</svelte:fragment>
+		{/snippet}
 		<Row title="Status">
 			<Status job={data.job} />
 		</Row>

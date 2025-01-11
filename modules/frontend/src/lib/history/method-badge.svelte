@@ -1,5 +1,9 @@
 <script lang="ts">
-	export let method: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+	interface Props {
+		method: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+	}
+
+	let { method }: Props = $props();
 
 	function modeBgColor(mode: string): string {
 		switch (mode) {

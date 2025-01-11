@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
 	import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
 	import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
@@ -12,11 +12,15 @@
 	import TotalBadge from '$lib/total-badge.svelte';
 	import EntryCard from '$lib/history/entry-card.svelte';
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
+
+	let { data }: Props = $props();
 </script>
 
 <svelte:head>
-	<title>History - {$page.params.type} - Blaze</title>
+	<title>History - {page.params.type} - Blaze</title>
 </svelte:head>
 
 <header class="mx-auto max-w-7xl sm:px-6 lg:px-8">
@@ -24,7 +28,7 @@
 		<ol class="flex items-center py-0.5 space-x-4">
 			<BreadcrumbEntryHome />
 			<BreadcrumbEntryType />
-			<BreadcrumbEntryHistory url="{$page.params.type}/_history" />
+			<BreadcrumbEntryHistory url="{page.params.type}/_history" />
 			<BreadcrumbEntryPage />
 		</ol>
 	</nav>

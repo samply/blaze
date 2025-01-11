@@ -5,7 +5,11 @@
 	import Single from './address/single.svelte';
 	import GrayBadge from './util/gray-badge.svelte';
 
-	export let values: FhirObject<Address>[];
+	interface Props {
+		values: FhirObject<Address>[];
+	}
+
+	let { values }: Props = $props();
 </script>
 
 {#if values.length > 1}

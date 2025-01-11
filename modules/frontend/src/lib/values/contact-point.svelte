@@ -4,9 +4,13 @@
 	import { joinStrings } from '../util.js';
 	import GrayBadge from './util/gray-badge.svelte';
 
-	export let values: FhirObject[];
+	interface Props {
+		values: FhirObject[];
+	}
 
-	$: contactPoints = values.map((v) => v.object) as ContactPoint[];
+	let { values }: Props = $props();
+
+	let contactPoints = $derived(values.map((v) => v.object) as ContactPoint[]);
 </script>
 
 {#if contactPoints.length > 1}

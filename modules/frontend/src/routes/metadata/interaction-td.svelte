@@ -4,8 +4,12 @@
 	import Check from './check.svelte';
 	import XMark from './x-mark.svelte';
 
-	export let resource: CapabilityStatementRestResource;
-	export let interaction: RestfulInteraction;
+	interface Props {
+		resource: CapabilityStatementRestResource;
+		interaction: RestfulInteraction;
+	}
+
+	let { resource, interaction }: Props = $props();
 
 	function hasInteraction(
 		resource: CapabilityStatementRestResource,

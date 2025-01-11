@@ -1,16 +1,23 @@
 <script lang="ts">
-	export let clazz: string = '';
+	interface Props {
+		clazz?: string;
+		caption?: import('svelte').Snippet;
+		head?: import('svelte').Snippet;
+		children?: import('svelte').Snippet;
+	}
+
+	let { clazz = '', caption, head, children }: Props = $props();
 </script>
 
 <div class={clazz}>
-	<slot name="caption" />
+	{@render caption?.()}
 	<div class="-mx-4 mt-4 sm:-mx-0">
 		<table class="min-w-full divide-y divide-gray-300">
 			<thead>
-				<slot name="head" />
+				{@render head?.()}
 			</thead>
 			<tbody class="divide-y divide-gray-200 bg-white">
-				<slot />
+				{@render children?.()}
 			</tbody>
 		</table>
 	</div>

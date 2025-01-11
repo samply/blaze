@@ -1,5 +1,9 @@
 <script lang="ts">
-	export let duration: number;
+	interface Props {
+		duration: number;
+	}
+
+	let { duration }: Props = $props();
 </script>
 
 <span

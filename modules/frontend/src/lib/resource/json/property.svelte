@@ -8,14 +8,19 @@
 	import ArrayValue from './array.svelte';
 	import Value from './value.svelte';
 
-	export let indent: number;
-	export let isLast: boolean;
-	export let property: FhirProperty;
+	interface Props {
+		indent: number;
+		isLast: boolean;
+		property: FhirProperty;
+	}
 
-	$: primitiveExtensions =
+	let { indent, isLast, property }: Props = $props();
+
+	let primitiveExtensions = $derived(
 		!Array.isArray(property.value) && isPrimitive(property.value.type)
 			? (property.value as FhirPrimitive).extensions
-			: undefined;
+			: undefined
+	);
 </script>
 
 {' '.repeat(indent)}<span class="text-orange-700">"{property.name}"</span

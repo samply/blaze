@@ -3,7 +3,11 @@
 	import type { HumanName } from 'fhir/r4';
 	import GrayBadge from './util/gray-badge.svelte';
 
-	export let values: FhirObject[];
+	interface Props {
+		values: FhirObject[];
+	}
+
+	let { values }: Props = $props();
 
 	function display(value: HumanName): string {
 		return (
@@ -14,7 +18,7 @@
 		);
 	}
 
-	$: humanNames = values.map((v) => v.object) as HumanName[];
+	let humanNames = $derived(values.map((v) => v.object) as HumanName[]);
 </script>
 
 {#if humanNames.length > 1}

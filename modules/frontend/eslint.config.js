@@ -4,8 +4,7 @@ import svelte from 'eslint-plugin-svelte';
 import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 
-/** @type {import('eslint').Linter.Config[]} */
-export default [
+export default ts.config(
 	js.configs.recommended,
 	...ts.configs.recommended,
 	...svelte.configs['flat/recommended'],
@@ -21,6 +20,7 @@ export default [
 	},
 	{
 		files: ['**/*.svelte'],
+
 		languageOptions: {
 			parserOptions: {
 				parser: ts.parser
@@ -30,4 +30,4 @@ export default [
 	{
 		ignores: ['build/', '.svelte-kit/', 'dist/']
 	}
-];
+);

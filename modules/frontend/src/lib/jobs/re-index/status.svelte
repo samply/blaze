@@ -9,7 +9,11 @@
 			: 0;
 	}
 
-	export let job: ReIndexJob;
+	interface Props {
+		job: ReIndexJob;
+	}
+
+	let { job }: Props = $props();
 </script>
 
 {#if job.status === 'completed'}

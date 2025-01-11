@@ -1,7 +1,11 @@
 <script lang="ts">
-	export let searchParams: { name: string }[];
-	export let index: number;
-	export let selected: string;
+	interface Props {
+		searchParams: { name: string }[];
+		index: number;
+		selected: string;
+	}
+
+	let { searchParams, index, selected = $bindable() }: Props = $props();
 </script>
 
 <div>

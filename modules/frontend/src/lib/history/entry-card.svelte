@@ -4,12 +4,18 @@
 	import DeletedCard from './deleted-card.svelte';
 	import Badge from './badge.svelte';
 
-	export let entry: FhirObjectBundleEntry;
+	interface Props {
+		entry: FhirObjectBundleEntry;
+	}
+
+	let { entry }: Props = $props();
 </script>
 
 {#if entry.fhirObject}
 	<ResourceCard resource={entry.fhirObject} versionLink={true} embedded={true}>
-		<Badge {entry} slot="header" />
+		{#snippet header()}
+			<Badge {entry} />
+		{/snippet}
 	</ResourceCard>
 {:else if entry.request?.method === 'DELETE' && entry.response?.lastModified}
 	<DeletedCard request={entry.request} lastModified={entry.response.lastModified} />

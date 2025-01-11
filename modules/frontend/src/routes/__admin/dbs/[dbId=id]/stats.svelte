@@ -3,7 +3,11 @@
 	import type { Stats } from './+page.js';
 	import prettyBytes from 'pretty-bytes';
 
-	export let stats: Stats;
+	interface Props {
+		stats: Stats;
+	}
+
+	let { stats }: Props = $props();
 </script>
 
 <dl

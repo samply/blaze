@@ -4,7 +4,7 @@
 	import type { FhirObject } from '$lib/resource/resource-card.js';
 	import { isTabActive } from '$lib/util.js';
 	import { base } from '$app/paths';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
 	import DateTime from '$lib/values/date-time.svelte';
 	import Download from './download.svelte';
@@ -16,9 +16,13 @@
 	import InteractionTd from './interaction-td.svelte';
 	import Table from '$lib/tailwind/table/table.svelte';
 
-	export let resource: FhirObject;
+	interface Props {
+		resource: FhirObject;
+	}
 
-	$: capabilityStatement = resource.object as CapabilityStatement;
+	let { resource }: Props = $props();
+
+	let capabilityStatement = $derived(resource.object as CapabilityStatement);
 </script>
 
 <div class="overflow-hidden">
@@ -28,40 +32,44 @@
 			<TabItem name="json" label="Json" />
 		</nav>
 	</div>
-	{#if isTabActive($page.url, 'default')}
+	{#if isTabActive(page.url, 'default')}
 		<Table clazz="mt-4">
-			<div slot="caption">
-				<h1 class="text-base font-semibold leading-6 text-gray-900">
-					{capabilityStatement.software?.name} v{capabilityStatement.software?.version}
-				</h1>
-				<p class="mt-2 text-sm text-gray-700">
-					Last Updated&nbsp;<DateTime value={capabilityStatement.date} />
-				</p>
-			</div>
+			{#snippet caption()}
+				<div>
+					<h1 class="text-base font-semibold leading-6 text-gray-900">
+						{capabilityStatement.software?.name} v{capabilityStatement.software?.version}
+					</h1>
+					<p class="mt-2 text-sm text-gray-700">
+						Last Updated&nbsp;<DateTime value={capabilityStatement.date} />
+					</p>
+				</div>
+			{/snippet}
 
-			<tr slot="head">
-				<th
-					scope="col"
-					class="whitespace-nowrap py-3.5 pl-4 align-bottom text-left text-sm font-semibold text-gray-900 sm:pl-0"
-					>Resource Type</th
-				>
-				<InteractionTh label="Profile" />
-				<InteractionTh label="Read" />
-				<InteractionTh label="VRead" />
-				<InteractionTh label="Search-Type" />
-				<InteractionTh label="History" />
-				<InteractionTh label="History-Type" />
-				<InteractionTh label="Create" />
-				<InteractionTh label="Update" />
-				<InteractionTh label="Patch" />
-				<InteractionTh label="Delete" />
-				<InteractionTh label="Read History" />
-				<InteractionTh label="Update Create" />
-				<InteractionTh label="Conditional Create" />
-				<InteractionTh label="Conditional Read" />
-				<InteractionTh label="Conditional Update" />
-				<InteractionTh label="Conditional Delete" />
-			</tr>
+			{#snippet head()}
+				<tr>
+					<th
+						scope="col"
+						class="whitespace-nowrap py-3.5 pl-4 align-bottom text-left text-sm font-semibold text-gray-900 sm:pl-0"
+						>Resource Type</th
+					>
+					<InteractionTh label="Profile" />
+					<InteractionTh label="Read" />
+					<InteractionTh label="VRead" />
+					<InteractionTh label="Search-Type" />
+					<InteractionTh label="History" />
+					<InteractionTh label="History-Type" />
+					<InteractionTh label="Create" />
+					<InteractionTh label="Update" />
+					<InteractionTh label="Patch" />
+					<InteractionTh label="Delete" />
+					<InteractionTh label="Read History" />
+					<InteractionTh label="Update Create" />
+					<InteractionTh label="Conditional Create" />
+					<InteractionTh label="Conditional Read" />
+					<InteractionTh label="Conditional Update" />
+					<InteractionTh label="Conditional Delete" />
+				</tr>
+			{/snippet}
 
 			{#each capabilityStatement.rest?.at(0)?.resource || [] as resource (resource.type)}
 				<tr>

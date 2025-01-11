@@ -1,8 +1,12 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 
-	export let name: string;
-	export let total: number;
+	interface Props {
+		name: string;
+		total: number;
+	}
+
+	let { name, total }: Props = $props();
 </script>
 
 <tr>

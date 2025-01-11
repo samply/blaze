@@ -2,9 +2,13 @@
 	import type { ActionData } from './$types';
 	import SubmitButtons from './../submit-buttons.svelte';
 
-	export let form: ActionData;
+	interface Props {
+		form: ActionData;
+	}
 
-	let selectedDatabase = form?.database ?? 'index';
+	let { form }: Props = $props();
+
+	let selectedDatabase = $state(form?.database ?? 'index');
 </script>
 
 <svelte:head>

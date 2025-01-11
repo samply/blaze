@@ -1,9 +1,13 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 
-	export let active = false;
-	export let id: string;
-	export let label: string;
+	interface Props {
+		active?: boolean;
+		id: string;
+		label: string;
+	}
+
+	let { active = false, id, label }: Props = $props();
 </script>
 
 {#if active}

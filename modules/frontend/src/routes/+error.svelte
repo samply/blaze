@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ErrorCard from './error-card.svelte';
+	import ErrorCard from '$lib/error-card.svelte';
 </script>
 
 <svelte:head>

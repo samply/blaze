@@ -2,7 +2,11 @@
 	import prettyBytes from 'pretty-bytes';
 	import type { BloomFilter } from './+page';
 
-	export let bloomFilter: BloomFilter;
+	interface Props {
+		bloomFilter: BloomFilter;
+	}
+
+	let { bloomFilter }: Props = $props();
 </script>
 
 <tr>

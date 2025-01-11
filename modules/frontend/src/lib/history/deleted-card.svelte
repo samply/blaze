@@ -3,8 +3,12 @@
 	import DateTime from '$lib/values/date-time.svelte';
 	import MethodBadge from './method-badge.svelte';
 
-	export let request: BundleEntryRequest;
-	export let lastModified: string;
+	interface Props {
+		request: BundleEntryRequest;
+		lastModified: string;
+	}
+
+	let { request, lastModified }: Props = $props();
 </script>
 
 <div class="overflow-hidden">

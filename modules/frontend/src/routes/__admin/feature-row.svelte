@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Feature } from './+layout';
 
-	export let feature: Feature;
+	let { feature }: { feature: Feature } = $props();
 </script>
 
 <tr>

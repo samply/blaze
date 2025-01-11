@@ -1,10 +1,16 @@
 <script lang="ts">
 	import '../app.css';
 	import '@fontsource-variable/inter';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { onNavigate } from '$app/navigation';
 	import { signOut } from '@auth/sveltekit/client';
-	import NavItem from './nav-item.svelte';
+	import NavItem from '$lib/nav-item.svelte';
+
+	interface Props {
+		children?: import('svelte').Snippet;
+	}
+
+	let { children }: Props = $props();
 
 	// https://svelte.dev/blog/view-transitions
 	onNavigate((navigation) => {
@@ -28,7 +34,7 @@
 		);
 	}
 
-	let userProfileOpen = false;
+	let userProfileOpen = $state(false);
 </script>
 
 <div class="min-h-full">
@@ -37,19 +43,19 @@
 			<div class="flex h-16 justify-between">
 				<!-- Navigation Menu -->
 				<div class="flex space-x-8">
-					<NavItem active={isHomeRoute($page.route.id)} id="/" label="Home" />
+					<NavItem active={isHomeRoute(page.route.id)} id="/" label="Home" />
 					<NavItem
-						active={$page.route.id?.startsWith('/_history') ||
-							$page.route.id?.startsWith('/__history-page')}
+						active={page.route.id?.startsWith('/_history') ||
+							page.route.id?.startsWith('/__history-page')}
 						id="/_history"
 						label="History"
 					/>
 					<NavItem
-						active={$page.route.id?.startsWith('/metadata')}
+						active={page.route.id?.startsWith('/metadata')}
 						id="/metadata"
 						label="Metadata"
 					/>
-					<NavItem active={$page.route.id?.startsWith('/__admin')} id="/__admin" label="Admin" />
+					<NavItem active={page.route.id?.startsWith('/__admin')} id="/__admin" label="Admin" />
 				</div>
 
 				<!-- User Profile -->
@@ -62,8 +68,8 @@
 								id="user-menu-button"
 								aria-expanded="false"
 								aria-haspopup="true"
-								on:click={() => (userProfileOpen = !userProfileOpen)}
-								disabled={!$page.data.session}
+								onclick={() => (userProfileOpen = !userProfileOpen)}
+								disabled={!page.data.session}
 							>
 								<span class="absolute -inset-1.5"></span>
 								<span class="sr-only">Open user menu</span>
@@ -74,8 +80,8 @@
 									stroke-width="1.5"
 									stroke="currentColor"
 									class="w-8 h-8"
-									class:text-gray-900={$page.data.session}
-									class:text-gray-500={!$page.data.session}
+									class:text-gray-900={page.data.session}
+									class:text-gray-500={!page.data.session}
 								>
 									<path
 										stroke-linecap="round"
@@ -104,9 +110,9 @@
 							tabindex="-1"
 							class:hidden={!userProfileOpen}
 						>
-							<p class="block px-4 py-2 text-sm text-gray-900">{$page.data.session?.user?.name}</p>
+							<p class="block px-4 py-2 text-sm text-gray-900">{page.data.session?.user?.name}</p>
 							<button
-								on:click={() => signOut()}
+								onclick={() => signOut()}
 								class="block px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
 								role="menuitem"
 								tabindex="-1"
@@ -119,5 +125,5 @@
 		</div>
 	</nav>
 
-	<slot />
+	{@render children?.()}
 </div>

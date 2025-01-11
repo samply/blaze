@@ -1,9 +1,13 @@
 <script lang="ts">
 	import prettyBytes from 'pretty-bytes';
 
-	export let level: number;
-	export let fileSize: number;
-	export let numFiles: number;
+	interface Props {
+		level: number;
+		fileSize: number;
+		numFiles: number;
+	}
+
+	let { level, fileSize, numFiles }: Props = $props();
 </script>
 
 <tr>

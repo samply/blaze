@@ -2,7 +2,11 @@
 	import type { Attachment } from 'fhir/r4';
 	import type { FhirObject } from '$lib/resource/resource-card.js';
 
-	export let values: FhirObject<Attachment>[];
+	interface Props {
+		values: FhirObject<Attachment>[];
+	}
+
+	let { values }: Props = $props();
 </script>
 
 {#if values[0].object.contentType === 'text/cql' && values[0].object.data !== undefined}

@@ -1,6 +1,10 @@
 <script lang="ts">
-	export let index: number;
-	export let value: string;
+	interface Props {
+		index: number;
+		value: string;
+	}
+
+	let { index, value = $bindable() }: Props = $props();
 </script>
 
 <div class="flex-grow">

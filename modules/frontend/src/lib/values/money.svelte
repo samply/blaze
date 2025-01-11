@@ -1,7 +1,11 @@
 <script lang="ts">
 	import type { Money } from 'fhir/r4';
 
-	export let value: Money;
+	interface Props {
+		value: Money;
+	}
+
+	let { value }: Props = $props();
 </script>
 
 {#if value.value}

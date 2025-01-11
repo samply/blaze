@@ -1,7 +1,11 @@
 <script lang="ts">
-	export let options: string[] = [];
-	export let index: number;
-	export let selected: string;
+	interface Props {
+		options?: string[];
+		index: number;
+		selected: string;
+	}
+
+	let { options = [], index, selected = $bindable() }: Props = $props();
 </script>
 
 <div class="flex-grow">

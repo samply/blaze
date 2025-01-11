@@ -3,7 +3,7 @@
 	import type { FhirObject } from './resource-card.js';
 
 	import { base } from '$app/paths';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { fade } from 'svelte/transition';
 	import { quintIn } from 'svelte/easing';
 
@@ -16,9 +16,14 @@
 	import Property from './property.svelte';
 	import Object from './json/object.svelte';
 
-	export let resource: FhirObject;
-	export let embedded = false;
-	export let versionLink = false;
+	interface Props {
+		resource: FhirObject;
+		embedded?: boolean;
+		versionLink?: boolean;
+		header?: import('svelte').Snippet;
+	}
+
+	let { resource, embedded = false, versionLink = false, header }: Props = $props();
 
 	function hasMeta(element: Element): element is Resource & { meta: Meta } {
 		return (element as Resource).meta !== undefined;
@@ -30,15 +35,17 @@
 		return versionLink && versionId !== undefined ? href + `/_history/${versionId}` : href;
 	}
 
-	$: properties = resource.properties.filter(
-		(p) =>
-			p.name != 'resourceType' &&
-			p.name != 'id' &&
-			(p.type.code != 'Meta' || willMetaBeRendered((p.value as FhirObject).object)) &&
-			p.type.code != 'Narrative'
+	let properties = $derived(
+		resource.properties.filter(
+			(p) =>
+				p.name != 'resourceType' &&
+				p.name != 'id' &&
+				(p.type.code != 'Meta' || willMetaBeRendered((p.value as FhirObject).object)) &&
+				p.type.code != 'Narrative'
+		)
 	);
 
-	let selectedTab = 'default';
+	let selectedTab = $state('default');
 
 	const fadeParams = { duration: 300, easing: quintIn };
 </script>
@@ -55,13 +62,13 @@
 			{/if}
 		</nav>
 	</div>
-	{#if embedded ? selectedTab === 'default' : isTabActive($page.url, 'default')}
+	{#if embedded ? selectedTab === 'default' : isTabActive(page.url, 'default')}
 		<div in:fade|global={fadeParams} class="px-4 py-5 sm:px-6">
 			<div class="flex">
 				<h3 class="flex-grow text-base font-semibold leading-6 text-gray-900">
 					<a href={href(resource)}>{resource.type.code}/{resource.object.id}</a>
 				</h3>
-				<slot name="header" />
+				{@render header?.()}
 			</div>
 			{#if hasMeta(resource.object) && resource.object.meta.lastUpdated !== undefined}
 				<p class="mt-1 max-w-2xl text-sm text-gray-500">

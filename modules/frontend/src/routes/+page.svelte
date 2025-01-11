@@ -2,9 +2,13 @@
 	import type { PageData } from './$types';
 
 	import Table from '$lib/tailwind/table/table.svelte';
-	import ResourceRow from './resource-row.svelte';
+	import ResourceRow from '$lib/resource-row.svelte';
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
+
+	let { data }: Props = $props();
 </script>
 
 <svelte:head>
@@ -13,23 +17,28 @@
 
 <main class="mx-auto max-w-7xl py-4 sm:px-6 lg:px-8">
 	<Table>
-		<div slot="caption">
-			<h1 class="text-base font-semibold leading-6 text-gray-900">Resource Types</h1>
-			<p class="mt-2 text-sm text-gray-700">
-				A list of all resource types available in this Blaze instance with their total count.
-			</p>
-		</div>
+		{#snippet caption()}
+			<div>
+				<h1 class="text-base font-semibold leading-6 text-gray-900">Resource Types</h1>
+				<p class="mt-2 text-sm text-gray-700">
+					A list of all resource types available in this Blaze instance with their total count.
+				</p>
+			</div>
+		{/snippet}
 
-		<tr slot="head">
-			<th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0"
-				>Name</th
-			>
-			<th
-				scope="col"
-				class="py-3.5 pl-4 pr-3 text-right text-sm font-semibold text-gray-900 sm:pl-0"
-				>Total Count</th
-			>
-		</tr>
+		{#snippet head()}
+			<tr>
+				<th
+					scope="col"
+					class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">Name</th
+				>
+				<th
+					scope="col"
+					class="py-3.5 pl-4 pr-3 text-right text-sm font-semibold text-gray-900 sm:pl-0"
+					>Total Count</th
+				>
+			</tr>
+		{/snippet}
 
 		{#each data.resourceTypeTotals as resourceTypeTotal}
 			<ResourceRow {...resourceTypeTotal} />

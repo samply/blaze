@@ -3,7 +3,11 @@
 	import DateTime from './date-time.svelte';
 	import UseBadge from './util/gray-badge.svelte';
 
-	export let value: Period;
+	interface Props {
+		value: Period;
+	}
+
+	let { value }: Props = $props();
 </script>
 
 {#if value.start && value.end}

@@ -1,8 +1,12 @@
 <script lang="ts">
 	import type { Address } from 'fhir/r4';
-	import { joinStrings } from '../../util.js';
+	import { joinStrings } from '$lib/util';
 
-	export let value: Address;
+	interface Props {
+		value: Address;
+	}
+
+	let { value }: Props = $props();
 </script>
 
 {#each value.line ?? [] as line}
