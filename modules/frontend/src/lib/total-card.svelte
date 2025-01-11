@@ -4,18 +4,23 @@
 	import { fade } from 'svelte/transition';
 	import { quintIn } from 'svelte/easing';
 
-	export let bundle: Bundle;
-	export let showFirstLink = false;
+	interface Props {
+		bundle: Bundle;
+		showFirstLink?: boolean;
+		children?: import('svelte').Snippet;
+	}
 
-	$: firstLinkUrl = bundleLink(bundle, 'first')?.url;
-	$: nextLinkUrl = bundleLink(bundle, 'next')?.url;
+	let { bundle, showFirstLink = false, children }: Props = $props();
+
+	let firstLinkUrl = $derived(bundleLink(bundle, 'first')?.url);
+	let nextLinkUrl = $derived(bundleLink(bundle, 'next')?.url);
 </script>
 
 <div
 	in:fade|global={{ duration: 300, easing: quintIn }}
 	class="flex gap-2 px-4 py-5 sm:px-6 border-b border-gray-200"
 >
-	<slot />
+	{@render children?.()}
 	{#if showFirstLink && firstLinkUrl}
 		<a
 			href={firstLinkUrl}

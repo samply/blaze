@@ -5,7 +5,11 @@
 	import TotalBadge from '$lib/total-badge.svelte';
 	import EntryCard from '$lib/history/entry-card.svelte';
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
+
+	let { data }: Props = $props();
 </script>
 
 <svelte:head>
@@ -26,7 +30,7 @@
 			<EntryCard {entry} />
 		{/each}
 		<TotalCard bundle={data.bundle}>
-			<p class="flex-grow" />
+			<p class="flex-grow"></p>
 		</TotalCard>
 	{:else}
 		<div class="overflow-hidden text-center py-10 text-3xl text-gray-700">The history is empty</div>

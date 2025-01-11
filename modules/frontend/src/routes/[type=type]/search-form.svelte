@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { preventDefault } from 'svelte/legacy';
+
 	import type { CapabilityStatementRestResourceSearchParam } from 'fhir/r4';
 	import { SearchParamType } from '$lib/fhir.js';
 	import type { QueryParam } from './query-param.js';
@@ -12,7 +14,7 @@
 	} from '$lib/util.js';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { base } from '$app/paths';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
 	import CheckboxActive from './search-forum/checkbox-active.svelte';
 	import SearchParamComboBox from './search-forum/search-param-combo-box.svelte';
@@ -27,7 +29,11 @@
 	import { quintIn } from 'svelte/easing';
 	import { error, type NumericRange } from '@sveltejs/kit';
 
-	export let searchParams: CapabilityStatementRestResourceSearchParam[];
+	interface Props {
+		searchParams: CapabilityStatementRestResourceSearchParam[];
+	}
+
+	let { searchParams }: Props = $props();
 
 	async function loadSearchIncludes(type: string): Promise<string[]> {
 		const res = await fetch(`${base}/${type}/__search-includes`, {
@@ -98,7 +104,7 @@
 		return queryParams;
 	}
 
-	let queryParams = initQueryParams(searchParams, $page.url.searchParams);
+	let queryParams = $state(initQueryParams(searchParams, page.url.searchParams));
 
 	afterNavigate((nav) => {
 		if (nav.to) {
@@ -112,11 +118,11 @@
 			.map((p) => ({ ...p, value: p.value.trim() }))
 			.filter((p) => p.value.length != 0)
 			.map((p) => [p.active ? p.name : p.name + ':inactive', p.value]) as string[][];
-		goto(`${base}/${$page.params.type}/?${new URLSearchParams(params)}`);
+		goto(`${base}/${page.params.type}/?${new URLSearchParams(params)}`);
 	}
 </script>
 
-<form class="flex gap-2 px-4 py-5 sm:px-6 border-b border-gray-200" on:submit|preventDefault={send}>
+<form class="flex gap-2 px-4 py-5 sm:px-6 border-b border-gray-200" onsubmit={preventDefault(send)}>
 	<div class="flex-grow flex flex-col gap-2">
 		{#each queryParams as queryParam, index (queryParam.id)}
 			<div in:fade={{ duration: 200, easing: quintIn }} class="flex gap-2">
@@ -132,13 +138,13 @@
 
 				<SearchParamComboBox {searchParams} {index} bind:selected={queryParam.name} />
 				{#if queryParam.name === '_include'}
-					{#await loadSearchIncludes($page.params.type)}
+					{#await loadSearchIncludes(page.params.type)}
 						<ValueComboBox {index} bind:selected={queryParam.value} />
 					{:then searchIncludes}
 						<ValueComboBox options={searchIncludes} {index} bind:selected={queryParam.value} />
 					{/await}
 				{:else if queryParam.name === '_revinclude'}
-					{#await loadSearchRevIncludes($page.params.type)}
+					{#await loadSearchRevIncludes(page.params.type)}
 						<ValueComboBox {index} bind:selected={queryParam.value} />
 					{:then searchRevIncludes}
 						<ValueComboBox options={searchRevIncludes} {index} bind:selected={queryParam.value} />

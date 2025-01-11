@@ -24,7 +24,11 @@
 	import ReferenceValues from '$lib/values/reference.svelte';
 	import DosageValues from '$lib/values/dosage.svelte';
 
-	export let property: FhirProperty;
+	interface Props {
+		property: FhirProperty;
+	}
+
+	let { property }: Props = $props();
 
 	function toArray<T>(x: T[] | T): T[] {
 		return Array.isArray(x) ? x : [x];

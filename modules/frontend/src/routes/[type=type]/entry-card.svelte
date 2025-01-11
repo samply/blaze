@@ -3,11 +3,17 @@
 	import ResourceCard from '$lib/resource/resource-card.svelte';
 	import SearchModeBadge from './search-mode-badge.svelte';
 
-	export let entry: FhirObjectBundleEntry;
+	interface Props {
+		entry: FhirObjectBundleEntry;
+	}
+
+	let { entry }: Props = $props();
 </script>
 
 {#if entry.fhirObject}
 	<ResourceCard resource={entry.fhirObject} embedded={true}>
-		<SearchModeBadge searchMode={entry.search?.mode || 'unknown'} slot="header" />
+		{#snippet header()}
+			<SearchModeBadge searchMode={entry.search?.mode || 'unknown'} />
+		{/snippet}
 	</ResourceCard>
 {/if}

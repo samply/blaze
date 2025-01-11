@@ -1,7 +1,11 @@
 <script lang="ts">
 	import type { FhirPrimitive } from '../resource-card.js';
 
-	export let value: FhirPrimitive;
+	interface Props {
+		value: FhirPrimitive;
+	}
+
+	let { value }: Props = $props();
 </script>
 
 {#if ['integer', 'decimal', 'unsingedInt', 'positiveInt'].includes(value.type.code)}<span

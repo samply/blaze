@@ -2,7 +2,7 @@
 	import type { PageData } from './$types';
 
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { fade, slide } from 'svelte/transition';
 
 	import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
@@ -15,11 +15,15 @@
 	import DurationBadge from '$lib/duration-badge.svelte';
 	import EntryCard from '$lib/history/entry-card.svelte';
 	import NoResultsCard from '../../no-results-card.svelte';
-	import ErrorCard from '../../../error-card.svelte';
+	import ErrorCard from '$lib/error-card.svelte';
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
 
-	let duration = 0;
+	let { data }: Props = $props();
+
+	let duration = $state(0);
 
 	onMount(() => {
 		const interval = setInterval(() => {
@@ -30,7 +34,7 @@
 </script>
 
 <svelte:head>
-	<title>{$page.params.type} - Blaze</title>
+	<title>{page.params.type} - Blaze</title>
 </svelte:head>
 
 <header class="mx-auto max-w-7xl sm:px-6 lg:px-8">

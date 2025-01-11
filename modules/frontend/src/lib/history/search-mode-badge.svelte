@@ -1,5 +1,9 @@
 <script lang="ts">
-	export let mode: 'match' | 'include' | 'outcome';
+	interface Props {
+		mode: 'match' | 'include' | 'outcome';
+	}
+
+	let { mode }: Props = $props();
 
 	function modeBgColor(mode: string): string {
 		switch (mode) {

@@ -1,5 +1,9 @@
 <script lang="ts">
-	export let total: number;
+	interface Props {
+		total: number;
+	}
+
+	let { total }: Props = $props();
 </script>
 
 <span

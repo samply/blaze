@@ -2,7 +2,11 @@
 	import type { Meta } from 'fhir/r4';
 	import ExternalLink from './util/external-link.svelte';
 
-	export let value: Meta;
+	interface Props {
+		value: Meta;
+	}
+
+	let { value }: Props = $props();
 </script>
 
 {#if value.profile && value.profile.length > 0}

@@ -9,7 +9,11 @@
 	import PeriodValue from '$lib/values/period.svelte';
 	import QuantityValue from '$lib/values/quantity.svelte';
 
-	export let value: FhirObject;
+	interface Props {
+		value: FhirObject;
+	}
+
+	let { value }: Props = $props();
 
 	function isCodeableConcept(value: FhirObject): value is FhirObject<CodeableConcept> {
 		return value.type.code === 'CodeableConcept';

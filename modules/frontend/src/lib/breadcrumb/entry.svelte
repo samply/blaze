@@ -1,3 +1,11 @@
+<script lang="ts">
+	interface Props {
+		children?: import('svelte').Snippet;
+	}
+
+	let { children }: Props = $props();
+</script>
+
 <li>
 	<div class="flex items-center">
 		<svg
@@ -12,6 +20,6 @@
 				clip-rule="evenodd"
 			/>
 		</svg>
-		<slot />
+		{@render children?.()}
 	</div>
 </li>

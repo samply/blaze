@@ -1,7 +1,11 @@
 <script lang="ts">
 	import { type Job } from '$lib/jobs';
 
-	export let job: Job;
+	interface Props {
+		job: Job;
+	}
+
+	let { job }: Props = $props();
 </script>
 
 {#if job.status === 'completed'}

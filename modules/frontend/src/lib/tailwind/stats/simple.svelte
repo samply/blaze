@@ -1,5 +1,10 @@
 <script lang="ts">
-	export let title: string;
+	interface Props {
+		title: string;
+		children?: import('svelte').Snippet;
+	}
+
+	let { title, children }: Props = $props();
 </script>
 
 <div
@@ -7,6 +12,6 @@
 >
 	<dt class="text-sm font-medium leading-6 text-gray-500">{title}</dt>
 	<dd class="w-full flex-none text-3xl font-medium leading-10 tracking-tight text-gray-900">
-		<slot />
+		{@render children?.()}
 	</dd>
 </div>

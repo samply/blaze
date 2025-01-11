@@ -2,8 +2,12 @@
 	import type { FhirObject, FhirPrimitive } from '../resource-card.js';
 	import Value from './value.svelte';
 
-	export let indent: number;
-	export let values: (FhirObject | FhirPrimitive)[];
+	interface Props {
+		indent: number;
+		values: (FhirObject | FhirPrimitive)[];
+	}
+
+	let { indent, values }: Props = $props();
 </script>
 
 <span>{'[\n'}</span>{#each values as value, index}<Value

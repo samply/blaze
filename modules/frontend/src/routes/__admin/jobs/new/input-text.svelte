@@ -1,6 +1,10 @@
 <script lang="ts">
-	export let name: string;
-	export let value: string;
+	interface Props {
+		name: string;
+		value: string;
+	}
+
+	let { name, value }: Props = $props();
 </script>
 
 <div class="relative mt-2 rounded-md shadow-sm">

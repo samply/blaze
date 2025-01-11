@@ -1,26 +1,25 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 
-	import { afterUpdate, onDestroy } from 'svelte';
 	import { base } from '$app/paths';
 	import { invalidateAll } from '$app/navigation';
 	import TaskRow from './task-row.svelte';
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
 
-	let timeout: ReturnType<typeof setTimeout>;
+	let { data }: Props = $props();
 
 	// reload page data every 10 seconds if at least one of the jobs is still in progress
-	afterUpdate(() => {
-		timeout = setTimeout(() => {
+	$effect(() => {
+		const timeout = setTimeout(() => {
 			invalidateAll();
 		}, 10000);
-	});
 
-	onDestroy(() => {
-		if (timeout) {
+		return () => {
 			clearTimeout(timeout);
-		}
+		};
 	});
 </script>
 

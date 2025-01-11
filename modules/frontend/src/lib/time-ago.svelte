@@ -24,8 +24,12 @@
 		return rtf.format(Math.round(-seconds), 'second');
 	}
 
-	export let value: string;
-	let now = Date.now();
+	interface Props {
+		value: string;
+	}
+
+	let { value }: Props = $props();
+	let now = $state(Date.now());
 
 	onMount(() => {
 		const interval = setInterval(() => {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
 	import BreadcrumbEntryHome from '$lib/breadcrumb/home.svelte';
 	import BreadcrumbEntryType from '$lib/breadcrumb/type.svelte';
@@ -9,11 +9,15 @@
 	import BreadcrumbEntryVersion from '$lib/breadcrumb/version.svelte';
 	import ResourceCard from '$lib/resource/resource-card.svelte';
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
+
+	let { data }: Props = $props();
 </script>
 
 <svelte:head>
-	<title>Version ${$page.params.vid} - {$page.params.type}/{$page.params.id} - Blaze</title>
+	<title>Version ${page.params.vid} - {page.params.type}/{page.params.id} - Blaze</title>
 </svelte:head>
 
 <header class="mx-auto max-w-7xl sm:px-6 lg:px-8">

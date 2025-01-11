@@ -2,7 +2,11 @@
 	import type { FhirPrimitive, Type } from '$lib/resource/resource-card.js';
 	import { base } from '$app/paths';
 
-	export let value: FhirPrimitive;
+	interface Props {
+		value: FhirPrimitive;
+	}
+
+	let { value }: Props = $props();
 
 	function calcTargetType(type: Type): string | undefined {
 		const targetPrefix = 'http://hl7.org/fhir/StructureDefinition/';
@@ -14,7 +18,7 @@
 			: undefined;
 	}
 
-	$: targetType = calcTargetType(value.type);
+	let targetType = $derived(calcTargetType(value.type));
 </script>
 
 {#if targetType}

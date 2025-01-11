@@ -1,8 +1,12 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 
-	export let index: number;
-	export let active: boolean;
+	interface Props {
+		index: number;
+		active: boolean;
+	}
+
+	let { index, active }: Props = $props();
 
 	const dispatch = createEventDispatcher();
 
@@ -22,6 +26,6 @@
 		type="checkbox"
 		checked={active}
 		class="h-5 w-5 m-2 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-		on:change={change}
+		onchange={change}
 	/>
 </div>

@@ -4,7 +4,11 @@
 	import MethodBadge from './method-badge.svelte';
 	import SearchModeBadge from './search-mode-badge.svelte';
 
-	export let entry: FhirObjectBundleEntry;
+	interface Props {
+		entry: FhirObjectBundleEntry;
+	}
+
+	let { entry }: Props = $props();
 </script>
 
 {#if entry.request}
@@ -12,5 +16,5 @@
 {:else if entry.search?.mode}
 	<SearchModeBadge mode={entry.search.mode} />
 {:else}
-	<span />
+	<span></span>
 {/if}

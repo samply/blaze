@@ -2,7 +2,11 @@
 	import type { Coding } from 'fhir/r4';
 	import ExternalLink from './util/external-link.svelte';
 
-	export let value: Coding;
+	interface Props {
+		value: Coding;
+	}
+
+	let { value }: Props = $props();
 </script>
 
 {#if value.system}

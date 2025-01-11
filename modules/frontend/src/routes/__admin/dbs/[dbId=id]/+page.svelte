@@ -5,13 +5,17 @@
 	import { toTitleCase } from '$lib/util.js';
 	import { descriptions } from '../util.js';
 	import Stats from './stats.svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
+
+	let { data }: Props = $props();
 </script>
 
 <svelte:head>
-	<title>{toTitleCase($page.params.dbId)} Database - Admin - Blaze</title>
+	<title>{toTitleCase(page.params.dbId)} Database - Admin - Blaze</title>
 </svelte:head>
 
 <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

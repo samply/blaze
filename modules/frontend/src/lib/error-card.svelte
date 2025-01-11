@@ -1,11 +1,25 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
-	export let status = $page.status;
-	export let error = $page.error;
-	export let homeHref = base;
-	export let homeMsg = 'Go back home';
+	interface Props {
+		status?: number;
+		error?: {
+			short?: string;
+			message: string;
+		} | null;
+		homeHref?: string;
+		homeMsg?: string;
+		children?: import('svelte').Snippet;
+	}
+
+	let {
+		status = page.status,
+		error = page.error,
+		homeHref = base,
+		homeMsg = 'Go back home',
+		children
+	}: Props = $props();
 </script>
 
 <div class="text-center overflow-hidden py-20">
@@ -22,6 +36,6 @@
 			class="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
 			>{homeMsg}</a
 		>
-		<slot />
+		{@render children?.()}
 	</div>
 </div>

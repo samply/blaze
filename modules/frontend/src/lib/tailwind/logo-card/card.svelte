@@ -1,13 +1,19 @@
 <script lang="ts">
-	export let href: string;
-	export let title: string;
+	interface Props {
+		href: string;
+		title: string;
+		logo?: import('svelte').Snippet;
+		children?: import('svelte').Snippet;
+	}
+
+	let { href, title, logo, children }: Props = $props();
 </script>
 
 <li class="overflow-hidden rounded-xl border border-gray-200">
 	<div class="relative flex items-center gap-x-4 border-b border-gray-900/5 bg-gray-50 p-6">
 		<div class="h-12 w-12 flex-none p-2.5 rounded-lg bg-white object-cover ring-1 ring-gray-900/10">
 			<a {href}>
-				<slot name="logo" />
+				{@render logo?.()}
 			</a>
 		</div>
 		<div class="text-sm font-medium leading-6 text-gray-900">
@@ -18,6 +24,6 @@
 		</div>
 	</div>
 	<dl class="-my-3 divide-y divide-gray-100 px-6 py-4 text-sm leading-6">
-		<slot />
+		{@render children?.()}
 	</dl>
 </li>

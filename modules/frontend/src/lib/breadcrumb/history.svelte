@@ -2,7 +2,11 @@
 	import { base } from '$app/paths';
 	import Entry from './entry.svelte';
 
-	export let url: string;
+	interface Props {
+		url: string;
+	}
+
+	let { url }: Props = $props();
 </script>
 
 <Entry>

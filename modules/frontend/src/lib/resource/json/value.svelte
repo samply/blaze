@@ -3,10 +3,14 @@
 	import PrimitiveValue from './primitive-value.svelte';
 	import Object from './object.svelte';
 
-	export let indent: number;
-	export let insideArray = false;
-	// eslint-disable-next-line
-	export let value: any; //FhirObject | FhirPrimitive
+	interface Props {
+		indent: number;
+		insideArray?: boolean;
+		// eslint-disable-next-line
+		value: any; //FhirObject | FhirPrimitive
+	}
+
+	let { indent, insideArray = false, value }: Props = $props();
 </script>
 
 <!-- eslint-disable -->

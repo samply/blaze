@@ -1,7 +1,11 @@
 <script lang="ts">
 	import type { Quantity } from 'fhir/r4';
 
-	export let value: Quantity;
+	interface Props {
+		value: Quantity;
+	}
+
+	let { value }: Props = $props();
 </script>
 
 <p>

@@ -10,8 +10,12 @@
 		return job.status === 'in-progress' || job.status === 'on-hold';
 	}
 
-	export let job: SummaryJob;
-	let actionMenuOpen = false;
+	interface Props {
+		job: SummaryJob;
+	}
+
+	let { job }: Props = $props();
+	let actionMenuOpen = $state(false);
 </script>
 
 <li class="flex justify-between gap-x-6 py-5">
@@ -76,7 +80,7 @@
 				id="options-menu-0-button"
 				aria-expanded="false"
 				aria-haspopup="true"
-				on:click={() => (actionMenuOpen = !actionMenuOpen)}
+				onclick={() => (actionMenuOpen = !actionMenuOpen)}
 				disabled={!actionsAvailable(job)}
 			>
 				<span class="sr-only">Open options</span>

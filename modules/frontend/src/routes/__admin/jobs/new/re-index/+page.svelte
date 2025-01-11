@@ -5,7 +5,11 @@
 	import InputTextError from './../input-text-error.svelte';
 	import SubmitButtons from './../submit-buttons.svelte';
 
-	export let form: ActionData;
+	interface Props {
+		form: ActionData;
+	}
+
+	let { form }: Props = $props();
 </script>
 
 <svelte:head>

@@ -2,9 +2,13 @@
 	import type { FhirObject } from '$lib/resource/resource-card.js';
 	import type { Dosage } from 'fhir/r4';
 
-	export let values: FhirObject[];
+	interface Props {
+		values: FhirObject[];
+	}
 
-	$: dosages = values.map((v) => v.object) as Dosage[];
+	let { values }: Props = $props();
+
+	let dosages = $derived(values.map((v) => v.object) as Dosage[]);
 </script>
 
 <div class="ring-1 ring-gray-300 rounded-lg">

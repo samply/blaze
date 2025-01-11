@@ -3,11 +3,15 @@
 	import type { Reference } from 'fhir/r4';
 	import { base } from '$app/paths';
 
-	export let values: FhirObject[];
+	interface Props {
+		values: FhirObject[];
+	}
+
+	let { values }: Props = $props();
 
 	const max = 10;
 
-	$: references = values.slice(0, max).map((v) => v.object) as Reference[];
+	let references = $derived(values.slice(0, max).map((v) => v.object) as Reference[]);
 </script>
 
 {#each references as reference}

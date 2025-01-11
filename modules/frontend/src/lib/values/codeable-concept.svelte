@@ -2,7 +2,11 @@
 	import type { CodeableConcept } from 'fhir/r4';
 	import Coding from './coding.svelte';
 
-	export let value: CodeableConcept;
+	interface Props {
+		value: CodeableConcept;
+	}
+
+	let { value }: Props = $props();
 </script>
 
 {#if value.coding}
