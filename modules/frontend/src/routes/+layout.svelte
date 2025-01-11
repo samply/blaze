@@ -1,10 +1,11 @@
 <script lang="ts">
 	import '../app.css';
-	import '@fontsource-variable/inter';
+	import '@fontsource-variable/lexend';
 	import { page } from '$app/state';
 	import { onNavigate } from '$app/navigation';
 	import { signOut } from '@auth/sveltekit/client';
 	import NavItem from '$lib/nav-item.svelte';
+	import { base } from '$app/paths';
 
 	interface Props {
 		children?: import('svelte').Snippet;
@@ -41,21 +42,26 @@
 	<nav class="border-b border-gray-200 bg-white">
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 			<div class="flex h-16 justify-between">
-				<!-- Navigation Menu -->
-				<div class="flex space-x-8">
-					<NavItem active={isHomeRoute(page.route.id)} id="/" label="Home" />
-					<NavItem
-						active={page.route.id?.startsWith('/_history') ||
-							page.route.id?.startsWith('/__history-page')}
-						id="/_history"
-						label="History"
-					/>
-					<NavItem
-						active={page.route.id?.startsWith('/metadata')}
-						id="/metadata"
-						label="Metadata"
-					/>
-					<NavItem active={page.route.id?.startsWith('/__admin')} id="/__admin" label="Admin" />
+				<div class="flex">
+					<div class="flex shrink-0 items-center">
+						<img class="h-8 w-auto" src="{base}/blaze-logo.svg" alt="Blaze" />
+					</div>
+					<!-- Navigation Menu -->
+					<div class="hidden sm:-my-px sm:ml-6 sm:flex sm:space-x-8">
+						<NavItem active={isHomeRoute(page.route.id)} id="/" label="Home" />
+						<NavItem
+							active={page.route.id?.startsWith('/_history') ||
+								page.route.id?.startsWith('/__history-page')}
+							id="/_history"
+							label="History"
+						/>
+						<NavItem
+							active={page.route.id?.startsWith('/metadata')}
+							id="/metadata"
+							label="Metadata"
+						/>
+						<NavItem active={page.route.id?.startsWith('/__admin')} id="/__admin" label="Admin" />
+					</div>
 				</div>
 
 				<!-- User Profile -->
