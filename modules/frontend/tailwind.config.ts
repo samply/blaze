@@ -7,7 +7,7 @@ export default {
 	theme: {
 		extend: {
 			fontFamily: {
-				sans: ['Inter Variable', ...defaultTheme.fontFamily.sans]
+				sans: ['Lexend Variable', ...defaultTheme.fontFamily.sans]
 			}
 		}
 	},
