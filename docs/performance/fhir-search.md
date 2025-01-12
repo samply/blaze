@@ -219,21 +219,21 @@ blazectl download --server http://localhost:8080/fhir Observation -q "code=http:
 
 ## Code and Patient Search
 
-In this section, FHIR Search for selecting Observation resources with a certain code and 100 Patients is used.
+In this section, FHIR Search for selecting Observation resources with a certain code and 1000 Patients is used.
 
 ### Counting
 
 Counting is done using the following `curl` command:
 
 ```sh
-curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&subject=$PATIENT_REFS&_summary=count"
+curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&patient=$PATIENT_IDS&_summary=count"
 ```
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|---------|-------:|---------:|-------:|-------:|
-| A5N46  | 1M      | 8310-5  |    109 |     0.00 |  0.001 |  36.46 |
-| A5N46  | 1M      | 55758-7 |    1 k |     0.01 |  0.001 |   4.55 |
-| A5N46  | 1M      | 72514-3 |    4 k |     0.01 |  0.001 |   1.79 |
+| A5N46  | 1M      | 8310-5  |    944 |     0.01 |  0.002 |  11.07 |
+| A5N46  | 1M      | 55758-7 |   28 k |     0.04 |  0.001 |   1.59 |
+| A5N46  | 1M      | 72514-3 |  113 k |     0.13 |  0.004 |   1.10 |
 
 ¹ time in seconds per 1 million resources
 
@@ -244,14 +244,14 @@ Most measurements are done after Blaze is in a steady state with all resources t
 Download is done using the following `blazectl` command:
 
 ```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&subject=$PATIENT_REFS&_count=1000" > /dev/null"
+blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&patient=$PATIENT_IDS&_count=1000" > /dev/null"
 ```
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|---------|-------:|---------:|-------:|-------:|
-| A5N46  | 1M      | 8310-5  |    109 |     0.00 |  0.005 |  30.57 |
-| A5N46  | 1M      | 55758-7 |    1 k |     0.05 |  0.005 |  39.95 |
-| A5N46  | 1M      | 72514-3 |    4 k |     0.09 |  0.005 |  20.88 |
+| A5N46  | 1M      | 8310-5  |    944 |     0.03 |  0.005 |  28.24 |
+| A5N46  | 1M      | 55758-7 |   28 k |     0.99 |  0.024 |  35.27 |
+| A5N46  | 1M      | 72514-3 |  113 k |     8.34 |  0.176 |  73.74 |
 
 ¹ time in seconds per 1 million resources
 
@@ -264,34 +264,34 @@ Most measurements are done after Blaze is in a steady state with all resources t
 Download is done using the following `blazectl` command:
 
 ```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&subject=$PATIENT_REFS&_elements=subject&_count=1000" > /dev/null"
+blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&patient=$PATIENT_IDS&_elements=subject&_count=1000" > /dev/null"
 ```
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|---------|-------:|---------:|-------:|-------:|
-| A5N46  | 1M      | 8310-5  |    109 |     0.00 |  0.000 | 0.00 ² |
-| A5N46  | 1M      | 55758-7 |    1 k |     0.03 |  0.000 |  25.68 |
-| A5N46  | 1M      | 72514-3 |    4 k |     0.06 |  0.000 |  14.46 |
+| A5N46  | 1M      | 8310-5  |    944 |     0.01 |  0.000 |  10.59 |
+| A5N46  | 1M      | 55758-7 |   28 k |     0.83 |  0.022 |  29.47 |
+| A5N46  | 1M      | 72514-3 |  113 k |     7.88 |  0.070 |  69.61 |
 
-¹ time in seconds per 1 million resources, ² to fast to be measured
+¹ time in seconds per 1 million resources
 
 ## Code, Date and Patient Search
 
-In this section, FHIR Search for selecting Observation resources with a certain code, a certain date and 100 Patients is used.
+In this section, FHIR Search for selecting Observation resources with a certain code, a certain date and 1000 Patients is used.
 
 ### Counting
 
 Counting is done using the following `curl` command:
 
 ```sh
-curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&date=2020&subject=$PATIENT_REFS&_summary=count"
+curl -s "http://localhost:8080/fhir/Observation?code=http://loinc.org|$CODE&date=2020&patient=$PATIENT_IDS&_summary=count"
 ```
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|---------|-------:|---------:|-------:|-------:|
-| A5N46  | 1M      | 8310-5  |     29 |     0.00 |  0.001 | 126.55 |
-| A5N46  | 1M      | 55758-7 |    121 |     0.01 |  0.001 |  63.52 |
-| A5N46  | 1M      | 72514-3 |    420 |     0.01 |  0.001 |  33.34 |
+| A5N46  | 1M      | 8310-5  |    246 |     0.01 |  0.001 |  55.84 |
+| A5N46  | 1M      | 55758-7 |    3 k |     0.10 |  0.003 |  34.52 |
+| A5N46  | 1M      | 72514-3 |   12 k |     0.29 |  0.007 |  23.84 |
 
 ¹ time in seconds per 1 million resources
 
@@ -302,16 +302,16 @@ Most measurements are done after Blaze is in a steady state with all resources t
 Download is done using the following `blazectl` command:
 
 ```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&date=2020&subject=$PATIENT_REFS&_count=1000" > /dev/null"
+blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&date=2020&patient=$PATIENT_IDS&_count=1000" > /dev/null"
 ```
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|---------|-------:|---------:|-------:|-------:|
-| A5N46  | 1M      | 8310-5  |     29 |     0.00 |  0.000 | 0.00 ² |
-| A5N46  | 1M      | 55758-7 |    121 |     0.01 |  0.000 |  82.64 |
-| A5N46  | 1M      | 72514-3 |    420 |     0.02 |  0.000 |  47.61 |
+| A5N46  | 1M      | 8310-5  |    246 |     0.01 |  0.005 |  54.19 |
+| A5N46  | 1M      | 55758-7 |    3 k |     0.26 |  0.000 |  92.00 |
+| A5N46  | 1M      | 72514-3 |   12 k |     1.94 |  0.008 | 162.19 |
 
-¹ time in seconds per 1 million resources, ² to fast to be measured
+¹ time in seconds per 1 million resources
 
 ### Download of Resources with Subsetting
 
@@ -322,16 +322,16 @@ Most measurements are done after Blaze is in a steady state with all resources t
 Download is done using the following `blazectl` command:
 
 ```sh
-blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&date=2020&subject=$PATIENT_REFS&_elements=subject&_count=1000" > /dev/null"
+blazectl download --server http://localhost:8080/fhir Observation -q "code=http://loinc.org|$CODE&date=2020&patient=$PATIENT_IDS&_elements=subject&_count=1000" > /dev/null"
 ```
 
 | System | Dataset | Code    | # Hits | Time (s) | StdDev | T/1M ¹ |
 |--------|---------|---------|-------:|---------:|-------:|-------:|
-| A5N46  | 1M      | 8310-5  |     29 |     0.00 |  0.000 | 0.00 ² |
-| A5N46  | 1M      | 55758-7 |    121 |     0.00 |  0.000 | 0.00 ² |
-| A5N46  | 1M      | 72514-3 |    420 |     0.02 |  0.000 |  47.61 |
+| A5N46  | 1M      | 8310-5  |    246 |     0.01 |  0.000 |  40.65 |
+| A5N46  | 1M      | 55758-7 |    3 k |     0.24 |  0.005 |  83.74 |
+| A5N46  | 1M      | 72514-3 |   12 k |     1.92 |  0.031 | 160.80 |
 
-¹ time in seconds per 1 million resources, ² to fast to be measured
+¹ time in seconds per 1 million resources
 
 ## Simple Date Search
 
