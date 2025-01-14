@@ -5,9 +5,9 @@
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.util :as u]
    [blaze.luid :as luid]
    [blaze.terminology-service.local.code-system.core :as c]
-   [blaze.terminology-service.local.code-system.util :as u]
    [cognitect.anomalies :as anom]
    [taoensso.timbre :as log])
   (:import
@@ -45,23 +45,20 @@
     (ba/incorrect (format "The provided code `%s` was not found in the code system `http://unitsofmeasure.org`." code))))
 
 (defmethod c/validate-code :ucum
-  [{:keys [url version]} request]
-  (if-ok [code (u/extract-code request (type/value url))
-          _ (validate code)]
-    {:fhir/type :fhir/Parameters
-     :parameter
-     [(u/parameter "result" #fhir/boolean true)
-      (u/parameter "code" (type/code code))
-      (u/parameter "system" #fhir/uri"http://unitsofmeasure.org")
-      (u/parameter "version" version)]}
+  [{:keys [version]} {{:keys [code]} :clause}]
+  (if-ok [_ (validate code)]
+    (u/parameters
+     "result" #fhir/boolean true
+     "code" (type/code code)
+     "system" #fhir/uri"http://unitsofmeasure.org"
+     "version" version)
     (fn [{::anom/keys [message]}]
-      {:fhir/type :fhir/Parameters
-       :parameter
-       [(u/parameter "result" #fhir/boolean false)
-        (u/parameter "message" (type/string message))]})))
+      (u/parameters
+       "result" #fhir/boolean false
+       "message" (type/string message)))))
 
 (defmethod c/expand-concept :ucum
-  [_ _ _ concepts]
+  [_ concepts _]
   (into
    []
    (keep

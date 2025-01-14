@@ -4,12 +4,12 @@
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.util :as u]
    [blaze.luid :as luid]
    [blaze.terminology-service.local.code-system.core :as c]
-   [blaze.terminology-service.local.code-system.sct.context :as context :refer [url core-version-prefix]]
+   [blaze.terminology-service.local.code-system.sct.context :as context :refer [core-version-prefix url]]
    [blaze.terminology-service.local.code-system.sct.type :refer [parse-sctid]]
    [blaze.terminology-service.local.code-system.sct.util :as sct-u]
-   [blaze.terminology-service.local.code-system.util :as u]
    [blaze.terminology-service.local.priority :as priority]
    [clojure.string :as str]
    [cognitect.anomalies :as anom]
@@ -62,26 +62,23 @@
   (context/find-description description-index code version))
 
 (defmethod c/validate-code :sct
-  [{:keys [url version] :as code-system} request]
-  (if-ok [code (u/extract-code request (type/value url))
-          code (or (parse-sctid code) (ba/not-found (not-found-msg code)))
+  [{:keys [url version] :as code-system} {{:keys [code]} :clause}]
+  (if-ok [code (or (parse-sctid code) (ba/not-found (not-found-msg code)))
           _ (or (find-concept code-system code)
                 (ba/not-found (not-found-msg code)))]
-    {:fhir/type :fhir/Parameters
-     :parameter
-     [(u/parameter "result" #fhir/boolean true)
-      (u/parameter "code" (type/code (str code)))
-      (u/parameter "system" url)
-      (u/parameter "version" version)
-      (u/parameter "display" (find-description code-system code))]}
+    (u/parameters
+     "result" #fhir/boolean true
+     "code" (type/code (str code))
+     "system" url
+     "version" version
+     "display" (find-description code-system code))
     (fn [{::anom/keys [message]}]
-      {:fhir/type :fhir/Parameters
-       :parameter
-       [(u/parameter "result" #fhir/boolean false)
-        (u/parameter "message" (type/string message))]})))
+      (u/parameters
+       "result" #fhir/boolean false
+       "message" (type/string message)))))
 
 (defmethod c/expand-complete :sct
-  [_ _ _]
+  [_ _]
   (ba/conflict
    "Expanding all Snomed CT concepts is too costly."
    :fhir/issue "too-costly"))
@@ -110,12 +107,12 @@
         :display (type/string (context/find-description description-index code version))}))))
 
 (defmethod c/expand-concept :sct
-  [{:keys [active-only]} inactive code-system concepts]
+  [code-system concepts {:keys [active-only]}]
   (into
    []
    (comp
     (keep (comp parse-sctid type/value :code))
-    ((if (or active-only (false? inactive)) active-concept-xf concept-xf) code-system))
+    ((if active-only active-concept-xf concept-xf) code-system))
    concepts))
 
 (defmulti filter-one
@@ -139,11 +136,11 @@
   (ba/unsupported (format "Unsupported filter operator `%s` in code system `http://snomed.info/sct`." (type/value op))))
 
 (defmethod c/expand-filter :sct
-  [{:keys [active-only]} inactive code-system filter]
+  [code-system filter {:keys [active-only]}]
   (when-ok [codes (filter-one code-system filter)]
     (into
      #{}
-     ((if (or active-only (false? inactive)) active-concept-xf concept-xf) code-system)
+     ((if active-only active-concept-xf concept-xf) code-system)
      codes)))
 
 (defn build-context [release-path]

@@ -4,6 +4,8 @@
    [blaze.async.comp :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
+   [blaze.fhir.util :as u]
+   [blaze.terminology-service.local :as-alias local]
    [blaze.terminology-service.local.code-system.core :as c]
    [blaze.terminology-service.local.code-system.filter.core :as filter]
    [blaze.terminology-service.local.code-system.filter.descendent-of]
@@ -11,7 +13,6 @@
    [blaze.terminology-service.local.code-system.filter.exists]
    [blaze.terminology-service.local.code-system.filter.is-a]
    [blaze.terminology-service.local.code-system.filter.regex]
-   [blaze.terminology-service.local.code-system.util :as u]
    [blaze.terminology-service.local.graph :as graph]
    [blaze.terminology-service.local.priority :as priority]
    [cognitect.anomalies :as anom]))
@@ -33,42 +34,35 @@
       (ba/not-found
        (if version
          (format "The code system `%s` with version `%s` was not found." url version)
-         (format "The code system `%s` was not found." url))))))
+         (format "The code system `%s` was not found." url))
+       ::local/category :code-system-not-found
+       :code-system/url url))))
 
 (defmethod c/enhance :default
   [_ {concepts :concept :as code-system}]
   (assoc code-system :default/graph (graph/build-graph concepts)))
-
-(defn- concept-pred [code]
-  (fn [concept]
-    (when (= code (type/value (:code concept)))
-      concept)))
 
 (defn- not-found-msg [{:keys [url]} code]
   (if url
     (format "The provided code `%s` was not found in the code system `%s`." code (type/value url))
     (format "The provided code `%s` was not found in the provided code system." code)))
 
-(defn- find-concept
-  [{concepts :concept :as code-system} code]
-  (or (some (concept-pred code) concepts)
+(defn- find-concept [{{:keys [concepts]} :default/graph :as code-system} {:keys [code]}]
+  (or (concepts code)
       (ba/not-found (not-found-msg code-system code))))
 
 (defmethod c/validate-code :default
-  [{:keys [url] :as code-system} request]
-  (if-ok [code (u/extract-code request (type/value url))
-          {:keys [code]} (find-concept code-system code)]
-    {:fhir/type :fhir/Parameters
-     :parameter
-     (cond->
-      [(u/parameter "result" #fhir/boolean true)
-       (u/parameter "code" code)]
-       url (conj (u/parameter "system" url)))}
+  [{:keys [url version] :as code-system} {:keys [clause]}]
+  (if-ok [{:keys [code]} (find-concept code-system clause)]
+    (u/parameters
+     "result" #fhir/boolean true
+     "code" code
+     "system" url
+     "version" version)
     (fn [{::anom/keys [message]}]
-      {:fhir/type :fhir/Parameters
-       :parameter
-       [(u/parameter "result" #fhir/boolean false)
-        (u/parameter "message" (type/string message))]})))
+      (u/parameters
+       "result" #fhir/boolean false
+       "message" (type/string message)))))
 
 (defn- inactive? [{properties :property}]
   (some
@@ -104,50 +98,67 @@
       (seq normal-properties) (assoc :property (filterv (comp (set normal-properties) type/value :code) (:property concept)))
       (and definition (some #{"definition"} properties)) (update :property (fnil conj []) (definition-property definition)))))
 
-(defn- xf [request {:keys [url]}]
+(defn- xf [params {:keys [url]}]
   (map
    (fn [concept]
-     (create-contains request url concept))))
+     (create-contains params url concept))))
 
-(defn- active-xf [request {:keys [url]}]
+(defn- active-xf [params {:keys [url]}]
   (keep
    (fn [concept]
      (when-not (inactive? concept)
-       (create-contains request url concept)))))
+       (create-contains params url concept)))))
 
 (defmethod c/expand-complete :default
-  [{:keys [active-only] :as request} inactive {{:keys [concepts]} :default/graph :as code-system}]
+  [{{:keys [concepts]} :default/graph :as code-system}
+   {:keys [active-only] :as params}]
   (into
    []
-   ((if (or active-only (false? inactive)) active-xf xf) request code-system)
+   ((if active-only active-xf xf) params code-system)
    (vals concepts)))
 
-(defn- concept-xf [request {:keys [url] {:keys [concepts]} :default/graph}]
+(defn- concept-xf [params {:keys [url] {:keys [concepts]} :default/graph}]
   (keep
    (fn [{:keys [code display]}]
      (when-let [concept (concepts (type/value code))]
-       (cond-> (create-contains request url concept)
+       (cond-> (create-contains params url concept)
          display (assoc :display display))))))
 
-(defn- concept-active-xf [request {:keys [url] {:keys [concepts]} :default/graph}]
+(defn- concept-active-xf [params {:keys [url] {:keys [concepts]} :default/graph}]
   (keep
    (fn [{:keys [code display]}]
      (when-let [concept (concepts (type/value code))]
        (when-not (inactive? concept)
-         (cond-> (create-contains request url concept)
+         (cond-> (create-contains params url concept)
            display (assoc :display display)))))))
 
 (defmethod c/expand-concept :default
-  [{:keys [active-only] :as request} inactive code-system value-set-concepts]
+  [code-system value-set-concepts {:keys [active-only] :as params}]
   (into
    []
-   ((if (or active-only (false? inactive)) concept-active-xf concept-xf) request code-system)
+   ((if active-only concept-active-xf concept-xf) params code-system)
    value-set-concepts))
 
 (defmethod c/expand-filter :default
-  [{:keys [active-only] :as request} inactive code-system filter]
+  [code-system filter {:keys [active-only] :as params}]
   (when-ok [concepts (filter/filter-concepts filter code-system)]
     (into
      #{}
-     ((if (or active-only (false? inactive)) active-xf xf) request code-system)
+     ((if active-only active-xf xf) params code-system)
      concepts)))
+
+(defmethod c/find-complete :default
+  [{:keys [url version] {:keys [concepts]} :default/graph}
+   {{:keys [code]} :clause}]
+  (when-let [concept (concepts code)]
+    (cond-> (assoc concept :system url)
+      version (assoc :version version)
+      (inactive? concept) (assoc :inactive #fhir/boolean true))))
+
+(defmethod c/find-filter :default
+  [{:keys [url version] :as code-system} filter {{:keys [code]} :clause}]
+  (when-ok [concept (filter/find-concept filter code-system code)]
+    (when concept
+      (cond-> (assoc concept :system url)
+        version (assoc :version version)
+        (inactive? concept) (assoc :inactive #fhir/boolean true)))))
