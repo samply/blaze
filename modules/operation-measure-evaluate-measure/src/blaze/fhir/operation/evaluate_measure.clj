@@ -19,6 +19,7 @@
    [blaze.luid :as luid]
    [blaze.module :as m :refer [reg-collector]]
    [blaze.spec]
+   [blaze.terminology-service.spec]
    [blaze.util :as u]
    [clojure.spec.alpha :as s]
    [cognitect.anomalies :as anom]
@@ -125,7 +126,8 @@
         (ac/then-compose-async (partial handle (assoc context :db db) request)))))
 
 (defmethod m/pre-init-spec ::handler [_]
-  (s/keys :req-un [:blaze.db/node ::executor :blaze/clock :blaze/rng-fn]
+  (s/keys :req-un [:blaze.db/node :blaze/terminology-service ::executor
+                   :blaze/clock :blaze/rng-fn]
           :opt [::expr/cache]
           :opt-un [::timeout :blaze/context-path]))
 
