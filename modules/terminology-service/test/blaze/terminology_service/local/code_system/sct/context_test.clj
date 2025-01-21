@@ -2,6 +2,7 @@
   (:require
    [blaze.fhir.test-util]
    [blaze.path :refer [path]]
+   [blaze.path-spec]
    [blaze.terminology-service.local.code-system.sct.context :as context]
    [blaze.terminology-service.local.code-system.sct.context-spec]
    [blaze.test-util :as tu]

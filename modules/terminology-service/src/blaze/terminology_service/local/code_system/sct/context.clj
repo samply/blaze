@@ -217,7 +217,7 @@
     (some-> (first (subseq versions >= version)) val)))
 
 (defn- version-url [module-id date]
-  (format "http://snomed.info/sct/%s/version/%s" module-id date))
+  (format "%s/%s/version/%s" url module-id date))
 
 (defn- build-code-systems
   "Generates a list of CodeSystem resources based on the module dependency
@@ -234,7 +234,7 @@
       (.map
        (fn [{:keys [module-id source-effective-time]}]
          {:fhir/type :fhir/CodeSystem
-          :url #fhir/uri"http://snomed.info/sct"
+          :url (type/uri url)
           :version (type/string (version-url module-id source-effective-time))
           :title (type/string (find-description fully-specified-name-index module-id source-effective-time))
           :status #fhir/code"active"
@@ -267,7 +267,7 @@
     (apply f lines args)))
 
 (defn- find-current-int-system [code-systems]
-  (last (sort-by :date (filter #(str/starts-with? (type/value (:version %)) (str "http://snomed.info/sct/" core-module)) code-systems))))
+  (last (sort-by :date (filter #(str/starts-with? (type/value (:version %)) core-version-prefix) code-systems))))
 
 (defn build [release-path]
   (when-ok [full-path (find-file release-path "Full")

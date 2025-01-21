@@ -78,6 +78,17 @@
    :blaze.test/fixed-clock {}
    :blaze.test/fixed-rng-fn {}))
 
+(def loinc-config
+  (assoc
+   mem-node-config
+   ::ts/local
+   {:node (ig/ref :blaze.db/node)
+    :clock (ig/ref :blaze.test/fixed-clock)
+    :rng-fn (ig/ref :blaze.test/fixed-rng-fn)
+    :enable-loinc true}
+   :blaze.test/fixed-clock {}
+   :blaze.test/fixed-rng-fn {}))
+
 (def sct-config
   (assoc
    mem-node-config
@@ -109,6 +120,10 @@
 (defn- parameter [name]
   (fn [{:keys [parameter]}]
     (filterv #(= name (type/value (:name %))) parameter)))
+
+(defn- concept [code]
+  (fn [concepts]
+    (filterv #(= code (type/value (:code %))) concepts)))
 
 (deftest code-system-test
   (testing "with no code system"
@@ -256,7 +271,21 @@
                :concept
                [{:fhir/type :fhir.CodeSystem/concept
                  :code #fhir/code"code-115927"
-                 :display #fhir/string"display-112832"}]}]]]
+                 :display #fhir/string"display-112832"}
+                {:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"code-154735"
+                 :display #fhir/string"display-154737"
+                 :property
+                 [{:fhir/type :fhir.CodeSystem.concept/property
+                   :code #fhir/code"status"
+                   :value #fhir/code"retired"}]}
+                {:fhir/type :fhir.CodeSystem/concept
+                 :code #fhir/code"code-155156"
+                 :display #fhir/string"display-155159"
+                 :property
+                 [{:fhir/type :fhir.CodeSystem.concept/property
+                   :code #fhir/code"inactive"
+                   :value #fhir/boolean true}]}]}]]]
 
       (testing "existing code"
         (given @(code-system-validate-code ts
@@ -266,7 +295,30 @@
           [(parameter "result") 0 :value] := #fhir/boolean true
           [(parameter "code") 0 :value] := #fhir/code"code-115927"
           [(parameter "system") 0 :value] := #fhir/uri"system-115910"
-          [(parameter "display") 0 :value] := #fhir/string"display-112832"))
+          [(parameter "display") 0 :value] := #fhir/string"display-112832")
+
+        (testing "inactive"
+          (testing "via status property"
+            (given @(code-system-validate-code ts
+                      "url" #fhir/uri"system-115910"
+                      "code" #fhir/code"code-154735")
+              :fhir/type := :fhir/Parameters
+              [(parameter "result") 0 :value] := #fhir/boolean true
+              [(parameter "code") 0 :value] := #fhir/code"code-154735"
+              [(parameter "system") 0 :value] := #fhir/uri"system-115910"
+              [(parameter "display") 0 :value] := #fhir/string"display-154737"
+              [(parameter "inactive") 0 :value] := #fhir/boolean true))
+
+          (testing "via inactive property"
+            (given @(code-system-validate-code ts
+                      "url" #fhir/uri"system-115910"
+                      "code" #fhir/code"code-155156")
+              :fhir/type := :fhir/Parameters
+              [(parameter "result") 0 :value] := #fhir/boolean true
+              [(parameter "code") 0 :value] := #fhir/code"code-155156"
+              [(parameter "system") 0 :value] := #fhir/uri"system-115910"
+              [(parameter "display") 0 :value] := #fhir/string"display-155159"
+              [(parameter "inactive") 0 :value] := #fhir/boolean true))))
 
       (testing "non-existing code"
         (given @(code-system-validate-code ts
@@ -420,6 +472,58 @@
           [(parameter "system") 0 :value] := #fhir/uri"system-115910"
           [(parameter "version") 0 :value] := #fhir/string"version-124939")))))
 
+(deftest code-system-validate-code-loinc-test
+  (with-system [{ts ::ts/local} loinc-config]
+    (testing "existing code"
+      (given @(code-system-validate-code ts
+                "url" #fhir/uri"http://loinc.org"
+                "code" #fhir/code"718-7")
+        :fhir/type := :fhir/Parameters
+        [(parameter "result") 0 :value] := #fhir/boolean true
+        [(parameter "code") 0 :value] := #fhir/code"718-7"
+        [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"
+        [(parameter "version") 0 :value] := #fhir/string"2.78"
+        [(parameter "display") 0 :value] := #fhir/string"Hemoglobin [Mass/volume] in Blood")
+
+      (testing "wrong display"
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"http://loinc.org"
+                  "code" #fhir/code"718-7"
+                  "display" #fhir/string"wrong")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := #fhir/string"Invalid display `wrong` for code `http://loinc.org#718-7`. A valid display is `Hemoglobin [Mass/volume] in Blood`."
+          [(parameter "code") 0 :value] := #fhir/code"718-7"
+          [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"
+          [(parameter "version") 0 :value] := #fhir/string"2.78"
+          [(parameter "display") 0 :value] := #fhir/string"Hemoglobin [Mass/volume] in Blood"
+          [(parameter "issues") 0 :resource :issue 0 :severity] := #fhir/code"error"
+          [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"invalid"
+          [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "invalid-display")
+          [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"Invalid display `wrong` for code `http://loinc.org#718-7`. A valid display is `Hemoglobin [Mass/volume] in Blood`."
+          [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"display"]))
+
+      (testing "inactive"
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"http://loinc.org"
+                  "code" #fhir/code"1009-0")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"1009-0"
+          [(parameter "system") 0 :value] := #fhir/uri"http://loinc.org"
+          [(parameter "version") 0 :value] := #fhir/string"2.78"
+          [(parameter "display") 0 :value] := #fhir/string"Deprecated Direct antiglobulin test.poly specific reagent [Presence] on Red Blood Cells"
+          [(parameter "inactive") 0 :value] := #fhir/boolean true)))
+
+    (testing "non-existing code"
+      (doseq [code ["non-existing" "0815" "718-8"]]
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"http://loinc.org"
+                  "code" (type/code code))
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean false
+          [(parameter "message") 0 :value] := (type/string (format "Unknown code `%s` was not found in the code system `http://loinc.org|2.78`." code)))))))
+
 (deftest code-system-validate-code-sct-test
   (with-system [{ts ::ts/local} sct-config]
     (testing "existing code"
@@ -465,7 +569,19 @@
           [(parameter "issues") 0 :resource :issue 0 :code] := #fhir/code"invalid"
           [(parameter "issues") 0 :resource :issue 0 :details :coding] :? (tx-issue-type "invalid-display")
           [(parameter "issues") 0 :resource :issue 0 :details :text] := #fhir/string"Invalid display `wrong` for code `http://snomed.info/sct#441510007`. A valid display is `Blood specimen with anticoagulant (specimen)`."
-          [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"display"])))
+          [(parameter "issues") 0 :resource :issue 0 :expression] := [#fhir/string"display"]))
+
+      (testing "inactive"
+        (given @(code-system-validate-code ts
+                  "url" #fhir/uri"http://snomed.info/sct"
+                  "code" #fhir/code"860958002")
+          :fhir/type := :fhir/Parameters
+          [(parameter "result") 0 :value] := #fhir/boolean true
+          [(parameter "code") 0 :value] := #fhir/code"860958002"
+          [(parameter "system") 0 :value] := #fhir/uri"http://snomed.info/sct"
+          [(parameter "version") 0 :value] := #fhir/string"http://snomed.info/sct/900000000000207008/version/20241001"
+          [(parameter "display") 0 :value] := #fhir/string"Temperature of blood (observable entity)"
+          [(parameter "inactive") 0 :value] := #fhir/boolean true)))
 
     (testing "non-existing code"
       (doseq [code ["non-existing" "0815" "441510008"]]
@@ -2716,6 +2832,412 @@
       [:expansion :contains 0 :code] := #fhir/code"code-115927"
       [:expansion :contains 0 #(contains? % :display)] := false)))
 
+(deftest expand-value-set-loinc-include-all-test
+  (testing "including all of LOINC is too costly"
+    (with-system-data [{ts ::ts/local} loinc-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"system-152015"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://loinc.org"}]}}]]]
+
+      (given-failed-future (expand-value-set ts "url" #fhir/uri"system-152015")
+        ::anom/category := ::anom/conflict
+        ::anom/message := "Error while expanding the value set `system-152015`. Expanding all LOINC concepts is too costly."
+        :fhir/issue "too-costly"))))
+
+(deftest expand-value-set-loinc-include-concept-test
+  (testing "include one concept"
+    (with-system-data [{ts ::ts/local} loinc-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"system-152546"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://loinc.org"
+                  :concept
+                  [{:fhir/type :fhir.ValueSet.compose.include/concept
+                    :code #fhir/code"26465-5"}]}]}}]]]
+
+      (given @(expand-value-set ts "url" #fhir/uri"system-152546")
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] := 1
+        [:expansion :contains 0 :system] := #fhir/uri"http://loinc.org"
+        [:expansion :contains 0 #(contains? % :inactive)] := false
+        [:expansion :contains 0 :code] := #fhir/code"26465-5"
+        [:expansion :contains 0 :display] := #fhir/string"Leukocytes [#/volume] in Cerebral spinal fluid"
+        [:expansion :contains 0 #(contains? % :designation)] := false))
+
+    (testing "with inactive concepts"
+      (with-system [{ts ::ts/local} loinc-config]
+        (given @(expand-value-set ts
+                  "valueSet"
+                  {:fhir/type :fhir/ValueSet
+                   :compose
+                   {:fhir/type :fhir.ValueSet/compose
+                    :include
+                    [{:fhir/type :fhir.ValueSet.compose/include
+                      :system #fhir/uri"http://loinc.org"
+                      :concept
+                      [{:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code"1009-0"}
+                       {:fhir/type :fhir.ValueSet.compose.include/concept
+                        :code #fhir/code"26465-5"}]}]}})
+          :fhir/type := :fhir/ValueSet
+          [:expansion :contains count] := 2
+          [:expansion :contains 0 :system] := #fhir/uri"http://loinc.org"
+          [:expansion :contains 0 :inactive] := #fhir/boolean true
+          [:expansion :contains 0 :code] := #fhir/code"1009-0"
+          [:expansion :contains 0 :display] := #fhir/string"Deprecated Direct antiglobulin test.poly specific reagent [Presence] on Red Blood Cells"
+          [:expansion :contains 1 :system] := #fhir/uri"http://loinc.org"
+          [:expansion :contains 1 #(contains? % :inactive)] := false
+          [:expansion :contains 1 :code] := #fhir/code"26465-5"
+          [:expansion :contains 1 :display] := #fhir/string"Leukocytes [#/volume] in Cerebral spinal fluid")
+
+        (testing "value set including only active"
+          (given @(expand-value-set ts
+                    "valueSet"
+                    {:fhir/type :fhir/ValueSet
+                     :compose
+                     {:fhir/type :fhir.ValueSet/compose
+                      :inactive #fhir/boolean false
+                      :include
+                      [{:fhir/type :fhir.ValueSet.compose/include
+                        :system #fhir/uri"http://loinc.org"
+                        :concept
+                        [{:fhir/type :fhir.ValueSet.compose.include/concept
+                          :code #fhir/code"1009-0"}
+                         {:fhir/type :fhir.ValueSet.compose.include/concept
+                          :code #fhir/code"26465-5"}]}]}})
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri"http://loinc.org"
+            [:expansion :contains 0 #(contains? % :inactive)] := false
+            [:expansion :contains 0 :code] := #fhir/code"26465-5"
+            [:expansion :contains 0 :display] := #fhir/string"Leukocytes [#/volume] in Cerebral spinal fluid"))
+
+        (testing "activeOnly param"
+          (given @(expand-value-set ts
+                    "valueSet"
+                    {:fhir/type :fhir/ValueSet
+                     :compose
+                     {:fhir/type :fhir.ValueSet/compose
+                      :include
+                      [{:fhir/type :fhir.ValueSet.compose/include
+                        :system #fhir/uri"http://loinc.org"
+                        :concept
+                        [{:fhir/type :fhir.ValueSet.compose.include/concept
+                          :code #fhir/code"1009-0"}
+                         {:fhir/type :fhir.ValueSet.compose.include/concept
+                          :code #fhir/code"26465-5"}]}]}}
+                    "activeOnly" #fhir/boolean true)
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri"http://loinc.org"
+            [:expansion :contains 0 #(contains? % :inactive)] := false
+            [:expansion :contains 0 :code] := #fhir/code"26465-5"
+            [:expansion :contains 0 :display] := #fhir/string"Leukocytes [#/volume] in Cerebral spinal fluid"))))))
+
+(deftest expand-value-set-loinc-include-filter-test
+  (testing "unknown filter operator"
+    (with-system-data [{ts ::ts/local} loinc-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-162333"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://loinc.org"
+                  :filter
+                  [{:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code"property-162318"
+                    :op #fhir/code"op-unknown-162321"
+                    :value #fhir/string"value-162324"}]}]}}]]]
+
+      (given-failed-future (expand-value-set ts "url" #fhir/uri"value-set-162333")
+        ::anom/category := ::anom/unsupported
+        ::anom/message := "Error while expanding the value set `value-set-162333`. Unsupported filter operator `op-unknown-162321` in code system `http://loinc.org`."))))
+
+(deftest expand-value-set-loinc-include-filter-equals-test
+  (testing "fails"
+    (with-system [{ts ::ts/local} loinc-config]
+      (testing "with missing property"
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet"
+           {:fhir/type :fhir/ValueSet
+            :url #fhir/uri"value-set-162603"
+            :compose
+            {:fhir/type :fhir.ValueSet/compose
+             :include
+             [{:fhir/type :fhir.ValueSet.compose/include
+               :system #fhir/uri"http://loinc.org"
+               :filter
+               [{:fhir/type :fhir.ValueSet.compose.include/filter
+                 :op #fhir/code"="
+                 :value #fhir/string"value-162629"}]}]}})
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Error while expanding the value set `value-set-162603`. Missing = filter property in code system `http://loinc.org`."))
+
+      (testing "with unsupported property"
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet"
+           {:fhir/type :fhir/ValueSet
+            :url #fhir/uri"value-set-163943"
+            :compose
+            {:fhir/type :fhir.ValueSet/compose
+             :include
+             [{:fhir/type :fhir.ValueSet.compose/include
+               :system #fhir/uri"http://loinc.org"
+               :filter
+               [{:fhir/type :fhir.ValueSet.compose.include/filter
+                 :property #fhir/code"property-163943"
+                 :op #fhir/code"="}]}]}})
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Error while expanding the value set `value-set-163943`. Unsupported = filter property `property-163943` in code system `http://loinc.org`."))
+
+      (testing "with missing value"
+        (doseq [property ["CLASS" "STATUS" "CLASSTYPE"]]
+          (given-failed-future
+           (expand-value-set ts
+             "valueSet"
+             {:fhir/type :fhir/ValueSet
+              :url #fhir/uri"value-set-162730"
+              :compose
+              {:fhir/type :fhir.ValueSet/compose
+               :include
+               [{:fhir/type :fhir.ValueSet.compose/include
+                 :system #fhir/uri"http://loinc.org"
+                 :filter
+                 [{:fhir/type :fhir.ValueSet.compose.include/filter
+                   :property (type/code property)
+                   :op #fhir/code"="}]}]}})
+            ::anom/category := ::anom/incorrect
+            ::anom/message := (format "Error while expanding the value set `value-set-162730`. Missing %s = filter value in code system `http://loinc.org`." property))))
+
+      (testing "with invalid value"
+        (doseq [property ["STATUS" "CLASSTYPE"]]
+          (given-failed-future
+           (expand-value-set ts
+             "valueSet"
+             {:fhir/type :fhir/ValueSet
+              :url #fhir/uri"value-set-162730"
+              :compose
+              {:fhir/type :fhir.ValueSet/compose
+               :include
+               [{:fhir/type :fhir.ValueSet.compose/include
+                 :system #fhir/uri"http://loinc.org"
+                 :filter
+                 [{:fhir/type :fhir.ValueSet.compose.include/filter
+                   :property (type/code property)
+                   :op #fhir/code"="
+                   :value #fhir/string"value-165531"}]}]}})
+            ::anom/category := ::anom/incorrect
+            ::anom/message := (format "Error while expanding the value set `value-set-162730`. Invalid %s = filter value `value-165531` in code system `http://loinc.org`." property))))))
+
+  (testing "CLASS = CYTO"
+    (with-system-data [{ts ::ts/local} loinc-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-183437"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://loinc.org"
+                  :filter
+                  [{:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code"CLASS"
+                    :op #fhir/code"="
+                    :value #fhir/string"CYTO"}]}]}}]]]
+
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-183437")
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] :? #(< 10 % 100)
+        [:expansion :contains (concept "50971-1") 0 :system] := #fhir/uri"http://loinc.org"
+        [:expansion :contains (concept "50971-1") 0 :display] := #fhir/string"Cytology report of Bronchial brush Cyto stain")))
+
+  (testing "CLASS = LABORDERS"
+    (with-system-data [{ts ::ts/local} loinc-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-183437"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://loinc.org"
+                  :filter
+                  [{:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code"CLASS"
+                    :op #fhir/code"="
+                    :value #fhir/string"LABORDERS"}]}]}}]]]
+
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-183437")
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] :? #(< 10 % 100)
+        [:expansion :contains (concept "82773-3") 0 :system] := #fhir/uri"http://loinc.org"
+        [:expansion :contains (concept "82773-3") 0 :display] := #fhir/string"Lab result time reported")))
+
+  (testing "STATUS = DISCOURAGED"
+    (with-system-data [{ts ::ts/local} loinc-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-162809"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://loinc.org"
+                  :filter
+                  [{:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code"STATUS"
+                    :op #fhir/code"="
+                    :value #fhir/string"DISCOURAGED"}]}]}}]]]
+
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-162809")
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] :? (partial < 100)
+        [:expansion :contains (concept "69349-9") 0 :system] := #fhir/uri"http://loinc.org"
+        [:expansion :contains (concept "69349-9") 0 :display] := #fhir/string"Presence of pressure ulcers - acute [CARE]")))
+
+  (testing "CLASSTYPE = 4 (Claims attachments)"
+    (with-system-data [{ts ::ts/local} loinc-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-162809"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://loinc.org"
+                  :filter
+                  [{:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code"CLASSTYPE"
+                    :op #fhir/code"="
+                    :value #fhir/string"3"}]}]}}]]]
+
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-162809")
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] :? (partial < 100)
+        [:expansion :contains (concept "39215-9") 0 :system] := #fhir/uri"http://loinc.org"
+        [:expansion :contains (concept "39215-9") 0 :display] := #fhir/string"Vision screen finding recency CPHS"))))
+
+(deftest expand-value-set-loinc-include-filter-regex-test
+  (testing "fails"
+    (with-system [{ts ::ts/local} loinc-config]
+      (testing "with missing property"
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet"
+           {:fhir/type :fhir/ValueSet
+            :url #fhir/uri"value-set-162603"
+            :compose
+            {:fhir/type :fhir.ValueSet/compose
+             :include
+             [{:fhir/type :fhir.ValueSet.compose/include
+               :system #fhir/uri"http://loinc.org"
+               :filter
+               [{:fhir/type :fhir.ValueSet.compose.include/filter
+                 :op #fhir/code"regex"
+                 :value #fhir/string"value-162629"}]}]}})
+          ::anom/category := ::anom/incorrect
+          ::anom/message := "Error while expanding the value set `value-set-162603`. Missing regex filter property in code system `http://loinc.org`."))
+
+      (testing "with unsupported property"
+        (given-failed-future
+         (expand-value-set ts
+           "valueSet"
+           {:fhir/type :fhir/ValueSet
+            :url #fhir/uri"value-set-163943"
+            :compose
+            {:fhir/type :fhir.ValueSet/compose
+             :include
+             [{:fhir/type :fhir.ValueSet.compose/include
+               :system #fhir/uri"http://loinc.org"
+               :filter
+               [{:fhir/type :fhir.ValueSet.compose.include/filter
+                 :property #fhir/code"property-163943"
+                 :op #fhir/code"regex"}]}]}})
+          ::anom/category := ::anom/unsupported
+          ::anom/message := "Error while expanding the value set `value-set-163943`. Unsupported regex filter property `property-163943` in code system `http://loinc.org`."))
+
+      (testing "with missing value"
+        (doseq [property ["CLASS"]]
+          (given-failed-future
+           (expand-value-set ts
+             "valueSet"
+             {:fhir/type :fhir/ValueSet
+              :url #fhir/uri"value-set-162730"
+              :compose
+              {:fhir/type :fhir.ValueSet/compose
+               :include
+               [{:fhir/type :fhir.ValueSet.compose/include
+                 :system #fhir/uri"http://loinc.org"
+                 :filter
+                 [{:fhir/type :fhir.ValueSet.compose.include/filter
+                   :property (type/code property)
+                   :op #fhir/code"regex"}]}]}})
+            ::anom/category := ::anom/incorrect
+            ::anom/message := (format "Error while expanding the value set `value-set-162730`. Missing %s regex filter value in code system `http://loinc.org`." property))))))
+
+  (testing "CLASS =~ CYTO|LABORDERS"
+    (with-system-data [{ts ::ts/local} loinc-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-183437"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://loinc.org"
+                  :filter
+                  [{:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code"CLASS"
+                    :op #fhir/code"regex"
+                    :value #fhir/string"CYTO|LABORDERS"}]}]}}]]]
+
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-183437")
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] :? #(< 10 % 1000)
+        [:expansion :contains (concept "50971-1") 0 :system] := #fhir/uri"http://loinc.org"
+        [:expansion :contains (concept "50971-1") 0 :display] := #fhir/string"Cytology report of Bronchial brush Cyto stain"
+        [:expansion :contains (concept "82773-3") 0 :system] := #fhir/uri"http://loinc.org"
+        [:expansion :contains (concept "82773-3") 0 :display] := #fhir/string"Lab result time reported"))))
+
+(deftest expand-value-set-loinc-include-filter-multiple-test
+  (testing "http://hl7.org/fhir/uv/ips/ValueSet/results-laboratory-observations-uv-ips"
+    (with-system-data [{ts ::ts/local} loinc-config]
+      [[[:put {:fhir/type :fhir/ValueSet :id "0"
+               :url #fhir/uri"value-set-190529"
+               :compose
+               {:fhir/type :fhir.ValueSet/compose
+                :include
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://loinc.org"
+                  :filter
+                  [{:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code"STATUS"
+                    :op #fhir/code"="
+                    :value #fhir/string"ACTIVE"}
+                   {:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code"CLASSTYPE"
+                    :op #fhir/code"="
+                    :value #fhir/string"1"}]}]
+                :exclude
+                [{:fhir/type :fhir.ValueSet.compose/include
+                  :system #fhir/uri"http://loinc.org"
+                  :filter
+                  [{:fhir/type :fhir.ValueSet.compose.include/filter
+                    :property #fhir/code"CLASS"
+                    :op #fhir/code"regex"
+                    :value #fhir/string"CYTO|HL7\\.CYTOGEN|HL7\\.GENETICS|^PATH(\\..*)?|^MOLPATH(\\..*)?|NR STATS|H&P\\.HX\\.LAB|CHALSKIN|LABORDERS"}]}]}}]]]
+
+      (given @(expand-value-set ts "url" #fhir/uri"value-set-190529")
+        :fhir/type := :fhir/ValueSet
+        [:expansion :contains count] :? #(< 50000 % 60000)
+        [:expansion :contains (concept "50971-1") count] := 0
+        [:expansion :contains (concept "82773-3") count] := 0))))
+
 (deftest expand-value-set-sct-include-all-test
   (testing "including all of Snomed CT is too costly"
     (with-system-data [{ts ::ts/local} sct-config]
@@ -2781,7 +3303,7 @@
           [:expansion :contains 1 :code] := #fhir/code"441510007"
           [:expansion :contains 1 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)")
 
-        (testing "including only active"
+        (testing "value set including only active"
           (given @(expand-value-set ts
                     "valueSet"
                     {:fhir/type :fhir/ValueSet
@@ -2796,6 +3318,28 @@
                           :code #fhir/code"860958002"}
                          {:fhir/type :fhir.ValueSet.compose.include/concept
                           :code #fhir/code"441510007"}]}]}})
+            :fhir/type := :fhir/ValueSet
+            [:expansion :contains count] := 1
+            [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"
+            [:expansion :contains 0 #(contains? % :inactive)] := false
+            [:expansion :contains 0 :code] := #fhir/code"441510007"
+            [:expansion :contains 0 :display] := #fhir/string"Blood specimen with anticoagulant (specimen)"))
+
+        (testing "activeOnly param"
+          (given @(expand-value-set ts
+                    "valueSet"
+                    {:fhir/type :fhir/ValueSet
+                     :compose
+                     {:fhir/type :fhir.ValueSet/compose
+                      :include
+                      [{:fhir/type :fhir.ValueSet.compose/include
+                        :system #fhir/uri"http://snomed.info/sct"
+                        :concept
+                        [{:fhir/type :fhir.ValueSet.compose.include/concept
+                          :code #fhir/code"860958002"}
+                         {:fhir/type :fhir.ValueSet.compose.include/concept
+                          :code #fhir/code"441510007"}]}]}}
+                    "activeOnly" #fhir/boolean true)
             :fhir/type := :fhir/ValueSet
             [:expansion :contains count] := 1
             [:expansion :contains 0 :system] := #fhir/uri"http://snomed.info/sct"

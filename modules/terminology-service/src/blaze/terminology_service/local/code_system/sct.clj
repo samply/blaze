@@ -4,22 +4,19 @@
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
-   [blaze.luid :as luid]
    [blaze.terminology-service.local.code-system.core :as c]
    [blaze.terminology-service.local.code-system.sct.context :as context :refer [core-version-prefix url]]
    [blaze.terminology-service.local.code-system.sct.type :refer [parse-sctid]]
    [blaze.terminology-service.local.code-system.sct.util :as sct-u]
+   [blaze.terminology-service.local.code-system.util :as u]
    [blaze.terminology-service.local.priority :as priority]
    [clojure.string :as str]
    [taoensso.timbre :as log]))
 
-(defn- code-systems [db]
-  (d/pull-many db (d/type-query db "CodeSystem" [["url" url]])))
-
 (defn- handles [db version]
   (cond
     (re-matches sct-u/module-only-version-pattern version)
-    (do-sync [code-systems (code-systems db)]
+    (do-sync [code-systems (u/code-systems db url)]
       (filterv
        #(str/starts-with? (type/value (:version %)) version)
        code-systems))
@@ -33,7 +30,7 @@
            :sct/version version)))
 
 (defn- code-system-not-found-msg [version]
-  (format "The code system `http://snomed.info/sct|%s` was not found." version))
+  (format "The code system `%s|%s` was not found." url version))
 
 (defmethod c/find :sct
   [{:keys [db] :sct/keys [context]} _ & [version]]
@@ -122,7 +119,7 @@
 
 (defmethod expand-filter :default
   [_ {:keys [op]}]
-  (ba/unsupported (format "Unsupported filter operator `%s` in code system `http://snomed.info/sct`." (type/value op))))
+  (ba/unsupported (format "Unsupported filter operator `%s` in code system `%s`." (type/value op) url)))
 
 (defmethod c/expand-filter :sct
   [code-system filter {:keys [active-only] :as params}]
@@ -177,32 +174,13 @@
   [release-path]
   (context/build release-path))
 
-(defn- code-system-versions [db]
-  (do-sync [code-systems (code-systems db)]
-    (into #{} (map (comp type/value :version)) code-systems)))
-
-(defn- luid-generator [{:keys [clock rng-fn]}]
-  (luid/generator clock (rng-fn)))
-
-(defn- tx-ops [context existing-versions code-systems]
-  (transduce
-   (remove (comp existing-versions type/value :version))
-   (fn
-     ([{:keys [tx-ops]}] tx-ops)
-     ([{:keys [luid-generator] :as ret} code-system]
-      (-> (update ret :tx-ops conj [:create (assoc code-system :id (luid/head luid-generator))])
-          (update :luid-generator luid/next))))
-   {:tx-ops []
-    :luid-generator (luid-generator context)}
-   code-systems))
-
 (defn ensure-code-systems
   "Ensures that all Snomed CT code systems are present in the database node."
   [{:keys [node] :as context} {:keys [code-systems]}]
-  (-> (code-system-versions (d/db node))
+  (-> (u/code-system-versions (d/db node) url)
       (ac/then-compose
        (fn [existing-versions]
-         (let [tx-ops (tx-ops context existing-versions code-systems)]
+         (let [tx-ops (u/tx-ops context existing-versions code-systems)]
            (if (seq tx-ops)
              (do (log/debug "Create" (count tx-ops) "new Snomed CT CodeSystem resources...")
                  (d/transact node tx-ops))

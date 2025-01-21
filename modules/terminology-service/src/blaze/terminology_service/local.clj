@@ -10,6 +10,7 @@
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.local.capabilities :as c]
    [blaze.terminology-service.local.code-system :as cs]
+   [blaze.terminology-service.local.code-system.loinc :as loinc]
    [blaze.terminology-service.local.code-system.sct :as sct]
    [blaze.terminology-service.local.code-system.ucum :as ucum]
    [blaze.terminology-service.local.spec]
@@ -181,20 +182,32 @@
        (.close ^AutoCloseable db)
        res))))
 
-(defn- context [{:keys [clock sct-release-path]}]
-  (if sct-release-path
-    (when-ok [sct-context (sct/build-context sct-release-path)]
-      {:clock clock :sct/context sct-context})
-    {:clock clock}))
+(defn assoc-sct-context [context sct-release-path]
+  (when-ok [sct-context (sct/build-context sct-release-path)]
+    (assoc context :sct/context sct-context)))
+
+(defn assoc-loinc-context [context]
+  (when-ok [context context
+            loinc-context (loinc/build-context)]
+    (assoc context :loinc/context loinc-context)))
+
+(defn- context [{:keys [clock sct-release-path enable-loinc]}]
+  (cond-> {:clock clock}
+    sct-release-path (assoc-sct-context sct-release-path)
+    enable-loinc (assoc-loinc-context)))
 
 (defn- ensure-code-systems
   "Ensures that all code systems of internal terminologies like Snomed CT are
   present in the database node."
-  [{:keys [enable-ucum] :as config} {sct-context :sct/context}]
+  [{:keys [enable-ucum] :as config}
+   {sct-context :sct/context
+    loinc-context :loinc/context}]
   (when enable-ucum
     @(ucum/ensure-code-system config))
   (when sct-context
-    @(sct/ensure-code-systems config sct-context)))
+    @(sct/ensure-code-systems config sct-context))
+  (when loinc-context
+    @(loinc/ensure-code-systems config loinc-context)))
 
 (def ^:private cs-validate-code-param-specs
   {"url" {:action :copy}
@@ -307,7 +320,7 @@
 
 (defmethod m/pre-init-spec ::ts/local [_]
   (s/keys :req-un [:blaze.db/node :blaze/clock :blaze/rng-fn]
-          :opt-un [::enable-ucum ::sct-release-path]))
+          :opt-un [::enable-loinc ::enable-ucum ::sct-release-path]))
 
 (defmethod ig/init-key ::ts/local
   [_ {:keys [node] :as config}]

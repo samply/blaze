@@ -4,6 +4,9 @@
    [blaze.terminology-service.local :as-alias local]
    [clojure.spec.alpha :as s]))
 
+(s/def ::local/enable-loinc
+  boolean?)
+
 (s/def ::local/enable-ucum
   boolean?)
 
