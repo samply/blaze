@@ -23,18 +23,18 @@
 
 (test/use-fixtures :each tu/fixture)
 
-(defn wrap-error [handler]
+(defn- wrap-error [handler]
   (fn [request]
     (-> (handler request)
         (ac/exceptionally handler-util/error-response))))
 
-(def resource-handler
+(def ^:private resource-handler
   "A handler which just returns the :body from the request."
   (-> (comp ac/completed-future :body)
       wrap-resource
       wrap-error))
 
-(defn input-stream
+(defn- input-stream
   ([^String s]
    (ByteArrayInputStream. (.getBytes s StandardCharsets/UTF_8)))
   ([^String s closed?]
