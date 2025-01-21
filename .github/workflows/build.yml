@@ -1075,6 +1075,9 @@ jobs:
     - name: Binary Content Download - found (via XML)
       run: .github/scripts/read-binary-content-via-xml-found.sh
 
+    - name: Binary Content Upload (via raw data)
+      run: .github/scripts/write-binary-content-via-raw-data.sh
+
     - name: Conditional Delete - Check Referential Integrity Violated
       run: .github/scripts/conditional-delete-type/check-referential-integrity-violated.sh
 

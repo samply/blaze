@@ -97,12 +97,12 @@
 
   (testing "_format overrides"
     (doseq [[accept format content-type] [["application/fhir+xml" "application/fhir+json" "application/fhir+json;charset=utf-8"]
-                                          ["application/fhir+xml" "application/json" "application/json;charset=utf-8"]
-                                          ["application/fhir+xml" "text/json" "text/json;charset=utf-8"]
+                                          ["application/fhir+xml" "application/json" "application/fhir+json;charset=utf-8"]
+                                          ["application/fhir+xml" "text/json" "application/fhir+json;charset=utf-8"]
                                           ["application/fhir+xml" "json" "application/fhir+json;charset=utf-8"]
                                           ["*/*" "application/fhir+json" "application/fhir+json;charset=utf-8"]
-                                          ["*/*" "application/json" "application/json;charset=utf-8"]
-                                          ["*/*" "text/json" "text/json;charset=utf-8"]
+                                          ["*/*" "application/json" "application/fhir+json;charset=utf-8"]
+                                          ["*/*" "text/json" "application/fhir+json;charset=utf-8"]
                                           ["*/*" "json" "application/fhir+json;charset=utf-8"]]]
       (given (call resource-handler-200-with-patient
                    {:headers {"accept" accept}
@@ -137,12 +137,12 @@
 
   (testing "_format overrides"
     (doseq [[accept format content-type] [["application/fhir+json" "application/fhir+xml" "application/fhir+xml;charset=utf-8"]
-                                          ["application/fhir+json" "application/xml" "application/xml;charset=utf-8"]
-                                          ["application/fhir+json" "text/xml" "text/xml;charset=utf-8"]
+                                          ["application/fhir+json" "application/xml" "application/fhir+xml;charset=utf-8"]
+                                          ["application/fhir+json" "text/xml" "application/fhir+xml;charset=utf-8"]
                                           ["application/fhir+json" "xml" "application/fhir+xml;charset=utf-8"]
                                           ["*/*" "application/fhir+xml" "application/fhir+xml;charset=utf-8"]
-                                          ["*/*" "application/xml" "application/xml;charset=utf-8"]
-                                          ["*/*" "text/xml" "text/xml;charset=utf-8"]
+                                          ["*/*" "application/xml" "application/fhir+xml;charset=utf-8"]
+                                          ["*/*" "text/xml" "application/fhir+xml;charset=utf-8"]
                                           ["*/*" "xml" "application/fhir+xml;charset=utf-8"]]]
       (given (call resource-handler-200-with-patient
                    {:headers {"accept" accept}
