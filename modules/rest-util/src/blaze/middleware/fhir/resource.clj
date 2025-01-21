@@ -7,6 +7,7 @@
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type :as type]
    [clojure.data.xml.jvm.parse :as xml-jvm]
    [clojure.data.xml.tree :as xml-tree]
    [clojure.java.io :as io]
@@ -16,7 +17,8 @@
    [ring.util.request :as request])
   (:import
    [com.ctc.wstx.api WstxInputProperties]
-   [java.io Reader]
+   [java.io InputStream Reader]
+   [java.util Base64]
    [javax.xml.stream XMLInputFactory]))
 
 (set! *warn-on-reflection* true)
@@ -57,7 +59,8 @@
 
 (defn- xml-request? [content-type]
   (or (str/starts-with? content-type "application/fhir+xml")
-      (str/starts-with? content-type "application/xml")))
+      (str/starts-with? content-type "application/xml")
+      (str/starts-with? content-type "text/xml")))
 
 (defn- create-xml-factory []
   (doto (XMLInputFactory/newInstance)
@@ -109,19 +112,65 @@
                     :http/status 415))
     (if (str/blank? (slurp (:body request)))
       (assoc request :body nil)
-      (ba/incorrect "Content-Type header expected, but is missing."))))
+      (ba/incorrect "Missing Content-Type header for FHIR resources."))))
 
 (defn wrap-resource
-  "Middleware to parse a resource from the body according the content-type
+  "Middleware to parse a resource from the body according to the content-type
   header.
 
-  Updates the :body key in the request map on successful parsing and conforming
-  the resource to the internal format.
+  If the resource is successfully parsed and conformed to the internal format,
+  updates the :body key in the request map.
 
-  Returns an OperationOutcome in the internal format, skipping the handler, with
-  an appropriate error on parsing and conforming errors."
+  In case on errors, returns an OperationOutcome in the internal format with the
+  appropriate error and skips the handler."
   [handler]
   (fn [request]
     (if-ok [request (resource-request request)]
+      (handler request)
+      ac/completed-future)))
+
+(defn- read-all-bytes-and-close [^InputStream in]
+  (try
+    (.readAllBytes in)
+    (finally
+      (.close in))))
+
+(defn- encode-binary-data [body]
+  (with-open [_ (prom/timer parse-duration-seconds "binary")]
+    (.encodeToString (Base64/getEncoder) (read-all-bytes-and-close body))))
+
+(defn- resource-request-binary-data [content-type {:keys [body] :as request}]
+  (if body
+    (assoc request :body
+           {:fhir/type :fhir/Binary
+            :contentType (type/code content-type)
+            :data (type/base64Binary (encode-binary-data body))})
+    (ba/incorrect "Missing HTTP body.")))
+
+(defn- binary-resource-request [request]
+  (if-let [content-type (request/content-type request)]
+    (cond
+      (str/starts-with? content-type "application/fhir+json")
+      (resource-request-json request)
+
+      (str/starts-with? content-type "application/fhir+xml")
+      (resource-request-xml request)
+
+      :else
+      (resource-request-binary-data content-type request))
+    (ba/incorrect "Missing Content-Type header for binary data.")))
+
+(defn wrap-binary-data
+  "Middleware to parse binary data from the body according to the content-type
+  header.
+
+  If the resource is successfully parsed and conformed to the internal format,
+  updates the :body key in the request map.
+
+  In case on errors, returns an OperationOutcome in the internal format with the
+  appropriate error and skips the handler."
+  [handler]
+  (fn [request]
+    (if-ok [request (binary-resource-request request)]
       (handler request)
       ac/completed-future)))
