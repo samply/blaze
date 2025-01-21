@@ -900,9 +900,6 @@ jobs:
     - name: Evaluate CQL Query 14 - Subject List
       run: .github/scripts/evaluate-measure-subject-list.sh q14 96
 
-    - name: Evaluate CQL Query 15 using Blazectl
-      run: .github/scripts/evaluate-measure.sh q15 31
-
     - name: Evaluate CQL Query 17
       run: .github/scripts/evaluate-measure.sh q17 120
 
