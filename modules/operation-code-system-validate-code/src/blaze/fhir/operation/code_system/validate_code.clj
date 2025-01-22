@@ -4,91 +4,75 @@
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac :refer [do-sync]]
    [blaze.fhir.spec.type :as type]
+   [blaze.handler.fhir.util :as fhir-util]
    [blaze.module :as m]
    [blaze.terminology-service :as ts]
    [blaze.terminology-service.spec]
    [clojure.spec.alpha :as s]
+   [cognitect.anomalies :as anom]
    [integrant.core :as ig]
    [ring.util.response :as ring]
-   [taoensso.timbre :as log])
-  (:import
-   [com.google.common.base CaseFormat]))
-
-(set! *warn-on-reflection* true)
+   [taoensso.timbre :as log]))
 
 (def ^:private parameter-specs
-  [{:name "url" :action :copy}
-   {:name "codeSystem" :action :copy-resource}
-   {:name "code" :action :copy}
-   {:name "coding" :action :copy-complex-type}
-   {:name "codeableConcept"}
-   {:name "date"}
-   {:name "abstract"}
-   {:name "displayLanguage" :action :copy}])
+  {"url" {:action :copy :coerce type/uri}
+   "codeSystem" {:action :complex}
+   "code" {:action :copy :coerce type/code}
+   "version" {:action :copy :coerce type/string}
+   "display" {:action :copy :coerce type/string}
+   "coding" {:action :complex}
+   "codeableConcept" {:action :complex}
+   "date" {}
+   "abstract" {}
+   "displayLanguage" {:action :copy :coerce type/code}
+   "tx-resource" {:action :complex}})
 
-(defn camel->kebab [s]
-  (.to CaseFormat/LOWER_CAMEL CaseFormat/LOWER_HYPHEN s))
+(defn- parameter [name value]
+  {:fhir/type :fhir.Parameters/parameter
+   :name (type/string name)
+   :value value})
 
 (defn- validate-query-params [params]
-  (reduce
-   (fn [new-params {:keys [name action]}]
-     (if-let [value (get params name)]
+  (reduce-kv
+   (fn [new-params name value]
+     (if-let [{:keys [action coerce]} (parameter-specs name)]
        (case action
          :copy
-         (assoc new-params (keyword (camel->kebab name)) value)
+         (conj new-params (parameter name (coerce value)))
 
-         (:copy-complex-type :copy-resource)
+         :complex
          (reduced (ba/unsupported (format "Unsupported parameter `%s` in GET request. Please use POST." name)
                                   :http/status 400))
 
          (reduced (ba/unsupported (format "Unsupported parameter `%s`." name)
                                   :http/status 400)))
        new-params))
-   {}
-   parameter-specs))
+   []
+   params))
 
-(defn- validate-body-params [{params :parameter}]
-  (reduce
-   (fn [new-params {:keys [name action]}]
-     (if-let [param (some #(when (= name (type/value (:name %))) %) params)]
-       (case action
-         :copy
-         (assoc new-params (keyword (camel->kebab name)) (type/value (:value param)))
-
-         :copy-complex-type
-         (assoc new-params (keyword (camel->kebab name)) (:value param))
-
-         :copy-resource
-         (assoc new-params (keyword (camel->kebab name)) (:resource param))
-
-         (reduced (ba/unsupported (format "Unsupported parameter `%s`." name)
-                                  :http/status 400)))
-       new-params))
-   {}
-   parameter-specs))
-
-(defn- fix-url [{:keys [url code-system coding] :as params}]
-  (if (and (nil? url) (nil? code-system))
-    (if-let [system (type/value (:system coding))]
-      (assoc params :url system)
-      (ba/incorrect "Missing required parameter `url`."))
-    params))
-
-(defn- validate-params [{:keys [request-method body query-params]}]
+(defn- validate-params* [{:keys [request-method body query-params]}]
   (if (= :post request-method)
-    (when-ok [params (validate-body-params body)]
-      (fix-url params))
-    (validate-query-params query-params)))
+    body
+    (when-ok [params (validate-query-params query-params)]
+      {:fhir/type :fhir/Parameters :parameter params})))
 
-(defn- validate-code
-  [terminology-service {{:keys [id]} :path-params :as request}]
-  (if-ok [{:keys [url code-system] :as params} (validate-params request)]
-    (cond
-      id (ts/code-system-validate-code terminology-service (assoc params :id id))
-      url (ts/code-system-validate-code terminology-service params)
-      code-system (ts/code-system-validate-code terminology-service params)
-      :else (ac/completed-future (ba/incorrect "Missing required parameter `url`.")))
+(defn- validate-params [{{:keys [id]} :path-params :blaze/keys [db] :as request}]
+  (if-ok [params (validate-params* request)]
+    (if id
+      (do-sync [{:keys [url]} (fhir-util/pull db "CodeSystem" id)]
+        (update params :parameter (fnil conj []) (parameter "url" url)))
+      (ac/completed-future params))
     ac/completed-future))
+
+(defn- validate-code* [terminology-service params]
+  (-> (ts/code-system-validate-code terminology-service params)
+      (ac/exceptionally
+       (fn [{::anom/keys [category] :as anomaly}]
+         (cond-> anomaly (= ::anom/not-found category) (assoc :http/status 400))))))
+
+(defn- validate-code [terminology-service request]
+  (-> (validate-params request)
+      (ac/then-compose (partial validate-code* terminology-service))))
 
 (defn- handler [terminology-service]
   (fn [request]

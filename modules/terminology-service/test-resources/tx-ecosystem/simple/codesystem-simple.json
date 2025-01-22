@@ -1,0 +1,125 @@
+{
+  "resourceType" : "CodeSystem",
+  "language" : "en",
+  "id" : "simple",
+  "url" : "http://hl7.org/fhir/test/CodeSystem/simple",
+  "version" : "0.1.0",
+  "name" : "SimpleTestCodeSystem",
+  "title" : "Simple Test Code System",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "caseSensitive" : true,
+  "content" : "complete",
+  "property" : [{
+    "code" : "prop",
+    "uri" : "http://hl7.org/fhir/test/CodeSystem/properties#prop",
+    "type" : "code"
+  },{
+    "code" : "status",
+    "uri" : "http://hl7.org/fhir/concept-properties#status",
+    "type" : "code"
+  },{
+    "code" : "notSelectable",
+    "uri" : "http://hl7.org/fhir/concept-properties#notSelectable",
+    "type" : "boolean"
+  }],
+  "concept" : [{
+    "code" : "code1",
+    "display" : "Display 1",
+    "definition" : "My first code",
+    "designation" : [{
+      "use" : {
+        "system" : "http://hl7.org/fhir/test/CodeSystem/designations",
+        "code" : "olde-english"
+      },
+      "value" : "mine own first code"
+    }],
+    "property" : [{
+      "code" : "prop",
+      "valueCode" : "old"
+    }]
+  },
+  {
+    "code" : "code2",
+    "display" : "Display 2",
+    "definition" : "My second code, with children",
+    "designation" : [{
+      "use" : {
+        "system" : "http://hl7.org/fhir/test/CodeSystem/designations",
+        "code" : "olde-english"
+      },
+      "value" : "mine own second code"
+    }],
+    "property" : [{
+      "code" : "prop",
+      "valueCode" : "new"
+    },{
+      "code" : "notSelectable",
+      "valueBoolean" : true
+    },{
+      "code" : "status",
+      "valueCode" : "retired"
+    }],
+    "concept" : [{
+      "code" : "code2a",
+      "display" : "Display 2a",
+      "definition" : "My first second level code",
+      "designation" : [{
+        "use" : {
+          "system" : "http://hl7.org/fhir/test/CodeSystem/designations",
+          "code" : "olde-english"
+        },
+        "value" : "mine own first code yond's issue of the second code"
+      }],
+      "property" : [{
+        "code" : "prop",
+        "valueCode" : "new"
+      }],
+      "concept" : [{
+        "code" : "code2aI",
+        "display" : "Display 2aI",
+        "definition" : "My first third level code",
+        "property" : [{
+          "code" : "prop",
+          "valueCode" : "old"
+        }]
+      },
+      {
+        "code" : "code2aII",
+        "display" : "Display 2aII",
+        "definition" : "My second third level code",
+        "property" : [{
+          "code" : "prop",
+          "valueCode" : "new"
+        }]
+      }]
+    },
+    {
+      "code" : "code2b",
+      "display" : "Display 2b",
+      "definition" : "My second second level code",
+      "designation" : [{
+        "use" : {
+          "system" : "http://hl7.org/fhir/test/CodeSystem/designations",
+          "code" : "olde-english"
+        },
+        "value" : "Mine own second second leveleth code"
+      }],
+      "property" : [{
+        "code" : "prop",
+        "valueCode" : "old"
+      }]
+    }]
+  },
+  {
+    "code" : "code3",
+    "display" : "Display 3",
+    "definition" : "Serum Cholesterol",
+    "property" : [{
+      "code" : "prop",
+      "valueCode" : "old"
+    }]
+  }]
+}

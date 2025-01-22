@@ -1,0 +1,92 @@
+{
+  "resourceType" : "CodeSystem",
+  "language" : "en",
+  "id" : "extensions",
+  "url" : "http://hl7.org/fhir/test/CodeSystem/extensions",
+  "name" : "ExtensionsTestCodeSystem",
+  "title" : "Extensions Test Code System",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "caseSensitive" : true,
+  "content" : "complete",
+  "property" : [{
+    "code" : "prop",
+    "uri" : "http://hl7.org/fhir/test/CodeSystem/properties#prop",
+    "type" : "code"
+  },{
+    "code" : "alternateCode",
+    "uri" : "http://hl7.org/fhir/concept-properties#alternateCode",
+    "description" : "This property contains an alternative code that may be used to identify this concept instead of the primary code",
+    "type" : "code"
+  }],
+  "concept" : [{
+    "code" : "code1",
+    "display" : "Display 1",
+    "definition" : "My first code",
+    "extension" : [{
+      "url" : "http://hl7.org/fhir/StructureDefinition/codesystem-conceptOrder",
+      "valueInteger" : 6
+    }],
+    "designation" : [{
+      "language" : "de",
+      "value" : "Mein erster Code",
+      "extension" : [{
+        "url" : "http://hl7.org/fhir/StructureDefinition/coding-sctdescid",
+        "valueId" : "234234"
+      }]
+    }]
+  },{
+    "code" : "code2",
+    "display" : "Display 2",
+    "definition" : "My second code",
+    "extension" : [{
+      "url" : "http://hl7.org/fhir/StructureDefinition/codesystem-conceptOrder",
+      "valueInteger" : 5
+    }]
+  },
+  {
+    "code" : "code3",
+    "display" : "Display 3",
+    "definition" : "My third code",
+    "extension" : [{
+      "url" : "http://hl7.org/fhir/StructureDefinition/rendering-style",
+      "valueString" : "font-weight: bold; font-decoration: strikethrough"
+    },{
+      "url" : "http://hl7.org/fhir/StructureDefinition/rendering-xhtml",
+      "valueString" : "<span style=\"color: maroon\">This is a dumb way to do things</span>"
+    },{
+      "url" : "http://hl7.org/fhir/StructureDefinition/codesystem-conceptOrder",
+      "valueInteger" : 4
+    }]
+  },
+  {
+    "code" : "code4",
+    "display" : "Display 4",
+    "definition" : "My fourth code",
+    "extension" : [{
+      "url" : "http://hl7.org/fhir/StructureDefinition/codesystem-conceptOrder",
+      "valueInteger" : 3
+    }]
+  },
+  {
+    "code" : "code5",
+    "display" : "Display 5",
+    "definition" : "My fifth code",
+    "extension" : [{
+      "url" : "http://hl7.org/fhir/StructureDefinition/codesystem-conceptOrder",
+      "valueInteger" : 2
+    }]
+  },
+  {
+    "code" : "code6",
+    "display" : "Display 6",
+    "definition" : "My sixth code",
+    "extension" : [{
+      "url" : "http://hl7.org/fhir/StructureDefinition/codesystem-conceptOrder",
+      "valueInteger" : 1
+    }]
+  }
+  ]
+}

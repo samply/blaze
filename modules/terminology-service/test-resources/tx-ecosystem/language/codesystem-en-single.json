@@ -1,0 +1,48 @@
+{
+  "resourceType" : "CodeSystem",
+  "language" : "en",
+  "id" : "en-single",
+  "url" : "http://hl7.org/fhir/test/CodeSystem/en-single",
+  "name" : "TestCodeSystemOnlyEnglish",
+  "title" : "Test Code System with Only English",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "caseSensitive" : true,
+  "content" : "complete",
+  "concept" : [{
+    "code" : "code1",
+    "display" : "Display 1",
+    "definition" : "My first code"
+  },
+  {
+    "code" : "code2",
+    "display" : "Display 2",
+    "definition" : "My second code, with children",
+    "concept" : [{
+      "code" : "code2a",
+      "display" : "Display 2a",
+      "definition" : "My first second level code",
+      "concept" : [{
+        "code" : "code2aI",
+        "display" : "Display 2aI"
+      },
+      {
+        "code" : "code2aII",
+        "display" : "Display 2aII",
+        "definition" : "My second third level code"
+      }]
+    },
+    {
+      "code" : "code2b",
+      "display" : "Display 2b",
+      "definition" : "My second second level code"
+    }]
+  },
+  {
+    "code" : "code3",
+    "display" : "Display 3",
+    "definition" : "My Third Level Code"
+  }]
+}

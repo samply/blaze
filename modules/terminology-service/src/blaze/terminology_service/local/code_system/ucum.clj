@@ -1,14 +1,11 @@
 (ns blaze.terminology-service.local.code-system.ucum
   (:require
-   [blaze.anomaly :as ba :refer [if-ok]]
    [blaze.async.comp :as ac]
    [blaze.coll.core :as coll]
    [blaze.db.api :as d]
    [blaze.fhir.spec.type :as type]
    [blaze.luid :as luid]
    [blaze.terminology-service.local.code-system.core :as c]
-   [blaze.terminology-service.local.code-system.util :as u]
-   [cognitect.anomalies :as anom]
    [taoensso.timbre :as log])
   (:import
    [org.fhir.ucum UcumEssenceService UcumService]))
@@ -40,28 +37,8 @@
   [_ code-system]
   code-system)
 
-(defn- validate [code]
-  (when (.validate ^UcumService service code)
-    (ba/incorrect (format "The provided code `%s` was not found in the code system `http://unitsofmeasure.org`." code))))
-
-(defmethod c/validate-code :ucum
-  [{:keys [url version]} request]
-  (if-ok [code (u/extract-code request (type/value url))
-          _ (validate code)]
-    {:fhir/type :fhir/Parameters
-     :parameter
-     [(u/parameter "result" #fhir/boolean true)
-      (u/parameter "code" (type/code code))
-      (u/parameter "system" #fhir/uri"http://unitsofmeasure.org")
-      (u/parameter "version" version)]}
-    (fn [{::anom/keys [message]}]
-      {:fhir/type :fhir/Parameters
-       :parameter
-       [(u/parameter "result" #fhir/boolean false)
-        (u/parameter "message" (type/string message))]})))
-
 (defmethod c/expand-concept :ucum
-  [_ _ _ concepts]
+  [_ concepts _]
   (into
    []
    (keep
@@ -70,6 +47,14 @@
         {:system #fhir/uri"http://unitsofmeasure.org"
          :code code})))
    concepts))
+
+(defn- validate-code [{:keys [url version]} code]
+  (when (nil? (.validate ^UcumService service code))
+    {:code (type/code code) :system url :version version}))
+
+(defmethod c/find-complete :ucum
+  [code-system {{:keys [code]} :clause}]
+  (validate-code code-system code))
 
 (defn- ucum-query [db]
   (d/type-query db "CodeSystem" [["url" "http://unitsofmeasure.org"]]))

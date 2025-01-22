@@ -1,0 +1,46 @@
+{
+  "resourceType" : "CodeSystem",
+  "id" : "dual-filter",
+  "url": "http://hl7.org/fhir/test/CodeSystem/dual-filter",
+  "title" : "Test code system",
+  "description": "Test code system",
+  "caseSensitive" : false,
+  "experimental" : false,
+  "hierarchyMeaning" : "is-a",
+  "content" : "complete",
+  "property" : [{
+    "code" : "status",
+    "uri" : "http://hl7.org/fhir/concept-properties#status",
+    "type" : "code"
+  }],
+  "concept" : [{
+    "code" : "AA",
+    "display" : "Root of AA",
+    "property" : [{
+      "code" : "status",
+      "valueCode" : "A"
+    }],
+    "concept" : [{
+      "code" : "AA1",
+      "display" : "AA1",
+      "property" : [{
+        "code" : "status",
+        "valueCode" : "A"
+      }]
+    },{
+      "code" : "AA2",
+      "display" : "AA2",
+      "property" : [{
+        "code" : "status",
+        "valueCode" : "R"
+      }]
+    }]
+  },{
+    "code" : "AAX",
+    "display" : "Root of AA",
+    "property" : [{
+      "code" : "status",
+      "valueCode" : "R"
+    }]
+  }]
+}

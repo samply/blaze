@@ -1,6 +1,7 @@
 (ns blaze.terminology-service.extern-test
   (:require
    [blaze.fhir.test-util]
+   [blaze.fhir.util :as u]
    [blaze.http-client.spec :refer [http-client?]]
    [blaze.module.test-util :refer [with-system]]
    [blaze.terminology-service :as ts]
@@ -62,6 +63,9 @@
       [:cause-data ::s/problems 1 :pred] := `http-client?
       [:cause-data ::s/problems 1 :val] := ::invalid)))
 
+(defn- expand-value-set [ts & nvs]
+  (ts/expand-value-set ts (apply u/parameters nvs)))
+
 (deftest terminology-service-test
   (with-system [{ts ::ts/extern ::keys [http-client]} config]
 
@@ -69,6 +73,7 @@
         (.doReturn (j/write-value-as-string {:resourceType "ValueSet" :id "0"}))
         (.withHeader "content-type" "application/fhir+json"))
 
-    (given @(ts/expand-value-set ts {:url "http://hl7.org/fhir/ValueSet/administrative-gender"})
+    (given @(expand-value-set ts
+              "url" #fhir/uri"http://hl7.org/fhir/ValueSet/administrative-gender")
       :fhir/type := :fhir/ValueSet
       :id := "0")))
