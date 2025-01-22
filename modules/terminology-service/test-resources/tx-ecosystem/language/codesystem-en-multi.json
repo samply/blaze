@@ -1,0 +1,183 @@
+{
+  "resourceType" : "CodeSystem",
+  "language" : "en",
+  "id" : "en-multi",
+  "url" : "http://hl7.org/fhir/test/CodeSystem/en-multi",
+  "name" : "TestCodeSystemMultiLang",
+  "title" : "Test Code System with Multiple Languages",
+  "title:de" : "Testcodesystem mit mehreren Sprachen",
+  "_title" : {
+    "extension" : [{
+      "url" : "http://hl7.org/fhir/StructureDefinition/translation",
+      "extension" : [{
+        "url" : "lang",
+        "valueCode" : "de"
+      },{
+        "url" : "content",
+        "valueString" : "Testcodesystem mit mehreren Sprachen"
+      }]
+    }]
+  },
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "caseSensitive" : true,
+  "content" : "complete",
+  "concept" : [{
+    "code" : "code1",
+    "display" : "Display 1",
+    "definition" : "My first code",
+    "definition:de" : "Mein erster Code",
+    "_definition" : {
+      "extension" : [{
+        "url" : "http://hl7.org/fhir/StructureDefinition/translation",
+        "extension" : [{
+          "url" : "lang",
+          "valueCode" : "de"
+        },{
+          "url" : "content",
+          "valueString" : "Mein erster Code"
+        }]
+      }]
+    },
+    "designation" : [{
+      "language" : "de",
+      "value" : "Anzeige 1"
+    }]
+  },
+  {
+    "code" : "code2",
+    "display" : "Display 2",
+    "definition" : "My second code, with children",
+    "definition:de" : "Mein erster Code",
+    "_definition" : {
+      "extension" : [{
+        "url" : "http://hl7.org/fhir/StructureDefinition/translation",
+        "extension" : [{
+          "url" : "lang",
+          "valueCode" : "de"
+        },{
+          "url" : "content",
+          "valueString" : "Mein erster Code"
+        }]
+      }]
+    },
+    "designation" : [{
+      "language" : "de-CH",
+      "value" : "Anzeige 2"
+    },{
+      "language" : "es",
+      "value" : "Mostrar 2"
+    }],
+    "concept" : [{
+      "code" : "code2a",
+      "display" : "Display 2a",
+      "definition" : "My first second level code",
+      "definition:de" : "Mein erster Second-Level-Code",
+      "_definition" : {
+        "extension" : [{
+          "url" : "http://hl7.org/fhir/StructureDefinition/translation",
+          "extension" : [{
+            "url" : "lang",
+            "valueCode" : "de"
+          },{
+            "url" : "content",
+            "valueString" : "Mein erster Second-Level-Code"
+          }]
+        }]
+      },
+      "designation" : [{
+        "language" : "de",
+        "value" : "Anzeige 2a"
+      },{
+        "language" : "es",
+        "value" : "Mostrar 2a"
+      }],
+      "concept" : [{
+        "code" : "code2aI",
+        "display" : "Display 2aI",
+        "definition" : "My first third level code",
+        "definition:de" : "Mein erster Third-Level-Code",
+        "_definition" : {
+          "extension" : [{
+            "url" : "http://hl7.org/fhir/StructureDefinition/translation",
+            "extension" : [{
+              "url" : "lang",
+              "valueCode" : "de"
+            },{
+              "url" : "content",
+              "valueString" : "Mein erster Third-Level-Code"
+            }]
+          }]
+        },
+        "designation" : [{
+          "language" : "es",
+          "value" : "Mostrar 2aI"
+        }]
+      },
+      {
+        "code" : "code2aII",
+        "display" : "Display 2aII",
+        "definition" : "My second third level code",
+        "definition:de" : "Mein zweiter Third-Level-Code",
+        "_definition" : {
+          "extension" : [{
+            "url" : "http://hl7.org/fhir/StructureDefinition/translation",
+            "extension" : [{
+              "url" : "lang",
+              "valueCode" : "de"
+            },{
+              "url" : "content",
+              "valueString" : "Mein zweiter Third-Level-Code"
+            }]
+          }]
+        }
+      }]
+    },
+    {
+      "code" : "code2b",
+      "display" : "Display 2b",
+      "definition" : "My second second level code",
+      "definition:de" : "Mein zweiter Second-Level-Code",
+      "_definition" : {
+        "extension" : [{
+          "url" : "http://hl7.org/fhir/StructureDefinition/translation",
+          "extension" : [{
+            "url" : "lang",
+            "valueCode" : "de"
+          },{
+            "url" : "content",
+            "valueString" : "Mein zweiter Second-Level-Code"
+          }]
+        }]
+      },
+      "designation" : [{
+        "language" : "de",
+        "value" : "Anzeige 2b"
+      }]
+    }]
+  },
+  {
+    "code" : "code3",
+    "display" : "Display 3",
+    "definition" : "My Third Level Code",
+    "definition:de" : "Mein Third-Level-Code",
+    "_definition" : {
+      "extension" : [{
+        "url" : "http://hl7.org/fhir/StructureDefinition/translation",
+        "extension" : [{
+          "url" : "lang",
+          "valueCode" : "de"
+        },{
+          "url" : "content",
+          "valueString" : "Mein Third-Level-Code"
+        }]
+      }]
+    },
+    "designation" : [{
+      "language" : "de",
+      "value" : "Anzeige 3"
+    }]
+  }]
+}

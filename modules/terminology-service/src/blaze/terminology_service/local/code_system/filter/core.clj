@@ -4,13 +4,33 @@
    [blaze.fhir.spec.type :as type]))
 
 (defmulti filter-concepts
-  {:arglists '([filter code-system])}
-  (fn [{:keys [op]} _] (-> op type/value keyword)))
+  "Returns all concepts that satisfy `filter` or an anomaly in case of errors."
+  {:arglists '([code-system filter])}
+  (fn [_ {:keys [op]}] (-> op type/value keyword)))
 
-(defn- unsupported-filter-op-msg [{:keys [op]} {:keys [url]}]
+(defn- unsupported-filter-op-msg [{:keys [url]} {:keys [op]}]
   (format "Unsupported filter operator `%s` in code system `%s`."
           (type/value op) (type/value url)))
 
 (defmethod filter-concepts :default
-  [filter code-system]
-  (ba/unsupported (unsupported-filter-op-msg filter code-system)))
+  [code-system filter]
+  (ba/unsupported (unsupported-filter-op-msg code-system filter)))
+
+(defmulti find-concept
+  "Returns the concept with `code` if it satisfies `filter` or an anomaly in
+  case of errors."
+  {:arglists '([code-system filter code])}
+  (fn [_ {:keys [op]} _] (-> op type/value keyword)))
+
+(defmethod find-concept :default
+  [code-system filter _]
+  (ba/unsupported (unsupported-filter-op-msg code-system filter)))
+
+(defmulti satisfies-filter?
+  "Returns true if `concept` satisfies `filter`."
+  {:arglists '([code-system filter concept])}
+  (fn [_ {:keys [op]} _] (-> op type/value keyword)))
+
+(defmethod satisfies-filter? :default
+  [code-system filter _]
+  (ba/unsupported (unsupported-filter-op-msg code-system filter)))

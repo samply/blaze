@@ -1,0 +1,18 @@
+{
+  "resourceType" : "ValueSet",
+  "id" : "en-enlang-multi",
+  "language" : "en",
+  "url" : "http://hl7.org/fhir/test/ValueSet/en-enlang-multi",
+  "version" : "5.0.0",
+  "name" : "LanguageValueSetENMultiENLang",
+  "title" : "Language ValueSet EN Multi for EN by Lang",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "compose" : {
+    "include" : [{
+      "system" : "http://hl7.org/fhir/test/CodeSystem/en-multi"
+    }]
+  }
+}
