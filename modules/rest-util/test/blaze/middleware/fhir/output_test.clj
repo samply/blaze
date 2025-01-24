@@ -167,55 +167,61 @@
 (deftest binary-resource-test
   (testing "returning the resource"
     (testing "JSON"
-      (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTA1NjE0Cg=="}) {:headers {"accept" "application/fhir+json"}})
+      (given (call (binary-resource-handler-200 {:content-type "actual/content-type" :data "MTA1NjE0Cg=="}) {:headers {"accept" "application/fhir+json"}})
         :status := 200
         [:headers "Content-Type"] := "application/fhir+json;charset=utf-8"
         [:body parse-json] := {:fhir/type :fhir/Binary
-                               :contentType #fhir/code"text/plain"
+                               :contentType #fhir/code"actual/content-type"
                                :data #fhir/base64Binary"MTA1NjE0Cg=="}))
 
     (testing "XML"
-      (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTA1NjE0Cg=="}) {:headers {"accept" "application/fhir+xml"}})
+      (given (call (binary-resource-handler-200 {:content-type "actual/content-type" :data "MTA1NjE0Cg=="}) {:headers {"accept" "application/fhir+xml"}})
         :status := 200
         [:headers "Content-Type"] := "application/fhir+xml;charset=utf-8"
         [:body parse-xml] := {:fhir/type :fhir/Binary
-                              :contentType #fhir/code"text/plain"
+                              :contentType #fhir/code"actual/content-type"
                               :data #fhir/base64Binary"MTA1NjE0Cg=="})))
 
   (testing "returning the data"
     (testing "with content type"
-      (given (call (binary-resource-handler-200 {:content-type "text/plain" :data "MTA1NjE0Cg=="}) {:headers {"accept" "text/plain"}})
+      (given (call (binary-resource-handler-200 {:content-type "resource/content-type" :data "MTA1NjE0Cg=="}) {:headers {"accept" "resource/content-type"}})
         :status := 200
-        [:headers "Content-Type"] := "text/plain"
+        [:headers "Content-Type"] := "resource/content-type"
         [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
 
     (testing "without content type"
-      (given (call (binary-resource-handler-200 {:content-type nil :data "MTA1NjE0Cg=="}) {:headers {"accept" "text/plain"}})
+      (given (call (binary-resource-handler-200 {:content-type nil :data "MTA1NjE0Cg=="}) {:headers {"accept" "requested/non-fhir-content-type"}})
         :status := 200
         [:headers "Content-Type"] := "application/octet-stream"
         [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
 
+    (testing "with a requested content type different from the non-FHIR one requested"
+      (given (call (binary-resource-handler-200 {:content-type "actual/content-type" :data "MTA1NjE0Cg=="}) {:headers {"accept" "requested/non-fhir-content-type"}})
+        :status := 200
+        [:headers "Content-Type"] := "actual/content-type"
+        [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
+
     (testing "without data"
       (testing "with content type"
-        (given (call (binary-resource-handler-200 {:content-type "text/plain"}) {:headers {"accept" "text/plain"}})
+        (given (call (binary-resource-handler-200 {:content-type "actual/content-type"}) {:headers {"accept" "requested/non-fhir-content-type"}})
           :status := 200
-          [:headers "Content-Type"] := "text/plain"
+          [:headers "Content-Type"] := "actual/content-type"
           :body := nil))
 
       (testing "without content type"
-        (given (call (binary-resource-handler-200 {:content-type nil}) {:headers {"accept" "text/plain"}})
+        (given (call (binary-resource-handler-200 {:content-type nil}) {:headers {"accept" "requested/non-fhir-content-type"}})
           :status := 200
           [:headers "Content-Type"] := "application/octet-stream"
           :body := nil))
 
       (testing "without body at all"
-        (given (call binary-resource-handler-200-no-body {:headers {"accept" "text/plain"}})
+        (given (call binary-resource-handler-200-no-body {:headers {"accept" "requested/non-fhir-content-type"}})
           :status := 200
           [:headers "Content-Type"] := nil
           :body := nil)))
 
     (testing "failing binary emit (with invalid data)"
-      (given (call (binary-resource-handler-200 {:content-type "application/pdf" :data "MTANjECg=="}) {:headers {"accept" "text/plain"}})
+      (given (call (binary-resource-handler-200 {:content-type "application/pdf" :data "MTANjECg=="}) {:headers {"accept" "requested/non-fhir-content-type"}})
         :status := 500
         [:headers "Content-Type"] := "application/fhir+json"
         [:body parse-json :fhir/type] := :fhir/OperationOutcome
