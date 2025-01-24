@@ -108,11 +108,11 @@
   (or (-> body :contentType type/value)
       "application/octet-stream"))
 
-(defn- resource-request-binary* [{:keys [data contentType] :as body}]
+(defn- resource-request-binary* [{:keys [data] :as body}]
   (when data
     (assoc body
            :data (resource-request-binary** data)
-           :contentType (binary-content-type contentType))))
+           :contentType (binary-content-type body))))
 
 (defn- resource-request-binary [{:keys [body] :as request}]
   (if body

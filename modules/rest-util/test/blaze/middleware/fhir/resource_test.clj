@@ -180,14 +180,48 @@
       [:body :issue 0 :code] := #fhir/code"invariant"
       [:body :issue 0 :diagnostics] := "Error on value `a_b`. Expected type is `id`, regex `[A-Za-z0-9\\-\\.]{1,64}`.")))
 
+(comment
+  (def patient-resource {:headers {"content-type" "application/fhir+json"}
+                         :body (input-stream "{\"resourceType\": \"Patient\"}")})
+
+  (def ^:private resource-handler
+    "A handler which just returns the `:body` from a non-binary resource request."
+    (-> (comp ac/completed-future :body)
+        wrap-resource
+        wrap-error))
+
+  (resource-handler
+   {:headers {"content-type" "application/fhir+json"}
+    :body (input-stream "{\"resourceType\": \"Patient\"}")})
+;; => #object[java.util.concurrent.CompletableFuture 0x222a7d51 "java.util.concurrent.CompletableFuture@222a7d51[Completed normally]"]
+
+  @(resource-handler
+    {:headers {"content-type" "application/fhir+json"}
+     :body (input-stream "{\"resourceType\": \"Patient\"}")})
+;; => #:fhir{:type :fhir/Patient}
+
+  (defn resource-handler-fn [request]
+    (-> (comp ac/completed-future :body)
+        wrap-resource
+        wrap-error)
+    request)
+
+  (resource-handler-fn patient-resource)
+
+  @(resource-handler-fn {:headers {"content-type" "application/fhir+json"}
+                         :body (input-stream "{\"resourceType\": \"Patient\"}")})
+  :end)
+
 (deftest binary-test
   (testing "possible content types"
-    (doseq [content-type ["application/fhir+json" "text/json" "application/json"]]
+    (doseq [content-type ["application/fhir+json" "application/fhir+xml" "application/pdf"]]
       (let [closed? (atom false)]
         (given @(binary-resource-handler
                  {:headers {"content-type" content-type}
-                  :body (input-stream "{\"resourceType\": \"Patient\"}" closed?)})
-          fhir-spec/fhir-type := :fhir/Patient)
+                  :body (input-stream "{\"resourceType\": \"Binary\"}" closed?)})
+          :status := 200
+          identity := "something"
+          fhir-spec/fhir-type := :fhir/Binary)
         (is (true? @closed?)))))
 
   (testing "empty body"
