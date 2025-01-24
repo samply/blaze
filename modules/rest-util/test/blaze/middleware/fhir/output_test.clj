@@ -195,6 +195,12 @@
         [:headers "Content-Type"] := "application/octet-stream"
         [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
 
+    (testing "with a non-FHIR content type different from the one requested"
+      (given (call (binary-resource-handler-200 {:content-type "actual/content-type" :data "MTA1NjE0Cg=="}) {:headers {"accept" "requested/content-type"}})
+        :status := 200
+        [:headers "Content-Type"] := "actual/content-type"
+        [:body bs/from-byte-array] := #blaze/byte-string"3130353631340A"))
+
     (testing "without data"
       (testing "with content type"
         (given (call (binary-resource-handler-200 {:content-type "text/plain"}) {:headers {"accept" "text/plain"}})
