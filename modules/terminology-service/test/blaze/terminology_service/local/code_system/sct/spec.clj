@@ -30,7 +30,10 @@
 (s/def :sct/child-index
   map?)
 
-(s/def :sct/description-index
+(s/def :sct/fully-specified-name-index
+  map?)
+
+(s/def :sct/synonym-index
   map?)
 
 (s/def :sct/context
@@ -38,4 +41,5 @@
    :req-un
    [:sct/concept-index
     :sct/child-index
-    :sct/description-index]))
+    :sct/fully-specified-name-index
+    :sct/synonym-index]))

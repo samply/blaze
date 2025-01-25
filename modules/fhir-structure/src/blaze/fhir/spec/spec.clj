@@ -81,3 +81,6 @@
 
 (s/def :fhir/Parameters
   #(s2/valid? :fhir/Parameters %))
+
+(s/def :fhir.OperationOutcome/issue
+  #(s2/valid? :fhir.OperationOutcome/issue %))

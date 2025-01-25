@@ -1,0 +1,28 @@
+{
+  "resourceType" : "ValueSet",
+  "id" : "en-mixed-single",
+  "language" : "zh",
+  "url" : "http://hl7.org/fhir/test/ValueSet/en-mixed-single",
+  "version" : "5.0.0",
+  "name" : "LanguageValueSetENSingleENMixed",
+  "title" : "Language ValueSet EN Single for EN (Mixed)",
+  "status" : "active",
+  "experimental" : false,
+  "date" : "2023-04-01",
+  "publisher" : "FHIR Project",
+  "compose" : {
+    "extension" : [{
+      "url" : "http://hl7.org/fhir/tools/StructureDefinion/valueset-expansion-param",
+      "extension" : [{
+        "url" : "name",
+        "valueCode" : "displayLanguage"
+      },{
+        "url" : "value",
+        "valueCode" : "it"
+      }]
+    }],
+    "include" : [{
+      "system" : "http://hl7.org/fhir/test/CodeSystem/en-single"
+    }]
+  }
+}
