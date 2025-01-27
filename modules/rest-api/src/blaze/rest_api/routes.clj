@@ -35,6 +35,10 @@
   {:name :auth-guard
    :wrap auth-guard/wrap-auth-guard})
 
+(def ^:private wrap-binary-resource
+  {:name :resource
+   :wrap resource/wrap-binary-resource})
+
 (def ^:private wrap-resource
   {:name :resource
    :wrap resource/wrap-resource})
@@ -103,6 +107,8 @@
       {:fhir.resource/type name}
       [""
        (cond-> {:name (keyword name "type")}
+         (= name "Binary")
+         (assoc :response-type :binary)
          (contains? interactions :search-type)
          (assoc :get {:interaction "search-type"
                       :middleware [[wrap-db node db-sync-timeout]
@@ -111,7 +117,9 @@
                                    :blaze.rest-api.interaction/handler)})
          (contains? interactions :create)
          (assoc :post {:interaction "create"
-                       :middleware [wrap-resource]
+                       :middleware (if (:response-type :binary)
+                                     [wrap-binary-resource]
+                                     [wrap-resource])
                        :handler (-> interactions :create
                                     :blaze.rest-api.interaction/handler)})
          (contains? interactions :conditional-delete-type)
@@ -179,7 +187,9 @@
                                       :blaze.rest-api.interaction/handler)})
             (contains? interactions :update)
             (assoc :put {:interaction "update"
-                         :middleware [wrap-resource]
+                         :middleware (if (:response-type :binary)
+                                       [wrap-binary-resource]
+                                       [wrap-resource])
                          :handler (-> interactions :update
                                       :blaze.rest-api.interaction/handler)})
             (contains? interactions :delete)

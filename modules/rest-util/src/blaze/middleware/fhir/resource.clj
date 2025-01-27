@@ -7,6 +7,7 @@
    [blaze.anomaly :as ba :refer [if-ok when-ok]]
    [blaze.async.comp :as ac]
    [blaze.fhir.spec :as fhir-spec]
+   [blaze.fhir.spec.type :as type]
    [clojure.data.xml.jvm.parse :as xml-jvm]
    [clojure.data.xml.tree :as xml-tree]
    [clojure.java.io :as io]
@@ -17,6 +18,7 @@
   (:import
    [com.ctc.wstx.api WstxInputProperties]
    [java.io Reader]
+   [java.util Base64 Base64$Encoder]
    [javax.xml.stream XMLInputFactory]))
 
 (set! *warn-on-reflection* true)
@@ -95,6 +97,29 @@
       (assoc request :body resource))
     (ba/incorrect "Missing HTTP body.")))
 
+(def ^:private ^Base64$Encoder b64-encoder
+  (.withoutPadding (Base64/getUrlEncoder)))
+
+(defn- resource-request-binary** [data]
+  (with-open [_ (prom/timer parse-duration-seconds "binary")]
+    (.encodeToString b64-encoder data)))
+
+(defn- binary-content-type [body]
+  (or (-> body :contentType type/value)
+      "application/octet-stream"))
+
+(defn- resource-request-binary* [{:keys [data contentType] :as body}]
+  (when data
+    (assoc body
+           :data (resource-request-binary** data)
+           :contentType (binary-content-type contentType))))
+
+(defn- resource-request-binary [{:keys [body] :as request}]
+  (if body
+    (when-ok [resource (resource-request-binary* body)]
+      (assoc request :body resource))
+    (ba/incorrect "Missing HTTP body.")))
+
 (defn- unsupported-media-type-msg [media-type]
   (format "Unsupported media type `%s` expect one of `application/fhir+json` or `application/fhir+xml`."
           media-type))
@@ -123,5 +148,31 @@
   [handler]
   (fn [request]
     (if-ok [request (resource-request request)]
+      (handler request)
+      ac/completed-future)))
+
+(defn- binary-resource-request [request]
+  (if-let [content-type (request/content-type request)]
+    (cond
+      (json-request? content-type) (resource-request-json request)
+      (xml-request? content-type) (resource-request-xml request)
+      :else
+      (resource-request-binary request))
+    (if (str/blank? (slurp (:body request)))
+      (assoc request :body nil)
+      (ba/incorrect "Content-Type header expected, but is missing."))))
+
+(defn wrap-binary-resource
+  "Middleware to parse a binary resource from the body according the content-type
+  header.
+
+  Updates the :body key in the request map on successful parsing and conforming
+  the resource to the internal format.
+
+  Returns an OperationOutcome in the internal format, skipping the handler, with
+  an appropriate error on parsing and conforming errors."
+  [handler]
+  (fn [request]
+    (if-ok [request (binary-resource-request request)]
       (handler request)
       ac/completed-future)))
