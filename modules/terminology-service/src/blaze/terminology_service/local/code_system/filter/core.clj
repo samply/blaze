@@ -8,7 +8,7 @@
   {:arglists '([code-system filter])}
   (fn [_ {:keys [op]}] (-> op type/value keyword)))
 
-(defn- unsupported-filter-op-msg [{:keys [url]} {:keys [op]}]
+(defn unsupported-filter-op-msg [{:keys [url]} {:keys [op]}]
   (format "Unsupported filter operator `%s` in code system `%s`."
           (type/value op) (type/value url)))
 
