@@ -213,6 +213,13 @@
   (when sct-context
     @(sct/ensure-code-systems config sct-context)))
 
+(defn- load-all-code-systems
+  "Loads all code systems into the resource cache because we needs them to be
+  able to generate the TerminologyCapabilities as fast as possible."
+  [node]
+  (log/info "Load all code systems into the resource cache...")
+  @(cs/list (d/db node)))
+
 (def ^:private cs-validate-code-param-specs
   {"url" {:action :copy}
    "codeSystem" {:action :copy-resource}
@@ -279,9 +286,7 @@
 (defn- terminology-service [node context]
   (reify p/TerminologyService
     (p/-code-systems [_]
-      (let [db (d/new-batch-db (d/db node))]
-        (-> (c/code-systems db)
-            (handle-close db))))
+      (c/code-systems (d/db node)))
     (-code-system-validate-code [_ params]
       (if-ok [params (validate-params cs-validate-code-param-specs params)
               params (cs-validate-code-more params)]
@@ -331,6 +336,7 @@
   (log/info "Init local terminology server")
   (let [context (context config)]
     (ensure-code-systems config context)
+    (load-all-code-systems node)
     (terminology-service node context)))
 
 (derive ::ts/local :blaze/terminology-service)
